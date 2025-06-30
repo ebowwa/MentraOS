@@ -1,6 +1,16 @@
 // src/AppSettings.tsx
 import React, {useEffect, useState, useMemo, useLayoutEffect, useCallback, useRef} from "react"
-import {View, Text, StyleSheet, TouchableOpacity, ScrollView, ViewStyle, TextStyle, Animated, BackHandler} from "react-native"
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  ViewStyle,
+  TextStyle,
+  Animated,
+  BackHandler,
+} from "react-native"
 import {useSafeAreaInsets} from "react-native-safe-area-context"
 import GroupTitle from "@/components/settings/GroupTitle"
 import ToggleSetting from "@/components/settings/ToggleSetting"
@@ -38,7 +48,7 @@ export default function AppSettings() {
   const {goBack, push, replace} = useNavigationHistory()
   const insets = useSafeAreaInsets()
   const hasLoadedData = useRef(false)
-  
+
   // Use appName from params or default to empty string
   const [appName, setAppName] = useState(appNameParam || "")
 
@@ -88,7 +98,7 @@ export default function AppSettings() {
       // Handle Android back button
       const onBackPress = () => {
         // Always go back to home when back is pressed
-        router.replace("/(tabs)/home")
+        replace("/(tabs)/home")
         return true
       }
 
@@ -194,7 +204,7 @@ export default function AppSettings() {
                 type: "success",
               })
 
-              router.replace("/(tabs)/home")
+              replace("/(tabs)/home")
             } catch (error: any) {
               console.error("Error uninstalling app:", error)
               clearPendingOperation(packageName)
@@ -269,12 +279,12 @@ export default function AppSettings() {
         setSettingsState(cached.settingsState)
         setHasCachedSettings(!!(cached.serverAppInfo?.settings && cached.serverAppInfo.settings.length > 0))
         setSettingsLoading(false)
-        
+
         // Update appName from cached data if available
         if (cached.serverAppInfo?.name) {
           setAppName(cached.serverAppInfo.name)
         }
-        
+
         // TACTICAL BYPASS: If webviewURL exists in cached data, execute immediate redirect
         if (cached.serverAppInfo?.webviewURL && fromWebView !== "true") {
           replace("/app/webview", {
@@ -314,7 +324,7 @@ export default function AppSettings() {
       const elapsed = Date.now() - startTime
       console.log(`[PROFILE] getTpaSettings for ${packageName} took ${elapsed}ms`)
       console.log("GOT TPA SETTING")
-      console.log(JSON.stringify(data));
+      console.log(JSON.stringify(data))
       // TODO: Profile backend and optimize if slow
       // If no data is returned from the server, create a minimal app info object
       if (!data) {
@@ -330,12 +340,12 @@ export default function AppSettings() {
         return
       }
       setServerAppInfo(data)
-      
+
       // Update appName if we got it from server
       if (data.name) {
         setAppName(data.name)
       }
-      
+
       // Initialize local state using the "selected" property.
       if (data.settings && Array.isArray(data.settings)) {
         const initialState: {[key: string]: any} = {}
@@ -504,20 +514,17 @@ export default function AppSettings() {
         <Header
           title=""
           leftIcon="caretLeft"
-          onLeftPress={() => router.replace("/(tabs)/home")}
+          onLeftPress={() => replace("/(tabs)/home")}
           RightActionComponent={
             serverAppInfo?.webviewURL ? (
               <TouchableOpacity
                 style={{marginRight: 8}}
                 onPress={() => {
-                  router.replace({
-                    pathname: "/app/webview",
-                    params: {
-                      webviewURL: serverAppInfo.webviewURL,
-                      appName: appName as string,
-                      packageName: packageName as string,
-                      fromSettings: "true",
-                    },
+                  replace("/app/webview", {
+                    webviewURL: serverAppInfo.webviewURL,
+                    appName: appName as string,
+                    packageName: packageName as string,
+                    fromSettings: "true",
                   })
                 }}>
                 <FontAwesome name="globe" size={22} color={theme.colors.text} />
@@ -633,7 +640,11 @@ export default function AppSettings() {
               <InfoRow
                 label="App Type"
                 value={
-                  appInfo?.appType === "standard" ? "Foreground" : appInfo?.appType === "background" ? "Background" : "-"
+                  appInfo?.appType === "standard"
+                    ? "Foreground"
+                    : appInfo?.appType === "background"
+                      ? "Background"
+                      : "-"
                 }
                 showDivider={false}
               />
@@ -649,11 +660,7 @@ export default function AppSettings() {
               if (serverAppInfo?.uninstallable) {
                 handleUninstallApp()
               } else {
-                showAlert(
-                  "Cannot Uninstall",
-                  "This app cannot be uninstalled.",
-                  [{text: "OK", style: "default"}]
-                )
+                showAlert("Cannot Uninstall", "This app cannot be uninstalled.", [{text: "OK", style: "default"}])
               }
             }}
             disabled={!serverAppInfo?.uninstallable}

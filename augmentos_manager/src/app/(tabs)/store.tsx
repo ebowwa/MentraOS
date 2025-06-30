@@ -34,7 +34,7 @@ export default function AppStoreWeb() {
 
     const url = new URL(appStoreUrl)
     console.log("AppStoreWeb: appStoreUrl", appStoreUrl)
-    console.log("theme.isDark", theme.isDark)
+    console.log("AppStoreWeb: packageName", packageName)
     if (packageName && typeof packageName === "string") {
       // If packageName is provided, update the path to point to the app details page
       url.pathname = `/package/${packageName}`

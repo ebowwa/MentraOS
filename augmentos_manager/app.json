@@ -31,11 +31,10 @@
           "data": [
             {
               "scheme": "https",
-              "host": "apps.mentra.glass",
-              "pathPrefix": "/"
+              "host": "apps.mentra.glass"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": ["DEFAULT", "BROWSABLE"]
         }
       ]
     },

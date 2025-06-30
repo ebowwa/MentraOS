@@ -8,6 +8,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
+import android.media.AudioAttributes;
+import android.media.AudioFocusRequest;
 import android.media.AudioFormat;
 import android.media.AudioManager;
 import android.media.AudioRecord;
@@ -83,6 +85,11 @@ public class PhoneMicrophoneManager {
     private BroadcastReceiver audioStateReceiver;
     private boolean isExternalAudioActive = false;
     private boolean isReceiverRegistered = false;
+    
+    // Audio focus management
+    private AudioManager.OnAudioFocusChangeListener audioFocusListener;
+    private boolean hasAudioFocus = false;
+    private AudioFocusRequest audioFocusRequest; // For Android 8.0+
     
     // Audio recording detection (API 23+)
     private AudioManager.AudioRecordingCallback audioRecordingCallback;
@@ -337,6 +344,14 @@ public class PhoneMicrophoneManager {
         
         // Create new microphone with SCO enabled
         try {
+            // Request audio focus BEFORE creating the AudioRecord
+            if (!requestAudioFocus()) {
+                Log.e(TAG, "Failed to get audio focus - another app may be using microphone");
+                // On Samsung, this might mean Gboard is already trying to use the mic
+                pauseRecording();
+                return;
+            }
+            
             Log.d(TAG, "Switching to SCO mode");
             // Create new microphone with SCO enabled - this should forward audio to the speech recognition system
             micInstance = new MicrophoneLocalAndBluetooth(context, true, audioChunkCallback, this);
@@ -345,8 +360,12 @@ public class PhoneMicrophoneManager {
             lastModeChangeTime = System.currentTimeMillis(); // Track mode change time
             notifyStatusChange();
             scoRetries = 0; // Reset retry counter on success
+            
+            // Start Samsung monitoring if needed
+            startSamsungAudioMonitoring();
         } catch (Exception e) {
             Log.e(TAG, "Failed to start SCO mode", e);
+            abandonAudioFocus(); // Release focus on failure
             stopMicrophoneService(); // Stop service if mic creation failed
             attemptFallback();
         }
@@ -387,6 +406,14 @@ public class PhoneMicrophoneManager {
         startMicrophoneService();
         
         try {
+            // Request audio focus BEFORE creating the AudioRecord
+            if (!requestAudioFocus()) {
+                Log.e(TAG, "Failed to get audio focus - another app may be using microphone");
+                // On Samsung, this might mean Gboard is already trying to use the mic
+                pauseRecording();
+                return;
+            }
+            
             Log.d(TAG, "Switching to normal phone microphone mode");
             // Create new microphone with SCO disabled
             micInstance = new MicrophoneLocalAndBluetooth(context, false, audioChunkCallback, this);
@@ -395,8 +422,12 @@ public class PhoneMicrophoneManager {
             currentStatus = MicStatus.NORMAL_MODE;
             lastModeChangeTime = System.currentTimeMillis(); // Track mode change time
             notifyStatusChange();
+            
+            // Start Samsung monitoring if needed
+            startSamsungAudioMonitoring();
         } catch (Exception e) {
             Log.e(TAG, "Failed to start normal mode", e);
+            abandonAudioFocus(); // Release focus on failure
             stopMicrophoneService(); // Stop service if mic creation failed
             switchToGlassesMic(); // Try glasses mic as a last resort
         }
@@ -425,6 +456,9 @@ public class PhoneMicrophoneManager {
         
         // Stop microphone service - no phone mic hardware needed for glasses mic
         stopMicrophoneService();
+        
+        // Stop Samsung monitoring when switching away from phone mic
+        stopSamsungAudioMonitoring();
         
         try {
             Log.d(TAG, "Switching to glasses onboard microphone");
@@ -504,6 +538,12 @@ public class PhoneMicrophoneManager {
         // Stop microphone service - no mic hardware needed when paused
         stopMicrophoneService();
         
+        // Stop Samsung monitoring when pausing
+        stopSamsungAudioMonitoring();
+        
+        // IMPORTANT: Abandon audio focus when pausing so other apps can use the mic
+        abandonAudioFocus();
+        
         // Disable glasses mic if it was active
         if (currentStatus == MicStatus.GLASSES_MIC && glassesRep != null && 
             glassesRep.smartGlassesCommunicator != null) {
@@ -568,6 +608,10 @@ public class PhoneMicrophoneManager {
                 micInstance = null;
             }
         }
+        
+        // Always abandon audio focus when cleaning up mic
+        // This ensures other apps can use the microphone
+        abandonAudioFocus();
     }
     
     /**
@@ -765,6 +809,54 @@ public class PhoneMicrophoneManager {
     private void initAudioConflictDetection() {
         audioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
         
+        // Initialize audio focus listener - this is crucial for Samsung devices
+        audioFocusListener = new AudioManager.OnAudioFocusChangeListener() {
+            @Override
+            public void onAudioFocusChange(int focusChange) {
+                Log.d(TAG, "Audio focus changed: " + focusChange);
+                
+                switch (focusChange) {
+                    case AudioManager.AUDIOFOCUS_LOSS:
+                    case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT:
+                        // Another app needs audio - this is how Samsung signals mic conflicts!
+                        Log.d(TAG, "🎤 Lost audio focus - another app needs microphone");
+                        if (currentStatus == MicStatus.SCO_MODE || currentStatus == MicStatus.NORMAL_MODE) {
+                            // Switch to glasses mic or pause
+                            if (glassesRep != null && glassesRep.smartGlassesDevice != null && 
+                                glassesRep.smartGlassesDevice.getHasInMic()) {
+                                Log.d(TAG, "Switching to glasses mic due to audio focus loss");
+                                switchToGlassesMic();
+                            } else {
+                                Log.d(TAG, "Pausing recording due to audio focus loss");
+                                pauseRecording();
+                            }
+                        }
+                        hasAudioFocus = false;
+                        break;
+                        
+                    case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK:
+                        // We can continue at lower volume - not applicable for mic recording
+                        Log.d(TAG, "Audio focus loss - can duck (ignoring for mic)");
+                        break;
+                        
+                    case AudioManager.AUDIOFOCUS_GAIN:
+                        // We got focus back!
+                        Log.d(TAG, "🎤 Regained audio focus - can resume recording");
+                        hasAudioFocus = true;
+                        // Resume preferred mic mode if we were paused
+                        if (currentStatus == MicStatus.PAUSED) {
+                            mainHandler.postDelayed(() -> {
+                                if (hasAudioFocus && !isPhoneCallActive) {
+                                    Log.d(TAG, "Resuming recording after audio focus gain");
+                                    startPreferredMicMode();
+                                }
+                            }, 500); // Small delay to let the other app fully release
+                        }
+                        break;
+                }
+            }
+        };
+        
         // Register for audio events
         IntentFilter filter = new IntentFilter();
         filter.addAction(AudioManager.ACTION_AUDIO_BECOMING_NOISY);
@@ -822,6 +914,7 @@ public class PhoneMicrophoneManager {
         }
         
         // Register AudioRecordingCallback to detect when other apps use microphone
+        // Note: This may not work on Samsung devices due to different audio routing
         try {
             audioRecordingCallback = new AudioManager.AudioRecordingCallback() {
                 @Override
@@ -829,6 +922,17 @@ public class PhoneMicrophoneManager {
                     if (configs == null) {
                         Log.d(TAG, "Recording configuration update: null configs");
                         return;
+                    }
+                    
+                    // Enhanced logging for Samsung debugging
+                    if ("samsung".equalsIgnoreCase(Build.MANUFACTURER)) {
+                        Log.d(TAG, "Samsung device - AudioRecordingCallback triggered");
+                        Log.d(TAG, "Device model: " + Build.MODEL);
+                        for (AudioRecordingConfiguration config : configs) {
+                            Log.d(TAG, "  Config - Client: " + config.getClientAudioSessionId() + 
+                                  ", Source: " + config.getAudioSource() + 
+                                  ", Format: " + config.getFormat());
+                        }
                     }
                     
                     // Filter out our own audio recordings by client ID 
@@ -841,6 +945,11 @@ public class PhoneMicrophoneManager {
                     }
                     
                     boolean otherAppsRecording = !otherAppRecordings.isEmpty();
+                    
+                    // Samsung fallback detection - if AudioRecordingCallback doesn't work properly
+                    if ("samsung".equalsIgnoreCase(Build.MANUFACTURER) && !otherAppsRecording) {
+                        otherAppsRecording = detectSamsungExternalAudio(configs);
+                    }
                     
                     // Log what's happening but only when there's a change or there are external recordings
                     if (otherAppsRecording || otherAppsRecording != isExternalAudioActive) {
@@ -859,65 +968,7 @@ public class PhoneMicrophoneManager {
                     // Only take action if this represents a change in state
                     if (otherAppsRecording != isExternalAudioActive) {
                         isExternalAudioActive = otherAppsRecording;
-                        
-                        // Check if we've changed modes too recently (debounce)
-                        long now = System.currentTimeMillis();
-                        if (now - lastModeChangeTime < MODE_CHANGE_DEBOUNCE_MS) {
-                            Log.d(TAG, "Detected audio configuration change but ignoring (debounce active)");
-                            return;
-                        }
-                        
-                        if (isExternalAudioActive) {
-                            Log.d(TAG, "🎤 External app now using microphone - adjusting our recording");
-                            
-                            // For any phone-based recording (SCO or normal), try to use glasses mic or pause entirely
-                            if (currentStatus == MicStatus.SCO_MODE || currentStatus == MicStatus.NORMAL_MODE) {
-                                // Check if glasses onboard mic is available
-                                if (glassesRep != null && glassesRep.smartGlassesDevice.getHasInMic()) {
-                                    Log.d(TAG, "External app needs mic - switching to glasses onboard mic");
-                                    switchToGlassesMic();
-                                } else {
-                                    Log.d(TAG, "External app needs mic - no glasses mic available, pausing recording");
-                                    pauseRecording();
-                                }
-                            }
-                            
-                            // We're either using glasses mic or fully paused now
-                        } else {
-                            Log.d(TAG, "🎤 External apps released microphone - can return to preferred mode");
-                            
-                            // If we're currently using glasses mic due to conflict, return to preferred mode
-                            if (currentStatus == MicStatus.GLASSES_MIC) {
-                                // We were using glasses mic as fallback, return to preferred mode
-                                mainHandler.postDelayed(() -> {
-                                    if (!isExternalAudioActive && !isPhoneCallActive && 
-                                        System.currentTimeMillis() - lastModeChangeTime >= MODE_CHANGE_DEBOUNCE_MS) {
-                                        Log.d(TAG, "Returning from glasses mic to preferred mode after external mic release");
-                                        
-                                        // Disable glasses mic first
-                                        if (glassesRep != null && glassesRep.smartGlassesCommunicator != null) {
-                                            try {
-                                                glassesRep.smartGlassesCommunicator.changeSmartGlassesMicrophoneState(false);
-                                            } catch (Exception e) {
-                                                Log.e(TAG, "Error disabling glasses mic", e);
-                                            }
-                                        }
-                                        
-                                        // Return to preferred mode
-                                        startPreferredMicMode();
-                                    }
-                                }, 1000); // 1000ms delay to let other app fully release resources
-                            } else if (currentStatus != MicStatus.SCO_MODE && !isPhoneCallActive) {
-                                // We're in some other state, try to return to preferred
-                                mainHandler.postDelayed(() -> {
-                                    if (!isExternalAudioActive && !isPhoneCallActive && 
-                                        System.currentTimeMillis() - lastModeChangeTime >= MODE_CHANGE_DEBOUNCE_MS) {
-                                        Log.d(TAG, "Returning to preferred mode after external mic release");
-                                        startPreferredMicMode();
-                                    }
-                                }, 1000); // 1000ms delay to let other app fully release resources
-                            }
-                        }
+                        handleExternalAudioStateChange(otherAppsRecording);
                     }
                 }
             };
@@ -947,6 +998,266 @@ public class PhoneMicrophoneManager {
             Log.e(TAG, "Failed to register AudioRecordingCallback", e);
             // Continue without this feature - it's enhanced functionality
         }
+        
+        // Initialize Samsung-specific audio monitoring if needed
+        if ("samsung".equalsIgnoreCase(Build.MANUFACTURER)) {
+            initSamsungAudioMonitoring();
+            
+            // Also register for audio noisy events which might indicate Gboard
+            registerForAudioNoisyEvents();
+        }
+    }
+    
+    /**
+     * Register for additional audio events that might indicate Gboard on Samsung
+     */
+    private void registerForAudioNoisyEvents() {
+        try {
+            // Register for media button events which Gboard might trigger
+            IntentFilter mediaFilter = new IntentFilter();
+            mediaFilter.addAction(Intent.ACTION_MEDIA_BUTTON);
+            mediaFilter.addAction("android.speech.action.RECOGNIZE_SPEECH");
+            mediaFilter.addAction("com.google.android.googlequicksearchbox.VOICE_SEARCH");
+            
+            BroadcastReceiver gboardReceiver = new BroadcastReceiver() {
+                @Override
+                public void onReceive(Context context, Intent intent) {
+                    Log.d(TAG, "🎤 Detected potential Gboard/voice activity: " + intent.getAction());
+                    // This might indicate Gboard is trying to use the mic
+                    if (!isExternalAudioActive && (currentStatus == MicStatus.SCO_MODE || 
+                                                  currentStatus == MicStatus.NORMAL_MODE)) {
+                        Log.d(TAG, "Potential Gboard mic request detected - checking focus");
+                    }
+                }
+            };
+            
+            context.registerReceiver(gboardReceiver, mediaFilter);
+        } catch (Exception e) {
+            Log.e(TAG, "Error registering for Gboard detection", e);
+        }
+    }
+    
+    /**
+     * Samsung-specific audio detection fallback method
+     */
+    private boolean detectSamsungExternalAudio(List<AudioRecordingConfiguration> configs) {
+        // For Samsung, assume external audio if we see ANY recording configs
+        // when we don't expect any (since AudioRecordingCallback may not work properly)
+        int expectedOurRecordings = (micInstance != null && currentStatus != MicStatus.PAUSED) ? 1 : 0;
+        
+        if (configs.size() > expectedOurRecordings) {
+            Log.d(TAG, "🎤 Samsung fallback detection: " + configs.size() + 
+                  " recordings detected, expected " + expectedOurRecordings);
+            return true;
+        }
+        
+        return false;
+    }
+    
+    // Samsung-specific audio monitoring
+    private Handler samsungAudioMonitorHandler;
+    private Runnable samsungAudioMonitorRunnable;
+    private boolean samsungAudioMonitorActive = false;
+    
+    /**
+     * Initialize Samsung-specific audio monitoring using AudioManager state polling
+     */
+    private void initSamsungAudioMonitoring() {
+        Log.d(TAG, "Initializing Samsung-specific audio monitoring");
+        
+        samsungAudioMonitorHandler = new Handler(Looper.getMainLooper());
+        samsungAudioMonitorRunnable = new Runnable() {
+            @Override
+            public void run() {
+                if (samsungAudioMonitorActive) {
+                    checkSamsungAudioState();
+                    // Check every 500ms for audio state changes
+                    samsungAudioMonitorHandler.postDelayed(this, 500);
+                }
+            }
+        };
+    }
+    
+    /**
+     * Start Samsung audio monitoring when our mic is active
+     */
+    private void startSamsungAudioMonitoring() {
+        if ("samsung".equalsIgnoreCase(Build.MANUFACTURER) && 
+            samsungAudioMonitorHandler != null && !samsungAudioMonitorActive) {
+            Log.d(TAG, "Starting Samsung audio state monitoring (with 2s delay to avoid false positives)");
+            samsungAudioMonitorActive = true;
+            // Delay start by 2 seconds to let our own audio mode settle
+            samsungAudioMonitorHandler.postDelayed(samsungAudioMonitorRunnable, 2000);
+        }
+    }
+    
+    /**
+     * Stop Samsung audio monitoring
+     */
+    private void stopSamsungAudioMonitoring() {
+        if (samsungAudioMonitorActive && samsungAudioMonitorHandler != null) {
+            Log.d(TAG, "Stopping Samsung audio state monitoring");
+            samsungAudioMonitorActive = false;
+            samsungAudioMonitorHandler.removeCallbacks(samsungAudioMonitorRunnable);
+        }
+    }
+    
+    /**
+     * Check Samsung audio state for external audio activity
+     */
+    private void checkSamsungAudioState() {
+        try {
+            if (audioManager == null) return;
+            
+            // IMPORTANT: MODE_IN_COMMUNICATION is what WE set for Samsung devices
+            // So we need to ignore it when we're actively recording
+            int currentMode = audioManager.getMode();
+            
+            // Only consider it external audio if:
+            // 1. Mode is IN_CALL (phone call) 
+            // 2. Mode changed from what we expect
+            boolean isPhoneCall = (currentMode == AudioManager.MODE_IN_CALL);
+            boolean unexpectedMode = false;
+            
+            // Check if the mode is different from what we expect
+            if (currentStatus == MicStatus.SCO_MODE) {
+                // In SCO mode, we expect MODE_IN_CALL
+                unexpectedMode = (currentMode != AudioManager.MODE_IN_CALL);
+            } else if (currentStatus == MicStatus.NORMAL_MODE) {
+                // In normal mode on Samsung, we set MODE_IN_COMMUNICATION
+                unexpectedMode = (currentMode != AudioManager.MODE_IN_COMMUNICATION && 
+                               currentMode != AudioManager.MODE_NORMAL);
+            }
+            
+            // Only flag as external if it's a phone call or unexpected mode
+            boolean suspectedExternalAudio = isPhoneCall || 
+                                           (unexpectedMode && currentStatus != MicStatus.PAUSED);
+            
+            if (suspectedExternalAudio != isExternalAudioActive) {
+                Log.d(TAG, "🎤 Samsung audio state change detected - suspected external: " + suspectedExternalAudio);
+                Log.d(TAG, "  Audio mode: " + currentMode + 
+                      " (NORMAL=" + AudioManager.MODE_NORMAL + 
+                      ", IN_CALL=" + AudioManager.MODE_IN_CALL + 
+                      ", IN_COMMUNICATION=" + AudioManager.MODE_IN_COMMUNICATION + ")");
+                Log.d(TAG, "  Current mic status: " + currentStatus);
+                
+                // Only trigger if this is truly external
+                if (suspectedExternalAudio && currentMode == AudioManager.MODE_IN_CALL) {
+                    // This is likely a real phone call or external app
+                    isExternalAudioActive = true;
+                    handleExternalAudioStateChange(true);
+                } else if (!suspectedExternalAudio && isExternalAudioActive) {
+                    // External app released the mic
+                    isExternalAudioActive = false;
+                    handleExternalAudioStateChange(false);
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error in Samsung audio state check", e);
+        }
+    }
+    
+    /**
+     * Handle external audio state changes (extracted from AudioRecordingCallback logic)
+     */
+    private void handleExternalAudioStateChange(boolean externalAudioActive) {
+        // Check if we've changed modes too recently (debounce)
+        long now = System.currentTimeMillis();
+        if (now - lastModeChangeTime < MODE_CHANGE_DEBOUNCE_MS) {
+            Log.d(TAG, "Detected audio state change but ignoring (debounce active)");
+            return;
+        }
+        
+        if (externalAudioActive) {
+            Log.d(TAG, "🎤 External app now using microphone - adjusting our recording");
+            
+            // For any phone-based recording (SCO or normal), try to use glasses mic or pause entirely
+            if (currentStatus == MicStatus.SCO_MODE || currentStatus == MicStatus.NORMAL_MODE) {
+                // Check if glasses onboard mic is available
+                if (glassesRep != null && glassesRep.smartGlassesDevice.getHasInMic()) {
+                    Log.d(TAG, "External app needs mic - switching to glasses onboard mic");
+                    switchToGlassesMic();
+                } else {
+                    Log.d(TAG, "External app needs mic - no glasses mic available, pausing recording");
+                    pauseRecording();
+                }
+            }
+        } else {
+            Log.d(TAG, "🎤 External apps released microphone - can return to preferred mode");
+            
+            // Return to preferred mode after delay
+            mainHandler.postDelayed(() -> {
+                if (!isExternalAudioActive && !isPhoneCallActive && 
+                    System.currentTimeMillis() - lastModeChangeTime >= MODE_CHANGE_DEBOUNCE_MS) {
+                    Log.d(TAG, "Returning to preferred mode after external mic release");
+                    startPreferredMicMode();
+                }
+            }, 1000);
+        }
+    }
+    
+    /**
+     * Request audio focus for microphone recording
+     * This is CRITICAL for Samsung devices to properly share microphone access
+     */
+    private boolean requestAudioFocus() {
+        if (audioManager == null) {
+            Log.e(TAG, "AudioManager is null, cannot request focus");
+            return false;
+        }
+        
+        int result;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            // Android 8.0+ uses AudioFocusRequest
+            AudioAttributes audioAttributes = new AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_VOICE_COMMUNICATION)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                    .build();
+                    
+            audioFocusRequest = new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
+                    .setAudioAttributes(audioAttributes)
+                    .setOnAudioFocusChangeListener(audioFocusListener, mainHandler)
+                    .setAcceptsDelayedFocusGain(false) // We need focus immediately for recording
+                    .build();
+                    
+            result = audioManager.requestAudioFocus(audioFocusRequest);
+        } else {
+            // Pre-Android 8.0
+            result = audioManager.requestAudioFocus(audioFocusListener,
+                    AudioManager.STREAM_VOICE_CALL,
+                    AudioManager.AUDIOFOCUS_GAIN);
+        }
+        
+        hasAudioFocus = (result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED);
+        Log.d(TAG, "Audio focus request result: " + 
+              (hasAudioFocus ? "GRANTED" : "DENIED") + " (code: " + result + ")");
+        
+        return hasAudioFocus;
+    }
+    
+    /**
+     * Abandon audio focus to allow other apps to use the microphone
+     * This is CRITICAL for Samsung devices - must release focus when not recording
+     */
+    private void abandonAudioFocus() {
+        if (audioManager == null || !hasAudioFocus) {
+            return;
+        }
+        
+        Log.d(TAG, "Abandoning audio focus to allow other apps to use microphone");
+        
+        int result;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && audioFocusRequest != null) {
+            // Use the stored AudioFocusRequest
+            result = audioManager.abandonAudioFocusRequest(audioFocusRequest);
+            audioFocusRequest = null; // Clear the reference
+        } else {
+            // Pre-Android 8.0
+            result = audioManager.abandonAudioFocus(audioFocusListener);
+        }
+        
+        hasAudioFocus = false;
+        Log.d(TAG, "Audio focus abandon result: " + result);
     }
     
     /**
@@ -975,6 +1286,12 @@ public class PhoneMicrophoneManager {
         
         // Stop microphone service and reset all flags
         stopMicrophoneService();
+        
+        // Stop Samsung monitoring
+        stopSamsungAudioMonitoring();
+        
+        // Abandon audio focus
+        abandonAudioFocus();
         
         // Force reset service flags to prevent stuck state
         isMicrophoneServiceRunning = false;

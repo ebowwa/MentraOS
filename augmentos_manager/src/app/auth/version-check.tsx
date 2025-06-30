@@ -68,16 +68,16 @@ export default function VersionUpdateScreen() {
           if (semver.lt(localVer, cloudVer)) {
             console.log("A new version is available. Please update the app.")
             setIsVersionMismatch(true)
-          } else {
-            console.log("Local version is up-to-date.")
-            setIsVersionMismatch(false)
-            // Navigate back to home if no update is needed
-            // setTimeout(() => {
-            //   router.replace("/")
-            // }, 1000)
-            replace("/auth/core-token-exchange")
+            setIsLoading(false)
+            return
           }
-          setIsLoading(false)
+          // don't stop the loading, just continue to the core token exchange:
+          console.log("Local version is up-to-date.")
+          setIsVersionMismatch(false)
+          // less jarring
+          setTimeout(() => {
+            replace("/auth/core-token-exchange")
+          }, 1000)
         },
         onFailure: errorCode => {
           console.error("Failed to fetch cloud version:", errorCode)
@@ -120,10 +120,12 @@ export default function VersionUpdateScreen() {
 
   if (isLoading) {
     return (
-      <View style={[themed($container), themed($loadingContainer)]}>
-        <ActivityIndicator size="large" color={theme.colors.tint} />
-        <Text style={[themed($loadingText)]}>Checking for updates...</Text>
-      </View>
+      <Screen preset="fixed" safeAreaEdges={["bottom"]}>
+        <View style={{flex: 1, justifyContent: "center", alignItems: "center"}}>
+          <ActivityIndicator size="large" color={theme.colors.loadingIndicator} />
+          <Text style={[themed($loadingText)]}>{translate("versionCheck:checkingForUpdates")}</Text>
+        </View>
+      </Screen>
     )
   }
 
@@ -178,7 +180,6 @@ export default function VersionUpdateScreen() {
             />
 
             {isVersionMismatch && (
-              // <View style={themed($skipButtonContainer)}>
               <Button
                 style={themed($primaryButton)}
                 RightAccessory={() => <Icon name="arrow-right" size={24} color={theme.colors.textAlt} />}
@@ -191,7 +192,6 @@ export default function VersionUpdateScreen() {
                 }}
                 tx="versionCheck:skipUpdate"
               />
-              // </View>
             )}
           </View>
         )}
@@ -203,7 +203,6 @@ export default function VersionUpdateScreen() {
 // Themed styles
 const $container: ThemedStyle<ViewStyle> = ({colors}) => ({
   flex: 1,
-  backgroundColor: colors.background,
 })
 
 const $loadingContainer: ThemedStyle<ViewStyle> = () => ({
