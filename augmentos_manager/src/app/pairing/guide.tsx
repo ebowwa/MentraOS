@@ -152,7 +152,7 @@ export default function GlassesPairingGuideScreen() {
         RightActionComponent={
           <PillButton
             text="Help"
-            variant="secondary"
+            variant="icon"
             onPress={() => setShowTroubleshootingModal(true)}
             buttonStyle={{marginRight: theme.spacing.md}}
           />
