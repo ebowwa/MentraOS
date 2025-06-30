@@ -27,7 +27,7 @@ export default function AppWebView() {
   const [finalUrl, setFinalUrl] = useState<string | null>(null)
   const [isLoadingToken, setIsLoadingToken] = useState(true)
   const [tokenError, setTokenError] = useState<string | null>(null)
-  const {replace, goBack} = useNavigationHistory()
+  const {replace, goBack, push, navigate} = useNavigationHistory()
 
   if (typeof webviewURL !== "string" || typeof appName !== "string" || typeof packageName !== "string") {
     return <Text>Missing required parameters</Text>
@@ -38,7 +38,8 @@ export default function AppWebView() {
     useCallback(() => {
       const onBackPress = () => {
         // Always go back to home when back is pressed
-        replace("/(tabs)/home")
+        // replace("/(tabs)/home")
+        goBack()
         return true
       }
 
@@ -225,7 +226,7 @@ export default function AppWebView() {
         rightIcon="more"
         rightIconColor={theme.colors.icon}
         onRightPress={() => {
-          replace("/app/settings", {
+          push("/app/settings", {
             packageName: packageName as string,
             appName: appName as string,
             fromWebView: "true",
