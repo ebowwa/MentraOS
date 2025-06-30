@@ -15,7 +15,6 @@ import {Spacer} from "@/components/misc/Spacer"
 export default function OnboardingWelcome() {
   const {appStatus, optimisticallyStopApp, clearPendingOperation, refreshAppStatus} = useAppStatus()
   const {theme, themed} = useAppTheme()
-  const isDarkTheme = theme.isDark
   const {goBack, push, replace} = useNavigationHistory()
   const backendComms = BackendServerComms.getInstance()
 
@@ -48,7 +47,7 @@ export default function OnboardingWelcome() {
     // deactivate all running apps:
     await stopAllApps()
 
-    router.push("/pairing/select-glasses-model")
+    push("/pairing/select-glasses-model")
   }
 
   return (

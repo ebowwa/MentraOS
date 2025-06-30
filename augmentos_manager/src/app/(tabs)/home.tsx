@@ -26,6 +26,7 @@ import {OnboardingSpotlight} from "@/components/misc/OnboardingSpotlight"
 import {SETTINGS_KEYS} from "@/consts"
 import {translate} from "@/i18n"
 import showAlert from "@/utils/AlertUtils"
+import { useNavigationHistory } from "@/contexts/NavigationHistoryContext"
 
 interface AnimatedSectionProps extends PropsWithChildren {
   delay?: number
@@ -47,6 +48,7 @@ export default function Homepage() {
   const fadeAnim = useRef(new Animated.Value(0)).current
   const bellFadeAnim = useRef(new Animated.Value(0)).current
   const {themed, theme} = useAppTheme()
+  const {push} = useNavigationHistory()
 
   // Reset loading state when connection status changes
   useEffect(() => {
@@ -222,7 +224,7 @@ export default function Homepage() {
   // Handle spotlight target press
   const handleSpotlightTargetPress = async () => {
     if (onboardingTarget === "glasses") {
-      router.push("/pairing/select-glasses-model")
+      push("/pairing/select-glasses-model")
     } else if (onboardingTarget === "livecaptions" && liveCaptionsPackageName) {
       // Dismiss spotlight first
       setShowOnboardingSpotlight(false)
@@ -253,7 +255,7 @@ export default function Homepage() {
   }
 
   const handleBellPress = () => {
-    router.push("/settings/privacy")
+    push("/settings/privacy")
   }
 
   // Simple animated wrapper so we do not duplicate logic

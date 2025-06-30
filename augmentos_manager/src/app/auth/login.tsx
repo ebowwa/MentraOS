@@ -343,7 +343,7 @@ export default function LoginScreen() {
               <View style={themed($authLoadingContent)}>
                 <View style={themed($authLoadingLogoPlaceholder)} />
                 <ActivityIndicator size="large" color={theme.colors.tint} style={themed($authLoadingIndicator)} />
-                <Text tx="login:connectingToAugmentOS" style={themed($authLoadingText)} />
+                <Text tx="login:connectingToServer" style={themed($authLoadingText)} />
               </View>
             </Animated.View>
           )}

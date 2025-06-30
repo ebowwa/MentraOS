@@ -199,7 +199,7 @@ const en = {
     passwordPlaceholder: "********",
     createAccount: "Create Account",
     login: "Login",
-    connectingToAugmentOS: "Connecting to AugmentOS...",
+    connectingToServer: "Connecting to MentraOS...",
     userCanceledAppleLogin: "Apple sign-in was canceled.",
     userCanceledGoogleLogin: "Google sign-in was canceled.",
     success: "Success",
@@ -207,6 +207,7 @@ const en = {
     emailAlreadyRegistered: "This email is already registered",
     useGoogleSignIn: "This email is associated with a Google account. Please use 'Continue with Google' to sign in.",
     useAppleSignIn: "This email is associated with an Apple account. Please use 'Continue with Apple' to sign in.",
+    connectionError: "Connection Error",
   },
   warning: {
     nonProdBackend: "You are using a non-production backend.",

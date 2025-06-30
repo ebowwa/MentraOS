@@ -26,6 +26,7 @@ import BackendServerComms from "@/backend_comms/BackendServerComms"
 import {router} from "expo-router"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
 import {useAppTheme} from "@/utils/useAppTheme"
+import { useNavigationHistory } from "@/contexts/NavigationHistoryContext"
 
 interface GlassesRecordingsGalleryProps {
   isDarkTheme: boolean
@@ -70,6 +71,7 @@ const GlassesRecordingsGallery: React.FC<GlassesRecordingsGalleryProps> = ({isDa
   const [selectedPhoto, setSelectedPhoto] = useState<GalleryPhoto | null>(null)
   const [photoModalVisible, setPhotoModalVisible] = useState(false)
   const backend = BackendServerComms.getInstance()
+  const {push} = useNavigationHistory()
 
   useEffect(() => {
     // Load all media on component mount
@@ -321,7 +323,7 @@ const GlassesRecordingsGallery: React.FC<GlassesRecordingsGalleryProps> = ({isDa
       const fileName = filePath.split("/").pop() || ""
 
       // Navigate to our custom video player screen
-      router.push({pathname: "/mirror/video-player", params: {filePath: filePath, fileName: fileName}})
+      push({pathname: "/mirror/video-player", params: {filePath: filePath, fileName: fileName}})
     } catch (error) {
       console.error("Error playing video:", error)
       showAlert("Playback Error", "Unable to play the video. Please try again.", undefined, {
