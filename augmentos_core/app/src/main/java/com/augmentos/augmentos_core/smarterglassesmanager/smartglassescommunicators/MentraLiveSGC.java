@@ -27,6 +27,7 @@ import android.util.Log;
 import androidx.core.app.ActivityCompat;
 
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.BatteryLevelEvent;
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.ButtonPressEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesBluetoothSearchDiscoverEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesBluetoothSearchStopEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesWifiScanResultEvent;
@@ -1288,7 +1289,18 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 
             case "button_press":
                 // Process button press event
-                // ...
+                String buttonId = json.optString("buttonId", "unknown");
+                String pressType = json.optString("pressType", "short");
+                long timestamp = json.optLong("timestamp", System.currentTimeMillis());
+
+                Log.d(TAG, "Received button press - buttonId: " + buttonId + ", pressType: " + pressType);
+
+                // Post button press event to EventBus for core to handle
+                EventBus.getDefault().post(new ButtonPressEvent(
+                        smartGlassesDevice.deviceModelName,
+                        buttonId,
+                        pressType,
+                        timestamp));
                 break;
                 
             case "sensor_data":
