@@ -12,6 +12,7 @@ import BleManager from "react-native-ble-manager"
 import BackendServerComms from "../backend_comms/BackendServerComms"
 import {showAlert} from "@/utils/AlertUtils"
 import {translate} from "@/i18n/translate"
+import AudioPlayService from "../services/AudioPlayService"
 
 // For checking if location services are enabled
 const {ServiceStarter} = NativeModules
@@ -30,7 +31,7 @@ export class CoreCommunicator extends EventEmitter {
   async isBluetoothEnabled(): Promise<boolean> {
     try {
       console.log("Checking Bluetooth state...")
-      
+
       try {
         const state = await BleManager.checkState()
         console.log("Bluetooth state:", state)
@@ -42,7 +43,7 @@ export class CoreCommunicator extends EventEmitter {
         return isEnabled
       } catch (stateError) {
         console.log("BleManager not initialized, trying with initialization...")
-        
+
         // If that fails, initialize and try again
         try {
           await BleManager.start({showAlert: false})
@@ -288,6 +289,11 @@ export class CoreCommunicator extends EventEmitter {
       } else if (data.type === "app_stopped" && data.packageName) {
         console.log("APP_STOPPED_EVENT", data.packageName)
         GlobalEventEmitter.emit("APP_STOPPED_EVENT", data.packageName)
+      } else if (data.type === "audio_play_request") {
+        console.log("AUDIO_PLAY_REQUEST", data)
+        AudioPlayService.handleAudioPlayRequest(data).catch(error => {
+          console.error("Failed to handle audio play request:", error)
+        })
       }
     } catch (e) {
       console.error("Error parsing data from Core:", e)

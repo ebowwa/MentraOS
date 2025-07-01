@@ -553,6 +553,15 @@ class AOSManager {
     this.handleDisplayEvent(event)
   }
 
+  public onAudioPlayRequest(request: any): void {
+    console.log('AOSManager: Received audio play request:', request);
+    import('../services/AudioPlayService').then(module => {
+      module.default.handleAudioPlayRequest(request).catch(error => {
+        console.error('AOSManager: Failed to handle audio play request:', error);
+      });
+    });
+  }
+
   public onRequestSingle(dataType: string): void {
     this.handleRequestStatus()
   }

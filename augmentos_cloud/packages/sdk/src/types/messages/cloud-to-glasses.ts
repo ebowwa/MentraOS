@@ -134,6 +134,22 @@ export interface KeepRtmpStreamAlive extends BaseMessage {
 }
 
 /**
+ * Audio play request to glasses
+ */
+export interface AudioPlayRequestToGlasses extends BaseMessage {
+  type: CloudToGlassesMessageType.AUDIO_PLAY_REQUEST;
+  userSession: Partial<UserSession>;
+  requestId: string;
+  appId: string;
+  audioUrl?: string; // URL to audio file for download and play
+  audioData?: string; // Base64-encoded raw audio data
+  mimeType?: string; // MIME type (e.g., 'audio/mp3', 'audio/wav', 'audio/ogg')
+  volume?: number; // Volume level 0.0-1.0, defaults to 1.0
+  stopOtherAudio?: boolean; // Whether to stop other audio playback, defaults to true
+  streamAction?: 'start' | 'append' | 'end'; // For streaming: 'start' = new stream, 'append' = add to buffer, 'end' = finish stream
+}
+
+/**
  * Union type for all messages from cloud to glasses
  */
 export type CloudToGlassesMessage =
@@ -144,6 +160,7 @@ export type CloudToGlassesMessage =
   | AppStateChange
   | MicrophoneStateChange
   | PhotoRequestToGlasses
+  | AudioPlayRequestToGlasses
   | SettingsUpdate
   | StartRtmpStream
   | StopRtmpStream
@@ -204,5 +221,9 @@ export function isStopRtmpStream(message: CloudToGlassesMessage): message is Sto
 
 export function isKeepRtmpStreamAlive(message: CloudToGlassesMessage): message is KeepRtmpStreamAlive {
   return message.type === CloudToGlassesMessageType.KEEP_RTMP_STREAM_ALIVE;
+}
+
+export function isAudioPlayRequestToGlasses(message: CloudToGlassesMessage): message is AudioPlayRequestToGlasses {
+  return message.type === CloudToGlassesMessageType.AUDIO_PLAY_REQUEST;
 }
 

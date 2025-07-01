@@ -60,6 +60,21 @@ export interface RtmpStreamStopRequest extends BaseMessage {
 }
 
 /**
+ * Audio play request from App
+ */
+export interface AudioPlayRequest extends BaseMessage {
+  type: AppToCloudMessageType.AUDIO_PLAY_REQUEST;
+  packageName: string;
+  requestId: string; // SDK-generated request ID to track the request
+  audioUrl?: string; // URL to audio file for download and play
+  audioData?: string; // Base64-encoded raw audio data
+  mimeType?: string; // MIME type (e.g., 'audio/mp3', 'audio/wav', 'audio/ogg')
+  volume?: number; // Volume level 0.0-1.0, defaults to 1.0
+  stopOtherAudio?: boolean; // Whether to stop other audio playback, defaults to true
+  streamAction?: 'start' | 'append' | 'end'; // For streaming: 'start' = new stream, 'append' = add to buffer, 'end' = finish stream
+}
+
+/**
  * Union type for all messages from Apps to cloud
  */
 export type AppToCloudMessage =
@@ -67,6 +82,7 @@ export type AppToCloudMessage =
   | AppSubscriptionUpdate
   | DisplayRequest
   | PhotoRequest
+  | AudioPlayRequest
   | RtmpStreamRequest
   | RtmpStreamStopRequest
   | DashboardContentUpdate
@@ -107,6 +123,12 @@ export function isPhotoRequest(message: AppToCloudMessage): message is PhotoRequ
   return message.type === AppToCloudMessageType.PHOTO_REQUEST;
 }
 
+/**
+ * Type guard to check if a message is a App audio play request
+ */
+export function isAudioPlayRequest(message: AppToCloudMessage): message is AudioPlayRequest {
+  return message.type === AppToCloudMessageType.AUDIO_PLAY_REQUEST;
+}
 
 /**
  * Type guard to check if a message is a dashboard content update
