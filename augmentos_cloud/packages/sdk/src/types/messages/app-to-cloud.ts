@@ -75,6 +75,14 @@ export interface AudioPlayRequest extends BaseMessage {
 }
 
 /**
+ * Audio stop request from App
+ */
+export interface AudioStopRequest extends BaseMessage {
+  type: AppToCloudMessageType.AUDIO_STOP_REQUEST;
+  packageName: string;
+}
+
+/**
  * Union type for all messages from Apps to cloud
  */
 export type AppToCloudMessage =
@@ -83,6 +91,7 @@ export type AppToCloudMessage =
   | DisplayRequest
   | PhotoRequest
   | AudioPlayRequest
+  | AudioStopRequest
   | RtmpStreamRequest
   | RtmpStreamStopRequest
   | DashboardContentUpdate
@@ -128,6 +137,13 @@ export function isPhotoRequest(message: AppToCloudMessage): message is PhotoRequ
  */
 export function isAudioPlayRequest(message: AppToCloudMessage): message is AudioPlayRequest {
   return message.type === AppToCloudMessageType.AUDIO_PLAY_REQUEST;
+}
+
+/**
+ * Type guard to check if a message is a App audio stop request
+ */
+export function isAudioStopRequest(message: AppToCloudMessage): message is AudioStopRequest {
+  return message.type === AppToCloudMessageType.AUDIO_STOP_REQUEST;
 }
 
 /**

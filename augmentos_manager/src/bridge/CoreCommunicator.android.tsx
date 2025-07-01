@@ -12,7 +12,7 @@ import BleManager from "react-native-ble-manager"
 import BackendServerComms from "../backend_comms/BackendServerComms"
 import {showAlert} from "@/utils/AlertUtils"
 import {translate} from "@/i18n/translate"
-import AudioPlayService from "../services/AudioPlayService"
+import AudioPlayService, { AudioPlayResponse } from "../services/AudioPlayService"
 
 // For checking if location services are enabled
 const {ServiceStarter} = NativeModules
@@ -188,6 +188,11 @@ export class CoreCommunicator extends EventEmitter {
     // Initialize message event listener
     this.initializeMessageEventListener()
 
+    // Set up audio play response callback
+    AudioPlayService.setResponseCallback((response: AudioPlayResponse) => {
+      this.sendAudioPlayResponse(response);
+    });
+
     // set the backend server url
     const backendServerUrl = await BackendServerComms.getInstance().getServerUrl()
     await this.sendData({
@@ -294,6 +299,12 @@ export class CoreCommunicator extends EventEmitter {
           // Audio play request completed successfully
         }).catch(error => {
           console.error("Failed to handle audio play request:", error)
+        })
+      } else if (data.type === "audio_stop_request") {
+        AudioPlayService.stopAllAudio().then(() => {
+          console.log("Audio stop request processed successfully")
+        }).catch(error => {
+          console.error("Failed to handle audio stop request:", error)
         })
       }
     } catch (e) {
@@ -705,6 +716,23 @@ export class CoreCommunicator extends EventEmitter {
         enabled: enabled,
       },
     })
+  }
+
+  /**
+   * Sends audio play response back to Core
+   */
+  private async sendAudioPlayResponse(response: AudioPlayResponse) {
+    console.log(`CoreCommunicator: Sending audio play response for requestId: ${response.requestId}, success: ${response.success}`);
+
+    await this.sendData({
+      command: "audio_play_response",
+      params: {
+        requestId: response.requestId,
+        success: response.success,
+        error: response.error,
+        duration: response.duration
+      }
+    });
   }
 }
 

@@ -162,6 +162,15 @@ class AOSManager {
         })
       }
     })
+
+    // Set up audio play response callback for iOS
+    import('../services/AudioPlayService').then(module => {
+      module.default.setResponseCallback((response) => {
+        this.sendAudioPlayResponse(response);
+      });
+    }).catch(error => {
+      console.error('Failed to import AudioPlayService for response callback:', error);
+    });
   }
 
   // Public Methods
@@ -553,15 +562,36 @@ class AOSManager {
     this.handleDisplayEvent(event)
   }
 
+  /**
+   * Send audio play response back through ServerComms
+   */
+  private sendAudioPlayResponse(response: any): void {
+    console.log(`AOSManager: Sending audio play response for requestId: ${response.requestId}, success: ${response.success}`);
+
+    const message = {
+      command: "audio_play_response",
+      params: {
+        requestId: response.requestId,
+        success: response.success,
+        error: response.error,
+        duration: response.duration
+      }
+    };
+
+    this.serverComms.sendMessageToServer(JSON.stringify(message));
+  }
+
   public onAudioPlayRequest(request: any): void {
+    console.log('AOSManager: Handling audio play request:', request);
+
     import('../services/AudioPlayService').then(module => {
       module.default.handleAudioPlayRequest(request).then(() => {
-        // Audio play request completed successfully
+        console.log('AOSManager: Audio play request started successfully');
       }).catch(error => {
-        console.error('Failed to handle audio play request:', error);
+        console.error('AOSManager: Failed to handle audio play request:', error);
       });
     }).catch(importError => {
-      console.error('Failed to import AudioPlayService:', importError);
+      console.error('AOSManager: Failed to import AudioPlayService:', importError);
     });
   }
 

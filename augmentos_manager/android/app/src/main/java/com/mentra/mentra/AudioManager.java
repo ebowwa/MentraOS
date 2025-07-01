@@ -31,6 +31,13 @@ public class AudioManager {
     private Map<String, MediaPlayer> dataPlayers = new HashMap<>();
     private Map<String, ByteArrayOutputStream> audioBuffers = new HashMap<>();
 
+    // Callback interface for sending responses
+    public interface ResponseCallback {
+        void onAudioPlayResponse(String requestId, boolean success, String error, Long duration);
+    }
+
+    private ResponseCallback responseCallback;
+
     private AudioManager(Context context) {
         this.context = context.getApplicationContext();
     }
@@ -42,6 +49,13 @@ public class AudioManager {
         return instance;
     }
 
+    /**
+     * Set the callback for audio play responses
+     */
+    public void setResponseCallback(ResponseCallback callback) {
+        this.responseCallback = callback;
+    }
+
     public void playAudio(
             String requestId,
             String audioUrl,
@@ -51,7 +65,7 @@ public class AudioManager {
             boolean stopOtherAudio,
             String streamAction
     ) {
-
+        Log.d(TAG, "playAudio called for requestId: " + requestId);
 
         if (stopOtherAudio && !"append".equals(streamAction)) {
             stopAllAudio();
@@ -232,8 +246,12 @@ public class AudioManager {
     }
 
     private void sendAudioPlayResponse(String requestId, boolean success, String error, Long duration) {
-        // For now, just log the result. In a full implementation, this would send a response
-        // back through the communication channel
         Log.d(TAG, "Audio play response - requestId: " + requestId + ", success: " + success + ", error: " + error);
+
+        if (responseCallback != null) {
+            responseCallback.onAudioPlayResponse(requestId, success, error, duration);
+        } else {
+            Log.w(TAG, "No response callback set, response lost for requestId: " + requestId);
+        }
     }
 }

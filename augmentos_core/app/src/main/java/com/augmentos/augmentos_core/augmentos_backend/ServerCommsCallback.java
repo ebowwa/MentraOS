@@ -55,4 +55,5 @@ public interface ServerCommsCallback {
      * @param audioRequest The complete audio play request message with all parameters
      */
     void onAudioPlayRequest(JSONObject audioRequest);
+    void onAudioStopRequest(JSONObject audioStopRequest);
 }

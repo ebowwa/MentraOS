@@ -358,6 +358,12 @@ export class GlassesWebSocketService {
           userSession.photoManager.handlePhotoResponse(message as PhotoResponse);
           break;
 
+        case GlassesToCloudMessageType.AUDIO_PLAY_RESPONSE:
+          userSession.logger.debug({ service: SERVICE_NAME, message }, `Audio play response received from glasses/core`);
+          // Forward audio play response to Apps - we need to find the specific app that made the request
+          sessionService.relayAudioPlayResponseToApp(userSession, message);
+          break;
+
         case GlassesToCloudMessageType.HEAD_POSITION:
           await this.handleHeadPosition(userSession, message as HeadPosition);
           // Also relay to Apps in case they want to handle head position events

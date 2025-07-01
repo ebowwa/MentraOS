@@ -49,7 +49,8 @@ export enum GlassesToCloudMessageType {
   CALENDAR_EVENT = StreamType.CALENDAR_EVENT,
   MENTRAOS_SETTINGS_UPDATE_REQUEST = StreamType.MENTRAOS_SETTINGS_UPDATE_REQUEST,
   CORE_STATUS_UPDATE = StreamType.CORE_STATUS_UPDATE,
-  PHOTO_TAKEN = StreamType.PHOTO_TAKEN
+  PHOTO_TAKEN = StreamType.PHOTO_TAKEN,
+  AUDIO_PLAY_RESPONSE = 'audio_play_response'
 }
 
 /**
@@ -67,6 +68,7 @@ export enum CloudToGlassesMessageType {
   MICROPHONE_STATE_CHANGE = 'microphone_state_change',
   PHOTO_REQUEST = 'photo_request',
   AUDIO_PLAY_REQUEST = 'audio_play_request',
+  AUDIO_STOP_REQUEST = 'audio_stop_request',
   SETTINGS_UPDATE = 'settings_update',
 
   // RTMP streaming
@@ -93,6 +95,7 @@ export enum AppToCloudMessageType {
   DISPLAY_REQUEST = 'display_event',
   PHOTO_REQUEST = 'photo_request',
   AUDIO_PLAY_REQUEST = 'audio_play_request',
+  AUDIO_STOP_REQUEST = 'audio_stop_request',
 
   // RTMP streaming
   RTMP_STREAM_REQUEST = 'rtmp_stream_request',

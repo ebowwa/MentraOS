@@ -427,6 +427,9 @@ class ServerComms {
     case "audio_play_request":
       handleAudioPlayRequest(msg)
 
+    case "audio_stop_request":
+      handleAudioStopRequest()
+
     case "request_single":
       if let dataType = msg["data_type"] as? String, let callback = serverCommsCallback {
         callback.onRequestSingle(dataType)
@@ -443,7 +446,7 @@ class ServerComms {
     case "reconnect":
       print("ServerComms: Server is requesting a reconnect.")
 
-        default:
+    default:
       print("ServerComms: Unknown message type: \(type) / full: \(msg)")
     }
   }
@@ -471,6 +474,12 @@ class ServerComms {
       stopOtherAudio: stopOtherAudio,
       streamAction: streamAction
     )
+  }
+
+  private func handleAudioStopRequest() {
+    print("ServerComms: Handling audio stop request")
+    let audioManager = AudioManager.getInstance()
+    audioManager.stopAllAudio()
   }
 
   private func attemptReconnect(_ override: Bool = false) {

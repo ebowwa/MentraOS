@@ -19,6 +19,7 @@ import {
   PhotoRequest,
   AudioPlayRequest,
   AudioPlayResponse,
+  AudioStopRequest,
   AppToCloudMessageType,
   CloudToAppMessageType,
 
@@ -884,6 +885,39 @@ export class AppSession {
   }
 
   /**
+   * 🔇 Stop audio playback on the connected glasses
+   *
+   * @example
+   * ```typescript
+   * // Stop all currently playing audio
+   * session.stopAudio();
+   * ```
+   */
+  stopAudio(): void {
+    try {
+      // Create audio stop request message
+      const message: AudioStopRequest = {
+        type: AppToCloudMessageType.AUDIO_STOP_REQUEST,
+        packageName: this.config.packageName,
+        sessionId: this.sessionId!,
+        timestamp: new Date()
+      };
+
+      // Check WebSocket connection before sending
+      if (!this.ws || this.ws.readyState !== 1) {
+        this.logger.warn('Cannot stop audio: WebSocket connection not established');
+        return;
+      }
+
+      // Send request to cloud (one-way, no response expected)
+      this.send(message);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Failed to stop audio: ${errorMessage}`);
+    }
+  }
+
+  /**
    * Handle photo received from /photo-upload endpoint
    * @param photoData - The photo data received
    */
@@ -1087,6 +1121,8 @@ export class AppSession {
    */
   private handleMessage(message: CloudToAppMessage): void {
     try {
+
+
       // Validate message before processing
       if (!this.validateMessage(message)) {
         this.events.emit('error', new Error('Invalid message format received'));
@@ -1331,17 +1367,13 @@ export class AppSession {
             });
           });
         }
-                else if (isAudioPlayResponse(message)) {
+                                else if (isAudioPlayResponse(message)) {
           // Handle audio play response
           const response = message as AudioPlayResponse;
-
-
 
           const pendingRequest = this.pendingAudioRequests.get(response.requestId);
 
           if (pendingRequest) {
-
-
             // Resolve the promise with the response data
             pendingRequest.resolve({
               success: response.success,
@@ -1353,7 +1385,7 @@ export class AppSession {
             this.pendingAudioRequests.delete(response.requestId);
 
           } else {
-
+            this.logger.warn(`🔊 [AppSession] Received audio play response for unknown request ID: ${response.requestId}`);
           }
         }
         else if (isPhotoResponse(message)) {
@@ -1363,19 +1395,7 @@ export class AppSession {
         }
         // Handle unrecognized message types gracefully
         else {
-          console.log(`Unrecognized message type: ${(message as any).type}. Full message details:`, {
-            messageType: (message as any).type,
-            fullMessage: message,
-            messageKeys: Object.keys(message || {}),
-            messageStringified: JSON.stringify(message, null, 2)
-          });
-          // Log all message object details for debugging
-          this.logger.warn(`Unrecognized message type: ${(message as any).type}. Full message details:`, {
-            messageType: (message as any).type,
-            fullMessage: message,
-            messageKeys: Object.keys(message || {}),
-            messageStringified: JSON.stringify(message, null, 2)
-          });
+          this.logger.warn(`Unrecognized message type: ${(message as any).type}`);
           this.events.emit('error', new Error(`Unrecognized message type: ${(message as any).type}`));
         }
       } catch (processingError: unknown) {

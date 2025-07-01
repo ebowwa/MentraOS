@@ -11,8 +11,18 @@ export interface AudioPlayRequestMessage {
   streamAction?: 'start' | 'append' | 'end';
 }
 
+export interface AudioPlayResponse {
+  requestId: string;
+  success: boolean;
+  error?: string;
+  duration?: number;
+}
+
+export type AudioPlayResponseCallback = (response: AudioPlayResponse) => void;
+
 export class AudioPlayService {
   private static instance: AudioPlayService;
+  private responseCallback: AudioPlayResponseCallback | null = null;
 
   private constructor() {}
 
@@ -24,10 +34,30 @@ export class AudioPlayService {
   }
 
   /**
+   * Set the callback function that will be called when audio responses are received
+   */
+  public setResponseCallback(callback: AudioPlayResponseCallback): void {
+    this.responseCallback = callback;
+  }
+
+  /**
+   * Handle a response from the native audio layer
+   */
+  public handleAudioPlayResponse(response: AudioPlayResponse): void {
+    console.log(`AudioPlayService: Received response for requestId: ${response.requestId}, success: ${response.success}`);
+
+    if (this.responseCallback) {
+      this.responseCallback(response);
+    } else {
+      console.warn('AudioPlayService: No response callback set, dropping response');
+    }
+  }
+
+  /**
    * Handle an incoming audio play request message
    */
   public async handleAudioPlayRequest(message: AudioPlayRequestMessage): Promise<void> {
-
+    console.log(`AudioPlayService: Handling audio play request for requestId: ${message.requestId}`);
 
     try {
       const request: AudioPlayRequest = {
@@ -41,8 +71,18 @@ export class AudioPlayService {
       };
 
       await AudioManager.playAudio(request);
+      console.log(`AudioPlayService: Started audio play for requestId: ${message.requestId}`);
 
     } catch (error) {
+      console.error(`AudioPlayService: Failed to start audio play for requestId ${message.requestId}:`, error);
+
+      // Send error response immediately
+      this.handleAudioPlayResponse({
+        requestId: message.requestId,
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      });
+
       throw error;
     }
   }

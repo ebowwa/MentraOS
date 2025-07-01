@@ -150,6 +150,15 @@ export interface AudioPlayRequestToGlasses extends BaseMessage {
 }
 
 /**
+ * Audio stop request to glasses
+ */
+export interface AudioStopRequestToGlasses extends BaseMessage {
+  type: CloudToGlassesMessageType.AUDIO_STOP_REQUEST;
+  userSession: Partial<UserSession>;
+  appId: string;
+}
+
+/**
  * Union type for all messages from cloud to glasses
  */
 export type CloudToGlassesMessage =
@@ -161,6 +170,7 @@ export type CloudToGlassesMessage =
   | MicrophoneStateChange
   | PhotoRequestToGlasses
   | AudioPlayRequestToGlasses
+  | AudioStopRequestToGlasses
   | SettingsUpdate
   | StartRtmpStream
   | StopRtmpStream
@@ -225,5 +235,9 @@ export function isKeepRtmpStreamAlive(message: CloudToGlassesMessage): message i
 
 export function isAudioPlayRequestToGlasses(message: CloudToGlassesMessage): message is AudioPlayRequestToGlasses {
   return message.type === CloudToGlassesMessageType.AUDIO_PLAY_REQUEST;
+}
+
+export function isAudioStopRequestToGlasses(message: CloudToGlassesMessage): message is AudioStopRequestToGlasses {
+  return message.type === CloudToGlassesMessageType.AUDIO_STOP_REQUEST;
 }
 

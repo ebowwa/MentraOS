@@ -190,11 +190,12 @@ class AudioManager {
         print("AudioManager: Stopped all audio")
     }
 
-    private func sendAudioPlayResponse(requestId: String, success: Bool, error: String? = nil, duration: Double? = nil) {
-        let serverComms = ServerComms.getInstance()
-        // We would send response back through ServerComms if needed
-        // For now, just log the result
-        print("AudioManager: Audio play response - requestId: \(requestId), success: \(success), error: \(error ?? "none")")
+        private func sendAudioPlayResponse(requestId: String, success: Bool, error: String? = nil, duration: Double? = nil) {
+        print("AudioManager: Sending audio play response - requestId: \(requestId), success: \(success), error: \(error ?? "none")")
+
+        // Send response back through AOSManager which will forward to React Native
+        let aosManager = AOSManager.getInstance()
+        aosManager.sendAudioPlayResponse(requestId: requestId, success: success, error: error, duration: duration)
     }
 }
 
