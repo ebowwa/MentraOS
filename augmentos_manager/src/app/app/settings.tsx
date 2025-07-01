@@ -514,26 +514,29 @@ export default function AppSettings() {
         <Header
           title=""
           leftIcon="caretLeft"
-          // onLeftPress={() => goBack()}
           onLeftPress={() => {
-            navigate("/app/webview", {
-              webviewURL: serverAppInfo.webviewURL,
-              appName: appName as string,
-              packageName: packageName as string,
-              fromSettings: "true",
-            })
+            if (serverAppInfo?.webviewURL) {
+              navigate("/app/webview", {
+                webviewURL: serverAppInfo.webviewURL,
+                appName: appName as string,
+                packageName: packageName as string,
+                fromSettings: "true",
+              })
+              return
+            }
+            goBack()
           }}
           // RightActionComponent={
           //   serverAppInfo?.webviewURL ? (
           //     <TouchableOpacity
           //       style={{marginRight: 8}}
           //       onPress={() => {
-                  // navigate("/app/webview", {
-                  //   webviewURL: serverAppInfo.webviewURL,
-                  //   appName: appName as string,
-                  //   packageName: packageName as string,
-                  //   fromSettings: "true",
-                  // })
+          // navigate("/app/webview", {
+          //   webviewURL: serverAppInfo.webviewURL,
+          //   appName: appName as string,
+          //   packageName: packageName as string,
+          //   fromSettings: "true",
+          // })
           //       }}>
           //       <FontAwesome name="globe" size={22} color={theme.colors.text} />
           //     </TouchableOpacity>

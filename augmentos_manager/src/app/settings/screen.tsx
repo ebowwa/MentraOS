@@ -56,8 +56,8 @@ export default function ScreenSettingsScreen() {
   }, [status.glasses_settings.auto_brightness])
 
   useEffect(() => {
-    setDepth(status.glasses_settings.depth)
-  }, [status.glasses_settings.depth])
+    setDepth(status.glasses_settings.dashboard_depth)
+  }, [status.glasses_settings.dashboard_depth])
 
   useEffect(() => {
     setHeight(status.glasses_settings.dashboard_height)
