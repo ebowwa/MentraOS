@@ -554,30 +554,14 @@ class AOSManager {
   }
 
   public onAudioPlayRequest(request: any): void {
-    console.log('🔊 [AOSManager] onAudioPlayRequest called with:', {
-      hasRequest: !!request,
-      requestKeys: request ? Object.keys(request) : [],
-      requestId: request?.requestId,
-      hasAudioUrl: !!request?.audioUrl,
-      audioUrlLength: request?.audioUrl?.length,
-      hasAudioData: !!request?.audioData,
-      audioDataLength: request?.audioData?.length,
-      mimeType: request?.mimeType,
-      volume: request?.volume,
-      stopOtherAudio: request?.stopOtherAudio,
-      streamAction: request?.streamAction
-    });
-
-    console.log('🔊 [AOSManager] Dynamically importing AudioPlayService...');
     import('../services/AudioPlayService').then(module => {
-      console.log('🔊 [AOSManager] AudioPlayService imported, calling handleAudioPlayRequest...');
       module.default.handleAudioPlayRequest(request).then(() => {
-        console.log('🔊 [AOSManager] AudioPlayService.handleAudioPlayRequest completed successfully');
+        // Audio play request completed successfully
       }).catch(error => {
-        console.error('🔊 [AOSManager] Failed to handle audio play request:', error);
+        console.error('Failed to handle audio play request:', error);
       });
     }).catch(importError => {
-      console.error('🔊 [AOSManager] Failed to import AudioPlayService:', importError);
+      console.error('Failed to import AudioPlayService:', importError);
     });
   }
 

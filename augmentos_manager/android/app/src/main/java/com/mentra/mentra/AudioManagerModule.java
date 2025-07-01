@@ -36,17 +36,7 @@ public class AudioManagerModule extends ReactContextBaseJavaModule {
             String streamAction,
             Promise promise
     ) {
-        android.util.Log.d(MODULE_NAME, "🔊 [AudioManagerModule] playAudio ReactMethod called:");
-        android.util.Log.d(MODULE_NAME, "  requestId: " + requestId);
-        android.util.Log.d(MODULE_NAME, "  audioUrl: " + (audioUrl != null && !audioUrl.isEmpty() ? audioUrl.substring(0, Math.min(50, audioUrl.length())) + "..." : "null/empty"));
-        android.util.Log.d(MODULE_NAME, "  audioData length: " + (audioData != null ? audioData.length() : 0));
-        android.util.Log.d(MODULE_NAME, "  mimeType: " + mimeType);
-        android.util.Log.d(MODULE_NAME, "  volume: " + volume);
-        android.util.Log.d(MODULE_NAME, "  stopOtherAudio: " + stopOtherAudio);
-        android.util.Log.d(MODULE_NAME, "  streamAction: " + streamAction);
-
         try {
-            android.util.Log.d(MODULE_NAME, "🔊 [AudioManagerModule] Calling AudioManager.playAudio...");
             audioManager.playAudio(
                     requestId,
                     audioUrl,
@@ -56,10 +46,8 @@ public class AudioManagerModule extends ReactContextBaseJavaModule {
                     stopOtherAudio,
                     streamAction
             );
-            android.util.Log.d(MODULE_NAME, "🔊 [AudioManagerModule] AudioManager.playAudio completed, resolving promise");
             promise.resolve("Audio playback started");
         } catch (Exception e) {
-            android.util.Log.e(MODULE_NAME, "🔊 [AudioManagerModule] AudioManager.playAudio failed:", e);
             promise.reject("AUDIO_PLAY_ERROR", e.getMessage(), e);
         }
     }

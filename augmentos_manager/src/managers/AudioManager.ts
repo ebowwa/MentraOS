@@ -70,50 +70,29 @@ export class AudioManager {
       streamAction
     } = request;
 
-    console.log(`🔊 [AudioManager] playAudio called with:`, {
-      requestId,
-      hasAudioUrl: !!audioUrl,
-      audioUrlLength: audioUrl?.length,
-      hasAudioData: !!audioData,
-      audioDataLength: audioData?.length,
-      mimeType,
-      volume,
-      stopOtherAudio,
-      streamAction,
-      platform: Platform.OS
-    });
 
-    try {
-      if (Platform.OS === 'android' && AndroidAudioManager) {
-        console.log(`🔊 [AudioManager] Platform is Android, calling AndroidAudioManager.playAudio...`);
-        console.log(`🔊 [AudioManager] AndroidAudioManager exists:`, !!AndroidAudioManager);
 
-        const result = await AndroidAudioManager.playAudio(
-          requestId,
-          audioUrl || '',
-          audioData || '',
-          mimeType || '',
-          volume,
-          stopOtherAudio,
-          streamAction || ''
-        );
-
-        console.log(`🔊 [AudioManager] AndroidAudioManager.playAudio completed with result:`, result);
-      } else if (Platform.OS === 'ios') {
-        console.log(`🔊 [AudioManager] Platform is iOS, calling playAudioIOS...`);
-        // For iOS, we'll call the native AudioManager directly
-        // This is a temporary solution - in production you'd want a proper bridge
-        await this.playAudioIOS(request);
-      } else {
-        console.error(`🔊 [AudioManager] Unsupported platform: ${Platform.OS}`);
-        throw new Error(`AudioManager not available for platform: ${Platform.OS}`);
+          try {
+        if (Platform.OS === 'android' && AndroidAudioManager) {
+          const result = await AndroidAudioManager.playAudio(
+            requestId,
+            audioUrl || '',
+            audioData || '',
+            mimeType || '',
+            volume,
+            stopOtherAudio,
+            streamAction || ''
+          );
+        } else if (Platform.OS === 'ios') {
+          // For iOS, we'll call the native AudioManager directly
+          // This is a temporary solution - in production you'd want a proper bridge
+          await this.playAudioIOS(request);
+        } else {
+          throw new Error(`AudioManager not available for platform: ${Platform.OS}`);
+        }
+      } catch (error) {
+        throw error;
       }
-
-      console.log(`🔊 [AudioManager] playAudio completed successfully for requestId: ${requestId}`);
-    } catch (error) {
-      console.error(`🔊 [AudioManager] Failed to play audio for requestId ${requestId}:`, error);
-      throw error;
-    }
   }
 
   public async stopAudio(requestId: string): Promise<void> {
@@ -174,18 +153,6 @@ export class AudioManager {
 
   // Utility method to handle incoming audio play requests from WebSocket
   public async handleAudioPlayRequest(message: any): Promise<void> {
-    console.log(`🔊 [AudioManager] handleAudioPlayRequest called with message:`, {
-      hasMessage: !!message,
-      messageKeys: message ? Object.keys(message) : [],
-      requestId: message?.requestId,
-      hasAudioUrl: !!message?.audioUrl,
-      hasAudioData: !!message?.audioData,
-      mimeType: message?.mimeType,
-      volume: message?.volume,
-      stopOtherAudio: message?.stopOtherAudio,
-      streamAction: message?.streamAction
-    });
-
     const {
       requestId,
       audioUrl,
@@ -197,11 +164,8 @@ export class AudioManager {
     } = message;
 
     if (!requestId) {
-      console.error(`🔊 [AudioManager] Audio play request missing requestId`);
       throw new Error('Audio play request missing requestId');
     }
-
-    console.log(`🔊 [AudioManager] Calling playAudio with extracted parameters...`);
 
     await this.playAudio({
       requestId,
@@ -212,8 +176,6 @@ export class AudioManager {
       stopOtherAudio,
       streamAction
     });
-
-    console.log(`🔊 [AudioManager] handleAudioPlayRequest completed successfully for requestId: ${requestId}`);
   }
 }
 
