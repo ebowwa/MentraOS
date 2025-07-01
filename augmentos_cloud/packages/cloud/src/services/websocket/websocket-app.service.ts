@@ -21,6 +21,7 @@ import {
   GlassesToCloudMessageType,
   CloudToGlassesMessageType,
   PhotoRequest,
+  AudioPlayRequest,
   RtmpStreamRequest,
   RtmpStreamStopRequest,
 } from '@mentra/sdk';
@@ -249,6 +250,39 @@ export class AppWebSocketService {
             this.logger.error({e, packageName: message.packageName}, "Error requesting photo via PhotoManager");
             this.sendError(appWebsocket, AppErrorCode.INTERNAL_ERROR, (e as Error).message || "Failed to request photo.");
           }
+          break;
+
+        case AppToCloudMessageType.AUDIO_PLAY_REQUEST:
+          // Forward audio play request to glasses/manager
+          try {
+            const audioRequestMsg = message as AudioPlayRequest;
+
+            // Forward the audio play request to the glasses/manager
+            // Convert from app-to-cloud format to cloud-to-glasses format
+            const glassesAudioRequest = {
+              type: CloudToGlassesMessageType.AUDIO_PLAY_REQUEST,
+              sessionId: userSession.sessionId,
+              requestId: audioRequestMsg.requestId,
+              packageName: audioRequestMsg.packageName,
+              audioUrl: audioRequestMsg.audioUrl,
+              audioData: audioRequestMsg.audioData,
+              mimeType: audioRequestMsg.mimeType,
+              volume: audioRequestMsg.volume,
+              stopOtherAudio: audioRequestMsg.stopOtherAudio,
+              streamAction: audioRequestMsg.streamAction,
+              timestamp: new Date()
+            };
+
+            // Send to glasses/manager via WebSocket
+            if (userSession.websocket && userSession.websocket.readyState === 1) {
+              userSession.websocket.send(JSON.stringify(glassesAudioRequest));
+            } else {
+              this.sendError(appWebsocket, AppErrorCode.INTERNAL_ERROR, "Glasses not connected");
+            }
+          } catch(e) {
+            this.sendError(appWebsocket, AppErrorCode.INTERNAL_ERROR, (e as Error).message || "Failed to process audio request.");
+          }
+          break;
 
         default:
           logger.warn(`Unhandled App message type: ${message.type}`);

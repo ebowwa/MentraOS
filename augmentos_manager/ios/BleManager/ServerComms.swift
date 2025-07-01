@@ -449,8 +449,11 @@ class ServerComms {
   }
 
   private func handleAudioPlayRequest(_ msg: [String: Any]) {
+    print("🔊 [ServerComms.swift] handleAudioPlayRequest called with message:")
+    print("  Message keys: \(msg.keys)")
+
     guard let requestId = msg["requestId"] as? String else {
-      print("ServerComms: audio_play_request missing requestId")
+      print("🔊 [ServerComms.swift] audio_play_request missing requestId")
       return
     }
 
@@ -461,9 +464,19 @@ class ServerComms {
     let stopOtherAudio = msg["stopOtherAudio"] as? Bool ?? true
     let streamAction = msg["streamAction"] as? String
 
-    print("ServerComms: Handling audio play request - requestId: \(requestId), streamAction: \(streamAction ?? "none")")
+    print("🔊 [ServerComms.swift] Extracted parameters:")
+    print("  requestId: \(requestId)")
+    print("  audioUrl: \(audioUrl != nil ? String(audioUrl!.prefix(50)) + "..." : "nil")")
+    print("  audioData length: \(audioData?.count ?? 0)")
+    print("  mimeType: \(mimeType ?? "nil")")
+    print("  volume: \(volume)")
+    print("  stopOtherAudio: \(stopOtherAudio)")
+    print("  streamAction: \(streamAction ?? "nil")")
 
+    print("🔊 [ServerComms.swift] Getting AudioManager instance...")
     let audioManager = AudioManager.getInstance()
+
+    print("🔊 [ServerComms.swift] Calling AudioManager.playAudio...")
     audioManager.playAudio(
       requestId: requestId,
       audioUrl: audioUrl,
@@ -473,6 +486,8 @@ class ServerComms {
       stopOtherAudio: stopOtherAudio,
       streamAction: streamAction
     )
+
+    print("🔊 [ServerComms.swift] AudioManager.playAudio call completed")
   }
 
   private func attemptReconnect(_ override: Bool = false) {

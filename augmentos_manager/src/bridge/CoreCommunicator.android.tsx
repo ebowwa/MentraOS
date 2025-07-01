@@ -290,9 +290,23 @@ export class CoreCommunicator extends EventEmitter {
         console.log("APP_STOPPED_EVENT", data.packageName)
         GlobalEventEmitter.emit("APP_STOPPED_EVENT", data.packageName)
       } else if (data.type === "audio_play_request") {
-        console.log("AUDIO_PLAY_REQUEST", data)
-        AudioPlayService.handleAudioPlayRequest(data).catch(error => {
-          console.error("Failed to handle audio play request:", error)
+        console.log("🔊 [CoreCommunicator] Received AUDIO_PLAY_REQUEST from Core:", {
+          requestId: data.requestId,
+          hasAudioUrl: !!data.audioUrl,
+          audioUrlLength: data.audioUrl?.length,
+          hasAudioData: !!data.audioData,
+          audioDataLength: data.audioData?.length,
+          mimeType: data.mimeType,
+          volume: data.volume,
+          stopOtherAudio: data.stopOtherAudio,
+          streamAction: data.streamAction
+        })
+
+        console.log("🔊 [CoreCommunicator] Calling AudioPlayService.handleAudioPlayRequest...")
+        AudioPlayService.handleAudioPlayRequest(data).then(() => {
+          console.log("🔊 [CoreCommunicator] AudioPlayService.handleAudioPlayRequest completed successfully")
+        }).catch(error => {
+          console.error("🔊 [CoreCommunicator] Failed to handle audio play request:", error)
         })
       }
     } catch (e) {

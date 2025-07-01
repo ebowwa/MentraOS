@@ -1745,6 +1745,66 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                     Log.e(TAG, "Error parsing settings update", e);
                 }
             }
+
+            @Override
+            public void onAudioPlayRequest(JSONObject audioRequest) {
+                Log.d(TAG, "🔊 [AugmentosService] Audio play request received: " + audioRequest.toString());
+
+                // Extract the audio request parameters
+                String requestId = audioRequest.optString("requestId", "");
+                String packageName = audioRequest.optString("packageName", "");
+                String audioUrl = audioRequest.optString("audioUrl", null);
+                String audioData = audioRequest.optString("audioData", null);
+                String mimeType = audioRequest.optString("mimeType", null);
+                double volume = audioRequest.optDouble("volume", 1.0);
+                boolean stopOtherAudio = audioRequest.optBoolean("stopOtherAudio", true);
+                String streamAction = audioRequest.optString("streamAction", null);
+
+                Log.d(TAG, "🔊 [AugmentosService] Extracted parameters - requestId: " + requestId +
+                      ", packageName: " + packageName + ", hasAudioUrl: " + (audioUrl != null) +
+                      ", hasAudioData: " + (audioData != null) + ", mimeType: " + mimeType +
+                      ", volume: " + volume + ", stopOtherAudio: " + stopOtherAudio +
+                      ", streamAction: " + streamAction);
+
+                // Send the audio request as a message to the AugmentOS Manager via BLE
+                if (blePeripheral != null) {
+                    Log.d(TAG, "🔊 [AugmentosService] Forwarding audio request to AugmentOS Manager via BLE");
+
+                    // Create a message with the audio play request type
+                    try {
+                        JSONObject message = new JSONObject();
+                        message.put("type", "audio_play_request");
+                        message.put("requestId", requestId);
+                        message.put("packageName", packageName);
+
+                        if (audioUrl != null) {
+                            message.put("audioUrl", audioUrl);
+                        }
+                        if (audioData != null) {
+                            message.put("audioData", audioData);
+                        }
+                        if (mimeType != null) {
+                            message.put("mimeType", mimeType);
+                        }
+
+                        message.put("volume", volume);
+                        message.put("stopOtherAudio", stopOtherAudio);
+
+                        if (streamAction != null) {
+                            message.put("streamAction", streamAction);
+                        }
+
+                        // Send to AugmentOS Manager
+                        blePeripheral.sendDataToAugmentOsManager(message.toString());
+                        Log.d(TAG, "🔊 [AugmentosService] Audio request sent to AugmentOS Manager successfully");
+
+                    } catch (JSONException e) {
+                        Log.e(TAG, "🔊 [AugmentosService] Error creating audio request message for manager", e);
+                    }
+                } else {
+                    Log.w(TAG, "🔊 [AugmentosService] Cannot forward audio request: blePeripheral is null");
+                }
+            }
         });
     }
 

@@ -823,6 +823,7 @@ export class AppSession {
     /** For streaming: 'start' = new stream, 'append' = add to buffer, 'end' = finish stream */
     streamAction?: 'start' | 'append' | 'end';
   }): Promise<{ success: boolean; error?: string; duration?: number }> {
+
     return new Promise((resolve, reject) => {
       try {
         // Validate input
@@ -857,19 +858,35 @@ export class AppSession {
           streamAction: options.streamAction
         };
 
+        // Check WebSocket connection before sending
+        if (!this.ws || this.ws.readyState !== 1) {
+          this.logger.error(`🔊 [SDK] WebSocket not connected. State: ${this.ws?.readyState || 'null'}`);
+          this.pendingAudioRequests.delete(requestId);
+          reject(new Error('WebSocket connection not established'));
+          return;
+        }
+
+        this.logger.info(`🔊 [SDK] WebSocket is connected, sending message to cloud...`);
+
         // Send request to cloud
         this.send(message);
 
+        this.logger.info(`🔊 [SDK] AudioPlayRequest sent to cloud successfully`);
+
         // Set timeout to avoid hanging promises
-        const timeoutMs = 60000; // 30 seconds
+        const timeoutMs = 60000; // 60 seconds
         this.resources.setTimeout(() => {
           if (this.pendingAudioRequests.has(requestId)) {
+            this.logger.error(`🔊 [SDK] Audio play request timed out after ${timeoutMs}ms. RequestId: ${requestId}`);
             this.pendingAudioRequests.get(requestId)!.reject(new Error('Audio play request timed out'));
             this.pendingAudioRequests.delete(requestId);
           }
         }, timeoutMs);
+
+        this.logger.info(`🔊 [SDK] Set timeout for ${timeoutMs}ms for requestId: ${requestId}`);
       } catch (error: unknown) {
         const errorMessage = error instanceof Error ? error.message : String(error);
+        this.logger.error(`🔊 [SDK] Failed to play audio:`, error);
         reject(new Error(`Failed to play audio: ${errorMessage}`));
       }
     });
@@ -1079,8 +1096,11 @@ export class AppSession {
    */
   private handleMessage(message: CloudToAppMessage): void {
     try {
+      this.logger.info(`🔊 [SDK] handleMessage() called with message type: ${(message as any)?.type || 'unknown'}`);
+
       // Validate message before processing
       if (!this.validateMessage(message)) {
+        this.logger.error(`🔊 [SDK] Invalid message format received:`, message);
         this.events.emit('error', new Error('Invalid message format received'));
         return;
       }
@@ -1323,14 +1343,24 @@ export class AppSession {
             });
           });
         }
-        else if (isAudioPlayResponse(message)) {
+                else if (isAudioPlayResponse(message)) {
           // Handle audio play response
+          this.logger.info(`🔊 [SDK] Received AudioPlayResponse message`);
           const response = message as AudioPlayResponse;
+
+          this.logger.info(`🔊 [SDK] AudioPlayResponse details:`, {
+            requestId: response.requestId,
+            success: response.success,
+            error: response.error,
+            duration: response.duration,
+            pendingRequestExists: this.pendingAudioRequests.has(response.requestId),
+            totalPendingRequests: this.pendingAudioRequests.size
+          });
+
           const pendingRequest = this.pendingAudioRequests.get(response.requestId);
 
           if (pendingRequest) {
-            this.logger.info({ requestId: response.requestId, success: response.success },
-              `🔊 Audio play response received for request ${response.requestId}`);
+            this.logger.info(`🔊 [SDK] Found pending request for ${response.requestId}, resolving promise with success: ${response.success}`);
 
             // Resolve the promise with the response data
             pendingRequest.resolve({
@@ -1341,9 +1371,9 @@ export class AppSession {
 
             // Clean up
             this.pendingAudioRequests.delete(response.requestId);
+            this.logger.info(`🔊 [SDK] Cleaned up pending request ${response.requestId}, remaining pending: ${this.pendingAudioRequests.size}`);
           } else {
-            this.logger.warn({ requestId: response.requestId },
-              `Received audio play response for unknown request ID: ${response.requestId}`);
+            this.logger.warn(`🔊 [SDK] Received audio play response for unknown request ID: ${response.requestId}. Available pending requests:`, Array.from(this.pendingAudioRequests.keys()));
           }
         }
         else if (isPhotoResponse(message)) {

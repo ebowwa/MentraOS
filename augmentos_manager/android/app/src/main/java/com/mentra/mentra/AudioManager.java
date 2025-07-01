@@ -51,41 +51,65 @@ public class AudioManager {
             boolean stopOtherAudio,
             String streamAction
     ) {
-        Log.d(TAG, "playAudio called with requestId: " + requestId + ", streamAction: " + streamAction);
+        Log.d(TAG, "🔊 [AudioManager.java] playAudio called with parameters:");
+        Log.d(TAG, "  requestId: " + requestId);
+        Log.d(TAG, "  audioUrl: " + (audioUrl != null && !audioUrl.isEmpty() ? audioUrl.substring(0, Math.min(50, audioUrl.length())) + "..." : "null/empty"));
+        Log.d(TAG, "  audioData length: " + (audioData != null ? audioData.length() : 0));
+        Log.d(TAG, "  mimeType: " + mimeType);
+        Log.d(TAG, "  volume: " + volume);
+        Log.d(TAG, "  stopOtherAudio: " + stopOtherAudio);
+        Log.d(TAG, "  streamAction: " + streamAction);
 
         if (stopOtherAudio && !"append".equals(streamAction)) {
+            Log.d(TAG, "🔊 [AudioManager.java] Stopping other audio as requested");
             stopAllAudio();
         }
 
         // Handle URL-based audio
         if (audioUrl != null && !audioUrl.isEmpty()) {
+            Log.d(TAG, "🔊 [AudioManager.java] audioUrl provided, calling playAudioFromUrl");
             playAudioFromUrl(requestId, audioUrl, volume);
             return;
         }
 
         // Handle raw audio data
         if (audioData != null && !audioData.isEmpty()) {
+            Log.d(TAG, "🔊 [AudioManager.java] audioData provided, calling playAudioFromData");
             playAudioFromData(requestId, audioData, mimeType, volume, streamAction);
+        } else {
+            Log.e(TAG, "🔊 [AudioManager.java] Neither audioUrl nor audioData provided!");
         }
     }
 
     private void playAudioFromUrl(String requestId, String audioUrl, float volume) {
-        Log.d(TAG, "Playing audio from URL: " + audioUrl);
+        Log.d(TAG, "🔊 [AudioManager.java] playAudioFromUrl called:");
+        Log.d(TAG, "  requestId: " + requestId);
+        Log.d(TAG, "  audioUrl: " + audioUrl);
+        Log.d(TAG, "  volume: " + volume);
 
         try {
+            Log.d(TAG, "🔊 [AudioManager.java] Creating ExoPlayer...");
             ExoPlayer player = new ExoPlayer.Builder(context).build();
+
+            Log.d(TAG, "🔊 [AudioManager.java] Creating MediaItem from URI...");
             MediaItem mediaItem = MediaItem.fromUri(audioUrl);
+
+            Log.d(TAG, "🔊 [AudioManager.java] Setting media item and volume...");
             player.setMediaItem(mediaItem);
             player.setVolume(volume);
 
+            Log.d(TAG, "🔊 [AudioManager.java] Adding player listener...");
             player.addListener(new Player.Listener() {
                 @Override
                 public void onPlaybackStateChanged(int playbackState) {
+                    Log.d(TAG, "🔊 [AudioManager.java] Playback state changed to: " + playbackState + " for requestId: " + requestId);
                     if (playbackState == Player.STATE_ENDED) {
+                        Log.d(TAG, "🔊 [AudioManager.java] Playback ended successfully for requestId: " + requestId);
                         urlPlayers.remove(requestId);
                         sendAudioPlayResponse(requestId, true, null, player.getDuration());
                         player.release();
                     } else if (playbackState == Player.STATE_IDLE) {
+                        Log.w(TAG, "🔊 [AudioManager.java] Playback failed (STATE_IDLE) for requestId: " + requestId);
                         urlPlayers.remove(requestId);
                         sendAudioPlayResponse(requestId, false, "Playback failed", null);
                         player.release();
@@ -93,14 +117,15 @@ public class AudioManager {
                 }
             });
 
+            Log.d(TAG, "🔊 [AudioManager.java] Storing player and starting playback...");
             urlPlayers.put(requestId, player);
             player.prepare();
             player.play();
 
-            Log.d(TAG, "Started playing audio from URL for requestId: " + requestId);
+            Log.d(TAG, "🔊 [AudioManager.java] Started playing audio from URL for requestId: " + requestId);
 
         } catch (Exception e) {
-            Log.e(TAG, "Failed to play audio from URL", e);
+            Log.e(TAG, "🔊 [AudioManager.java] Failed to play audio from URL for requestId: " + requestId, e);
             sendAudioPlayResponse(requestId, false, e.getMessage(), null);
         }
     }

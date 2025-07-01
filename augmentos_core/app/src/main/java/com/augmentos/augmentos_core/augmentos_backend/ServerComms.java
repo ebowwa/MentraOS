@@ -775,6 +775,15 @@ public class ServerComms {
                 }
                 break;
 
+            case "audio_play_request":
+                Log.d(TAG, "🔊 [ServerComms] Received audio_play_request: " + msg.toString());
+                if (serverCommsCallback != null) {
+                    serverCommsCallback.onAudioPlayRequest(msg);
+                } else {
+                    Log.w(TAG, "🔊 [ServerComms] No serverCommsCallback available for audio play request");
+                }
+                break;
+
             default:
                 Log.w(TAG, "Unknown message type: " + type + " / full: " + msg.toString());
                 break;
