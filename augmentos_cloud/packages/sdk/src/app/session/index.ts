@@ -51,7 +51,8 @@ import {
   PhotoResponse,
   VpsCoordinates,
   PhotoTaken,
-  Capabilities
+  Capabilities,
+  PhotoData
 } from '../../types';
 import { DashboardAPI } from '../../types/dashboard';
 import { MentraosSettingsUpdate } from '../../types/messages/cloud-to-app';
@@ -151,10 +152,10 @@ export class AppSession {
   private subscriptionSettingsHandler?: (settings: AppSettings) => ExtendedStreamType[];
   /** Settings that should trigger subscription updates when changed */
   private subscriptionUpdateTriggers: string[] = [];
-  /** Pending photo requests waiting for responses */
+  /** Map to store pending photo request promises */
   private pendingPhotoRequests = new Map<string, {
-    resolve: (url: string) => void,
-    reject: (reason: any) => void
+    resolve: (value: PhotoData) => void;
+    reject: (reason?: any) => void;
   }>();
   /** Pending user discovery requests waiting for responses */
   private pendingUserDiscoveryRequests = new Map<string, {
@@ -710,9 +711,9 @@ export class AppSession {
   /**
    * 📸 Request a photo from the connected glasses
    * @param options - Optional configuration for the photo request
-   * @returns Promise that resolves with the URL to the captured photo
+   * @returns Promise that resolves with the actual photo data
    */
-  requestPhoto(options?: { saveToGallery?: boolean }): Promise<string> {
+  requestPhoto(options?: { saveToGallery?: boolean }): Promise<PhotoData> {
     return new Promise((resolve, reject) => {
       try {
         // Generate unique request ID
@@ -726,6 +727,7 @@ export class AppSession {
           type: AppToCloudMessageType.PHOTO_REQUEST,
           packageName: this.config.packageName,
           sessionId: this.sessionId!,
+          requestId,
           timestamp: new Date(),
           saveToGallery: options?.saveToGallery || false
         };
@@ -746,6 +748,36 @@ export class AppSession {
         reject(new Error(`Failed to request photo: ${errorMessage}`));
       }
     });
+  }
+
+  /**
+   * Check if this session has a pending photo request for the given requestId
+   * @param requestId - The request ID to check
+   * @returns true if there's a pending request
+   */
+  hasPendingPhotoRequest(requestId: string): boolean {
+    return this.pendingPhotoRequests.has(requestId);
+  }
+
+  /**
+   * Handle photo received from /photo-upload endpoint
+   * @param photoData - The photo data received
+   */
+  handlePhotoReceived(photoData: PhotoData): void {
+    const { requestId } = photoData;
+    const pendingRequest = this.pendingPhotoRequests.get(requestId);
+
+    if (pendingRequest) {
+      this.logger.info({ requestId }, `📸 Photo received for request ${requestId}`);
+
+      // Resolve the promise with the photo data
+      pendingRequest.resolve(photoData);
+
+      // Clean up
+      this.pendingPhotoRequests.delete(requestId);
+    } else {
+      this.logger.warn({ requestId }, `Received photo for unknown request ID: ${requestId}`);
+    }
   }
 
   /**
@@ -1026,14 +1058,6 @@ export class AppSession {
             this.events.emit(messageStreamType, sanitizedData);
           }
         }
-        else if (isPhotoResponse(message)) {
-          // Handle photo response by resolving the pending promise
-          if (this.pendingPhotoRequests.has((message as PhotoResponse).requestId)) {
-            const { resolve } = this.pendingPhotoRequests.get((message as PhotoResponse).requestId)!;
-            resolve((message as PhotoResponse).photoUrl);
-            this.pendingPhotoRequests.delete((message as PhotoResponse).requestId);
-          }
-        }
         else if (isRtmpStreamStatus(message)) {
           // Emit as a standard stream event if subscribed
           if (this.subscriptions.has(StreamType.RTMP_STREAM_STATUS)) {
@@ -1182,6 +1206,11 @@ export class AppSession {
               message: detail.message
             });
           });
+        }
+        else if (isPhotoResponse(message)) {
+          // Legacy photo response handling - now photos come directly via webhook
+          // This branch can be removed in the future as all photos now go through /photo-upload
+          this.logger.warn('Received legacy photo response - photos should now come via /photo-upload webhook');
         }
         // Handle unrecognized message types gracefully
         else {

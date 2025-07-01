@@ -125,7 +125,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     private static final long HEARTBEAT_TIMEOUT_MS = 10000; // 10 seconds
     private static final long RECOVERY_TIMEOUT_MS = 60000; // 1 minute
     private static final long RECOVERY_HEARTBEAT_INTERVAL_MS = 5000; // 5 seconds during recovery
-    
+
     private Handler heartbeatHandler;
     private long lastHeartbeatTime = 0;
     private boolean isInRecoveryMode = false;
@@ -253,11 +253,11 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         public void onReceive(Context context, Intent intent) {
             String action = intent.getAction();
             Log.d(TAG, "@#$$% Received broadcast with action: " + action);
-            
+
             if (ACTION_HEARTBEAT.equals(action) || "com.augmentos.otaupdater.ACTION_HEARTBEAT".equals(action)) {
                 lastHeartbeatTime = System.currentTimeMillis();
                 Log.d(TAG, "Service heartbeat received at " + lastHeartbeatTime);
-                
+
                 // Send acknowledgment back to monitor
                 Intent ackIntent = new Intent(ACTION_HEARTBEAT_ACK);
                 ackIntent.setPackage("com.augmentos.otaupdater");
@@ -520,7 +520,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                 Log.d(TAG, "AsgClientService onStartCommand -> restart request received");
                 createNotificationChannel();
                 startForeground(asgServiceNotificationId, updateNotification());
-                
+
                 // Register the restart receiver if not already registered
                 registerRestartReceiver();
 
@@ -1180,6 +1180,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
 
                 case "take_photo":
                     String requestId = dataToProcess.optString("requestId", "");
+                    String webhookUrl = dataToProcess.optString("webhookUrl", "");
 
                     if (requestId.isEmpty()) {
                         Log.e(TAG, "Cannot take photo - missing requestId");
@@ -1193,8 +1194,8 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                     Log.d(TAG, "Taking photo with requestId: " + requestId);
                     Log.d(TAG, "Photo will be saved to: " + photoFilePath);
 
-                    // Take the photo using CameraNeo instead of CameraRecordingService
-                    mMediaCaptureService.takePhotoAndUpload(photoFilePath, requestId);
+                    // Take the photo using MediaCaptureService with webhook URL
+                    mMediaCaptureService.takePhotoAndUpload(photoFilePath, requestId, webhookUrl);
                     break;
 
                 case "start_video_recording":
@@ -2353,33 +2354,6 @@ public class AsgClientService extends Service implements NetworkStateListener, B
             }
         }
     };
-
-    // In the method that handles photo capture (e.g., handlePhotoButtonPress or similar):
-    private void handlePhotoCaptureWithMode() {
-        Log.d(TAG, "Handling photo capture with current mode: " + currentPhotoMode);
-        switch (currentPhotoMode) {
-            case SAVE_LOCALLY:
-                if (mMediaCaptureService != null) {
-                    // Check for camera permissions one more time before attempting capture
-                    ensureCameraPermissions();
-                    mMediaCaptureService.takePhotoLocally();
-                }
-                break;
-            case CLOUD:
-                if (mMediaCaptureService != null) {
-                    // Generate a temporary requestId and file path for the photo
-                    String timeStamp = new java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.US).format(new java.util.Date());
-                    String requestId = "cloud_" + timeStamp;
-                    String photoFilePath = getExternalFilesDir(null) + java.io.File.separator + "IMG_" + timeStamp + ".jpg";
-
-                    // Check for camera permissions one more time before attempting capture
-                    ensureCameraPermissions();
-                    // Take photo and upload to cloud
-                    mMediaCaptureService.takePhotoAndUpload(photoFilePath, requestId);
-                }
-                break;
-        }
-    }
 
     /**
      * Check if camera permissions are granted and try to fix if they're not
