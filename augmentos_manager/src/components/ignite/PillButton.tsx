@@ -2,7 +2,7 @@ import React from "react"
 import {TouchableOpacity, Text, StyleSheet, TouchableOpacityProps, TextStyle, ViewStyle} from "react-native"
 import {useAppTheme} from "@/utils/useAppTheme"
 
-export type PillButtonVariant = "primary" | "secondary"
+export type PillButtonVariant = "primary" | "secondary" | "icon"
 
 interface PillButtonProps extends Omit<TouchableOpacityProps, "style"> {
   /**
@@ -11,7 +11,7 @@ interface PillButtonProps extends Omit<TouchableOpacityProps, "style"> {
   text: string
 
   /**
-   * The button variant - primary (light blue) or secondary (dark blue)
+   * The button variant - primary (solid color), secondary (transparent with border), or icon (gray background)
    */
   variant?: PillButtonVariant
 
@@ -51,11 +51,29 @@ export function PillButton({
   const {theme} = useAppTheme()
 
   const isPrimary = variant === "primary"
+  const isSecondary = variant === "secondary"
+  const isIcon = variant === "icon"
+
+  const getBackgroundColor = () => {
+    if (isPrimary) return theme.colors.buttonPillPrimary
+    if (isSecondary) return theme.colors.buttonPillSecondary
+    return theme.colors.buttonPillIcon
+  }
+
+  const getTextColor = () => {
+    if (isPrimary) return theme.colors.buttonPillPrimaryText
+    if (isSecondary) return theme.colors.buttonPillSecondaryText
+    return theme.colors.buttonPillIconText
+  }
 
   const buttonStyles = [
     styles.button,
     {
-      backgroundColor: isPrimary ? theme.colors.buttonPillPrimary : theme.colors.buttonPillSecondary,
+      backgroundColor: getBackgroundColor(),
+      ...(isSecondary && {
+        borderWidth: 1,
+        borderColor: theme.colors.buttonPillSecondaryBorder,
+      }),
     },
     disabled && styles.disabled,
     buttonStyle,
@@ -64,7 +82,7 @@ export function PillButton({
   const textStyles = [
     styles.text,
     {
-      color: isPrimary ? theme.colors.buttonPillPrimaryText : theme.colors.buttonPillSecondaryText,
+      color: getTextColor(),
     },
     disabled && styles.disabledText,
     textStyle,
