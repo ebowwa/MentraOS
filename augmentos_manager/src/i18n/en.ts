@@ -20,6 +20,7 @@ const en = {
   pairing: {
     selectModel: "Select Model",
     pairingGuide: "Pairing Guide",
+    pairing: "Pairing",
     permissionRequired: "Permission Required",
     bluetoothPermissionRequiredTitle: "Permission Required",
     bluetoothPermissionRequiredMessage: "Bluetooth permissions are required to connect to glasses",

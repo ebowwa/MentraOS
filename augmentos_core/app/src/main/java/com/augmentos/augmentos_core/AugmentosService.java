@@ -1993,8 +1993,11 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     @Override
     public void setUpdatingScreen(boolean updatingScreen) {
         this.updatingScreen = updatingScreen;
-        if (smartGlassesManager != null && updatingScreen) {
-            smartGlassesManager.sendExitCommand();
+        if (smartGlassesManager != null) {
+            if (updatingScreen) {
+                smartGlassesManager.sendExitCommand();
+            }
+            smartGlassesManager.updatingScreen = updatingScreen;
         }
     }
 

@@ -7,6 +7,7 @@ import {useAppTheme} from "@/utils/useAppTheme"
 
 export default function CloudConnection() {
   const {status} = useStatus()
+  const {theme} = useAppTheme()
 
   useEffect(() => {
     // console.log("MentraOS Status Updated:", JSON.stringify(status, null, 2))
@@ -45,8 +46,6 @@ export default function CloudConnection() {
         return {name: "exclamation-circle", color: "#FF5252", label: "Disconnected from cloud"}
     }
   }
-
-  const {theme} = useAppTheme()
 
   const currentStyles = theme.isDark ? darkThemeStyles : lightThemeStyles
   const {name: iconName, color: iconColor, label: statusLabel} = getIcon(status.core_info.cloud_connection_status)
