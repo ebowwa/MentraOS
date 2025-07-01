@@ -940,6 +940,7 @@ struct ViewState {
           self.dashboardHeight = value
           Task {
             await self.g1Manager?.RN_setDashboardPosition(self.dashboardHeight, self.dashboardDepth)
+            print("Set dashboard position to \(value)")
             // sendText("Set dashboard position to \(value)")
             // try? await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
             // sendText(" ")// clear screen
@@ -959,8 +960,10 @@ struct ViewState {
           self.dashboardDepth = value
           Task {
             await self.g1Manager?.RN_setDashboardPosition(self.dashboardHeight, self.dashboardDepth)
+            print("Set dashboard position to \(value)")
           }
           saveSettings()
+          handleRequestStatus()// to update the UI
         case .enableSensing:
           guard let params = params, let enabled = params["enabled"] as? Bool else {
             print("enable_sensing invalid params")

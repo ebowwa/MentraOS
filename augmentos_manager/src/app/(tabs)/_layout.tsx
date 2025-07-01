@@ -1,4 +1,4 @@
-import React, {useRef} from "react"
+import React, {useEffect, useRef} from "react"
 import {Tabs} from "expo-router/tabs"
 import {translate} from "@/i18n"
 import {colors, spacing, ThemedStyle, typography} from "@/theme"
@@ -16,6 +16,7 @@ import Toast from "react-native-toast-message"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {SETTINGS_KEYS} from "@/consts"
 import {saveSetting} from "@/utils/SettingsHelper"
+import { router, usePathname } from "expo-router"
 
 export default function Layout() {
   const {bottom} = useSafeAreaInsets()
@@ -32,8 +33,14 @@ export default function Layout() {
   const lastPressTime = useRef(0)
   const pressTimeout = useRef<NodeJS.Timeout | null>(null)
 
+  const pathname = usePathname()
+
+  // useEffect(() => {
+  //   router.dismissAll()
+  // }, [pathname])
+
   const handleQuickPress = () => {
-    push("/settings")
+    replace("/settings")
 
     const currentTime = Date.now()
     const timeDiff = currentTime - lastPressTime.current

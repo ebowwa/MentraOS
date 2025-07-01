@@ -223,7 +223,7 @@ export default function AppWebView() {
         titleMode="center"
         leftIcon="caretLeft"
         onLeftPress={() => replace("/(tabs)/home")}
-        rightIcon="more"
+        rightIcon="settings"
         rightIconColor={theme.colors.icon}
         onRightPress={() => {
           push("/app/settings", {
