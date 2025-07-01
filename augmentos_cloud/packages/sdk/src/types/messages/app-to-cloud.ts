@@ -66,12 +66,9 @@ export interface AudioPlayRequest extends BaseMessage {
   type: AppToCloudMessageType.AUDIO_PLAY_REQUEST;
   packageName: string;
   requestId: string; // SDK-generated request ID to track the request
-  audioUrl?: string; // URL to audio file for download and play
-  audioData?: string; // Base64-encoded raw audio data
-  mimeType?: string; // MIME type (e.g., 'audio/mp3', 'audio/wav', 'audio/ogg')
+  audioUrl: string; // URL to audio file for download and play
   volume?: number; // Volume level 0.0-1.0, defaults to 1.0
   stopOtherAudio?: boolean; // Whether to stop other audio playback, defaults to true
-  streamAction?: 'start' | 'append' | 'end'; // For streaming: 'start' = new stream, 'append' = add to buffer, 'end' = finish stream
 }
 
 /**

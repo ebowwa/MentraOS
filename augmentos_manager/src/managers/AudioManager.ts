@@ -5,12 +5,9 @@ const { AudioManagerModule } = NativeModules;
 
 export interface AudioPlayRequest {
   requestId: string;
-  audioUrl?: string;
-  audioData?: string;
-  mimeType?: string;
+  audioUrl: string;
   volume?: number;
   stopOtherAudio?: boolean;
-  streamAction?: 'start' | 'append' | 'end';
 }
 
 class AudioManagerClass {
@@ -45,12 +42,9 @@ class AudioManagerClass {
       const { AOSManager } = NativeModules;
       return AOSManager.playAudio(
         request.requestId,
-        request.audioUrl || null,
-        request.audioData || null,
-        request.mimeType || null,
+        request.audioUrl,
         request.volume || 1.0,
-        request.stopOtherAudio !== false,
-        request.streamAction || null
+        request.stopOtherAudio !== false
       );
     } else if (Platform.OS === 'android') {
       // Android implementation - responses come through event emitter
@@ -60,12 +54,9 @@ class AudioManagerClass {
 
       return AudioManagerModule.playAudio(
         request.requestId,
-        request.audioUrl || null,
-        request.audioData || null,
-        request.mimeType || null,
+        request.audioUrl,
         request.volume || 1.0,
-        request.stopOtherAudio !== false,
-        request.streamAction || null
+        request.stopOtherAudio !== false
       );
     } else {
       throw new Error(`Unsupported platform: ${Platform.OS}`);

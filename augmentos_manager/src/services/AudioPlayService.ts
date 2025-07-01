@@ -3,12 +3,9 @@ import AudioManager, { AudioPlayRequest } from '../managers/AudioManager';
 export interface AudioPlayRequestMessage {
   type: 'audio_play_request';
   requestId: string;
-  audioUrl?: string;
-  audioData?: string;
-  mimeType?: string;
+  audioUrl: string;
   volume?: number;
   stopOtherAudio?: boolean;
-  streamAction?: 'start' | 'append' | 'end';
 }
 
 export interface AudioPlayResponse {
@@ -63,11 +60,8 @@ export class AudioPlayService {
       const request: AudioPlayRequest = {
         requestId: message.requestId,
         audioUrl: message.audioUrl,
-        audioData: message.audioData,
-        mimeType: message.mimeType,
         volume: message.volume,
-        stopOtherAudio: message.stopOtherAudio,
-        streamAction: message.streamAction
+        stopOtherAudio: message.stopOtherAudio
       };
 
       await AudioManager.playAudio(request);

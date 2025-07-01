@@ -456,23 +456,17 @@ class ServerComms {
       return
     }
 
-    let audioUrl = msg["audioUrl"] as? String
-    let audioData = msg["audioData"] as? String
-    let mimeType = msg["mimeType"] as? String
-    let volume = msg["volume"] as? Float ?? 1.0
-    let stopOtherAudio = msg["stopOtherAudio"] as? Bool ?? true
-    let streamAction = msg["streamAction"] as? String
+                    let audioUrl = msg["audioUrl"] as? String ?? ""
+                let volume = msg["volume"] as? Float ?? 1.0
+                let stopOtherAudio = msg["stopOtherAudio"] as? Bool ?? true
 
     let audioManager = AudioManager.getInstance()
 
     audioManager.playAudio(
       requestId: requestId,
       audioUrl: audioUrl,
-      audioData: audioData,
-      mimeType: mimeType,
       volume: volume,
-      stopOtherAudio: stopOtherAudio,
-      streamAction: streamAction
+      stopOtherAudio: stopOtherAudio
     )
   }
 

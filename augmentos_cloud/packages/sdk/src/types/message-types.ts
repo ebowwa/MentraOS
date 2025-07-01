@@ -202,6 +202,7 @@ export const UpdateTypes = [
   CloudToGlassesMessageType.MICROPHONE_STATE_CHANGE,
   CloudToGlassesMessageType.PHOTO_REQUEST,
   CloudToGlassesMessageType.AUDIO_PLAY_REQUEST,
+  CloudToGlassesMessageType.AUDIO_STOP_REQUEST,
   CloudToGlassesMessageType.SETTINGS_UPDATE,
   CloudToGlassesMessageType.DASHBOARD_MODE_CHANGE,
   CloudToGlassesMessageType.DASHBOARD_ALWAYS_ON_CHANGE,

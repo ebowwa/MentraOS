@@ -787,54 +787,23 @@ export class AppSession {
    *   volume: 0.8
    * });
    *
-   * // Play raw audio data
-   * const audioData = base64EncodedAudioString;
-   * const result = await session.playAudio({
-   *   audioData: audioData,
-   *   mimeType: 'audio/wav',
-   *   volume: 1.0
-   * });
-   *
-   * // Stream audio (start, append, end)
-   * await session.playAudio({
-   *   audioData: chunk1,
-   *   mimeType: 'audio/wav',
-   *   streamAction: 'start'
-   * });
-   * await session.playAudio({
-   *   audioData: chunk2,
-   *   streamAction: 'append'
-   * });
-   * await session.playAudio({
-   *   streamAction: 'end'
-   * });
+
    * ```
    */
   playAudio(options: {
     /** URL to audio file for download and play */
-    audioUrl?: string;
-    /** Base64-encoded raw audio data */
-    audioData?: string;
-    /** MIME type (e.g., 'audio/mp3', 'audio/wav', 'audio/ogg') */
-    mimeType?: string;
+    audioUrl: string;
     /** Volume level 0.0-1.0, defaults to 1.0 */
     volume?: number;
     /** Whether to stop other audio playback, defaults to true */
     stopOtherAudio?: boolean;
-    /** For streaming: 'start' = new stream, 'append' = add to buffer, 'end' = finish stream */
-    streamAction?: 'start' | 'append' | 'end';
   }): Promise<{ success: boolean; error?: string; duration?: number }> {
 
     return new Promise((resolve, reject) => {
       try {
         // Validate input
-        if (!options.audioUrl && !options.audioData && !options.streamAction) {
-          reject(new Error('Either audioUrl, audioData, or streamAction must be provided'));
-          return;
-        }
-
-        if (options.audioData && !options.mimeType && !options.streamAction) {
-          reject(new Error('mimeType is required when providing audioData'));
+        if (!options.audioUrl) {
+          reject(new Error('audioUrl must be provided'));
           return;
         }
 
@@ -852,11 +821,8 @@ export class AppSession {
           requestId,
           timestamp: new Date(),
           audioUrl: options.audioUrl,
-          audioData: options.audioData,
-          mimeType: options.mimeType,
           volume: options.volume ?? 1.0,
-          stopOtherAudio: options.stopOtherAudio ?? true,
-          streamAction: options.streamAction
+          stopOtherAudio: options.stopOtherAudio ?? true
         };
 
         // Check WebSocket connection before sending

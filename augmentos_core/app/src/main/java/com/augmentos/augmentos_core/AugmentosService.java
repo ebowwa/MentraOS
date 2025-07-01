@@ -1752,11 +1752,8 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                 String requestId = audioRequest.optString("requestId", "");
                 String packageName = audioRequest.optString("packageName", "");
                 String audioUrl = audioRequest.optString("audioUrl", null);
-                String audioData = audioRequest.optString("audioData", null);
-                String mimeType = audioRequest.optString("mimeType", null);
                 double volume = audioRequest.optDouble("volume", 1.0);
                 boolean stopOtherAudio = audioRequest.optBoolean("stopOtherAudio", true);
-                String streamAction = audioRequest.optString("streamAction", null);
 
                 // Send the audio request as a message to the AugmentOS Manager via BLE
                 if (blePeripheral != null) {
@@ -1770,19 +1767,8 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                         if (audioUrl != null) {
                             message.put("audioUrl", audioUrl);
                         }
-                        if (audioData != null) {
-                            message.put("audioData", audioData);
-                        }
-                        if (mimeType != null) {
-                            message.put("mimeType", mimeType);
-                        }
-
                         message.put("volume", volume);
                         message.put("stopOtherAudio", stopOtherAudio);
-
-                        if (streamAction != null) {
-                            message.put("streamAction", streamAction);
-                        }
 
                         // Send to AugmentOS Manager
                         blePeripheral.sendDataToAugmentOsManager(message.toString());

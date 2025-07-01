@@ -270,11 +270,8 @@ export class AppWebSocketService {
               requestId: audioRequestMsg.requestId,
               packageName: audioRequestMsg.packageName,
               audioUrl: audioRequestMsg.audioUrl,
-              audioData: audioRequestMsg.audioData,
-              mimeType: audioRequestMsg.mimeType,
               volume: audioRequestMsg.volume,
               stopOtherAudio: audioRequestMsg.stopOtherAudio,
-              streamAction: audioRequestMsg.streamAction,
               timestamp: new Date()
             };
 

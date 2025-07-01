@@ -57,11 +57,8 @@ public class AudioManagerModule extends ReactContextBaseJavaModule {
     public void playAudio(
             String requestId,
             String audioUrl,
-            String audioData,
-            String mimeType,
             float volume,
             boolean stopOtherAudio,
-            String streamAction,
             Promise promise
     ) {
         try {
@@ -75,11 +72,8 @@ public class AudioManagerModule extends ReactContextBaseJavaModule {
             audioManager.playAudio(
                     requestId,
                     audioUrl,
-                    audioData,
-                    mimeType,
                     volume,
-                    stopOtherAudio,
-                    streamAction
+                    stopOtherAudio
             );
 
             promise.resolve("Audio play started");

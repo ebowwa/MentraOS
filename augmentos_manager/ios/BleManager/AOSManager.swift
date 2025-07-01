@@ -202,12 +202,9 @@ struct ViewState {
 
     @objc func playAudio(
     _ requestId: String,
-    audioUrl: String?,
-    audioData: String?,
-    mimeType: String?,
+    audioUrl: String,
     volume: Float,
-    stopOtherAudio: Bool,
-    streamAction: String?
+    stopOtherAudio: Bool
   ) {
     print("AOSManager: playAudio bridge called for requestId: \(requestId)")
 
@@ -215,11 +212,8 @@ struct ViewState {
     audioManager.playAudio(
       requestId: requestId,
       audioUrl: audioUrl,
-      audioData: audioData,
-      mimeType: mimeType,
       volume: volume,
-      stopOtherAudio: stopOtherAudio,
-      streamAction: streamAction
+      stopOtherAudio: stopOtherAudio
     )
   }
 

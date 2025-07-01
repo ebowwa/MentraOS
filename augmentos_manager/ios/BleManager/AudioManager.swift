@@ -13,7 +13,7 @@ class AudioManager {
     private static var instance: AudioManager?
 
     private var players: [String: AVPlayer] = [:] // requestId -> player
-    private var audioBuffers: [String: Data] = [:] // requestId -> accumulated data
+
     private var streamingPlayers: [String: AVAudioPlayer] = [:] // requestId -> streaming player
     private var cancellables = Set<AnyCancellable>()
 
@@ -41,35 +41,17 @@ class AudioManager {
 
     func playAudio(
         requestId: String,
-        audioUrl: String? = nil,
-        audioData: String? = nil,
-        mimeType: String? = nil,
+        audioUrl: String,
         volume: Float = 1.0,
-        stopOtherAudio: Bool = true,
-        streamAction: String? = nil
+        stopOtherAudio: Bool = true
     ) {
-        print("AudioManager: playAudio called with requestId: \(requestId), streamAction: \(streamAction ?? "none")")
+        print("AudioManager: playAudio called with requestId: \(requestId)")
 
-        if stopOtherAudio && streamAction != "append" {
+        if stopOtherAudio {
             stopAllAudio()
         }
 
-        // Handle URL-based audio
-        if let audioUrl = audioUrl, !audioUrl.isEmpty {
-            playAudioFromUrl(requestId: requestId, url: audioUrl, volume: volume)
-            return
-        }
-
-        // Handle raw audio data
-        if let audioData = audioData, !audioData.isEmpty {
-            playAudioFromData(
-                requestId: requestId,
-                audioData: audioData,
-                mimeType: mimeType,
-                volume: volume,
-                streamAction: streamAction
-            )
-        }
+        playAudioFromUrl(requestId: requestId, url: audioUrl, volume: volume)
     }
 
     private func playAudioFromUrl(requestId: String, url: String, volume: Float) {
@@ -99,51 +81,7 @@ class AudioManager {
         print("AudioManager: Started playing audio from URL for requestId: \(requestId)")
     }
 
-    private func playAudioFromData(
-        requestId: String,
-        audioData: String,
-        mimeType: String?,
-        volume: Float,
-        streamAction: String?
-    ) {
-        guard let data = Data(base64Encoded: audioData) else {
-            print("AudioManager: Failed to decode base64 audio data")
-            sendAudioPlayResponse(requestId: requestId, success: false, error: "Invalid base64 data")
-            return
-        }
 
-        switch streamAction {
-        case "start":
-            // Start new streaming session
-            audioBuffers[requestId] = data
-            print("AudioManager: Started streaming session for requestId: \(requestId)")
-
-        case "append":
-            // Append to existing buffer
-            if var existingData = audioBuffers[requestId] {
-                existingData.append(data)
-                audioBuffers[requestId] = existingData
-                print("AudioManager: Appended data to stream for requestId: \(requestId)")
-            } else {
-                print("AudioManager: No existing stream found for requestId: \(requestId), starting new one")
-                audioBuffers[requestId] = data
-            }
-
-        case "end":
-            // Finalize and play the complete stream
-            if var existingData = audioBuffers[requestId] {
-                existingData.append(data)
-                playCompleteAudioData(requestId: requestId, data: existingData, volume: volume)
-                audioBuffers.removeValue(forKey: requestId)
-            } else {
-                playCompleteAudioData(requestId: requestId, data: data, volume: volume)
-            }
-
-        default:
-            // Single chunk audio (no streaming)
-            playCompleteAudioData(requestId: requestId, data: data, volume: volume)
-        }
-    }
 
     private func playCompleteAudioData(requestId: String, data: Data, volume: Float) {
         do {
@@ -171,7 +109,7 @@ class AudioManager {
             streamingPlayers.removeValue(forKey: requestId)
         }
 
-        audioBuffers.removeValue(forKey: requestId)
+
         print("AudioManager: Stopped audio for requestId: \(requestId)")
     }
 
@@ -186,7 +124,7 @@ class AudioManager {
         }
         streamingPlayers.removeAll()
 
-        audioBuffers.removeAll()
+
         print("AudioManager: Stopped all audio")
     }
 
