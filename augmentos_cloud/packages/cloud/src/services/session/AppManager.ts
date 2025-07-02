@@ -596,9 +596,11 @@ export class AppManager {
 
       // Remove subscriptions.
       try {
-        await subscriptionService.removeSubscriptions(this.userSession, packageName);
-        // After removing subscriptions, re-arbitrate the location tier.
-        await locationService.handleAppDisconnect(this.userSession, packageName);
+        const updatedUser = await subscriptionService.removeSubscriptions(this.userSession, packageName);
+        if (updatedUser) {
+          // After removing subscriptions, re-arbitrate the location tier.
+          await locationService.handleSubscriptionChange(updatedUser, this.userSession);
+        }
       } catch (error) {
         this.logger.error(`Error removing subscriptions for ${packageName}:`, error);
       }

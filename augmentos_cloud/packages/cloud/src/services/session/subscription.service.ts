@@ -16,7 +16,7 @@ import { SimplePermissionChecker } from '../permissions/simple-permission-checke
 import App from '../../models/app.model';
 import { sessionService } from './session.service';
 import UserSession from './UserSession';
-import { User } from '../../models/user.model';
+import { User, UserI } from '../../models/user.model';
 import { locationService } from '../core/location.service';
 
 const logger = rootLogger.child({ service: 'subscription.service' });
@@ -156,14 +156,14 @@ export class SubscriptionService {
    * @param subscriptions - New set of subscriptions
    * @throws If invalid subscription types are requested or permissions are missing
    */
-  updateSubscriptions(
+  async updateSubscriptions(
     userSession: UserSession,
     packageName: string,
     subscriptions: SubscriptionRequest[]
-  ): void {
+  ): Promise<UserI | null> {
     const key = this.getKey(userSession.userId, packageName);
 
-    // --- Start of Fast, In-Memory Operations ---
+    // --- In-Memory Operations First ---
     const streamSubscriptions: ExtendedStreamType[] = [];
     let locationRate: string | null = null;
 
@@ -176,14 +176,12 @@ export class SubscriptionService {
       }
     }
 
-    // This part runs quickly and updates the in-memory state.
     const processedSubscriptions = streamSubscriptions.map(sub =>
       sub === StreamType.TRANSCRIPTION ? createTranscriptionStream('en-US') : sub
     );
     
     for (const sub of processedSubscriptions) {
         if (!this.isValidSubscription(sub)) {
-            // This will throw and be caught by the websocket service, which is desired.
             throw new Error(`Invalid subscription type: ${sub}`);
         }
     }
@@ -197,59 +195,48 @@ export class SubscriptionService {
         subscriptions: [...processedSubscriptions],
         action
     });
-    // --- End of Fast, In-Memory Operations ---
 
-    // --- Start of Slow, Background DB Operations ---
-    // Use a self-invoking async function to run DB logic in the background.
-    (async () => {
-      const maxRetries = 3;
-      for (let attempt = 0; attempt < maxRetries; attempt++) {
-        try {
-          const user = await User.findOne({ email: userSession.userId });
-          if (!user) {
-            logger.warn({ userId: userSession.userId }, "User not found for subscription DB update.");
-            return;
+    // --- Database Operations with Retry Logic ---
+    const maxRetries = 3;
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        const user = await User.findOne({ email: userSession.userId });
+        if (!user) {
+          logger.warn({ userId: userSession.userId }, "User not found for subscription DB update.");
+          return null;
+        }
+
+        if (locationRate) {
+          if (!user.locationSubscriptions) {
+            user.locationSubscriptions = new Map();
           }
-
-          // Handle location subscription persistence
-          if (locationRate) {
-            if (!user.locationSubscriptions) {
-              user.locationSubscriptions = new Map();
-            }
-            user.locationSubscriptions.set(packageName, { rate: locationRate });
-          } else {
-            if (user.locationSubscriptions?.has(packageName)) {
-              user.locationSubscriptions.delete(packageName);
-            }
-          }
-
-          await user.save();
-          
-          // After saving, trigger the location service arbitration.
-          await locationService.handleSubscriptionChange(userSession);
-          
-          logger.info({
-              packageName,
-              userId: userSession.userId,
-          }, 'Persisted subscription changes successfully');
-
-          break; // Success, exit retry loop.
-
-        } catch (error) {
-          if ((error as any).name === 'VersionError') {
-            logger.warn(`Version conflict saving user subscriptions for ${userSession.userId}, attempt ${attempt + 1}/${maxRetries}. Retrying...`);
-            if (attempt < maxRetries - 1) {
-              await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 100)); // Exponential backoff
-            } else {
-              logger.error(`Failed to save user subscriptions for ${userSession.userId} after ${maxRetries} attempts due to version conflicts.`);
-            }
-          } else {
-            logger.error({ error, packageName, userId: userSession.userId }, 'Error persisting subscription changes.');
-            break; // Don't retry on other errors.
+          user.locationSubscriptions.set(packageName, { rate: locationRate });
+        } else {
+          if (user.locationSubscriptions?.has(packageName)) {
+            user.locationSubscriptions.delete(packageName);
           }
         }
+
+        await user.save();
+        logger.info({ packageName, userId: userSession.userId, logKey: '##SUB_DB_WRITE_SUCCESS##' }, 'Persisted subscription changes successfully. Returning updated user.');
+        return user; // Success, return the updated user document
+
+      } catch (error) {
+        if ((error as any).name === 'VersionError') {
+          logger.warn(`Version conflict saving user subscriptions for ${userSession.userId}, attempt ${attempt + 1}/${maxRetries}. Retrying...`);
+          if (attempt < maxRetries - 1) {
+            await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 100));
+          } else {
+            logger.error(`Failed to save user subscriptions for ${userSession.userId} after ${maxRetries} attempts due to version conflicts.`);
+            throw error; // Rethrow after final attempt
+          }
+        } else {
+          logger.error({ error, packageName, userId: userSession.userId }, 'Error persisting subscription changes.');
+          throw error; // Rethrow for other errors
+        }
       }
-    })();
+    }
+    return null; // Should be unreachable
   }
 
   /**
@@ -379,10 +366,10 @@ export class SubscriptionService {
    * @param sessionId - User session identifier
    * @param packageName - App identifier
    */
-  removeSubscriptions(userSession: UserSession, packageName: string): void {
+  async removeSubscriptions(userSession: UserSession, packageName: string): Promise<UserI | null> {
     const key = this.getKey(userSession.sessionId, packageName);
     
-    // --- In-memory removal ---
+    // Perform in-memory removal immediately
     if (this.subscriptions.has(key)) {
       const currentSubs = Array.from(this.subscriptions.get(key) || []);
       this.subscriptions.delete(key);
@@ -394,19 +381,20 @@ export class SubscriptionService {
       logger.info({ packageName, sessionId: userSession.sessionId }, `Removed in-memory subscriptions for App ${packageName}`);
     }
 
-    // --- Background DB removal ---
-    (async () => {
-      try {
-        const user = await User.findOne({ email: userSession.userId });
-        if (user && user.locationSubscriptions?.has(packageName)) {
-          user.locationSubscriptions.delete(packageName);
-          await user.save();
-          logger.info({ packageName, userId: userSession.userId }, `Removed location subscription from DB for App ${packageName}`);
-        }
-      } catch(error) {
-        logger.error({ error, packageName, userId: userSession.userId }, 'Error removing location subscription from DB.');
+    // Perform background DB removal
+    try {
+      const user = await User.findOne({ email: userSession.userId });
+      if (user && user.locationSubscriptions?.has(packageName)) {
+        user.locationSubscriptions.delete(packageName);
+        await user.save();
+        logger.info({ packageName, userId: userSession.userId }, `Removed location subscription from DB for App ${packageName}`);
+        return user;
       }
-    })();
+      return user; // Return user even if no changes were made
+    } catch(error) {
+      logger.error({ error, packageName, userId: userSession.userId }, 'Error removing location subscription from DB.');
+      throw error; // Rethrow to be handled by caller
+    }
   }
 
   /**

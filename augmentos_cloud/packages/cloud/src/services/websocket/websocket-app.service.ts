@@ -294,18 +294,27 @@ export class AppWebSocketService {
         return sub.stream === StreamType.LOCATION_STREAM || sub.stream === StreamType.LOCATION_UPDATE;
       });
 
-    // Update subscriptions (async) with error handling to prevent crashes
     try {
+      // This is now a non-blocking call. We use .then() to chain the next action
+      // without holding up the initial connection handshake.
       subscriptionService.updateSubscriptions(
         userSession,
         message.packageName,
         message.subscriptions
-      );
+      ).then(updatedUser => {
+        if (updatedUser) {
+          userSession.logger.info({ userId: userSession.userId, logKey: '##SUB_HANDOFF_SUCCESS##' }, 'Subscription update promise resolved. Passing updated user to location service.');
+          // Pass the updated user object directly to avoid a race condition.
+          locationService.handleSubscriptionChange(updatedUser, userSession);
+        }
+      }).catch(error => {
+        // Since this runs in the background, we can't send a response to the client.
+        // We just log the error.
+        userSession.logger.error({ error }, "Error during background subscription processing.");
+      });
     } catch (error) {
-      // NOTE: This catch block may not be triggered if updateSubscriptions is fully async
-      // and doesn't throw synchronously. Proper error handling should be inside the service.
+      // This will only catch synchronous errors from the initial call.
       const errorMessage = error instanceof Error ? error.message : String(error);
-      // Detailed logging for debugging the app cycling issue
       userSession.logger.error({
         service: SERVICE_NAME,
         error: {

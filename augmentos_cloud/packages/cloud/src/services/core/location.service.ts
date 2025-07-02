@@ -31,14 +31,11 @@ class LocationService {
    * Main entry point for the streaming arbitration logic.
    * Called when a TPA's subscriptions change.
    */
-  public async handleSubscriptionChange(userSession: UserSession): Promise<void> {
+  public async handleSubscriptionChange(user: UserI, userSession: UserSession): Promise<void> {
     const { userId } = userSession;
-    const user = await User.findOne({ email: userId });
-    if (!user) {
-      logger.warn({ userId }, "User not found during location subscription change.");
-      return;
-    }
 
+    logger.info({ userId, logKey: '##LOCATION_ARBITRATION_START##', subscriptions: user.locationSubscriptions?.size }, 'Location service received user object for arbitration.');
+    
     const previousEffectiveTier = user.effectiveLocationTier || 'reduced';
     const newEffectiveTier = this._calculateEffectiveRateForUser(user);
 
@@ -60,7 +57,8 @@ class LocationService {
         logger.error({ userId, error }, "Failed to save new effective location tier.");
       }
     } else {
-      logger.info({ userId, tier: newEffectiveTier }, "Location subscriptions changed, but effective tier remains the same. No command sent.");
+      // This log is now expected behavior in many cases, so we change it to debug level.
+      logger.debug({ userId, tier: newEffectiveTier }, "Location subscriptions changed, but effective tier remains the same. No command sent.");
     }
   }
 
@@ -155,85 +153,22 @@ class LocationService {
   }
 
   /**
-   * Called when an app disconnects to re-evaluate the effective location tier.
-   */
-  public async handleAppDisconnect(userSession: UserSession, packageName: string): Promise<void> {
-      const { userId } = userSession;
-      const user = await User.findOne({ email: userId });
-      if (!user || !user.locationSubscriptions) {
-        return;
-      }
-
-      // Remove the disconnected app's subscription and re-arbitrate.
-      if (user.locationSubscriptions.has(packageName)) {
-        user.locationSubscriptions.delete(packageName);
-        await user.save();
-        await this.handleSubscriptionChange(userSession);
-        logger.info({ userId, packageName }, "Re-arbitrated location tier after app disconnect.");
-      }
-  }
-
-
-  /**
    * Calculates the highest tier requested by any of the user's active TPAs.
    */
   private _calculateEffectiveRateForUser(user: UserI): string {
     const defaultRate = 'reduced';
     const subscriptions = user.locationSubscriptions;
 
-    // --- NEW, ULTIMATE DIAGNOSTIC LOG ---
-    console.log('##ULTIMATE_DEBUG_START##');
-    if (!subscriptions) {
-        console.log('##ULTIMATE_DEBUG_RESULT##: Subscriptions object is null or undefined.');
-    } else {
-        console.log('##ULTIMATE_DEBUG_INFO##: Initial MongooseMap object received.');
-        console.log('##ULTIMATE_DEBUG_RAW_MONGOOSE_MAP##', require('util').inspect(subscriptions, { showHidden: true, depth: 5 }));
-
-        try {
-            const subsObject = (subscriptions as any).toObject();
-            console.log('##ULTIMATE_DEBUG_INFO##: Successfully called .toObject().');
-            console.log('##ULTIMATE_DEBUG_PLAIN_OBJECT##', require('util').inspect(subsObject, { showHidden: true, depth: 5 }));
-
-            console.log('##ULTIMATE_DEBUG_INFO##: Starting iteration over the plain object...');
-            let iterated = false;
-            let highestTierIndex = -1; // Declare here for logging
-
-            for (const packageName in subsObject) {
-                iterated = true;
-                if (Object.prototype.hasOwnProperty.call(subsObject, packageName)) {
-                    const subDetails = subsObject[packageName];
-                    const rate = subDetails ? subDetails.rate : 'N/A';
-                    const tierIndex = TIER_HIERARCHY.indexOf(rate);
-                    
-                    console.log('##ULTIMATE_DEBUG_ITERATION##', {
-                        packageName: packageName,
-                        subDetails: subDetails,
-                        rate: rate,
-                        tierIndex: tierIndex
-                    });
-
-                    if (tierIndex > highestTierIndex) {
-                        highestTierIndex = tierIndex;
-                    }
-                }
-            }
-            if (!iterated) {
-                console.log('##ULTIMATE_DEBUG_RESULT##: Loop did not execute. The object has no own properties to iterate over.');
-            }
-            console.log('##ULTIMATE_DEBUG_RESULT##: Final calculated highestTierIndex:', highestTierIndex);
-        } catch (e) {
-            console.log('##ULTIMATE_DEBUG_ERROR##: An error occurred during conversion or iteration.', e);
-        }
-    }
-    console.log('##ULTIMATE_DEBUG_END##');
-    // --- END OF ULTIMATE LOG ---
-
-
     if (!subscriptions || subscriptions.size === 0) {
       return defaultRate;
     }
 
+    // A MongooseMap is not a standard JavaScript Map. The most robust way to handle it
+    // is to convert it to a plain object before iterating. We cast to `any` to
+    // bypass the TypeScript compiler's check, as we know the `.toObject` method
+    // will exist at runtime on the MongooseMap.
     const subsObject = (subscriptions as any).toObject();
+    
     let highestTierIndex = -1;
 
     for (const packageName in subsObject) {
