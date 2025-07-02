@@ -47,6 +47,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Executors;
@@ -1186,10 +1187,34 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             case "rtmp_stream_status":
                 // Process RTMP streaming status update from ASG client
                 Log.d(TAG, "Received RTMP status update from glasses: " + json.toString());
-
-                // Convert rtmp_status to rtmp_stream_status for cloud compatibility
-                //JSONObject rtmpStatusMsg = new JSONObject(json.toString());
-                //rtmpStatusMsg.put("type", "rtmp_stream_status");
+                
+                // Check if this is an error status
+                String status = json.optString("status", "");
+                if ("error".equals(status)) {
+                    String errorDetails = json.optString("errorDetails", "");
+                    Log.e(TAG, "🚨🚨🚨 RTMP STREAM ERROR DETECTED 🚨🚨🚨");
+                    Log.e(TAG, "📄 Error details: " + errorDetails);
+                    Log.e(TAG, "⏱️ Timestamp: " + System.currentTimeMillis());
+                    
+                    // Check if it's the timeout error we're investigating
+                    if (errorDetails.contains("Stream timed out") || errorDetails.contains("no keep-alive")) {
+                        Log.e(TAG, "🔍 RTMP TIMEOUT ERROR - Dumping diagnostic info:");
+                        Log.e(TAG, "💓 Last heartbeat counter: " + heartbeatCounter);
+                        Log.e(TAG, "⏱️ Current timestamp: " + System.currentTimeMillis());
+                        
+                        // Dump thread states for debugging
+                        dumpThreadStates();
+                        
+                        // Log BLE connection state
+                        Log.e(TAG, "🔌 BLE Connection state:");
+                        Log.e(TAG, "   - isConnected: " + isConnected);
+                        Log.e(TAG, "   - bluetoothGatt: " + (bluetoothGatt != null ? "NOT NULL" : "NULL"));
+                        Log.e(TAG, "   - txCharacteristic: " + (txCharacteristic != null ? "NOT NULL" : "NULL"));
+                        Log.e(TAG, "   - rxCharacteristic: " + (rxCharacteristic != null ? "NOT NULL" : "NULL"));
+                        Log.e(TAG, "   - mConnectState: " + mConnectState);
+                        Log.e(TAG, "   - glassesReady: " + glassesReady);
+                    }
+                }
 
                 // Forward via EventBus for cloud communication (consistent with battery/WiFi)
                 EventBus.getDefault().post(new RtmpStreamStatusEvent(json));
@@ -1571,6 +1596,36 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         heartbeatCounter = 0;
     }
 
+    /**
+     * Dump all thread states for debugging BLE failures
+     */
+    private void dumpThreadStates() {
+        Log.e(TAG, "📸 THREAD STATE DUMP - START");
+        try {
+            Map<Thread, StackTraceElement[]> allThreads = Thread.getAllStackTraces();
+            for (Map.Entry<Thread, StackTraceElement[]> entry : allThreads.entrySet()) {
+                Thread thread = entry.getKey();
+                StackTraceElement[] stack = entry.getValue();
+                
+                Log.e(TAG, "📌 Thread: " + thread.getName() + 
+                      " (ID: " + thread.getId() + 
+                      ", State: " + thread.getState() + 
+                      ", Priority: " + thread.getPriority() + ")");
+                
+                // Only print first 5 stack frames to avoid log spam
+                for (int i = 0; i < Math.min(5, stack.length); i++) {
+                    Log.e(TAG, "    at " + stack[i].toString());
+                }
+                if (stack.length > 5) {
+                    Log.e(TAG, "    ... " + (stack.length - 5) + " more frames");
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error dumping thread states", e);
+        }
+        Log.e(TAG, "📸 THREAD STATE DUMP - END");
+    }
+    
     /**
      * Check if we have the necessary permissions
      */
