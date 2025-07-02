@@ -6,7 +6,7 @@
 import WebSocket from 'ws';
 import { IncomingMessage } from 'http';
 import {
-  AugmentosSettingsUpdateRequest,
+  MentraosSettingsUpdateRequest,
   CalendarEvent,
   CloudToGlassesMessage,
   CloudToGlassesMessageType,
@@ -237,8 +237,8 @@ export class GlassesWebSocketService {
           await this.handleRequestSettings(userSession, message as RequestSettings);
           break;
 
-        case GlassesToCloudMessageType.AUGMENTOS_SETTINGS_UPDATE_REQUEST:
-          await this.handleAugmentOSSettingsUpdateRequest(userSession, message as AugmentosSettingsUpdateRequest);
+        case GlassesToCloudMessageType.MENTRAOS_SETTINGS_UPDATE_REQUEST:
+          await this.handleAugmentOSSettingsUpdateRequest(userSession, message as MentraosSettingsUpdateRequest);
           break;
 
         case GlassesToCloudMessageType.CORE_STATUS_UPDATE: {
@@ -471,16 +471,23 @@ export class GlassesWebSocketService {
   private async handleLocationUpdate(userSession: UserSession, message: LocationUpdate): Promise<void> {
     userSession.logger.debug({ message, service: SERVICE_NAME }, 'Location update received from glasses');
     try {
-      // Cache the location update in subscription service
+      const now = new Date();
+      // cache the location update in subscription service
       subscriptionService.cacheLocation(userSession.sessionId, {
         latitude: message.lat,
         longitude: message.lng,
-        timestamp: new Date()
+        timestamp: now // also cache the timestamp
       });
 
       const user = await User.findByEmail(userSession.userId);
       if (user) {
-        await user.setLocation(message);
+        // create the location data object with the timestamp
+        const locationData = {
+          lat: message.lat,
+          lng: message.lng,
+          timestamp: now 
+        };
+        await user.setLocation(locationData as any); // cast to any to satisfy the older method signature
       }
     }
     catch (error) {
@@ -590,7 +597,7 @@ export class GlassesWebSocketService {
    * @param userSession User session
    * @param message Settings update message
    */
-  private async handleAugmentOSSettingsUpdateRequest(userSession: UserSession, message: AugmentosSettingsUpdateRequest): Promise<void> {
+  private async handleAugmentOSSettingsUpdateRequest(userSession: UserSession, message: MentraosSettingsUpdateRequest): Promise<void> {
     userSession.logger.info({ service: SERVICE_NAME, message }, `handleAugmentOSSettingsUpdateRequest for user ${userSession.userId}`);
 
     try {
