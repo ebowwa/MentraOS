@@ -101,6 +101,15 @@ function MyComponent() {
 }
 ```
 
+- Don't create Stylesheets, instead use themed(<name-of-style>)
+```tsx
+const $container: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
+  color: colors.text,
+  fontSize: spacing.md,
+  flexWrap: "wrap",
+})
+```
+
 - Don't use expo router's router.push / replace / etc. instead use the `useNavigationHistory()` hook
 ```tsx
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
