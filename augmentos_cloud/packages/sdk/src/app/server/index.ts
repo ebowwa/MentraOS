@@ -595,7 +595,7 @@ export class AppServer {
         };
 
         // Deliver photo to the session
-        session.handlePhotoReceived(photoData);
+        session.camera.handlePhotoReceived(photoData);
 
         // Respond to ASG client
         res.json({
@@ -619,7 +619,7 @@ export class AppServer {
    */
   private findSessionByPhotoRequestId(requestId: string): AppSession | undefined {
     for (const [sessionId, session] of this.activeSessions) {
-      if (session.hasPendingPhotoRequest(requestId)) {
+      if (session.camera.hasPhotoPendingRequest(requestId)) {
         return session;
       }
     }
