@@ -181,28 +181,31 @@ class LocationService {
     const defaultRate = 'reduced';
     const subscriptions = user.locationSubscriptions;
 
-    // --- NEW, MORE DETAILED DIAGNOSTIC LOG ---
-    if (subscriptions) {
-        console.log('##DEBUGINFO_START##');
-        console.log('##DEBUGINFO_TYPE##', typeof subscriptions);
-        console.log('##DEBUGINFO_IS_MAP##', subscriptions instanceof Map);
-        console.log('##DEBUGINFO_CONSTRUCTOR##', subscriptions.constructor.name);
-        console.log('##DEBUGINFO_RAW_INSPECT##', require('util').inspect(subscriptions, { showHidden: true, depth: 5 }));
-        console.log('##DEBUGINFO_END##');
-    }
-    // --- END OF NEW LOG ---
-
     if (!subscriptions || subscriptions.size === 0) {
       return defaultRate;
     }
 
-    // Previous attempt at iteration
+    // A MongooseMap is not a standard JavaScript Map. The most robust way to handle it
+    // is to convert it to a plain object before iterating. We cast to `any` to
+    // bypass the TypeScript compiler's check, as we know the `.toObject` method
+    // will exist at runtime on the MongooseMap.
+    const subsObject = (subscriptions as any).toObject();
+
+    // This new log will show us the plain object, confirming the conversion worked.
+    logger.debug({ userId: user.email, subscriptions: subsObject, type: typeof subsObject }, "Converted MongooseMap to plain object for iteration.");
+
     let highestTierIndex = -1;
-    for (const subDetails of subscriptions.values()) {
-      if (subDetails && subDetails.rate) {
-        const tierIndex = TIER_HIERARCHY.indexOf(subDetails.rate);
-        if (tierIndex > highestTierIndex) {
-          highestTierIndex = tierIndex;
+
+    // Iterate over the plain object's keys.
+    for (const packageName in subsObject) {
+      // Ensure we are only looking at own properties, not from the prototype chain.
+      if (Object.prototype.hasOwnProperty.call(subsObject, packageName)) {
+        const subDetails = subsObject[packageName];
+        if (subDetails && subDetails.rate) {
+          const tierIndex = TIER_HIERARCHY.indexOf(subDetails.rate);
+          if (tierIndex > highestTierIndex) {
+            highestTierIndex = tierIndex;
+          }
         }
       }
     }
