@@ -506,9 +506,12 @@ public class MediaCaptureService {
     }
 
     /**
-     * Take a photo and upload it to AugmentOS Cloud
+     * Take a photo and upload it to the specified destination
+     * @param photoFilePath Local path where photo will be saved
+     * @param requestId Unique request ID for tracking
+     * @param webhookUrl Optional webhook URL for direct upload to app
      */
-    public void takePhotoAndUpload(String photoFilePath, String requestId) {
+    public void takePhotoAndUpload(String photoFilePath, String requestId, String webhookUrl) {
         // Notify that we're about to take a photo
         if (mMediaCaptureListener != null) {
             mMediaCaptureListener.onPhotoCapturing(requestId);
@@ -530,8 +533,11 @@ public class MediaCaptureService {
                                 mMediaCaptureListener.onPhotoUploading(requestId);
                             }
 
-                            // Upload the photo to AugmentOS Cloud
-                            uploadMediaToCloud(filePath, requestId, MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
+                            // Choose upload destination based on webhookUrl
+                            if (webhookUrl != null && !webhookUrl.isEmpty()) {
+                                // Upload directly to app webhook
+                                uploadPhotoToWebhook(filePath, requestId, webhookUrl);
+                            }
                         }
 
                         @Override
@@ -554,6 +560,80 @@ public class MediaCaptureService {
                         MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
             }
         }
+    }
+
+    /**
+     * Upload photo directly to app webhook
+     */
+    private void uploadPhotoToWebhook(String photoFilePath, String requestId, String webhookUrl) {
+        // Create a new thread for the upload
+        new Thread(() -> {
+            try {
+                File photoFile = new File(photoFilePath);
+                if (!photoFile.exists()) {
+                    Log.e(TAG, "Photo file does not exist: " + photoFilePath);
+                    if (mMediaCaptureListener != null) {
+                        mMediaCaptureListener.onMediaError(requestId, "Photo file not found", MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
+                    }
+                    return;
+                }
+
+                // Create multipart form request
+                OkHttpClient client = new OkHttpClient.Builder()
+                        .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+                        .writeTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
+                        .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+                        .build();
+
+                RequestBody fileBody = RequestBody.create(okhttp3.MediaType.parse("image/jpeg"), photoFile);
+                RequestBody requestBody = new MultipartBody.Builder()
+                        .setType(MultipartBody.FORM)
+                        .addFormDataPart("photo", photoFile.getName(), fileBody)
+                        .addFormDataPart("requestId", requestId)
+                        .addFormDataPart("type", "photo_upload")
+                        .build();
+
+                Request request = new Request.Builder()
+                        .url(webhookUrl)
+                        .post(requestBody)
+                        .build();
+
+                Response response = client.newCall(request).execute();
+
+                if (response.isSuccessful()) {
+                    String responseBody = response.body() != null ? response.body().string() : "";
+                    Log.d(TAG, "Photo uploaded successfully to webhook: " + webhookUrl);
+                    Log.d(TAG, "Response: " + responseBody);
+
+                    // Notify success
+                    if (mMediaCaptureListener != null) {
+                        mMediaCaptureListener.onPhotoUploaded(requestId, webhookUrl);
+                    }
+                } else {
+                    String errorMessage = "Upload failed with status: " + response.code();
+                    Log.e(TAG, errorMessage + " to webhook: " + webhookUrl);
+
+                    if (mMediaCaptureListener != null) {
+                        mMediaCaptureListener.onMediaError(requestId, errorMessage, MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
+                    }
+                }
+
+                response.close();
+
+            } catch (Exception e) {
+                Log.e(TAG, "Error uploading photo to webhook: " + webhookUrl, e);
+                if (mMediaCaptureListener != null) {
+                    mMediaCaptureListener.onMediaError(requestId, "Upload error: " + e.getMessage(), MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
+                }
+            }
+        }).start();
+    }
+
+    /**
+     * Backward compatibility method
+     */
+    public void takePhotoAndUpload(String photoFilePath, String requestId) {
+        takePhotoAndUpload(photoFilePath, requestId, "");
     }
 
     /**

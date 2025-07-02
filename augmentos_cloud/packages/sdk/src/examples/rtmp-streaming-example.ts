@@ -41,7 +41,7 @@ async function startApp() {
 // Set up handler for stream status updates
 function setupStreamStatusHandler() {
   // Register a handler for stream status updates
-  const cleanup = session.streaming.onStatus((status: RtmpStreamStatus) => {
+  const cleanup = session.camera.onStreamStatus((status: RtmpStreamStatus) => {
     console.log(`Stream status: ${status.status}`);
 
     // Log detailed information if available
@@ -83,7 +83,7 @@ function setupStreamStatusHandler() {
 async function requestStream() {
   try {
     // Request a stream with configuration
-    await session.streaming.requestStream({
+    await session.camera.startStream({
       rtmpUrl: 'rtmp://your-rtmp-server.com/live/stream-key',
       video: {
         width: 1280,
@@ -102,7 +102,7 @@ async function requestStream() {
 // Stop the stream
 async function stopStream() {
   try {
-    await session.streaming.stopStream();
+    await session.camera.stopStream();
     console.log('Stop stream request sent successfully');
   } catch (error) {
     console.error('Error stopping stream:', error);

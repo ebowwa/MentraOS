@@ -1606,12 +1606,12 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             }
 
             @Override
-            public void onPhotoRequest(String requestId, String appId) {
-                Log.d(TAG, "Photo request received: requestId=" + requestId + ", appId=" + appId);
+            public void onPhotoRequest(String requestId, String appId, String webhookUrl) {
+                Log.d(TAG, "Photo request received: requestId=" + requestId + ", appId=" + appId + ", webhookUrl=" + webhookUrl);
 
                 // Forward the request to the smart glasses manager
                 if (smartGlassesManager != null) {
-                    boolean requestSent = smartGlassesManager.requestPhoto(requestId, appId);
+                    boolean requestSent = smartGlassesManager.requestPhoto(requestId, appId, webhookUrl);
                     if (!requestSent) {
                         Log.e(TAG, "Failed to send photo request to glasses");
                     }
