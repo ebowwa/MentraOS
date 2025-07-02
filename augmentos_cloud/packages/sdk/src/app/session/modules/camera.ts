@@ -120,11 +120,7 @@ export class CameraModule {
    *
    * @example
    * ```typescript
-   * // Request a photo and save to gallery
-   * const photo = await session.camera.requestPhoto({ saveToGallery: true });
-   * console.log('Photo received:', photo.base64Data);
-   *
-   * // Request a photo without saving
+   * // Request a photo
    * const photo = await session.camera.requestPhoto();
    * ```
    */
