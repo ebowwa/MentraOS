@@ -250,8 +250,6 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
 
     private boolean metricSystemEnabled;
 
-    private boolean updatingScreen = false;
-
     // Handler and Runnable for periodic datetime sending
     private final Handler datetimeHandler = new Handler(Looper.getMainLooper());
     private Runnable datetimeRunnable;
@@ -496,7 +494,6 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
 
         contextualDashboardEnabled = true;
         metricSystemEnabled = false;
-        updatingScreen = false;
 
         alwaysOnStatusBarEnabled = false;
 
@@ -1992,12 +1989,9 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
 
     @Override
     public void setUpdatingScreen(boolean updatingScreen) {
-        this.updatingScreen = updatingScreen;
         if (smartGlassesManager != null) {
-            if (updatingScreen) {
-                smartGlassesManager.sendExitCommand();
-            }
-            smartGlassesManager.updatingScreen = updatingScreen;
+            smartGlassesManager.sendExitCommand();
+            smartGlassesManager.setUpdatingScreen(updatingScreen);
         }
     }
 

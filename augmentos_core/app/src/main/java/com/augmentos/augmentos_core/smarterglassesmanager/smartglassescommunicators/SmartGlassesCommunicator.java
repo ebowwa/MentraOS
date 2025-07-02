@@ -28,6 +28,8 @@ public abstract class SmartGlassesCommunicator {
     public final String commandNaturalLanguageString = "Command: ";
     public final String finishNaturalLanguageString = "'finish command' when done";
 
+    public void setUpdatingScreen(boolean updatingScreen) {}
+
     //reference card
     public abstract void displayReferenceCardSimple(String title, String body);
 
