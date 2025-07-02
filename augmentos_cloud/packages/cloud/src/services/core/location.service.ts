@@ -163,22 +163,19 @@ class LocationService {
       return defaultRate;
     }
 
-    // A MongooseMap is not a standard JavaScript Map. The most robust way to handle it
-    // is to convert it to a plain object before iterating. We cast to `any` to
-    // bypass the TypeScript compiler's check, as we know the `.toObject` method
-    // will exist at runtime on the MongooseMap.
-    const subsObject = (subscriptions as any).toObject();
+    // The most robust way to iterate over a MongooseMap is to first
+    // explicitly convert its values to a standard JavaScript Array.
+    const subscriptionDetails = Array.from(subscriptions.values());
     
     let highestTierIndex = -1;
 
-    for (const packageName in subsObject) {
-      if (Object.prototype.hasOwnProperty.call(subsObject, packageName)) {
-        const subDetails = subsObject[packageName];
-        if (subDetails && subDetails.rate) {
-          const tierIndex = TIER_HIERARCHY.indexOf(subDetails.rate);
-          if (tierIndex > highestTierIndex) {
-            highestTierIndex = tierIndex;
-          }
+    for (const subDetails of subscriptionDetails) {
+      // Add a specific log for each item to prove iteration is working.
+      logger.debug({ logKey: '##TIER_CALC_ITERATION##', details: subDetails }, 'Iterating over subscription detail');
+      if (subDetails && subDetails.rate) {
+        const tierIndex = TIER_HIERARCHY.indexOf(subDetails.rate);
+        if (tierIndex > highestTierIndex) {
+          highestTierIndex = tierIndex;
         }
       }
     }
