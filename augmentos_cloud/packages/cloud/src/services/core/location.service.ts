@@ -181,24 +181,62 @@ class LocationService {
     const defaultRate = 'reduced';
     const subscriptions = user.locationSubscriptions;
 
+    // --- NEW, ULTIMATE DIAGNOSTIC LOG ---
+    console.log('##ULTIMATE_DEBUG_START##');
+    if (!subscriptions) {
+        console.log('##ULTIMATE_DEBUG_RESULT##: Subscriptions object is null or undefined.');
+    } else {
+        console.log('##ULTIMATE_DEBUG_INFO##: Initial MongooseMap object received.');
+        console.log('##ULTIMATE_DEBUG_RAW_MONGOOSE_MAP##', require('util').inspect(subscriptions, { showHidden: true, depth: 5 }));
+
+        try {
+            const subsObject = (subscriptions as any).toObject();
+            console.log('##ULTIMATE_DEBUG_INFO##: Successfully called .toObject().');
+            console.log('##ULTIMATE_DEBUG_PLAIN_OBJECT##', require('util').inspect(subsObject, { showHidden: true, depth: 5 }));
+
+            console.log('##ULTIMATE_DEBUG_INFO##: Starting iteration over the plain object...');
+            let iterated = false;
+            let highestTierIndex = -1; // Declare here for logging
+
+            for (const packageName in subsObject) {
+                iterated = true;
+                if (Object.prototype.hasOwnProperty.call(subsObject, packageName)) {
+                    const subDetails = subsObject[packageName];
+                    const rate = subDetails ? subDetails.rate : 'N/A';
+                    const tierIndex = TIER_HIERARCHY.indexOf(rate);
+                    
+                    console.log('##ULTIMATE_DEBUG_ITERATION##', {
+                        packageName: packageName,
+                        subDetails: subDetails,
+                        rate: rate,
+                        tierIndex: tierIndex
+                    });
+
+                    if (tierIndex > highestTierIndex) {
+                        highestTierIndex = tierIndex;
+                    }
+                }
+            }
+            if (!iterated) {
+                console.log('##ULTIMATE_DEBUG_RESULT##: Loop did not execute. The object has no own properties to iterate over.');
+            }
+            console.log('##ULTIMATE_DEBUG_RESULT##: Final calculated highestTierIndex:', highestTierIndex);
+        } catch (e) {
+            console.log('##ULTIMATE_DEBUG_ERROR##: An error occurred during conversion or iteration.', e);
+        }
+    }
+    console.log('##ULTIMATE_DEBUG_END##');
+    // --- END OF ULTIMATE LOG ---
+
+
     if (!subscriptions || subscriptions.size === 0) {
       return defaultRate;
     }
 
-    // A MongooseMap is not a standard JavaScript Map. The most robust way to handle it
-    // is to convert it to a plain object before iterating. We cast to `any` to
-    // bypass the TypeScript compiler's check, as we know the `.toObject` method
-    // will exist at runtime on the MongooseMap.
     const subsObject = (subscriptions as any).toObject();
-
-    // This new log will show us the plain object, confirming the conversion worked.
-    logger.debug({ userId: user.email, subscriptions: subsObject, type: typeof subsObject }, "Converted MongooseMap to plain object for iteration.");
-
     let highestTierIndex = -1;
 
-    // Iterate over the plain object's keys.
     for (const packageName in subsObject) {
-      // Ensure we are only looking at own properties, not from the prototype chain.
       if (Object.prototype.hasOwnProperty.call(subsObject, packageName)) {
         const subDetails = subsObject[packageName];
         if (subDetails && subDetails.rate) {
