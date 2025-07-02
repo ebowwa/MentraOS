@@ -10,12 +10,13 @@
  * - Enforcing permission checks on subscriptions
  */
 
-import { StreamType, ExtendedStreamType, isLanguageStream, parseLanguageStream, createTranscriptionStream, CalendarEvent } from '@mentra/sdk';
+import { StreamType, ExtendedStreamType, isLanguageStream, parseLanguageStream, createTranscriptionStream, CalendarEvent, SubscriptionRequest } from '@mentra/sdk';
 import { logger as rootLogger } from '../logging/pino-logger';
 import { SimplePermissionChecker } from '../permissions/simple-permission-checker';
 import App from '../../models/app.model';
 import { sessionService } from './session.service';
 import UserSession from './UserSession';
+import { User } from '../../models/user.model';
 
 const logger = rootLogger.child({ service: 'subscription.service' });
 
@@ -157,9 +158,14 @@ export class SubscriptionService {
   async updateSubscriptions(
     userSession: UserSession,
     packageName: string,
-    subscriptions: ExtendedStreamType[]
+    subscriptions: SubscriptionRequest[]
   ): Promise<void> {
     const key = this.getKey(userSession.userId, packageName);
+    const user = await User.findById(userSession.userId);
+    if (!user) {
+      logger.warn({ userId: userSession.userId }, "User not found for subscription update.");
+      return;
+    }
 
     // Increment version for this key
     const currentVersion = (this.subscriptionUpdateVersion.get(key) || 0) + 1;
@@ -169,13 +175,40 @@ export class SubscriptionService {
     const thisCallVersion = currentVersion;
 
     logger.info({ key, subscriptions, userId: userSession.userId }, 'Update subscriptions request received');
-    const currentSubs = this.subscriptions.get(key) || new Set();
+    const currentSubs = this.subscriptions.get(key) || new Set<ExtendedStreamType>();
     const action: SubscriptionHistory['action'] = currentSubs.size === 0 ? 'add' : 'update';
 
-    logger.info({ key, subscriptions, userId: userSession.userId }, 'Processing subscription update');
+    // Separate location subscriptions from other stream types
+    const streamSubscriptions: ExtendedStreamType[] = [];
+    let locationRequest: { rate: string } | null = null;
+
+    for (const sub of subscriptions) {
+      if (typeof sub === 'object' && sub !== null && 'stream' in sub && sub.stream === StreamType.LOCATION_STREAM) {
+        locationRequest = { rate: sub.rate };
+        streamSubscriptions.push(sub.stream); // Add the base stream type for permission checks etc.
+      } else if (typeof sub === 'string') {
+        streamSubscriptions.push(sub);
+      }
+    }
+
+    // Handle location subscription persistence
+    if (locationRequest) {
+      if (!user.locationSubscriptions) {
+        user.locationSubscriptions = new Map();
+      }
+      user.locationSubscriptions.set(packageName, { rate: locationRequest.rate });
+    } else {
+      // If no location request is present, ensure any old one is removed.
+      if (user.locationSubscriptions?.has(packageName)) {
+        user.locationSubscriptions.delete(packageName);
+      }
+    }
+    // We save the user document later, after all checks.
+
+    logger.info({ key, subscriptions: streamSubscriptions, userId: userSession.userId }, 'Processing subscription update');
 
     // Validate subscriptions format
-    const processedSubscriptions = subscriptions.map(sub =>
+    const processedSubscriptions = streamSubscriptions.map(sub =>
       sub === StreamType.TRANSCRIPTION ?
         createTranscriptionStream('en-US') :
         sub
@@ -194,7 +227,7 @@ export class SubscriptionService {
           isRtmpStreamStatusEnum: sub === StreamType.RTMP_STREAM_STATUS,
           streamTypeEnumValue: StreamType.RTMP_STREAM_STATUS,
           processedSubscriptions,
-          originalSubscriptions: subscriptions
+          originalSubscriptions: streamSubscriptions
         }, 'RTMP_SUB_VALIDATION_FAIL: Invalid subscription type detected in session subscription service');
         throw new Error(`Invalid subscription type: ${sub}`);
       }
@@ -265,6 +298,9 @@ export class SubscriptionService {
         return;
       }
 
+      // Save user document with potential location subscription changes
+      await user.save();
+
       // Only now set the subscriptions
       this.subscriptions.set(key, newSubs);
 
@@ -286,6 +322,9 @@ export class SubscriptionService {
       // If there's an error getting the app or checking permissions, log it but don't block
       // This ensures backward compatibility with existing code
       logger.error({ error, packageName, userId: userSession.userId }, 'Error checking permissions');
+
+      // Still save user and update in-memory subscriptions even if permission check fails
+      await user.save();
 
       // Continue with the subscription update
       this.subscriptions.set(key, new Set(processedSubscriptions));
@@ -426,12 +465,15 @@ export class SubscriptionService {
    * @param sessionId - User session identifier
    * @param packageName - App identifier
    */
-  removeSubscriptions(userSession: UserSession, packageName: string): void {
+  async removeSubscriptions(userSession: UserSession, packageName: string): Promise<void> {
     const key = this.getKey(userSession.sessionId, packageName);
-    // if (userSession.appConnections.has(packageName)) {
-    //   // TODO send message to user that we are destroying the connection.
-    //   userSession.appConnections.delete(packageName);
-    // }
+    const user = await User.findById(userSession.userId);
+
+    if (user && user.locationSubscriptions?.has(packageName)) {
+      user.locationSubscriptions.delete(packageName);
+      await user.save();
+      logger.info({ packageName, sessionId: userSession.sessionId, userId: userSession.userId }, `Removed location subscription for App ${packageName}`);
+    }
 
     if (this.subscriptions.has(key)) {
       const currentSubs = Array.from(this.subscriptions.get(key) || []);

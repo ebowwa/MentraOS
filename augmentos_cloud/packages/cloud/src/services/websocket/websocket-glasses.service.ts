@@ -34,6 +34,7 @@ import { sessionService } from '../session/session.service';
 import transcriptionService from '../processing/transcription.service';
 import { User } from '../../models/user.model';
 import { SYSTEM_DASHBOARD_PACKAGE_NAME } from '../core/app.service';
+import { locationService } from '../core/location.service';
 
 const SERVICE_NAME = 'websocket-glasses.service';
 const logger = rootLogger.child({ service: SERVICE_NAME });
@@ -220,9 +221,7 @@ export class GlassesWebSocketService {
           break;
 
         case GlassesToCloudMessageType.LOCATION_UPDATE:
-          await this.handleLocationUpdate(userSession, message as LocationUpdate);
-          sessionService.relayMessageToApps(userSession, message);
-          // TODO(isaiah): broadcast to Apps
+          await locationService.handleDeviceLocationUpdate(userSession, message as LocationUpdate);
           break;
 
         case GlassesToCloudMessageType.CALENDAR_EVENT:
@@ -471,27 +470,16 @@ export class GlassesWebSocketService {
   private async handleLocationUpdate(userSession: UserSession, message: LocationUpdate): Promise<void> {
     userSession.logger.debug({ message, service: SERVICE_NAME }, 'Location update received from glasses');
     try {
-      const now = new Date();
-      // cache the location update in subscription service
-      subscriptionService.cacheLocation(userSession.sessionId, {
-        latitude: message.lat,
-        longitude: message.lng,
-        timestamp: now // also cache the timestamp
-      });
+      // The core logic is now handled by the central LocationService to manage caching and polling.
+      await locationService.handleDeviceLocationUpdate(userSession, message);
 
-      const user = await User.findByEmail(userSession.userId);
-      if (user) {
-        // create the location data object with the timestamp
-        const locationData = {
-          lat: message.lat,
-          lng: message.lng,
-          timestamp: now 
-        };
-        await user.setLocation(locationData as any); // cast to any to satisfy the older method signature
-      }
+      // We still relay the message to any apps subscribed to the raw location stream.
+      // The locationService's handleDeviceLocationUpdate will decide if it needs to send a specific
+      // response for a poll request.
+      sessionService.relayMessageToApps(userSession, message);
     }
     catch (error) {
-      userSession.logger.error({ error, service: SERVICE_NAME }, `Error updating user location:`, error);
+      userSession.logger.error({ error, service: SERVICE_NAME }, `Error handling location update:`, error);
     }
   }
 

@@ -33,6 +33,7 @@ import { logger as rootLogger } from '../logging/pino-logger';
 import transcriptionService from '../processing/transcription.service';
 import photoRequestService from '../core/photo-request.service';
 import e from 'express';
+import { locationService } from '../core/location.service';
 
 const SERVICE_NAME = 'websocket-app.service';
 const logger = rootLogger.child({ service: SERVICE_NAME });
@@ -228,6 +229,15 @@ export class AppWebSocketService {
           }
           break;
 
+        case AppToCloudMessageType.LOCATION_POLL_REQUEST:
+          try {
+            await locationService.handlePollRequest(userSession, message.accuracy, message.correlationId);
+          } catch (e) {
+            this.logger.error({ e, packageName: message.packageName }, "Error handling location poll request");
+            this.sendError(appWebsocket, AppErrorCode.INTERNAL_ERROR, (e as Error).message || "Failed to handle location poll.");
+          }
+          break;
+
         case AppToCloudMessageType.PHOTO_REQUEST:
           // Delegate to PhotoManager
           // The AppPhotoRequestSDK type should be used by the App
@@ -271,40 +281,35 @@ export class AppWebSocketService {
     // Get the minimal language subscriptions before update
     const previousLanguageSubscriptions = subscriptionService.getMinimalLanguageSubscriptions(userSession.userId);
 
-    // Convert SubscriptionRequest[] to ExtendedStreamType[] for the subscription service
-    const convertedSubscriptions: ExtendedStreamType[] = message.subscriptions.map(sub => {
-      // if it's a LocationStreamRequest object, extract the stream property
-      if (typeof sub === 'object' && sub !== null && 'stream' in sub) {
-        return sub.stream;
-      }
-      // otherwise it's already a string (ExtendedStreamType)
-      return sub as ExtendedStreamType;
-    });
-
     // Check if the app is newly subscribing to calendar events
     const isNewCalendarSubscription =
       !subscriptionService.hasSubscription(userSession.userId, message.packageName, StreamType.CALENDAR_EVENT) &&
-      convertedSubscriptions.includes(StreamType.CALENDAR_EVENT);
+      message.subscriptions.some(sub => (typeof sub === 'string' && sub === StreamType.CALENDAR_EVENT));
 
     // Check if the app is newly subscribing to location updates
     const isNewLocationSubscription =
       !subscriptionService.hasSubscription(userSession.userId, message.packageName, StreamType.LOCATION_UPDATE) &&
-      convertedSubscriptions.includes(StreamType.LOCATION_UPDATE);
+      message.subscriptions.some(sub => {
+        if (typeof sub === 'string') return sub === StreamType.LOCATION_UPDATE;
+        return sub.stream === StreamType.LOCATION_STREAM || sub.stream === StreamType.LOCATION_UPDATE;
+      });
 
     // Update subscriptions (async) with error handling to prevent crashes
     try {
       await subscriptionService.updateSubscriptions(
         userSession,
         message.packageName,
-        convertedSubscriptions
+        message.subscriptions
       );
+      // After subscriptions are updated, have the location service check if the effective tier has changed.
+      await locationService.handleSubscriptionChange(userSession);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       userSession.logger.error({
         service: SERVICE_NAME,
         error: errorMessage,
         packageName,
-        subscriptions: convertedSubscriptions,
+        subscriptions: message.subscriptions,
         userId: userSession.userId
       }, `Failed to update subscriptions for App ${packageName}: ${errorMessage}`);
 
