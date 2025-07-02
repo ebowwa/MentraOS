@@ -296,14 +296,14 @@ export class AppWebSocketService {
 
     // Update subscriptions (async) with error handling to prevent crashes
     try {
-      await subscriptionService.updateSubscriptions(
+      subscriptionService.updateSubscriptions(
         userSession,
         message.packageName,
         message.subscriptions
       );
-      // After subscriptions are updated, have the location service check if the effective tier has changed.
-      await locationService.handleSubscriptionChange(userSession);
     } catch (error) {
+      // NOTE: This catch block may not be triggered if updateSubscriptions is fully async
+      // and doesn't throw synchronously. Proper error handling should be inside the service.
       const errorMessage = error instanceof Error ? error.message : String(error);
       // Detailed logging for debugging the app cycling issue
       userSession.logger.error({

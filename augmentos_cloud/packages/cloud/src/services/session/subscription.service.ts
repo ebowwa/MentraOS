@@ -17,6 +17,7 @@ import App from '../../models/app.model';
 import { sessionService } from './session.service';
 import UserSession from './UserSession';
 import { User } from '../../models/user.model';
+import { locationService } from '../core/location.service';
 
 const logger = rootLogger.child({ service: 'subscription.service' });
 
@@ -155,187 +156,100 @@ export class SubscriptionService {
    * @param subscriptions - New set of subscriptions
    * @throws If invalid subscription types are requested or permissions are missing
    */
-  async updateSubscriptions(
+  updateSubscriptions(
     userSession: UserSession,
     packageName: string,
     subscriptions: SubscriptionRequest[]
-  ): Promise<void> {
+  ): void {
     const key = this.getKey(userSession.userId, packageName);
-    const user = await User.findById(userSession.userId);
-    if (!user) {
-      logger.warn({ userId: userSession.userId }, "User not found for subscription update.");
-      return;
-    }
 
-    // Increment version for this key
-    const currentVersion = (this.subscriptionUpdateVersion.get(key) || 0) + 1;
-    this.subscriptionUpdateVersion.set(key, currentVersion);
-
-    // Capture the version for this call
-    const thisCallVersion = currentVersion;
-
-    logger.info({ key, subscriptions, userId: userSession.userId }, 'Update subscriptions request received');
-    const currentSubs = this.subscriptions.get(key) || new Set<ExtendedStreamType>();
-    const action: SubscriptionHistory['action'] = currentSubs.size === 0 ? 'add' : 'update';
-
-    // Separate location subscriptions from other stream types
+    // --- Start of Fast, In-Memory Operations ---
     const streamSubscriptions: ExtendedStreamType[] = [];
-    let locationRequest: { rate: string } | null = null;
+    let locationRate: string | null = null;
 
     for (const sub of subscriptions) {
       if (typeof sub === 'object' && sub !== null && 'stream' in sub && sub.stream === StreamType.LOCATION_STREAM) {
-        locationRequest = { rate: sub.rate };
-        streamSubscriptions.push(sub.stream); // Add the base stream type for permission checks etc.
+        locationRate = sub.rate;
+        streamSubscriptions.push(sub.stream);
       } else if (typeof sub === 'string') {
         streamSubscriptions.push(sub);
       }
     }
 
-    // Handle location subscription persistence
-    if (locationRequest) {
-      if (!user.locationSubscriptions) {
-        user.locationSubscriptions = new Map();
-      }
-      user.locationSubscriptions.set(packageName, { rate: locationRequest.rate });
-    } else {
-      // If no location request is present, ensure any old one is removed.
-      if (user.locationSubscriptions?.has(packageName)) {
-        user.locationSubscriptions.delete(packageName);
-      }
-    }
-    // We save the user document later, after all checks.
-
-    logger.info({ key, subscriptions: streamSubscriptions, userId: userSession.userId }, 'Processing subscription update');
-
-    // Validate subscriptions format
+    // This part runs quickly and updates the in-memory state.
     const processedSubscriptions = streamSubscriptions.map(sub =>
-      sub === StreamType.TRANSCRIPTION ?
-        createTranscriptionStream('en-US') :
-        sub
+      sub === StreamType.TRANSCRIPTION ? createTranscriptionStream('en-US') : sub
     );
-
+    
     for (const sub of processedSubscriptions) {
-      if (!this.isValidSubscription(sub)) {
-        logger.error({
-          debugKey: 'RTMP_SUB_VALIDATION_FAIL',
-          subscription: sub,
-          packageName,
-          sessionId: userSession.sessionId,
-          userId: userSession.userId,
-          availableStreamTypes: Object.values(StreamType),
-          isRtmpStreamStatus: sub === 'rtmp_stream_status',
-          isRtmpStreamStatusEnum: sub === StreamType.RTMP_STREAM_STATUS,
-          streamTypeEnumValue: StreamType.RTMP_STREAM_STATUS,
-          processedSubscriptions,
-          originalSubscriptions: streamSubscriptions
-        }, 'RTMP_SUB_VALIDATION_FAIL: Invalid subscription type detected in session subscription service');
-        throw new Error(`Invalid subscription type: ${sub}`);
-      }
-    }
-
-    logger.info({ processedSubscriptions, userId: userSession.userId }, 'Processed and validated subscriptions');
-
-    try {
-      // Get app details
-      const app = await App.findOne({ packageName });
-
-      if (!app) {
-        logger.warn({ packageName, userId: userSession.userId }, 'App not found when checking permissions');
-        throw new Error(`App ${packageName} not found`);
-      }
-
-      // Filter subscriptions based on permissions
-      const { allowed, rejected } = SimplePermissionChecker.filterSubscriptions(app, processedSubscriptions);
-
-      logger.debug({ userId: userSession.userId, subscriptionMap: Array.from(this.subscriptions.entries()).map(([k, v]) => [k, Array.from(v)]) }, 'Current subscription map after update');
-
-      logger.info({ packageName, processedSubscriptions, userId: userSession.userId }, 'Subscriptions updated after permission check');
-
-      // If some subscriptions were rejected, send an error message to the client
-      if (rejected.length > 0) {
-        logger.warn({
-          packageName,
-          userId: userSession.userId,
-          rejectedCount: rejected.length,
-          rejectedStreams: rejected.map(r => ({
-            stream: r.stream,
-            requiredPermission: r.requiredPermission
-          }))
-        }, 'Rejected subscriptions due to missing permissions');
-
-        const appWebsocket = userSession.appWebsockets.get(packageName);
-
-        if (appWebsocket && appWebsocket.readyState === 1) {
-          // Send a detailed error message to the App about the rejected subscriptions
-          const errorMessage = {
-            type: 'permission_error',
-            message: 'Some subscriptions were rejected due to missing permissions',
-            details: rejected.map(r => ({
-              stream: r.stream,
-              requiredPermission: r.requiredPermission,
-              message: `To subscribe to ${r.stream}, add the ${r.requiredPermission} permission in the developer console`
-            })),
-            timestamp: new Date()
-          };
-
-          appWebsocket.send(JSON.stringify(errorMessage));
+        if (!this.isValidSubscription(sub)) {
+            // This will throw and be caught by the websocket service, which is desired.
+            throw new Error(`Invalid subscription type: ${sub}`);
         }
-
-
-        // Continue with only the allowed subscriptions
-        processedSubscriptions.length = 0;
-        processedSubscriptions.push(...allowed);
-      }
-      const newSubs = new Set(processedSubscriptions);
-
-      // At the end, before setting:
-      if (this.subscriptionUpdateVersion.get(key) !== thisCallVersion) {
-        // A newer call has started, so abort this update
-        logger.info(
-          { userId: userSession.userId, key, thisCallVersion, currentVersion: this.subscriptionUpdateVersion.get(key) },
-          'Skipping update as newer call has started'
-        );
-        return;
-      }
-
-      // Save user document with potential location subscription changes
-      await user.save();
-
-      // Only now set the subscriptions
-      this.subscriptions.set(key, newSubs);
-
-      // Record history
-      this.addToHistory(key, {
-        timestamp: new Date(),
-        subscriptions: [...processedSubscriptions],
-        action
-      });
-
-      logger.info({
-        packageName,
-        userId: userSession.userId,
-        processedSubscriptions,
-        newSubs: Array.from(newSubs),
-        serviceSubscriptions: Array.from(this.subscriptions.entries()).map(([k, v]) => [k, Array.from(v)])
-      }, 'Updated subscriptions successfully');
-    } catch (error) {
-      // If there's an error getting the app or checking permissions, log it but don't block
-      // This ensures backward compatibility with existing code
-      logger.error({ error, packageName, userId: userSession.userId }, 'Error checking permissions');
-
-      // Still save user and update in-memory subscriptions even if permission check fails
-      await user.save();
-
-      // Continue with the subscription update
-      this.subscriptions.set(key, new Set(processedSubscriptions));
-
-      // Record history
-      this.addToHistory(key, {
-        timestamp: new Date(),
-        subscriptions: [...processedSubscriptions],
-        action
-      });
     }
+    
+    const newSubs = new Set(processedSubscriptions);
+    this.subscriptions.set(key, newSubs);
+
+    const action: SubscriptionHistory['action'] = (this.history.get(key)?.length || 0) === 0 ? 'add' : 'update';
+    this.addToHistory(key, {
+        timestamp: new Date(),
+        subscriptions: [...processedSubscriptions],
+        action
+    });
+    // --- End of Fast, In-Memory Operations ---
+
+    // --- Start of Slow, Background DB Operations ---
+    // Use a self-invoking async function to run DB logic in the background.
+    (async () => {
+      const maxRetries = 3;
+      for (let attempt = 0; attempt < maxRetries; attempt++) {
+        try {
+          const user = await User.findOne({ email: userSession.userId });
+          if (!user) {
+            logger.warn({ userId: userSession.userId }, "User not found for subscription DB update.");
+            return;
+          }
+
+          // Handle location subscription persistence
+          if (locationRate) {
+            if (!user.locationSubscriptions) {
+              user.locationSubscriptions = new Map();
+            }
+            user.locationSubscriptions.set(packageName, { rate: locationRate });
+          } else {
+            if (user.locationSubscriptions?.has(packageName)) {
+              user.locationSubscriptions.delete(packageName);
+            }
+          }
+
+          await user.save();
+          
+          // After saving, trigger the location service arbitration.
+          await locationService.handleSubscriptionChange(userSession);
+          
+          logger.info({
+              packageName,
+              userId: userSession.userId,
+          }, 'Persisted subscription changes successfully');
+
+          break; // Success, exit retry loop.
+
+        } catch (error) {
+          if ((error as any).name === 'VersionError') {
+            logger.warn(`Version conflict saving user subscriptions for ${userSession.userId}, attempt ${attempt + 1}/${maxRetries}. Retrying...`);
+            if (attempt < maxRetries - 1) {
+              await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 100)); // Exponential backoff
+            } else {
+              logger.error(`Failed to save user subscriptions for ${userSession.userId} after ${maxRetries} attempts due to version conflicts.`);
+            }
+          } else {
+            logger.error({ error, packageName, userId: userSession.userId }, 'Error persisting subscription changes.');
+            break; // Don't retry on other errors.
+          }
+        }
+      }
+    })();
   }
 
   /**
@@ -465,28 +379,34 @@ export class SubscriptionService {
    * @param sessionId - User session identifier
    * @param packageName - App identifier
    */
-  async removeSubscriptions(userSession: UserSession, packageName: string): Promise<void> {
+  removeSubscriptions(userSession: UserSession, packageName: string): void {
     const key = this.getKey(userSession.sessionId, packageName);
-    const user = await User.findById(userSession.userId);
-
-    if (user && user.locationSubscriptions?.has(packageName)) {
-      user.locationSubscriptions.delete(packageName);
-      await user.save();
-      logger.info({ packageName, sessionId: userSession.sessionId, userId: userSession.userId }, `Removed location subscription for App ${packageName}`);
-    }
-
+    
+    // --- In-memory removal ---
     if (this.subscriptions.has(key)) {
       const currentSubs = Array.from(this.subscriptions.get(key) || []);
-
       this.subscriptions.delete(key);
       this.addToHistory(key, {
-        timestamp: new Date(),
-        subscriptions: currentSubs,
-        action: 'remove'
+          timestamp: new Date(),
+          subscriptions: currentSubs,
+          action: 'remove'
       });
-
-      logger.info({ packageName, sessionId: userSession.sessionId, userId: userSession.userId }, `Removed all subscriptions for App ${packageName} for user ${userSession.userId}`);
+      logger.info({ packageName, sessionId: userSession.sessionId }, `Removed in-memory subscriptions for App ${packageName}`);
     }
+
+    // --- Background DB removal ---
+    (async () => {
+      try {
+        const user = await User.findOne({ email: userSession.userId });
+        if (user && user.locationSubscriptions?.has(packageName)) {
+          user.locationSubscriptions.delete(packageName);
+          await user.save();
+          logger.info({ packageName, userId: userSession.userId }, `Removed location subscription from DB for App ${packageName}`);
+        }
+      } catch(error) {
+        logger.error({ error, packageName, userId: userSession.userId }, 'Error removing location subscription from DB.');
+      }
+    })();
   }
 
   /**
