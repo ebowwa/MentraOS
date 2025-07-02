@@ -181,33 +181,26 @@ class LocationService {
     const defaultRate = 'reduced';
     const subscriptions = user.locationSubscriptions;
 
-    // --- TEMPORARY DIAGNOSTIC LOG ---
-    console.log('##DEBUG_SUBSCRIPTIONS_STRUCTURE##', {
-        type: typeof subscriptions,
-        constructor: subscriptions ? subscriptions.constructor.name : 'null',
-        isMap: subscriptions instanceof Map,
-        hasGet: subscriptions ? typeof subscriptions.get === 'function' : 'N/A',
-        hasValues: subscriptions ? typeof subscriptions.values === 'function' : 'N/A',
-        keys: subscriptions ? Object.keys(subscriptions) : 'null',
-        content: JSON.stringify(subscriptions, null, 2)
-    });
-    // --- END OF TEMPORARY LOG ---
-
-    logger.debug({ userId: user.email, subscriptions: subscriptions, type: typeof subscriptions }, "Calculating effective rate from user subscriptions.");
-
     if (!subscriptions || subscriptions.size === 0) {
       return defaultRate;
     }
 
+    // Convert the Mongoose Map to a plain object to ensure robust iteration.
+    const subsObject = Object.fromEntries(subscriptions);
+
+    logger.debug({ userId: user.email, subscriptions: subsObject }, "Calculating effective rate from user subscriptions.");
+
     let highestTierIndex = -1;
 
-    // Mongoose Maps are returned as plain objects after retrieval, 
-    // but behave as Maps before saving. We must iterate robustly.
-    for (const subDetails of subscriptions.values()) {
-      if (subDetails && subDetails.rate) {
-        const tierIndex = TIER_HIERARCHY.indexOf(subDetails.rate);
-        if (tierIndex > highestTierIndex) {
-          highestTierIndex = tierIndex;
+    // Iterate over the plain object.
+    for (const packageName in subsObject) {
+      if (Object.prototype.hasOwnProperty.call(subsObject, packageName)) {
+        const subDetails = subsObject[packageName];
+        if (subDetails && subDetails.rate) {
+          const tierIndex = TIER_HIERARCHY.indexOf(subDetails.rate);
+          if (tierIndex > highestTierIndex) {
+            highestTierIndex = tierIndex;
+          }
         }
       }
     }
