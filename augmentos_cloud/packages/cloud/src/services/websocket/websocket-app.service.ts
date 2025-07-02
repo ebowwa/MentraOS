@@ -16,6 +16,7 @@ import {
   AppSubscriptionUpdate,
   AppStateChange,
   StreamType,
+  ExtendedStreamType,
   DataStream,
   LocationUpdate,
   GlassesToCloudMessageType,
@@ -270,22 +271,32 @@ export class AppWebSocketService {
     // Get the minimal language subscriptions before update
     const previousLanguageSubscriptions = subscriptionService.getMinimalLanguageSubscriptions(userSession.userId);
 
+    // Convert SubscriptionRequest[] to ExtendedStreamType[] for the subscription service
+    const convertedSubscriptions: ExtendedStreamType[] = message.subscriptions.map(sub => {
+      // if it's a LocationStreamRequest object, extract the stream property
+      if (typeof sub === 'object' && sub !== null && 'stream' in sub) {
+        return sub.stream;
+      }
+      // otherwise it's already a string (ExtendedStreamType)
+      return sub as ExtendedStreamType;
+    });
+
     // Check if the app is newly subscribing to calendar events
     const isNewCalendarSubscription =
       !subscriptionService.hasSubscription(userSession.userId, message.packageName, StreamType.CALENDAR_EVENT) &&
-      message.subscriptions.includes(StreamType.CALENDAR_EVENT);
+      convertedSubscriptions.includes(StreamType.CALENDAR_EVENT);
 
     // Check if the app is newly subscribing to location updates
     const isNewLocationSubscription =
       !subscriptionService.hasSubscription(userSession.userId, message.packageName, StreamType.LOCATION_UPDATE) &&
-      message.subscriptions.includes(StreamType.LOCATION_UPDATE);
+      convertedSubscriptions.includes(StreamType.LOCATION_UPDATE);
 
     // Update subscriptions (async) with error handling to prevent crashes
     try {
       await subscriptionService.updateSubscriptions(
         userSession,
         message.packageName,
-        message.subscriptions
+        convertedSubscriptions
       );
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -293,7 +304,7 @@ export class AppWebSocketService {
         service: SERVICE_NAME,
         error: errorMessage,
         packageName,
-        subscriptions: message.subscriptions,
+        subscriptions: convertedSubscriptions,
         userId: userSession.userId
       }, `Failed to update subscriptions for App ${packageName}: ${errorMessage}`);
 

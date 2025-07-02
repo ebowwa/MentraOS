@@ -101,7 +101,7 @@ export enum AppToCloudMessageType {
   DASHBOARD_CONTENT_UPDATE = 'dashboard_content_update',
   DASHBOARD_MODE_CHANGE = 'dashboard_mode_change',
   DASHBOARD_SYSTEM_UPDATE = 'dashboard_system_update',
-
+  
   // App-to-App Communication
   APP_BROADCAST_MESSAGE = 'app_broadcast_message',
   APP_DIRECT_MESSAGE = 'app_direct_message',
@@ -140,7 +140,7 @@ export enum CloudToAppMessageType {
 
   // General purpose messaging
   CUSTOM_MESSAGE = 'custom_message',
-
+  
   // App-to-App Communication Responses
   APP_MESSAGE_RECEIVED = 'app_message_received',
   APP_USER_JOINED = 'app_user_joined',

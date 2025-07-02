@@ -2,7 +2,7 @@
 
 /**
  * Types of streams that Apps can subscribe to
- *
+ * 
  * These are events and data that Apps can receive from the cloud.
  * Not all message types can be subscribed to as streams.
  */
@@ -16,24 +16,24 @@ export enum StreamType {
   LOCATION_UPDATE = 'location_update',
   LOCATION_STREAM = 'location_stream',
   VPS_COORDINATES = 'vps_coordinates',
-
+  
   // Audio streams
   TRANSCRIPTION = 'transcription',
   TRANSLATION = 'translation',
   VAD = 'VAD',
   AUDIO_CHUNK = 'audio_chunk',
-
+  
   // Phone streams
   PHONE_NOTIFICATION = 'phone_notification',
   NOTIFICATION_DISMISSED = 'notification_dismissed',
   CALENDAR_EVENT = 'calendar_event',
-
+  
   // System streams
   START_APP = 'start_app',
   STOP_APP = 'stop_app',
   OPEN_DASHBOARD = 'open_dashboard',
   CORE_STATUS_UPDATE = 'core_status_update',
-
+  
   // Video streams
   VIDEO = 'video',
   PHOTO_REQUEST = 'photo_request',
@@ -43,7 +43,7 @@ export enum StreamType {
   // Special subscription types
   ALL = 'all',
   WILDCARD = '*',
-
+  
   // New stream type
   MENTRAOS_SETTINGS_UPDATE_REQUEST = 'settings_update_request',
   CUSTOM_MESSAGE = 'custom_message',
@@ -62,13 +62,13 @@ export type ExtendedStreamType = StreamType | string;
 export enum StreamCategory {
   /** Data from hardware sensors */
   HARDWARE = 'hardware',
-
+  
   /** Audio processing results */
   AUDIO = 'audio',
-
+  
   /** Phone-related events */
   PHONE = 'phone',
-
+  
   /** System-level events */
   SYSTEM = 'system'
 }
@@ -85,12 +85,12 @@ export const STREAM_CATEGORIES: Record<StreamType, StreamCategory> = {
   [StreamType.LOCATION_UPDATE]: StreamCategory.HARDWARE,
   [StreamType.LOCATION_STREAM]: StreamCategory.HARDWARE,
   [StreamType.VPS_COORDINATES]: StreamCategory.HARDWARE,
-
+  
   [StreamType.TRANSCRIPTION]: StreamCategory.AUDIO,
   [StreamType.TRANSLATION]: StreamCategory.AUDIO,
   [StreamType.VAD]: StreamCategory.AUDIO,
   [StreamType.AUDIO_CHUNK]: StreamCategory.AUDIO,
-
+  
   [StreamType.PHONE_NOTIFICATION]: StreamCategory.PHONE,
   [StreamType.NOTIFICATION_DISMISSED]: StreamCategory.PHONE,
   [StreamType.CALENDAR_EVENT]: StreamCategory.PHONE,
@@ -98,15 +98,15 @@ export const STREAM_CATEGORIES: Record<StreamType, StreamCategory> = {
   [StreamType.STOP_APP]: StreamCategory.SYSTEM,
   [StreamType.OPEN_DASHBOARD]: StreamCategory.SYSTEM,
   [StreamType.CORE_STATUS_UPDATE]: StreamCategory.SYSTEM,
-
+  
   [StreamType.VIDEO]: StreamCategory.HARDWARE,
   [StreamType.PHOTO_REQUEST]: StreamCategory.HARDWARE,
   [StreamType.PHOTO_RESPONSE]: StreamCategory.HARDWARE,
   [StreamType.RTMP_STREAM_STATUS]: StreamCategory.HARDWARE,
-
+  
   [StreamType.ALL]: StreamCategory.SYSTEM,
   [StreamType.WILDCARD]: StreamCategory.SYSTEM,
-
+  
   [StreamType.MENTRAOS_SETTINGS_UPDATE_REQUEST]: StreamCategory.SYSTEM,
   [StreamType.CUSTOM_MESSAGE]: StreamCategory.SYSTEM,
   [StreamType.PHOTO_TAKEN]: StreamCategory.HARDWARE,
@@ -147,7 +147,7 @@ export function isValidLanguageCode(code: string): boolean {
 
 /**
  * Parse a subscription string to extract language information
- *
+ * 
  * @param subscription Subscription string (e.g., "transcription:en-US" or "translation:es-ES-to-en-US")
  * @returns Parsed language stream info or null if not a language-specific subscription
  */
@@ -157,14 +157,14 @@ export function parseLanguageStream(subscription: ExtendedStreamType): LanguageS
   }
 
   // console.log(`🎤 Parsing language stream: ${subscription}`);
-
+  
   // Handle transcription format (transcription:en-US)
   if (subscription.startsWith(`${StreamType.TRANSCRIPTION}:`)) {
     const [baseType, languageCode] = subscription.split(':');
 
       // console.log(`🎤 Parsing transcription stream: ${subscription}`);
       // console.log(`🎤 Language code: ${languageCode}`);
-
+      
     if (languageCode && isValidLanguageCode(languageCode)) {
       return {
         type: StreamType.TRANSCRIPTION,
@@ -174,7 +174,7 @@ export function parseLanguageStream(subscription: ExtendedStreamType): LanguageS
       };
     }
   }
-
+  
   // Handle translation format (translation:es-ES-to-en-US)
   if (subscription.startsWith(`${StreamType.TRANSLATION}:`)) {
     const [baseType, languagePair] = subscription.split(':');
@@ -183,9 +183,9 @@ export function parseLanguageStream(subscription: ExtendedStreamType): LanguageS
     // console.log(`🎤 Parsing translation stream: ${subscription}`);
     // console.log(`🎤 Source language: ${sourceLanguage}`);
     // console.log(`🎤 Target language: ${targetLanguage}`);
-
-    if (sourceLanguage && targetLanguage &&
-        isValidLanguageCode(sourceLanguage) &&
+    
+    if (sourceLanguage && targetLanguage && 
+        isValidLanguageCode(sourceLanguage) && 
         isValidLanguageCode(targetLanguage)) {
       return {
         type: StreamType.TRANSLATION,
@@ -196,14 +196,14 @@ export function parseLanguageStream(subscription: ExtendedStreamType): LanguageS
       };
     }
   }
-
+  
   return null;
 }
 
 /**
  * Create a transcription stream identifier for a specific language
  * Returns a type-safe stream type that can be used like a StreamType
- *
+ * 
  * @param language Language code (e.g., "en-US")
  * @returns Typed stream identifier
  */
@@ -217,7 +217,7 @@ export function createTranscriptionStream(language: string): ExtendedStreamType 
 /**
  * Create a translation stream identifier for a language pair
  * Returns a type-safe stream type that can be used like a StreamType
- *
+ * 
  * @param sourceLanguage Source language code (e.g., "es-ES")
  * @param targetLanguage Target language code (e.g., "en-US")
  * @returns Typed stream identifier
@@ -232,7 +232,7 @@ export function createTranslationStream(sourceLanguage: string, targetLanguage: 
 /**
  * Check if a subscription is a valid stream type
  * This handles both enum-based StreamType values and language-specific stream formats
- *
+ * 
  * @param subscription Subscription to validate
  * @returns True if valid, false otherwise
  */
@@ -241,7 +241,7 @@ export function isValidStreamType(subscription: ExtendedStreamType): boolean {
   if (Object.values(StreamType).includes(subscription as StreamType)) {
     return true;
   }
-
+  
   // Check if it's a valid language-specific stream
   const languageStream = parseLanguageStream(subscription);
   return languageStream !== null;
@@ -266,9 +266,9 @@ export function getStreamTypesByCategory(category: StreamCategory): StreamType[]
 }
 
 /**
- * Get the base StreamType for a subscription
+ * Get the base StreamType for a subscription 
  * Works with both standard StreamType values and language-specific formats
- *
+ * 
  * @param subscription Subscription string or StreamType
  * @returns The base StreamType enum value
  */
@@ -277,7 +277,7 @@ export function getBaseStreamType(subscription: ExtendedStreamType): StreamType 
   if (Object.values(StreamType).includes(subscription as StreamType)) {
     return subscription as StreamType;
   }
-
+  
   // Check if it's a language-specific stream
   const languageStream = parseLanguageStream(subscription);
   return languageStream?.type ?? null;

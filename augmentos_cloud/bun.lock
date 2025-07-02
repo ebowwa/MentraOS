@@ -8,7 +8,7 @@
         "@langchain/core": "^0.3.40",
         "@langchain/google-vertexai": "^0.1.8",
         "@logtail/pino": "^0.5.4",
-        "@mentra/sdk": "2.0.1",
+        "@mentra/sdk": "workspace:*",
         "@sentry/bun": "^9.1.0",
         "@sentry/cli": "^2.42.1",
         "@sentry/node": "^9.1.0",
@@ -49,17 +49,6 @@
         "@mentra/utils": "workspace:*",
       },
       "devDependencies": {
-        "typescript": "^5.0.0",
-      },
-    },
-    "packages/augmentos-react": {
-      "name": "@mentra/react",
-      "version": "0.1.1",
-      "devDependencies": {
-        "@types/jsrsasign": "^10.5.15",
-        "@types/react": "^19.1.6",
-        "jsrsasign": "^11.1.0",
-        "react": "^19.1.0",
         "typescript": "^5.0.0",
       },
     },
@@ -120,9 +109,20 @@
         "typescript": "^5.8.3",
       },
     },
+    "packages/react-sdk": {
+      "name": "@mentra/react",
+      "version": "2.0.2",
+      "devDependencies": {
+        "@types/jsrsasign": "^10.5.15",
+        "@types/react": "^19.1.6",
+        "jsrsasign": "^11.1.0",
+        "react": "^19.1.0",
+        "typescript": "^5.0.0",
+      },
+    },
     "packages/sdk": {
       "name": "@mentra/sdk",
-      "version": "2.0.1",
+      "version": "2.0.4",
       "dependencies": {
         "@logtail/pino": "^0.5.4",
         "axios": "^1.8.1",
@@ -372,7 +372,7 @@
 
     "@mentra/cloud": ["@mentra/cloud@workspace:packages/cloud"],
 
-    "@mentra/react": ["@mentra/react@workspace:packages/augmentos-react"],
+    "@mentra/react": ["@mentra/react@workspace:packages/react-sdk"],
 
     "@mentra/sdk": ["@mentra/sdk@workspace:packages/sdk"],
 
