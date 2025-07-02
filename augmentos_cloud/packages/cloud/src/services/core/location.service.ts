@@ -34,6 +34,15 @@ class LocationService {
   public async handleSubscriptionChange(user: UserI, userSession: UserSession): Promise<void> {
     const { userId } = userSession;
 
+    // --- TEMPORARY TEST HOOK ---
+    // This will be called every time a subscription is updated, allowing us
+    // to test the native implementation without relying on the broken arbitration logic.
+    logger.warn({ userId }, "##TEMP_TEST_HOOK##: Forcing SET_LOCATION_TIER command with 'high' accuracy for testing purposes.");
+    if (userSession?.websocket && userSession.websocket.readyState === WebSocket.OPEN) {
+      this._sendCommandToDevice(userSession.websocket, CloudToGlassesMessageType.SET_LOCATION_TIER, { tier: 'high' });
+    }
+    // --- END OF TEMPORARY TEST HOOK ---
+
     logger.info({ userId, logKey: '##LOCATION_ARBITRATION_START##', subscriptions: user.locationSubscriptions?.size }, 'Location service received user object for arbitration.');
     
     const previousEffectiveTier = user.effectiveLocationTier || 'reduced';
