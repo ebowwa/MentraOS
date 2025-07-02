@@ -976,7 +976,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
             }
 
             // For non-K900 devices, start the microphone to stream audio
-            if (!isK900Device && glassesMicrophoneManager != null) {
+            if (false && !isK900Device && glassesMicrophoneManager != null) {
                 Log.d(TAG, "Starting microphone streaming for non-K900 device");
                 glassesMicrophoneManager.startRecording();
             }
@@ -1571,7 +1571,9 @@ public class AsgClientService extends Service implements NetworkStateListener, B
 
             case "cs_vdo":
                 handleButtonPress(true);
-
+            case "hm_batv":
+                //looks something like... {"C":"hm_batv","B":{"vt":4351,"pt":94}}
+                Log.d(TAG, "got a hm_batv");
             default:
                 Log.d(TAG, "📦 Unknown payload: " + command);
                 break;
