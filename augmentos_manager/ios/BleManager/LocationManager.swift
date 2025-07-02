@@ -19,6 +19,7 @@ class LocationManager: NSObject, CLLocationManagerDelegate {
     // setup()
   }
   
+  // porter test
   public func setup() {
     locationManager.delegate = self
     locationManager.desiredAccuracy = kCLLocationAccuracyBest
