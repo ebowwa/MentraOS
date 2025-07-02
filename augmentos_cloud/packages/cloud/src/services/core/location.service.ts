@@ -179,18 +179,26 @@ class LocationService {
    */
   private _calculateEffectiveRateForUser(user: UserI): string {
     const defaultRate = 'reduced';
-    if (!user.locationSubscriptions || user.locationSubscriptions.size === 0) {
+    const subscriptions = user.locationSubscriptions;
+
+    // Add a debug log to see exactly what Mongoose is returning.
+    logger.debug({ userId: user.email, subscriptions: subscriptions }, "Calculating effective rate from user subscriptions.");
+
+    if (!subscriptions || subscriptions.size === 0) {
       return defaultRate;
     }
 
     let highestTierIndex = -1;
 
-    // The user document stores a map of: packageName -> { rate: '...' }
-    // We iterate through all the stored rates for this user.
-    for (const subDetails of user.locationSubscriptions.values()) {
-      const tierIndex = TIER_HIERARCHY.indexOf(subDetails.rate);
-      if (tierIndex > highestTierIndex) {
-        highestTierIndex = tierIndex;
+    // Mongoose Maps don't always behave like standard JS Maps.
+    // Iterating over the keys and using .get() is more robust.
+    for (const packageName of subscriptions.keys()) {
+      const subDetails = subscriptions.get(packageName);
+      if (subDetails && subDetails.rate) {
+        const tierIndex = TIER_HIERARCHY.indexOf(subDetails.rate);
+        if (tierIndex > highestTierIndex) {
+          highestTierIndex = tierIndex;
+        }
       }
     }
 
