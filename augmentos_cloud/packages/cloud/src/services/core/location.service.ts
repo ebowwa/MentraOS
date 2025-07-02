@@ -181,8 +181,7 @@ class LocationService {
     const defaultRate = 'reduced';
     const subscriptions = user.locationSubscriptions;
 
-    // Add a debug log to see exactly what Mongoose is returning.
-    logger.debug({ userId: user.email, subscriptions: subscriptions }, "Calculating effective rate from user subscriptions.");
+    logger.debug({ userId: user.email, subscriptions: subscriptions, type: typeof subscriptions }, "Calculating effective rate from user subscriptions.");
 
     if (!subscriptions || subscriptions.size === 0) {
       return defaultRate;
@@ -190,10 +189,9 @@ class LocationService {
 
     let highestTierIndex = -1;
 
-    // Mongoose Maps don't always behave like standard JS Maps.
-    // Iterating over the keys and using .get() is more robust.
-    for (const packageName of subscriptions.keys()) {
-      const subDetails = subscriptions.get(packageName);
+    // Mongoose Maps are returned as plain objects after retrieval, 
+    // but behave as Maps before saving. We must iterate robustly.
+    for (const subDetails of subscriptions.values()) {
       if (subDetails && subDetails.rate) {
         const tierIndex = TIER_HIERARCHY.indexOf(subDetails.rate);
         if (tierIndex > highestTierIndex) {
