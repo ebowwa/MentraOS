@@ -302,7 +302,7 @@ export default function Homepage() {
       />
 
       <ScrollView style={{marginRight: -theme.spacing.md, paddingRight: theme.spacing.md}} contentInsetAdjustmentBehavior="automatic">
-        {status.core_info.cloud_connection_status !== "CONNECTED" && <CloudConnection />}
+        <CloudConnection />
         
 
         <SensingDisabledWarning />

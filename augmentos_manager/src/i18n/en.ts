@@ -17,6 +17,12 @@ const en = {
     retryConnection: "Retry Connection",
     skipUpdate: "Skip Update",
   },
+  connection: {
+    connected: "Connected",
+    connecting: "Connecting",
+    reconnecting: "Reconnecting",
+    disconnected: "Disconnected",
+  },
   pairing: {
     selectModel: "Select Model",
     pairingGuide: "Pairing Guide",
