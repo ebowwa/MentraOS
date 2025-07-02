@@ -93,9 +93,6 @@ public class SmartGlassesManager extends Service {
     private final long lastTapped = 0;
     private final long doublePressTimeConst = 420;
     private final long doubleTapTimeConst = 600;
-
-    // if we're updating the screen, don't send updates to the glasses:
-    public boolean updatingScreen = false;
     
     // Event handler to notify outer service of state changes
     public interface SmartGlassesEventHandler {
@@ -613,6 +610,12 @@ public class SmartGlassesManager extends Service {
         }
     }
 
+    public void setUpdatingScreen(boolean updatingScreen) {
+        if (smartGlassesRepresentative != null) {
+            smartGlassesRepresentative.setUpdatingScreen(updatingScreen);
+        }
+    }
+
     public void updateGlassesDepthHeight(int depth, int height) {
         if (smartGlassesRepresentative != null) {
             smartGlassesRepresentative.updateGlassesDepthHeight(depth, height);
@@ -620,56 +623,48 @@ public class SmartGlassesManager extends Service {
     }
 
     public void sendReferenceCard(String title, String body) {
-        if (updatingScreen) return;
         if (smartGlassesRepresentative != null && smartGlassesRepresentative.smartGlassesCommunicator != null) {
             smartGlassesRepresentative.smartGlassesCommunicator.displayReferenceCardSimple(title, body);
         }
     }
     
     public void sendTextWall(String text) {
-        if (updatingScreen) return;
         if (smartGlassesRepresentative != null && smartGlassesRepresentative.smartGlassesCommunicator != null) {
             smartGlassesRepresentative.smartGlassesCommunicator.displayTextWall(text);
         }
     }
 
     public void sendDoubleTextWall(String textTop, String textBottom) {
-        if (updatingScreen) return;
         if (smartGlassesRepresentative != null && smartGlassesRepresentative.smartGlassesCommunicator != null) {
             smartGlassesRepresentative.smartGlassesCommunicator.displayDoubleTextWall(textTop, textBottom);
         }
     }
 
     public void sendRowsCard(String[] rowStrings) {
-        if (updatingScreen) return;
         if (smartGlassesRepresentative != null && smartGlassesRepresentative.smartGlassesCommunicator != null) {
             smartGlassesRepresentative.smartGlassesCommunicator.displayRowsCard(rowStrings);
         }
     }
 
     public void sendBulletPointList(String title, String[] bullets) {
-        if (updatingScreen) return;
         if (smartGlassesRepresentative != null && smartGlassesRepresentative.smartGlassesCommunicator != null) {
             smartGlassesRepresentative.smartGlassesCommunicator.displayBulletList(title, bullets);
         }
     }
 
     public void sendReferenceCard(String title, String body, String imgUrl) {
-        if (updatingScreen) return;
         if (smartGlassesRepresentative != null && smartGlassesRepresentative.smartGlassesCommunicator != null) {
             smartGlassesRepresentative.smartGlassesCommunicator.displayReferenceCardImage(title, body, imgUrl);
         }
     }
 
     public void sendBitmap(Bitmap bitmap) {
-        if (updatingScreen) return;
         if (smartGlassesRepresentative != null && smartGlassesRepresentative.smartGlassesCommunicator != null) {
             smartGlassesRepresentative.smartGlassesCommunicator.displayBitmap(bitmap);
         }
     }
 
     public void startScrollingText(String title) {
-        if (updatingScreen) return;
         if (smartGlassesRepresentative != null && smartGlassesRepresentative.smartGlassesCommunicator != null) {
             smartGlassesRepresentative.smartGlassesCommunicator.startScrollingTextViewMode(title);
             smartGlassesRepresentative.smartGlassesCommunicator.scrollingTextViewFinalText(title);
@@ -677,21 +672,18 @@ public class SmartGlassesManager extends Service {
     }
 
     public void pushScrollingText(String text) {
-        if (updatingScreen) return;
         if (smartGlassesRepresentative != null && smartGlassesRepresentative.smartGlassesCommunicator != null) {
             smartGlassesRepresentative.smartGlassesCommunicator.scrollingTextViewFinalText(text);
         }
     }
 
     public void stopScrollingText() {
-        if (updatingScreen) return;
         if (smartGlassesRepresentative != null && smartGlassesRepresentative.smartGlassesCommunicator != null) {
             smartGlassesRepresentative.smartGlassesCommunicator.stopScrollingTextViewMode();
         }
     }
 
     public void sendTextLine(String text) {
-        if (updatingScreen) return;
         if (smartGlassesRepresentative != null && smartGlassesRepresentative.smartGlassesCommunicator != null) {
             smartGlassesRepresentative.smartGlassesCommunicator.displayTextLine(text);
         }
