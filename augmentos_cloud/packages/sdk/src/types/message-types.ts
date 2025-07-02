@@ -77,6 +77,10 @@ export enum CloudToGlassesMessageType {
   DASHBOARD_MODE_CHANGE = 'dashboard_mode_change',
   DASHBOARD_ALWAYS_ON_CHANGE = 'dashboard_always_on_change',
 
+  // Location Service
+  SET_LOCATION_TIER = 'set_location_tier',
+  REQUEST_SINGLE_LOCATION = 'request_single_location',
+
   WEBSOCKET_ERROR = 'websocket_error'
 }
 

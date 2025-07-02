@@ -7,6 +7,8 @@ import { logger } from "../services/logging/pino-logger";
 interface Location {
   lat: number;
   lng: number;
+  accuracy?: number;
+  timestamp?: Date;
 }
 
 interface InstalledApp {
@@ -33,6 +35,8 @@ export interface UserI extends Document {
     metricSystemEnabled: boolean;
   };
   location?: Location;
+  locationSubscriptions?: Map<string, { rate: string }>;
+  effectiveLocationTier?: string;
   installedApps?: Array<{
     packageName: string;
     installedDate: Date;
@@ -172,8 +176,28 @@ const UserSchema = new Schema<UserI>({
   location: {
     type: {
       lat: { type: Number, required: true },
-      lng: { type: Number, required: true }
+      lng: { type: Number, required: true },
+      accuracy: { type: Number, required: false },
+      timestamp: { type: Date, required: false }
     }
+  },
+
+  locationSubscriptions: {
+    type: Map,
+    of: new Schema({
+      rate: {
+        type: String,
+        required: true,
+        enum: ['reduced', 'threeKilometers', 'kilometer', 'hundredMeters', 'tenMeters', 'high', 'realtime', 'standard'],
+      }
+    }, { _id: false }),
+    default: new Map()
+  },
+
+  effectiveLocationTier: {
+    type: String,
+    default: 'reduced',
+    enum: ['reduced', 'threeKilometers', 'kilometer', 'hundredMeters', 'tenMeters', 'high', 'realtime', 'standard']
   },
 
   /**
