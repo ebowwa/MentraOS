@@ -231,7 +231,7 @@ export class AppWebSocketService {
 
         case AppToCloudMessageType.LOCATION_POLL_REQUEST:
           try {
-            await locationService.handlePollRequest(userSession, message.accuracy, message.correlationId);
+            await locationService.handlePollRequest(userSession, message.accuracy, message.correlationId, message.packageName);
           } catch (e) {
             this.logger.error({ e, packageName: message.packageName }, "Error handling location poll request");
             this.sendError(appWebsocket, AppErrorCode.INTERNAL_ERROR, (e as Error).message || "Failed to handle location poll.");

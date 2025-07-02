@@ -25,6 +25,7 @@ const TIER_DEFINITIONS: Record<string, { maxCacheAge: number }> = {
 
 
 class LocationService {
+  private pendingPolls = new Map<string, string>(); // correlationId -> packageName
 
   /**
    * Main entry point for the streaming arbitration logic.
@@ -67,8 +68,12 @@ class LocationService {
    * Main entry point for the intelligent polling logic.
    * Called when a TPA requests a single location fix.
    */
-  public async handlePollRequest(userSession: UserSession, accuracy: string, correlationId: string): Promise<void> {
+  public async handlePollRequest(userSession: UserSession, accuracy: string, correlationId: string, packageName: string): Promise<void> {
     const { userId } = userSession;
+    
+    // Track which app made this poll request
+    this.pendingPolls.set(correlationId, packageName);
+
     const user = await User.findOne({ email: userId });
     if (!user) {
       logger.warn({ userId }, "User not found during location poll request.");
@@ -83,7 +88,7 @@ class LocationService {
         // If the stream is running, we can use the very latest location data.
         // We assume the handleDeviceLocationUpdate method is keeping the user.location fresh.
         logger.info({ userId, accuracy }, "Fulfilling poll request from active high-accuracy stream.");
-        this._sendPollResponseToTpa(userSession, user.location, correlationId);
+        this._sendPollResponseToTpa(userSession, user.location, correlationId, packageName);
         return;
     }
 
@@ -93,7 +98,7 @@ class LocationService {
         const cacheAge = Date.now() - new Date(user.location.timestamp).getTime();
         if (cacheAge <= maxCacheAge) {
             logger.info({ userId, accuracy, cacheAge, maxCacheAge }, "Fulfilling poll request from cache.");
-            this._sendPollResponseToTpa(userSession, user.location, correlationId);
+            this._sendPollResponseToTpa(userSession, user.location, correlationId, packageName);
             return;
         }
     }
@@ -113,29 +118,40 @@ class LocationService {
    */
   public async handleDeviceLocationUpdate(userSession: UserSession, locationUpdate: LocationUpdate): Promise<void> {
     const { userId } = userSession;
-    const user = await User.findOne({ email: userId });
-    if (!user) {
-      logger.warn({ userId }, "User not found during device location update.");
-      return;
-    }
-
-    // Update the user's cached location
-    user.location = {
-      lat: locationUpdate.lat,
-      lng: locationUpdate.lng,
-      accuracy: locationUpdate.accuracy,
-      timestamp: new Date()
-    };
-    await user.save();
 
     // If the update has a correlationId, it's a response to a poll request.
-    if (locationUpdate.correlationId) {
-      this._sendPollResponseToTpa(userSession, user.location, locationUpdate.correlationId);
+    const targetApp = locationUpdate.correlationId ? this.pendingPolls.get(locationUpdate.correlationId) : undefined;
+
+    if (targetApp && locationUpdate.correlationId) {
+      // This is a targeted response to a poll.
+      const locationWithTimestamp = {
+        ...locationUpdate,
+        timestamp: new Date()
+      };
+      this._sendPollResponseToTpa(userSession, locationWithTimestamp, locationUpdate.correlationId, targetApp);
+      this.pendingPolls.delete(locationUpdate.correlationId);
     } else {
-      // Otherwise, it's a regular update for a continuous stream.
-      // We can use the existing relay mechanism.
+      // This is a broadcast update for a continuous stream.
       sessionService.relayMessageToApps(userSession, locationUpdate);
     }
+
+    // Always update the user's last known location cache in the background.
+    (async () => {
+      try {
+        const user = await User.findOne({ email: userId });
+        if (user) {
+          user.location = {
+            lat: locationUpdate.lat,
+            lng: locationUpdate.lng,
+            accuracy: locationUpdate.accuracy,
+            timestamp: new Date()
+          };
+          await user.save();
+        }
+      } catch (error) {
+        logger.error({ userId, error }, "Failed to save user location cache after device update.");
+      }
+    })();
   }
 
   /**
@@ -184,7 +200,7 @@ class LocationService {
   /**
    * Relays a location update back to the requesting TPA.
    */
-  private _sendPollResponseToTpa(userSession: UserSession, location: any, correlationId: string): void {
+  private _sendPollResponseToTpa(userSession: UserSession, location: any, correlationId: string, targetApp: string): void {
     const locationUpdate: LocationUpdate = {
       type: StreamType.LOCATION_UPDATE,
       lat: location.lat,
@@ -194,24 +210,19 @@ class LocationService {
       correlationId: correlationId
     };
 
-    // We can use the existing relayMessageToApps functionality, but we need to specify the stream type.
-    // The subscription service's getSubscribedApps won't work here since this isn't a continuous stream.
-    // Instead, we'll manually craft a DataStream message and send it.
-    // A better long-term solution would be to know which app sent the poll request.
-    const subscribedApps = subscriptionService.getSubscribedApps(userSession, StreamType.LOCATION_UPDATE);
-    for (const packageName of subscribedApps) {
-        const appWs = userSession.appWebsockets.get(packageName);
-        if (appWs && appWs.readyState === WebSocket.OPEN) {
-            const dataStream: DataStream = {
-                type: CloudToAppMessageType.DATA_STREAM,
-                sessionId: `${userSession.sessionId}-${packageName}`,
-                streamType: StreamType.LOCATION_UPDATE,
-                data: locationUpdate,
-                timestamp: new Date()
-            };
-            appWs.send(JSON.stringify(dataStream));
-            logger.info({ userId: userSession.userId, packageName, correlationId }, "Sent location poll response to TPA.");
-        }
+    const appWs = userSession.appWebsockets.get(targetApp);
+    if (appWs && appWs.readyState === WebSocket.OPEN) {
+        const dataStream: DataStream = {
+            type: CloudToAppMessageType.DATA_STREAM,
+            sessionId: `${userSession.sessionId}-${targetApp}`,
+            streamType: StreamType.LOCATION_UPDATE,
+            data: locationUpdate,
+            timestamp: new Date()
+        };
+        appWs.send(JSON.stringify(dataStream));
+        logger.info({ userId: userSession.userId, packageName: targetApp, correlationId }, "Sent location poll response to TPA.");
+    } else {
+        logger.warn({ userId: userSession.userId, packageName: targetApp }, "Could not send poll response, app websocket not available.");
     }
   }
 
