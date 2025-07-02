@@ -46,13 +46,17 @@ class LocationService {
 
       // Persist the new effective rate to the database
       user.effectiveLocationTier = newEffectiveTier;
-      await user.save();
-
-      // Send the command to the physical device
-      if (userSession?.websocket && userSession.websocket.readyState === WebSocket.OPEN) {
-        this._sendCommandToDevice(userSession.websocket, CloudToGlassesMessageType.SET_LOCATION_TIER, { tier: newEffectiveTier });
-      } else {
-        logger.warn({ userId }, "User session or WebSocket not available to send location tier command.");
+      
+      try {
+        await user.save();
+        // Send the command to the physical device only after successful save
+        if (userSession?.websocket && userSession.websocket.readyState === WebSocket.OPEN) {
+          this._sendCommandToDevice(userSession.websocket, CloudToGlassesMessageType.SET_LOCATION_TIER, { tier: newEffectiveTier });
+        } else {
+          logger.warn({ userId }, "User session or WebSocket not available to send location tier command.");
+        }
+      } catch (error) {
+        logger.error({ userId, error }, "Failed to save new effective location tier.");
       }
     } else {
       logger.info({ userId, tier: newEffectiveTier }, "Location subscriptions changed, but effective tier remains the same. No command sent.");
