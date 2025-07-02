@@ -181,6 +181,18 @@ class LocationService {
     const defaultRate = 'reduced';
     const subscriptions = user.locationSubscriptions;
 
+    // --- TEMPORARY DIAGNOSTIC LOG ---
+    console.log('##DEBUG_SUBSCRIPTIONS_STRUCTURE##', {
+        type: typeof subscriptions,
+        constructor: subscriptions ? subscriptions.constructor.name : 'null',
+        isMap: subscriptions instanceof Map,
+        hasGet: subscriptions ? typeof subscriptions.get === 'function' : 'N/A',
+        hasValues: subscriptions ? typeof subscriptions.values === 'function' : 'N/A',
+        keys: subscriptions ? Object.keys(subscriptions) : 'null',
+        content: JSON.stringify(subscriptions, null, 2)
+    });
+    // --- END OF TEMPORARY LOG ---
+
     logger.debug({ userId: user.email, subscriptions: subscriptions, type: typeof subscriptions }, "Calculating effective rate from user subscriptions.");
 
     if (!subscriptions || subscriptions.size === 0) {
