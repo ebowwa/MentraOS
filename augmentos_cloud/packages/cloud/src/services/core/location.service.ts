@@ -181,26 +181,28 @@ class LocationService {
     const defaultRate = 'reduced';
     const subscriptions = user.locationSubscriptions;
 
+    // --- NEW, MORE DETAILED DIAGNOSTIC LOG ---
+    if (subscriptions) {
+        console.log('##DEBUGINFO_START##');
+        console.log('##DEBUGINFO_TYPE##', typeof subscriptions);
+        console.log('##DEBUGINFO_IS_MAP##', subscriptions instanceof Map);
+        console.log('##DEBUGINFO_CONSTRUCTOR##', subscriptions.constructor.name);
+        console.log('##DEBUGINFO_RAW_INSPECT##', require('util').inspect(subscriptions, { showHidden: true, depth: 5 }));
+        console.log('##DEBUGINFO_END##');
+    }
+    // --- END OF NEW LOG ---
+
     if (!subscriptions || subscriptions.size === 0) {
       return defaultRate;
     }
 
-    // Convert the Mongoose Map to a plain object to ensure robust iteration.
-    const subsObject = Object.fromEntries(subscriptions);
-
-    logger.debug({ userId: user.email, subscriptions: subsObject }, "Calculating effective rate from user subscriptions.");
-
+    // Previous attempt at iteration
     let highestTierIndex = -1;
-
-    // Iterate over the plain object.
-    for (const packageName in subsObject) {
-      if (Object.prototype.hasOwnProperty.call(subsObject, packageName)) {
-        const subDetails = subsObject[packageName];
-        if (subDetails && subDetails.rate) {
-          const tierIndex = TIER_HIERARCHY.indexOf(subDetails.rate);
-          if (tierIndex > highestTierIndex) {
-            highestTierIndex = tierIndex;
-          }
+    for (const subDetails of subscriptions.values()) {
+      if (subDetails && subDetails.rate) {
+        const tierIndex = TIER_HIERARCHY.indexOf(subDetails.rate);
+        if (tierIndex > highestTierIndex) {
+          highestTierIndex = tierIndex;
         }
       }
     }
