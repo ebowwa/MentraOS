@@ -10,14 +10,24 @@ import {ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {SETTINGS_KEYS} from "@/consts"
 import {loadSetting} from "@/utils/SettingsHelper"
+import {MaterialCommunityIcons} from "@expo/vector-icons"
+import showAlert from "@/utils/AlertUtils"
+import {translate} from "@/i18n"
+import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 
 export default function NonProdWarning() {
-  const {themed} = useAppTheme()
+  const {theme, themed} = useAppTheme()
   const [nonProdBackend, setNonProdBackend] = useState(false)
+  const {push} = useNavigationHistory()
 
   const checkNonProdBackend = async () => {
     const url = await loadSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL, null)
-    setNonProdBackend(url && !url.includes("prod.augmentos.cloud") && !url.includes("global.augmentos.cloud") && !url.includes("api.mentra.glass"))
+    setNonProdBackend(
+      url &&
+        !url.includes("prod.augmentos.cloud") &&
+        !url.includes("global.augmentos.cloud") &&
+        !url.includes("api.mentra.glass"),
+    )
   }
 
   useFocusEffect(
@@ -31,22 +41,44 @@ export default function NonProdWarning() {
     return null
   }
 
+  // return (
+  //   <View style={[styles.sensingWarningContainer, {backgroundColor: "#FFF3E0", borderColor: "#FFB74D"}]}>
+  //     <View style={styles.warningContent}>
+  //       <Icon name="alert" size={22} color="#FF9800" />
+  //       <Text style={themed($warningText)} tx="warning:nonProdBackend" />
+  //     </View>
+  //     <TouchableOpacity
+  //       style={styles.settingsButton}
+  //       onPress={() => {
+  //         router.push("/settings/developer")
+  //       }}>
+  //       <Text style={styles.settingsButtonTextBlue}>Settings</Text>
+  //     </TouchableOpacity>
+  //   </View>
+  // )
+
+  const nonProdWarning = () => {
+    showAlert(translate("warning:nonProdBackend"), "", [
+      {text: translate("common:ok"), onPress: () => {}},
+      {
+        text: translate("settings:developerSettings"),
+        onPress: () => {
+          push("/settings/developer")
+        },
+      },
+    ])
+  }
+
   return (
-    <View style={[styles.sensingWarningContainer, {backgroundColor: "#FFF3E0", borderColor: "#FFB74D"}]}>
-      <View style={styles.warningContent}>
-        <Icon name="alert" size={22} color="#FF9800" />
-        <Text style={themed($warningText)} tx="warning:nonProdBackend" />
-      </View>
-      <TouchableOpacity
-        style={styles.settingsButton}
-        onPress={() => {
-          router.push("/settings/developer")
-        }}>
-        <Text style={styles.settingsButtonTextBlue}>Settings</Text>
-      </TouchableOpacity>
-    </View>
+    <TouchableOpacity style={themed($settingsButton)} onPress={nonProdWarning}>
+      <MaterialCommunityIcons name="alert" size={theme.spacing.lg} color={theme.colors.error} />
+    </TouchableOpacity>
   )
 }
+
+const $settingsButton: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  padding: spacing.sm,
+})
 
 const $warningText: ThemedStyle<TextStyle> = ({colors}) => ({
   marginLeft: 10,
@@ -68,9 +100,6 @@ const styles = StyleSheet.create({
     marginTop: 16, // Added spacing above the warning
     marginHorizontal: 0,
     width: "100%",
-  },
-  settingsButton: {
-    padding: 5,
   },
 
   settingsButtonTextBlue: {

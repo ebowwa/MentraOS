@@ -219,12 +219,7 @@ export default function SelectGlassesBluetoothScreen() {
       // give some time to show the loader (otherwise it's a bit jarring)
       coreCommunicator.sendConnectWearable(glassesModelName, deviceName)
     }, 2000)
-    router.push({
-      pathname: "/pairing/guide",
-      params: {
-        glassesModelName: glassesModelName,
-      },
-    })
+    push("/pairing/guide", {glassesModelName: glassesModelName})
   }
 
   // Removed hardcoded theme2 object - using semantic theme colors instead
@@ -232,17 +227,14 @@ export default function SelectGlassesBluetoothScreen() {
   const glassesImage = useMemo(() => getGlassesImage(glassesModelName), [glassesModelName])
 
   return (
-    <Screen
-      preset="fixed"
-      style={{paddingHorizontal: theme.spacing.md}}
-      safeAreaEdges={["bottom"]}>
-      <Header 
-        leftIcon="caretLeft" 
+    <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}} safeAreaEdges={["bottom"]}>
+      <Header
+        leftIcon="caretLeft"
         onLeftPress={handleForgetGlasses}
         RightActionComponent={
           <PillButton
             text="Help"
-            variant="secondary"
+            variant="icon"
             onPress={() => setShowTroubleshootingModal(true)}
             buttonStyle={{marginRight: theme.spacing.md}}
           />
@@ -281,7 +273,7 @@ export default function SelectGlassesBluetoothScreen() {
           </>
         )}
       </ScrollView>
-      
+
       <GlassesTroubleshootingModal
         isVisible={showTroubleshootingModal}
         onClose={() => setShowTroubleshootingModal(false)}

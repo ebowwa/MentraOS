@@ -45,7 +45,7 @@ export default function AppSettings() {
   const backendServerComms = BackendServerComms.getInstance()
   const [isUninstalling, setIsUninstalling] = useState(false)
   const {theme, themed} = useAppTheme()
-  const {goBack, push, replace} = useNavigationHistory()
+  const {goBack, push, replace, navigate} = useNavigationHistory()
   const insets = useSafeAreaInsets()
   const hasLoadedData = useRef(false)
 
@@ -514,23 +514,34 @@ export default function AppSettings() {
         <Header
           title=""
           leftIcon="caretLeft"
-          onLeftPress={() => replace("/(tabs)/home")}
-          RightActionComponent={
-            serverAppInfo?.webviewURL ? (
-              <TouchableOpacity
-                style={{marginRight: 8}}
-                onPress={() => {
-                  replace("/app/webview", {
-                    webviewURL: serverAppInfo.webviewURL,
-                    appName: appName as string,
-                    packageName: packageName as string,
-                    fromSettings: "true",
-                  })
-                }}>
-                <FontAwesome name="globe" size={22} color={theme.colors.text} />
-              </TouchableOpacity>
-            ) : undefined
-          }
+          onLeftPress={() => {
+            if (serverAppInfo?.webviewURL) {
+              navigate("/app/webview", {
+                webviewURL: serverAppInfo.webviewURL,
+                appName: appName as string,
+                packageName: packageName as string,
+                fromSettings: "true",
+              })
+              return
+            }
+            goBack()
+          }}
+          // RightActionComponent={
+          //   serverAppInfo?.webviewURL ? (
+          //     <TouchableOpacity
+          //       style={{marginRight: 8}}
+          //       onPress={() => {
+          // navigate("/app/webview", {
+          //   webviewURL: serverAppInfo.webviewURL,
+          //   appName: appName as string,
+          //   packageName: packageName as string,
+          //   fromSettings: "true",
+          // })
+          //       }}>
+          //       <FontAwesome name="globe" size={22} color={theme.colors.text} />
+          //     </TouchableOpacity>
+          //   ) : undefined
+          // }
         />
         <Animated.View
           style={{
@@ -577,7 +588,7 @@ export default function AppSettings() {
                 <PillButton
                   text={appInfo.is_running ? "Stop" : "Start"}
                   onPress={handleStartStopApp}
-                  variant="secondary"
+                  variant="icon"
                   buttonStyle={{paddingHorizontal: theme.spacing.lg, minWidth: 80}}
                 />
               </View>

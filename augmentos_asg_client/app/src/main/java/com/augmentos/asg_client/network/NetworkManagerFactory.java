@@ -25,7 +25,8 @@ public class NetworkManagerFactory {
         DebugNotificationManager notificationManager = new DebugNotificationManager(context);
         
         // First check if this is a K900 device
-        if (isK900Device(context)) {
+        Log.d(TAG, "[FORCING k900 DEVICE TYPE FOR TESTING]");
+        if (true || isK900Device(context)) {
             Log.i(TAG, "K900 device detected, using K900NetworkManager");
             notificationManager.showDeviceTypeNotification(true);
             return new K900NetworkManager(context);
@@ -84,13 +85,15 @@ public class NetworkManagerFactory {
      * @return true if the app has system permissions, false otherwise
      */
     private static boolean hasSystemPermissions(Context context) {
-        try {
-            // Check if the app is installed in a system location
-            String appPath = context.getPackageCodePath();
-            return appPath.startsWith("/system/") || appPath.contains("/priv-app/");
-        } catch (Exception e) {
-            Log.e(TAG, "Error checking for system permissions", e);
-            return false;
-        }
+        return false;
+//
+//        try {
+//            // Check if the app is installed in a system location
+//            String appPath = context.getPackageCodePath();
+//            return appPath.startsWith("/system/") || appPath.contains("/priv-app/");
+//        } catch (Exception e) {
+//            Log.e(TAG, "Error checking for system permissions", e);
+//            return false;
+//        }
     }
 }

@@ -17,9 +17,16 @@ const en = {
     retryConnection: "Retry Connection",
     skipUpdate: "Skip Update",
   },
+  connection: {
+    connected: "Connected",
+    connecting: "Connecting",
+    reconnecting: "Reconnecting",
+    disconnected: "Disconnected",
+  },
   pairing: {
     selectModel: "Select Model",
     pairingGuide: "Pairing Guide",
+    pairing: "Pairing",
     permissionRequired: "Permission Required",
     bluetoothPermissionRequiredTitle: "Permission Required",
     bluetoothPermissionRequiredMessage: "Bluetooth permissions are required to connect to glasses",

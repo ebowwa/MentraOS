@@ -718,8 +718,12 @@ enum GlassesError: Error {
       case .CASE_CHARGE_INFO:
         print("CASE CHARGE INFO")
         guard data.count >= 3 else { break }
-        caseBatteryLevel = Int(data[2])
-        print("Case battery level: \(caseBatteryLevel)%")
+        if Int(data[2]) != -1 {
+          caseBatteryLevel = Int(data[2])
+          print("Case battery level: \(caseBatteryLevel)%")
+        } else {
+          print("Case battery level was -1")
+        }
       case .DOUBLE_TAP:
         print("DOUBLE TAP / display turned off")
 //        Task {

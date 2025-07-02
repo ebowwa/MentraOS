@@ -125,9 +125,12 @@ const palette = {
 
   // Button colors for pill-shaped buttons
   buttonPillPrimary: "#B0B9FF", // Light blue for primary pill buttons
-  buttonPillSecondary: "#474794", // Dark blue for secondary pill buttons
+  buttonPillSecondary: "transparent", // Transparent background for secondary pill buttons
+  buttonPillSecondaryBorder: "#747CAB", // Light purple border for secondary pill buttons
+  buttonPillIcon: "#474794", // Dark blue for icon pill buttons (was secondary)
   buttonPillPrimaryText: "#141434", // Dark text for light primary buttons
-  buttonPillSecondaryText: "#FFFFFF", // Light text for dark secondary buttons
+  buttonPillSecondaryText: "#F9F8FE", // Light text for secondary buttons
+  buttonPillIconText: "#FFFFFF", // Light text for icon buttons
 } as const
 
 export const colors = {
@@ -240,8 +243,11 @@ export const colors = {
   // Pill button colors
   buttonPillPrimary: palette.buttonPillPrimary,
   buttonPillSecondary: palette.buttonPillSecondary,
+  buttonPillSecondaryBorder: palette.buttonPillSecondaryBorder,
+  buttonPillIcon: palette.buttonPillIcon,
   buttonPillPrimaryText: palette.buttonPillPrimaryText,
   buttonPillSecondaryText: palette.buttonPillSecondaryText,
+  buttonPillIconText: palette.buttonPillIconText,
 
   // Checkmark color
   checkmark: "#7B79FF", // Brighter purple-blue for checkmarks in dark theme
@@ -263,4 +269,11 @@ export const colors = {
   // Foreground tag colors
   foregroundTagBackground: "#0F1861", // Dark blue background
   foregroundTagText: "#ABAAFF", // Light purple text
+  
+  // Status icons on home screen
+  statusIcon: "#D5D8F5", // Light purple-gray for battery, brightness, bluetooth, wifi icons
+  statusText: "#D5D8F5", // Same as statusIcon to keep dark theme unchanged
+  
+  // Search icon color
+  searchIcon: palette.neutral800, // Keep using text color in dark theme
 } as const

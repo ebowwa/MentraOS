@@ -87,7 +87,7 @@ function renderLayout(layout: any, containerStyle?: any, textStyle?: TextStyle) 
 
 const $glassesScreen: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   width: "100%",
-  minHeight: 200, // Default height for normal mode
+  minHeight: 140, // Default height for normal mode
   backgroundColor: colors.palette.neutral200,
   borderRadius: 10,
   padding: 15,

@@ -251,7 +251,7 @@ export default function DeveloperSettingsScreen() {
               />
               <PillButton
                 text="Reset"
-                variant="secondary"
+                variant="icon"
                 onPress={handleResetUrl}
                 disabled={isSavingUrl}
                 buttonStyle={styles.resetButton}
@@ -260,19 +260,19 @@ export default function DeveloperSettingsScreen() {
             <View style={styles.buttonColumn}>
               <PillButton
                 text="Production"
-                variant="secondary"
+                variant="icon"
                 onPress={() => setCustomUrlInput("https://prod.augmentos.cloud:443")}
                 buttonStyle={styles.button}
               />
               <PillButton
                 text="Debug"
-                variant="secondary"
+                variant="icon"
                 onPress={() => setCustomUrlInput("https://debug.augmentos.cloud:443")}
                 buttonStyle={styles.button}
               />
               <PillButton
                 text="Global"
-                variant="secondary"
+                variant="icon"
                 onPress={() => setCustomUrlInput("https://global.augmentos.cloud:443")}
                 buttonStyle={styles.button}
               />
@@ -280,13 +280,13 @@ export default function DeveloperSettingsScreen() {
             <View style={styles.buttonColumnCentered}>
               <PillButton
                 text="Dev Nicolo"
-                variant="secondary"
+                variant="icon"
                 onPress={() => setCustomUrlInput("https://dev.augmentos.org:443")}
                 buttonStyle={styles.button}
               />
               <PillButton
                 text="Dev Cloud"
-                variant="secondary"
+                variant="icon"
                 onPress={() => setCustomUrlInput("https://dev.augmentos.cloud:443")}
                 buttonStyle={styles.button}
               />

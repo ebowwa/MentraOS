@@ -610,6 +610,12 @@ public class SmartGlassesManager extends Service {
         }
     }
 
+    public void setUpdatingScreen(boolean updatingScreen) {
+        if (smartGlassesRepresentative != null) {
+            smartGlassesRepresentative.setUpdatingScreen(updatingScreen);
+        }
+    }
+
     public void updateGlassesDepthHeight(int depth, int height) {
         if (smartGlassesRepresentative != null) {
             smartGlassesRepresentative.updateGlassesDepthHeight(depth, height);

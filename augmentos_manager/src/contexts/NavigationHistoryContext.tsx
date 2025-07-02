@@ -13,6 +13,7 @@ export type NavObject = {
   goBack: NavigationHistoryGoBack
   setPendingRoute: (route: string) => void
   getPendingRoute: () => string | null
+  navigate: (path: string, params?: any) => void
 }
 
 interface NavigationHistoryContextType {
@@ -23,6 +24,7 @@ interface NavigationHistoryContextType {
   replace: (path: string, params?: any) => Promise<void>
   setPendingRoute: (route: string | null) => void
   getPendingRoute: () => string | null
+  navigate: (path: string, params?: any) => void
 }
 
 const NavigationHistoryContext = createContext<NavigationHistoryContextType | undefined>(undefined)
@@ -123,9 +125,13 @@ export function NavigationHistoryProvider({children}: {children: React.ReactNode
     return pendingRoute.current
   }
 
+  const navigate = (path: string, params?: any) => {
+    router.navigate({pathname: path as any, params: params as any})
+  }
+
   return (
     <NavigationHistoryContext.Provider
-      value={{goBack, getHistory, clearHistory, push, replace, setPendingRoute, getPendingRoute}}>
+      value={{goBack, getHistory, clearHistory, push, replace, setPendingRoute, getPendingRoute, navigate}}>
       {children}
     </NavigationHistoryContext.Provider>
   )

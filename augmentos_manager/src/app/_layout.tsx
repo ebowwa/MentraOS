@@ -91,8 +91,9 @@ export default function Root() {
               screenOptions={{
                 headerShown: false,
                 gestureEnabled: true,
-                gestureDirection: 'horizontal',
-                fullScreenGestureEnabled: true,
+                gestureDirection: "horizontal",
+                // gestureResponseDistance: 100,
+                // fullScreenGestureEnabled: true,
                 animation: "none",
               }}
             />
