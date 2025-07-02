@@ -305,13 +305,20 @@ export class AppWebSocketService {
       await locationService.handleSubscriptionChange(userSession);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
+      // Detailed logging for debugging the app cycling issue
       userSession.logger.error({
         service: SERVICE_NAME,
-        error: errorMessage,
+        error: {
+          message: errorMessage,
+          name: (error as Error).name,
+          stack: (error as Error).stack,
+          details: error
+        },
         packageName,
         subscriptions: message.subscriptions,
-        userId: userSession.userId
-      }, `Failed to update subscriptions for App ${packageName}: ${errorMessage}`);
+        userId: userSession.userId,
+        logKey: '##SUBSCRIPTION_ERROR##' // Add a unique key for easy searching
+      }, `##SUBSCRIPTION_ERROR##: Failed to update subscriptions for App ${packageName}, which will cause a disconnect.`);
 
       // Send error response to App instead of crashing the service
       this.sendError(appWebsocket, AppErrorCode.MALFORMED_MESSAGE, `Invalid subscription type: ${errorMessage}`);
