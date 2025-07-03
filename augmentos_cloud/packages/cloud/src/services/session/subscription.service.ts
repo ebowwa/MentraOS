@@ -18,6 +18,7 @@ import { sessionService } from './session.service';
 import UserSession from './UserSession';
 import { User, UserI } from '../../models/user.model';
 import { locationService } from '../core/location.service';
+import { MongoSanitizer } from '../../utils/mongoSanitizer';
 
 const logger = rootLogger.child({ service: 'subscription.service' });
 
@@ -206,20 +207,22 @@ export class SubscriptionService {
           return null;
         }
 
+        const sanitizedPackageName = MongoSanitizer.sanitizeKey(packageName);
+
         if (locationRate) {
           if (!user.locationSubscriptions) {
             user.locationSubscriptions = new Map();
           }
-          user.locationSubscriptions.set(packageName, { rate: locationRate });
+          user.locationSubscriptions.set(sanitizedPackageName, { rate: locationRate });
         } else {
-          if (user.locationSubscriptions?.has(packageName)) {
-            user.locationSubscriptions.delete(packageName);
+          if (user.locationSubscriptions?.has(sanitizedPackageName)) {
+            user.locationSubscriptions.delete(sanitizedPackageName);
           }
         }
 
         user.markModified('locationSubscriptions');
         await user.save();
-        logger.info({ packageName, userId: userSession.userId, logKey: '##SUB_DB_WRITE_SUCCESS##' }, 'Persisted subscription changes successfully. Returning updated user.');
+        logger.info({ packageName, userId: userSession.userId }, 'Persisted subscription changes successfully');
         return user; // Success, return the updated user document
 
       } catch (error) {
@@ -385,8 +388,9 @@ export class SubscriptionService {
     // Perform background DB removal
     try {
       const user = await User.findOne({ email: userSession.userId });
-      if (user && user.locationSubscriptions?.has(packageName)) {
-        user.locationSubscriptions.delete(packageName);
+      const sanitizedPackageName = MongoSanitizer.sanitizeKey(packageName);
+      if (user && user.locationSubscriptions?.has(sanitizedPackageName)) {
+        user.locationSubscriptions.delete(sanitizedPackageName);
         user.markModified('locationSubscriptions');
         await user.save();
         logger.info({ packageName, userId: userSession.userId }, `Removed location subscription from DB for App ${packageName}`);
