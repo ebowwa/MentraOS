@@ -443,7 +443,7 @@ public class LocationSystem extends Service {
         this.currentCorrelationId = correlationId;
 
         LocationRequest.Builder locationRequestBuilder = new LocationRequest.Builder(1000); // Interval isn't as critical for single update
-        locationRequestBuilder.setNumUpdates(1); // Ensure we only get one update
+        locationRequestBuilder.setMaxUpdates(1); // Ensure we only get one update
 
         switch (accuracy) {
             case "realtime":

@@ -28,6 +28,7 @@ import android.hardware.display.VirtualDisplay;
 import android.media.projection.MediaProjection;
 import android.os.Binder;
 import android.os.Build;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
@@ -1503,7 +1504,6 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         ServerComms.getInstance().setServerCommsCallback(new ServerCommsCallback() {
             @Override
             public void onConnectionAck() {
-                serverCommsHandler.postDelayed(() -> locationSystem.sendLocationToServer(), 500);
                 // Send current datetime to backend after server ack
                 try {
                     // Format current datetime as ISO 8601 string (yyyy-MM-dd'T'HH:mm:ssZ)

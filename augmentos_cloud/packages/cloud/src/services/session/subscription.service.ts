@@ -316,6 +316,17 @@ export class SubscriptionService {
           });
           break;
         }
+
+        // Special case: An app subscribed to the continuous 'location_stream'
+        // should also receive individual 'location_update' messages.
+        if (subscription === StreamType.LOCATION_UPDATE && sub === StreamType.LOCATION_STREAM) {
+          subscribedApps.push(packageName);
+          subscriptionMatches.push({
+            packageName,
+            matchedOn: 'location_stream_implicit'
+          });
+          break;
+        }
       }
     }
 
