@@ -484,7 +484,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         // Initialize settings with default values
         brightnessLevel = 50;
         autoBrightness = false;
-        headUpAngle = 20;
+        headUpAngle = Integer.parseInt(PreferenceManager.getDefaultSharedPreferences(this).getString(getResources().getString(R.string.HEAD_UP_ANGLE), "20"));
         dashboardHeight = 4;
         dashboardDepth = 5;
 
@@ -2093,6 +2093,13 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         if (smartGlassesManager != null) {
             smartGlassesManager.updateGlassesHeadUpAngle(headUpAngle);
             this.headUpAngle = headUpAngle;
+
+            // Save head up angle setting to SharedPreferences
+            PreferenceManager.getDefaultSharedPreferences(this)
+                .edit()
+                .putString(getString(R.string.HEAD_UP_ANGLE), String.valueOf(headUpAngle))
+                .apply();
+
             sendStatusToBackend();
             sendStatusToAugmentOsManager();
         } else {
