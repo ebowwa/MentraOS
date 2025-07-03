@@ -233,14 +233,22 @@ class ServerComms {
   }
   
   
-  func sendLocationUpdate(lat: Double, lng: Double) {
+  func sendLocationUpdate(lat: Double, lng: Double, accuracy: Double?, correlationId: String?) {
     do {
-      let event: [String: Any] = [
+      var event: [String: Any] = [
         "type": "location_update",
         "lat": lat,
         "lng": lng,
         "timestamp": Int(Date().timeIntervalSince1970 * 1000)
       ]
+      
+      if let acc = accuracy {
+        event["accuracy"] = acc
+      }
+      
+      if let corrId = correlationId {
+        event["correlationId"] = corrId
+      }
       
       let jsonData = try JSONSerialization.data(withJSONObject: event)
       if let jsonString = String(data: jsonData, encoding: .utf8) {
@@ -259,7 +267,7 @@ class ServerComms {
     
     if let locationData = locationManager.getCurrentLocation() {
       print("Sending location update: lat=\(locationData.latitude), lng=\(locationData.longitude)")
-      sendLocationUpdate(lat: locationData.latitude, lng: locationData.longitude)
+      sendLocationUpdate(lat: locationData.latitude, lng: locationData.longitude, accuracy: nil, correlationId: nil)
     } else {
       print("Cannot send location update: No location data available")
     }
@@ -439,6 +447,18 @@ class ServerComms {
       
     case "reconnect":
       print("ServerComms: Server is requesting a reconnect.")
+      
+    case "set_location_tier":
+      if let payload = msg["payload"] as? [String: Any], let tier = payload["tier"] as? String {
+        self.locationManager.setTier(tier: tier)
+      }
+      
+    case "request_single_location":
+      if let payload = msg["payload"] as? [String: Any],
+          let accuracy = payload["accuracy"] as? String,
+          let correlationId = payload["correlationId"] as? String {
+        self.locationManager.requestSingleUpdate(accuracy: accuracy, correlationId: correlationId)
+      }
       
     default:
       print("ServerComms: Unknown message type: \(type) / full: \(msg)")

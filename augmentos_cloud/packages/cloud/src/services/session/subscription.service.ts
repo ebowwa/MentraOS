@@ -217,6 +217,7 @@ export class SubscriptionService {
           }
         }
 
+        user.markModified('locationSubscriptions');
         await user.save();
         logger.info({ packageName, userId: userSession.userId, logKey: '##SUB_DB_WRITE_SUCCESS##' }, 'Persisted subscription changes successfully. Returning updated user.');
         return user; // Success, return the updated user document
@@ -386,6 +387,7 @@ export class SubscriptionService {
       const user = await User.findOne({ email: userSession.userId });
       if (user && user.locationSubscriptions?.has(packageName)) {
         user.locationSubscriptions.delete(packageName);
+        user.markModified('locationSubscriptions');
         await user.save();
         logger.info({ packageName, userId: userSession.userId }, `Removed location subscription from DB for App ${packageName}`);
         return user;

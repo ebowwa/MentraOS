@@ -12,6 +12,7 @@ class LocationManager: NSObject, CLLocationManagerDelegate {
   private let locationManager = CLLocationManager()
   private var locationChangedCallback: (() -> Void)?
   private var currentLocation: CLLocation?
+  private var currentCorrelationId: String?
   
   override init() {
     super.init()
@@ -42,14 +43,25 @@ class LocationManager: NSObject, CLLocationManagerDelegate {
   func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
     guard let location = locations.last else { return }
     
-    // Only process significant changes (>10m or first location)
-    if currentLocation == nil || location.distance(from: currentLocation!) > locationManager.distanceFilter {
+    // For single poll requests, we always send the update.
+    // For continuous streams, we only send if it's a significant change.
+    if currentCorrelationId != nil || currentLocation == nil || location.distance(from: currentLocation!) > locationManager.distanceFilter {
       currentLocation = location
 
-      print("LocationManager: Location updated to \(location.coordinate.latitude), \(location.coordinate.longitude)")
+      print("LocationManager: Location updated to \(location.coordinate.latitude), \(location.coordinate.longitude) with accuracy \(location.horizontalAccuracy)m")
       
-      // Notify via callback
-      locationChangedCallback?()
+      // Notify ServerComms to send the update to the cloud
+      ServerComms.getInstance().sendLocationUpdate(
+          lat: location.coordinate.latitude,
+          lng: location.coordinate.longitude,
+          accuracy: location.horizontalAccuracy,
+          correlationId: self.currentCorrelationId
+      )
+
+      // A single poll is complete, so we clear the correlationId.
+      if self.currentCorrelationId != nil {
+          self.currentCorrelationId = nil
+      }
     }
   }
   
@@ -70,6 +82,65 @@ class LocationManager: NSObject, CLLocationManagerDelegate {
     }
   }
   
+  // MARK: - New Methods for Intelligent Location Service
+
+  public func setTier(tier: String) {
+    print("LocationManager: Setting location tier to \(tier)")
+    
+    switch tier {
+    case "realtime":
+      locationManager.desiredAccuracy = kCLLocationAccuracyBestForNavigation
+      locationManager.distanceFilter = kCLDistanceFilterNone
+    case "high":
+      locationManager.desiredAccuracy = kCLLocationAccuracyBest
+      locationManager.distanceFilter = 10 // 10 meters
+    case "tenMeters":
+      locationManager.desiredAccuracy = kCLLocationAccuracyNearestTenMeters
+      locationManager.distanceFilter = 10 // 10 meters
+    case "hundredMeters":
+      locationManager.desiredAccuracy = kCLLocationAccuracyHundredMeters
+      locationManager.distanceFilter = 100 // 100 meters
+    case "kilometer":
+      locationManager.desiredAccuracy = kCLLocationAccuracyKilometer
+      locationManager.distanceFilter = 1000 // 1 kilometer
+    case "threeKilometers":
+      locationManager.desiredAccuracy = kCLLocationAccuracyThreeKilometers
+      locationManager.distanceFilter = 3000 // 3 kilometers
+    case "reduced":
+      locationManager.desiredAccuracy = kCLLocationAccuracyReduced
+      locationManager.distanceFilter = 3000 // Use a wider filter for reduced accuracy
+    default:
+      print("LocationManager: Unknown location tier \(tier), defaulting to reduced.")
+      locationManager.desiredAccuracy = kCLLocationAccuracyReduced
+      locationManager.distanceFilter = 3000
+    }
+    
+    // After changing settings, we must restart the location updates.
+    locationManager.startUpdatingLocation()
+  }
+
+  public func requestSingleUpdate(accuracy: String, correlationId: String) {
+    print("LocationManager: Requesting single location update with accuracy \(accuracy) and correlationId \(correlationId)")
+    self.currentCorrelationId = correlationId
+
+    // Map the accuracy string to a CLLocationAccuracy value
+    switch accuracy {
+    case "realtime", "high", "tenMeters":
+        locationManager.desiredAccuracy = kCLLocationAccuracyBest
+    case "hundredMeters":
+        locationManager.desiredAccuracy = kCLLocationAccuracyHundredMeters
+    case "kilometer":
+        locationManager.desiredAccuracy = kCLLocationAccuracyKilometer
+    case "threeKilometers":
+        locationManager.desiredAccuracy = kCLLocationAccuracyThreeKilometers
+    default:
+        locationManager.desiredAccuracy = kCLLocationAccuracyHundredMeters // Default to a reasonable accuracy
+    }
+
+    // This method is designed for a one-time, high-priority location delivery.
+    locationManager.requestLocation()
+  }
+
   // MARK: - Location Getters
   
   func getCurrentLocation() -> (latitude: Double, longitude: Double)? {

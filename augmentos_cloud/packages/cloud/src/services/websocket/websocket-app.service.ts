@@ -303,7 +303,6 @@ export class AppWebSocketService {
         message.subscriptions
       ).then(updatedUser => {
         if (updatedUser) {
-          userSession.logger.info({ userId: userSession.userId, logKey: '##SUB_HANDOFF_SUCCESS##' }, 'Subscription update promise resolved. Passing updated user to location service.');
           // Pass the updated user object directly to avoid a race condition.
           locationService.handleSubscriptionChange(updatedUser, userSession);
         }

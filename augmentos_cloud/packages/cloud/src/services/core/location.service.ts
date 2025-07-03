@@ -33,17 +33,6 @@ class LocationService {
    */
   public async handleSubscriptionChange(user: UserI, userSession: UserSession): Promise<void> {
     const { userId } = userSession;
-
-    // --- TEMPORARY TEST HOOK ---
-    // This will be called every time a subscription is updated, allowing us
-    // to test the native implementation without relying on the broken arbitration logic.
-    logger.warn({ userId }, "##TEMP_TEST_HOOK##: Forcing SET_LOCATION_TIER command with 'high' accuracy for testing purposes.");
-    if (userSession?.websocket && userSession.websocket.readyState === WebSocket.OPEN) {
-      this._sendCommandToDevice(userSession.websocket, CloudToGlassesMessageType.SET_LOCATION_TIER, { tier: 'high' });
-    }
-    // --- END OF TEMPORARY TEST HOOK ---
-
-    logger.info({ userId, logKey: '##LOCATION_ARBITRATION_START##', subscriptions: user.locationSubscriptions?.size }, 'Location service received user object for arbitration.');
     
     const previousEffectiveTier = user.effectiveLocationTier || 'reduced';
     const newEffectiveTier = this._calculateEffectiveRateForUser(user);
@@ -66,7 +55,6 @@ class LocationService {
         logger.error({ userId, error }, "Failed to save new effective location tier.");
       }
     } else {
-      // This log is now expected behavior in many cases, so we change it to debug level.
       logger.debug({ userId, tier: newEffectiveTier }, "Location subscriptions changed, but effective tier remains the same. No command sent.");
     }
   }
@@ -179,8 +167,6 @@ class LocationService {
     let highestTierIndex = -1;
 
     for (const subDetails of subscriptionDetails) {
-      // Add a specific log for each item to prove iteration is working.
-      logger.debug({ logKey: '##TIER_CALC_ITERATION##', details: subDetails }, 'Iterating over subscription detail');
       if (subDetails && subDetails.rate) {
         const tierIndex = TIER_HIERARCHY.indexOf(subDetails.rate);
         if (tierIndex > highestTierIndex) {
