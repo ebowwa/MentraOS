@@ -51,6 +51,7 @@ public class LocationSystem extends Service {
 
     // Store last known location
     private Location lastKnownLocation = null;
+    private String currentCorrelationId = null;
 
     private final Handler locationSendingLoopHandler = new Handler(Looper.getMainLooper());
     private Runnable locationSendingRunnableCode;
@@ -275,16 +276,24 @@ public class LocationSystem extends Service {
         }
     }
 
-    public void sendLocationToServer() {
-        double latitude = getNewLat();
-        double longitude = getNewLng();
-
-        if (latitude == -1 && longitude == -1) {
+    public void sendLocationToServer(Location location) {
+        if (location == null) {
             Log.d(TAG, "Location not available, cannot send to server");
             return;
         }
 
-        ServerComms.getInstance().sendLocationUpdate(latitude, longitude);
+        // Pass the location accuracy and current correlationId to ServerComms
+        ServerComms.getInstance().sendLocationUpdate(
+            location.getLatitude(),
+            location.getLongitude(),
+            location.getAccuracy(),
+            this.currentCorrelationId
+        );
+
+        // A single poll is complete, so we clear the correlationId.
+        if (this.currentCorrelationId != null) {
+            this.currentCorrelationId = null;
+        }
     }
 
     public double getNewLat() {
@@ -335,7 +344,7 @@ public class LocationSystem extends Service {
 
                 Log.d(TAG, "Fast location fix obtained: " + lat + ", " + lng);
 
-                sendLocationToServer();
+                sendLocationToServer(location);
                 fusedLocationProviderClient.removeLocationUpdates(fastLocationCallback);
 
                 if (!firstLockAcquired) {
@@ -359,7 +368,7 @@ public class LocationSystem extends Service {
 
                 Log.d(TAG, "Accurate location fix obtained: " + lat + ", " + lng);
 
-                sendLocationToServer();
+                sendLocationToServer(location);
                 stopLocationUpdates();
 
                 if (!firstLockAcquired) {
@@ -385,5 +394,82 @@ public class LocationSystem extends Service {
         
         // Make sure location updates are stopped
         stopLocationUpdates();
+    }
+
+    // New methods for Intelligent Location Service
+    public void setTier(String tier) {
+        Log.d(TAG, "Setting location tier to: " + tier);
+
+        LocationRequest.Builder locationRequestBuilder = new LocationRequest.Builder(10000); // Default interval
+
+        switch (tier) {
+            case "realtime":
+                locationRequestBuilder.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY).setIntervalMillis(1000);
+                break;
+            case "high":
+                locationRequestBuilder.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY).setIntervalMillis(10000);
+                break;
+            case "tenMeters":
+                locationRequestBuilder.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY).setIntervalMillis(30000);
+                break;
+            case "hundredMeters":
+                locationRequestBuilder.setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY).setIntervalMillis(60000);
+                break;
+            case "kilometer":
+                locationRequestBuilder.setPriority(LocationRequest.PRIORITY_LOW_POWER).setIntervalMillis(300000);
+                break;
+            case "threeKilometers":
+            case "reduced":
+                locationRequestBuilder.setPriority(LocationRequest.PRIORITY_NO_POWER).setIntervalMillis(900000);
+                break;
+            default:
+                locationRequestBuilder.setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY).setIntervalMillis(60000);
+                break;
+        }
+
+        // Stop existing updates and start with the new request
+        stopLocationUpdates();
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+            fusedLocationProviderClient.requestLocationUpdates(
+                locationRequestBuilder.build(),
+                locationCallback,
+                Looper.getMainLooper()
+            );
+        }
+    }
+
+    public void requestSingleUpdate(String accuracy, String correlationId) {
+        Log.d(TAG, "Requesting single location update with accuracy: " + accuracy);
+        this.currentCorrelationId = correlationId;
+
+        LocationRequest.Builder locationRequestBuilder = new LocationRequest.Builder(1000); // Interval isn't as critical for single update
+        locationRequestBuilder.setNumUpdates(1); // Ensure we only get one update
+
+        switch (accuracy) {
+            case "realtime":
+            case "high":
+            case "tenMeters":
+                locationRequestBuilder.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+                break;
+            case "hundredMeters":
+                locationRequestBuilder.setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY);
+                break;
+            case "kilometer":
+            case "threeKilometers":
+            case "reduced":
+                locationRequestBuilder.setPriority(LocationRequest.PRIORITY_LOW_POWER);
+                break;
+            default:
+                locationRequestBuilder.setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY);
+                break;
+        }
+
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+            fusedLocationProviderClient.requestLocationUpdates(
+                locationRequestBuilder.build(),
+                locationCallback, // We can reuse the same callback
+                Looper.getMainLooper()
+            );
+        }
     }
 }

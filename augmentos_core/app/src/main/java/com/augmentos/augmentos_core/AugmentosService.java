@@ -28,7 +28,6 @@ import android.hardware.display.VirtualDisplay;
 import android.media.projection.MediaProjection;
 import android.os.Binder;
 import android.os.Build;
-import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
@@ -1740,6 +1739,20 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                     sendStatusToAugmentOsManager();
                 } catch (JSONException e) {
                     Log.e(TAG, "Error parsing settings update", e);
+                }
+            }
+
+            @Override
+            public void onSetLocationTier(String tier) {
+                if (locationSystem != null) {
+                    locationSystem.setTier(tier);
+                }
+            }
+
+            @Override
+            public void onRequestSingleLocation(String accuracy, String correlationId) {
+                if (locationSystem != null) {
+                    locationSystem.requestSingleUpdate(accuracy, correlationId);
                 }
             }
         });

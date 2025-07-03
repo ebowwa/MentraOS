@@ -523,13 +523,21 @@ public class ServerComms {
         }
     }
 
-    public void sendLocationUpdate(double lat, double lng) {
+    public void sendLocationUpdate(double lat, double lng, float accuracy, String correlationId) {
         try {
             JSONObject event = new JSONObject();
             event.put("type", "location_update");
             event.put("lat", lat);
             event.put("lng", lng);
             event.put("timestamp", System.currentTimeMillis());
+
+            if (accuracy > 0) {
+                event.put("accuracy", accuracy);
+            }
+            if (correlationId != null && !correlationId.isEmpty()) {
+                event.put("correlationId", correlationId);
+            }
+
             wsManager.sendText(event.toString());
         } catch (JSONException e) {
             Log.e(TAG, "Error building location_update JSON", e);
@@ -771,6 +779,23 @@ public class ServerComms {
                 String stoppedPackage = msg.optString("packageName", "");
                 if (serverCommsCallback != null) {
                     serverCommsCallback.onAppStopped(stoppedPackage);
+                }
+                break;
+
+            case "set_location_tier":
+                JSONObject tierPayload = msg.optJSONObject("payload");
+                if (tierPayload != null && serverCommsCallback != null) {
+                    serverCommsCallback.onSetLocationTier(tierPayload.optString("tier"));
+                }
+                break;
+    
+            case "request_single_location":
+                JSONObject pollPayload = msg.optJSONObject("payload");
+                if (pollPayload != null && serverCommsCallback != null) {
+                    serverCommsCallback.onRequestSingleLocation(
+                        pollPayload.optString("accuracy"),
+                        pollPayload.optString("correlationId")
+                    );
                 }
                 break;
 
