@@ -1744,8 +1744,13 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
 
             @Override
             public void onSetLocationTier(String tier) {
+                String logMessage = "AugmentosService: onSetLocationTier called with tier: " + tier;
+                ServerComms.getInstance().sendButtonPress("DEBUG_LOG", logMessage);
+
                 if (locationSystem != null) {
                     locationSystem.setTier(tier);
+                } else {
+                    Log.e("LOCATION_DEBUG", "AugmentosService: locationSystem is null, cannot set tier.");
                 }
             }
 

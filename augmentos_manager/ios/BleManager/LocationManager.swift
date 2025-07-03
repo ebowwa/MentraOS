@@ -93,26 +93,26 @@ class LocationManager: NSObject, CLLocationManagerDelegate {
       locationManager.distanceFilter = kCLDistanceFilterNone
     case "high":
       locationManager.desiredAccuracy = kCLLocationAccuracyBest
-      locationManager.distanceFilter = 10 // 10 meters
+      locationManager.distanceFilter = kCLDistanceFilterNone
     case "tenMeters":
       locationManager.desiredAccuracy = kCLLocationAccuracyNearestTenMeters
-      locationManager.distanceFilter = 10 // 10 meters
+      locationManager.distanceFilter = kCLDistanceFilterNone
     case "hundredMeters":
       locationManager.desiredAccuracy = kCLLocationAccuracyHundredMeters
-      locationManager.distanceFilter = 100 // 100 meters
+      locationManager.distanceFilter = kCLDistanceFilterNone
     case "kilometer":
       locationManager.desiredAccuracy = kCLLocationAccuracyKilometer
-      locationManager.distanceFilter = 1000 // 1 kilometer
+      locationManager.distanceFilter = kCLDistanceFilterNone
     case "threeKilometers":
       locationManager.desiredAccuracy = kCLLocationAccuracyThreeKilometers
-      locationManager.distanceFilter = 3000 // 3 kilometers
+      locationManager.distanceFilter = kCLDistanceFilterNone
     case "reduced":
       locationManager.desiredAccuracy = kCLLocationAccuracyReduced
       locationManager.distanceFilter = 3000 // Use a wider filter for reduced accuracy
     default:
       print("LocationManager: Unknown location tier \(tier), defaulting to reduced.")
       locationManager.desiredAccuracy = kCLLocationAccuracyReduced
-      locationManager.distanceFilter = 3000
+      locationManager.distanceFilter = kCLDistanceFilterNone
     }
     
     // After changing settings, we must restart the location updates.

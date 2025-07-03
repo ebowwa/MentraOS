@@ -785,7 +785,9 @@ public class ServerComms {
             case "set_location_tier":
                 JSONObject tierPayload = msg.optJSONObject("payload");
                 if (tierPayload != null && serverCommsCallback != null) {
-                    serverCommsCallback.onSetLocationTier(tierPayload.optString("tier"));
+                    String tier = tierPayload.optString("tier");
+                    Log.d("LOCATION_DEBUG", "ServerComms: Received set_location_tier command with tier: " + tier);
+                    serverCommsCallback.onSetLocationTier(tier);
                 }
                 break;
     
@@ -797,6 +799,11 @@ public class ServerComms {
                         pollPayload.optString("correlationId")
                     );
                 }
+                break;
+
+            case "debug_log":
+                // Echo back the debug log for confirmation
+                Log.d(TAG, "Received debug log from client: " + msg.toString());
                 break;
 
             default:

@@ -46,16 +46,12 @@ public class LocationSystem extends Service {
     public double latestAccessedLat = 0;
     public double latestAccessedLong = 0;
     private FusedLocationProviderClient fusedLocationProviderClient;
-    private LocationCallback locationCallback;
-    private LocationCallback fastLocationCallback;
+    private LocationCallback singlePollCallback;
+    private LocationCallback continuousLocationCallback;
 
     // Store last known location
     private Location lastKnownLocation = null;
     private String currentCorrelationId = null;
-
-    private final Handler locationSendingLoopHandler = new Handler(Looper.getMainLooper());
-    private Runnable locationSendingRunnableCode;
-    private final long locationSendTime = 1000 * 60 * 30; // 30 minutes
 
     /**
      * Class for clients to access this service
@@ -76,8 +72,6 @@ public class LocationSystem extends Service {
         fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this);
         setupLocationCallbacks();
         getLastKnownLocation();
-        requestFastLocationUpdate(); // Get a quick fix immediately on startup
-        scheduleLocationUpdates();
     }
     
     @Override
@@ -215,64 +209,14 @@ public class LocationSystem extends Service {
                 });
     }
 
-    public void requestFastLocationUpdate() {
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            return;
-        }
-
-        LocationRequest fastLocationRequest = LocationRequest.create();
-        fastLocationRequest.setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY);
-        fastLocationRequest.setInterval(1000);              // Update every 1 second
-        fastLocationRequest.setFastestInterval(500);        // Fastest update interval 0.5 seconds
-        fastLocationRequest.setMaxWaitTime(3000);           // Wait at most 3 seconds for a fix
-
-        fusedLocationProviderClient.requestLocationUpdates(
-                fastLocationRequest,
-                fastLocationCallback,
-                Looper.getMainLooper()
-        );
-
-        // Set a timeout to cancel this request if it takes too long
-        locationSendingLoopHandler.postDelayed(() -> {
-            fusedLocationProviderClient.removeLocationUpdates(fastLocationCallback);
-            // If we didn't get a fast fix, request a more accurate one
-            if (!firstLockAcquired) {
-                requestLocationUpdate();
-            }
-        }, 5000); // Give up on fast fix after 5 seconds
-    }
-
-    public void requestLocationUpdate() {
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            return;
-        }
-
-        LocationRequest locationRequest = LocationRequest.create();
-        locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
-        locationRequest.setInterval(10000);              // Keep GPS on for 10 seconds
-        locationRequest.setFastestInterval(5000);        // Fastest update interval 5 seconds
-        locationRequest.setMaxWaitTime(15000);           // Wait up to 15 seconds for a fix (down from 60)
-
-        fusedLocationProviderClient.requestLocationUpdates(
-                locationRequest,
-                locationCallback,
-                Looper.getMainLooper()
-        );
-
-        // Set a timeout to cancel this request if it takes too long
-        locationSendingLoopHandler.postDelayed(() -> {
-            stopLocationUpdates();
-        }, 20000); // Give up after 20 seconds total
-    }
-
     public void stopLocationUpdates() {
-        if (fusedLocationProviderClient != null && locationCallback != null) {
-            fusedLocationProviderClient.removeLocationUpdates(locationCallback);
-        }
-        
-        // Also remove updates from fast callback to be safe
-        if (fusedLocationProviderClient != null && fastLocationCallback != null) {
-            fusedLocationProviderClient.removeLocationUpdates(fastLocationCallback);
+        if (fusedLocationProviderClient != null) {
+            if (singlePollCallback != null) {
+                fusedLocationProviderClient.removeLocationUpdates(singlePollCallback);
+            }
+            if (continuousLocationCallback != null) {
+                fusedLocationProviderClient.removeLocationUpdates(continuousLocationCallback);
+            }
         }
     }
 
@@ -308,31 +252,9 @@ public class LocationSystem extends Service {
         return latestAccessedLong;
     }
 
-    // Add a flag and a polling interval for first lock
-    private boolean firstLockAcquired = false;
-    private final long firstLockPollingInterval = 5000; // 5 seconds
-
-    public void scheduleLocationUpdates() {
-        locationSendingRunnableCode = new Runnable() {
-            @Override
-            public void run() {
-                if (!firstLockAcquired) {
-                    // For first lock, try to get a fast fix first
-                    requestFastLocationUpdate();
-                    locationSendingLoopHandler.postDelayed(this, firstLockPollingInterval);
-                } else {
-                    // Once first fix is obtained, request high-accuracy location
-                    requestLocationUpdate();
-                    locationSendingLoopHandler.postDelayed(this, locationSendTime);
-                }
-            }
-        };
-        locationSendingLoopHandler.post(locationSendingRunnableCode);
-    }
-
     private void setupLocationCallbacks() {
-        // Fast, low-accuracy callback for initial fix
-        fastLocationCallback = new LocationCallback() {
+        // High-accuracy callback for better location
+        singlePollCallback = new LocationCallback() {
             @Override
             public void onLocationResult(LocationResult locationResult) {
                 if (locationResult == null || locationResult.getLocations().isEmpty()) return;
@@ -342,38 +264,28 @@ public class LocationSystem extends Service {
                 lng = location.getLongitude();
                 lastKnownLocation = location;
 
-                Log.d(TAG, "Fast location fix obtained: " + lat + ", " + lng);
+                Log.d(TAG, "Accurate location fix obtained (single poll): " + lat + ", " + lng);
 
                 sendLocationToServer(location);
-                fusedLocationProviderClient.removeLocationUpdates(fastLocationCallback);
-
-                if (!firstLockAcquired) {
-                    firstLockAcquired = true;
-                    // After getting fast fix, immediately request high accuracy fix
-                    requestLocationUpdate();
-                }
+                // After a single poll, we must stop updates to save battery.
+                stopLocationUpdates();
             }
         };
 
-        // High-accuracy callback for better location
-        locationCallback = new LocationCallback() {
+        // New callback for continuous streaming that does NOT stop updates.
+        continuousLocationCallback = new LocationCallback() {
             @Override
             public void onLocationResult(LocationResult locationResult) {
-                if (locationResult == null || locationResult.getLocations().isEmpty()) return;
-
-                Location location = locationResult.getLastLocation();
-                lat = location.getLatitude();
-                lng = location.getLongitude();
-                lastKnownLocation = location;
-
-                Log.d(TAG, "Accurate location fix obtained: " + lat + ", " + lng);
-
-                sendLocationToServer(location);
-                stopLocationUpdates();
-
-                if (!firstLockAcquired) {
-                    firstLockAcquired = true;
+                ServerComms.getInstance().sendButtonPress("DEBUG_LOG", "LocationSystem: continuousLocationCallback triggered!");
+                if (locationResult == null || locationResult.getLocations().isEmpty()) {
+                    ServerComms.getInstance().sendButtonPress("DEBUG_LOG", "continuousLocationCallback received null or empty locationResult.");
+                    return;
                 }
+                Location location = locationResult.getLastLocation();
+                lastKnownLocation = location;
+                String logMessage = "Continuous location update: " + location.getLatitude() + ", " + location.getLongitude();
+                ServerComms.getInstance().sendButtonPress("DEBUG_LOG", logMessage);
+                sendLocationToServer(location);
             }
         };
     }
@@ -388,9 +300,7 @@ public class LocationSystem extends Service {
      */
     public void cleanup() {
         // Remove all pending callbacks
-        if (locationSendingLoopHandler != null) {
-            locationSendingLoopHandler.removeCallbacksAndMessages(null);
-        }
+        // locationSendingLoopHandler is no longer used.
         
         // Make sure location updates are stopped
         stopLocationUpdates();
@@ -398,7 +308,16 @@ public class LocationSystem extends Service {
 
     // New methods for Intelligent Location Service
     public void setTier(String tier) {
-        Log.d(TAG, "Setting location tier to: " + tier);
+        ServerComms.getInstance().sendButtonPress("DEBUG_LOG", "LocationSystem: setTier called with tier: " + tier);
+
+        // CRITICAL: Stop all previously scheduled location runnables to prevent conflicts.
+        stopLocationUpdates();
+
+        // If the tier is "reduced", we let the old power-saving scheduler take over.
+        if (tier.equals("reduced")) {
+            Log.d(TAG, "Tier is 'reduced', reverting to power-saving scheduler.");
+            return;
+        }
 
         LocationRequest.Builder locationRequestBuilder = new LocationRequest.Builder(10000); // Default interval
 
@@ -427,20 +346,26 @@ public class LocationSystem extends Service {
                 break;
         }
 
-        // Stop existing updates and start with the new request
-        stopLocationUpdates();
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+        boolean hasPermission = ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED;
+        ServerComms.getInstance().sendButtonPress("DEBUG_LOG", "LocationSystem: In setTier, hasFineLocationPermission: " + hasPermission);
+
+        if (hasPermission) {
+            ServerComms.getInstance().sendButtonPress("DEBUG_LOG", "LocationSystem: About to call requestLocationUpdates for continuous stream.");
             fusedLocationProviderClient.requestLocationUpdates(
                 locationRequestBuilder.build(),
-                locationCallback,
+                continuousLocationCallback, // Use the new continuous callback
                 Looper.getMainLooper()
             );
+            ServerComms.getInstance().sendButtonPress("DEBUG_LOG", "LocationSystem: Successfully called requestLocationUpdates for continuous stream.");
         }
     }
 
     public void requestSingleUpdate(String accuracy, String correlationId) {
-        Log.d(TAG, "Requesting single location update with accuracy: " + accuracy);
+        ServerComms.getInstance().sendButtonPress("DEBUG_LOG", "Requesting single location update with accuracy: " + accuracy);
         this.currentCorrelationId = correlationId;
+
+        // CRITICAL: Stop all previously scheduled location runnables to ensure this poll is not interrupted.
+        stopLocationUpdates();
 
         LocationRequest.Builder locationRequestBuilder = new LocationRequest.Builder(1000); // Interval isn't as critical for single update
         locationRequestBuilder.setMaxUpdates(1); // Ensure we only get one update
@@ -464,12 +389,17 @@ public class LocationSystem extends Service {
                 break;
         }
 
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+        boolean hasPermission = ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED;
+        ServerComms.getInstance().sendButtonPress("DEBUG_LOG", "In requestSingleUpdate, hasFineLocationPermission: " + hasPermission);
+
+        if (hasPermission) {
+            ServerComms.getInstance().sendButtonPress("DEBUG_LOG", "requestSingleUpdate: About to call requestLocationUpdates");
             fusedLocationProviderClient.requestLocationUpdates(
                 locationRequestBuilder.build(),
-                locationCallback, // We can reuse the same callback
+                singlePollCallback, // Use the single poll callback
                 Looper.getMainLooper()
             );
+            ServerComms.getInstance().sendButtonPress("DEBUG_LOG", "requestSingleUpdate: Successfully called requestLocationUpdates");
         }
     }
 }
