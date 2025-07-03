@@ -120,11 +120,6 @@ export function EvenRealitiesG1PairingGuide() {
             glassesTranslateY.value = 0;
             glassesScale.value = 1;
             glassesOpacity.value = withDelay(1200, withTiming(1, {duration: 400}))
-            // withDelay(1500, withTiming(0, {duration: 400}, finished => {
-            //   if (finished) {
-            //     runOnJS(startAnimation)()
-            //   }
-            // }))
           }
         }),
       )
