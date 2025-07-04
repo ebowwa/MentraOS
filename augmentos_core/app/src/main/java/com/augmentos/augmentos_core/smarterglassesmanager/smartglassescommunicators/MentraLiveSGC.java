@@ -38,6 +38,8 @@ import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.RtmpS
 import com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses.SmartGlassesDevice;
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.SmartGlassesConnectionState;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesVersionInfoEvent;
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.DownloadProgressEvent;
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.InstallationProgressEvent;
 
 import org.greenrobot.eventbus.EventBus;
 import org.json.JSONException;
@@ -1372,6 +1374,115 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 // Post event for version information
                 EventBus.getDefault().post(new GlassesVersionInfoEvent(
                     appVersion, buildNumber, deviceModel, androidVersion));
+                break;
+
+            case "ota_download_progress":
+                // Process OTA download progress from ASG client
+                Log.d(TAG, "📥 Received OTA download progress from ASG client: " + json.toString());
+                
+                // Extract download progress information
+                String downloadStatus = json.optString("status", "");
+                int downloadProgress = json.optInt("progress", 0);
+                long bytesDownloaded = json.optLong("bytes_downloaded", 0);
+                long totalBytes = json.optLong("total_bytes", 0);
+                String downloadErrorMessage = json.optString("error_message", null);
+                long downloadTimestamp = json.optLong("timestamp", System.currentTimeMillis());
+                
+                Log.d(TAG, "📥 OTA Download Progress - Status: " + downloadStatus + 
+                      ", Progress: " + downloadProgress + "%" +
+                      ", Bytes: " + bytesDownloaded + "/" + totalBytes +
+                      (downloadErrorMessage != null ? ", Error: " + downloadErrorMessage : ""));
+                
+                // Emit EventBus event for AugmentosService on main thread
+                try {
+                    DownloadProgressEvent.DownloadStatus status;
+                    final DownloadProgressEvent event;
+                    switch (downloadStatus) {
+                        case "STARTED":
+                            status = DownloadProgressEvent.DownloadStatus.STARTED;
+                            event = new DownloadProgressEvent(status, totalBytes);
+                            break;
+                        case "PROGRESS":
+                            status = DownloadProgressEvent.DownloadStatus.PROGRESS;
+                            event = new DownloadProgressEvent(status, downloadProgress, bytesDownloaded, totalBytes);
+                            break;
+                        case "FINISHED":
+                            status = DownloadProgressEvent.DownloadStatus.FINISHED;
+                            event = new DownloadProgressEvent(status, totalBytes, true);
+                            break;
+                        case "FAILED":
+                            status = DownloadProgressEvent.DownloadStatus.FAILED;
+                            event = new DownloadProgressEvent(status, downloadErrorMessage);
+                            break;
+                        default:
+                            Log.w(TAG, "Unknown download status: " + downloadStatus);
+                            return;
+                    }
+                    
+                    // Post event on main thread to ensure proper delivery
+                    handler.post(() -> {
+                        Log.d(TAG, "📡 Posting download progress event on main thread: " + status);
+                        EventBus.getDefault().post(event);
+                    });
+                } catch (Exception e) {
+                    Log.e(TAG, "Error creating download progress event", e);
+                }
+                
+                // Forward to data observable for cloud communication
+                if (dataObservable != null) {
+                    dataObservable.onNext(json);
+                }
+                break;
+
+            case "ota_installation_progress":
+                // Process OTA installation progress from ASG client
+                Log.d(TAG, "🔧 Received OTA installation progress from ASG client: " + json.toString());
+                
+                // Extract installation progress information
+                String installationStatus = json.optString("status", "");
+                String apkPath = json.optString("apk_path", "");
+                String installationErrorMessage = json.optString("error_message", null);
+                long installationTimestamp = json.optLong("timestamp", System.currentTimeMillis());
+                
+                Log.d(TAG, "🔧 OTA Installation Progress - Status: " + installationStatus + 
+                      ", APK: " + apkPath +
+                      (installationErrorMessage != null ? ", Error: " + installationErrorMessage : ""));
+                
+                // Emit EventBus event for AugmentosService on main thread
+                try {
+                    InstallationProgressEvent.InstallationStatus status;
+                    final InstallationProgressEvent event;
+                    switch (installationStatus) {
+                        case "STARTED":
+                            status = InstallationProgressEvent.InstallationStatus.STARTED;
+                            event = new InstallationProgressEvent(status, apkPath);
+                            break;
+                        case "FINISHED":
+                            status = InstallationProgressEvent.InstallationStatus.FINISHED;
+                            event = new InstallationProgressEvent(status, apkPath);
+                            break;
+                        case "FAILED":
+                            status = InstallationProgressEvent.InstallationStatus.FAILED;
+                            event = new InstallationProgressEvent(status, apkPath, installationErrorMessage);
+                            break;
+                        default:
+                            Log.w(TAG, "Unknown installation status: " + installationStatus);
+                            return;
+                    }
+                    
+                    // Post event on main thread to ensure proper delivery
+                    handler.post(() -> {
+                        Log.d(TAG, "📡 Posting installation progress event on main thread: " + status);
+                        EventBus.getDefault().post(event);
+                    });
+                } catch (Exception e) {
+                    Log.e(TAG, "Error creating installation progress event", e);
+                }
+                
+                // Forward to data observable for cloud communication
+                if (dataObservable != null) {
+                    dataObservable.onNext(json);
+                }
                 break;
 
             default:

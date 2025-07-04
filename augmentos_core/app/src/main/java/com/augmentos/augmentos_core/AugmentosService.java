@@ -108,6 +108,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesVersionInfoEvent;
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.DownloadProgressEvent;
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.InstallationProgressEvent;
 
 public class AugmentosService extends LifecycleService implements AugmentOsActionsCallback {
     public static final String TAG = "AugmentOSService";
@@ -261,6 +263,19 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     private String glassesBuildNumber = null;
     private String glassesDeviceModel = null;
     private String glassesAndroidVersion = null;
+
+    // OTA progress tracking
+    private DownloadProgressEvent.DownloadStatus downloadStatus = null;
+    private int downloadProgress = 0;
+    private long downloadBytesDownloaded = 0;
+    private long downloadTotalBytes = 0;
+    private String downloadErrorMessage = null;
+    private long downloadTimestamp = 0;
+
+    private InstallationProgressEvent.InstallationStatus installationStatus = null;
+    private String installationApkPath = null;
+    private String installationErrorMessage = null;
+    private long installationTimestamp = 0;
 
     public AugmentosService() {
     }
@@ -469,6 +484,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
 //        EnvHelper.init(this);
 
         EventBus.getDefault().register(this);
+        Log.d(TAG, "🔔 EventBus registration completed for AugmentosService");
 
         ServerComms.getInstance(this);
 
@@ -1449,6 +1465,38 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             glassesSettings.put("head_up_angle", headUpAngle);
             status.put("glasses_settings", glassesSettings);
 
+            // Adding OTA progress information
+            JSONObject otaProgress = new JSONObject();
+
+            // Download progress
+            if (downloadStatus != null) {
+                JSONObject downloadInfo = new JSONObject();
+                downloadInfo.put("status", downloadStatus.name());
+                downloadInfo.put("progress", downloadProgress);
+                downloadInfo.put("bytes_downloaded", downloadBytesDownloaded);
+                downloadInfo.put("total_bytes", downloadTotalBytes);
+                if (downloadErrorMessage != null) {
+                    downloadInfo.put("error_message", downloadErrorMessage);
+                }
+                downloadInfo.put("timestamp", downloadTimestamp);
+                otaProgress.put("download", downloadInfo);
+            }
+
+            // Installation progress
+            if (installationStatus != null) {
+                JSONObject installationInfo = new JSONObject();
+                installationInfo.put("status", installationStatus.name());
+                if (installationApkPath != null) {
+                    installationInfo.put("apk_path", installationApkPath);
+                }
+                if (installationErrorMessage != null) {
+                    installationInfo.put("error_message", installationErrorMessage);
+                }
+                installationInfo.put("timestamp", installationTimestamp);
+                otaProgress.put("installation", installationInfo);
+            }
+
+            status.put("ota_progress", otaProgress);
 
             // Adding wifi status
             JSONObject wifi = new JSONObject();
@@ -2485,5 +2533,109 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         this.glassesAndroidVersion = event.getAndroidVersion();
         Log.d("AugmentOsService", "Glasses version info: " + glassesAppVersion + " " + glassesBuildNumber + " " + glassesDeviceModel + " " + glassesAndroidVersion);
         sendStatusToAugmentOsManager();
+    }
+
+    // Event handler for download progress
+    @org.greenrobot.eventbus.Subscribe(threadMode = org.greenrobot.eventbus.ThreadMode.MAIN)
+    public void onDownloadProgressEvent(DownloadProgressEvent event) {
+        Log.d(TAG, "🎯 $#$# EVENT RECEIVED! Download progress: " + event.getStatus() + 
+              " - " + event.getProgress() + "% (" + 
+              event.getBytesDownloaded() + "/" + event.getTotalBytes() + " bytes)");
+        
+        // Store download progress information
+        downloadStatus = event.getStatus();
+        downloadProgress = event.getProgress();
+        downloadBytesDownloaded = event.getBytesDownloaded();
+        downloadTotalBytes = event.getTotalBytes();
+        downloadErrorMessage = event.getErrorMessage();
+        downloadTimestamp = event.getTimestamp();
+        
+        // Update status to include download progress
+        sendStatusToAugmentOsManager();
+        
+        // Send notification to manager app if needed
+        if (blePeripheral != null) {
+            switch (event.getStatus()) {
+                case STARTED:
+                    blePeripheral.sendNotifyManager("Mentra Live Update Started", "info");
+                    break;
+                // case FINISHED:
+                //     blePeripheral.sendNotifyManager("Mentra Live Update Completed", "success");
+                //     break;
+                case FAILED:
+                    blePeripheral.sendNotifyManager("Mentra Live Update Failed: " + event.getErrorMessage(), "error");
+                    break;
+                case PROGRESS:
+                    // Only notify at key milestones (25%, 50%, 75%, 100%)
+                    // if (event.getProgress() % 25 == 0 || event.getProgress() == 100) {
+                    //     blePeripheral.sendNotifyManager("Mentra Live Update: " + event.getProgress() + "%", "info");
+                    // }
+                    break;
+            }
+        }
+    }
+
+    // Event handler for installation progress
+    @org.greenrobot.eventbus.Subscribe(threadMode = org.greenrobot.eventbus.ThreadMode.MAIN)
+    public void onInstallationProgressEvent(InstallationProgressEvent event) {
+        Log.d(TAG, "🔧 Received installation progress: " + event.getStatus() + 
+              " - APK: " + event.getApkPath());
+
+        // Store installation progress information
+        installationStatus = event.getStatus();
+        installationApkPath = event.getApkPath();
+        installationErrorMessage = event.getErrorMessage();
+        installationTimestamp = event.getTimestamp();
+
+        // Update status to include installation progress
+        sendStatusToAugmentOsManager();
+
+        // If installation is finished, clear OTA progress data after 30 seconds
+        if (event.getStatus() == InstallationProgressEvent.InstallationStatus.FINISHED) {
+            new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                clearOtaProgressData();
+            }, 15000); // 15 seconds
+        }
+
+        // Send notification to manager app if needed
+        if (blePeripheral != null) {
+            switch (event.getStatus()) {
+                // case STARTED:
+                //     blePeripheral.sendNotifyManager("Mentra Live Update Installation Started", "info");
+                //     break;
+                case FINISHED:
+                    blePeripheral.sendNotifyManager("Mentra Live Update Installation Completed", "success");
+                    break;
+                case FAILED:
+                    blePeripheral.sendNotifyManager("Mentra Live Update Installation Failed: " + event.getErrorMessage(), "error");
+                    break;
+            }
+        }
+    }
+
+    /**
+     * Clear OTA progress data to hide the progress section
+     */
+    private void clearOtaProgressData() {
+        Log.d(TAG, "🧹 Clearing OTA progress data");
+        
+        // Clear download progress
+        downloadStatus = null;
+        downloadProgress = 0;
+        downloadBytesDownloaded = 0;
+        downloadTotalBytes = 0;
+        downloadErrorMessage = null;
+        downloadTimestamp = 0;
+
+        // Clear installation progress
+        installationStatus = null;
+        installationApkPath = null;
+        installationErrorMessage = null;
+        installationTimestamp = 0;
+
+        // Update status to reflect cleared OTA progress
+        sendStatusToAugmentOsManager();
+        
+        Log.d(TAG, "✅ OTA progress data cleared");
     }
 }
