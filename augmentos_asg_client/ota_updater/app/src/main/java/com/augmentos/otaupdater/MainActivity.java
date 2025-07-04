@@ -18,6 +18,8 @@ import androidx.work.WorkRequest;
 import androidx.work.Data;
 
 import com.augmentos.otaupdater.worker.RecoveryWorker;
+import org.greenrobot.eventbus.EventBus;
+import com.augmentos.otaupdater.events.BatteryStatusEvent;
 
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
@@ -59,9 +61,15 @@ public class MainActivity extends AppCompatActivity {
     private BroadcastReceiver heartbeatReceiver;
     private BroadcastReceiver updateReceiver;
     private BroadcastReceiver recoveryReceiver;
+    private BroadcastReceiver batteryStatusReceiver;
 
     // Thread ID tracking for debugging
     private long mainThreadId = -1;
+    
+    // Battery status tracking
+    private int glassesBatteryLevel = -1; // -1 means unknown
+    private boolean glassesCharging = false;
+    private long lastBatteryUpdateTime = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -176,6 +184,23 @@ public class MainActivity extends AppCompatActivity {
             }
         };
 
+        // Register battery status receiver
+        batteryStatusReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                if (Constants.ACTION_GLASSES_BATTERY_STATUS.equals(intent.getAction())) {
+                    int batteryLevel = intent.getIntExtra("battery_level", -1);
+                    boolean charging = intent.getBooleanExtra("charging", false);
+                    long timestamp = intent.getLongExtra("timestamp", System.currentTimeMillis());
+                    
+                    Log.i(TAG, "🔋 Received glasses battery status: " + batteryLevel + "% " + " at " + timestamp);
+
+                    // Handle battery status - you can add your logic here
+                    handleGlassesBatteryStatus(batteryLevel, charging, timestamp);
+                }
+            }
+        };
+
         // Register with system
         IntentFilter heartbeatFilter = new IntentFilter(Constants.ACTION_ASG_HEARTBEAT_ACK);
         registerReceiver(heartbeatReceiver, heartbeatFilter, Context.RECEIVER_NOT_EXPORTED);
@@ -190,6 +215,10 @@ public class MainActivity extends AppCompatActivity {
         recoveryFilter.addAction(Constants.ACTION_UNBLOCK_HEARTBEATS);
         recoveryFilter.addAction(Constants.ACTION_RECOVERY_HEARTBEAT_ACK);
         registerReceiver(recoveryReceiver, recoveryFilter, Context.RECEIVER_NOT_EXPORTED);
+
+        // Register battery status receiver
+        IntentFilter batteryFilter = new IntentFilter(Constants.ACTION_GLASSES_BATTERY_STATUS);
+        registerReceiver(batteryStatusReceiver, batteryFilter, Context.RECEIVER_NOT_EXPORTED);
     }
 
     /**
@@ -815,7 +844,43 @@ public class MainActivity extends AppCompatActivity {
             recoveryReceiver = null;
         }
 
+        // Unregister battery status receiver
+        if (batteryStatusReceiver != null) {
+            unregisterReceiver(batteryStatusReceiver);
+            batteryStatusReceiver = null;
+        }
+
         // Cancel any pending recovery work
         WorkManager.getInstance(this).cancelAllWorkByTag(RECOVERY_WORK_TAG);
+    }
+
+    /**
+     * Handle glasses battery status updates
+     * @param batteryLevel Battery level (0-100)
+     * @param charging Whether the glasses are charging
+     * @param timestamp Timestamp of the battery reading
+     */
+    private void handleGlassesBatteryStatus(int batteryLevel, boolean charging, long timestamp) {
+        Log.i(TAG, "🔋 Processing glasses battery status: " + batteryLevel + "% " + " at " + timestamp);
+        
+        // Save battery status to local variables
+        glassesBatteryLevel = batteryLevel;
+        glassesCharging = charging;
+        lastBatteryUpdateTime = timestamp;
+        
+        Log.i(TAG, "💾 Updated local battery variables - Level: " + glassesBatteryLevel + 
+              "%, Time: " + lastBatteryUpdateTime);
+
+        // Emit a BatteryStatusEvent for other components to consume
+        Log.i(TAG, "📡 Emitting BatteryStatusEvent: " + batteryLevel + "% " + " at " + timestamp);
+        EventBus.getDefault().post(new BatteryStatusEvent(batteryLevel, charging, timestamp));
+    }
+    
+    /**
+     * Get the last battery update time
+     * @return timestamp of last battery update, or 0 if never updated
+     */
+    public long getLastBatteryUpdateTime() {
+        return lastBatteryUpdateTime;
     }
 }

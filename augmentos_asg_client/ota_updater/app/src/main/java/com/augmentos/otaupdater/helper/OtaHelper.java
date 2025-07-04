@@ -20,6 +20,10 @@ import android.net.NetworkRequest;
 
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.greenrobot.eventbus.EventBus;
+import org.greenrobot.eventbus.Subscribe;
+import org.greenrobot.eventbus.ThreadMode;
+import com.augmentos.otaupdater.events.BatteryStatusEvent;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -49,6 +53,10 @@ public class OtaHelper {
     public OtaHelper(Context context) {
         this.context = context.getApplicationContext(); // Use application context to avoid memory leaks
         handler = new Handler(Looper.getMainLooper());
+        
+        // Register for EventBus to receive battery status updates
+        EventBus.getDefault().register(this);
+        
         // Schedule initial check after 15 seconds
         handler.postDelayed(() -> {
             Log.d(TAG, "Performing initial OTA check after 15 seconds");
@@ -68,6 +76,12 @@ public class OtaHelper {
         }
         stopPeriodicChecks();
         unregisterNetworkCallback();
+        
+        // Unregister from EventBus
+        if (EventBus.getDefault().isRegistered(this)) {
+            EventBus.getDefault().unregister(this);
+        }
+        
         context = null;
     }
 
@@ -190,6 +204,12 @@ public class OtaHelper {
 
         if (!isNetworkAvailable(context)) {
             Log.e(TAG, "No WiFi connection available. Skipping OTA check.");
+            return;
+        }
+        
+        // Check battery status before proceeding with OTA update
+        if (!isBatterySufficientForUpdates()) {
+            Log.w(TAG, "🚨 Battery insufficient for OTA updates - skipping version check");
             return;
         }
 
@@ -609,5 +629,78 @@ public class OtaHelper {
                 Log.e(TAG, "Failed to send fallback update completion broadcast", ex);
             }
         }
+    }
+    
+    // Battery status tracking variables
+    private int glassesBatteryLevel = -1; // -1 means unknown
+    private boolean glassesCharging = false;
+    private long lastBatteryUpdateTime = 0;
+    private boolean batteryCheckInProgress = false;
+    private boolean lastBatteryCheckResult = true; // Default to allowing updates
+    
+    /**
+     * EventBus subscriber for battery status updates from MainActivity
+     * @param event Battery status event containing level, charging status, and timestamp
+     */
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void onBatteryStatusEvent(BatteryStatusEvent event) {
+        Log.i(TAG, "🔋 Received BatteryStatusEvent: " + event);
+        
+        // Update local battery status variables
+        glassesBatteryLevel = event.getBatteryLevel();
+        glassesCharging = event.isCharging();
+        lastBatteryUpdateTime = event.getTimestamp();
+        
+        // Update the battery check result based on current status
+        lastBatteryCheckResult = isBatterySufficientForUpdates();
+        
+        // Mark battery check as complete
+        batteryCheckInProgress = false;
+        
+        Log.i(TAG, "💾 Updated OtaHelper battery status - Level: " + glassesBatteryLevel + 
+              "%, Charging: " + glassesCharging + ", Sufficient: " + lastBatteryCheckResult);
+    }
+    
+    /**
+     * Check if battery level is sufficient for OTA updates
+     * This method uses the locally stored battery status from EventBus events
+     * @return true if battery is sufficient, false if too low
+     */
+    private boolean isBatterySufficientForUpdates() {
+        // If we don't have battery info, allow updates (fail-safe)
+        if (glassesBatteryLevel == -1) {
+            Log.w(TAG, "⚠️ No battery information available - allowing updates as fail-safe");
+            return true;
+        }
+        
+        // Block updates if battery < 5% and not charging
+        if (glassesBatteryLevel < 5) {
+            Log.w(TAG, "🚨 Battery insufficient for OTA updates: " + glassesBatteryLevel + 
+                  "% - blocking updates");
+            return false;
+        }
+        
+        Log.i(TAG, "✅ Battery sufficient for OTA updates: " + glassesBatteryLevel + 
+              "%");
+        return true;
+    }
+    
+    /**
+     * Get current battery status as formatted string
+     * @return formatted battery status string
+     */
+    public String getBatteryStatusString() {
+        if (glassesBatteryLevel == -1) {
+            return "Unknown";
+        }
+        return glassesBatteryLevel + "% " + (glassesCharging ? "(charging)" : "(not charging)");
+    }
+    
+    /**
+     * Get the last battery update time
+     * @return timestamp of last battery update, or 0 if never updated
+     */
+    public long getLastBatteryUpdateTime() {
+        return lastBatteryUpdateTime;
     }
 }
