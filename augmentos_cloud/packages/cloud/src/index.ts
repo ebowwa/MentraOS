@@ -257,9 +257,13 @@ app.get('/api/azure/stats', (req, res) => {
     const { TranscriptionService } = require('./services/processing/transcription.service');
     const azureStats = TranscriptionService.getGlobalConnectionStats();
     
-    const activeSessions = sessionService.getActiveSessions();
+    // Import SessionStorage to get all active sessions  
+    const SessionStorage = require('./services/session/SessionStorage').default;
+    const sessionStorage = SessionStorage.getInstance();
+    const activeSessions = sessionStorage.getAllSessions();
+    
     const totalUsers = activeSessions.length;
-    const usersWithStreams = activeSessions.filter(session => 
+    const usersWithStreams = activeSessions.filter((session: any) => 
       session.transcriptionStreams && session.transcriptionStreams.size > 0
     ).length;
     
