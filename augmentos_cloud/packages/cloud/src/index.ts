@@ -223,9 +223,78 @@ app.use('/api/onboarding', onboardingRoutes);
 app.use('/api/app-communication', appCommunicationRoutes);
 app.use('/api/tpa-communication', appCommunicationRoutes); // TODO: Remove this once the old apps are fully updated in the wild (the old mobile clients will hit the old urls)
 
-// Health check endpoint
+// Health check endpoint with Azure connection monitoring
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  try {
+    // Import transcription service for connection stats
+    const { TranscriptionService } = require('./services/processing/transcription.service');
+    const azureStats = TranscriptionService.getGlobalConnectionStats();
+    
+    res.json({ 
+      status: 'ok', 
+      timestamp: new Date().toISOString(),
+      azure: {
+        activeConnections: azureStats.activeStreams,
+        maxConnections: azureStats.maxStreams,
+        utilizationPercent: azureStats.utilizationPercent,
+        nearLimit: azureStats.nearLimit,
+        healthy: azureStats.utilizationPercent < 90
+      }
+    });
+  } catch (error) {
+    // Fallback if transcription service unavailable
+    res.json({ 
+      status: 'ok', 
+      timestamp: new Date().toISOString(),
+      azure: { error: 'Stats unavailable' }
+    });
+  }
+});
+
+// Azure connection monitoring endpoint for detailed stats
+app.get('/api/azure/stats', (req, res) => {
+  try {
+    const { TranscriptionService } = require('./services/processing/transcription.service');
+    const azureStats = TranscriptionService.getGlobalConnectionStats();
+    
+    const activeSessions = sessionService.getActiveSessions();
+    const totalUsers = activeSessions.length;
+    const usersWithStreams = activeSessions.filter(session => 
+      session.transcriptionStreams && session.transcriptionStreams.size > 0
+    ).length;
+    
+    res.json({
+      timestamp: new Date().toISOString(),
+      azure: {
+        connections: {
+          active: azureStats.activeStreams,
+          max: azureStats.maxStreams,
+          utilizationPercent: azureStats.utilizationPercent,
+          remaining: azureStats.maxStreams - azureStats.activeStreams
+        },
+        health: {
+          healthy: azureStats.utilizationPercent < 90,
+          nearLimit: azureStats.nearLimit,
+          atCapacity: azureStats.utilizationPercent >= 95
+        }
+      },
+      users: {
+        total: totalUsers,
+        withStreams: usersWithStreams,
+        avgStreamsPerUser: totalUsers > 0 ? (azureStats.activeStreams / totalUsers).toFixed(2) : 0
+      },
+      recommendations: {
+        canAcceptNewUsers: azureStats.utilizationPercent < 80,
+        shouldScaleUp: azureStats.utilizationPercent > 85,
+        emergencyThrottle: azureStats.utilizationPercent > 95
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      error: 'Failed to get Azure stats',
+      message: error instanceof Error ? error.message : String(error)
+    });
+  }
 });
 
 // Serve static files from the public directory
