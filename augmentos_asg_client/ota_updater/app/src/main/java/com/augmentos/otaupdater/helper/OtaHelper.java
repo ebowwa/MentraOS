@@ -24,6 +24,8 @@ import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
 import com.augmentos.otaupdater.events.BatteryStatusEvent;
+import com.augmentos.otaupdater.events.DownloadProgressEvent;
+import com.augmentos.otaupdater.events.InstallationProgressEvent;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -313,6 +315,9 @@ public class OtaHelper {
             int lastProgress = 0;
 
             Log.d(TAG, "Download started, file size: " + fileSize + " bytes");
+            
+            // Emit download started event
+            EventBus.getDefault().post(DownloadProgressEvent.createStarted(fileSize));
 
             while ((len = in.read(buffer)) > 0) {
                 out.write(buffer, 0, len);
@@ -321,9 +326,11 @@ public class OtaHelper {
                 // Calculate progress percentage
                 int progress = fileSize > 0 ? (int) (total * 100 / fileSize) : 0;
 
-                // Log progress at 10% intervals
-                if (progress >= lastProgress + 10 || progress == 100) {
+                // Log progress at 5% intervals and emit progress events
+                if (progress >= lastProgress + 5 || progress == 100) {
                     Log.d(TAG, "Download progress: " + progress + "% (" + total + "/" + fileSize + " bytes)");
+                    // Emit progress event
+                    EventBus.getDefault().post(new DownloadProgressEvent(DownloadProgressEvent.DownloadStatus.PROGRESS, progress, total, fileSize));
                     lastProgress = progress;
                 }
             }
@@ -332,6 +339,10 @@ public class OtaHelper {
             in.close();
 
             Log.d(TAG, "APK downloaded to: " + apkFile.getAbsolutePath());
+            
+            // Emit download finished event
+            EventBus.getDefault().post(DownloadProgressEvent.createFinished(fileSize));
+            
             // Immediately check hash after download
             boolean hashOk = verifyApkFile(apkFile.getAbsolutePath(), json);
             Log.d(TAG, "SHA256 verification result: " + hashOk);
@@ -344,10 +355,14 @@ public class OtaHelper {
                     boolean deleted = apkFile.delete();
                     Log.d(TAG, "SHA256 mismatch – APK deleted: " + deleted);
                 }
+                // Emit download failed event due to hash mismatch
+                EventBus.getDefault().post(new DownloadProgressEvent(DownloadProgressEvent.DownloadStatus.FAILED, "SHA256 hash verification failed"));
                 return false;
             }
         } catch (Exception e) {
             Log.e(TAG, "OTA failed", e);
+            // Emit download failed event due to exception
+            EventBus.getDefault().post(new DownloadProgressEvent(DownloadProgressEvent.DownloadStatus.FAILED, "Download failed: " + e.getMessage()));
             return false;
         }
     }
@@ -416,6 +431,9 @@ public class OtaHelper {
 //            }
             Log.d(TAG, "Starting installation process for APK at: " + apkPath);
             
+            // Emit installation started event
+            EventBus.getDefault().post(new InstallationProgressEvent(InstallationProgressEvent.InstallationStatus.STARTED, apkPath));
+            
             Intent intent = new Intent("com.xy.xsetting.action");
             intent.setPackage("com.android.systemui");
             intent.putExtra("cmd", "install");
@@ -427,6 +445,8 @@ public class OtaHelper {
             File apkFile = new File(apkPath);
             if (!apkFile.exists()) {
                 Log.e(TAG, "Installation failed: APK file not found at " + apkPath);
+                // Emit installation failed event
+                EventBus.getDefault().post(new InstallationProgressEvent(InstallationProgressEvent.InstallationStatus.FAILED, apkPath, "APK file not found"));
                 sendUpdateCompletedBroadcast(context);
                 return;
             }
@@ -434,6 +454,8 @@ public class OtaHelper {
             // Verify APK is readable
             if (!apkFile.canRead()) {
                 Log.e(TAG, "Installation failed: Cannot read APK file at " + apkPath);
+                // Emit installation failed event
+                EventBus.getDefault().post(new InstallationProgressEvent(InstallationProgressEvent.InstallationStatus.FAILED, apkPath, "Cannot read APK file"));
                 sendUpdateCompletedBroadcast(context);
                 return;
             }
@@ -452,14 +474,20 @@ public class OtaHelper {
             // This is necessary because the system doesn't notify us when installation is complete
             new Handler(Looper.getMainLooper()).postDelayed(() -> {
                 Log.i(TAG, "Installation timer elapsed - sending completion broadcast");
+                // Emit installation finished event
+                EventBus.getDefault().post(new InstallationProgressEvent(InstallationProgressEvent.InstallationStatus.FINISHED, apkPath));
                 sendUpdateCompletedBroadcast(context);
             }, 10000); // Wait 60 seconds for installation to complete
         } catch (SecurityException e) {
             Log.e(TAG, "Security exception while sending install broadcast", e);
+            // Emit installation failed event
+            EventBus.getDefault().post(new InstallationProgressEvent(InstallationProgressEvent.InstallationStatus.FAILED, apkPath, "Security exception: " + e.getMessage()));
             // Make sure to send completion broadcast on error
             sendUpdateCompletedBroadcast(context);
         } catch (Exception e) {
             Log.e(TAG, "Failed to send install broadcast", e);
+            // Emit installation failed event
+            EventBus.getDefault().post(new InstallationProgressEvent(InstallationProgressEvent.InstallationStatus.FAILED, apkPath, "Installation failed: " + e.getMessage()));
             // Make sure to send completion broadcast on error
             sendUpdateCompletedBroadcast(context);
         }

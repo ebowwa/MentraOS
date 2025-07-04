@@ -19,7 +19,12 @@ import androidx.work.Data;
 
 import com.augmentos.otaupdater.worker.RecoveryWorker;
 import org.greenrobot.eventbus.EventBus;
+import org.greenrobot.eventbus.Subscribe;
+import org.greenrobot.eventbus.ThreadMode;
+
 import com.augmentos.otaupdater.events.BatteryStatusEvent;
+import com.augmentos.otaupdater.events.DownloadProgressEvent;
+import com.augmentos.otaupdater.events.InstallationProgressEvent;
 
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
@@ -87,6 +92,9 @@ public class MainActivity extends AppCompatActivity {
 
         // Register receivers
         registerReceivers();
+
+        // Register for EventBus to receive download and installation progress updates
+        EventBus.getDefault().register(this);
 
         // Start the heartbeat system
         startHeartbeatSystem();
@@ -852,6 +860,11 @@ public class MainActivity extends AppCompatActivity {
 
         // Cancel any pending recovery work
         WorkManager.getInstance(this).cancelAllWorkByTag(RECOVERY_WORK_TAG);
+
+        // Unregister from EventBus
+        if (EventBus.getDefault().isRegistered(this)) {
+            EventBus.getDefault().unregister(this);
+        }
     }
 
     /**
@@ -875,6 +888,53 @@ public class MainActivity extends AppCompatActivity {
         Log.i(TAG, "📡 Emitting BatteryStatusEvent: " + batteryLevel + "% " + " at " + timestamp);
         EventBus.getDefault().post(new BatteryStatusEvent(batteryLevel, charging, timestamp));
     }
+
+    /**
+     * EventBus handler for download progress updates
+     */
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void onDownloadProgressEvent(DownloadProgressEvent event) {
+        switch (event.getStatus()) {
+            case STARTED:
+                Log.i(TAG, "📥 Download started - File size: " + event.getTotalBytes() + " bytes");
+                break;
+            case PROGRESS:
+                Log.i(TAG, "📥 Download progress: " + event.getProgress() + "% (" + 
+                      event.getBytesDownloaded() + "/" + event.getTotalBytes() + " bytes)");
+                break;
+            case FINISHED:
+                Log.i(TAG, "✅ Download completed successfully - " + event.getTotalBytes() + " bytes downloaded");
+                break;
+            case FAILED:
+                Log.e(TAG, "❌ Download failed: " + event.getErrorMessage());
+                break;
+        }
+        
+        // Broadcast download progress event to ASG Client Service
+        broadcastDownloadProgressToAsgClient(event);
+    }
+
+    /**
+     * EventBus handler for installation progress updates
+     */
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void onInstallationProgressEvent(InstallationProgressEvent event) {
+        switch (event.getStatus()) {
+            case STARTED:
+                Log.i(TAG, "🔧 Installation started for APK: " + event.getApkPath());
+                break;
+            case FINISHED:
+                Log.i(TAG, "✅ Installation completed successfully for APK: " + event.getApkPath());
+                break;
+            case FAILED:
+                Log.e(TAG, "❌ Installation failed for APK: " + event.getApkPath() + 
+                      " - Error: " + event.getErrorMessage());
+                break;
+        }
+        
+        // Broadcast installation progress event to ASG Client Service
+        broadcastInstallationProgressToAsgClient(event);
+    }
     
     /**
      * Get the last battery update time
@@ -882,5 +942,51 @@ public class MainActivity extends AppCompatActivity {
      */
     public long getLastBatteryUpdateTime() {
         return lastBatteryUpdateTime;
+    }
+
+    /**
+     * Broadcast download progress event to ASG Client Service
+     */
+    private void broadcastDownloadProgressToAsgClient(DownloadProgressEvent event) {
+        try {
+            Intent intent = new Intent("com.augmentos.otaupdater.ACTION_DOWNLOAD_PROGRESS");
+            intent.setPackage("com.augmentos.asg_client");
+            
+            // Add event data to intent
+            intent.putExtra("status", event.getStatus().name());
+            intent.putExtra("progress", event.getProgress());
+            intent.putExtra("bytes_downloaded", event.getBytesDownloaded());
+            intent.putExtra("total_bytes", event.getTotalBytes());
+            intent.putExtra("error_message", event.getErrorMessage());
+            intent.putExtra("timestamp", event.getTimestamp());
+            
+            sendBroadcast(intent);
+            Log.i(TAG, "📡 Broadcasted download progress to ASG Client: " + event.getStatus());
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Error broadcasting download progress to ASG Client", e);
+        }
+    }
+
+    /**
+     * Broadcast installation progress event to ASG Client Service
+     */
+    private void broadcastInstallationProgressToAsgClient(InstallationProgressEvent event) {
+        try {
+            Intent intent = new Intent("com.augmentos.otaupdater.ACTION_INSTALLATION_PROGRESS");
+            intent.setPackage("com.augmentos.asg_client");
+            
+            // Add event data to intent
+            intent.putExtra("status", event.getStatus().name());
+            intent.putExtra("apk_path", event.getApkPath());
+            intent.putExtra("error_message", event.getErrorMessage());
+            intent.putExtra("timestamp", event.getTimestamp());
+            
+            sendBroadcast(intent);
+            Log.i(TAG, "📡 Broadcasted installation progress to ASG Client: " + event.getStatus());
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Error broadcasting installation progress to ASG Client", e);
+        }
     }
 }
