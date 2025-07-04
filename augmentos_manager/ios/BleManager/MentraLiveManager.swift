@@ -379,8 +379,26 @@ typealias JSONObject = [String: Any]
     private var isScanning = false
     private var isConnecting = false
     private var isKilled = false
-    private var glassesReady = false
+    public var glassesReady = false
     private var reconnectAttempts = 0
+  
+  public var ready: Bool {
+    get { return glassesReady }
+    set {
+      let oldValue = glassesReady
+      glassesReady = newValue
+      if oldValue != newValue {
+        // Call the callback when state changes
+//        onConnectionStateChanged?()
+      }
+      if (!newValue) {
+        // Reset battery levels when disconnected
+//        batteryLevel = -1
+//        leftBatteryLevel = -1
+//        rightBatteryLevel = -1
+      }
+    }
+  }
     
     // Data Properties
     @Published public var batteryLevel: Int = 50
@@ -428,6 +446,9 @@ typealias JSONObject = [String: Any]
             print("Bluetooth is not powered on")
             return
         }
+
+        // clear the saved device name:
+        UserDefaults.standard.set("", forKey: PREFS_DEVICE_NAME)
         
         startScan()
     }
@@ -1112,20 +1133,20 @@ typealias JSONObject = [String: Any]
     
     private func startConnectionTimeout() {
         connectionTimeoutTimer?.invalidate()
-        connectionTimeoutTimer = Timer.scheduledTimer(withTimeInterval: CONNECTION_TIMEOUT_MS / 1_000_000_000, repeats: false) { [weak self] _ in
-            guard let self = self else { return }
-            
-            if self.isConnecting && self.connectionState != .connected {
-                print("Connection timeout - closing GATT connection")
-                self.isConnecting = false
-                
-                if let peripheral = self.connectedPeripheral {
-                    self.centralManager?.cancelPeripheralConnection(peripheral)
-                }
-                
-                self.handleReconnection()
-            }
-        }
+//        connectionTimeoutTimer = Timer.scheduledTimer(withTimeInterval: CONNECTION_TIMEOUT_MS / 1_000_000_000, repeats: false) { [weak self] _ in
+//            guard let self = self else { return }
+//            
+//            if self.isConnecting && self.connectionState != .connected {
+//                print("Connection timeout - closing GATT connection")
+//                self.isConnecting = false
+//                
+//                if let peripheral = self.connectedPeripheral {
+//                    self.centralManager?.cancelPeripheralConnection(peripheral)
+//                }
+//                
+//                self.handleReconnection()
+//            }
+//        }
     }
     
     private func stopConnectionTimeout() {
@@ -1158,7 +1179,7 @@ typealias JSONObject = [String: Any]
             "device_model": "Mentra Live"
         ]
         
-        emitEvent("GlassesBluetoothSearchStopEvent", body: eventBody)
+        // emitEvent("GlassesBluetoothSearchStopEvent", body: eventBody)
     }
     
     private func emitBatteryLevelEvent(level: Int, charging: Bool) {
@@ -1167,7 +1188,7 @@ typealias JSONObject = [String: Any]
             "is_charging": charging
         ]
         
-        emitEvent("BatteryLevelEvent", body: eventBody)
+        // emitEvent("BatteryLevelEvent", body: eventBody)
     }
     
     private func emitWifiStatusChange(connected: Bool, ssid: String) {
@@ -1177,7 +1198,7 @@ typealias JSONObject = [String: Any]
             "ssid": ssid
         ]
         
-        emitEvent("GlassesWifiStatusChange", body: eventBody)
+        // emitEvent("GlassesWifiStatusChange", body: eventBody)
     }
     
     private func emitWifiScanResult(_ networks: [String]) {
@@ -1186,7 +1207,7 @@ typealias JSONObject = [String: Any]
             "networks": networks
         ]
         
-        emitEvent("GlassesWifiScanResultEvent", body: eventBody)
+        // emitEvent("GlassesWifiScanResultEvent", body: eventBody)
     }
     
     private func emitRtmpStreamStatus(_ json: [String: Any]) {
@@ -1223,8 +1244,7 @@ typealias JSONObject = [String: Any]
         do {
             let jsonData = try JSONSerialization.data(withJSONObject: body, options: [])
             if let jsonString = String(data: jsonData, encoding: .utf8) {
-                // Note: You'll need to implement CoreCommsService.emitter similar to your ERG1Manager
-                // CoreCommsService.emitter.sendEvent(withName: eventName, body: jsonString)
+                CoreCommsService.emitter.sendEvent(withName: eventName, body: jsonString)
                 print("Would emit event: \(eventName) with body: \(jsonString)")
             }
         } catch {

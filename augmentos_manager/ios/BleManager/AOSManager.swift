@@ -27,6 +27,7 @@ struct ViewState {
   private var coreTokenOwner: String = ""
 
   @objc var g1Manager: ERG1Manager?
+  @objc var liveManager: MentraLiveManager?
   var micManager: OnboardMicrophoneManager!
   var serverComms: ServerComms!
 
@@ -96,11 +97,16 @@ struct ViewState {
   @objc public func setup() {
 
     self.g1Manager = ERG1Manager()
+    self.liveManager = MentraLiveManager()
     self.micManager = OnboardMicrophoneManager()
     self.serverComms.locationManager.setup()
     self.serverComms.mediaManager.setup()
 
     guard g1Manager != nil else {
+      return
+    }
+
+    guard liveManager != nil else {
       return
     }
 
@@ -120,7 +126,7 @@ struct ViewState {
       print("G1 glasses connection changed to: \(self.g1Manager!.g1Ready ? "Connected" : "Disconnected")")
       //      self.handleRequestStatus()
       if (self.g1Manager!.g1Ready) {
-        handleDeviceReady()
+        handleG1Ready()
       } else {
         handleDeviceDisconnected()
         handleRequestStatus()
@@ -162,6 +168,18 @@ struct ViewState {
 //        guard let self = self else { return }
 //      handleRequestStatus()
 //    }.store(in: &cancellables)
+
+    liveManager!.onConnectionStateChanged = { [weak self] in
+      guard let self = self else { return }
+      print("Live glasses connection changed to: \(self.liveManager!.ready ? "Connected" : "Disconnected")")
+      //      self.handleRequestStatus()
+      if (self.liveManager!.ready) {
+        handleLiveReady()
+      } else {
+        handleDeviceDisconnected()
+        handleRequestStatus()
+      }
+    }
 
 
     // Subscribe to WebSocket status changes
@@ -715,6 +733,9 @@ struct ViewState {
     } else if (modelName.contains("G1")) {
       self.defaultWearable = "Even Realities G1"
       self.g1Manager?.RN_startScan()
+    } else if (modelName.contains("Live")) {
+      self.defaultWearable = "Mentra Live"
+      self.liveManager?.RN_findCompatibleDevices()
     }
   }
 
@@ -742,6 +763,7 @@ struct ViewState {
     // self.micEnabled = micWasEnabled
 
     self.g1Manager?.disconnect()
+    self.liveManager?.RN_disconnect()
 
 //    if self.defaultWearable.contains("Simulated") || self.defaultWearable.isEmpty {
 //      return
@@ -1066,6 +1088,9 @@ struct ViewState {
     if self.defaultWearable.contains("G1") {
       return true
     }
+    if self.defaultWearable.contains("Live") {
+      return true
+    }
     return false
   }
 
@@ -1227,7 +1252,7 @@ struct ViewState {
     }
   }
 
-  private func handleDeviceReady() {
+  private func handleG1Ready() {
     self.isSearching = false
     self.defaultWearable = "Even Realities G1"
     self.handleRequestStatus()
@@ -1268,6 +1293,13 @@ struct ViewState {
     }
   }
 
+  private func handleLiveReady() {
+    print("Mentra Live device ready")
+    self.isSearching = false
+    self.defaultWearable = "Mentra Live"
+    self.handleRequestStatus()
+  }
+
   private func handleDeviceDisconnected() {
     print("Device disconnected")
     onMicrophoneStateChange(false)// technically shouldn't be necessary
@@ -1294,15 +1326,27 @@ struct ViewState {
 
     Task {
       disconnect()
-      if (deviceName != "") {
-        self.deviceName = deviceName
-        saveSettings()
-        self.g1Manager?.RN_pairById(deviceName)
-      } else if self.deviceName != "" {
-        self.g1Manager?.RN_pairById(self.deviceName)
-      } else {
-        print("this shouldn't happen (we don't have a deviceName saved, connecting will fail if we aren't already paired)")
 
+      if (self.defaultWearable.contains("Live")) {
+        if (deviceName != "") {
+          self.deviceName = deviceName
+          saveSettings()
+          self.liveManager?.RN_connectToGlasses(deviceName)
+        } else if self.deviceName != "" {
+          self.liveManager?.RN_connectToGlasses(self.deviceName)
+        } else {
+          print("this shouldn't happen (we don't have a deviceName saved, connecting will fail if we aren't already paired)")
+        }
+      } else if (self.defaultWearable.contains("G1")) {
+        if (deviceName != "") {
+          self.deviceName = deviceName
+          saveSettings()
+          self.g1Manager?.RN_pairById(deviceName)
+        } else if self.deviceName != "" {
+          self.g1Manager?.RN_pairById(self.deviceName)
+        } else {
+          print("this shouldn't happen (we don't have a deviceName saved, connecting will fail if we aren't already paired)")
+        }
       }
     }
 
