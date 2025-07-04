@@ -134,10 +134,10 @@ export class AudioManager {
       if (processedAudioData) {
         transcriptionService.feedAudioToTranscriptionStreams(this.userSession, processedAudioData);
 
-        // Relay to TPAs if there are subscribers
+        // Relay to Apps if there are subscribers
         // Note: Using subscriptionService instead of subscriptionManager
         // if (subscriptionService.hasMediaSubscriptions(this.userSession.sessionId)) {
-        this.relayAudioToTpas(processedAudioData);
+        this.relayAudioToApps(processedAudioData);
         // }
       }
 
@@ -347,11 +347,11 @@ export class AudioManager {
   }
 
   /**
-   * Relay audio data to TPAs
+   * Relay audio data to Apps
    *
    * @param audioData Audio data to relay
    */
-  private relayAudioToTpas(audioData: ArrayBuffer): void {
+  private relayAudioToApps(audioData: ArrayBuffer): void {
     try {
       // Get subscribers using subscriptionService instead of subscriptionManager
       const subscribedPackageNames = subscriptionService.getSubscribedApps(

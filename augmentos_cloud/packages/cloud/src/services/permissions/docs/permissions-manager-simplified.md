@@ -8,15 +8,15 @@ Status: Implemented
 
 ### Problem Statement
 
-While we've implemented the permission declaration and display system, there's currently no enforcement mechanism ensuring TPAs (Third-Party Applications) can only access streams they've declared permissions for. This creates several issues:
+While we've implemented the permission declaration and display system, there's currently no enforcement mechanism ensuring Apps (Third-Party Applications) can only access streams they've declared permissions for. This creates several issues:
 
-1. **No Permission Validation**: TPAs can subscribe to any stream regardless of declared permissions
-2. **Developer Confusion**: No feedback when TPAs try to access streams without proper permissions
-3. **User Trust Gap**: The permissions displayed to users may not match actual TPA behavior
+1. **No Permission Validation**: Apps can subscribe to any stream regardless of declared permissions
+2. **Developer Confusion**: No feedback when Apps try to access streams without proper permissions
+3. **User Trust Gap**: The permissions displayed to users may not match actual App behavior
 
 This simplified implementation focuses on enforcing declared permissions at the subscription level:
 
-1. Ensuring TPAs can only subscribe to streams they've declared permissions for
+1. Ensuring Apps can only subscribe to streams they've declared permissions for
 2. Providing clear error messages when permissions are missing
 3. Implementing this without the complexity of the full permissions management system
 
@@ -25,7 +25,7 @@ This simplified implementation focuses on enforcing declared permissions at the 
 **Implementation Targets:**
 
 1. **Create Stream-Permission Mapping**: Define which stream types require which permissions
-2. **Add Subscription Validation**: Check permissions when TPAs subscribe to streams
+2. **Add Subscription Validation**: Check permissions when Apps subscribe to streams
 3. **Provide Clear Error Messages**: Return helpful messages when subscriptions are rejected
 4. **Keep Current Permission UI**: Continue using the existing permission declaration and display UI
 
@@ -205,7 +205,7 @@ updateSubscriptions(
       rejected.map(r => `${r.stream} (requires ${r.requiredPermission})`).join(', ')
     );
 
-    // Send error message to TPA if connected
+    // Send error message to App if connected
     const connection = this.userSession?.appConnections.get(packageName);
     if (connection && connection.readyState === 1) {
       const errorMessage = {

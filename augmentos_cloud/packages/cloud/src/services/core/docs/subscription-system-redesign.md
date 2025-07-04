@@ -9,7 +9,7 @@
 
 2. **Performance (n²) Problems**
    - O(n) iteration through all subscriptions for each event
-   - No precomputed mappings from stream types to subscribed TPAs
+   - No precomputed mappings from stream types to subscribed Apps
    - Particularly problematic for high-frequency events (audio)
 
 3. **Mixed Responsibilities**
@@ -28,15 +28,15 @@ Split into two separate session-scoped managers:
 
 ```typescript
 class SubscriptionManager {
-  // Maps TPA to their subscriptions
+  // Maps App to their subscriptions
   private subscriptions = new Map<string, Set<ExtendedStreamType>>();
-  
-  // Optimized lookup: stream type → subscribed TPAs
+
+  // Optimized lookup: stream type → subscribed Apps
   private streamToApps = new Map<ExtendedStreamType, Set<string>>();
-  
-  // TPAs with wildcard subscriptions
+
+  // Apps with wildcard subscriptions
   private wildcardApps = new Set<string>();
-  
+
   // Subscription history
   private history = new Map<string, SubscriptionHistory[]>();
 }
@@ -45,8 +45,8 @@ class SubscriptionManager {
 ### Core Functionality
 
 1. **Fast Subscription Lookup**
-   - O(1) lookup of which TPAs are subscribed to an event
-   - Maintain reverse mapping from stream types to TPAs
+   - O(1) lookup of which Apps are subscribed to an event
+   - Maintain reverse mapping from stream types to Apps
    - Special handling for wildcard subscribers
 
 2. **Encapsulated Broadcasting**
@@ -68,10 +68,10 @@ updateSubscriptions(packageName: string, subscriptions: ExtendedStreamType[]): v
 // Fast O(1) lookup of subscribed apps
 getSubscribedApps(streamType: ExtendedStreamType): string[]
 
-// Broadcast event to all subscribed TPAs
+// Broadcast event to all subscribed Apps
 broadcast(streamType: ExtendedStreamType, data: any, options?: BroadcastOptions): void
 
-// Remove all subscriptions for a TPA
+// Remove all subscriptions for a App
 removeSubscriptions(packageName: string): void
 ```
 
@@ -94,7 +94,7 @@ class CacheManager {
    - Provide retrieval methods for various data types
 
 2. **Initial State Management**
-   - Supply initial state for newly connected TPAs
+   - Supply initial state for newly connected Apps
    - Maintain historical context for session
 
 ### Key Methods
@@ -144,13 +144,13 @@ if (message.type === GlassesToCloudMessageType.CALENDAR_EVENT) {
 }
 ```
 
-### TPA Connection
+### App Connection
 ```typescript
-// When TPA connects, send initial state
+// When App connects, send initial state
 const calendarEvents = userSession.cacheManager.getAllCalendarEvents();
 const location = userSession.cacheManager.getLastLocation();
 
-// Format and send initial state to TPA
+// Format and send initial state to App
 ```
 
 ## Migration Strategy

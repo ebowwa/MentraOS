@@ -15,7 +15,6 @@ import {Spacer} from "@/components/misc/Spacer"
 export default function OnboardingWelcome() {
   const {appStatus, optimisticallyStopApp, clearPendingOperation, refreshAppStatus} = useAppStatus()
   const {theme, themed} = useAppTheme()
-  const isDarkTheme = theme.isDark
   const {goBack, push, replace} = useNavigationHistory()
   const backendComms = BackendServerComms.getInstance()
 
@@ -48,7 +47,7 @@ export default function OnboardingWelcome() {
     // deactivate all running apps:
     await stopAllApps()
 
-    router.push("/pairing/select-glasses-model")
+    push("/pairing/select-glasses-model")
   }
 
   return (
@@ -63,10 +62,10 @@ export default function OnboardingWelcome() {
         </View> */}
 
         <View style={styles.infoContainer}>
-          <Text style={[styles.title, {color: theme.colors.text}]}>Welcome to AugmentOS</Text>
+          <Text style={[styles.title, {color: theme.colors.text}]}>Welcome to MentraOS</Text>
 
           <Text style={[styles.description, {color: theme.colors.text}]}>
-            Let's go through a quick tutorial to get you started with AugmentOS.
+            Let's go through a quick tutorial to get you started with MentraOS.
           </Text>
         </View>
 

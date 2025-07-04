@@ -12,7 +12,7 @@ Different smart glasses models have different hardware configurations. Some have
 
 ```typescript
 // Example: Check if the connected glasses have a camera
-protected async onSession(session: TpaSession, sessionId: string, userId: string): Promise<void> {
+protected async onSession(session: AppSession, sessionId: string, userId: string): Promise<void> {
   if (session.capabilities?.hasCamera) {
     // Glasses have a camera - enable photo/video features
     session.logger.info("Camera available!");
@@ -25,12 +25,12 @@ protected async onSession(session: TpaSession, sessionId: string, userId: string
 
 ## Accessing Capabilities
 
-Device capabilities are available on the [`TpaSession`](/reference/tpa-session) through the `capabilities` property:
+Device capabilities are available on the [`AppSession`](/reference/app-session) through the `capabilities` property:
 
 ```typescript
-import { TpaSession, Capabilities } from '@mentraos/sdk';
+import { AppSession, Capabilities } from '@mentraos/sdk';
 
-protected async onSession(session: TpaSession, sessionId: string, userId: string): Promise<void> {
+protected async onSession(session: AppSession, sessionId: string, userId: string): Promise<void> {
   // Capabilities may be null if not yet loaded
   const caps: Capabilities | null = session.capabilities;
 
@@ -48,7 +48,7 @@ protected async onSession(session: TpaSession, sessionId: string, userId: string
 ### Checking for Display Capabilities
 
 ```typescript
-protected async onSession(session: TpaSession, sessionId: string, userId: string): Promise<void> {
+protected async onSession(session: AppSession, sessionId: string, userId: string): Promise<void> {
   const caps = session.capabilities;
   if (!caps) return;
 
@@ -83,7 +83,7 @@ protected async onSession(session: TpaSession, sessionId: string, userId: string
 ### Checking for Camera Capabilities
 
 ```typescript
-protected async onSession(session: TpaSession, sessionId: string, userId: string): Promise<void> {
+protected async onSession(session: AppSession, sessionId: string, userId: string): Promise<void> {
   const caps = session.capabilities;
   if (!caps) return;
 
@@ -118,8 +118,8 @@ protected async onSession(session: TpaSession, sessionId: string, userId: string
 ### Adaptive Feature Selection
 
 ```typescript
-class AdaptiveApp extends TpaServer {
-  protected async onSession(session: TpaSession, sessionId: string, userId: string): Promise<void> {
+class AdaptiveApp extends AppServer {
+  protected async onSession(session: AppSession, sessionId: string, userId: string): Promise<void> {
     const caps = session.capabilities;
     if (!caps) {
       session.layouts.showTextWall("Loading device information...");
@@ -173,7 +173,7 @@ class AdaptiveApp extends TpaServer {
     return features;
   }
 
-  private setupEventSubscriptions(session: TpaSession, caps: Capabilities): void {
+  private setupEventSubscriptions(session: AppSession, caps: Capabilities): void {
     // Only subscribe to events for available hardware
     if (caps.hasMicrophone) {
       session.events.onTranscription((data) => {

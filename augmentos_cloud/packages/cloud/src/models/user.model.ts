@@ -64,7 +64,7 @@ export interface UserI extends Document {
   };
 
   /**
-   * Maps TPA package names to onboarding completion status for this user.
+   * Maps App package names to onboarding completion status for this user.
    * Example: { "org.example.myapp": true, "org.other.app": false }
    */
   onboardingStatus?: Record<string, boolean>;
@@ -622,7 +622,7 @@ UserSchema.statics.findUserInstalledApps = async function (email: string): Promi
 
     // Import app service to get full app details
     const App = mongoose.model('App');
-    const { LOCAL_APPS, SYSTEM_TPAS } = require('../services/core/app.service');
+    const { LOCAL_APPS, SYSTEM_AppS } = require('../services/core/app.service');
 
     // Get package names from installed apps (or empty array if no user or no installed apps)
     const userInstalledPackages = user?.installedApps?.map((app: any) => app.packageName) || [];
@@ -639,7 +639,7 @@ UserSchema.statics.findUserInstalledApps = async function (email: string): Promi
     const result = [];
 
     // Always include all system apps and LOCAL_APPS, regardless of whether they're installed
-    const predefinedApps = [...LOCAL_APPS, ...SYSTEM_TPAS];
+    const predefinedApps = [...LOCAL_APPS, ...SYSTEM_AppS];
     for (const app of predefinedApps) {
       // Use actual installation date if available, otherwise use current date
       const isInstalled = userInstalledPackages.includes(app.packageName);
@@ -691,8 +691,8 @@ UserSchema.statics.findUserInstalledApps = async function (email: string): Promi
   } catch (error) {
     console.error(`[User.findUserInstalledApps] Error finding apps for user ${email}:`, error);
     // In case of error, return at least the system apps
-    const { LOCAL_APPS, SYSTEM_TPAS } = require('../services/core/app.service');
-    return [...LOCAL_APPS, ...SYSTEM_TPAS].map(app => ({
+    const { LOCAL_APPS, SYSTEM_AppS } = require('../services/core/app.service');
+    return [...LOCAL_APPS, ...SYSTEM_AppS].map(app => ({
       ...app,
       installedDate: new Date(),
       isSystemApp: true

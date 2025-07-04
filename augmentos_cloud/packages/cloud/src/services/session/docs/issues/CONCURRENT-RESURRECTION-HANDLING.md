@@ -2,9 +2,9 @@
 
 ## The Edge Case
 
-When a TPA connection fails, multiple services might try to send messages simultaneously, each triggering resurrection attempts. Without proper handling, this could cause:
+When a App connection fails, multiple services might try to send messages simultaneously, each triggering resurrection attempts. Without proper handling, this could cause:
 
-1. **Resurrection Spam**: Multiple webhook calls to the same TPA
+1. **Resurrection Spam**: Multiple webhook calls to the same App
 2. **Resource Waste**: Duplicate connection attempts and timeouts
 3. **Race Conditions**: Conflicting state updates
 4. **Poor Logging**: Duplicate error messages
@@ -15,7 +15,7 @@ When a TPA connection fails, multiple services might try to send messages simult
 
 **Location**: `AppManager.ts:108-138`
 
-When `startApp()` is called for a TPA that's already loading:
+When `startApp()` is called for a App that's already loading:
 
 ```typescript
 // Check if already loading - return existing pending promise
@@ -44,24 +44,24 @@ if (this.userSession.loadingApps.has(packageName)) {
 
 ### **How Concurrent Messages Are Handled**
 
-#### **Scenario**: TPA disconnects, then 3 services try to send messages simultaneously
+#### **Scenario**: App disconnects, then 3 services try to send messages simultaneously
 
-1. **Service A calls `sendMessageToTpa()`**:
+1. **Service A calls `sendMessageToApp()`**:
    - Detects dead connection
-   - Calls `resurrectTpaAndRetry()` → `startApp()`
+   - Calls `resurrectAppAndRetry()` → `startApp()`
    - Starts webhook, adds to `loadingApps` and `pendingConnections`
 
-2. **Service B calls `sendMessageToTpa()` (100ms later)**:
-   - Detects dead connection  
-   - Calls `resurrectTpaAndRetry()` → `startApp()`
+2. **Service B calls `sendMessageToApp()` (100ms later)**:
+   - Detects dead connection
+   - Calls `resurrectAppAndRetry()` → `startApp()`
    - **Sees app already loading**, waits for existing attempt
    - **No duplicate webhook sent**
 
-3. **Service C calls `sendMessageToTpa()` (200ms later)**:
+3. **Service C calls `sendMessageToApp()` (200ms later)**:
    - Same as Service B - waits for existing attempt
    - **No duplicate webhook sent**
 
-4. **TPA connects and authenticates**:
+4. **App connects and authenticates**:
    - All 3 services get the same result: `{ success: true }`
    - All 3 services then retry their original messages
 
@@ -70,9 +70,9 @@ if (this.userSession.loadingApps.has(packageName)) {
 #### **No Webhook Spam**
 - Only **one webhook sent** per resurrection attempt
 - Additional attempts wait for existing connection
-- TPA servers don't get flooded with duplicate requests
+- App servers don't get flooded with duplicate requests
 
-#### **Efficient Resource Usage**  
+#### **Efficient Resource Usage**
 - Only **one timeout timer** per resurrection
 - Only **one pending connection** tracked
 - No duplicate network calls or database queries
@@ -89,21 +89,21 @@ if (this.userSession.loadingApps.has(packageName)) {
 
 ## Edge Cases Handled
 
-### **1. TPA Connects During Wait Period**
+### **1. App Connects During Wait Period**
 ```
 Service A: Starts resurrection
-Service B: Waits for Service A's attempt  
-TPA: Connects successfully
+Service B: Waits for Service A's attempt
+App: Connects successfully
 Service A: Gets { success: true }
 Service B: Gets { success: true } (from polling)
 Both: Successfully retry their messages
 ```
 
-### **2. TPA Fails to Connect**
+### **2. App Fails to Connect**
 ```
-Service A: Starts resurrection  
+Service A: Starts resurrection
 Service B: Waits for Service A's attempt
-TPA: Fails to connect (timeout)
+App: Fails to connect (timeout)
 Service A: Gets { success: false, error: "TIMEOUT" }
 Service B: Gets { success: false, error: "Existing connection attempt failed" }
 Both: Handle failure gracefully
@@ -151,9 +151,9 @@ User session ending while resurrection in progress:
 ```json
 {
   "userId": "user123",
-  "packageName": "com.example.app", 
+  "packageName": "com.example.app",
   "service": "AppManager",
-  "message": "Attempting to resurrect TPA com.example.app"
+  "message": "Attempting to resurrect App com.example.app"
 }
 ```
 
@@ -162,7 +162,7 @@ User session ending while resurrection in progress:
 {
   "userId": "user123",
   "packageName": "com.example.app",
-  "service": "AppManager", 
+  "service": "AppManager",
   "message": "App com.example.app already loading, waiting for existing attempt"
 }
 ```
@@ -173,15 +173,15 @@ User session ending while resurrection in progress:
   "userId": "user123",
   "packageName": "com.example.app",
   "service": "AppManager",
-  "message": "Successfully resurrected TPA com.example.app"
+  "message": "Successfully resurrected App com.example.app"
 }
 ```
 
 ### **Metrics to Monitor**
-- **Resurrection attempt frequency** per TPA
-- **Success rate** of resurrection attempts  
+- **Resurrection attempt frequency** per App
+- **Success rate** of resurrection attempts
 - **Wait times** for concurrent callers
-- **Webhook response times** from TPAs
+- **Webhook response times** from Apps
 
 ## Future Improvements
 
@@ -203,10 +203,10 @@ private messageQueue = new Map<string, Array<{message: any, resolve: Function}>>
 ```
 
 ### **Circuit Breaker Pattern**
-Prevent repeated resurrection attempts for permanently broken TPAs:
+Prevent repeated resurrection attempts for permanently broken Apps:
 ```typescript
 private failureCount = new Map<string, number>();
 private lastFailure = new Map<string, number>();
 ```
 
-This would temporarily stop resurrection attempts for TPAs that consistently fail.
+This would temporarily stop resurrection attempts for Apps that consistently fail.

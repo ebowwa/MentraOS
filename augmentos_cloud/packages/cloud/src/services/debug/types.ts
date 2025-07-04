@@ -76,6 +76,6 @@ export interface DebugSessionInfo {
 export interface SystemStats {
   activeSessions: number;
   totalSessions: number;
-  activeTpas: number;
-  totalTpas: number;
-} 
+  activeApps: number;
+  totalApps: number;
+}

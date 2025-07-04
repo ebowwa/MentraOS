@@ -4,9 +4,9 @@ import android.util.Log;
 
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.NewAsrLanguagesEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.speechrecognition.AsrStreamKey;
-import com.augmentos.augmentos_core.tpa.EdgeTPASystem;
+import com.augmentos.augmentos_core.app.EdgeAppSystem;
 import com.augmentos.augmentoslib.enums.AsrStreamType;
-import com.augmentos.augmentoslib.events.KillTpaEvent;
+import com.augmentos.augmentoslib.events.KillAppEvent;
 import com.augmentos.augmentoslib.events.SpeechRecOutputEvent;
 import com.augmentos.augmentoslib.events.StartAsrStreamRequestEvent;
 import com.augmentos.augmentoslib.events.StopAsrStreamRequestEvent;
@@ -28,10 +28,10 @@ public class AsrPlanner {
     private final Map<AsrStreamKey, Set<String>> activeStreams = new HashMap<>();
     ArrayList<String> transcriptsBuffer;
 
-    EdgeTPASystem edgeTpaSystem;
+    EdgeAppSystem edgeAppSystem;
 
-    public AsrPlanner(EdgeTPASystem edgeTpaSystemRef){
-        this.edgeTpaSystem = edgeTpaSystemRef;
+    public AsrPlanner(EdgeAppSystem edgeAppSystemRef){
+        this.edgeAppSystem = edgeAppSystemRef;
 
         //make responses holder
         transcriptsBuffer = new ArrayList<>();
@@ -58,7 +58,7 @@ public class AsrPlanner {
                         continue;
                     }
                     Log.d(TAG, "Active stream element processed: " + packageName);
-                    edgeTpaSystem.sendTranscriptEventToTpa(event, packageName);
+                    edgeAppSystem.sendTranscriptEventToApp(event, packageName);
                 }
             } else {
                 Log.w(TAG, "Active stream elements are null, nothing to process.");
@@ -85,7 +85,7 @@ public class AsrPlanner {
                         continue;
                     }
                     Log.d(TAG, "Active stream element processed: " + packageName);
-                    edgeTpaSystem.sendTranslateEventToTpa(event, packageName);
+                    edgeAppSystem.sendTranslateEventToApp(event, packageName);
                 }
             } else {
                 Log.w(TAG, "Active stream elements are null, nothing to process.");
@@ -179,13 +179,13 @@ public class AsrPlanner {
     }
 
     @Subscribe
-    public void onKillTpaEvent(KillTpaEvent event) {
-        String tpaPackageName = event.tpa.packageName;
-        Log.d(TAG, "TPA KILLING SELF: " + tpaPackageName);
-        unsubscribeTpaFromAllStreams(tpaPackageName);
+    public void onKillAppEvent(KillAppEvent event) {
+        String appPackageName = event.app.packageName;
+        Log.d(TAG, "App KILLING SELF: " + appPackageName);
+        unsubscribeAppFromAllStreams(appPackageName);
     }
 
-    private void unsubscribeTpaFromAllStreams(String packageName) {
+    private void unsubscribeAppFromAllStreams(String packageName) {
         for (Map.Entry<AsrStreamKey, Set<String>> entry : activeStreams.entrySet()) {
             entry.getValue().remove(packageName);
         }

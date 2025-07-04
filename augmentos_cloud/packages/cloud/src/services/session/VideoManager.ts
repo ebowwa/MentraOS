@@ -7,7 +7,7 @@ import WebSocket from 'ws';
 import crypto from 'crypto';
 import {
   CloudToGlassesMessageType,
-  CloudToTpaMessageType,
+  CloudToAppMessageType,
   RtmpStreamStatus,      // SDK type for status from glasses
   KeepAliveAck,          // SDK type for ACK from glasses
   StartRtmpStream,       // SDK type for command to glasses
@@ -16,9 +16,9 @@ import {
   VideoConfig,           // SDK type
   AudioConfig,           // SDK type
   StreamConfig,          // SDK type
-  RtmpStreamRequest,     // SDK type for TPA request
+  RtmpStreamRequest,     // SDK type for App request
   RtmpStreamStopRequest,
-  GlassesToCloudMessageType, // SDK type for TPA request
+  GlassesToCloudMessageType, // SDK type for App request
 } from '@mentra/sdk';
 import { Logger } from 'pino';
 import UserSession from './UserSession';
@@ -35,7 +35,7 @@ const MAX_MISSED_ACKS = 3; // Max consecutive missed ACKs before considering con
  */
 interface SessionStreamInfo {
   streamId: string;
-  packageName: string; // Renamed from appId for consistency with TPA messages
+  packageName: string; // Renamed from appId for consistency with App messages
   rtmpUrl: string;
   status: 'initializing' | 'active' | 'stopping' | 'stopped' | 'timeout';
   startTime: Date;
@@ -43,7 +43,7 @@ interface SessionStreamInfo {
   keepAliveTimer?: NodeJS.Timeout; // Single timer for keep-alive interval
   pendingAcks: Map<string, { sentAt: Date; timeout: NodeJS.Timeout; }>; // Simplified to match original
   missedAcks: number;
-  options: { // To store configs passed by TPA
+  options: { // To store configs passed by App
     video?: VideoConfig;
     audio?: AudioConfig;
     stream?: StreamConfig;
@@ -143,13 +143,13 @@ export class VideoManager {
         sessionId: this.userSession.sessionId
       }, 'RTMP_STREAM_START_CMD_SENT: VideoManager ✅ START_RTMP_STREAM successfully sent to glasses');
 
-      // Tell TPA we're starting (but not active yet)
+      // Tell App we're starting (but not active yet)
       this.logger.debug({
-        debugKey: 'RTMP_STREAM_NOTIFY_TPA_INIT',
+        debugKey: 'RTMP_STREAM_NOTIFY_APP_INIT',
         streamId,
         sessionId: this.userSession.sessionId
-      }, 'RTMP_STREAM_NOTIFY_TPA_INIT: VideoManager notifying TPA that stream is initializing');
-      await this.sendStreamStatusToTpa(streamId, 'initializing');
+      }, 'RTMP_STREAM_NOTIFY_APP_INIT: VideoManager notifying App that stream is initializing');
+      await this.sendStreamStatusToApp(streamId, 'initializing');
     } catch (error) {
       this.logger.error({
         debugKey: 'RTMP_STREAM_START_CMD_FAIL',
@@ -182,8 +182,8 @@ export class VideoManager {
       stream.status = status;
       stream.lastKeepAlive = new Date();
 
-      // Tell TPA about status change
-      await this.sendStreamStatusToTpa(streamId, status);
+      // Tell App about status change
+      await this.sendStreamStatusToApp(streamId, status);
 
       // If stream becomes active, ensure keep-alive is running
       if (status === 'active' && !stream.keepAliveTimer) {
@@ -439,7 +439,7 @@ export class VideoManager {
   }
 
   /**
-   * Handles a request from a TPA to stop an RTMP stream.
+   * Handles a request from a App to stop an RTMP stream.
    */
   async stopRtmpStream(request: RtmpStreamStopRequest): Promise<void> {
     const { packageName, streamId } = request;
@@ -480,9 +480,9 @@ export class VideoManager {
   }
 
   /**
-   * Sends stream status to the owning TPA and broadcasts to other subscribers.
+   * Sends stream status to the owning App and broadcasts to other subscribers.
    */
-  private async sendStreamStatusToTpa(
+  private async sendStreamStatusToApp(
     streamId: string,
     status: RtmpStreamStatus['status'], // This is the status string from SDK
     errorDetails?: string,
@@ -492,9 +492,9 @@ export class VideoManager {
     // It's possible streamInfo is gone if cleanup happened due to rapid events.
     const packageName = streamInfo ? streamInfo.packageName : "unknown_package_owner";
 
-    // Direct message to the TPA that owns the stream
-    const tpaOwnerMessage = {
-      type: CloudToTpaMessageType.RTMP_STREAM_STATUS,
+    // Direct message to the App that owns the stream
+    const appOwnerMessage = {
+      type: CloudToAppMessageType.RTMP_STREAM_STATUS,
       sessionId: `${this.userSession.sessionId}-${packageName}`,
       streamId,
       status, // The SDK status string
@@ -504,9 +504,9 @@ export class VideoManager {
       timestamp: new Date(),
     };
 
-    // Send status to owning TPA using centralized messaging
+    // Send status to owning App using centralized messaging
     try {
-      const result = await this.userSession.appManager.sendMessageToTpa(packageName, tpaOwnerMessage);
+      const result = await this.userSession.appManager.sendMessageToApp(packageName, appOwnerMessage);
 
       if (result.sent) {
         this.logger.debug({
@@ -514,7 +514,7 @@ export class VideoManager {
           status,
           target: packageName,
           resurrectionTriggered: result.resurrectionTriggered
-        }, `Sent RTMP status to owning TPA ${packageName}${result.resurrectionTriggered ? ' after resurrection' : ''}`);
+        }, `Sent RTMP status to owning App ${packageName}${result.resurrectionTriggered ? ' after resurrection' : ''}`);
       } else {
         this.logger.warn({
           streamId,
@@ -522,17 +522,17 @@ export class VideoManager {
           target: packageName,
           resurrectionTriggered: result.resurrectionTriggered,
           error: result.error
-        }, `Failed to send RTMP status to owning TPA ${packageName}`);
+        }, `Failed to send RTMP status to owning App ${packageName}`);
       }
     } catch (error) {
       this.logger.error({
         error: error instanceof Error ? error.message : String(error),
         streamId,
         target: packageName
-      }, `Error sending RTMP status to owning TPA ${packageName}`);
+      }, `Error sending RTMP status to owning App ${packageName}`);
     }
 
-    // Broadcast DataStream to other subscribed TPAs
+    // Broadcast DataStream to other subscribed Apps
     const broadcastPayload: RtmpStreamStatus = {
       type: GlassesToCloudMessageType.RTMP_STREAM_STATUS,
       sessionId: this.userSession.sessionId,
@@ -544,8 +544,8 @@ export class VideoManager {
       timestamp: new Date(),
     };
 
-    // Relay to TPAs who subscribed to this RTMP stream
-    sessionService.relayMessageToTpas(this.userSession, broadcastPayload);
+    // Relay to Apps who subscribed to this RTMP stream
+    sessionService.relayMessageToApps(this.userSession, broadcastPayload);
 
     this.logger.debug({ streamId, status }, 'Broadcast RTMP status via DataStream');
   }

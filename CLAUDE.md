@@ -88,45 +88,45 @@ if (usesWifi) {
 }
 ```
 
-# TPA-to-TPA Communication Protocol Design
+# App-to-App Communication Protocol Design
 
 ## Overview
 
-This document outlines the design for enabling Third Party Apps (TPAs) to communicate with other TPAs that have active sessions with the same TPA package, creating a multi-user collaborative experience within MentraOS.
+This document outlines the design for enabling Apps to communicate with other Apps that have active sessions with the same App package, creating a multi-user collaborative experience within MentraOS.
 
 ## Current Architecture
 
 ### Existing Components
 - **UserSession**: Manages user state with `appConnections: Map<string, WebSocket>`
-- **TpaSession**: Individual TPA connection to MentraOS Cloud
-- **SubscriptionService**: Manages TPA subscriptions to data streams
+- **AppSession**: Individual App connection to MentraOS Cloud
+- **SubscriptionService**: Manages App subscriptions to data streams
 - **Custom Messages**: `CUSTOM_MESSAGE` type already exists for flexible messaging
 
 ### Current Message Flow
 ```
-TPA → Cloud (TpaToCloudMessage)
-Cloud → TPA (CloudToTpaMessage)
+App → Cloud (AppToCloudMessage)
+Cloud → App (CloudToAppMessage)
 ```
 
-## Proposed Multi-User TPA Communication
+## Proposed Multi-User App Communication
 
 ### 1. New Message Types
 
-#### TPA-to-Cloud Messages
+#### App-to-Cloud Messages
 ```typescript
-// New message types for TPA-to-TPA communication
-export enum TpaToCloudMessageType {
+// New message types for App-to-App communication
+export enum AppToCloudMessageType {
   // ... existing types
-  TPA_BROADCAST_MESSAGE = 'tpa_broadcast_message',
-  TPA_DIRECT_MESSAGE = 'tpa_direct_message',
-  TPA_USER_DISCOVERY = 'tpa_user_discovery',
-  TPA_ROOM_JOIN = 'tpa_room_join',
-  TPA_ROOM_LEAVE = 'tpa_room_leave'
+  APP_BROADCAST_MESSAGE = 'app_broadcast_message',
+  APP_DIRECT_MESSAGE = 'app_direct_message',
+  APP_USER_DISCOVERY = 'app_user_discovery',
+  APP_ROOM_JOIN = 'app_room_join',
+  APP_ROOM_LEAVE = 'app_room_leave'
 }
 
-// Broadcast message to all users with same TPA
-interface TpaBroadcastMessage extends BaseMessage {
-  type: TpaToCloudMessageType.TPA_BROADCAST_MESSAGE;
+// Broadcast message to all users with same App
+interface AppBroadcastMessage extends BaseMessage {
+  type: AppToCloudMessageType.APP_BROADCAST_MESSAGE;
   packageName: string;
   sessionId: string;
   payload: any;
@@ -136,9 +136,9 @@ interface TpaBroadcastMessage extends BaseMessage {
   roomId?: string; // Optional room-based messaging
 }
 
-// Direct message to specific user with same TPA
-interface TpaDirectMessage extends BaseMessage {
-  type: TpaToCloudMessageType.TPA_DIRECT_MESSAGE;
+// Direct message to specific user with same App
+interface AppDirectMessage extends BaseMessage {
+  type: AppToCloudMessageType.APP_DIRECT_MESSAGE;
   packageName: string;
   sessionId: string;
   targetUserId: string;
@@ -148,17 +148,17 @@ interface TpaDirectMessage extends BaseMessage {
   senderUserId: string;
 }
 
-// Discover other users with same TPA active
-interface TpaUserDiscovery extends BaseMessage {
-  type: TpaToCloudMessageType.TPA_USER_DISCOVERY;
+// Discover other users with same App active
+interface AppUserDiscovery extends BaseMessage {
+  type: AppToCloudMessageType.APP_USER_DISCOVERY;
   packageName: string;
   sessionId: string;
   includeUserProfiles?: boolean;
 }
 
 // Join a communication room
-interface TpaRoomJoin extends BaseMessage {
-  type: TpaToCloudMessageType.TPA_ROOM_JOIN;
+interface AppRoomJoin extends BaseMessage {
+  type: AppToCloudMessageType.APP_ROOM_JOIN;
   packageName: string;
   sessionId: string;
   roomId: string;
@@ -170,19 +170,19 @@ interface TpaRoomJoin extends BaseMessage {
 }
 ```
 
-#### Cloud-to-TPA Messages
+#### Cloud-to-App Messages
 ```typescript
-export enum CloudToTpaMessageType {
+export enum CloudToAppMessageType {
   // ... existing types
-  TPA_MESSAGE_RECEIVED = 'tpa_message_received',
-  TPA_USER_JOINED = 'tpa_user_joined',
-  TPA_USER_LEFT = 'tpa_user_left',
-  TPA_ROOM_UPDATED = 'tpa_room_updated'
+  APP_MESSAGE_RECEIVED = 'app_message_received',
+  APP_USER_JOINED = 'app_user_joined',
+  APP_USER_LEFT = 'app_user_left',
+  APP_ROOM_UPDATED = 'app_room_updated'
 }
 
-// Message received from another TPA user
-interface TpaMessageReceived extends BaseMessage {
-  type: CloudToTpaMessageType.TPA_MESSAGE_RECEIVED;
+// Message received from another App user
+interface AppMessageReceived extends BaseMessage {
+  type: CloudToAppMessageType.APP_MESSAGE_RECEIVED;
   payload: any;
   messageId: string;
   senderUserId: string;
@@ -196,33 +196,33 @@ interface TpaMessageReceived extends BaseMessage {
 ### 2. Multi-User Session Manager
 
 ```typescript
-// New service to manage multi-user TPA sessions
-export class MultiUserTpaService {
+// New service to manage multi-user App sessions
+export class MultiUserAppService {
   // Map of packageName -> Set of active user sessions
-  private activeTpaSessions = new Map<string, Set<string>>();
+  private activeAppSessions = new Map<string, Set<string>>();
 
   // Map of packageName -> Map of roomId -> Set of userIds
-  private tpaRooms = new Map<string, Map<string, Set<string>>>();
+  private appRooms = new Map<string, Map<string, Set<string>>>();
 
   // Message history for debugging/replay
-  private messageHistory = new Map<string, TpaMessage[]>();
+  private messageHistory = new Map<string, AppMessage[]>();
 
   /**
-   * Get all active users for a specific TPA package
+   * Get all active users for a specific App package
    */
-  getActiveTpaUsers(packageName: string): string[] {
-    return Array.from(this.activeTpaSessions.get(packageName) || []);
+  getActiveAppUsers(packageName: string): string[] {
+    return Array.from(this.activeAppSessions.get(packageName) || []);
   }
 
   /**
-   * Broadcast message to all users with the same TPA active
+   * Broadcast message to all users with the same App active
    */
-  async broadcastToTpaUsers(
+  async broadcastToAppUsers(
     senderSession: UserSession,
-    message: TpaBroadcastMessage
+    message: AppBroadcastMessage
   ): Promise<void> {
     const packageName = message.packageName;
-    const activeUsers = this.getActiveTpaUsers(packageName);
+    const activeUsers = this.getActiveAppUsers(packageName);
 
     for (const userId of activeUsers) {
       // Skip sender
@@ -231,13 +231,13 @@ export class MultiUserTpaService {
       const targetSession = this.sessionService.getSessionByUserId(userId);
       if (!targetSession) continue;
 
-      const targetTpaConnection = targetSession.appConnections.get(packageName);
-      if (!targetTpaConnection || targetTpaConnection.readyState !== WebSocket.OPEN) {
+      const targetAppConnection = targetSession.appConnections.get(packageName);
+      if (!targetAppConnection || targetAppConnection.readyState !== WebSocket.OPEN) {
         continue;
       }
 
-      const receivedMessage: TpaMessageReceived = {
-        type: CloudToTpaMessageType.TPA_MESSAGE_RECEIVED,
+      const receivedMessage: AppMessageReceived = {
+        type: CloudToAppMessageType.APP_MESSAGE_RECEIVED,
         payload: message.payload,
         messageId: message.messageId,
         senderUserId: message.senderUserId,
@@ -247,7 +247,7 @@ export class MultiUserTpaService {
         timestamp: message.timestamp
       };
 
-      targetTpaConnection.send(JSON.stringify(receivedMessage));
+      targetAppConnection.send(JSON.stringify(receivedMessage));
     }
   }
 
@@ -256,18 +256,18 @@ export class MultiUserTpaService {
    */
   async sendDirectMessage(
     senderSession: UserSession,
-    message: TpaDirectMessage
+    message: AppDirectMessage
   ): Promise<boolean> {
     const targetSession = this.sessionService.getSessionByUserId(message.targetUserId);
     if (!targetSession) return false;
 
-    const targetTpaConnection = targetSession.appConnections.get(message.packageName);
-    if (!targetTpaConnection || targetTpaConnection.readyState !== WebSocket.OPEN) {
+    const targetAppConnection = targetSession.appConnections.get(message.packageName);
+    if (!targetAppConnection || targetAppConnection.readyState !== WebSocket.OPEN) {
       return false;
     }
 
-    const receivedMessage: TpaMessageReceived = {
-      type: CloudToTpaMessageType.TPA_MESSAGE_RECEIVED,
+    const receivedMessage: AppMessageReceived = {
+      type: CloudToAppMessageType.APP_MESSAGE_RECEIVED,
       payload: message.payload,
       messageId: message.messageId,
       senderUserId: message.senderUserId,
@@ -276,31 +276,31 @@ export class MultiUserTpaService {
       timestamp: message.timestamp
     };
 
-    targetTpaConnection.send(JSON.stringify(receivedMessage));
+    targetAppConnection.send(JSON.stringify(receivedMessage));
     return true;
   }
 
   /**
-   * Handle user joining TPA session
+   * Handle user joining App session
    */
-  addTpaUser(packageName: string, userId: string): void {
-    if (!this.activeTpaSessions.has(packageName)) {
-      this.activeTpaSessions.set(packageName, new Set());
+  addAppUser(packageName: string, userId: string): void {
+    if (!this.activeAppSessions.has(packageName)) {
+      this.activeAppSessions.set(packageName, new Set());
     }
 
-    this.activeTpaSessions.get(packageName)!.add(userId);
+    this.activeAppSessions.get(packageName)!.add(userId);
     this.notifyUserJoined(packageName, userId);
   }
 
   /**
-   * Handle user leaving TPA session
+   * Handle user leaving App session
    */
-  removeTpaUser(packageName: string, userId: string): void {
-    const users = this.activeTpaSessions.get(packageName);
+  removeAppUser(packageName: string, userId: string): void {
+    const users = this.activeAppSessions.get(packageName);
     if (users) {
       users.delete(userId);
       if (users.size === 0) {
-        this.activeTpaSessions.delete(packageName);
+        this.activeAppSessions.delete(packageName);
       }
     }
     this.notifyUserLeft(packageName, userId);
@@ -311,16 +311,16 @@ export class MultiUserTpaService {
 ### 3. SDK Enhancements
 
 ```typescript
-// Enhanced TpaSession with multi-user capabilities
-export class TpaSession {
+// Enhanced AppSession with multi-user capabilities
+export class AppSession {
   // ... existing code
 
   /**
-   * Send broadcast message to all users with same TPA active
+   * Send broadcast message to all users with same App active
    */
-  broadcastToTpaUsers(payload: any, roomId?: string): Promise<void> {
-    const message: TpaBroadcastMessage = {
-      type: TpaToCloudMessageType.TPA_BROADCAST_MESSAGE,
+  broadcastToAppUsers(payload: any, roomId?: string): Promise<void> {
+    const message: AppBroadcastMessage = {
+      type: AppToCloudMessageType.APP_BROADCAST_MESSAGE,
       packageName: this.config.packageName,
       sessionId: this.sessionId!,
       payload,
@@ -344,8 +344,8 @@ export class TpaSession {
       // Store promise resolver
       this.pendingDirectMessages.set(messageId, { resolve, reject });
 
-      const message: TpaDirectMessage = {
-        type: TpaToCloudMessageType.TPA_DIRECT_MESSAGE,
+      const message: AppDirectMessage = {
+        type: AppToCloudMessageType.APP_DIRECT_MESSAGE,
         packageName: this.config.packageName,
         sessionId: this.sessionId!,
         targetUserId,
@@ -360,12 +360,12 @@ export class TpaSession {
   }
 
   /**
-   * Discover other users with same TPA active
+   * Discover other users with same App active
    */
-  discoverTpaUsers(includeProfiles = false): Promise<TpaUserList> {
+  discoverAppUsers(includeProfiles = false): Promise<AppUserList> {
     return new Promise((resolve, reject) => {
-      const message: TpaUserDiscovery = {
-        type: TpaToCloudMessageType.TPA_USER_DISCOVERY,
+      const message: AppUserDiscovery = {
+        type: AppToCloudMessageType.APP_USER_DISCOVERY,
         packageName: this.config.packageName,
         sessionId: this.sessionId!,
         includeUserProfiles: includeProfiles
@@ -378,21 +378,21 @@ export class TpaSession {
   }
 
   /**
-   * Listen for messages from other TPA users
+   * Listen for messages from other App users
    */
-  onTpaMessage(handler: (message: TpaMessageReceived) => void): () => void {
-    return this.events.on('tpa_message_received', handler);
+  onAppMessage(handler: (message: AppMessageReceived) => void): () => void {
+    return this.events.on('app_message_received', handler);
   }
 
   /**
    * Listen for user join/leave events
    */
-  onTpaUserJoined(handler: (userId: string) => void): () => void {
-    return this.events.on('tpa_user_joined', handler);
+  onAppUserJoined(handler: (userId: string) => void): () => void {
+    return this.events.on('app_user_joined', handler);
   }
 
-  onTpaUserLeft(handler: (userId: string) => void): () => void {
-    return this.events.on('tpa_user_left', handler);
+  onAppUserLeft(handler: (userId: string) => void): () => void {
+    return this.events.on('app_user_left', handler);
   }
 }
 ```
@@ -401,13 +401,13 @@ export class TpaSession {
 
 #### Phase 1: Core Infrastructure
 1. **Add new message types** to `message-types.ts`
-2. **Create MultiUserTpaService** in cloud services
+2. **Create MultiUserAppService** in cloud services
 3. **Integrate with WebSocketService** to handle new message types
-4. **Add user tracking** when TPAs connect/disconnect
+4. **Add user tracking** when Apps connect/disconnect
 
 #### Phase 2: SDK Enhancements
-1. **Extend TpaSession** with multi-user methods
-2. **Add event handlers** for TPA messages
+1. **Extend AppSession** with multi-user methods
+2. **Add event handlers** for App messages
 3. **Create helper utilities** for message formatting
 4. **Add TypeScript types** for all new interfaces
 
@@ -416,7 +416,7 @@ export class TpaSession {
 2. **Message persistence** and history
 3. **User presence indicators** (online/offline/busy)
 4. **Rate limiting** to prevent spam
-5. **Permission system** for TPA-to-TPA communication
+5. **Permission system** for App-to-App communication
 
 #### Phase 4: Developer Experience
 1. **Documentation and examples**
@@ -426,17 +426,17 @@ export class TpaSession {
 
 ### 5. Security Considerations
 
-- **Permission Checks**: Ensure TPAs have permission for multi-user communication
-- **Rate Limiting**: Prevent message spam between TPAs
+- **Permission Checks**: Ensure Apps have permission for multi-user communication
+- **Rate Limiting**: Prevent message spam between Apps
 - **User Privacy**: Only share necessary user information
 - **Message Validation**: Sanitize payloads to prevent XSS/injection
-- **Session Isolation**: Ensure messages only go to intended TPA instances
+- **Session Isolation**: Ensure messages only go to intended App instances
 
 ### 6. Example Usage
 
 ```typescript
 // Example collaborative note-taking app
-const session = new TpaSession({
+const session = new AppSession({
   packageName: 'com.example.collaborative-notes',
   apiKey: 'your-api-key',
   userId: 'user@example.com'
@@ -445,18 +445,18 @@ const session = new TpaSession({
 await session.connect('session-123');
 
 // Discover other users
-const activeUsers = await session.discoverTpaUsers(true);
+const activeUsers = await session.discoverAppUsers(true);
 console.log(`${activeUsers.totalUsers} users are using this app`);
 
 // Listen for collaborative changes
-session.onTpaMessage((message) => {
+session.onAppMessage((message) => {
   if (message.payload.type === 'note_update') {
     updateNoteInRealtime(message.payload.noteData);
   }
 });
 
 // Broadcast a note update
-session.broadcastToTpaUsers({
+session.broadcastToAppUsers({
   type: 'note_update',
   noteId: 'note-123',
   changes: {
@@ -474,11 +474,11 @@ await session.sendDirectMessage('other-user@example.com', {
 
 ## Benefits
 
-1. **Real-time Collaboration**: Multiple users can interact within the same TPA
+1. **Real-time Collaboration**: Multiple users can interact within the same App
 2. **Scalable Architecture**: Leverages existing infrastructure
-3. **Developer Friendly**: Simple API for TPA developers
+3. **Developer Friendly**: Simple API for App developers
 4. **Flexible Messaging**: Supports both broadcast and direct messaging
 5. **Room Support**: Enables group-based communication
-6. **Backward Compatible**: Doesn't affect existing TPA functionality
+6. **Backward Compatible**: Doesn't affect existing App functionality
 
 This design enables rich multi-user experiences while maintaining the security and performance characteristics of the existing MentraOS platform.

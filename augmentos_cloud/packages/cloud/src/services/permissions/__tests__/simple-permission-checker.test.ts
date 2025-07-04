@@ -13,7 +13,7 @@ describe('SimplePermissionChecker', () => {
       name: 'Test App',
       publicUrl: 'http://example.com',
       logoURL: 'http://example.com/logo.png',
-      tpaType: 'standard',
+      appType: 'standard',
       appStoreStatus: 'DEVELOPMENT',
       permissions,
       isPublic: false,

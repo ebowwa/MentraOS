@@ -23,7 +23,7 @@ import { websocketService } from './services/websocket/websocket.service';
 import appRoutes from './routes/apps.routes';
 import authRoutes from './routes/auth.routes';
 import transcriptRoutes from './routes/transcripts.routes';
-import tpaSettingsRoutes from './routes/tpa-settings.routes';
+import appSettingsRoutes from './routes/app-settings.routes';
 import errorReportRoutes from './routes/error-report.routes';
 import devRoutes from './routes/developer.routes';
 import serverRoutes from './routes/server.routes';
@@ -38,7 +38,7 @@ import permissionsRoutes from './routes/permissions.routes';
 import accountRoutes from './routes/account.routes';
 import organizationRoutes from './routes/organization.routes';
 import onboardingRoutes from './routes/onboarding.routes';
-import tpaCommunicationRoutes from './routes/tpa-communication.routes';
+import appCommunicationRoutes from './routes/app-communication.routes';
 
 import path from 'path';
 
@@ -200,11 +200,12 @@ app.use('/api/apps', appRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/apps', appRoutes);
 app.use('/auth', authRoutes);
-app.use('/tpasettings', tpaSettingsRoutes);
+app.use('/appsettings', appSettingsRoutes);
+app.use('/tpasettings', appSettingsRoutes);  // TODO: Remove this once the old apps are fully updated in the wild (the old mobile clients will hit the old urls)
 app.use('/api/dev', devRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/orgs', organizationRoutes);
-// app.use('/api/tpa-server', tpaServerRoutes); // Removed as part of HeartbeatManager implementation
+// app.use('/api/app-server', appServerRoutes); // Removed as part of HeartbeatManager implementation
 app.use('/api/server', serverRoutes);
 app.use('/api/photos', photoRoutes);
 app.use('/api/gallery', galleryRoutes);
@@ -219,7 +220,8 @@ app.use(audioRoutes);
 app.use('/api/user-data', userDataRoutes);
 app.use('/api/account', accountRoutes);
 app.use('/api/onboarding', onboardingRoutes);
-app.use('/api/tpa-communication', tpaCommunicationRoutes);
+app.use('/api/app-communication', appCommunicationRoutes);
+app.use('/api/tpa-communication', appCommunicationRoutes); // TODO: Remove this once the old apps are fully updated in the wild (the old mobile clients will hit the old urls)
 
 // Health check endpoint
 app.get('/health', (req, res) => {

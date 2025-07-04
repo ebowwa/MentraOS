@@ -8,7 +8,7 @@ This document provides a map of the dashboard system codebase, explaining the pu
 
 - **`/packages/cloud/src/services/dashboard/DashboardManager.ts`**
   - Core implementation of the dashboard manager
-  - Manages content from TPAs and system dashboard
+  - Manages content from Apps and system dashboard
   - Handles message processing and display updates
   - Integrates with WebSocket and Display services
 
@@ -22,9 +22,9 @@ This document provides a map of the dashboard system codebase, explaining the pu
 
 ### SDK Implementation
 
-- **`/packages/sdk/src/tpa/session/dashboard.ts`**
-  - Implements dashboard functionality for TPAs
-  - Creates appropriate API based on TPA type (system vs. regular)
+- **`/packages/sdk/src/app/session/dashboard.ts`**
+  - Implements dashboard functionality for Apps
+  - Creates appropriate API based on App type (system vs. regular)
   - Handles message creation and sending
   - Provides convenience methods for common dashboard operations
 
@@ -32,14 +32,14 @@ This document provides a map of the dashboard system codebase, explaining the pu
 
 - **`/packages/sdk/src/constants/index.ts`**
   - Defines system app package names
-  - Used to identify the system dashboard TPA
+  - Used to identify the system dashboard App
   - Controls access to privileged dashboard functionality
 
 ### Message Type Definitions
 
 - **`/packages/sdk/src/types/message-types.ts`**
   - Defines message type enums for dashboard communication
-  - Includes both TPA-to-Cloud and Cloud-to-TPA message types
+  - Includes both App-to-Cloud and Cloud-to-App message types
   - Provides message type constants for dashboard operations
 
 ## Test Files
@@ -47,7 +47,7 @@ This document provides a map of the dashboard system codebase, explaining the pu
 - **`/packages/cloud/src/services/dashboard/tests/DashboardTestHarness.ts`**
   - Testing framework for dashboard functionality
   - Simulates WebSocket and Display services
-  - Provides methods to simulate TPA actions and system events
+  - Provides methods to simulate App actions and system events
   - Includes pre-built test scenarios
 
 - **`/packages/cloud/src/services/dashboard/tests/run-tests.ts`**
@@ -73,10 +73,10 @@ This document provides a map of the dashboard system codebase, explaining the pu
 
 ## Integration Files
 
-### TPA Session Integration
+### App Session Integration
 
-- **`/packages/sdk/src/tpa/session/index.ts`**
-  - Main TPA session class that exposes dashboard functionality
+- **`/packages/sdk/src/app/session/index.ts`**
+  - Main App session class that exposes dashboard functionality
   - Creates and initializes dashboard API
   - Handles dashboard-related message processing
 
@@ -85,7 +85,7 @@ This document provides a map of the dashboard system codebase, explaining the pu
 - **`/packages/cloud/src/services/core/websocket.service.ts`**
   - WebSocket service that processes dashboard messages
   - Registers message handlers from dashboard manager
-  - Tracks TPA connections and disconnections
+  - Tracks App connections and disconnections
 
 ### Display Manager Integration
 
@@ -99,10 +99,10 @@ This document provides a map of the dashboard system codebase, explaining the pu
 1. **Initialization**:
    - Cloud service creates DashboardManager instance
    - DashboardManager registers handlers with WebSocketService
-   - TpaSession creates dashboard API during initialization
+   - AppSession creates dashboard API during initialization
 
 2. **Dashboard Content Flow**:
-   - TPA calls dashboard API methods (e.g., `writeToMain`)
+   - App calls dashboard API methods (e.g., `writeToMain`)
    - Dashboard API creates appropriate message
    - Message sent to cloud via WebSocket
    - DashboardManager processes message and updates content
@@ -110,8 +110,8 @@ This document provides a map of the dashboard system codebase, explaining the pu
    - DisplayManager renders layout on glasses
 
 3. **Dashboard Mode Changes**:
-   - System dashboard TPA changes mode
+   - System dashboard App changes mode
    - Mode change message sent to cloud
-   - DashboardManager updates mode and notifies all TPAs
-   - TPAs receive mode change notification via events
+   - DashboardManager updates mode and notifies all Apps
+   - Apps receive mode change notification via events
    - DashboardManager updates display based on new mode

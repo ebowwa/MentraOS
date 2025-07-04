@@ -87,7 +87,7 @@ export interface UserSession {
   activeAppSessions: string[];
   loadingApps: Set<string>;
   appSubscriptions: Map<string, ExtendedStreamType[]> | Object; // packageName -> subscriptions;
-  appConnections: Map<string, WebSocket>; // packageName -> websocket connection for the system app / TPA;
+  appConnections: Map<string, WebSocket>; // packageName -> websocket connection for the system app / App;
 
   websocket: WebSocket;
   transcript: TranscriptI
@@ -98,7 +98,7 @@ export interface UserSession {
   isTranscribing: boolean;  // New flag to track transcription state
   lastAudioTimestamp?: number;  // Last audio timestamp for debugging
   isGracefullyClosing?: boolean;  // Flag to track if the session is closing gracefully
-  
+
   // Pre-initialization audio buffer
   bufferedAudio: ArrayBufferLike[];
 

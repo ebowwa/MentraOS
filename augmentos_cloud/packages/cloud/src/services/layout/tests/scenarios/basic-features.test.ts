@@ -10,7 +10,7 @@
 import { strict as assert } from 'assert';
 import DisplayManager from '../../DisplayManager6.1';
 import { MockUserSession } from '../harness/MockUserSession';
-import { DisplayRequest, TpaToCloudMessageType, ViewType, LayoutType } from '@mentra/sdk';
+import { DisplayRequest, AppToCloudMessageType, ViewType, LayoutType } from '@mentra/sdk';
 import { SYSTEM_DASHBOARD_PACKAGE_NAME } from '../../../core/app.service';
 
 // App package names
@@ -39,7 +39,7 @@ export async function testBootQueueing() {
   console.log('2. Send display request during boot phase');
   // Create display request
   const displayRequest: DisplayRequest = {
-    type: TpaToCloudMessageType.DISPLAY_REQUEST,
+    type: AppToCloudMessageType.DISPLAY_REQUEST,
     packageName: APP1,
     view: ViewType.MAIN,
     layout: {
@@ -66,7 +66,7 @@ export async function testBootQueueing() {
   // For test purposes, we need to manually add the request to boot queue
   // In a real situation, it would be added through handleDisplayEvent during boot
   const displayRequest2: DisplayRequest = {
-    type: TpaToCloudMessageType.DISPLAY_REQUEST,
+    type: AppToCloudMessageType.DISPLAY_REQUEST,
     packageName: APP1,
     view: ViewType.MAIN,
     layout: {
@@ -121,7 +121,7 @@ export async function testPerAppThrottling() {
   console.log('1. Send first display request (should show immediately)');
   // Send first display request
   const displayRequest1: DisplayRequest = {
-    type: TpaToCloudMessageType.DISPLAY_REQUEST,
+    type: AppToCloudMessageType.DISPLAY_REQUEST,
     packageName: APP1,
     view: ViewType.MAIN,
     layout: {
@@ -145,7 +145,7 @@ export async function testPerAppThrottling() {
   console.log('2. Send second display request immediately (should be throttled)');
   // Send second display request immediately
   const displayRequest2: DisplayRequest = {
-    type: TpaToCloudMessageType.DISPLAY_REQUEST,
+    type: AppToCloudMessageType.DISPLAY_REQUEST,
     packageName: APP1,
     view: ViewType.MAIN,
     layout: {
@@ -173,7 +173,7 @@ export async function testPerAppThrottling() {
   console.log('3. Send third display request (replaces second in throttle queue)');
   // Send third display request (should replace second in throttle queue)
   const displayRequest3: DisplayRequest = {
-    type: TpaToCloudMessageType.DISPLAY_REQUEST,
+    type: AppToCloudMessageType.DISPLAY_REQUEST,
     packageName: APP1,
     view: ViewType.MAIN,
     layout: {

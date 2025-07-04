@@ -1,7 +1,7 @@
 // LandingPage.tsx
 import React from 'react';
 import { Button } from '../components/ui/button';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 const LandingPage: React.FC = () => {
   const navigate = useNavigate();
@@ -12,13 +12,13 @@ const LandingPage: React.FC = () => {
         <div className=" mx-auto px-5 py-4 flex items-center justify-between">
           <div className='select-none'>
             <div className="flex items-end gap-0">
-            <img src="https://imagedelivery.net/nrc8B2Lk8UIoyW7fY8uHVg/757b23a3-9ec0-457d-2634-29e28f03fe00/verysmall" alt="Mentra Logo" />
+              <img src="https://imagedelivery.net/nrc8B2Lk8UIoyW7fY8uHVg/757b23a3-9ec0-457d-2634-29e28f03fe00/verysmall" alt="Mentra Logo" />
             </div>
             <h2 className="text-sm text-gray-600 pb-1 ">Developer Portal</h2>
           </div>
 
           <div className="flex items-center gap-4">
-            <Button onClick={()=> navigate("signin")}>Sign In</Button>
+            <Button onClick={() => navigate("signin")}>Sign In</Button>
           </div>
         </div>
       </header>
@@ -53,11 +53,18 @@ const LandingPage: React.FC = () => {
             </a>
           </div>
 
+          {/* Github logo / link to repo asset in public/github/github-mark.svg and public/github/github.png  */}
+          <div className="mt-4 flex items-center justify-center">
+            <Link to="https://github.com/Mentra-Community/MentraOS" className='flex items-center gap-2 mb-2 px-6 py-3 rounded-md border border-gray-300 font-medium hover:bg-gray-100'>
+              <img src="/github/github-mark.svg" alt="GitHub Logo" className="h-6 w-6" />
+              <span className="text-gray-800 text-lg font-bold">MentraOS GitHub</span>
+            </Link>
+          </div>
         </div>
-      </section>
+      </section >
 
       {/* Getting Started Steps */}
-      <section className="py-20 bg-gray-100">
+      < section className="py-20 bg-gray-100" >
         <div className="container mx-auto px-4">
           <h2 className="text-3xl md:text-4xl font-bold mb-10 text-center">
             Start Building in 3 Simple Steps
@@ -91,13 +98,13 @@ const LandingPage: React.FC = () => {
             </div>
           </div>
         </div>
-      </section>
+      </section >
 
-      {/* Featured Example TPAs */}
-      <section className="py-20 bg-gray-100">
+      {/* Featured Example Apps */}
+      < section className="py-20 bg-gray-100" >
         {/* <div className="container mx-auto px-4">
           <h2 className="text-3xl md:text-4xl font-bold mb-10 text-center">
-            Featured Example TPAs
+            Featured Example Apps
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
 
@@ -140,10 +147,10 @@ const LandingPage: React.FC = () => {
             </div>
           </div>
         </div> */}
-      </section>
+      </section >
 
       {/* Footer */}
-      <footer className="bg-gray-100 py-12 mt-auto">
+      < footer className="bg-gray-100 py-12 mt-auto" >
         <div className="container mx-auto px-4">
           <div className="flex flex-col md:flex-row justify-between">
             <div className="mb-6 md:mb-0">
@@ -167,6 +174,7 @@ const LandingPage: React.FC = () => {
                 <ul className="space-y-2 text-sm">
                   <li><a href="https://docs.mentra.glass" className="text-gray-600 hover:text-gray-900">Documentation</a></li>
                   <li><a href="https://github.com/Mentra-Community/MentraOS-Cloud-Example-App" className="text-gray-600 hover:text-gray-900">Example App</a></li>
+                  <li><a href="https://github.com/Mentra-Community/MentraOS" className="text-gray-600 hover:text-gray-900">MentraOS Repo</a></li>
                 </ul>
               </div>
               {/* <div>
@@ -182,8 +190,8 @@ const LandingPage: React.FC = () => {
             &copy; {new Date().getFullYear()} MentraOS. All rights reserved.
           </div>
         </div>
-      </footer>
-    </div>
+      </footer >
+    </div >
   );
 };
 

@@ -1,4 +1,4 @@
-import { ActiveDisplay, Layout, DisplayRequest, DisplayManagerI, TpaToCloudMessageType, ViewType, LayoutType } from '@mentra/sdk';
+import { ActiveDisplay, Layout, DisplayRequest, DisplayManagerI, AppToCloudMessageType, ViewType, LayoutType } from '@mentra/sdk';
 import { SYSTEM_DASHBOARD_PACKAGE_NAME } from '../core/app.service';
 import { Logger } from 'pino';
 import { WebSocket } from 'ws';
@@ -64,8 +64,8 @@ class DisplayManager {
   }
 
   // Remove accessors since we're passing the DisplayManager directly
-  // TODO: the main app is the APP that's running that is a TpaType.STANDARD. there should only be 1 standard TPA running at a time.
-  // We need to make it so when a new standard TPA starts, it stops the previous one(s) even though there should only be 1 previous one.
+  // TODO: the main app is the APP that's running that is a AppType.STANDARD. there should only be 1 standard App running at a time.
+  // We need to make it so when a new standard App starts, it stops the previous one(s) even though there should only be 1 previous one.
   constructor(userSession: UserSession) {
     this.userSession = userSession;
 
@@ -92,7 +92,7 @@ class DisplayManager {
     // const app = this.userSession.installedApps.find(app => app.packageName === packageName);
     const app = this.userSession.installedApps.get(packageName);
 
-    if (app && app.tpaType === 'standard') {
+    if (app && app.appType === 'standard') {
       this.mainApp = packageName;
       this.logger.info({ mainApp: this.mainApp }, `[${this.userSession.userId}] Setting main app to ${this.mainApp}`);
     }
@@ -150,7 +150,7 @@ class DisplayManager {
               if (instructions) {
                 // Show onboarding instructions as a display
                 const onboardingDisplay: DisplayRequest = {
-                  type: TpaToCloudMessageType.DISPLAY_REQUEST,
+                  type: AppToCloudMessageType.DISPLAY_REQUEST,
                   view: ViewType.MAIN,
                   packageName,
                   layout: {
@@ -397,7 +397,7 @@ class DisplayManager {
       const activeDisplay = this.createActiveDisplay(displayRequest);
       // Store in boot queue, overwriting any previous request from same app
       this.bootDisplayQueue.set(displayRequest.packageName, activeDisplay);
-      return true; // Return true so TPAs know their request was accepted
+      return true; // Return true so Apps know their request was accepted
     }
 
     // Handle core app display
@@ -737,12 +737,12 @@ class DisplayManager {
     });
 
     const bootRequest: DisplayRequest = {
-      type: TpaToCloudMessageType.DISPLAY_REQUEST,
+      type: AppToCloudMessageType.DISPLAY_REQUEST,
       view: ViewType.MAIN,
       packageName: SYSTEM_DASHBOARD_PACKAGE_NAME,
       layout: {
         layoutType: LayoutType.REFERENCE_CARD,
-        title: `// AugmentOS - Starting App${this.bootingApps.size > 1 ? 's' : ''}`,
+        title: `// MentraOS - Starting App${this.bootingApps.size > 1 ? 's' : ''}`,
         text: bootingAppNames.join(", ")
       },
       timestamp: new Date()
@@ -762,7 +762,7 @@ class DisplayManager {
     }
 
     const clearRequest: DisplayRequest = {
-      type: TpaToCloudMessageType.DISPLAY_REQUEST,
+      type: AppToCloudMessageType.DISPLAY_REQUEST,
       view: viewName as ViewType,
       packageName: SYSTEM_DASHBOARD_PACKAGE_NAME,
       layout: {

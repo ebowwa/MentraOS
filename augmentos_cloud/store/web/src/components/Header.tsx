@@ -1,12 +1,14 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { usePlatform } from '../hooks/usePlatform';
 import { useTheme } from '../hooks/useTheme';
 import { Button } from './ui/button';
 import { Baseline } from 'lucide-react';
 
 const Header: React.FC = () => {
-  const { isAuthenticated, signOut, user, isWebViewAuth } = useAuth();
+  const { isAuthenticated, signOut, user } = useAuth();
+  const { isWebView } = usePlatform();
   const { theme } = useTheme();
   const navigate = useNavigate();
 
@@ -15,6 +17,11 @@ const Header: React.FC = () => {
     await signOut();
     navigate('/');
   };
+
+  // Don't show header in webview
+  if (isWebView) {
+    return null;
+  }
 
   return (
     <header className="sticky top-0 z-10" style={{ background: theme === 'light' ? '#ffffff' : 'linear-gradient(to bottom, #0c0d27, #030514)', borderBottom: `1px solid var(--border-color)` }}>
@@ -27,13 +34,12 @@ const Header: React.FC = () => {
               className="text-[26px] font-light"
               style={{ fontFamily: '"SF Pro Rounded", sans-serif', letterSpacing: '0.06em', color: 'var(--text-primary)' }}
             >
-              AugmentOS
+              MentraOS
             </span>
           </div>
 
           {/* Authentication */}
-          {!isWebViewAuth && (
-            <div className="flex items-center">
+          <div className="flex items-center">
               {isAuthenticated ? (
                 <div className="flex flex-col items-end">
                   {/* {user?.email && (
@@ -69,7 +75,6 @@ const Header: React.FC = () => {
                 </Button>
               )}
             </div>
-          )}
 
         </div>
       </div>

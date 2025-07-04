@@ -125,9 +125,12 @@ const palette = {
 
   // Button colors for pill-shaped buttons
   buttonPillPrimary: "#B0B9FF", // Light blue for primary pill buttons
-  buttonPillSecondary: "#474794", // Dark blue for secondary pill buttons
+  buttonPillSecondary: "transparent", // Transparent background for secondary pill buttons
+  buttonPillSecondaryBorder: "#747CAB", // Light purple border for secondary pill buttons
+  buttonPillIcon: "#474794", // Dark blue for icon pill buttons (was secondary)
   buttonPillPrimaryText: "#141434", // Dark text for light primary buttons
-  buttonPillSecondaryText: "#FFFFFF", // Light text for dark secondary buttons
+  buttonPillSecondaryText: "#F9F8FE", // Light text for secondary buttons
+  buttonPillIconText: "#FFFFFF", // Light text for icon buttons
 } as const
 
 export const colors = {
@@ -168,6 +171,8 @@ export const colors = {
   switchThumb: palette.neutral100,
   switchThumbOn: "#FFFFFF", // White thumb for ON state
   switchThumbOff: "#D5D8F5", // Light purple thumb for OFF state
+  switchBorder: "transparent", // No border in dark theme
+  switchBorderWidth: 0, // No border width in dark theme
 
   // Gallery specific colors
   galleryBackground: palette.darkGalleryBg,
@@ -238,8 +243,11 @@ export const colors = {
   // Pill button colors
   buttonPillPrimary: palette.buttonPillPrimary,
   buttonPillSecondary: palette.buttonPillSecondary,
+  buttonPillSecondaryBorder: palette.buttonPillSecondaryBorder,
+  buttonPillIcon: palette.buttonPillIcon,
   buttonPillPrimaryText: palette.buttonPillPrimaryText,
   buttonPillSecondaryText: palette.buttonPillSecondaryText,
+  buttonPillIconText: palette.buttonPillIconText,
 
   // Checkmark color
   checkmark: "#7B79FF", // Brighter purple-blue for checkmarks in dark theme
@@ -248,4 +256,24 @@ export const colors = {
   sliderThumb: "#FFFFFF", // White handle for dark theme
   sliderTrackActive: "#7674FB", // Purple track for active/filled portion (matches switch ON)
   sliderTrackInactive: "#565E8C", // Purple-gray for inactive portion (matches switch OFF)
+
+  // Tab bar icon and text colors
+  tabBarIconActive: "#FFFFFF", // White for active tab icon in dark theme
+  tabBarTextActive: "#FFFFFF", // White for active tab text in dark theme
+  tabBarIconInactive: palette.neutral600, // Use existing textDim color for inactive
+  tabBarTextInactive: palette.neutral600, // Use existing textDim color for inactive
+
+  // Chevron color for app list items
+  chevron: "#898FB2", // Same purple-gray for both themes
+
+  // Foreground tag colors
+  foregroundTagBackground: "#0F1861", // Dark blue background
+  foregroundTagText: "#ABAAFF", // Light purple text
+  
+  // Status icons on home screen
+  statusIcon: "#D5D8F5", // Light purple-gray for battery, brightness, bluetooth, wifi icons
+  statusText: "#D5D8F5", // Same as statusIcon to keep dark theme unchanged
+  
+  // Search icon color
+  searchIcon: palette.neutral800, // Keep using text color in dark theme
 } as const

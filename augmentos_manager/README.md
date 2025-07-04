@@ -1,15 +1,19 @@
-# Welcome to your new ignited app!
-
-> The latest and greatest boilerplate for Infinite Red opinions
-
-This is the boilerplate that [Infinite Red](https://infinite.red) uses as a way to test bleeding-edge changes to our React Native stack.
-
-- [Quick start documentation](https://github.com/infinitered/ignite/blob/master/docs/boilerplate/Boilerplate.md)
-- [Full documentation](https://github.com/infinitered/ignite/blob/master/docs/README.md)
-
 ### Quickstart
 
-build and run the app on android from scratch:
+
+### Windows Setup
+
+```bash
+// Clone directly to the C:\ directory to avoid path length limits on windows!
+git clone https://github.com/Mentra-Community/MentraOS
+git checkout dev
+```
+
+
+```
+choco install -y nodejs-lts microsoft-openjdk17
+```
+
 
 ## Android
 ```
@@ -24,8 +28,7 @@ pnpm install
 pnpm expo prebuild
 cd ios
 pod install
-cd ..
-open ios/AOS.xcworkspace
+cd .. && open ios/AOS.xcworkspace
 (install a dev build on your phone using xcode)
 pnpm run start
 ```
@@ -44,21 +47,6 @@ pnpm install
 ./fix-react-native-symlinks.sh 
 pnpm android
 pnpm run start
-```
-
-## Getting Started
-
-```bash
-pnpm install
-pnpm run start
-```
-
-To make things work on your local simulator, or on your phone, you need first to [run `eas build`](https://github.com/infinitered/ignite/blob/master/docs/expo/EAS.md). We have many shortcuts on `package.json` to make it easier:
-
-```bash
-pnpm run build:ios:sim # build for ios simulator
-pnpm run build:ios:dev # build for ios device
-pnpm run build:ios:prod # build for ios device
 ```
 
 ### `./assets` directory
@@ -97,20 +85,48 @@ const MyComponent = () => {
 
 Follow our [Maestro Setup](https://ignitecookbook.com/docs/recipes/MaestroSetup) recipe.
 
-## Next Steps
 
-### Ignite Cookbook
-
-[Ignite Cookbook](https://ignitecookbook.com/) is an easy way for developers to browse and share code snippets (or “recipes”) that actually work.
-
-### Upgrade Ignite boilerplate
-
-Read our [Upgrade Guide](https://ignitecookbook.com/docs/recipes/UpdatingIgnite) to learn how to upgrade your Ignite project.
+___
 
 
-## Overview of changes
+### General Codebase Notes and suggestions
 
-- essentially all imports have been refactored to use absolute paths instead of relative paths
-- there is no longer a src/screens folder, as screens have been replaced with expo-router's file based routing (react-navigation under the hood) 
-- most components have been categorized into folders or the misc/ folder
-- most components now use the theme/themed from the useAppTheme() hook
+- Don't import `theme` from `@/theme` intead:
+```tsx
+import {useAppTheme} from "@/utils/useAppTheme"
+
+// and then in the component:
+function MyComponent() {
+  const {theme, themed} = useAppTheme();
+}
+```
+
+- Don't create Stylesheets, instead use themed(<name-of-style>)
+```tsx
+const $container: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
+  color: colors.text,
+  fontSize: spacing.md,
+  flexWrap: "wrap",
+})
+```
+
+- Don't use expo router's router.push / replace / etc. instead use the `useNavigationHistory()` hook
+```tsx
+import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
+const {goBack, push, replace} = useNavigationHistory()
+```
+
+- Use the Ignite Components and their tx prop where applicable for translations
+- make sure to define your strings in en.ts
+- if you have to use strings in code, use the translate() function
+```tsx
+<Screen safeAreaEdges={["top"]} contentContainerStyle={themed($container)}>
+  <Text tx="settingsScreen:someSettingsText"/>
+  <Button
+    tx="alerts:showAlert"
+    onPress={() => {
+      showAlert(translate("alerts:someError"));
+    }}
+  />
+</Screen>
+```

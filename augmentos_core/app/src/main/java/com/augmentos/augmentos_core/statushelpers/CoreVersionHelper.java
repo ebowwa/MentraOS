@@ -20,7 +20,7 @@ public final class CoreVersionHelper {
     }
 
     /**
-     * Reads the "tpa_config.json" file from the app's raw resources
+     * Reads the "app_config.json" file from the app's raw resources
      * and extracts the "version" field.
      *
      * @param context Any valid Android Context (e.g. Activity, Service)
@@ -31,7 +31,7 @@ public final class CoreVersionHelper {
             // Look up the resource ID for "config" in res/raw
             int resId = context.getResources().getIdentifier("config", "raw", context.getPackageName());
             if (resId == 0) {
-                Log.w(TAG, "No tpa_config.json found in res/raw!");
+                Log.w(TAG, "No app_config.json found in res/raw!");
                 return "Unknown";
             }
 

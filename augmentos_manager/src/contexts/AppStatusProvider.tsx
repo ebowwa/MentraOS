@@ -9,7 +9,7 @@ import {loadSetting} from "@/utils/SettingsHelper"
 import {SETTINGS_KEYS} from "@/consts"
 import coreCommunicator from "@/bridge/CoreCommunicator"
 
-export type TPAPermissionType =
+export type AppPermissionType =
   | "ALL"
   | "MICROPHONE"
   | "CAMERA"
@@ -17,9 +17,9 @@ export type TPAPermissionType =
   | "LOCATION"
   | "READ_NOTIFICATIONS"
   | "POST_NOTIFICATIONS"
-export interface TPAPermission {
+export interface AppPermission {
   description: string
-  type: TPAPermissionType
+  type: AppPermissionType
   required?: boolean
 }
 
@@ -32,7 +32,7 @@ export interface AppInterface {
   uninstallable?: boolean
   webviewURL?: string
   logoURL: string
-  tpaType: string
+  appType: string
   appStoreId?: string
   developerId?: string
   hashedEndpointSecret?: string
@@ -49,7 +49,7 @@ export interface AppInterface {
     description?: string
     logo?: string
   }
-  permissions: TPAPermission[]
+  permissions: AppPermission[]
   is_running?: boolean
   is_foreground?: boolean
 }
@@ -215,7 +215,7 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
   // Initial fetch and refresh on user change or status change
   useEffect(() => {
     refreshAppStatus()
-  }, [user, status])
+  }, [user, status.core_info.cloud_connection_status])
 
   // Listen for app started/stopped events from CoreCommunicator
   useEffect(() => {

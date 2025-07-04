@@ -99,22 +99,22 @@ public class ThirdPartyEdgeApp implements Serializable {
     }
 
     public JSONObject toJson(boolean includeSettings) {
-        JSONObject tpaObj = new JSONObject();
+        JSONObject appObj = new JSONObject();
         try {
-            tpaObj.put("name", appName);
-            tpaObj.put("description", appDescription);
-            tpaObj.put("instructions", appInstructions);
-            tpaObj.put("version", version);
-            tpaObj.put("packageName", packageName);
-            tpaObj.put("type", appType.name());
-            tpaObj.put("iconUrl", null);
+            appObj.put("name", appName);
+            appObj.put("description", appDescription);
+            appObj.put("instructions", appInstructions);
+            appObj.put("version", version);
+            appObj.put("packageName", packageName);
+            appObj.put("type", appType.name());
+            appObj.put("iconUrl", null);
 
             if(includeSettings) {
-                tpaObj.put("settings", settings);
+                appObj.put("settings", settings);
             }
         } catch (JSONException e) {
             throw new RuntimeException(e);
         }
-        return tpaObj;
+        return appObj;
     }
 }

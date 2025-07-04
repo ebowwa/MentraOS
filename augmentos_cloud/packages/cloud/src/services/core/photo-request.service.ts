@@ -1,14 +1,14 @@
 // NOTE(isaiah): This file is deprecated and not used, any logic should be in services/session/PhotoManager.
 
 /**
- * @fileoverview Service for managing photo requests from both system actions and TPAs.
+ * @fileoverview Service for managing photo requests from both system actions and Apps.
  *
  * This service centralizes the management of all photo requests to solve the issue where
- * system-initiated photo requests (via hardware button) and TPA-initiated photo requests
+ * system-initiated photo requests (via hardware button) and App-initiated photo requests
  * were tracked separately, causing upload validation failures.
  *
  * Key features:
- * - Unified tracking of both system and TPA photo requests
+ * - Unified tracking of both system and App photo requests
  * - Consistent timeout handling
  * - Proper request cleanup
  * - Type safety with proper interfaces
@@ -22,7 +22,7 @@ const logger = rootLogger.child({ service: 'photo-request.service' });
 /**
  * Types of photo request origins
  */
-export type PhotoRequestOrigin = 'system' | 'tpa';
+export type PhotoRequestOrigin = 'system' | 'app';
 
 /**
  * Interface for a pending photo request
@@ -31,19 +31,19 @@ export interface PendingPhotoRequest {
   requestId: string;       // Unique ID for this request
   userId: string;          // User ID who initiated the request
   timestamp: number;       // When the request was created
-  origin: PhotoRequestOrigin; // Whether this is from system or TPA
-  appId?: string;          // App ID (required for TPA requests, optional for system)
-  ws?: WebSocket;          // WebSocket connection (only for TPA requests)
-  saveToGallery: boolean;  // Whether to save to gallery (defaults true for system, configurable for TPA)
+  origin: PhotoRequestOrigin; // Whether this is from system or App
+  appId?: string;          // App ID (required for App requests, optional for system)
+  ws?: WebSocket;          // WebSocket connection (only for App requests)
+  saveToGallery: boolean;  // Whether to save to gallery (defaults true for system, configurable for App)
 }
 
 /**
  * Configuration options for photo requests
  */
 export interface PhotoRequestConfig {
-  // Timeout in milliseconds for photo requests (default: 30 seconds for TPA, 60 seconds for system)
+  // Timeout in milliseconds for photo requests (default: 30 seconds for App, 60 seconds for system)
   timeoutMs?: number;
-  // Whether to save the photo to gallery (default: true for system, false for TPA)
+  // Whether to save the photo to gallery (default: true for system, false for App)
   saveToGallery?: boolean;
 }
 
@@ -60,11 +60,11 @@ export interface PhotoRequestConfig {
  * Service for managing photo requests
  */
 class PhotoRequestService {
-  // Unified map of all pending photo requests (system and TPA)
+  // Unified map of all pending photo requests (system and App)
   private pendingPhotoRequests = new Map<string, PendingPhotoRequest>();
 
   // Default timeout values in milliseconds
-  private readonly DEFAULT_TPA_TIMEOUT_MS = 30000; // 30 seconds
+  private readonly DEFAULT_APP_TIMEOUT_MS = 30000; // 30 seconds
   private readonly DEFAULT_SYSTEM_TIMEOUT_MS = 60000; // 60 seconds
 
   constructor() {
@@ -102,7 +102,7 @@ class PhotoRequestService {
   }
 
   /**
-   * Create a new TPA-initiated photo request
+   * Create a new App-initiated photo request
    *
    * @param userId User ID who initiated the request
    * @param appId App ID that requested the photo
@@ -110,7 +110,7 @@ class PhotoRequestService {
    * @param config Optional configuration options
    * @returns The request ID for the new photo request
    */
-  createTpaPhotoRequest(
+  createAppPhotoRequest(
     userId: string,
     appId: string,
     ws: WebSocket,
@@ -118,21 +118,21 @@ class PhotoRequestService {
   ): string {
     const requestId = uuidv4();
     const timestamp = Date.now();
-    const timeoutMs = config?.timeoutMs || this.DEFAULT_TPA_TIMEOUT_MS;
+    const timeoutMs = config?.timeoutMs || this.DEFAULT_APP_TIMEOUT_MS;
     const saveToGallery = config?.saveToGallery !== undefined ? config.saveToGallery : false;
 
-    // Store the TPA photo request
+    // Store the App photo request
     this.pendingPhotoRequests.set(requestId, {
       requestId,
       userId,
       timestamp,
-      origin: 'tpa',
+      origin: 'app',
       appId,
       ws,
       saveToGallery
     });
 
-    logger.info(`[PhotoRequestService] Created TPA photo request: ${requestId} for app ${appId}, user ${userId}`);
+    logger.info(`[PhotoRequestService] Created App photo request: ${requestId} for app ${appId}, user ${userId}`);
 
     // Set timeout to clean up if not used
     this.setRequestTimeout(requestId, timeoutMs);
@@ -161,7 +161,7 @@ class PhotoRequestService {
   }
 
   /**
-   * Process a photo response by forwarding it to the requesting TPA (if applicable)
+   * Process a photo response by forwarding it to the requesting App (if applicable)
    * and cleaning up the request
    *
    * @param requestId The ID of the photo request
@@ -177,16 +177,16 @@ class PhotoRequestService {
       return false;
     }
 
-    // If this is a TPA request, forward the response via WebSocket
-    if (pendingRequest.origin === 'tpa' && pendingRequest.ws) {
+    // If this is a App request, forward the response via WebSocket
+    if (pendingRequest.origin === 'app' && pendingRequest.ws) {
       // Check if the WebSocket is still open
       if (pendingRequest.ws.readyState !== WebSocket.OPEN) {
-        logger.warn(`[PhotoRequestService] TPA WebSocket closed for requestId: ${requestId}`);
+        logger.warn(`[PhotoRequestService] App WebSocket closed for requestId: ${requestId}`);
         this.pendingPhotoRequests.delete(requestId);
         return false;
       }
 
-      // Send the photo response to the TPA
+      // Send the photo response to the App
       const photoResponse = {
         type: 'photo_response',
         photoUrl,
@@ -195,7 +195,7 @@ class PhotoRequestService {
       };
 
       pendingRequest.ws.send(JSON.stringify(photoResponse));
-      logger.info(`[PhotoRequestService] Photo response sent to TPA ${pendingRequest.appId}, requestId: ${requestId}`);
+      logger.info(`[PhotoRequestService] Photo response sent to App ${pendingRequest.appId}, requestId: ${requestId}`);
     } else if (pendingRequest.origin === 'system') {
       // For system requests, we don't need to forward anything, just log it
       logger.info(`[PhotoRequestService] System photo request completed: ${requestId}`);
@@ -233,7 +233,7 @@ class PhotoRequestService {
     // Check all requests for expiration
     for (const [requestId, request] of this.pendingPhotoRequests.entries()) {
       const age = now - request.timestamp;
-      const timeout = request.origin === 'system' ? this.DEFAULT_SYSTEM_TIMEOUT_MS : this.DEFAULT_TPA_TIMEOUT_MS;
+      const timeout = request.origin === 'system' ? this.DEFAULT_SYSTEM_TIMEOUT_MS : this.DEFAULT_APP_TIMEOUT_MS;
 
       if (age > timeout) {
         this.pendingPhotoRequests.delete(requestId);
@@ -261,8 +261,8 @@ class PhotoRequestService {
         const request = this.pendingPhotoRequests.get(requestId)!;
         logger.info(`[PhotoRequestService] Cleaned up expired ${request.origin} photo request: ${requestId}`);
 
-        // If this is a TPA request with a WebSocket, send a timeout error
-        if (request.origin === 'tpa' && request.ws && request.ws.readyState === WebSocket.OPEN) {
+        // If this is a App request with a WebSocket, send a timeout error
+        if (request.origin === 'app' && request.ws && request.ws.readyState === WebSocket.OPEN) {
           const errorMessage = {
             type: 'connection_error',
             message: 'Photo request timed out',

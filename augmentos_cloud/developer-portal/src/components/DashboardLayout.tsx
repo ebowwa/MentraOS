@@ -60,7 +60,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
     if (path === '/dashboard') {
       return currentPath === '/dashboard';
     }
-    // For /tpas, we want to highlight for all routes under /tpas
+    // For /apps, we want to highlight for all routes under /apps
     return currentPath.startsWith(path);
   };
 
@@ -108,8 +108,8 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
               Dashboard
             </Link>
             <Link
-              to="/tpas"
-              className={`flex items-center px-3 py-2 text-sm font-medium rounded-md ${isActivePath('/tpas')
+              to="/apps"
+              className={`flex items-center px-3 py-2 text-sm font-medium rounded-md ${isActivePath('/apps')
                 ? 'bg-gray-200 text-gray-900'
                 : 'text-gray-600 hover:bg-gray-200 hover:text-gray-900'
                 }`}

@@ -41,8 +41,8 @@ import java.util.HashMap;
 public class AugmentOSLib {
     public String TAG = "AugmentOSLib_AugmentOSLib";
 
-    private final TPABroadcastReceiver augmentosReceiver;
-    private final TPABroadcastSender augmentosSender;
+    private final AppBroadcastReceiver augmentosReceiver;
+    private final AppBroadcastSender augmentosSender;
     private final Context mContext;
     private AugmentOSCallbackMapper augmentosCallbackMapper;
     private FocusCallback focusCallback;
@@ -54,8 +54,8 @@ public class AugmentOSLib {
     public AugmentOSLib(Context context){
         this.mContext = context;
         augmentosCallbackMapper = new AugmentOSCallbackMapper();
-        augmentosReceiver = new TPABroadcastReceiver(context);
-        augmentosSender = new TPABroadcastSender(context);
+        augmentosReceiver = new AppBroadcastReceiver(context);
+        augmentosSender = new AppBroadcastSender(context);
         subscribedDataStreams = new HashMap<DataStreamType, SubscriptionCallback>();
 
         //register subscribers on EventBus
@@ -79,8 +79,8 @@ public class AugmentOSLib {
 //    public void registerApp(String appName, String appDescription, AugmentOSCommand[] commandList) {
 //        String packageName = mContext.getPackageName();
 //        String serviceName = mContext.getClass().getName();
-//        ThirdPartyApp tpa = new ThirdPartyApp(appName, appDescription, packageName, serviceName, commandList);
-//        AugmentOSLibBus.getInstance().post(new RegisterTpaRequestEvent(tpa));
+//        ThirdPartyApp app = new ThirdPartyApp(appName, appDescription, packageName, serviceName, commandList);
+//        AugmentOSLibBus.getInstance().post(new RegisterAppRequestEvent(app));
 //
 //        for (AugmentOSCommand command : commandList) {
 //
@@ -152,7 +152,7 @@ public class AugmentOSLib {
         subscribedDataStreams.put(dataStreamType, callback);
     }
 
-//    //TPA request to be the app in focus - AugmentOS has to grant this request
+//    //App request to be the app in focus - AugmentOS has to grant this request
 //    public void requestFocus(FocusCallback callback){
 //        focusCallback = callback;
 //        AugmentOSLibBus.getInstance().post(new FocusRequestEvent(true));

@@ -31,6 +31,8 @@
     "test:watch": "bun test --watch",
     "test:accounts": "bun run src/examples/account-test.ts",
     "test:connection": "bun run src/examples/connection-test.ts",
+    "test:azure-stress": "bun run src/examples/azure-rate-limit-stress-test.ts",
+    "test:azure-quick": "bun run src/examples/azure-rate-limit-quick-test.ts",
     "test:live-captions": "bun run src/examples/live-captions-test.ts",
     "lint": "eslint src/**/*.ts",
     "typecheck": "tsc --noEmit",

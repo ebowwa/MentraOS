@@ -18,9 +18,9 @@ import {
   ExtendedStreamType,
   getLanguageInfo,
   TranscriptSegment,
-  CloudToTpaMessage,
+  CloudToAppMessage,
   DataStream,
-  CloudToTpaMessageType
+  CloudToAppMessageType
 } from '@mentra/sdk';
 // import webSocketService from '../websocket/websocket.service';
 import subscriptionService from '../session/subscription.service';
@@ -35,6 +35,81 @@ const logger = rootLogger.child({ service: SERVICE_NAME });
 
 export const AZURE_SPEECH_REGION = process.env.AZURE_SPEECH_REGION || "";
 export const AZURE_SPEECH_KEY = process.env.AZURE_SPEECH_KEY || "";
+
+/**
+ * Circuit breaker to prevent cascading failures when Azure is overloaded
+ */
+class AzureTranscriptionCircuitBreaker {
+  private rateLimitFailures = 0;
+  private lastRateLimitTime = 0;
+  private circuitOpen = false;
+  private readonly RATE_LIMIT_THRESHOLD = 5; // 5 failures triggers circuit open
+  private readonly CIRCUIT_RESET_TIME = 120000; // 2 minutes (was 10 minutes)
+  private readonly FAILURE_WINDOW = 180000; // 3 minutes (was 5 minutes)
+
+  /**
+   * Check if new Azure connection attempts should be allowed
+   */
+  canAttemptConnection(): boolean {
+    const now = Date.now();
+    
+    // Reset circuit if enough time has passed
+    if (now - this.lastRateLimitTime > this.CIRCUIT_RESET_TIME) {
+      this.rateLimitFailures = 0;
+      this.circuitOpen = false;
+      return true;
+    }
+    
+    // Check if we're in failure window with too many failures
+    if (this.rateLimitFailures >= this.RATE_LIMIT_THRESHOLD && 
+        now - this.lastRateLimitTime < this.FAILURE_WINDOW) {
+      this.circuitOpen = true;
+      return false;
+    }
+    
+    return true;
+  }
+
+  /**
+   * Record a rate limiting failure
+   */
+  recordRateLimitFailure(): void {
+    this.rateLimitFailures++;
+    this.lastRateLimitTime = Date.now();
+    
+    if (this.rateLimitFailures >= this.RATE_LIMIT_THRESHOLD) {
+      this.circuitOpen = true;
+      logger.error({
+        rateLimitFailures: this.rateLimitFailures,
+        circuitOpen: this.circuitOpen
+      }, '🚨 Azure transcription circuit breaker OPENED - blocking new connections for 2 minutes');
+    }
+  }
+
+  /**
+   * Record a successful connection (helps with gradual recovery)
+   */
+  recordSuccess(): void {
+    // Gradually reduce failure count on success
+    if (this.rateLimitFailures > 0) {
+      this.rateLimitFailures = Math.max(0, this.rateLimitFailures - 1);
+    }
+  }
+
+  /**
+   * Get current circuit state for monitoring
+   */
+  getState(): { open: boolean, failures: number, lastFailure: number } {
+    return {
+      open: this.circuitOpen,
+      failures: this.rateLimitFailures,
+      lastFailure: this.lastRateLimitTime
+    };
+  }
+}
+
+// Global circuit breaker instance
+const azureCircuitBreaker = new AzureTranscriptionCircuitBreaker();
 
 /**
  * Extend the UserSession type with our new property.
@@ -144,6 +219,18 @@ export class TranscriptionService {
   private createASRStreamForSubscription(subscription: ExtendedStreamType, userSession: UserSession): ASRStreamInstance {
     const sessionLogger = userSession.logger.child({ service: SERVICE_NAME });
 
+    // Check circuit breaker before attempting Azure connection
+    if (!azureCircuitBreaker.canAttemptConnection()) {
+      const circuitState = azureCircuitBreaker.getState();
+      sessionLogger.error({
+        subscription,
+        circuitState,
+        operation: 'circuitBreakerOpen'
+      }, '🚨 Azure circuit breaker is OPEN - blocking new transcription stream creation');
+      
+      throw new Error(`Azure transcription service temporarily unavailable due to rate limiting. Circuit breaker open with ${circuitState.failures} recent failures.`);
+    }
+
     // Use the updated parse logic – which returns transcribeLanguage and translateLanguage.
     const languageInfo = getLanguageInfo(subscription);
     if (!languageInfo) {
@@ -206,11 +293,15 @@ export class TranscriptionService {
 
         const initializationTime = streamInstance.readyTime - streamInstance.startTime;
 
+        // Record successful connection in circuit breaker
+        azureCircuitBreaker.recordSuccess();
+
         sessionLogger.info({
           subscription,
           sessionId: event.sessionId,
           initializationTime,
           retryCount: streamInstance.retryCount,
+          circuitBreakerState: azureCircuitBreaker.getState(),
           operation: 'sessionReady'
         }, `✅ Azure Speech session ready after ${initializationTime}ms (including 500ms safety delay) - audio flow enabled`);
       }, 500); // 500ms delay after sessionStarted to prevent InvalidOperation error 7
@@ -262,11 +353,22 @@ export class TranscriptionService {
         azureRegion: AZURE_SPEECH_REGION,
         recognizerType: languageInfo.type === StreamType.TRANSLATION ? 'TranslationRecognizer' : 'ConversationTranscriber',
 
+        // Circuit breaker context
+        circuitBreakerState: azureCircuitBreaker.getState(),
+
         // Root cause indicators
         likelyRaceCondition: event.errorCode === 7 && !streamInstance.readyTime && streamInstance.audioChunksReceived > 0,
         likelyNetworkIssue: event.errorCode === 4 || event.reason === CancellationReason.Error,
-        likelyAuthIssue: event.errorCode === 1 || event.errorCode === 2
+        likelyAuthIssue: event.errorCode === 1 || event.errorCode === 2,
+        likelyRateLimiting: event.errorCode === 4 && event.errorDetails && event.errorDetails.includes('4429')
       };
+
+      // Track rate limiting failures in circuit breaker
+      if (errorDiagnostics.likelyRateLimiting) {
+        azureCircuitBreaker.recordRateLimitFailure();
+        sessionLogger.error(errorDiagnostics,
+          '🚨 Azure rate limiting detected (4429) - recorded in circuit breaker');
+      }
 
       // Contextual error logging
       if (event.errorCode === 7) {
@@ -629,12 +731,12 @@ export class TranscriptionService {
 
   // TODO(isaiah): copied from the old websocket service, Need to rethink how to cleanly implement this.
   //   /**
-  //    * 🗣️📣 Broadcasts data to all TPAs subscribed to a specific stream type.
+  //    * 🗣️📣 Broadcasts data to all Apps subscribed to a specific stream type.
   //    * @param userSessionId - ID of the user's glasses session
   //    * @param streamType - Type of data stream
   //    * @param data - Data to broadcast
   //    */
-  private broadcastToTpa(userSession: UserSession, streamType: StreamType, data: CloudToTpaMessage): void {
+  private broadcastToApp(userSession: UserSession, streamType: StreamType, data: CloudToAppMessage): void {
     // const userSession = sessionService.getSession(userSessionId);
     // if (!userSession) {
     //   logger.error(`[transcription.service]: User session not found for ${userSessionId}`);
@@ -657,12 +759,12 @@ export class TranscriptionService {
 
     // Send to all subscribed apps using centralized messaging with automatic resurrection
     subscribedApps.forEach(async (packageName) => {
-      const tpaSessionId = `${userSession.sessionId}-${packageName}`;
+      const appSessionId = `${userSession.sessionId}-${packageName}`;
 
       // CloudDataStreamMessage
       const dataStream: DataStream = {
-        type: CloudToTpaMessageType.DATA_STREAM,
-        sessionId: tpaSessionId,
+        type: CloudToAppMessageType.DATA_STREAM,
+        sessionId: appSessionId,
         streamType, // Base type remains the same in the message.
         data,      // The data now may contain language info.
         timestamp: new Date()
@@ -670,7 +772,7 @@ export class TranscriptionService {
 
       try {
         // Use centralized messaging with automatic resurrection
-        const result = await userSession.appManager.sendMessageToTpa(packageName, dataStream);
+        const result = await userSession.appManager.sendMessageToApp(packageName, dataStream);
 
         if (!result.sent) {
           userSession.logger.warn({
@@ -678,19 +780,19 @@ export class TranscriptionService {
             packageName,
             resurrectionTriggered: result.resurrectionTriggered,
             error: result.error
-          }, `Failed to send transcription data to TPA ${packageName}`);
+          }, `Failed to send transcription data to App ${packageName}`);
         } else if (result.resurrectionTriggered) {
           userSession.logger.warn({
             service: SERVICE_NAME,
             packageName
-          }, `Transcription data sent to TPA ${packageName} after resurrection`);
+          }, `Transcription data sent to App ${packageName} after resurrection`);
         }
       } catch (error) {
         userSession.logger.error({
           service: SERVICE_NAME,
           packageName,
           error: error instanceof Error ? error.message : String(error)
-        }, `Error sending transcription data to TPA ${packageName}`);
+        }, `Error sending transcription data to App ${packageName}`);
       }
     });
   }
@@ -705,7 +807,7 @@ export class TranscriptionService {
 
     try {
       const streamType = data.type === StreamType.TRANSLATION ? StreamType.TRANSLATION : StreamType.TRANSCRIPTION;
-      this.broadcastToTpa(userSession, streamType, data);
+      this.broadcastToApp(userSession, streamType, data);
     } catch (error) {
       sessionLogger.error({
         error,
@@ -1022,15 +1124,17 @@ export class TranscriptionService {
     const sessionLogger = userSession.logger.child({ service: SERVICE_NAME });
 
     const errorCode = event.errorCode;
-    const isRetryable = this.isRetryableError(errorCode);
-    const maxRetries = this.getMaxRetries(errorCode);
-    const baseRetryDelay = this.getBaseRetryDelay(errorCode);
+    const errorDetails = event.errorDetails || '';
+    const isRetryable = this.isRetryableError(errorCode, errorDetails);
+    const maxRetries = this.getMaxRetries(errorCode, errorDetails);
+    const baseRetryDelay = this.getBaseRetryDelay(errorCode, errorDetails);
 
     if (isRetryable && streamInstance.retryCount < maxRetries) {
       streamInstance.retryCount++;
 
-      // Exponential backoff with jitter
-      const jitter = Math.random() * 0.3; // 0-30% jitter
+      // Intelligent exponential backoff with adaptive jitter
+      const jitterPercent = this.getJitterPercent(errorCode, errorDetails);
+      const jitter = Math.random() * jitterPercent;
       const backoffMultiplier = Math.pow(2, streamInstance.retryCount - 1);
       const retryDelay = baseRetryDelay * backoffMultiplier * (1 + jitter);
 
@@ -1120,10 +1224,15 @@ export class TranscriptionService {
   /**
    * Determine if an error code should trigger a retry
    */
-  private isRetryableError(errorCode: number): boolean {
+  private isRetryableError(errorCode: number, errorDetails?: string): boolean {
     switch (errorCode) {
-      case 7:   // SPXERR_INVALID_OPERATION - Often a race condition, retry
-      case 4:   // Network/connection issues
+      case 7:   // SPXERR_INVALID_OPERATION - Often a race condition, retry with less aggression
+        return true;
+      
+      case 4:   // Network/connection issues - special handling for rate limiting
+        // Rate limiting (4429) is retryable but with much longer delays
+        return true;
+      
       case 6:   // Timeout issues
       case 999: // Custom error code for start failures
         return true;
@@ -1140,11 +1249,19 @@ export class TranscriptionService {
   /**
    * Get maximum retry attempts based on error type
    */
-  private getMaxRetries(errorCode: number): number {
+  private getMaxRetries(errorCode: number, errorDetails?: string): number {
     switch (errorCode) {
-      case 7:   // Race condition errors - retry more aggressively
-        return 5;
-      case 4:   // Network issues - moderate retries
+      case 7:   // Race condition errors - reduce from 5 to 3 attempts
+        return 3;
+      
+      case 4:   // Network issues
+        if (errorDetails && errorDetails.includes('4429')) {
+          // Rate limiting - fewer retries with longer delays
+          return 3;
+        }
+        // Other network issues - moderate retries
+        return 3;
+      
       case 6:   // Timeout issues - moderate retries
         return 3;
       case 999: // Start failures - limited retries
@@ -1157,17 +1274,46 @@ export class TranscriptionService {
   /**
    * Get base retry delay in milliseconds based on error type
    */
-  private getBaseRetryDelay(errorCode: number): number {
+  private getBaseRetryDelay(errorCode: number, errorDetails?: string): number {
     switch (errorCode) {
-      case 7:   // Race condition - quick retry
-        return 1000; // 1 second base
-      case 4:   // Network issues - longer delay
+      case 7:   // Race condition - less aggressive retry (increased from 1s to 2s)
+        return 2000; // 2 seconds base
+      
+      case 4:   // Network issues
+        if (errorDetails && errorDetails.includes('4429')) {
+          // Rate limiting - much longer delays to let Azure recover
+          return 10000; // 10 seconds base (was 3s)
+        }
+        // Other network issues - longer delay
+        return 3000; // 3 seconds base
+      
       case 6:   // Timeout issues - longer delay
         return 3000; // 3 seconds base
       case 999: // Start failures - medium delay
         return 2000; // 2 seconds base
       default:
         return 2000; // 2 seconds default
+    }
+  }
+
+  /**
+   * Get jitter percentage based on error type to spread retry timing
+   */
+  private getJitterPercent(errorCode: number, errorDetails?: string): number {
+    switch (errorCode) {
+      case 4:   // Network issues
+        if (errorDetails && errorDetails.includes('4429')) {
+          // Rate limiting - high jitter to spread requests across time
+          return 0.5; // 50% jitter
+        }
+        // Other network issues - moderate jitter
+        return 0.3; // 30% jitter
+      
+      case 7:   // Race condition - moderate jitter
+        return 0.3; // 30% jitter
+      
+      default:
+        return 0.3; // 30% default jitter
     }
   }
 }

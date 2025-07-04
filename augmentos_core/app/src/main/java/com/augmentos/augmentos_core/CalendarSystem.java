@@ -2,6 +2,7 @@ package com.augmentos.augmentos_core;
 
 import android.content.ContentResolver;
 import android.content.Context;
+import android.database.ContentObserver;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Handler;
@@ -33,12 +34,16 @@ public class CalendarSystem {
 
     private final Handler calendarSendingLoopHandler = new Handler(Looper.getMainLooper());
     private Runnable calendarSendingRunnableCode;
-    private final long calendarSendTime = 1000 * 60 * 10; // 5 minutes
+    private final long calendarSendTime = 1000 * 60 * 10; // 10 minutes
 
-    private final long firstFetchPollingInterval = 10000; // 5 seconds
+    private final long firstFetchPollingInterval = 10000; // 10 seconds
+
+    // Calendar change observer for real-time updates
+    private CalendarContentObserver calendarObserver;
 
     private CalendarSystem(Context context) {
         this.context = context.getApplicationContext();
+        setupCalendarChangeObserver();
         scheduleCalendarUpdates();
     }
 
@@ -63,6 +68,90 @@ public class CalendarSystem {
     private boolean hasCalendarPermissions() {
         return ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CALENDAR)
                 == PackageManager.PERMISSION_GRANTED;
+    }
+
+    /**
+     * Setup calendar change observer for real-time updates
+     */
+    private void setupCalendarChangeObserver() {
+        if (calendarObserver != null) {
+            removeCalendarChangeObserver();
+        }
+
+        calendarObserver = new CalendarContentObserver(new Handler(Looper.getMainLooper()));
+
+        if (hasCalendarPermissions()) {
+            ContentResolver contentResolver = context.getContentResolver();
+            contentResolver.registerContentObserver(
+                CalendarContract.Events.CONTENT_URI,
+                true, // notifyForDescendants
+                calendarObserver
+            );
+            Log.d(TAG, "Calendar change observer registered");
+        }
+    }
+
+    /**
+     * Remove calendar change observer
+     */
+    private void removeCalendarChangeObserver() {
+        if (calendarObserver != null) {
+            ContentResolver contentResolver = context.getContentResolver();
+            contentResolver.unregisterContentObserver(calendarObserver);
+            calendarObserver = null;
+            Log.d(TAG, "Calendar change observer unregistered");
+        }
+    }
+
+    /**
+     * ContentObserver to monitor calendar changes
+     */
+    private class CalendarContentObserver extends ContentObserver {
+        public CalendarContentObserver(Handler handler) {
+            super(handler);
+        }
+
+        @Override
+        public void onChange(boolean selfChange, Uri uri) {
+            super.onChange(selfChange, uri);
+            
+            if (!hasCalendarPermissions()) {
+                Log.w(TAG, "Calendar permissions not granted, ignoring change");
+                return;
+            }
+            
+            Log.d(TAG, "Calendar database changed, triggering update");
+            handleCalendarChanged();
+        }
+    }
+
+    /**
+     * Handle calendar changes by sending updated events
+     */
+    private void handleCalendarChanged() {
+        // Send next 5 calendar events to server
+        sendNextFiveCalendarEventsToServer();
+    }
+
+    /**
+     * Handle permission changes - setup or remove observer based on permissions
+     */
+    public void handlePermissionChange() {
+        if (hasCalendarPermissions()) {
+            setupCalendarChangeObserver();
+            Log.d(TAG, "Calendar permissions granted, observer setup complete");
+        } else {
+            removeCalendarChangeObserver();
+            Log.d(TAG, "Calendar permissions revoked, observer removed");
+        }
+    }
+
+    /**
+     * Manually trigger calendar update (for testing purposes)
+     */
+    public void triggerManualUpdate() {
+        Log.d(TAG, "Manual calendar update triggered");
+        handleCalendarChanged();
     }
 
     /**
@@ -206,5 +295,16 @@ public class CalendarSystem {
             }
         };
         calendarSendingLoopHandler.postDelayed(calendarSendingRunnableCode, firstFetchPollingInterval);
+    }
+
+    /**
+     * Cleanup resources when system is destroyed
+     */
+    public void cleanup() {
+        removeCalendarChangeObserver();
+        if (calendarSendingRunnableCode != null) {
+            calendarSendingLoopHandler.removeCallbacks(calendarSendingRunnableCode);
+        }
+        Log.d(TAG, "CalendarSystem cleanup completed");
     }
 }

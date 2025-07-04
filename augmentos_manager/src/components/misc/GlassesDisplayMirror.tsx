@@ -87,7 +87,7 @@ function renderLayout(layout: any, containerStyle?: any, textStyle?: TextStyle) 
 
 const $glassesScreen: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   width: "100%",
-  minHeight: 200, // Default height for normal mode
+  minHeight: 140, // Default height for normal mode
   backgroundColor: colors.palette.neutral200,
   borderRadius: 10,
   padding: 15,
@@ -99,11 +99,7 @@ const $glassesScreen: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
 const $glassesText: ThemedStyle<TextStyle> = ({colors}) => ({
   color: colors.text,
   fontFamily: "Montserrat-Regular",
-  fontSize: 16,
-  // Add text shadow for better visibility against any background
-  textShadowColor: "rgba(0, 0, 0, 0.9)",
-  textShadowOffset: {width: 1, height: 1},
-  textShadowRadius: 2,
+  fontSize: 14,
 })
 
 const $emptyContainer: ThemedStyle<ViewStyle> = () => ({
@@ -115,7 +111,7 @@ const $emptyContainer: ThemedStyle<ViewStyle> = () => ({
 const $emptyText: ThemedStyle<TextStyle> = ({colors}) => ({
   color: colors.textDim,
   fontFamily: "Montserrat-Regular",
-  fontSize: 16,
+  fontSize: 20,
   opacity: 0.5,
 })
 

@@ -109,122 +109,6 @@ export default function LoginScreen() {
     }
   }, [isAuthLoading, authOverlayOpacity])
 
-  useEffect(() => {
-    const handleDeepLink = async (event: any) => {
-      const authParams = parseAuthParams(event.url)
-
-      if (authParams && authParams.access_token && authParams.refresh_token) {
-        try {
-          // Update the Supabase session manually
-          const {data, error} = await supabase.auth.setSession({
-            access_token: authParams.access_token,
-            refresh_token: authParams.refresh_token,
-          })
-          if (error) {
-            console.error("Error setting session:", error)
-          } else {
-            console.log("Session updated:", data.session)
-          console.log("[LOGIN DEBUG] Session set successfully, data.session exists:", !!data.session)
-            // Dismiss the WebView after successful authentication (non-blocking)
-            console.log("[LOGIN DEBUG] About to dismiss browser, platform:", Platform.OS)
-            try {
-              const dismissResult = WebBrowser.dismissBrowser()
-              console.log("[LOGIN DEBUG] dismissBrowser returned:", dismissResult, "type:", typeof dismissResult)
-              if (dismissResult && typeof dismissResult.catch === 'function') {
-                dismissResult.catch(() => {
-                  // Ignore errors - browser might not be open
-                })
-              }
-            } catch (dismissError) {
-              console.log("[LOGIN DEBUG] Error calling dismissBrowser:", dismissError)
-              // Ignore - browser might not be open or function might not exist
-            }
-
-            // Small delay to ensure auth state propagates
-            console.log("[LOGIN DEBUG] About to set timeout for navigation")
-            setTimeout(() => {
-              console.log("[LOGIN DEBUG] Inside setTimeout, about to call router.replace('/')")
-              try {
-                router.replace("/")
-                console.log("[LOGIN DEBUG] router.replace called successfully")
-              } catch (navError) {
-                console.error("[LOGIN DEBUG] Error calling router.replace:", navError)
-              }
-            }, 100)
-            console.log("[LOGIN DEBUG] setTimeout scheduled")
-            return // Don't do the navigation below
-          }
-        } catch (err) {
-          console.error("Exception during setSession:", err)
-          console.error("[LOGIN DEBUG] setSession error details:", {
-            name: err.name,
-            message: err.message,
-            stack: err.stack
-          })
-        }
-      }
-
-      // Always hide the loading overlay when we get any deep link callback
-      // This ensures it gets hidden even if auth was not completed
-      setIsAuthLoading(false)
-      authOverlayOpacity.setValue(0)
-
-      // Check if this is an auth callback without tokens
-      if (event.url.includes("auth/callback") && !authParams) {
-        // Try checking if user is already authenticated
-        const {
-          data: {session},
-        } = await supabase.auth.getSession()
-        if (session) {
-          router.replace("/")
-        }
-      } else if (event.url.includes("auth/callback") && authParams) {
-        // Navigation already handled above after setSession
-      }
-    }
-
-    const linkingSubscription = Linking.addEventListener("url", (event) => {
-      handleDeepLink(event).catch(error => {
-        console.error("Error handling deep link:", error)
-      })
-    })
-    // Handle deep links that opened the app
-    Linking.getInitialURL().then(url => {
-      if (url) {
-        handleDeepLink({url}).catch(error => {
-          console.error("Error handling initial URL:", error)
-        })
-      }
-    }).catch(error => {
-      console.error("Error getting initial URL:", error)
-    })
-
-    // Add this to see if linking is working at all
-    Linking.canOpenURL("com.mentra://auth/callback").then(supported => {
-      console.log("Can open URL:", supported)
-    }).catch(error => {
-      console.error("Error checking URL support:", error)
-    })
-
-    return () => {
-      linkingSubscription.remove()
-    }
-  }, [authOverlayOpacity])
-
-  const parseAuthParams = (url: string) => {
-    const parts = url.split("#")
-    if (parts.length < 2) return null
-    const paramsString = parts[1]
-    const params = new URLSearchParams(paramsString)
-    return {
-      access_token: params.get("access_token"),
-      refresh_token: params.get("refresh_token"),
-      token_type: params.get("token_type"),
-      expires_in: params.get("expires_in"),
-      // Add any other parameters you might need
-    }
-  }
-
   const handleGoogleSignIn = async () => {
     try {
       // Start auth flow
@@ -425,6 +309,13 @@ export default function LoginScreen() {
 
   useEffect(() => {
     const backHandler = BackHandler.addEventListener("hardwareBackPress", () => {
+      // If email form is shown, close it instead of exiting
+      if (isSigningUp) {
+        setIsSigningUp(false)
+        return true
+      }
+
+      // Otherwise, use the double-press to exit behavior
       if (backPressCount === 0) {
         setBackPressCount(1)
         setTimeout(() => setBackPressCount(0), 2000)
@@ -437,49 +328,7 @@ export default function LoginScreen() {
     })
 
     return () => backHandler.remove()
-  }, [backPressCount])
-
-  useEffect(() => {
-    // Subscribe to auth state changes:
-    // const {
-    //   data: { subscription },
-    // } = supabase.auth.onAuthStateChange((event, session) => {
-    //   console.log('onAuthStateChange event:', event, session);
-    //   if (session) {
-    //     // If session is present, user is authenticated
-    //     // Hide the auth loading overlay after a short delay
-    //     setTimeout(() => {
-    //       Animated.timing(authOverlayOpacity, {
-    //         toValue: 0,
-    //         duration: 300,
-    //         useNativeDriver: true,
-    //       }).start(() => {
-    //         setIsAuthLoading(false);
-    //         navigation.replace('SplashScreen');
-    //       });
-    //     }, 500); // Give a slight delay to ensure the animation is seen
-    //   }
-    // });
-    // // Also add a focus listener to hide the loading overlay when returning to this screen
-    // const unsubscribe = navigation.addListener('focus', () => {
-    //   // If we're coming back to this screen and the auth overlay is still showing, hide it
-    //   if (isAuthLoading) {
-    //     console.log('Screen focused, hiding auth overlay if showing');
-    //     Animated.timing(authOverlayOpacity, {
-    //       toValue: 0,
-    //       duration: 300,
-    //       useNativeDriver: true,
-    //     }).start(() => {
-    //       setIsAuthLoading(false);
-    //     });
-    //   }
-    // });
-    // // Cleanup subscriptions on unmount
-    // return () => {
-    //   subscription.unsubscribe();
-    //   unsubscribe();
-    // };
-  }, [authOverlayOpacity, isAuthLoading])
+  }, [backPressCount, isSigningUp])
 
   return (
     <Screen preset="fixed" safeAreaEdges={["top"]} contentContainerStyle={themed($container)}>
@@ -494,7 +343,7 @@ export default function LoginScreen() {
               <View style={themed($authLoadingContent)}>
                 <View style={themed($authLoadingLogoPlaceholder)} />
                 <ActivityIndicator size="large" color={theme.colors.tint} style={themed($authLoadingIndicator)} />
-                <Text tx="login:connectingToAugmentOS" style={themed($authLoadingText)} />
+                <Text tx="login:connectingToServer" style={themed($authLoadingText)} />
               </View>
             </Animated.View>
           )}
@@ -512,10 +361,10 @@ export default function LoginScreen() {
                     <FontAwesome
                       name="envelope"
                       size={16}
-                      color={theme.colors.textAlt}
+                      color={theme.colors.textDim}
                       // style={themed($inputIcon)}
                     />
-                    <Spacer width={spacing.xxs} />
+                    <Spacer width={spacing.sm} />
                     <TextInput
                       hitSlop={{top: 16, bottom: 16}}
                       style={themed($enhancedInput)}
@@ -536,10 +385,10 @@ export default function LoginScreen() {
                     <FontAwesome
                       name="lock"
                       size={16}
-                      color={theme.colors.textAlt}
+                      color={theme.colors.textDim}
                       // style={themed($inputIcon)}
                     />
-                    <Spacer width={spacing.xxs} />
+                    <Spacer width={spacing.sm} />
                     <TextInput
                       hitSlop={{top: 16, bottom: 16}}
                       style={themed($enhancedInput)}
@@ -553,7 +402,7 @@ export default function LoginScreen() {
                     <TouchableOpacity
                       hitSlop={{top: 16, bottom: 16, left: 16, right: 16}}
                       onPress={togglePasswordVisibility}>
-                      <FontAwesome name={showPassword ? "eye" : "eye-slash"} size={18} color={theme.colors.textAlt} />
+                      <FontAwesome name={showPassword ? "eye" : "eye-slash"} size={18} color={theme.colors.textDim} />
                     </TouchableOpacity>
                   </View>
                 </View>

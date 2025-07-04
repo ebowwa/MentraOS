@@ -10,9 +10,9 @@ import {
   CloudToGlassesMessageType,
   DisplayRequest,
   TranscriptSegment,
-  TpaConnectionInit,
+  AppConnectionInit,
   DataStream,
-  CloudToTpaMessageType,
+  CloudToAppMessageType,
   GlassesToCloudMessage
 } from '@mentra/sdk';
 import { Logger } from 'pino';
@@ -361,32 +361,32 @@ export class SessionService {
   }
 
   /**
-   * Relay a message to TPAs
+   * Relay a message to Apps
    *
    * @param userSession User session
    * @param streamType Stream type
    * @param data Message data
    */
-  relayMessageToTpas(userSession: UserSession, data: GlassesToCloudMessage): void {
+  relayMessageToApps(userSession: UserSession, data: GlassesToCloudMessage): void {
     try {
-      // Get all TPAs subscribed to this stream type
+      // Get all Apps subscribed to this stream type
       const subscribedPackageNames = subscriptionService.getSubscribedApps(userSession, data.type);
 
       if (subscribedPackageNames.length === 0) {
         return; // No subscribers, nothing to do
       }
 
-      userSession.logger.debug({ service: SERVICE_NAME, data }, `Relaying ${data.type} to ${subscribedPackageNames.length} TPAs for user ${userSession.userId}`);
+      userSession.logger.debug({ service: SERVICE_NAME, data }, `Relaying ${data.type} to ${subscribedPackageNames.length} Apps for user ${userSession.userId}`);
 
-      // Send to each subscribed TPA
+      // Send to each subscribed App
       for (const packageName of subscribedPackageNames) {
         const connection = userSession.appWebsockets.get(packageName);
 
         if (connection && connection.readyState === WebSocket.OPEN) {
-          const tpaSessionId = `${userSession.sessionId}-${packageName}`;
+          const appSessionId = `${userSession.sessionId}-${packageName}`;
           const dataStream: DataStream = {
-            type: CloudToTpaMessageType.DATA_STREAM,
-            sessionId: tpaSessionId,
+            type: CloudToAppMessageType.DATA_STREAM,
+            sessionId: appSessionId,
             streamType: data.type as StreamType, // Base type remains the same in the message.
             data,      // The data now may contain language info.
             timestamp: new Date()
@@ -405,12 +405,12 @@ export class SessionService {
   }
 
   /**
-   * Relay audio to TPAs
+   * Relay audio to Apps
    *
    * @param userSession User session
    * @param audioData Audio data
    */
-  relayAudioToTpas(userSession: UserSession, audioData: ArrayBuffer): void {
+  relayAudioToApps(userSession: UserSession, audioData: ArrayBuffer): void {
     try {
       // Delegate to audio manager
       userSession.audioManager.processAudioData(audioData, false);

@@ -78,8 +78,8 @@ interface DebugSessionInfo {
 interface SystemStats {
   activeSessions: number;
   totalSessions: number;
-  activeTpas: number;
-  totalTpas: number;
+  activeApps: number;
+  totalApps: number;
 }
 
 interface ApiResponse {
@@ -100,9 +100,9 @@ export async function fetchSessions(): Promise<ApiResponse> {
       stats: {
         activeSessions: 0,
         totalSessions: 0,
-        activeTpas: 0,
-        totalTpas: 0
+        activeApps: 0,
+        totalApps: 0
       }
     };
   }
-} 
+}

@@ -20,30 +20,30 @@ graph TD
         SG[Smart Glasses]
         Phone[Smartphone]
     end
-    
+
     subgraph "Client Layer"
         AOSManager[MentraOS Manager App]
         AOSCore[MentraOS Core Module]
         AOSiOS[MentraOS iOS Module]
     end
-    
+
     subgraph "Cloud Layer"
         AOSCloud[MentraOS Cloud]
         WebApps[Web Applications]
         WebSocket[WebSocket Service]
     end
-    
+
     subgraph "Web Applications"
         AppStore[MentraOS Store]
         DevConsole[Developer Console]
     end
-    
+
     subgraph "External Layer"
-        TPA1[Third-Party App 1]
-        TPA2[Third-Party App 2]
-        TPA3[Third-Party App 3]
+        App1[Third-Party App 1]
+        App2[Third-Party App 2]
+        App3[Third-Party App 3]
     end
-    
+
     SG <--> Phone
     Phone --- AOSManager
     AOSManager --- AOSCore
@@ -51,14 +51,14 @@ graph TD
     AOSManager <--> AOSCloud
     AOSCloud --- WebApps
     AOSCloud <--> WebSocket
-    WebSocket <--> TPA1
-    WebSocket <--> TPA2
-    WebSocket <--> TPA3
+    WebSocket <--> App1
+    WebSocket <--> App2
+    WebSocket <--> App3
 ```
 
 ### System Components
 
-1. **MentraOS Manager** (`mentraos_manager/`): 
+1. **MentraOS Manager** (`mentraos_manager/`):
    - React Native application for smartphones
    - User interface for managing glasses, apps, and settings
    - Interfaces with native modules on iOS/Android
@@ -82,7 +82,7 @@ graph TD
 5. **MentraOS Cloud** (`mentraos_cloud/`):
    - Node.js backend services
    - Manages app sessions, transcription, and display
-   - Handles real-time communication between glasses and TPAs
+   - Handles real-time communication between glasses and Apps
    - Controls app lifecycle and display rendering
 
 6. **MentraOS Store** (`mentraos_cloud/store/`):
@@ -108,12 +108,12 @@ sequenceDiagram
     participant SG as Smart Glasses
     participant Phone as Phone App
     participant Cloud as MentraOS Cloud
-    participant TPA as Third-Party App
-    
+    participant App as Third-Party App
+
     SG->>Phone: Input (audio, sensors)
     Phone->>Cloud: Forward input data
-    Cloud->>TPA: Send relevant events
-    TPA->>Cloud: Request display update
+    Cloud->>App: Send relevant events
+    App->>Cloud: Request display update
     Cloud->>Phone: Forward display command
     Phone->>SG: Update display
 ```

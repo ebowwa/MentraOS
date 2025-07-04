@@ -66,7 +66,7 @@
 ## Implementation Status
 The implementation has been completed, including:
 - Created SmartGlassesManager class with all functionality from AugmentosSmartGlassesService
-- Updated EdgeTPASystem to work with SmartGlassesManager
+- Updated EdgeAppSystem to work with SmartGlassesManager
 - Modified all methods in AugmentosService to use SmartGlassesManager
 - Added helper method for notification handling
 - Replaced all imports from SmartGlassesAndroidService

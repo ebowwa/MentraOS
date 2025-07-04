@@ -1,4 +1,4 @@
-import React, {useRef, useState, useCallback, useEffect} from "react"
+import React, {useRef, useState, useCallback, useEffect, useMemo} from "react"
 import {View, StyleSheet, ActivityIndicator, BackHandler} from "react-native"
 import {WebView} from "react-native-webview"
 import Config from "react-native-config"
@@ -8,7 +8,7 @@ import {RootStackParamList} from "@/components/misc/types"
 import {useAppStatus} from "@/contexts/AppStatusProvider"
 import {useAppStoreWebviewPrefetch} from "@/contexts/AppStoreWebviewPrefetchProvider"
 import {useAppTheme} from "@/utils/useAppTheme"
-import {useLocalSearchParams} from "expo-router"
+import {useLocalSearchParams, router} from "expo-router"
 import {Text, Screen, Header} from "@/components/ignite"
 
 // Define package name for the store webview
@@ -27,21 +27,21 @@ export default function AppStoreWeb() {
   } = useAppStoreWebviewPrefetch()
   const {refreshAppStatus} = useAppStatus()
   const {theme, themed} = useAppTheme()
-  const isDarkTheme = theme.isDark
-  
+
   // Construct the final URL with packageName if provided
-  const finalUrl = React.useMemo(() => {
+  const finalUrl = useMemo(() => {
     if (!appStoreUrl) return appStoreUrl
-    
-    if (packageName && typeof packageName === 'string') {
-      // If packageName is provided, navigate to the app details page
-      const url = new URL(appStoreUrl)
-      // Update the path to point to the app details page
-      url.pathname = `/app/${packageName}`
-      return url.toString()
+
+    const url = new URL(appStoreUrl)
+    console.log("AppStoreWeb: appStoreUrl", appStoreUrl)
+    console.log("AppStoreWeb: packageName", packageName)
+    if (packageName && typeof packageName === "string") {
+      // If packageName is provided, update the path to point to the app details page
+      url.pathname = `/package/${packageName}`
     }
-    
-    return appStoreUrl
+    url.searchParams.set("theme", theme.isDark ? "dark" : "light")
+    console.log("AppStoreWeb: finalUrl", url.toString())
+    return url.toString()
   }, [appStoreUrl, packageName])
 
   // Theme colors - using theme system instead of hardcoded values
@@ -62,6 +62,23 @@ export default function AppStoreWeb() {
   const handleError = () => {
     setWebviewLoading(false)
     setHasError(true)
+  }
+
+  // Handle messages from WebView
+  const handleWebViewMessage = (event: any) => {
+    try {
+      const data = JSON.parse(event.nativeEvent.data)
+
+      if ((data.type === "OPEN_APP_SETTINGS" || data.type === "OPEN_TPA_SETTINGS") && data.packageName) {
+        // Navigate to TPA settings page
+        router.push({
+          pathname: "/app/settings",
+          params: {packageName: data.packageName},
+        })
+      }
+    } catch (error) {
+      console.error("Error handling WebView message:", error)
+    }
   }
 
   // Handle Android back button press
@@ -110,7 +127,11 @@ export default function AppStoreWeb() {
       {hasError ? (
         <InternetConnectionFallbackComponent retry={() => setHasError(false)} />
       ) : (
-        <View style={[styles.webViewContainer, {backgroundColor: theme.colors.background, marginHorizontal: -theme.spacing.lg}]}>
+        <View
+          style={[
+            styles.webViewContainer,
+            {backgroundColor: theme.colors.background, marginHorizontal: -theme.spacing.lg},
+          ]}>
           {/* Show the prefetched WebView, but now visible and full size */}
           <WebView
             ref={prefetchedWebviewRef}
@@ -120,6 +141,7 @@ export default function AppStoreWeb() {
             onLoadEnd={() => setWebviewLoading(false)}
             onError={handleError}
             onNavigationStateChange={navState => setCanGoBack(navState.canGoBack)}
+            onMessage={handleWebViewMessage}
             javaScriptEnabled={true}
             domStorageEnabled={true}
             startInLoadingState={true}

@@ -29,7 +29,7 @@ import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import showAlert from "@/utils/AlertUtils"
 
 export default function GlassesPairingGuideScreen() {
-  const {goBack, push, clearHistory} = useNavigationHistory()
+  const {goBack, push, replace, clearHistory} = useNavigationHistory()
   const {status} = useStatus()
   const route = useRoute()
   const {glassesModelName} = route.params as {glassesModelName: string}
@@ -137,7 +137,7 @@ export default function GlassesPairingGuideScreen() {
       if (timerRef.current) {
         clearTimeout(timerRef.current)
       }
-      router.push({pathname: "/(tabs)/home"})
+      replace("/(tabs)/home")
     }
   }, [status])
 
@@ -146,13 +146,13 @@ export default function GlassesPairingGuideScreen() {
 
   return (
     <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}}>
-      <Header 
-        leftIcon="caretLeft" 
-        onLeftPress={handleForgetGlasses} 
+      <Header
+        leftIcon="caretLeft"
+        onLeftPress={handleForgetGlasses}
         RightActionComponent={
           <PillButton
             text="Help"
-            variant="secondary"
+            variant="icon"
             onPress={() => setShowTroubleshootingModal(true)}
             buttonStyle={{marginRight: theme.spacing.md}}
           />
@@ -177,29 +177,6 @@ export default function GlassesPairingGuideScreen() {
           </View>
         </ScrollView>
       )}
-
-      {/* {pairingInProgress && (
-          <TouchableOpacity 
-            style={[styles.instructionsButton, isDarkTheme ? styles.darkButton : styles.lightButton]}
-            onPress={() => setPairingInProgress(false)}
-          >
-            <Text style={[styles.instructionsButtonText, isDarkTheme ? styles.darkText : styles.lightText]}>
-              View Manual Pairing Instructions
-            </Text>
-          </TouchableOpacity>
-        )}
-        
-
-        {!pairingInProgress && (
-          <TouchableOpacity 
-            style={[styles.instructionsButton, isDarkTheme ? styles.darkButton : styles.lightButton]}
-            onPress={() => setPairingInProgress(true)}
-          >
-            <Text style={[styles.instructionsButtonText, isDarkTheme ? styles.darkText : styles.lightText]}>
-              Return to Pairing Animation
-            </Text>
-          </TouchableOpacity>
-        )} */}
 
       <GlassesTroubleshootingModal
         isVisible={showTroubleshootingModal}

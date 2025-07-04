@@ -172,7 +172,7 @@ router.post('/upload', validateGlassesAuth, uploadMiddleware, async (req: Reques
       return res.status(500).json({ error: 'Failed to save photo' });
     }
 
-    // Broadcast to TPAs subscribed to PHOTO_TAKEN
+    // Broadcast to Apps subscribed to PHOTO_TAKEN
     try {
       // photoTakenService.broadcastPhotoTaken(userSession, file.buffer, file.mimetype);
       photoTakenService.broadcastPhotoTaken(userSession, Buffer.from(file.buffer), file.mimetype);

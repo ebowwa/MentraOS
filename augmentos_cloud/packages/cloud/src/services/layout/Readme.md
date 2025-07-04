@@ -4,7 +4,7 @@
 
 ### Components
 
-1. **Third Party Applications (TPAs)**
+1. **Third Party Applications (Apps)**
    - Server-side applications that connect via WebSocket
    - Can request display updates at any time
    - Can specify arbitrary view names
@@ -38,10 +38,10 @@
 - Dashboard view bypasses throttling (client-managed)
 
 ### Display Stack System
-- Multiple TPAs can have active display requests
-- Single active request per TPA
-- When TPA sends new request:
-  * All previous requests from that TPA are removed
+- Multiple Apps can have active display requests
+- Single active request per App
+- When App sends new request:
+  * All previous requests from that App are removed
   * New request added (respecting throttle)
   * Duration handling reset
 - Priority based on runningApps order in userSession
@@ -49,14 +49,14 @@
 ### Duration Handling
 1. **Null Duration Displays**
    - Persist until:
-     * Any TPA sends new request
+     * Any App sends new request
      * Explicitly cleared
      * Owning app stops/crashes
-   
+
 2. **Timed Duration Displays**
    - Auto-remove after specified duration
    - Or end early from above conditions
-   - Duration timer not preserved if TPA sends new request
+   - Duration timer not preserved if App sends new request
 
 ### Boot Screen Management
 1. **Timing**
@@ -100,7 +100,7 @@
 ## Edge Cases & Special Handling
 
 ### Connection Issues
-1. **TPA Disconnects**
+1. **App Disconnects**
    - Clear all their display requests
    - Remove from boot screen
    - Show next priority display
@@ -122,8 +122,8 @@
    - Preserve request order/priority
 
 3. **Display Duration Overlap**
-   - Honor most recent request per TPA
-   - Maintain other TPAs' requests
+   - Honor most recent request per App
+   - Maintain other Apps' requests
    - Reset timers for new requests
 
 ### Error Conditions
@@ -154,7 +154,7 @@
    - Current main view on look down
    - No jarring transitions
 
-3. **As a TPA developer:**
+3. **As a App developer:**
    - Can request displays anytime
    - Understand priority system
    - Clear duration management

@@ -7,9 +7,26 @@ const en = {
   screenSettings: {
     title: "Display Position Settings",
   },
+  versionCheck: {
+    title: "Version Check",
+    checkingForUpdates: "Checking for updates...",
+    updateRequired: "Update Required",
+    updateRequiredDescription: "A new version is available. Please update the app.",
+    updateRequiredButton: "Update AugmentOS",
+    update: "Update",
+    retryConnection: "Retry Connection",
+    skipUpdate: "Skip Update",
+  },
+  connection: {
+    connected: "Connected",
+    connecting: "Connecting",
+    reconnecting: "Reconnecting",
+    disconnected: "Disconnected",
+  },
   pairing: {
     selectModel: "Select Model",
     pairingGuide: "Pairing Guide",
+    pairing: "Pairing",
     permissionRequired: "Permission Required",
     bluetoothPermissionRequiredTitle: "Permission Required",
     bluetoothPermissionRequiredMessage: "Bluetooth permissions are required to connect to glasses",
@@ -189,7 +206,7 @@ const en = {
     passwordPlaceholder: "********",
     createAccount: "Create Account",
     login: "Login",
-    connectingToAugmentOS: "Connecting to AugmentOS...",
+    connectingToServer: "Connecting to MentraOS...",
     userCanceledAppleLogin: "Apple sign-in was canceled.",
     userCanceledGoogleLogin: "Google sign-in was canceled.",
     success: "Success",
@@ -197,6 +214,7 @@ const en = {
     emailAlreadyRegistered: "This email is already registered",
     useGoogleSignIn: "This email is associated with a Google account. Please use 'Continue with Google' to sign in.",
     useAppleSignIn: "This email is associated with an Apple account. Please use 'Continue with Apple' to sign in.",
+    connectionError: "Connection Error",
   },
   warning: {
     nonProdBackend: "You are using a non-production backend.",

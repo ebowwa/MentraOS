@@ -3,7 +3,7 @@
 import { BaseMessage } from './base';
 import { GlassesToCloudMessageType, ControlActionTypes, EventTypes } from '../message-types';
 import { StreamType } from '../streams';
-import { PhotoRequest } from './tpa-to-cloud';
+import { PhotoRequest } from './app-to-cloud';
 
 //===========================================================
 // Control actions
@@ -169,10 +169,10 @@ export interface NotificationDismissed extends BaseMessage {
 }
 
 /**
- * AugmentOS settings update from glasses
+ * MentraOS settings update from glasses
  */
-export interface AugmentosSettingsUpdateRequest extends BaseMessage {
-  type: GlassesToCloudMessageType.AUGMENTOS_SETTINGS_UPDATE_REQUEST;
+export interface MentraosSettingsUpdateRequest extends BaseMessage {
+  type: GlassesToCloudMessageType.MENTRAOS_SETTINGS_UPDATE_REQUEST;
 }
 
 /**
@@ -252,7 +252,7 @@ export type GlassesToCloudMessage =
   | Vad
   | PhoneNotification
   | NotificationDismissed
-  | AugmentosSettingsUpdateRequest
+  | MentraosSettingsUpdateRequest
   | CoreStatusUpdate
   | RtmpStreamStatus
   | KeepAliveAck

@@ -38,7 +38,8 @@ export class UserSession {
   // WebSocket connection
   public websocket: WebSocket;
 
-  // App state
+  // App state // TODO: move these state variables to AppManager, don't let other managers access them directly
+  // They should only be accessed through AppManager methods!!!.
   public installedApps: Map<string, AppI> = new Map();
   public runningApps: Set<string> = new Set();
   public loadingApps: Set<string> = new Set();

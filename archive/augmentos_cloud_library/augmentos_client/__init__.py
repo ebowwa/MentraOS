@@ -12,21 +12,21 @@ from augmentos_client.DataStorage import DataStorage
 from augmentos_client.DataTypes import AugmentOsDataTypes
 from tenacity import retry, stop_after_attempt, wait_fixed
 
-class TPAClient:
+class AppClient:
     def __init__(self, app_id, app_name, server_url, app_description="", subscriptions=None):
         """
-        Initialize the TPAClient with the necessary details.
-        
-        :param app_name: Unique name of the TPA.
+        Initialize the AppClient with the necessary details.
+
+        :param app_name: Unique name of the App.
         :param server_url: Base URL of the AugmentOS server.
-        :param subscriptions: List of data types the TPA wants to subscribe to. Defaults to ["*"].
+        :param subscriptions: List of data types the App wants to subscribe to. Defaults to ["*"].
         """
 
         self.app_id = app_id
         self.app_name = app_name
         self.app_description = app_description
         self.server_url = server_url.rstrip('/')  # Ensure no trailing slash
-        self.websocket_uri = f"ws://{self.server_url.split('//')[1]}/ws/tpa/{app_id}"  # Derive WebSocket URI
+        self.websocket_uri = f"ws://{self.server_url.split('//')[1]}/ws/app/{app_id}"  # Derive WebSocket URI
         self.subscriptions = subscriptions if subscriptions is not None else []
         self.websocket = None
 
@@ -51,7 +51,7 @@ class TPAClient:
         @self.app.on_event("startup")
         async def startup_event():
             """
-            On startup, register the TPA with AugmentOS and start WebSocket connection.
+            On startup, register the App with AugmentOS and start WebSocket connection.
             """
             await self.register_with_augmentos()
             await self.initiate_websocket()
@@ -65,7 +65,7 @@ class TPAClient:
 
         @self.app.get("/")
         async def root():
-            return {"message": "TPAClient is running"}
+            return {"message": "AppClient is running"}
 
     def start(self):
         """
@@ -77,7 +77,7 @@ class TPAClient:
     @retry(stop=stop_after_attempt(5), wait=wait_fixed(5))
     async def register_with_augmentos(self):
         """
-        Register the TPA with AugmentOS, including its subscription preferences.
+        Register the App with AugmentOS, including its subscription preferences.
         """
         registration_data = {
             "app_id": self.app_id,
@@ -142,7 +142,7 @@ class TPAClient:
     async def handle_augmentos_message(self, data):
         message_type = data.get("type")
         user_id = data.get('user_id')
-        
+
         self.data_storage.store_data(data)
         if message_type == AugmentOsDataTypes.TRANSCRIPT and self.on_transcript_received_callback:
             await self.on_transcript_received_callback(data)
@@ -156,26 +156,26 @@ class TPAClient:
     async def send_data(self, data):
         """
         Send data to AugmentOS via WebSocket. Initiates the WebSocket connection if not already active.
-        
+
         :param data: The data to send.
         """
         await self.initiate_websocket()
-        
+
         if self.websocket:
             try:
                 # Check if data is already a string, otherwise serialize it
                 if not isinstance(data, str):
                     data = json.dumps(data)
-                
+
                 await self.websocket.send(data)
-                print(f"[TPAClient - {self.app_name}] Data sent to AugmentOS: {data}")
+                print(f"[AppClient - {self.app_name}] Data sent to AugmentOS: {data}")
             except Exception as e:
-                print(f"[TPAClient - {self.app_name}] Failed to send data: {e}")
+                print(f"[AppClient - {self.app_name}] Failed to send data: {e}")
                 self.websocket = None  # Reset the connection on failure
 
     async def send_text_wall(self, user_id, body):
         """
-        Helper function to display things on the user's glasses. Currently only supports a basic textline. 
+        Helper function to display things on the user's glasses. Currently only supports a basic textline.
         """
         data = {
             "user_id": user_id,
@@ -187,8 +187,8 @@ class TPAClient:
                 }
             }
         }
-        return await self.send_data(data) 
-    
+        return await self.send_data(data)
+
     async def send_reference_card(self, user_id, title, body, image_url = ""):
         data = {
             "user_id": user_id,
@@ -199,11 +199,11 @@ class TPAClient:
                     "title": title,
                     "body": body,
                     "image_url": image_url
-                } 
+                }
             }
         }
         return await self.send_data(data)
-    
+
     async def send_rows_card(self, user_id, rows: List[str]):
         data = {
             "user_id": user_id,
@@ -216,10 +216,10 @@ class TPAClient:
             }
         }
         return await self.send_data(data)
-    
+
     async def send_text_line(self, user_id, body):
         """
-        Helper function to display things on the user's glasses. Currently only supports a basic textline. 
+        Helper function to display things on the user's glasses. Currently only supports a basic textline.
         """
         data = {
             "user_id": user_id,
@@ -231,7 +231,7 @@ class TPAClient:
                 }
             }
         }
-        return await self.send_data(data) 
+        return await self.send_data(data)
 
     async def close_connection(self):
         """

@@ -35,10 +35,10 @@ export default function AppsActiveList({
     if (searchQuery) {
       apps = apps.filter(app => app.name.toLowerCase().includes(searchQuery.toLowerCase()))
     }
-    // Sort to put foreground apps (tpaType === "standard") at the top
+    // Sort to put foreground apps (appType === "standard") at the top
     return apps.sort((a, b) => {
-      const aIsForeground = a.tpaType === "standard"
-      const bIsForeground = b.tpaType === "standard"
+      const aIsForeground = a.appType === "standard"
+      const bIsForeground = b.appType === "standard"
 
       if (aIsForeground && !bIsForeground) return -1
       if (!aIsForeground && bIsForeground) return 1
@@ -150,7 +150,7 @@ export default function AppsActiveList({
 
   const openAppSettings = (app: any) => {
     router.push({
-      pathname: "/tpa/settings",
+      pathname: "/app/settings",
       params: {
         packageName: app.packageName,
         appName: app.name,
@@ -171,7 +171,8 @@ export default function AppsActiveList({
             <React.Fragment key={app.packageName}>
               <AppListItem
                 app={app}
-                is_foreground={app.tpaType == "standard"}
+                // @ts-ignore
+                is_foreground={(app.appType == "standard") || (app["tpaType"] == "standard")}
                 isActive={true}
                 onTogglePress={() => {
                   Animated.timing(itemOpacity, {

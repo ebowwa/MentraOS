@@ -1,6 +1,6 @@
 # Layouts
 
-MentraOS Cloud provides a set of pre-defined layouts for displaying content on the smart glasses' AR view. These layouts allow you to create visually consistent and user-friendly interfaces without needing to deal with low-level graphics programming. You interact with layouts through the [`LayoutManager`](/reference/managers/layout-manager), which is a property of the [`TpaSession`](/reference/tpa-session) object.
+MentraOS Cloud provides a set of pre-defined layouts for displaying content on the smart glasses' AR view. These layouts allow you to create visually consistent and user-friendly interfaces without needing to deal with low-level graphics programming. You interact with layouts through the [`LayoutManager`](/reference/managers/layout-manager), which is a property of the [`AppSession`](/reference/app-session) object.
 
 ```typescript
 // Example of accessing the LayoutManager
@@ -21,15 +21,15 @@ The SDK currently supports the following layout types:
 *   **Example:**
 
     ```typescript
-    import { TpaSession, LayoutType, ViewType, TpaToCloudMessageType } from '@mentra/sdk';
+    import { AppSession, LayoutType, ViewType, AppToCloudMessageType } from '@mentra/sdk';
 
-    // Assuming you have a TpaSession instance called 'session'
+    // Assuming you have a AppSession instance called 'session'
     session.layouts.showTextWall("Connected to MentraOS Cloud");
 
     // Example of a complete DisplayRequest for a TextWall.
     // You don't normally construct this directly; the LayoutManager does it.
     const displayRequest: DisplayRequest = {
-      type: TpaToCloudMessageType.DISPLAY_REQUEST,
+      type: AppToCloudMessageType.DISPLAY_REQUEST,
       view: ViewType.MAIN,
       packageName: "com.example.myapp",
       sessionId: "some-session-id",
@@ -92,20 +92,6 @@ The SDK currently supports the following layout types:
       "85%"
     );
     ```
-
-### 5. `BitmapView`
-
-* **Purpose:** Displays a bitmap image on the glasses. The image data should be a base64 encoded string.
-* **Type:** [`LayoutType.BITMAP_VIEW`](/reference/enums#layouttype)
-* **Properties:**
-  * `data`: A base64 encoded string representing the bitmap data.
-
-* **Example:**
-  ```typescript
-  session.layouts.showBitmapView(
-    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...", {durationMs: 5000}
-  );
-  ```
 
 ## Display Duration (`durationMs`)
 

@@ -1,16 +1,16 @@
 /**
- * Dashboard Manager TPA Implementation
+ * Dashboard Manager App Implementation
  *
- * This is a complete implementation of the dashboard-manager TPA
+ * This is a complete implementation of the dashboard-manager App
  * using the new Dashboard API. It maintains backward compatibility
  * with the existing system.
  */
 import express from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import {
-  TpaSession,
-  TpaConnectionInit,
-  TpaToCloudMessageType,
+  AppSession,
+  AppConnectionInit,
+  AppToCloudMessageType,
   StreamType,
   ViewType,
   DashboardMode,
@@ -41,7 +41,7 @@ const notificationAppBlackList = ['youtube', 'augment', 'maps'];
 // Session information interface
 interface SessionInfo {
   userId: string;
-  session: TpaSession;
+  session: AppSession;
   batteryLevel?: number;
   latestLocation?: { latitude: number; longitude: number; timezone?: string };
   phoneNotificationCache?: { title: string; content: string; timestamp: number; uuid: string }[];
@@ -63,11 +63,11 @@ app.post('/webhook', async (req: express.Request, res: express.Response) => {
     const { sessionId, userId } = req.body;
     logger.info(`Session start for user ${userId}, session ${sessionId}`);
 
-    // Create TPA session
-    const session = new TpaSession({
+    // Create App session
+    const session = new AppSession({
       packageName: PACKAGE_NAME,
       apiKey: API_KEY,
-      augmentOSWebsocketUrl: `ws://${CLOUD_HOST_NAME}/tpa-ws`
+      augmentOSWebsocketUrl: `ws://${CLOUD_HOST_NAME}/app-ws`
     });
 
     // Store session info
@@ -100,7 +100,7 @@ app.post('/webhook', async (req: express.Request, res: express.Response) => {
 // Event Handlers Setup
 // ===================================
 
-function setupEventHandlers(sessionId: string, session: TpaSession): void {
+function setupEventHandlers(sessionId: string, session: AppSession): void {
   // Handle connection events
   session.events.on('connected', () => {
     logger.info(`Session ${sessionId} connected`);
@@ -488,7 +488,7 @@ app.get('/health', (req, res) => {
 
 // Start server
 app.listen(PORT, () => {
-  logger.info(`Dashboard Manager TPA running on port ${PORT}`);
+  logger.info(`Dashboard Manager App running on port ${PORT}`);
 });
 
 // Schedule periodic dashboard updates for all sessions

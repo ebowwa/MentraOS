@@ -29,8 +29,8 @@ const setImperativeTheming = async (theme: Theme) => {
   if (Platform.OS === "android") {
     try {
       // For dark theme, use the darker start of the gradient to better match the tab bar appearance
-      // For light theme, use white
-      const navBarColor = theme.isDark ? "#090A14" : "#FFFFFF"
+      // For light theme, use the same blue-tinted white as the tab bar
+      const navBarColor = theme.isDark ? "#090A14" : "#F8FAFF"
       await NavigationBar.setBackgroundColorAsync(navBarColor)
       
       // Set button colors based on theme
@@ -56,7 +56,7 @@ export const useThemeProvider = (initialTheme: ThemeContexts = undefined) => {
   useEffect(() => {
     const loadThemePreference = async () => {
       try {
-        const savedTheme = (await loadSetting(SETTINGS_KEYS.THEME_PREFERENCE, "light")) as ThemeType
+        const savedTheme = (await loadSetting(SETTINGS_KEYS.THEME_PREFERENCE, "system")) as ThemeType
         if (savedTheme === "system") {
           setTheme(undefined)
         } else {

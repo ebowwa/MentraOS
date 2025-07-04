@@ -47,7 +47,7 @@ export enum GlassesToCloudMessageType {
   PHONE_NOTIFICATION = StreamType.PHONE_NOTIFICATION,
   NOTIFICATION_DISMISSED = StreamType.NOTIFICATION_DISMISSED,
   CALENDAR_EVENT = StreamType.CALENDAR_EVENT,
-  AUGMENTOS_SETTINGS_UPDATE_REQUEST = StreamType.AUGMENTOS_SETTINGS_UPDATE_REQUEST,
+  MENTRAOS_SETTINGS_UPDATE_REQUEST = StreamType.MENTRAOS_SETTINGS_UPDATE_REQUEST,
   CORE_STATUS_UPDATE = StreamType.CORE_STATUS_UPDATE,
   PHOTO_TAKEN = StreamType.PHOTO_TAKEN
 }
@@ -81,9 +81,9 @@ export enum CloudToGlassesMessageType {
 }
 
 /**
- * Types of messages from TPAs to cloud
+ * Types of messages from Apps to cloud
  */
-export enum TpaToCloudMessageType {
+export enum AppToCloudMessageType {
   // Commands
   CONNECTION_INIT = 'tpa_connection_init',
   SUBSCRIPTION_UPDATE = 'subscription_update',
@@ -100,19 +100,19 @@ export enum TpaToCloudMessageType {
   DASHBOARD_CONTENT_UPDATE = 'dashboard_content_update',
   DASHBOARD_MODE_CHANGE = 'dashboard_mode_change',
   DASHBOARD_SYSTEM_UPDATE = 'dashboard_system_update',
-  
-  // TPA-to-TPA Communication
-  TPA_BROADCAST_MESSAGE = 'tpa_broadcast_message',
-  TPA_DIRECT_MESSAGE = 'tpa_direct_message',
-  TPA_USER_DISCOVERY = 'tpa_user_discovery',
-  TPA_ROOM_JOIN = 'tpa_room_join',
-  TPA_ROOM_LEAVE = 'tpa_room_leave'
+
+  // App-to-App Communication
+  APP_BROADCAST_MESSAGE = 'app_broadcast_message',
+  APP_DIRECT_MESSAGE = 'app_direct_message',
+  APP_USER_DISCOVERY = 'app_user_discovery',
+  APP_ROOM_JOIN = 'app_room_join',
+  APP_ROOM_LEAVE = 'app_room_leave'
 }
 
 /**
- * Types of messages from cloud to TPAs
+ * Types of messages from cloud to Apps
  */
-export enum CloudToTpaMessageType {
+export enum CloudToAppMessageType {
   // Responses
   CONNECTION_ACK = 'tpa_connection_ack',
   CONNECTION_ERROR = 'tpa_connection_error',
@@ -139,13 +139,13 @@ export enum CloudToTpaMessageType {
 
   // General purpose messaging
   CUSTOM_MESSAGE = 'custom_message',
-  
-  // TPA-to-TPA Communication Responses
-  TPA_MESSAGE_RECEIVED = 'tpa_message_received',
-  TPA_USER_JOINED = 'tpa_user_joined',
-  TPA_USER_LEFT = 'tpa_user_left',
-  TPA_ROOM_UPDATED = 'tpa_room_updated',
-  TPA_DIRECT_MESSAGE_RESPONSE = 'tpa_direct_message_response'
+
+  // App-to-App Communication Responses
+  APP_MESSAGE_RECEIVED = 'app_message_received',
+  APP_USER_JOINED = 'app_user_joined',
+  APP_USER_LEFT = 'app_user_left',
+  APP_ROOM_UPDATED = 'app_room_updated',
+  APP_DIRECT_MESSAGE_RESPONSE = 'app_direct_message_response'
 }
 
 /**
@@ -174,7 +174,7 @@ export const EventTypes = [
   GlassesToCloudMessageType.PHONE_NOTIFICATION,
   GlassesToCloudMessageType.NOTIFICATION_DISMISSED,
   GlassesToCloudMessageType.CALENDAR_EVENT,
-  GlassesToCloudMessageType.AUGMENTOS_SETTINGS_UPDATE_REQUEST,
+  GlassesToCloudMessageType.MENTRAOS_SETTINGS_UPDATE_REQUEST,
   GlassesToCloudMessageType.CORE_STATUS_UPDATE
 ] as const;
 
@@ -207,9 +207,9 @@ export const UpdateTypes = [
  * Dashboard message types
  */
 export const DashboardMessageTypes = [
-  TpaToCloudMessageType.DASHBOARD_CONTENT_UPDATE,
-  TpaToCloudMessageType.DASHBOARD_MODE_CHANGE,
-  TpaToCloudMessageType.DASHBOARD_SYSTEM_UPDATE,
-  CloudToTpaMessageType.DASHBOARD_MODE_CHANGED,
-  CloudToTpaMessageType.DASHBOARD_ALWAYS_ON_CHANGED
+  AppToCloudMessageType.DASHBOARD_CONTENT_UPDATE,
+  AppToCloudMessageType.DASHBOARD_MODE_CHANGE,
+  AppToCloudMessageType.DASHBOARD_SYSTEM_UPDATE,
+  CloudToAppMessageType.DASHBOARD_MODE_CHANGED,
+  CloudToAppMessageType.DASHBOARD_ALWAYS_ON_CHANGED
 ] as const;

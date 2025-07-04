@@ -197,7 +197,7 @@ private buildDoubleTextWall(
   deviceConfig: typeof DEVICE_CONFIGS[DeviceType],
   fontUtility: FontUtility
 ): TextWallLayout {
-  const { leftColumnRatio, rightColumnRatio, columnSpacing } = 
+  const { leftColumnRatio, rightColumnRatio, columnSpacing } =
     deviceConfig.layoutRules.doubleTextWall;
 
   const leftWidth = deviceConfig.displayWidth * leftColumnRatio;
@@ -241,7 +241,7 @@ private buildAlwaysOnLayout(
   fontUtility: FontUtility
 ): TextWallLayout {
   // Build status bar (1 line)
-  const statusBar = dashboardContent 
+  const statusBar = dashboardContent
     ? this.formatStatusBar(dashboardContent, deviceConfig, fontUtility)
     : '';
 
@@ -341,7 +341,7 @@ interface UserSession {
 4. **Layout Types**:
    - All ultimately convert to text walls
    - Device-specific formatting rules apply
-   - Font utilities handle precise positioning 
+   - Font utilities handle precise positioning
 
 ## Current Client-Side Layout Building
 
@@ -566,7 +566,7 @@ class DashboardManager {
 4. **Phase 4: Cleanup**
    - Remove old client code
    - Update documentation
-   - Add monitoring 
+   - Add monitoring
 
 ## File Structure and System Operation
 
@@ -598,9 +598,9 @@ augmentos_cloud/packages/cloud/src/services/
 
 1. **Display Request Flow**:
    ```
-   TPA/System App -> Cloud (DisplayManager) -> Client (augmentos_manager) -> Device
+   App/System App -> Cloud (DisplayManager) -> Client (augmentos_manager) -> Device
    ```
-   - TPA or System App sends display request to cloud
+   - App or System App sends display request to cloud
    - Cloud's DisplayManager receives request
    - DisplayManager forwards request to client
    - Client builds layout using its own logic
@@ -608,9 +608,9 @@ augmentos_cloud/packages/cloud/src/services/
 
 2. **Dashboard Content Flow**:
    ```
-   TPA/System App -> Cloud (DashboardManager) -> Client (augmentos_core) -> Device
+   App/System App -> Cloud (DashboardManager) -> Client (augmentos_core) -> Device
    ```
-   - TPA or System App sends dashboard content to cloud
+   - App or System App sends dashboard content to cloud
    - DashboardManager receives content
    - DashboardManager forwards content to client
    - Client builds dashboard layout
@@ -626,10 +626,10 @@ augmentos_cloud/packages/cloud/src/services/
 
 1. **Display Request Flow**:
    ```
-   TPA/System App -> Cloud (DisplayManager) -> Cloud (LayoutManager) -> Device
+   App/System App -> Cloud (DisplayManager) -> Cloud (LayoutManager) -> Device
                                           -> Client (augmentos_manager) [fallback]
    ```
-   - TPA or System App sends display request to cloud
+   - App or System App sends display request to cloud
    - DisplayManager receives request
    - LayoutManager builds layout
    - Layout sent directly to device
@@ -637,10 +637,10 @@ augmentos_cloud/packages/cloud/src/services/
 
 2. **Dashboard Content Flow**:
    ```
-   TPA/System App -> Cloud (DashboardManager) -> Cloud (LayoutManager) -> Device
+   App/System App -> Cloud (DashboardManager) -> Cloud (LayoutManager) -> Device
                                             -> Client (augmentos_core) [fallback]
    ```
-   - TPA or System App sends dashboard content to cloud
+   - App or System App sends dashboard content to cloud
    - DashboardManager receives content
    - LayoutManager builds dashboard layout
    - Layout sent directly to device
@@ -660,7 +660,7 @@ augmentos_cloud/packages/cloud/src/services/
    - `deviceConfigs.ts`: Contains device-specific configurations
 
 2. **Modified Cloud Files**:
-   - `DashboardManager.ts`: 
+   - `DashboardManager.ts`:
     - For the always on display, Instead of sending display requests directly to client, send them `FinalMileLayoutManager.ts` to handling building and timing of layout.
    - `DisplayManager.ts`:
      - Instead of sending display requests directly to client, send to `FinalMileLayoutManager.ts` which will build and combine layo
@@ -689,4 +689,4 @@ augmentos_cloud/packages/cloud/src/services/
    - Only after cloud implementation is stable
    - Remove duplicate layout building
    - Update client dependencies
-   - Not part of initial migration 
+   - Not part of initial migration
