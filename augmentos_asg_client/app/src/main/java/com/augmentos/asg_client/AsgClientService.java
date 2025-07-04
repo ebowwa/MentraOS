@@ -131,6 +131,21 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     private boolean isInRecoveryMode = false;
     private int missedHeartbeats = 0;
 
+    // WiFi state change debouncing
+    private static final long WIFI_STATE_DEBOUNCE_MS = 1000; // 1 second debounce
+    private Handler wifiDebounceHandler;
+    private Runnable wifiDebounceRunnable;
+    private boolean lastWifiState = false;
+    private boolean pendingWifiState = false;
+    
+    // Battery status tracking
+    private int glassesBatteryLevel = -1; // -1 means unknown
+    private boolean glassesCharging = false;
+    
+    // Track last broadcasted battery status to avoid redundant broadcasts
+    private int lastBroadcastedBatteryLevel = -1;
+    private boolean lastBroadcastedCharging = false;
+
     // Receiver for handling restart requests from OTA updater
     private BroadcastReceiver restartReceiver;
 
@@ -222,6 +237,9 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         // Initialize streaming callbacks
         initializeStreamingCallbacks();
 
+        // Initialize WiFi debouncing
+        initializeWifiDebouncing();
+
         // Register service health monitor with both actions
         IntentFilter heartbeatFilter = new IntentFilter();
         heartbeatFilter.addAction(ACTION_HEARTBEAT);
@@ -274,6 +292,25 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         // Register for streaming status callbacks
         com.augmentos.asg_client.streaming.RtmpStreamingService.setStreamingStatusCallback(streamingStatusCallback);
         Log.d(TAG, "Registered RTMP streaming callbacks");
+    }
+
+    /**
+     * Initialize WiFi state change debouncing mechanism
+     */
+    private void initializeWifiDebouncing() {
+        wifiDebounceHandler = new Handler(Looper.getMainLooper());
+        wifiDebounceRunnable = new Runnable() {
+            @Override
+            public void run() {
+                // Only send if the pending state is different from the last sent state
+                if (pendingWifiState != lastWifiState) {
+                    Log.d(TAG, "🔄 WiFi debounce timeout - sending final state: " + (pendingWifiState ? "CONNECTED" : "DISCONNECTED"));
+                    lastWifiState = pendingWifiState;
+                    sendWifiStatusOverBle(pendingWifiState);
+                }
+            }
+        };
+        Log.d(TAG, "Initialized WiFi state change debouncing with " + WIFI_STATE_DEBOUNCE_MS + "ms timeout");
     }
 
     /**
@@ -619,15 +656,13 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         }
 
         // For Android O+, create or update notification channel
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationChannel channel = new NotificationChannel(
-                    myChannelId,
-                    notificationAppName,
-                    NotificationManager.IMPORTANCE_HIGH
-            );
-            channel.setDescription(notificationDescription);
-            manager.createNotificationChannel(channel);
-        }
+        NotificationChannel channel = new NotificationChannel(
+                myChannelId,
+                notificationAppName,
+                NotificationManager.IMPORTANCE_HIGH
+        );
+        channel.setDescription(notificationDescription);
+        manager.createNotificationChannel(channel);
 
         // Build the actual notification
         NotificationCompat.Builder builder = new NotificationCompat.Builder(this, myChannelId)
@@ -694,6 +729,13 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         // Unregister from EventBus
         if (org.greenrobot.eventbus.EventBus.getDefault().isRegistered(this)) {
             org.greenrobot.eventbus.EventBus.getDefault().unregister(this);
+        }
+
+        // Clean up WiFi debouncing
+        if (wifiDebounceHandler != null && wifiDebounceRunnable != null) {
+            wifiDebounceHandler.removeCallbacks(wifiDebounceRunnable);
+            wifiDebounceHandler = null;
+            wifiDebounceRunnable = null;
         }
 
         // Shutdown the network manager if it's initialized
@@ -815,6 +857,65 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         }
         return false;
     }
+    
+    /**
+     * Get the current battery level of the connected glasses
+     * @return battery level as percentage (0-100), or -1 if unknown
+     */
+    public int getGlassesBatteryLevel() {
+        return glassesBatteryLevel;
+    }
+    
+    /**
+     * Check if the connected glasses are currently charging
+     * @return true if charging, false if not charging or unknown
+     */
+    public boolean isGlassesCharging() {
+        return glassesCharging;
+    }
+    
+    /**
+     * Get the current battery status as a formatted string
+     * @return formatted battery status string
+     */
+    public String getGlassesBatteryStatusString() {
+        if (glassesBatteryLevel == -1) {
+            return "Unknown";
+        }
+        return glassesBatteryLevel + "% " + (glassesCharging ? "(charging)" : "(not charging)");
+    }
+    
+    /**
+     * Broadcast battery status to OTA updater only if the status has changed
+     * @param level Battery level (0-100)
+     * @param charging Whether the glasses are charging
+     * @param timestamp Timestamp of the battery reading
+     */
+    private void broadcastBatteryStatusToOtaUpdater(int level, boolean charging, long timestamp) {
+        // Check if battery status has changed from last broadcast
+        if (level == lastBroadcastedBatteryLevel && charging == lastBroadcastedCharging) {
+            Log.d(TAG, "🔋 Battery status unchanged - skipping broadcast: " + level + "% " + (charging ? "(charging)" : "(not charging)"));
+            return;
+        }
+        
+        try {
+            Intent batteryIntent = new Intent(AsgConstants.ACTION_GLASSES_BATTERY_STATUS);
+            batteryIntent.setPackage("com.augmentos.otaupdater");
+            batteryIntent.putExtra("battery_level", level);
+            batteryIntent.putExtra("charging", charging);
+            batteryIntent.putExtra("timestamp", timestamp);
+            
+            sendBroadcast(batteryIntent);
+            Log.d(TAG, "📡 Broadcasted battery status to OTA updater: " + level + "% " + (charging ? "(charging)" : "(not charging)"));
+            
+            // Update last broadcasted values
+            lastBroadcastedBatteryLevel = level;
+            lastBroadcastedCharging = charging;
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Error broadcasting battery status to OTA updater", e);
+        }
+    }
 
     /**
      * Testing method that manually starts the WiFi setup process
@@ -842,15 +943,28 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     // ---------------------------------------------
 
     /**
-     * Handle WiFi state changes
+     * Handle WiFi state changes with debouncing
      */
     @Override
     public void onWifiStateChanged(boolean isConnected) {
-        // Log.d(TAG, "222 WiFi state changed: " + (isConnected ? "CONNECTED" : "DISCONNECTED"));
+        Log.d(TAG, "🔄 WiFi state changed: " + (isConnected ? "CONNECTED" : "DISCONNECTED") + " (debouncing...)");
 
-        // When WiFi state changes, send status to AugmentOS Core via Bluetooth
-        sendWifiStatusOverBle(isConnected);
+        // Update pending state
+        pendingWifiState = isConnected;
 
+        // Cancel any existing timeout
+        if (wifiDebounceHandler != null && wifiDebounceRunnable != null) {
+            wifiDebounceHandler.removeCallbacks(wifiDebounceRunnable);
+            Log.d(TAG, "Cancelled existing WiFi status send timeout");
+        }
+
+        // Schedule new timeout
+        if (wifiDebounceHandler != null && wifiDebounceRunnable != null) {
+            wifiDebounceHandler.postDelayed(wifiDebounceRunnable, WIFI_STATE_DEBOUNCE_MS);
+            Log.d(TAG, "⏰ Scheduled WiFi status send in " + WIFI_STATE_DEBOUNCE_MS + "ms");
+        }
+
+        // Handle immediate actions that don't need debouncing
         if (isConnected) {
             // Handle connection
             onWifiConnected();
@@ -970,8 +1084,9 @@ public class AsgClientService extends Service implements NetworkStateListener, B
             if (networkManager != null) {
                 new Handler(Looper.getMainLooper()).postDelayed(() -> {
                     boolean wifiConnected = networkManager.isConnectedToWifi();
+//                    Log.d(TAG, "WiFi status after 3s delay: " + (wifiConnected ? "CONNECTED" : "DISCONNECTED"));
                     sendWifiStatusOverBle(wifiConnected);
-                    Log.d(TAG, "Sent WiFi status after 3s delay: " + (wifiConnected ? "CONNECTED" : "DISCONNECTED"));
+//                    Log.d(TAG, "Sent WiFi status after 3s delay: " + (wifiConnected ? "CONNECTED" : "DISCONNECTED"));
                 }, 3000); // 3 second delay
             }
 
@@ -1490,6 +1605,22 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                     break;
 
                 case "request_battery_state":
+                    break;
+                    
+                case "battery_status":
+                    // Process battery status from glasses
+                    int level = dataToProcess.optInt("level", -1);
+                    boolean charging = dataToProcess.optBoolean("charging", false);
+                    long timestamp = dataToProcess.optLong("timestamp", System.currentTimeMillis());
+                    
+                    // Store battery status locally
+                    glassesBatteryLevel = level;
+                    glassesCharging = charging;
+                    
+                    Log.d(TAG, "🔋 Received battery status from glasses: " + level + "% " + (charging ? "(charging)" : "(not charging)") + " at " + timestamp);
+                    
+                    // Broadcast battery status to OTA updater immediately
+                    broadcastBatteryStatusToOtaUpdater(level, charging, timestamp);
                     break;
 
                 case "set_mic_state":
