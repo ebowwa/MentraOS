@@ -1491,6 +1491,34 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         
         // Post battery event so the system knows the battery level
         EventBus.getDefault().post(new BatteryLevelEvent(level, charging));
+        
+        // Send battery status via BLE to connected phone
+        sendBatteryStatusOverBle(level, charging);
+    }
+    
+    /**
+     * Send battery status to connected phone via BLE
+     */
+    private void sendBatteryStatusOverBle(int level, boolean charging) {
+        if (isConnected && bluetoothGatt != null) {
+            try {
+                JSONObject batteryStatus = new JSONObject();
+                batteryStatus.put("type", "battery_status");
+                batteryStatus.put("level", level);
+                batteryStatus.put("charging", charging);
+                batteryStatus.put("timestamp", System.currentTimeMillis());
+                
+                // Convert to string and send via BLE
+                String jsonString = batteryStatus.toString();
+                Log.d(TAG, "🔋 Sending battery status via BLE: " + level + "% " + (charging ? "(charging)" : "(not charging)"));
+                sendDataToGlasses(jsonString);
+                
+            } catch (JSONException e) {
+                Log.e(TAG, "Error creating battery status JSON", e);
+            }
+        } else {
+            Log.d(TAG, "Cannot send battery status - not connected to BLE device");
+        }
     }
     
     /**
