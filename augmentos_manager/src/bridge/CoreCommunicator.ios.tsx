@@ -172,16 +172,19 @@ export class CoreCommunicator extends EventEmitter {
     // wait a bit to ensure the core is ready (a bit of a hack but it is reliable)
     setTimeout(async () => {
       // Check connectivity requirements before auto-connecting
-      const requirementsCheck = await this.checkConnectivityRequirements()
+      // const requirementsCheck = await this.checkConnectivityRequirements()
       
-      if (requirementsCheck.isReady) {
-        console.log("Auto-connecting to previously paired glasses...")
-        AOSModule.sendCommand(JSON.stringify({command: "connect_wearable"}))
-      } else {
-        console.log("Auto-connection skipped:", requirementsCheck.message)
-        // Don't show alert for auto-connection failures, just log it
-        // User can manually connect via the connect button if needed
-      }
+      // if (requirementsCheck.isReady) {
+      //   console.log("Auto-connecting to previously paired glasses...")
+      //   AOSModule.sendCommand(JSON.stringify({command: "connect_wearable"}))
+      // } else {
+      //   console.log("Auto-connection skipped:", requirementsCheck.message)
+      //   // Don't show alert for auto-connection failures, just log it
+      //   // User can manually connect via the connect button if needed
+      // }
+
+      // will fail silently if we don't have bt permissions (which is the intended behavior)
+      AOSModule.sendCommand(JSON.stringify({command: "connect_wearable"}))
     }, 3000)
 
     // setTimeout(() => {

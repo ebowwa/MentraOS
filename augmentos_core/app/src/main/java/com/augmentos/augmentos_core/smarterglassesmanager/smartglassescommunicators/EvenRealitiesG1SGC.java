@@ -112,6 +112,7 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
     private boolean debugStopper = false;
     private boolean shouldUseAutoBrightness = false;
     private int brightnessValue;
+    private boolean updatingScreen = false;
 
     private static final long DELAY_BETWEEN_SENDS_MS = 5; //not using now
     private static final long DELAY_BETWEEN_CHUNKS_SEND = 5; //super small just in case
@@ -1943,6 +1944,7 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
     public void blankScreen() {}
 
     public void displayDoubleTextWall(String textTop, String textBottom) {
+        if (updatingScreen) return;
         List<byte[]> chunks = createDoubleTextWallChunks(textTop, textBottom);
         sendChunks(chunks);
     }
@@ -1980,8 +1982,14 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
     public void displayReferenceCardImage(String title, String body, String imgUrl) {}
 
     public void displayTextWall(String a) {
+        if (updatingScreen) return;
         List<byte[]> chunks = createTextWallChunks(a);
         sendChunks(chunks);
+    }
+
+    @Override
+    public void setUpdatingScreen(boolean updatingScreen) {
+        this.updatingScreen = updatingScreen;
     }
 
     public void setFontSizes() {}
@@ -2934,6 +2942,7 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
     }
 
     private void sendBmpChunks(List<byte[]> chunks) {
+        if (updatingScreen) return;
         for (int i = 0; i < chunks.size(); i++) {
             byte[] chunk = chunks.get(i);
             Log.d(TAG, "Sending chunk " + i + " of " + chunks.size() + ", size: " + chunk.length);
@@ -2948,6 +2957,7 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
     }
 
     private void sendBmpEndCommand() {
+        if (updatingScreen) return;
         Log.d(TAG, "Sending BMP end command");
         sendDataSequentially(END_COMMAND);
 
@@ -2993,12 +3003,14 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
     }
 
     public void clearBmpDisplay() {
+        if (updatingScreen) return;
         Log.d(TAG, "Clearing BMP display with EXIT command");
         byte[] exitCommand = new byte[]{0x18};
         sendDataSequentially(exitCommand);
     }
 
     private void sendLoremIpsum(){
+        if (updatingScreen) return;
         String text = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. ";
         sendDataSequentially(createTextWallChunks(text));
     }

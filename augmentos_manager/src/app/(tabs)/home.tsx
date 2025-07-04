@@ -297,15 +297,15 @@ export default function Homepage() {
               </Animated.View>
             )}
             <MicIcon width={24} height={24} />
+            <NonProdWarning />
           </View>
         }
       />
 
       <ScrollView style={{marginRight: -theme.spacing.md, paddingRight: theme.spacing.md}} contentInsetAdjustmentBehavior="automatic">
-        {status.core_info.cloud_connection_status !== "CONNECTED" && <CloudConnection />}
+        <CloudConnection />
 
         <SensingDisabledWarning />
-        <NonProdWarning />
 
         <ConnectedGlasses showTitle={false} />
         <DeviceToolbar />

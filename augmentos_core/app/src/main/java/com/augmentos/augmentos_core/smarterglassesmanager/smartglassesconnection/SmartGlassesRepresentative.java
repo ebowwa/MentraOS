@@ -262,6 +262,12 @@ public class SmartGlassesRepresentative implements PhoneMicListener {
         }
     }
 
+    public void setUpdatingScreen(boolean updatingScreen) {
+        if (smartGlassesCommunicator != null) {
+            smartGlassesCommunicator.setUpdatingScreen(updatingScreen);
+        }
+    }
+
     @Subscribe
     public void onDisableBleScoEvent(DisableBleScoAudioEvent receivedEvent) {
         Log.d(TAG, "onDisableBleScoEvent called");

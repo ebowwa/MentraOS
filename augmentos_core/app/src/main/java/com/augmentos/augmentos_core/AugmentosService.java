@@ -45,6 +45,7 @@ import com.augmentos.augmentos_core.augmentos_backend.ThirdPartyCloudApp;
 import com.augmentos.augmentos_core.augmentos_backend.WebSocketLifecycleManager;
 import com.augmentos.augmentos_core.augmentos_backend.WebSocketManager;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.BatteryLevelEvent;
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.ButtonPressEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.CaseEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.BrightnessLevelEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesBluetoothSearchDiscoverEvent;
@@ -249,8 +250,6 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     private boolean isInitializing = false;
 
     private boolean metricSystemEnabled;
-
-    private boolean updatingScreen = false;
 
     // Handler and Runnable for periodic datetime sending
     private final Handler datetimeHandler = new Handler(Looper.getMainLooper());
@@ -488,7 +487,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         // Initialize settings with default values
         brightnessLevel = 50;
         autoBrightness = false;
-        headUpAngle = 20;
+        headUpAngle = Integer.parseInt(PreferenceManager.getDefaultSharedPreferences(this).getString(getResources().getString(R.string.HEAD_UP_ANGLE), "20"));
         dashboardHeight = 4;
         dashboardDepth = 5;
 
@@ -498,7 +497,6 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
 
         contextualDashboardEnabled = true;
         metricSystemEnabled = false;
-        updatingScreen = false;
 
         alwaysOnStatusBarEnabled = false;
 
@@ -1039,6 +1037,15 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         if(isDown) {
             lastPressed = System.currentTimeMillis();
         }
+    }
+
+    @Subscribe
+    public void onButtonPressEvent(ButtonPressEvent event) {
+        Log.d(TAG, "Received button press event from glasses - buttonId: " + event.buttonId +
+              ", pressType: " + event.pressType + ", device: " + event.deviceModel);
+
+        // Forward button press to cloud via ServerComms
+        ServerComms.getInstance().sendButtonPress(event.buttonId, event.pressType);
     }
 
     private JSONObject generateTemplatedJsonFromServer(JSONObject rawMsg) {
@@ -1613,12 +1620,12 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             }
 
             @Override
-            public void onPhotoRequest(String requestId, String appId) {
-                Log.d(TAG, "Photo request received: requestId=" + requestId + ", appId=" + appId);
+            public void onPhotoRequest(String requestId, String appId, String webhookUrl) {
+                Log.d(TAG, "Photo request received: requestId=" + requestId + ", appId=" + appId + ", webhookUrl=" + webhookUrl);
 
                 // Forward the request to the smart glasses manager
                 if (smartGlassesManager != null) {
-                    boolean requestSent = smartGlassesManager.requestPhoto(requestId, appId);
+                    boolean requestSent = smartGlassesManager.requestPhoto(requestId, appId, webhookUrl);
                     if (!requestSent) {
                         Log.e(TAG, "Failed to send photo request to glasses");
                     }
@@ -2001,9 +2008,9 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
 
     @Override
     public void setUpdatingScreen(boolean updatingScreen) {
-        this.updatingScreen = updatingScreen;
-        if (smartGlassesManager != null && updatingScreen) {
+        if (smartGlassesManager != null) {
             smartGlassesManager.sendExitCommand();
+            smartGlassesManager.setUpdatingScreen(updatingScreen);
         }
     }
 
@@ -2105,6 +2112,13 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         if (smartGlassesManager != null) {
             smartGlassesManager.updateGlassesHeadUpAngle(headUpAngle);
             this.headUpAngle = headUpAngle;
+
+            // Save head up angle setting to SharedPreferences
+            PreferenceManager.getDefaultSharedPreferences(this)
+                .edit()
+                .putString(getString(R.string.HEAD_UP_ANGLE), String.valueOf(headUpAngle))
+                .apply();
+
             sendStatusToBackend();
             sendStatusToAugmentOsManager();
         } else {

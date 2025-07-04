@@ -6,6 +6,7 @@ import {ThemedStyle} from "@/theme"
 import {Header} from "../ignite/Header"
 import {router} from "expo-router"
 import {getGlassesImage, getEvenRealitiesG1Image} from "@/utils/getGlassesImage"
+import { translate } from "@/i18n"
 
 interface GlassesPairingLoaderProps {
   glassesModelName: string
@@ -121,7 +122,7 @@ const GlassesPairingLoader: React.FC<GlassesPairingLoaderProps> = ({glassesModel
 
           {/* Status text and tips */}
           <View style={themed($textContainer)}>
-            <Text style={themed($statusText)}>PAIRING {glassesModelName.toUpperCase()}...</Text>
+            <Text style={themed($statusText)}>{translate("pairing:pairing").toLocaleUpperCase()} {glassesModelName.toUpperCase()}...</Text>
             <Text style={themed($tipText)}>{tips[currentTipIndex]}</Text>
           </View>
         </View>

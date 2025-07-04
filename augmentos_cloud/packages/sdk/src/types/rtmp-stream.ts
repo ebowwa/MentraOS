@@ -4,29 +4,29 @@ import { RtmpStreamStatus } from "./messages/glasses-to-cloud";
 
 /**
  * RTMP Streaming Types
- * 
+ *
  * This file contains the interfaces and types for RTMP streaming functionality.
- * 
+ *
  * RTMP status updates are received through the standard stream subscription mechanism:
- * 
+ *
  * ```typescript
  * // Subscribe to status updates
  * session.subscribe(StreamType.RTMP_STATUS);
- * 
+ *
  * // Listen for updates
  * session.on(StreamType.RTMP_STATUS, (status) => {
  *   console.log('RTMP Status:', status);
  * });
  * ```
- * 
- * Alternatively, use the StreamingModule's convenience methods:
- * 
+ *
+ * Alternatively, use the CameraModule's convenience methods:
+ *
  * ```typescript
  * // This does both subscription and event listening in one call
- * const cleanup = session.streaming.onStatus((status) => {
+ * const cleanup = session.camera.onStreamStatus((status) => {
  *   console.log('RTMP Status:', status);
  * });
- * 
+ *
  * // When done:
  * cleanup();
  * ```

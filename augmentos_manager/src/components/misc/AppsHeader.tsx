@@ -22,7 +22,7 @@ const AppsHeader = ({showSearchIcon = true, title}: {showSearchIcon?: boolean; t
           onPress={() => {
             router.push("/search/search")
           }}>
-          <SearchIcon color={theme.colors.text} />
+          <SearchIcon color={theme.colors.searchIcon} />
         </Pressable>
       )}
     </View>

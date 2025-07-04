@@ -317,12 +317,12 @@ export function DeviceToolbar() {
       <View style={{flexDirection: "row", alignItems: "center", gap: 6}}>
         {status.glasses_info?.battery_level != -1 ? (
           <>
-            <Icon icon="battery" size={18} color={theme.colors.text} />
-            <Text style={{color: theme.colors.text}}>{status.glasses_info?.battery_level}%</Text>
+            <Icon icon="battery" size={18} color={theme.colors.statusIcon} />
+            <Text style={{color: theme.colors.statusText}}>{status.glasses_info?.battery_level}%</Text>
           </>
         ) : (
           // <Text style={{color: theme.colors.text}}>No battery</Text>
-          <ActivityIndicator size="small" color={theme.colors.text} />
+          <ActivityIndicator size="small" color={theme.colors.statusText} />
         )}
       </View>
 
@@ -330,12 +330,12 @@ export function DeviceToolbar() {
       <View style={{flexDirection: "row", alignItems: "center", gap: 6}}>
         {hasDisplay ? (
           <>
-            <SunIcon size={18} color={theme.colors.text} />
+            <SunIcon size={18} color={theme.colors.statusIcon} />
             {autoBrightness ? (
-              <Text style={{color: theme.colors.text}}>Auto</Text>
+              <Text style={{color: theme.colors.statusText}}>Auto</Text>
             ) : (
               <>
-                <Text style={{color: theme.colors.text, fontSize: 16, marginLeft: 4, fontFamily: "Inter-Regular"}}>
+                <Text style={{color: theme.colors.statusText, fontSize: 16, marginLeft: 4, fontFamily: "Inter-Regular"}}>
                   {status.glasses_settings.brightness}%
                 </Text>
               </>
@@ -358,15 +358,15 @@ export function DeviceToolbar() {
               })
             }}
           >
-            <MaterialCommunityIcons name="wifi" size={18} color={theme.colors.text} />
-            <Text style={{color: theme.colors.text, fontSize: 16, fontFamily: "Inter-Regular"}}>
+            <MaterialCommunityIcons name="wifi" size={18} color={theme.colors.statusIcon} />
+            <Text style={{color: theme.colors.statusText, fontSize: 16, fontFamily: "Inter-Regular"}}>
               {wifiSsid || "Disconnected"}
             </Text>
           </TouchableOpacity>
         ) : (
           <>
-            <MaterialCommunityIcons name="bluetooth" size={18} color={theme.colors.text} />
-            <Text style={{color: theme.colors.text, fontSize: 16, fontFamily: "Inter-Regular"}}>
+            <MaterialCommunityIcons name="bluetooth" size={18} color={theme.colors.statusIcon} />
+            <Text style={{color: theme.colors.statusText, fontSize: 16, fontFamily: "Inter-Regular"}}>
               Connected
             </Text>
           </>

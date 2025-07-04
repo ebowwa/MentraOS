@@ -132,9 +132,12 @@ const palette = {
 
   // Button colors for pill-shaped buttons (light theme)
   buttonPillPrimary: "#3230A4", // Deep purple-blue for primary pill buttons
-  buttonPillSecondary: "#E0E0E0", // Medium gray for secondary pill buttons (darker than before)
+  buttonPillSecondary: "transparent", // Transparent background for secondary pill buttons
+  buttonPillSecondaryBorder: "#4240D1", // Purple border for secondary pill buttons
+  buttonPillIcon: "#E0E0E0", // Medium gray for icon pill buttons (was secondary)
   buttonPillPrimaryText: "#FFFFFF", // White text for primary buttons
-  buttonPillSecondaryText: "#333333", // Dark text for secondary buttons
+  buttonPillSecondaryText: "#030514", // Dark text for secondary buttons
+  buttonPillIconText: "#333333", // Dark text for icon buttons
 } as const
 
 export const colors = {
@@ -287,8 +290,11 @@ export const colors = {
   // Pill button colors
   buttonPillPrimary: palette.buttonPillPrimary,
   buttonPillSecondary: palette.buttonPillSecondary,
+  buttonPillSecondaryBorder: palette.buttonPillSecondaryBorder,
+  buttonPillIcon: palette.buttonPillIcon,
   buttonPillPrimaryText: palette.buttonPillPrimaryText,
   buttonPillSecondaryText: palette.buttonPillSecondaryText,
+  buttonPillIconText: palette.buttonPillIconText,
 
   // Checkmark color
   checkmark: palette.blue500, // Bright blue for checkmarks in light theme
@@ -302,7 +308,7 @@ export const colors = {
   tabBarIconActive: "#4240D1", // Active tab icon color
   tabBarTextActive: "#2B29B4", // Active tab text color
   tabBarIconInactive: "#565E8C", // Inactive tab icon color
-  tabBarTextInactive: "#4B5381", // Inactive tab text color
+  tabBarTextInactive: "#4F5474", // Inactive tab text color
 
   // Chevron color for app list items
   chevron: "#898FB2", // Light purple-gray for chevrons
@@ -310,4 +316,11 @@ export const colors = {
   // Foreground tag colors
   foregroundTagBackground: "rgba(66, 64, 209, 0.1)", // #4240D1 at 10% opacity
   foregroundTagText: "#312FB4", // Dark purple text
+  
+  // Status icons on home screen
+  statusIcon: "#565E8C", // Purple-gray for battery, brightness, bluetooth, wifi icons
+  statusText: "#030514", // Dark text for status values (battery %, brightness %, etc)
+  
+  // Search icon color
+  searchIcon: "#4240D1", // Purple for search icon in light theme
 } as const

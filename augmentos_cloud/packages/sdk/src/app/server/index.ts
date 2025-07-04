@@ -137,6 +137,7 @@ export class AppServer {
     this.setupSettingsEndpoint();
     this.setupHealthCheck();
     this.setupToolCallEndpoint();
+    this.setupPhotoUploadEndpoint();
     this.setupPublicDir();
     this.setupShutdown();
   }
@@ -526,8 +527,105 @@ export class AppServer {
     // Run cleanup handlers
     this.cleanupHandlers.forEach(handler => handler());
   }
-}
 
+  /**
+   * 🎯 Setup Photo Upload Endpoint
+   * Creates a /photo-upload endpoint for receiving photos directly from ASG glasses
+   */
+  private setupPhotoUploadEndpoint(): void {
+    const multer = require('multer');
+
+    // Configure multer for handling multipart form data
+    const upload = multer({
+      storage: multer.memoryStorage(),
+      limits: {
+        fileSize: 10 * 1024 * 1024, // 10MB limit
+      },
+      fileFilter: (req: any, file: any, cb: any) => {
+        // Accept image files only
+        if (file.mimetype && file.mimetype.startsWith('image/')) {
+          cb(null, true);
+        } else {
+          cb(new Error('Only image files are allowed'), false);
+        }
+      }
+    });
+
+    this.app.post('/photo-upload', upload.single('photo'), async (req: any, res: any) => {
+      try {
+        const { requestId, type } = req.body;
+        const photoFile = req.file;
+
+        this.logger.info({ requestId, type }, `📸 Received photo upload: ${requestId}`);
+
+        if (!photoFile) {
+          this.logger.error({ requestId }, 'No photo file in upload');
+          return res.status(400).json({
+            success: false,
+            error: 'No photo file provided'
+          });
+        }
+
+        if (!requestId) {
+          this.logger.error('No requestId in photo upload');
+          return res.status(400).json({
+            success: false,
+            error: 'No requestId provided'
+          });
+        }
+
+        // Find the corresponding session that made this photo request
+        const session = this.findSessionByPhotoRequestId(requestId);
+        if (!session) {
+          this.logger.warn({ requestId }, 'No active session found for photo request');
+          return res.status(404).json({
+            success: false,
+            error: 'No active session found for this photo request'
+          });
+        }
+
+        // Create photo data object
+        const photoData = {
+          buffer: photoFile.buffer,
+          mimeType: photoFile.mimetype,
+          filename: photoFile.originalname || 'photo.jpg',
+          requestId,
+          size: photoFile.size,
+          timestamp: new Date()
+        };
+
+        // Deliver photo to the session
+        session.camera.handlePhotoReceived(photoData);
+
+        // Respond to ASG client
+        res.json({
+          success: true,
+          requestId,
+          message: 'Photo received successfully'
+        });
+
+      } catch (error) {
+        this.logger.error(error, '❌ Error handling photo upload');
+        res.status(500).json({
+          success: false,
+          error: 'Internal server error processing photo upload'
+        });
+      }
+    });
+  }
+
+  /**
+   * Find session that has a pending photo request for the given requestId
+   */
+  private findSessionByPhotoRequestId(requestId: string): AppSession | undefined {
+    for (const [sessionId, session] of this.activeSessions) {
+      if (session.camera.hasPhotoPendingRequest(requestId)) {
+        return session;
+      }
+    }
+    return undefined;
+  }
+}
 
 /**
  * @deprecated Use `AppServerConfig` instead. `TpaServerConfig` is deprecated and will be removed in a future version.
