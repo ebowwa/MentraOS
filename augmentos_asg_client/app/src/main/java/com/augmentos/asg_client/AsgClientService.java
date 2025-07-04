@@ -131,6 +131,10 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     private boolean isInRecoveryMode = false;
     private int missedHeartbeats = 0;
 
+    // Battery status tracking
+    private int batteryVoltage = -1;
+    private int batteryPercentage = -1;
+
     // Receiver for handling restart requests from OTA updater
     private BroadcastReceiver restartReceiver;
 
@@ -921,6 +925,23 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         }
     }
 
+    private void sendBatteryStatusOverBle() {
+        if (bluetoothManager != null && bluetoothManager.isConnected()) {
+            try {
+                JSONObject obj = new JSONObject();
+                obj.put("type", "battery_status");
+                obj.put("charging", batteryVoltage > 3900);
+                obj.put("percent", batteryPercentage);
+                String jsonString = obj.toString();
+                Log.d(TAG, "Formatted battery status message: " + jsonString);
+                bluetoothManager.sendData(jsonString.getBytes());
+                Log.d(TAG, "Sent battery status via BLE");
+            } catch (JSONException e) {
+                Log.e(TAG, "Error creating battery status JSON", e);
+            }
+        }
+    }
+
     /**
      * Send WiFi scan results to AugmentOS Core via Bluetooth
      */
@@ -1116,9 +1137,9 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                     dataToProcess = new JSONObject(dataPayload);
                     Log.d(TAG, "📦 Successfully parsed payload as JSON");
                 } catch (JSONException e) {
-                    Log.d(TAG, "📦 Payload is not valid JSON, using as-is");
-                    // If not valid JSON, continue with original json object
-                    parseK900Command(dataPayload);
+                    Log.d(TAG, "📦 Payload is not valid JSON, treating as ODM format");
+                    // If not valid JSON, it's ODM format - pass the full JSON object
+                    parseK900Command(json);
                     return;
                 }
             }
@@ -1578,6 +1599,60 @@ public class AsgClientService extends Service implements NetworkStateListener, B
             default:
                 Log.d(TAG, "📦 Unknown payload: " + command);
                 break;
+        }
+    }
+
+    // Overloaded version for ODM format JSON commands
+    public void parseK900Command(JSONObject json) {
+        try {
+            String command = json.optString("C", "");
+            JSONObject bData = json.optJSONObject("B");
+            
+            switch (command) {
+                case "cs_pho":
+                    handleButtonPress(false);
+                    break;
+
+                case "hm_htsp":
+                case "mh_htsp":
+                    Log.d(TAG, "📦 Payload is hm_htsp or mh_htsp");
+                    networkManager.startHotspot("Mentra Live", "MentraLive");
+                    break;
+
+                case "cs_vdo":
+                    handleButtonPress(true);
+                    break;
+
+                case "hm_batv":
+                    Log.d(TAG, "got a hm_batv with data");
+                    if (bData != null) {
+                        int newBatteryPercentage = bData.optInt("pt", -1);
+                        int newBatteryVoltage = bData.optInt("vt", -1);
+                        
+                        if (newBatteryPercentage != -1) {
+                            this.batteryPercentage = newBatteryPercentage;
+                            Log.d(TAG, "🔋 Battery percentage: " + batteryPercentage + "%");
+                        }
+                        if (newBatteryVoltage != -1) {
+                            this.batteryVoltage = newBatteryVoltage;
+                            Log.d(TAG, "🔋 Battery voltage: " + batteryVoltage + "mV");
+                        }
+                        
+                        // Send battery status over BLE if we have valid data
+                        if (batteryPercentage != -1 || batteryVoltage != -1) {
+                            sendBatteryStatusOverBle();
+                        }
+                    } else {
+                        Log.w(TAG, "hm_batv received but no B field data");
+                    }
+                    break;
+
+                default:
+                    Log.d(TAG, "📦 Unknown ODM payload: " + command);
+                    break;
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error processing ODM command", e);
         }
     }
 

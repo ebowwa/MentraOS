@@ -38,6 +38,7 @@ import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.RtmpS
 import com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses.SmartGlassesDevice;
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.SmartGlassesConnectionState;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesVersionInfoEvent;
+import com.augmentos.augmentos_core.smarterglassesmanager.utils.K900ProtocolUtils;
 
 import org.greenrobot.eventbus.EventBus;
 import org.json.JSONException;
@@ -974,86 +975,12 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         if (size >= 7 && data[0] == 0x23 && data[1] == 0x23) {
             Log.d(TAG, "Thread-" + threadId + ": 🔍 DETECTED K900 PROTOCOL FORMAT (## prefix)");
 
-            // Extract the command type and length
-            byte commandType = data[2];
-
-            // Dynamically choose endianness based on connected device name
-            int payloadLength;
-            if (connectedDevice != null && connectedDevice.getName() != null) {
-                String deviceName = connectedDevice.getName();
-                if (deviceName.startsWith("XyBLE_") || deviceName.startsWith("MENTRA_LIVE_BLE") || deviceName.startsWith("MENTRA_LIVE_BT")) {
-                    // K900 device - use big-endian (most significant byte first)
-                    payloadLength = ((data[3] & 0xFF) << 8) | (data[4] & 0xFF);
-                    Log.d(TAG, "Thread-" + threadId + ": 🔍 Using big-endian for K900 device: " + deviceName);
-                } else {
-                    // Standard device (Xy_A) - use little-endian (least significant byte first)
-                    payloadLength = ((data[4] & 0xFF) << 8) | (data[3] & 0xFF);
-                    Log.d(TAG, "Thread-" + threadId + ": 🔍 Using little-endian for Standard device: " + deviceName);
-                }
+            // Use K900ProtocolUtils to process the protocol data
+            JSONObject json = K900ProtocolUtils.processReceivedBytesToJson(data);
+            if (json != null) {
+                processJsonMessage(json);
             } else {
-                // Default to big-endian if we can't determine the device type
-                payloadLength = ((data[3] & 0xFF) << 8) | (data[4] & 0xFF);
-                Log.d(TAG, "Thread-" + threadId + ": 🔍 Using big-endian (default) - no device name available");
-            }
-
-            Log.d(TAG, "Thread-" + threadId + ": 🔍 Command type: 0x" + String.format("%02X", commandType) +
-                  ", Payload length: " + payloadLength);
-
-            // Verify expected message format
-            if (commandType == 0x30) { // 0x30 is the command type for string/JSON data
-                Log.d(TAG, "Thread-" + threadId + ": 🔍 Command type 0x30 indicates JSON data");
-
-                // Extract the payload
-                if (size >= payloadLength + 7) { // Make sure we have enough data
-                    // Check for end markers
-                    if (data[5 + payloadLength] == 0x24 && data[6 + payloadLength] == 0x24) {
-                        // Extract the payload
-                        byte[] payload = Arrays.copyOfRange(data, 5, 5 + payloadLength);
-
-                        // Convert to string
-                        String payloadStr = new String(payload, StandardCharsets.UTF_8);
-                        Log.d(TAG, "Thread-" + threadId + ": 🔍 Extracted payload: " + payloadStr);
-
-                        // Check if it's JSON
-                        if (payloadStr.startsWith("{") && payloadStr.endsWith("}")) {
-                            Log.d(TAG, "Thread-" + threadId + ": 🔍 Payload is valid JSON");
-                            try {
-                                JSONObject json = new JSONObject(payloadStr);
-
-                                // Check if this is C-wrapped format {"C": "..."}
-                                if (json.has("C")){
-                                    String innerContent = json.optString("C", "");
-                                    Log.d(TAG, "Thread-" + threadId + ": 🔍 Detected C-wrapped format, inner content: " + innerContent);
-
-                                    // Try to parse the inner content as JSON
-                                    try {
-                                        JSONObject innerJson = new JSONObject(innerContent);
-                                        processJsonMessage(innerJson);
-                                    } catch (JSONException e) {
-                                        Log.d(TAG, "Thread-" + threadId + ": Inner content is not JSON, processing raw inner content");
-                                        // If inner content is not JSON, process the outer JSON
-                                        processJsonMessage(json);
-                                    }
-                                } else {
-                                    // Not C-wrapped, process the JSON directly
-                                    processJsonMessage(json);
-                                }
-                            } catch (JSONException e) {
-                                Log.e(TAG, "Thread-" + threadId + ": ❌ Error parsing JSON payload: " + e.getMessage());
-                            }
-                        } else {
-                            Log.w(TAG, "Thread-" + threadId + ": ⚠️ Payload is not valid JSON: " + payloadStr);
-                        }
-                    } else {
-                        Log.e(TAG, "Thread-" + threadId + ": ❌ End markers ($$) not found where expected");
-                    }
-                } else {
-                    Log.e(TAG, "Thread-" + threadId + ": ❌ Received data size (" + size +
-                         ") is less than expected size (" + (payloadLength + 7) + ")");
-                }
-            } else {
-                // Handle other command types if needed
-                Log.d(TAG, "Thread-" + threadId + ": 🔍 Non-JSON command type: 0x" + String.format("%02X", commandType));
+                Log.w(TAG, "Thread-" + threadId + ": Failed to parse K900 protocol data");
             }
 
             return; // Exit after processing K900 protocol format
@@ -1222,9 +1149,9 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
 
             case "battery_status":
                 // Process battery status
-                int level = json.optInt("level", batteryLevel);
+                int percent = json.optInt("percent", batteryLevel);
                 boolean charging = json.optBoolean("charging", isCharging);
-                updateBatteryStatus(level, charging);
+                updateBatteryStatus(percent, charging);
                 break;
 
             case "pong":
@@ -2058,57 +1985,18 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             cmdObject.put("B", "");     // Add the body
             String jsonStr = cmdObject.toString();
             Log.d(TAG, "Sending hotspot command: " + jsonStr);
-            byte[] packedData = packCommand(jsonStr);
+            byte[] packedData = K900ProtocolUtils.packDataToK900(jsonStr.getBytes(StandardCharsets.UTF_8), K900ProtocolUtils.CMD_TYPE_STRING);
             queueData(packedData);
 
         } catch (JSONException e) {
             Log.e(TAG, "Error creating video command", e);
         }
     }
-
+    
+    
     /**
-     * Simple implementation of the command packing function
-     * Adds start/end markers and length information to match K900 protocol
-     */
-    private byte[] packCommand(String jsonData) {
-        byte[] jsonBytes = jsonData.getBytes(StandardCharsets.UTF_8);
-        int jsonLength = jsonBytes.length;
-
-        // Command structure: ## + type + length(2 bytes) + data + $$
-        byte[] result = new byte[jsonLength + 7]; // 2(start) + 1(type) + 2(length) + data + 2(end)
-
-        // Start code ##
-        result[0] = 0x23; // #
-        result[1] = 0x23; // #
-
-        // Command type (0x30 for string data - FIXED based on K900Server code)
-        result[2] = 0x30; // Changed from 0x01 to 0x30 to match expected value
-
-        // Length (2 bytes, little-endian)
-        result[3] = (byte)(jsonLength & 0xFF);
-        result[4] = (byte)((jsonLength >> 8) & 0xFF);
-
-        // Copy the JSON data
-        System.arraycopy(jsonBytes, 0, result, 5, jsonLength);
-
-        // End code $$
-        result[5 + jsonLength] = 0x24; // $
-        result[6 + jsonLength] = 0x24; // $
-
-        // Debug log the formatted data (FULL output)
-        StringBuilder hexDump = new StringBuilder();
-        for (int i = 0; i < result.length; i++) {
-            hexDump.append(String.format("%02X ", result[i]));
-        }
-        Log.d(TAG, "Packed data (" + result.length + " bytes) FULL HEX: " + hexDump.toString());
-
-        return result;
-    }
-
-    /**
-     * Send data directly to the glasses using the C field of JSON
-     * This method provides a simple way to transmit arbitrary data through the BLE connection
-     * utilizing the discovery that the BES2700 MCU passes messages with C field to the SOC
+     * Send data directly to the glasses using the K900 protocol utility.
+     * This method uses K900ProtocolUtils.packJsonToK900 to handle C-wrapping and protocol formatting.
      *
      * @param data The string data to be sent to the glasses
      */
@@ -2119,29 +2007,16 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         }
 
         try {
-            // Create a simple JSON object with just the C field containing our data
-            JSONObject jsonObject = new JSONObject();
-            jsonObject.put("C", data);  // The C field is used to carry our data payload
-            jsonObject.put("W", 1);
-            // Convert to string
-            String jsonStr = jsonObject.toString();
-            Log.d(TAG, "Sending data to glasses: " + jsonStr);
+            // Use K900ProtocolUtils to handle C-wrapping and protocol formatting
+            Log.d(TAG, "Sending data to glasses: " + data);
 
-            // Log the UTF-8 bytes of the original string for comparison
-            byte[] jsonBytes = jsonStr.getBytes(StandardCharsets.UTF_8);
-            StringBuilder bytesHex = new StringBuilder();
-            for (byte b : jsonBytes) {
-                bytesHex.append(String.format("%02X ", b));
-            }
-            Log.d(TAG, "Data JSON as bytes (" + jsonBytes.length + " bytes): " + bytesHex.toString());
-
-            // Format with start/end codes using the same packing function
-            byte[] packedData = packCommand(jsonStr);
+            // Pack the data using the centralized utility
+            byte[] packedData = K900ProtocolUtils.packJsonToK900(data);
 
             // Queue the data for sending
             queueData(packedData);
 
-        } catch (JSONException e) {
+        } catch (Exception e) {
             Log.e(TAG, "Error creating data JSON", e);
         }
     }

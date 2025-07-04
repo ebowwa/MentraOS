@@ -6,6 +6,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.util.Log;
+import android.os.Build;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -101,6 +102,78 @@ public class K900ProtocolUtils {
         return result;
     }
     
+    /**
+     * Pack raw byte data with K900 BES2700 protocol format for phone-to-device communication
+     * Format: ## + command_type + length(2bytes) + data + $$
+     * Uses little-endian byte order for length field
+     *
+     * @param data The raw data to pack
+     * @param cmdType The command type (use CMD_TYPE_STRING for JSON)
+     * @return Byte array with packed data according to protocol format
+     */
+    public static byte[] packDataToK900(byte[] data, byte cmdType) {
+        if (data == null) {
+            return null;
+        }
+
+        int dataLength = data.length;
+
+        // Command structure: ## + type + length(2 bytes) + data + $$
+        byte[] result = new byte[dataLength + 7]; // 2(start) + 1(type) + 2(length) + data + 2(end)
+
+        // Start code ##
+        result[0] = CMD_START_CODE[0]; // #
+        result[1] = CMD_START_CODE[1]; // #
+
+        // Command type
+        result[2] = cmdType;
+
+        // Length (2 bytes, little-endian for phone-to-device)
+        result[3] = (byte) (dataLength & 0xFF);        // LSB first
+        result[4] = (byte) ((dataLength >> 8) & 0xFF); // MSB second
+
+        // Copy the data
+        System.arraycopy(data, 0, result, 5, dataLength);
+
+        // End code $$
+        result[5 + dataLength] = CMD_END_CODE[0]; // $
+        result[6 + dataLength] = CMD_END_CODE[1]; // $
+
+        return result;
+    }
+
+    /**
+     * Pack a JSON string for phone-to-K900 device communication
+     * 1. Wrap with C-field: {"C": jsonData}
+     * 2. Then pack with BES2700 protocol using little-endian: ## + type + length + {"C": jsonData} + $$
+     *
+     * @param jsonData The JSON string to pack
+     * @return Byte array with packed data according to protocol format
+     */
+    public static byte[] packJsonToK900(String jsonData) {
+        if (jsonData == null) {
+            return null;
+        }
+
+        try {
+            // First wrap with C-field
+            JSONObject wrapper = new JSONObject();
+            wrapper.put(FIELD_C, jsonData);
+            wrapper.put("W", 1); // Add W field as seen in MentraLiveSGC
+
+            // Convert to string
+            String wrappedJson = wrapper.toString();
+
+            // Then pack with BES2700 protocol format using little-endian
+            byte[] jsonBytes = wrappedJson.getBytes(StandardCharsets.UTF_8);
+            return packDataToK900(jsonBytes, CMD_TYPE_STRING);
+
+        } catch (JSONException e) {
+            android.util.Log.e("K900ProtocolUtils", "Error creating JSON wrapper for K900", e);
+            return null;
+        }
+    }
+
     /**
      * Formats a standard ASG-client JSON message for transmission to MentraLiveSGC
      * This does both:
@@ -229,6 +302,29 @@ public class K900ProtocolUtils {
         return payload;
     }
     
+    /**
+     * Extract payload from K900 protocol formatted data received from device
+     * Uses little-endian byte order for length field
+     * @return Raw payload data or null if format is invalid
+     */
+    public static byte[] extractPayloadFromK900(byte[] protocolData) {
+        if (!isK900ProtocolFormat(protocolData) || protocolData.length < 7) {
+            return null;
+        }
+
+        // Extract length (little-endian for device-to-phone)
+        int length = (protocolData[3] & 0xFF) | ((protocolData[4] & 0xFF) << 8);
+
+        if (length + 7 > protocolData.length) {
+            return null; // Invalid length
+        }
+
+        // Extract payload
+        byte[] payload = new byte[length];
+        System.arraycopy(protocolData, 5, payload, 0, length);
+        return payload;
+    }
+
     /**
      * Process received bytes from Bluetooth into a JSON object
      * Handles K900 protocol format detection, payload extraction, and C-field unwrapping
@@ -410,8 +506,15 @@ public class K900ProtocolUtils {
                 };
                 
                 // Register for any response from our probe
-                context.registerReceiver(testReceiver, 
-                        new IntentFilter("com.xy.xsetting.response"));
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    context.registerReceiver(testReceiver,
+                            new IntentFilter("com.xy.xsetting.response"),
+                            Context.RECEIVER_NOT_EXPORTED);
+                } else {
+                    context.registerReceiver(testReceiver,
+                            new IntentFilter("com.xy.xsetting.response"),
+                            Context.RECEIVER_NOT_EXPORTED);
+                }
                 
                 // Send a test probe
                 Intent testIntent = new Intent("com.xy.xsetting.action");
