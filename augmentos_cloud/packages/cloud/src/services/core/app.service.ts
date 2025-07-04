@@ -47,6 +47,14 @@ if (process.env.NODE_ENV !== 'production' || process.env.DEBUG_APPS === 'true') 
   logger.info('Debug mode enabled - adding debug apps to preinstalled list:', PRE_INSTALLED_DEBUG);
 }
 
+// If we're in test mode, we don't want to pre-install any apps. (used with the headless client for testing)
+if (process.env.NODE_ENV === 'test') {
+  logger.info('Test mode - no pre-installed apps');
+  while (PRE_INSTALLED.length > 0) {
+    PRE_INSTALLED.pop(); // Clear the pre-installed apps for testing
+  }
+}
+
 /**
  * Returns the list of apps that should be auto-installed for users on this server instance.
  * This matches the environment - core apps only in production, core + debug in development.
