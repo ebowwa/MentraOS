@@ -80,6 +80,10 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     public static final String ACTION_RESTART_SERVICE = "com.augmentos.asg_client.ACTION_RESTART_SERVICE";
     public static final String ACTION_RESTART_COMPLETE = "com.augmentos.asg_client.ACTION_RESTART_COMPLETE";
     public static final String ACTION_RESTART_CAMERA = "com.augmentos.asg_client.ACTION_RESTART_CAMERA";
+    
+    // OTA Update progress actions
+    public static final String ACTION_DOWNLOAD_PROGRESS = "com.augmentos.otaupdater.ACTION_DOWNLOAD_PROGRESS";
+    public static final String ACTION_INSTALLATION_PROGRESS = "com.augmentos.otaupdater.ACTION_INSTALLATION_PROGRESS";
 
     // Notification channel info
     private final String notificationAppName = "ASG Client";
@@ -148,6 +152,9 @@ public class AsgClientService extends Service implements NetworkStateListener, B
 
     // Receiver for handling restart requests from OTA updater
     private BroadcastReceiver restartReceiver;
+    
+    // Receiver for handling OTA update progress from OTA updater
+    private BroadcastReceiver otaProgressReceiver;
 
     // ---------------------------------------------
     // ServiceConnection for the AugmentosService
@@ -221,6 +228,9 @@ public class AsgClientService extends Service implements NetworkStateListener, B
 
         // Register restart receiver
         registerRestartReceiver();
+
+        // Register OTA progress receiver
+        registerOtaProgressReceiver();
 
         // Initialize the network manager
         initializeNetworkManager();
@@ -705,6 +715,17 @@ public class AsgClientService extends Service implements NetworkStateListener, B
             Log.w(TAG, "Restart receiver was not registered");
         }
 
+        // Unregister OTA progress receiver
+        try {
+            if (otaProgressReceiver != null) {
+                unregisterReceiver(otaProgressReceiver);
+                Log.d(TAG, "Unregistered OTA progress receiver");
+            }
+        } catch (IllegalArgumentException e) {
+            // Receiver was not registered
+            Log.w(TAG, "OTA progress receiver was not registered");
+        }
+
         // If still bound to AugmentosService, unbind
         if (isAugmentosBound) {
             unbindService(augmentosConnection);
@@ -918,6 +939,64 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     }
 
     /**
+     * Send download progress to connected phone via BLE
+     */
+    private void sendDownloadProgressOverBle(String status, int progress, long bytesDownloaded, long totalBytes, String errorMessage, long timestamp) {
+        if (bluetoothManager != null && bluetoothManager.isConnected()) {
+            try {
+                JSONObject downloadProgress = new JSONObject();
+                downloadProgress.put("type", "ota_download_progress");
+                downloadProgress.put("status", status);
+                downloadProgress.put("progress", progress);
+                downloadProgress.put("bytes_downloaded", bytesDownloaded);
+                downloadProgress.put("total_bytes", totalBytes);
+                if (errorMessage != null) {
+                    downloadProgress.put("error_message", errorMessage);
+                }
+                downloadProgress.put("timestamp", timestamp);
+                
+                // Convert to string and send via BLE
+                String jsonString = downloadProgress.toString();
+                Log.d(TAG, "📥 Sending download progress via BLE: " + status + " - " + progress + "%");
+                bluetoothManager.sendData(jsonString.getBytes());
+                
+            } catch (JSONException e) {
+                Log.e(TAG, "Error creating download progress JSON", e);
+            }
+        } else {
+            Log.d(TAG, "Cannot send download progress - not connected to BLE device");
+        }
+    }
+
+    /**
+     * Send installation progress to connected phone via BLE
+     */
+    private void sendInstallationProgressOverBle(String status, String apkPath, String errorMessage, long timestamp) {
+        if (bluetoothManager != null && bluetoothManager.isConnected()) {
+            try {
+                JSONObject installationProgress = new JSONObject();
+                installationProgress.put("type", "ota_installation_progress");
+                installationProgress.put("status", status);
+                installationProgress.put("apk_path", apkPath);
+                if (errorMessage != null) {
+                    installationProgress.put("error_message", errorMessage);
+                }
+                installationProgress.put("timestamp", timestamp);
+                
+                // Convert to string and send via BLE
+                String jsonString = installationProgress.toString();
+                Log.d(TAG, "🔧 Sending installation progress via BLE: " + status + " - " + apkPath);
+                bluetoothManager.sendData(jsonString.getBytes());
+                
+            } catch (JSONException e) {
+                Log.e(TAG, "Error creating installation progress JSON", e);
+            }
+        } else {
+            Log.d(TAG, "Cannot send installation progress - not connected to BLE device");
+        }
+    }
+
+    /**
      * Testing method that manually starts the WiFi setup process
      * This can be called from an activity for testing purposes
      */
@@ -1097,6 +1176,12 @@ public class AsgClientService extends Service implements NetworkStateListener, B
             }
 
             sendVersionInfo();
+
+            // Start mock OTA progress simulation after 5 seconds
+            // new Handler(Looper.getMainLooper()).postDelayed(() -> {
+            //     Log.d(TAG, "🚀 Starting mock OTA progress simulation");
+            //     startMockOtaProgressSimulation();
+            // }, 2000); // 5 second delay
 
             // Notify any components that care about bluetooth status
             // For example, you could send a broadcast, update UI, etc.
@@ -2285,6 +2370,74 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         }
     }
 
+    /**
+     * Register the OTA progress receiver to handle download and installation progress from OTA updater
+     */
+    private void registerOtaProgressReceiver() {
+        if (otaProgressReceiver == null) {
+            otaProgressReceiver = new BroadcastReceiver() {
+                @Override
+                public void onReceive(Context context, Intent intent) {
+                    String action = intent.getAction();
+                    
+                    if (ACTION_DOWNLOAD_PROGRESS.equals(action)) {
+                        handleDownloadProgress(intent);
+                    } else if (ACTION_INSTALLATION_PROGRESS.equals(action)) {
+                        handleInstallationProgress(intent);
+                    }
+                }
+            };
+
+            IntentFilter filter = new IntentFilter();
+            filter.addAction(ACTION_DOWNLOAD_PROGRESS);
+            filter.addAction(ACTION_INSTALLATION_PROGRESS);
+            registerReceiver(otaProgressReceiver, filter);
+            Log.d(TAG, "Registered OTA progress receiver");
+        }
+    }
+
+    /**
+     * Handle download progress events from OTA updater
+     */
+    private void handleDownloadProgress(Intent intent) {
+        try {
+            String status = intent.getStringExtra("status");
+            int progress = intent.getIntExtra("progress", 0);
+            long bytesDownloaded = intent.getLongExtra("bytes_downloaded", 0);
+            long totalBytes = intent.getLongExtra("total_bytes", 0);
+            String errorMessage = intent.getStringExtra("error_message");
+            long timestamp = intent.getLongExtra("timestamp", System.currentTimeMillis());
+
+            Log.i(TAG, "📥 Received download progress: " + status + " - " + progress + "%");
+
+            // Forward to BLE
+            sendDownloadProgressOverBle(status, progress, bytesDownloaded, totalBytes, errorMessage, timestamp);
+
+        } catch (Exception e) {
+            Log.e(TAG, "Error handling download progress", e);
+        }
+    }
+
+    /**
+     * Handle installation progress events from OTA updater
+     */
+    private void handleInstallationProgress(Intent intent) {
+        try {
+            String status = intent.getStringExtra("status");
+            String apkPath = intent.getStringExtra("apk_path");
+            String errorMessage = intent.getStringExtra("error_message");
+            long timestamp = intent.getLongExtra("timestamp", System.currentTimeMillis());
+
+            Log.i(TAG, "🔧 Received installation progress: " + status + " - " + apkPath);
+
+            // Forward to BLE
+            sendInstallationProgressOverBle(status, apkPath, errorMessage, timestamp);
+
+        } catch (Exception e) {
+            Log.e(TAG, "Error handling installation progress", e);
+        }
+    }
+
 
     /**
      * Example method to send status data back to the connected device
@@ -2548,6 +2701,52 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         }
 
         return true;
+    }
+
+    /**
+     * Start mock OTA progress simulation for testing the complete flow
+     */
+    private void startMockOtaProgressSimulation() {
+        Log.d(TAG, "🎭 Starting mock OTA progress simulation");
+
+        // Simulate download progress from 0% to 100% every 5%
+        new Thread(() -> {
+            try {
+                // Step 1: Download Started
+                Log.d(TAG, "📥 Mock: Download Started");
+                sendDownloadProgressOverBle("STARTED", 0, 0, 10000000, null, System.currentTimeMillis());
+                Thread.sleep(2000);
+                
+                // Step 2: Download Progress (every 5% from 5% to 95%)
+                for (int progress = 5; progress <= 95; progress += 5) {
+                    long bytesDownloaded = (progress * 10000000L) / 100;
+                    Log.d(TAG, "📥 Mock: Download Progress " + progress + "%");
+                    sendDownloadProgressOverBle("PROGRESS", progress, bytesDownloaded, 10000000, null, System.currentTimeMillis());
+                    Thread.sleep(500); // 1000ms between progress updates
+                }
+                
+                // Step 3: Download Finished
+                Log.d(TAG, "📥 Mock: Download Finished");
+                sendDownloadProgressOverBle("FINISHED", 100, 10000000, 10000000, null, System.currentTimeMillis());
+                Thread.sleep(1000);
+                
+                // Step 4: Installation Started
+                Log.d(TAG, "🔧 Mock: Installation Started");
+                sendInstallationProgressOverBle("STARTED", "/data/app/com.augmentos.otaupdater-1.apk", null, System.currentTimeMillis());
+                Thread.sleep(2000);
+                
+                // Step 5: Installation Finished
+                Log.d(TAG, "🔧 Mock: Installation Finished");
+                sendInstallationProgressOverBle("FINISHED", "/data/app/com.augmentos.otaupdater-1.apk", null, System.currentTimeMillis());
+                
+                Log.d(TAG, "✅ Mock OTA progress simulation completed successfully");
+                
+            } catch (InterruptedException e) {
+                Log.e(TAG, "Mock OTA progress simulation interrupted", e);
+            } catch (Exception e) {
+                Log.e(TAG, "Error in mock OTA progress simulation", e);
+            }
+        }).start();
     }
 
     /**
