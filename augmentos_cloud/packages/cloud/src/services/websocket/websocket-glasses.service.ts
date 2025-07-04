@@ -237,7 +237,7 @@ export class GlassesWebSocketService {
           await this.handleRequestSettings(userSession, message as RequestSettings);
           break;
 
-        case GlassesToCloudMessageType.AUGMENTOS_SETTINGS_UPDATE_REQUEST:
+        case GlassesToCloudMessageType.MENTRAOS_SETTINGS_UPDATE_REQUEST:
           await this.handleMentraOSSettingsUpdateRequest(userSession, message as MentraosSettingsUpdateRequest);
           break;
 
