@@ -126,8 +126,8 @@ public class K900BluetoothManager extends BaseBluetoothManager implements Serial
                     for (int i = 0; i < Math.min(data.length, 50); i++) {
                         hexDump.append(String.format("%02X ", data[i]));
                     }
-                    Log.e(TAG, "📦 AFTER C-WRAPPING & PROTOCOL FORMATTING (first 50 bytes): " + hexDump.toString());
-                    Log.e(TAG, "📦 Total formatted length: " + data.length + " bytes");
+                    //Log.e(TAG, "📦 AFTER C-WRAPPING & PROTOCOL FORMATTING (first 50 bytes): " + hexDump.toString());
+                    //Log.e(TAG, "📦 Total formatted length: " + data.length + " bytes");
                 } else {
                     // Otherwise just apply protocol formatting
                     Log.e(TAG, "📦 Data already C-wrapped or not JSON: " + originalData);
