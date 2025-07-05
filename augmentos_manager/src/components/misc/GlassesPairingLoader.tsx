@@ -91,7 +91,8 @@ const GlassesPairingLoader: React.FC<GlassesPairingLoaderProps> = ({glassesModel
   let glassesImage = getGlassesImage(glassesModelName)
   if (glassesModelName && (glassesModelName === "Even Realities G1" || glassesModelName === "evenrealities_g1" || glassesModelName === "g1")) {
     // For pairing, we don't have style/color info yet, so use defaults
-    glassesImage = getEvenRealitiesG1Image("Round", "Grey", "folded", "l", theme.isDark)
+    // If battery level is available in props or context, pass it; otherwise, pass undefined
+    glassesImage = getEvenRealitiesG1Image("Round", "Grey", "folded", "l", theme.isDark, undefined)
   }
 
   return (

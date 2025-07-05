@@ -209,7 +209,7 @@ export const ConnectedGlasses: React.FC<ConnectedGlassesProps> = ({showTitle}) =
         }
       }
       
-      image = getEvenRealitiesG1Image(style, color, state, "l", theme.isDark)
+      image = getEvenRealitiesG1Image(style, color, state, "l", theme.isDark, status.glasses_info?.case_battery_level)
     } else {
       // For other glasses, use the existing logic
       if (!status.glasses_info?.case_removed) {
@@ -270,7 +270,7 @@ export function SplitDeviceInfo() {
       }
     }
     
-    glassesImage = getEvenRealitiesG1Image(style, color, state, "l", theme.isDark)
+    glassesImage = getEvenRealitiesG1Image(style, color, state, "l", theme.isDark, status.glasses_info?.case_battery_level)
   } else {
     // Only show case image if glasses are actually connected (not just paired)
     if (status.glasses_info?.model_name && !status.glasses_info?.case_removed) {
