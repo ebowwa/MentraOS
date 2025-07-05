@@ -45,6 +45,8 @@ const DEFAULT_AUGMENTOS_SETTINGS = {
   useOnboardMic: false,
   contextualDashboard: true,
   headUpAngle: 20,
+  dashboardHeight: 4,
+  dashboardDepth: 5,
   brightness: 50,
   autoBrightness: false,
   sensingEnabled: true,
@@ -251,29 +253,26 @@ export class GlassesWebSocketService {
             const statusObj = coreStatusUpdate.status as any;
             const coreInfo = statusObj.status.core_info;
             const connectedGlasses = statusObj.status.connected_glasses;
-            logger.debug({ service: SERVICE_NAME, coreInfo, connectedGlasses }, 'Core status update received');
+            const glassesSettings = statusObj.status.glasses_settings;
+            logger.debug({ coreInfo, statusObj, coreStatusUpdate, connectedGlasses, glasses_settings: glassesSettings }, 'Core status update received');
 
-            if (!coreInfo || !connectedGlasses) {
+            if (!coreInfo || !connectedGlasses || !glassesSettings) {
               userSession.logger.error('Invalid core status update format - missing required fields');
               break;
-            }
-;
-
-            let brightness = statusObj.status.glasses_settings.brightness;
-            const glassesSettings = statusObj.status.glasses_settings;
+            };
 
             // Map core status fields to augmentos settings
             const newSettings = {
               useOnboardMic: coreInfo.force_core_onboard_mic,
               contextualDashboard: coreInfo.contextual_dashboard_enabled,
               metricSystemEnabled: coreInfo.metric_system_enabled,
-              headUpAngle: connectedGlasses.head_up_angle,
-
+              
               // Glasses settings.
               brightness: glassesSettings.brightness,
               autoBrightness: glassesSettings.auto_brightness,
-              dashboard_height: glassesSettings.dashboard_height,
-              dashboard_depth: glassesSettings.dashboard_depth,
+              dashboardHeight: glassesSettings.dashboard_height,
+              dashboardDepth: glassesSettings.dashboard_depth,
+              headUpAngle: glassesSettings.head_up_angle,
 
               sensingEnabled: coreInfo.sensing_enabled,
               alwaysOnStatusBar: coreInfo.always_on_status_bar_enabled,
@@ -281,35 +280,35 @@ export class GlassesWebSocketService {
               bypassAudioEncoding: coreInfo.bypass_audio_encoding_for_debugging,
             };
 
-            logger.debug("🔥🔥🔥: newSettings:", newSettings);
+            logger.debug({ newSettings }, "🔥🔥🔥: newSettings:");
 
             // Find or create the user
             const user = await User.findOrCreateUser(userSession.userId);
 
             // Get current settings before update
             const currentSettingsBeforeUpdate = JSON.parse(JSON.stringify(user.augmentosSettings));
-            userSession.logger.info('Current settings before update:', currentSettingsBeforeUpdate);
+            userSession.logger.info({ currentSettingsBeforeUpdate }, 'Current settings before update:');
 
-            logger.debug("🔥🔥🔥: currentSettingsBeforeUpdate:", currentSettingsBeforeUpdate);
-            logger.debug("🔥🔥🔥: newSettings:", newSettings);
+            logger.debug({ currentSettingsBeforeUpdate }, "🔥🔥🔥: currentSettingsBeforeUpdate:");
+            logger.debug({ newSettings }, "🔥🔥🔥: newSettings:");
 
             // Check if anything actually changed
             const changedKeys = this.getChangedKeys(currentSettingsBeforeUpdate, newSettings);
-            logger.debug("🔥🔥🔥: changedKeys:", changedKeys);
+            logger.debug({ changedKeys }, "🔥🔥🔥: changedKeys:");
             if (changedKeys.length === 0) {
-              userSession.logger.info('No changes detected in settings from core status update');
+              userSession.logger.info({ changedKeys }, 'No changes detected in settings from core status update');
             } else {
-              userSession.logger.info('Changes detected in settings from core status update:', {
+              userSession.logger.info({
                 changedFields: changedKeys.map(key => ({
                   key,
                   from: `${(currentSettingsBeforeUpdate as Record<string, any>)[key]} (${typeof (currentSettingsBeforeUpdate as Record<string, any>)[key]})`,
                   to: `${(newSettings as Record<string, any>)[key]} (${typeof (newSettings as Record<string, any>)[key]})`
                 }))
-              });
+              }, 'Changes detected in settings from core status update:');
               // Update the settings in the database before broadcasting
               try {
                 await user.updateAugmentosSettings(newSettings);
-                userSession.logger.info('Updated AugmentOS settings in the database.');
+                userSession.logger.info({ newSettings }, 'Updated AugmentOS settings in the database.');
               } catch (dbError) {
                 userSession.logger.error(dbError, 'Failed to update AugmentOS settings in the database:');
                 return; // Do not broadcast if DB update fails
@@ -560,7 +559,7 @@ export class GlassesWebSocketService {
     try {
       const user = await User.findByEmail(userSession.userId);
       const userSettings = user?.augmentosSettings || DEFAULT_AUGMENTOS_SETTINGS;
-
+      userSession.logger.debug({ service: SERVICE_NAME, userSettings, message, user_augmentosSettings: user?.augmentosSettings, default_augmentosSettings: DEFAULT_AUGMENTOS_SETTINGS }, `⚙️ Current AugmentOS settings for user ${userSession.userId}`);
       const settingsMessage: CloudToGlassesMessage = {
         type: CloudToGlassesMessageType.SETTINGS_UPDATE,
         sessionId: userSession.sessionId,
