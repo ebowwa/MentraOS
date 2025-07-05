@@ -36,6 +36,7 @@ import {loadSetting} from "@/utils/SettingsHelper"
 import {SETTINGS_KEYS} from "@/consts"
 import {isDeveloperBuildOrTestflight} from "@/utils/buildDetection"
 import {SvgXml} from "react-native-svg"
+import OtaProgressSection from "./OtaProgressSection"
 
 // Icon components defined directly in this file to avoid path resolution issues
 interface CaseIconProps {
@@ -441,6 +442,11 @@ export default function DeviceSettings() {
           )} */}
           </View>
         )}
+
+      {/* OTA Progress Section - Only show for Mentra Live glasses */}
+      {status.glasses_info?.model_name?.toLowerCase().includes("mentra live") && (
+        <OtaProgressSection otaProgress={status.ota_progress} />
+      )}
 
       <RouteButton
         label={translate("settings:dashboardSettings")}
