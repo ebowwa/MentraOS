@@ -14,7 +14,7 @@ import AVFoundation
 
 struct ViewState {
   var topText: String
-  var bottomText: String
+  var bottomText: String	
   var layoutType: String
   var text: String
   var eventStr: String
@@ -1363,7 +1363,7 @@ struct ViewState {
     self.isSearching = true
     handleRequestStatus()// update the UI
 
-    print("deviceName: \(deviceName) selfDeviceName: \(self.deviceName)")
+    print("deviceName: \(deviceName) selfDeviceName: \(self.deviceName) defaultWearable: \(self.defaultWearable)")
 
     Task {
       disconnect()

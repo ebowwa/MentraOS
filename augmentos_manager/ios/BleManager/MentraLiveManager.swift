@@ -198,6 +198,8 @@ extension MentraLiveManager: CBPeripheralDelegate {
     }
     
     func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
+      
+        print("GOT CHARACTERISTIC UPDATE @@@@@@@@@@@@@@@@@@@@@")
         if let error = error {
             print("Error updating value for characteristic: \(error.localizedDescription)")
             return
