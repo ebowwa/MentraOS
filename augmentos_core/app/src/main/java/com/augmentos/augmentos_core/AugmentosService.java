@@ -2657,8 +2657,9 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         sendStatusToAugmentOsManager();
         
         Log.d(TAG, "✅ OTA progress data cleared");
+    }
 
-// Event handler for glasses serial number
+    // Event handler for glasses serial number
     @Subscribe(threadMode = ThreadMode.MAIN)
     public void onGlassesSerialNumberEvent(GlassesSerialNumberEvent event) {
         this.glassesSerialNumber = event.serialNumber;
