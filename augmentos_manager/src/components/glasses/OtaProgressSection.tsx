@@ -67,7 +67,7 @@ export default function OtaProgressSection({otaProgress}: OtaProgressSectionProp
 
   return (
     <View style={themed($container)}>
-      <Text style={[themed($subtitle), {marginBottom: theme.spacing.xs}]}>OTA Update Progress</Text>
+      <Text style={[themed($subtitle), {marginBottom: theme.spacing.xs}]}>Mentra Live Software Update Progress</Text>
 
       {/* Show Installation Progress (if active) */}
       {showInstallation && (
