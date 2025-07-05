@@ -1416,6 +1416,14 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
 
             // Adding connected glasses object
             JSONObject connectedGlasses = new JSONObject();
+
+            // Add glasses serial number info
+            if (glassesSerialNumber != null) {
+                connectedGlasses.put("glasses_serial_number", glassesSerialNumber);
+                connectedGlasses.put("glasses_style", glassesStyle);
+                connectedGlasses.put("glasses_color", glassesColor);
+            }
+
             if(smartGlassesManager != null && smartGlassesManager.getConnectedSmartGlasses() != null) {
                 connectedGlasses.put("model_name", smartGlassesManager.getConnectedSmartGlasses().deviceModelName);
                 connectedGlasses.put("battery_level", (batteryLevel == null) ? -1: batteryLevel); //-1 if unknown
@@ -1423,13 +1431,6 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                 connectedGlasses.put("case_charging", (caseCharging == null) ? false: caseCharging);
                 connectedGlasses.put("case_open", (caseOpen == null) ? false: caseOpen);
                 connectedGlasses.put("case_removed", (caseRemoved == null) ? true: caseRemoved);
-
-                // Add glasses serial number info
-                if (glassesSerialNumber != null) {
-                    connectedGlasses.put("glasses_serial_number", glassesSerialNumber);
-                    connectedGlasses.put("glasses_style", glassesStyle);
-                    connectedGlasses.put("glasses_color", glassesColor);
-                }
 
                 // Add WiFi status information for glasses that need WiFi
                 String deviceModel = smartGlassesManager.getConnectedSmartGlasses().deviceModelName;
