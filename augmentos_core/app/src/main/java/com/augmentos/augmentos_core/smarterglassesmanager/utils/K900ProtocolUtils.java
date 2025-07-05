@@ -159,7 +159,7 @@ public class K900ProtocolUtils {
             // First wrap with C-field
             JSONObject wrapper = new JSONObject();
             wrapper.put(FIELD_C, jsonData);
-            wrapper.put("W", 1); // Add W field as seen in MentraLiveSGC
+            //wrapper.put("W", 1); // Add W field as seen in MentraLiveSGC
 
             // Convert to string
             String wrappedJson = wrapper.toString();
@@ -206,8 +206,8 @@ public class K900ProtocolUtils {
             for (int i = 0; i < Math.min(result.length, 30); i++) {
                 hexDump.append(String.format("%02X ", result[i]));
             }
-            android.util.Log.e("K900ProtocolUtils", "🔄 After protocol formatting (first 30 bytes): " + hexDump);
-            android.util.Log.e("K900ProtocolUtils", "🔄 Final length: " + result.length + " bytes");
+            //android.util.Log.e("K900ProtocolUtils", "🔄 After protocol formatting (first 30 bytes): " + hexDump);
+            //android.util.Log.e("K900ProtocolUtils", "🔄 Final length: " + result.length + " bytes");
             
             return result;
             

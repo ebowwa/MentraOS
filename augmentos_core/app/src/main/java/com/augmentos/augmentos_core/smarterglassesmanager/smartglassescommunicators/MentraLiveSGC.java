@@ -590,7 +590,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         @Override
         public void onCharacteristicWrite(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
             if (status == BluetoothGatt.GATT_SUCCESS) {
-                Log.d(TAG, "Characteristic write successful");
+                //Log.d(TAG, "Characteristic write successful");
 
                 // Calculate time since last send to enforce rate limiting
                 long currentTimeMs = System.currentTimeMillis();
@@ -600,7 +600,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 if (timeSinceLastSendMs < MIN_SEND_DELAY_MS) {
                     // Not enough time has elapsed, enforce minimum delay
                     nextProcessDelayMs = MIN_SEND_DELAY_MS - timeSinceLastSendMs;
-                    Log.d(TAG, "Rate limiting: Next queue processing in " + nextProcessDelayMs + "ms");
+                    //Log.d(TAG, "Rate limiting: Next queue processing in " + nextProcessDelayMs + "ms");
                 } else {
                     // Enough time has already passed
                     nextProcessDelayMs = 0;
@@ -1424,9 +1424,9 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
      */
     private void requestBatteryStatus() {
         try {
-            JSONObject json = new JSONObject();
-            json.put("type", "request_battery_state");
-            sendDataToGlasses(json.toString());
+            //JSONObject json = new JSONObject();
+            //json.put("type", "request_battery_state");
+            //sendDataToGlasses(json.toString());
 
             requestBatteryK900();
         } catch (JSONException e) {
