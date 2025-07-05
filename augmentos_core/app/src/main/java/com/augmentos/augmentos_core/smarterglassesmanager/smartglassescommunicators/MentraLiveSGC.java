@@ -1534,15 +1534,11 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
      * Request battery status from the glasses
      */
     private void requestBatteryStatus() {
-        try {
-            //JSONObject json = new JSONObject();
-            //json.put("type", "request_battery_state");
-            //sendDataToGlasses(json.toString());
+        //JSONObject json = new JSONObject();
+        //json.put("type", "request_battery_state");
+        //sendDataToGlasses(json.toString());
 
-            requestBatteryK900();
-        } catch (JSONException e) {
-            Log.e(TAG, "Error creating battery status request", e);
-        }
+        requestBatteryK900();
     }
 
     /**
