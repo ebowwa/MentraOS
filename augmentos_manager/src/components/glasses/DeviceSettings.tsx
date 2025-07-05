@@ -454,7 +454,7 @@ export default function DeviceSettings() {
         onPress={() => push("/settings/dashboard")}
       />
 
-      {devMode && (
+      {devMode && status.core_info.default_wearable && glassesFeatures[status.core_info.default_wearable]?.binocular && (
         <RouteButton
           label={translate("settings:screenSettings")}
           subtitle={translate("settings:screenDescription")}

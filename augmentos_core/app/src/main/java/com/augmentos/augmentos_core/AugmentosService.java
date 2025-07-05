@@ -2163,19 +2163,17 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         Log.d("AugmentOsService", "Updating glasses head up angle: " + headUpAngle);
         if (smartGlassesManager != null) {
             smartGlassesManager.updateGlassesHeadUpAngle(headUpAngle);
-            this.headUpAngle = headUpAngle;
-
-            // Save head up angle setting to SharedPreferences
-            PreferenceManager.getDefaultSharedPreferences(this)
-                .edit()
-                .putString(getString(R.string.HEAD_UP_ANGLE), String.valueOf(headUpAngle))
-                .apply();
-
-            sendStatusToBackend();
-            sendStatusToAugmentOsManager();
-        } else {
-            blePeripheral.sendNotifyManager("Connect glasses to update head up angle", "error");
         }
+        this.headUpAngle = headUpAngle;
+
+        // Save head up angle setting to SharedPreferences
+        PreferenceManager.getDefaultSharedPreferences(this)
+            .edit()
+            .putString(getString(R.string.HEAD_UP_ANGLE), String.valueOf(headUpAngle))
+            .apply();
+
+        sendStatusToBackend();
+        sendStatusToAugmentOsManager();
     }
 
     @Override
