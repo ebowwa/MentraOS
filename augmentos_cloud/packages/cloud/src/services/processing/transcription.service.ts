@@ -1257,25 +1257,26 @@ export class TranscriptionService {
    * Get maximum retry attempts based on error type
    */
   private getMaxRetries(errorCode: number, errorDetails?: string): number {
-    switch (errorCode) {
-      case 7:   // Race condition errors - reduce from 5 to 3 attempts
-        return 3;
+    return 10; // Default generous retry count.
+    // switch (errorCode) {
+    //   case 7:   // Race condition errors - NOT RETRYABLE (infinite loop prevention)
+    //     return 0; // This should never be called since Error Code 7 is not retryable
       
-      case 4:   // Network issues
-        if (errorDetails && errorDetails.includes('4429')) {
-          // Rate limiting - fewer retries with longer delays
-          return 3;
-        }
-        // Other network issues - moderate retries
-        return 3;
+    //   case 4:   // Network issues
+    //     if (errorDetails && errorDetails.includes('4429')) {
+    //       // Rate limiting - fewer retries with much longer delays
+    //       return 5;
+    //     }
+    //     // Other network issues - generous retries for transient issues
+    //     return 10;
       
-      case 6:   // Timeout issues - moderate retries
-        return 3;
-      case 999: // Start failures - limited retries
-        return 2;
-      default:
-        return 1;
-    }
+    //   case 6:   // Timeout issues - generous retries
+    //     return 10;
+    //   case 999: // Start failures - moderate retries
+    //     return 5;
+    //   default:
+    //     return 3; // More generous default
+    // }
   }
 
   /**
