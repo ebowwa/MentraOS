@@ -907,8 +907,17 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                     } else {
                         wifiStatus.put("ssid", "unknown");
                     }
+                    
+                    // Add local IP address
+                    String localIp = networkManager.getLocalIpAddress();
+                    if (localIp != null && !localIp.isEmpty()) {
+                        wifiStatus.put("local_ip", localIp);
+                    } else {
+                        wifiStatus.put("local_ip", "");
+                    }
                 } else {
                     wifiStatus.put("ssid", "");
+                    wifiStatus.put("local_ip", "");
                 }
 
                 // Convert to string

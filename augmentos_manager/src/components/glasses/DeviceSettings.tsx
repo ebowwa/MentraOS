@@ -421,6 +421,12 @@ export default function DeviceSettings() {
                 <Text style={{color: theme.colors.textDim}}>{status.glasses_info.glasses_build_number}</Text>
               </View>
             )}
+            {status.glasses_info.glasses_wifi_local_ip && status.glasses_info.glasses_wifi_local_ip !== "" && (
+              <View style={{flexDirection: "row", justifyContent: "space-between", paddingVertical: 4}}>
+                <Text style={{color: theme.colors.text}}>Local IP Address</Text>
+                <Text style={{color: theme.colors.textDim}}>{status.glasses_info.glasses_wifi_local_ip}</Text>
+              </View>
+            )}
             {/* {status.glasses_info.glasses_device_model && (
             <View style={{flexDirection: "row", justifyContent: "space-between", paddingVertical: 4}}>
               <Text style={{color: theme.colors.text}}>Device Model</Text>

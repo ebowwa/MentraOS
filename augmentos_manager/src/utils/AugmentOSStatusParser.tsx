@@ -6,6 +6,7 @@ export interface Glasses {
   glasses_use_wifi: boolean
   glasses_wifi_connected: boolean
   glasses_wifi_ssid: string
+  glasses_wifi_local_ip: string
   case_removed: boolean
   case_open: boolean
   case_charging: boolean
@@ -137,6 +138,7 @@ export class AugmentOSParser {
       glasses_use_wifi: false,
       glasses_wifi_connected: false,
       glasses_wifi_ssid: "",
+      glasses_wifi_local_ip: "",
       case_removed: true,
       case_open: true,
       case_charging: false,
@@ -202,6 +204,7 @@ export class AugmentOSParser {
               glasses_use_wifi: glassesInfo.glasses_use_wifi || false,
               glasses_wifi_connected: glassesInfo.glasses_wifi_connected || false,
               glasses_wifi_ssid: glassesInfo.glasses_wifi_ssid || "",
+              glasses_wifi_local_ip: glassesInfo.glasses_wifi_local_ip || "",
               case_removed: glassesInfo.case_removed ?? true,
               case_open: glassesInfo.case_open ?? true,
               case_charging: glassesInfo.case_charging ?? false,

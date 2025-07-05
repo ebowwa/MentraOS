@@ -1163,12 +1163,14 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 // Process WiFi status information
                 boolean wifiConnected = json.optBoolean("connected", false);
                 String ssid = json.optString("ssid", "");
+                String localIp = json.optString("local_ip", "");
 
-                Log.d(TAG, "## Received WiFi status: connected=" + wifiConnected + ", SSID=" + ssid);
+                Log.d(TAG, "## Received WiFi status: connected=" + wifiConnected + ", SSID=" + ssid + ", Local IP=" + localIp);
                 EventBus.getDefault().post(new GlassesWifiStatusChange(
                         smartGlassesDevice.deviceModelName,
                         wifiConnected,
-                        ssid));
+                        ssid,
+                        localIp));
 
                 break;
 
@@ -1423,15 +1425,11 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
      * Request battery status from the glasses
      */
     private void requestBatteryStatus() {
-        try {
-            //JSONObject json = new JSONObject();
-            //json.put("type", "request_battery_state");
-            //sendDataToGlasses(json.toString());
+        //JSONObject json = new JSONObject();
+        //json.put("type", "request_battery_state");
+        //sendDataToGlasses(json.toString());
 
-            requestBatteryK900();
-        } catch (JSONException e) {
-            Log.e(TAG, "Error creating battery status request", e);
-        }
+        requestBatteryK900();
     }
 
     /**
