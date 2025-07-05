@@ -1284,7 +1284,6 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
         preferredG1DeviceId = getPreferredG1DeviceId(context);
 
         if(!bluetoothAdapter.isEnabled()) {
-
             return;
         }
 
