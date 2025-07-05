@@ -1,7 +1,7 @@
 /**
  * 🚀 App Server Module
  *
- * Creates and manages a server for Third Party Apps (Apps) in the AugmentOS ecosystem.
+ * Creates and manages a server for Apps in the MentraOS ecosystem.
  * Handles webhook endpoints, session management, and cleanup.
  */
 import express, { type Express } from 'express';
@@ -38,7 +38,7 @@ import axios from 'axios';
 export interface AppServerConfig {
   /** 📦 Unique identifier for your App (e.g., 'org.company.appname') must match what you specified at https://console.mentra.glass */
   packageName: string;
-  /** 🔑 API key for authentication with AugmentOS Cloud */
+  /** 🔑 API key for authentication with MentraOS Cloud */
   apiKey: string;
   /** 🌐 Port number for the server (default: 7010) */
   port?: number;
@@ -67,7 +67,7 @@ export interface AppServerConfig {
  *
  * Base class for creating App servers. Handles:
  * - 🔄 Session lifecycle management
- * - 📡 Webhook endpoints for AugmentOS Cloud
+ * - 📡 Webhook endpoints for MentraOS Cloud
  * - 📂 Static file serving
  * - ❤️ Health checks
  * - 🧹 Cleanup on shutdown
@@ -137,6 +137,7 @@ export class AppServer {
     this.setupSettingsEndpoint();
     this.setupHealthCheck();
     this.setupToolCallEndpoint();
+    this.setupPhotoUploadEndpoint();
     this.setupPublicDir();
     this.setupShutdown();
   }
@@ -184,11 +185,11 @@ export class AppServer {
 
   /**
    * 🛠️ Tool Call Handler
-   * Override this method to handle tool calls from AugmentOS Cloud.
+   * Override this method to handle tool calls from MentraOS Cloud.
    * This is where you implement your app's tool functionality.
    *
    * @param toolCall - The tool call request containing tool details and parameters
-   * @returns Optional string response that will be sent back to AugmentOS Cloud
+   * @returns Optional string response that will be sent back to MentraOS Cloud
    */
   protected async onToolCall(toolCall: ToolCall): Promise<string | undefined> {
     this.logger.debug(`Tool call received: ${toolCall.toolId}`);
@@ -261,7 +262,7 @@ export class AppServer {
 
   /**
    * 🎯 Setup Webhook Endpoint
-   * Creates the webhook endpoint that AugmentOS Cloud calls to start new sessions.
+   * Creates the webhook endpoint that MentraOS Cloud calls to start new sessions.
    */
   private setupWebhook(): void {
     if (!this.config.webhookPath) {
@@ -301,7 +302,7 @@ export class AppServer {
 
   /**
    * 🛠️ Setup Tool Call Endpoint
-   * Creates a /tool endpoint for handling tool calls from AugmentOS Cloud.
+   * Creates a /tool endpoint for handling tool calls from MentraOS Cloud.
    */
   private setupToolCallEndpoint(): void {
     this.app.post('/tool', async (req, res) => {
@@ -334,14 +335,14 @@ export class AppServer {
    * Handle a session request webhook
    */
   private async handleSessionRequest(request: SessionWebhookRequest, res: express.Response): Promise<void> {
-    const { sessionId, userId, augmentOSWebsocketUrl } = request;
+    const { sessionId, userId, mentraOSWebsocketUrl, augmentOSWebsocketUrl } = request;
     this.logger.info({userId}, `🗣️ Received session request for user ${userId}, session ${sessionId}\n\n`);
 
     // Create new App session
     const session = new AppSession({
       packageName: this.config.packageName,
       apiKey: this.config.apiKey,
-      augmentOSWebsocketUrl, // The websocket URL for the specific AugmentOS server that this userSession is connecting to.
+      mentraOSWebsocketUrl: mentraOSWebsocketUrl || augmentOSWebsocketUrl, // The websocket URL for the specific MentraOS server that this userSession is connecting to.
       appServer: this,
       userId,
     });
@@ -431,7 +432,7 @@ export class AppServer {
 
   /**
    * ⚙️ Setup Settings Endpoint
-   * Creates a /settings endpoint that the AugmentOS Cloud can use to update settings.
+   * Creates a /settings endpoint that the MentraOS Cloud can use to update settings.
    */
   private setupSettingsEndpoint(): void {
     this.app.post('/settings', async (req, res) => {
@@ -525,5 +526,143 @@ export class AppServer {
 
     // Run cleanup handlers
     this.cleanupHandlers.forEach(handler => handler());
+  }
+
+  /**
+   * 🎯 Setup Photo Upload Endpoint
+   * Creates a /photo-upload endpoint for receiving photos directly from ASG glasses
+   */
+  private setupPhotoUploadEndpoint(): void {
+    const multer = require('multer');
+
+    // Configure multer for handling multipart form data
+    const upload = multer({
+      storage: multer.memoryStorage(),
+      limits: {
+        fileSize: 10 * 1024 * 1024, // 10MB limit
+      },
+      fileFilter: (req: any, file: any, cb: any) => {
+        // Accept image files only
+        if (file.mimetype && file.mimetype.startsWith('image/')) {
+          cb(null, true);
+        } else {
+          cb(new Error('Only image files are allowed'), false);
+        }
+      }
+    });
+
+    this.app.post('/photo-upload', upload.single('photo'), async (req: any, res: any) => {
+      try {
+        const { requestId, type } = req.body;
+        const photoFile = req.file;
+
+        this.logger.info({ requestId, type }, `📸 Received photo upload: ${requestId}`);
+
+        if (!photoFile) {
+          this.logger.error({ requestId }, 'No photo file in upload');
+          return res.status(400).json({
+            success: false,
+            error: 'No photo file provided'
+          });
+        }
+
+        if (!requestId) {
+          this.logger.error('No requestId in photo upload');
+          return res.status(400).json({
+            success: false,
+            error: 'No requestId provided'
+          });
+        }
+
+        // Find the corresponding session that made this photo request
+        const session = this.findSessionByPhotoRequestId(requestId);
+        if (!session) {
+          this.logger.warn({ requestId }, 'No active session found for photo request');
+          return res.status(404).json({
+            success: false,
+            error: 'No active session found for this photo request'
+          });
+        }
+
+        // Create photo data object
+        const photoData = {
+          buffer: photoFile.buffer,
+          mimeType: photoFile.mimetype,
+          filename: photoFile.originalname || 'photo.jpg',
+          requestId,
+          size: photoFile.size,
+          timestamp: new Date()
+        };
+
+        // Deliver photo to the session
+        session.camera.handlePhotoReceived(photoData);
+
+        // Respond to ASG client
+        res.json({
+          success: true,
+          requestId,
+          message: 'Photo received successfully'
+        });
+
+      } catch (error) {
+        this.logger.error(error, '❌ Error handling photo upload');
+        res.status(500).json({
+          success: false,
+          error: 'Internal server error processing photo upload'
+        });
+      }
+    });
+  }
+
+  /**
+   * Find session that has a pending photo request for the given requestId
+   */
+  private findSessionByPhotoRequestId(requestId: string): AppSession | undefined {
+    for (const [sessionId, session] of this.activeSessions) {
+      if (session.camera.hasPhotoPendingRequest(requestId)) {
+        return session;
+      }
+    }
+    return undefined;
+  }
+}
+
+/**
+ * @deprecated Use `AppServerConfig` instead. `TpaServerConfig` is deprecated and will be removed in a future version.
+ * This is an alias for backward compatibility only.
+ *
+ * @example
+ * ```typescript
+ * // ❌ Deprecated - Don't use this
+ * const config: TpaServerConfig = { ... };
+ *
+ * // ✅ Use this instead
+ * const config: AppServerConfig = { ... };
+ * ```
+ */
+export type TpaServerConfig = AppServerConfig;
+
+/**
+ * @deprecated Use `AppServer` instead. `TpaServer` is deprecated and will be removed in a future version.
+ * This is an alias for backward compatibility only.
+ *
+ * @example
+ * ```typescript
+ * // ❌ Deprecated - Don't use this
+ * class MyServer extends TpaServer { ... }
+ *
+ * // ✅ Use this instead
+ * class MyServer extends AppServer { ... }
+ * ```
+ */
+export class TpaServer extends AppServer {
+  constructor(config: TpaServerConfig) {
+    super(config);
+    // Emit a deprecation warning to help developers migrate
+    console.warn(
+      '⚠️  DEPRECATION WARNING: TpaServer is deprecated and will be removed in a future version. ' +
+      'Please use AppServer instead. ' +
+      'Simply replace "TpaServer" with "AppServer" in your code.'
+    );
   }
 }

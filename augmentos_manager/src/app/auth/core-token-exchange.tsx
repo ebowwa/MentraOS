@@ -14,6 +14,8 @@ import {ThemedStyle} from "@/theme"
 import {Screen} from "@/components/ignite"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {translate} from "@/i18n/translate"
+import {useDeeplink} from "@/contexts/DeeplinkContext"
+import { router } from "expo-router"
 
 export default function CoreTokenExchange() {
   const {status} = useStatus()
@@ -27,7 +29,25 @@ export default function CoreTokenExchange() {
   const hasAttemptedConnection = useRef(false)
   const loadingOverlayOpacity = useRef(new Animated.Value(1)).current
   const {theme, themed} = useAppTheme()
-  const {goBack, push, replace} = useNavigationHistory()
+  const {goBack, push, replace, getPendingRoute, setPendingRoute} = useNavigationHistory()
+  const {processUrl} = useDeeplink()
+
+  const loadPendingRouteOrHome = async () => {
+    const pendingRoute = getPendingRoute()
+    console.log("@@@@@@@@@@@@@LOADING PENDING ROUTE OR HOME @@@@@@@@@@@@@@@", pendingRoute)
+    if (pendingRoute) {
+      setPendingRoute(null)
+      setTimeout(() => {
+        processUrl(pendingRoute)
+      }, 2000)
+    } else {
+      // less jarring if the nav isn't instant
+      setTimeout(() => {
+        router.dismissAll()
+        replace("/(tabs)/home")
+      }, 1000)
+    }
+  }
 
   const handleTokenExchange = async () => {
     if (isLoading) return
@@ -60,7 +80,7 @@ export default function CoreTokenExchange() {
       const onboardingCompleted = await loadSetting(SETTINGS_KEYS.ONBOARDING_COMPLETED, false)
       if (onboardingCompleted) {
         // If onboarding is completed, go directly to Home
-        replace("/(tabs)/home")
+        loadPendingRouteOrHome()
       } else {
         // If onboarding is not completed, go to WelcomePage
         replace("/onboarding/welcome")
@@ -69,15 +89,17 @@ export default function CoreTokenExchange() {
       // Check if we're using a custom backend URL
       const customUrl = await loadSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL, null)
       const isCustom = customUrl && typeof customUrl === "string" && customUrl.trim() !== ""
-      
+
       if (isCustom) {
         setIsUsingCustomUrl(true)
-        setErrorMessage(`Connection to custom backend (${customUrl}) failed. The server may be unavailable or the URL may be incorrect.`)
+        setErrorMessage(
+          `Connection to custom backend (${customUrl}) failed. The server may be unavailable or the URL may be incorrect.`,
+        )
       } else {
         setIsUsingCustomUrl(false)
         setErrorMessage("Connection to AugmentOS failed. Please check your connection and try again.")
       }
-      
+
       setConnectionError(true)
       setIsLoading(false)
     }
@@ -126,7 +148,7 @@ export default function CoreTokenExchange() {
       } else {
         // If we already have a token, go straight to Home
         BackendServerComms.getInstance().setCoreToken(status.core_info.core_token)
-        replace("/(tabs)/home")
+        loadPendingRouteOrHome()
       }
     }
   }, [status.core_info.puck_connected, authLoading, user])
@@ -136,9 +158,8 @@ export default function CoreTokenExchange() {
     return (
       <Screen preset="fixed" safeAreaEdges={["bottom"]}>
         <View style={{flex: 1, justifyContent: "center", alignItems: "center"}}>
-          <View style={styles.authLoadingLogoPlaceholder} />
-          <ActivityIndicator size="large" color={theme.colors.loadingIndicator} style={styles.authLoadingIndicator} />
-          <Text style={themed($authLoadingText)}>{translate("login:connectingToAugmentOS")}</Text>
+          <ActivityIndicator size="large" color={theme.colors.loadingIndicator} />
+          <Text style={themed($loadingText)}>{translate("login:connectingToServer")}</Text>
         </View>
       </Screen>
     )
@@ -153,24 +174,23 @@ export default function CoreTokenExchange() {
             <Icon name="wifi-off" size={80} color={theme.colors.error} />
           </View>
 
-          <Text style={[styles.title, {color: theme.colors.text}]}>Connection Error</Text>
+          <Text style={[styles.title, {color: theme.colors.text}]}>{translate("login:connectionError")}</Text>
 
           <Text style={[styles.description, {color: theme.colors.textDim}]}>{errorMessage}</Text>
         </View>
 
         <View style={styles.setupContainer}>
           {isUsingCustomUrl && (
-            <Button 
+            <Button
               onPress={handleResetUrl}
-              isDarkTheme={theme.isDark} 
+              isDarkTheme={theme.isDark}
               disabled={isLoading}
               iconName="refresh"
-              style={styles.resetButton}
-            >
+              style={styles.resetButton}>
               Reset to Default URL
             </Button>
           )}
-          
+
           <Button onPress={handleTokenExchange} isDarkTheme={theme.isDark} disabled={isLoading} iconName="reload">
             {isLoading ? "Connecting..." : "Retry Connection"}
           </Button>
@@ -180,11 +200,10 @@ export default function CoreTokenExchange() {
   )
 }
 
-const $authLoadingText: ThemedStyle<TextStyle> = ({colors}) => ({
+const $loadingText: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
+  marginTop: spacing.md,
   fontSize: 16,
-  fontFamily: "Montserrat-Medium",
   color: colors.text,
-  textAlign: "center",
 })
 
 const styles = StyleSheet.create({

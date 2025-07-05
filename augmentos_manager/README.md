@@ -1,6 +1,19 @@
 ### Quickstart
 
-build and run the app on android from scratch:
+
+### Windows Setup
+
+```bash
+// Clone directly to the C:\ directory to avoid path length limits on windows!
+git clone https://github.com/Mentra-Community/MentraOS
+git checkout dev
+```
+
+
+```
+choco install -y nodejs-lts microsoft-openjdk17
+```
+
 
 ## Android
 ```
@@ -86,6 +99,15 @@ import {useAppTheme} from "@/utils/useAppTheme"
 function MyComponent() {
   const {theme, themed} = useAppTheme();
 }
+```
+
+- Don't create Stylesheets, instead use themed(<name-of-style>)
+```tsx
+const $container: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
+  color: colors.text,
+  fontSize: spacing.md,
+  flexWrap: "wrap",
+})
 ```
 
 - Don't use expo router's router.push / replace / etc. instead use the `useNavigationHistory()` hook

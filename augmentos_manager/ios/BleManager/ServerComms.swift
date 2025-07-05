@@ -452,8 +452,9 @@ class ServerComms {
     self.connectWebSocket()
     
     // if after some time we're still not connected, run this function again:
-    DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
-      if self.wsManager.isConnected() {
+    DispatchQueue.main.asyncAfter(deadline: .now() + 10.0) {
+      // if self.wsManager.isConnected() {
+      if self.wsManager.isActuallyConnected() {
         self.reconnectionAttempts = 0
         self.reconnecting = false
         return
@@ -473,7 +474,7 @@ class ServerComms {
     
     if status == .connected {
       // Wait a second before sending connection_init (similar to the Java code)
-      DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+      DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
         self.sendConnectionInit(coreToken: self.coreToken)
         
         self.sendCalendarEvents()

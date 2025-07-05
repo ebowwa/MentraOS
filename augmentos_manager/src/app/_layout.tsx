@@ -1,5 +1,5 @@
 import {useEffect, useState} from "react"
-import {Slot, SplashScreen} from "expo-router"
+import {Stack, SplashScreen} from "expo-router"
 
 import {useFonts} from "@expo-google-fonts/space-grotesk"
 import {colors, customFontsToLoad} from "@/theme"
@@ -87,7 +87,16 @@ export default function Root() {
       <AllProviders>
         <View style={{flex: 1}}>
           <BackgroundGradient>
-            <Slot />
+            <Stack
+              screenOptions={{
+                headerShown: false,
+                gestureEnabled: true,
+                gestureDirection: "horizontal",
+                // gestureResponseDistance: 100,
+                // fullScreenGestureEnabled: true,
+                animation: "none",
+              }}
+            />
             <Toast config={toastConfig} />
           </BackgroundGradient>
         </View>

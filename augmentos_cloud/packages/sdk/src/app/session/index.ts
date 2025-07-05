@@ -1,14 +1,14 @@
 /**
  * 🎯 App Session Module
  *
- * Manages an active Third Party App session with AugmentOS Cloud.
+ * Manages an active Third Party App session with MentraOS Cloud.
  * Handles real-time communication, event subscriptions, and display management.
  */
 import { WebSocket } from 'ws';
 import { EventManager, EventData, StreamDataTypes } from './events';
 import { LayoutManager } from './layouts';
 import { SettingsManager } from './settings';
-import { StreamingModule } from './modules/streaming';
+import { CameraModule, PhotoRequestOptions, RtmpStreamOptions } from './modules/camera';
 import { ResourceTracker } from '../../utils/resource-tracker';
 import {
   // Message types
@@ -51,10 +51,11 @@ import {
   PhotoResponse,
   VpsCoordinates,
   PhotoTaken,
-  Capabilities
+  Capabilities,
+  PhotoData
 } from '../../types';
 import { DashboardAPI } from '../../types/dashboard';
-import { AugmentosSettingsUpdate } from '../../types/messages/cloud-to-app';
+import { MentraosSettingsUpdate } from '../../types/messages/cloud-to-app';
 import { Logger } from 'pino';
 import { AppServer } from '../server';
 import axios from 'axios';
@@ -80,10 +81,10 @@ import { isPhotoResponse, isRtmpStreamStatus } from '../../types/messages/cloud-
 export interface AppSessionConfig {
   /** 📦 Unique identifier for your App (e.g., 'org.company.appname') */
   packageName: string;
-  /** 🔑 API key for authentication with AugmentOS Cloud */
+  /** 🔑 API key for authentication with MentraOS Cloud */
   apiKey: string;
   /** 🔌 WebSocket server URL (default: 'ws://localhost:7002/app-ws') */
-  augmentOSWebsocketUrl?: string;
+  mentraOSWebsocketUrl?: string;
   /** 🔄 Automatically attempt to reconnect on disconnect (default: true) */
   autoReconnect?: boolean;
   /** 🔁 Maximum number of reconnection attempts (default: 3) */
@@ -107,7 +108,7 @@ const APP_TO_APP_EVENT_TYPES = [
 /**
  * 🚀 App Session Implementation
  *
- * Manages a live connection between your App and AugmentOS Cloud.
+ * Manages a live connection between your App and MentraOS Cloud.
  * Provides interfaces for:
  * - 🎮 Event handling (transcription, head position, etc.)
  * - 📱 Display management in AR view
@@ -131,7 +132,7 @@ const APP_TO_APP_EVENT_TYPES = [
  * ```
  */
 export class AppSession {
-  /** WebSocket connection to AugmentOS Cloud */
+  /** WebSocket connection to MentraOS Cloud */
   private ws: WebSocket | null = null;
   /** Current session identifier */
   private sessionId: string | null = null;
@@ -151,11 +152,6 @@ export class AppSession {
   private subscriptionSettingsHandler?: (settings: AppSettings) => ExtendedStreamType[];
   /** Settings that should trigger subscription updates when changed */
   private subscriptionUpdateTriggers: string[] = [];
-  /** Pending photo requests waiting for responses */
-  private pendingPhotoRequests = new Map<string, {
-    resolve: (url: string) => void,
-    reject: (reason: any) => void
-  }>();
   /** Pending user discovery requests waiting for responses */
   private pendingUserDiscoveryRequests = new Map<string, {
     resolve: (userList: any) => void,
@@ -175,8 +171,8 @@ export class AppSession {
   public readonly settings: SettingsManager;
   /** 📊 Dashboard management interface */
   public readonly dashboard: DashboardAPI;
-  /** 📹 RTMP streaming interface */
-  public readonly streaming: StreamingModule;
+  /** 📷 Camera interface for photos and streaming */
+  public readonly camera: CameraModule;
 
   public readonly appServer: AppServer;
   public readonly logger: Logger;
@@ -191,7 +187,7 @@ export class AppSession {
   constructor(private config: AppSessionConfig) {
     // Set defaults and merge with provided config
     this.config = {
-      augmentOSWebsocketUrl: `ws://localhost:8002/app-ws`, // Use localhost as default
+      mentraOSWebsocketUrl: `ws://localhost:8002/app-ws`, // Use localhost as default
       autoReconnect: true,   // Enable auto-reconnection by default for better reliability
       maxReconnectAttempts: 3, // Default to 3 reconnection attempts for better resilience
       reconnectDelay: 1000,  // Start with 1 second delay (uses exponential backoff)
@@ -203,34 +199,34 @@ export class AppSession {
     this.userId = this.config.userId;
 
     // Make sure the URL is correctly formatted to prevent double protocol issues
-    if (this.config.augmentOSWebsocketUrl) {
+    if (this.config.mentraOSWebsocketUrl) {
       try {
-        const url = new URL(this.config.augmentOSWebsocketUrl);
+        const url = new URL(this.config.mentraOSWebsocketUrl);
         if (!['ws:', 'wss:'].includes(url.protocol)) {
           // Fix URLs with incorrect protocol (e.g., 'ws://http://host')
-          const fixedUrl = this.config.augmentOSWebsocketUrl.replace(/^ws:\/\/http:\/\//, 'ws://');
-          this.config.augmentOSWebsocketUrl = fixedUrl;
+          const fixedUrl = this.config.mentraOSWebsocketUrl.replace(/^ws:\/\/http:\/\//, 'ws://');
+          this.config.mentraOSWebsocketUrl = fixedUrl;
           this.logger.warn(`⚠️ [${this.config.packageName}] Fixed malformed WebSocket URL: ${fixedUrl}`);
         }
       } catch (error) {
-        this.logger.error(error, `⚠️ [${this.config.packageName}] Invalid WebSocket URL format: ${this.config.augmentOSWebsocketUrl}`);
+        this.logger.error(error, `⚠️ [${this.config.packageName}] Invalid WebSocket URL format: ${this.config.mentraOSWebsocketUrl}`);
       }
     }
 
     // Log initialization
     this.logger.debug(`🚀 [${this.config.packageName}] App Session initialized`);
-    this.logger.debug(`🚀 [${this.config.packageName}] WebSocket URL: ${this.config.augmentOSWebsocketUrl}`);
+    this.logger.debug(`🚀 [${this.config.packageName}] WebSocket URL: ${this.config.mentraOSWebsocketUrl}`);
 
     // Validate URL format - give early warning for obvious issues
     // Check URL format but handle undefined case
-    if (this.config.augmentOSWebsocketUrl) {
+    if (this.config.mentraOSWebsocketUrl) {
       try {
-        const url = new URL(this.config.augmentOSWebsocketUrl);
+        const url = new URL(this.config.mentraOSWebsocketUrl);
         if (!['ws:', 'wss:'].includes(url.protocol)) {
           this.logger.error({ config: this.config }, `⚠️ [${this.config.packageName}] Invalid WebSocket URL protocol: ${url.protocol}. Should be ws: or wss:`);
         }
       } catch (error) {
-        this.logger.error(error, `⚠️ [${this.config.packageName}] Invalid WebSocket URL format: ${this.config.augmentOSWebsocketUrl}`);
+        this.logger.error(error, `⚠️ [${this.config.packageName}] Invalid WebSocket URL format: ${this.config.mentraOSWebsocketUrl}`);
       }
     }
 
@@ -240,18 +236,18 @@ export class AppSession {
       this.send.bind(this)
     );
 
-    // Initialize settings manager with all necessary parameters, including subscribeFn for AugmentOS settings
+    // Initialize settings manager with all necessary parameters, including subscribeFn for MentraOS settings
     this.settings = new SettingsManager(
       this.settingsData,
       this.config.packageName,
-      this.config.augmentOSWebsocketUrl,
+      this.config.mentraOSWebsocketUrl,
       this.sessionId ?? undefined,
       async (streams: string[]) => {
         this.logger.debug(`[AppSession] subscribeFn called for streams:`, streams);
         streams.forEach((stream) => {
           if (!this.subscriptions.has(stream as ExtendedStreamType)) {
             this.subscriptions.add(stream as ExtendedStreamType);
-            this.logger.debug(`[AppSession] Auto-subscribed to stream '${stream}' for AugmentOS setting.`);
+            this.logger.debug(`[AppSession] Auto-subscribed to stream '${stream}' for MentraOS setting.`);
           } else {
             this.logger.debug(`[AppSession] Already subscribed to stream '${stream}'.`);
           }
@@ -259,7 +255,7 @@ export class AppSession {
         this.logger.debug(`[AppSession] Current subscriptions after subscribeFn:`, Array.from(this.subscriptions));
         if (this.ws?.readyState === 1) {
           this.updateSubscriptions();
-          this.logger.debug(`[AppSession] Sent updated subscriptions to cloud after auto-subscribing to AugmentOS setting.`);
+          this.logger.debug(`[AppSession] Sent updated subscriptions to cloud after auto-subscribing to MentraOS setting.`);
         } else {
           this.logger.debug(`[AppSession] WebSocket not open, will send subscriptions when connected.`);
         }
@@ -271,12 +267,13 @@ export class AppSession {
     const { DashboardManager } = require('./dashboard');
     this.dashboard = new DashboardManager(this, this.send.bind(this));
 
-    // Initialize streaming module with session reference
-    this.streaming = new StreamingModule(
+    // Initialize camera module with session reference
+    this.camera = new CameraModule(
       this.config.packageName,
       this.sessionId || 'unknown-session-id',
       this.send.bind(this),
-      this // Pass session reference
+      this, // Pass session reference
+      this.logger.child({ module: 'camera' })
     );
   }
 
@@ -300,10 +297,9 @@ export class AppSession {
   // 🎮 Direct Event Handling Interface
   // =====================================
 
+
   /**
-   * 🎤 Listen for speech transcription events
-   * @param handler - Function to handle transcription data
-   * @returns Cleanup function to remove the handler
+   * @deprecated Use session.events.onTranscription() instead
    */
   onTranscription(handler: (data: TranscriptionData) => void): () => void {
     return this.events.onTranscription(handler);
@@ -315,6 +311,7 @@ export class AppSession {
    * @param handler - Function to handle transcription data
    * @returns Cleanup function to remove the handler
    * @throws Error if language code is invalid
+   * @deprecated Use session.events.onTranscriptionForLanguage() instead
    */
   onTranscriptionForLanguage(language: string, handler: (data: TranscriptionData) => void): () => void {
     return this.events.onTranscriptionForLanguage(language, handler);
@@ -327,6 +324,7 @@ export class AppSession {
    * @param handler - Function to handle translation data
    * @returns Cleanup function to remove the handler
    * @throws Error if language codes are invalid
+   * @deprecated Use session.events.onTranslationForLanguage() instead
    */
   onTranslationForLanguage(sourceLanguage: string, targetLanguage: string, handler: (data: TranslationData) => void): () => void {
     return this.events.ontranslationForLanguage(sourceLanguage, targetLanguage, handler);
@@ -336,6 +334,7 @@ export class AppSession {
    * 👤 Listen for head position changes
    * @param handler - Function to handle head position updates
    * @returns Cleanup function to remove the handler
+   * @deprecated Use session.events.onHeadPosition() instead
    */
   onHeadPosition(handler: (data: HeadPosition) => void): () => void {
     return this.events.onHeadPosition(handler);
@@ -345,6 +344,7 @@ export class AppSession {
    * 🔘 Listen for hardware button press events
    * @param handler - Function to handle button events
    * @returns Cleanup function to remove the handler
+   * @deprecated Use session.events.onButtonPress() instead
    */
   onButtonPress(handler: (data: ButtonPress) => void): () => void {
     return this.events.onButtonPress(handler);
@@ -354,6 +354,7 @@ export class AppSession {
    * 📱 Listen for phone notification events
    * @param handler - Function to handle notifications
    * @returns Cleanup function to remove the handler
+   * @deprecated Use session.events.onPhoneNotifications() instead
    */
   onPhoneNotifications(handler: (data: PhoneNotification) => void): () => void {
     return this.events.onPhoneNotifications(handler);
@@ -363,6 +364,7 @@ export class AppSession {
    * 📡 Listen for VPS coordinates updates
    * @param handler - Function to handle VPS coordinates
    * @returns Cleanup function to remove the handler
+   * @deprecated Use session.events.onVpsCoordinates() instead
    */
   onVpsCoordinates(handler: (data: VpsCoordinates) => void): () => void {
     this.subscribe(StreamType.VPS_COORDINATES);
@@ -373,6 +375,7 @@ export class AppSession {
    * 📸 Listen for photo responses
    * @param handler - Function to handle photo response data
    * @returns Cleanup function to remove the handler
+   * @deprecated Use session.events.onPhotoTaken() instead
    */
   onPhotoTaken(handler: (data: PhotoTaken) => void): () => void {
     this.subscribe(StreamType.PHOTO_TAKEN);
@@ -427,7 +430,7 @@ export class AppSession {
   // =====================================
 
   /**
-   * 🚀 Connect to AugmentOS Cloud
+   * 🚀 Connect to MentraOS Cloud
    * @param sessionId - Unique session identifier
    * @returns Promise that resolves when connected
    */
@@ -438,13 +441,13 @@ export class AppSession {
     // This allows settings to be fetched from the correct server
     this.settings.configureApiClient(
       this.config.packageName,
-      this.config.augmentOSWebsocketUrl || '',
+      this.config.mentraOSWebsocketUrl || '',
       sessionId
     );
 
-    // Update the sessionId in the streaming module
-    if (this.streaming) {
-      Object.defineProperty(this.streaming, 'sessionId', { value: sessionId });
+    // Update the sessionId in the camera module
+    if (this.camera) {
+      this.camera.updateSessionId(sessionId);
     }
 
     return new Promise((resolve, reject) => {
@@ -459,17 +462,17 @@ export class AppSession {
         }
 
         // Validate WebSocket URL before attempting connection
-        if (!this.config.augmentOSWebsocketUrl) {
+        if (!this.config.mentraOSWebsocketUrl) {
           this.logger.error('WebSocket URL is missing or undefined');
           reject(new Error('WebSocket URL is required'));
           return;
         }
 
         // Add debug logging for connection attempts
-        this.logger.info(`🔌🔌🔌 [${this.config.packageName}] Attempting to connect to: ${this.config.augmentOSWebsocketUrl} for session ${this.sessionId}`);
+        this.logger.info(`🔌🔌🔌 [${this.config.packageName}] Attempting to connect to: ${this.config.mentraOSWebsocketUrl} for session ${this.sessionId}`);
 
         // Create connection with error handling
-        this.ws = new WebSocket(this.config.augmentOSWebsocketUrl);
+        this.ws = new WebSocket(this.config.mentraOSWebsocketUrl);
 
         // Track WebSocket for automatic cleanup
         this.resources.track(() => {
@@ -688,9 +691,14 @@ export class AppSession {
   }
 
   /**
-   * 👋 Disconnect from AugmentOS Cloud
+   * 👋 Disconnect from MentraOS Cloud
    */
   disconnect(): void {
+    // Clean up camera module first
+    if (this.camera) {
+      this.camera.cancelAllRequests();
+    }
+
     // Use the resource tracker to clean up everything
     this.resources.dispose();
 
@@ -699,47 +707,6 @@ export class AppSession {
     this.sessionId = null;
     this.subscriptions.clear();
     this.reconnectAttempts = 0;
-  }
-
-  /**
-   * 📸 Request a photo from the connected glasses
-   * @param options - Optional configuration for the photo request
-   * @returns Promise that resolves with the URL to the captured photo
-   */
-  requestPhoto(options?: { saveToGallery?: boolean }): Promise<string> {
-    return new Promise((resolve, reject) => {
-      try {
-        // Generate unique request ID
-        const requestId = `photo_req_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-
-        // Store promise resolvers for when we get the response
-        this.pendingPhotoRequests.set(requestId, { resolve, reject });
-
-        // Create photo request message
-        const message: PhotoRequest = {
-          type: AppToCloudMessageType.PHOTO_REQUEST,
-          packageName: this.config.packageName,
-          sessionId: this.sessionId!,
-          timestamp: new Date(),
-          saveToGallery: options?.saveToGallery || false
-        };
-
-        // Send request to cloud
-        this.send(message);
-
-        // Set timeout to avoid hanging promises
-        const timeoutMs = 30000; // 30 seconds
-        this.resources.setTimeout(() => {
-          if (this.pendingPhotoRequests.has(requestId)) {
-            this.pendingPhotoRequests.get(requestId)!.reject(new Error('Photo request timed out'));
-            this.pendingPhotoRequests.delete(requestId);
-          }
-        }, timeoutMs);
-      } catch (error: unknown) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        reject(new Error(`Failed to request photo: ${errorMessage}`));
-      }
-    });
   }
 
   /**
@@ -863,14 +830,14 @@ export class AppSession {
    * @returns The WebSocket server URL used by this session
    */
   getServerUrl(): string | undefined {
-    return this.config.augmentOSWebsocketUrl;
+    return this.config.mentraOSWebsocketUrl;
   }
 
   getHttpsServerUrl(): string | undefined {
-    if (!this.config.augmentOSWebsocketUrl) {
+    if (!this.config.mentraOSWebsocketUrl) {
       return undefined;
     }
-    return AppSession.convertToHttps(this.config.augmentOSWebsocketUrl);
+    return AppSession.convertToHttps(this.config.mentraOSWebsocketUrl);
   }
 
   private static convertToHttps(rawUrl: string | undefined): string {
@@ -961,13 +928,13 @@ export class AppSession {
           // Update the settings manager with the new settings
           this.settings.updateSettings(this.settingsData);
 
-          // Handle AugmentOS system settings if provided
-          this.logger.debug(`[AppSession] CONNECTION_ACK augmentosSettings:`, message.augmentosSettings);
-          if (message.augmentosSettings) {
-            this.logger.info(`[AppSession] Calling updateAugmentosSettings with:`, message.augmentosSettings);
-            this.settings.updateAugmentosSettings(message.augmentosSettings);
+          // Handle MentraOS system settings if provided
+          this.logger.debug(`[AppSession] CONNECTION_ACK mentraosSettings:`, message.mentraosSettings);
+          if (message.mentraosSettings) {
+            this.logger.info(`[AppSession] Calling updatementraosSettings with:`, message.mentraosSettings);
+            this.settings.updateMentraosSettings(message.mentraosSettings);
           } else {
-            this.logger.warn(`[AppSession] CONNECTION_ACK message missing augmentosSettings field`);
+            this.logger.warn(`[AppSession] CONNECTION_ACK message missing mentraosSettings field`);
           }
 
           // Handle device capabilities if provided
@@ -1020,22 +987,14 @@ export class AppSession {
             this.events.emit(messageStreamType, sanitizedData);
           }
         }
-        else if (isPhotoResponse(message)) {
-          // Handle photo response by resolving the pending promise
-          if (this.pendingPhotoRequests.has((message as PhotoResponse).requestId)) {
-            const { resolve } = this.pendingPhotoRequests.get((message as PhotoResponse).requestId)!;
-            resolve((message as PhotoResponse).photoUrl);
-            this.pendingPhotoRequests.delete((message as PhotoResponse).requestId);
-          }
-        }
         else if (isRtmpStreamStatus(message)) {
           // Emit as a standard stream event if subscribed
           if (this.subscriptions.has(StreamType.RTMP_STREAM_STATUS)) {
             this.events.emit(StreamType.RTMP_STREAM_STATUS, message);
           }
 
-          // Update streaming module's internal state
-          this.streaming.updateStreamState(message);
+          // Update camera module's internal stream state
+          this.camera.updateStreamState(message);
         }
         else if (isSettingsUpdate(message)) {
           // Store previous settings to check for changes
@@ -1050,10 +1009,10 @@ export class AppSession {
           // Emit settings update event (for backwards compatibility)
           this.events.emit('settings_update', this.settingsData);
 
-          // --- AugmentOS settings update logic ---
-          // If the message.settings looks like AugmentOS settings (object with known keys), update augmentosSettings
+          // --- MentraOS settings update logic ---
+          // If the message.settings looks like MentraOS settings (object with known keys), update mentraosSettings
           if (message.settings && typeof message.settings === 'object') {
-            this.settings.updateAugmentosSettings(message.settings);
+            this.settings.updateMentraosSettings(message.settings);
           }
 
           // Check if we should update subscriptions
@@ -1138,9 +1097,9 @@ export class AppSession {
           }
         }
         else if (message.type === 'augmentos_settings_update') {
-          const augmentosMsg = message as AugmentosSettingsUpdate;
-          if (augmentosMsg.settings && typeof augmentosMsg.settings === 'object') {
-            this.settings.updateAugmentosSettings(augmentosMsg.settings);
+          const mentraosMsg = message as MentraosSettingsUpdate;
+          if (mentraosMsg.settings && typeof mentraosMsg.settings === 'object') {
+            this.settings.updateMentraosSettings(mentraosMsg.settings);
           }
         }
         // Handle 'connection_error' as a specific case if cloud sends this string literal
@@ -1176,6 +1135,11 @@ export class AppSession {
               message: detail.message
             });
           });
+        }
+        else if (isPhotoResponse(message)) {
+          // Legacy photo response handling - now photos come directly via webhook
+          // This branch can be removed in the future as all photos now go through /photo-upload
+          this.logger.warn('Received legacy photo response - photos should now come via /photo-upload webhook');
         }
         // Handle unrecognized message types gracefully
         else {
@@ -1725,3 +1689,48 @@ export class AppSession {
     return `msg_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
   }
 }
+
+
+/**
+ * @deprecated Use `AppSessionConfig` instead. `TpaSessionConfig` is deprecated and will be removed in a future version.
+ * This is an alias for backward compatibility only.
+ *
+ * @example
+ * ```typescript
+ * // ❌ Deprecated - Don't use this
+ * const config: TpaSessionConfig = { ... };
+ *
+ * // ✅ Use this instead
+ * const config: AppSessionConfig = { ... };
+ * ```
+ */
+export type TpaSessionConfig = AppSessionConfig;
+
+/**
+ * @deprecated Use `AppSession` instead. `TpaSession` is deprecated and will be removed in a future version.
+ * This is an alias for backward compatibility only.
+ *
+ * @example
+ * ```typescript
+ * // ❌ Deprecated - Don't use this
+ * const session = new TpaSession(config);
+ *
+ * // ✅ Use this instead
+ * const session = new AppSession(config);
+ * ```
+ */
+export class TpaSession extends AppSession {
+  constructor(config: TpaSessionConfig) {
+    super(config);
+    // Emit a deprecation warning to help developers migrate
+    console.warn(
+      '⚠️  DEPRECATION WARNING: TpaSession is deprecated and will be removed in a future version. ' +
+      'Please use AppSession instead. ' +
+      'Simply replace "TpaSession" with "AppSession" in your code.'
+    );
+  }
+}
+
+// Export camera module types for developers
+export { CameraModule, PhotoRequestOptions, RtmpStreamOptions } from './modules/camera';
+

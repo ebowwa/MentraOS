@@ -65,6 +65,7 @@ const sidebars: SidebarsConfig = {
         'settings',
         'tools',
         'capabilities',
+        'camera-tutorial',
         'webview-auth-overview',
         'react-webviews',
         'dashboard'
@@ -87,6 +88,7 @@ const sidebars: SidebarsConfig = {
             'reference/managers/event-manager',
             'reference/managers/layout-manager',
             'reference/managers/settings-manager',
+            'reference/camera',
           ],
         },
         'reference/enums',

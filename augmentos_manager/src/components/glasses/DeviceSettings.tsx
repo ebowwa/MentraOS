@@ -54,7 +54,7 @@ const CaseIcon = ({size = 24, color, isCharging = false, isDark = false}: CaseIc
 <rect x="21" y="6.375" width="1.5" height="4.5" fill="${color || (isDark ? "#D3D3D3" : "#232323")}"/>
 <rect x="10.5" y="10.125" width="3" height="1.5" fill="${color || (isDark ? "#D3D3D3" : "#232323")}"/>
 <path d="M13.5 12.375H21V13.875H13.5V12.375Z" fill="${color || (isDark ? "#D3D3D3" : "#232323")}"/>
-<path d="M13.5 13.875H21V17.625H13.5V13.875Z" fill="${isCharging ? "#FEF991" : (color || (isDark ? "#D3D3D3" : "#232323"))}"/>
+<path d="M13.5 13.875H21V17.625H13.5V13.875Z" fill="${isCharging ? "#FEF991" : color || (isDark ? "#D3D3D3" : "#232323")}"/>
 <path d="M13.5 17.625H21V19.125H13.5V17.625Z" fill="${color || (isDark ? "#D3D3D3" : "#232323")}"/>
 <path d="M21 13.875H22.5V17.625H21V13.875Z" fill="${color || (isDark ? "#D3D3D3" : "#232323")}"/>
 <path d="M22.5 14.625H23.25V16.875H22.5V14.625Z" fill="${color || (isDark ? "#D3D3D3" : "#232323")}"/>
@@ -265,10 +265,11 @@ export default function DeviceSettings() {
       {status.glasses_info?.battery_level !== undefined && status.glasses_info.battery_level !== -1 && (
         <View style={themed($settingsGroup)}>
           <Text style={[themed($subtitle), {marginBottom: theme.spacing.xs}]}>Battery Status</Text>
-          
+
           {/* Glasses Battery */}
           {status.glasses_info.battery_level !== -1 && (
-            <View style={{flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 4}}>
+            <View
+              style={{flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 4}}>
               <View style={{flexDirection: "row", alignItems: "center"}}>
                 <GlassesIcon size={20} isDark={theme.isDark} />
                 <Text style={{color: theme.colors.text, marginLeft: theme.spacing.xs}}>Glasses</Text>
@@ -283,28 +284,30 @@ export default function DeviceSettings() {
           )}
 
           {/* Case Battery */}
-          {status.glasses_info.case_battery_level !== undefined && 
-           status.glasses_info.case_battery_level !== -1 && 
-           !status.glasses_info.case_removed && (
-            <View style={{flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 4}}>
-              <View style={{flexDirection: "row", alignItems: "center"}}>
-                <CaseIcon 
-                  size={20} 
-                  isCharging={status.glasses_info.case_charging} 
-                  isDark={theme.isDark} 
-                />
-                <Text style={{color: theme.colors.text, marginLeft: theme.spacing.xs}}>
-                  Case {status.glasses_info.case_charging ? "(Charging)" : ""}
-                </Text>
+          {status.glasses_info.case_battery_level !== undefined &&
+            status.glasses_info.case_battery_level !== -1 &&
+            !status.glasses_info.case_removed && (
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  paddingVertical: theme.spacing.xs,
+                }}>
+                <View style={{flexDirection: "row", alignItems: "center"}}>
+                  <CaseIcon size={20} isCharging={status.glasses_info.case_charging} isDark={theme.isDark} />
+                  <Text style={{color: theme.colors.text, marginLeft: theme.spacing.xxs}}>
+                    Case {status.glasses_info.case_charging ? "(Charging)" : ""}
+                  </Text>
+                </View>
+                <View style={{flexDirection: "row", alignItems: "center"}}>
+                  <Icon icon="battery" size={16} color={theme.colors.text} />
+                  <Text style={{color: theme.colors.text, marginLeft: theme.spacing.xxs, fontWeight: "500"}}>
+                    {status.glasses_info.case_battery_level}%
+                  </Text>
+                </View>
               </View>
-              <View style={{flexDirection: "row", alignItems: "center"}}>
-                <Icon icon="battery" size={16} color={theme.colors.text} />
-                <Text style={{color: theme.colors.text, marginLeft: 4, fontWeight: "500"}}>
-                  {status.glasses_info.case_battery_level}%
-                </Text>
-              </View>
-            </View>
-          )}
+            )}
         </View>
       )}
 
@@ -498,6 +501,7 @@ const $subtitle: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
 const $infoContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
   padding: spacing.sm,
   marginBottom: spacing.sm,
+  marginTop: spacing.sm,
 })
 
 const $infoText: ThemedStyle<TextStyle> = ({colors}) => ({

@@ -171,18 +171,13 @@ export default function Homepage() {
   return (
     <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.lg}}>
       <Header leftText={pageTitle} />
-      <ScrollView style={{marginRight: -theme.spacing.md, paddingRight: theme.spacing.md}} contentInsetAdjustmentBehavior="automatic">
-        {status.core_info.cloud_connection_status !== "CONNECTED" && <CloudConnection />}
-
-        {/* <View style={{flex: 1}}> */}
-        {/* <ConnectedGlasses showTitle={true} /> */}
+      <ScrollView
+        style={{marginRight: -theme.spacing.md, paddingRight: theme.spacing.md}}
+        contentInsetAdjustmentBehavior="automatic">
+        <CloudConnection />
         {status.glasses_info?.model_name && <ConnectedSimulatedGlassesInfo />}
-        {/* <SplitDeviceInfo /> */}
-        <ConnectedDeviceInfo />
-        <Spacer height={theme.spacing.md} />
+        <Spacer height={theme.spacing.lg} />
         <ConnectDeviceButton />
-        {/* </View> */}
-
         <DeviceSettings />
       </ScrollView>
     </Screen>

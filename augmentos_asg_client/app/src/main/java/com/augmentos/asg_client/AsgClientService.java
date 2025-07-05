@@ -125,11 +125,15 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     private static final long HEARTBEAT_TIMEOUT_MS = 10000; // 10 seconds
     private static final long RECOVERY_TIMEOUT_MS = 60000; // 1 minute
     private static final long RECOVERY_HEARTBEAT_INTERVAL_MS = 5000; // 5 seconds during recovery
-    
+
     private Handler heartbeatHandler;
     private long lastHeartbeatTime = 0;
     private boolean isInRecoveryMode = false;
     private int missedHeartbeats = 0;
+
+    // Battery status tracking
+    private int batteryVoltage = -1;
+    private int batteryPercentage = -1;
 
     // Receiver for handling restart requests from OTA updater
     private BroadcastReceiver restartReceiver;
@@ -253,11 +257,11 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         public void onReceive(Context context, Intent intent) {
             String action = intent.getAction();
             Log.d(TAG, "@#$$% Received broadcast with action: " + action);
-            
+
             if (ACTION_HEARTBEAT.equals(action) || "com.augmentos.otaupdater.ACTION_HEARTBEAT".equals(action)) {
                 lastHeartbeatTime = System.currentTimeMillis();
                 Log.d(TAG, "Service heartbeat received at " + lastHeartbeatTime);
-                
+
                 // Send acknowledgment back to monitor
                 Intent ackIntent = new Intent(ACTION_HEARTBEAT_ACK);
                 ackIntent.setPackage("com.augmentos.otaupdater");
@@ -520,7 +524,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                 Log.d(TAG, "AsgClientService onStartCommand -> restart request received");
                 createNotificationChannel();
                 startForeground(asgServiceNotificationId, updateNotification());
-                
+
                 // Register the restart receiver if not already registered
                 registerRestartReceiver();
 
@@ -921,6 +925,23 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         }
     }
 
+    private void sendBatteryStatusOverBle() {
+        if (bluetoothManager != null && bluetoothManager.isConnected()) {
+            try {
+                JSONObject obj = new JSONObject();
+                obj.put("type", "battery_status");
+                obj.put("charging", batteryVoltage > 3900);
+                obj.put("percent", batteryPercentage);
+                String jsonString = obj.toString();
+                Log.d(TAG, "Formatted battery status message: " + jsonString);
+                bluetoothManager.sendData(jsonString.getBytes());
+                Log.d(TAG, "Sent battery status via BLE");
+            } catch (JSONException e) {
+                Log.e(TAG, "Error creating battery status JSON", e);
+            }
+        }
+    }
+
     /**
      * Send WiFi scan results to AugmentOS Core via Bluetooth
      */
@@ -976,7 +997,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
             }
 
             // For non-K900 devices, start the microphone to stream audio
-            if (!isK900Device && glassesMicrophoneManager != null) {
+            if (false && !isK900Device && glassesMicrophoneManager != null) {
                 Log.d(TAG, "Starting microphone streaming for non-K900 device");
                 glassesMicrophoneManager.startRecording();
             }
@@ -1116,9 +1137,9 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                     dataToProcess = new JSONObject(dataPayload);
                     Log.d(TAG, "📦 Successfully parsed payload as JSON");
                 } catch (JSONException e) {
-                    Log.d(TAG, "📦 Payload is not valid JSON, using as-is");
-                    // If not valid JSON, continue with original json object
-                    parseK900Command(dataPayload);
+                    Log.d(TAG, "📦 Payload is not valid JSON, treating as ODM format");
+                    // If not valid JSON, it's ODM format - pass the full JSON object
+                    parseK900Command(json);
                     return;
                 }
             }
@@ -1180,6 +1201,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
 
                 case "take_photo":
                     String requestId = dataToProcess.optString("requestId", "");
+                    String webhookUrl = dataToProcess.optString("webhookUrl", "");
 
                     if (requestId.isEmpty()) {
                         Log.e(TAG, "Cannot take photo - missing requestId");
@@ -1193,8 +1215,8 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                     Log.d(TAG, "Taking photo with requestId: " + requestId);
                     Log.d(TAG, "Photo will be saved to: " + photoFilePath);
 
-                    // Take the photo using CameraNeo instead of CameraRecordingService
-                    mMediaCaptureService.takePhotoAndUpload(photoFilePath, requestId);
+                    // Take the photo using MediaCaptureService with webhook URL
+                    mMediaCaptureService.takePhotoAndUpload(photoFilePath, requestId, webhookUrl);
                     break;
 
                 case "start_video_recording":
@@ -1560,21 +1582,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     public void parseK900Command(String command){
         switch (command) {
             case "cs_pho":
-                Log.d(TAG, "\uD83D\uDCE6 Payload is cs_pho (short press)");
-
-                // If recording video, treat any button press as stop command
-                if (getMediaCaptureService() != null && getMediaCaptureService().isRecordingVideo()) {
-                    Log.d(TAG, "Stopping video recording due to button press");
-                    getMediaCaptureService().stopVideoRecording();
-                } else {
-                    // Otherwise handle as normal photo capture
-                    // Check camera permissions before trying to take a photo
-                    if (!ensureCameraPermissions()) {
-                        Log.e(TAG, "Camera permissions denied - attempting to fix before capture");
-                        // Still try to take photo - the internal handler will check again
-                    }
-                    handlePhotoCaptureWithMode();
-                }
+                handleButtonPress(false);
                 break;
 
             case "hm_htsp":
@@ -1584,25 +1592,88 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                 break;
 
             case "cs_vdo":
-                Log.d(TAG, "📦 Payload is cs_vdo (long press)");
-
-                MediaCaptureService mediaService = getMediaCaptureService();
-                if (mediaService != null) {
-                    if (mediaService.isRecordingVideo()) {
-                        // If already recording, stop
-                        Log.d(TAG, "Stopping video recording due to long press");
-                        mediaService.stopVideoRecording();
-                    } else {
-                        // Otherwise start recording
-                        Log.d(TAG, "Starting video recording due to long press");
-                        mediaService.handleVideoButtonPress();
-                    }
-                }
-                break;
-
+                handleButtonPress(true);
+            case "hm_batv":
+                //looks something like... {"C":"hm_batv","B":{"vt":4351,"pt":94}}
+                Log.d(TAG, "got a hm_batv");
             default:
                 Log.d(TAG, "📦 Unknown payload: " + command);
                 break;
+        }
+    }
+
+    // Overloaded version for ODM format JSON commands
+    public void parseK900Command(JSONObject json) {
+        try {
+            String command = json.optString("C", "");
+            JSONObject bData = json.optJSONObject("B");
+            
+            switch (command) {
+                case "cs_pho":
+                    handleButtonPress(false);
+                    break;
+
+                case "hm_htsp":
+                case "mh_htsp":
+                    Log.d(TAG, "📦 Payload is hm_htsp or mh_htsp");
+                    networkManager.startHotspot("Mentra Live", "MentraLive");
+                    break;
+
+                case "cs_vdo":
+                    handleButtonPress(true);
+                    break;
+
+                case "hm_batv":
+                    Log.d(TAG, "got a hm_batv with data");
+                    if (bData != null) {
+                        int newBatteryPercentage = bData.optInt("pt", -1);
+                        int newBatteryVoltage = bData.optInt("vt", -1);
+                        
+                        if (newBatteryPercentage != -1) {
+                            this.batteryPercentage = newBatteryPercentage;
+                            Log.d(TAG, "🔋 Battery percentage: " + batteryPercentage + "%");
+                        }
+                        if (newBatteryVoltage != -1) {
+                            this.batteryVoltage = newBatteryVoltage;
+                            Log.d(TAG, "🔋 Battery voltage: " + batteryVoltage + "mV");
+                        }
+                        
+                        // Send battery status over BLE if we have valid data
+                        if (batteryPercentage != -1 || batteryVoltage != -1) {
+                            sendBatteryStatusOverBle();
+                        }
+                    } else {
+                        Log.w(TAG, "hm_batv received but no B field data");
+                    }
+                    break;
+
+                default:
+                    Log.d(TAG, "📦 Unknown ODM payload: " + command);
+                    break;
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error processing ODM command", e);
+        }
+    }
+
+    private void handleButtonPress(boolean isLongPress) {
+        if (bluetoothManager != null && bluetoothManager.isConnected()) {
+            try {
+                JSONObject buttonObject = new JSONObject();
+                buttonObject.put("type", "button_press");
+                buttonObject.put("buttonId", "camera"); // Specify which button was pressed
+                buttonObject.put("pressType", isLongPress ? "long" : "short"); // Use pressType field instead of overwriting type
+                buttonObject.put("timestamp", System.currentTimeMillis());
+
+                // Convert to string
+                String jsonString = buttonObject.toString();
+                Log.d(TAG, "Formatted button press response: " + jsonString);
+
+                // Send the JSON response
+                bluetoothManager.sendData(jsonString.getBytes());
+            } catch (JSONException e) {
+                Log.e(TAG, "Error creating button press response", e);
+            }
         }
     }
 
@@ -2360,33 +2431,6 @@ public class AsgClientService extends Service implements NetworkStateListener, B
             }
         }
     };
-
-    // In the method that handles photo capture (e.g., handlePhotoButtonPress or similar):
-    private void handlePhotoCaptureWithMode() {
-        Log.d(TAG, "Handling photo capture with current mode: " + currentPhotoMode);
-        switch (currentPhotoMode) {
-            case SAVE_LOCALLY:
-                if (mMediaCaptureService != null) {
-                    // Check for camera permissions one more time before attempting capture
-                    ensureCameraPermissions();
-                    mMediaCaptureService.takePhotoLocally();
-                }
-                break;
-            case CLOUD:
-                if (mMediaCaptureService != null) {
-                    // Generate a temporary requestId and file path for the photo
-                    String timeStamp = new java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.US).format(new java.util.Date());
-                    String requestId = "cloud_" + timeStamp;
-                    String photoFilePath = getExternalFilesDir(null) + java.io.File.separator + "IMG_" + timeStamp + ".jpg";
-
-                    // Check for camera permissions one more time before attempting capture
-                    ensureCameraPermissions();
-                    // Take photo and upload to cloud
-                    mMediaCaptureService.takePhotoAndUpload(photoFilePath, requestId);
-                }
-                break;
-        }
-    }
 
     /**
      * Check if camera permissions are granted and try to fix if they're not
