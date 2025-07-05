@@ -437,8 +437,10 @@ export default function DeviceSettings() {
           </View>
         )}
 
-      {/* OTA Progress Section */}
-      <OtaProgressSection otaProgress={status.ota_progress} />
+      {/* OTA Progress Section - Only show for Mentra Live glasses */}
+      {status.glasses_info?.model_name?.toLowerCase().includes("mentra live") && (
+        <OtaProgressSection otaProgress={status.ota_progress} />
+      )}
 
       <RouteButton
         label={translate("settings:dashboardSettings")}
