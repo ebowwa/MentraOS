@@ -1347,24 +1347,24 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 
                 // Emit EventBus event for AugmentosService on main thread
                 try {
-                    DownloadProgressEvent.DownloadStatus status;
+                    DownloadProgressEvent.DownloadStatus downloadEventStatus;
                     final DownloadProgressEvent event;
                     switch (downloadStatus) {
                         case "STARTED":
-                            status = DownloadProgressEvent.DownloadStatus.STARTED;
-                            event = new DownloadProgressEvent(status, totalBytes);
+                            downloadEventStatus = DownloadProgressEvent.DownloadStatus.STARTED;
+                            event = new DownloadProgressEvent(downloadEventStatus, totalBytes);
                             break;
                         case "PROGRESS":
-                            status = DownloadProgressEvent.DownloadStatus.PROGRESS;
-                            event = new DownloadProgressEvent(status, downloadProgress, bytesDownloaded, totalBytes);
+                            downloadEventStatus = DownloadProgressEvent.DownloadStatus.PROGRESS;
+                            event = new DownloadProgressEvent(downloadEventStatus, downloadProgress, bytesDownloaded, totalBytes);
                             break;
                         case "FINISHED":
-                            status = DownloadProgressEvent.DownloadStatus.FINISHED;
-                            event = new DownloadProgressEvent(status, totalBytes, true);
+                            downloadEventStatus = DownloadProgressEvent.DownloadStatus.FINISHED;
+                            event = new DownloadProgressEvent(downloadEventStatus, totalBytes, true);
                             break;
                         case "FAILED":
-                            status = DownloadProgressEvent.DownloadStatus.FAILED;
-                            event = new DownloadProgressEvent(status, downloadErrorMessage);
+                            downloadEventStatus = DownloadProgressEvent.DownloadStatus.FAILED;
+                            event = new DownloadProgressEvent(downloadEventStatus, downloadErrorMessage);
                             break;
                         default:
                             Log.w(TAG, "Unknown download status: " + downloadStatus);
@@ -1373,7 +1373,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                     
                     // Post event on main thread to ensure proper delivery
                     handler.post(() -> {
-                        Log.d(TAG, "📡 Posting download progress event on main thread: " + status);
+                        Log.d(TAG, "📡 Posting download progress event on main thread: " + downloadEventStatus);
                         EventBus.getDefault().post(event);
                     });
                 } catch (Exception e) {
@@ -1402,20 +1402,20 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 
                 // Emit EventBus event for AugmentosService on main thread
                 try {
-                    InstallationProgressEvent.InstallationStatus status;
+                    InstallationProgressEvent.InstallationStatus installationEventStatus;
                     final InstallationProgressEvent event;
                     switch (installationStatus) {
                         case "STARTED":
-                            status = InstallationProgressEvent.InstallationStatus.STARTED;
-                            event = new InstallationProgressEvent(status, apkPath);
+                            installationEventStatus = InstallationProgressEvent.InstallationStatus.STARTED;
+                            event = new InstallationProgressEvent(installationEventStatus, apkPath);
                             break;
                         case "FINISHED":
-                            status = InstallationProgressEvent.InstallationStatus.FINISHED;
-                            event = new InstallationProgressEvent(status, apkPath);
+                            installationEventStatus = InstallationProgressEvent.InstallationStatus.FINISHED;
+                            event = new InstallationProgressEvent(installationEventStatus, apkPath);
                             break;
                         case "FAILED":
-                            status = InstallationProgressEvent.InstallationStatus.FAILED;
-                            event = new InstallationProgressEvent(status, apkPath, installationErrorMessage);
+                            installationEventStatus = InstallationProgressEvent.InstallationStatus.FAILED;
+                            event = new InstallationProgressEvent(installationEventStatus, apkPath, installationErrorMessage);
                             break;
                         default:
                             Log.w(TAG, "Unknown installation status: " + installationStatus);
@@ -1424,7 +1424,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                     
                     // Post event on main thread to ensure proper delivery
                     handler.post(() -> {
-                        Log.d(TAG, "📡 Posting installation progress event on main thread: " + status);
+                        Log.d(TAG, "📡 Posting installation progress event on main thread: " + installationEventStatus);
                         EventBus.getDefault().post(event);
                     });
                 } catch (Exception e) {
