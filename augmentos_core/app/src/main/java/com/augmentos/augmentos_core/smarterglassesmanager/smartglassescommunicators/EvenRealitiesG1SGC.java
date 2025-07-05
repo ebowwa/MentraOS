@@ -877,7 +877,6 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
 
         return leftId != null && leftId.equals(rightId);
     }
-
     public String parsePairingIdFromDeviceName(String input) {
         if (input == null || input.isEmpty()) return null;
         // Regular expression to match the number after "G1_"
@@ -1067,10 +1066,7 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
             // Capture manufacturer data for left device during scanning
             if (name != null && name.contains("_L_") && result.getScanRecord() != null) {
                 // Only capture manufacturer data for devices that match our preferred ID
-                String currentDeviceParsedId = parsePairingIdFromDeviceName(name);
-                Log.d(TAG, "CURRENT DEVICE PARSED ID: " + currentDeviceParsedId);
-                Log.d(TAG, "PREFERRED DEVICE ID: " + preferredG1DeviceId);
-                if (preferredG1DeviceId != null && preferredG1DeviceId.equals(currentDeviceParsedId)) {
+                if (preferredG1DeviceId != null && name.contains(preferredG1DeviceId + "_")) {
                     // Try to get manufacturer data from scan record
                     byte[] manufacturerData = result.getScanRecord().getManufacturerSpecificData(0x0000); // Common manufacturer ID
                     if (manufacturerData != null) {
@@ -1108,12 +1104,8 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
                 }
             }
 
-            String currentDeviceParsedId = parsePairingIdFromDeviceName(name);
-            Log.d(TAG, "PREFERRED ID: " + preferredG1DeviceId);
-            Log.d(TAG, "NAME: " + name);
-            Log.d(TAG, "CURRENT DEVICE PARSED ID: " + currentDeviceParsedId);
-
-            if (preferredG1DeviceId == null || !preferredG1DeviceId.equals(currentDeviceParsedId)) {
+//            Log.d(TAG, "PREFERRED ID: " + preferredG1DeviceId);
+            if (preferredG1DeviceId == null || !name.contains(preferredG1DeviceId + "_")) {
                 Log.d(TAG, "NOT PAIRED GLASSES");
                 return;
             }
@@ -1174,10 +1166,6 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
                         attemptGattConnection(rightDevice);
                     },2000);
                 } else {
-                    Log.d(TAG, "LEFT DEVICE: " + leftDevice);
-                    Log.d(TAG, "RIGHT DEVICE: " + rightDevice);
-                    Log.d(TAG, "IS LEFT BONDED: " + isLeftBonded);
-                    Log.d(TAG, "IS RIGHT BONDED: " + isRightBonded);
                     Log.d(TAG, "Not running a63dd");
                 }
             }
@@ -2102,7 +2090,6 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
                             foundDeviceNames.add(name);
                             Log.d(TAG, "Found smart glasses: " + name);
                             String adjustedName = parsePairingIdFromDeviceName(name);
-                            Log.d(TAG, "ADJUSTED NAME: " + adjustedName);
                             EventBus.getDefault().post(
                                     new GlassesBluetoothSearchDiscoverEvent(
                                             smartGlassesDevice.deviceModelName,
