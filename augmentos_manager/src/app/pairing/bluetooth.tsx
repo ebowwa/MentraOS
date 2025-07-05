@@ -170,7 +170,7 @@ export default function SelectGlassesBluetoothScreen() {
       coreCommunicator.sendSearchForCompatibleDeviceNames(glassesModelName)
       // todo: remove this once we figure out why it's not working w/o it (ios / core communicator isn't fully initialized or something)
       setTimeout(() => {
-        coreCommunicator.sendSearchForCompatibleDeviceNames(glassesModelName)
+        //coreCommunicator.sendSearchForCompatibleDeviceNames(glassesModelName)
       }, 1000)
     }
 
