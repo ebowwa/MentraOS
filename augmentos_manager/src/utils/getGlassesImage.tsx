@@ -62,9 +62,10 @@ export const getEvenRealitiesG1Image = (
   }
 
   // Default to Round style if not specified
-  const stylePrefix = style ? styleMap[style] || "a" : "a"
+  const stylePrefix = "a"
+  // const stylePrefix = style ? styleMap[style] || "a" : "a"
   // Default to Grey color if not specified
-  const colorSuffix = color ? colorMap[color] || "grey1" : "grey1"
+  const colorSuffix = "grey1"
   // Default to left side if not specified
   const sideSuffix = side || "l"
   // Add dark suffix if dark mode is requested
