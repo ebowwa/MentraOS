@@ -35,6 +35,9 @@ export interface Glasses {
   glasses_build_number?: string
   glasses_device_model?: string
   glasses_android_version?: string
+  glasses_serial_number?: string
+  glasses_style?: string
+  glasses_color?: string
 }
 
 interface GlassesSettings {
@@ -163,6 +166,9 @@ export class AugmentOSParser {
       case_open: true,
       case_charging: false,
       case_battery_level: 0,
+      glasses_serial_number: "ER-G1-2024-001234",
+      glasses_style: "Round",
+      glasses_color: "Green",
     },
     glasses_settings: {
       brightness: 87,
@@ -233,6 +239,9 @@ export class AugmentOSParser {
               glasses_build_number: glassesInfo.glasses_build_number,
               glasses_device_model: glassesInfo.glasses_device_model,
               glasses_android_version: glassesInfo.glasses_android_version,
+              glasses_serial_number: glassesInfo.glasses_serial_number,
+              glasses_style: glassesInfo.glasses_style,
+              glasses_color: glassesInfo.glasses_color,
             }
           : null,
         glasses_settings: {

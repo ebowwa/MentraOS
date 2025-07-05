@@ -37,6 +37,81 @@ export const AZURE_SPEECH_REGION = process.env.AZURE_SPEECH_REGION || "";
 export const AZURE_SPEECH_KEY = process.env.AZURE_SPEECH_KEY || "";
 
 /**
+ * Circuit breaker to prevent cascading failures when Azure is overloaded
+ */
+class AzureTranscriptionCircuitBreaker {
+  private rateLimitFailures = 0;
+  private lastRateLimitTime = 0;
+  private circuitOpen = false;
+  private readonly RATE_LIMIT_THRESHOLD = 5; // 5 failures triggers circuit open
+  private readonly CIRCUIT_RESET_TIME = 120000; // 2 minutes (was 10 minutes)
+  private readonly FAILURE_WINDOW = 180000; // 3 minutes (was 5 minutes)
+
+  /**
+   * Check if new Azure connection attempts should be allowed
+   */
+  canAttemptConnection(): boolean {
+    const now = Date.now();
+    
+    // Reset circuit if enough time has passed
+    if (now - this.lastRateLimitTime > this.CIRCUIT_RESET_TIME) {
+      this.rateLimitFailures = 0;
+      this.circuitOpen = false;
+      return true;
+    }
+    
+    // Check if we're in failure window with too many failures
+    if (this.rateLimitFailures >= this.RATE_LIMIT_THRESHOLD && 
+        now - this.lastRateLimitTime < this.FAILURE_WINDOW) {
+      this.circuitOpen = true;
+      return false;
+    }
+    
+    return true;
+  }
+
+  /**
+   * Record a rate limiting failure
+   */
+  recordRateLimitFailure(): void {
+    this.rateLimitFailures++;
+    this.lastRateLimitTime = Date.now();
+    
+    if (this.rateLimitFailures >= this.RATE_LIMIT_THRESHOLD) {
+      this.circuitOpen = true;
+      logger.error({
+        rateLimitFailures: this.rateLimitFailures,
+        circuitOpen: this.circuitOpen
+      }, '🚨 Azure transcription circuit breaker OPENED - blocking new connections for 2 minutes');
+    }
+  }
+
+  /**
+   * Record a successful connection (helps with gradual recovery)
+   */
+  recordSuccess(): void {
+    // Gradually reduce failure count on success
+    if (this.rateLimitFailures > 0) {
+      this.rateLimitFailures = Math.max(0, this.rateLimitFailures - 1);
+    }
+  }
+
+  /**
+   * Get current circuit state for monitoring
+   */
+  getState(): { open: boolean, failures: number, lastFailure: number } {
+    return {
+      open: this.circuitOpen,
+      failures: this.rateLimitFailures,
+      lastFailure: this.lastRateLimitTime
+    };
+  }
+}
+
+// Global circuit breaker instance
+const azureCircuitBreaker = new AzureTranscriptionCircuitBreaker();
+
+/**
  * Extend the UserSession type with our new property.
  */
 // export type ExtendedUserSession = UserSession & {
@@ -67,6 +142,10 @@ export interface ASRStreamInstance {
 export class TranscriptionService {
   private speechConfig: azureSpeechSDK.SpeechConfig;
   private sessionStartTime = 0;
+  
+  // Global connection tracking to prevent Azure rate limits
+  private static globalActiveStreams = 0;
+  private static readonly MAX_GLOBAL_STREAMS = 500; // Safety margin under 700 Azure limit
 
   constructor(config: {
     speechRecognitionLanguage?: string;
@@ -144,6 +223,30 @@ export class TranscriptionService {
   private createASRStreamForSubscription(subscription: ExtendedStreamType, userSession: UserSession): ASRStreamInstance {
     const sessionLogger = userSession.logger.child({ service: SERVICE_NAME });
 
+    // Check global connection limit before attempting Azure connection
+    if (TranscriptionService.globalActiveStreams >= TranscriptionService.MAX_GLOBAL_STREAMS) {
+      sessionLogger.error({
+        subscription,
+        globalActiveStreams: TranscriptionService.globalActiveStreams,
+        maxGlobalStreams: TranscriptionService.MAX_GLOBAL_STREAMS,
+        operation: 'globalLimitReached'
+      }, '🚨 Global Azure connection limit reached - blocking new transcription stream creation');
+      
+      throw new Error(`Global Azure connection limit reached: ${TranscriptionService.globalActiveStreams}/${TranscriptionService.MAX_GLOBAL_STREAMS}. This prevents rate limiting.`);
+    }
+
+    // Check circuit breaker before attempting Azure connection
+    if (!azureCircuitBreaker.canAttemptConnection()) {
+      const circuitState = azureCircuitBreaker.getState();
+      sessionLogger.error({
+        subscription,
+        circuitState,
+        operation: 'circuitBreakerOpen'
+      }, '🚨 Azure circuit breaker is OPEN - blocking new transcription stream creation');
+      
+      throw new Error(`Azure transcription service temporarily unavailable due to rate limiting. Circuit breaker open with ${circuitState.failures} recent failures.`);
+    }
+
     // Use the updated parse logic – which returns transcribeLanguage and translateLanguage.
     const languageInfo = getLanguageInfo(subscription);
     if (!languageInfo) {
@@ -206,85 +309,43 @@ export class TranscriptionService {
 
         const initializationTime = streamInstance.readyTime - streamInstance.startTime;
 
+        // Record successful connection in circuit breaker
+        azureCircuitBreaker.recordSuccess();
+        
+        // Increment global connection counter
+        TranscriptionService.globalActiveStreams++;
+
         sessionLogger.info({
           subscription,
           sessionId: event.sessionId,
           initializationTime,
           retryCount: streamInstance.retryCount,
+          circuitBreakerState: azureCircuitBreaker.getState(),
+          globalActiveStreams: TranscriptionService.globalActiveStreams,
           operation: 'sessionReady'
-        }, `✅ Azure Speech session ready after ${initializationTime}ms (including 500ms safety delay) - audio flow enabled`);
+        }, `✅ Azure Speech session ready after ${initializationTime}ms (including 500ms safety delay) - audio flow enabled (${TranscriptionService.globalActiveStreams} global connections)`);
       }, 500); // 500ms delay after sessionStarted to prevent InvalidOperation error 7
     };
 
     streamInstance.recognizer.sessionStopped = (_sender: any, event: SessionEventArgs) => {
       streamInstance.isReady = false;
+      
+      // Decrement global connection counter
+      if (TranscriptionService.globalActiveStreams > 0) {
+        TranscriptionService.globalActiveStreams--;
+      }
 
       sessionLogger.info({
         subscription,
         sessionId: event.sessionId,
         audioChunksWritten: streamInstance.audioChunksWritten,
+        globalActiveStreams: TranscriptionService.globalActiveStreams,
         operation: 'sessionStopped'
-      }, 'Azure Speech session stopped - audio flow disabled');
+      }, `Azure Speech session stopped - audio flow disabled (${TranscriptionService.globalActiveStreams} global connections remaining)`);
     };
 
-    // Enhanced error handling with detailed diagnostics
-    streamInstance.recognizer.canceled = (_sender: any, event: SpeechRecognitionCanceledEventArgs) => {
-      streamInstance.isReady = false;
-      streamInstance.isInitializing = false;
-
-      const sessionAge = Date.now() - streamInstance.startTime;
-      const timeSinceReady = streamInstance.readyTime ? Date.now() - streamInstance.readyTime : null;
-
-      // Enhanced error diagnostics
-      const errorDiagnostics = {
-        subscription,
-        sessionId: streamInstance.sessionId,
-        errorCode: event.errorCode,
-        errorDetails: event.errorDetails,
-        reason: event.reason,
-
-        // Timing diagnostics
-        sessionAge,
-        timeSinceReady,
-        wasEverReady: !!streamInstance.readyTime,
-        initializationTime: streamInstance.readyTime ? streamInstance.readyTime - streamInstance.startTime : null,
-
-        // Audio flow diagnostics
-        audioChunksReceived: streamInstance.audioChunksReceived,
-        audioChunksWritten: streamInstance.audioChunksWritten,
-        audioWriteSuccessRate: streamInstance.audioChunksReceived > 0 ?
-          (streamInstance.audioChunksWritten / streamInstance.audioChunksReceived * 100).toFixed(1) + '%' : 'N/A',
-
-        // Retry context
-        retryCount: streamInstance.retryCount,
-
-        // Azure context
-        azureRegion: AZURE_SPEECH_REGION,
-        recognizerType: languageInfo.type === StreamType.TRANSLATION ? 'TranslationRecognizer' : 'ConversationTranscriber',
-
-        // Root cause indicators
-        likelyRaceCondition: event.errorCode === 7 && !streamInstance.readyTime && streamInstance.audioChunksReceived > 0,
-        likelyNetworkIssue: event.errorCode === 4 || event.reason === CancellationReason.Error,
-        likelyAuthIssue: event.errorCode === 1 || event.errorCode === 2
-      };
-
-      // Contextual error logging
-      if (event.errorCode === 7) {
-        if (!streamInstance.readyTime && streamInstance.audioChunksReceived > 0) {
-          sessionLogger.error(errorDiagnostics,
-            '🔥 RACE CONDITION: Audio fed to Azure stream before session ready (Error Code 7)');
-        } else {
-          sessionLogger.error(errorDiagnostics,
-            '⚠️ Azure Invalid Operation (Error Code 7) - stream was ready but operation failed');
-        }
-      } else {
-        sessionLogger.error(errorDiagnostics,
-          `Azure Speech Recognition canceled (Error Code ${event.errorCode})`);
-      }
-
-      // Handle retry logic with proper categorization
-      this.handleStreamError(streamInstance, subscription, userSession, event);
-    };
+    // NOTE: The .canceled handler is set up later in setupRecognitionHandlersForInstance
+    // This ensures it doesn't get overwritten and our smart retry logic is applied correctly
 
     // Set up recognition event handlers
     this.setupRecognitionHandlersForInstance(streamInstance, userSession, subscription, languageInfo);
@@ -571,46 +632,91 @@ export class TranscriptionService {
       };
     }
 
-    // Common event handlers.
+    // ✅ SMART AZURE ERROR HANDLING with Circuit Breaker and Intelligent Retry Logic
     instance.recognizer.canceled = (_sender: any, event: SpeechRecognitionCanceledEventArgs) => {
-      const isInvalidOperation = event.errorCode === 7;
       const sessionLogger = userSession.logger.child({ service: SERVICE_NAME });
+      
+      // Update instance state
+      instance.isReady = false;
+      instance.isInitializing = false;
 
-      sessionLogger.error({
+      const sessionAge = Date.now() - instance.startTime;
+      const timeSinceReady = instance.readyTime ? Date.now() - instance.readyTime : null;
+
+      // Enhanced error diagnostics
+      const errorDiagnostics = {
         subscription,
-        reason: event.reason,
+        sessionId: instance.sessionId,
         errorCode: event.errorCode,
         errorDetails: event.errorDetails,
-        isInvalidOperation,
-        streamAge: Date.now() - (instance.startTime || 0),
-        wasReady: instance.isReady,
-        azureErrorMapping: isInvalidOperation ? 'SPXERR_INVALID_OPERATION' : 'UNKNOWN'
-      }, isInvalidOperation ? 'Recognition canceled with InvalidOperation (error 7)' : 'Recognition canceled');
-      sessionLogger.debug({ event }, 'Detailed cancellation event');
+        reason: event.reason,
 
-      this.stopIndividualTranscriptionStream(instance, subscription, userSession);
+        // Timing diagnostics
+        sessionAge,
+        timeSinceReady,
+        wasEverReady: !!instance.readyTime,
+        initializationTime: instance.readyTime ? instance.readyTime - instance.startTime : null,
 
-      // Remove the failed stream from the map
-      userSession.transcriptionStreams?.delete(subscription);
+        // Audio flow diagnostics
+        audioChunksReceived: instance.audioChunksReceived,
+        audioChunksWritten: instance.audioChunksWritten,
+        audioWriteSuccessRate: instance.audioChunksReceived > 0 ?
+          (instance.audioChunksWritten / instance.audioChunksReceived * 100).toFixed(1) + '%' : 'N/A',
 
-      // If the error is a temporary issue (not authentication or invalid operation), schedule a retry
-      if (event.errorCode !== 1 && event.errorCode !== 2) { // Not authentication, authorization, or invalid operation errors
-        sessionLogger.info({ subscription, event }, 'Scheduling retry for canceled recognition stream');
-        setTimeout(() => {
-          // Check if the subscription is still needed and stream doesn't exist
-          const currentSubscriptions = subscriptionService.getMinimalLanguageSubscriptions(userSession.sessionId);
-          if (currentSubscriptions.includes(subscription as ExtendedStreamType) &&
-            !userSession.transcriptionStreams?.has(subscription)) {
-            sessionLogger.info({ subscription }, 'Retrying canceled transcription stream');
-            try {
-              const retryStream = this.createASRStreamForSubscription(subscription, userSession);
-              userSession.transcriptionStreams?.set(subscription, retryStream);
-            } catch (retryError) {
-              sessionLogger.error({ subscription, error: retryError }, 'Retry failed for canceled stream');
-            }
-          }
-        }, 3000); // 3 second delay for retries
+        // Retry context
+        retryCount: instance.retryCount,
+
+        // Azure context
+        azureRegion: AZURE_SPEECH_REGION,
+        recognizerType: languageInfo.type === StreamType.TRANSLATION ? 'TranslationRecognizer' : 'ConversationTranscriber',
+
+        // Circuit breaker context
+        circuitBreakerState: azureCircuitBreaker.getState(),
+
+        // Root cause indicators
+        likelyRaceCondition: event.errorCode === 7 && !instance.readyTime && instance.audioChunksReceived > 0,
+        likelyNetworkIssue: event.errorCode === 4 || event.reason === CancellationReason.Error,
+        likelyAuthIssue: event.errorCode === 1 || event.errorCode === 2,
+        likelyRateLimiting: event.errorCode === 4 && event.errorDetails && event.errorDetails.includes('4429')
+      };
+
+      // Track rate limiting failures in circuit breaker
+      if (errorDiagnostics.likelyRateLimiting) {
+        azureCircuitBreaker.recordRateLimitFailure();
+        sessionLogger.error(errorDiagnostics,
+          '🚨 Azure rate limiting detected (4429) - recorded in circuit breaker');
       }
+
+      // Contextual error logging
+      if (event.errorCode === 7) {
+        if (!instance.readyTime && instance.audioChunksReceived > 0) {
+          sessionLogger.error(errorDiagnostics,
+            '🔥 RACE CONDITION: Audio fed to Azure stream before session ready (Error Code 7)');
+        } else {
+          sessionLogger.error(errorDiagnostics,
+            '⚠️ Azure Invalid Operation (Error Code 7) - stream was ready but operation failed');
+        }
+      } else {
+        sessionLogger.error(errorDiagnostics,
+          `🚨 Azure Speech Recognition canceled (Error Code ${event.errorCode}) - applying smart retry logic`);
+      }
+
+      // Clean up current stream and decrement global counter
+      this.stopIndividualTranscriptionStream(instance, subscription, userSession);
+      userSession.transcriptionStreams?.delete(subscription);
+      
+      // Ensure global counter is decremented for failed/canceled streams
+      if (instance.isReady && TranscriptionService.globalActiveStreams > 0) {
+        TranscriptionService.globalActiveStreams--;
+        sessionLogger.debug({
+          subscription,
+          globalActiveStreams: TranscriptionService.globalActiveStreams,
+          operation: 'decrementGlobalCounter'
+        }, `Decremented global connection counter after stream cancellation (${TranscriptionService.globalActiveStreams} remaining)`);
+      }
+
+      // Handle retry logic with proper categorization
+      this.handleStreamError(instance, subscription, userSession, event);
     };
 
     instance.recognizer.sessionStarted = (_sender: any, _event: SessionEventArgs) => {
@@ -1022,15 +1128,17 @@ export class TranscriptionService {
     const sessionLogger = userSession.logger.child({ service: SERVICE_NAME });
 
     const errorCode = event.errorCode;
-    const isRetryable = this.isRetryableError(errorCode);
-    const maxRetries = this.getMaxRetries(errorCode);
-    const baseRetryDelay = this.getBaseRetryDelay(errorCode);
+    const errorDetails = event.errorDetails || '';
+    const isRetryable = this.isRetryableError(errorCode, errorDetails);
+    const maxRetries = this.getMaxRetries(errorCode, errorDetails);
+    const baseRetryDelay = this.getBaseRetryDelay(errorCode, errorDetails);
 
     if (isRetryable && streamInstance.retryCount < maxRetries) {
       streamInstance.retryCount++;
 
-      // Exponential backoff with jitter
-      const jitter = Math.random() * 0.3; // 0-30% jitter
+      // Intelligent exponential backoff with adaptive jitter
+      const jitterPercent = this.getJitterPercent(errorCode, errorDetails);
+      const jitter = Math.random() * jitterPercent;
       const backoffMultiplier = Math.pow(2, streamInstance.retryCount - 1);
       const retryDelay = baseRetryDelay * backoffMultiplier * (1 + jitter);
 
@@ -1120,12 +1228,20 @@ export class TranscriptionService {
   /**
    * Determine if an error code should trigger a retry
    */
-  private isRetryableError(errorCode: number): boolean {
+  private isRetryableError(errorCode: number, errorDetails?: string): boolean {
     switch (errorCode) {
-      case 7:   // SPXERR_INVALID_OPERATION - Often a race condition, retry
-      case 4:   // Network/connection issues
-      case 6:   // Timeout issues
-      case 999: // Custom error code for start failures
+      case 7:   // SPXERR_INVALID_OPERATION - CRITICAL: Stop infinite retry loops!
+        // This is almost always a race condition that won't resolve with retries
+        // Retrying Error Code 7 creates infinite loops and stream multiplication
+        return false; // 🚨 FIXED: No more infinite retry loops
+      
+      case 4:   // Network/connection issues - special handling for rate limiting
+        // Rate limiting (4429) is retryable but with much longer delays
+        return true;
+      
+      case 6:   // Timeout issues - limited retries
+        return true;
+      case 999: // Custom error code for start failures - limited retries
         return true;
 
       case 1:   // Authentication/authorization errors - don't retry
@@ -1140,28 +1256,45 @@ export class TranscriptionService {
   /**
    * Get maximum retry attempts based on error type
    */
-  private getMaxRetries(errorCode: number): number {
-    switch (errorCode) {
-      case 7:   // Race condition errors - retry more aggressively
-        return 5;
-      case 4:   // Network issues - moderate retries
-      case 6:   // Timeout issues - moderate retries
-        return 3;
-      case 999: // Start failures - limited retries
-        return 2;
-      default:
-        return 1;
-    }
+  private getMaxRetries(errorCode: number, errorDetails?: string): number {
+    return 10; // Default generous retry count.
+    // switch (errorCode) {
+    //   case 7:   // Race condition errors - NOT RETRYABLE (infinite loop prevention)
+    //     return 0; // This should never be called since Error Code 7 is not retryable
+      
+    //   case 4:   // Network issues
+    //     if (errorDetails && errorDetails.includes('4429')) {
+    //       // Rate limiting - fewer retries with much longer delays
+    //       return 5;
+    //     }
+    //     // Other network issues - generous retries for transient issues
+    //     return 10;
+      
+    //   case 6:   // Timeout issues - generous retries
+    //     return 10;
+    //   case 999: // Start failures - moderate retries
+    //     return 5;
+    //   default:
+    //     return 3; // More generous default
+    // }
   }
 
   /**
    * Get base retry delay in milliseconds based on error type
    */
-  private getBaseRetryDelay(errorCode: number): number {
+  private getBaseRetryDelay(errorCode: number, errorDetails?: string): number {
     switch (errorCode) {
-      case 7:   // Race condition - quick retry
-        return 1000; // 1 second base
-      case 4:   // Network issues - longer delay
+      case 7:   // Race condition - less aggressive retry (increased from 1s to 2s)
+        return 2000; // 2 seconds base
+      
+      case 4:   // Network issues
+        if (errorDetails && errorDetails.includes('4429')) {
+          // Rate limiting - much longer delays to let Azure recover
+          return 10000; // 10 seconds base (was 3s)
+        }
+        // Other network issues - longer delay
+        return 3000; // 3 seconds base
+      
       case 6:   // Timeout issues - longer delay
         return 3000; // 3 seconds base
       case 999: // Start failures - medium delay
@@ -1169,6 +1302,46 @@ export class TranscriptionService {
       default:
         return 2000; // 2 seconds default
     }
+  }
+
+  /**
+   * Get jitter percentage based on error type to spread retry timing
+   */
+  private getJitterPercent(errorCode: number, errorDetails?: string): number {
+    switch (errorCode) {
+      case 4:   // Network issues
+        if (errorDetails && errorDetails.includes('4429')) {
+          // Rate limiting - high jitter to spread requests across time
+          return 0.5; // 50% jitter
+        }
+        // Other network issues - moderate jitter
+        return 0.3; // 30% jitter
+      
+      case 7:   // Race condition - moderate jitter
+        return 0.3; // 30% jitter
+      
+      default:
+        return 0.3; // 30% default jitter
+    }
+  }
+
+  /**
+   * Get global connection statistics for monitoring
+   */
+  static getGlobalConnectionStats(): {
+    activeStreams: number;
+    maxStreams: number;
+    utilizationPercent: number;
+    nearLimit: boolean;
+  } {
+    const utilizationPercent = (TranscriptionService.globalActiveStreams / TranscriptionService.MAX_GLOBAL_STREAMS) * 100;
+    
+    return {
+      activeStreams: TranscriptionService.globalActiveStreams,
+      maxStreams: TranscriptionService.MAX_GLOBAL_STREAMS,
+      utilizationPercent: Math.round(utilizationPercent * 10) / 10, // Round to 1 decimal
+      nearLimit: utilizationPercent > 80 // Warning if above 80%
+    };
   }
 }
 

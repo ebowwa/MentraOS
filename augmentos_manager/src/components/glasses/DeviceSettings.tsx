@@ -505,6 +505,7 @@ const $subtitle: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
 const $infoContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
   padding: spacing.sm,
   marginBottom: spacing.sm,
+  marginTop: spacing.sm,
 })
 
 const $infoText: ThemedStyle<TextStyle> = ({colors}) => ({

@@ -32,6 +32,7 @@ import {PillButton} from "@/components/ignite/PillButton"
 import GlassesTroubleshootingModal from "@/components/misc/GlassesTroubleshootingModal"
 import {ThemedStyle} from "@/theme"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
+import Animated, {useAnimatedStyle, useSharedValue, withDelay, withTiming} from "react-native-reanimated"
 
 export default function SelectGlassesBluetoothScreen() {
   const {status} = useStatus()
@@ -43,6 +44,14 @@ export default function SelectGlassesBluetoothScreen() {
   const [showTroubleshootingModal, setShowTroubleshootingModal] = useState(false)
   // Create a ref to track the current state of searchResults
   const searchResultsRef = useRef<string[]>(searchResults)
+
+  const scrollViewOpacity = useSharedValue(0)
+  const scrollViewAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: scrollViewOpacity.value,
+  }))
+  useEffect(() => {
+    scrollViewOpacity.value = withDelay(2000, withTiming(1, {duration: 1000}))
+  }, [])
 
   // Keep the ref updated whenever searchResults changes
   useEffect(() => {
@@ -245,33 +254,35 @@ export default function SelectGlassesBluetoothScreen() {
       </View>
       <ScrollView
         style={{marginBottom: 20, marginTop: 10, marginRight: -theme.spacing.md, paddingRight: theme.spacing.md}}>
-        {/* DISPLAY LIST OF BLUETOOTH SEARCH RESULTS */}
-        {searchResults && searchResults.length > 0 && (
-          <>
-            {searchResults.map((deviceName, index) => (
-              <TouchableOpacity
-                key={index}
-                style={themed($settingItem)}
-                onPress={() => {
-                  triggerGlassesPairingGuide(glassesModelName, deviceName)
-                }}>
-                {/* <Image source={glassesImage} style={styles.glassesImage} /> */}
-                <View style={styles.settingTextContainer}>
-                  <Text
-                    text={`${glassesModelName}  ${deviceName}`}
-                    style={[
-                      styles.label,
-                      {
-                        color: theme.colors.text,
-                      },
-                    ]}
-                  />
-                </View>
-                <Icon name="angle-right" size={24} color={theme.colors.text} />
-              </TouchableOpacity>
-            ))}
-          </>
-        )}
+        <Animated.View style={scrollViewAnimatedStyle}>
+          {/* DISPLAY LIST OF BLUETOOTH SEARCH RESULTS */}
+          {searchResults && searchResults.length > 0 && (
+            <>
+              {searchResults.map((deviceName, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={themed($settingItem)}
+                  onPress={() => {
+                    triggerGlassesPairingGuide(glassesModelName, deviceName)
+                  }}>
+                  {/* <Image source={glassesImage} style={styles.glassesImage} /> */}
+                  <View style={styles.settingTextContainer}>
+                    <Text
+                      text={`${glassesModelName}  ${deviceName}`}
+                      style={[
+                        styles.label,
+                        {
+                          color: theme.colors.text,
+                        },
+                      ]}
+                    />
+                  </View>
+                  <Icon name="angle-right" size={24} color={theme.colors.text} />
+                </TouchableOpacity>
+              ))}
+            </>
+          )}
+        </Animated.View>
       </ScrollView>
 
       <GlassesTroubleshootingModal

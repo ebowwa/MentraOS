@@ -1108,6 +1108,7 @@ struct ViewState {
     ]
 
     let cloudConnectionStatus = self.serverComms.isWebSocketConnected() ? "CONNECTED" : "DISCONNECTED"
+    // let cloudConnectionStatus = self.serverComms.wsManager.status
 
     let coreInfo: [String: Any] = [
       "augmentos_core_version": "Unknown",

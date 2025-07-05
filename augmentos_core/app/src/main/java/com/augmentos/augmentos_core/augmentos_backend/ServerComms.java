@@ -169,7 +169,7 @@ public class ServerComms {
             Log.d(TAG, "WebSocket already connected, skipping connection");
             return;
         }
-        
+
         this.coreToken = coreToken;
         wsManager.connect(getServerUrl(), coreToken);
     }
@@ -203,7 +203,7 @@ public class ServerComms {
         if (audioSenderThread == null) {
             return; // Skip processing entirely if sender thread isn't active
         }
-        
+
         // Clone only once to avoid unnecessary copies
         byte[] copiedData = audioData.clone();
 
@@ -563,10 +563,10 @@ public class ServerComms {
             Log.e(TAG, "Error building location_update JSON", e);
         }
     }
-    
+
     /**
      * Sends a photo response message to the server
-     * 
+     *
      * @param requestId The unique ID of the photo request
      * @param photoUrl URL of the uploaded photo
      */
@@ -583,10 +583,10 @@ public class ServerComms {
             Log.e(TAG, "Error building photo_response JSON", e);
         }
     }
-    
+
     /**
      * Sends a video stream response message to the server
-     * 
+     *
      * @param appId The ID of the app requesting the stream
      * @param streamUrl URL of the video stream
      */
@@ -677,18 +677,19 @@ public class ServerComms {
                 if (serverCommsCallback != null)
                     serverCommsCallback.onMicrophoneStateChange(isMicrophoneEnabled);
                 break;
-                
+
             case "photo_request":
                 String requestId = msg.optString("requestId");
                 String appId = msg.optString("appId");
-                Log.d(TAG, "Received photo_request, requestId: " + requestId + ", appId: " + appId);
+                String webhookUrl = msg.optString("webhookUrl", "");
+                Log.d(TAG, "Received photo_request, requestId: " + requestId + ", appId: " + appId + ", webhookUrl: " + webhookUrl);
                 if (serverCommsCallback != null && !requestId.isEmpty() && !appId.isEmpty()) {
-                    serverCommsCallback.onPhotoRequest(requestId, appId);
+                    serverCommsCallback.onPhotoRequest(requestId, appId, webhookUrl);
                 } else {
                     Log.e(TAG, "Invalid photo request: missing requestId or appId");
                 }
                 break;
-                
+
             case "start_rtmp_stream":
                 String rtmpUrl = msg.optString("rtmpUrl", "");
                 if (serverCommsCallback != null && !rtmpUrl.isEmpty()) {
@@ -697,18 +698,18 @@ public class ServerComms {
                     Log.e(TAG, "Invalid RTMP stream request: missing rtmpUrl or callback");
                 }
                 break;
-                
+
             case "stop_rtmp_stream":
                 Log.d(TAG, "Received STOP_RTMP_STREAM");
-                
+
                 if (serverCommsCallback != null) {
                     serverCommsCallback.onRtmpStreamStop();
                 }
                 break;
-                
+
             case "keep_rtmp_stream_alive":
                 Log.d(TAG, "Received KEEP_RTMP_STREAM_ALIVE: " + msg.toString());
-                
+
                 if (serverCommsCallback != null) {
                     serverCommsCallback.onRtmpStreamKeepAlive(msg);
                 }
