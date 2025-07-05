@@ -24,6 +24,8 @@ export interface UserI extends Document {
     useOnboardMic: boolean;
     contextualDashboard: boolean;
     headUpAngle: number;
+    dashboardHeight: number;
+    dashboardDepth: number;
     brightness: number;
     autoBrightness: boolean;
     sensingEnabled: boolean;
@@ -146,6 +148,8 @@ const UserSchema = new Schema<UserI>({
       contextualDashboard: { type: Boolean, default: true },
       metricSystemEnabled: { type: Boolean, default: false },
       headUpAngle: { type: Number, default: 20 },
+      dashboardHeight: { type: Number, default: 4 },
+      dashboardDepth: { type: Number, default: 5 },
       brightness: { type: Number, default: 50 },
       autoBrightness: { type: Boolean, default: false },
       sensingEnabled: { type: Boolean, default: true },
@@ -159,6 +163,8 @@ const UserSchema = new Schema<UserI>({
         contextualDashboard: true,
         metricSystemEnabled: false,
         headUpAngle: 20,
+        dashboardHeight: 4,
+        dashboardDepth: 5,
         brightness: 50,
         autoBrightness: false,
         sensingEnabled: true,
@@ -452,7 +458,7 @@ UserSchema.methods.updateAugmentosSettings = async function(
 
   // Convert to plain object for clean logging
   const mergedSettingsClean = JSON.parse(JSON.stringify(this.augmentosSettings));
-  logger.info('Merged settings:', mergedSettingsClean);
+  logger.info({mergedSettingsClean}, 'Merged settings:');
 
   await this.save();
   logger.info('Settings saved successfully');
@@ -689,7 +695,7 @@ UserSchema.statics.findUserInstalledApps = async function (email: string): Promi
 
     return result;
   } catch (error) {
-    console.error(`[User.findUserInstalledApps] Error finding apps for user ${email}:`, error);
+    console.error(error, `[User.findUserInstalledApps] Error finding apps for user ${email}:`);
     // In case of error, return at least the system apps
     const { LOCAL_APPS, SYSTEM_AppS } = require('../services/core/app.service');
     return [...LOCAL_APPS, ...SYSTEM_AppS].map(app => ({

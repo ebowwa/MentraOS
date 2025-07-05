@@ -16,6 +16,7 @@ protocol ServerCommsCallback {
   func onMicrophoneStateChange(_ isEnabled: Bool)
   func onDisplayEvent(_ event: [String: Any])
   func onRequestSingle(_ dataType: String)
+  func onStatusUpdate(_ status: [String: Any])
 }
 
 class ServerComms {
@@ -436,9 +437,28 @@ class ServerComms {
       } else {
         print("ServerComms: Received speech message but speechRecCallback is null!")
       }
+
+    
       
     case "reconnect":
       print("ServerComms: Server is requesting a reconnect.")
+
+    case "settings_update":
+        print("ServerComms: Received settings update from WebSocket")
+        if let status = msg["status"] as? [String: Any], let callback = serverCommsCallback {
+            callback.onStatusUpdate(status)
+        }
+        break;
+        // Log.d(TAG, "Received settings update from WebSocket");
+        // try {
+        //     JSONObject settings = msg.optJSONObject("settings");
+        //     if (settings != null && serverCommsCallback != null) {
+        //         serverCommsCallback.onSettingsUpdate(settings);
+        //     }
+        // } catch (Exception e) {
+        //     Log.e(TAG, "Error handling settings update", e);
+        // }
+        break;
       
     default:
       print("ServerComms: Unknown message type: \(type) / full: \(msg)")

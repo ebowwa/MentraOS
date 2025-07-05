@@ -71,10 +71,10 @@ public class CircleBuffer {
             }
             
             // Keep this circle buffer log
-            Log.d(TAG, "Added " + len + " bytes to buffer, now contains " + getDataLen() + " bytes");
+            //Log.d(TAG, "Added " + len + " bytes to buffer, now contains " + getDataLen() + " bytes");
             return true;
         } else {
-            Log.w(TAG, "Cannot add " + len + " bytes to buffer");
+            //Log.w(TAG, "Cannot add " + len + " bytes to buffer");
             return false;
         }
     }
@@ -158,7 +158,7 @@ public class CircleBuffer {
         }
         
         // Keep this circle buffer log
-        Log.d(TAG, "Removed " + size + " bytes from buffer head, " + getDataLen() + " bytes remaining");
+        //Log.d(TAG, "Removed " + size + " bytes from buffer head, " + getDataLen() + " bytes remaining");
     }
     
     /**
