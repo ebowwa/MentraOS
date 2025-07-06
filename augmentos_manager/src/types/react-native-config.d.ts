@@ -10,6 +10,9 @@ declare module 'react-native-config' {
     MENTRAOS_SECURE?: string;
     MENTRAOS_VERSION?: string;
     MENTRAOS_APPSTORE_URL?: string;
+
+    // PostHog settings
+    POSTHOG_API_KEY?: string;
   }
   
   export const Config: NativeConfig;
