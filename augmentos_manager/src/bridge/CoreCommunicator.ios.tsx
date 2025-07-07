@@ -238,6 +238,11 @@ export class CoreCommunicator extends EventEmitter {
       console.log("Received message from core:", jsonString)
     }
 
+    if (jsonString.startsWith("SWIFT:")) {
+      console.log("SWIFT: ", jsonString.slice(6))
+      return
+    }
+
     try {
       const data = JSON.parse(jsonString)
       this.isConnected = true

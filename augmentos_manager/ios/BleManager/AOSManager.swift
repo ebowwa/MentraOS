@@ -96,8 +96,8 @@ struct ViewState {
 
   @objc public func setup() {
 
-    self.g1Manager = ERG1Manager()
-    self.liveManager = MentraLiveManager()
+//    self.g1Manager = ERG1Manager()
+//    self.liveManager = MentraLiveManager()
     self.micManager = OnboardMicrophoneManager()
     self.serverComms.locationManager.setup()
     self.serverComms.mediaManager.setup()
@@ -789,9 +789,15 @@ struct ViewState {
       handleRequestStatus()
       saveSettings()
     } else if (modelName.contains("G1")) {
+      if (g1Manager == nil) {
+        g1Manager = ERG1Manager()
+      }
       self.defaultWearable = "Even Realities G1"
       self.g1Manager?.RN_startScan()
     } else if (modelName.contains("Live")) {
+      if (liveManager == nil) {
+        liveManager = MentraLiveManager()
+      }
       self.defaultWearable = "Mentra Live"
       self.liveManager?.RN_findCompatibleDevices()
     }
@@ -1369,6 +1375,9 @@ struct ViewState {
       disconnect()
 
       if (self.defaultWearable.contains("Live")) {
+        if (self.liveManager == nil) {
+          self.liveManager = MentraLiveManager()
+        }
         if (deviceName != "") {
           self.deviceName = deviceName
           saveSettings()
@@ -1379,6 +1388,9 @@ struct ViewState {
           print("this shouldn't happen (we don't have a deviceName saved, connecting will fail if we aren't already paired)")
         }
       } else if (self.defaultWearable.contains("G1")) {
+        if (self.g1Manager == nil) {
+          self.g1Manager = ERG1Manager()
+        }
         if (deviceName != "") {
           self.deviceName = deviceName
           saveSettings()
@@ -1549,26 +1561,26 @@ struct ViewState {
         }
     }
 
-    // let defaults = UserDefaults.standard
+     let defaults = UserDefaults.standard
 
-    // // Save each setting with its corresponding key
-    // defaults.set(defaultWearable, forKey: SettingsKeys.defaultWearable)
-    // defaults.set(deviceName, forKey: SettingsKeys.deviceName)
-    // defaults.set(contextualDashboard, forKey: SettingsKeys.contextualDashboard)
-    // defaults.set(headUpAngle, forKey: SettingsKeys.headUpAngle)
-    // defaults.set(brightness, forKey: SettingsKeys.brightness)
-    // defaults.set(autoBrightness, forKey: SettingsKeys.autoBrightness)
-    // defaults.set(sensingEnabled, forKey: SettingsKeys.sensingEnabled)
-    // defaults.set(dashboardHeight, forKey: SettingsKeys.dashboardHeight)
-    // defaults.set(dashboardDepth, forKey: SettingsKeys.dashboardDepth)
-    // defaults.set(alwaysOnStatusBar, forKey: SettingsKeys.alwaysOnStatusBar)
-    // defaults.set(bypassVad, forKey: SettingsKeys.bypassVad)
-    // defaults.set(bypassAudioEncoding, forKey: SettingsKeys.bypassAudioEncoding)
-    // defaults.set(preferredMic, forKey: SettingsKeys.preferredMic)
-    // defaults.set(metricSystemEnabled, forKey: SettingsKeys.metricSystemEnabled)
+     // Save each setting with its corresponding key
+     defaults.set(defaultWearable, forKey: SettingsKeys.defaultWearable)
+     defaults.set(deviceName, forKey: SettingsKeys.deviceName)
+     defaults.set(contextualDashboard, forKey: SettingsKeys.contextualDashboard)
+     defaults.set(headUpAngle, forKey: SettingsKeys.headUpAngle)
+     defaults.set(brightness, forKey: SettingsKeys.brightness)
+     defaults.set(autoBrightness, forKey: SettingsKeys.autoBrightness)
+     defaults.set(sensingEnabled, forKey: SettingsKeys.sensingEnabled)
+     defaults.set(dashboardHeight, forKey: SettingsKeys.dashboardHeight)
+     defaults.set(dashboardDepth, forKey: SettingsKeys.dashboardDepth)
+     defaults.set(alwaysOnStatusBar, forKey: SettingsKeys.alwaysOnStatusBar)
+     defaults.set(bypassVad, forKey: SettingsKeys.bypassVad)
+     defaults.set(bypassAudioEncoding, forKey: SettingsKeys.bypassAudioEncoding)
+     defaults.set(preferredMic, forKey: SettingsKeys.preferredMic)
+     defaults.set(metricSystemEnabled, forKey: SettingsKeys.metricSystemEnabled)
 
-    // // Force immediate save (optional, as UserDefaults typically saves when appropriate)
-    // defaults.synchronize()
+     // Force immediate save (optional, as UserDefaults typically saves when appropriate)
+     defaults.synchronize()
 
     // print("Settings saved: Default Wearable: \(defaultWearable ?? "None"), Preferred Mic: \(preferredMic), " +
     //       "Contextual Dashboard: \(contextualDashboard), Head Up Angle: \(headUpAngle), Brightness: \(brightness)")
@@ -1593,32 +1605,34 @@ struct ViewState {
     alwaysOnStatusBar = false
     bypassAudioEncoding = false
 
-    // UserDefaults.standard.register(defaults: [SettingsKeys.sensingEnabled: true])
-    // UserDefaults.standard.register(defaults: [SettingsKeys.contextualDashboard: true])
-    // UserDefaults.standard.register(defaults: [SettingsKeys.bypassVad: false])
-    // UserDefaults.standard.register(defaults: [SettingsKeys.preferredMic: "glasses"])
-    // UserDefaults.standard.register(defaults: [SettingsKeys.brightness: 50])
-    // UserDefaults.standard.register(defaults: [SettingsKeys.headUpAngle: 30])
-    // UserDefaults.standard.register(defaults: [SettingsKeys.metricSystemEnabled: false])
-    // UserDefaults.standard.register(defaults: [SettingsKeys.autoBrightness: true])
+     UserDefaults.standard.register(defaults: [SettingsKeys.sensingEnabled: true])
+     UserDefaults.standard.register(defaults: [SettingsKeys.contextualDashboard: true])
+     UserDefaults.standard.register(defaults: [SettingsKeys.bypassVad: false])
+     UserDefaults.standard.register(defaults: [SettingsKeys.preferredMic: "glasses"])
+     UserDefaults.standard.register(defaults: [SettingsKeys.brightness: 50])
+     UserDefaults.standard.register(defaults: [SettingsKeys.headUpAngle: 30])
+     UserDefaults.standard.register(defaults: [SettingsKeys.metricSystemEnabled: false])
+     UserDefaults.standard.register(defaults: [SettingsKeys.autoBrightness: true])
 
-    // let defaults = UserDefaults.standard
+     let defaults = UserDefaults.standard
 
-    // // Load each setting with appropriate type handling
-    // defaultWearable = defaults.string(forKey: SettingsKeys.defaultWearable) ?? ""
-    // deviceName = defaults.string(forKey: SettingsKeys.deviceName) ?? ""
-    // preferredMic = defaults.string(forKey: SettingsKeys.preferredMic) ?? "glasses"
-    // contextualDashboard = defaults.bool(forKey: SettingsKeys.contextualDashboard)
-    // autoBrightness = defaults.bool(forKey: SettingsKeys.autoBrightness)
-    // sensingEnabled = defaults.bool(forKey: SettingsKeys.sensingEnabled)
-    // dashboardHeight = defaults.integer(forKey: SettingsKeys.dashboardHeight)
-    // dashboardDepth = defaults.integer(forKey: SettingsKeys.dashboardDepth)
-    // alwaysOnStatusBar = defaults.bool(forKey: SettingsKeys.alwaysOnStatusBar)
-    // bypassVad = defaults.bool(forKey: SettingsKeys.bypassVad)
-    // bypassAudioEncoding = defaults.bool(forKey: SettingsKeys.bypassAudioEncoding)
-    // headUpAngle = defaults.integer(forKey: SettingsKeys.headUpAngle)
-    // brightness = defaults.integer(forKey: SettingsKeys.brightness)
-    // metricSystemEnabled = defaults.bool(forKey: SettingsKeys.metricSystemEnabled)
+     // Load each setting with appropriate type handling
+     defaultWearable = defaults.string(forKey: SettingsKeys.defaultWearable) ?? ""
+     deviceName = defaults.string(forKey: SettingsKeys.deviceName) ?? ""
+     preferredMic = defaults.string(forKey: SettingsKeys.preferredMic) ?? "glasses"
+     contextualDashboard = defaults.bool(forKey: SettingsKeys.contextualDashboard)
+     autoBrightness = defaults.bool(forKey: SettingsKeys.autoBrightness)
+     sensingEnabled = defaults.bool(forKey: SettingsKeys.sensingEnabled)
+     dashboardHeight = defaults.integer(forKey: SettingsKeys.dashboardHeight)
+     dashboardDepth = defaults.integer(forKey: SettingsKeys.dashboardDepth)
+     alwaysOnStatusBar = defaults.bool(forKey: SettingsKeys.alwaysOnStatusBar)
+     bypassVad = defaults.bool(forKey: SettingsKeys.bypassVad)
+     bypassAudioEncoding = defaults.bool(forKey: SettingsKeys.bypassAudioEncoding)
+     headUpAngle = defaults.integer(forKey: SettingsKeys.headUpAngle)
+     brightness = defaults.integer(forKey: SettingsKeys.brightness)
+     metricSystemEnabled = defaults.bool(forKey: SettingsKeys.metricSystemEnabled)
+    
+    // TODO: load settings from the server
 
     // Mark settings as loaded and signal completion
     self.settingsLoaded = true
