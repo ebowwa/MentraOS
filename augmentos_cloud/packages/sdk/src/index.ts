@@ -193,6 +193,11 @@ export {
   StreamStatusHandler
 } from './types/rtmp-stream';
 
+// Export photo data types
+export {
+  PhotoData
+} from './types/photo-data';
+
 /**
  * WebSocket error information
  */
