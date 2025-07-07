@@ -340,7 +340,7 @@ public class LocationSystem extends Service {
         stopLocationUpdates();
 
         LocationRequest.Builder pollRequestBuilder = new LocationRequest.Builder(1000); // Interval is not critical for a single poll.
-        pollRequestBuilder.setNumUpdates(1);
+        pollRequestBuilder.setMaxUpdates(1);
 
         switch (accuracy) {
             case "realtime":
