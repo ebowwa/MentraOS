@@ -259,35 +259,21 @@ export default function DeveloperSettingsScreen() {
             </View>
             <View style={styles.buttonColumn}>
               <PillButton
-                text="Production"
+                text="US Central"
                 variant="icon"
-                onPress={() => setCustomUrlInput("https://prod.augmentos.cloud:443")}
+                onPress={() => setCustomUrlInput("https://uscentralapi.mentra.glass:443")}
                 buttonStyle={styles.button}
               />
               <PillButton
-                text="Debug"
+                text="Dev"
                 variant="icon"
-                onPress={() => setCustomUrlInput("https://debug.augmentos.cloud:443")}
+                onPress={() => setCustomUrlInput("https://devapi.mentra.glass:443")}
                 buttonStyle={styles.button}
               />
               <PillButton
                 text="Global"
                 variant="icon"
-                onPress={() => setCustomUrlInput("https://global.augmentos.cloud:443")}
-                buttonStyle={styles.button}
-              />
-            </View>
-            <View style={styles.buttonColumnCentered}>
-              <PillButton
-                text="Dev Nicolo"
-                variant="icon"
-                onPress={() => setCustomUrlInput("https://devold.augmentos.org:443")}
-                buttonStyle={styles.button}
-              />
-              <PillButton
-                text="Dev Cloud"
-                variant="icon"
-                onPress={() => setCustomUrlInput("https://dev.augmentos.cloud:443")}
+                onPress={() => setCustomUrlInput("https://api.mentra.glass:443")}
                 buttonStyle={styles.button}
               />
             </View>
