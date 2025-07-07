@@ -24,6 +24,37 @@ The existing HFP implementation has several significant drawbacks:
 3. **Flexible Control**: App-level control over audio routing and processing
 4. **Better User Experience**: No conflicts with other audio apps
 
+### Custom LC3 GATT vs Standard LE Audio
+
+**Important Distinction**: This implementation uses only the LC3 codec from the LE Audio specification, NOT the full LE Audio standard.
+
+#### Standard LE Audio (NOT what we want)
+- Full Bluetooth LE Audio specification implementation
+- Uses standardized audio profiles and services
+- Phone OS recognizes it as a standard Bluetooth audio device
+- **Same problems as HFP**: Hijacks phone's audio system
+- Prevents concurrent audio from other apps
+- Complex specification with features we don't need (audio sharing, broadcast, etc.)
+
+#### Custom LC3 over GATT (What we want)
+- Uses only the LC3 codec (compression algorithm) from LE Audio
+- Streams raw LC3 data through custom GATT characteristics
+- No standard Bluetooth audio profiles involved
+- **Phone OS doesn't recognize it as an audio device**
+- Completely bypasses phone's audio system
+- Allows concurrent audio from other apps
+
+#### Technical Flow
+1. **App Audio** → LC3 Encode → Custom GATT Message → **Glasses**
+2. **Glasses Mic** → LC3 Encode → Custom GATT Message → **App**
+
+This approach gives us the benefits of LC3 compression without the limitations of standard Bluetooth audio profiles.
+
+#### Coexistence with Standard Audio
+- **Keep existing HFP/LE Audio**: Maintain current standard audio implementation
+- **Runtime toggling**: Switch between standard and custom modes as needed
+- **Use case flexibility**: Standard audio for system integration, custom GATT for concurrent audio scenarios
+
 ## Implementation Requirements
 
 ### Toggle System
