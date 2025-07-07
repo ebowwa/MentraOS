@@ -829,25 +829,53 @@ public class CameraNeo extends LifecycleService {
         }
     }
 
+        /**
+     * Choose the optimal size from available choices based on desired dimensions.
+     * Finds the size with the smallest total difference between requested and available dimensions.
+     *
+     * @param choices Available size options
+     * @param desiredWidth Target width
+     * @param desiredHeight Target height
+     * @return The closest matching size, or null if no choices available
+     */
     private Size chooseOptimalSize(Size[] choices, int desiredWidth, int desiredHeight) {
-        // Simplified: find exact match or largest available if no exact match for simplicity.
-        // A more robust version would consider aspect ratio and closest area.
+        if (choices == null || choices.length == 0) {
+            Log.w(TAG, "No size choices available");
+            return null;
+        }
+
+        // First, try to find an exact match
         for (Size option : choices) {
             if (option.getWidth() == desiredWidth && option.getHeight() == desiredHeight) {
+                Log.d(TAG, "Found exact size match: " + option.getWidth() + "x" + option.getHeight());
                 return option;
             }
         }
-        // Fallback: return the largest available size if no exact match (or first if choices is empty)
-        if (choices.length > 0) {
-            Size largest = choices[0];
-            for (Size option : choices) {
-                if (option.getWidth() * option.getHeight() > largest.getWidth() * largest.getHeight()) {
-                    largest = option;
-                }
+
+        // No exact match found, find the size with smallest total dimensional difference
+        Log.d(TAG, "No exact match found, finding closest size to " + desiredWidth + "x" + desiredHeight);
+
+        Size bestSize = choices[0];
+        int smallestDifference = Integer.MAX_VALUE;
+
+        for (Size option : choices) {
+            int widthDiff = Math.abs(option.getWidth() - desiredWidth);
+            int heightDiff = Math.abs(option.getHeight() - desiredHeight);
+            int totalDifference = widthDiff + heightDiff;
+
+            Log.d(TAG, "Size " + option.getWidth() + "x" + option.getHeight() +
+                  " difference: " + totalDifference + " (width: " + widthDiff + ", height: " + heightDiff + ")");
+
+            if (totalDifference < smallestDifference) {
+                smallestDifference = totalDifference;
+                bestSize = option;
             }
-            return largest;
         }
-        return null; // Should not happen if map.getOutputSizes returns valid data
+
+        Log.d(TAG, "Selected optimal size: " + bestSize.getWidth() + "x" + bestSize.getHeight() +
+              " (total difference: " + smallestDifference + ")");
+
+        return bestSize;
     }
 
     private void notifyVideoError(String videoId, String errorMessage) {
