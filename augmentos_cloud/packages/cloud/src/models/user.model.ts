@@ -71,6 +71,12 @@ export interface UserI extends Document {
    */
   onboardingStatus?: Record<string, boolean>;
 
+  /**
+   * List of glasses models that this user has connected
+   * Example: ["Even Realities G1", "TCL RayNeo X2", "Vuzix Shield"]
+   */
+  glassesModels?: string[];
+
   setLocation(location: Location): Promise<void>;
   addRunningApp(appName: string): Promise<void>;
   removeRunningApp(appName: string): Promise<void>;
@@ -87,6 +93,10 @@ export interface UserI extends Document {
   updateAugmentosSettings(settings: Partial<UserI['augmentosSettings']>): Promise<void>;
   getAugmentosSettings(): UserI['augmentosSettings'];
   updateAppLastActive(packageName: string): Promise<void>;
+
+  // Glasses model tracking methods
+  addGlassesModel(modelName: string): Promise<void>;
+  getGlassesModels(): string[];
 }
 
 const InstalledAppSchema = new Schema({
@@ -245,6 +255,17 @@ const UserSchema = new Schema<UserI>({
     type: Map,
     of: Boolean,
     default: {},
+  },
+
+  glassesModels: {
+    type: [String],
+    default: [],
+    validate: {
+      validator: function(models: string[]) {
+        return new Set(models).size === models.length;
+      },
+      message: 'Glasses models must be unique'
+    }
   },
 }, {
   timestamps: true,
@@ -542,6 +563,30 @@ UserSchema.methods.updateAppLastActive = async function(
 
   // If we get here, all retries failed
   throw lastError;
+};
+
+// --- Glasses Model Methods ---
+UserSchema.methods.addGlassesModel = async function(modelName: string): Promise<void> {
+  if (!modelName || typeof modelName !== 'string') {
+    throw new Error('Model name must be a non-empty string');
+  }
+
+  // Sanitize the model name
+  const sanitizedModelName = MongoSanitizer.sanitizeKey(modelName);
+
+  // Check if model already exists
+  if (!this.glassesModels) {
+    this.glassesModels = [];
+  }
+
+  if (!this.glassesModels.includes(sanitizedModelName)) {
+    this.glassesModels.push(sanitizedModelName);
+    await this.save();
+  }
+};
+
+UserSchema.methods.getGlassesModels = function(): string[] {
+  return this.glassesModels || [];
 };
 
 // --- Middleware ---
