@@ -23,6 +23,8 @@ import {
   PhotoRequest,
   RtmpStreamRequest,
   RtmpStreamStopRequest,
+  ManagedStreamRequest,
+  ManagedStreamStopRequest,
 } from '@mentra/sdk';
 import UserSession from '../session/UserSession';
 import * as developerService from '../core/developer.service';
@@ -254,6 +256,54 @@ export class AppWebSocketService {
             this.logger.error({e, packageName: message.packageName}, "Error requesting photo via PhotoManager");
             this.sendError(appWebsocket, AppErrorCode.INTERNAL_ERROR, (e as Error).message || "Failed to request photo.");
           }
+          break;
+
+        case AppToCloudMessageType.MANAGED_STREAM_REQUEST:
+          try {
+            const managedReq = message as ManagedStreamRequest;
+            const streamId = await userSession.managedStreamingExtension.startManagedStream(
+              userSession, 
+              managedReq
+            );
+            this.logger.info({ 
+              streamId, 
+              packageName: managedReq.packageName 
+            }, "Managed stream request processed");
+          } catch (e) {
+            this.logger.error({ 
+              e, 
+              packageName: message.packageName 
+            }, "Error starting managed stream");
+            this.sendError(
+              appWebsocket, 
+              AppErrorCode.INTERNAL_ERROR, 
+              (e as Error).message || "Failed to start managed stream"
+            );
+          }
+          break;
+
+        case AppToCloudMessageType.MANAGED_STREAM_STOP:
+          try {
+            const stopReq = message as ManagedStreamStopRequest;
+            await userSession.managedStreamingExtension.stopManagedStream(
+              userSession, 
+              stopReq
+            );
+            this.logger.info({ 
+              packageName: stopReq.packageName 
+            }, "Managed stream stop request processed");
+          } catch (e) {
+            this.logger.error({ 
+              e, 
+              packageName: message.packageName 
+            }, "Error stopping managed stream");
+            this.sendError(
+              appWebsocket, 
+              AppErrorCode.INTERNAL_ERROR, 
+              (e as Error).message || "Failed to stop managed stream"
+            );
+          }
+          break;
 
         default:
           logger.warn(`Unhandled App message type: ${message.type}`);

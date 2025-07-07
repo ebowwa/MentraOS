@@ -63,7 +63,7 @@ import EventEmitter from 'events';
 
 
 // Import the cloud-to-app specific type guards
-import { isPhotoResponse, isRtmpStreamStatus } from '../../types/messages/cloud-to-app';
+import { isPhotoResponse, isRtmpStreamStatus, isManagedStreamStatus } from '../../types/messages/cloud-to-app';
 
 /**
  * ⚙️ Configuration options for App Session
@@ -995,6 +995,13 @@ export class AppSession {
 
           // Update camera module's internal stream state
           this.camera.updateStreamState(message);
+        }
+        else if (isManagedStreamStatus(message)) {
+          // Handle managed stream status
+          this.camera.handleManagedStreamStatus(message);
+          
+          // Emit managed stream status event
+          this.events.emit('managed_stream_status', message);
         }
         else if (isSettingsUpdate(message)) {
           // Store previous settings to check for changes

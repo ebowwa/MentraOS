@@ -26,6 +26,7 @@ export {
   ToolCall,
   StandardConnectionError,
   CustomMessage,
+  ManagedStreamStatus,
   MentraosSettingsUpdate,
   TranscriptionData,
   AudioChunk,
