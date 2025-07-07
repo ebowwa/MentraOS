@@ -212,7 +212,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     private boolean glassesNeedWifiCredentials = false;
     private boolean glassesWifiConnected = false;
     private String glassesWifiSsid = "";
-    private String glassesLocalIp = "";
+    private String glassesWifiLocalIp = "";
 
     // WiFi scan results
     private List<String> wifiNetworks = new ArrayList<>();
@@ -304,7 +304,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                     // Reset WiFi status when glasses disconnect
                     glassesWifiConnected = false;
                     glassesWifiSsid = "";
-                    glassesLocalIp = "";
+                    glassesWifiLocalIp = "";
                 }
 
                 sendStatusToAugmentOsManager();
@@ -865,7 +865,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     public void onGlassesNeedWifiCredentialsEvent(GlassesWifiStatusChange event) {
         glassesWifiConnected = event.isWifiConnected;
         glassesWifiSsid = event.currentSsid;
-        glassesLocalIp = event.localIpAddress;
+        glassesWifiLocalIp = event.localIpAddress;
 
 
         Log.d(TAG, "Received GlassesNeedWifiCredentialsEvent: device=" + event.deviceModel +
@@ -874,7 +874,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
 
 
         // Send the dedicated WiFi status change event
-        sendWifiStatusChangeEvent(glassesWifiConnected, glassesWifiSsid, glassesLocalIp);
+        sendWifiStatusChangeEvent(glassesWifiConnected, glassesWifiSsid, glassesWifiLocalIp);
 
         // Also update the general status
         sendStatusToAugmentOsManager();
@@ -1445,7 +1445,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                 if (usesWifi) {
                     connectedGlasses.put("glasses_wifi_connected", glassesWifiConnected);
                     connectedGlasses.put("glasses_wifi_ssid", glassesWifiSsid);
-                    connectedGlasses.put("glasses_local_ip", glassesLocalIp);
+                    connectedGlasses.put("glasses_wifi_local_ip", glassesWifiLocalIp);
                 }
 
                 // Add ASG client version information for Mentra Live glasses
