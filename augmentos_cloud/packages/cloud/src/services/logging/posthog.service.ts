@@ -51,6 +51,31 @@ async function trackEvent(
   }
 }
 
+/**
+ * Set person properties in PostHog.
+ * @param userId - User ID to set properties for.
+ * @param properties - Properties to set on the user profile.
+ */
+async function setPersonProperties(
+  userId: string,
+  properties: EventProperties = {}
+): Promise<void> {
+  // Only proceed if PostHog is initialized
+  if (!posthog) return;
+  try {
+    posthog.identify({
+      distinctId: userId,
+      properties: {
+        $set: properties
+      }
+    });
+  } catch (err) {
+    // Log any errors to avoid failing the main application flow
+    logger.error('PostHog person properties error:', err);
+  }
+}
+
 export const PosthogService = {
-  trackEvent
+  trackEvent,
+  setPersonProperties
 }
