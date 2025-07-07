@@ -63,12 +63,19 @@ async function setPersonProperties(
   // Only proceed if PostHog is initialized
   if (!posthog) return;
   try {
-    posthog.identify({
+    posthog.capture({
       distinctId: userId,
+      event: '$set',
       properties: {
         $set: properties
       }
     });
+    // posthog.identify({
+    //   distinctId: userId,
+    //   properties: {
+    //     $set: properties
+    //   }
+    // });
   } catch (err) {
     // Log any errors to avoid failing the main application flow
     logger.error('PostHog person properties error:', err);
