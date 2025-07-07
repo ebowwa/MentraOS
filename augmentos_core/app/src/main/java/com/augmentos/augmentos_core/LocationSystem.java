@@ -8,14 +8,13 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
-import android.util.Log;
 import android.content.pm.PackageManager;
 import android.location.Location;
 import android.os.Binder;
 import android.os.Build;
-import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
+import android.util.Log;
 
 import androidx.annotation.Nullable;
 import androidx.core.app.ActivityCompat;
@@ -36,15 +35,7 @@ public class LocationSystem extends Service {
     
     // Service binder
     private final IBinder binder = new LocationBinder();
-    
-    // We no longer need this context since we are a Service
-    // private Context context;
-    
-    public double lat = 0;
-    public double lng = 0;
 
-    public double latestAccessedLat = 0;
-    public double latestAccessedLong = 0;
     private FusedLocationProviderClient fusedLocationProviderClient;
     private LocationCallback singlePollCallback;
     private LocationCallback continuousLocationCallback;
@@ -202,15 +193,14 @@ public class LocationSystem extends Service {
                     if (location != null) {
                         // Use the last known location immediately
                         lastKnownLocation = location;
-                        lat = location.getLatitude();
-                        lng = location.getLongitude();
-                        Log.d(TAG, "Using last known location: " + lat + ", " + lng);
+                        ServerComms.getInstance().sendButtonPress("DEBUG_LOG", "LocationSystem: Using last known location: " + location.getLatitude() + ", " + location.getLongitude());
                     }
                 });
     }
 
     public void stopLocationUpdates() {
         if (fusedLocationProviderClient != null) {
+            ServerComms.getInstance().sendButtonPress("DEBUG_LOG", "LocationSystem: Stopping all location updates.");
             if (singlePollCallback != null) {
                 fusedLocationProviderClient.removeLocationUpdates(singlePollCallback);
             }
@@ -240,50 +230,36 @@ public class LocationSystem extends Service {
         }
     }
 
-    public double getNewLat() {
-        if (latestAccessedLat == lat) return -1;
-        latestAccessedLat = lat;
-        return latestAccessedLat;
-    }
-
-    public double getNewLng() {
-        if (latestAccessedLong == lng) return -1;
-        latestAccessedLong = lng;
-        return latestAccessedLong;
-    }
-
     private void setupLocationCallbacks() {
-        // High-accuracy callback for better location
+        // This callback is for single, one-off location requests.
         singlePollCallback = new LocationCallback() {
             @Override
             public void onLocationResult(LocationResult locationResult) {
-                if (locationResult == null || locationResult.getLocations().isEmpty()) return;
-
+                if (locationResult == null || locationResult.getLocations().isEmpty()) {
+                    ServerComms.getInstance().sendButtonPress("DEBUG_LOG", "LocationSystem: singlePollCallback received null/empty result.");
+                    return;
+                }
                 Location location = locationResult.getLastLocation();
-                lat = location.getLatitude();
-                lng = location.getLongitude();
                 lastKnownLocation = location;
-
-                Log.d(TAG, "Accurate location fix obtained (single poll): " + lat + ", " + lng);
-
+                String logMessage = "LocationSystem: Accurate location fix obtained (single poll): " + location.getLatitude() + ", " + location.getLongitude();
+                ServerComms.getInstance().sendButtonPress("DEBUG_LOG", logMessage);
                 sendLocationToServer(location);
                 // After a single poll, we must stop updates to save battery.
                 stopLocationUpdates();
             }
         };
 
-        // New callback for continuous streaming that does NOT stop updates.
+        // This callback is for continuous streaming and does NOT stop updates.
         continuousLocationCallback = new LocationCallback() {
             @Override
             public void onLocationResult(LocationResult locationResult) {
-                ServerComms.getInstance().sendButtonPress("DEBUG_LOG", "LocationSystem: continuousLocationCallback triggered!");
                 if (locationResult == null || locationResult.getLocations().isEmpty()) {
-                    ServerComms.getInstance().sendButtonPress("DEBUG_LOG", "continuousLocationCallback received null or empty locationResult.");
+                    ServerComms.getInstance().sendButtonPress("DEBUG_LOG", "LocationSystem: continuousLocationCallback received null/empty result.");
                     return;
                 }
                 Location location = locationResult.getLastLocation();
                 lastKnownLocation = location;
-                String logMessage = "Continuous location update: " + location.getLatitude() + ", " + location.getLongitude();
+                String logMessage = "LocationSystem: Continuous location update: " + location.getLatitude() + ", " + location.getLongitude();
                 ServerComms.getInstance().sendButtonPress("DEBUG_LOG", logMessage);
                 sendLocationToServer(location);
             }
@@ -299,9 +275,6 @@ public class LocationSystem extends Service {
      * Call this method to cleanup all resources when the app is being destroyed
      */
     public void cleanup() {
-        // Remove all pending callbacks
-        // locationSendingLoopHandler is no longer used.
-        
         // Make sure location updates are stopped
         stopLocationUpdates();
     }
@@ -310,39 +283,38 @@ public class LocationSystem extends Service {
     public void setTier(String tier) {
         ServerComms.getInstance().sendButtonPress("DEBUG_LOG", "LocationSystem: setTier called with tier: " + tier);
 
-        // CRITICAL: Stop all previously scheduled location runnables to prevent conflicts.
+        // Always stop previous updates before starting a new one.
         stopLocationUpdates();
 
-        // If the tier is "reduced", we let the old power-saving scheduler take over.
-        if (tier.equals("reduced")) {
-            Log.d(TAG, "Tier is 'reduced', reverting to power-saving scheduler.");
+        // If the tier is "reduced", we do nothing and wait for the next command.
+        if (tier == null || tier.equals("reduced")) {
+            ServerComms.getInstance().sendButtonPress("DEBUG_LOG", "LocationSystem: Tier is 'reduced', no continuous updates will be sent.");
             return;
         }
 
-        LocationRequest.Builder locationRequestBuilder = new LocationRequest.Builder(10000); // Default interval
-
+        LocationRequest streamRequest;
         switch (tier) {
             case "realtime":
-                locationRequestBuilder.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY).setIntervalMillis(1000);
+                streamRequest = new LocationRequest.Builder(LocationRequest.PRIORITY_HIGH_ACCURACY, 1000).build();
                 break;
             case "high":
-                locationRequestBuilder.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY).setIntervalMillis(10000);
+                streamRequest = new LocationRequest.Builder(LocationRequest.PRIORITY_HIGH_ACCURACY, 10000).build();
                 break;
             case "tenMeters":
-                locationRequestBuilder.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY).setIntervalMillis(30000);
+                streamRequest = new LocationRequest.Builder(LocationRequest.PRIORITY_HIGH_ACCURACY, 30000).build();
                 break;
             case "hundredMeters":
-                locationRequestBuilder.setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY).setIntervalMillis(60000);
+                streamRequest = new LocationRequest.Builder(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY, 60000).build();
                 break;
             case "kilometer":
-                locationRequestBuilder.setPriority(LocationRequest.PRIORITY_LOW_POWER).setIntervalMillis(300000);
+                streamRequest = new LocationRequest.Builder(LocationRequest.PRIORITY_LOW_POWER, 300000).build();
                 break;
             case "threeKilometers":
-            case "reduced":
-                locationRequestBuilder.setPriority(LocationRequest.PRIORITY_NO_POWER).setIntervalMillis(900000);
+                streamRequest = new LocationRequest.Builder(LocationRequest.PRIORITY_NO_POWER, 900000).build();
                 break;
             default:
-                locationRequestBuilder.setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY).setIntervalMillis(60000);
+                 ServerComms.getInstance().sendButtonPress("DEBUG_LOG", "LocationSystem: Unknown tier '" + tier + "', defaulting to balanced.");
+                streamRequest = new LocationRequest.Builder(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY, 60000).build();
                 break;
         }
 
@@ -352,7 +324,7 @@ public class LocationSystem extends Service {
         if (hasPermission) {
             ServerComms.getInstance().sendButtonPress("DEBUG_LOG", "LocationSystem: About to call requestLocationUpdates for continuous stream.");
             fusedLocationProviderClient.requestLocationUpdates(
-                locationRequestBuilder.build(),
+                streamRequest,
                 continuousLocationCallback, // Use the new continuous callback
                 Looper.getMainLooper()
             );
@@ -361,45 +333,46 @@ public class LocationSystem extends Service {
     }
 
     public void requestSingleUpdate(String accuracy, String correlationId) {
-        ServerComms.getInstance().sendButtonPress("DEBUG_LOG", "Requesting single location update with accuracy: " + accuracy);
+        ServerComms.getInstance().sendButtonPress("DEBUG_LOG", "LocationSystem: Requesting single location update with accuracy: " + accuracy);
         this.currentCorrelationId = correlationId;
 
-        // CRITICAL: Stop all previously scheduled location runnables to ensure this poll is not interrupted.
+        // Stop any existing streams to prioritize this single, accurate poll.
         stopLocationUpdates();
 
-        LocationRequest.Builder locationRequestBuilder = new LocationRequest.Builder(1000); // Interval isn't as critical for single update
-        locationRequestBuilder.setMaxUpdates(1); // Ensure we only get one update
+        LocationRequest.Builder pollRequestBuilder = new LocationRequest.Builder(1000); // Interval is not critical for a single poll.
+        pollRequestBuilder.setNumUpdates(1);
 
         switch (accuracy) {
             case "realtime":
             case "high":
             case "tenMeters":
-                locationRequestBuilder.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+                pollRequestBuilder.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
                 break;
             case "hundredMeters":
-                locationRequestBuilder.setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY);
+                pollRequestBuilder.setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY);
                 break;
             case "kilometer":
             case "threeKilometers":
             case "reduced":
-                locationRequestBuilder.setPriority(LocationRequest.PRIORITY_LOW_POWER);
+                pollRequestBuilder.setPriority(LocationRequest.PRIORITY_LOW_POWER);
                 break;
             default:
-                locationRequestBuilder.setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY);
+                ServerComms.getInstance().sendButtonPress("DEBUG_LOG", "LocationSystem: Unknown accuracy '" + accuracy + "', defaulting to balanced.");
+                pollRequestBuilder.setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY);
                 break;
         }
 
         boolean hasPermission = ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED;
-        ServerComms.getInstance().sendButtonPress("DEBUG_LOG", "In requestSingleUpdate, hasFineLocationPermission: " + hasPermission);
+        ServerComms.getInstance().sendButtonPress("DEBUG_LOG", "LocationSystem: In requestSingleUpdate, hasFineLocationPermission: " + hasPermission);
 
         if (hasPermission) {
-            ServerComms.getInstance().sendButtonPress("DEBUG_LOG", "requestSingleUpdate: About to call requestLocationUpdates");
+            ServerComms.getInstance().sendButtonPress("DEBUG_LOG", "LocationSystem: requestSingleUpdate: About to call requestLocationUpdates");
             fusedLocationProviderClient.requestLocationUpdates(
-                locationRequestBuilder.build(),
+                pollRequestBuilder.build(),
                 singlePollCallback, // Use the single poll callback
                 Looper.getMainLooper()
             );
-            ServerComms.getInstance().sendButtonPress("DEBUG_LOG", "requestSingleUpdate: Successfully called requestLocationUpdates");
+            ServerComms.getInstance().sendButtonPress("DEBUG_LOG", "LocationSystem: requestSingleUpdate: Successfully called requestLocationUpdates");
         }
     }
 }
