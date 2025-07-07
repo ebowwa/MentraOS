@@ -933,7 +933,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     private void queueData(byte[] data) {
         if (data != null) {
             sendQueue.add(data);
-            Log.d(TAG, "📋 Added data to send queue - New queue size: " + sendQueue.size());
+            Log.d(TAG, "📋 Added " + data.length + " to send queue - New queue size: " + sendQueue.size());
 
             // Trigger queue processing if not already running
             handler.removeCallbacks(processSendQueueRunnable);
@@ -1818,6 +1818,9 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     //    try {
             JSONObject json = message;
             json.remove("timestamp");
+            json.remove("appId");
+            json.remove("video");
+            json.remove("audio");
             //String rtmpUrl=json.getString("rtmpUrl");
             //Log.d(TAG, "Requesting RTMP stream to URL: " + rtmpUrl);
             sendJson(json);
