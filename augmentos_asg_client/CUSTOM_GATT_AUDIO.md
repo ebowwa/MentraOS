@@ -61,9 +61,9 @@ The implementation should provide runtime toggles for different audio modes:
 - **Maintain HFP**: Keep existing HFP system for compatibility
 - **Runtime Switching**: Allow toggling between HFP and custom GATT
 
-## Technical Implementation
+## Technical Implementation Example
 
-> **Note**: The following technical details are based on the Even Realities G1 smart glasses implementation found in `EvenRealitiesG1SGC.java`, which serves as a reference example for custom LC3 GATT audio.
+> **Note**: The following technical details are from the Even Realities G1 smart glasses implementation found in `EvenRealitiesG1SGC.java`, which serves as a reference example for custom LC3 GATT audio. This is just an example of how it's done with the Even Realities G1 glasses.
 
 ### GATT Service Structure
 
