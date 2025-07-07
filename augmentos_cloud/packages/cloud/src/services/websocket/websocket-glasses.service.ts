@@ -243,6 +243,7 @@ export class GlassesWebSocketService {
           await this.handleMentraOSSettingsUpdateRequest(userSession, message as MentraosSettingsUpdateRequest);
           break;
 
+        // TODO(isaiah): create a SettingsManager to handle settings updates instead of doing it here.
         case GlassesToCloudMessageType.CORE_STATUS_UPDATE: {
           const coreStatusUpdate = message as CoreStatusUpdate;
           const logger = userSession.logger.child({ service: SERVICE_NAME, type: GlassesToCloudMessageType.CORE_STATUS_UPDATE });
@@ -553,12 +554,57 @@ export class GlassesWebSocketService {
     userSession.logger.info({ service: SERVICE_NAME, message }, `handleGlassesConnectionState for user ${userSession.userId}`);
     userSession.microphoneManager.handleConnectionStateChange(glassesConnectionStateMessage.status);
 
-    // Track the connection state event
+    // Extract glasses model information
+    const modelName = glassesConnectionStateMessage.modelName;
+    const isConnected = glassesConnectionStateMessage.status === 'CONNECTED';
+
+    try {
+      // Get or create user to track glasses model
+      const user = await User.findOrCreateUser(userSession.userId);
+      
+      // Track new glasses model if connected and model name exists
+      if (isConnected && modelName) {
+        const isNewModel = !user.getGlassesModels().includes(modelName);
+        
+        // Add glasses model to user's history
+        await user.addGlassesModel(modelName);
+        
+        // Update PostHog person properties
+        await PosthogService.setPersonProperties(userSession.userId, {
+          current_glasses_model: modelName,
+          glasses_models_used: user.getGlassesModels(),
+          glasses_models_count: user.getGlassesModels().length,
+          glasses_last_connected: new Date().toISOString(),
+          glasses_current_connected: true
+        });
+
+        // Track first-time connection for new glasses model
+        if (isNewModel) {
+          PosthogService.trackEvent('glasses_model_first_connect', userSession.userId, {
+            sessionId: userSession.sessionId,
+            modelName,
+            totalModelsUsed: user.getGlassesModels().length,
+            timestamp: new Date().toISOString()
+          });
+        }
+      } else if (!isConnected) {
+        // Update PostHog person properties for disconnection
+        await PosthogService.setPersonProperties(userSession.userId, {
+          glasses_current_connected: false
+        });
+      }
+    } catch (error) {
+      userSession.logger.error(error, 'Error tracking glasses model:');
+    }
+
+    // Track the connection state event (enhanced with model info)
     PosthogService.trackEvent(GlassesToCloudMessageType.GLASSES_CONNECTION_STATE, userSession.userId, {
       sessionId: userSession.sessionId,
       eventType: message.type,
       timestamp: new Date().toISOString(),
       connectionState: glassesConnectionStateMessage,
+      modelName,
+      isConnected
     });
   }
 

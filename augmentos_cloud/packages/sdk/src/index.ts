@@ -198,6 +198,11 @@ export {
 // Export app session modules
 export * from './app/session/modules';
 
+// Export photo data types
+export {
+  PhotoData
+} from './types/photo-data';
+
 /**
  * WebSocket error information
  */

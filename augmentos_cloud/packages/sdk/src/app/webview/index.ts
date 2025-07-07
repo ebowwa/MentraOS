@@ -337,7 +337,6 @@ export function createAuthMiddleware(options: {
       try {
         // Verify the signed session cookie and extract the user ID
         const userId = verifySession(sessionCookie, cookieSecret, cookieOptions.maxAge);
-        console.log(`User ID verified from session cookie: ${userId}`);
         if (userId) {
           req.authUserId = userId;
           return next();
