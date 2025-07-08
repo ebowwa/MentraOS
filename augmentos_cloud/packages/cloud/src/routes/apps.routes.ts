@@ -82,13 +82,13 @@ async function unifiedAuthMiddleware(req: Request, res: Response, next: NextFunc
   const startTime = Date.now();
 
   // DEBUG: Middleware entry
-  middlewareLogger.debug({
-    hasApiKey: !!req.query.apiKey,
-    hasPackageName: !!req.query.packageName,
-    hasUserId: !!req.query.userId,
-    hasAuthHeader: !!req.headers.authorization,
-    authMethod: req.query.apiKey ? 'apiKey' : req.headers.authorization ? 'bearer' : 'none'
-  }, 'Unified auth middleware called');
+  // middlewareLogger.debug({
+  //   hasApiKey: !!req.query.apiKey,
+  //   hasPackageName: !!req.query.packageName,
+  //   hasUserId: !!req.query.userId,
+  //   hasAuthHeader: !!req.headers.authorization,
+  //   authMethod: req.query.apiKey ? 'apiKey' : req.headers.authorization ? 'bearer' : 'none'
+  // }, 'Unified auth middleware called');
 
   // Option 1: API key authentication
   const apiKey = req.query.apiKey as string;
@@ -96,7 +96,7 @@ async function unifiedAuthMiddleware(req: Request, res: Response, next: NextFunc
   const userId = req.query.userId as string;
 
   if (apiKey && packageName && userId) {
-    middlewareLogger.debug({ packageName, userId }, 'Attempting API key authentication');
+    // middlewareLogger.debug({ packageName, userId }, 'Attempting API key authentication');
 
     if (!ALLOWED_API_KEY_PACKAGES.includes(packageName)) {
       const duration = Date.now() - startTime;
@@ -117,25 +117,25 @@ async function unifiedAuthMiddleware(req: Request, res: Response, next: NextFunc
     const isValid = await appService.validateApiKey(packageName, apiKey);
     const validationDuration = Date.now() - validationStartTime;
 
-    middlewareLogger.debug({
-      packageName,
-      userId,
-      validationDuration,
-      isValid
-    }, `API key validation completed in ${validationDuration}ms`);
+    // middlewareLogger.debug({
+    //   packageName,
+    //   userId,
+    //   validationDuration,
+    //   isValid
+    // }, `API key validation completed in ${validationDuration}ms`);
 
     if (isValid) {
       // Only allow if a full session exists
       const userSession = UserSession.getById(userId);
       if (userSession) {
         const duration = Date.now() - startTime;
-        middlewareLogger.info({
-          packageName,
-          userId,
-          duration,
-          authMethod: 'apiKey',
-          sessionId: userSession.sessionId
-        }, `API key auth successful in ${duration}ms`);
+        // middlewareLogger.info({
+        //   packageName,
+        //   userId,
+        //   duration,
+        //   authMethod: 'apiKey',
+        //   sessionId: userSession.sessionId
+        // }, `API key auth successful in ${duration}ms`);
 
         (req as any).userSession = userSession;
         return next();

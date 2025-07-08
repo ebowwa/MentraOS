@@ -1,0 +1,517 @@
+/**
+ * @fileoverview Soniox provider implementation using WebSocket API
+ */
+
+import WebSocket from 'ws';
+import { StreamType, getLanguageInfo } from '@mentra/sdk';
+import { Logger } from 'pino';
+import {
+  TranscriptionProvider,
+  StreamInstance,
+  StreamOptions,
+  ProviderType,
+  ProviderHealthStatus,
+  ProviderLanguageCapabilities,
+  SonioxProviderConfig,
+  StreamState,
+  StreamCallbacks,
+  StreamMetrics,
+  StreamHealth,
+  SonioxProviderError
+} from '../types';
+
+// Soniox language support - based on their documentation
+const SONIOX_TRANSCRIPTION_LANGUAGES = [
+  'en-US', 'en-GB', 'en-AU', 'en-IN', 
+  'es-ES', 'es-MX', 'es-US',
+  'fr-FR', 'fr-CA',
+  'de-DE', 'it-IT', 'pt-BR', 'pt-PT',
+  'nl-NL', 'sv-SE', 'da-DK', 'no-NO',
+  'ru-RU', 'pl-PL', 'cs-CZ',
+  'ja-JP', 'ko-KR', 'zh-CN', 'zh-TW'
+];
+
+// Soniox WebSocket endpoint
+const SONIOX_WEBSOCKET_URL = 'wss://stt-rt.soniox.com/transcribe-websocket';
+
+// Soniox token response interface
+interface SonioxToken {
+  text: string;
+  start_ms: number;
+  end_ms: number;
+  confidence: number;
+  is_final: boolean;
+  speaker?: string;
+}
+
+interface SonioxResponse {
+  tokens?: SonioxToken[];
+  final_audio_proc_ms?: number;
+  total_audio_proc_ms?: number;
+  error_code?: number;
+  error_message?: string;
+}
+
+export class SonioxTranscriptionProvider implements TranscriptionProvider {
+  readonly name = ProviderType.SONIOX;
+  readonly logger: Logger;
+  
+  private healthStatus: ProviderHealthStatus;
+  private failureCount = 0;
+  private lastFailureTime = 0;
+  
+  constructor(
+    private config: SonioxProviderConfig,
+    parentLogger: Logger
+  ) {
+    this.logger = parentLogger.child({ provider: this.name });
+    
+    this.healthStatus = {
+      isHealthy: true,
+      lastCheck: Date.now(),
+      failures: 0
+    };
+  }
+  
+  async initialize(): Promise<void> {
+    this.logger.info('Initializing Soniox provider');
+    
+    if (!this.config.apiKey) {
+      throw new Error('Soniox API key is required');
+    }
+    
+    // TODO: Initialize actual Soniox client when implementing
+    this.logger.info({
+      endpoint: this.config.endpoint,
+      keyLength: this.config.apiKey.length
+    }, 'Soniox provider initialized (stub)');
+  }
+  
+  async dispose(): Promise<void> {
+    this.logger.info('Disposing Soniox provider');
+    // TODO: Cleanup Soniox client when implementing
+  }
+  
+  async createTranscriptionStream(language: string, options: StreamOptions): Promise<StreamInstance> {
+    this.logger.debug({
+      language,
+      streamId: options.streamId
+    }, 'Creating Soniox transcription stream');
+    
+    if (!this.supportsLanguage(language)) {
+      throw new SonioxProviderError(
+        `Language ${language} not supported by Soniox`,
+        400
+      );
+    }
+    
+    // Create real Soniox WebSocket stream
+    const stream = new SonioxTranscriptionStream(
+      options.streamId,
+      options.subscription,
+      this,
+      language,
+      undefined,
+      options.callbacks,
+      this.logger,
+      this.config
+    );
+    
+    // Initialize WebSocket connection
+    await stream.initialize();
+    
+    return stream;
+  }
+  
+  async createTranslationStream(
+    sourceLanguage: string,
+    targetLanguage: string,
+    options: StreamOptions
+  ): Promise<StreamInstance> {
+    // Soniox doesn't support real-time translation (as far as we know)
+    throw new SonioxProviderError(
+      'Soniox does not support real-time translation',
+      400
+    );
+  }
+  
+  supportsSubscription(subscription: string): boolean {
+    const languageInfo = getLanguageInfo(subscription);
+    if (!languageInfo) {
+      return false;
+    }
+    
+    // Only support transcription, not translation
+    if (languageInfo.type === StreamType.TRANSCRIPTION) {
+      return this.supportsLanguage(languageInfo.transcribeLanguage);
+    }
+    
+    return false; // No translation support
+  }
+  
+  supportsLanguage(language: string): boolean {
+    return SONIOX_TRANSCRIPTION_LANGUAGES.includes(language);
+  }
+  
+  validateLanguagePair(source: string, target: string): boolean {
+    // Soniox doesn't support translation
+    return false;
+  }
+  
+  getLanguageCapabilities(): ProviderLanguageCapabilities {
+    return {
+      transcriptionLanguages: [...SONIOX_TRANSCRIPTION_LANGUAGES],
+      translationPairs: new Map(), // No translation support
+      autoLanguageDetection: true, // Soniox supports auto language detection
+      realtimeTranslation: false
+    };
+  }
+  
+  getHealthStatus(): ProviderHealthStatus {
+    // Update health based on recent failures
+    const now = Date.now();
+    const recentFailures = this.getRecentFailureCount(300000); // 5 minutes
+    
+    this.healthStatus.lastCheck = now;
+    this.healthStatus.failures = this.failureCount;
+    this.healthStatus.lastFailure = this.lastFailureTime;
+    
+    // Mark as unhealthy if too many recent failures
+    if (recentFailures >= 5) {
+      this.healthStatus.isHealthy = false;
+      this.healthStatus.reason = `Too many recent failures: ${recentFailures}`;
+    } else if (!this.healthStatus.isHealthy && recentFailures < 2) {
+      // Gradually restore health
+      this.healthStatus.isHealthy = true;
+      this.healthStatus.reason = undefined;
+    }
+    
+    return { ...this.healthStatus };
+  }
+  
+  recordFailure(error: Error): void {
+    this.failureCount++;
+    this.lastFailureTime = Date.now();
+    
+    this.logger.warn({
+      error: error.message,
+      totalFailures: this.failureCount
+    }, 'Recorded provider failure');
+  }
+  
+  recordSuccess(): void {
+    // Don't reset failure count completely, just mark as more recent success
+    const now = Date.now();
+    
+    // If it's been a while since last failure, gradually reduce count
+    if (this.lastFailureTime && (now - this.lastFailureTime) > 300000) { // 5 minutes
+      this.failureCount = Math.max(0, this.failureCount - 1);
+    }
+    
+    this.logger.debug('Recorded provider success');
+  }
+  
+  private getRecentFailureCount(timeWindowMs: number): number {
+    const now = Date.now();
+    return (this.lastFailureTime && (now - this.lastFailureTime) < timeWindowMs) ? this.failureCount : 0;
+  }
+}
+
+/**
+ * Soniox-specific stream implementation using WebSocket API
+ */
+class SonioxTranscriptionStream implements StreamInstance {
+  public state = StreamState.INITIALIZING;
+  public startTime = Date.now();
+  public readyTime?: number;
+  public lastActivity = Date.now();
+  public lastError?: Error;
+  public metrics: StreamMetrics;
+  
+  private ws?: WebSocket;
+  private connectionTimeout?: NodeJS.Timeout;
+  private isConfigSent = false;
+  
+  constructor(
+    public readonly id: string,
+    public readonly subscription: string,
+    public readonly provider: SonioxTranscriptionProvider,
+    public readonly language: string,
+    public readonly targetLanguage: string | undefined,
+    public readonly callbacks: StreamCallbacks,
+    public readonly logger: Logger,
+    private readonly config: SonioxProviderConfig
+  ) {
+    this.metrics = {
+      totalDuration: 0,
+      audioChunksReceived: 0,
+      audioChunksWritten: 0,
+      audioDroppedCount: 0,
+      audioWriteFailures: 0,
+      consecutiveFailures: 0,
+      errorCount: 0
+    };
+  }
+  
+  async initialize(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      try {
+        this.logger.debug({ streamId: this.id }, 'Connecting to Soniox WebSocket');
+        
+        // Create WebSocket connection
+        this.ws = new WebSocket(SONIOX_WEBSOCKET_URL);
+        
+        // Set connection timeout
+        this.connectionTimeout = setTimeout(() => {
+          if (this.state === StreamState.INITIALIZING) {
+            this.handleError(new Error('Soniox connection timeout'));
+            reject(new Error('Connection timeout'));
+          }
+        }, 10000); // 10 second timeout
+        
+        this.ws.on('open', () => {
+          this.logger.debug({ streamId: this.id }, 'Soniox WebSocket connected');
+          this.sendConfiguration();
+        });
+        
+        this.ws.on('message', (data: Buffer) => {
+          this.handleMessage(data);
+        });
+        
+        this.ws.on('error', (error: Error) => {
+          this.logger.error({ error, streamId: this.id }, 'Soniox WebSocket error');
+          this.handleError(error);
+          reject(error);
+        });
+        
+        this.ws.on('close', (code: number, reason: Buffer) => {
+          this.logger.info({ code, reason: reason.toString(), streamId: this.id }, 'Soniox WebSocket closed');
+          this.state = StreamState.CLOSED;
+          if (this.callbacks.onClosed) {
+            this.callbacks.onClosed();
+          }
+        });
+        
+        // Resolve when stream becomes ready
+        const checkReady = () => {
+          if (this.state === StreamState.READY) {
+            resolve();
+          } else if (this.state === StreamState.ERROR) {
+            reject(this.lastError || new Error('Stream initialization failed'));
+          } else {
+            setTimeout(checkReady, 100);
+          }
+        };
+        checkReady();
+        
+      } catch (error) {
+        this.handleError(error as Error);
+        reject(error);
+      }
+    });
+  }
+  
+  private sendConfiguration(): void {
+    if (!this.ws || this.isConfigSent) {
+      return;
+    }
+    
+    const config = {
+      api_key: this.config.apiKey,
+      model: this.config.model || 'stt-rt-preview',
+      audio_format: {
+        type: 'pcm',
+        num_channels: 1,
+        sample_rate: 16000
+      },
+      enable_speaker_diarization: false,
+      language: this.language
+    };
+    
+    try {
+      this.ws.send(JSON.stringify(config));
+      this.isConfigSent = true;
+      
+      this.logger.debug({
+        streamId: this.id,
+        language: this.language,
+        model: config.model
+      }, 'Sent Soniox configuration');
+      
+      // Mark as ready after config is sent
+      setTimeout(() => {
+        if (this.state === StreamState.INITIALIZING) {
+          this.state = StreamState.READY;
+          this.readyTime = Date.now();
+          this.metrics.initializationTime = this.readyTime - this.startTime;
+          
+          if (this.connectionTimeout) {
+            clearTimeout(this.connectionTimeout);
+            this.connectionTimeout = undefined;
+          }
+          
+          if (this.callbacks.onReady) {
+            this.callbacks.onReady();
+          }
+          
+          this.logger.info({
+            streamId: this.id,
+            initTime: this.metrics.initializationTime
+          }, 'Soniox stream ready');
+        }
+      }, 1000); // Give Soniox a moment to process config
+      
+    } catch (error) {
+      this.handleError(error as Error);
+    }
+  }
+  
+  private handleMessage(data: Buffer): void {
+    try {
+      const response: SonioxResponse = JSON.parse(data.toString());
+      
+      if (response.error_code) {
+        this.handleError(new Error(`Soniox error ${response.error_code}: ${response.error_message}`));
+        return;
+      }
+      
+      if (response.tokens && response.tokens.length > 0) {
+        this.processSonioxTokens(response.tokens);
+      }
+      
+    } catch (error) {
+      this.logger.warn({ error, streamId: this.id }, 'Error parsing Soniox response');
+    }
+  }
+  
+  private processSonioxTokens(tokens: SonioxToken[]): void {
+    // Convert Soniox tokens to our TranscriptionData format
+    const text = tokens.map(t => t.text).join(' ');
+    const isFinal = tokens.some(t => t.is_final);
+    const confidence = tokens.reduce((acc, t) => acc + t.confidence, 0) / tokens.length;
+    
+    const transcriptionData = {
+      type: StreamType.TRANSCRIPTION,
+      text,
+      isFinal,
+      confidence,
+      startTime: Date.now(), // Soniox uses relative timing, we use absolute
+      endTime: Date.now() + 1000,
+      transcribeLanguage: this.language,
+      provider: 'soniox'
+    };
+    
+    if (this.callbacks.onData) {
+      this.callbacks.onData(transcriptionData);
+    }
+    
+    this.logger.debug({
+      streamId: this.id,
+      text: text.substring(0, 100),
+      isFinal,
+      tokenCount: tokens.length
+    }, 'Processed Soniox transcription');
+  }
+  
+  private handleError(error: Error): void {
+    this.state = StreamState.ERROR;
+    this.lastError = error;
+    this.metrics.errorCount++;
+    this.metrics.consecutiveFailures++;
+    
+    if (this.connectionTimeout) {
+      clearTimeout(this.connectionTimeout);
+      this.connectionTimeout = undefined;
+    }
+    
+    this.provider.recordFailure(error);
+    
+    if (this.callbacks.onError) {
+      this.callbacks.onError(error);
+    }
+  }
+  
+  async writeAudio(data: ArrayBuffer): Promise<boolean> {
+    this.lastActivity = Date.now();
+    this.metrics.audioChunksReceived++;
+    
+    // Simple state check - drop audio if not ready
+    if (this.state !== StreamState.READY && this.state !== StreamState.ACTIVE) {
+      this.metrics.audioDroppedCount++;
+      return false;
+    }
+    
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+      this.metrics.audioDroppedCount++;
+      return false;
+    }
+    
+    try {
+      // Send audio as binary frame to Soniox
+      this.ws.send(data);
+      
+      this.state = StreamState.ACTIVE;
+      this.metrics.audioChunksWritten++;
+      this.metrics.lastSuccessfulWrite = Date.now();
+      this.metrics.consecutiveFailures = 0;
+      
+      return true;
+      
+    } catch (error) {
+      this.metrics.audioWriteFailures++;
+      this.metrics.consecutiveFailures++;
+      this.metrics.errorCount++;
+      
+      this.logger.warn({ error, streamId: this.id }, 'Error writing audio to Soniox');
+      
+      // Too many failures? Mark as error
+      if (this.metrics.consecutiveFailures >= 5) {
+        this.handleError(error as Error);
+      }
+      
+      return false;
+    }
+  }
+  
+  async close(): Promise<void> {
+    this.state = StreamState.CLOSING;
+    
+    try {
+      if (this.connectionTimeout) {
+        clearTimeout(this.connectionTimeout);
+        this.connectionTimeout = undefined;
+      }
+      
+      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+        // Send empty binary frame to signal end of audio
+        this.ws.send(Buffer.alloc(0));
+        
+        // Close WebSocket connection
+        this.ws.close(1000, 'Stream closed normally');
+      }
+      
+      this.state = StreamState.CLOSED;
+      this.metrics.totalDuration = Date.now() - this.startTime;
+      
+      this.logger.debug({
+        streamId: this.id,
+        duration: this.metrics.totalDuration,
+        audioChunksWritten: this.metrics.audioChunksWritten
+      }, 'Soniox stream closed');
+      
+    } catch (error) {
+      this.logger.warn({ error, streamId: this.id }, 'Error during Soniox stream close');
+      this.state = StreamState.CLOSED; // Force closed even on error
+    }
+  }
+  
+  getHealth(): StreamHealth {
+    return {
+      isAlive: this.state === StreamState.READY || this.state === StreamState.ACTIVE,
+      lastActivity: this.lastActivity,
+      consecutiveFailures: this.metrics.consecutiveFailures,
+      lastSuccessfulWrite: this.metrics.lastSuccessfulWrite,
+      providerHealth: this.provider.getHealthStatus()
+    };
+  }
+}

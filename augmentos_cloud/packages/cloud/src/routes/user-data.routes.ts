@@ -10,7 +10,6 @@ const router = express.Router();
 // Body: { userId: string, datetime: string (ISO format) }
 router.post('/set-datetime', (req, res) => {
   const { userId, datetime } = req.body;
-  console.log('Setting datetime for user', userId, datetime);
   if (!userId || !datetime || isNaN(Date.parse(datetime))) {
     return res.status(400).json({ error: 'Missing or invalid userId or datetime (must be ISO string)' });
   }
@@ -20,12 +19,10 @@ router.post('/set-datetime', (req, res) => {
   }
   // Store the datetime in the session (custom property)
   userSession.userDatetime = datetime;
-  console.log('User session updated', userSession.userDatetime);
 
   // Relay custom_message to all Apps subscribed to custom_message
   const subscribedApps = subscriptionService.getSubscribedApps(userSession, StreamType.CUSTOM_MESSAGE);
 
-  console.log('4343 Subscribed apps', subscribedApps);
   const customMessage = {
     type: CloudToAppMessageType.CUSTOM_MESSAGE,
     action: 'update_datetime',

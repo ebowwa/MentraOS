@@ -19,6 +19,7 @@ import PhotoManager from './PhotoManager';
 import { GlassesErrorCode } from '../websocket/websocket-glasses.service';
 import SessionStorage from './SessionStorage';
 import { PosthogService } from '../logging/posthog.service';
+import { TranscriptionManager } from './transcription/TranscriptionManager';
 
 export const LOG_PING_PONG = false; // Set to true to enable detailed ping/pong logging
 /**
@@ -66,6 +67,7 @@ export class UserSession {
   public microphoneManager: MicrophoneManager;
   public appManager: AppManager;
   public audioManager: AudioManager;
+  public transcriptionManager: TranscriptionManager;
 
   public videoManager: VideoManager;
   public photoManager: PhotoManager;
@@ -93,6 +95,7 @@ export class UserSession {
     this.dashboardManager = new DashboardManager(this);
     this.displayManager = new DisplayManager(this);
     this.microphoneManager = new MicrophoneManager(this);
+    this.transcriptionManager = new TranscriptionManager(this);
     this.photoManager = new PhotoManager(this);
     this.videoManager = new VideoManager(this);
 
@@ -254,6 +257,7 @@ export class UserSession {
     if (this.microphoneManager) this.microphoneManager.dispose();
     if (this.displayManager) this.displayManager.dispose();
     if (this.dashboardManager) this.dashboardManager.dispose();
+    if (this.transcriptionManager) this.transcriptionManager.dispose();
     // if (this.heartbeatManager) this.heartbeatManager.dispose();
     if (this.videoManager) this.videoManager.dispose();
     if (this.photoManager) this.photoManager.dispose();
