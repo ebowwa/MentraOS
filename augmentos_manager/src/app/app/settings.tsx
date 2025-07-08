@@ -10,6 +10,8 @@ import {
   TextStyle,
   Animated,
   BackHandler,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native"
 import {useSafeAreaInsets} from "react-native-safe-area-context"
 import GroupTitle from "@/components/settings/GroupTitle"
@@ -27,6 +29,8 @@ import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
 import {useAppStatus} from "@/contexts/AppStatusProvider"
 import AppIcon from "@/components/misc/AppIcon"
 import SelectWithSearchSetting from "@/components/settings/SelectWithSearchSetting"
+import NumberSetting from "@/components/settings/NumberSetting"
+import TimeSetting from "@/components/settings/TimeSetting"
 import {saveSetting, loadSetting} from "@/utils/SettingsHelper"
 import SettingsSkeleton from "@/components/misc/SettingsSkeleton"
 import {router, useFocusEffect, useLocalSearchParams} from "expo-router"
@@ -483,7 +487,29 @@ export default function AppSettings() {
             onValueChange={val => handleSettingChange(setting.key, val)}
           />
         )
-        return null
+      case "numeric_input":
+        return (
+          <NumberSetting
+            key={index}
+            label={setting.label}
+            value={settingsState[setting.key] || 0}
+            min={setting.min}
+            max={setting.max}
+            step={setting.step}
+            placeholder={setting.placeholder}
+            onValueChange={val => handleSettingChange(setting.key, val)}
+          />
+        )
+      case "time_picker":
+        return (
+          <TimeSetting
+            key={index}
+            label={setting.label}
+            value={settingsState[setting.key] || 0}
+            showSeconds={setting.showSeconds !== false}
+            onValueChange={val => handleSettingChange(setting.key, val)}
+          />
+        )
       case "multiselect":
         return (
           <MultiSelectSetting
@@ -568,12 +594,17 @@ export default function AppSettings() {
         </Animated.View>
       </View>
 
-      <Animated.ScrollView
-        style={{marginRight: -theme.spacing.md, paddingRight: theme.spacing.md}}
-        contentInsetAdjustmentBehavior="automatic"
-        showsVerticalScrollIndicator={false}
-        onScroll={Animated.event([{nativeEvent: {contentOffset: {y: scrollY}}}], {useNativeDriver: true})}
-        scrollEventThrottle={16}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={{flex: 1}}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}>
+        <Animated.ScrollView
+          style={{marginRight: -theme.spacing.md, paddingRight: theme.spacing.md}}
+          contentInsetAdjustmentBehavior="automatic"
+          showsVerticalScrollIndicator={false}
+          onScroll={Animated.event([{nativeEvent: {contentOffset: {y: scrollY}}}], {useNativeDriver: true})}
+          scrollEventThrottle={16}
+          keyboardShouldPersistTaps="handled">
         <View style={{gap: theme.spacing.lg}}>
           {/* Combined App Info and Action Section */}
           <View style={themed($topSection)}>
@@ -681,6 +712,7 @@ export default function AppSettings() {
           <View style={{height: Math.max(40, insets.bottom + 20)}} />
         </View>
       </Animated.ScrollView>
+      </KeyboardAvoidingView>
     </Screen>
   )
 }

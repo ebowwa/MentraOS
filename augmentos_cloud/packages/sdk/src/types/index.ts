@@ -26,6 +26,7 @@ export {
   ToolCall,
   StandardConnectionError,
   CustomMessage,
+  ManagedStreamStatus,
   MentraosSettingsUpdate,
   TranscriptionData,
   AudioChunk,
@@ -40,6 +41,7 @@ export {
   isAudioChunk,
   isDashboardModeChanged,
   isDashboardAlwaysOnChanged,
+  isManagedStreamStatus,
   // Re-export the cloud-to-app versions of these type guards since they're the ones
   // that should be used when dealing with CloudToAppMessage types
   isPhotoResponse as isPhotoResponseFromCloud,

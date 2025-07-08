@@ -34,6 +34,7 @@ import { sessionService } from '../session/session.service';
 import transcriptionService from '../processing/transcription.service';
 import { User } from '../../models/user.model';
 import { SYSTEM_DASHBOARD_PACKAGE_NAME } from '../core/app.service';
+import { locationService } from '../core/location.service';
 
 const SERVICE_NAME = 'websocket-glasses.service';
 const logger = rootLogger.child({ service: SERVICE_NAME });
@@ -222,9 +223,7 @@ export class GlassesWebSocketService {
           break;
 
         case GlassesToCloudMessageType.LOCATION_UPDATE:
-          await this.handleLocationUpdate(userSession, message as LocationUpdate);
-          sessionService.relayMessageToApps(userSession, message);
-          // TODO(isaiah): broadcast to Apps
+          await locationService.handleDeviceLocationUpdate(userSession, message as LocationUpdate);
           break;
 
         case GlassesToCloudMessageType.CALENDAR_EVENT:
@@ -343,15 +342,30 @@ export class GlassesWebSocketService {
         }
 
         // Mentra Live.
-        case GlassesToCloudMessageType.RTMP_STREAM_STATUS:
-          // Delegate to VideoManager within the user's session
-          userSession.videoManager.handleRtmpStreamStatus(message as RtmpStreamStatus);
+        case GlassesToCloudMessageType.RTMP_STREAM_STATUS: {
+          const status = message as RtmpStreamStatus;
+          // First check if managed streaming extension handles it
+          const managedHandled = await userSession.managedStreamingExtension.handleStreamStatus(
+            userSession,
+            status
+          );
+          // If not handled by managed streaming, delegate to VideoManager
+          if (!managedHandled) {
+            userSession.videoManager.handleRtmpStreamStatus(status);
+          }
           break;
+        }
 
-        case GlassesToCloudMessageType.KEEP_ALIVE_ACK:
-          // Delegate to VideoManager
-          userSession.videoManager.handleKeepAliveAck(message as KeepAliveAck);
+        case GlassesToCloudMessageType.KEEP_ALIVE_ACK: {
+          const ack = message as KeepAliveAck;
+          // Send to both managers - they'll handle their own streams
+          userSession.managedStreamingExtension.handleKeepAliveAck(
+            userSession.userId,
+            ack
+          );
+          userSession.videoManager.handleKeepAliveAck(ack);
           break;
+        }
 
         case GlassesToCloudMessageType.PHOTO_RESPONSE:
           // Delegate to PhotoManager
@@ -471,20 +485,16 @@ export class GlassesWebSocketService {
   private async handleLocationUpdate(userSession: UserSession, message: LocationUpdate): Promise<void> {
     userSession.logger.debug({ message, service: SERVICE_NAME }, 'Location update received from glasses');
     try {
-      // Cache the location update in subscription service
-      subscriptionService.cacheLocation(userSession.sessionId, {
-        latitude: message.lat,
-        longitude: message.lng,
-        timestamp: new Date()
-      });
+      // The core logic is now handled by the central LocationService to manage caching and polling.
+      await locationService.handleDeviceLocationUpdate(userSession, message);
 
-      const user = await User.findByEmail(userSession.userId);
-      if (user) {
-        await user.setLocation(message);
-      }
+      // We still relay the message to any apps subscribed to the raw location stream.
+      // The locationService's handleDeviceLocationUpdate will decide if it needs to send a specific
+      // response for a poll request.
+      sessionService.relayMessageToApps(userSession, message);
     }
     catch (error) {
-      userSession.logger.error({ error, service: SERVICE_NAME }, `Error updating user location:`, error);
+      userSession.logger.error({ error, service: SERVICE_NAME }, `Error handling location update:`, error);
     }
   }
 

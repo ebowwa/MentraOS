@@ -111,6 +111,8 @@ export interface LocationUpdate extends BaseMessage {
   type: GlassesToCloudMessageType.LOCATION_UPDATE | StreamType.LOCATION_UPDATE;
   lat: number;
   lng: number;
+  accuracy?: number; // Accuracy in meters
+  correlationId?: string; // for poll responses
 }
 
 /**

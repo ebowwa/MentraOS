@@ -137,6 +137,21 @@ export type AppSetting =
       value?: number;
     })
   | (BaseAppSetting & {
+      type: AppSettingType.NUMERIC_INPUT;
+      min?: number;
+      max?: number;
+      step?: number;
+      placeholder?: string;
+      defaultValue?: number;
+      value?: number;
+    })
+  | (BaseAppSetting & {
+      type: AppSettingType.TIME_PICKER;
+      showSeconds?: boolean;
+      defaultValue?: number; // Total seconds
+      value?: number; // Total seconds
+    })
+  | (BaseAppSetting & {
       type: AppSettingType.GROUP;
       title: string;
     })
@@ -222,6 +237,17 @@ export function validateAppConfig(config: any): config is AppConfig {
                typeof setting.min === 'number' &&
                typeof setting.max === 'number' &&
                setting.min <= setting.max;
+
+      case AppSettingType.NUMERIC_INPUT:
+        return (setting.defaultValue === undefined || typeof setting.defaultValue === 'number') &&
+               (setting.min === undefined || typeof setting.min === 'number') &&
+               (setting.max === undefined || typeof setting.max === 'number') &&
+               (setting.step === undefined || typeof setting.step === 'number') &&
+               (setting.placeholder === undefined || typeof setting.placeholder === 'string');
+
+      case AppSettingType.TIME_PICKER:
+        return (setting.defaultValue === undefined || typeof setting.defaultValue === 'number') &&
+               (setting.showSeconds === undefined || typeof setting.showSeconds === 'boolean');
 
       case AppSettingType.GROUP:
         return typeof setting.title === 'string';
