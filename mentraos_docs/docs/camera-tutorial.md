@@ -2,16 +2,28 @@
 
 Learn how to use the camera functionality in your Mentra Live apps to take photos and stream video from smart glasses.
 
+> 📚 **New Camera Documentation Available!**
+> - [📸 Photo Capture Guide](./camera/photo-capture.md) - Comprehensive photo capture documentation
+> - [📹 RTMP Streaming Guide](./camera/rtmp-streaming.md) - Complete streaming guide with managed and unmanaged options
+> - [🔧 Camera API Reference](./reference/camera.md) - Full API documentation
+
 ## Overview
 
 The camera module lets you:
 - 📸 **Take photos** from the smart glasses camera
-- 📹 **Stream live video** to platforms like YouTube, Twitch, or custom servers
+- 📹 **Stream live video** using managed streaming (zero-config) or unmanaged streaming (full control)
 
 All camera functionality is accessed through your app session: `session.camera`
 
 ```typescript
+// Take a photo
 const photo = await session.camera.requestPhoto();
+
+// Start managed streaming (NEW - Zero infrastructure required!)
+const stream = await session.camera.startManagedStream();
+console.log('Share with viewers:', stream.hlsUrl);
+
+// Or use unmanaged streaming for full control
 await session.camera.startStream({ rtmpUrl: 'rtmp://example.com/live/key' });
 ```
 
