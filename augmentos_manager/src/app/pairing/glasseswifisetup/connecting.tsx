@@ -8,12 +8,14 @@ import {useAppTheme} from "@/utils/useAppTheme"
 import {ThemedStyle} from "@/theme"
 import {ViewStyle, TextStyle} from "react-native"
 import ActionButton from "@/components/ui/ActionButton"
+import WifiCredentialsService from "@/utils/WifiCredentialsService"
 
 export default function WifiConnectingScreen() {
   const params = useLocalSearchParams()
   const deviceModel = (params.deviceModel as string) || "Glasses"
   const ssid = params.ssid as string
   const password = (params.password as string) || ""
+  const rememberPassword = (params.rememberPassword as string) === "true"
 
   const {theme, themed} = useAppTheme()
 
@@ -41,6 +43,12 @@ export default function WifiConnectingScreen() {
           failureGracePeriodRef.current = null
         }
         
+        // Save credentials on successful connection only if checkbox was checked
+        if (password && rememberPassword) {
+          WifiCredentialsService.saveCredentials(ssid, password, true)
+          WifiCredentialsService.updateLastConnected(ssid)
+        }
+        
         setConnectionStatus("success")
         GlobalEventEmitter.emit("SHOW_BANNER", {
           message: `Successfully connected to ${data.ssid}`,
@@ -52,12 +60,14 @@ export default function WifiConnectingScreen() {
           router.navigate("/")
         }, 1500)
       } else if (!data.connected && connectionStatus === "connecting") {
+
         // Set up 5-second grace period before showing failure
         failureGracePeriodRef.current = setTimeout(() => {
+          console.log("#$%^& Failed to connect to the network. Please check your password and try again.")
           setConnectionStatus("failed")
           setErrorMessage("Failed to connect to the network. Please check your password and try again.")
           failureGracePeriodRef.current = null
-        }, 5000)
+        }, 10000)
       }
     }
 
@@ -84,8 +94,9 @@ export default function WifiConnectingScreen() {
       // Set timeout for connection attempt (20 seconds)
       connectionTimeoutRef.current = setTimeout(() => {
         if (connectionStatus === "connecting") {
+          console.log("321321 Connection timed out. Please try again.")
           setConnectionStatus("failed")
-          setErrorMessage("Connection timed out. Please try again.")
+          setErrorMessage("#@32 Connection timed out. Please try again.")
           GlobalEventEmitter.emit("SHOW_BANNER", {
             message: "WiFi connection timed out",
             type: "error",
@@ -93,6 +104,7 @@ export default function WifiConnectingScreen() {
         }
       }, 20000)
     } catch (error) {
+      console.log("^&*()__+ Error sending WiFi credentials:", error)
       console.error("Error sending WiFi credentials:", error)
       setConnectionStatus("failed")
       setErrorMessage("Failed to send credentials to glasses. Please try again.")
