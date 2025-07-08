@@ -111,9 +111,21 @@ struct ViewState {
 
     // configure on board mic:
     //    setupOnboardMicrophoneIfNeeded()
+    
+    setup2()
 
+    // Subscribe to WebSocket status changes
+    serverComms.wsManager.status
+      .sink { [weak self] status in
+        guard let self = self else { return }
+        handleRequestStatus()
+      }
+      .store(in: &cancellables)
+  }
+  
+  func setup2() {
     // calback to handle actions when the connectionState changes (when g1 is ready)
-    g1Manager!.onConnectionStateChanged = { [weak self] in
+    g1Manager?.onConnectionStateChanged = { [weak self] in
       guard let self = self else { return }
       print("G1 glasses connection changed to: \(self.g1Manager!.g1Ready ? "Connected" : "Disconnected")")
       //      self.handleRequestStatus()
@@ -126,7 +138,7 @@ struct ViewState {
     }
 
     // listen to changes in battery level:
-    g1Manager!.$batteryLevel.sink { [weak self] (level: Int) in
+    g1Manager?.$batteryLevel.sink { [weak self] (level: Int) in
       guard let self = self else { return }
       guard level >= 0 else { return }
       self.batteryLevel = level
@@ -135,23 +147,23 @@ struct ViewState {
     }.store(in: &cancellables)
 
     // listen to headUp events:
-    g1Manager!.$isHeadUp.sink { [weak self] (value: Bool) in
+    g1Manager?.$isHeadUp.sink { [weak self] (value: Bool) in
         guard let self = self else { return }
         self.sendCurrentState(value)
     }.store(in: &cancellables)
 
     // listen to case events:
-    g1Manager!.$caseOpen.sink { [weak self] (value: Bool) in
+    g1Manager?.$caseOpen.sink { [weak self] (value: Bool) in
         guard let self = self else { return }
       handleRequestStatus()
     }.store(in: &cancellables)
 
-    g1Manager!.$caseRemoved.sink { [weak self] (value: Bool) in
+    g1Manager?.$caseRemoved.sink { [weak self] (value: Bool) in
         guard let self = self else { return }
       handleRequestStatus()
     }.store(in: &cancellables)
 
-    g1Manager!.$caseCharging.sink { [weak self] (value: Bool) in
+    g1Manager?.$caseCharging.sink { [weak self] (value: Bool) in
         guard let self = self else { return }
       handleRequestStatus()
     }.store(in: &cancellables)
@@ -161,7 +173,7 @@ struct ViewState {
 //      handleRequestStatus()
 //    }.store(in: &cancellables)
 
-    liveManager!.onConnectionStateChanged = { [weak self] in
+    liveManager?.onConnectionStateChanged = { [weak self] in
       guard let self = self else { return }
       print("Live glasses connection changed to: \(self.liveManager!.ready ? "Connected" : "Disconnected")")
       //      self.handleRequestStatus()
@@ -172,15 +184,6 @@ struct ViewState {
         handleRequestStatus()
       }
     }
-
-
-    // Subscribe to WebSocket status changes
-    serverComms.wsManager.status
-      .sink { [weak self] status in
-        guard let self = self else { return }
-        handleRequestStatus()
-      }
-      .store(in: &cancellables)
   }
 
   @objc func connectServer() {
@@ -768,7 +771,7 @@ struct ViewState {
     saveSettings()
   }
 
-  func handleSearchForCompatibleDeviceNames(_ modelName: String) {
+  func handleSearchForCompatibleDeviceNames(_ modelName: String) { 
     print("Searching for compatible device names for: \(modelName)")
     if (modelName.contains("Simulated")) {
       self.defaultWearable = "Simulated Glasses"
@@ -783,12 +786,14 @@ struct ViewState {
     } else if (modelName.contains("G1")) {
       if (g1Manager == nil) {
         g1Manager = ERG1Manager()
+        setup2()
       }
       self.defaultWearable = "Even Realities G1"
       self.g1Manager?.RN_startScan()
     } else if (modelName.contains("Live")) {
       if (liveManager == nil) {
         liveManager = MentraLiveManager()
+        setup2()
       }
       self.defaultWearable = "Mentra Live"
       self.liveManager?.RN_findCompatibleDevices()
@@ -1369,6 +1374,7 @@ struct ViewState {
       if (self.defaultWearable.contains("Live")) {
         if (self.liveManager == nil) {
           self.liveManager = MentraLiveManager()
+          setup2()
         }
         if (deviceName != "") {
           self.deviceName = deviceName
@@ -1382,6 +1388,7 @@ struct ViewState {
       } else if (self.defaultWearable.contains("G1")) {
         if (self.g1Manager == nil) {
           self.g1Manager = ERG1Manager()
+          setup2()
         }
         if (deviceName != "") {
           self.deviceName = deviceName
