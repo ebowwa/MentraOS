@@ -164,13 +164,24 @@ export class SubscriptionService {
   ): Promise<UserI | null> {
     const key = this.getKey(userSession.userId, packageName);
 
-    // --- In-Memory Operations First ---
+    // this is a simple lock to prevent race conditions
+    // if multiple subscription requests come in for the same app at the same time,
+    // only the latest one will actually be processed
+    const currentVersion = (this.subscriptionUpdateVersion.get(key) || 0) + 1;
+    this.subscriptionUpdateVersion.set(key, currentVersion);
+    const thisCallVersion = currentVersion;
+
+    logger.info({ key, subscriptions, userId: userSession.userId }, 'Update subscriptions request received');
+
+    // we first process the incoming array, which can contain both strings and our rich location object
+    // this creates a simple array of strings that the rest of the function can use for things like permission checking
     const streamSubscriptions: ExtendedStreamType[] = [];
     let locationRate: string | null = null;
 
+    // this loop separates the simple string subscriptions from our special location object
     for (const sub of subscriptions) {
       if (typeof sub === 'object' && sub !== null && 'stream' in sub && sub.stream === StreamType.LOCATION_STREAM) {
-        locationRate = sub.rate;
+        locationRate = sub.rate; // we save the rate for later
         streamSubscriptions.push(sub.stream);
       } else if (typeof sub === 'string') {
         streamSubscriptions.push(sub);
@@ -187,6 +198,7 @@ export class SubscriptionService {
         }
     }
     
+    // now we update the in-memory subscription map which is used for fast lookups
     const newSubs = new Set(processedSubscriptions);
     this.subscriptions.set(key, newSubs);
 
@@ -209,17 +221,21 @@ export class SubscriptionService {
 
         const sanitizedPackageName = MongoSanitizer.sanitizeKey(packageName);
 
+        // this is where we persist the location rate information to the database
         if (locationRate) {
           if (!user.locationSubscriptions) {
             user.locationSubscriptions = new Map();
           }
+          // we set the rate for this specific app's package name
           user.locationSubscriptions.set(sanitizedPackageName, { rate: locationRate });
         } else {
+          // if there's no locationRate, it means the app is unsubscribing from the location stream
           if (user.locationSubscriptions?.has(sanitizedPackageName)) {
             user.locationSubscriptions.delete(sanitizedPackageName);
           }
         }
 
+        // we have to tell mongoose that we've modified a mixed-type field
         user.markModified('locationSubscriptions');
         await user.save();
         logger.info({ packageName, userId: userSession.userId }, 'Persisted subscription changes successfully');
@@ -240,7 +256,7 @@ export class SubscriptionService {
         }
       }
     }
-    return null; // Should be unreachable
+    return null; // this line should be unreachable
   }
 
   /**
@@ -317,8 +333,9 @@ export class SubscriptionService {
           break;
         }
 
-        // Special case: An app subscribed to the continuous 'location_stream'
-        // should also receive individual 'location_update' messages.
+        // this is a special case to ensure backwards compatibility
+        // if an app is subscribed to our new 'location_stream', it should also
+        // automatically receive the old 'location_update' events
         if (subscription === StreamType.LOCATION_UPDATE && sub === StreamType.LOCATION_STREAM) {
           subscribedApps.push(packageName);
           subscriptionMatches.push({
