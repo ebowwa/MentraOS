@@ -95,6 +95,10 @@ export enum AppToCloudMessageType {
   // RTMP streaming
   RTMP_STREAM_REQUEST = 'rtmp_stream_request',
   RTMP_STREAM_STOP = 'rtmp_stream_stop',
+  
+  // Managed RTMP streaming
+  MANAGED_STREAM_REQUEST = 'managed_stream_request',
+  MANAGED_STREAM_STOP = 'managed_stream_stop',
 
   // Dashboard requests
   DASHBOARD_CONTENT_UPDATE = 'dashboard_content_update',
@@ -131,6 +135,7 @@ export enum CloudToAppMessageType {
   // Media responses
   PHOTO_RESPONSE = 'photo_response',
   RTMP_STREAM_STATUS = 'rtmp_stream_status',
+  MANAGED_STREAM_STATUS = 'managed_stream_status',
 
   WEBSOCKET_ERROR = 'websocket_error',
 

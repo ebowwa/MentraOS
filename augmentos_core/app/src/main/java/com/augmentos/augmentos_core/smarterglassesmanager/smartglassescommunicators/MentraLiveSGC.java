@@ -934,6 +934,13 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         if (data != null) {
             sendQueue.add(data);
             Log.d(TAG, "📋 Added " + data.length + " to send queue - New queue size: " + sendQueue.size());
+            
+            // Log all outgoing bytes for testing
+            StringBuilder hexBytes = new StringBuilder();
+            for (byte b : data) {
+                hexBytes.append(String.format("%02X ", b));
+            }
+            Log.d(TAG, "🔍 Outgoing bytes: " + hexBytes.toString().trim());
 
             // Trigger queue processing if not already running
             handler.removeCallbacks(processSendQueueRunnable);
