@@ -77,6 +77,10 @@ export enum CloudToGlassesMessageType {
   DASHBOARD_MODE_CHANGE = 'dashboard_mode_change',
   DASHBOARD_ALWAYS_ON_CHANGE = 'dashboard_always_on_change',
 
+  // Location Service
+  SET_LOCATION_TIER = 'set_location_tier',
+  REQUEST_SINGLE_LOCATION = 'request_single_location',
+
   WEBSOCKET_ERROR = 'websocket_error'
 }
 
@@ -87,6 +91,7 @@ export enum AppToCloudMessageType {
   // Commands
   CONNECTION_INIT = 'tpa_connection_init',
   SUBSCRIPTION_UPDATE = 'subscription_update',
+  LOCATION_POLL_REQUEST = 'location_poll_request',
 
   // Requests
   DISPLAY_REQUEST = 'display_event',
@@ -104,7 +109,7 @@ export enum AppToCloudMessageType {
   DASHBOARD_CONTENT_UPDATE = 'dashboard_content_update',
   DASHBOARD_MODE_CHANGE = 'dashboard_mode_change',
   DASHBOARD_SYSTEM_UPDATE = 'dashboard_system_update',
-
+  
   // App-to-App Communication
   APP_BROADCAST_MESSAGE = 'app_broadcast_message',
   APP_DIRECT_MESSAGE = 'app_direct_message',
@@ -144,7 +149,7 @@ export enum CloudToAppMessageType {
 
   // General purpose messaging
   CUSTOM_MESSAGE = 'custom_message',
-
+  
   // App-to-App Communication Responses
   APP_MESSAGE_RECEIVED = 'app_message_received',
   APP_USER_JOINED = 'app_user_joined',
