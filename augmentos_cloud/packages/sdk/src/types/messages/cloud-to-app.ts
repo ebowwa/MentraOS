@@ -225,11 +225,11 @@ export type CloudToAppMessage =
   | AudioChunk
   | LocationUpdate
   | CalendarEvent
-  | DataStream
   | PhotoResponse
   | DashboardModeChanged
   | DashboardAlwaysOnChanged
   | CustomMessage
+  | ManagedStreamStatus
   | MentraosSettingsUpdate
   // New App-to-App communication response messages
   | AppMessageReceived
@@ -238,8 +238,6 @@ export type CloudToAppMessage =
   | AppRoomUpdated
   | AppDirectMessageResponse
   | RtmpStreamStatus
-  | ManagedStreamStatus
-  | PhotoResponse
   | PermissionError;
 
 //===========================================================

@@ -997,11 +997,13 @@ export class AppSession {
           this.camera.updateStreamState(message);
         }
         else if (isManagedStreamStatus(message)) {
-          // Handle managed stream status
-          this.camera.handleManagedStreamStatus(message);
+          // Emit as a standard stream event if subscribed
+          if (this.subscriptions.has(StreamType.MANAGED_STREAM_STATUS)) {
+            this.events.emit(StreamType.MANAGED_STREAM_STATUS, message);
+          }
           
-          // Emit managed stream status event
-          this.events.emit('managed_stream_status', message);
+          // Update camera module's managed stream state
+          this.camera.handleManagedStreamStatus(message);
         }
         else if (isSettingsUpdate(message)) {
           // Store previous settings to check for changes
