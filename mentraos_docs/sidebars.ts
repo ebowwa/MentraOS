@@ -67,7 +67,7 @@ const sidebars: SidebarsConfig = {
         'capabilities',
         {
           type: 'category',
-          label: '📸 Camera',
+          label: 'Camera',
           link: {
             type: 'doc',
             id: 'camera/README',
@@ -77,14 +77,17 @@ const sidebars: SidebarsConfig = {
             'camera/rtmp-streaming',
             {
               type: 'category',
-              label: 'Examples',
+              label: 'Building a Camera App',
+              link: {
+                type: 'doc',
+                id: 'camera/building-camera-app',
+              },
               items: [
                 'camera/examples/streaming-react',
               ],
             },
           ],
         },
-        'camera-tutorial',
         'webview-auth-overview',
         'react-webviews',
         'dashboard'

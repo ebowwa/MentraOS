@@ -1,11 +1,11 @@
-# Camera Tutorial
+# Building a Camera App
 
-Learn how to use the camera functionality in your Mentra Live apps to take photos and stream video from smart glasses.
+This tutorial walks you through building a complete MentraOS app that uses camera functionality to take photos and stream video from smart glasses.
 
-> 📚 **New Camera Documentation Available!**
-> - [📸 Photo Capture Guide](./camera/photo-capture.md) - Comprehensive photo capture documentation
-> - [📹 RTMP Streaming Guide](./camera/rtmp-streaming.md) - Complete streaming guide with managed and unmanaged options
-> - [🔧 Camera API Reference](./reference/camera.md) - Full API documentation
+> 📚 **See Also:**
+> - [Photo Capture Guide](./photo-capture.md) - Detailed photo documentation
+> - [RTMP Streaming Guide](./rtmp-streaming.md) - Complete streaming guide
+> - [React Example](./examples/streaming-react.md) - React component example
 
 ## Overview
 
