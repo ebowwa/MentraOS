@@ -642,7 +642,7 @@ public class ServerComms {
         // Log.d(TAG, "Received message of type: " + type);
         // Log.d(TAG, "Full message: " + msg.toString());
 
-//        Log.d(TAG, "Received message of type: " + msg);
+       Log.d(TAG, "Received message of type: " + msg);
 
         switch (type) {
             case "connection_ack":
@@ -783,9 +783,9 @@ public class ServerComms {
                 break;
 
             case "set_location_tier":
-                JSONObject tierPayload = msg.optJSONObject("payload");
-                if (tierPayload != null && serverCommsCallback != null) {
-                    String tier = tierPayload.optString("tier");
+                Log.d(TAG, "Received set_location_tier command");
+                String tier = msg.optString("tier");
+                if (tier != null && serverCommsCallback != null) {
                     Log.d("LOCATION_DEBUG", "ServerComms: Received set_location_tier command with tier: " + tier);
                     serverCommsCallback.onSetLocationTier(tier);
                 }
