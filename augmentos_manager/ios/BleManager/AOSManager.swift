@@ -125,63 +125,69 @@ struct ViewState {
   
   func setup2() {
     // calback to handle actions when the connectionState changes (when g1 is ready)
-    g1Manager?.onConnectionStateChanged = { [weak self] in
-      guard let self = self else { return }
-      print("G1 glasses connection changed to: \(self.g1Manager!.g1Ready ? "Connected" : "Disconnected")")
-      //      self.handleRequestStatus()
-      if (self.g1Manager!.g1Ready) {
-        handleG1Ready()
-      } else {
-        handleDeviceDisconnected()
-        handleRequestStatus()
+
+    if g1Manager != nil {
+      g1Manager!.onConnectionStateChanged = { [weak self] in
+        guard let self = self else { return }
+        print("G1 glasses connection changed to: \(self.g1Manager!.g1Ready ? "Connected" : "Disconnected")")
+        //      self.handleRequestStatus()
+        if (self.g1Manager!.g1Ready) {
+          handleG1Ready()
+        } else {
+          handleDeviceDisconnected()
+          handleRequestStatus()
+        }
       }
+
+      // listen to changes in battery level:
+      g1Manager!.$batteryLevel.sink { [weak self] (level: Int) in
+        guard let self = self else { return }
+        guard level >= 0 else { return }
+        self.batteryLevel = level
+        self.serverComms.sendBatteryStatus(level: self.batteryLevel, charging: false);
+        handleRequestStatus()
+      }.store(in: &cancellables)
+
+      // listen to headUp events:
+      g1Manager!.$isHeadUp.sink { [weak self] (value: Bool) in
+          guard let self = self else { return }
+          self.sendCurrentState(value)
+      }.store(in: &cancellables)
+
+      // listen to case events:
+      g1Manager!.$caseOpen.sink { [weak self] (value: Bool) in
+          guard let self = self else { return }
+        handleRequestStatus()
+      }.store(in: &cancellables)
+
+      g1Manager!.$caseRemoved.sink { [weak self] (value: Bool) in
+          guard let self = self else { return }
+        handleRequestStatus()
+      }.store(in: &cancellables)
+
+      g1Manager!.$caseCharging.sink { [weak self] (value: Bool) in
+          guard let self = self else { return }
+        handleRequestStatus()
+      }.store(in: &cancellables)
     }
-
-    // listen to changes in battery level:
-    g1Manager?.$batteryLevel.sink { [weak self] (level: Int) in
-      guard let self = self else { return }
-      guard level >= 0 else { return }
-      self.batteryLevel = level
-      self.serverComms.sendBatteryStatus(level: self.batteryLevel, charging: false);
-      handleRequestStatus()
-    }.store(in: &cancellables)
-
-    // listen to headUp events:
-    g1Manager?.$isHeadUp.sink { [weak self] (value: Bool) in
-        guard let self = self else { return }
-        self.sendCurrentState(value)
-    }.store(in: &cancellables)
-
-    // listen to case events:
-    g1Manager?.$caseOpen.sink { [weak self] (value: Bool) in
-        guard let self = self else { return }
-      handleRequestStatus()
-    }.store(in: &cancellables)
-
-    g1Manager?.$caseRemoved.sink { [weak self] (value: Bool) in
-        guard let self = self else { return }
-      handleRequestStatus()
-    }.store(in: &cancellables)
-
-    g1Manager?.$caseCharging.sink { [weak self] (value: Bool) in
-        guard let self = self else { return }
-      handleRequestStatus()
-    }.store(in: &cancellables)
 
 //    g1Manager!.$caseBatteryLevel.sink { [weak self] (value: Bool) in
 //        guard let self = self else { return }
 //      handleRequestStatus()
 //    }.store(in: &cancellables)
 
-    liveManager?.onConnectionStateChanged = { [weak self] in
-      guard let self = self else { return }
-      print("Live glasses connection changed to: \(self.liveManager!.ready ? "Connected" : "Disconnected")")
-      //      self.handleRequestStatus()
-      if (self.liveManager!.ready) {
-        handleLiveReady()
-      } else {
-        handleDeviceDisconnected()
-        handleRequestStatus()
+
+    if liveManager != nil {
+      liveManager!.onConnectionStateChanged = { [weak self] in
+        guard let self = self else { return }
+        print("Live glasses connection changed to: \(self.liveManager!.ready ? "Connected" : "Disconnected")")
+        //      self.handleRequestStatus()
+        if (self.liveManager!.ready) {
+          handleLiveReady()
+        } else {
+          handleDeviceDisconnected()
+          handleRequestStatus()
+        }
       }
     }
   }
@@ -300,78 +306,80 @@ struct ViewState {
       .store(in: &cancellables)
 
     // decode the g1 audio data to PCM and feed to the VAD:
-    self.g1Manager!.$compressedVoiceData.sink { [weak self] rawLC3Data in
-      guard let self = self else { return }
+    if (g1Manager != nil) {
+      self.g1Manager!.$compressedVoiceData.sink { [weak self] rawLC3Data in
+        guard let self = self else { return }
 
-      // Ensure we have enough data to process
-      guard rawLC3Data.count > 2 else {
-        print("Received invalid PCM data size: \(rawLC3Data.count)")
-        return
-      }
+        // Ensure we have enough data to process
+        guard rawLC3Data.count > 2 else {
+          print("Received invalid PCM data size: \(rawLC3Data.count)")
+          return
+        }
 
-      // Skip the first 2 bytes which are command bytes
-      let lc3Data = rawLC3Data.subdata(in: 2..<rawLC3Data.count)
+        // Skip the first 2 bytes which are command bytes
+        let lc3Data = rawLC3Data.subdata(in: 2..<rawLC3Data.count)
 
-      // Ensure we have valid PCM data
-      guard lc3Data.count > 0 else {
-        print("No PCM data after removing command bytes")
-        return
-      }
+        // Ensure we have valid PCM data
+        guard lc3Data.count > 0 else {
+          print("No PCM data after removing command bytes")
+          return
+        }
 
 
-      if self.bypassVad {
-        checkSetVadStatus(speaking: true)
-        // first send out whatever's in the vadBuffer (if there is anything):
-        emptyVadBuffer()
+        if self.bypassVad {
+          checkSetVadStatus(speaking: true)
+          // first send out whatever's in the vadBuffer (if there is anything):
+          emptyVadBuffer()
+          let pcmConverter = PcmConverter()
+          let pcmData = pcmConverter.decode(lc3Data) as Data
+  //        self.serverComms.sendAudioChunk(lc3Data)
+          self.serverComms.sendAudioChunk(pcmData)
+          return
+        }
+
         let pcmConverter = PcmConverter()
         let pcmData = pcmConverter.decode(lc3Data) as Data
-//        self.serverComms.sendAudioChunk(lc3Data)
-        self.serverComms.sendAudioChunk(pcmData)
-        return
-      }
 
-      let pcmConverter = PcmConverter()
-      let pcmData = pcmConverter.decode(lc3Data) as Data
+        guard pcmData.count > 0 else {
+          print("PCM conversion resulted in empty data")
+          return
+        }
 
-      guard pcmData.count > 0 else {
-        print("PCM conversion resulted in empty data")
-        return
-      }
+        // feed PCM to the VAD:
+        guard let vad = self.vad else {
+          print("VAD not initialized")
+          return
+        }
 
-      // feed PCM to the VAD:
-      guard let vad = self.vad else {
-        print("VAD not initialized")
-        return
-      }
+        // convert audioData to Int16 array:
+        let pcmDataArray = pcmData.withUnsafeBytes { pointer -> [Int16] in
+          Array(UnsafeBufferPointer(
+            start: pointer.bindMemory(to: Int16.self).baseAddress,
+            count: pointer.count / MemoryLayout<Int16>.stride
+          ))
+        }
 
-      // convert audioData to Int16 array:
-      let pcmDataArray = pcmData.withUnsafeBytes { pointer -> [Int16] in
-        Array(UnsafeBufferPointer(
-          start: pointer.bindMemory(to: Int16.self).baseAddress,
-          count: pointer.count / MemoryLayout<Int16>.stride
-        ))
-      }
+        vad.checkVAD(pcm: pcmDataArray) { [weak self] state in
+          guard let self = self else { return }
+          print("VAD State: \(state)")
+        }
 
-      vad.checkVAD(pcm: pcmDataArray) { [weak self] state in
-        guard let self = self else { return }
-        print("VAD State: \(state)")
+        let vadState = vad.currentState()
+        if vadState == .speeching {
+          checkSetVadStatus(speaking: true)
+          // first send out whatever's in the vadBuffer (if there is anything):
+          emptyVadBuffer()
+  //        self.serverComms.sendAudioChunk(lc3Data)
+          self.serverComms.sendAudioChunk(pcmData)
+        } else {
+          checkSetVadStatus(speaking: false)
+          // add to the vadBuffer:
+  //        addToVadBuffer(lc3Data)
+          addToVadBuffer(pcmData)
+        }
       }
-
-      let vadState = vad.currentState()
-      if vadState == .speeching {
-        checkSetVadStatus(speaking: true)
-        // first send out whatever's in the vadBuffer (if there is anything):
-        emptyVadBuffer()
-//        self.serverComms.sendAudioChunk(lc3Data)
-        self.serverComms.sendAudioChunk(pcmData)
-      } else {
-        checkSetVadStatus(speaking: false)
-        // add to the vadBuffer:
-//        addToVadBuffer(lc3Data)
-        addToVadBuffer(pcmData)
-      }
+      .store(in: &cancellables)
     }
-    .store(in: &cancellables)
   }
 
   // MARK: - ServerCommsCallback Implementation
