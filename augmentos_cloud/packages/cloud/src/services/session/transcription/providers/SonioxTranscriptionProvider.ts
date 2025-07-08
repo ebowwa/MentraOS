@@ -42,6 +42,7 @@ interface SonioxToken {
   confidence: number;
   is_final: boolean;
   speaker?: string;
+  language?: string; // Language code for this token
 }
 
 interface SonioxResponse {
@@ -50,6 +51,7 @@ interface SonioxResponse {
   total_audio_proc_ms?: number;
   error_code?: number;
   error_message?: string;
+  finished?: boolean; // Indicates end of transcription
 }
 
 export class SonioxTranscriptionProvider implements TranscriptionProvider {
@@ -128,11 +130,35 @@ export class SonioxTranscriptionProvider implements TranscriptionProvider {
     targetLanguage: string,
     options: StreamOptions
   ): Promise<StreamInstance> {
-    // Soniox doesn't support real-time translation (as far as we know)
-    throw new SonioxProviderError(
-      'Soniox does not support real-time translation',
-      400
+    this.logger.debug({
+      sourceLanguage,
+      targetLanguage,
+      streamId: options.streamId
+    }, 'Creating Soniox translation stream');
+    
+    if (!this.validateLanguagePair(sourceLanguage, targetLanguage)) {
+      throw new SonioxProviderError(
+        `Translation pair ${sourceLanguage} → ${targetLanguage} not supported by Soniox`,
+        400
+      );
+    }
+    
+    // Create real Soniox WebSocket translation stream
+    const stream = new SonioxTranscriptionStream(
+      options.streamId,
+      options.subscription,
+      this,
+      sourceLanguage,
+      targetLanguage, // Pass target language for translation
+      options.callbacks,
+      this.logger,
+      this.config
     );
+    
+    // Initialize WebSocket connection
+    await stream.initialize();
+    
+    return stream;
   }
   
   supportsSubscription(subscription: string): boolean {
@@ -141,12 +167,16 @@ export class SonioxTranscriptionProvider implements TranscriptionProvider {
       return false;
     }
     
-    // Only support transcription, not translation
+    // Support both transcription and translation
     if (languageInfo.type === StreamType.TRANSCRIPTION) {
       return this.supportsLanguage(languageInfo.transcribeLanguage);
     }
     
-    return false; // No translation support
+    if (languageInfo.type === StreamType.TRANSLATION && languageInfo.translateLanguage) {
+      return this.validateLanguagePair(languageInfo.transcribeLanguage, languageInfo.translateLanguage);
+    }
+    
+    return false;
   }
   
   supportsLanguage(language: string): boolean {
@@ -154,16 +184,45 @@ export class SonioxTranscriptionProvider implements TranscriptionProvider {
   }
   
   validateLanguagePair(source: string, target: string): boolean {
-    // Soniox doesn't support translation
-    return false;
+    // Soniox supports two-way translation between many language pairs
+    // For now, implement common pairs - this could be expanded
+    const supportedPairs = new Map([
+      ['en-US', ['es-ES', 'es-US', 'fr-FR', 'de-DE', 'it-IT', 'pt-BR', 'ja-JP', 'ko-KR', 'zh-CN']],
+      ['es-ES', ['en-US', 'fr-FR', 'de-DE', 'it-IT', 'pt-BR']],
+      ['es-US', ['en-US', 'fr-FR', 'de-DE', 'it-IT', 'pt-BR']],
+      ['fr-FR', ['en-US', 'es-ES', 'es-US', 'de-DE', 'it-IT', 'pt-BR']],
+      ['de-DE', ['en-US', 'es-ES', 'es-US', 'fr-FR', 'it-IT', 'pt-BR']],
+      ['zh-CN', ['en-US', 'ja-JP', 'ko-KR']],
+      ['ja-JP', ['en-US', 'zh-CN', 'ko-KR']],
+      ['ko-KR', ['en-US', 'zh-CN', 'ja-JP']]
+    ]);
+    
+    // Check if both languages are supported and form a valid pair
+    const targetLanguages = supportedPairs.get(source);
+    const reverseTargetLanguages = supportedPairs.get(target);
+    
+    return (targetLanguages && targetLanguages.includes(target)) ||
+           (reverseTargetLanguages && reverseTargetLanguages.includes(source));
   }
   
   getLanguageCapabilities(): ProviderLanguageCapabilities {
+    // Build translation pairs map from our validateLanguagePair logic
+    const translationPairs = new Map([
+      ['en-US', ['es-ES', 'es-US', 'fr-FR', 'de-DE', 'it-IT', 'pt-BR', 'ja-JP', 'ko-KR', 'zh-CN']],
+      ['es-ES', ['en-US', 'fr-FR', 'de-DE', 'it-IT', 'pt-BR']],
+      ['es-US', ['en-US', 'fr-FR', 'de-DE', 'it-IT', 'pt-BR']],
+      ['fr-FR', ['en-US', 'es-ES', 'es-US', 'de-DE', 'it-IT', 'pt-BR']],
+      ['de-DE', ['en-US', 'es-ES', 'es-US', 'fr-FR', 'it-IT', 'pt-BR']],
+      ['zh-CN', ['en-US', 'ja-JP', 'ko-KR']],
+      ['ja-JP', ['en-US', 'zh-CN', 'ko-KR']],
+      ['ko-KR', ['en-US', 'zh-CN', 'ja-JP']]
+    ]);
+    
     return {
       transcriptionLanguages: [...SONIOX_TRANSCRIPTION_LANGUAGES],
-      translationPairs: new Map(), // No translation support
+      translationPairs,
       autoLanguageDetection: true, // Soniox supports auto language detection
-      realtimeTranslation: false
+      realtimeTranslation: true // Soniox supports real-time translation!
     };
   }
   
@@ -316,17 +375,28 @@ class SonioxTranscriptionStream implements StreamInstance {
       return;
     }
     
-    const config = {
+    const config: any = {
       api_key: this.config.apiKey,
       model: this.config.model || 'stt-rt-preview',
-      audio_format: {
-        type: 'pcm',
-        num_channels: 1,
-        sample_rate: 16000
-      },
-      enable_speaker_diarization: false,
-      language: this.language
+      audio_format: 'pcm_s16le', // Match the example format
+      sample_rate: 16000,
+      num_channels: 1,
+      enable_speaker_diarization: true, // Enable speaker diarization like the example
     };
+    
+    // Configure translation if target language is specified
+    if (this.targetLanguage) {
+      // Use two-way translation configuration like the Soniox example
+      config.translation = {
+        type: 'two_way',
+        language_a: this.language.split('-')[0], // Convert en-US to en
+        language_b: this.targetLanguage.split('-')[0] // Convert es-ES to es
+      };
+      config.language_hints = [config.translation.language_a, config.translation.language_b];
+    } else {
+      // Just transcription
+      config.language = this.language;
+    }
     
     try {
       this.ws.send(JSON.stringify(config));
@@ -385,8 +455,19 @@ class SonioxTranscriptionStream implements StreamInstance {
   }
   
   private processSonioxTokens(tokens: SonioxToken[]): void {
+    if (this.targetLanguage) {
+      // Translation mode - group tokens by language
+      this.processTranslationTokens(tokens);
+    } else {
+      // Transcription mode
+      this.processTranscriptionTokens(tokens);
+    }
+  }
+  
+  private processTranscriptionTokens(tokens: SonioxToken[]): void {
     // Convert Soniox tokens to our TranscriptionData format
-    const text = tokens.map(t => t.text).join(' ');
+    // Join tokens properly - Soniox tokens should be joined without extra spaces
+    const text = tokens.map(t => t.text).join('').replace(/\s+/g, ' ').trim();
     const isFinal = tokens.some(t => t.is_final);
     const confidence = tokens.reduce((acc, t) => acc + t.confidence, 0) / tokens.length;
     
@@ -409,8 +490,93 @@ class SonioxTranscriptionStream implements StreamInstance {
       streamId: this.id,
       text: text.substring(0, 100),
       isFinal,
-      tokenCount: tokens.length
-    }, 'Processed Soniox transcription');
+      tokenCount: tokens.length,
+      confidence,
+      provider: 'soniox'
+    }, `🎙️ SONIOX: ${isFinal ? 'FINAL' : 'interim'} transcription - "${text}"`);
+  }
+  
+  private processTranslationTokens(tokens: SonioxToken[]): void {
+    // Group tokens by language
+    const tokensByLanguage = new Map<string, SonioxToken[]>();
+    
+    for (const token of tokens) {
+      const language = token.language || this.language;
+      if (!tokensByLanguage.has(language)) {
+        tokensByLanguage.set(language, []);
+      }
+      tokensByLanguage.get(language)!.push(token);
+    }
+    
+    // Process each language group
+    for (const [detectedLanguage, langTokens] of tokensByLanguage) {
+      const text = langTokens.map(t => t.text).join('').replace(/\s+/g, ' ').trim();
+      const isFinal = langTokens.some(t => t.is_final);
+      const confidence = langTokens.reduce((acc, t) => acc + t.confidence, 0) / langTokens.length;
+      
+      // Determine if this is original or translated text
+      const sourceLanguageCode = this.language.split('-')[0];
+      const targetLanguageCode = this.targetLanguage!.split('-')[0];
+      const detectedLanguageCode = detectedLanguage.split('-')[0];
+      
+      const isOriginalLanguage = detectedLanguageCode === sourceLanguageCode;
+      const isTargetLanguage = detectedLanguageCode === targetLanguageCode;
+      
+      if (isTargetLanguage && !isOriginalLanguage) {
+        // This is translated text
+        const translationData = {
+          type: StreamType.TRANSLATION,
+          text,
+          originalText: '', // We don't have the original text in this token group
+          isFinal,
+          confidence,
+          startTime: Date.now(),
+          endTime: Date.now() + 1000,
+          transcribeLanguage: this.language,
+          translateLanguage: this.targetLanguage!,
+          didTranslate: true,
+          provider: 'soniox',
+          speakerId: langTokens[0]?.speaker
+        };
+        
+        if (this.callbacks.onData) {
+          this.callbacks.onData(translationData);
+        }
+        
+        this.logger.debug({
+          streamId: this.id,
+          translatedText: text.substring(0, 50),
+          isFinal,
+          detectedLanguage,
+          provider: 'soniox'
+        }, `🌐 SONIOX TRANSLATION: ${isFinal ? 'FINAL' : 'interim'} [${detectedLanguage}] "${text}"`);
+      } else {
+        // This is original text (transcription)
+        const transcriptionData = {
+          type: StreamType.TRANSCRIPTION,
+          text,
+          isFinal,
+          confidence,
+          startTime: Date.now(),
+          endTime: Date.now() + 1000,
+          transcribeLanguage: this.language,
+          provider: 'soniox',
+          speakerId: langTokens[0]?.speaker
+        };
+        
+        if (this.callbacks.onData) {
+          this.callbacks.onData(transcriptionData);
+        }
+        
+        this.logger.debug({
+          streamId: this.id,
+          text: text.substring(0, 100),
+          isFinal,
+          detectedLanguage,
+          provider: 'soniox'
+        }, `🎙️ SONIOX: ${isFinal ? 'FINAL' : 'interim'} [${detectedLanguage}] "${text}"`);
+      }
+    }
   }
   
   private handleError(error: Error): void {

@@ -357,7 +357,7 @@ export class TranscriptionManager {
         provider: provider.name,
         streamId: stream.id,
         initTime: stream.metrics.initializationTime
-      }, 'Stream created successfully');
+      }, `🚀 STREAM CREATED: [${provider.name.toUpperCase()}] for "${subscription}" (${stream.metrics.initializationTime}ms)`);
       
       // Track success
       PosthogService.trackEvent('transcription_stream_created', this.userSession.userId, {
@@ -720,21 +720,28 @@ export class TranscriptionManager {
       // Import session service to avoid circular dependencies
       const { sessionService } = require('../session.service');
       
-      // Create message in the expected format for apps
+      // Create message in the expected GlassesToCloudMessage format  
+      // The data should be the top-level object, not nested
       const messageData = {
         type: subscription, // The subscription type (e.g., 'transcription:en-US')
-        data: data,
+        ...data, // Spread the transcription/translation data at the top level
         timestamp: new Date()
       };
       
       // Relay the data using the existing session service method
       sessionService.relayMessageToApps(this.userSession, messageData);
       
+      // Enhanced debug logging to show transcription content and provider
       this.logger.debug({
         subscription,
+        provider: data.provider || 'unknown',
         dataType: data.type,
-        isFinal: data.isFinal
-      }, 'Relayed transcription data to subscribed apps');
+        text: data.text ? `"${data.text.substring(0, 100)}${data.text.length > 100 ? '...' : ''}"` : 'no text',
+        isFinal: data.isFinal,
+        originalText: data.originalText ? `"${data.originalText.substring(0, 50)}${data.originalText.length > 50 ? '...' : ''}"` : undefined,
+        translatedTo: data.translateLanguage,
+        confidence: data.confidence
+      }, `📝 TRANSCRIPTION: [${data.provider || 'unknown'}] ${data.isFinal ? 'FINAL' : 'interim'} "${data.text || 'no text'}"`);
       
     } catch (error) {
       this.logger.error({

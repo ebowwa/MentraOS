@@ -367,12 +367,20 @@ export class AzureTranscriptionProvider implements TranscriptionProvider {
         startTime: this.calculateRelativeTime(event.result.offset),
         endTime: this.calculateRelativeTime(event.result.offset + event.result.duration),
         speakerId: event.result.speakerId,
-        transcribeLanguage: stream.language
+        transcribeLanguage: stream.language,
+        provider: 'azure'
       };
       
       if (stream.callbacks.onData) {
         stream.callbacks.onData(data);
       }
+      
+      this.logger.debug({
+        streamId: stream.id,
+        text: data.text.substring(0, 100),
+        isFinal: data.isFinal,
+        provider: 'azure'
+      }, `🎙️ AZURE: ${data.isFinal ? 'FINAL' : 'interim'} transcription - "${data.text}"`);
     };
     
     recognizer.transcribed = (sender, event) => {
@@ -385,12 +393,20 @@ export class AzureTranscriptionProvider implements TranscriptionProvider {
         startTime: this.calculateRelativeTime(event.result.offset),
         endTime: this.calculateRelativeTime(event.result.offset + event.result.duration),
         speakerId: event.result.speakerId,
-        transcribeLanguage: stream.language
+        transcribeLanguage: stream.language,
+        provider: 'azure'
       };
       
       if (stream.callbacks.onData) {
         stream.callbacks.onData(data);
       }
+      
+      this.logger.debug({
+        streamId: stream.id,
+        text: data.text.substring(0, 100),
+        isFinal: data.isFinal,
+        provider: 'azure'
+      }, `🎙️ AZURE: ${data.isFinal ? 'FINAL' : 'interim'} transcription - "${data.text}"`);
     };
   }
   
@@ -417,12 +433,22 @@ export class AzureTranscriptionProvider implements TranscriptionProvider {
         speakerId: event.result.speakerId,
         transcribeLanguage: stream.language,
         translateLanguage: stream.targetLanguage!,
-        didTranslate
+        didTranslate,
+        provider: 'azure'
       };
       
       if (stream.callbacks.onData) {
         stream.callbacks.onData(data);
       }
+      
+      this.logger.debug({
+        streamId: stream.id,
+        originalText: data.originalText.substring(0, 50),
+        translatedText: data.text.substring(0, 50),
+        isFinal: data.isFinal,
+        didTranslate: data.didTranslate,
+        provider: 'azure'
+      }, `🌐 AZURE TRANSLATION: ${data.isFinal ? 'FINAL' : 'interim'} "${data.originalText}" → "${data.text}"`);
     };
     
     recognizer.recognized = (sender, event) => {
@@ -443,12 +469,22 @@ export class AzureTranscriptionProvider implements TranscriptionProvider {
         speakerId: event.result.speakerId,
         transcribeLanguage: stream.language,
         translateLanguage: stream.targetLanguage!,
-        didTranslate
+        didTranslate,
+        provider: 'azure'
       };
       
       if (stream.callbacks.onData) {
         stream.callbacks.onData(data);
       }
+      
+      this.logger.debug({
+        streamId: stream.id,
+        originalText: data.originalText.substring(0, 50),
+        translatedText: data.text.substring(0, 50),
+        isFinal: data.isFinal,
+        didTranslate: data.didTranslate,
+        provider: 'azure'
+      }, `🌐 AZURE TRANSLATION: ${data.isFinal ? 'FINAL' : 'interim'} "${data.originalText}" → "${data.text}"`);
     };
   }
   
