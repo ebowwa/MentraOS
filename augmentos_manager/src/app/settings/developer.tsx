@@ -259,9 +259,9 @@ export default function DeveloperSettingsScreen() {
             </View>
             <View style={styles.buttonColumn}>
               <PillButton
-                text="US Central"
+                text="Global"
                 variant="icon"
-                onPress={() => setCustomUrlInput("https://uscentralapi.mentra.glass:443")}
+                onPress={() => setCustomUrlInput("https://api.mentra.glass:443")}
                 buttonStyle={styles.button}
               />
               <PillButton
@@ -271,9 +271,29 @@ export default function DeveloperSettingsScreen() {
                 buttonStyle={styles.button}
               />
               <PillButton
-                text="Global"
+                text="Debug"
                 variant="icon"
-                onPress={() => setCustomUrlInput("https://api.mentra.glass:443")}
+                onPress={() => setCustomUrlInput("https://debug.augmentos.cloud:443")}
+                buttonStyle={styles.button}
+              />
+            </View>
+            <View style={styles.buttonColumn}>
+              <PillButton
+                text="US Central"
+                variant="icon"
+                onPress={() => setCustomUrlInput("https://uscentralapi.mentra.glass:443")}
+                buttonStyle={styles.button}
+              />
+              <PillButton
+                text="France"
+                variant="icon"
+                onPress={() => setCustomUrlInput("https://franceapi.mentra.glass:443")}
+                buttonStyle={styles.button}
+              />
+              <PillButton
+                text="Asia East"
+                variant="icon"
+                onPress={() => setCustomUrlInput("https://asiaeastapi.mentra.glass:443")}
                 buttonStyle={styles.button}
               />
             </View>
