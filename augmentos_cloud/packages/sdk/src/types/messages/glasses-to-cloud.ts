@@ -176,6 +176,9 @@ export interface NotificationDismissed extends BaseMessage {
 export interface MentraosSettingsUpdateRequest extends BaseMessage {
   type: GlassesToCloudMessageType.MENTRAOS_SETTINGS_UPDATE_REQUEST;
 }
+export interface MentraosSettingsUpdateRequest extends BaseMessage {
+  type: GlassesToCloudMessageType.MENTRAOS_SETTINGS_UPDATE_REQUEST;
+}
 
 /**
  * Core status update from glasses

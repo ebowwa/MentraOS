@@ -14,31 +14,32 @@ public interface ServerCommsCallback {
     void onConnectionStatusChange(WebSocketManager.IncomingMessageHandler.WebSocketStatus status);
     void onRequestSingle(String dataType);
     void onMicrophoneStateChange(boolean isEnabled);
-    
+
     /**
      * Called when the server requests a photo to be taken
-     * 
+     *
      * @param requestId Unique ID for this photo request
      * @param appId ID of the app requesting the photo
+     * @param webhookUrl The webhook URL associated with the photo request
      */
-    void onPhotoRequest(String requestId, String appId);
-    
+    void onPhotoRequest(String requestId, String appId, String webhookUrl);
+
     /**
      * Called when the server requests an RTMP stream
-     * 
+     *
      * @param message The complete RTMP stream request message with all parameters
      */
     void onRtmpStreamStartRequest(JSONObject message);
-    
+
     /**
      * Called when the server requests to stop an RTMP stream
-     * 
+     *
      */
     void onRtmpStreamStop();
-    
+
     /**
      * Called when the server sends a keep alive message for an RTMP stream
-     * 
+     *
      * @param message The keep alive message with streamId, ackId, and timestamp
      */
     void onRtmpStreamKeepAlive(JSONObject message);

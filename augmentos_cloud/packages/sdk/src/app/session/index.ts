@@ -8,8 +8,8 @@ import { WebSocket } from 'ws';
 import { EventManager, EventData, StreamDataTypes } from './events';
 import { LayoutManager } from './layouts';
 import { SettingsManager } from './settings';
-import { StreamingModule } from './modules/streaming';
 import { LocationManager } from './modules/location';
+import { CameraModule, PhotoRequestOptions, RtmpStreamOptions } from './modules/camera';
 import { ResourceTracker } from '../../utils/resource-tracker';
 import {
   // Message types
@@ -53,7 +53,8 @@ import {
   VpsCoordinates,
   PhotoTaken,
   SubscriptionRequest,
-  Capabilities
+  Capabilities,
+  PhotoData
 } from '../../types';
 import { DashboardAPI } from '../../types/dashboard';
 import { MentraosSettingsUpdate } from '../../types/messages/cloud-to-app';
@@ -156,11 +157,6 @@ export class AppSession {
   private subscriptionSettingsHandler?: (settings: AppSettings) => ExtendedStreamType[];
   /** Settings that should trigger subscription updates when changed */
   private subscriptionUpdateTriggers: string[] = [];
-  /** Pending photo requests waiting for responses */
-  private pendingPhotoRequests = new Map<string, {
-    resolve: (url: string) => void,
-    reject: (reason: any) => void
-  }>();
   /** Pending user discovery requests waiting for responses */
   private pendingUserDiscoveryRequests = new Map<string, {
     resolve: (userList: any) => void,
@@ -180,10 +176,10 @@ export class AppSession {
   public readonly settings: SettingsManager;
   /** 📊 Dashboard management interface */
   public readonly dashboard: DashboardAPI;
-  /** 📹 RTMP streaming interface */
-  public readonly streaming: StreamingModule;
   /** 📍 Location management interface */
   public readonly location: LocationManager;
+  /** 📷 Camera interface for photos and streaming */
+  public readonly camera: CameraModule;
 
   public readonly appServer: AppServer;
   public readonly logger: Logger;
@@ -278,12 +274,13 @@ export class AppSession {
     const { DashboardManager } = require('./dashboard');
     this.dashboard = new DashboardManager(this, this.send.bind(this));
 
-    // Initialize streaming module with session reference
-    this.streaming = new StreamingModule(
+    // Initialize camera module with session reference
+    this.camera = new CameraModule(
       this.config.packageName,
       this.sessionId || 'unknown-session-id',
       this.send.bind(this),
-      this // Pass session reference
+      this, // Pass session reference
+      this.logger.child({ module: 'camera' })
     );
     this.location = new LocationManager(this, this.send.bind(this));
   }
@@ -480,9 +477,9 @@ export class AppSession {
       sessionId
     );
 
-    // Update the sessionId in the streaming module
-    if (this.streaming) {
-      Object.defineProperty(this.streaming, 'sessionId', { value: sessionId });
+    // Update the sessionId in the camera module
+    if (this.camera) {
+      this.camera.updateSessionId(sessionId);
     }
 
     return new Promise((resolve, reject) => {
@@ -729,6 +726,11 @@ export class AppSession {
    * 👋 Disconnect from MentraOS Cloud
    */
   disconnect(): void {
+    // Clean up camera module first
+    if (this.camera) {
+      this.camera.cancelAllRequests();
+    }
+
     // Use the resource tracker to clean up everything
     this.resources.dispose();
 
@@ -737,47 +739,6 @@ export class AppSession {
     this.sessionId = null;
     this.subscriptions.clear();
     this.reconnectAttempts = 0;
-  }
-
-  /**
-   * 📸 Request a photo from the connected glasses
-   * @param options - Optional configuration for the photo request
-   * @returns Promise that resolves with the URL to the captured photo
-   */
-  requestPhoto(options?: { saveToGallery?: boolean }): Promise<string> {
-    return new Promise((resolve, reject) => {
-      try {
-        // Generate unique request ID
-        const requestId = `photo_req_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-
-        // Store promise resolvers for when we get the response
-        this.pendingPhotoRequests.set(requestId, { resolve, reject });
-
-        // Create photo request message
-        const message: PhotoRequest = {
-          type: AppToCloudMessageType.PHOTO_REQUEST,
-          packageName: this.config.packageName,
-          sessionId: this.sessionId!,
-          timestamp: new Date(),
-          saveToGallery: options?.saveToGallery || false
-        };
-
-        // Send request to cloud
-        this.send(message);
-
-        // Set timeout to avoid hanging promises
-        const timeoutMs = 30000; // 30 seconds
-        this.resources.setTimeout(() => {
-          if (this.pendingPhotoRequests.has(requestId)) {
-            this.pendingPhotoRequests.get(requestId)!.reject(new Error('Photo request timed out'));
-            this.pendingPhotoRequests.delete(requestId);
-          }
-        }, timeoutMs);
-      } catch (error: unknown) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        reject(new Error(`Failed to request photo: ${errorMessage}`));
-      }
-    });
   }
 
   /**
@@ -1058,22 +1019,14 @@ export class AppSession {
             this.events.emit(messageStreamType, sanitizedData);
           }
         }
-        else if (isPhotoResponse(message)) {
-          // Handle photo response by resolving the pending promise
-          if (this.pendingPhotoRequests.has((message as PhotoResponse).requestId)) {
-            const { resolve } = this.pendingPhotoRequests.get((message as PhotoResponse).requestId)!;
-            resolve((message as PhotoResponse).photoUrl);
-            this.pendingPhotoRequests.delete((message as PhotoResponse).requestId);
-          }
-        }
         else if (isRtmpStreamStatus(message)) {
           // Emit as a standard stream event if subscribed
           if (this.subscriptions.has(StreamType.RTMP_STREAM_STATUS)) {
             this.events.emit(StreamType.RTMP_STREAM_STATUS, message);
           }
 
-          // Update streaming module's internal state
-          this.streaming.updateStreamState(message);
+          // Update camera module's internal stream state
+          this.camera.updateStreamState(message);
         }
         else if (isSettingsUpdate(message)) {
           // Store previous settings to check for changes
@@ -1214,6 +1167,11 @@ export class AppSession {
               message: detail.message
             });
           });
+        }
+        else if (isPhotoResponse(message)) {
+          // Legacy photo response handling - now photos come directly via webhook
+          // This branch can be removed in the future as all photos now go through /photo-upload
+          this.logger.warn('Received legacy photo response - photos should now come via /photo-upload webhook');
         }
         // Handle unrecognized message types gracefully
         else {
@@ -1814,4 +1772,7 @@ export class TpaSession extends AppSession {
     );
   }
 }
+
+// Export camera module types for developers
+export { CameraModule, PhotoRequestOptions, RtmpStreamOptions } from './modules/camera';
 

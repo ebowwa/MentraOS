@@ -75,6 +75,7 @@ export interface PhotoRequestToGlasses extends BaseMessage {
   requestId: string;
   appId: string;
   saveToGallery?: boolean;
+  webhookUrl?: string; // URL where ASG should send the photo directly
 }
 
 /**

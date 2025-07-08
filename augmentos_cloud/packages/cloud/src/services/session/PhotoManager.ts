@@ -63,20 +63,22 @@ export class PhotoManager {
    * Adapts logic from photoRequestService.createAppPhotoRequest.
    */
   async requestPhoto(appRequest: PhotoRequest): Promise<string> {
-    const { packageName, saveToGallery = false } = appRequest; // Default saveToGallery if not provided by App
+    const { packageName, requestId, saveToGallery = false } = appRequest; // Use requestId from App request
 
-    this.logger.info({ packageName, saveToGallery }, 'Processing App photo request.');
+    this.logger.info({ packageName, requestId, saveToGallery }, 'Processing App photo request.');
 
     // Get App websocket for storing in pending request (but don't validate connection -
     // centralized messaging will handle resurrection when we send the response)
     const appWebSocket = this.userSession.appWebsockets.get(packageName);
 
+    // Get the app's webhook URL for direct photo upload
+    const app = this.userSession.installedApps.get(packageName);
+    const webhookUrl = app?.publicUrl ? `${app.publicUrl}/photo-upload` : undefined;
+
     if (!this.userSession.websocket || this.userSession.websocket.readyState !== WebSocket.OPEN) {
       this.logger.error('Glasses WebSocket not connected, cannot send photo request to glasses.');
       throw new Error('Glasses WebSocket not connected.');
     }
-
-    const requestId = crypto.randomUUID();
 
     const requestInfo: PendingPhotoRequest = {
       requestId,
@@ -90,12 +92,13 @@ export class PhotoManager {
     this.pendingPhotoRequests.set(requestId, requestInfo);
 
     // Message to glasses based on CloudToGlassesMessageType.PHOTO_REQUEST
-    // SDK doesn't show a specific PhotoRequestToGlasses type, but implies structure.
+    // Include webhook URL so ASG can upload directly to the app
     const messageToGlasses = {
       type: CloudToGlassesMessageType.PHOTO_REQUEST,
       sessionId: this.userSession.sessionId,
       requestId,
       appId: packageName, // Glasses expect `appId`
+      webhookUrl, // New: Direct upload URL for ASG client
       // Note: `saveToGallery` is part of GlassesPhotoResponseSDK, not typically in request *to* glasses.
       // If glasses API *can* take this as an instruction, add it. Otherwise, it's cloud-enforced metadata.
       // For now, assume glasses don't take saveToGallery in request. We use it when forming App response.
@@ -104,7 +107,7 @@ export class PhotoManager {
 
     try {
       this.userSession.websocket.send(JSON.stringify(messageToGlasses));
-      this.logger.info({ requestId, packageName }, 'PHOTO_REQUEST command sent to glasses.');
+      this.logger.info({ requestId, packageName, webhookUrl }, 'PHOTO_REQUEST command sent to glasses with webhook URL.');
     } catch (error) {
       this.logger.error({ error, requestId }, 'Failed to send PHOTO_REQUEST to glasses.');
       clearTimeout(requestInfo.timeoutId);

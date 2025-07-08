@@ -71,6 +71,11 @@ interface AppIncomingMessage extends IncomingMessage {
 export class AppWebSocketService {
   private static instance: AppWebSocketService;
   private logger = rootLogger.child({ service: SERVICE_NAME });
+  
+  // Debouncing for subscription changes to prevent rapid stream recreation
+  private subscriptionChangeTimers = new Map<string, NodeJS.Timeout>();
+  private readonly SUBSCRIPTION_DEBOUNCE_MS = 500; // 500ms debounce
+  
   constructor() { }
 
   /**
@@ -343,12 +348,43 @@ export class AppWebSocketService {
 
     if (languageSubscriptionsChanged) {
       userSession.logger.info({ service: SERVICE_NAME, languageSubscriptionsChanged, packageName }, `Language subscriptions changed for ${packageName} in session ${userSession.userId}`);
-      // console.log("🔥🔥🔥: newLanguageSubscriptions:", newLanguageSubscriptions);
-      // Update transcription streams with new language subscriptions
-      transcriptionService.updateTranscriptionStreams(userSession, newLanguageSubscriptions);
+      
+      // 🚨 DEBOUNCED SUBSCRIPTION UPDATES - Prevent rapid stream recreation
+      const userId = userSession.userId;
+      
+      // Clear existing timer if present
+      if (this.subscriptionChangeTimers.has(userId)) {
+        clearTimeout(this.subscriptionChangeTimers.get(userId)!);
+      }
+      
+      // Set debounced timer for transcription stream updates
+      this.subscriptionChangeTimers.set(userId, setTimeout(() => {
+        try {
+          userSession.logger.debug({ 
+            service: SERVICE_NAME, 
+            newLanguageSubscriptions,
+            userId,
+            operation: 'debouncedStreamUpdate'
+          }, 'Applying debounced transcription stream update');
+          
+          // Update transcription streams with new language subscriptions
+          transcriptionService.updateTranscriptionStreams(userSession, newLanguageSubscriptions);
 
-      // Check if we need to update microphone state based on media subscriptions
-      userSession.microphoneManager.handleSubscriptionChange();
+          // Check if we need to update microphone state based on media subscriptions
+          userSession.microphoneManager.handleSubscriptionChange();
+          
+        } catch (error) {
+          userSession.logger.error({ 
+            service: SERVICE_NAME, 
+            error,
+            userId,
+            operation: 'debouncedStreamUpdateError'
+          }, 'Error in debounced subscription update');
+        } finally {
+          // Clean up timer
+          this.subscriptionChangeTimers.delete(userId);
+        }
+      }, this.SUBSCRIPTION_DEBOUNCE_MS));
     }
 
     // Send cached calendar event if app just subscribed to calendar events

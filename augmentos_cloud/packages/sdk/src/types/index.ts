@@ -73,6 +73,8 @@ export * from './webhooks';
 // Capability Discovery types
 export * from './capabilities';
 
+// Photo data types
+export * from './photo-data';
 
 // Re-export common types for convenience
 // This allows developers to import commonly used types directly from the package root

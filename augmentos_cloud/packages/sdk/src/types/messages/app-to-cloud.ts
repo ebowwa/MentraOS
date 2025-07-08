@@ -35,6 +35,7 @@ export interface AppSubscriptionUpdate extends BaseMessage {
 export interface PhotoRequest extends BaseMessage {
   type: AppToCloudMessageType.PHOTO_REQUEST;
   packageName: string;
+  requestId: string; // SDK-generated request ID to track the request
   saveToGallery?: boolean;
 }
 
