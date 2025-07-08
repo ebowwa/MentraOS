@@ -316,10 +316,10 @@ export interface ValidationResult {
 
 export const DEFAULT_TRANSCRIPTION_CONFIG: TranscriptionConfig = {
   providers: {
-    // defaultProvider: ProviderType.SONIOX,
-    // fallbackProvider: ProviderType.AZURE
-    defaultProvider: ProviderType.AZURE,
-    fallbackProvider: ProviderType.SONIOX
+    defaultProvider: ProviderType.SONIOX,
+    fallbackProvider: ProviderType.AZURE
+    // defaultProvider: ProviderType.AZURE,
+    // fallbackProvider: ProviderType.SONIOX
   },
   
   azure: {

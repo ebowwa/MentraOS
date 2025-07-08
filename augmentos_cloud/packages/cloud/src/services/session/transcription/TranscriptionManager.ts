@@ -3,7 +3,7 @@
  */
 
 import { Logger } from 'pino';
-import { ExtendedStreamType, getLanguageInfo } from '@mentra/sdk';
+import { ExtendedStreamType, getLanguageInfo, StreamType, CloudToAppMessageType, DataStream } from '@mentra/sdk';
 import UserSession from '../UserSession';
 import { PosthogService } from '../../logging/posthog.service';
 import {
@@ -23,6 +23,7 @@ import {
 import { ProviderSelector } from './ProviderSelector';
 import { AzureTranscriptionProvider } from './providers/AzureTranscriptionProvider';
 import { SonioxTranscriptionProvider } from './providers/SonioxTranscriptionProvider';
+import subscriptionService from '../subscription.service';
 
 export class TranscriptionManager {
   public readonly logger: Logger;
@@ -441,8 +442,10 @@ export class TranscriptionManager {
       },
       
       onData: (data: any) => {
-        // Relay to apps that are subscribed
-        this.relayDataToApps(subscription, data);
+        // Relay to apps that are subscribed (async but don't await to avoid blocking)
+        this.relayDataToApps(subscription, data).catch(error => {
+          this.logger.error({ error, subscription, data }, 'Error in async relayDataToApps');
+        });
       }
     };
   }
@@ -715,33 +718,85 @@ export class TranscriptionManager {
     return `${this.userSession.sessionId}-${subscription}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   }
   
-  private relayDataToApps(subscription: ExtendedStreamType, data: any): void {
+  private async relayDataToApps(subscription: ExtendedStreamType, data: any): Promise<void> {
     try {
-      // Import session service to avoid circular dependencies
-      const { sessionService } = require('../session.service');
+      // CONSTRUCT EFFECTIVE SUBSCRIPTION like the old system
+      const streamType = data.type;
+      let effectiveSubscription: ExtendedStreamType = streamType;
       
-      // Create message in the expected GlassesToCloudMessage format  
-      // The data should be the top-level object, not nested
-      const messageData = {
-        type: subscription, // The subscription type (e.g., 'transcription:en-US')
-        ...data, // Spread the transcription/translation data at the top level
-        timestamp: new Date()
-      };
+      // Match old broadcastToApp logic exactly
+      if (streamType === StreamType.TRANSLATION) {
+        effectiveSubscription = `${streamType}:${data.transcribeLanguage}-to-${data.translateLanguage}`;
+      } else if (streamType === StreamType.TRANSCRIPTION && data.transcribeLanguage) {
+        effectiveSubscription = `${streamType}:${data.transcribeLanguage}`;
+      } else if (streamType === StreamType.TRANSCRIPTION) {
+        effectiveSubscription = `${streamType}:en-US`; // Default fallback like old system
+      }
       
-      // Relay the data using the existing session service method
-      sessionService.relayMessageToApps(this.userSession, messageData);
+      // Get subscribed apps using EFFECTIVE subscription (like old system)
+      const subscribedApps = subscriptionService.getSubscribedApps(this.userSession, effectiveSubscription);
+      
+      this.logger.debug({
+        originalSubscription: subscription,
+        effectiveSubscription,
+        subscribedApps,
+        streamType,
+        dataType: data.type,
+        transcribeLanguage: data.transcribeLanguage,
+        translateLanguage: data.translateLanguage
+      }, 'Broadcasting transcription data with effective subscription');
+      
+      // Send to each app using APP MANAGER (with resurrection) instead of direct WebSocket
+      for (const packageName of subscribedApps) {
+        const appSessionId = `${this.userSession.sessionId}-${packageName}`;
+        
+        const dataStream: DataStream = {
+          type: CloudToAppMessageType.DATA_STREAM,
+          sessionId: appSessionId,
+          streamType, // Base type remains the same in the message
+          data,       // The data now may contain language info
+          timestamp: new Date()
+        };
+        
+        try {
+          // USE APP MANAGER instead of direct WebSocket (restores resurrection)
+          const result = await this.userSession.appManager.sendMessageToApp(packageName, dataStream);
+          
+          if (!result.sent) {
+            this.logger.warn({
+              packageName,
+              resurrectionTriggered: result.resurrectionTriggered,
+              error: result.error,
+              effectiveSubscription
+            }, `Failed to send transcription data to App ${packageName}`);
+          } else if (result.resurrectionTriggered) {
+            this.logger.info({
+              packageName,
+              effectiveSubscription
+            }, `Transcription data sent to App ${packageName} after resurrection`);
+          }
+        } catch (error) {
+          this.logger.error({
+            packageName,
+            error: error instanceof Error ? error.message : String(error),
+            effectiveSubscription
+          }, `Error sending transcription data to App ${packageName}`);
+        }
+      }
       
       // Enhanced debug logging to show transcription content and provider
       this.logger.debug({
         subscription,
+        effectiveSubscription,
         provider: data.provider || 'unknown',
         dataType: data.type,
         text: data.text ? `"${data.text.substring(0, 100)}${data.text.length > 100 ? '...' : ''}"` : 'no text',
         isFinal: data.isFinal,
         originalText: data.originalText ? `"${data.originalText.substring(0, 50)}${data.originalText.length > 50 ? '...' : ''}"` : undefined,
         translatedTo: data.translateLanguage,
-        confidence: data.confidence
-      }, `📝 TRANSCRIPTION: [${data.provider || 'unknown'}] ${data.isFinal ? 'FINAL' : 'interim'} "${data.text || 'no text'}"`);
+        confidence: data.confidence,
+        appsNotified: subscribedApps.length
+      }, `📝 TRANSCRIPTION: [${data.provider || 'unknown'}] ${data.isFinal ? 'FINAL' : 'interim'} "${data.text || 'no text'}" → ${subscribedApps.length} apps`);
       
     } catch (error) {
       this.logger.error({
