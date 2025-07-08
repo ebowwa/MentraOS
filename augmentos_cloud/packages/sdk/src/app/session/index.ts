@@ -66,7 +66,7 @@ import fetch from 'node-fetch';
 
 
 // Import the cloud-to-app specific type guards
-import { isPhotoResponse, isRtmpStreamStatus } from '../../types/messages/cloud-to-app';
+import { isPhotoResponse, isRtmpStreamStatus, isManagedStreamStatus } from '../../types/messages/cloud-to-app';
 
 /**
  * ⚙️ Configuration options for App Session
@@ -1027,6 +1027,15 @@ export class AppSession {
 
           // Update camera module's internal stream state
           this.camera.updateStreamState(message);
+        }
+        else if (isManagedStreamStatus(message)) {
+          // Emit as a standard stream event if subscribed
+          if (this.subscriptions.has(StreamType.MANAGED_STREAM_STATUS)) {
+            this.events.emit(StreamType.MANAGED_STREAM_STATUS, message);
+          }
+          
+          // Update camera module's managed stream state
+          this.camera.handleManagedStreamStatus(message);
         }
         else if (isSettingsUpdate(message)) {
           // Store previous settings to check for changes

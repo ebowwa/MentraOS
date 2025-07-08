@@ -342,15 +342,30 @@ export class GlassesWebSocketService {
         }
 
         // Mentra Live.
-        case GlassesToCloudMessageType.RTMP_STREAM_STATUS:
-          // Delegate to VideoManager within the user's session
-          userSession.videoManager.handleRtmpStreamStatus(message as RtmpStreamStatus);
+        case GlassesToCloudMessageType.RTMP_STREAM_STATUS: {
+          const status = message as RtmpStreamStatus;
+          // First check if managed streaming extension handles it
+          const managedHandled = await userSession.managedStreamingExtension.handleStreamStatus(
+            userSession,
+            status
+          );
+          // If not handled by managed streaming, delegate to VideoManager
+          if (!managedHandled) {
+            userSession.videoManager.handleRtmpStreamStatus(status);
+          }
           break;
+        }
 
-        case GlassesToCloudMessageType.KEEP_ALIVE_ACK:
-          // Delegate to VideoManager
-          userSession.videoManager.handleKeepAliveAck(message as KeepAliveAck);
+        case GlassesToCloudMessageType.KEEP_ALIVE_ACK: {
+          const ack = message as KeepAliveAck;
+          // Send to both managers - they'll handle their own streams
+          userSession.managedStreamingExtension.handleKeepAliveAck(
+            userSession.userId,
+            ack
+          );
+          userSession.videoManager.handleKeepAliveAck(ack);
           break;
+        }
 
         case GlassesToCloudMessageType.PHOTO_RESPONSE:
           // Delegate to PhotoManager

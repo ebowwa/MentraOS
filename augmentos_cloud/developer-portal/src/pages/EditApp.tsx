@@ -1059,19 +1059,19 @@ const EditApp: React.FC = () => {
 
                 {/* Onboarding Instructions Section */}
                 <div className="space-y-2">
-                  <Label htmlFor="onboardingInstructions">Onboarding Instructions</Label>
+                  <Label htmlFor="onboardingInstructions">Onboarding Instructions (Optional)</Label>
                   <Textarea
                     id="onboardingInstructions"
                     name="onboardingInstructions"
                     value={formData.onboardingInstructions || ''}
                     onChange={handleChange}
-                    placeholder="Describe the onboarding steps for your app (optional)"
+                    placeholder="Describe the onboarding steps for your app"
                     rows={3}
                     maxLength={2000}
                     style={{ maxHeight: '8em', overflowY: 'auto' }}
                   />
                   <p className="text-xs text-gray-500">
-                    (Optional) Provide onboarding instructions that will be shown to users the first time they launch your app. Maximum 5 lines.
+                    Provide onboarding instructions that will be shown to users the first time they launch your app. Maximum 5 lines.
                   </p>
                 </div>
 
