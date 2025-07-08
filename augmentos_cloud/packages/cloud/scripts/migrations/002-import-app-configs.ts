@@ -216,10 +216,44 @@ function validateAppConfig(config: any): {
         }
         break;
 
+      case 'numeric_input':
+        if (setting.defaultValue !== undefined && typeof setting.defaultValue !== 'number') {
+          isValidSetting = false;
+          skipReason = 'Numeric input type requires "defaultValue" to be a number if provided.';
+        }
+        if (setting.min !== undefined && typeof setting.min !== 'number') {
+          isValidSetting = false;
+          skipReason = 'Numeric input type requires "min" to be a number if provided.';
+        }
+        if (setting.max !== undefined && typeof setting.max !== 'number') {
+          isValidSetting = false;
+          skipReason = 'Numeric input type requires "max" to be a number if provided.';
+        }
+        if (setting.step !== undefined && typeof setting.step !== 'number') {
+          isValidSetting = false;
+          skipReason = 'Numeric input type requires "step" to be a number if provided.';
+        }
+        if (setting.placeholder !== undefined && typeof setting.placeholder !== 'string') {
+          isValidSetting = false;
+          skipReason = 'Numeric input type requires "placeholder" to be a string if provided.';
+        }
+        break;
+
+      case 'time_picker':
+        if (setting.defaultValue !== undefined && typeof setting.defaultValue !== 'number') {
+          isValidSetting = false;
+          skipReason = 'Time picker type requires "defaultValue" to be a number (total seconds) if provided.';
+        }
+        if (setting.showSeconds !== undefined && typeof setting.showSeconds !== 'boolean') {
+          isValidSetting = false;
+          skipReason = 'Time picker type requires "showSeconds" to be a boolean if provided.';
+        }
+        break;
+
       default:
         // Unknown setting type - skip it but don't fail the entire config
         isValidSetting = false;
-        skipReason = `Unknown setting type "${setting.type}". Supported types: toggle, text, text_no_save_button, select, select_with_search, multiselect, slider, group, titleValue.`;
+        skipReason = `Unknown setting type "${setting.type}". Supported types: toggle, text, text_no_save_button, select, select_with_search, multiselect, slider, numeric_input, time_picker, group, titleValue.`;
         break;
     }
 

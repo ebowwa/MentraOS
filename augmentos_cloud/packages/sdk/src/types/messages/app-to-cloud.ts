@@ -60,6 +60,28 @@ export interface RtmpStreamStopRequest extends BaseMessage {
 }
 
 /**
+ * Managed RTMP stream request from App
+ * The cloud handles the RTMP endpoint and returns HLS/DASH URLs
+ */
+export interface ManagedStreamRequest extends BaseMessage {
+  type: AppToCloudMessageType.MANAGED_STREAM_REQUEST;
+  packageName: string;
+  quality?: '720p' | '1080p';
+  enableWebRTC?: boolean;
+  video?: VideoConfig;
+  audio?: AudioConfig;
+  stream?: StreamConfig;
+}
+
+/**
+ * Managed RTMP stream stop request from App
+ */
+export interface ManagedStreamStopRequest extends BaseMessage {
+  type: AppToCloudMessageType.MANAGED_STREAM_STOP;
+  packageName: string;
+}
+
+/**
  * Audio play request from App
  */
 export interface AudioPlayRequest extends BaseMessage {
@@ -91,6 +113,8 @@ export type AppToCloudMessage =
   | AudioStopRequest
   | RtmpStreamRequest
   | RtmpStreamStopRequest
+  | ManagedStreamRequest
+  | ManagedStreamStopRequest
   | DashboardContentUpdate
   | DashboardModeChange
   | DashboardSystemUpdate
@@ -162,6 +186,20 @@ export function isDashboardModeChange(message: AppToCloudMessage): message is Da
  */
 export function isDashboardSystemUpdate(message: AppToCloudMessage): message is DashboardSystemUpdate {
   return message.type === AppToCloudMessageType.DASHBOARD_SYSTEM_UPDATE;
+}
+
+/**
+ * Type guard to check if a message is a managed stream request
+ */
+export function isManagedStreamRequest(message: AppToCloudMessage): message is ManagedStreamRequest {
+  return message.type === AppToCloudMessageType.MANAGED_STREAM_REQUEST;
+}
+
+/**
+ * Type guard to check if a message is a managed stream stop request
+ */
+export function isManagedStreamStopRequest(message: AppToCloudMessage): message is ManagedStreamStopRequest {
+  return message.type === AppToCloudMessageType.MANAGED_STREAM_STOP;
 }
 
 //===========================================================

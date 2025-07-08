@@ -13,6 +13,8 @@ import {ModalProvider} from "./AlertUtils"
 import {GlassesMirrorProvider} from "@/contexts/GlassesMirrorContext"
 import {NavigationHistoryProvider} from "@/contexts/NavigationHistoryContext"
 import {DeeplinkProvider} from "@/contexts/DeeplinkContext"
+import {PostHogProvider} from "posthog-react-native"
+import Constants from "expo-constants"
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync()
@@ -30,4 +32,7 @@ export const AllProviders = withWrappers(
   DeeplinkProvider,
   GestureHandlerRootView,
   ModalProvider,
+  props => (
+    <PostHogProvider apiKey={Constants.expoConfig?.extra?.POSTHOG_API_KEY ?? ""}>{props.children}</PostHogProvider>
+  ),
 )

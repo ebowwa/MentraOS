@@ -65,7 +65,29 @@ const sidebars: SidebarsConfig = {
         'settings',
         'tools',
         'capabilities',
-        'camera-tutorial',
+        {
+          type: 'category',
+          label: 'Camera',
+          link: {
+            type: 'doc',
+            id: 'camera/README',
+          },
+          items: [
+            'camera/photo-capture',
+            'camera/rtmp-streaming',
+            {
+              type: 'category',
+              label: 'Building a Camera App',
+              link: {
+                type: 'doc',
+                id: 'camera/building-camera-app',
+              },
+              items: [
+                'camera/examples/streaming-react',
+              ],
+            },
+          ],
+        },
         'webview-auth-overview',
         'react-webviews',
         'dashboard'
@@ -88,8 +110,7 @@ const sidebars: SidebarsConfig = {
             'reference/managers/event-manager',
             'reference/managers/layout-manager',
             'reference/managers/settings-manager',
-            'reference/camera',
-          ],
+              ],
         },
         'reference/enums',
         {

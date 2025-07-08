@@ -218,6 +218,12 @@ public class PhoneMicrophoneManager {
             return;
         }
         
+        // IGNORE REDUNDANT ENABLE CALLS - check if we're already in a working microphone state
+        if (currentStatus != MicStatus.PAUSED) {
+            Log.d(TAG, "Microphone already enabled (current status: " + currentStatus + ") - ignoring redundant enable request");
+            return;
+        }
+        
         // Smart debouncing logic
         long now = System.currentTimeMillis();
         long timeSinceLastChange = now - lastModeChangeTime;

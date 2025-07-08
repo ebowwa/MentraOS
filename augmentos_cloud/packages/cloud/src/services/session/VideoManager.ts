@@ -89,6 +89,11 @@ export class VideoManager {
       throw new Error('Glasses WebSocket not connected');
     }
 
+    // Check for managed stream conflicts
+    if (this.userSession.managedStreamingExtension.checkUnmanagedStreamConflict(this.userSession.userId)) {
+      throw new Error('Cannot start unmanaged stream - managed stream already active');
+    }
+
     const streamId = crypto.randomUUID();
 
     // Stop any existing stream for this app (simple policy)
