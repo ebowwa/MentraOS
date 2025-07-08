@@ -181,6 +181,33 @@ function validateApp(app: AppI): AppValidationResult {
           issues.push(`Setting ${i + 1}: Slider missing min/max values`);
         }
       }
+
+      if (setting.type === 'numeric_input') {
+        if (setting.min !== undefined && typeof setting.min !== 'number') {
+          issues.push(`Setting ${i + 1}: Numeric input min value must be a number`);
+        }
+        if (setting.max !== undefined && typeof setting.max !== 'number') {
+          issues.push(`Setting ${i + 1}: Numeric input max value must be a number`);
+        }
+        if (setting.step !== undefined && typeof setting.step !== 'number') {
+          issues.push(`Setting ${i + 1}: Numeric input step value must be a number`);
+        }
+        if (setting.placeholder !== undefined && typeof setting.placeholder !== 'string') {
+          issues.push(`Setting ${i + 1}: Numeric input placeholder must be a string`);
+        }
+        if (setting.defaultValue !== undefined && typeof setting.defaultValue !== 'number') {
+          issues.push(`Setting ${i + 1}: Numeric input defaultValue must be a number`);
+        }
+      }
+
+      if (setting.type === 'time_picker') {
+        if (setting.showSeconds !== undefined && typeof setting.showSeconds !== 'boolean') {
+          issues.push(`Setting ${i + 1}: Time picker showSeconds must be a boolean`);
+        }
+        if (setting.defaultValue !== undefined && typeof setting.defaultValue !== 'number') {
+          issues.push(`Setting ${i + 1}: Time picker defaultValue must be a number (total seconds)`);
+        }
+      }
     }
   }
 
