@@ -43,6 +43,8 @@ const logger = rootLogger.child({ service: SERVICE_NAME });
 /**
  * Error codes for App connection issues
  */
+
+// temp comment for porter push
 export enum AppErrorCode {
   INVALID_JWT = 'INVALID_JWT',
   JWT_SIGNATURE_FAILED = 'JWT_SIGNATURE_FAILED',
