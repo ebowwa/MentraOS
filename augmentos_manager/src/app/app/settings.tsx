@@ -30,6 +30,7 @@ import {useAppStatus} from "@/contexts/AppStatusProvider"
 import AppIcon from "@/components/misc/AppIcon"
 import SelectWithSearchSetting from "@/components/settings/SelectWithSearchSetting"
 import NumberSetting from "@/components/settings/NumberSetting"
+import TimeSetting from "@/components/settings/TimeSetting"
 import {saveSetting, loadSetting} from "@/utils/SettingsHelper"
 import SettingsSkeleton from "@/components/misc/SettingsSkeleton"
 import {router, useFocusEffect, useLocalSearchParams} from "expo-router"
@@ -496,6 +497,16 @@ export default function AppSettings() {
             max={setting.max}
             step={setting.step}
             placeholder={setting.placeholder}
+            onValueChange={val => handleSettingChange(setting.key, val)}
+          />
+        )
+      case "time_picker":
+        return (
+          <TimeSetting
+            key={index}
+            label={setting.label}
+            value={settingsState[setting.key] || 0}
+            showSeconds={setting.showSeconds !== false}
             onValueChange={val => handleSettingChange(setting.key, val)}
           />
         )
