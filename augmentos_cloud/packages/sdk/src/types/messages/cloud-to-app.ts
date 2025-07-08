@@ -230,7 +230,6 @@ export type CloudToAppMessage =
   | DashboardModeChanged
   | DashboardAlwaysOnChanged
   | CustomMessage
-  | ManagedStreamStatus
   | MentraosSettingsUpdate
   // New App-to-App communication response messages
   | AppMessageReceived
@@ -289,10 +288,6 @@ export function isRtmpStreamStatus(message: CloudToAppMessage): message is RtmpS
 
 export function isPhotoResponse(message: CloudToAppMessage): message is PhotoResponse {
   return message.type === GlassesToCloudMessageType.PHOTO_RESPONSE;
-}
-
-export function isManagedStreamStatus(message: CloudToAppMessage): message is ManagedStreamStatus {
-  return message.type === CloudToAppMessageType.MANAGED_STREAM_STATUS;
 }
 
 // New type guards for App-to-App communication
