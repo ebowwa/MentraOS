@@ -17,7 +17,7 @@ import {
 import UserSession from '../session/UserSession';
 import { sessionService } from '../session/session.service';
 import { CloudflareStreamService } from './CloudflareStreamService';
-import { StreamStateManager, StreamType } from './StreamStateManager';
+import { StreamStateManager, StreamType, ManagedStreamState } from './StreamStateManager';
 
 /**
  * Tracks keep-alive state for managed streams
@@ -48,6 +48,9 @@ export class ManagedStreamingExtension {
   
   // Keep-alive tracking for managed streams (per user, not per app)
   private managedKeepAlive: Map<string, ManagedStreamKeepAlive> = new Map(); // userId -> keepAlive
+  
+  // Polling intervals for URL discovery
+  private pollingIntervals: Map<string, NodeJS.Timeout> = new Map(); // userId -> interval
 
   constructor(logger: Logger) {
     this.logger = logger.child({ service: 'ManagedStreamingExtension' });
@@ -126,14 +129,37 @@ export class ManagedStreamingExtension {
     }
 
     // Create new Cloudflare live input
-    const liveInput = await this.cloudflareService.createLiveInput(userId, {
-      quality,
-      enableWebRTC,
-      enableRecording: false, // Live-only for now
-      requireSignedURLs: false // Public streams
-    });
+    this.logger.debug({ userId, packageName }, '📡 Creating new Cloudflare live input');
+    
+    let liveInput;
+    try {
+      liveInput = await this.cloudflareService.createLiveInput(userId, {
+        quality,
+        enableWebRTC,
+        enableRecording: false, // Live-only for now
+        requireSignedURLs: false // Public streams
+      });
+      
+      this.logger.info({ 
+        userId, 
+        packageName,
+        liveInput: JSON.stringify(liveInput, null, 2)
+      }, '✅ Cloudflare live input created successfully');
+    } catch (cfError) {
+      this.logger.error({
+        userId,
+        packageName,
+        error: {
+          message: cfError instanceof Error ? cfError.message : 'Unknown error',
+          stack: cfError instanceof Error ? cfError.stack : undefined,
+          fullError: JSON.stringify(cfError, null, 2)
+        }
+      }, '❌ Failed to create Cloudflare live input');
+      throw cfError;
+    }
 
     // Create managed stream state
+    this.logger.debug({ userId, packageName }, '📊 Creating managed stream state');
     const managedStream = this.stateManager.createOrJoinManagedStream({
       userId,
       appId: packageName,
@@ -166,13 +192,20 @@ export class ManagedStreamingExtension {
         packageName
       }, 'Sent START_RTMP_STREAM for managed stream');
 
-      // Send initial status to app
+      // Send initial status without URLs (they're not ready yet)
       await this.sendManagedStreamStatus(
         userSession,
         packageName,
         managedStream.streamId,
-        'initializing'
+        'preparing',
+        'Starting stream...',
+        undefined, // No HLS URL yet
+        undefined, // No DASH URL yet
+        undefined  // No WebRTC URL yet
       );
+
+      // Start polling for playback URLs
+      this.startPlaybackUrlPolling(userId, packageName, managedStream);
 
     } catch (error) {
       // Cleanup on error
@@ -327,13 +360,112 @@ export class ManagedStreamingExtension {
   }
 
   /**
+   * Start polling for playback URLs after stream creation
+   */
+  private startPlaybackUrlPolling(
+    userId: string, 
+    packageName: string,
+    managedStream: ManagedStreamState
+  ): void {
+    const pollInterval = setInterval(async () => {
+      try {
+        // Check if stream is still active
+        const currentStream = this.stateManager.getStreamState(userId);
+        if (!currentStream || currentStream.type !== 'managed' || currentStream.streamId !== managedStream.streamId) {
+          clearInterval(pollInterval);
+          return;
+        }
+
+        // Check if URLs are already discovered
+        if (managedStream.hlsUrl && managedStream.dashUrl) {
+          clearInterval(pollInterval);
+          return;
+        }
+
+        this.logger.debug({ 
+          userId, 
+          streamId: managedStream.streamId,
+          cfLiveInputId: managedStream.cfLiveInputId 
+        }, '🔍 Polling for stream live status');
+
+        // Check if stream is live
+        const isLive = await this.cloudflareService.waitForStreamLive(
+          managedStream.cfLiveInputId,
+          1, // Only one attempt per poll
+          0  // No delay, we handle it ourselves
+        );
+
+        if (isLive) {
+          this.logger.info({ 
+            userId, 
+            streamId: managedStream.streamId 
+          }, '🎉 Stream is live! Sending playback URLs to apps');
+
+          // Get user session to send updates
+          const userSession = this.getUserSession(userId);
+          if (!userSession) {
+            clearInterval(pollInterval);
+            return;
+          }
+
+          // Send status update to all apps viewing this stream
+          for (const appId of managedStream.activeViewers) {
+            await this.sendManagedStreamStatus(
+              userSession,
+              appId,
+              managedStream.streamId,
+              'active',
+              'Stream is now live',
+              managedStream.hlsUrl,
+              managedStream.dashUrl,
+              managedStream.webrtcUrl
+            );
+          }
+
+          // Stop polling
+          clearInterval(pollInterval);
+        }
+      } catch (error) {
+        this.logger.error({ 
+          userId, 
+          streamId: managedStream.streamId,
+          error 
+        }, 'Error polling for playback URLs');
+      }
+    }, 2000); // Poll every 2 seconds
+
+    // Store interval for cleanup
+    const existingInterval = this.pollingIntervals.get(userId);
+    if (existingInterval) {
+      clearInterval(existingInterval);
+    }
+    this.pollingIntervals.set(userId, pollInterval);
+
+    // Set timeout to stop polling after 60 seconds
+    setTimeout(() => {
+      if (this.pollingIntervals.get(userId) === pollInterval) {
+        clearInterval(pollInterval);
+        this.pollingIntervals.delete(userId);
+        this.logger.warn({ 
+          userId, 
+          streamId: managedStream.streamId 
+        }, '⏱️ Stopped polling for playback URLs after timeout');
+      }
+    }, 60000);
+  }
+
+  /**
    * Send managed stream status to app
    */
   private async sendManagedStreamStatus(
     userSession: UserSession,
     packageName: string,
     streamId: string,
-    status: ManagedStreamStatus['status']
+    status: ManagedStreamStatus['status'],
+    message?: string,
+    hlsUrl?: string,
+    dashUrl?: string,
+    webrtcUrl?: string
   ): Promise<void> {
     const stream = this.stateManager.getStreamByStreamId(streamId);
     if (!stream || stream.type !== 'managed') return;
@@ -347,10 +479,11 @@ export class ManagedStreamingExtension {
     const statusMessage: ManagedStreamStatus = {
       type: CloudToAppMessageType.MANAGED_STREAM_STATUS,
       status,
-      hlsUrl: stream.hlsUrl,
-      dashUrl: stream.dashUrl,
-      webrtcUrl: stream.webrtcUrl,
-      streamId
+      hlsUrl: hlsUrl !== undefined ? hlsUrl : stream.hlsUrl,
+      dashUrl: dashUrl !== undefined ? dashUrl : stream.dashUrl,
+      webrtcUrl: webrtcUrl !== undefined ? webrtcUrl : stream.webrtcUrl,
+      streamId,
+      message
     };
 
     appWs.send(JSON.stringify(statusMessage));
@@ -358,7 +491,10 @@ export class ManagedStreamingExtension {
     this.logger.debug({
       packageName,
       status,
-      streamId
+      streamId,
+      hasHls: !!statusMessage.hlsUrl,
+      hasDash: !!statusMessage.dashUrl,
+      message
     }, 'Sent managed stream status to app');
   }
 
@@ -464,6 +600,13 @@ export class ManagedStreamingExtension {
 
     // Stop keep-alive
     this.stopKeepAlive(userId);
+    
+    // Stop polling for URLs if still active
+    const pollInterval = this.pollingIntervals.get(userId);
+    if (pollInterval) {
+      clearInterval(pollInterval);
+      this.pollingIntervals.delete(userId);
+    }
 
     // Send stop command to glasses
     if (userSession.websocket?.readyState === WebSocket.OPEN) {
@@ -519,6 +662,12 @@ export class ManagedStreamingExtension {
     for (const userId of this.managedKeepAlive.keys()) {
       this.stopKeepAlive(userId);
     }
+    
+    // Stop all polling intervals
+    for (const [userId, interval] of this.pollingIntervals) {
+      clearInterval(interval);
+    }
+    this.pollingIntervals.clear();
     
     this.logger.info('ManagedStreamingExtension disposed');
   }
