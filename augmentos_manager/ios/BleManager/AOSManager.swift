@@ -102,14 +102,6 @@ struct ViewState {
     self.serverComms.locationManager.setup()
     self.serverComms.mediaManager.setup()
 
-    guard g1Manager != nil else {
-      return
-    }
-
-    guard liveManager != nil else {
-      return
-    }
-
     // Set up the ServerComms callback
     self.serverComms.setServerCommsCallback(self)
     self.micManager.setMicCallback(self)
