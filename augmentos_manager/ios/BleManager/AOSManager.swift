@@ -250,7 +250,8 @@ struct ViewState {
     do {
       let jsonData = try JSONSerialization.data(withJSONObject: message)
       if let jsonString = String(data: jsonData, encoding: .utf8) {
-        serverComms.sendMessageToServer(message: jsonString)
+//        serverComms.sendMessageToServer(message: jsonString)
+        serverComms.wsManager.sendText(jsonString)
         print("AOSManager: Sent audio play response to server")
       }
     } catch {

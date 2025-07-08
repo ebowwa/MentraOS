@@ -456,9 +456,9 @@ class ServerComms {
       return
     }
 
-                    let audioUrl = msg["audioUrl"] as? String ?? ""
-                let volume = msg["volume"] as? Float ?? 1.0
-                let stopOtherAudio = msg["stopOtherAudio"] as? Bool ?? true
+    let audioUrl = msg["audioUrl"] as? String ?? ""
+    let volume = msg["volume"] as? Float ?? 1.0
+    let stopOtherAudio = msg["stopOtherAudio"] as? Bool ?? true
 
     let audioManager = AudioManager.getInstance()
 

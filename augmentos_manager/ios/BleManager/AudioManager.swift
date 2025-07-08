@@ -83,20 +83,20 @@ class AudioManager {
 
 
 
-    private func playCompleteAudioData(requestId: String, data: Data, volume: Float) {
-        do {
-            let player = try AVAudioPlayer(data: data)
-            player.volume = volume
-            player.delegate = self
-            streamingPlayers[requestId] = player
-
-            player.play()
-            print("AudioManager: Started playing audio data for requestId: \(requestId)")
-        } catch {
-            print("AudioManager: Failed to create audio player: \(error)")
-            sendAudioPlayResponse(requestId: requestId, success: false, error: error.localizedDescription)
-        }
-    }
+//    private func playCompleteAudioData(requestId: String, data: Data, volume: Float) {
+//        do {
+//            let player = try AVAudioPlayer(data: data)
+//            player.volume = volume
+//            player.delegate = self
+//            streamingPlayers[requestId] = player
+//
+//            player.play()
+//            print("AudioManager: Started playing audio data for requestId: \(requestId)")
+//        } catch {
+//            print("AudioManager: Failed to create audio player: \(error)")
+//            sendAudioPlayResponse(requestId: requestId, success: false, error: error.localizedDescription)
+//        }
+//    }
 
     func stopAudio(requestId: String) {
         if let player = players[requestId] {
@@ -134,30 +134,5 @@ class AudioManager {
         // Send response back through AOSManager which will forward to React Native
         let aosManager = AOSManager.getInstance()
         aosManager.sendAudioPlayResponse(requestId: requestId, success: success, error: error, duration: duration)
-    }
-}
-
-// MARK: - AVAudioPlayerDelegate
-extension AudioManager: AVAudioPlayerDelegate {
-    func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
-        // Find the requestId for this player
-        for (requestId, streamingPlayer) in streamingPlayers {
-            if streamingPlayer === player {
-                streamingPlayers.removeValue(forKey: requestId)
-                sendAudioPlayResponse(requestId: requestId, success: flag, duration: player.duration)
-                break
-            }
-        }
-    }
-
-    func audioPlayerDecodeErrorDidOccur(_ player: AVAudioPlayer, error: Error?) {
-        // Find the requestId for this player
-        for (requestId, streamingPlayer) in streamingPlayers {
-            if streamingPlayer === player {
-                streamingPlayers.removeValue(forKey: requestId)
-                sendAudioPlayResponse(requestId: requestId, success: false, error: error?.localizedDescription)
-                break
-            }
-        }
     }
 }
