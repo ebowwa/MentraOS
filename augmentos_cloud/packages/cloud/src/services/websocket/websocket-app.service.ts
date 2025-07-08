@@ -319,6 +319,9 @@ export class AppWebSocketService {
             }
           } catch(e) {
             this.sendError(appWebsocket, AppErrorCode.INTERNAL_ERROR, (e as Error).message || "Failed to process audio stop request.");
+          }
+          break;
+
         case AppToCloudMessageType.MANAGED_STREAM_REQUEST:
           try {
             const managedReq = message as ManagedStreamRequest;
