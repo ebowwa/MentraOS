@@ -19,6 +19,7 @@ import PhotoManager from './PhotoManager';
 import { GlassesErrorCode } from '../websocket/websocket-glasses.service';
 import SessionStorage from './SessionStorage';
 import { PosthogService } from '../logging/posthog.service';
+import { ManagedStreamingExtension } from '../streaming/ManagedStreamingExtension';
 
 export const LOG_PING_PONG = false; // Set to true to enable detailed ping/pong logging
 /**
@@ -69,6 +70,7 @@ export class UserSession {
 
   public videoManager: VideoManager;
   public photoManager: PhotoManager;
+  public managedStreamingExtension: ManagedStreamingExtension;
 
   // Reconnection
   public _reconnectionTimers: Map<string, NodeJS.Timeout>;
@@ -98,6 +100,7 @@ export class UserSession {
     this.microphoneManager = new MicrophoneManager(this);
     this.photoManager = new PhotoManager(this);
     this.videoManager = new VideoManager(this);
+    this.managedStreamingExtension = new ManagedStreamingExtension(this.logger);
 
     this._reconnectionTimers = new Map();
     this.startTime = new Date();
@@ -260,6 +263,7 @@ export class UserSession {
     // if (this.heartbeatManager) this.heartbeatManager.dispose();
     if (this.videoManager) this.videoManager.dispose();
     if (this.photoManager) this.photoManager.dispose();
+    if (this.managedStreamingExtension) this.managedStreamingExtension.dispose();
 
     // Clear glasses heartbeat
     this.clearGlassesHeartbeat();

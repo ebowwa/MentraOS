@@ -75,6 +75,10 @@ class WebSocketManager: NSObject, URLSessionWebSocketDelegate {
     return webSocket != nil && webSocket?.state == .running
   }
   
+  func isActuallyConnected() -> Bool {
+    return previousStatus == .connected
+  }
+  
   // Send JSON message
   func sendText(_ text: String) {
     guard isConnected() else {

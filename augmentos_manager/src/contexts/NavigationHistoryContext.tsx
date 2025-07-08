@@ -70,6 +70,7 @@ export function NavigationHistoryProvider({children}: {children: React.ReactNode
   )
 
   const goBack = () => {
+    console.log("NAV_HISTORY: goBack()")
     const history = historyRef.current
 
     // Remove current path
@@ -90,6 +91,7 @@ export function NavigationHistoryProvider({children}: {children: React.ReactNode
   }
 
   const push = (path: string, params?: any): Promise<void> => {
+    console.log("NAV_HISTORY: push()", path)
     // if the path is the same as the last path, don't add it to the history
     if (historyRef.current[historyRef.current.length - 1] === path) {
       return Promise.resolve()
@@ -102,9 +104,15 @@ export function NavigationHistoryProvider({children}: {children: React.ReactNode
   }
 
   const replace = (path: string, params?: any): Promise<void> => {
+    console.log("NAV_HISTORY: replace()", path)
     historyRef.current.pop()
     historyRef.current.push(path)
     const result = router.replace({pathname: path as any, params: params as any})
+    // throw new Error("test")
+    // if (Math.random() < 0.5) {
+    // if (path === "/(tabs)/home") {
+    //   throw new Error("test")
+    // }
     return result || Promise.resolve()
   }
 
@@ -113,10 +121,12 @@ export function NavigationHistoryProvider({children}: {children: React.ReactNode
   }
 
   const clearHistory = () => {
+    console.log("NAV_HISTORY: clearHistory()")
     historyRef.current = []
   }
 
   const setPendingRoute = (route: string | null) => {
+    console.log("NAV_HISTORY: setPendingRoute()", route)
     // setPendingRouteNonClashingName(route)
     pendingRoute.current = route
   }
@@ -126,6 +136,7 @@ export function NavigationHistoryProvider({children}: {children: React.ReactNode
   }
 
   const navigate = (path: string, params?: any) => {
+    console.log("NAV_HISTORY: navigate()", path)
     router.navigate({pathname: path as any, params: params as any})
   }
 

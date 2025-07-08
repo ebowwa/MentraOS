@@ -16,6 +16,7 @@ protocol ServerCommsCallback {
   func onMicrophoneStateChange(_ isEnabled: Bool)
   func onDisplayEvent(_ event: [String: Any])
   func onRequestSingle(_ dataType: String)
+  func onStatusUpdate(_ status: [String: Any])
 }
 
 class ServerComms {
@@ -443,8 +444,27 @@ class ServerComms {
         print("ServerComms: Received speech message but speechRecCallback is null!")
       }
 
+
+
     case "reconnect":
       print("ServerComms: Server is requesting a reconnect.")
+
+    case "settings_update":
+        print("ServerComms: Received settings update from WebSocket")
+        if let status = msg["status"] as? [String: Any], let callback = serverCommsCallback {
+            callback.onStatusUpdate(status)
+        }
+        break;
+        // Log.d(TAG, "Received settings update from WebSocket");
+        // try {
+        //     JSONObject settings = msg.optJSONObject("settings");
+        //     if (settings != null && serverCommsCallback != null) {
+        //         serverCommsCallback.onSettingsUpdate(settings);
+        //     }
+        // } catch (Exception e) {
+        //     Log.e(TAG, "Error handling settings update", e);
+        // }
+        break;
 
     default:
       print("ServerComms: Unknown message type: \(type) / full: \(msg)")
@@ -483,8 +503,9 @@ class ServerComms {
     self.connectWebSocket()
 
     // if after some time we're still not connected, run this function again:
-    DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
-      if self.wsManager.isConnected() {
+    DispatchQueue.main.asyncAfter(deadline: .now() + 10.0) {
+      // if self.wsManager.isConnected() {
+      if self.wsManager.isActuallyConnected() {
         self.reconnectionAttempts = 0
         self.reconnecting = false
         return
@@ -504,7 +525,7 @@ class ServerComms {
 
     if status == .connected {
       // Wait a second before sending connection_init (similar to the Java code)
-      DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+      DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
         self.sendConnectionInit(coreToken: self.coreToken)
 
         self.sendCalendarEvents()

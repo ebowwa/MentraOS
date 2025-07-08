@@ -27,6 +27,7 @@ module.exports = ({config}: ConfigContext): Partial<ExpoConfig> => {
       MENTRAOS_SECURE: process.env.MENTRAOS_SECURE,
       MENTRAOS_HOST: process.env.MENTRAOS_HOST,
       MENTRAOS_PORT: process.env.MENTRAOS_PORT,
+      POSTHOG_API_KEY: process.env.POSTHOG_API_KEY,
     },
     version: process.env.MENTRAOS_VERSION,
   }

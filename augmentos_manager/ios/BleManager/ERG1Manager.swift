@@ -217,7 +217,7 @@ enum GlassesError: Error {
   @objc func RN_startScan() -> Bool {
 
     if centralManager == nil {
-      centralManager = CBCentralManager(delegate: self, queue: ERG1Manager._bluetoothQueue)
+      centralManager = CBCentralManager(delegate: self, queue: ERG1Manager._bluetoothQueue, options: ["CBCentralManagerOptionShowPowerAlertKey": 0])
       setupCommandQueue()
     }
 

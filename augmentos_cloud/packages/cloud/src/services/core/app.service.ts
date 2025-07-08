@@ -47,6 +47,14 @@ if (process.env.NODE_ENV !== 'production' || process.env.DEBUG_APPS === 'true') 
   logger.info('Debug mode enabled - adding debug apps to preinstalled list:', PRE_INSTALLED_DEBUG);
 }
 
+// If we're in test mode, we don't want to pre-install any apps. (used with the headless client for testing)
+if (process.env.NODE_ENV === 'test') {
+  logger.info('Test mode - no pre-installed apps');
+  while (PRE_INSTALLED.length > 0) {
+    PRE_INSTALLED.pop(); // Clear the pre-installed apps for testing
+  }
+}
+
 /**
  * Returns the list of apps that should be auto-installed for users on this server instance.
  * This matches the environment - core apps only in production, core + debug in development.
@@ -442,6 +450,51 @@ export class AppService {
             min: setting.min,
             max: setting.max,
             defaultValue: setting.defaultValue !== undefined ? setting.defaultValue : setting.min,
+            value: setting.value
+          } as AppSetting;
+
+        case 'numeric_input':
+          // Validate optional numeric fields
+          if (setting.min !== undefined && typeof setting.min !== 'number') {
+            throw new Error('Numeric input min value must be a number');
+          }
+          if (setting.max !== undefined && typeof setting.max !== 'number') {
+            throw new Error('Numeric input max value must be a number');
+          }
+          if (setting.step !== undefined && typeof setting.step !== 'number') {
+            throw new Error('Numeric input step value must be a number');
+          }
+          if (setting.placeholder !== undefined && typeof setting.placeholder !== 'string') {
+            throw new Error('Numeric input placeholder must be a string');
+          }
+          if (setting.defaultValue !== undefined && typeof setting.defaultValue !== 'number') {
+            throw new Error('Numeric input defaultValue must be a number');
+          }
+          return {
+            type: 'numeric_input' as any,
+            key: setting.key,
+            label: setting.label,
+            min: setting.min,
+            max: setting.max,
+            step: setting.step,
+            placeholder: setting.placeholder,
+            defaultValue: setting.defaultValue !== undefined ? setting.defaultValue : 0,
+            value: setting.value
+          } as AppSetting;
+
+        case 'time_picker':
+          if (setting.showSeconds !== undefined && typeof setting.showSeconds !== 'boolean') {
+            throw new Error('Time picker showSeconds must be a boolean');
+          }
+          if (setting.defaultValue !== undefined && typeof setting.defaultValue !== 'number') {
+            throw new Error('Time picker defaultValue must be a number (total seconds)');
+          }
+          return {
+            type: 'time_picker' as any,
+            key: setting.key,
+            label: setting.label,
+            showSeconds: setting.showSeconds !== undefined ? setting.showSeconds : true,
+            defaultValue: setting.defaultValue !== undefined ? setting.defaultValue : 0,
             value: setting.value
           } as AppSetting;
 

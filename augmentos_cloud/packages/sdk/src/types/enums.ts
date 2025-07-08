@@ -62,7 +62,9 @@ export enum AppSettingType {
     TEXT_NO_SAVE_BUTTON = 'text_no_save_button',
     SELECT_WITH_SEARCH = 'select_with_search',
     MULTISELECT = 'multiselect',
-    TITLE_VALUE = 'titleValue'
+    TITLE_VALUE = 'titleValue',
+    NUMERIC_INPUT = 'numeric_input',
+    TIME_PICKER = 'time_picker'
 }
 // | { type: "toggle"; key: string; label: string; defaultValue: boolean }
 // | { type: "text"; key: string; label: string; defaultValue?: string }

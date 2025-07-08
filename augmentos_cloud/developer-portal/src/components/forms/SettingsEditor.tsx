@@ -39,7 +39,9 @@ export enum AppSettingType {
   TEXT_NO_SAVE_BUTTON = 'text_no_save_button',
   SELECT_WITH_SEARCH = 'select_with_search',
   MULTISELECT = 'multiselect',
-  TITLE_VALUE = 'titleValue'
+  TITLE_VALUE = 'titleValue',
+  NUMERIC_INPUT = 'numeric_input',
+  TIME_PICKER = 'time_picker'
 }
 
 interface SettingsEditorProps {
@@ -135,6 +137,18 @@ const SortableSettingItem: React.FC<SortableSettingItemProps> = ({
         return selectedOptions.length > 0 ? `${selectedOptions.length} selected` : 'No default';
       case AppSettingType.SLIDER:
         return `${setting.defaultValue || 0} (${setting.min || 0}-${setting.max || 100})`;
+      case AppSettingType.NUMERIC_INPUT:
+        const minText = setting.min !== undefined ? `min: ${setting.min}` : '';
+        const maxText = setting.max !== undefined ? `max: ${setting.max}` : '';
+        const rangeText = [minText, maxText].filter(Boolean).join(', ');
+        return `${setting.defaultValue || 0}${rangeText ? ` (${rangeText})` : ''}`;
+      case AppSettingType.TIME_PICKER:
+        const totalSeconds = setting.defaultValue || 0;
+        const hours = Math.floor(totalSeconds / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        const seconds = totalSeconds % 60;
+        const timeStr = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        return `${timeStr} (${totalSeconds}s)`;
       case AppSettingType.TITLE_VALUE:
         return setting.value ? String(setting.value) : 'No value';
       default:
@@ -248,6 +262,8 @@ const SortableSettingItem: React.FC<SortableSettingItemProps> = ({
                   <SelectItem value={AppSettingType.SELECT_WITH_SEARCH}>Select with Search</SelectItem>
                   <SelectItem value={AppSettingType.MULTISELECT}>Multiselect</SelectItem>
                   <SelectItem value={AppSettingType.SLIDER}>Slider</SelectItem>
+                  <SelectItem value={AppSettingType.NUMERIC_INPUT}>Numeric Input</SelectItem>
+                  <SelectItem value={AppSettingType.TIME_PICKER}>Time Picker</SelectItem>
                   <SelectItem value={AppSettingType.TITLE_VALUE}>Title/Value Display</SelectItem>
                 </SelectContent>
               </Select>
@@ -368,6 +384,96 @@ const SortableSettingItem: React.FC<SortableSettingItemProps> = ({
                           onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateSetting(index, { defaultValue: parseInt(e.currentTarget.value) || 0 })}
                           className="mt-1"
                         />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {setting.type === AppSettingType.NUMERIC_INPUT && (
+                  <div>
+                    <Label className="text-sm font-medium">Numeric Input Configuration</Label>
+                    <div className="grid grid-cols-2 gap-3 mt-1">
+                      <div>
+                        <Label className="text-xs">Min Value (optional)</Label>
+                        <Input
+                          type="number"
+                          value={setting.min || ''}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateSetting(index, { min: e.currentTarget.value ? parseInt(e.currentTarget.value) : undefined })}
+                          placeholder="No minimum"
+                          className="mt-1"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Max Value (optional)</Label>
+                        <Input
+                          type="number"
+                          value={setting.max || ''}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateSetting(index, { max: e.currentTarget.value ? parseInt(e.currentTarget.value) : undefined })}
+                          placeholder="No maximum"
+                          className="mt-1"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 mt-2">
+                      <div>
+                        <Label className="text-xs">Step (optional)</Label>
+                        <Input
+                          type="number"
+                          value={setting.step || ''}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateSetting(index, { step: e.currentTarget.value ? parseInt(e.currentTarget.value) : undefined })}
+                          placeholder="1"
+                          className="mt-1"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Default Value</Label>
+                        <Input
+                          type="number"
+                          value={setting.defaultValue || ''}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateSetting(index, { defaultValue: e.currentTarget.value ? parseInt(e.currentTarget.value) : 0 })}
+                          placeholder="0"
+                          className="mt-1"
+                        />
+                      </div>
+                    </div>
+                    <div className="mt-2">
+                      <Label className="text-xs">Placeholder (optional)</Label>
+                      <Input
+                        value={setting.placeholder || ''}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateSetting(index, { placeholder: e.currentTarget.value })}
+                        placeholder="e.g., Enter a number"
+                        className="mt-1"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {setting.type === AppSettingType.TIME_PICKER && (
+                  <div>
+                    <Label className="text-sm font-medium">Time Picker Configuration</Label>
+                    <div className="grid grid-cols-2 gap-3 mt-1">
+                      <div>
+                        <Label className="text-xs">Default Value (seconds)</Label>
+                        <Input
+                          type="number"
+                          value={setting.defaultValue || 0}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateSetting(index, { defaultValue: parseInt(e.currentTarget.value) || 0 })}
+                          placeholder="0"
+                          className="mt-1"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          Total seconds (e.g., 3661 = 1:01:01)
+                        </p>
+                      </div>
+                      <div>
+                        <Label className="text-xs">Show Seconds</Label>
+                        <div className="flex items-center space-x-2 mt-1">
+                          <Checkbox
+                            checked={setting.showSeconds !== false}
+                            onCheckedChange={(checked) => updateSetting(index, { showSeconds: checked })}
+                          />
+                          <Label className="text-sm">Include seconds picker</Label>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -658,6 +764,23 @@ const SettingsEditor: React.FC<SettingsEditorProps> = ({ settings, onChange, cla
         } else {
           updates.defaultValue = updates.min;
         }
+        break;
+
+      case AppSettingType.NUMERIC_INPUT:
+        // Preserve min, max, step if they exist and are numbers
+        updates.min = 'min' in currentSetting && typeof (currentSetting as any).min === 'number' ? (currentSetting as any).min : undefined;
+        updates.max = 'max' in currentSetting && typeof (currentSetting as any).max === 'number' ? (currentSetting as any).max : undefined;
+        updates.step = 'step' in currentSetting && typeof (currentSetting as any).step === 'number' ? (currentSetting as any).step : undefined;
+        updates.placeholder = 'placeholder' in currentSetting && typeof (currentSetting as any).placeholder === 'string' ? (currentSetting as any).placeholder : undefined;
+        // Preserve defaultValue if it's a number
+        updates.defaultValue = typeof currentSetting.defaultValue === 'number' ? currentSetting.defaultValue : 0;
+        break;
+
+      case AppSettingType.TIME_PICKER:
+        // Preserve showSeconds if it exists
+        updates.showSeconds = 'showSeconds' in currentSetting && typeof (currentSetting as any).showSeconds === 'boolean' ? (currentSetting as any).showSeconds : true;
+        // Preserve defaultValue if it's a number (total seconds)
+        updates.defaultValue = typeof currentSetting.defaultValue === 'number' ? currentSetting.defaultValue : 0;
         break;
 
       case AppSettingType.GROUP:
