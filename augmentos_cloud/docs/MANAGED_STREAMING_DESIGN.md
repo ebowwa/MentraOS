@@ -1265,6 +1265,34 @@ The new flow works as follows:
 - **Cleanup**: Properly stops polling on stream stop or disposal
 - **Error Handling**: Continues polling even if individual checks fail
 
+## Current Issues & TODOs
+
+### Phone-to-Glasses Communication Issue 🔴
+
+**Problem**: The START_RTMP_STREAM command is not reaching the glasses, causing:
+1. Cloud sends START_RTMP_STREAM to phone
+2. Phone should forward to glasses but doesn't
+3. Cloud starts sending KEEP_RTMP_STREAM_ALIVE messages
+4. Glasses respond with error: "Unknown stream ID - please send start_rtmp_stream command"
+5. Cloud ignores error and continues sending keep-alive messages
+
+**Log Evidence**:
+```
+2025-07-08 12:27:33.392 WearableAi...traLiveSGC D  Got some JSON from glasses: {"type":"rtmp_stream_status","status":"error","error":"Unknown stream ID - please send start_rtmp_stream command","receivedStreamId":"stream_1752002463143_sthtmzisk"}
+2025-07-08 12:27:48.259 WearableAi_ServerComms  D  Received KEEP_RTMP_STREAM_ALIVE: {"type":"keep_rtmp_stream_alive"...}
+```
+
+**Root Cause Found**:
+- ManagedStreamingExtension was missing the cleanup logic when MAX_MISSED_ACKS (3) was reached
+- VideoManager properly calls `updateStatus('timeout')` after 3 missed ACKs, which stops the stream
+- ManagedStreamingExtension only logged an error but continued sending keep-alives forever
+- The "Unknown stream ID" errors don't count as ACKs, so missedAcks increments but nothing stopped the stream
+
+**Fix Applied**:
+- Added cleanup logic in ManagedStreamingExtension when MAX_MISSED_ACKS is reached
+- Now properly calls `cleanupManagedStream()` which stops keep-alive and cleans up resources
+- Matches the behavior of unmanaged streams in VideoManager
+
 ## Integration Work Summary
 
 ### Completed Integration Tasks ✅

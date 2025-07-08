@@ -556,8 +556,18 @@ export class ManagedStreamingExtension {
       }, 'Keep-alive ACK timeout for managed stream');
 
       if (keepAlive.missedAcks >= MAX_MISSED_ACKS) {
-        this.logger.error({ userId }, 'Max missed ACKs reached - considering stream dead');
-        // Could trigger cleanup here if needed
+        this.logger.error({ userId }, 'Max missed ACKs reached - cleaning up dead stream');
+        
+        // Get user session and clean up the stream
+        const userSession = this.getUserSession(userId);
+        const stream = this.stateManager.getStreamState(userId);
+        
+        if (userSession && stream && stream.type === 'managed') {
+          // Clean up the stream (this will stop keep-alive)
+          this.cleanupManagedStream(userSession, userId, stream).catch(err => {
+            this.logger.error({ userId, error: err }, 'Error cleaning up stream after max missed ACKs');
+          });
+        }
       }
     }, ACK_TIMEOUT_MS);
 
