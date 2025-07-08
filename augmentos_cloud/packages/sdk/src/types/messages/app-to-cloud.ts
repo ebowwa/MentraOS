@@ -2,10 +2,13 @@
 
 import { BaseMessage } from './base';
 import { AppToCloudMessageType } from '../message-types';
-import { ExtendedStreamType, StreamType } from '../streams';
+import { ExtendedStreamType, LocationStreamRequest } from '../streams';
 import { DisplayRequest } from '../layouts';
 import { DashboardContentUpdate, DashboardModeChange, DashboardSystemUpdate } from '../dashboard';
 import { VideoConfig, AudioConfig, StreamConfig } from '../rtmp-stream';
+
+// a subscription can now be either a simple string or our new rich object
+export type SubscriptionRequest = ExtendedStreamType | LocationStreamRequest;
 
 /**
  * Connection initialization from App
@@ -23,7 +26,7 @@ export interface AppConnectionInit extends BaseMessage {
 export interface AppSubscriptionUpdate extends BaseMessage {
   type: AppToCloudMessageType.SUBSCRIPTION_UPDATE;
   packageName: string;
-  subscriptions: ExtendedStreamType[];
+  subscriptions: SubscriptionRequest[];
 }
 
 /**
@@ -57,6 +60,15 @@ export interface RtmpStreamStopRequest extends BaseMessage {
   type: AppToCloudMessageType.RTMP_STREAM_STOP;
   packageName: string;
   streamId?: string;  // Optional stream ID to specify which stream to stop
+}
+
+// defines the structure for our new on-demand location poll command
+export interface AppLocationPollRequest extends BaseMessage {
+  type: AppToCloudMessageType.LOCATION_POLL_REQUEST;
+  packageName: string;
+  sessionId: string;
+  accuracy: string;
+  correlationId: string;
 }
 
 /**
@@ -107,6 +119,7 @@ export interface AudioStopRequest extends BaseMessage {
 export type AppToCloudMessage =
   | AppConnectionInit
   | AppSubscriptionUpdate
+  | AppLocationPollRequest
   | DisplayRequest
   | PhotoRequest
   | AudioPlayRequest

@@ -8,6 +8,7 @@ import { WebSocket } from 'ws';
 import { EventManager, EventData, StreamDataTypes } from './events';
 import { LayoutManager } from './layouts';
 import { SettingsManager } from './settings';
+import { LocationManager } from './modules/location';
 import { CameraModule, PhotoRequestOptions, RtmpStreamOptions } from './modules/camera';
 import { ResourceTracker } from '../../utils/resource-tracker';
 import {
@@ -55,6 +56,7 @@ import {
   PhotoResponse,
   VpsCoordinates,
   PhotoTaken,
+  SubscriptionRequest,
   Capabilities,
   PhotoData
 } from '../../types';
@@ -64,6 +66,7 @@ import { Logger } from 'pino';
 import { AppServer } from '../server';
 import axios from 'axios';
 import EventEmitter from 'events';
+import fetch from 'node-fetch';
 
 
 // Import the cloud-to-app specific type guards
@@ -144,6 +147,8 @@ export class AppSession {
   private reconnectAttempts = 0;
   /** Active event subscriptions */
   private subscriptions = new Set<ExtendedStreamType>();
+  /** Map to store rate options for streams */
+  private streamRates = new Map<ExtendedStreamType, string>();
   /** Resource tracker for automatic cleanup */
   private resources = new ResourceTracker();
   /** Internal settings storage - use public settings API instead */
@@ -180,6 +185,8 @@ export class AppSession {
   public readonly settings: SettingsManager;
   /** 📊 Dashboard management interface */
   public readonly dashboard: DashboardAPI;
+  /** 📍 Location management interface */
+  public readonly location: LocationManager;
   /** 📷 Camera interface for photos and streaming */
   public readonly camera: CameraModule;
 
@@ -284,6 +291,7 @@ export class AppSession {
       this, // Pass session reference
       this.logger.child({ module: 'camera' })
     );
+    this.location = new LocationManager(this, this.send.bind(this));
   }
 
   /**
@@ -397,14 +405,30 @@ export class AppSession {
 
   /**
    * 📬 Subscribe to a specific event stream
-   * @param type - Type of event to subscribe to
+   * @param sub - A string or a rich subscription object
    */
-  subscribe(type: ExtendedStreamType): void {
+  subscribe(sub: SubscriptionRequest): void {
+    let type: ExtendedStreamType;
+    let rate: string | undefined;
+
+    if (typeof sub === 'string') {
+      type = sub;
+    } else {
+      // it's a LocationStreamRequest object
+      type = sub.stream;
+      rate = sub.rate;
+    }
+
     if (APP_TO_APP_EVENT_TYPES.includes(type as string)) {
       this.logger.warn(`[AppSession] Attempted to subscribe to App-to-App event type '${type}', which is not a valid stream. Use the event handler (e.g., onAppMessage) instead.`);
       return;
     }
+
     this.subscriptions.add(type);
+    if (rate) {
+      this.streamRates.set(type, rate);
+    }
+
     if (this.ws?.readyState === 1) {
       this.updateSubscriptions();
     }
@@ -412,14 +436,22 @@ export class AppSession {
 
   /**
    * 📭 Unsubscribe from a specific event stream
-   * @param type - Type of event to unsubscribe from
+   * @param sub - The subscription to remove
    */
-  unsubscribe(type: ExtendedStreamType): void {
+  unsubscribe(sub: SubscriptionRequest): void {
+    let type: ExtendedStreamType;
+    if (typeof sub === 'string') {
+      type = sub;
+    } else {
+      type = sub.stream;
+    }
+
     if (APP_TO_APP_EVENT_TYPES.includes(type as string)) {
       this.logger.warn(`[AppSession] Attempted to unsubscribe from App-to-App event type '${type}', which is not a valid stream.`);
       return;
     }
     this.subscriptions.delete(type);
+    this.streamRates.delete(type); // also remove from our rate map
     if (this.ws?.readyState === 1) {
       this.updateSubscriptions();
     }
@@ -1447,10 +1479,20 @@ export class AppSession {
    */
   private updateSubscriptions(): void {
     this.logger.info(`[AppSession] updateSubscriptions: sending subscriptions to cloud:`, Array.from(this.subscriptions));
+
+    // [MODIFIED] builds the array of SubscriptionRequest objects to send to the cloud
+    const subscriptionPayload: SubscriptionRequest[] = Array.from(this.subscriptions).map(stream => {
+      const rate = this.streamRates.get(stream);
+      if (rate && stream === StreamType.LOCATION_STREAM) {
+        return { stream: 'location_stream', rate: rate as any };
+      }
+      return stream;
+    });
+
     const message: AppSubscriptionUpdate = {
       type: AppToCloudMessageType.SUBSCRIPTION_UPDATE,
       packageName: this.config.packageName,
-      subscriptions: Array.from(this.subscriptions),
+      subscriptions: subscriptionPayload, // [MODIFIED]
       sessionId: this.sessionId!,
       timestamp: new Date()
     };

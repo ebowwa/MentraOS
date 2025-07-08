@@ -28,6 +28,7 @@ import { logger as rootLogger } from '../logging/pino-logger';
 import sessionService from './session.service';
 import axios, { AxiosError } from 'axios';
 import App from '../../models/app.model';
+import { locationService } from '../core/location.service';
 
 const logger = rootLogger.child({ service: 'AppManager' });
 
@@ -598,7 +599,11 @@ export class AppManager {
 
       // Remove subscriptions.
       try {
-        subscriptionService.removeSubscriptions(this.userSession, packageName);
+        const updatedUser = await subscriptionService.removeSubscriptions(this.userSession, packageName);
+        if (updatedUser) {
+          // After removing subscriptions, re-arbitrate the location tier.
+          await locationService.handleSubscriptionChange(updatedUser, this.userSession);
+        }
       } catch (error) {
         this.logger.error(`Error removing subscriptions for ${packageName}:`, error);
       }

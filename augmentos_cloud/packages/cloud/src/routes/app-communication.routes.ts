@@ -1,7 +1,7 @@
 import express, { Request, Response } from 'express';
 import { validateAppApiKey } from '../middleware/validateApiKey';
 import sessionService from '../services/session/session.service';
-import multiUserAppService from '../services/core/multi-user-app.service';
+// import multiUserAppService from '../services/core/multi-user-app.service';
 import appService from '../services/core/app.service';
 
 const router = express.Router();
@@ -47,11 +47,11 @@ router.post('/discover-users', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'No active session found for user' });
     }
 
-    multiUserAppService.addAppUser(packageName, userId);
+    // multiUserAppService.addAppUser(packageName, userId);
 
     // console.log("users$#%#",  multiUserAppService.getActiveAppUsers(packageName))
     // Use the service to get the user list (adapted from websocket handler)
-    const users = multiUserAppService.getActiveAppUsers(packageName)
+    /* const users = multiUserAppService.getActiveAppUsers(packageName)
       .filter((otherUserId: string) => otherUserId !== userId)
       .map((otherUserId: string) => {
         const otherSession = sessionService.getSessionByUserId(otherUserId);
@@ -61,7 +61,9 @@ router.post('/discover-users', async (req: Request, res: Response) => {
           joinedAt: new Date(), // TODO: Track actual join time
           userProfile: includeUserProfiles ? multiUserAppService['getUserProfile'](otherUserId) : undefined
         };
-      });
+      }); */
+    const users: any[] = []; // Return empty array until multi-user service is fixed
+
     return res.json({
       users,
       totalUsers: users.length,

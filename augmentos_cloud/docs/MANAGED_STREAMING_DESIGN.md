@@ -1153,6 +1153,146 @@ export const mockCloudflareAPI = {
 - Implement stream access controls
 - Add webhook for stream events
 
+## Cloudflare API V2 Changes Discovery
+
+### What We Learned
+
+Through testing, we discovered that Cloudflare's Stream API has changed significantly:
+
+1. **No Playback URLs on Creation**: The API no longer returns `playback.hls` and `playback.dash` URLs when creating a live input
+2. **New Response Structure**: Instead of `playback` object, we get:
+   - `rtmps` - For publishing TO Cloudflare
+   - `rtmpsPlayback` - For playing via RTMPS
+   - `srt` and `srtPlayback` - For SRT protocol
+   - `webRTC` and `webRTCPlayback` - For WebRTC
+   - No immediate HLS/DASH URLs
+
+3. **Playback URL Generation**: HLS/DASH URLs are only available after the stream goes live
+
+### New Architecture: Async Playback URL Discovery
+
+We need to implement an asynchronous pattern:
+
+1. **Initial Response**: Return RTMP info immediately so glasses can start streaming
+2. **Async URL Discovery**: Poll Cloudflare for playback URLs once streaming starts
+3. **Push Updates**: Use managed stream status subscription to notify TPAs
+
+#### Updated Flow:
+```
+1. TPA requests managed stream
+2. Cloud creates Cloudflare live input → gets RTMP URL
+3. Cloud tells glasses to start streaming to RTMP URL
+4. Cloud returns streamId to TPA (no playback URLs yet)
+5. Glasses start streaming
+6. Cloud polls Cloudflare for stream status
+7. Once live, Cloud constructs/discovers playback URLs
+8. Cloud pushes update to TPA via managed stream status
+```
+
+### Required Code Changes
+
+#### 1. CloudflareStreamService Updates
+- Remove the check for `liveInput.playback.hls`
+- Construct playback URLs based on account ID and stream UID
+- Add method to check stream status and get actual playback URLs
+- Implement polling mechanism for URL discovery
+
+#### 2. ManagedStreamingExtension Updates
+- Return initial status without playback URLs
+- Start polling for playback URLs after stream creation
+- Push updates via managed stream status when URLs are available
+- Handle the async nature of URL availability
+
+#### 3. SDK Updates
+- Update expectations to handle initial response without playback URLs
+- Listen for status updates to get playback URLs
+- Update documentation to explain async URL pattern
+
+### Playback URL Construction
+
+Based on Cloudflare's patterns, we can construct URLs:
+```typescript
+const baseUrl = `https://customer-${accountId}.cloudflarestream.com`;
+const hlsUrl = `${baseUrl}/${streamId}/manifest/video.m3u8`;
+const dashUrl = `${baseUrl}/${streamId}/manifest/video.mpd`;
+```
+
+However, these may not work until the stream is actually live.
+
+### Benefits of This Approach
+
+1. **Faster Initial Response**: Apps get immediate feedback
+2. **Progressive Enhancement**: URLs arrive when ready
+3. **Better UX**: Apps can show "preparing stream" state
+4. **Reliability**: No failures due to missing URLs
+
+## Implementation of Async URL Discovery ✅
+
+### Changes Made:
+
+#### 1. CloudflareStreamService.ts
+- ✅ Removed playback URL validation in `createLiveInput()`
+- ✅ Added `constructHlsUrl()` and `constructDashUrl()` methods
+- ✅ Added `waitForStreamLive()` method that polls Cloudflare for stream status
+- ✅ Enhanced logging throughout
+
+#### 2. ManagedStreamingExtension.ts
+- ✅ Modified `sendManagedStreamStatus()` to accept optional URL parameters
+- ✅ Send initial status as 'preparing' without URLs
+- ✅ Added `startPlaybackUrlPolling()` method that:
+  - Polls every 2 seconds for stream live status
+  - Sends updated status with URLs once stream is live
+  - Stops polling after 60 seconds timeout
+  - Cleans up on stream stop
+- ✅ Added `pollingIntervals` Map to track polling timers
+- ✅ Added cleanup in `cleanupManagedStream()` and `dispose()`
+
+#### 3. Message Flow
+The new flow works as follows:
+1. App requests managed stream
+2. Cloud creates Cloudflare live input (gets RTMP URL)
+3. Cloud sends 'preparing' status to app (no URLs)
+4. Cloud tells glasses to start streaming
+5. Cloud starts polling for stream live status
+6. Once live, Cloud sends 'active' status with HLS/DASH URLs
+7. Apps receive URLs via status update
+
+### Key Implementation Details:
+
+- **URL Construction**: Based on pattern `https://customer-{accountId}.cloudflarestream.com/{streamId}/manifest/video.m3u8`
+- **Polling Strategy**: Check every 2 seconds, timeout after 60 seconds
+- **Status Updates**: Uses existing `MANAGED_STREAM_STATUS` message type
+- **Cleanup**: Properly stops polling on stream stop or disposal
+- **Error Handling**: Continues polling even if individual checks fail
+
+## Current Issues & TODOs
+
+### Phone-to-Glasses Communication Issue 🔴
+
+**Problem**: The START_RTMP_STREAM command is not reaching the glasses, causing:
+1. Cloud sends START_RTMP_STREAM to phone
+2. Phone should forward to glasses but doesn't
+3. Cloud starts sending KEEP_RTMP_STREAM_ALIVE messages
+4. Glasses respond with error: "Unknown stream ID - please send start_rtmp_stream command"
+5. Cloud ignores error and continues sending keep-alive messages
+
+**Log Evidence**:
+```
+2025-07-08 12:27:33.392 WearableAi...traLiveSGC D  Got some JSON from glasses: {"type":"rtmp_stream_status","status":"error","error":"Unknown stream ID - please send start_rtmp_stream command","receivedStreamId":"stream_1752002463143_sthtmzisk"}
+2025-07-08 12:27:48.259 WearableAi_ServerComms  D  Received KEEP_RTMP_STREAM_ALIVE: {"type":"keep_rtmp_stream_alive"...}
+```
+
+**Root Cause Found**:
+- ManagedStreamingExtension was missing the cleanup logic when MAX_MISSED_ACKS (3) was reached
+- VideoManager properly calls `updateStatus('timeout')` after 3 missed ACKs, which stops the stream
+- ManagedStreamingExtension only logged an error but continued sending keep-alives forever
+- The "Unknown stream ID" errors don't count as ACKs, so missedAcks increments but nothing stopped the stream
+
+**Fix Applied**:
+- Added cleanup logic in ManagedStreamingExtension when MAX_MISSED_ACKS is reached
+- Now properly calls `cleanupManagedStream()` which stops keep-alive and cleans up resources
+- Matches the behavior of unmanaged streams in VideoManager
+
 ## Integration Work Summary
 
 ### Completed Integration Tasks ✅

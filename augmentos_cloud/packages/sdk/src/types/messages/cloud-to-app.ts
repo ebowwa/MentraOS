@@ -202,7 +202,7 @@ export interface CustomMessage extends BaseMessage {
  */
 export interface ManagedStreamStatus extends BaseMessage {
   type: CloudToAppMessageType.MANAGED_STREAM_STATUS;
-  status: 'initializing' | 'active' | 'stopping' | 'stopped' | 'error';
+  status: 'initializing' | 'preparing' | 'active' | 'stopping' | 'stopped' | 'error';
   hlsUrl?: string;
   dashUrl?: string;
   webrtcUrl?: string;

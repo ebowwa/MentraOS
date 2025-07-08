@@ -133,6 +133,27 @@ export interface KeepRtmpStreamAlive extends BaseMessage {
   ackId: string;
 }
 
+//===========================================================
+// Location Service Commands
+//===========================================================
+
+/**
+ * Sets the continuous location update tier on the device.
+ */
+export interface SetLocationTier extends BaseMessage {
+  type: CloudToGlassesMessageType.SET_LOCATION_TIER;
+  tier: 'realtime' | 'high' | 'tenMeters' | 'hundredMeters' | 'kilometer' | 'threeKilometers' | 'reduced' | 'standard';
+}
+
+/**
+ * Requests a single, on-demand location fix from the device.
+ */
+export interface RequestSingleLocation extends BaseMessage {
+  type: CloudToGlassesMessageType.REQUEST_SINGLE_LOCATION;
+  accuracy: string; // The accuracy tier requested by the app
+  correlationId: string; // To match the response with the poll request
+}
+
 /**
  * Audio play request to glasses
  */
@@ -171,7 +192,9 @@ export type CloudToGlassesMessage =
   | SettingsUpdate
   | StartRtmpStream
   | StopRtmpStream
-  | KeepRtmpStreamAlive;
+  | KeepRtmpStreamAlive
+  | SetLocationTier
+  | RequestSingleLocation;
 
 //===========================================================
 // Type guards

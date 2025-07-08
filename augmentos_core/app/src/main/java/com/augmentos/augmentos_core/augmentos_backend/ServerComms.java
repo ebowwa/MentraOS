@@ -523,13 +523,21 @@ public class ServerComms {
         }
     }
 
-    public void sendLocationUpdate(double lat, double lng) {
+    public void sendLocationUpdate(double lat, double lng, float accuracy, String correlationId) {
         try {
             JSONObject event = new JSONObject();
             event.put("type", "location_update");
             event.put("lat", lat);
             event.put("lng", lng);
             event.put("timestamp", System.currentTimeMillis());
+
+            if (accuracy > 0) {
+                event.put("accuracy", accuracy);
+            }
+            if (correlationId != null && !correlationId.isEmpty()) {
+                event.put("correlationId", correlationId);
+            }
+
             wsManager.sendText(event.toString());
         } catch (JSONException e) {
             Log.e(TAG, "Error building location_update JSON", e);
@@ -634,7 +642,7 @@ public class ServerComms {
         // Log.d(TAG, "Received message of type: " + type);
         // Log.d(TAG, "Full message: " + msg.toString());
 
-//        Log.d(TAG, "Received message of type: " + msg);
+       Log.d(TAG, "Received message of type: " + msg);
 
         switch (type) {
             case "connection_ack":
@@ -786,6 +794,28 @@ public class ServerComms {
                 if (serverCommsCallback != null) {
                     serverCommsCallback.onAudioStopRequest(msg);
                 }
+            case "set_location_tier":
+                Log.d(TAG, "Received set_location_tier command");
+                String tier = msg.optString("tier");
+                if (tier != null && serverCommsCallback != null) {
+                    Log.d("LOCATION_DEBUG", "ServerComms: Received set_location_tier command with tier: " + tier);
+                    serverCommsCallback.onSetLocationTier(tier);
+                }
+                break;
+    
+            case "request_single_location":
+                JSONObject pollPayload = msg.optJSONObject("payload");
+                if (pollPayload != null && serverCommsCallback != null) {
+                    serverCommsCallback.onRequestSingleLocation(
+                        pollPayload.optString("accuracy"),
+                        pollPayload.optString("correlationId")
+                    );
+                }
+                break;
+
+            case "debug_log":
+                // Echo back the debug log for confirmation
+                Log.d(TAG, "Received debug log from client: " + msg.toString());
                 break;
 
             default:
