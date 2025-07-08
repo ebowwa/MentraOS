@@ -164,24 +164,23 @@ export class SubscriptionService {
   ): Promise<UserI | null> {
     const key = this.getKey(userSession.userId, packageName);
 
-    // this is a simple lock to prevent race conditions
-    // if multiple subscription requests come in for the same app at the same time,
-    // only the latest one will actually be processed
+    // Increment version for this key
     const currentVersion = (this.subscriptionUpdateVersion.get(key) || 0) + 1;
     this.subscriptionUpdateVersion.set(key, currentVersion);
+
+    // Capture the version for this call
     const thisCallVersion = currentVersion;
 
     logger.info({ key, subscriptions, userId: userSession.userId }, 'Update subscriptions request received');
 
-    // we first process the incoming array, which can contain both strings and our rich location object
-    // this creates a simple array of strings that the rest of the function can use for things like permission checking
+    // Process incoming subscriptions array - handle both strings and rich location objects
     const streamSubscriptions: ExtendedStreamType[] = [];
     let locationRate: string | null = null;
 
-    // this loop separates the simple string subscriptions from our special location object
+    // Separate simple string subscriptions from special location object
     for (const sub of subscriptions) {
       if (typeof sub === 'object' && sub !== null && 'stream' in sub && sub.stream === StreamType.LOCATION_STREAM) {
-        locationRate = sub.rate; // we save the rate for later
+        locationRate = sub.rate; // Save the rate for later
         streamSubscriptions.push(sub.stream);
       } else if (typeof sub === 'string') {
         streamSubscriptions.push(sub);
@@ -191,23 +190,127 @@ export class SubscriptionService {
     const processedSubscriptions = streamSubscriptions.map(sub =>
       sub === StreamType.TRANSCRIPTION ? createTranscriptionStream('en-US') : sub
     );
-    
-    for (const sub of processedSubscriptions) {
-        if (!this.isValidSubscription(sub)) {
-            throw new Error(`Invalid subscription type: ${sub}`);
-        }
-    }
-    
-    // now we update the in-memory subscription map which is used for fast lookups
-    const newSubs = new Set(processedSubscriptions);
-    this.subscriptions.set(key, newSubs);
 
-    const action: SubscriptionHistory['action'] = (this.history.get(key)?.length || 0) === 0 ? 'add' : 'update';
-    this.addToHistory(key, {
+    for (const sub of processedSubscriptions) {
+      if (!this.isValidSubscription(sub)) {
+        logger.error({
+          debugKey: 'RTMP_SUB_VALIDATION_FAIL',
+          subscription: sub,
+          packageName,
+          sessionId: userSession.sessionId,
+          userId: userSession.userId,
+          availableStreamTypes: Object.values(StreamType),
+          isRtmpStreamStatus: sub === 'rtmp_stream_status',
+          isRtmpStreamStatusEnum: sub === StreamType.RTMP_STREAM_STATUS,
+          streamTypeEnumValue: StreamType.RTMP_STREAM_STATUS,
+          processedSubscriptions,
+          originalSubscriptions: subscriptions
+        }, 'RTMP_SUB_VALIDATION_FAIL: Invalid subscription type detected in session subscription service');
+        throw new Error(`Invalid subscription type: ${sub}`);
+      }
+    }
+
+    logger.info({ processedSubscriptions, userId: userSession.userId }, 'Processed and validated subscriptions');
+
+    try {
+      // Get app details
+      const app = await App.findOne({ packageName });
+
+      if (!app) {
+        logger.warn({ packageName, userId: userSession.userId }, 'App not found when checking permissions');
+        throw new Error(`App ${packageName} not found`);
+      }
+
+      // Filter subscriptions based on permissions
+      const { allowed, rejected } = SimplePermissionChecker.filterSubscriptions(app, processedSubscriptions);
+
+      logger.debug({ userId: userSession.userId, subscriptionMap: Array.from(this.subscriptions.entries()).map(([k, v]) => [k, Array.from(v)]) }, 'Current subscription map after update');
+
+      logger.info({ packageName, processedSubscriptions, userId: userSession.userId }, 'Subscriptions updated after permission check');
+
+      // If some subscriptions were rejected, send an error message to the client
+      if (rejected.length > 0) {
+        logger.warn({
+          packageName,
+          userId: userSession.userId,
+          rejectedCount: rejected.length,
+          rejectedStreams: rejected.map(r => ({
+            stream: r.stream,
+            requiredPermission: r.requiredPermission
+          }))
+        }, 'Rejected subscriptions due to missing permissions');
+
+        const appWebsocket = userSession.appWebsockets.get(packageName);
+
+        if (appWebsocket && appWebsocket.readyState === 1) {
+          // Send a detailed error message to the App about the rejected subscriptions
+          const errorMessage = {
+            type: 'permission_error',
+            message: 'Some subscriptions were rejected due to missing permissions',
+            details: rejected.map(r => ({
+              stream: r.stream,
+              requiredPermission: r.requiredPermission,
+              message: `To subscribe to ${r.stream}, add the ${r.requiredPermission} permission in the developer console`
+            })),
+            timestamp: new Date()
+          };
+
+          appWebsocket.send(JSON.stringify(errorMessage));
+        }
+
+
+        // Continue with only the allowed subscriptions
+        processedSubscriptions.length = 0;
+        processedSubscriptions.push(...allowed);
+      }
+
+      // Update the in-memory subscription map
+      const newSubs = new Set(processedSubscriptions);
+
+      // At the end, before setting:
+      if (this.subscriptionUpdateVersion.get(key) !== thisCallVersion) {
+        // A newer call has started, so abort this update
+        logger.info(
+          { userId: userSession.userId, key, thisCallVersion, currentVersion: this.subscriptionUpdateVersion.get(key) },
+          'Skipping update as newer call has started'
+        );
+        return null;
+      }
+
+      // Only now set the subscriptions
+      this.subscriptions.set(key, newSubs);
+
+      const action: SubscriptionHistory['action'] = (this.history.get(key)?.length || 0) === 0 ? 'add' : 'update';
+      this.addToHistory(key, {
         timestamp: new Date(),
         subscriptions: [...processedSubscriptions],
         action
-    });
+      });
+
+      logger.info({
+        packageName,
+        userId: userSession.userId,
+        processedSubscriptions,
+        newSubs: Array.from(newSubs),
+        serviceSubscriptions: Array.from(this.subscriptions.entries()).map(([k, v]) => [k, Array.from(v)])
+      }, 'Updated subscriptions successfully');
+
+    } catch (error) {
+      // If there's an error getting the app or checking permissions, log it but don't block
+      // This ensures backward compatibility with existing code
+      logger.error({ error, packageName, userId: userSession.userId }, 'Error checking permissions');
+
+      // Continue with the subscription update
+      const newSubs = new Set(processedSubscriptions);
+      this.subscriptions.set(key, newSubs);
+
+      const action: SubscriptionHistory['action'] = (this.history.get(key)?.length || 0) === 0 ? 'add' : 'update';
+      this.addToHistory(key, {
+        timestamp: new Date(),
+        subscriptions: [...processedSubscriptions],
+        action
+      });
+    }
 
     // --- Database Operations with Retry Logic ---
     const maxRetries = 3;
@@ -221,21 +324,21 @@ export class SubscriptionService {
 
         const sanitizedPackageName = MongoSanitizer.sanitizeKey(packageName);
 
-        // this is where we persist the location rate information to the database
+        // Persist the location rate information to the database
         if (locationRate) {
           if (!user.locationSubscriptions) {
             user.locationSubscriptions = new Map();
           }
-          // we set the rate for this specific app's package name
+          // Set the rate for this specific app's package name
           user.locationSubscriptions.set(sanitizedPackageName, { rate: locationRate });
         } else {
-          // if there's no locationRate, it means the app is unsubscribing from the location stream
+          // If there's no locationRate, the app is unsubscribing from the location stream
           if (user.locationSubscriptions?.has(sanitizedPackageName)) {
             user.locationSubscriptions.delete(sanitizedPackageName);
           }
         }
 
-        // we have to tell mongoose that we've modified a mixed-type field
+        // Tell mongoose that we've modified a mixed-type field
         user.markModified('locationSubscriptions');
         await user.save();
         logger.info({ packageName, userId: userSession.userId }, 'Persisted subscription changes successfully');
@@ -256,7 +359,7 @@ export class SubscriptionService {
         }
       }
     }
-    return null; // this line should be unreachable
+    return null; // This line should be unreachable
   }
 
   /**
@@ -333,8 +436,8 @@ export class SubscriptionService {
           break;
         }
 
-        // this is a special case to ensure backwards compatibility
-        // if an app is subscribed to our new 'location_stream', it should also
+        // Special case for backwards compatibility
+        // If an app is subscribed to 'location_stream', it should also
         // automatically receive the old 'location_update' events
         if (subscription === StreamType.LOCATION_UPDATE && sub === StreamType.LOCATION_STREAM) {
           subscribedApps.push(packageName);
