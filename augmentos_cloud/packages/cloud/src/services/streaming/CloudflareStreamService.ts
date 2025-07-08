@@ -98,9 +98,9 @@ export interface LiveInputInfo {
  * Handles creation, deletion, and monitoring of live RTMP inputs
  */
 export class CloudflareStreamService {
-  private api: AxiosInstance;
+  private api!: AxiosInstance;
   private logger: Logger;
-  private accountId: string;
+  private accountId!: string;
   private enabled: boolean = true;
 
   constructor(logger: Logger) {

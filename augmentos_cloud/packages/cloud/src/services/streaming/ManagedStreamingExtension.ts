@@ -231,6 +231,10 @@ export class ManagedStreamingExtension {
     const { streamId, status: glassesStatus } = status;
     
     // Check if this is a managed stream by stream ID
+    if (!streamId) {
+      return false; // No streamId, cannot be a managed stream
+    }
+    
     const stream = this.stateManager.getStreamByStreamId(streamId);
     if (!stream || stream.type !== 'managed') {
       return false; // Let VideoManager handle unmanaged streams
@@ -272,7 +276,7 @@ export class ManagedStreamingExtension {
       await this.sendManagedStreamStatus(
         userSession,
         appId,
-        streamId,
+        stream.streamId,
         mappedStatus
       );
     }
@@ -334,7 +338,7 @@ export class ManagedStreamingExtension {
     const stream = this.stateManager.getStreamByStreamId(streamId);
     if (!stream || stream.type !== 'managed') return;
 
-    const appWs = userSession.appManager.getAppWebSocket(packageName);
+    const appWs = userSession.appWebsockets.get(packageName);
     if (!appWs || appWs.readyState !== WebSocket.OPEN) {
       this.logger.warn({ packageName }, 'App WebSocket not available for status update');
       return;
@@ -466,6 +470,7 @@ export class ManagedStreamingExtension {
       const stopMessage: StopRtmpStream = {
         type: CloudToGlassesMessageType.STOP_RTMP_STREAM,
         sessionId: userSession.sessionId,
+        appId: 'MANAGED_STREAM', // Same special app ID used when starting
         streamId: stream.streamId,
         timestamp: new Date()
       };
@@ -483,7 +488,7 @@ export class ManagedStreamingExtension {
    * Get user session by userId
    */
   private getUserSession(userId: string): UserSession | undefined {
-    return sessionService.getSessionByUserId(userId);
+    return sessionService.getSessionByUserId(userId) || undefined;
   }
 
   /**
