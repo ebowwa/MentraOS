@@ -305,6 +305,11 @@ export class AppWebSocketService {
               this.sendError(appWebsocket, AppErrorCode.INTERNAL_ERROR, "Glasses not connected");
             }
           } catch(e) {
+            // Clean up mapping if an exception occurs to prevent memory leak
+            const audioRequestMsg = message as AudioPlayRequest;
+            if (audioRequestMsg?.requestId) {
+              userSession.audioPlayRequestMapping.delete(audioRequestMsg.requestId);
+            }
             this.sendError(appWebsocket, AppErrorCode.INTERNAL_ERROR, (e as Error).message || "Failed to process audio request.");
           }
           break;
