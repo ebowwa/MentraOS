@@ -197,6 +197,20 @@ export interface CustomMessage extends BaseMessage {
 }
 
 /**
+ * Managed RTMP stream status update
+ * Sent when managed stream status changes or URLs are ready
+ */
+export interface ManagedStreamStatus extends BaseMessage {
+  type: CloudToAppMessageType.MANAGED_STREAM_STATUS;
+  status: 'initializing' | 'preparing' | 'active' | 'stopping' | 'stopped' | 'error';
+  hlsUrl?: string;
+  dashUrl?: string;
+  webrtcUrl?: string;
+  message?: string;
+  streamId?: string;
+}
+
+/**
  * Union type for all messages from cloud to Apps
  */
 export type CloudToAppMessage =
@@ -211,11 +225,11 @@ export type CloudToAppMessage =
   | AudioChunk
   | LocationUpdate
   | CalendarEvent
-  | DataStream
   | PhotoResponse
   | DashboardModeChanged
   | DashboardAlwaysOnChanged
   | CustomMessage
+  | ManagedStreamStatus
   | MentraosSettingsUpdate
   // New App-to-App communication response messages
   | AppMessageReceived
@@ -224,7 +238,6 @@ export type CloudToAppMessage =
   | AppRoomUpdated
   | AppDirectMessageResponse
   | RtmpStreamStatus
-  | PhotoResponse
   | PermissionError;
 
 //===========================================================
@@ -261,6 +274,10 @@ export function isDashboardModeChanged(message: CloudToAppMessage): message is D
 
 export function isDashboardAlwaysOnChanged(message: CloudToAppMessage): message is DashboardAlwaysOnChanged {
   return message.type === CloudToAppMessageType.DASHBOARD_ALWAYS_ON_CHANGED;
+}
+
+export function isManagedStreamStatus(message: CloudToAppMessage): message is ManagedStreamStatus {
+  return message.type === CloudToAppMessageType.MANAGED_STREAM_STATUS;
 }
 
 export function isRtmpStreamStatus(message: CloudToAppMessage): message is RtmpStreamStatus {

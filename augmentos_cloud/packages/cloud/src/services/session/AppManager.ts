@@ -28,6 +28,7 @@ import { logger as rootLogger } from '../logging/pino-logger';
 import sessionService from './session.service';
 import axios, { AxiosError } from 'axios';
 import App from '../../models/app.model';
+import { locationService } from '../core/location.service';
 
 const logger = rootLogger.child({ service: 'AppManager' });
 
@@ -113,6 +114,9 @@ export class AppManager {
 
   // Track heartbeat intervals for App connections
   private heartbeatIntervals = new Map<string, NodeJS.Timeout>();
+
+  // Track app start times for session duration calculation
+  private appStartTimes = new Map<string, number>(); // packageName -> Date.now()
 
   // Cache of installed apps
   // private installedApps: AppI[] = [];
@@ -595,7 +599,11 @@ export class AppManager {
 
       // Remove subscriptions.
       try {
-        subscriptionService.removeSubscriptions(this.userSession, packageName);
+        const updatedUser = await subscriptionService.removeSubscriptions(this.userSession, packageName);
+        if (updatedUser) {
+          // After removing subscriptions, re-arbitrate the location tier.
+          await locationService.handleSubscriptionChange(updatedUser, this.userSession);
+        }
       } catch (error) {
         this.logger.error(`Error removing subscriptions for ${packageName}:`, error);
       }
@@ -639,6 +647,30 @@ export class AppManager {
 
       // Clean up dashboard content for stopped app
       this.userSession.dashboardManager.cleanupAppContent(packageName);
+
+      // Track app_stop event with session duration
+      try {
+        const startTime = this.appStartTimes.get(packageName);
+        if (startTime) {
+          const sessionDuration = Date.now() - startTime;
+          
+          // Track app_stop event in PostHog
+          await PosthogService.trackEvent('app_stop', this.userSession.userId, {
+            packageName,
+            userId: this.userSession.userId,
+            sessionId: this.userSession.sessionId,
+            sessionDuration
+          });
+          
+          // Clean up start time tracking
+          this.appStartTimes.delete(packageName);
+        } else {
+          // App stopped but no start time recorded (edge case)
+          this.logger.debug({ packageName }, 'App stopped but no start time recorded');
+        }
+      } catch (error) {
+        this.logger.error({ error, packageName }, 'Error tracking app_stop event in PostHog');
+      }
 
       this.updateAppLastActive(packageName);
     } catch (error) {
@@ -782,6 +814,21 @@ export class AppManager {
         }, `App ${packageName} successfully connected and authenticated in ${duration}ms`);
 
         this.setAppConnectionState(packageName, AppConnectionState.RUNNING);
+        
+        // Track app start time for session duration calculation
+        this.appStartTimes.set(packageName, Date.now());
+        
+        // Track app_start event in PostHog
+        try {
+          await PosthogService.trackEvent('app_start', this.userSession.userId, {
+            packageName,
+            userId: this.userSession.userId,
+            sessionId: this.userSession.sessionId
+          });
+        } catch (error) {
+          this.logger.error({ error, packageName }, 'Error tracking app_start event in PostHog');
+        }
+        
         pending.resolve({ success: true });
       } else {
         // Log for existing connection (not from startApp)
@@ -1123,6 +1170,33 @@ export class AppManager {
         this.logger.debug({ packageName }, `[AppManager:dispose] Cleared heartbeat for ${packageName}`);
       }
       this.heartbeatIntervals.clear();
+
+      // Track app_stop events for all running apps during disposal
+      const currentTime = Date.now();
+      for (const packageName of this.userSession.runningApps) {
+        try {
+          const startTime = this.appStartTimes.get(packageName);
+          if (startTime) {
+            const sessionDuration = currentTime - startTime;
+            
+            // Track app_stop event for session end
+            PosthogService.trackEvent('app_stop', this.userSession.userId, {
+              packageName,
+              userId: this.userSession.userId,
+              sessionId: this.userSession.sessionId,
+              sessionDuration,
+              stopReason: 'session_end'
+            }).catch((error) => {
+              this.logger.error({ error, packageName }, 'Error tracking app_stop event during disposal');
+            });
+          }
+        } catch (error) {
+          this.logger.error({ error, packageName }, 'Error tracking app stop during disposal');
+        }
+      }
+      
+      // Clear all start time tracking
+      this.appStartTimes.clear();
 
       // Close all app connections
       for (const [packageName, connection] of this.userSession.appWebsockets.entries()) {

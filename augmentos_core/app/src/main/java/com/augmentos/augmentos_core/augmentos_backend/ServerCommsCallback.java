@@ -48,4 +48,8 @@ public interface ServerCommsCallback {
     void onAppStarted(String packageName);
     void onAppStopped(String packageName);
     void onSettingsUpdate(JSONObject settings);
+
+    // Location Service Commands
+    void onSetLocationTier(String tier);
+    void onRequestSingleLocation(String accuracy, String correlationId);
 }

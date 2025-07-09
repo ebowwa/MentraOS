@@ -12,7 +12,9 @@ import {
   RtmpStreamRequest,
   RtmpStreamStopRequest,
   RtmpStreamStatus,
-  isRtmpStreamStatus
+  isRtmpStreamStatus,
+  ManagedStreamStatus,
+  isManagedStreamStatus
 } from '../../../types';
 import {
   VideoConfig,
@@ -22,6 +24,7 @@ import {
 } from '../../../types/rtmp-stream';
 import { StreamType } from '../../../types/streams';
 import { Logger } from 'pino';
+import { CameraManagedExtension, ManagedStreamOptions, ManagedStreamResult } from './camera-managed-extension';
 
 /**
  * Options for photo requests
@@ -90,6 +93,9 @@ export class CameraModule {
   private isStreaming: boolean = false;
   private currentStreamUrl?: string;
   private currentStreamState?: RtmpStreamStatus;
+  
+  // Managed streaming extension
+  private managedExtension: CameraManagedExtension;
 
   /**
    * Create a new CameraModule
@@ -106,6 +112,14 @@ export class CameraModule {
     this.send = send;
     this.session = session;
     this.logger = logger || console as any;
+    
+    // Initialize managed extension
+    this.managedExtension = new CameraManagedExtension(
+      packageName,
+      sessionId,
+      send,
+      this.logger
+    );
   }
 
   // =====================================
@@ -496,6 +510,80 @@ export class CameraModule {
   }
 
   // =====================================
+  // 📹 Managed Streaming Functionality
+  // =====================================
+
+  /**
+   * 📹 Start a managed stream
+   * 
+   * The cloud handles the RTMP endpoint and returns HLS/DASH URLs for viewing.
+   * Multiple apps can consume the same managed stream simultaneously.
+   *
+   * @param options - Configuration options for the managed stream
+   * @returns Promise that resolves with viewing URLs when the stream is ready
+   *
+   * @example
+   * ```typescript
+   * const urls = await session.camera.startManagedStream({
+   *   quality: '720p',
+   *   enableWebRTC: true
+   * });
+   * console.log('HLS URL:', urls.hlsUrl);
+   * ```
+   */
+  async startManagedStream(options?: ManagedStreamOptions): Promise<ManagedStreamResult> {
+    return this.managedExtension.startManagedStream(options);
+  }
+
+  /**
+   * 🛑 Stop the current managed stream
+   *
+   * This will stop streaming for this app only. If other apps are consuming
+   * the same managed stream, it will continue for them.
+   *
+   * @returns Promise that resolves when the stop request is sent
+   */
+  async stopManagedStream(): Promise<void> {
+    return this.managedExtension.stopManagedStream();
+  }
+
+  /**
+   * 🔔 Register a handler for managed stream status updates
+   *
+   * @param handler - Function to call when stream status changes
+   * @returns Cleanup function to unregister the handler
+   */
+  onManagedStreamStatus(handler: (status: ManagedStreamStatus) => void): () => void {
+    return this.managedExtension.onManagedStreamStatus(handler);
+  }
+
+  /**
+   * 📊 Check if currently managed streaming
+   *
+   * @returns true if a managed stream is active
+   */
+  isManagedStreamActive(): boolean {
+    return this.managedExtension.isManagedStreamActive();
+  }
+
+  /**
+   * 🔗 Get current managed stream URLs
+   *
+   * @returns Current stream URLs or undefined if not streaming
+   */
+  getManagedStreamUrls(): ManagedStreamResult | undefined {
+    return this.managedExtension.getManagedStreamUrls();
+  }
+
+  /**
+   * Handle incoming managed stream status messages
+   * @internal
+   */
+  handleManagedStreamStatus(message: ManagedStreamStatus): void {
+    this.managedExtension.handleManagedStreamStatus(message);
+  }
+
+  // =====================================
   // 🔧 General Utilities
   // =====================================
 
@@ -523,6 +611,9 @@ export class CameraModule {
         this.logger.error({ error }, 'Error stopping stream during cleanup');
       });
     }
+
+    // Clean up managed extension
+    this.managedExtension.cleanup();
 
     return { photoRequests };
   }

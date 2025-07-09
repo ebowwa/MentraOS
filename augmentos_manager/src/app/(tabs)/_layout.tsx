@@ -35,10 +35,6 @@ export default function Layout() {
 
   const pathname = usePathname()
 
-  // useEffect(() => {
-  //   router.dismissAll()
-  // }, [pathname])
-
   const handleQuickPress = () => {
     replace("/settings")
 

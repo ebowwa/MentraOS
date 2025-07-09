@@ -40,7 +40,7 @@ export default function SelectGlassesBluetoothScreen() {
   const {searchResults, setSearchResults} = useSearchResults()
   const {glassesModelName}: {glassesModelName: string} = useLocalSearchParams()
   const {theme, themed} = useAppTheme()
-  const {goBack, push, clearHistory} = useNavigationHistory()
+  const {goBack, push, clearHistory, navigate, replace} = useNavigationHistory()
   const [showTroubleshootingModal, setShowTroubleshootingModal] = useState(false)
   // Create a ref to track the current state of searchResults
   const searchResultsRef = useRef<string[]>(searchResults)
@@ -166,26 +166,30 @@ export default function SelectGlassesBluetoothScreen() {
     const initializeAndSearchForDevices = async () => {
       console.log("Searching for compatible devices for: ", glassesModelName)
       setSearchResults([])
-
       coreCommunicator.sendSearchForCompatibleDeviceNames(glassesModelName)
-      // todo: remove this once we figure out why it's not working w/o it (ios / core communicator isn't fully initialized or something)
-      setTimeout(() => {
-        coreCommunicator.sendSearchForCompatibleDeviceNames(glassesModelName)
-      }, 1000)
     }
 
-    initializeAndSearchForDevices()
-  }, [glassesModelName])
+    if (Platform.OS === "ios") {
+      // on ios, we (may) need to wait for the core communicator to be fully initialized
+      setTimeout(() => {
+        initializeAndSearchForDevices()
+      }, 2000)
+    } else {
+      initializeAndSearchForDevices()
+    }
+  }, [])
 
   useEffect(() => {
     // If puck gets d/c'd here, return to home
     if (!status.core_info.puck_connected) {
-      router.navigate("/(tabs)/home")
+      router.dismissAll()
+      replace("/(tabs)/home")
     }
 
     // If pairing successful, return to home
     if (status.core_info.puck_connected && status.glasses_info?.model_name) {
-      router.navigate("/(tabs)/home")
+      router.dismissAll()
+      replace("/(tabs)/home")
     }
   }, [status])
 

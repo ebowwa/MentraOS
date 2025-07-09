@@ -16,6 +16,7 @@ protocol ServerCommsCallback {
   func onMicrophoneStateChange(_ isEnabled: Bool)
   func onDisplayEvent(_ event: [String: Any])
   func onRequestSingle(_ dataType: String)
+  func onStatusUpdate(_ status: [String: Any])
 }
 
 class ServerComms {
@@ -78,7 +79,7 @@ class ServerComms {
       print("Periodic datetime transmission")
       guard let self = self else { return }
       let isoDatetime = ServerComms.getCurrentIsoDatetime()
-      self.sendUserDatetimeToBackend(userId: self.userid, isoDatetime: isoDatetime)
+      self.sendUserDatetimeToBackend(isoDatetime: isoDatetime)
     }
     
     // send location updates every 15 minutes:
@@ -233,14 +234,22 @@ class ServerComms {
   }
   
   
-  func sendLocationUpdate(lat: Double, lng: Double) {
+  func sendLocationUpdate(lat: Double, lng: Double, accuracy: Double?, correlationId: String?) {
     do {
-      let event: [String: Any] = [
+      var event: [String: Any] = [
         "type": "location_update",
         "lat": lat,
         "lng": lng,
         "timestamp": Int(Date().timeIntervalSince1970 * 1000)
       ]
+      
+      if let acc = accuracy {
+        event["accuracy"] = acc
+      }
+      
+      if let corrId = correlationId {
+        event["correlationId"] = corrId
+      }
       
       let jsonData = try JSONSerialization.data(withJSONObject: event)
       if let jsonString = String(data: jsonData, encoding: .utf8) {
@@ -259,7 +268,7 @@ class ServerComms {
     
     if let locationData = locationManager.getCurrentLocation() {
       print("Sending location update: lat=\(locationData.latitude), lng=\(locationData.longitude)")
-      sendLocationUpdate(lat: locationData.latitude, lng: locationData.longitude)
+      sendLocationUpdate(lat: locationData.latitude, lng: locationData.longitude, accuracy: nil, correlationId: nil)
     } else {
       print("Cannot send location update: No location data available")
     }
@@ -436,9 +445,40 @@ class ServerComms {
       } else {
         print("ServerComms: Received speech message but speechRecCallback is null!")
       }
+
+    
       
     case "reconnect":
       print("ServerComms: Server is requesting a reconnect.")
+
+    case "settings_update":
+        print("ServerComms: Received settings update from WebSocket")
+        if let status = msg["status"] as? [String: Any], let callback = serverCommsCallback {
+            callback.onStatusUpdate(status)
+        }
+        break;
+        // Log.d(TAG, "Received settings update from WebSocket");
+        // try {
+        //     JSONObject settings = msg.optJSONObject("settings");
+        //     if (settings != null && serverCommsCallback != null) {
+        //         serverCommsCallback.onSettingsUpdate(settings);
+        //     }
+        // } catch (Exception e) {
+        //     Log.e(TAG, "Error handling settings update", e);
+        // }
+        break;
+      
+    case "set_location_tier":
+      if let payload = msg["payload"] as? [String: Any], let tier = payload["tier"] as? String {
+        self.locationManager.setTier(tier: tier)
+      }
+      
+    case "request_single_location":
+      if let payload = msg["payload"] as? [String: Any],
+          let accuracy = payload["accuracy"] as? String,
+          let correlationId = payload["correlationId"] as? String {
+        self.locationManager.requestSingleUpdate(accuracy: accuracy, correlationId: correlationId)
+      }
       
     default:
       print("ServerComms: Unknown message type: \(type) / full: \(msg)")
@@ -518,14 +558,14 @@ class ServerComms {
   
   // MARK: - Helper methods
 
-  func sendUserDatetimeToBackend(userId: String, isoDatetime: String) {
+  func sendUserDatetimeToBackend(isoDatetime: String) {
     guard let url = URL(string: getServerUrlForRest() + "/api/user-data/set-datetime") else {
       print("ServerComms: Invalid URL for datetime transmission")
       return
     }
     
     let body: [String: Any] = [
-      "userId": userId,
+      "coreToken": coreToken,
       "datetime": isoDatetime
     ]
     
