@@ -10,6 +10,7 @@ import { LayoutManager } from './layouts';
 import { SettingsManager } from './settings';
 import { LocationManager } from './modules/location';
 import { CameraModule, PhotoRequestOptions, RtmpStreamOptions } from './modules/camera';
+import { AudioManager } from './modules/audio';
 import { ResourceTracker } from '../../utils/resource-tracker';
 import {
   // Message types
@@ -161,11 +162,6 @@ export class AppSession {
   private subscriptionSettingsHandler?: (settings: AppSettings) => ExtendedStreamType[];
   /** Settings that should trigger subscription updates when changed */
   private subscriptionUpdateTriggers: string[] = [];
-  /** Map to store pending audio play request promises */
-  private pendingAudioRequests = new Map<string, {
-    resolve: (value: { success: boolean; error?: string; duration?: number }) => void;
-    reject: (reason?: any) => void;
-  }>();
   /** Pending user discovery requests waiting for responses */
   private pendingUserDiscoveryRequests = new Map<string, {
     resolve: (userList: any) => void,
@@ -189,6 +185,8 @@ export class AppSession {
   public readonly location: LocationManager;
   /** 📷 Camera interface for photos and streaming */
   public readonly camera: CameraModule;
+  /** 🔊 Audio interface for audio playback */
+  public readonly audio: AudioManager;
 
   public readonly appServer: AppServer;
   public readonly logger: Logger;
@@ -291,6 +289,16 @@ export class AppSession {
       this, // Pass session reference
       this.logger.child({ module: 'camera' })
     );
+
+    // Initialize audio module with session reference
+    this.audio = new AudioManager(
+      this.config.packageName,
+      this.sessionId || 'unknown-session-id',
+      this.send.bind(this),
+      this, // Pass session reference
+      this.logger.child({ module: 'audio' })
+    );
+
     this.location = new LocationManager(this, this.send.bind(this));
   }
 
@@ -489,6 +497,11 @@ export class AppSession {
     // Update the sessionId in the camera module
     if (this.camera) {
       this.camera.updateSessionId(sessionId);
+    }
+
+    // Update the sessionId in the audio module
+    if (this.audio) {
+      this.audio.updateSessionId(sessionId);
     }
 
     return new Promise((resolve, reject) => {
@@ -740,14 +753,13 @@ export class AppSession {
       this.camera.cancelAllRequests();
     }
 
+    // Clean up audio module
+    if (this.audio) {
+      this.audio.cancelAllRequests();
+    }
+
     // Use the resource tracker to clean up everything
     this.resources.dispose();
-
-    // Clean up pending requests by rejecting them
-    this.pendingAudioRequests.forEach((request, requestId) => {
-      request.reject(new Error('Session disconnected'));
-    });
-    this.pendingAudioRequests.clear();
 
     // Clean up additional resources not handled by the tracker
     this.ws = null;
@@ -756,114 +768,7 @@ export class AppSession {
     this.reconnectAttempts = 0;
   }
 
-  /**
-   * 🔊 Play audio on the connected glasses
-   * @param options - Audio playback configuration
-   * @returns Promise that resolves with playback result
-   *
-   * @example
-   * ```typescript
-   * // Play audio from URL
-   * const result = await session.playAudio({
-   *   audioUrl: 'https://example.com/sound.mp3',
-   *   volume: 0.8
-   * });
-   *
 
-   * ```
-   */
-  playAudio(options: {
-    /** URL to audio file for download and play */
-    audioUrl: string;
-    /** Volume level 0.0-1.0, defaults to 1.0 */
-    volume?: number;
-    /** Whether to stop other audio playback, defaults to true */
-    stopOtherAudio?: boolean;
-  }): Promise<{ success: boolean; error?: string; duration?: number }> {
-
-    return new Promise((resolve, reject) => {
-      try {
-        // Validate input
-        if (!options.audioUrl) {
-          reject(new Error('audioUrl must be provided'));
-          return;
-        }
-
-        // Generate unique request ID
-        const requestId = `audio_req_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-
-        // Store promise resolvers for when we get the response
-        this.pendingAudioRequests.set(requestId, { resolve, reject });
-
-        // Create audio play request message
-        const message: AudioPlayRequest = {
-          type: AppToCloudMessageType.AUDIO_PLAY_REQUEST,
-          packageName: this.config.packageName,
-          sessionId: this.sessionId!,
-          requestId,
-          timestamp: new Date(),
-          audioUrl: options.audioUrl,
-          volume: options.volume ?? 1.0,
-          stopOtherAudio: options.stopOtherAudio ?? true
-        };
-
-        // Check WebSocket connection before sending
-        if (!this.ws || this.ws.readyState !== 1) {
-          this.pendingAudioRequests.delete(requestId);
-          reject(new Error('WebSocket connection not established'));
-          return;
-        }
-
-        // Send request to cloud
-        this.send(message);
-
-        // Set timeout to avoid hanging promises
-        const timeoutMs = 60000; // 60 seconds
-        this.resources.setTimeout(() => {
-          if (this.pendingAudioRequests.has(requestId)) {
-            this.pendingAudioRequests.get(requestId)!.reject(new Error('Audio play request timed out'));
-            this.pendingAudioRequests.delete(requestId);
-          }
-        }, timeoutMs);
-      } catch (error: unknown) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        reject(new Error(`Failed to play audio: ${errorMessage}`));
-      }
-    });
-  }
-
-  /**
-   * 🔇 Stop audio playback on the connected glasses
-   *
-   * @example
-   * ```typescript
-   * // Stop all currently playing audio
-   * session.stopAudio();
-   * ```
-   */
-  stopAudio(): void {
-    try {
-      // Create audio stop request message
-      const message: AudioStopRequest = {
-        type: AppToCloudMessageType.AUDIO_STOP_REQUEST,
-        packageName: this.config.packageName,
-        sessionId: this.sessionId!,
-        timestamp: new Date()
-      };
-
-      // Check WebSocket connection before sending
-      if (!this.ws || this.ws.readyState !== 1) {
-        this.logger.warn('Cannot stop audio: WebSocket connection not established');
-        return;
-      }
-
-      // Send request to cloud (one-way, no response expected)
-      this.send(message);
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      this.logger.error(`Failed to stop audio: ${errorMessage}`);
-    }
-  }
 
   /**
    * 🛠️ Get all current user settings
@@ -989,7 +894,7 @@ export class AppSession {
     return this.config.mentraOSWebsocketUrl;
   }
 
-  getHttpsServerUrl(): string | undefined {
+  public getHttpsServerUrl(): string | undefined {
     if (!this.config.mentraOSWebsocketUrl) {
       return undefined;
     }
@@ -1159,7 +1064,7 @@ export class AppSession {
           if (this.subscriptions.has(StreamType.MANAGED_STREAM_STATUS)) {
             this.events.emit(StreamType.MANAGED_STREAM_STATUS, message);
           }
-          
+
           // Update camera module's managed stream state
           this.camera.handleManagedStreamStatus(message);
         }
@@ -1304,24 +1209,9 @@ export class AppSession {
           });
         }
                                 else if (isAudioPlayResponse(message)) {
-          // Handle audio play response
-          const response = message as AudioPlayResponse;
-
-          const pendingRequest = this.pendingAudioRequests.get(response.requestId);
-
-          if (pendingRequest) {
-            // Resolve the promise with the response data
-            pendingRequest.resolve({
-              success: response.success,
-              error: response.error,
-              duration: response.duration
-            });
-
-            // Clean up
-            this.pendingAudioRequests.delete(response.requestId);
-
-          } else {
-            this.logger.warn(`🔊 [AppSession] Received audio play response for unknown request ID: ${response.requestId}`);
+          // Delegate audio play response handling to the audio module
+          if (this.audio) {
+            this.audio.handleAudioPlayResponse(message as AudioPlayResponse);
           }
         }
         else if (isPhotoResponse(message)) {
@@ -1917,6 +1807,7 @@ export class TpaSession extends AppSession {
   }
 }
 
-// Export camera module types for developers
+// Export module types for developers
 export { CameraModule, PhotoRequestOptions, RtmpStreamOptions } from './modules/camera';
+export { AudioManager, AudioPlayOptions, AudioPlayResult, SpeakOptions } from './modules/audio';
 
