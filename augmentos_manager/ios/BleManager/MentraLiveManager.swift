@@ -486,7 +486,7 @@ typealias JSONObject = [String: Any]
   
   @objc func RN_disconnect() {
     CoreCommsService.log("Disconnecting from Mentra Live glasses")
-    isKilled = true
+    // isKilled = true
     
     if let peripheral = connectedPeripheral {
       centralManager?.cancelPeripheralConnection(peripheral)
@@ -612,22 +612,30 @@ typealias JSONObject = [String: Any]
   }
   
   private func processSendQueue(_ data: Data) async {
-    guard connectionState == .connected,
-          let peripheral = connectedPeripheral,
-          let txChar = txCharacteristic else {
-      return
-    }
+    CoreCommsService.log("Processing send queue")
+    // guard connectionState == .connected,
+    //       let peripheral = connectedPeripheral,
+    //       let txChar = txCharacteristic else {
+    //   return
+    // }
     
-    // Enforce rate limiting
-    let currentTime = Date().timeIntervalSince1970 * 1000
-    let timeSinceLastSend = currentTime - lastSendTimeMs
+     guard let peripheral = connectedPeripheral,
+           let txChar = txCharacteristic else {
+       return
+     }
     
-    if timeSinceLastSend < Double(MIN_SEND_DELAY_MS / 1_000_000) {
-      let remainingDelay = Double(MIN_SEND_DELAY_MS / 1_000_000) - timeSinceLastSend
-      try? await Task.sleep(nanoseconds: UInt64(remainingDelay * 1_000_000))
-    }
+     // Enforce rate limiting
+     let currentTime = Date().timeIntervalSince1970 * 1000
+     let timeSinceLastSend = currentTime - lastSendTimeMs
     
-    lastSendTimeMs = Date().timeIntervalSince1970 * 1000
+     if timeSinceLastSend < Double(MIN_SEND_DELAY_MS / 1_000_000) {
+       let remainingDelay = Double(MIN_SEND_DELAY_MS / 1_000_000) - timeSinceLastSend
+       try? await Task.sleep(nanoseconds: UInt64(remainingDelay * 1_000_000))
+     }
+    
+    // lastSendTimeMs = Date().timeIntervalSince1970 * 1000
+
+    CoreCommsService.log("Sending data: \(data)")
     
     // Send the data
     peripheral.writeValue(data, for: txChar, type: .withResponse)
@@ -642,7 +650,7 @@ typealias JSONObject = [String: Any]
   // MARK: - BLE Scanning
   
   private func startScan() {
-    guard !isScanning else { return }
+    // guard !isScanning else { return }
     
     CoreCommsService.log("Starting BLE scan for Mentra Live glasses")
     isScanning = true
@@ -818,6 +826,8 @@ typealias JSONObject = [String: Any]
   }
   
   private func processJsonObject(_ json: [String: Any]) {
+
+    
     // Check for K900 command format
     if let command = json["C"] as? String {
       processK900JsonMessage(json)
@@ -1000,10 +1010,6 @@ typealias JSONObject = [String: Any]
   // MARK: - Status Requests
   
   private func requestBatteryStatus() {
-    let json: [String: Any] = ["type": "request_battery_state"]
-    sendJson(json)
-    
-    // Also request K900 battery
     requestBatteryK900()
   }
   
