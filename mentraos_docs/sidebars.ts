@@ -63,6 +63,7 @@ const sidebars: SidebarsConfig = {
         'permissions',
         'layouts',
         'settings',
+        'audio',
         'tools',
         'capabilities',
         {
@@ -110,6 +111,7 @@ const sidebars: SidebarsConfig = {
             'reference/managers/event-manager',
             'reference/managers/layout-manager',
             'reference/managers/settings-manager',
+            'reference/managers/audio-manager',
               ],
         },
         'reference/enums',

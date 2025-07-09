@@ -23,6 +23,15 @@ struct ViewState {
 // This class handles logic for managing devices and connections to AugmentOS servers
 @objc(AOSManager) class AOSManager: NSObject, ServerCommsCallback, MicCallback {
 
+  private static var instance: AOSManager?
+
+  static func getInstance() -> AOSManager {
+    if instance == nil {
+      instance = AOSManager()
+    }
+    return instance!
+  }
+
   private var coreToken: String = ""
   private var coreTokenOwner: String = ""
 
@@ -214,9 +223,70 @@ struct ViewState {
     serverComms.setAuthCredentials("", coreToken)
   }
 
+  // MARK: - Audio Bridge Methods
+
+  @objc func playAudio(
+    _ requestId: String,
+    audioUrl: String,
+    volume: Float,
+    stopOtherAudio: Bool
+  ) {
+    CoreCommsService.log("AOSManager: playAudio bridge called for requestId: \(requestId)")
+
+    let audioManager = AudioManager.getInstance()
+    audioManager.playAudio(
+      requestId: requestId,
+      audioUrl: audioUrl,
+      volume: volume,
+      stopOtherAudio: stopOtherAudio
+    )
+  }
+
+  @objc func stopAudio(_ requestId: String) {
+    CoreCommsService.log("AOSManager: stopAudio bridge called for requestId: \(requestId)")
+
+    let audioManager = AudioManager.getInstance()
+    audioManager.stopAudio(requestId: requestId)
+  }
+
+  @objc func stopAllAudio() {
+    CoreCommsService.log("AOSManager: stopAllAudio bridge called")
+
+    let audioManager = AudioManager.getInstance()
+    audioManager.stopAllAudio()
+  }
+
+  /**
+   * Send audio play response back to React Native through ServerComms
+   */
+  func sendAudioPlayResponse(requestId: String, success: Bool, error: String? = nil, duration: Double? = nil) {
+    CoreCommsService.log("AOSManager: Sending audio play response for requestId: \(requestId), success: \(success)")
+
+    let message: [String: Any] = [
+      "command": "audio_play_response",
+      "params": [
+        "requestId": requestId,
+        "success": success,
+        "error": error as Any,
+        "duration": duration as Any
+      ].compactMapValues { $0 }
+    ]
+
+    do {
+      let jsonData = try JSONSerialization.data(withJSONObject: message)
+      if let jsonString = String(data: jsonData, encoding: .utf8) {
+//        serverComms.sendMessageToServer(message: jsonString)
+        serverComms.wsManager.sendText(jsonString)
+        CoreCommsService.log("AOSManager: Sent audio play response to server")
+      }
+    } catch {
+      CoreCommsService.log("AOSManager: Failed to serialize audio play response: \(error)")
+    }
+  }
+
   func onConnectionAck() {
     handleRequestStatus()
-    
+
     let isoDatetime = ServerComms.getCurrentIsoDatetime()
     serverComms.sendUserDatetimeToBackend(isoDatetime: isoDatetime)
   }
@@ -536,7 +606,7 @@ struct ViewState {
       if (self.isUpdatingScreen) {
         return
       }
-      
+
       // Execute immediately
       executeSendCurrentState(isDashboard)
 
@@ -778,12 +848,12 @@ struct ViewState {
   
   
   // command functions:
-  
+
   private func setServerUrl(url: String) {
     CoreCommsService.log("Setting server URL to: \(url)")
     self.serverComms.setServerUrl(url)
   }
-  
+
   func setAuthSecretKey(secretKey: String, userId: String) {
     CoreCommsService.log("Setting auth secret key to: \(secretKey)")
     self.setup()// finish init():
@@ -1488,7 +1558,7 @@ struct ViewState {
     static let preferredMic = "preferredMic"
     static let metricSystemEnabled = "metricSystemEnabled"
   }
-  
+
   internal func onStatusUpdate(_ status: [String: Any]) {
     // handle the settings from the server:
     // CoreCommsService.log("onStatusUpdate: \(status)")
@@ -1542,27 +1612,27 @@ struct ViewState {
     if let newPreferredMic = coreInfo?["preferred_mic"] as? String, newPreferredMic != self.preferredMic {
       setPreferredMic(newPreferredMic)
     }
-    
+
     if let newHeadUpAngle = coreInfo?["head_up_angle"] as? Int, newHeadUpAngle != self.headUpAngle {
       updateGlassesHeadUpAngle(newHeadUpAngle)
     }
-    
+
     if let newBrightness = glassesSettings?["brightness"] as? Int, newBrightness != self.brightness {
       updateGlassesBrightness(newBrightness, autoBrightness: false)
     }
-    
+
     if let newDashboardHeight = glassesSettings?["dashboard_height"] as? Int, newDashboardHeight != self.dashboardHeight {
       updateGlassesHeight(newDashboardHeight)
     }
-    
+
     if let newDashboardDepth = glassesSettings?["dashboard_depth"] as? Int, newDashboardDepth != self.dashboardDepth {
       updateGlassesDepth(newDashboardDepth)
     }
-    
+
     if let newAutoBrightness = glassesSettings?["auto_brightness"] as? Bool, newAutoBrightness != self.autoBrightness {
       updateGlassesBrightness(self.brightness, autoBrightness: newAutoBrightness)
     }
-    
+
     if let sensingEnabled = coreInfo?["sensing_enabled"] as? Bool, sensingEnabled != self.sensingEnabled {
       enableSensing(sensingEnabled)
     }
@@ -1570,11 +1640,11 @@ struct ViewState {
     if let newAlwaysOnStatusBar = coreInfo?["always_on_status_bar_enabled"] as? Bool, newAlwaysOnStatusBar != self.alwaysOnStatusBar {
       enableAlwaysOnStatusBar(newAlwaysOnStatusBar)
     }
-    
+
     if let newBypassVad = coreInfo?["bypass_vad_for_debugging"] as? Bool, newBypassVad != self.bypassVad {
       bypassVad(newBypassVad)
     }
-    
+
     if let newMetricSystemEnabled = coreInfo?["metric_system_enabled"] as? Bool, newMetricSystemEnabled != self.metricSystemEnabled {
       setMetricSystemEnabled(newMetricSystemEnabled)
     }
@@ -1589,7 +1659,7 @@ struct ViewState {
       saveSettings()
     }
 
-    // get device 
+    // get device
   }
 
   private func saveSettings() {

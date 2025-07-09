@@ -266,7 +266,7 @@ export class GlassesWebSocketService {
               useOnboardMic: coreInfo.force_core_onboard_mic,
               contextualDashboard: coreInfo.contextual_dashboard_enabled,
               metricSystemEnabled: coreInfo.metric_system_enabled,
-              
+
               // Glasses settings.
               brightness: glassesSettings.brightness,
               autoBrightness: glassesSettings.auto_brightness,
@@ -370,6 +370,12 @@ export class GlassesWebSocketService {
         case GlassesToCloudMessageType.PHOTO_RESPONSE:
           // Delegate to PhotoManager
           userSession.photoManager.handlePhotoResponse(message as PhotoResponse);
+          break;
+
+        case GlassesToCloudMessageType.AUDIO_PLAY_RESPONSE:
+          userSession.logger.debug({ service: SERVICE_NAME, message }, `Audio play response received from glasses/core`);
+          // Forward audio play response to Apps - we need to find the specific app that made the request
+          sessionService.relayAudioPlayResponseToApp(userSession, message);
           break;
 
         case GlassesToCloudMessageType.HEAD_POSITION:
@@ -556,14 +562,14 @@ export class GlassesWebSocketService {
     try {
       // Get or create user to track glasses model
       const user = await User.findOrCreateUser(userSession.userId);
-      
+
       // Track new glasses model if connected and model name exists
       if (isConnected && modelName) {
         const isNewModel = !user.getGlassesModels().includes(modelName);
-        
+
         // Add glasses model to user's history
         await user.addGlassesModel(modelName);
-        
+
         // Update PostHog person properties
         await PosthogService.setPersonProperties(userSession.userId, {
           current_glasses_model: modelName,

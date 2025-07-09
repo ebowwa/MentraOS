@@ -69,51 +69,6 @@ class MediaManager: NSObject {
         }
     }
     
-    // MARK: - Media Getters
-    
-    func getNowPlayingMediaDetails() -> [String: Any]? {
-        guard let media = currentMedia, !media.isEmpty else {
-            return nil
-        }
-        
-        // Create a simplified media info dictionary with the most important details
-        var mediaDetails: [String: Any] = [:]
-        
-        if let title = media[MPMediaItemPropertyTitle] as? String {
-            mediaDetails["title"] = title
-        }
-        
-        if let artist = media[MPMediaItemPropertyArtist] as? String {
-            mediaDetails["artist"] = artist
-        }
-        
-        if let albumTitle = media[MPMediaItemPropertyAlbumTitle] as? String {
-            mediaDetails["album"] = albumTitle
-        }
-        
-        if let duration = media[MPMediaItemPropertyPlaybackDuration] as? TimeInterval {
-            mediaDetails["duration"] = duration
-        }
-        
-        if let playbackRate = media[MPNowPlayingInfoPropertyPlaybackRate] as? Float {
-            mediaDetails["isPlaying"] = (playbackRate != 0)
-        }
-        
-        if let elapsedTime = media[MPNowPlayingInfoPropertyElapsedPlaybackTime] as? TimeInterval {
-            mediaDetails["elapsedTime"] = elapsedTime
-        }
-        
-        // Add artwork if available
-        if let artwork = media[MPMediaItemPropertyArtwork] as? MPMediaItemArtwork {
-            let size = CGSize(width: 300, height: 300)
-            if let image = artwork.image(at: size) {
-                mediaDetails["artwork"] = image
-            }
-        }
-        
-        return mediaDetails
-    }
-    
     deinit {
         NotificationCenter.default.removeObserver(self)
         UIApplication.shared.endReceivingRemoteControlEvents()

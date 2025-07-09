@@ -23,34 +23,34 @@ protocol ServerCommsCallback {
 
 class ServerComms {
   private static var instance: ServerComms?
-  
+
   public let wsManager = WebSocketManager()
   private var speechRecCallback: ((([String: Any]) -> Void))?
   private var serverCommsCallback: ServerCommsCallback?
   private var coreToken: String = ""
   var userid: String = ""
   private var serverUrl: String = ""
-  
+
   // Audio queue system
   private let audioQueue = DispatchQueue(label: "com.augmentos.audioQueue")
   private var audioBuffer = ArrayBlockingQueue<Data>(capacity: 100) // 10 seconds of audio assuming similar frame rates
   private var audioSenderThread: Thread?
   private var audioSenderRunning = false
   private var cancellables = Set<AnyCancellable>()
-  
+
   private var reconnecting: Bool = false
   private var reconnectionAttempts: Int = 0
   public let calendarManager = CalendarManager()
   public let locationManager = LocationManager()
   public let mediaManager = MediaManager()
-  
+
   static func getInstance() -> ServerComms {
     if instance == nil {
       instance = ServerComms()
     }
     return instance!
   }
-  
+
   private init() {
     // Subscribe to WebSocket messages
     wsManager.messages
@@ -58,23 +58,23 @@ class ServerComms {
         self?.handleIncomingMessage(message)
       }
       .store(in: &cancellables)
-    
+
     // Subscribe to WebSocket status changes
     wsManager.status
       .sink { [weak self] status in
         self?.handleStatusChange(status)
       }
       .store(in: &cancellables)
-    
+
     startAudioSenderThread()
-    
+
     // every hour send calendar events again:
     let oneHour: TimeInterval = 1 * 60 * 60// 1hr
     Timer.scheduledTimer(withTimeInterval: oneHour, repeats: true) { [weak self] _ in
       print("Periodic calendar sync")
       self?.sendCalendarEvents()
     }
-    
+
     // Deploy datetime coordinates to command center every 60 seconds
     let sixtySeconds: TimeInterval = 60
     Timer.scheduledTimer(withTimeInterval: sixtySeconds, repeats: true) { [weak self] _ in
@@ -83,7 +83,7 @@ class ServerComms {
       let isoDatetime = ServerComms.getCurrentIsoDatetime()
       self.sendUserDatetimeToBackend(isoDatetime: isoDatetime)
     }
-    
+
     // send location updates every 15 minutes:
     // TODO: ios (left out for now for battery savings)
 //    let fifteenMinutes: TimeInterval = 15 * 60
@@ -91,19 +91,19 @@ class ServerComms {
 //      print("Periodic location update")
 //      self?.sendLocationUpdates()
 //    }
-    
+
     // Setup calendar change notifications
     calendarManager.setCalendarChangedCallback { [weak self] in
       self?.sendCalendarEvents()
     }
-    
+
     // setup location change notification:
     locationManager.setLocationChangedCallback { [weak self] in
       self?.sendLocationUpdates()
     }
-    
+
   }
-  
+
   func setAuthCredentials(_ userid: String, _ coreToken: String) {
     self.coreToken = coreToken
     self.userid = userid
@@ -117,17 +117,17 @@ class ServerComms {
       connectWebSocket()
     }
   }
-  
+
   func setServerCommsCallback(_ callback: ServerCommsCallback) {
     self.serverCommsCallback = callback
   }
-  
+
   func setSpeechRecCallback(_ callback: @escaping ([String: Any]) -> Void) {
     self.speechRecCallback = callback
   }
-  
+
   // MARK: - Connection Management
-  
+
   func connectWebSocket() {
     guard let url = URL(string: getServerUrl()) else {
       print("Invalid server URL")
@@ -135,25 +135,25 @@ class ServerComms {
     }
     wsManager.connect(url: url, coreToken: self.coreToken)
   }
-  
+
   func isWebSocketConnected() -> Bool {
     return wsManager.isConnected()
   }
-  
+
   // MARK: - Audio / VAD
-  
+
   func sendAudioChunk(_ audioData: Data) {
     // If the queue is full, remove the oldest entry before adding a new one
     audioBuffer.offer(audioData)
   }
-  
+
   private func sendConnectionInit(coreToken: String) {
     do {
       let initMsg: [String: Any] = [
         "type": "connection_init",
         "coreToken": coreToken
       ]
-      
+
       let jsonData = try JSONSerialization.data(withJSONObject: initMsg)
       if let jsonString = String(data: jsonData, encoding: .utf8) {
         wsManager.sendText(jsonString)
@@ -163,20 +163,20 @@ class ServerComms {
       print("ServerComms: Error building connection_init JSON: \(error)")
     }
   }
-  
+
   func sendVadStatus(_ isSpeaking: Bool) {
     let vadMsg: [String: Any] = [
       "type": "VAD",
       "status": isSpeaking
     ]
-    
+
     let jsonData = try! JSONSerialization.data(withJSONObject: vadMsg)
     if let jsonString = String(data: jsonData, encoding: .utf8) {
       wsManager.sendText(jsonString)
     }
   }
-  
-  
+
+
   func sendBatteryStatus(level: Int, charging: Bool) {
     let vadMsg: [String: Any] = [
       "type": "glasses_battery_update",
@@ -185,19 +185,19 @@ class ServerComms {
       "timestamp": Date().timeIntervalSince1970 * 1000,
       // TODO: time remaining
     ]
-    
+
     let jsonData = try! JSONSerialization.data(withJSONObject: vadMsg)
     if let jsonString = String(data: jsonData, encoding: .utf8) {
       wsManager.sendText(jsonString)
     }
   }
-  
+
   func sendCalendarEvent(_ calendarItem: CalendarItem) {
     guard wsManager.isConnected() else {
       print("Cannot send calendar event: not connected.")
       return
     }
-    
+
     do {
       let event: [String: Any] = [
         "type": "calendar_event",
@@ -208,7 +208,7 @@ class ServerComms {
         "timeZone": calendarItem.timeZone,
         "timestamp": Int(Date().timeIntervalSince1970)
       ]
-      
+
       let jsonData = try JSONSerialization.data(withJSONObject: event)
       if let jsonString = String(data: jsonData, encoding: .utf8) {
         wsManager.sendText(jsonString)
@@ -217,7 +217,7 @@ class ServerComms {
       print("Error building calendar_event JSON: \(error)")
     }
   }
-  
+
   public func sendCalendarEvents() {
     guard self.wsManager.isConnected() else { return }
     let calendarManager = CalendarManager()
@@ -261,13 +261,13 @@ class ServerComms {
       print("ServerComms: Error building location_update JSON: \(error)")
     }
   }
-  
+
   public func sendLocationUpdates() {
     guard self.wsManager.isConnected() else {
       print("Cannot send location updates: WebSocket not connected")
       return
     }
-    
+
     if let locationData = locationManager.getCurrentLocation() {
       print("Sending location update: lat=\(locationData.latitude), lng=\(locationData.longitude)")
       sendLocationUpdate(lat: locationData.latitude, lng: locationData.longitude, accuracy: nil, correlationId: nil)
@@ -275,7 +275,7 @@ class ServerComms {
       print("Cannot send location update: No location data available")
     }
   }
-  
+
   public func sendGlassesConnectionState(modelName: String, status: String) {
     do {
       let event: [String: Any] = [
@@ -293,19 +293,19 @@ class ServerComms {
     }
   }
 
-  
+
   func updateAsrConfig(languages: [[String: Any]]) {
     guard wsManager.isConnected() else {
       print("Cannot send ASR config: not connected.")
       return
     }
-    
+
     do {
       let configMsg: [String: Any] = [
         "type": "config",
         "streams": languages
       ]
-      
+
       let jsonData = try JSONSerialization.data(withJSONObject: configMsg)
       if let jsonString = String(data: jsonData, encoding: .utf8) {
         wsManager.sendText(jsonString)
@@ -317,9 +317,10 @@ class ServerComms {
 
   func sendCoreStatus(status: [String: Any]) {
     do {
+      CoreCommsService.log("ServerComms: Sending core status update: \(status)")
       let event: [String: Any] = [
         "type": "core_status_update",
-        "status": status,
+        "status": ["status": status],
         "timestamp": Int(Date().timeIntervalSince1970 * 1000)
       ]
 
@@ -331,9 +332,9 @@ class ServerComms {
       print("Error building core_status_update JSON: \(error)")
     }
   }
-  
+
   // MARK: - App Lifecycle
-  
+
   func startApp(packageName: String) {
     do {
       let msg: [String: Any] = [
@@ -341,7 +342,7 @@ class ServerComms {
         "packageName": packageName,
         "timestamp": Int(Date().timeIntervalSince1970 * 1000)
       ]
-      
+
       let jsonData = try JSONSerialization.data(withJSONObject: msg)
       if let jsonString = String(data: jsonData, encoding: .utf8) {
         wsManager.sendText(jsonString)
@@ -350,7 +351,7 @@ class ServerComms {
       print("Error building start_app JSON: \(error)")
     }
   }
-  
+
   func stopApp(packageName: String) {
     do {
       let msg: [String: Any] = [
@@ -358,7 +359,7 @@ class ServerComms {
         "packageName": packageName,
         "timestamp": Int(Date().timeIntervalSince1970 * 1000)
       ]
-      
+
       let jsonData = try JSONSerialization.data(withJSONObject: msg)
       if let jsonString = String(data: jsonData, encoding: .utf8) {
         wsManager.sendText(jsonString)
@@ -367,9 +368,9 @@ class ServerComms {
       print("Error building stop_app JSON: \(error)")
     }
   }
-  
+
   // MARK: - Hardware Events
-  
+
   func sendButtonPress(buttonId: String, pressType: String) {
     do {
       let event: [String: Any] = [
@@ -378,7 +379,7 @@ class ServerComms {
         "pressType": pressType,
         "timestamp": Int(Date().timeIntervalSince1970 * 1000)
       ]
-      
+
       let jsonData = try JSONSerialization.data(withJSONObject: event)
       if let jsonString = String(data: jsonData, encoding: .utf8) {
         wsManager.sendText(jsonString)
@@ -387,16 +388,16 @@ class ServerComms {
       print("ServerComms: Error building button_press JSON: \(error)")
     }
   }
-  
+
   // Add other event methods as needed (sendHeadPosition, sendGlassesBatteryUpdate, etc.)
-  
+
   // MARK: - Message Handling
-  
+
   private func handleIncomingMessage(_ msg: [String: Any]) {
     guard let type = msg["type"] as? String else { return }
-    
+
     print("Received message of type: \(type)")
-    
+
     switch type {
     case "connection_ack":
       startAudioSenderThread()
@@ -404,42 +405,48 @@ class ServerComms {
         callback.onAppStateChange(parseAppList(msg)/*, parseWhatToStream(msg)*/)
         callback.onConnectionAck()
       }
-      
+
     case "app_state_change":
       if let callback = serverCommsCallback {
         callback.onAppStateChange(parseAppList(msg)/*, parseWhatToStream(msg)*/)
       }
-      
+
     case "connection_error":
       let errorMsg = msg["message"] as? String ?? "Unknown error"
       if let callback = serverCommsCallback {
         callback.onConnectionError(errorMsg)
       }
-      
+
     case "auth_error":
       if let callback = serverCommsCallback {
         callback.onAuthError()
       }
-      
+
     case "microphone_state_change":
       print("ServerComms: microphone_state_change: \(msg)")
       let isMicrophoneEnabled = msg["isMicrophoneEnabled"] as? Bool ?? true
       if let callback = serverCommsCallback {
         callback.onMicrophoneStateChange(isMicrophoneEnabled)
       }
-      
+
     case "display_event":
       if let view = msg["view"] as? String {
         if let callback = serverCommsCallback {
           callback.onDisplayEvent(msg)
         }
       }
-      
+
+    case "audio_play_request":
+      handleAudioPlayRequest(msg)
+
+    case "audio_stop_request":
+      handleAudioStopRequest()
+
     case "request_single":
       if let dataType = msg["data_type"] as? String, let callback = serverCommsCallback {
         callback.onRequestSingle(dataType)
       }
-      
+
     case "interim", "final":
       // Pass speech messages to speech recognition callback
       if let callback = speechRecCallback {
@@ -448,8 +455,8 @@ class ServerComms {
         print("ServerComms: Received speech message but speechRecCallback is null!")
       }
 
-    
-      
+
+
     case "reconnect":
       print("ServerComms: Server is requesting a reconnect.")
 
@@ -498,13 +505,41 @@ class ServerComms {
       print("ServerComms: Unknown message type: \(type) / full: \(msg)")
     }
   }
-  
+
+  private func handleAudioPlayRequest(_ msg: [String: Any]) {
+    CoreCommsService.log("ServerComms: Handling audio play request: \(msg)")
+    guard let requestId = msg["requestId"] as? String else {
+      return
+    }
+
+    CoreCommsService.log("ServerComms: Handling audio play request for requestId: \(requestId)")
+
+    let audioUrl = msg["audioUrl"] as? String ?? ""
+    let volume = msg["volume"] as? Float ?? 1.0
+    let stopOtherAudio = msg["stopOtherAudio"] as? Bool ?? true
+
+    let audioManager = AudioManager.getInstance()
+
+    audioManager.playAudio(
+      requestId: requestId,
+      audioUrl: audioUrl,
+      volume: volume,
+      stopOtherAudio: stopOtherAudio
+    )
+  }
+
+  private func handleAudioStopRequest() {
+    print("ServerComms: Handling audio stop request")
+    let audioManager = AudioManager.getInstance()
+    audioManager.stopAllAudio()
+  }
+
   private func attemptReconnect(_ override: Bool = false) {
     if self.reconnecting && !override { return }
     self.reconnecting = true
-    
+
     self.connectWebSocket()
-    
+
     // if after some time we're still not connected, run this function again:
     DispatchQueue.main.asyncAfter(deadline: .now() + 10.0) {
       // if self.wsManager.isConnected() {
@@ -517,31 +552,31 @@ class ServerComms {
       self.attemptReconnect(true)
     }
   }
-  
+
   private func handleStatusChange(_ status: WebSocketStatus) {
     print("handleStatusChange: \(status)")
-    
+
     if status == .disconnected || status == .error {
       stopAudioSenderThread()
       attemptReconnect()
     }
-    
+
     if status == .connected {
       // Wait a second before sending connection_init (similar to the Java code)
       DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
         self.sendConnectionInit(coreToken: self.coreToken)
-        
+
         self.sendCalendarEvents()
         self.sendLocationUpdates()
       }
     }
   }
-  
+
   // MARK: - Audio Queue Sender Thread
-  
+
   private func startAudioSenderThread() {
     if audioSenderThread != nil { return }
-    
+
     audioSenderRunning = true
     audioSenderThread = Thread {
       while self.audioSenderRunning {
@@ -559,17 +594,17 @@ class ServerComms {
         }
       }
     }
-    
+
     audioSenderThread?.name = "AudioSenderThread"
     audioSenderThread?.start()
   }
-  
+
   private func stopAudioSenderThread() {
     print("stopping audio sender thread")
     audioSenderRunning = false
     audioSenderThread = nil
   }
-  
+
   // MARK: - Helper methods
 
   func sendUserDatetimeToBackend(isoDatetime: String) {
@@ -577,27 +612,27 @@ class ServerComms {
       print("ServerComms: Invalid URL for datetime transmission")
       return
     }
-    
+
     let body: [String: Any] = [
       "coreToken": coreToken,
       "datetime": isoDatetime
     ]
-    
+
     do {
       let jsonData = try JSONSerialization.data(withJSONObject: body)
-      
+
       var request = URLRequest(url: url)
       request.httpMethod = "POST"
       request.setValue("application/json", forHTTPHeaderField: "Content-Type")
       request.httpBody = jsonData
-      
+
       print("ServerComms: Sending datetime to: \(url)")
-      
+
       URLSession.shared.dataTask(with: request) { data, response, error in
         if let error = error {
           return
         }
-        
+
         if let httpResponse = response as? HTTPURLResponse {
           if httpResponse.statusCode == 200 {
             if let responseData = data, let responseString = String(data: responseData, encoding: .utf8) {
@@ -611,12 +646,12 @@ class ServerComms {
           }
         }
       }.resume()
-      
+
     } catch {
       print("ServerComms: Exception during datetime transmission preparation: \(error.localizedDescription)")
     }
   }
-  
+
   /**
    * Retrieves the command center's REST API coordinates
    */
@@ -629,7 +664,7 @@ class ServerComms {
       let secure = url.scheme == "https"
       return "\(secure ? "https" : "http")://\(host):\(port)"
     }
-    
+
     // Fallback to environment configuration
     let host = RNCConfig.env(for: "MENTRAOS_HOST")!
     let port = RNCConfig.env(for: "MENTRAOS_PORT")!
@@ -637,7 +672,7 @@ class ServerComms {
     let secureServer = secure.contains("true")
     return "\(secureServer ? "https" : "http")://\(host):\(port)"
   }
-  
+
   private func getServerUrl() -> String {
     if (!self.serverUrl.isEmpty) {
       // parse the url from the string:
@@ -656,7 +691,7 @@ class ServerComms {
     print("ServerComms: getServerUrl(): \(url)")
     return url
   }
-  
+
   func parseWhatToStream(_ msg: [String: Any]) -> [String] {
     if let userSession = msg["userSession"] as? [String: Any],
        let whatToStream = userSession["whatToStream"] as? [String] {
@@ -665,21 +700,21 @@ class ServerComms {
     print("ServerComms: whatToStream was not found in server message!")
     return []
   }
-  
+
   func parseAppList(_ msg: [String: Any]) -> [ThirdPartyCloudApp] {
     var installedApps: [[String: Any]]?
     var activeAppPackageNames: [String]?
-    
+
     // Try to grab installedApps at the top level
     installedApps = msg["installedApps"] as? [[String: Any]]
-    
+
     // If not found, look for "userSession.installedApps"
     if installedApps == nil {
       if let userSession = msg["userSession"] as? [String: Any] {
         installedApps = userSession["installedApps"] as? [[String: Any]]
       }
     }
-    
+
     // Similarly, try to find activeAppPackageNames at top level or under userSession
     activeAppPackageNames = msg["activeAppPackageNames"] as? [String]
     if activeAppPackageNames == nil {
@@ -687,7 +722,7 @@ class ServerComms {
         activeAppPackageNames = userSession["activeAppPackageNames"] as? [String]
       }
     }
-    
+
     // Convert activeAppPackageNames into a Set for easy lookup
     var runningPackageNames = Set<String>()
     if let activeApps = activeAppPackageNames {
@@ -697,17 +732,17 @@ class ServerComms {
         }
       }
     }
-    
+
     // Build a list of ThirdPartyCloudApp objects from installedApps
     var appList: [ThirdPartyCloudApp] = []
     if let apps = installedApps {
       for appJson in apps {
         // Extract packageName first so we can check isRunning
         let packageName = appJson["packageName"] as? String ?? "unknown.package"
-        
+
         // Check if package is in runningPackageNames
         let isRunning = runningPackageNames.contains(packageName)
-        
+
         // Create the ThirdPartyCloudApp
         let app = ThirdPartyCloudApp(
           packageName: packageName,
@@ -720,10 +755,10 @@ class ServerComms {
         appList.append(app)
       }
     }
-    
+
     return appList
   }
-  
+
   /// Returns the current datetime in ISO 8601 format with timezone offset (e.g., 2024-06-13T15:42:10-07:00)
   static func getCurrentIsoDatetime() -> String {
     let dateFormatter = DateFormatter()
@@ -738,14 +773,14 @@ class ArrayBlockingQueue<T> {
   private let queue = DispatchQueue(label: "ArrayBlockingQueue", attributes: .concurrent)
   private var array: [T] = []
   private let capacity: Int
-  
+
   init(capacity: Int) {
     self.capacity = capacity
   }
-  
+
   func offer(_ element: T) -> Bool {
     var result = false
-    
+
     queue.sync(flags: .barrier) {
       if self.array.count < self.capacity {
         self.array.append(element)
@@ -757,22 +792,22 @@ class ArrayBlockingQueue<T> {
         result = true
       }
     }
-    
+
     return result
   }
-  
+
   func poll() -> T? {
     var result: T?
-    
+
     queue.sync(flags: .barrier) {
       if !self.array.isEmpty {
         result = self.array.removeFirst()
       }
     }
-    
+
     return result
   }
-  
+
   func take() -> T? {
     // Simple implementation - in a real blocking queue, this would actually block
     // until an element is available

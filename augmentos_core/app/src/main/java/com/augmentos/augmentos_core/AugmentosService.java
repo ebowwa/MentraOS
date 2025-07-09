@@ -1836,6 +1836,61 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                 }
             }
 
+            public void onAudioPlayRequest(JSONObject audioRequest) {
+                // Extract the audio request parameters
+                String requestId = audioRequest.optString("requestId", "");
+                String packageName = audioRequest.optString("packageName", "");
+                String audioUrl = audioRequest.optString("audioUrl", null);
+                double volume = audioRequest.optDouble("volume", 1.0);
+                boolean stopOtherAudio = audioRequest.optBoolean("stopOtherAudio", true);
+
+                // Send the audio request as a message to the AugmentOS Manager via BLE
+                if (blePeripheral != null) {
+                    // Create a message with the audio play request type
+                    try {
+                        JSONObject message = new JSONObject();
+                        message.put("type", "audio_play_request");
+                        message.put("requestId", requestId);
+                        message.put("packageName", packageName);
+
+                        if (audioUrl != null) {
+                            message.put("audioUrl", audioUrl);
+                        }
+                        message.put("volume", volume);
+                        message.put("stopOtherAudio", stopOtherAudio);
+
+                        // Send to AugmentOS Manager
+                        blePeripheral.sendDataToAugmentOsManager(message.toString());
+
+                    } catch (JSONException e) {
+                        Log.e(TAG, "Error creating audio request message for manager", e);
+                    }
+                }
+            }
+
+            public void onAudioStopRequest(JSONObject audioStopRequest) {
+                // Extract the audio stop request parameters
+                String sessionId = audioStopRequest.optString("sessionId", "");
+                String appId = audioStopRequest.optString("appId", "");
+
+                // Send the audio stop request as a message to the AugmentOS Manager via BLE
+                if (blePeripheral != null) {
+                    try {
+                        JSONObject message = new JSONObject();
+                        message.put("type", "audio_stop_request");
+                        message.put("sessionId", sessionId);
+                        message.put("appId", appId);
+
+                        // Send to AugmentOS Manager
+                        blePeripheral.sendDataToAugmentOsManager(message.toString());
+                        Log.d(TAG, "🔇 Forwarded audio stop request to manager from app: " + appId);
+
+                    } catch (JSONException e) {
+                        Log.e(TAG, "Error creating audio stop request message for manager", e);
+                    }
+                }
+            }
+
             @Override
             public void onSetLocationTier(String tier) {
                 String logMessage = "AugmentosService: onSetLocationTier called with tier: " + tier;
@@ -2648,12 +2703,72 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         sendStatusToAugmentOsManager();
     }
 
+
+    @Override
+    public void onAudioPlayRequest(JSONObject audioRequest) {
+        Log.d(TAG, "Received audio play request from cloud: " + audioRequest.toString());
+
+        // Forward the audio play request to the manager if connected
+        if (blePeripheral != null) {
+            // Extract the audio request parameters
+            String requestId = audioRequest.optString("requestId", "");
+            String packageName = audioRequest.optString("packageName", "");
+            String audioUrl = audioRequest.optString("audioUrl", null);
+            double volume = audioRequest.optDouble("volume", 1.0);
+            boolean stopOtherAudio = audioRequest.optBoolean("stopOtherAudio", true);
+
+            // Send the audio request as a message to the AugmentOS Manager via BLE
+            try {
+                JSONObject message = new JSONObject();
+                message.put("type", "audio_play_request");
+                message.put("requestId", requestId);
+                message.put("packageName", packageName);
+
+                if (audioUrl != null) {
+                    message.put("audioUrl", audioUrl);
+                }
+                message.put("volume", volume);
+                message.put("stopOtherAudio", stopOtherAudio);
+
+                // Send to AugmentOS Manager
+                blePeripheral.sendDataToAugmentOsManager(message.toString());
+                Log.d(TAG, "🔊 Forwarded audio play request to manager from cloud");
+
+            } catch (JSONException e) {
+                Log.e(TAG, "Error creating audio request message for manager", e);
+            }
+        }
+    }
+
+    @Override
+    public void onAudioPlayResponse(JSONObject audioResponse) {
+        Log.d(TAG, "Received audio play response from manager: " + audioResponse.toString());
+
+        try {
+            // Forward the audio play response to the cloud
+            ServerComms.getInstance().sendAudioPlayResponse(audioResponse);
+
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to forward audio play response to cloud", e);
+        }
+    }
+
+    @Override
+    public void onAudioStopRequest(JSONObject audioStopParams) {
+        Log.d(TAG, "Received audio stop request from cloud: " + audioStopParams.toString());
+
+        // Forward the audio stop request to the manager if connected
+        if (blePeripheral != null) {
+            blePeripheral.sendAudioStopRequest(audioStopParams);
+        }
+    }
+
     // Event handler for download progress
     @org.greenrobot.eventbus.Subscribe(threadMode = org.greenrobot.eventbus.ThreadMode.MAIN)
     public void onDownloadProgressEvent(DownloadProgressEvent event) {
         Log.d(TAG, "🎯 $#$# EVENT RECEIVED! Download progress: " + event.getStatus() +
-                " - " + event.getProgress() + "% (" +
-                event.getBytesDownloaded() + "/" + event.getTotalBytes() + " bytes)");
+              " - " + event.getProgress() + "% (" +
+              event.getBytesDownloaded() + "/" + event.getTotalBytes() + " bytes)");
 
         // Store download progress information
         downloadStatus = event.getStatus();
@@ -2692,7 +2807,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     @org.greenrobot.eventbus.Subscribe(threadMode = org.greenrobot.eventbus.ThreadMode.MAIN)
     public void onInstallationProgressEvent(InstallationProgressEvent event) {
         Log.d(TAG, "🔧 Received installation progress: " + event.getStatus() +
-                " - APK: " + event.getApkPath());
+              " - APK: " + event.getApkPath());
 
         // Store installation progress information
         installationStatus = event.getStatus();
