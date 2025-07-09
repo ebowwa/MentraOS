@@ -1836,7 +1836,6 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                 }
             }
 
-            @Override
             public void onAudioPlayRequest(JSONObject audioRequest) {
                 // Extract the audio request parameters
                 String requestId = audioRequest.optString("requestId", "");
@@ -1869,7 +1868,6 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                 }
             }
 
-            @Override
             public void onAudioStopRequest(JSONObject audioStopRequest) {
                 // Extract the audio stop request parameters
                 String sessionId = audioStopRequest.optString("sessionId", "");
@@ -2662,6 +2660,42 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         sendStatusToAugmentOsManager();
     }
 
+
+    @Override
+    public void onAudioPlayRequest(JSONObject audioRequest) {
+        Log.d(TAG, "Received audio play request from cloud: " + audioRequest.toString());
+
+        // Forward the audio play request to the manager if connected
+        if (blePeripheral != null) {
+            // Extract the audio request parameters
+            String requestId = audioRequest.optString("requestId", "");
+            String packageName = audioRequest.optString("packageName", "");
+            String audioUrl = audioRequest.optString("audioUrl", null);
+            double volume = audioRequest.optDouble("volume", 1.0);
+            boolean stopOtherAudio = audioRequest.optBoolean("stopOtherAudio", true);
+
+            // Send the audio request as a message to the AugmentOS Manager via BLE
+            try {
+                JSONObject message = new JSONObject();
+                message.put("type", "audio_play_request");
+                message.put("requestId", requestId);
+                message.put("packageName", packageName);
+
+                if (audioUrl != null) {
+                    message.put("audioUrl", audioUrl);
+                }
+                message.put("volume", volume);
+                message.put("stopOtherAudio", stopOtherAudio);
+
+                // Send to AugmentOS Manager
+                blePeripheral.sendDataToAugmentOsManager(message.toString());
+                Log.d(TAG, "🔊 Forwarded audio play request to manager from cloud");
+
+            } catch (JSONException e) {
+                Log.e(TAG, "Error creating audio request message for manager", e);
+            }
+        }
+    }
 
     @Override
     public void onAudioPlayResponse(JSONObject audioResponse) {

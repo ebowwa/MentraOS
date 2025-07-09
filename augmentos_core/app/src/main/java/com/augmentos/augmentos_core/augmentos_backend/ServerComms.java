@@ -794,6 +794,8 @@ public class ServerComms {
                 if (serverCommsCallback != null) {
                     serverCommsCallback.onAudioStopRequest(msg);
                 }
+                break;
+
             case "set_location_tier":
                 Log.d(TAG, "Received set_location_tier command");
                 String tier = msg.optString("tier");
@@ -802,7 +804,7 @@ public class ServerComms {
                     serverCommsCallback.onSetLocationTier(tier);
                 }
                 break;
-    
+
             case "request_single_location":
                 JSONObject pollPayload = msg.optJSONObject("payload");
                 if (pollPayload != null && serverCommsCallback != null) {
