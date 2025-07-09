@@ -223,23 +223,15 @@ struct ViewState {
     serverComms.setAuthCredentials("", coreToken)
   }
 
-  @objc func startApp(_ packageName: String) {
-    serverComms.startApp(packageName: packageName)
-  }
-
-  @objc func stopApp(_ packageName: String) {
-    serverComms.stopApp(packageName: packageName)
-  }
-
   // MARK: - Audio Bridge Methods
 
-    @objc func playAudio(
+  @objc func playAudio(
     _ requestId: String,
     audioUrl: String,
     volume: Float,
     stopOtherAudio: Bool
   ) {
-    print("AOSManager: playAudio bridge called for requestId: \(requestId)")
+    CoreCommsService.log("AOSManager: playAudio bridge called for requestId: \(requestId)")
 
     let audioManager = AudioManager.getInstance()
     audioManager.playAudio(
@@ -251,14 +243,14 @@ struct ViewState {
   }
 
   @objc func stopAudio(_ requestId: String) {
-    print("AOSManager: stopAudio bridge called for requestId: \(requestId)")
+    CoreCommsService.log("AOSManager: stopAudio bridge called for requestId: \(requestId)")
 
     let audioManager = AudioManager.getInstance()
     audioManager.stopAudio(requestId: requestId)
   }
 
   @objc func stopAllAudio() {
-    print("AOSManager: stopAllAudio bridge called")
+    CoreCommsService.log("AOSManager: stopAllAudio bridge called")
 
     let audioManager = AudioManager.getInstance()
     audioManager.stopAllAudio()
@@ -268,7 +260,7 @@ struct ViewState {
    * Send audio play response back to React Native through ServerComms
    */
   func sendAudioPlayResponse(requestId: String, success: Bool, error: String? = nil, duration: Double? = nil) {
-    print("AOSManager: Sending audio play response for requestId: \(requestId), success: \(success)")
+    CoreCommsService.log("AOSManager: Sending audio play response for requestId: \(requestId), success: \(success)")
 
     let message: [String: Any] = [
       "command": "audio_play_response",
@@ -285,10 +277,10 @@ struct ViewState {
       if let jsonString = String(data: jsonData, encoding: .utf8) {
 //        serverComms.sendMessageToServer(message: jsonString)
         serverComms.wsManager.sendText(jsonString)
-        print("AOSManager: Sent audio play response to server")
+        CoreCommsService.log("AOSManager: Sent audio play response to server")
       }
     } catch {
-      print("AOSManager: Failed to serialize audio play response: \(error)")
+      CoreCommsService.log("AOSManager: Failed to serialize audio play response: \(error)")
     }
   }
 

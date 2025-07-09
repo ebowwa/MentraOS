@@ -317,9 +317,10 @@ class ServerComms {
 
   func sendCoreStatus(status: [String: Any]) {
     do {
+      CoreCommsService.log("ServerComms: Sending core status update: \(status)")
       let event: [String: Any] = [
         "type": "core_status_update",
-        "status": status,
+        "status": ["status": status],
         "timestamp": Int(Date().timeIntervalSince1970 * 1000)
       ]
 
@@ -506,9 +507,12 @@ class ServerComms {
   }
 
   private func handleAudioPlayRequest(_ msg: [String: Any]) {
+    CoreCommsService.log("ServerComms: Handling audio play request: \(msg)")
     guard let requestId = msg["requestId"] as? String else {
       return
     }
+
+    CoreCommsService.log("ServerComms: Handling audio play request for requestId: \(requestId)")
 
     let audioUrl = msg["audioUrl"] as? String ?? ""
     let volume = msg["volume"] as? Float ?? 1.0
