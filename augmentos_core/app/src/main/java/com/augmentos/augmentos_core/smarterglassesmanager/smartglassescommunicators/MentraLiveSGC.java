@@ -1481,7 +1481,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 try {
                     JSONObject versionRequest = new JSONObject();
                     versionRequest.put("type", "request_version");
-                    sendDataToGlasses(versionRequest.toString());
+                    sendJson(versionRequest);
                 } catch (JSONException e) {
                     Log.e(TAG, "Error creating version request", e);
                 }
@@ -1751,6 +1751,9 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         EventBus.getDefault().post(new BatteryLevelEvent(level, charging));
         
         // Send battery status via BLE to connected phone
+        // This was necessary for OG beta units
+        // Not required for newer beta units
+        // TODO: remove this line post hackathon
         sendBatteryStatusOverBle(level, charging);
     }
     
@@ -1786,7 +1789,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         try {
             JSONObject json = new JSONObject();
             json.put("type", "request_wifi_status");
-            sendDataToGlasses(json.toString());
+            sendJson(json);
         } catch (JSONException e) {
             Log.e(TAG, "Error creating WiFi status request", e);
         }
@@ -1801,7 +1804,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         try {
             JSONObject json = new JSONObject();
             json.put("type", "request_wifi_scan");
-            sendDataToGlasses(json.toString());
+            sendJson(json);
             Log.d(TAG, "Sending WiFi scan request to glasses");
         } catch (JSONException e) {
             Log.e(TAG, "Error creating WiFi scan request", e);

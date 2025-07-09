@@ -1358,6 +1358,8 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                 // Send ACK response
                 sendAckResponse(messageId);
                 Log.d(TAG, "📤 Sent ACK for message ID: " + messageId);
+            } else {
+                Log.d(TAG, "📦 No message ID found in payload");
             }
 
             // Process the data (either original or extracted from C field)
