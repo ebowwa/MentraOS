@@ -197,7 +197,7 @@ export class ManagedStreamingExtension {
         userSession,
         packageName,
         managedStream.streamId,
-        'preparing',
+        'initializing',
         'Starting stream...',
         undefined, // No HLS URL yet
         undefined, // No DASH URL yet

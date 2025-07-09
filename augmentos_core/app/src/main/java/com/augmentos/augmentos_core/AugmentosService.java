@@ -601,7 +601,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                 try {
                     java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", java.util.Locale.US);
                     String isoDatetime = sdf.format(new java.util.Date());
-                    ServerComms.getInstance().sendUserDatetimeToBackend(userId, isoDatetime);
+                    ServerComms.getInstance().sendUserDatetimeToBackend(isoDatetime);
                 } catch (Exception e) {
                     Log.e(TAG, "Exception while sending periodic datetime: " + e.getMessage());
                 }
@@ -1603,7 +1603,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                     // Format current datetime as ISO 8601 string (yyyy-MM-dd'T'HH:mm:ssZ)
                     java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", java.util.Locale.US);
                     String isoDatetime = sdf.format(new java.util.Date());
-                    ServerComms.getInstance().sendUserDatetimeToBackend(userId, isoDatetime);
+                    ServerComms.getInstance().sendUserDatetimeToBackend(isoDatetime);
                 } catch (Exception e) {
                     Log.e(TAG, "Exception while sending datetime to backend: " + e.getMessage());
                 }
@@ -2595,6 +2595,49 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
 
     // Called when the backend notifies that an app has started
     public void onAppStarted(String packageName) {
+        Log.d(TAG, "App started: " + packageName + " - checking for auto-reconnection");
+        
+        // Check if glasses are disconnected but there is a saved pair, initiate connection
+        if (smartGlassesManager != null && 
+            smartGlassesManager.getSmartGlassesConnectState() == SmartGlassesConnectionState.DISCONNECTED) {
+            
+            String preferredWearable = SmartGlassesManager.getPreferredWearable(this);
+            Log.d(TAG, "Found preferred wearable: " + preferredWearable);
+            
+            if (preferredWearable != null && !preferredWearable.isEmpty()) {
+                SmartGlassesDevice preferredDevice = SmartGlassesManager.getSmartGlassesDeviceFromModelName(preferredWearable);
+                if (preferredDevice != null) {
+                    Log.d(TAG, "Auto-connecting to glasses due to app start: " + preferredWearable);
+                    
+                    // Always run on main thread to avoid threading issues
+                    new Handler(Looper.getMainLooper()).post(() -> {
+                        // Use executeOnceSmartGlassesManagerReady to ensure proper connection flow
+                        executeOnceSmartGlassesManagerReady(() -> {
+                            if (smartGlassesManager != null) {
+                                smartGlassesManager.connectToSmartGlasses(preferredDevice);
+                                sendStatusToAugmentOsManager();
+                                
+                                // Notify manager app about the auto-connection attempt
+                                if (blePeripheral != null) {
+                                    blePeripheral.sendNotifyManager("Auto-connecting to " + preferredWearable, "info");
+                                }
+                            }
+                        });
+                    });
+                } else {
+                    Log.w(TAG, "Invalid preferred device found, cannot auto-connect: " + preferredWearable);
+                }
+            } else {
+                Log.d(TAG, "No preferred wearable found for auto-connection");
+            }
+        } else if (smartGlassesManager == null) {
+            Log.d(TAG, "SmartGlassesManager is null, cannot check connection state for auto-reconnection");
+        } else {
+            Log.d(TAG, "Glasses already connected or connecting, skipping auto-reconnection. Current state: " + 
+                  smartGlassesManager.getSmartGlassesConnectState());
+        }
+
+        // Send notification to manager app about app start (existing functionality)
         if (blePeripheral != null) {
             try {
                 JSONObject msg = new JSONObject();
@@ -2602,7 +2645,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                 msg.put("packageName", packageName);
                 blePeripheral.sendDataToAugmentOsManager(msg.toString());
             } catch (JSONException e) {
-                // Optionally log or handle error
+                Log.e(TAG, "Error sending app started notification to manager", e);
             }
         }
     }

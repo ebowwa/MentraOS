@@ -14,7 +14,7 @@ import AVFoundation
 
 struct ViewState {
   var topText: String
-  var bottomText: String
+  var bottomText: String	
   var layoutType: String
   var text: String
   var eventStr: String
@@ -36,6 +36,7 @@ struct ViewState {
   private var coreTokenOwner: String = ""
 
   @objc var g1Manager: ERG1Manager?
+  @objc var liveManager: MentraLiveManager?
   var micManager: OnboardMicrophoneManager!
   var serverComms: ServerComms!
 
@@ -104,14 +105,11 @@ struct ViewState {
 
   @objc public func setup() {
 
-    self.g1Manager = ERG1Manager()
+//    self.g1Manager = ERG1Manager()
+//    self.liveManager = MentraLiveManager()
     self.micManager = OnboardMicrophoneManager()
     self.serverComms.locationManager.setup()
     self.serverComms.mediaManager.setup()
-
-    guard g1Manager != nil else {
-      return
-    }
 
     // Set up the ServerComms callback
     self.serverComms.setServerCommsCallback(self)
@@ -122,56 +120,8 @@ struct ViewState {
 
     // configure on board mic:
     //    setupOnboardMicrophoneIfNeeded()
-
-    // calback to handle actions when the connectionState changes (when g1 is ready)
-    g1Manager!.onConnectionStateChanged = { [weak self] in
-      guard let self = self else { return }
-      print("G1 glasses connection changed to: \(self.g1Manager!.g1Ready ? "Connected" : "Disconnected")")
-      //      self.handleRequestStatus()
-      if (self.g1Manager!.g1Ready) {
-        handleDeviceReady()
-      } else {
-        handleDeviceDisconnected()
-        handleRequestStatus()
-      }
-    }
-
-    // listen to changes in battery level:
-    g1Manager!.$batteryLevel.sink { [weak self] (level: Int) in
-      guard let self = self else { return }
-      guard level >= 0 else { return }
-      self.batteryLevel = level
-      self.serverComms.sendBatteryStatus(level: self.batteryLevel, charging: false);
-      handleRequestStatus()
-    }.store(in: &cancellables)
-
-    // listen to headUp events:
-    g1Manager!.$isHeadUp.sink { [weak self] (value: Bool) in
-        guard let self = self else { return }
-        self.sendCurrentState(value)
-    }.store(in: &cancellables)
-
-    // listen to case events:
-    g1Manager!.$caseOpen.sink { [weak self] (value: Bool) in
-        guard let self = self else { return }
-      handleRequestStatus()
-    }.store(in: &cancellables)
-
-    g1Manager!.$caseRemoved.sink { [weak self] (value: Bool) in
-        guard let self = self else { return }
-      handleRequestStatus()
-    }.store(in: &cancellables)
-
-    g1Manager!.$caseCharging.sink { [weak self] (value: Bool) in
-        guard let self = self else { return }
-      handleRequestStatus()
-    }.store(in: &cancellables)
-
-//    g1Manager!.$caseBatteryLevel.sink { [weak self] (value: Bool) in
-//        guard let self = self else { return }
-//      handleRequestStatus()
-//    }.store(in: &cancellables)
-
+    
+    setup2()
 
     // Subscribe to WebSocket status changes
     serverComms.wsManager.status
@@ -180,6 +130,80 @@ struct ViewState {
         handleRequestStatus()
       }
       .store(in: &cancellables)
+  }
+  
+  func setup2() {
+    // calback to handle actions when the connectionState changes (when g1 is ready)
+
+    if g1Manager != nil {
+      g1Manager!.onConnectionStateChanged = { [weak self] in
+        guard let self = self else { return }
+        print("G1 glasses connection changed to: \(self.g1Manager!.g1Ready ? "Connected" : "Disconnected")")
+        //      self.handleRequestStatus()
+        if (self.g1Manager!.g1Ready) {
+          handleG1Ready()
+        } else {
+          handleDeviceDisconnected()
+          handleRequestStatus()
+        }
+      }
+
+      // listen to changes in battery level:
+      g1Manager!.$batteryLevel.sink { [weak self] (level: Int) in
+        guard let self = self else { return }
+        guard level >= 0 else { return }
+        self.batteryLevel = level
+        self.serverComms.sendBatteryStatus(level: self.batteryLevel, charging: false);
+        handleRequestStatus()
+      }.store(in: &cancellables)
+
+      // listen to headUp events:
+      g1Manager!.$isHeadUp.sink { [weak self] (value: Bool) in
+          guard let self = self else { return }
+          self.sendCurrentState(value)
+      }.store(in: &cancellables)
+
+      // listen to case events:
+      g1Manager!.$caseOpen.sink { [weak self] (value: Bool) in
+          guard let self = self else { return }
+        handleRequestStatus()
+      }.store(in: &cancellables)
+
+      g1Manager!.$caseRemoved.sink { [weak self] (value: Bool) in
+          guard let self = self else { return }
+        handleRequestStatus()
+      }.store(in: &cancellables)
+
+      g1Manager!.$caseCharging.sink { [weak self] (value: Bool) in
+          guard let self = self else { return }
+        handleRequestStatus()
+      }.store(in: &cancellables)
+      
+      // Set up serial number discovery callback
+      g1Manager!.onSerialNumberDiscovered = { [weak self] in
+        self?.handleRequestStatus()
+      }
+    }
+
+//    g1Manager!.$caseBatteryLevel.sink { [weak self] (value: Bool) in
+//        guard let self = self else { return }
+//      handleRequestStatus()
+//    }.store(in: &cancellables)
+
+
+    if liveManager != nil {
+      liveManager!.onConnectionStateChanged = { [weak self] in
+        guard let self = self else { return }
+        print("Live glasses connection changed to: \(self.liveManager!.ready ? "Connected" : "Disconnected")")
+        //      self.handleRequestStatus()
+        if (self.liveManager!.ready) {
+          handleLiveReady()
+        } else {
+          handleDeviceDisconnected()
+          handleRequestStatus()
+        }
+      }
+    }
   }
 
   @objc func connectServer() {
@@ -263,7 +287,7 @@ struct ViewState {
     handleRequestStatus()
 
     let isoDatetime = ServerComms.getCurrentIsoDatetime()
-    serverComms.sendUserDatetimeToBackend(userId: serverComms.userid, isoDatetime: isoDatetime)
+    serverComms.sendUserDatetimeToBackend(isoDatetime: isoDatetime)
   }
 
   func onAppStateChange(_ apps: [ThirdPartyCloudApp]/*, _ whatToStream: [String]*/) {
@@ -365,78 +389,80 @@ struct ViewState {
       .store(in: &cancellables)
 
     // decode the g1 audio data to PCM and feed to the VAD:
-    self.g1Manager!.$compressedVoiceData.sink { [weak self] rawLC3Data in
-      guard let self = self else { return }
+    if (g1Manager != nil) {
+      self.g1Manager!.$compressedVoiceData.sink { [weak self] rawLC3Data in
+        guard let self = self else { return }
 
-      // Ensure we have enough data to process
-      guard rawLC3Data.count > 2 else {
-        print("Received invalid PCM data size: \(rawLC3Data.count)")
-        return
-      }
+        // Ensure we have enough data to process
+        guard rawLC3Data.count > 2 else {
+          print("Received invalid PCM data size: \(rawLC3Data.count)")
+          return
+        }
 
-      // Skip the first 2 bytes which are command bytes
-      let lc3Data = rawLC3Data.subdata(in: 2..<rawLC3Data.count)
+        // Skip the first 2 bytes which are command bytes
+        let lc3Data = rawLC3Data.subdata(in: 2..<rawLC3Data.count)
 
-      // Ensure we have valid PCM data
-      guard lc3Data.count > 0 else {
-        print("No PCM data after removing command bytes")
-        return
-      }
+        // Ensure we have valid PCM data
+        guard lc3Data.count > 0 else {
+          print("No PCM data after removing command bytes")
+          return
+        }
 
 
-      if self.bypassVad {
-        checkSetVadStatus(speaking: true)
-        // first send out whatever's in the vadBuffer (if there is anything):
-        emptyVadBuffer()
+        if self.bypassVad {
+          checkSetVadStatus(speaking: true)
+          // first send out whatever's in the vadBuffer (if there is anything):
+          emptyVadBuffer()
+          let pcmConverter = PcmConverter()
+          let pcmData = pcmConverter.decode(lc3Data) as Data
+  //        self.serverComms.sendAudioChunk(lc3Data)
+          self.serverComms.sendAudioChunk(pcmData)
+          return
+        }
+
         let pcmConverter = PcmConverter()
         let pcmData = pcmConverter.decode(lc3Data) as Data
-//        self.serverComms.sendAudioChunk(lc3Data)
-        self.serverComms.sendAudioChunk(pcmData)
-        return
-      }
 
-      let pcmConverter = PcmConverter()
-      let pcmData = pcmConverter.decode(lc3Data) as Data
+        guard pcmData.count > 0 else {
+          print("PCM conversion resulted in empty data")
+          return
+        }
 
-      guard pcmData.count > 0 else {
-        print("PCM conversion resulted in empty data")
-        return
-      }
+        // feed PCM to the VAD:
+        guard let vad = self.vad else {
+          print("VAD not initialized")
+          return
+        }
 
-      // feed PCM to the VAD:
-      guard let vad = self.vad else {
-        print("VAD not initialized")
-        return
-      }
+        // convert audioData to Int16 array:
+        let pcmDataArray = pcmData.withUnsafeBytes { pointer -> [Int16] in
+          Array(UnsafeBufferPointer(
+            start: pointer.bindMemory(to: Int16.self).baseAddress,
+            count: pointer.count / MemoryLayout<Int16>.stride
+          ))
+        }
 
-      // convert audioData to Int16 array:
-      let pcmDataArray = pcmData.withUnsafeBytes { pointer -> [Int16] in
-        Array(UnsafeBufferPointer(
-          start: pointer.bindMemory(to: Int16.self).baseAddress,
-          count: pointer.count / MemoryLayout<Int16>.stride
-        ))
-      }
+        vad.checkVAD(pcm: pcmDataArray) { [weak self] state in
+          guard let self = self else { return }
+          print("VAD State: \(state)")
+        }
 
-      vad.checkVAD(pcm: pcmDataArray) { [weak self] state in
-        guard let self = self else { return }
-        print("VAD State: \(state)")
+        let vadState = vad.currentState()
+        if vadState == .speeching {
+          checkSetVadStatus(speaking: true)
+          // first send out whatever's in the vadBuffer (if there is anything):
+          emptyVadBuffer()
+  //        self.serverComms.sendAudioChunk(lc3Data)
+          self.serverComms.sendAudioChunk(pcmData)
+        } else {
+          checkSetVadStatus(speaking: false)
+          // add to the vadBuffer:
+  //        addToVadBuffer(lc3Data)
+          addToVadBuffer(pcmData)
+        }
       }
-
-      let vadState = vad.currentState()
-      if vadState == .speeching {
-        checkSetVadStatus(speaking: true)
-        // first send out whatever's in the vadBuffer (if there is anything):
-        emptyVadBuffer()
-//        self.serverComms.sendAudioChunk(lc3Data)
-        self.serverComms.sendAudioChunk(pcmData)
-      } else {
-        checkSetVadStatus(speaking: false)
-        // add to the vadBuffer:
-//        addToVadBuffer(lc3Data)
-        addToVadBuffer(pcmData)
-      }
+      .store(in: &cancellables)
     }
-    .store(in: &cancellables)
   }
 
   // MARK: - ServerCommsCallback Implementation
@@ -496,6 +522,56 @@ struct ViewState {
 
       setOnboardMicEnabled(useOnboardMic)
     }
+  }
+
+  // MARK: - App Started/Stopped Handling
+
+  func onAppStarted(_ packageName: String) {
+    print("App started: \(packageName) - checking for auto-reconnection")
+    
+    // Check if glasses are disconnected but there is a saved pair, initiate connection
+    if !self.somethingConnected && !self.defaultWearable.isEmpty {
+      print("Found preferred wearable: \(self.defaultWearable)")
+      
+      if !self.defaultWearable.isEmpty {
+        print("Auto-connecting to glasses due to app start: \(self.defaultWearable)")
+        
+        // Always run on main thread to avoid threading issues
+        DispatchQueue.main.async { [weak self] in
+          guard let self = self else { return }
+          
+          // Check if we need to initialize the appropriate manager
+          if self.defaultWearable.contains("G1") && self.g1Manager == nil {
+            self.g1Manager = ERG1Manager()
+            self.setup2()
+          } else if self.defaultWearable.contains("Live") && self.liveManager == nil {
+            self.liveManager = MentraLiveManager()
+            self.setup2()
+          }
+          
+          // Attempt to connect using saved device name
+          if !self.deviceName.isEmpty {
+            self.handleConnectWearable(modelName: self.defaultWearable, deviceName: self.deviceName)
+            
+            // Notify user about the auto-connection attempt
+            self.sendText("Auto-connecting to \(self.defaultWearable)")
+          } else {
+            print("No saved device name found for auto-connection")
+          }
+        }
+      } else {
+        print("No preferred wearable found for auto-connection")
+      }
+    } else if self.defaultWearable.isEmpty {
+      print("No preferred wearable set, cannot auto-connect")
+    } else {
+      print("Glasses already connected or connecting, skipping auto-reconnection. Connected: \(self.somethingConnected)")
+    }
+  }
+
+  func onAppStopped(_ packageName: String) {
+    print("App stopped: \(packageName)")
+    // Handle app stopped if needed
   }
 
   // TODO: ios this name is a bit misleading:
@@ -789,6 +865,7 @@ struct ViewState {
     // self.micEnabled = micWasEnabled
 
     self.g1Manager?.disconnect()
+    self.liveManager?.RN_disconnect()
 
 //    if self.defaultWearable.contains("Simulated") || self.defaultWearable.isEmpty {
 //      return
@@ -835,7 +912,7 @@ struct ViewState {
     saveSettings()
   }
 
-  func handleSearchForCompatibleDeviceNames(_ modelName: String) {
+  func handleSearchForCompatibleDeviceNames(_ modelName: String) { 
     print("Searching for compatible device names for: \(modelName)")
     if (modelName.contains("Simulated")) {
       self.defaultWearable = "Simulated Glasses"
@@ -848,8 +925,23 @@ struct ViewState {
       handleRequestStatus()
       saveSettings()
     } else if (modelName.contains("G1")) {
+      if (g1Manager == nil) {
+        g1Manager = ERG1Manager()
+        // Set up serial number discovery callback
+        g1Manager?.onSerialNumberDiscovered = { [weak self] in
+          self?.handleRequestStatus()
+        }
+        setup2()
+      }
       self.defaultWearable = "Even Realities G1"
       self.g1Manager?.RN_startScan()
+    } else if (modelName.contains("Live")) {
+      if (liveManager == nil) {
+        liveManager = MentraLiveManager()
+        setup2()
+      }
+      self.defaultWearable = "Mentra Live"
+      self.liveManager?.RN_findCompatibleDevices()
     }
   }
 
@@ -1185,6 +1277,9 @@ struct ViewState {
     if self.defaultWearable.contains("G1") {
       return true
     }
+    if self.defaultWearable.contains("Live") {
+      return true
+    }
     return false
   }
 
@@ -1216,6 +1311,13 @@ struct ViewState {
         "case_battery_level": self.g1Manager?.caseBatteryLevel ?? -1,
       ]
       self.somethingConnected = true
+    }
+    
+    // Always include serial number information when available, regardless of connection status
+    if let serialNumber = self.g1Manager?.glassesSerialNumber, !serialNumber.isEmpty {
+      connectedGlasses["glasses_serial_number"] = serialNumber
+      connectedGlasses["glasses_style"] = self.g1Manager?.glassesStyle ?? ""
+      connectedGlasses["glasses_color"] = self.g1Manager?.glassesColor ?? ""
     }
 
     glassesSettings = [
@@ -1346,7 +1448,7 @@ struct ViewState {
     }
   }
 
-  private func handleDeviceReady() {
+  private func handleG1Ready() {
     self.isSearching = false
     self.defaultWearable = "Even Realities G1"
     self.handleRequestStatus()
@@ -1387,6 +1489,13 @@ struct ViewState {
     }
   }
 
+  private func handleLiveReady() {
+    print("Mentra Live device ready")
+    self.isSearching = false
+    self.defaultWearable = "Mentra Live"
+    self.handleRequestStatus()
+  }
+
   private func handleDeviceDisconnected() {
     print("Device disconnected")
     onMicrophoneStateChange(false)// technically shouldn't be necessary
@@ -1409,19 +1518,43 @@ struct ViewState {
     self.isSearching = true
     handleRequestStatus()// update the UI
 
-    print("deviceName: \(deviceName) selfDeviceName: \(self.deviceName)")
+    print("deviceName: \(deviceName) selfDeviceName: \(self.deviceName) defaultWearable: \(self.defaultWearable)")
 
     Task {
       disconnect()
-      if (deviceName != "") {
-        self.deviceName = deviceName
-        saveSettings()
-        self.g1Manager?.RN_pairById(deviceName)
-      } else if self.deviceName != "" {
-        self.g1Manager?.RN_pairById(self.deviceName)
-      } else {
-        print("this shouldn't happen (we don't have a deviceName saved, connecting will fail if we aren't already paired)")
 
+      if (self.defaultWearable.contains("Live")) {
+        if (self.liveManager == nil) {
+          self.liveManager = MentraLiveManager()
+          setup2()
+        }
+        if (deviceName != "") {
+          self.deviceName = deviceName
+          saveSettings()
+          self.liveManager?.RN_connectToGlasses(deviceName)
+        } else if self.deviceName != "" {
+          self.liveManager?.RN_connectToGlasses(self.deviceName)
+        } else {
+          print("this shouldn't happen (we don't have a deviceName saved, connecting will fail if we aren't already paired)")
+        }
+      } else if (self.defaultWearable.contains("G1")) {
+        if (self.g1Manager == nil) {
+          self.g1Manager = ERG1Manager()
+          // Set up serial number discovery callback
+          self.g1Manager?.onSerialNumberDiscovered = { [weak self] in
+            self?.handleRequestStatus()
+          }
+          setup2()
+        }
+        if (deviceName != "") {
+          self.deviceName = deviceName
+          saveSettings()
+          self.g1Manager?.RN_pairById(deviceName)
+        } else if self.deviceName != "" {
+          self.g1Manager?.RN_pairById(self.deviceName)
+        } else {
+          print("this shouldn't happen (we don't have a deviceName saved, connecting will fail if we aren't already paired)")
+        }
       }
     }
 
@@ -1583,26 +1716,26 @@ struct ViewState {
         }
     }
 
-    // let defaults = UserDefaults.standard
+     let defaults = UserDefaults.standard
 
-    // // Save each setting with its corresponding key
-    // defaults.set(defaultWearable, forKey: SettingsKeys.defaultWearable)
-    // defaults.set(deviceName, forKey: SettingsKeys.deviceName)
-    // defaults.set(contextualDashboard, forKey: SettingsKeys.contextualDashboard)
-    // defaults.set(headUpAngle, forKey: SettingsKeys.headUpAngle)
-    // defaults.set(brightness, forKey: SettingsKeys.brightness)
-    // defaults.set(autoBrightness, forKey: SettingsKeys.autoBrightness)
-    // defaults.set(sensingEnabled, forKey: SettingsKeys.sensingEnabled)
-    // defaults.set(dashboardHeight, forKey: SettingsKeys.dashboardHeight)
-    // defaults.set(dashboardDepth, forKey: SettingsKeys.dashboardDepth)
-    // defaults.set(alwaysOnStatusBar, forKey: SettingsKeys.alwaysOnStatusBar)
-    // defaults.set(bypassVad, forKey: SettingsKeys.bypassVad)
-    // defaults.set(bypassAudioEncoding, forKey: SettingsKeys.bypassAudioEncoding)
-    // defaults.set(preferredMic, forKey: SettingsKeys.preferredMic)
-    // defaults.set(metricSystemEnabled, forKey: SettingsKeys.metricSystemEnabled)
+     // Save each setting with its corresponding key
+     defaults.set(defaultWearable, forKey: SettingsKeys.defaultWearable)
+     defaults.set(deviceName, forKey: SettingsKeys.deviceName)
+     defaults.set(contextualDashboard, forKey: SettingsKeys.contextualDashboard)
+     defaults.set(headUpAngle, forKey: SettingsKeys.headUpAngle)
+     defaults.set(brightness, forKey: SettingsKeys.brightness)
+     defaults.set(autoBrightness, forKey: SettingsKeys.autoBrightness)
+     defaults.set(sensingEnabled, forKey: SettingsKeys.sensingEnabled)
+     defaults.set(dashboardHeight, forKey: SettingsKeys.dashboardHeight)
+     defaults.set(dashboardDepth, forKey: SettingsKeys.dashboardDepth)
+     defaults.set(alwaysOnStatusBar, forKey: SettingsKeys.alwaysOnStatusBar)
+     defaults.set(bypassVad, forKey: SettingsKeys.bypassVad)
+     defaults.set(bypassAudioEncoding, forKey: SettingsKeys.bypassAudioEncoding)
+     defaults.set(preferredMic, forKey: SettingsKeys.preferredMic)
+     defaults.set(metricSystemEnabled, forKey: SettingsKeys.metricSystemEnabled)
 
-    // // Force immediate save (optional, as UserDefaults typically saves when appropriate)
-    // defaults.synchronize()
+     // Force immediate save (optional, as UserDefaults typically saves when appropriate)
+     defaults.synchronize()
 
     // print("Settings saved: Default Wearable: \(defaultWearable ?? "None"), Preferred Mic: \(preferredMic), " +
     //       "Contextual Dashboard: \(contextualDashboard), Head Up Angle: \(headUpAngle), Brightness: \(brightness)")
@@ -1627,32 +1760,34 @@ struct ViewState {
     alwaysOnStatusBar = false
     bypassAudioEncoding = false
 
-    // UserDefaults.standard.register(defaults: [SettingsKeys.sensingEnabled: true])
-    // UserDefaults.standard.register(defaults: [SettingsKeys.contextualDashboard: true])
-    // UserDefaults.standard.register(defaults: [SettingsKeys.bypassVad: false])
-    // UserDefaults.standard.register(defaults: [SettingsKeys.preferredMic: "glasses"])
-    // UserDefaults.standard.register(defaults: [SettingsKeys.brightness: 50])
-    // UserDefaults.standard.register(defaults: [SettingsKeys.headUpAngle: 30])
-    // UserDefaults.standard.register(defaults: [SettingsKeys.metricSystemEnabled: false])
-    // UserDefaults.standard.register(defaults: [SettingsKeys.autoBrightness: true])
+     UserDefaults.standard.register(defaults: [SettingsKeys.sensingEnabled: true])
+     UserDefaults.standard.register(defaults: [SettingsKeys.contextualDashboard: true])
+     UserDefaults.standard.register(defaults: [SettingsKeys.bypassVad: false])
+     UserDefaults.standard.register(defaults: [SettingsKeys.preferredMic: "glasses"])
+     UserDefaults.standard.register(defaults: [SettingsKeys.brightness: 50])
+     UserDefaults.standard.register(defaults: [SettingsKeys.headUpAngle: 30])
+     UserDefaults.standard.register(defaults: [SettingsKeys.metricSystemEnabled: false])
+     UserDefaults.standard.register(defaults: [SettingsKeys.autoBrightness: true])
 
-    // let defaults = UserDefaults.standard
+     let defaults = UserDefaults.standard
 
-    // // Load each setting with appropriate type handling
-    // defaultWearable = defaults.string(forKey: SettingsKeys.defaultWearable) ?? ""
-    // deviceName = defaults.string(forKey: SettingsKeys.deviceName) ?? ""
-    // preferredMic = defaults.string(forKey: SettingsKeys.preferredMic) ?? "glasses"
-    // contextualDashboard = defaults.bool(forKey: SettingsKeys.contextualDashboard)
-    // autoBrightness = defaults.bool(forKey: SettingsKeys.autoBrightness)
-    // sensingEnabled = defaults.bool(forKey: SettingsKeys.sensingEnabled)
-    // dashboardHeight = defaults.integer(forKey: SettingsKeys.dashboardHeight)
-    // dashboardDepth = defaults.integer(forKey: SettingsKeys.dashboardDepth)
-    // alwaysOnStatusBar = defaults.bool(forKey: SettingsKeys.alwaysOnStatusBar)
-    // bypassVad = defaults.bool(forKey: SettingsKeys.bypassVad)
-    // bypassAudioEncoding = defaults.bool(forKey: SettingsKeys.bypassAudioEncoding)
-    // headUpAngle = defaults.integer(forKey: SettingsKeys.headUpAngle)
-    // brightness = defaults.integer(forKey: SettingsKeys.brightness)
-    // metricSystemEnabled = defaults.bool(forKey: SettingsKeys.metricSystemEnabled)
+     // Load each setting with appropriate type handling
+     defaultWearable = defaults.string(forKey: SettingsKeys.defaultWearable) ?? ""
+     deviceName = defaults.string(forKey: SettingsKeys.deviceName) ?? ""
+     preferredMic = defaults.string(forKey: SettingsKeys.preferredMic) ?? "glasses"
+     contextualDashboard = defaults.bool(forKey: SettingsKeys.contextualDashboard)
+     autoBrightness = defaults.bool(forKey: SettingsKeys.autoBrightness)
+     sensingEnabled = defaults.bool(forKey: SettingsKeys.sensingEnabled)
+     dashboardHeight = defaults.integer(forKey: SettingsKeys.dashboardHeight)
+     dashboardDepth = defaults.integer(forKey: SettingsKeys.dashboardDepth)
+     alwaysOnStatusBar = defaults.bool(forKey: SettingsKeys.alwaysOnStatusBar)
+     bypassVad = defaults.bool(forKey: SettingsKeys.bypassVad)
+     bypassAudioEncoding = defaults.bool(forKey: SettingsKeys.bypassAudioEncoding)
+     headUpAngle = defaults.integer(forKey: SettingsKeys.headUpAngle)
+     brightness = defaults.integer(forKey: SettingsKeys.brightness)
+     metricSystemEnabled = defaults.bool(forKey: SettingsKeys.metricSystemEnabled)
+    
+    // TODO: load settings from the server
 
     // Mark settings as loaded and signal completion
     self.settingsLoaded = true

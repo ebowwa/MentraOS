@@ -959,13 +959,13 @@ public class ServerComms {
     }
 
     // Add this method to send user datetime to backend
-    public void sendUserDatetimeToBackend(String userId, String isoDatetime) {
+    public void sendUserDatetimeToBackend(String isoDatetime) {
         try {
             String baseUrl = getServerUrlForRest();
             String url = baseUrl + "/api/user-data/set-datetime";
 
             JSONObject body = new JSONObject();
-            body.put("userId", userId);
+            body.put("coreToken", coreToken);
             body.put("datetime", isoDatetime);
 
             RequestBody requestBody = RequestBody.create(

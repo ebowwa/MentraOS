@@ -17,6 +17,8 @@ protocol ServerCommsCallback {
   func onDisplayEvent(_ event: [String: Any])
   func onRequestSingle(_ dataType: String)
   func onStatusUpdate(_ status: [String: Any])
+  func onAppStarted(_ packageName: String)
+  func onAppStopped(_ packageName: String)
 }
 
 class ServerComms {
@@ -79,7 +81,7 @@ class ServerComms {
       print("Periodic datetime transmission")
       guard let self = self else { return }
       let isoDatetime = ServerComms.getCurrentIsoDatetime()
-      self.sendUserDatetimeToBackend(userId: self.userid, isoDatetime: isoDatetime)
+      self.sendUserDatetimeToBackend(isoDatetime: isoDatetime)
     }
 
     // send location updates every 15 minutes:
@@ -486,6 +488,18 @@ class ServerComms {
         self.locationManager.requestSingleUpdate(accuracy: accuracy, correlationId: correlationId)
       }
       
+    case "app_started":
+      if let packageName = msg["packageName"] as? String, let callback = serverCommsCallback {
+        print("ServerComms: Received app_started message for package: \(packageName)")
+        callback.onAppStarted(packageName)
+      }
+      
+    case "app_stopped":
+      if let packageName = msg["packageName"] as? String, let callback = serverCommsCallback {
+        print("ServerComms: Received app_stopped message for package: \(packageName)")
+        callback.onAppStopped(packageName)
+      }
+      
     default:
       print("ServerComms: Unknown message type: \(type) / full: \(msg)")
     }
@@ -589,14 +603,14 @@ class ServerComms {
 
   // MARK: - Helper methods
 
-  func sendUserDatetimeToBackend(userId: String, isoDatetime: String) {
+  func sendUserDatetimeToBackend(isoDatetime: String) {
     guard let url = URL(string: getServerUrlForRest() + "/api/user-data/set-datetime") else {
       print("ServerComms: Invalid URL for datetime transmission")
       return
     }
 
     let body: [String: Any] = [
-      "userId": userId,
+      "coreToken": coreToken,
       "datetime": isoDatetime
     ]
 

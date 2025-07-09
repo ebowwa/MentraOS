@@ -34,6 +34,10 @@ export default function DeveloperSettingsScreen() {
   const [isSavingUrl, setIsSavingUrl] = useState(false) // Add loading state
   const [reconnectOnAppForeground, setReconnectOnAppForeground] = useState(true)
   const {replace} = useNavigationHistory()
+  
+  // Triple-tap detection for Asia East button
+  const [asiaButtonTapCount, setAsiaButtonTapCount] = useState(0)
+  const [asiaButtonLastTapTime, setAsiaButtonLastTapTime] = useState(0)
 
   // Load saved URL on mount
   useEffect(() => {
@@ -154,6 +158,28 @@ export default function DeveloperSettingsScreen() {
     setSavedCustomUrl(null)
     setCustomUrlInput("")
     showAlert("Success", "Backend URL reset to default.", [{text: "OK"}])
+  }
+
+  // Triple-tap handler for Asia East button
+  const handleAsiaButtonPress = () => {
+    const currentTime = Date.now()
+    const timeDiff = currentTime - asiaButtonLastTapTime
+    
+    // Reset counter if more than 2 seconds has passed
+    if (timeDiff > 2000) {
+      setAsiaButtonTapCount(1)
+    } else {
+      setAsiaButtonTapCount(prev => prev + 1)
+    }
+    
+    setAsiaButtonLastTapTime(currentTime)
+    
+    // Check for triple-tap
+    if (asiaButtonTapCount + 1 >= 3) {
+      setCustomUrlInput("https://devold.augmentos.org:443")
+    } else {
+      setCustomUrlInput("https://asiaeastapi.mentra.glass:443")
+    }
   }
 
   const switchColors = {
@@ -293,7 +319,7 @@ export default function DeveloperSettingsScreen() {
               <PillButton
                 text="Asia East"
                 variant="icon"
-                onPress={() => setCustomUrlInput("https://asiaeastapi.mentra.glass:443")}
+                onPress={handleAsiaButtonPress}
                 buttonStyle={styles.button}
               />
             </View>

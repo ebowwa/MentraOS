@@ -340,29 +340,29 @@ export default function InactiveAppList({
     }
 
     // Check if glasses are connected and this is the first app being activated
-    const glassesConnected = status.glasses_info?.model_name != null
-    const activeApps = appStatus.filter(app => app.is_running)
+    // const glassesConnected = status.glasses_info?.model_name != null
+    // const activeApps = appStatus.filter(app => app.is_running)
 
-    if (!glassesConnected && activeApps.length === 0) {
-      // Show alert for first app activation when glasses aren't connected
-      const shouldContinue = await new Promise<boolean>(resolve => {
-        showAlert(translate("home:glassesNotConnected"), translate("home:appWillRunWhenConnected"), [
-          {
-            text: translate("common:cancel"),
-            style: "cancel",
-            onPress: () => resolve(false),
-          },
-          {
-            text: translate("common:ok"),
-            onPress: () => resolve(true),
-          },
-        ])
-      })
+    // if (!glassesConnected && activeApps.length === 0) {
+    //   // Show alert for first app activation when glasses aren't connected
+    //   const shouldContinue = await new Promise<boolean>(resolve => {
+    //     showAlert(translate("home:glassesNotConnected"), translate("home:appWillRunWhenConnected"), [
+    //       {
+    //         text: translate("common:cancel"),
+    //         style: "cancel",
+    //         onPress: () => resolve(false),
+    //       },
+    //       {
+    //         text: translate("common:ok"),
+    //         onPress: () => resolve(true),
+    //       },
+    //     ])
+    //   })
 
-      if (!shouldContinue) {
-        return
-      }
-    }
+    //   if (!shouldContinue) {
+    //     return
+    //   }
+    // }
 
     // Find the opacity value for this app
     const itemOpacity = opacities[packageName]
