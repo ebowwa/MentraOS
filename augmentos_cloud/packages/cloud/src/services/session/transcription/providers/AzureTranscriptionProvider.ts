@@ -56,7 +56,7 @@ export class AzureTranscriptionProvider implements TranscriptionProvider {
   readonly name = ProviderType.AZURE;
   readonly logger: Logger;
   
-  private speechConfig: SpeechConfig;
+  private speechConfig!: SpeechConfig;
   private healthStatus: ProviderHealthStatus;
   private failureCount = 0;
   private lastFailureTime = 0;
@@ -338,7 +338,7 @@ export class AzureTranscriptionProvider implements TranscriptionProvider {
     };
     
     // Error handling
-    recognizer.canceled = (sender, event) => {
+    recognizer.canceled = (sender: any, event: any) => {
       this.handleAzureCanceled(stream, event);
     };
     
@@ -443,7 +443,7 @@ export class AzureTranscriptionProvider implements TranscriptionProvider {
       
       this.logger.debug({
         streamId: stream.id,
-        originalText: data.originalText.substring(0, 50),
+        originalText: data.originalText?.substring(0, 50),
         translatedText: data.text.substring(0, 50),
         isFinal: data.isFinal,
         didTranslate: data.didTranslate,
@@ -479,7 +479,7 @@ export class AzureTranscriptionProvider implements TranscriptionProvider {
       
       this.logger.debug({
         streamId: stream.id,
-        originalText: data.originalText.substring(0, 50),
+        originalText: data.originalText?.substring(0, 50),
         translatedText: data.text.substring(0, 50),
         isFinal: data.isFinal,
         didTranslate: data.didTranslate,
@@ -614,7 +614,7 @@ class AzureTranscriptionStream implements StreamInstance {
     }
     
     try {
-      this.pushStream.write(data);
+      (this.pushStream as any).write(data);
       this.state = StreamState.ACTIVE;
       this.metrics.audioChunksWritten++;
       this.metrics.lastSuccessfulWrite = Date.now();

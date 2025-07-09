@@ -107,6 +107,8 @@ export interface TranscriptionData extends BaseMessage {
   endTime: number;  // End time in milliseconds
   speakerId?: string;  // ID of the speaker if available
   duration?: number;  // Audio duration in milliseconds
+  provider?: string;  // The transcription provider (e.g., "azure", "soniox")
+  confidence?: number;  // Confidence score (0-1)
 }
 
 /**
@@ -124,6 +126,8 @@ export interface TranslationData extends BaseMessage {
   transcribeLanguage?: string;  // The language code of the transcribed text
   translateLanguage?: string;  // The language code of the translated text
   didTranslate?: boolean;  // Whether the text was translated
+  provider?: string;  // The translation provider (e.g., "azure", "google")
+  confidence?: number;  // Confidence score (0-1)
 }
 
 /**

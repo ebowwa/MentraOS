@@ -3,7 +3,7 @@
  */
 
 import WebSocket from 'ws';
-import { StreamType, getLanguageInfo } from '@mentra/sdk';
+import { StreamType, getLanguageInfo, TranscriptionData, TranslationData } from '@mentra/sdk';
 import { Logger } from 'pino';
 import {
   TranscriptionProvider,
@@ -201,8 +201,8 @@ export class SonioxTranscriptionProvider implements TranscriptionProvider {
     const targetLanguages = supportedPairs.get(source);
     const reverseTargetLanguages = supportedPairs.get(target);
     
-    return (targetLanguages && targetLanguages.includes(target)) ||
-           (reverseTargetLanguages && reverseTargetLanguages.includes(source));
+    return !!(targetLanguages && targetLanguages.includes(target)) ||
+           !!(reverseTargetLanguages && reverseTargetLanguages.includes(source));
   }
   
   getLanguageCapabilities(): ProviderLanguageCapabilities {
@@ -471,7 +471,7 @@ class SonioxTranscriptionStream implements StreamInstance {
     const isFinal = tokens.some(t => t.is_final);
     const confidence = tokens.reduce((acc, t) => acc + t.confidence, 0) / tokens.length;
     
-    const transcriptionData = {
+    const transcriptionData: TranscriptionData = {
       type: StreamType.TRANSCRIPTION,
       text,
       isFinal,
@@ -524,7 +524,7 @@ class SonioxTranscriptionStream implements StreamInstance {
       
       if (isTargetLanguage && !isOriginalLanguage) {
         // This is translated text
-        const translationData = {
+        const translationData: TranslationData = {
           type: StreamType.TRANSLATION,
           text,
           originalText: '', // We don't have the original text in this token group
@@ -552,7 +552,7 @@ class SonioxTranscriptionStream implements StreamInstance {
         }, `🌐 SONIOX TRANSLATION: ${isFinal ? 'FINAL' : 'interim'} [${detectedLanguage}] "${text}"`);
       } else {
         // This is original text (transcription)
-        const transcriptionData = {
+        const transcriptionData: TranscriptionData = {
           type: StreamType.TRANSCRIPTION,
           text,
           isFinal,
