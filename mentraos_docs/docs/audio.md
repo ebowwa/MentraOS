@@ -11,6 +11,8 @@ Learn how to build **MentraOS Apps** that can:
 2. 🗣️ **Convert text to speech** and play it through the glasses speakers or phone
 3. ⏹️ **Stop audio playback** when needed
 
+Audio routes through your phone by default.  To route auto through the Mentra Live, connect to it through your phone’s settings like any other bluetooth headphones.  This is separate from the pairing process to MentraOS.
+
 ---
 
 ## Prerequisites
