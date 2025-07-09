@@ -317,7 +317,6 @@ class ServerComms {
 
   func sendCoreStatus(status: [String: Any]) {
     do {
-      CoreCommsService.log("ServerComms: Sending core status update: \(status)")
       let event: [String: Any] = [
         "type": "core_status_update",
         "status": ["status": status],

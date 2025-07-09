@@ -1007,12 +1007,18 @@ struct ViewState {
   }
 
   private func toggleUpdatingScreen(_ enabled: Bool) {
+    CoreCommsService.log("AOS: Toggling updating screen: \(enabled)")
     if enabled {
       self.g1Manager?.RN_exit()
       self.isUpdatingScreen = true
     } else {
       self.isUpdatingScreen = false
     }
+  }
+
+  private func requestWifiScan() {
+    CoreCommsService.log("AOS: Requesting wifi scan")
+    self.liveManager?.requestWifiScan()
   }
 
   private func showDashboard() {
@@ -1059,6 +1065,7 @@ struct ViewState {
       case setMetricSystemEnabled = "set_metric_system_enabled"
       case toggleUpdatingScreen = "toggle_updating_screen"
       case showDashboard = "show_dashboard"
+      case requestWifiScan = "request_wifi_scan"
       case unknown
     }
 
@@ -1109,7 +1116,6 @@ struct ViewState {
         case .disconnectWearable:
           disconnectWearable()
           break
-
         case .forgetSmartGlasses:
           forgetSmartGlasses()
           break
@@ -1226,6 +1232,9 @@ struct ViewState {
           }
           toggleUpdatingScreen(enabled)
           break
+        case .requestWifiScan:
+          requestWifiScan()
+          break
         case .unknown:
           CoreCommsService.log("Unknown command type: \(commandString)")
           handleRequestStatus()
@@ -1302,7 +1311,8 @@ struct ViewState {
       "default_wearable": self.defaultWearable as Any,
       "force_core_onboard_mic": self.useOnboardMic,
       "preferred_mic": self.preferredMic,
-      "is_searching": self.isSearching && !self.defaultWearable.isEmpty,
+      // "is_searching": self.isSearching && !self.defaultWearable.isEmpty,
+      "is_searching": self.isSearching,
       // only on if recording from glasses:
       // todo: this isn't robust:
       "is_mic_enabled_for_frontend": self.micEnabled && (self.preferredMic == "glasses") && self.somethingConnected,
@@ -1484,6 +1494,8 @@ struct ViewState {
 
     Task {
       disconnectWearable()
+
+      try? await Task.sleep(nanoseconds: 100 * 1_000_000)// 100ms
       self.isSearching = true
       handleRequestStatus()// update the UI
 

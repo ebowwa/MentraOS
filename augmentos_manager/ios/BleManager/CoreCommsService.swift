@@ -31,6 +31,6 @@ class CoreCommsService: RCTEventEmitter {
 
   override func supportedEvents() -> [String] {
     // add more as needed
-    return ["onReady", "onPending", "onFailure", "onConnectionStateChanged", "CoreMessageIntentEvent", "CoreMessageEvent"]
+    return ["onReady", "onPending", "onFailure", "onConnectionStateChanged", "CoreMessageIntentEvent", "CoreMessageEvent", "WIFI_SCAN_RESULTS"]
   }
 }

@@ -199,6 +199,7 @@ enum GlassesError: Error {
   func forgetGlasses() {
     leftGlassUUID = nil
     rightGlassUUID = nil
+    DEVICE_SEARCH_ID = "NOT_SET"
     
     // Stop the heartbeat timer
     heartbeatTimer?.invalidate()

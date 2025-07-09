@@ -39,7 +39,7 @@ RCT_EXPORT_MODULE(AOSModule);
 
 // Supported events - combined list from both classes
 - (NSArray<NSString *> *)supportedEvents {
-  return @[@"onReady", @"onPending", @"onFailure", @"onConnectionStateChanged", @"CoreMessageIntentEvent", @"CoreMessageEvent"];
+  return @[@"onReady", @"onPending", @"onFailure", @"onConnectionStateChanged", @"CoreMessageIntentEvent", @"CoreMessageEvent", @"WIFI_SCAN_RESULTS"];
 }
 
 // Method to emit events from other parts of the code

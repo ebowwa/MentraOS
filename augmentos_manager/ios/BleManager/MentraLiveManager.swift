@@ -450,37 +450,39 @@ typealias JSONObject = [String: Any]
   
   private var discoveredPeripherals = [String: CBPeripheral]() // name -> peripheral
   
-  @objc func findCompatibleDevices() {
+  func findCompatibleDevices() {
     CoreCommsService.log("Finding compatible Mentra Live glasses")
     
-    if centralManager == nil {
-      centralManager = CBCentralManager(delegate: self, queue: bluetoothQueue, options: ["CBCentralManagerOptionShowPowerAlertKey": 0])
-      // wait for the central manager to be fully initialized before we start scanning:
-      try? await Task.sleep(nanoseconds: 100 * 1_000_000)// 100ms
+    Task {
+      if centralManager == nil {
+        centralManager = CBCentralManager(delegate: self, queue: bluetoothQueue, options: ["CBCentralManagerOptionShowPowerAlertKey": 0])
+        // wait for the central manager to be fully initialized before we start scanning:
+        try? await Task.sleep(nanoseconds: 100 * 1_000_000)// 100ms
+      }
+      
+      // clear the saved device name:
+      UserDefaults.standard.set("", forKey: PREFS_DEVICE_NAME)
+      
+      startScan()
     }
-    
-    // clear the saved device name:
-    UserDefaults.standard.set("", forKey: PREFS_DEVICE_NAME)
-    
-    startScan()
   }
   
-  @objc func connectById(_ deviceName: String) -> Bool {
-    CoreCommsService.log("RN_connectToGlasses: \(deviceName)")
-    
-    // Save the device name for future reconnection
-    UserDefaults.standard.set(deviceName, forKey: PREFS_DEVICE_NAME)
-    
-    // Start scanning to find this specific device
-    if centralManager == nil {
-      centralManager = CBCentralManager(delegate: self, queue: bluetoothQueue, options: ["CBCentralManagerOptionShowPowerAlertKey": 0])
-      // wait for the central manager to be fully initialized before we start scanning:
-      try? await Task.sleep(nanoseconds: 100 * 1_000_000)// 100ms
+  func connectById(_ deviceName: String) -> Void {
+    CoreCommsService.log("connectById: \(deviceName)")
+    Task {
+      // Save the device name for future reconnection
+      UserDefaults.standard.set(deviceName, forKey: PREFS_DEVICE_NAME)
+      
+      // Start scanning to find this specific device
+      if centralManager == nil {
+        centralManager = CBCentralManager(delegate: self, queue: bluetoothQueue, options: ["CBCentralManagerOptionShowPowerAlertKey": 0])
+        // wait for the central manager to be fully initialized before we start scanning:
+        try? await Task.sleep(nanoseconds: 100 * 1_000_000)// 100ms
+      }
+      
+      // Will connect when found during scan
+      startScan()
     }
-    
-    // Will connect when found during scan
-    startScan()
-    return true
   }
   
   @objc func RN_disconnect() {
@@ -710,28 +712,7 @@ typealias JSONObject = [String: Any]
   }
   
   private func handleReconnection() {
-    guard reconnectAttempts < MAX_RECONNECT_ATTEMPTS else {
-      CoreCommsService.log("Maximum reconnection attempts reached")
-      reconnectAttempts = 0
-      connectionState = .disconnected
-      return
-    }
-    
-    let delay = min(BASE_RECONNECT_DELAY_MS * UInt64(1 << reconnectAttempts), MAX_RECONNECT_DELAY_MS)
-    reconnectAttempts += 1
-    
-    CoreCommsService.log("Scheduling reconnection attempt \(reconnectAttempts) in \(delay / 1_000_000_000)s")
-    
-    Task {
-      try? await Task.sleep(nanoseconds: delay)
-      
-      guard !isKilled && connectionState == .disconnected else { return }
-      
-      if let savedDeviceName = UserDefaults.standard.string(forKey: PREFS_DEVICE_NAME) {
-        CoreCommsService.log("Reconnection attempt \(reconnectAttempts) - looking for device: \(savedDeviceName)")
-        startScan()
-      }
-    }
+    // TODO: implement reconnection
   }
   
   // MARK: - Data Processing
@@ -910,6 +891,14 @@ typealias JSONObject = [String: Any]
     //   CoreCommsService.log("Unknown K900 command: \(command)")
     //   jsonObservable?(json)
     // }
+  }
+
+  // commands to send to the glasses:
+
+  public func requestWifiScan() {
+    CoreCommsService.log("🔄 Requesting WiFi scan from glasses")
+    let json: [String: Any] = ["type": "request_wifi_scan"]
+    sendJson(json)
   }
   
   // MARK: - Message Handlers
@@ -1133,14 +1122,6 @@ typealias JSONObject = [String: Any]
       ]
       
       self.sendJson(json)
-      
-      // // request battery status:
-      // requestBatteryStatus()
-      // // request wifi status:
-      // requestWifiStatus()
-      // // request version info:
-      // requestVersionInfo()
-      // // send core token to ASG client:
     }
     
     readinessCheckDispatchTimer!.resume()
@@ -1267,6 +1248,10 @@ typealias JSONObject = [String: Any]
       if let jsonString = String(data: jsonData, encoding: .utf8) {
         if eventName == "CoreMessageEvent" {
           CoreCommsService.emitter.sendEvent(withName: eventName, body: jsonString)
+          return
+        }
+        if eventName == "GlassesWifiScanResults" {
+          CoreCommsService.emitter.sendEvent(withName: "CoreMessageEvent", body: jsonString)
           return
         }
         CoreCommsService.log("Would emit event: \(eventName) with body: \(jsonString)")
