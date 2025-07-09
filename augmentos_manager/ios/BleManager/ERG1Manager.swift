@@ -195,6 +195,25 @@ enum GlassesError: Error {
     super.init()
     startHeartbeatTimer()
   }
+
+  func forgetGlasses() {
+    leftGlassUUID = nil
+    rightGlassUUID = nil
+    
+    // Stop the heartbeat timer
+    heartbeatTimer?.invalidate()
+    heartbeatTimer = nil
+    
+    // Stop the reconnection timer if active
+    stopReconnectionTimer()
+    
+    // Clean up central manager delegate
+    centralManager?.delegate = nil
+    
+    // Clean up peripheral delegates
+    leftPeripheral?.delegate = nil
+    rightPeripheral?.delegate = nil
+  }
   
   deinit {
       // Stop the heartbeat timer
@@ -210,6 +229,9 @@ enum GlassesError: Error {
       // Clean up peripheral delegates
       leftPeripheral?.delegate = nil
       rightPeripheral?.delegate = nil
+
+      // leftGlassUUID = nil
+      // rightGlassUUID = nil
       
       print("ERG1Manager deinitialized")
   }
@@ -591,7 +613,7 @@ enum GlassesError: Error {
       let lastChunk = chunks.last!
       await sendCommandToSide(lastChunk, side: side)
       
-      result = waitForSemaphore(semaphore: semaphore, timeout: 0.3)
+      result = waitForSemaphore(semaphore: semaphore, timeout: (0.3 + (Double(attempts) * 0.1)))
       
       attempts += 1
       if !result && (attempts >= maxAttempts) {

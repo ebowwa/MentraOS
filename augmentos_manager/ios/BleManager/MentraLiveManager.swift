@@ -612,29 +612,31 @@ typealias JSONObject = [String: Any]
   }
   
   private func processSendQueue(_ data: Data) async {
-    CoreCommsService.log("Processing send queue")
     // guard connectionState == .connected,
     //       let peripheral = connectedPeripheral,
     //       let txChar = txCharacteristic else {
     //   return
     // }
     
-     guard let peripheral = connectedPeripheral,
-           let txChar = txCharacteristic else {
-       return
-     }
+    guard let peripheral = connectedPeripheral,
+          let txChar = txCharacteristic else {
+      return
+    }
     
-     // Enforce rate limiting
-     let currentTime = Date().timeIntervalSince1970 * 1000
-     let timeSinceLastSend = currentTime - lastSendTimeMs
+    // Enforce rate limiting
+    let currentTime = Date().timeIntervalSince1970 * 1000
+    let timeSinceLastSend = currentTime - lastSendTimeMs
     
-     if timeSinceLastSend < Double(MIN_SEND_DELAY_MS / 1_000_000) {
-       let remainingDelay = Double(MIN_SEND_DELAY_MS / 1_000_000) - timeSinceLastSend
-       try? await Task.sleep(nanoseconds: UInt64(remainingDelay * 1_000_000))
-     }
-    
-    // lastSendTimeMs = Date().timeIntervalSince1970 * 1000
+    // if timeSinceLastSend < Double(MIN_SEND_DELAY_MS / 1_000_000) {
+    //   let remainingDelay = Double(MIN_SEND_DELAY_MS / 1_000_000) - timeSinceLastSend
+    //   try? await Task.sleep(nanoseconds: UInt64(remainingDelay * 1_000_000))
+    // }
 
+    // 1 second delay
+    try? await Task.sleep(nanoseconds: UInt64(1_000_000_000))
+    
+    lastSendTimeMs = Date().timeIntervalSince1970 * 1000
+    
     CoreCommsService.log("Sending data: \(data)")
     
     // Send the data
@@ -667,13 +669,13 @@ typealias JSONObject = [String: Any]
       emitDiscoveredDevice(peripheral.name!)
     }
     
-//    // Set scan timeout
-//    DispatchQueue.main.asyncAfter(deadline: .now() + 60.0) { [weak self] in
-//      if self?.isScanning == true {
-//        CoreCommsService.log("Scan timeout reached - stopping BLE scan")
-//        self?.stopScan()
-//      }
-//    }
+    //    // Set scan timeout
+    //    DispatchQueue.main.asyncAfter(deadline: .now() + 60.0) { [weak self] in
+    //      if self?.isScanning == true {
+    //        CoreCommsService.log("Scan timeout reached - stopping BLE scan")
+    //        self?.stopScan()
+    //      }
+    //    }
   }
   
   private func stopScan() {
@@ -826,7 +828,7 @@ typealias JSONObject = [String: Any]
   }
   
   private func processJsonObject(_ json: [String: Any]) {
-
+    
     
     // Check for K900 command format
     if let command = json["C"] as? String {
@@ -883,23 +885,27 @@ typealias JSONObject = [String: Any]
     
     CoreCommsService.log("Processing K900 command: \(command)")
     
-    switch command {
-    case "sr_batv":
-      if let body = json["B"] as? [String: Any],
-         let voltage = body["vt"] as? Int,
-         let percentage = body["pt"] as? Int {
-        
-        let voltageVolts = Double(voltage) / 1000.0
-        let isCharging = voltage > 4000
-        
-        CoreCommsService.log("🔋 K900 Battery Status - Voltage: \(voltageVolts)V, Level: \(percentage)%")
-        updateBatteryStatus(level: percentage, charging: isCharging)
-      }
-      
-    default:
-      CoreCommsService.log("Unknown K900 command: \(command)")
-      jsonObservable?(json)
-    }
+    // convert command string (which is a json string) to a json object:
+    let commandJson = try? JSONSerialization.jsonObject(with: command.data(using: .utf8)!) as? [String: Any]
+    processJsonObject(commandJson ?? [:])
+    
+    // switch command {
+    // case "sr_batv":
+    //   if let body = json["B"] as? [String: Any],
+    //      let voltage = body["vt"] as? Int,
+    //      let percentage = body["pt"] as? Int {
+    
+    //     let voltageVolts = Double(voltage) / 1000.0
+    //     let isCharging = voltage > 4000
+    
+    //     CoreCommsService.log("🔋 K900 Battery Status - Voltage: \(voltageVolts)V, Level: \(percentage)%")
+    //     updateBatteryStatus(level: percentage, charging: isCharging)
+    //   }
+    
+    // default:
+    //   CoreCommsService.log("Unknown K900 command: \(command)")
+    //   jsonObservable?(json)
+    // }
   }
   
   // MARK: - Message Handlers
@@ -992,19 +998,7 @@ typealias JSONObject = [String: Any]
   }
   
   private func packCommand(_ jsonString: String) -> Data {
-    // Determine if this is a K900 device based on peripheral name
-    let isK900Device = connectedPeripheral?.name?.hasPrefix("XyBLE_") == true ||
-    connectedPeripheral?.name?.hasPrefix("MENTRA_LIVE") == true
-    
-    if isK900Device {
-      // Use K900 protocol with little-endian for phone-to-device
-      CoreCommsService.log("📦 Using K900 protocol for device: \(connectedPeripheral?.name ?? "unknown")")
-      return packJsonToK900(jsonString) ?? Data()
-    } else {
-      // Use standard protocol with big-endian
-      CoreCommsService.log("📦 Using standard protocol for device: \(connectedPeripheral?.name ?? "unknown")")
-      return packJsonCommand(jsonString) ?? Data()
-    }
+    return packJsonToK900(jsonString) ?? Data()
   }
   
   // MARK: - Status Requests
@@ -1110,9 +1104,9 @@ typealias JSONObject = [String: Any]
     }
   }
   
-private var readinessCheckDispatchTimer: DispatchSourceTimer?
-
-private func startReadinessCheckLoop() {
+  private var readinessCheckDispatchTimer: DispatchSourceTimer?
+  
+  private func startReadinessCheckLoop() {
     stopReadinessCheckLoop()
     
     readinessCheckCounter = 0
@@ -1120,32 +1114,39 @@ private func startReadinessCheckLoop() {
     
     CoreCommsService.log("🔄 Starting glasses SOC readiness check loop")
     
-    let timer = DispatchSource.makeTimerSource(queue: bluetoothQueue)
-    timer.schedule(deadline: .now(), repeating: READINESS_CHECK_INTERVAL_MS)
+    readinessCheckDispatchTimer = DispatchSource.makeTimerSource(queue: bluetoothQueue)
+    readinessCheckDispatchTimer!.schedule(deadline: .now(), repeating: READINESS_CHECK_INTERVAL_MS)
     
-    timer.setEventHandler { [weak self] in
-        guard let self = self else { return }
-        
-        self.readinessCheckCounter += 1
-        CoreCommsService.log("🔄 Readiness check #\(self.readinessCheckCounter): waiting for glasses SOC to boot")
-        
-        let json: [String: Any] = [
-            "type": "phone_ready",
-            "timestamp": Int64(Date().timeIntervalSince1970 * 1000)
-        ]
-        
-        self.sendJson(json)
+    readinessCheckDispatchTimer!.setEventHandler { [weak self] in
+      guard let self = self else { return }
+      
+      self.readinessCheckCounter += 1
+      CoreCommsService.log("🔄 Readiness check #\(self.readinessCheckCounter): waiting for glasses SOC to boot")
+      
+      let json: [String: Any] = [
+        "type": "phone_ready",
+        "timestamp": Int64(Date().timeIntervalSince1970 * 1000)
+      ]
+      
+      self.sendJson(json)
+      
+      // // request battery status:
+      // requestBatteryStatus()
+      // // request wifi status:
+      // requestWifiStatus()
+      // // request version info:
+      // requestVersionInfo()
+      // // send core token to ASG client:
     }
     
-    timer.resume()
-    readinessCheckDispatchTimer = timer
-}
-
-private func stopReadinessCheckLoop() {
+    readinessCheckDispatchTimer!.resume()
+  }
+  
+  private func stopReadinessCheckLoop() {
     readinessCheckDispatchTimer?.cancel()
     readinessCheckDispatchTimer = nil
     CoreCommsService.log("🔄 Stopped glasses SOC readiness check loop")
-}
+  }
   
   private func startConnectionTimeout() {
     connectionTimeoutTimer?.invalidate()
