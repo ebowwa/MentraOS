@@ -9,10 +9,16 @@ This guide covers how to stream video from smart glasses using MentraOS. We offe
 Managed streaming handles all the infrastructure for you - no RTMP servers needed!
 
 ```typescript
-// Start streaming in just 1 line!
+// Start streaming
 const result = await session.camera.startManagedStream();
 
-console.log('Share this URL with viewers:', result.hlsUrl);
+// IMPORTANT: URLs are returned immediately but may not be ready yet!
+// Listen for status updates to know when stream is actually live
+session.camera.onManagedStreamStatus((status) => {
+  if (status.status === 'active') {
+    console.log('Stream is now live! Share this URL:', status.hlsUrl);
+  }
+});
 
 // Stop when done
 await session.camera.stopManagedStream();
@@ -41,7 +47,8 @@ await session.camera.stopManagedStream();
 
 **Cons:**
 - ❌ Requires internet connection
-- ❌ Small processing delay (typically < 2 seconds)
+- ❌ URLs aren't immediately usable (wait for 'active' status)
+- ❌ Small processing delay (typically 2-5 seconds)
 - ❌ Less control over encoding parameters
 
 ### 🔧 Unmanaged Streaming
@@ -87,6 +94,30 @@ await session.camera.stopManagedStream();
 | **Camera Access** | 🤝 Shared | 🔒 Exclusive |
 
 ## Important Nuances
+
+### ⏳ Managed Streaming: Asynchronous URL Availability
+
+With managed streaming, the URLs returned by `startManagedStream()` are **not immediately usable**. Here's why:
+
+1. **Initial Response**: When you call `startManagedStream()`, you get URLs immediately
+2. **Status: 'initializing'**: Stream setup begins, but URLs aren't functional yet
+3. **Processing Time**: Cloudflare needs 2-5 seconds to process the incoming RTMP stream
+4. **Status: 'active'**: Stream is live and URLs are now functional
+5. **Ready to Share**: Only share URLs with viewers after status is `'active'`
+
+```typescript
+// ❌ DON'T DO THIS - URLs might not work yet!
+const result = await session.camera.startManagedStream();
+shareUrlWithViewers(result.hlsUrl); // Too early!
+
+// ✅ DO THIS - Wait for active status
+const result = await session.camera.startManagedStream();
+session.camera.onManagedStreamStatus((status) => {
+  if (status.status === 'active') {
+    shareUrlWithViewers(status.hlsUrl); // Now it works!
+  }
+});
+```
 
 ### 🤝 Managed Streaming: Collaborative by Design
 
@@ -160,22 +191,26 @@ await session.connect('session-123');
 // Subscribe to stream status updates
 session.subscribe(StreamType.MANAGED_STREAM_STATUS);
 
+// IMPORTANT: Set up status listener BEFORE starting stream
+session.camera.onManagedStreamStatus((status) => {
+  console.log('Stream status:', status.status);
+  
+  if (status.status === 'active') {
+    // NOW the URLs are ready to share!
+    console.log('🟢 Stream is live!');
+    console.log('Share these URLs with viewers:');
+    console.log('HLS URL:', status.hlsUrl);
+    console.log('DASH URL:', status.dashUrl);
+  }
+});
+
 // Start managed streaming
 try {
   const result = await session.camera.startManagedStream();
   
-  console.log('🎥 Stream started!');
-  console.log('HLS URL:', result.hlsUrl);      // For most viewers
-  console.log('DASH URL:', result.dashUrl);    // Alternative format
-  
-  // Listen for status updates
-  session.on(StreamType.MANAGED_STREAM_STATUS, (status) => {
-    console.log('Stream status:', status.status);
-    
-    if (status.status === 'error') {
-      console.error('Stream error:', status.message);
-    }
-  });
+  console.log('🎥 Stream request sent!');
+  console.log('⏳ Waiting for stream to go live...');
+  // NOTE: URLs are returned but may not work until status is 'active'
   
 } catch (error) {
   console.error('Failed to start stream:', error);
@@ -203,6 +238,7 @@ session.on(StreamType.MANAGED_STREAM_STATUS, (status) => {
   switch (status.status) {
     case 'initializing':
       console.log('📡 Setting up stream...');
+      // URLs exist but won't work until 'active' status
       break;
       
     case 'active':
@@ -210,6 +246,7 @@ session.on(StreamType.MANAGED_STREAM_STATUS, (status) => {
       console.log('Share these URLs:');
       console.log('- HLS:', status.hlsUrl);
       console.log('- Low latency:', status.webrtcUrl);
+      // NOW viewers can connect to these URLs
       break;
       
     case 'stopping':
@@ -229,7 +266,9 @@ session.on(StreamType.MANAGED_STREAM_STATUS, (status) => {
 
 ### Sharing with Viewers
 
-Once your stream is active, share the provided URLs:
+**⚠️ IMPORTANT**: Wait for the stream status to be `'active'` before sharing URLs with viewers! The URLs are returned immediately but won't work until Cloudflare has processed the incoming stream.
+
+Once your stream status is `'active'`, share the provided URLs:
 
 - **HLS URL** (`hlsUrl`) - Best compatibility, works everywhere
 - **DASH URL** (`dashUrl`) - Alternative adaptive format
@@ -487,9 +526,15 @@ try {
 ### Quick Examples
 
 ```typescript
-// Managed Streaming - Zero Config
+// Managed Streaming - Zero Config (but async URL availability!)
 const result = await session.camera.startManagedStream();
-console.log('Share:', result.hlsUrl);
+
+// Wait for stream to be active before sharing URLs
+session.camera.onManagedStreamStatus((status) => {
+  if (status.status === 'active') {
+    console.log('Share:', status.hlsUrl);
+  }
+});
 
 // Unmanaged Streaming - Your Server
 await session.camera.startStream({
