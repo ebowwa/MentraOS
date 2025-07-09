@@ -105,8 +105,6 @@ struct ViewState {
 
   @objc public func setup() {
 
-//    self.g1Manager = ERG1Manager()
-//    self.liveManager = MentraLiveManager()
     self.micManager = OnboardMicrophoneManager()
     self.serverComms.locationManager.setup()
     self.serverComms.mediaManager.setup()
@@ -133,9 +131,10 @@ struct ViewState {
   }
 
   func initManager(_ wearable: String) {
-    if (wearable.contains("G1")) {
+    CoreCommsService.log("Initializing manager for wearable: \(wearable)")
+    if (wearable.contains("G1") && self.g1Manager == nil) {
       self.g1Manager = ERG1Manager()
-    } else if (wearable.contains("Live")) {
+    } else if (wearable.contains("Live") && self.liveManager == nil) {
       self.liveManager = MentraLiveManager()
     }
     initManagerCallbacks()
@@ -192,13 +191,11 @@ struct ViewState {
       g1Manager!.onSerialNumberDiscovered = { [weak self] in
         self?.handleRequestStatus()
       }
-    }
-
 //    g1Manager!.$caseBatteryLevel.sink { [weak self] (value: Bool) in
 //        guard let self = self else { return }
 //      handleRequestStatus()
 //    }.store(in: &cancellables)
-
+    }
 
     if liveManager != nil {
       liveManager!.onConnectionStateChanged = { [weak self] in
@@ -905,11 +902,11 @@ struct ViewState {
     } else if (modelName.contains("G1")) {
       self.defaultWearable = "Even Realities G1"
       initManager(self.defaultWearable)
-      self.g1Manager?.RN_startScan()
+      self.g1Manager?.findCompatibleDevices()
     } else if (modelName.contains("Live")) {
       self.defaultWearable = "Mentra Live"
       initManager(self.defaultWearable)
-      self.liveManager?.RN_findCompatibleDevices()
+      self.liveManager?.findCompatibleDevices()
     }
   }
 
@@ -1498,7 +1495,7 @@ struct ViewState {
       if (self.defaultWearable.contains("Live")) {
         initManager(self.defaultWearable)
         if (self.deviceName != "") {
-          self.liveManager?.RN_connectToGlasses(self.deviceName)
+          self.liveManager?.connectById(self.deviceName)
         } else {
           CoreCommsService.log("this shouldn't happen (we don't have a deviceName saved, connecting will fail if we aren't already paired)")
           self.defaultWearable = ""
@@ -1508,7 +1505,7 @@ struct ViewState {
         initManager(self.defaultWearable)
         if self.deviceName != "" {
           CoreCommsService.log("pairing by id: \(self.deviceName)")
-          self.g1Manager?.RN_pairById(self.deviceName)
+          self.g1Manager?.connectById(self.deviceName)
         } else {
           CoreCommsService.log("this shouldn't happen (we don't have a deviceName saved, connecting will fail if we aren't already paired)")
           self.defaultWearable = ""

@@ -450,7 +450,7 @@ typealias JSONObject = [String: Any]
   
   private var discoveredPeripherals = [String: CBPeripheral]() // name -> peripheral
   
-  @objc func RN_findCompatibleDevices() {
+  @objc func findCompatibleDevices() {
     CoreCommsService.log("Finding compatible Mentra Live glasses")
     
     if centralManager == nil {
@@ -468,7 +468,7 @@ typealias JSONObject = [String: Any]
     startScan()
   }
   
-  @objc func RN_connectToGlasses(_ deviceName: String) -> Bool {
+  @objc func connectById(_ deviceName: String) -> Bool {
     CoreCommsService.log("RN_connectToGlasses: \(deviceName)")
     
     // Save the device name for future reconnection
