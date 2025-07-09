@@ -79,7 +79,7 @@ class ServerComms {
       print("Periodic datetime transmission")
       guard let self = self else { return }
       let isoDatetime = ServerComms.getCurrentIsoDatetime()
-      self.sendUserDatetimeToBackend(userId: self.userid, isoDatetime: isoDatetime)
+      self.sendUserDatetimeToBackend(isoDatetime: isoDatetime)
     }
     
     // send location updates every 15 minutes:
@@ -558,14 +558,14 @@ class ServerComms {
   
   // MARK: - Helper methods
 
-  func sendUserDatetimeToBackend(userId: String, isoDatetime: String) {
+  func sendUserDatetimeToBackend(isoDatetime: String) {
     guard let url = URL(string: getServerUrlForRest() + "/api/user-data/set-datetime") else {
       print("ServerComms: Invalid URL for datetime transmission")
       return
     }
     
     let body: [String: Any] = [
-      "userId": userId,
+      "coreToken": coreToken,
       "datetime": isoDatetime
     ]
     

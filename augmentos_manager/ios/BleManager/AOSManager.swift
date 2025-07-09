@@ -204,7 +204,7 @@ struct ViewState {
     handleRequestStatus()
     
     let isoDatetime = ServerComms.getCurrentIsoDatetime()
-    serverComms.sendUserDatetimeToBackend(userId: serverComms.userid, isoDatetime: isoDatetime)
+    serverComms.sendUserDatetimeToBackend(isoDatetime: isoDatetime)
   }
 
   func onAppStateChange(_ apps: [ThirdPartyCloudApp]/*, _ whatToStream: [String]*/) {
