@@ -455,11 +455,8 @@ typealias JSONObject = [String: Any]
     
     if centralManager == nil {
       centralManager = CBCentralManager(delegate: self, queue: bluetoothQueue, options: ["CBCentralManagerOptionShowPowerAlertKey": 0])
-    }
-    
-    guard centralManager!.state == .poweredOn else {
-      CoreCommsService.log("Bluetooth is not powered on")
-      return
+      // wait for the central manager to be fully initialized before we start scanning:
+      try? await Task.sleep(nanoseconds: 100 * 1_000_000)// 100ms
     }
     
     // clear the saved device name:
@@ -477,6 +474,8 @@ typealias JSONObject = [String: Any]
     // Start scanning to find this specific device
     if centralManager == nil {
       centralManager = CBCentralManager(delegate: self, queue: bluetoothQueue, options: ["CBCentralManagerOptionShowPowerAlertKey": 0])
+      // wait for the central manager to be fully initialized before we start scanning:
+      try? await Task.sleep(nanoseconds: 100 * 1_000_000)// 100ms
     }
     
     // Will connect when found during scan
@@ -653,6 +652,11 @@ typealias JSONObject = [String: Any]
   
   private func startScan() {
     // guard !isScanning else { return }
+
+    guard centralManager!.state == .poweredOn else {
+      CoreCommsService.log("Attempting to scan but bluetooth is not powered on.")
+      return
+    }
     
     CoreCommsService.log("Starting BLE scan for Mentra Live glasses")
     isScanning = true
