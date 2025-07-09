@@ -1352,6 +1352,14 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                 }
             }
 
+            // Check for message ID and send ACK if present
+            long messageId = dataToProcess.optLong("mId", -1);
+            if (messageId != -1) {
+                // Send ACK response
+                sendAckResponse(messageId);
+                Log.d(TAG, "📤 Sent ACK for message ID: " + messageId);
+            }
+
             // Process the data (either original or extracted from C field)
             String type = dataToProcess.optString("type", "");
             Log.d(TAG, "Processing JSON message type: " + type);
@@ -2820,5 +2828,30 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         nn.putExtra("enable", bEnable);
         context.sendBroadcast(nn);
         Log.d(TAG, "Sent WiFi " + (bEnable ? "enable" : "disable") + " broadcast");
+    }
+
+    /**
+     * Send an ACK response for a received message
+     * @param messageId The message ID to acknowledge
+     */
+    private void sendAckResponse(long messageId) {
+        if (bluetoothManager != null && bluetoothManager.isConnected()) {
+            try {
+                JSONObject ackResponse = new JSONObject();
+                ackResponse.put("type", "msg_ack");
+                ackResponse.put("mId", messageId);
+                ackResponse.put("timestamp", System.currentTimeMillis());
+
+                // Convert to string and send via BLE
+                String jsonString = ackResponse.toString();
+                Log.d(TAG, "📤 Sending ACK response: " + jsonString);
+                bluetoothManager.sendData(jsonString.getBytes(StandardCharsets.UTF_8));
+
+            } catch (JSONException e) {
+                Log.e(TAG, "Error creating ACK response JSON", e);
+            }
+        } else {
+            Log.w(TAG, "Cannot send ACK response - not connected to BLE device");
+        }
     }
 }
