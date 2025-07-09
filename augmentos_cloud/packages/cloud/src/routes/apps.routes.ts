@@ -659,6 +659,11 @@ async function startApp(req: Request, res: Response) {
       }
     });
 
+    // Send app started notification to WebSocket
+    if (userSession.websocket) {
+      webSocketService.sendAppStarted(userSession, packageName);
+    }
+
   } catch (error) {
     const totalDuration = Date.now() - startTime;
 
