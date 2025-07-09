@@ -157,8 +157,6 @@ export class AudioManager {
         // Send request to cloud
         this.send(message);
 
-        this.logger.info({ requestId, audioUrl: options.audioUrl, volume: options.volume }, `🔊 Audio play request sent`);
-
         // Set timeout to avoid hanging promises
         const timeoutMs = 60000; // 60 seconds
         if (this.session && this.session.resources) {
