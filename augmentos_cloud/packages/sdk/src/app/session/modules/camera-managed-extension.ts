@@ -11,6 +11,7 @@ import {
   ManagedStreamStatus,
   AppToCloudMessageType,
   CloudToAppMessageType,
+  StreamType,
   isManagedStreamStatus
 } from '../../../types';
 import { VideoConfig, AudioConfig, StreamConfig } from '../../../types/rtmp-stream';
@@ -76,6 +77,7 @@ export class CameraManagedExtension {
   private packageName: string;
   private sessionId: string;
   private logger: Logger;
+  private session?: any;
 
   // Managed streaming state
   private isManagedStreaming: boolean = false;
@@ -93,12 +95,14 @@ export class CameraManagedExtension {
     packageName: string,
     sessionId: string,
     send: (message: any) => void,
-    logger: Logger
+    logger: Logger,
+    session?: any
   ) {
     this.packageName = packageName;
     this.sessionId = sessionId;
     this.send = send;
     this.logger = logger.child({ module: 'CameraManagedExtension' });
+    this.session = session;
   }
 
   /**
@@ -238,15 +242,15 @@ export class CameraManagedExtension {
    * ```
    */
   onManagedStreamStatus(handler: (status: ManagedStreamStatus) => void): () => void {
-    // In a real implementation, this would use an event emitter
-    // For now, we'll store the handler reference
-    const handlerRef = handler;
+    if (!this.session) {
+      this.logger.error('Cannot listen for managed status updates: session reference not available');
+      return () => {};
+    }
+
+   this.session.subscribe(StreamType.MANAGED_STREAM_STATUS);
     
-    // Return cleanup function
-    return () => {
-      // Remove handler
-      this.logger.debug('Managed stream status handler removed');
-    };
+    // Register the handler using the session's event system
+    return this.session.on(StreamType.MANAGED_STREAM_STATUS, handler);
   }
 
   /**
