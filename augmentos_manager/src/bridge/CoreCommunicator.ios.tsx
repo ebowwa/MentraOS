@@ -677,6 +677,12 @@ export class CoreCommunicator extends EventEmitter {
     })
   }
 
+  async requestWifiScan() {
+    return await this.sendData({
+      command: "request_wifi_scan",
+    })
+  }
+
   async startService() {
     // TODO: ios
     // CoreCommsService.startService();

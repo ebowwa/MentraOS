@@ -54,15 +54,15 @@ const AUGMENTOS_AUTH_JWT_SECRET = process.env.AUGMENTOS_AUTH_JWT_SECRET || "";
 // Also the middleware doesn't validate the currentOrgId, only injects it into the request object, maybe it should just be a query param instead of a header?
 const validateSupabaseToken = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   const authHeader = req.headers.authorization;
-  const baseLogger = logger.child({ 
-    service: 'developer.routes', 
+  const baseLogger = logger.child({
+    service: 'developer.routes',
     function: 'validateSupabaseToken',
     endpoint: req.originalUrl,
     method: req.method,
     userAgent: req.headers['user-agent']
   });
 
-  baseLogger.debug({ 
+  baseLogger.debug({
     hasAuthHeader: !!authHeader,
     authHeaderPrefix: authHeader?.substring(0, 20),
     allHeaders: Object.keys(req.headers)
@@ -114,19 +114,19 @@ const validateSupabaseToken = async (req: Request, res: Response, next: NextFunc
       try {
         const orgObjectId = new Types.ObjectId(orgIdHeader);
         (req as DevPortalRequest).currentOrgId = orgObjectId;
-        userLogger.info({ 
+        userLogger.info({
           orgIdFromHeader: orgIdHeader,
           orgObjectId: orgObjectId.toString()
         }, 'Using organization ID from x-org-id header');
       } catch (parseError) {
-        userLogger.error({ 
-          orgIdHeader, 
+        userLogger.error({
+          orgIdHeader,
           parseError: parseError instanceof Error ? parseError.message : String(parseError)
         }, 'Failed to parse organization ID from header');
       }
     } else {
       userLogger.debug('No valid x-org-id header, checking user defaultOrg from database');
-      
+
       const user = await User.findOne({ email: userEmail });
       userLogger.debug({
         userFound: !!user,
@@ -138,7 +138,7 @@ const validateSupabaseToken = async (req: Request, res: Response, next: NextFunc
 
       if (user && user.defaultOrg) {
         (req as DevPortalRequest).currentOrgId = user.defaultOrg;
-        userLogger.info({ 
+        userLogger.info({
           defaultOrgId: user.defaultOrg.toString(),
           totalUserOrgs: user.organizations?.length || 0
         }, 'Using user default organization from database');
@@ -165,7 +165,7 @@ const validateSupabaseToken = async (req: Request, res: Response, next: NextFunc
         endpoint: req.originalUrl,
         method: req.method
       }, '🚨 ORGANIZATION CONTEXT FAILURE - returning 400 error');
-      
+
       res.status(400).json({ error: 'No organization context provided' });
       return;
     }
@@ -178,7 +178,7 @@ const validateSupabaseToken = async (req: Request, res: Response, next: NextFunc
 
     next();
   } catch (error) {
-    baseLogger.error({ 
+    baseLogger.error({
       error: error instanceof Error ? error.message : String(error),
       tokenLength: token?.length,
       errorType: error instanceof Error ? error.constructor.name : typeof error
@@ -260,7 +260,7 @@ const getAuthenticatedUser = async (req: Request, res: Response): Promise<void> 
   } catch (error) {
     const email = (req as DevPortalRequest).developerEmail;
     const userLogger = logger.child({ userId: email, service: 'developer.routes', function: 'getAuthenticatedUser' });
-    userLogger.error({ 
+    userLogger.error({
       error: error instanceof Error ? error.message : String(error),
       errorStack: error instanceof Error ? error.stack : undefined
     }, 'Error fetching user data');
@@ -284,7 +284,7 @@ const getDeveloperApps = async (req: Request, res: Response): Promise<void> => {
     const email = (req as DevPortalRequest).developerEmail;
     const orgId = (req as DevPortalRequest).currentOrgId;
     const userLogger = logger.child({ userId: email, organizationId: orgId?.toString(), service: 'developer.routes', function: 'getDeveloperApps' });
-    userLogger.error({ 
+    userLogger.error({
       error: error instanceof Error ? error.message : String(error),
       errorStack: error instanceof Error ? error.stack : undefined
     }, 'Error fetching developer Apps');
@@ -313,7 +313,7 @@ const getAppByPackageName = async (req: Request, res: Response) => {
     const orgId = (req as DevPortalRequest).currentOrgId;
     const { packageName } = req.params;
     const userLogger = logger.child({ userId: email, organizationId: orgId?.toString(), packageName, service: 'developer.routes', function: 'getAppByPackageName' });
-    userLogger.error({ 
+    userLogger.error({
       error: error instanceof Error ? error.message : String(error),
       errorStack: error instanceof Error ? error.stack : undefined
     }, 'Error fetching App');
@@ -353,8 +353,8 @@ const createApp = async (req: Request, res: Response) => {
     const orgId = (req as DevPortalRequest).currentOrgId;
     const appData = req.body;
     const userLogger = logger.child({ userId: email, organizationId: orgId?.toString(), packageName: appData?.packageName, service: 'developer.routes', function: 'createApp' });
-    
-    userLogger.error({ 
+
+    userLogger.error({
       error: error instanceof Error ? error.message : String(error),
       errorCode: error.code,
       errorStack: error instanceof Error ? error.stack : undefined,
@@ -595,9 +595,9 @@ const moveToOrg = async (req: Request, res: Response) => {
   const sourceOrgId = (req as DevPortalRequest).currentOrgId;
   const { packageName } = req.params;
   const { targetOrgId } = req.body;
-  
-  const userLogger = logger.child({ 
-    userId: email, 
+
+  const userLogger = logger.child({
+    userId: email,
     organizationId: sourceOrgId?.toString(),
     packageName,
     service: 'developer.routes',
@@ -647,7 +647,7 @@ const moveToOrg = async (req: Request, res: Response) => {
     // Return updated app
     return res.json(updatedApp);
   } catch (error: any) {
-    userLogger.error({ 
+    userLogger.error({
       error: error instanceof Error ? error.message : String(error),
       errorStack: error instanceof Error ? error.stack : undefined,
       targetOrgId,
@@ -673,9 +673,9 @@ const moveToOrg = async (req: Request, res: Response) => {
 const uploadImage = async (req: Request, res: Response) => {
   const email = (req as DevPortalRequest).developerEmail;
   const orgId = (req as DevPortalRequest).currentOrgId;
-  
-  const userLogger = logger.child({ 
-    userId: email, 
+
+  const userLogger = logger.child({
+    userId: email,
     organizationId: orgId?.toString(),
     service: 'developer.routes',
     function: 'uploadImage',
@@ -705,7 +705,7 @@ const uploadImage = async (req: Request, res: Response) => {
     const cloudflareApiToken = process.env.CLOUDFLARE_API_TOKEN;
 
     if (!cloudflareAccountId || !cloudflareApiToken) {
-      userLogger.error({ 
+      userLogger.error({
         hasAccountId: !!cloudflareAccountId,
         hasApiToken: !!cloudflareApiToken
       }, 'Cloudflare credentials not configured');
@@ -719,7 +719,7 @@ const uploadImage = async (req: Request, res: Response) => {
         metadata = JSON.parse(req.body.metadata);
         userLogger.debug({ metadata }, 'Parsed upload metadata successfully');
       } catch (e) {
-        userLogger.warn({ 
+        userLogger.warn({
           metadataRaw: req.body.metadata,
           parseError: e instanceof Error ? e.message : String(e)
         }, 'Failed to parse metadata - continuing with empty metadata');
@@ -749,7 +749,7 @@ const uploadImage = async (req: Request, res: Response) => {
     };
 
     formData.append('metadata', JSON.stringify(cfMetadata));
-    
+
     userLogger.debug({
       cloudflareMetadata: cfMetadata,
       formDataKeys: ['file', 'metadata']
@@ -757,8 +757,8 @@ const uploadImage = async (req: Request, res: Response) => {
 
     // Make request to Cloudflare Images API
     const cloudflareUrl = `https://api.cloudflare.com/client/v4/accounts/${cloudflareAccountId}/images/v1`;
-    
-    userLogger.info({ 
+
+    userLogger.info({
       cloudflareUrl: cloudflareUrl.replace(cloudflareAccountId, '[ACCOUNT_ID]'),
       fileSize: req.file.size,
       fileName: req.file.originalname
@@ -779,7 +779,7 @@ const uploadImage = async (req: Request, res: Response) => {
       }, 'Received response from Cloudflare API');
 
       if (!response.data.success) {
-        userLogger.error({ 
+        userLogger.error({
           cloudflareErrors: response.data.errors,
           responseStatus: response.status
         }, 'Cloudflare API returned error response');
@@ -788,10 +788,37 @@ const uploadImage = async (req: Request, res: Response) => {
 
       const imageData = response.data.result;
 
-      // Construct the delivery URL
-      // Cloudflare Images uses the format: https://imagedelivery.net/{account_hash}/{image_id}/{variant_name}
-      // The 'public' variant is typically available by default
-      const deliveryUrl = imageData.variants?.[0] || `https://imagedelivery.net/${cloudflareAccountId}/${imageData.id}/public`;
+      // Get the delivery URL with correct account hash from Cloudflare response
+      // Try to find 'square' variant in the response variants
+      let deliveryUrl: string | undefined;
+
+      if (imageData.variants && Array.isArray(imageData.variants)) {
+        // Look for a square variant in the response
+        const squareVariant = imageData.variants.find((url: string) => url.includes('/square'));
+        if (squareVariant) {
+          deliveryUrl = squareVariant;
+        } else {
+          // Replace the last variant part with 'square'
+          const firstVariant = imageData.variants[0];
+          if (firstVariant && typeof firstVariant === 'string') {
+            deliveryUrl = firstVariant.replace(/\/[^\/]+$/, '/square');
+            userLogger.debug({ originalVariant: firstVariant, squareUrl: deliveryUrl }, 'Replaced variant with square');
+          } else {
+            userLogger.error('No cloudflare variants found');
+          }
+        }
+      } else {
+        userLogger.error({
+          hasVariants: !!imageData.variants,
+          variantsType: typeof imageData.variants,
+          variantsValue: imageData.variants
+        }, 'No variants array found');
+      }
+
+      if (!deliveryUrl) {
+        userLogger.error('No delivery URL found');
+        return res.status(500).json({ error: 'Failed to upload image to Cloudflare' });
+      }
 
       userLogger.info({
         imageId: imageData.id,
@@ -814,7 +841,7 @@ const uploadImage = async (req: Request, res: Response) => {
           userLogger.info({ deletedImageId: replaceImageId }, 'Successfully deleted old image');
         } catch (deleteError) {
           // Log but don't fail the request if delete fails
-          userLogger.warn({ 
+          userLogger.warn({
             replaceImageId,
             deleteError: deleteError instanceof Error ? deleteError.message : String(deleteError),
             deleteStatus: (deleteError as any)?.response?.status
@@ -827,12 +854,12 @@ const uploadImage = async (req: Request, res: Response) => {
         url: deliveryUrl,
         imageId: imageData.id,
       };
-      
+
       userLogger.info(responseData, 'Image upload completed successfully');
       res.json(responseData);
 
     } catch (cfError: any) {
-      userLogger.error({ 
+      userLogger.error({
         cloudflareError: cfError.response?.data || cfError.message,
         status: cfError.response?.status,
         statusText: cfError.response?.statusText,
@@ -845,7 +872,7 @@ const uploadImage = async (req: Request, res: Response) => {
     }
 
   } catch (error) {
-    userLogger.error({ 
+    userLogger.error({
       error: error instanceof Error ? error.message : String(error),
       errorStack: error instanceof Error ? error.stack : undefined,
       errorType: error instanceof Error ? error.constructor.name : typeof error
