@@ -95,6 +95,14 @@ enum GlassesError: Error {
   @Published public var caseOpen = false
   @Published public var caseRemoved = true
   
+  // Serial number and color information
+  @Published public var glassesSerialNumber: String?
+  @Published public var glassesStyle: String?
+  @Published public var glassesColor: String?
+  
+  // Callback for serial number discovery
+  public var onSerialNumberDiscovered: (() -> Void)?
+  
   public var isDisconnecting = false
   private var reconnectionTimer: Timer?
   private var reconnectionAttempts: Int = 0
@@ -204,6 +212,103 @@ enum GlassesError: Error {
       rightPeripheral?.delegate = nil
       
       print("ERG1Manager deinitialized")
+  }
+  
+  // MARK: - Serial Number and Color Detection
+  
+  /// Decodes Even G1 serial number to extract style and color information
+  /// - Parameter serialNumber: The full serial number (e.g., "S110LABD020021")
+  /// - Returns: Tuple containing (style, color) or ("Unknown", "Unknown") if invalid
+  static func decodeEvenG1SerialNumber(_ serialNumber: String) -> (style: String, color: String) {
+    guard serialNumber.count >= 6 else {
+      return ("Unknown", "Unknown")
+    }
+    
+    // Style mapping: 2nd character (index 1)
+    let style: String
+    let styleChar = serialNumber[serialNumber.index(serialNumber.startIndex, offsetBy: 2)]
+    switch styleChar {
+    case "0":
+      style = "Round"
+    case "1":
+      style = "Rectangular"
+    default:
+      style = "Round"
+    }
+    
+    // Color mapping: 5th character (index 4)
+    let color: String
+    let colorChar = serialNumber[serialNumber.index(serialNumber.startIndex, offsetBy: 5)]
+    switch colorChar {
+    case "A":
+      color = "Grey"
+    case "B":
+      color = "Brown"
+    case "C":
+      color = "Green"
+    default:
+      color = "Grey"
+    }
+    
+    return (style, color)
+  }
+  
+  /// Decodes serial number from manufacturer data bytes
+  /// - Parameter manufacturerData: The manufacturer data bytes
+  /// - Returns: Decoded serial number string or nil if not found
+  private func decodeSerialFromManufacturerData(_ manufacturerData: Data) -> String? {
+    guard manufacturerData.count >= 10 else {
+      return nil
+    }
+    
+    // Convert bytes to ASCII string
+    var serialBuilder = ""
+    for byte in manufacturerData {
+      if byte == 0x00 {
+        // Stop at null terminator
+        break
+      }
+      if byte >= 0x20 && byte <= 0x7E {
+        // Only include printable ASCII characters
+        serialBuilder.append(Character(UnicodeScalar(byte)))
+      }
+    }
+    
+    let decodedString = serialBuilder.trimmingCharacters(in: .whitespacesAndNewlines)
+    
+    // Check if it looks like a valid Even G1 serial number
+    if decodedString.count >= 12 && 
+       (decodedString.hasPrefix("S1") || decodedString.hasPrefix("100") || decodedString.hasPrefix("110")) {
+      return decodedString
+    }
+    
+    return nil
+  }
+  
+  /// Emits serial number information to React Native
+  private func emitSerialNumberInfo(serialNumber: String, style: String, color: String) {
+    let eventBody: [String: Any] = [
+      "type": "glasses_serial_number",
+      "serialNumber": serialNumber,
+      "style": style,
+      "color": color
+    ]
+    
+    // Convert to JSON string for CoreMessageEvent
+    do {
+      let jsonData = try JSONSerialization.data(withJSONObject: eventBody, options: [])
+      if let jsonString = String(data: jsonData, encoding: .utf8) {
+        CoreCommsService.emitter.sendEvent(withName: "CoreMessageEvent", body: jsonString)
+        print("📱 Emitted serial number info: \(serialNumber), Style: \(style), Color: \(color)")
+        
+        // Trigger status update to include serial number in status JSON
+        DispatchQueue.main.async {
+          self.onSerialNumberDiscovered?()
+        }
+      }
+    } catch {
+      print("Error creating serial number JSON: \(error)")
+    }
   }
   
   // @@@ REACT NATIVE FUNCTIONS @@@
@@ -372,11 +477,20 @@ enum GlassesError: Error {
     print("Stopped scanning for devices")
   }
   
+  @objc func RN_getSerialNumberInfo() -> [String: Any] {
+    return [
+      "serialNumber": glassesSerialNumber ?? "",
+      "style": glassesStyle ?? "",
+      "color": glassesColor ?? ""
+    ]
+  }
+  
   @objc func disconnect() {
     self.isDisconnecting = true
     leftGlassUUID = nil
     rightGlassUUID = nil
     stopReconnectionTimer()
+    
     if let left = leftPeripheral {
       centralManager!.cancelPeripheralConnection(left)
     }
@@ -1180,6 +1294,35 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
     guard name.contains("Even G1") else { return }
     
     print("found peripheral: \(name) - SEARCH_ID: \(DEVICE_SEARCH_ID)")
+    
+    // Only process serial number for devices that match our search ID
+    if name.contains(DEVICE_SEARCH_ID) {
+      // Extract manufacturer data to decode serial number
+      if let manufacturerData = advertisementData[CBAdvertisementDataManufacturerDataKey] as? Data {
+        print("📱 Found manufacturer data: \(manufacturerData.hexEncodedString())")
+        
+        // Try to decode serial number from manufacturer data
+        if let decodedSerial = decodeSerialFromManufacturerData(manufacturerData) {
+          print("📱 Decoded serial number: \(decodedSerial)")
+          
+          // Decode style and color from serial number
+          let (style, color) = ERG1Manager.decodeEvenG1SerialNumber(decodedSerial)
+          print("📱 Style: \(style), Color: \(color)")
+          
+          // Store the information
+          glassesSerialNumber = decodedSerial
+          glassesStyle = style
+          glassesColor = color
+          
+          // Emit the serial number information
+          emitSerialNumberInfo(serialNumber: decodedSerial, style: style, color: color)
+        } else {
+          print("📱 Could not decode serial number from manufacturer data")
+        }
+      } else {
+        print("📱 No manufacturer data found in advertisement")
+      }
+    }
     
     if name.contains("_L_") && name.contains(DEVICE_SEARCH_ID) {
       print("Found left arm: \(name)")

@@ -836,6 +836,11 @@ async function stopApp(req: Request, res: Response) {
       broadcastDuration
     }, 'Route timing breakdown');
 
+    // Send app stopped notification to WebSocket
+    if (userSession.websocket) {
+      webSocketService.sendAppStopped(userSession, packageName);
+    }
+
     res.json({
       success: true,
       data: {

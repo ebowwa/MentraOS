@@ -169,6 +169,11 @@ struct ViewState {
           guard let self = self else { return }
         handleRequestStatus()
       }.store(in: &cancellables)
+      
+      // Set up serial number discovery callback
+      g1Manager!.onSerialNumberDiscovered = { [weak self] in
+        self?.handleRequestStatus()
+      }
     }
 
 //    g1Manager!.$caseBatteryLevel.sink { [weak self] (value: Bool) in
@@ -844,6 +849,10 @@ struct ViewState {
     } else if (modelName.contains("G1")) {
       if (g1Manager == nil) {
         g1Manager = ERG1Manager()
+        // Set up serial number discovery callback
+        g1Manager?.onSerialNumberDiscovered = { [weak self] in
+          self?.handleRequestStatus()
+        }
         setup2()
       }
       self.defaultWearable = "Even Realities G1"
@@ -1225,6 +1234,13 @@ struct ViewState {
       ]
       self.somethingConnected = true
     }
+    
+    // Always include serial number information when available, regardless of connection status
+    if let serialNumber = self.g1Manager?.glassesSerialNumber, !serialNumber.isEmpty {
+      connectedGlasses["glasses_serial_number"] = serialNumber
+      connectedGlasses["glasses_style"] = self.g1Manager?.glassesStyle ?? ""
+      connectedGlasses["glasses_color"] = self.g1Manager?.glassesColor ?? ""
+    }
 
     glassesSettings = [
         "brightness": self.brightness,
@@ -1446,6 +1462,10 @@ struct ViewState {
       } else if (self.defaultWearable.contains("G1")) {
         if (self.g1Manager == nil) {
           self.g1Manager = ERG1Manager()
+          // Set up serial number discovery callback
+          self.g1Manager?.onSerialNumberDiscovered = { [weak self] in
+            self?.handleRequestStatus()
+          }
           setup2()
         }
         if (deviceName != "") {
