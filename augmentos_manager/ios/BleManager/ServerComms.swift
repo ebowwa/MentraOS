@@ -17,6 +17,8 @@ protocol ServerCommsCallback {
   func onDisplayEvent(_ event: [String: Any])
   func onRequestSingle(_ dataType: String)
   func onStatusUpdate(_ status: [String: Any])
+  func onAppStarted(_ packageName: String)
+  func onAppStopped(_ packageName: String)
 }
 
 class ServerComms {
@@ -478,6 +480,18 @@ class ServerComms {
           let accuracy = payload["accuracy"] as? String,
           let correlationId = payload["correlationId"] as? String {
         self.locationManager.requestSingleUpdate(accuracy: accuracy, correlationId: correlationId)
+      }
+      
+    case "app_started":
+      if let packageName = msg["packageName"] as? String, let callback = serverCommsCallback {
+        print("ServerComms: Received app_started message for package: \(packageName)")
+        callback.onAppStarted(packageName)
+      }
+      
+    case "app_stopped":
+      if let packageName = msg["packageName"] as? String, let callback = serverCommsCallback {
+        print("ServerComms: Received app_stopped message for package: \(packageName)")
+        callback.onAppStopped(packageName)
       }
       
     default:

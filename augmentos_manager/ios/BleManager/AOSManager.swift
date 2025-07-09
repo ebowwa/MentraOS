@@ -441,6 +441,56 @@ struct ViewState {
     }
   }
 
+  // MARK: - App Started/Stopped Handling
+
+  func onAppStarted(_ packageName: String) {
+    print("App started: \(packageName) - checking for auto-reconnection")
+    
+    // Check if glasses are disconnected but there is a saved pair, initiate connection
+    if !self.somethingConnected && !self.defaultWearable.isEmpty {
+      print("Found preferred wearable: \(self.defaultWearable)")
+      
+      if !self.defaultWearable.isEmpty {
+        print("Auto-connecting to glasses due to app start: \(self.defaultWearable)")
+        
+        // Always run on main thread to avoid threading issues
+        DispatchQueue.main.async { [weak self] in
+          guard let self = self else { return }
+          
+          // Check if we need to initialize the appropriate manager
+          if self.defaultWearable.contains("G1") && self.g1Manager == nil {
+            self.g1Manager = ERG1Manager()
+            self.setup2()
+          } else if self.defaultWearable.contains("Live") && self.liveManager == nil {
+            self.liveManager = MentraLiveManager()
+            self.setup2()
+          }
+          
+          // Attempt to connect using saved device name
+          if !self.deviceName.isEmpty {
+            self.handleConnectWearable(modelName: self.defaultWearable, deviceName: self.deviceName)
+            
+            // Notify user about the auto-connection attempt
+            self.sendText("Auto-connecting to \(self.defaultWearable)")
+          } else {
+            print("No saved device name found for auto-connection")
+          }
+        }
+      } else {
+        print("No preferred wearable found for auto-connection")
+      }
+    } else if self.defaultWearable.isEmpty {
+      print("No preferred wearable set, cannot auto-connect")
+    } else {
+      print("Glasses already connected or connecting, skipping auto-reconnection. Connected: \(self.somethingConnected)")
+    }
+  }
+
+  func onAppStopped(_ packageName: String) {
+    print("App stopped: \(packageName)")
+    // Handle app stopped if needed
+  }
+
   // TODO: ios this name is a bit misleading:
   func setOnboardMicEnabled(_ isEnabled: Bool) {
     Task {
