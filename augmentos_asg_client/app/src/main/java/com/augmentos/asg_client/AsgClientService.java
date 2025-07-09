@@ -283,17 +283,17 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         @Override
         public void onReceive(Context context, Intent intent) {
             String action = intent.getAction();
-            Log.d(TAG, "@#$$% Received broadcast with action: " + action);
+            //Log.d(TAG, "@#$$% Received broadcast with action: " + action);
 
             if (ACTION_HEARTBEAT.equals(action) || "com.augmentos.otaupdater.ACTION_HEARTBEAT".equals(action)) {
                 lastHeartbeatTime = System.currentTimeMillis();
-                Log.d(TAG, "Service heartbeat received at " + lastHeartbeatTime);
+                //Log.d(TAG, "Service heartbeat received at " + lastHeartbeatTime);
 
                 // Send acknowledgment back to monitor
                 Intent ackIntent = new Intent(ACTION_HEARTBEAT_ACK);
                 ackIntent.setPackage("com.augmentos.otaupdater");
                 sendBroadcast(ackIntent);
-                Log.d(TAG, "Service heartbeat acknowledged and sent back to OTA Updater");
+                //Log.d(TAG, "Service heartbeat acknowledged and sent back to OTA Updater");
             }
         }
     };
