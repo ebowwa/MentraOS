@@ -601,7 +601,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                 try {
                     java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", java.util.Locale.US);
                     String isoDatetime = sdf.format(new java.util.Date());
-                    ServerComms.getInstance().sendUserDatetimeToBackend(userId, isoDatetime);
+                    ServerComms.getInstance().sendUserDatetimeToBackend(isoDatetime);
                 } catch (Exception e) {
                     Log.e(TAG, "Exception while sending periodic datetime: " + e.getMessage());
                 }
@@ -1603,7 +1603,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                     // Format current datetime as ISO 8601 string (yyyy-MM-dd'T'HH:mm:ssZ)
                     java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", java.util.Locale.US);
                     String isoDatetime = sdf.format(new java.util.Date());
-                    ServerComms.getInstance().sendUserDatetimeToBackend(userId, isoDatetime);
+                    ServerComms.getInstance().sendUserDatetimeToBackend(isoDatetime);
                 } catch (Exception e) {
                     Log.e(TAG, "Exception while sending datetime to backend: " + e.getMessage());
                 }
