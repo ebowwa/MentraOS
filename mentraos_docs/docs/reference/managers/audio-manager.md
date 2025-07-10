@@ -162,7 +162,7 @@ Options for audio playback from URLs.
 interface AudioPlayOptions {
   /** URL to audio file for download and play */
   audioUrl: string;
-  /** Volume level 0.0-1.0, defaults to 1.0 */
+  /** Volume level `0.0-1.0`, defaults to 1.0 */
   volume?: number;
 }
 ```
@@ -179,15 +179,15 @@ interface SpeakOptions {
   model_id?: string;
   /** Voice settings object (optional) */
   voice_settings?: {
-    /** Voice stability and randomness (0.0-1.0). Lower values introduce broader emotional range, higher values result in monotonous voice */
+    /** Voice stability and randomness `(0.0-1.0)`. Lower values introduce broader emotional range, higher values result in monotonous voice */
     stability?: number;
-    /** How closely AI should adhere to original voice (0.0-1.0) */
+    /** How closely AI should adhere to original voice `(0.0-1.0)` */
     similarity_boost?: number;
-    /** Style exaggeration of the voice (0.0-1.0). Amplifies original speaker's style but increases latency */
+    /** Style exaggeration of the voice `(0.0-1.0)`. Amplifies original speaker's style but increases latency */
     style?: number;
     /** Boosts similarity to original speaker. Increases computational load and latency */
     use_speaker_boost?: boolean;
-    /** Playback speed. 1.0 = normal, <1.0 = slower, >1.0 = faster */
+    /** Playback speed. 1.0 = normal, `<1.0` = slower, `>1.0` = faster */
     speed?: number;
   };
 }

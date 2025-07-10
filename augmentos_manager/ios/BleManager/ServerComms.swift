@@ -137,7 +137,7 @@ class ServerComms {
   }
 
   func isWebSocketConnected() -> Bool {
-    return wsManager.isConnected()
+    return wsManager.isActuallyConnected()
   }
 
   // MARK: - Audio / VAD

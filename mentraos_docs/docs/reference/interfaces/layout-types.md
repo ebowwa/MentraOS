@@ -12,7 +12,7 @@ This page documents the layout interfaces used to display content in the AR view
 The `Layout` type is a union of all available layout types:
 
 ```typescript
-type Layout = TextWall | DoubleTextWall | DashboardCard | ReferenceCard | BitmapView;
+type Layout = TextWall | DoubleTextWall | DashboardCard | ReferenceCard;
 ```
 
 Each layout has a specific structure that defines how content is presented in the AR display.
