@@ -67,10 +67,13 @@ export class RtmpRelayService {
    */
   buildRelayUrl(userId: string, streamId: string): string {
     const relay = this.getRelayForUser(userId);
-    const url = `${relay.rtmpUrl}/live/${userId}/${streamId}`;
+    // Replace @ with - in userId for MediaMTX compatibility
+    const sanitizedUserId = userId.replace('@', '-');
+    const url = `${relay.rtmpUrl}/live/${sanitizedUserId}/${streamId}`;
     
     this.logger.debug({ 
       userId, 
+      sanitizedUserId,
       streamId, 
       relay: relay.relayId,
       url 

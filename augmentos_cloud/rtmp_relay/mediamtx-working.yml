@@ -1,0 +1,59 @@
+# MediaMTX Configuration
+logLevel: info
+logDestinations: [stdout]
+
+# API
+api: yes
+apiAddress: :9997
+
+# RTMP
+rtmp: yes
+rtmpAddress: :1935
+
+# Paths
+paths:
+  all:
+    # Command to run when a client starts publishing
+    runOnInit: |
+      #!/bin/bash
+      echo "Path initialized: $MTX_PATH"
+    runOnInitRestart: no
+
+    # Command to run when a client starts publishing a stream
+    runOnReady: |
+      #!/bin/bash
+      set -e
+      
+      # Extract path segments
+      # Path format: live/user-email.com/streamId
+      IFS='/' read -ra PARTS <<< "$MTX_PATH"
+      USER_ID_SANITIZED="${PARTS[1]}"
+      STREAM_ID="${PARTS[2]}"
+      
+      # Convert back to original email format (replace first - with @)
+      USER_ID="${USER_ID_SANITIZED/-/@}"
+      
+      echo "Stream ready: sanitized=$USER_ID_SANITIZED original=$USER_ID streamId=$STREAM_ID"
+      
+      # Get Cloudflare URL from our API using original userId
+      RESPONSE=$(curl -s "$CLOUD_API_URL/api/rtmp-relay/cf-url/$USER_ID/$STREAM_ID")
+      CF_URL=$(echo "$RESPONSE" | grep -o '"url":"[^"]*' | grep -o '[^"]*$')
+      
+      if [ -z "$CF_URL" ]; then
+        echo "ERROR: Could not get Cloudflare URL for stream"
+        echo "Response was: $RESPONSE"
+        exit 1
+      fi
+      
+      echo "Forwarding to Cloudflare: $CF_URL"
+      
+      # Transcode with FFmpeg to clean the stream
+      ffmpeg -i rtmp://localhost:1935/$MTX_PATH \
+        -c:v libx264 -preset veryfast -tune zerolatency \
+        -profile:v baseline -level 3.1 \
+        -r 30 -g 60 -keyint_min 60 -sc_threshold 0 \
+        -b:v 2M -maxrate 2.5M -bufsize 4M \
+        -pix_fmt yuv420p \
+        -c:a aac -ar 44100 -ac 1 -b:a 128k \
+        -f flv "$CF_URL" &
+    runOnReadyRestart: yes

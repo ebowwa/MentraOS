@@ -1,0 +1,11 @@
+# MediaMTX Minimal Configuration
+logLevel: info
+logDestinations: [stdout]
+
+# Enable API
+api: yes
+apiAddress: :9997
+
+# Enable RTMP
+rtmp: yes
+rtmpAddress: :1935

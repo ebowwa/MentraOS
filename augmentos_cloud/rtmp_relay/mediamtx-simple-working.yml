@@ -1,0 +1,22 @@
+# MediaMTX Configuration
+logLevel: info
+logDestinations: [stdout]
+
+# API
+api: yes
+apiAddress: :9997
+
+# RTMP
+rtmp: yes
+rtmpAddress: :1935
+
+# Default settings for all paths
+pathDefaults:
+  # Accept all publishers
+  source: publisher
+
+# Define paths
+paths:
+  # Accept any path
+  ~^.*$:
+    # Empty config - just accept streams
