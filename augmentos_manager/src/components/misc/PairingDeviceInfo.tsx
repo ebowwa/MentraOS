@@ -37,7 +37,7 @@ const PairingDeviceInfo: React.FC<PairingDeviceInfoProps> = ({glassesModelName})
   }, [])
 
   const animatedGlassesStyle = useAnimatedStyle(() => ({
-    transform: [{translateX: glassesTranslateX.value}, {translateY: -140}, {scale: glassesScale.value}],
+    transform: [{translateX: glassesTranslateX.value}, {scale: glassesScale.value}],
   }))
 
   return (
@@ -50,7 +50,7 @@ const PairingDeviceInfo: React.FC<PairingDeviceInfoProps> = ({glassesModelName})
       <Spacer height={theme.spacing.lg} />
       <ActivityIndicator size="large" color={theme.colors.text} />
       <Spacer height={theme.spacing.lg} />
-      <View style={{width: "100%", height: 160}}>
+      <View style={{width: "100%", height: 160, justifyContent: "center", alignItems: "center"}}>
         <Animated.View
           style={[
             animatedGlassesStyle,

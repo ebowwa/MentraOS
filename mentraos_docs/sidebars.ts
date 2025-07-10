@@ -63,6 +63,7 @@ const sidebars: SidebarsConfig = {
         'permissions',
         'layouts',
         'settings',
+        'audio',
         'tools',
         'capabilities',
         {
@@ -74,18 +75,7 @@ const sidebars: SidebarsConfig = {
           },
           items: [
             'camera/photo-capture',
-            'camera/rtmp-streaming',
-            {
-              type: 'category',
-              label: 'Building a Camera App',
-              link: {
-                type: 'doc',
-                id: 'camera/building-camera-app',
-              },
-              items: [
-                'camera/examples/streaming-react',
-              ],
-            },
+            'camera/rtmp-streaming'
           ],
         },
         'webview-auth-overview',
@@ -110,6 +100,8 @@ const sidebars: SidebarsConfig = {
             'reference/managers/event-manager',
             'reference/managers/layout-manager',
             'reference/managers/settings-manager',
+            'reference/managers/audio-manager',
+            'reference/managers/camera',
               ],
         },
         'reference/enums',

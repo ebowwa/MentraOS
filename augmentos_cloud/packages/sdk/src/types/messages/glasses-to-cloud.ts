@@ -237,6 +237,17 @@ export interface PhotoTaken extends BaseMessage {
 }
 
 /**
+ * Audio play response from glasses/core
+ */
+export interface AudioPlayResponse extends BaseMessage {
+  type: GlassesToCloudMessageType.AUDIO_PLAY_RESPONSE;
+  requestId: string;
+  success: boolean;
+  error?: string;
+  duration?: number;
+}
+
+/**
  * Union type for all messages from glasses to cloud
  */
 export type GlassesToCloudMessage =
@@ -262,7 +273,8 @@ export type GlassesToCloudMessage =
   | RtmpStreamStatus
   | KeepAliveAck
   | PhotoResponse
-  | PhotoTaken;
+  | PhotoTaken
+  | AudioPlayResponse;
 
 //===========================================================
 // Type guards
@@ -347,4 +359,8 @@ export function isKeepAliveAck(message: GlassesToCloudMessage): message is KeepA
 
 export function isPhotoTaken(message: GlassesToCloudMessage): message is PhotoTaken {
   return message.type === GlassesToCloudMessageType.PHOTO_TAKEN;
+}
+
+export function isAudioPlayResponse(message: GlassesToCloudMessage): message is AudioPlayResponse {
+  return message.type === GlassesToCloudMessageType.AUDIO_PLAY_RESPONSE;
 }

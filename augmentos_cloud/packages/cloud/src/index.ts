@@ -109,6 +109,7 @@ app.use(cors({
     'http://localhost:6173',
     'https://cloud.augmentos.org',
     'https://dev.augmentos.org',
+    'https://devold.augmentos.org',
     'https://www.augmentos.org',
     'https://augmentos.org',
     "https://augmentos.dev",

@@ -10,6 +10,7 @@ import { LayoutManager } from './layouts';
 import { SettingsManager } from './settings';
 import { LocationManager } from './modules/location';
 import { CameraModule, PhotoRequestOptions, RtmpStreamOptions } from './modules/camera';
+import { AudioManager } from './modules/audio';
 import { ResourceTracker } from '../../utils/resource-tracker';
 import {
   // Message types
@@ -18,6 +19,9 @@ import {
   AppConnectionInit,
   AppSubscriptionUpdate,
   PhotoRequest,
+  AudioPlayRequest,
+  AudioPlayResponse,
+  AudioStopRequest,
   AppToCloudMessageType,
   CloudToAppMessageType,
 
@@ -38,6 +42,7 @@ import {
   isSettingsUpdate,
   isDashboardModeChanged,
   isDashboardAlwaysOnChanged,
+  isAudioPlayResponse,
 
   // Other types
   AppSettings,
@@ -180,6 +185,8 @@ export class AppSession {
   public readonly location: LocationManager;
   /** 📷 Camera interface for photos and streaming */
   public readonly camera: CameraModule;
+  /** 🔊 Audio interface for audio playback */
+  public readonly audio: AudioManager;
 
   public readonly appServer: AppServer;
   public readonly logger: Logger;
@@ -282,6 +289,16 @@ export class AppSession {
       this, // Pass session reference
       this.logger.child({ module: 'camera' })
     );
+
+    // Initialize audio module with session reference
+    this.audio = new AudioManager(
+      this.config.packageName,
+      this.sessionId || 'unknown-session-id',
+      this.send.bind(this),
+      this, // Pass session reference
+      this.logger.child({ module: 'audio' })
+    );
+
     this.location = new LocationManager(this, this.send.bind(this));
   }
 
@@ -480,6 +497,11 @@ export class AppSession {
     // Update the sessionId in the camera module
     if (this.camera) {
       this.camera.updateSessionId(sessionId);
+    }
+
+    // Update the sessionId in the audio module
+    if (this.audio) {
+      this.audio.updateSessionId(sessionId);
     }
 
     return new Promise((resolve, reject) => {
@@ -731,6 +753,11 @@ export class AppSession {
       this.camera.cancelAllRequests();
     }
 
+    // Clean up audio module
+    if (this.audio) {
+      this.audio.cancelAllRequests();
+    }
+
     // Use the resource tracker to clean up everything
     this.resources.dispose();
 
@@ -740,6 +767,8 @@ export class AppSession {
     this.subscriptions.clear();
     this.reconnectAttempts = 0;
   }
+
+
 
   /**
    * 🛠️ Get all current user settings
@@ -865,7 +894,7 @@ export class AppSession {
     return this.config.mentraOSWebsocketUrl;
   }
 
-  getHttpsServerUrl(): string | undefined {
+  public getHttpsServerUrl(): string | undefined {
     if (!this.config.mentraOSWebsocketUrl) {
       return undefined;
     }
@@ -924,6 +953,8 @@ export class AppSession {
    */
   private handleMessage(message: CloudToAppMessage): void {
     try {
+
+
       // Validate message before processing
       if (!this.validateMessage(message)) {
         this.events.emit('error', new Error('Invalid message format received'));
@@ -1033,7 +1064,7 @@ export class AppSession {
           if (this.subscriptions.has(StreamType.MANAGED_STREAM_STATUS)) {
             this.events.emit(StreamType.MANAGED_STREAM_STATUS, message);
           }
-          
+
           // Update camera module's managed stream state
           this.camera.handleManagedStreamStatus(message);
         }
@@ -1177,6 +1208,12 @@ export class AppSession {
             });
           });
         }
+                                else if (isAudioPlayResponse(message)) {
+          // Delegate audio play response handling to the audio module
+          if (this.audio) {
+            this.audio.handleAudioPlayResponse(message as AudioPlayResponse);
+          }
+        }
         else if (isPhotoResponse(message)) {
           // Legacy photo response handling - now photos come directly via webhook
           // This branch can be removed in the future as all photos now go through /photo-upload
@@ -1184,19 +1221,7 @@ export class AppSession {
         }
         // Handle unrecognized message types gracefully
         else {
-          console.log(`Unrecognized message type: ${(message as any).type}. Full message details:`, {
-            messageType: (message as any).type,
-            fullMessage: message,
-            messageKeys: Object.keys(message || {}),
-            messageStringified: JSON.stringify(message, null, 2)
-          });
-          // Log all message object details for debugging
-          this.logger.warn(`Unrecognized message type: ${(message as any).type}. Full message details:`, {
-            messageType: (message as any).type,
-            fullMessage: message,
-            messageKeys: Object.keys(message || {}),
-            messageStringified: JSON.stringify(message, null, 2)
-          });
+          this.logger.warn(`Unrecognized message type: ${(message as any).type}`);
           this.events.emit('error', new Error(`Unrecognized message type: ${(message as any).type}`));
         }
       } catch (processingError: unknown) {
@@ -1782,6 +1807,7 @@ export class TpaSession extends AppSession {
   }
 }
 
-// Export camera module types for developers
+// Export module types for developers
 export { CameraModule, PhotoRequestOptions, RtmpStreamOptions } from './modules/camera';
+export { AudioManager, AudioPlayOptions, AudioPlayResult, SpeakOptions } from './modules/audio';
 

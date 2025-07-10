@@ -165,15 +165,16 @@ export default function SelectGlassesBluetoothScreen() {
   useEffect(() => {
     const initializeAndSearchForDevices = async () => {
       console.log("Searching for compatible devices for: ", glassesModelName)
-      setSearchResults([])
+      // setSearchResults([])
       coreCommunicator.sendSearchForCompatibleDeviceNames(glassesModelName)
     }
 
     if (Platform.OS === "ios") {
-      // on ios, we (may) need to wait for the core communicator to be fully initialized
+      // on ios, we need to wait for the core communicator to be fully initialized and sending this twice is just the easiest way to do that
+      // initializeAndSearchForDevices()
       setTimeout(() => {
         initializeAndSearchForDevices()
-      }, 2000)
+      }, 3000)
     } else {
       initializeAndSearchForDevices()
     }

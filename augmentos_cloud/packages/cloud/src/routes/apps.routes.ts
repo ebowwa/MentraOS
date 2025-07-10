@@ -659,6 +659,11 @@ async function startApp(req: Request, res: Response) {
       }
     });
 
+    // Send app started notification to WebSocket
+    if (userSession.websocket) {
+      webSocketService.sendAppStarted(userSession, packageName);
+    }
+
   } catch (error) {
     const totalDuration = Date.now() - startTime;
 
@@ -830,6 +835,11 @@ async function stopApp(req: Request, res: Response) {
       stopDuration,
       broadcastDuration
     }, 'Route timing breakdown');
+
+    // Send app stopped notification to WebSocket
+    if (userSession.websocket) {
+      webSocketService.sendAppStopped(userSession, packageName);
+    }
 
     res.json({
       success: true,
