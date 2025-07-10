@@ -151,7 +151,7 @@ struct ViewState {
         CoreCommsService.log("G1 glasses connection changed to: \(self.g1Manager!.g1Ready ? "Connected" : "Disconnected")")
         //      self.handleRequestStatus()
         if (self.g1Manager!.g1Ready) {
-          handleG1Ready()
+          handleDeviceReady()
         } else {
           handleDeviceDisconnected()
           handleRequestStatus()
@@ -204,7 +204,7 @@ struct ViewState {
         guard let self = self else { return }
         CoreCommsService.log("Live glasses connection changed to: \(self.liveManager!.ready ? "Connected" : "Disconnected")")
         if (self.liveManager!.ready) {
-          handleLiveReady()
+          handleDeviceReady()
         } else {
           handleDeviceDisconnected()
           handleRequestStatus()
@@ -541,6 +541,10 @@ struct ViewState {
   // MARK: - App Started/Stopped Handling
 
   func onAppStarted(_ packageName: String) {
+
+    // tell the server what pair of glasses we're using:
+    self.serverComms.sendGlassesConnectionState(modelName: self.defaultWearable, status: "CONNECTED")
+
     CoreCommsService.log("App started: \(packageName) - checking for auto-reconnection")
     
     // Check if glasses are disconnected but there is a saved pair, initiate connection
@@ -1459,6 +1463,18 @@ struct ViewState {
     }
   }
 
+  private func handleDeviceReady() {
+    // send to the server our battery status:
+    self.serverComms.sendBatteryStatus(level: self.batteryLevel, charging: false)
+    self.serverComms.sendGlassesConnectionState(modelName: self.defaultWearable, status: "CONNECTED")
+
+    if self.defaultWearable.contains("Live") {
+      handleLiveReady()
+    } else if self.defaultWearable.contains("G1") {
+      handleG1Ready()
+    }
+  }
+
   private func handleG1Ready() {
     self.isSearching = false
     self.defaultWearable = "Even Realities G1"
@@ -1487,11 +1503,6 @@ struct ViewState {
       sendText("// MENTRAOS CONNECTED")
       try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
       sendText(" ")// clear screen
-
-
-      // send to the server our battery status:
-      self.serverComms.sendBatteryStatus(level: self.batteryLevel, charging: false)
-      self.serverComms.sendGlassesConnectionState(modelName: self.defaultWearable, status: "CONNECTED")
 
       // enable the mic if it was last on:
       // CoreCommsService.log("ENABLING MIC STATE: \(self.micEnabled)")
