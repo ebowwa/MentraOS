@@ -385,6 +385,7 @@ class SonioxTranscriptionStream implements StreamInstance {
       audio_format: 'pcm_s16le',
       sample_rate: 16000,
       num_channels: 1,
+      enable_language_identification: true, // Enable auto language detection
       max_non_final_tokens_duration_ms: 2000,
       enable_endpoint_detection: true, // Automatically finalize tokens on speech pauses
       enable_speaker_diarization: true,
