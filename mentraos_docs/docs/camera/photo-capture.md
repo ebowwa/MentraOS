@@ -63,7 +63,7 @@ private async uploadPhotoToAPI(buffer: Buffer, mimeType: string): Promise<void> 
 
 ## See Also
 
-- [Camera API Reference](/reference/camera) - Complete API documentation
+- [Camera API Reference](/reference/managers/camera) - Complete API documentation
 - [RTMP Streaming Guide](/camera/rtmp-streaming) - Live video streaming
 - [Permissions Guide](/permissions) - Setting up camera permissions
 - [Events Documentation](/events) - Camera-related events
