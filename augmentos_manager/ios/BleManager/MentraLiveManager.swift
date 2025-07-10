@@ -481,7 +481,7 @@ typealias JSONObject = [String: Any]
     }
   }
   
-  @objc func RN_disconnect() {
+  @objc func disconnect() {
     CoreCommsService.log("Disconnecting from Mentra Live glasses")
     // isKilled = true
     
@@ -493,7 +493,7 @@ typealias JSONObject = [String: Any]
     stopAllTimers()
   }
   
-  @objc func RN_setMicrophoneEnabled(_ enabled: Bool) {
+  @objc func setMicrophoneEnabled(_ enabled: Bool) {
     CoreCommsService.log("Setting microphone state to: \(enabled)")
     
     let json: [String: Any] = [
@@ -504,7 +504,7 @@ typealias JSONObject = [String: Any]
     sendJson(json)
   }
   
-  @objc func RN_requestPhoto(_ requestId: String, appId: String, webhookUrl: String?) {
+  @objc func requestPhoto(_ requestId: String, appId: String, webhookUrl: String?) {
     CoreCommsService.log("Requesting photo: \(requestId) for app: \(appId)")
     
     var json: [String: Any] = [
@@ -520,40 +520,40 @@ typealias JSONObject = [String: Any]
     sendJson(json)
   }
   
-  @objc func RN_startRtmpStream(_ message: [String: Any]) {
+  func startRtmpStream(_ message: [String: Any]) {
     CoreCommsService.log("Starting RTMP stream")
     var json = message
     json.removeValue(forKey: "timestamp")
     sendJson(json)
   }
   
-  @objc func RN_stopRtmpStream() {
+  func stopRtmpStream() {
     CoreCommsService.log("Stopping RTMP stream")
     let json: [String: Any] = ["type": "stop_rtmp_stream"]
     sendJson(json)
   }
   
-  @objc func RN_sendRtmpKeepAlive(_ message: [String: Any]) {
+  func sendRtmpKeepAlive(_ message: [String: Any]) {
     CoreCommsService.log("Sending RTMP keep alive")
     sendJson(message)
   }
   
-  @objc func RN_startRecordVideo() {
+  @objc func startRecordVideo() {
     let json: [String: Any] = ["type": "start_record_video"]
     sendJson(json)
   }
   
-  @objc func RN_stopRecordVideo() {
+  @objc func stopRecordVideo() {
     let json: [String: Any] = ["type": "stop_record_video"]
     sendJson(json)
   }
   
-  @objc func RN_startVideoStream() {
+  @objc func startVideoStream() {
     let json: [String: Any] = ["type": "start_video_stream"]
     sendJson(json)
   }
   
-  @objc func RN_stopVideoStream() {
+  @objc func stopVideoStream() {
     let json: [String: Any] = ["type": "stop_video_stream"]
     sendJson(json)
   }
@@ -941,7 +941,7 @@ typealias JSONObject = [String: Any]
   
   // MARK: - Sending Data
   
-  private func sendJson(_ json: [String: Any]) {
+  public func sendJson(_ json: [String: Any]) {
     do {
       let data = try JSONSerialization.data(withJSONObject: json)
       if let jsonString = String(data: data, encoding: .utf8) {
