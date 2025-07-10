@@ -89,19 +89,6 @@ export class SessionService {
       // Create new session with WebSocket
       const userSession = new UserSession(userId, ws);
 
-      // Determine device capabilities based on model
-      // For now, we'll default to Even Realities G1 if no model info is available
-      // In the future, this will be determined from the glasses connection info
-      const modelName = "Even Realities G1"; // TODO: Get from glasses connection info
-      const capabilities = getCapabilitiesForModel(modelName);
-
-      if (capabilities) {
-        userSession.capabilities = capabilities;
-        logger.info(`Set capabilities for ${modelName} on session ${userId}`);
-      } else {
-        logger.warn(`No capabilities found for model: ${modelName}, session ${userId}`);
-      }
-
       // TODO(isaiah): Create a init method in UserSession to handle initialization logic.
       // Fetch installed apps
       try {

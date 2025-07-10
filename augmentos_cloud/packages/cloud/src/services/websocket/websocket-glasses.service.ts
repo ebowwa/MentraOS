@@ -261,6 +261,11 @@ export class GlassesWebSocketService {
               break;
             };
 
+            // Update glasses model if available in status
+            if (connectedGlasses.model_name) {
+              userSession.updateGlassesModel(connectedGlasses.model_name);
+            }
+
             // Map core status fields to augmentos settings
             const newSettings = {
               useOnboardMic: coreInfo.force_core_onboard_mic,
@@ -558,6 +563,11 @@ export class GlassesWebSocketService {
     // Extract glasses model information
     const modelName = glassesConnectionStateMessage.modelName;
     const isConnected = glassesConnectionStateMessage.status === 'CONNECTED';
+
+    // Update glasses model in session when connected and model name is available
+    if (isConnected && modelName) {
+      userSession.updateGlassesModel(modelName);
+    }
 
     try {
       // Get or create user to track glasses model
