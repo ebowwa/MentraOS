@@ -380,63 +380,61 @@ export class ManagedStreamingExtension {
     packageName: string,
     managedStream: ManagedStreamState
   ): void {
+    let lastKnownLiveState: boolean | null = null;
+    
     const pollInterval = setInterval(async () => {
       try {
         // Check if stream is still active
         const currentStream = this.stateManager.getStreamState(userId);
         if (!currentStream || currentStream.type !== 'managed' || currentStream.streamId !== managedStream.streamId) {
           clearInterval(pollInterval);
-          return;
-        }
-
-        // Check if URLs are already discovered
-        if (managedStream.hlsUrl && managedStream.dashUrl) {
-          clearInterval(pollInterval);
+          this.pollingIntervals.delete(userId);
           return;
         }
 
         this.logger.debug({ 
           userId, 
           streamId: managedStream.streamId,
-          cfLiveInputId: managedStream.cfLiveInputId 
+          cfLiveInputId: currentStream.cfLiveInputId 
         }, '🔍 Polling for stream live status');
 
         // Check if stream is live
-        const isLive = await this.cloudflareService.waitForStreamLive(
-          managedStream.cfLiveInputId,
-          1, // Only one attempt per poll
-          0  // No delay, we handle it ourselves
-        );
+        const status = await this.cloudflareService.getLiveInputStatus(currentStream.cfLiveInputId);
+        const isLive = status.isConnected;
 
-        if (isLive) {
+        // Only notify if state changed
+        if (isLive !== lastKnownLiveState) {
           this.logger.info({ 
             userId, 
-            streamId: managedStream.streamId 
-          }, '🎉 Stream is live! Sending playback URLs to apps');
+            streamId: currentStream.streamId,
+            previousState: lastKnownLiveState,
+            newState: isLive
+          }, isLive ? '🎉 Stream is now live!' : '⚠️ Stream disconnected');
 
           // Get user session to send updates
           const userSession = this.getUserSession(userId);
           if (!userSession) {
             clearInterval(pollInterval);
+            this.pollingIntervals.delete(userId);
             return;
           }
 
           // Send status update to all apps viewing this stream
-          for (const appId of managedStream.activeViewers) {
+          for (const appId of currentStream.activeViewers) {
             await this.sendManagedStreamStatus(
               userSession,
               appId,
-              managedStream.streamId,
-              'active',
-              'Stream is now live',
-              managedStream.hlsUrl,
-              managedStream.dashUrl,
-              managedStream.webrtcUrl
+              currentStream.streamId,
+              isLive ? 'active' : 'stopped',
+              isLive ? 'Stream is now live' : 'Stream disconnected',
+              currentStream.hlsUrl,
+              currentStream.dashUrl,
+              currentStream.webrtcUrl
             );
           }
 
-          // Stop polling
-          clearInterval(pollInterval);
+          // Update last known state
+          lastKnownLiveState = isLive;
         }
       } catch (error) {
         this.logger.error({ 
