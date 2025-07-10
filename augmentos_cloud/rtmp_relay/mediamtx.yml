@@ -31,12 +31,4 @@ rtmpAddress: :1935
 paths:
   all:
     source: publisher
-    
-  # Match all live streams
-  ~^live/.+/.+$:
-    source: publisher
-    
-    # Run when stream is ready - forward to Cloudflare
-    runOnReady: bash -c 'echo "Stream started: $MTX_PATH" && USER_ID_SANITIZED=$(echo $MTX_PATH | cut -d/ -f2) && STREAM_ID=$(echo $MTX_PATH | cut -d/ -f3) && USER_ID=${USER_ID_SANITIZED/-/@} && echo "Looking up CF URL for $USER_ID/$STREAM_ID" && RESPONSE=$(curl -s "$CLOUD_API_URL/api/rtmp-relay/cf-url/$USER_ID/$STREAM_ID") && echo "API Response: $RESPONSE" && CF_URL=$(echo "$RESPONSE" | grep -o "\"url\":\"[^\"]*" | grep -o "[^\"]*$") && if [ -z "$CF_URL" ]; then echo "ERROR: No CF_URL found"; exit 1; fi && echo "Forwarding to Cloudflare: $CF_URL" && exec ffmpeg -i rtmp://localhost:1935/$MTX_PATH -c:v libx264 -preset veryfast -tune zerolatency -profile:v baseline -level 3.1 -r 30 -g 60 -keyint_min 60 -sc_threshold 0 -b:v 2M -maxrate 2.5M -bufsize 4M -pix_fmt yuv420p -c:a aac -ar 44100 -ac 1 -b:a 128k -f flv "$CF_URL" -loglevel info'
-    
-    runOnReadyRestart: yes
+    runOnReady: /simple-forward.sh
