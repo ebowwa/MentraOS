@@ -291,8 +291,8 @@ class SonioxTranscriptionStream implements StreamInstance {
   private connectionTimeout?: NodeJS.Timeout;
   private isConfigSent = false;
   // Token buffer approach for Soniox streaming
-  private tokenBuffer: Map<string, { text: string, isFinal: boolean, confidence: number, position: number }> = new Map();
-  private tokenPosition = 0; // Track insertion order
+  private tokenBuffer: Map<number, { text: string, isFinal: boolean, confidence: number, start_ms: number, end_ms: number }> = new Map();
+  private fallbackPosition = 0; // Fallback position when timing info is missing
   private lastSentInterim = '';   // Track last sent interim to avoid duplicates
   
   constructor(
@@ -473,7 +473,8 @@ class SonioxTranscriptionStream implements StreamInstance {
 
   private processTranscriptionTokens(tokens: SonioxToken[]): void {
     // Soniox streams tokens cumulatively - each response contains tokens that should
-    // update our running buffer. Tokens can change from interim to final.
+    // update our running buffer. Tokens can change from interim to final and can be corrected.
+    // Key insight: Use audio segment position (start_ms) as primary key to allow corrections.
     
     let hasEndToken = false;
     let avgConfidence = 0;
@@ -486,24 +487,24 @@ class SonioxTranscriptionStream implements StreamInstance {
         continue;
       }
       
-      // Use token text + start time as unique key (if available, otherwise just text)
-      const tokenKey = token.start_ms ? `${token.text}_${token.start_ms}` : token.text;
-      
-      // Update or add token to buffer
-      if (!this.tokenBuffer.has(tokenKey)) {
-        // New token - add with current position
-        this.tokenBuffer.set(tokenKey, {
-          text: token.text,
-          isFinal: token.is_final,
-          confidence: token.confidence,
-          position: this.tokenPosition++
-        });
+      // Use start_ms as primary key for audio segment positioning
+      // If no timing info, use fallback position that increments
+      let tokenKey: number;
+      if (token.start_ms !== undefined && token.start_ms >= 0) {
+        tokenKey = token.start_ms;
       } else {
-        // Existing token - update status (might have changed from interim to final)
-        const existing = this.tokenBuffer.get(tokenKey)!;
-        existing.isFinal = token.is_final;
-        existing.confidence = token.confidence;
+        // No timing info - use fallback position
+        tokenKey = this.fallbackPosition++;
       }
+      
+      // Add or update token in buffer (corrections replace previous tokens at same position)
+      this.tokenBuffer.set(tokenKey, {
+        text: token.text,
+        isFinal: token.is_final,
+        confidence: token.confidence,
+        start_ms: token.start_ms || tokenKey,
+        end_ms: token.end_ms || (tokenKey + 100) // Fallback end time
+      });
       
       avgConfidence += token.confidence;
       tokenCount++;
@@ -513,9 +514,10 @@ class SonioxTranscriptionStream implements StreamInstance {
       avgConfidence /= tokenCount;
     }
     
-    // Build interim transcript from all tokens in buffer (sorted by position)
-    const sortedTokens = Array.from(this.tokenBuffer.values())
-      .sort((a, b) => a.position - b.position);
+    // Build interim transcript from all tokens in buffer (sorted by start time)
+    const sortedTokens = Array.from(this.tokenBuffer.entries())
+      .sort(([keyA], [keyB]) => keyA - keyB) // Sort by start time (key)
+      .map(([, token]) => token);
     
     const currentInterim = sortedTokens
       .map(t => t.text)
@@ -547,6 +549,7 @@ class SonioxTranscriptionStream implements StreamInstance {
         text: currentInterim.substring(0, 100),
         isFinal: false,
         tokenCount: this.tokenBuffer.size,
+        corrections: tokens.filter(t => this.tokenBuffer.has(t.start_ms || 0)).length,
         provider: 'soniox'
       }, `🎙️ SONIOX: interim transcription - "${currentInterim}"`);
     }
@@ -582,13 +585,14 @@ class SonioxTranscriptionStream implements StreamInstance {
           text: finalTranscript.substring(0, 100),
           isFinal: true,
           finalTokenCount: finalTokens.length,
+          totalTokenCount: this.tokenBuffer.size,
           provider: 'soniox'
         }, `🎙️ SONIOX: FINAL transcription - "${finalTranscript}"`);
       }
       
       // Clear buffer for next utterance
       this.tokenBuffer.clear();
-      this.tokenPosition = 0;
+      this.fallbackPosition = 0;
       this.lastSentInterim = '';
     }
   }
@@ -692,7 +696,7 @@ class SonioxTranscriptionStream implements StreamInstance {
     
     // Reset token buffer on error to prevent stale data
     this.tokenBuffer.clear();
-    this.tokenPosition = 0;
+    this.fallbackPosition = 0;
     this.lastSentInterim = '';
     
     this.provider.recordFailure(error);
@@ -763,7 +767,7 @@ class SonioxTranscriptionStream implements StreamInstance {
       
       // Reset token buffer to prevent stale data
       this.tokenBuffer.clear();
-      this.tokenPosition = 0;
+      this.fallbackPosition = 0;
       this.lastSentInterim = '';
       
       this.state = StreamState.CLOSED;
