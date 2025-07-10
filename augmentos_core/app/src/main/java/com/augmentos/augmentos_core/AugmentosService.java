@@ -1607,12 +1607,14 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                 } catch (Exception e) {
                     Log.e(TAG, "Exception while sending datetime to backend: " + e.getMessage());
                 }
+                sendStatusToBackend();
             }
 
             @Override
             public void onAppStateChange(List<ThirdPartyCloudApp> appList) {
                 cachedThirdPartyAppList = appList;
                 sendStatusToAugmentOsManager();
+                sendStatusToBackend();
             }
 
             @Override
@@ -1681,6 +1683,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                         smartGlassesManager.sendHomeScreen();
                     }
                 }
+                sendStatusToBackend();
             }
 
             @Override
@@ -1761,6 +1764,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
 
             @Override
             public void onAppStarted(String packageName) {
+                sendStatusToBackend();
                 AugmentosService.this.onAppStarted(packageName);
             }
 
@@ -2596,19 +2600,19 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     // Called when the backend notifies that an app has started
     public void onAppStarted(String packageName) {
         Log.d(TAG, "App started: " + packageName + " - checking for auto-reconnection");
-        
+
         // Check if glasses are disconnected but there is a saved pair, initiate connection
-        if (smartGlassesManager != null && 
+        if (smartGlassesManager != null &&
             smartGlassesManager.getSmartGlassesConnectState() == SmartGlassesConnectionState.DISCONNECTED) {
-            
+
             String preferredWearable = SmartGlassesManager.getPreferredWearable(this);
             Log.d(TAG, "Found preferred wearable: " + preferredWearable);
-            
+
             if (preferredWearable != null && !preferredWearable.isEmpty()) {
                 SmartGlassesDevice preferredDevice = SmartGlassesManager.getSmartGlassesDeviceFromModelName(preferredWearable);
                 if (preferredDevice != null) {
                     Log.d(TAG, "Auto-connecting to glasses due to app start: " + preferredWearable);
-                    
+
                     // Always run on main thread to avoid threading issues
                     new Handler(Looper.getMainLooper()).post(() -> {
                         // Use executeOnceSmartGlassesManagerReady to ensure proper connection flow
@@ -2616,7 +2620,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                             if (smartGlassesManager != null) {
                                 smartGlassesManager.connectToSmartGlasses(preferredDevice);
                                 sendStatusToAugmentOsManager();
-                                
+
                                 // Notify manager app about the auto-connection attempt
                                 if (blePeripheral != null) {
                                     blePeripheral.sendNotifyManager("Auto-connecting to " + preferredWearable, "info");
@@ -2633,7 +2637,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         } else if (smartGlassesManager == null) {
             Log.d(TAG, "SmartGlassesManager is null, cannot check connection state for auto-reconnection");
         } else {
-            Log.d(TAG, "Glasses already connected or connecting, skipping auto-reconnection. Current state: " + 
+            Log.d(TAG, "Glasses already connected or connecting, skipping auto-reconnection. Current state: " +
                   smartGlassesManager.getSmartGlassesConnectState());
         }
 
