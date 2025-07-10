@@ -210,7 +210,7 @@ extension MentraLiveManager: CBPeripheralDelegate {
   
   func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
     
-    CoreCommsService.log("GOT CHARACTERISTIC UPDATE @@@@@@@@@@@@@@@@@@@@@")
+    // CoreCommsService.log("GOT CHARACTERISTIC UPDATE @@@@@@@@@@@@@@@@@@@@@")
     if let error = error {
       CoreCommsService.log("Error updating value for characteristic: \(error.localizedDescription)")
       return
@@ -224,15 +224,13 @@ extension MentraLiveManager: CBPeripheralDelegate {
     let threadId = Thread.current.hash
     let uuid = characteristic.uuid
     
-    CoreCommsService.log("Thread-\(threadId): 🎉 didUpdateValueFor CALLBACK TRIGGERED! Characteristic: \(uuid)")
-    
-    if uuid == RX_CHAR_UUID {
-      CoreCommsService.log("Thread-\(threadId): 🎯 RECEIVED DATA ON RX CHARACTERISTIC (Peripheral's TX)")
-    } else if uuid == TX_CHAR_UUID {
-      CoreCommsService.log("Thread-\(threadId): 🎯 RECEIVED DATA ON TX CHARACTERISTIC (Peripheral's RX)")
-    }
-    
-    CoreCommsService.log("Thread-\(threadId): 🔍 Processing received data - \(data.count) bytes")
+    // CoreCommsService.log("Thread-\(threadId): 🎉 didUpdateValueFor CALLBACK TRIGGERED! Characteristic: \(uuid)")
+    // if uuid == RX_CHAR_UUID {
+    //   CoreCommsService.log("Thread-\(threadId): 🎯 RECEIVED DATA ON RX CHARACTERISTIC (Peripheral's TX)")
+    // } else if uuid == TX_CHAR_UUID {
+    //   CoreCommsService.log("Thread-\(threadId): 🎯 RECEIVED DATA ON TX CHARACTERISTIC (Peripheral's RX)")
+    // }
+    // CoreCommsService.log("Thread-\(threadId): 🔍 Processing received data - \(data.count) bytes")
     
     processReceivedData(data)
   }
@@ -406,15 +404,13 @@ typealias JSONObject = [String: Any]
       }
       if (!newValue) {
         // Reset battery levels when disconnected
-        //        batteryLevel = -1
-        //        leftBatteryLevel = -1
-        //        rightBatteryLevel = -1
+        batteryLevel = -1
       }
     }
   }
   
   // Data Properties
-  @Published public var batteryLevel: Int = 50
+  @Published public var batteryLevel: Int = -1
   @Published public var isCharging: Bool = false
   @Published public var isWifiConnected: Bool = false
   @Published public var wifiSsid: String = ""
@@ -485,7 +481,7 @@ typealias JSONObject = [String: Any]
     }
   }
   
-  @objc func RN_disconnect() {
+  @objc func disconnect() {
     CoreCommsService.log("Disconnecting from Mentra Live glasses")
     // isKilled = true
     
@@ -497,7 +493,7 @@ typealias JSONObject = [String: Any]
     stopAllTimers()
   }
   
-  @objc func RN_setMicrophoneEnabled(_ enabled: Bool) {
+  @objc func setMicrophoneEnabled(_ enabled: Bool) {
     CoreCommsService.log("Setting microphone state to: \(enabled)")
     
     let json: [String: Any] = [
@@ -508,7 +504,7 @@ typealias JSONObject = [String: Any]
     sendJson(json)
   }
   
-  @objc func RN_requestPhoto(_ requestId: String, appId: String, webhookUrl: String?) {
+  @objc func requestPhoto(_ requestId: String, appId: String, webhookUrl: String?) {
     CoreCommsService.log("Requesting photo: \(requestId) for app: \(appId)")
     
     var json: [String: Any] = [
@@ -524,63 +520,40 @@ typealias JSONObject = [String: Any]
     sendJson(json)
   }
   
-  @objc func RN_startRtmpStream(_ message: [String: Any]) {
+  func startRtmpStream(_ message: [String: Any]) {
     CoreCommsService.log("Starting RTMP stream")
     var json = message
     json.removeValue(forKey: "timestamp")
     sendJson(json)
   }
   
-  @objc func RN_stopRtmpStream() {
+  func stopRtmpStream() {
     CoreCommsService.log("Stopping RTMP stream")
     let json: [String: Any] = ["type": "stop_rtmp_stream"]
     sendJson(json)
   }
   
-  @objc func RN_sendRtmpKeepAlive(_ message: [String: Any]) {
+  func sendRtmpKeepAlive(_ message: [String: Any]) {
     CoreCommsService.log("Sending RTMP keep alive")
     sendJson(message)
   }
   
-  @objc func RN_requestWifiScan() {
-    CoreCommsService.log("Requesting WiFi scan")
-    let json: [String: Any] = ["type": "request_wifi_scan"]
-    sendJson(json)
-  }
-  
-  @objc func RN_sendWifiCredentials(_ ssid: String, password: String) {
-    CoreCommsService.log("Sending WiFi credentials for SSID: \(ssid)")
-    
-    guard !ssid.isEmpty else {
-      CoreCommsService.log("Cannot set WiFi credentials - SSID is empty")
-      return
-    }
-    
-    let json: [String: Any] = [
-      "type": "set_wifi_credentials",
-      "ssid": ssid,
-      "password": password
-    ]
-    
-    sendJson(json)
-  }
-  
-  @objc func RN_startRecordVideo() {
+  @objc func startRecordVideo() {
     let json: [String: Any] = ["type": "start_record_video"]
     sendJson(json)
   }
   
-  @objc func RN_stopRecordVideo() {
+  @objc func stopRecordVideo() {
     let json: [String: Any] = ["type": "stop_record_video"]
     sendJson(json)
   }
   
-  @objc func RN_startVideoStream() {
+  @objc func startVideoStream() {
     let json: [String: Any] = ["type": "start_video_stream"]
     sendJson(json)
   }
   
-  @objc func RN_stopVideoStream() {
+  @objc func stopVideoStream() {
     let json: [String: Any] = ["type": "stop_video_stream"]
     sendJson(json)
   }
@@ -613,11 +586,6 @@ typealias JSONObject = [String: Any]
   }
   
   private func processSendQueue(_ data: Data) async {
-    // guard connectionState == .connected,
-    //       let peripheral = connectedPeripheral,
-    //       let txChar = txCharacteristic else {
-    //   return
-    // }
     
     guard let peripheral = connectedPeripheral,
           let txChar = txCharacteristic else {
@@ -632,7 +600,7 @@ typealias JSONObject = [String: Any]
     //   let remainingDelay = Double(MIN_SEND_DELAY_MS / 1_000_000) - timeSinceLastSend
     //   try? await Task.sleep(nanoseconds: UInt64(remainingDelay * 1_000_000))
     // }
-
+    
     // 1 second delay
     try? await Task.sleep(nanoseconds: UInt64(1_000_000_000))
     
@@ -654,7 +622,7 @@ typealias JSONObject = [String: Any]
   
   private func startScan() {
     // guard !isScanning else { return }
-
+    
     guard centralManager!.state == .poweredOn else {
       CoreCommsService.log("Attempting to scan but bluetooth is not powered on.")
       return
@@ -874,30 +842,47 @@ typealias JSONObject = [String: Any]
     let commandJson = try? JSONSerialization.jsonObject(with: command.data(using: .utf8)!) as? [String: Any]
     processJsonObject(commandJson ?? [:])
     
-    // switch command {
-    // case "sr_batv":
-    //   if let body = json["B"] as? [String: Any],
-    //      let voltage = body["vt"] as? Int,
-    //      let percentage = body["pt"] as? Int {
+    switch command {
+    case "sr_batv":
+      if let body = json["B"] as? [String: Any],
+         let voltage = body["vt"] as? Int,
+         let percentage = body["pt"] as? Int {
     
-    //     let voltageVolts = Double(voltage) / 1000.0
-    //     let isCharging = voltage > 4000
+        let voltageVolts = Double(voltage) / 1000.0
+        let isCharging = voltage > 4000
     
-    //     CoreCommsService.log("🔋 K900 Battery Status - Voltage: \(voltageVolts)V, Level: \(percentage)%")
-    //     updateBatteryStatus(level: percentage, charging: isCharging)
-    //   }
+        CoreCommsService.log("🔋 K900 Battery Status - Voltage: \(voltageVolts)V, Level: \(percentage)%")
+        updateBatteryStatus(level: percentage, charging: isCharging)
+      }
     
-    // default:
-    //   CoreCommsService.log("Unknown K900 command: \(command)")
-    //   jsonObservable?(json)
-    // }
+    default:
+      CoreCommsService.log("Unknown K900 command: \(command)")
+      jsonObservable?(json)
+    }
   }
-
+  
   // commands to send to the glasses:
-
+  
   public func requestWifiScan() {
-    CoreCommsService.log("🔄 Requesting WiFi scan from glasses")
+    CoreCommsService.log("LiveManager: Requesting WiFi scan from glasses")
     let json: [String: Any] = ["type": "request_wifi_scan"]
+    sendJson(json)
+  }
+  
+  public func sendWifiCredentials(_ ssid: String, password: String) {
+    CoreCommsService.log("LiveManager: Sending WiFi credentials for SSID: \(ssid)")
+    
+    guard !ssid.isEmpty else {
+      CoreCommsService.log("LiveManager: Cannot set WiFi credentials - SSID is empty")
+      return
+    }
+    
+    let json: [String: Any] = [
+      "type": "set_wifi_credentials",
+      "ssid": ssid,
+      "password": password
+    ]
+    
     sendJson(json)
   }
   
@@ -956,7 +941,7 @@ typealias JSONObject = [String: Any]
   
   // MARK: - Sending Data
   
-  private func sendJson(_ json: [String: Any]) {
+  public func sendJson(_ json: [String: Any]) {
     do {
       let data = try JSONSerialization.data(withJSONObject: json)
       if let jsonString = String(data: data, encoding: .utf8) {
@@ -978,11 +963,11 @@ typealias JSONObject = [String: Any]
       CoreCommsService.log("Sending data to glasses: \(data)")
       
       // Pack the command
-      let packedData = packCommand(data)
+      let packedData = packJson(data) ?? Data()
       CoreCommsService.log("Packed data: \(packedData)")
       // print the hex string of the packed data:
-      let hexString = packedData.map { String(format: "%02X ", $0) }.joined()
-      CoreCommsService.log("Hex string of packed data: \(hexString)")
+      // let hexString = packedData.map { String(format: "%02X ", $0) }.joined()
+      // CoreCommsService.log("Hex string of packed data: \(hexString)")
       queueData(packedData)
       
     } catch {
@@ -990,17 +975,9 @@ typealias JSONObject = [String: Any]
     }
   }
   
-  private func packCommand(_ jsonString: String) -> Data {
-    return packJsonToK900(jsonString) ?? Data()
-  }
-  
   // MARK: - Status Requests
   
   private func requestBatteryStatus() {
-    requestBatteryK900()
-  }
-  
-  private func requestBatteryK900() {
     let json: [String: Any] = [
       "C": "cs_batv",
       "V": 1,
@@ -1010,7 +987,7 @@ typealias JSONObject = [String: Any]
     do {
       let jsonData = try JSONSerialization.data(withJSONObject: json)
       if let jsonString = String(data: jsonData, encoding: .utf8) {
-        let packedData = packCommand(jsonString)
+        let packedData = packDataToK900(jsonData, cmdType: CMD_TYPE_STRING) ?? Data()
         queueData(packedData)
       }
     } catch {
@@ -1050,10 +1027,11 @@ typealias JSONObject = [String: Any]
   private func updateBatteryStatus(level: Int, charging: Bool) {
     batteryLevel = level
     isCharging = charging
-    emitBatteryLevelEvent(level: level, charging: charging)
+    // emitBatteryLevelEvent(level: level, charging: charging)
   }
   
   private func updateWifiStatus(connected: Bool, ssid: String) {
+    CoreCommsService.log("🌐 Updating WiFi status - connected: \(connected), ssid: \(ssid)")
     isWifiConnected = connected
     wifiSsid = ssid
     emitWifiStatusChange(connected: connected, ssid: ssid)
@@ -1184,32 +1162,27 @@ typealias JSONObject = [String: Any]
     // emitEvent("GlassesBluetoothSearchStopEvent", body: eventBody)
   }
   
-  private func emitBatteryLevelEvent(level: Int, charging: Bool) {
-    let eventBody: [String: Any] = [
-      "battery_level": level,
-      "is_charging": charging
-    ]
+  // private func emitBatteryLevelEvent(level: Int, charging: Bool) {
+  //   let eventBody: [String: Any] = [
+  //     "battery_level": level,
+  //     "is_charging": charging
+  //   ]
     
-    emitEvent("BatteryLevelEvent", body: eventBody)
-  }
+  //   emitEvent("BatteryLevelEvent", body: eventBody)
+  // }
   
   private func emitWifiStatusChange(connected: Bool, ssid: String) {
-    let eventBody: [String: Any] = [
-      "device_model": "Mentra Live",
+    let eventBody = ["glasses_wifi_status_change": [
       "connected": connected,
-      "ssid": ssid
-    ]
-    
-    emitEvent("GlassesWifiStatusChange", body: eventBody)
+      "ssid": ssid,
+      "local_ip": "1234",// TODO
+    ]]
+    emitEvent("CoreMessageEvent", body: eventBody)
   }
   
   private func emitWifiScanResult(_ networks: [String]) {
-    let eventBody: [String: Any] = [
-      "device_model": "Mentra Live",
-      "networks": networks
-    ]
-    
-    emitEvent("GlassesWifiScanResultEvent", body: eventBody)
+    let eventBody = ["wifi_scan_results": networks]
+    emitEvent("CoreMessageEvent", body: eventBody)
   }
   
   private func emitRtmpStreamStatus(_ json: [String: Any]) {
@@ -1235,7 +1208,7 @@ typealias JSONObject = [String: Any]
       "android_version": androidVersion
     ]
     
-    emitEvent("GlassesVersionInfoEvent", body: eventBody)
+    emitEvent("CoreMessageEvent", body: eventBody)
   }
   
   private func emitKeepAliveAck(_ json: [String: Any]) {
@@ -1399,7 +1372,7 @@ extension MentraLiveManager {
    * 1. Wrap with C-field: {"C": jsonData}
    * 2. Then pack with BES2700 protocol using little-endian: ## + type + length + {"C": jsonData} + $$
    */
-  private func packJsonToK900(_ jsonData: String?) -> Data? {
+  private func packJson(_ jsonData: String?) -> Data? {
     guard let jsonData = jsonData else { return nil }
     
     do {
@@ -1516,7 +1489,7 @@ extension MentraLiveManager {
       CoreCommsService.log("📦 JSON DATA BEFORE C-WRAPPING: \(originalData)")
       
       // Use packJsonToK900 for K900 devices
-      if let formattedData = packJsonToK900(originalData) {
+      if let formattedData = packJson(originalData) {
         // Debug log
         let hexDump = formattedData.prefix(50).map { String(format: "%02X ", $0) }.joined()
         CoreCommsService.log("📦 AFTER C-WRAPPING & PROTOCOL FORMATTING (first 50 bytes): \(hexDump)")

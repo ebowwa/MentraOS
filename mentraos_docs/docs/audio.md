@@ -133,11 +133,11 @@ class TTSServer extends AppServer {
 |--------|------|---------|-------------|
 | `voice_id` | string | Server default | ElevenLabs voice ID |
 | `model_id` | string | `eleven_flash_v2_5` | TTS model to use (see models below) |
-| `voice_settings.stability` | number | 0.5 | Voice stability and randomness (0.0-1.0). Lower values introduce broader emotional range, higher values can result in monotonous voice |
-| `voice_settings.similarity_boost` | number | 0.75 | How closely AI adheres to original voice (0.0-1.0) |
-| `voice_settings.style` | number | 0.0 | Style exaggeration of the voice (0.0-1.0). Amplifies original speaker's style but increases latency |
+| `voice_settings.stability` | number | 0.5 | Voice stability and randomness `(0.0-1.0)`. Lower values introduce broader emotional range, higher values can result in monotonous voice |
+| `voice_settings.similarity_boost` | number | 0.75 | How closely AI adheres to original voice `(0.0-1.0)` |
+| `voice_settings.style` | number | 0.0 | Style exaggeration of the voice `(0.0-1.0)`. Amplifies original speaker's style but increases latency |
 | `voice_settings.use_speaker_boost` | boolean | false | Boosts similarity to original speaker. Increases computational load and latency |
-| `voice_settings.speed` | number | 1.0 | Playback speed. 1.0 = normal, <1.0 = slower, >1.0 = faster |
+| `voice_settings.speed` | number | 1.0 | Playback speed. 1.0 = normal, `<1.0` = slower, `>1.0` = faster |
 
 ### Available TTS Models
 
