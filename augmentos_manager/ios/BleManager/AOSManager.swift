@@ -67,6 +67,8 @@ struct ViewState {
   private var settingsLoaded = false
   private let settingsLoadedSemaphore = DispatchSemaphore(value: 0)
   private var connectTask: Task<Void, Never>?
+  private var glassesWifiConnected: Bool = false;
+  private var glassesWifiSsid: String = "";
 
   var viewStates: [ViewState] = [
     ViewState(topText: " ", bottomText: " ", layoutType: "text_wall", text: "", eventStr: ""),
@@ -201,7 +203,6 @@ struct ViewState {
       liveManager!.onConnectionStateChanged = { [weak self] in
         guard let self = self else { return }
         CoreCommsService.log("Live glasses connection changed to: \(self.liveManager!.ready ? "Connected" : "Disconnected")")
-        //      self.handleRequestStatus()
         if (self.liveManager!.ready) {
           handleLiveReady()
         } else {
@@ -209,6 +210,21 @@ struct ViewState {
           handleRequestStatus()
         }
       }
+
+      liveManager!.$batteryLevel.sink { [weak self] (level: Int) in
+        guard let self = self else { return }
+        guard level >= 0 else { return }
+        self.batteryLevel = level
+        self.serverComms.sendBatteryStatus(level: self.batteryLevel, charging: false);
+        handleRequestStatus()
+      }.store(in: &cancellables)
+
+      liveManager!.$isWifiConnected.sink { [weak self] (isConnected: Bool) in
+        guard let self = self else { return }
+        self.glassesWifiConnected = isConnected
+        handleRequestStatus()
+      }.store(in: &cancellables)
+
     }
   }
 
@@ -1021,6 +1037,11 @@ struct ViewState {
     self.liveManager?.requestWifiScan()
   }
 
+  private func sendWifiCredentials(_ ssid: String, _ password: String) {
+    CoreCommsService.log("AOS: Sending wifi credentials: \(ssid) \(password)")
+    self.liveManager?.sendWifiCredentials(ssid, password: password)
+  }
+
   private func showDashboard() {
     Task {
       await self.g1Manager?.RN_showDashboard()
@@ -1066,6 +1087,7 @@ struct ViewState {
       case toggleUpdatingScreen = "toggle_updating_screen"
       case showDashboard = "show_dashboard"
       case requestWifiScan = "request_wifi_scan"
+      case sendWifiCredentials = "send_wifi_credentials"
       case unknown
     }
 
@@ -1235,6 +1257,13 @@ struct ViewState {
         case .requestWifiScan:
           requestWifiScan()
           break
+        case .sendWifiCredentials:
+          guard let params = params, let ssid = params["ssid"] as? String, let password = params["password"] as? String else {
+            CoreCommsService.log("send_wifi_credentials invalid params")
+            break
+          }
+          sendWifiCredentials(ssid, password)
+          break
         case .unknown:
           CoreCommsService.log("Unknown command type: \(commandString)")
           handleRequestStatus()
@@ -1261,37 +1290,44 @@ struct ViewState {
 
     // construct the status object:
 
-    let isGlassesConnected = self.g1Manager?.g1Ready ?? false || self.liveManager?.glassesReady ?? false
+    let g1Connected = self.g1Manager?.g1Ready ?? false
+    let liveConnected = self.liveManager?.connectionState == .connected
+    let simulatedConnected = self.defaultWearable == "Simulated Glasses"
+    let isGlassesConnected = g1Connected || liveConnected || simulatedConnected
+    self.somethingConnected = isGlassesConnected
 
     // also referenced as glasses_info:
-    var connectedGlasses: [String: Any] = [:];
     var glassesSettings: [String: Any] = [:];
-
-    self.somethingConnected = false
-    if (self.defaultWearable == "Simulated Glasses") {
-      connectedGlasses = [
-        "model_name": self.defaultWearable,
-      ]
-      self.somethingConnected = true
-    }
+    var connectedGlasses: [String: Any] = [:];
 
     if isGlassesConnected {
       connectedGlasses = [
         "model_name": self.defaultWearable,
         "battery_level": self.batteryLevel,
-        "case_removed": self.g1Manager?.caseRemoved ?? true,
-        "case_open": self.g1Manager?.caseOpen ?? true,
-        "case_charging": self.g1Manager?.caseCharging ?? false,
-        "case_battery_level": self.g1Manager?.caseBatteryLevel ?? -1,
       ]
-      self.somethingConnected = true
     }
-    
-    // Always include serial number information when available, regardless of connection status
-    if let serialNumber = self.g1Manager?.glassesSerialNumber, !serialNumber.isEmpty {
-      connectedGlasses["glasses_serial_number"] = serialNumber
-      connectedGlasses["glasses_style"] = self.g1Manager?.glassesStyle ?? ""
-      connectedGlasses["glasses_color"] = self.g1Manager?.glassesColor ?? ""
+
+    if (simulatedConnected) {
+      connectedGlasses["model_name"] = self.defaultWearable
+    }
+
+    if g1Connected {
+      connectedGlasses["case_removed"] = self.g1Manager?.caseRemoved ?? true
+      connectedGlasses["case_open"] = self.g1Manager?.caseOpen ?? true
+      connectedGlasses["case_charging"] = self.g1Manager?.caseCharging ?? false
+      connectedGlasses["case_battery_level"] = self.g1Manager?.caseBatteryLevel ?? -1
+
+      if let serialNumber = self.g1Manager?.glassesSerialNumber, !serialNumber.isEmpty {
+        connectedGlasses["glasses_serial_number"] = serialNumber
+        connectedGlasses["glasses_style"] = self.g1Manager?.glassesStyle ?? ""
+        connectedGlasses["glasses_color"] = self.g1Manager?.glassesColor ?? ""
+      }
+    }
+
+    if liveConnected {
+      if let wifiSsid = self.liveManager?.wifiSsid, !wifiSsid.isEmpty {
+        connectedGlasses["glasses_wifi_ssid"] = wifiSsid
+      }
     }
 
     glassesSettings = [

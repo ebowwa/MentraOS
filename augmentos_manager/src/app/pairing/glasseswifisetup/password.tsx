@@ -100,7 +100,7 @@ const $keyboardContainer: ThemedStyle<ViewStyle> = () => ({
 
 const $content: ThemedStyle<ViewStyle> = ({spacing}) => ({
   flex: 1,
-  padding: spacing.lg,
+  paddingHorizontal: spacing.lg,
 })
 
 const $inputContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
