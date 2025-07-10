@@ -428,8 +428,14 @@ typealias JSONObject = [String: Any]
   private var connectionTimeoutTimer: Timer?
   
   // Callbacks
-  public var dataObservable: ((Data) -> Void)?
   public var jsonObservable: ((JSONObject) -> Void)?
+
+  // onButtonPress (buttonId: String, pressType: String)
+  public var onButtonPress: ((String, String) -> Void)?
+  // onPhotoRequest (requestId: String, appId: String, webhookUrl: String?)
+  public var onPhotoRequest: ((String, String) -> Void)?
+  // onVideoStreamResponse (appId: String, streamUrl: String)
+  public var onVideoStreamResponse: ((String, String) -> Void)?
   
   // MARK: - Initialization
   
@@ -700,12 +706,6 @@ typealias JSONObject = [String: Any]
       return
     }
     
-    // Check for LC3 audio data
-    if bytes[0] == 0xA0 {
-      processLC3AudioData(data)
-      return
-    }
-    
     // Check for JSON data
     if bytes[0] == 0x7B { // '{'
       if let jsonString = String(data: data, encoding: .utf8),
@@ -742,16 +742,6 @@ typealias JSONObject = [String: Any]
         }
       }
     }
-  }
-  
-  private func processLC3AudioData(_ data: Data) {
-    CoreCommsService.log("✅ DETECTED LC3 AUDIO PACKET! Size: \(data.count) bytes")
-    
-    // Extract LC3 data (skip command byte)
-    let lc3Data = data.subdata(in: 1..<data.count)
-    
-    // Forward to audio processing callback if available
-    dataObservable?(lc3Data)
   }
   
   private func processJsonMessage(_ jsonString: String) {

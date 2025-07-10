@@ -225,6 +225,18 @@ struct ViewState {
         handleRequestStatus()
       }.store(in: &cancellables)
 
+      liveManager!.onButtonPress = { [weak self] (buttonId: String, pressType: String) in
+        guard let self = self else { return }
+        self.serverComms.sendButtonPress(buttonId: buttonId, pressType: pressType)
+      }
+      liveManager!.onPhotoRequest = { [weak self] (requestId: String, photoUrl: String) in
+        guard let self = self else { return }
+        self.serverComms.sendPhotoResponse(requestId: requestId, photoUrl: photoUrl)
+      }
+      liveManager!.onVideoStreamResponse = { [weak self] (appId: String, streamUrl: String) in
+        guard let self = self else { return }
+        self.serverComms.sendVideoStreamResponse(appId: appId, streamUrl: streamUrl)
+      }
     }
   }
 
