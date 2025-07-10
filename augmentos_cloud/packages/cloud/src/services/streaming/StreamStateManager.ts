@@ -373,8 +373,12 @@ export class StreamStateManager {
 
   /**
    * Generate a unique stream ID
+   * Using shorter format to reduce BLE message size
    */
   private generateStreamId(): string {
-    return `stream_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    // Short format: m + 6 char timestamp + 4 random chars = ~11 chars total
+    const timestamp = Date.now().toString(36).slice(-6);
+    const random = Math.random().toString(36).slice(2, 6);
+    return `m${timestamp}${random}`;
   }
 }

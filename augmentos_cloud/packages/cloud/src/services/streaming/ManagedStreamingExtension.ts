@@ -18,6 +18,7 @@ import UserSession from '../session/UserSession';
 import { sessionService } from '../session/session.service';
 import { CloudflareStreamService } from './CloudflareStreamService';
 import { StreamStateManager, StreamType, ManagedStreamState } from './StreamStateManager';
+import { RtmpRelayService } from './RtmpRelayService';
 
 /**
  * Tracks keep-alive state for managed streams
@@ -45,6 +46,7 @@ export class ManagedStreamingExtension {
   private logger: Logger;
   private cloudflareService: CloudflareStreamService;
   private stateManager: StreamStateManager;
+  private rtmpRelayService: RtmpRelayService;
   
   // Keep-alive tracking for managed streams (per user, not per app)
   private managedKeepAlive: Map<string, ManagedStreamKeepAlive> = new Map(); // userId -> keepAlive
@@ -56,6 +58,7 @@ export class ManagedStreamingExtension {
     this.logger = logger.child({ service: 'ManagedStreamingExtension' });
     this.cloudflareService = new CloudflareStreamService(logger);
     this.stateManager = new StreamStateManager(logger);
+    this.rtmpRelayService = new RtmpRelayService(logger);
     
     this.logger.info('ManagedStreamingExtension initialized');
     
@@ -169,11 +172,13 @@ export class ManagedStreamingExtension {
     // Start keep-alive for this user's managed stream
     this.startKeepAlive(userId, managedStream.streamId, managedStream.cfLiveInputId);
 
-    // Send start command to glasses with Cloudflare RTMP URL
+    // Send start command to glasses with RELAY URL (not Cloudflare!)
+    const relayUrl = this.rtmpRelayService.buildRelayUrl(userId, managedStream.streamId);
+    
     const startMessage: StartRtmpStream = {
       type: CloudToGlassesMessageType.START_RTMP_STREAM,
       sessionId: userSession.sessionId,
-      rtmpUrl: liveInput.rtmpUrl, // Cloudflare ingest URL
+      rtmpUrl: relayUrl, // RELAY URL - this is the key change!
       appId: 'MANAGED_STREAM', // Special app ID for managed streams
       streamId: managedStream.streamId,
       video: video || {},
@@ -360,6 +365,14 @@ export class ManagedStreamingExtension {
   }
 
   /**
+   * Get stream state by stream ID
+   * Used by relay service to lookup Cloudflare URLs
+   */
+  getStreamByStreamId(streamId: string) {
+    return this.stateManager.getStreamByStreamId(streamId);
+  }
+
+  /**
    * Start polling for playback URLs after stream creation
    */
   private startPlaybackUrlPolling(
@@ -535,13 +548,12 @@ export class ManagedStreamingExtension {
       return;
     }
 
-    const ackId = crypto.randomUUID();
+    // Short ACK ID for BLE efficiency
+    const ackId = `a${Date.now().toString(36).slice(-5)}`;
     const message: KeepRtmpStreamAlive = {
       type: CloudToGlassesMessageType.KEEP_RTMP_STREAM_ALIVE,
-      sessionId: userSession.sessionId,
       streamId: keepAlive.streamId,
-      ackId,
-      timestamp: new Date()
+      ackId
     };
 
     // Set up ACK timeout

@@ -94,7 +94,8 @@ export class VideoManager {
       throw new Error('Cannot start unmanaged stream - managed stream already active');
     }
 
-    const streamId = crypto.randomUUID();
+    // Shorter streamId for BLE efficiency
+    const streamId = `s${Date.now().toString(36).slice(-6)}${Math.random().toString(36).slice(2, 6)}`;
 
     // Stop any existing stream for this app (simple policy)
     this.stopStreamsByPackageName(packageName);
@@ -301,17 +302,15 @@ export class VideoManager {
       return;
     }
 
-    // Generate ACK ID and track it
-    const ackId = crypto.randomUUID();
+    // Generate short ACK ID for BLE efficiency
+    const ackId = `a${Date.now().toString(36).slice(-5)}`;
     this.trackKeepAliveAck(streamId, ackId);
 
-    // Send keep-alive message
+    // Send keep-alive message (minimal size for BLE)
     const keepAliveMsg: KeepRtmpStreamAlive = {
       type: CloudToGlassesMessageType.KEEP_RTMP_STREAM_ALIVE,
-      sessionId: this.userSession.sessionId,
       streamId,
-      ackId,
-      timestamp: new Date(),
+      ackId
     };
 
     try {
