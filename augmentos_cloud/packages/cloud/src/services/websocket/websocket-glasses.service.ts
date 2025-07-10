@@ -449,17 +449,32 @@ export class GlassesWebSocketService {
       if (isSpeaking) {
         userSession.logger.info('🎙️ VAD detected speech - starting transcription');
         userSession.isTranscribing = true;
+        
+        // Use new TranscriptionManager for VAD-controlled streaming
+        await userSession.transcriptionManager.restartFromActiveSubscriptions();
+        
+        // Keep legacy transcription service for backwards compatibility if needed
         transcriptionService.startTranscription(userSession);
       } else {
-        // TODO: Temporarily commented out to prevent frequent stream creation/destruction
-        // This reduces Azure connection churn and improves transcription performance
-        userSession.logger.info('🤫 VAD detected silence - keeping transcription active (streams persistent)');
-        // userSession.isTranscribing = false;
-        // transcriptionService.stopTranscription(userSession);
+        userSession.logger.info('🤫 VAD detected silence - finalizing and stopping transcription');
+        userSession.isTranscribing = false;
+        
+        // Use new TranscriptionManager with proper finalization
+        await userSession.transcriptionManager.stopAndFinalizeAll();
+        
+        // Keep legacy transcription service for backwards compatibility
+        transcriptionService.stopTranscription(userSession);
       }
     } catch (error) {
       userSession.logger.error({ error }, '❌ Error handling VAD state change');
       userSession.isTranscribing = false;
+      
+      // Stop both systems on error
+      try {
+        await userSession.transcriptionManager.stopAndFinalizeAll();
+      } catch (managerError) {
+        userSession.logger.error({ error: managerError }, '❌ Error stopping TranscriptionManager');
+      }
       transcriptionService.stopTranscription(userSession);
     }
   }

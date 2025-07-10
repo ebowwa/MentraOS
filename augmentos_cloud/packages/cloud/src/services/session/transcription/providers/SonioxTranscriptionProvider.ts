@@ -389,6 +389,8 @@ class SonioxTranscriptionStream implements StreamInstance {
       max_non_final_tokens_duration_ms: 2000,
       enable_endpoint_detection: true, // Automatically finalize tokens on speech pauses
       enable_speaker_diarization: true,
+      context: "Mentra, MentraOS, Mira, Hey Mira",
+      // language_hints: ["en"], // Default hints, can be overridden
     };
 
     // Configure translation if target language is specified
@@ -596,6 +598,59 @@ class SonioxTranscriptionStream implements StreamInstance {
       this.fallbackPosition = 0;
       this.lastSentInterim = '';
     }
+  }
+  
+  /**
+   * Force finalize the current token buffer (called when VAD stops)
+   * This sends whatever tokens we have as a final transcription
+   */
+  forceFinalizePendingTokens(): void {
+    if (this.tokenBuffer.size === 0) {
+      this.logger.debug({
+        streamId: this.id,
+        provider: 'soniox'
+      }, '🎙️ SONIOX: VAD stop - no tokens to finalize');
+      return;
+    }
+    
+    // Build final transcript from all tokens in buffer (both final and interim)
+    const allTokens = Array.from(this.tokenBuffer.values())
+      .sort((a, b) => a.start_ms - b.start_ms);
+    
+    const finalTranscript = allTokens
+      .map(token => token.text)
+      .join('')
+      .trim();
+    
+    if (finalTranscript) {
+      const finalData: TranscriptionData = {
+        type: StreamType.TRANSCRIPTION,
+        text: finalTranscript,
+        isFinal: true,
+        startTime: Date.now(),
+        endTime: Date.now() + 1000,
+        transcribeLanguage: this.language,
+        provider: 'soniox'
+      };
+      
+      if (this.callbacks.onData) {
+        this.callbacks.onData(finalData);
+      }
+      
+      this.logger.debug({
+        streamId: this.id,
+        text: finalTranscript.substring(0, 100),
+        isFinal: true,
+        tokenCount: allTokens.length,
+        provider: 'soniox',
+        trigger: 'VAD_STOP'
+      }, `🎙️ SONIOX: VAD-triggered FINAL transcription - "${finalTranscript}"`);
+    }
+    
+    // Clear buffer for next VAD session
+    this.tokenBuffer.clear();
+    this.fallbackPosition = 0;
+    this.lastSentInterim = '';
   }
   
   private processTranslationTokens(tokens: SonioxToken[]): void {
