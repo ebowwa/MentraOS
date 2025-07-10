@@ -560,14 +560,17 @@ class ServerComms {
       break;
       
     case "set_location_tier":
-      if let payload = msg["payload"] as? [String: Any], let tier = payload["tier"] as? String {
+      print("DEBUG set_location_tier: \(msg)")
+      if let tier = msg["tier"] as? String {
         self.locationManager.setTier(tier: tier)
       }
       
     case "request_single_location":
-      if let payload = msg["payload"] as? [String: Any],
-         let accuracy = payload["accuracy"] as? String,
-         let correlationId = payload["correlationId"] as? String {
+
+      print("DEBUG request_single_location: \(msg)")
+      if let accuracy = msg["accuracy"] as? String,
+          let correlationId = msg["correlationId"] as? String {
+
         self.locationManager.requestSingleUpdate(accuracy: accuracy, correlationId: correlationId)
       }
       
