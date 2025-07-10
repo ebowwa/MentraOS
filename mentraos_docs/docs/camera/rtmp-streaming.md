@@ -194,7 +194,7 @@ session.subscribe(StreamType.MANAGED_STREAM_STATUS);
 // IMPORTANT: Set up status listener BEFORE starting stream
 session.camera.onManagedStreamStatus((status) => {
   console.log('Stream status:', status.status);
-  
+
   if (status.status === 'active') {
     // NOW the URLs are ready to share!
     console.log('🟢 Stream is live!');
@@ -207,11 +207,11 @@ session.camera.onManagedStreamStatus((status) => {
 // Start managed streaming
 try {
   const result = await session.camera.startManagedStream();
-  
+
   console.log('🎥 Stream request sent!');
   console.log('⏳ Waiting for stream to go live...');
   // NOTE: URLs are returned but may not work until status is 'active'
-  
+
 } catch (error) {
   console.error('Failed to start stream:', error);
 }
@@ -240,7 +240,7 @@ session.on(StreamType.MANAGED_STREAM_STATUS, (status) => {
       console.log('📡 Setting up stream...');
       // URLs exist but won't work until 'active' status
       break;
-      
+
     case 'active':
       console.log('🟢 Stream is live!');
       console.log('Share these URLs:');
@@ -248,15 +248,15 @@ session.on(StreamType.MANAGED_STREAM_STATUS, (status) => {
       console.log('- Low latency:', status.webrtcUrl);
       // NOW viewers can connect to these URLs
       break;
-      
+
     case 'stopping':
       console.log('🟡 Stream is stopping...');
       break;
-      
+
     case 'stopped':
       console.log('🔴 Stream stopped');
       break;
-      
+
     case 'error':
       console.error('❌ Stream error:', status.message);
       break;
@@ -283,7 +283,7 @@ Viewers can watch using any HLS-compatible player:
 
 For full control over your streaming infrastructure, use unmanaged streaming.
 
-### Example (from [rtmp-streaming-example.ts](../packages/sdk/src/examples/rtmp-streaming-example.ts))
+### Example
 
 ```typescript
 import { AppSession, StreamType } from '@mentra/sdk';
@@ -302,7 +302,7 @@ session.subscribe(StreamType.RTMP_STREAM_STATUS);
 // Set up status handler
 session.camera.onStreamStatus((status) => {
   console.log(`Stream status: ${status.status}`);
-  
+
   if (status.stats) {
     console.log(`Stats:
       Bitrate: ${status.stats.bitrate} bps
@@ -328,7 +328,7 @@ Monitor your unmanaged stream with detailed statistics:
 ```typescript
 session.camera.onStreamStatus((status) => {
   console.log(`Stream status: ${status.status}`);
-  
+
   if (status.stats) {
     console.log(`Stats:
       Bitrate: ${status.stats.bitrate} bps
@@ -370,7 +370,7 @@ For unmanaged streaming, you'll need an RTMP server. Options include:
    node-media-server
    ```
 
-2. **Production**: 
+2. **Production**:
    - [nginx-rtmp](https://github.com/arut/nginx-rtmp-module)
    - [Amazon IVS](https://aws.amazon.com/ivs/)
    - [Wowza Streaming Engine](https://www.wowza.com/)
@@ -541,12 +541,6 @@ await session.camera.startStream({
   rtmpUrl: 'rtmp://your-server.com/live/key'
 });
 ```
-
-### Full Examples
-
-- 📘 [React Streaming Dashboard](./examples/streaming-react.md) - Complete React component with UI
-- 📗 [Managed Streaming Example](../packages/sdk/src/examples/managed-rtmp-streaming-example.ts) - Zero-config streaming
-- 📗 [Unmanaged Streaming Example](../packages/sdk/src/examples/rtmp-streaming-example.ts) - Custom RTMP server
 
 ## API Reference
 
