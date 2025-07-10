@@ -46,7 +46,7 @@ Use this when you only need the location once, like for tagging a photo or check
 async function checkWeather() {
   try {
     // This gets a single, fresh location fix.
-    const location = await session.location.getLatestLocation({ accuracy: 'realtime' });
+    const location = await session.location.getLatestLocation({ accuracy: 'kilometer' });
     
     // Now you can use the location data.
     const weather = await fetchWeatherFor(location.lat, location.lng);
