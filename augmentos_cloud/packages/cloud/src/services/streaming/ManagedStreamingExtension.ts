@@ -7,6 +7,7 @@ import {
   ManagedStreamRequest,
   ManagedStreamStopRequest,
   ManagedStreamStatus,
+  OutputStatus,
   StartRtmpStream,
   StopRtmpStream,
   KeepRtmpStreamAlive,
@@ -140,7 +141,8 @@ export class ManagedStreamingExtension {
         quality,
         enableWebRTC,
         enableRecording: false, // Live-only for now
-        requireSignedURLs: false // Public streams
+        requireSignedURLs: false, // Public streams
+        restreamDestinations: request.restreamDestinations
       });
       
       this.logger.info({ 
@@ -487,6 +489,18 @@ export class ManagedStreamingExtension {
       return;
     }
 
+    // Convert CloudflareOutput to OutputStatus format
+    let outputs: OutputStatus[] | undefined;
+    if (stream.outputs && stream.outputs.length > 0) {
+      outputs = stream.outputs.map(output => ({
+        url: output.url,
+        name: undefined, // Cloudflare doesn't store names, would need to track separately
+        status: output.status?.current?.state === 'connected' ? 'active' as const : 
+                output.status?.current?.state === 'error' ? 'error' as const : 'stopped' as const,
+        error: output.status?.current?.lastError
+      }));
+    }
+
     const statusMessage: ManagedStreamStatus = {
       type: CloudToAppMessageType.MANAGED_STREAM_STATUS,
       status,
@@ -494,7 +508,8 @@ export class ManagedStreamingExtension {
       dashUrl: dashUrl !== undefined ? dashUrl : stream.dashUrl,
       webrtcUrl: webrtcUrl !== undefined ? webrtcUrl : stream.webrtcUrl,
       streamId,
-      message
+      message,
+      outputs
     };
 
     appWs.send(JSON.stringify(statusMessage));

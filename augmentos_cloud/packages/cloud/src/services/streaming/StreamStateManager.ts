@@ -1,5 +1,5 @@
 import { Logger } from 'pino';
-import { LiveInputResult } from './CloudflareStreamService';
+import { LiveInputResult, CloudflareOutput } from './CloudflareStreamService';
 
 /**
  * Stream types supported by the system
@@ -28,6 +28,7 @@ export interface ManagedStreamState extends BaseStreamState {
   webrtcUrl?: string;
   activeViewers: Set<string>; // Set of appIds consuming this stream
   streamId: string; // Internal stream ID
+  outputs?: CloudflareOutput[]; // Restream outputs if configured
 }
 
 /**
@@ -168,7 +169,8 @@ export class StreamStateManager {
       activeViewers: new Set([appId]),
       streamId,
       createdAt: new Date(),
-      lastActivity: new Date()
+      lastActivity: new Date(),
+      outputs: liveInput.outputs
     };
     
     // Update all maps
