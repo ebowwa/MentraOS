@@ -34,6 +34,7 @@ import { sessionService } from '../session/session.service';
 import transcriptionService from '../processing/transcription.service';
 import { User } from '../../models/user.model';
 import { SYSTEM_DASHBOARD_PACKAGE_NAME } from '../core/app.service';
+import { locationService } from '../core/location.service';
 
 const SERVICE_NAME = 'websocket-glasses.service';
 const logger = rootLogger.child({ service: SERVICE_NAME });
@@ -45,6 +46,8 @@ const DEFAULT_AUGMENTOS_SETTINGS = {
   useOnboardMic: false,
   contextualDashboard: true,
   headUpAngle: 20,
+  dashboardHeight: 4,
+  dashboardDepth: 5,
   brightness: 50,
   autoBrightness: false,
   sensingEnabled: true,
@@ -220,9 +223,7 @@ export class GlassesWebSocketService {
           break;
 
         case GlassesToCloudMessageType.LOCATION_UPDATE:
-          await this.handleLocationUpdate(userSession, message as LocationUpdate);
-          sessionService.relayMessageToApps(userSession, message);
-          // TODO(isaiah): broadcast to Apps
+          await locationService.handleDeviceLocationUpdate(userSession, message as LocationUpdate);
           break;
 
         case GlassesToCloudMessageType.CALENDAR_EVENT:
@@ -241,6 +242,7 @@ export class GlassesWebSocketService {
           await this.handleMentraOSSettingsUpdateRequest(userSession, message as MentraosSettingsUpdateRequest);
           break;
 
+        // TODO(isaiah): create a SettingsManager to handle settings updates instead of doing it here.
         case GlassesToCloudMessageType.CORE_STATUS_UPDATE: {
           const coreStatusUpdate = message as CoreStatusUpdate;
           const logger = userSession.logger.child({ service: SERVICE_NAME, type: GlassesToCloudMessageType.CORE_STATUS_UPDATE });
@@ -251,29 +253,31 @@ export class GlassesWebSocketService {
             const statusObj = coreStatusUpdate.status as any;
             const coreInfo = statusObj.status.core_info;
             const connectedGlasses = statusObj.status.connected_glasses;
-            logger.debug({ service: SERVICE_NAME, coreInfo, connectedGlasses }, 'Core status update received');
+            const glassesSettings = statusObj.status.glasses_settings;
+            logger.debug({ coreInfo, statusObj, coreStatusUpdate, connectedGlasses, glasses_settings: glassesSettings }, 'Core status update received');
 
-            if (!coreInfo || !connectedGlasses) {
+            if (!coreInfo || !connectedGlasses || !glassesSettings) {
               userSession.logger.error('Invalid core status update format - missing required fields');
               break;
-            }
-;
+            };
 
-            let brightness = statusObj.status.glasses_settings.brightness;
-            const glassesSettings = statusObj.status.glasses_settings;
+            // Update glasses model if available in status
+            if (connectedGlasses.model_name) {
+              userSession.updateGlassesModel(connectedGlasses.model_name);
+            }
 
             // Map core status fields to augmentos settings
             const newSettings = {
               useOnboardMic: coreInfo.force_core_onboard_mic,
               contextualDashboard: coreInfo.contextual_dashboard_enabled,
               metricSystemEnabled: coreInfo.metric_system_enabled,
-              headUpAngle: connectedGlasses.head_up_angle,
 
               // Glasses settings.
               brightness: glassesSettings.brightness,
               autoBrightness: glassesSettings.auto_brightness,
-              dashboard_height: glassesSettings.dashboard_height,
-              dashboard_depth: glassesSettings.dashboard_depth,
+              dashboardHeight: glassesSettings.dashboard_height,
+              dashboardDepth: glassesSettings.dashboard_depth,
+              headUpAngle: glassesSettings.head_up_angle,
 
               sensingEnabled: coreInfo.sensing_enabled,
               alwaysOnStatusBar: coreInfo.always_on_status_bar_enabled,
@@ -281,35 +285,35 @@ export class GlassesWebSocketService {
               bypassAudioEncoding: coreInfo.bypass_audio_encoding_for_debugging,
             };
 
-            logger.debug("🔥🔥🔥: newSettings:", newSettings);
+            logger.debug({ newSettings }, "🔥🔥🔥: newSettings:");
 
             // Find or create the user
             const user = await User.findOrCreateUser(userSession.userId);
 
             // Get current settings before update
             const currentSettingsBeforeUpdate = JSON.parse(JSON.stringify(user.augmentosSettings));
-            userSession.logger.info('Current settings before update:', currentSettingsBeforeUpdate);
+            userSession.logger.info({ currentSettingsBeforeUpdate }, 'Current settings before update:');
 
-            logger.debug("🔥🔥🔥: currentSettingsBeforeUpdate:", currentSettingsBeforeUpdate);
-            logger.debug("🔥🔥🔥: newSettings:", newSettings);
+            logger.debug({ currentSettingsBeforeUpdate }, "🔥🔥🔥: currentSettingsBeforeUpdate:");
+            logger.debug({ newSettings }, "🔥🔥🔥: newSettings:");
 
             // Check if anything actually changed
             const changedKeys = this.getChangedKeys(currentSettingsBeforeUpdate, newSettings);
-            logger.debug("🔥🔥🔥: changedKeys:", changedKeys);
+            logger.debug({ changedKeys }, "🔥🔥🔥: changedKeys:");
             if (changedKeys.length === 0) {
-              userSession.logger.info('No changes detected in settings from core status update');
+              userSession.logger.info({ changedKeys }, 'No changes detected in settings from core status update');
             } else {
-              userSession.logger.info('Changes detected in settings from core status update:', {
+              userSession.logger.info({
                 changedFields: changedKeys.map(key => ({
                   key,
                   from: `${(currentSettingsBeforeUpdate as Record<string, any>)[key]} (${typeof (currentSettingsBeforeUpdate as Record<string, any>)[key]})`,
                   to: `${(newSettings as Record<string, any>)[key]} (${typeof (newSettings as Record<string, any>)[key]})`
                 }))
-              });
+              }, 'Changes detected in settings from core status update:');
               // Update the settings in the database before broadcasting
               try {
                 await user.updateAugmentosSettings(newSettings);
-                userSession.logger.info('Updated AugmentOS settings in the database.');
+                userSession.logger.info({ newSettings }, 'Updated AugmentOS settings in the database.');
               } catch (dbError) {
                 userSession.logger.error(dbError, 'Failed to update AugmentOS settings in the database:');
                 return; // Do not broadcast if DB update fails
@@ -343,19 +347,40 @@ export class GlassesWebSocketService {
         }
 
         // Mentra Live.
-        case GlassesToCloudMessageType.RTMP_STREAM_STATUS:
-          // Delegate to VideoManager within the user's session
-          userSession.videoManager.handleRtmpStreamStatus(message as RtmpStreamStatus);
+        case GlassesToCloudMessageType.RTMP_STREAM_STATUS: {
+          const status = message as RtmpStreamStatus;
+          // First check if managed streaming extension handles it
+          const managedHandled = await userSession.managedStreamingExtension.handleStreamStatus(
+            userSession,
+            status
+          );
+          // If not handled by managed streaming, delegate to VideoManager
+          if (!managedHandled) {
+            userSession.videoManager.handleRtmpStreamStatus(status);
+          }
           break;
+        }
 
-        case GlassesToCloudMessageType.KEEP_ALIVE_ACK:
-          // Delegate to VideoManager
-          userSession.videoManager.handleKeepAliveAck(message as KeepAliveAck);
+        case GlassesToCloudMessageType.KEEP_ALIVE_ACK: {
+          const ack = message as KeepAliveAck;
+          // Send to both managers - they'll handle their own streams
+          userSession.managedStreamingExtension.handleKeepAliveAck(
+            userSession.userId,
+            ack
+          );
+          userSession.videoManager.handleKeepAliveAck(ack);
           break;
+        }
 
         case GlassesToCloudMessageType.PHOTO_RESPONSE:
           // Delegate to PhotoManager
           userSession.photoManager.handlePhotoResponse(message as PhotoResponse);
+          break;
+
+        case GlassesToCloudMessageType.AUDIO_PLAY_RESPONSE:
+          userSession.logger.debug({ service: SERVICE_NAME, message }, `Audio play response received from glasses/core`);
+          // Forward audio play response to Apps - we need to find the specific app that made the request
+          sessionService.relayAudioPlayResponseToApp(userSession, message);
           break;
 
         case GlassesToCloudMessageType.HEAD_POSITION:
@@ -471,20 +496,16 @@ export class GlassesWebSocketService {
   private async handleLocationUpdate(userSession: UserSession, message: LocationUpdate): Promise<void> {
     userSession.logger.debug({ message, service: SERVICE_NAME }, 'Location update received from glasses');
     try {
-      // Cache the location update in subscription service
-      subscriptionService.cacheLocation(userSession.sessionId, {
-        latitude: message.lat,
-        longitude: message.lng,
-        timestamp: new Date()
-      });
+      // The core logic is now handled by the central LocationService to manage caching and polling.
+      await locationService.handleDeviceLocationUpdate(userSession, message);
 
-      const user = await User.findByEmail(userSession.userId);
-      if (user) {
-        await user.setLocation(message);
-      }
+      // We still relay the message to any apps subscribed to the raw location stream.
+      // The locationService's handleDeviceLocationUpdate will decide if it needs to send a specific
+      // response for a poll request.
+      sessionService.relayMessageToApps(userSession, message);
     }
     catch (error) {
-      userSession.logger.error({ error, service: SERVICE_NAME }, `Error updating user location:`, error);
+      userSession.logger.error({ error, service: SERVICE_NAME }, `Error handling location update:`, error);
     }
   }
 
@@ -539,12 +560,62 @@ export class GlassesWebSocketService {
     userSession.logger.info({ service: SERVICE_NAME, message }, `handleGlassesConnectionState for user ${userSession.userId}`);
     userSession.microphoneManager.handleConnectionStateChange(glassesConnectionStateMessage.status);
 
-    // Track the connection state event
+    // Extract glasses model information
+    const modelName = glassesConnectionStateMessage.modelName;
+    const isConnected = glassesConnectionStateMessage.status === 'CONNECTED';
+
+    // Update glasses model in session when connected and model name is available
+    if (isConnected && modelName) {
+      userSession.updateGlassesModel(modelName);
+    }
+
+    try {
+      // Get or create user to track glasses model
+      const user = await User.findOrCreateUser(userSession.userId);
+
+      // Track new glasses model if connected and model name exists
+      if (isConnected && modelName) {
+        const isNewModel = !user.getGlassesModels().includes(modelName);
+
+        // Add glasses model to user's history
+        await user.addGlassesModel(modelName);
+
+        // Update PostHog person properties
+        await PosthogService.setPersonProperties(userSession.userId, {
+          current_glasses_model: modelName,
+          glasses_models_used: user.getGlassesModels(),
+          glasses_models_count: user.getGlassesModels().length,
+          glasses_last_connected: new Date().toISOString(),
+          glasses_current_connected: true
+        });
+
+        // Track first-time connection for new glasses model
+        if (isNewModel) {
+          PosthogService.trackEvent('glasses_model_first_connect', userSession.userId, {
+            sessionId: userSession.sessionId,
+            modelName,
+            totalModelsUsed: user.getGlassesModels().length,
+            timestamp: new Date().toISOString()
+          });
+        }
+      } else if (!isConnected) {
+        // Update PostHog person properties for disconnection
+        await PosthogService.setPersonProperties(userSession.userId, {
+          glasses_current_connected: false
+        });
+      }
+    } catch (error) {
+      userSession.logger.error(error, 'Error tracking glasses model:');
+    }
+
+    // Track the connection state event (enhanced with model info)
     PosthogService.trackEvent(GlassesToCloudMessageType.GLASSES_CONNECTION_STATE, userSession.userId, {
       sessionId: userSession.sessionId,
       eventType: message.type,
       timestamp: new Date().toISOString(),
       connectionState: glassesConnectionStateMessage,
+      modelName,
+      isConnected
     });
   }
 
@@ -560,7 +631,7 @@ export class GlassesWebSocketService {
     try {
       const user = await User.findByEmail(userSession.userId);
       const userSettings = user?.augmentosSettings || DEFAULT_AUGMENTOS_SETTINGS;
-
+      userSession.logger.debug({ service: SERVICE_NAME, userSettings, message, user_augmentosSettings: user?.augmentosSettings, default_augmentosSettings: DEFAULT_AUGMENTOS_SETTINGS }, `⚙️ Current AugmentOS settings for user ${userSession.userId}`);
       const settingsMessage: CloudToGlassesMessage = {
         type: CloudToGlassesMessageType.SETTINGS_UPDATE,
         sessionId: userSession.sessionId,

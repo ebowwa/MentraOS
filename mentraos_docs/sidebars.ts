@@ -63,9 +63,21 @@ const sidebars: SidebarsConfig = {
         'permissions',
         'layouts',
         'settings',
+        'audio',
         'tools',
         'capabilities',
-        'camera-tutorial',
+        {
+          type: 'category',
+          label: 'Camera',
+          link: {
+            type: 'doc',
+            id: 'camera/README',
+          },
+          items: [
+            'camera/photo-capture',
+            'camera/rtmp-streaming'
+          ],
+        },
         'webview-auth-overview',
         'react-webviews',
         'dashboard'
@@ -88,8 +100,9 @@ const sidebars: SidebarsConfig = {
             'reference/managers/event-manager',
             'reference/managers/layout-manager',
             'reference/managers/settings-manager',
-            'reference/camera',
-          ],
+            'reference/managers/audio-manager',
+            'reference/managers/camera',
+              ],
         },
         'reference/enums',
         {

@@ -89,19 +89,6 @@ export class SessionService {
       // Create new session with WebSocket
       const userSession = new UserSession(userId, ws);
 
-      // Determine device capabilities based on model
-      // For now, we'll default to Even Realities G1 if no model info is available
-      // In the future, this will be determined from the glasses connection info
-      const modelName = "Even Realities G1"; // TODO: Get from glasses connection info
-      const capabilities = getCapabilitiesForModel(modelName);
-
-      if (capabilities) {
-        userSession.capabilities = capabilities;
-        logger.info(`Set capabilities for ${modelName} on session ${userId}`);
-      } else {
-        logger.warn(`No capabilities found for model: ${modelName}, session ${userId}`);
-      }
-
       // TODO(isaiah): Create a init method in UserSession to handle initialization logic.
       // Fetch installed apps
       try {
@@ -416,6 +403,65 @@ export class SessionService {
       userSession.audioManager.processAudioData(audioData, false);
     } catch (error) {
       userSession.logger.error({ error }, `Error relaying audio for user: ${userSession.userId}`);
+    }
+  }
+
+  /**
+   * Relay audio play response to the specific app that made the request
+   *
+   * @param userSession User session
+   * @param audioResponse Audio play response from glasses/core
+   */
+  relayAudioPlayResponseToApp(userSession: UserSession, audioResponse: any): void {
+    try {
+      const requestId = audioResponse.requestId;
+      if (!requestId) {
+        userSession.logger.error({ audioResponse }, 'Audio play response missing requestId');
+        return;
+      }
+
+      // Look up which app made this request
+      const packageName = userSession.audioPlayRequestMapping.get(requestId);
+      if (!packageName) {
+        userSession.logger.warn(`🔊 [SessionService] No app mapping found for audio request ${requestId}. Available mappings:`,
+          Array.from(userSession.audioPlayRequestMapping.keys()));
+        return;
+      }
+
+      // Get the app's WebSocket connection
+      const appWebSocket = userSession.appWebsockets.get(packageName);
+      if (!appWebSocket || appWebSocket.readyState !== WebSocket.OPEN) {
+        userSession.logger.warn(`🔊 [SessionService] App ${packageName} not connected or WebSocket not ready for audio response ${requestId}`);
+        // Clean up the mapping even if we can't deliver the response
+        userSession.audioPlayRequestMapping.delete(requestId);
+        return;
+      }
+
+      // Create the audio play response message for the app
+      const appAudioResponse = {
+        type: CloudToAppMessageType.AUDIO_PLAY_RESPONSE,
+        sessionId: `${userSession.sessionId}-${packageName}`,
+        requestId: requestId,
+        success: audioResponse.success,
+        error: audioResponse.error,
+        duration: audioResponse.duration,
+        timestamp: new Date()
+      };
+
+      // Send the response to the app
+      try {
+        appWebSocket.send(JSON.stringify(appAudioResponse));
+        userSession.logger.info(`🔊 [SessionService] Successfully sent audio play response ${requestId} to app ${packageName}`);
+      } catch (sendError) {
+        userSession.logger.error(`🔊 [SessionService] Error sending audio response ${requestId} to app ${packageName}:`, sendError);
+      }
+
+      // Clean up the mapping
+      userSession.audioPlayRequestMapping.delete(requestId);
+      userSession.logger.debug(`🔊 [SessionService] Cleaned up audio request mapping for ${requestId}. Remaining mappings: ${userSession.audioPlayRequestMapping.size}`);
+
+    } catch (error) {
+      userSession.logger.error({ error, audioResponse }, `Error relaying audio play response`);
     }
   }
 

@@ -26,11 +26,13 @@ export {
   ToolCall,
   StandardConnectionError,
   CustomMessage,
+  ManagedStreamStatus,
   MentraosSettingsUpdate,
   TranscriptionData,
   AudioChunk,
   PermissionError,
   PermissionErrorDetail,
+  AudioPlayResponse,
   // Type guards (excluding isPhotoResponse and isRtmpStreamStatus which conflict)
   isAppConnectionAck,
   isAppConnectionError,
@@ -40,6 +42,7 @@ export {
   isAudioChunk,
   isDashboardModeChanged,
   isDashboardAlwaysOnChanged,
+  isManagedStreamStatus,
   // Re-export the cloud-to-app versions of these type guards since they're the ones
   // that should be used when dealing with CloudToAppMessage types
   isPhotoResponse as isPhotoResponseFromCloud,
@@ -192,6 +195,14 @@ export {
   StreamConfig,
   StreamStatusHandler
 } from './types/rtmp-stream';
+
+// Export app session modules
+export * from './app/session/modules';
+
+// Export photo data types
+export {
+  PhotoData
+} from './types/photo-data';
 
 /**
  * WebSocket error information
