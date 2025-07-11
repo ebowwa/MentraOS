@@ -164,7 +164,9 @@ appSession.events.onVoiceActivity((data) => {
 
 ### onLocation()
 
-Registers a handler for location update events.
+An event handler for raw location updates.
+
+Use the [`LocationManager`](/reference/managers/location-manager) to access location data, as it provides a simple interface for both streaming and polling.
 
 ```typescript
 onLocation(handler: (data: LocationUpdate) => void): () => void
@@ -174,13 +176,6 @@ onLocation(handler: (data: LocationUpdate) => void): () => void
 - `handler`: Callback function that receives [`LocationUpdate`](/reference/interfaces/event-types#locationupdate) objects
 
 **Returns:** An unsubscribe function to remove the handler
-
-**Example:**
-```typescript
-appSession.events.onLocation((data) => {
-  console.log(`Location updated: Lat ${data.lat}, Lng ${data.lng}`);
-});
-```
 
 ### onCalendarEvent()
 

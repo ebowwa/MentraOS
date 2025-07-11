@@ -15,6 +15,8 @@
 		A1C4A5080DE65B36D4AECB21 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = B18D5B1AA3EE1022A1FC3B30 /* PrivacyInfo.xcprivacy */; };
 		B18059E884C0ABDD17F3DC3D /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAC715A2D49A985799AEE119 /* ExpoModulesProvider.swift */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
+		C5D2C75E2E1DAB50004A983D /* AudioManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5D2C75D2E1DAB50004A983D /* AudioManager.swift */; };
+		C577E8A42E19C7CB00522AB8 /* MentraLiveManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C577E8A32E19C7CB00522AB8 /* MentraLiveManager.swift */; };
 		C5DE979E2DDD0EA80032FC99 /* AOSModule.m in Sources */ = {isa = PBXBuildFile; fileRef = C5DE978A2DDD0EA80032FC99 /* AOSModule.m */; };
 		C5DE979F2DDD0EA80032FC99 /* AOSManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5DE97882DDD0EA80032FC99 /* AOSManager.swift */; };
 		C5DE97A02DDD0EA80032FC99 /* ERG1Manager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5DE97902DDD0EA80032FC99 /* ERG1Manager.swift */; };
@@ -61,7 +63,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		13B07F961A680F5B00A75B9A /* AugmentOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AugmentOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		13B07F961A680F5B00A75B9A /* MentraOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MentraOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FAF1A68108700A75B9A /* AppDelegate.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = AppDelegate.h; path = AOS/AppDelegate.h; sourceTree = "<group>"; };
 		13B07FB01A68108700A75B9A /* AppDelegate.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = AppDelegate.mm; path = AOS/AppDelegate.mm; sourceTree = "<group>"; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = AOS/Images.xcassets; sourceTree = "<group>"; };
@@ -74,6 +76,8 @@
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = AOS/SplashScreen.storyboard; sourceTree = "<group>"; };
 		B18D5B1AA3EE1022A1FC3B30 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = AOS/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
+		C5D2C75D2E1DAB50004A983D /* AudioManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioManager.swift; sourceTree = "<group>"; };
+		C577E8A32E19C7CB00522AB8 /* MentraLiveManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MentraLiveManager.swift; sourceTree = "<group>"; };
 		C5DE97882DDD0EA80032FC99 /* AOSManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AOSManager.swift; sourceTree = "<group>"; };
 		C5DE97892DDD0EA80032FC99 /* AOSModule.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AOSModule.h; sourceTree = "<group>"; };
 		C5DE978A2DDD0EA80032FC99 /* AOSModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AOSModule.m; sourceTree = "<group>"; };
@@ -209,7 +213,7 @@
 		83CBBA001A601CBA00E9B192 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				13B07F961A680F5B00A75B9A /* AugmentOS.app */,
+				13B07F961A680F5B00A75B9A /* MentraOS.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -234,6 +238,8 @@
 		C5DE979D2DDD0EA80032FC99 /* BleManager */ = {
 			isa = PBXGroup;
 			children = (
+				C5D2C75D2E1DAB50004A983D /* AudioManager.swift */,
+				C577E8A32E19C7CB00522AB8 /* MentraLiveManager.swift */,
 				C5DE98952DE267CD0032FC99 /* CoreCommsService.m */,
 				C5DE98962DE267CD0032FC99 /* CoreCommsService.swift */,
 				C5DE97882DDD0EA80032FC99 /* AOSManager.swift */,
@@ -406,7 +412,7 @@
 			);
 			name = AOS;
 			productName = AOS;
-			productReference = 13B07F961A680F5B00A75B9A /* AugmentOS.app */;
+			productReference = 13B07F961A680F5B00A75B9A /* MentraOS.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -603,6 +609,7 @@
 				C5DE97A92DDD0EA80032FC99 /* Enums.swift in Sources */,
 				C5DE98472DDD0F420032FC99 /* SileroVAD.swift in Sources */,
 				C5DE98482DDD0F420032FC99 /* lc3.c in Sources */,
+				C577E8A42E19C7CB00522AB8 /* MentraLiveManager.swift in Sources */,
 				C5DE98492DDD0F420032FC99 /* ContentData.swift in Sources */,
 				C5DE984A2DDD0F420032FC99 /* ltpf.c in Sources */,
 				C5DE984B2DDD0F420032FC99 /* tns.c in Sources */,
@@ -633,6 +640,7 @@
 				C5DE97AF2DDD0EA80032FC99 /* WebSocketManager.swift in Sources */,
 				C5DE97B02DDD0EA80032FC99 /* CalendarManager.swift in Sources */,
 				B18059E884C0ABDD17F3DC3D /* ExpoModulesProvider.swift in Sources */,
+				C5D2C75E2E1DAB50004A983D /* AudioManager.swift in Sources */,
 				F314884EB5724196A394670E /* noop-file.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

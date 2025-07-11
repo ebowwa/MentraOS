@@ -4,17 +4,14 @@
  * specialized handlers for glasses clients and Apps.
  */
 
-import { Server } from 'http';
 import WebSocket from 'ws';
-import { IncomingMessage } from 'http';
-import jwt from 'jsonwebtoken';
-import { JwtPayload } from 'jsonwebtoken';
-import { CloudToGlassesMessageType, ConnectionError } from '@mentra/sdk';
+import { Server } from 'http';
+import jwt, { JwtPayload } from 'jsonwebtoken';
+import { CloudToGlassesMessageType } from '@mentra/sdk';
 import { GlassesWebSocketService } from './websocket-glasses.service';
 import { AppWebSocketService } from './websocket-app.service';
-import { logger as rootLogger } from '../logging/pino-logger';
-
-const logger = rootLogger.child({ service: 'websocket.service' });
+import { logger } from '../logging/pino-logger';
+import { UserSession } from '../session/UserSession';
 
 // Environment variables
 const AUGMENTOS_AUTH_JWT_SECRET = process.env.AUGMENTOS_AUTH_JWT_SECRET || "";
@@ -70,6 +67,40 @@ export class WebSocketService {
       WebSocketService.instance = new WebSocketService();
     }
     return WebSocketService.instance;
+  }
+
+  /**
+   * Send an app started message to the glasses client
+   */
+  public sendAppStarted(userSession: UserSession, packageName: string) {
+    if (userSession.websocket && userSession.websocket.readyState === 1) {
+      const appStartedMessage = {
+        type: 'app_started',
+        packageName: packageName,
+        timestamp: new Date()
+      };
+      userSession.websocket.send(JSON.stringify(appStartedMessage));
+      logger.info(`Sent app_started message to ${userSession.userId} for app ${packageName}`);
+    } else {
+      logger.warn(`Cannot send app_started message: WebSocket not ready for user ${userSession.userId}`);
+    }
+  }
+
+  /**
+   * Send an app stopped message to the glasses client
+   */
+  public sendAppStopped(userSession: UserSession, packageName: string) {
+    if (userSession.websocket && userSession.websocket.readyState === 1) {
+      const appStoppedMessage = {
+        type: 'app_stopped',
+        packageName: packageName,
+        timestamp: new Date()
+      };
+      userSession.websocket.send(JSON.stringify(appStoppedMessage));
+      logger.info(`Sent app_stopped message to ${userSession.userId} for app ${packageName}`);
+    } else {
+      logger.warn(`Cannot send app_stopped message: WebSocket not ready for user ${userSession.userId}`);
+    }
   }
 
   /**

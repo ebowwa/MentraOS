@@ -48,4 +48,22 @@ public interface ServerCommsCallback {
     void onAppStarted(String packageName);
     void onAppStopped(String packageName);
     void onSettingsUpdate(JSONObject settings);
+
+    // Location Service Commands
+    void onSetLocationTier(String tier);
+    void onRequestSingleLocation(String accuracy, String correlationId);
+
+    /**
+     * Called when the server requests audio to be played
+     *
+     * @param audioRequest The audio play request message with parameters
+     */
+    void onAudioPlayRequest(JSONObject audioRequest);
+
+    /**
+     * Called when the server requests audio playback to be stopped
+     *
+     * @param audioStopRequest The audio stop request message with parameters
+     */
+    void onAudioStopRequest(JSONObject audioStopRequest);
 }

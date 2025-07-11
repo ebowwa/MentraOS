@@ -197,6 +197,31 @@ export interface CustomMessage extends BaseMessage {
 }
 
 /**
+ * Managed RTMP stream status update
+ * Sent when managed stream status changes or URLs are ready
+ */
+export interface ManagedStreamStatus extends BaseMessage {
+  type: CloudToAppMessageType.MANAGED_STREAM_STATUS;
+  status: 'initializing' | 'preparing' | 'active' | 'stopping' | 'stopped' | 'error';
+  hlsUrl?: string;
+  dashUrl?: string;
+  webrtcUrl?: string;
+  message?: string;
+  streamId?: string;
+}
+
+/**
+ * Audio play response to App
+ */
+export interface AudioPlayResponse extends BaseMessage {
+  type: CloudToAppMessageType.AUDIO_PLAY_RESPONSE;
+  requestId: string;
+  success: boolean;
+  error?: string; // Error message (if failed)
+  duration?: number; // Duration of audio in milliseconds (if successful)
+}
+
+/**
  * Union type for all messages from cloud to Apps
  */
 export type CloudToAppMessage =
@@ -211,11 +236,11 @@ export type CloudToAppMessage =
   | AudioChunk
   | LocationUpdate
   | CalendarEvent
-  | DataStream
   | PhotoResponse
   | DashboardModeChanged
   | DashboardAlwaysOnChanged
   | CustomMessage
+  | ManagedStreamStatus
   | MentraosSettingsUpdate
   // New App-to-App communication response messages
   | AppMessageReceived
@@ -225,7 +250,8 @@ export type CloudToAppMessage =
   | AppDirectMessageResponse
   | RtmpStreamStatus
   | PhotoResponse
-  | PermissionError;
+  | PermissionError
+  | AudioPlayResponse;
 
 //===========================================================
 // Type guards
@@ -263,12 +289,20 @@ export function isDashboardAlwaysOnChanged(message: CloudToAppMessage): message 
   return message.type === CloudToAppMessageType.DASHBOARD_ALWAYS_ON_CHANGED;
 }
 
+export function isManagedStreamStatus(message: CloudToAppMessage): message is ManagedStreamStatus {
+  return message.type === CloudToAppMessageType.MANAGED_STREAM_STATUS;
+}
+
 export function isRtmpStreamStatus(message: CloudToAppMessage): message is RtmpStreamStatus {
   return message.type === GlassesToCloudMessageType.RTMP_STREAM_STATUS;
 }
 
 export function isPhotoResponse(message: CloudToAppMessage): message is PhotoResponse {
   return message.type === GlassesToCloudMessageType.PHOTO_RESPONSE;
+}
+
+export function isAudioPlayResponse(message: CloudToAppMessage): message is AudioPlayResponse {
+  return message.type === CloudToAppMessageType.AUDIO_PLAY_RESPONSE;
 }
 
 // New type guards for App-to-App communication

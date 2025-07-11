@@ -10,6 +10,7 @@ import {
 import {check, PERMISSIONS, RESULTS} from "react-native-permissions"
 import BleManager from "react-native-ble-manager"
 import BackendServerComms from "@/backend_comms/BackendServerComms"
+import AudioPlayService from "@/services/AudioPlayService"
 
 const {CoreCommsService, AOSModule} = NativeModules
 const eventEmitter = new NativeEventEmitter(CoreCommsService)
@@ -238,6 +239,11 @@ export class CoreCommunicator extends EventEmitter {
       console.log("Received message from core:", jsonString)
     }
 
+    if (jsonString.startsWith("SWIFT:")) {
+      console.log("SWIFT: ", jsonString.slice(6))
+      return
+    }
+
     try {
       const data = JSON.parse(jsonString)
       this.isConnected = true
@@ -258,6 +264,13 @@ export class CoreCommunicator extends EventEmitter {
     try {
       if ("status" in data) {
         this.emit("statusUpdateReceived", data)
+      } else if ("glasses_wifi_status_change" in data) {
+        // console.log("Received glasses_wifi_status_change event from Core", data.glasses_wifi_status_change)
+        GlobalEventEmitter.emit("GLASSES_WIFI_STATUS_CHANGE", {
+          connected: data.glasses_wifi_status_change.connected,
+          ssid: data.glasses_wifi_status_change.ssid,
+          local_ip: data.glasses_wifi_status_change.local_ip
+        })
       } else if ("glasses_display_event" in data) {
         GlobalEventEmitter.emit("GLASSES_DISPLAY_EVENT", data.glasses_display_event)
       } else if ("ping" in data) {
@@ -282,6 +295,29 @@ export class CoreCommunicator extends EventEmitter {
         console.log("Received need_wifi_credentials event from Core")
         GlobalEventEmitter.emit("GLASSES_NEED_WIFI_CREDENTIALS", {
           deviceModel: data.device_model,
+        })
+      } else if ("wifi_scan_results" in data) {
+        console.log("Received WiFi scan results from Core")
+        GlobalEventEmitter.emit("WIFI_SCAN_RESULTS", {
+          networks: data.wifi_scan_results,
+        })
+      } else if (data.type === "app_started" && data.packageName) {
+        console.log("APP_STARTED_EVENT", data.packageName)
+        GlobalEventEmitter.emit("APP_STARTED_EVENT", data.packageName)
+      } else if (data.type === "app_stopped" && data.packageName) {
+        console.log("APP_STOPPED_EVENT", data.packageName)
+        GlobalEventEmitter.emit("APP_STOPPED_EVENT", data.packageName)
+      } else if (data.type === "audio_play_request") {
+        AudioPlayService.handleAudioPlayRequest(data).then(() => {
+          // Audio play request completed successfully
+        }).catch(error => {
+          console.error("Failed to handle audio play request:", error)
+        })
+      } else if (data.type === "audio_stop_request") {
+        AudioPlayService.stopAllAudio().then(() => {
+          console.log("Audio stop request processed successfully")
+        }).catch(error => {
+          console.error("Failed to handle audio stop request:", error)
         })
       }
     } catch (e) {
@@ -669,6 +705,12 @@ export class CoreCommunicator extends EventEmitter {
         ssid,
         password,
       },
+    })
+  }
+
+  async requestWifiScan() {
+    return await this.sendData({
+      command: "request_wifi_scan",
     })
   }
 
