@@ -436,7 +436,7 @@ typealias JSONObject = [String: Any]
   
   // Callbacks
   public var jsonObservable: ((JSONObject) -> Void)?
-
+  
   // onButtonPress (buttonId: String, pressType: String)
   public var onButtonPress: ((String, String) -> Void)?
   // onPhotoRequest (requestId: String, appId: String, webhookUrl: String?)
@@ -496,7 +496,11 @@ typealias JSONObject = [String: Any]
   
   @objc func disconnect() {
     CoreCommsService.log("Disconnecting from Mentra Live glasses")
-    // isKilled = true
+    
+    // Clear any pending messages
+    self.pending = nil
+    pendingMessageTimer?.invalidate()
+    pendingMessageTimer = nil
     
     if let peripheral = connectedPeripheral {
       centralManager?.cancelPeripheralConnection(peripheral)
@@ -572,7 +576,7 @@ typealias JSONObject = [String: Any]
   }
   
   // MARK: - Command Queue
-
+  
   class PendingMessage {
     init(data: Data, id: String, retries: Int) {
       self.data = data
@@ -584,8 +588,9 @@ typealias JSONObject = [String: Any]
     let retries: Int
     let id: String
   }
-
+  
   private var pending: PendingMessage?
+  private var pendingMessageTimer: Timer?
   
   actor CommandQueue {
     private var commands: [PendingMessage] = []
@@ -593,7 +598,7 @@ typealias JSONObject = [String: Any]
     func enqueue(_ command: PendingMessage) {
       commands.append(command)
     }
-
+    
     func pushToFront(_ command: PendingMessage) {
       commands.insert(command, at: 0)
     }
@@ -629,24 +634,58 @@ typealias JSONObject = [String: Any]
     let currentTime = Date().timeIntervalSince1970 * 1000
     let timeSinceLastSend = currentTime - lastSendTimeMs
     
-    // if timeSinceLastSend < Double(MIN_SEND_DELAY_MS / 1_000_000) {
-    //   let remainingDelay = Double(MIN_SEND_DELAY_MS / 1_000_000) - timeSinceLastSend
-    //   try? await Task.sleep(nanoseconds: UInt64(remainingDelay * 1_000_000))
-    // }
-
-    // self.pending = PendingMessage(message: data, id: globalMessageId, timestamp: 0.0, retries: 0)
-
     try? await Task.sleep(nanoseconds: UInt64(1_000_000))
-    
     lastSendTimeMs = Date().timeIntervalSince1970 * 1000
-    
-//    CoreCommsService.log("Sending data: \(data)")
     
     // Send the data
     peripheral.writeValue(message.data, for: txChar, type: .withResponse)
-
-    // set the pending message
-    // self.pending = message
+    
+    
+    // don't do the retry system on the old glasses versions
+    if !isNewVersion {
+      return
+    }
+    
+    // Set the pending message
+    self.pending = message
+    
+    // Start retry timer for 100ms
+    DispatchQueue.main.async { [weak self] in
+      self?.pendingMessageTimer?.invalidate()
+      self?.pendingMessageTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: false) { _ in
+        self?.handlePendingMessageTimeout()
+      }
+    }
+    
+  }
+  
+  private func handlePendingMessageTimeout() {
+    guard let pendingMessage = self.pending else { return }
+    
+    CoreCommsService.log("⚠️ Message timeout - no response for mId: \(pendingMessage.id), retry attempt: \(pendingMessage.retries + 1)/3")
+    
+    // Clear the pending message
+    self.pending = nil
+    
+    // Check if we should retry
+    if pendingMessage.retries < 3 {
+      // Create a new message with incremented retry count
+      let retryMessage = PendingMessage(
+        data: pendingMessage.data,
+        id: pendingMessage.id,
+        retries: pendingMessage.retries + 1
+      )
+      
+      // Push to front of queue for immediate retry
+      Task {
+        await self.commandQueue.pushToFront(retryMessage)
+      }
+      
+      CoreCommsService.log("🔄 Retrying message mId: \(pendingMessage.id) (attempt \(retryMessage.retries)/3)")
+    } else {
+      CoreCommsService.log("❌ Message failed after 3 retries - mId: \(pendingMessage.id)")
+      // Optionally emit an event or callback for failed message
+    }
   }
   
   // MARK: - BLE Scanning
@@ -802,6 +841,9 @@ typealias JSONObject = [String: Any]
       if String(mId) == self.pending?.id {
         CoreCommsService.log("Received expected response! clearing pending")
         self.pending = nil
+        // Cancel the retry timer
+        self.pendingMessageTimer?.invalidate()
+        self.pendingMessageTimer = nil
       } else if self.pending?.id != nil {
         CoreCommsService.log("Received unexpected response! expected: \(self.pending!.id), received: \(mId) global: \(globalMessageId)")
       }
@@ -842,11 +884,12 @@ typealias JSONObject = [String: Any]
       emitKeepAliveAck(json)
       
     case "msg_ack":
-      CoreCommsService.log("Received msg ack!")
+      CoreCommsService.log("Received msg_ack")
       
     default:
       // Forward unknown types to observable
-      jsonObservable?(json)
+      //      jsonObservable?(json)
+      CoreCommsService.log("Unhandled message type: \(type)")
     }
   }
   
@@ -868,14 +911,14 @@ typealias JSONObject = [String: Any]
       if let body = json["B"] as? [String: Any],
          let voltage = body["vt"] as? Int,
          let percentage = body["pt"] as? Int {
-    
+        
         let voltageVolts = Double(voltage) / 1000.0
         let isCharging = voltage > 4000
-    
+        
         CoreCommsService.log("🔋 K900 Battery Status - Voltage: \(voltageVolts)V, Level: \(percentage)%")
         updateBatteryStatus(level: percentage, charging: isCharging)
       }
-    
+      
     default:
       CoreCommsService.log("Unknown K900 command: \(command)")
       jsonObservable?(json)
@@ -954,7 +997,7 @@ typealias JSONObject = [String: Any]
     let buildNumber = json["build_number"] as? String ?? ""
     let deviceModel = json["device_model"] as? String ?? ""
     let androidVersion = json["android_version"] as? String ?? ""
-
+    
     self.glassesAppVersion = appVersion
     self.glassesBuildNumber = buildNumber
     self.isNewVersion = (Int(buildNumber) ?? 0) >= 5
@@ -964,13 +1007,13 @@ typealias JSONObject = [String: Any]
     CoreCommsService.log("Glasses Version - App: \(appVersion), Build: \(buildNumber), Device: \(deviceModel), Android: \(androidVersion)")
     emitVersionInfo(appVersion: appVersion, buildNumber: buildNumber, deviceModel: deviceModel, androidVersion: androidVersion)
   }
-
+  
   private func handleAck(_ json: [String: Any]) {
     CoreCommsService.log("Received ack")
-//    let messageId = json["mId"] as? Int ?? 0
-//    if let pendingMessage = pending, pendingMessage.id == messageId {
-//      pending = nil
-//    }
+    //    let messageId = json["mId"] as? Int ?? 0
+    //    if let pendingMessage = pending, pendingMessage.id == messageId {
+    //      pending = nil
+    //    }
   }
   
   // MARK: - Sending Data
@@ -988,7 +1031,7 @@ typealias JSONObject = [String: Any]
         json["mId"] = globalMessageId
         globalMessageId += 1
       }
-
+      
       let jsonData = try JSONSerialization.data(withJSONObject: json)
       if let jsonString = String(data: jsonData, encoding: .utf8) {
         CoreCommsService.log("Sending data to glasses: \(jsonString)")
@@ -1165,6 +1208,8 @@ typealias JSONObject = [String: Any]
     stopHeartbeat()
     stopReadinessCheckLoop()
     stopConnectionTimeout()
+    pendingMessageTimer?.invalidate()
+    pendingMessageTimer = nil
   }
   
   // MARK: - Event Emission
@@ -1194,7 +1239,7 @@ typealias JSONObject = [String: Any]
   //     "battery_level": level,
   //     "is_charging": charging
   //   ]
-    
+  
   //   emitEvent("BatteryLevelEvent", body: eventBody)
   // }
   
