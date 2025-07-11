@@ -4,6 +4,7 @@ import crypto from 'crypto';
 export interface RtmpRelayEndpoint {
   relayId: string;
   rtmpUrl: string;
+  hlsBaseUrl?: string;
   hostname: string;
   port: number;
 }
@@ -26,13 +27,21 @@ export class RtmpRelayService {
       'rtmp-relay-uscentral.mentra.glass:1935'
     ];
     
+    // HLS base URLs (comma-separated, matching relay URLs)
+    const hlsUrls = process.env.RTMP_RELAY_HLS_URLS?.split(',') || [];
+    
     this.relays = relayUrls.map((url, index) => {
       const [hostname, port] = url.split(':');
+      
+      // If HLS URL is provided, use it; otherwise construct from hostname
+      const hlsBaseUrl = hlsUrls[index] || `http://${hostname}:8888`;
+      
       return {
         relayId: `relay-${index}`,
         hostname,
         port: parseInt(port) || 1935,
-        rtmpUrl: `rtmp://${hostname}:${port}`
+        rtmpUrl: `rtmp://${hostname}:${port}`,
+        hlsBaseUrl
       };
     });
     

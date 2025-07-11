@@ -1,22 +1,27 @@
 # Use MediaMTX with FFmpeg included
 FROM bluenviron/mediamtx:latest-ffmpeg
 
-# Install wget for the simple forwarder
-RUN apk add --no-cache wget
+# Install wget and nginx for HLS serving
+RUN apk add --no-cache wget nginx
 
 # Copy our configuration and scripts
 COPY mediamtx.yml /mediamtx.yml
-COPY simple-forward.sh /simple-forward.sh
+COPY stream-manager.sh /stream-manager.sh
+COPY nginx.conf /etc/nginx/http.d/default.conf
+COPY start.sh /start.sh
 
-# Make script executable
-RUN chmod +x /simple-forward.sh
+# Make scripts executable
+RUN chmod +x /stream-manager.sh /start.sh
 
-# Expose RTMP and API ports
-EXPOSE 1935 9997
+# Create HLS directory
+RUN mkdir -p /hls
+
+# Expose RTMP, HLS/DASH, and API ports
+EXPOSE 1935 8888 9997
 
 # Health check using MediaMTX API
 HEALTHCHECK --interval=10s --timeout=5s --start-period=30s \
   CMD wget -q -O /dev/null http://localhost:9997/v3/config/get || exit 1
 
-# Use MediaMTX default entrypoint
-ENTRYPOINT ["/mediamtx"]
+# Use our startup script to run both nginx and MediaMTX
+ENTRYPOINT ["/start.sh"]
