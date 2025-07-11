@@ -29,7 +29,6 @@ import * as developerService from '../core/developer.service';
 import { sessionService } from '../session/session.service';
 import subscriptionService from '../session/subscription.service';
 import { logger as rootLogger } from '../logging/pino-logger';
-import transcriptionService from '../processing/transcription.service';
 import photoRequestService from '../core/photo-request.service';
 import e from 'express';
 
@@ -292,6 +291,7 @@ export class AppWebSocketService {
         message.packageName,
         message.subscriptions
       );
+      // Note: subscriptionService automatically syncs TranscriptionManager
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       userSession.logger.error({
@@ -337,10 +337,10 @@ export class AppWebSocketService {
           }, 'Applying debounced transcription stream update');
           
           // Update transcription streams with new language subscriptions
-          // transcriptionService.updateTranscriptionStreams(userSession, newLanguageSubscriptions);
           
           // Update new TranscriptionManager with subscriptions
           userSession.transcriptionManager.updateSubscriptions(newLanguageSubscriptions);
+          // Note: This direct call is OK since it's for debounced transcription-specific updates
 
           // Check if we need to update microphone state based on media subscriptions
           userSession.microphoneManager.handleSubscriptionChange();

@@ -598,7 +598,8 @@ export class AppManager {
 
       // Remove subscriptions.
       try {
-        subscriptionService.removeSubscriptions(this.userSession, packageName);
+        await subscriptionService.removeSubscriptions(this.userSession, packageName);
+        // Note: subscriptionService automatically syncs TranscriptionManager
       } catch (error) {
         this.logger.error(`Error removing subscriptions for ${packageName}:`, error);
       }

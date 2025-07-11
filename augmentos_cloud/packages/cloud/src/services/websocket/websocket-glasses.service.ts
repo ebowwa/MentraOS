@@ -31,7 +31,6 @@ import { logger as rootLogger } from '../logging/pino-logger';
 import subscriptionService from '../session/subscription.service';
 import { PosthogService } from '../logging/posthog.service';
 import { sessionService } from '../session/session.service';
-import transcriptionService from '../processing/transcription.service';
 import { User } from '../../models/user.model';
 import { SYSTEM_DASHBOARD_PACKAGE_NAME } from '../core/app.service';
 
@@ -403,10 +402,8 @@ export class GlassesWebSocketService {
         userSession.logger.error({ error }, `Error starting user apps`);
       }
 
-      // TODO(isaiah): Check if we really need to start the transcription service here.
-      // or if instead we should be checkig if the user has any media subscriptions and starting the transcription service if they do.
-      // Start transcription
-      transcriptionService.startTranscription(userSession);
+      // Transcription is now handled by TranscriptionManager based on app subscriptions
+      // No need to preemptively start transcription here
 
       // Track connection event.
       PosthogService.trackEvent('connected', userSession.userId, {
@@ -447,35 +444,29 @@ export class GlassesWebSocketService {
 
     try {
       if (isSpeaking) {
-        userSession.logger.info('🎙️ VAD detected speech - starting transcription');
+        userSession.logger.info('🎙️ VAD detected speech - ensuring streams exist');
         userSession.isTranscribing = true;
         
-        // Use new TranscriptionManager for VAD-controlled streaming
-        await userSession.transcriptionManager.restartFromActiveSubscriptions();
-        
-        // Keep legacy transcription service for backwards compatibility if needed
-        transcriptionService.startTranscription(userSession);
+        // Simply ensure streams exist - creates new ones if needed, uses existing healthy ones
+        await userSession.transcriptionManager.ensureStreamsExist();
       } else {
-        userSession.logger.info('🤫 VAD detected silence - finalizing and stopping transcription');
+        userSession.logger.info('🤫 VAD detected silence - finalizing pending tokens');
         userSession.isTranscribing = false;
         
-        // Use new TranscriptionManager with proper finalization
-        await userSession.transcriptionManager.stopAndFinalizeAll();
-        
-        // Keep legacy transcription service for backwards compatibility
-        transcriptionService.stopTranscription(userSession);
+        // Just finalize pending tokens - let streams decide their own lifecycle
+        userSession.transcriptionManager.finalizePendingTokens();
       }
     } catch (error) {
       userSession.logger.error({ error }, '❌ Error handling VAD state change');
       userSession.isTranscribing = false;
       
-      // Stop both systems on error
+      // On error, just finalize pending tokens - don't force stop streams
+      // Next VAD speech will try to ensure streams exist again
       try {
-        await userSession.transcriptionManager.stopAndFinalizeAll();
-      } catch (managerError) {
-        userSession.logger.error({ error: managerError }, '❌ Error stopping TranscriptionManager');
+        userSession.transcriptionManager.finalizePendingTokens();
+      } catch (finalizeError) {
+        userSession.logger.error({ error: finalizeError }, '❌ Error finalizing tokens on VAD error');
       }
-      transcriptionService.stopTranscription(userSession);
     }
   }
 
@@ -693,7 +684,7 @@ export class GlassesWebSocketService {
    * @param code Close code
    * @param reason Close reason
    */
-  private handleGlassesConnectionClose(userSession: UserSession, code: number, reason: string): void {
+  private async handleGlassesConnectionClose(userSession: UserSession, code: number, reason: string): Promise<void> {
     userSession.logger.warn(
       { service: SERVICE_NAME, code, reason },
       `[WebsocketGlassesService:handleGlassesConnectionClose]: (${userSession.userId}, ${code}, ${reason}) - Glasses connection closed`
@@ -709,7 +700,11 @@ export class GlassesWebSocketService {
     // Stop transcription
     if (userSession.isTranscribing) {
       userSession.isTranscribing = false;
-      transcriptionService.stopTranscription(userSession);
+      try {
+        await userSession.transcriptionManager.stopAndFinalizeAll();
+      } catch (error) {
+        userSession.logger.error({ error }, 'Error stopping transcription on disconnect');
+      }
     }
 
     // Mark as disconnected

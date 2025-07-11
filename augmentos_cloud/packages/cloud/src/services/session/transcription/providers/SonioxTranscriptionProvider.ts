@@ -295,6 +295,9 @@ class SonioxTranscriptionStream implements StreamInstance {
   private fallbackPosition = 0; // Fallback position when timing info is missing
   private lastSentInterim = '';   // Track last sent interim to avoid duplicates
   
+  // Keepalive management
+  private keepaliveInterval?: NodeJS.Timeout;
+  
   constructor(
     public readonly id: string,
     public readonly subscription: string,
@@ -335,6 +338,9 @@ class SonioxTranscriptionStream implements StreamInstance {
         this.ws.on('open', () => {
           this.logger.debug({ streamId: this.id }, 'Soniox WebSocket connected');
           this.sendConfiguration();
+          
+          // Start automatic keepalive for this stream
+          this.startKeepalive();
         });
         
         this.ws.on('message', (data: Buffer) => {
@@ -813,6 +819,9 @@ class SonioxTranscriptionStream implements StreamInstance {
         this.connectionTimeout = undefined;
       }
       
+      // Stop keepalive if active
+      this.stopKeepalive();
+      
       if (this.ws && this.ws.readyState === WebSocket.OPEN) {
         // Send empty binary frame to signal end of audio
         this.ws.send(Buffer.alloc(0));
@@ -849,5 +858,55 @@ class SonioxTranscriptionStream implements StreamInstance {
       lastSuccessfulWrite: this.metrics.lastSuccessfulWrite,
       providerHealth: this.provider.getHealthStatus()
     };
+  }
+  
+  /**
+   * Start automatic keepalive for this stream
+   * Sends keepalive messages every 15 seconds for the lifetime of the stream
+   */
+  private startKeepalive(): void {
+    if (this.keepaliveInterval) {
+      return; // Already started
+    }
+    
+    this.logger.debug({ streamId: this.id }, 'Starting automatic Soniox keepalive');
+    
+    // Set up interval to send keepalive every 15 seconds
+    // (Soniox requires at least once every 20 seconds)
+    this.keepaliveInterval = setInterval(() => {
+      this.sendKeepalive();
+    }, 15000);
+  }
+  
+  /**
+   * Stop automatic keepalive when stream closes
+   */
+  private stopKeepalive(): void {
+    if (this.keepaliveInterval) {
+      clearInterval(this.keepaliveInterval);
+      this.keepaliveInterval = undefined;
+      this.logger.debug({ streamId: this.id }, 'Stopped automatic Soniox keepalive');
+    }
+  }
+  
+  /**
+   * Send a keepalive message to Soniox
+   */
+  private sendKeepalive(): void {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+      this.logger.warn({ streamId: this.id }, 'Cannot send keepalive - WebSocket not open');
+      return;
+    }
+    
+    try {
+      const keepaliveMessage = { type: 'keepalive' };
+      this.ws.send(JSON.stringify(keepaliveMessage));
+      
+      this.logger.debug({ streamId: this.id }, 'Sent keepalive message to Soniox');
+      this.lastActivity = Date.now();
+      
+    } catch (error) {
+      this.logger.error({ error, streamId: this.id }, 'Error sending keepalive message');
+    }
   }
 }

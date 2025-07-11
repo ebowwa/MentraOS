@@ -282,6 +282,9 @@ export class SubscriptionService {
         newSubs: Array.from(newSubs),
         serviceSubscriptions: Array.from(this.subscriptions.entries()).map(([k, v]) => [k, Array.from(v)])
       }, 'Updated subscriptions successfully');
+
+      // Auto-update TranscriptionManager with new subscription state
+      await this.syncTranscriptionManager(userSession);
     } catch (error) {
       // If there's an error getting the app or checking permissions, log it but don't block
       // This ensures backward compatibility with existing code
@@ -426,7 +429,7 @@ export class SubscriptionService {
    * @param sessionId - User session identifier
    * @param packageName - App identifier
    */
-  removeSubscriptions(userSession: UserSession, packageName: string): void {
+  async removeSubscriptions(userSession: UserSession, packageName: string): Promise<void> {
     const key = this.getKey(userSession.sessionId, packageName);
     // if (userSession.appConnections.has(packageName)) {
     //   // TODO send message to user that we are destroying the connection.
@@ -444,6 +447,55 @@ export class SubscriptionService {
       });
 
       logger.info({ packageName, sessionId: userSession.sessionId, userId: userSession.userId }, `Removed all subscriptions for App ${packageName} for user ${userSession.userId}`);
+      
+      // Auto-update TranscriptionManager with new subscription state
+      await this.syncTranscriptionManager(userSession);
+    }
+  }
+
+  /**
+   * Get all transcription-related subscriptions for a user session
+   */
+  private getTranscriptionSubscriptions(userSession: UserSession): ExtendedStreamType[] {
+    const transcriptionSubs: ExtendedStreamType[] = [];
+    
+    // Get all subscriptions for this user
+    const userPrefix = `${userSession.userId}:`;
+    
+    for (const [key, subs] of this.subscriptions.entries()) {
+      if (key.startsWith(userPrefix)) {
+        for (const sub of subs) {
+          // Include transcription and translation subscriptions
+          if (sub.includes('transcription') || sub.includes('translation')) {
+            transcriptionSubs.push(sub as ExtendedStreamType);
+          }
+        }
+      }
+    }
+    
+    return transcriptionSubs;
+  }
+
+  /**
+   * Automatically sync TranscriptionManager with current subscriptions
+   */
+  private async syncTranscriptionManager(userSession: UserSession): Promise<void> {
+    try {
+      const transcriptionSubs = this.getTranscriptionSubscriptions(userSession);
+      userSession.transcriptionManager.updateSubscriptions(transcriptionSubs);
+      
+      // Ensure streams are synchronized after subscription update
+      await userSession.transcriptionManager.ensureStreamsExist();
+      
+      logger.debug({ 
+        userId: userSession.userId, 
+        transcriptionSubs 
+      }, 'Synced TranscriptionManager with current subscriptions');
+    } catch (error) {
+      logger.error({ 
+        error, 
+        userId: userSession.userId 
+      }, 'Error syncing TranscriptionManager with subscriptions');
     }
   }
 

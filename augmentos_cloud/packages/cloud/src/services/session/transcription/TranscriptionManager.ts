@@ -3,7 +3,7 @@
  */
 
 import { Logger } from 'pino';
-import { ExtendedStreamType, getLanguageInfo, StreamType, CloudToAppMessageType, DataStream } from '@mentra/sdk';
+import { ExtendedStreamType, getLanguageInfo, StreamType, CloudToAppMessageType, DataStream, TranscriptSegment } from '@mentra/sdk';
 import UserSession from '../UserSession';
 import { PosthogService } from '../../logging/posthog.service';
 import {
@@ -55,6 +55,20 @@ export class TranscriptionManager {
   // Health Monitoring
   private healthCheckInterval?: NodeJS.Timeout;
 
+  // Transcript History Management
+  private transcriptHistory: {
+    segments: TranscriptSegment[];                      // Legacy compatibility (en-US)
+    languageSegments: Map<string, TranscriptSegment[]>; // Multi-language support
+  } = {
+    segments: [],
+    languageSegments: new Map()
+  };
+
+  // History Management Configuration
+  private readonly HISTORY_RETENTION_MS = 30 * 60 * 1000; // 30 minutes
+  private readonly HISTORY_PRUNE_INTERVAL_MS = 5 * 60 * 1000; // Prune every 5 minutes
+  private historyPruneInterval?: NodeJS.Timeout;
+
   constructor(
     private userSession: UserSession,
     private config: TranscriptionConfig = DEFAULT_TRANSCRIPTION_CONFIG
@@ -64,6 +78,7 @@ export class TranscriptionManager {
     // Start initialization but don't block constructor
     this.initializationPromise = this.initializeProviders();
     this.startHealthMonitoring();
+    this.startHistoryPruning();
 
     this.logger.info({
       defaultProvider: this.config.providers.defaultProvider,
@@ -153,42 +168,151 @@ export class TranscriptionManager {
     await this.updateSubscriptions([]);
   }
 
+
   /**
-   * Restart transcription with the current active subscriptions
-   * This is called when VAD detects speech after a period of silence
+   * Ensure streams match active subscriptions exactly
+   * Removes unused streams and creates missing ones
    */
-  async restartFromActiveSubscriptions(): Promise<void> {
+  async ensureStreamsExist(): Promise<void> {
     const currentSubscriptions = Array.from(this.activeSubscriptions);
 
     this.logger.info({
       subscriptions: currentSubscriptions,
+      existingStreams: this.streams.size,
       bufferSize: this.vadAudioBuffer.length
-    }, 'Restarting transcription streams from active subscriptions (VAD triggered)');
+    }, 'Ensuring streams match active subscriptions');
 
-    // Start buffering audio immediately to avoid losing speech during startup
+    // Step 1: Clean up streams that no longer have subscriptions
+    const streamsToCleanup: string[] = [];
+    for (const [subscription, stream] of this.streams.entries()) {
+      if (!this.activeSubscriptions.has(subscription)) {
+        streamsToCleanup.push(subscription);
+      }
+    }
+
+    if (streamsToCleanup.length > 0) {
+      this.logger.info({
+        streamsToCleanup,
+        count: streamsToCleanup.length
+      }, 'Cleaning up streams with no active subscriptions');
+
+      for (const subscription of streamsToCleanup) {
+        await this.cleanupStream(subscription, 'subscription_removed');
+      }
+    }
+
+    // Step 2: If no subscriptions, we're done
+    if (currentSubscriptions.length === 0) {
+      this.logger.info('No active subscriptions - all streams cleaned up');
+      return;
+    }
+
+    // Step 3: Start buffering audio for any new streams we might create
     this.startVADBuffering();
 
-    // For VAD scenarios, we want faster startup - try parallel initialization
-    const startPromises = currentSubscriptions.map(subscription =>
-      this.startStreamFast(subscription)
-    );
+    // Step 4: Create missing streams or replace unhealthy ones
+    const createPromises: Promise<void>[] = [];
+    
+    for (const subscription of currentSubscriptions) {
+      const existingStream = this.streams.get(subscription);
+      
+      if (existingStream && this.isStreamHealthy(existingStream)) {
+        this.logger.debug({ subscription }, 'Stream already exists and is healthy - no action needed');
+        continue;
+      }
+      
+      if (existingStream) {
+        this.logger.info({ subscription }, 'Stream exists but is unhealthy - will create new stream');
+        await this.cleanupStream(subscription, 'unhealthy_stream_replacement');
+      }
+      
+      // Create new stream
+      this.logger.info({ subscription }, 'Creating new stream for subscription');
+      createPromises.push(this.startStreamFast(subscription));
+    }
 
-    // Wait for all streams to start in parallel
-    const results = await Promise.allSettled(startPromises);
+    if (createPromises.length === 0) {
+      this.logger.info('All required streams already exist and are healthy');
+      this.flushVADBuffer();
+      return;
+    }
 
-    // Log any failures
+    // Wait for all new streams to be created
+    const results = await Promise.allSettled(createPromises);
+
+    // Count successful vs failed stream creations
+    let successCount = 0;
+    let failureCount = 0;
+
     results.forEach((result, index) => {
       if (result.status === 'rejected') {
-        this.logger.warn({
-          subscription: currentSubscriptions[index],
+        failureCount++;
+        this.logger.error({
           error: result.reason
-        }, 'Failed to start stream during VAD restart');
+        }, 'Failed to create new stream');
+      } else {
+        successCount++;
       }
     });
+
+    this.logger.info({
+      totalSubscriptions: currentSubscriptions.length,
+      streamsRemoved: streamsToCleanup.length,
+      streamsCreated: createPromises.length,
+      successCount,
+      failureCount,
+      activeStreams: this.streams.size
+    }, 'Stream synchronization completed');
+
+    // If all new streams failed, this is a critical issue
+    if (failureCount === createPromises.length && createPromises.length > 0) {
+      this.logger.error({
+        subscriptions: currentSubscriptions,
+        failureCount
+      }, 'All new streams failed to create - transcription may be unavailable');
+    }
 
     // Flush buffered audio to streams and stop buffering
     this.flushVADBuffer();
   }
+
+  /**
+   * Check if we have healthy streams for all active subscriptions
+   * and no extra streams for inactive subscriptions
+   */
+  hasHealthyStreams(): boolean {
+    const currentSubscriptions = Array.from(this.activeSubscriptions);
+    
+    if (currentSubscriptions.length === 0) {
+      return this.streams.size === 0; // No subscriptions = no streams should exist
+    }
+    
+    // Check if all subscriptions have healthy streams
+    for (const subscription of currentSubscriptions) {
+      const stream = this.streams.get(subscription);
+      if (!stream || !this.isStreamHealthy(stream)) {
+        return false;
+      }
+    }
+    
+    // Check if we have any extra streams that shouldn't exist
+    for (const subscription of this.streams.keys()) {
+      if (!this.activeSubscriptions.has(subscription)) {
+        return false; // We have a stream for an inactive subscription
+      }
+    }
+    
+    return true;
+  }
+
+  /**
+   * @deprecated Use ensureStreamsExist() instead
+   */
+  async restartFromActiveSubscriptions(): Promise<void> {
+    this.logger.warn('restartFromActiveSubscriptions is deprecated - use ensureStreamsExist');
+    await this.ensureStreamsExist();
+  }
+
 
   /**
    * Start buffering audio for VAD scenarios
@@ -262,8 +386,9 @@ export class TranscriptionManager {
    * Uses shorter timeout and skips some non-critical checks
    */
   private async startStreamFast(subscription: ExtendedStreamType): Promise<void> {
-    // Use a shorter timeout for VAD scenarios (2 seconds vs 10 seconds)
-    const VAD_TIMEOUT_MS = 2000;
+    // Use a longer timeout for VAD scenarios (5 seconds vs 2 seconds)
+    // 2 seconds was too short and causing stream creation failures
+    const VAD_TIMEOUT_MS = 5000;
 
     try {
       // Check if stream already exists and is healthy
@@ -273,11 +398,11 @@ export class TranscriptionManager {
         return;
       }
 
-      // Use the regular startStream but with shorter timeout for VAD
+      // Use the regular startStream but with moderate timeout for VAD
       await this.startStreamWithTimeout(subscription, VAD_TIMEOUT_MS);
 
     } catch (error) {
-      this.logger.warn({
+      this.logger.error({
         subscription,
         error,
         timeout: VAD_TIMEOUT_MS
@@ -292,8 +417,13 @@ export class TranscriptionManager {
    * Start stream with custom timeout
    */
   private async startStreamWithTimeout(subscription: ExtendedStreamType, timeoutMs: number): Promise<void> {
+    this.logger.debug({
+      subscription,
+      timeoutMs
+    }, `Starting stream with custom timeout for user: ${this.userSession.userId}, subscription: ${subscription} (${timeoutMs}ms)`);
     // Ensure we're initialized before starting streams
     await this.ensureInitialized();
+    this.logger.debug('TranscriptionManager is initialized, proceeding with stream start');
 
     // Prevent duplicate creation
     if (this.streamCreationInProgress.has(subscription)) {
@@ -765,17 +895,62 @@ export class TranscriptionManager {
     // Clean up failed stream
     await this.cleanupStream(subscription, 'provider_error');
 
-    // Try failover to different provider first
-    if (currentProvider && await this.tryDifferentProvider(subscription, currentProvider)) {
-      return; // Success - we're done
+    // Implement smarter provider cycling logic
+    const attempts = this.streamRetryAttempts.get(subscription) || 0;
+    
+    if (attempts >= this.config.retries.maxStreamRetries) {
+      this.logger.error({ subscription, attempts }, 'Maximum retry attempts reached');
+      this.streamRetryAttempts.delete(subscription);
+
+      // Track final failure
+      PosthogService.trackEvent('transcription_stream_permanent_failure', this.userSession.userId, {
+        subscription,
+        totalAttempts: attempts,
+        finalError: error.message,
+        sessionId: this.userSession.sessionId
+      });
+      return;
     }
 
-    // If no other provider works, retry with same provider (like before)
-    const attempts = this.streamRetryAttempts.get(subscription) || 0;
-    if (attempts < this.config.retries.maxStreamRetries && this.isRetryableError(error)) {
+    // Smart provider cycling based on error type and current provider
+    if (currentProvider === ProviderType.SONIOX) {
+      // Soniox failed - check if we should retry Soniox or immediately switch to Azure
+      if (this.isSonioxRateLimit(error)) {
+        // Rate limit - immediately try Azure
+        this.logger.info({ subscription, error: error.message }, 'Soniox rate limit detected - falling back to Azure immediately');
+        if (await this.trySpecificProvider(subscription, ProviderType.AZURE)) {
+          return; // Success with Azure
+        }
+      } else if (this.isRetryableError(error)) {
+        // Other retryable Soniox errors - retry Soniox first
+        this.logger.info({ subscription, error: error.message }, 'Retrying Soniox for retryable error');
+        this.scheduleStreamRetry(subscription, attempts + 1, error);
+        return;
+      }
+      
+      // If we reach here, either:
+      // 1. Rate limit and Azure failed, OR
+      // 2. Non-retryable Soniox error
+      // Try Azure as fallback
+      this.logger.info({ subscription }, 'Trying Azure as fallback after Soniox failure');
+      if (await this.trySpecificProvider(subscription, ProviderType.AZURE)) {
+        return; // Success with Azure
+      }
+    } else if (currentProvider === ProviderType.AZURE) {
+      // Azure failed - cycle back to Soniox since it's preferred
+      this.logger.info({ subscription }, 'Azure failed - cycling back to preferred Soniox provider');
+      if (await this.trySpecificProvider(subscription, ProviderType.SONIOX)) {
+        return; // Success with Soniox
+      }
+    }
+
+    // If we reach here, both providers have been tried and failed
+    // Try one more retry with the same provider if it's retryable
+    if (this.isRetryableError(error)) {
+      this.logger.info({ subscription, currentProvider }, 'Final retry attempt with current provider');
       this.scheduleStreamRetry(subscription, attempts + 1, error);
     } else {
-      this.logger.error({ subscription, attempts }, 'All providers and retries exhausted');
+      this.logger.error({ subscription, currentProvider }, 'Non-retryable error - giving up');
       this.streamRetryAttempts.delete(subscription);
 
       // Track final failure
@@ -846,6 +1021,82 @@ export class TranscriptionManager {
 
       return false;
     }
+  }
+
+  /**
+   * Try to create a stream with a specific provider
+   * Used for smart provider cycling
+   */
+  private async trySpecificProvider(
+    subscription: ExtendedStreamType,
+    targetProvider: ProviderType
+  ): Promise<boolean> {
+    try {
+      // Ensure we're initialized
+      await this.ensureInitialized();
+
+      // Check if the target provider is available
+      const provider = this.providers.get(targetProvider);
+      if (!provider) {
+        this.logger.warn({
+          subscription,
+          targetProvider
+        }, 'Target provider not available');
+        return false;
+      }
+
+      this.logger.info({
+        subscription,
+        targetProvider
+      }, 'Attempting to create stream with specific provider');
+
+      // Create stream with the specific provider
+      const stream = await this.createStreamInstance(subscription, provider);
+      await this.waitForStreamReady(stream, this.config.performance.streamTimeoutMs);
+
+      // Success!
+      this.streams.set(subscription, stream);
+
+      this.logger.info({
+        subscription,
+        provider: targetProvider
+      }, 'Successfully created stream with specific provider');
+
+      // Track successful provider selection
+      PosthogService.trackEvent('transcription_provider_specific_success', this.userSession.userId, {
+        provider: targetProvider,
+        subscription,
+        sessionId: this.userSession.sessionId
+      });
+
+      return true;
+
+    } catch (error) {
+      this.logger.warn({
+        subscription,
+        targetProvider,
+        error
+      }, 'Failed to create stream with specific provider');
+
+      return false;
+    }
+  }
+
+  /**
+   * Check if a Soniox error is specifically a rate limit error (429)
+   */
+  private isSonioxRateLimit(error: Error): boolean {
+    if (!error.message.includes('Soniox error')) {
+      return false;
+    }
+
+    const errorCodeMatch = error.message.match(/Soniox error (\d+):/);
+    if (errorCodeMatch) {
+      const errorCode = parseInt(errorCodeMatch[1]);
+      return errorCode === 429;
+    }
+
+    return false;
   }
 
   private scheduleStreamRetry(subscription: ExtendedStreamType, attempt: number, lastError?: Error): void {
@@ -924,14 +1175,14 @@ export class TranscriptionManager {
           return false;
         }
 
-        // Don't retry client errors (4xx range except rate limits)
-        if (errorCode >= 400 && errorCode < 500 && errorCode !== 429) {
+        // Don't retry client errors (4xx range except rate limits and timeouts)
+        if (errorCode >= 400 && errorCode < 500 && errorCode !== 429 && errorCode !== 408) {
           this.logger.warn({ errorCode }, 'Soniox client error - not retrying');
           return false;
         }
 
-        // Retry rate limits (429) and server errors (5xx range)
-        if (errorCode === 429 || errorCode >= 500) {
+        // Retry rate limits (429), timeouts (408), and server errors (5xx range)
+        if (errorCode === 429 || errorCode === 408 || errorCode >= 500) {
           this.logger.info({ errorCode }, 'Soniox retryable error detected');
           return true;
         }
@@ -1097,6 +1348,9 @@ export class TranscriptionManager {
         effectiveSubscription = `${streamType}:en-US`; // Default fallback like old system
       }
 
+      // Add to transcript history before relaying to apps
+      this.addToTranscriptHistory(data, streamType);
+
       // Get subscribed apps using EFFECTIVE subscription (like old system)
       const subscribedApps = subscriptionService.getSubscribedApps(this.userSession, effectiveSubscription);
 
@@ -1171,6 +1425,236 @@ export class TranscriptionManager {
     }
   }
 
+  // ===== TRANSCRIPT HISTORY MANAGEMENT =====
+
+  /**
+   * Get transcript history for a specific language or all languages
+   * @param language Optional language code (e.g., 'en-US', 'fr-FR'). If not provided, returns all languages.
+   * @param timeRange Optional time range filter
+   * @returns Array of transcript segments
+   */
+  getTranscriptHistory(language?: string, timeRange?: { duration?: number; startTime?: Date; endTime?: Date }): TranscriptSegment[] {
+    let segments: TranscriptSegment[] = [];
+
+    if (language) {
+      // Get segments for specific language
+      if (language === 'en-US') {
+        // For English, prefer languageSegments but fallback to legacy segments
+        segments = this.transcriptHistory.languageSegments.get(language) || this.transcriptHistory.segments;
+      } else {
+        segments = this.transcriptHistory.languageSegments.get(language) || [];
+      }
+    } else {
+      // Get all segments from all languages
+      segments = Array.from(this.transcriptHistory.languageSegments.values()).flat();
+      // Also include legacy segments if not already included
+      if (!this.transcriptHistory.languageSegments.has('en-US')) {
+        segments = segments.concat(this.transcriptHistory.segments);
+      }
+    }
+
+    // Apply time-based filtering if provided
+    if (timeRange) {
+      const currentTime = new Date();
+      segments = segments.filter(segment => {
+        const segmentTime = new Date(segment.timestamp);
+
+        if (timeRange.duration) {
+          const durationMs = timeRange.duration * 1000;
+          const timeDiff = currentTime.getTime() - segmentTime.getTime();
+          return timeDiff <= durationMs;
+        }
+
+        if (timeRange.startTime && segmentTime < timeRange.startTime) {
+          return false;
+        }
+
+        if (timeRange.endTime && segmentTime > timeRange.endTime) {
+          return false;
+        }
+
+        return true;
+      });
+    }
+
+    // Sort by timestamp
+    segments.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+
+    return segments;
+  }
+
+  /**
+   * Get available languages in transcript history
+   * @returns Array of language codes that have transcript data
+   */
+  getAvailableLanguages(): string[] {
+    const languages = new Set<string>();
+    
+    // Add languages from language-specific segments
+    for (const language of this.transcriptHistory.languageSegments.keys()) {
+      languages.add(language);
+    }
+    
+    // Add 'en-US' if we have legacy segments and no specific en-US entry
+    if (this.transcriptHistory.segments.length > 0 && !languages.has('en-US')) {
+      languages.add('en-US');
+    }
+    
+    return Array.from(languages).sort();
+  }
+
+  /**
+   * Add transcript data to history
+   * @param data Transcription or translation data
+   * @param streamType Type of stream (transcription or translation)
+   */
+  private addToTranscriptHistory(data: any, streamType: StreamType): void {
+    // Only process transcription data (not translation for now)
+    if (streamType !== StreamType.TRANSCRIPTION || !data.text || !data.transcribeLanguage) {
+      return;
+    }
+
+    const language = data.transcribeLanguage;
+    const segment: TranscriptSegment = {
+      resultId: data.resultId || `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      speakerId: data.speakerId,
+      text: data.text,
+      timestamp: new Date(),
+      isFinal: data.isFinal || false
+    };
+
+    // Initialize language segments if needed
+    if (!this.transcriptHistory.languageSegments.has(language)) {
+      this.transcriptHistory.languageSegments.set(language, []);
+    }
+
+    const languageSegments = this.transcriptHistory.languageSegments.get(language)!;
+    const legacySegments = this.transcriptHistory.segments;
+
+    // Handle interim vs final segments (same logic as old system)
+    const hasInterimLastLanguage = languageSegments.length > 0 && !languageSegments[languageSegments.length - 1].isFinal;
+    const hasInterimLastLegacy = legacySegments.length > 0 && !legacySegments[legacySegments.length - 1].isFinal;
+
+    if (data.isFinal) {
+      // Final segment - replace interim if exists
+      if (hasInterimLastLanguage) {
+        languageSegments.pop();
+      }
+      languageSegments.push(segment);
+
+      // For English, also update legacy segments for backward compatibility
+      if (language === 'en-US') {
+        if (hasInterimLastLegacy) {
+          legacySegments.pop();
+        }
+        legacySegments.push(segment);
+      }
+
+      this.logger.debug({
+        language,
+        text: segment.text.substring(0, 100),
+        segmentCount: languageSegments.length,
+        provider: data.provider
+      }, 'Added FINAL transcript segment to history');
+
+    } else {
+      // Interim segment - update or add
+      if (hasInterimLastLanguage) {
+        languageSegments[languageSegments.length - 1] = segment;
+      } else {
+        languageSegments.push(segment);
+      }
+
+      // For English, also update legacy segments
+      if (language === 'en-US') {
+        if (hasInterimLastLegacy) {
+          legacySegments[legacySegments.length - 1] = segment;
+        } else {
+          legacySegments.push(segment);
+        }
+      }
+
+      this.logger.debug({
+        language,
+        text: segment.text.substring(0, 50),
+        segmentCount: languageSegments.length,
+        provider: data.provider
+      }, 'Added interim transcript segment to history');
+    }
+  }
+
+  /**
+   * Start periodic pruning of old transcript history
+   */
+  private startHistoryPruning(): void {
+    this.historyPruneInterval = setInterval(() => {
+      this.pruneOldTranscriptHistory();
+    }, this.HISTORY_PRUNE_INTERVAL_MS);
+
+    this.logger.debug({
+      retentionMs: this.HISTORY_RETENTION_MS,
+      pruneIntervalMs: this.HISTORY_PRUNE_INTERVAL_MS
+    }, 'Started transcript history pruning');
+  }
+
+  /**
+   * Remove transcript segments older than retention period
+   */
+  private pruneOldTranscriptHistory(): void {
+    const cutoffTime = new Date(Date.now() - this.HISTORY_RETENTION_MS);
+    let totalPruned = 0;
+
+    // Prune language-specific segments
+    for (const [language, segments] of this.transcriptHistory.languageSegments.entries()) {
+      const originalCount = segments.length;
+      const filteredSegments = segments.filter(segment => 
+        segment.timestamp && new Date(segment.timestamp) >= cutoffTime
+      );
+      
+      this.transcriptHistory.languageSegments.set(language, filteredSegments);
+      const pruned = originalCount - filteredSegments.length;
+      totalPruned += pruned;
+
+      if (pruned > 0) {
+        this.logger.debug({
+          language,
+          prunedCount: pruned,
+          remainingCount: filteredSegments.length
+        }, 'Pruned old transcript segments for language');
+      }
+    }
+
+    // Prune legacy segments
+    const originalLegacyCount = this.transcriptHistory.segments.length;
+    this.transcriptHistory.segments = this.transcriptHistory.segments.filter(segment =>
+      segment.timestamp && new Date(segment.timestamp) >= cutoffTime
+    );
+    const legacyPruned = originalLegacyCount - this.transcriptHistory.segments.length;
+    totalPruned += legacyPruned;
+
+    if (totalPruned > 0) {
+      this.logger.info({
+        totalPruned,
+        cutoffTime: cutoffTime.toISOString(),
+        retentionMinutes: this.HISTORY_RETENTION_MS / (60 * 1000)
+      }, 'Pruned old transcript history');
+    }
+  }
+
+  /**
+   * Clear all transcript history
+   */
+  clearTranscriptHistory(): void {
+    const totalSegments = this.transcriptHistory.segments.length + 
+      Array.from(this.transcriptHistory.languageSegments.values()).reduce((sum, segments) => sum + segments.length, 0);
+
+    this.transcriptHistory.segments = [];
+    this.transcriptHistory.languageSegments.clear();
+
+    this.logger.info({
+      clearedSegments: totalSegments
+    }, 'Cleared all transcript history');
+  }
 
   /**
    * Cleanup method - should be called when TranscriptionManager is being destroyed
@@ -1187,6 +1671,12 @@ export class TranscriptionManager {
       if (this.healthCheckInterval) {
         clearInterval(this.healthCheckInterval);
         this.healthCheckInterval = undefined;
+      }
+
+      // Stop history pruning
+      if (this.historyPruneInterval) {
+        clearInterval(this.historyPruneInterval);
+        this.historyPruneInterval = undefined;
       }
 
       // Stop all streams

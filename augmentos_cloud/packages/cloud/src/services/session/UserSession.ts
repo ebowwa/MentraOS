@@ -13,7 +13,6 @@ import AudioManager from './AudioManager';
 import MicrophoneManager from './MicrophoneManager';
 import DisplayManager from '../layout/DisplayManager6.1';
 import { DashboardManager } from '../dashboard';
-import { ASRStreamInstance } from '../processing/transcription.service';
 import VideoManager from './VideoManager';
 import PhotoManager from './PhotoManager';
 import { GlassesErrorCode } from '../websocket/websocket-glasses.service';
@@ -48,9 +47,6 @@ export class UserSession {
 
   // Transcription
   public isTranscribing: boolean = false;
-  public transcript: { segments: TranscriptSegment[]; languageSegments: Map<string, TranscriptSegment[]>; }
-    = { segments: [], languageSegments: new Map() };
-  public transcriptionStreams: Map<string, ASRStreamInstance> = new Map();
   public lastAudioTimestamp?: number;
 
   // Audio

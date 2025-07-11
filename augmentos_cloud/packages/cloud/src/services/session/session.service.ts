@@ -18,7 +18,6 @@ import {
 import { Logger } from 'pino';
 import { logger as rootLogger } from '../logging/pino-logger';
 import { DebugService } from '../debug/debug-service';
-import transcriptionService from '../processing/transcription.service';
 import subscriptionService from './subscription.service';
 import { User } from '../../models/user.model';
 import UserSession from './UserSession';
@@ -187,53 +186,8 @@ export class SessionService {
   }
 
 
-  /**
-   * Add a transcript segment to a user session
-   *
-   * @param userSession User session
-   * @param segment Transcript segment
-   * @param language Language code
-   */
-  addTranscriptSegment(
-    userSession: UserSession,
-    segment: TranscriptSegment,
-    language: string = 'en-US'
-  ): void {
-    try {
-      // Add to main transcript segments (for backward compatibility)
-      if (language === 'en-US') {
-        userSession.transcript.segments.push(segment);
-
-        // Prune old segments
-        const thirtyMinutesAgo = Date.now() - 30 * 60 * 1000;
-        userSession.transcript.segments = userSession.transcript.segments.filter(
-          s => new Date(s.timestamp).getTime() > thirtyMinutesAgo
-        );
-      }
-
-      // Add to language-specific segments
-      if (!userSession.transcript.languageSegments) {
-        userSession.transcript.languageSegments = new Map();
-      }
-
-      if (!userSession.transcript.languageSegments.has(language)) {
-        userSession.transcript.languageSegments.set(language, []);
-      }
-
-      userSession.transcript.languageSegments.get(language)!.push(segment);
-
-      // Prune old language-specific segments
-      const thirtyMinutesAgo = Date.now() - 30 * 60 * 1000;
-      for (const [lang, segments] of userSession.transcript.languageSegments.entries()) {
-        userSession.transcript.languageSegments.set(
-          lang,
-          segments.filter(s => new Date(s.timestamp).getTime() > thirtyMinutesAgo)
-        );
-      }
-    } catch (error) {
-      logger.error(`Error adding transcript segment:`, error);
-    }
-  }
+  // Transcript management is now handled by TranscriptionManager
+  // No need for manual transcript segment addition
 
   /**
    * Get all active sessions
@@ -255,47 +209,8 @@ export class SessionService {
   }
 
 
-  /**
-   * Handle transcription start
-   *
-   * @param userSession User session
-   */
-  async handleTranscriptionStart(userSession: UserSession): Promise<void> {
-    try {
-      // If not already transcribing, start transcription
-      if (!userSession.isTranscribing) {
-        userSession.logger.info('Starting transcription service');
-        userSession.isTranscribing = true;
-        await transcriptionService.startTranscription(userSession);
-      } else {
-        userSession.logger.debug('Transcription already running, ignoring start request');
-      }
-    } catch (error) {
-      userSession.logger.error('Error starting transcription:', error);
-      // Don't throw - we want to handle errors gracefully
-    }
-  }
-
-  /**
-   * Handle transcription stop
-   *
-   * @param userSession User session
-   */
-  async handleTranscriptionStop(userSession: UserSession): Promise<void> {
-    try {
-      // If currently transcribing, stop transcription
-      if (userSession.isTranscribing) {
-        userSession.logger.info('Stopping transcription service');
-        userSession.isTranscribing = false;
-        await transcriptionService.stopTranscription(userSession);
-      } else {
-        userSession.logger.debug('Transcription already stopped, ignoring stop request');
-      }
-    } catch (error) {
-      userSession.logger.error('Error stopping transcription:', error);
-      // Don't throw - we want to handle errors gracefully
-    }
-  }
+  // Transcription is now handled by TranscriptionManager based on app subscriptions
+  // and VAD events. No need for manual start/stop methods.
 
   /**
    * Get user settings
