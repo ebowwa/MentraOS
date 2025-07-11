@@ -14,7 +14,7 @@ import AVFoundation
 
 struct ViewState {
   var topText: String
-  var bottomText: String	
+  var bottomText: String
   var layoutType: String
   var text: String
   var eventStr: String
@@ -120,7 +120,7 @@ struct ViewState {
 
     // configure on board mic:
     //    setupOnboardMicrophoneIfNeeded()
-    
+
     // initManagerCallbacks()
 
     // Subscribe to WebSocket status changes
@@ -188,7 +188,7 @@ struct ViewState {
           guard let self = self else { return }
         handleRequestStatus()
       }.store(in: &cancellables)
-      
+
       // Set up serial number discovery callback
       g1Manager!.onSerialNumberDiscovered = { [weak self] in
         self?.handleRequestStatus()
@@ -558,14 +558,14 @@ struct ViewState {
     self.serverComms.sendGlassesConnectionState(modelName: self.defaultWearable, status: "CONNECTED")
 
     CoreCommsService.log("App started: \(packageName) - checking for auto-reconnection")
-    
+
     // Check if glasses are disconnected but there is a saved pair, initiate connection
     if !self.somethingConnected && !self.defaultWearable.isEmpty {
       CoreCommsService.log("Found preferred wearable: \(self.defaultWearable)")
-      
+
       if !self.defaultWearable.isEmpty {
         CoreCommsService.log("Auto-connecting to glasses due to app start: \(self.defaultWearable)")
-        
+
         // Always run on main thread to avoid threading issues
         DispatchQueue.main.async { [weak self] in
           guard let self = self else { return }
@@ -573,7 +573,7 @@ struct ViewState {
           // Attempt to connect using saved device name
           if !self.deviceName.isEmpty {
             self.handleConnectWearable(modelName: self.defaultWearable, deviceName: self.deviceName)
-            
+
             // Notify user about the auto-connection attempt
             self.sendText("Auto-connecting to \(self.defaultWearable)")
           } else {
@@ -602,6 +602,7 @@ struct ViewState {
 
   func onPhotoRequest(_ requestId: String, _ appId: String, _ webhookUrl: String) {
     CoreCommsService.log("AOS: onPhotoRequest: \(requestId), \(appId), \(webhookUrl)")
+    self.liveManager?.requestPhoto(requestId, appId: appId, webhookUrl: webhookUrl.isEmpty ? nil : webhookUrl)
   }
 
   func onRtmpStreamStartRequest(_ message: [String: Any]) {
@@ -898,8 +899,8 @@ struct ViewState {
     }
     self.g1Manager?.RN_sendText(text)
   }
-  
-  
+
+
   // command functions:
 
   private func setServerUrl(url: String) {
@@ -1837,7 +1838,7 @@ struct ViewState {
      headUpAngle = defaults.integer(forKey: SettingsKeys.headUpAngle)
      brightness = defaults.integer(forKey: SettingsKeys.brightness)
      metricSystemEnabled = defaults.bool(forKey: SettingsKeys.metricSystemEnabled)
-    
+
     // TODO: load settings from the server
 
     // Mark settings as loaded and signal completion
