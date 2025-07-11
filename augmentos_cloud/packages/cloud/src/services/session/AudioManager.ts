@@ -12,7 +12,6 @@ import {
 } from '@mentra/sdk';
 import { Logger } from 'pino';
 import subscriptionService from './subscription.service';
-import transcriptionService from '../processing/transcription.service';
 import { createLC3Service } from "../lc3/lc3.service";
 import { AudioWriter } from '../debug/audio-writer';
 import UserSession from './UserSession';
@@ -130,9 +129,10 @@ export class AudioManager {
       // let processedAudioData = await this.processAudioInternal(audioData, isLC3);
       let processedAudioData = audioData;
 
-      // Send to transcription service
+      // Send to transcription services
       if (processedAudioData) {
-        transcriptionService.feedAudioToTranscriptionStreams(this.userSession, processedAudioData);
+        // Feed to TranscriptionManager
+        this.userSession.transcriptionManager.feedAudio(processedAudioData);
 
         // Relay to Apps if there are subscribers
         // Note: Using subscriptionService instead of subscriptionManager

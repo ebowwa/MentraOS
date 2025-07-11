@@ -171,7 +171,7 @@ export default function SelectGlassesBluetoothScreen() {
 
     if (Platform.OS === "ios") {
       // on ios, we need to wait for the core communicator to be fully initialized and sending this twice is just the easiest way to do that
-      initializeAndSearchForDevices()
+      // initializeAndSearchForDevices()
       setTimeout(() => {
         initializeAndSearchForDevices()
       }, 3000)

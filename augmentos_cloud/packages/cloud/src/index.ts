@@ -226,79 +226,79 @@ app.use('/api/rtmp-relay', rtmpRelayRoutes);
 // app.use('/api/app-communication', appCommunicationRoutes);
 // app.use('/api/tpa-communication', appCommunicationRoutes); // TODO: Remove this once the old apps are fully updated in the wild (the old mobile clients will hit the old urls)
 
-// Health check endpoint with Azure connection monitoring
+// Health check endpoint
 app.get('/health', (req, res) => {
   try {
-    // Import transcription service for connection stats
-    const { TranscriptionService } = require('./services/processing/transcription.service');
-    const azureStats = TranscriptionService.getGlobalConnectionStats();
+    const SessionStorage = require('./services/session/SessionStorage').default;
+    const sessionStorage = SessionStorage.getInstance();
+    const activeSessions = sessionStorage.getAllSessions();
     
     res.json({ 
       status: 'ok', 
       timestamp: new Date().toISOString(),
-      azure: {
-        activeConnections: azureStats.activeStreams,
-        maxConnections: azureStats.maxStreams,
-        utilizationPercent: azureStats.utilizationPercent,
-        nearLimit: azureStats.nearLimit,
-        healthy: azureStats.utilizationPercent < 90
-      }
+      sessions: {
+        activeCount: activeSessions.length,
+      },
+      uptime: process.uptime()
     });
   } catch (error) {
-    // Fallback if transcription service unavailable
-    res.json({ 
-      status: 'ok', 
-      timestamp: new Date().toISOString(),
-      azure: { error: 'Stats unavailable' }
+    console.error('Health check error:', error);
+    res.status(500).json({ 
+      status: 'error', 
+      error: 'Health check failed',
+      timestamp: new Date().toISOString()
     });
   }
 });
 
-// Azure connection monitoring endpoint for detailed stats
-app.get('/api/azure/stats', (req, res) => {
+// Transcription monitoring endpoint for detailed stats
+app.get('/api/transcription/stats', (req, res) => {
   try {
-    const { TranscriptionService } = require('./services/processing/transcription.service');
-    const azureStats = TranscriptionService.getGlobalConnectionStats();
-    
     // Import SessionStorage to get all active sessions  
     const SessionStorage = require('./services/session/SessionStorage').default;
     const sessionStorage = SessionStorage.getInstance();
     const activeSessions = sessionStorage.getAllSessions();
     
-    const totalUsers = activeSessions.length;
-    const usersWithStreams = activeSessions.filter((session: any) => 
-      session.transcriptionStreams && session.transcriptionStreams.size > 0
-    ).length;
+    // Get per-session transcription stats
+    const sessionStats = activeSessions.map((session: any) => {
+      const metrics = session.transcriptionManager ? session.transcriptionManager.getMetrics() : {};
+      return {
+        sessionId: session.sessionId,
+        userId: session.userId,
+        isTranscribing: session.isTranscribing,
+        activeStreams: metrics.activeStreams || 0,
+        totalStreams: metrics.totalStreams || 0,
+        byProvider: metrics.byProvider || {},
+        connectedAt: session.connectedAt,
+        lastActivity: session.lastActivity
+      };
+    });
+    
+    // const totalStreams = sessionStats.reduce((sum, s) => sum + s.activeStreams, 0);
+    // const transcribingSessions = sessionStats.filter(s => s.isTranscribing).length;
     
     res.json({
       timestamp: new Date().toISOString(),
-      azure: {
-        connections: {
-          active: azureStats.activeStreams,
-          max: azureStats.maxStreams,
-          utilizationPercent: azureStats.utilizationPercent,
-          remaining: azureStats.maxStreams - azureStats.activeStreams
-        },
-        health: {
-          healthy: azureStats.utilizationPercent < 90,
-          nearLimit: azureStats.nearLimit,
-          atCapacity: azureStats.utilizationPercent >= 95
-        }
+      sessions: {
+        totalSessions: activeSessions.length,
+        // transcribingSessions,
+        // totalActiveStreams: totalStreams,
+        // avgStreamsPerSession: activeSessions.length > 0 ? (totalStreams / activeSessions.length).toFixed(2) : 0,
+        details: sessionStats
       },
-      users: {
-        total: totalUsers,
-        withStreams: usersWithStreams,
-        avgStreamsPerUser: totalUsers > 0 ? (azureStats.activeStreams / totalUsers).toFixed(2) : 0
-      },
-      recommendations: {
-        canAcceptNewUsers: azureStats.utilizationPercent < 80,
-        shouldScaleUp: azureStats.utilizationPercent > 85,
-        emergencyThrottle: azureStats.utilizationPercent > 95
-      }
+      // providers: {
+      //   // Aggregate provider usage across all sessions
+      //   summary: sessionStats.reduce((acc: any, session) => {
+      //     Object.entries(session.byProvider).forEach(([provider, count]) => {
+      //       acc[provider] = (acc[provider] || 0) + count;
+      //     });
+      //     return acc;
+      //   }, {})
+      // }
     });
   } catch (error) {
     res.status(500).json({ 
-      error: 'Failed to get Azure stats',
+      error: 'Failed to get transcription stats',
       message: error instanceof Error ? error.message : String(error)
     });
   }

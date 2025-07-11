@@ -13,13 +13,14 @@ import AudioManager from './AudioManager';
 import MicrophoneManager from './MicrophoneManager';
 import DisplayManager from '../layout/DisplayManager6.1';
 import { DashboardManager } from '../dashboard';
-import { ASRStreamInstance } from '../processing/transcription.service';
 import VideoManager from './VideoManager';
 import PhotoManager from './PhotoManager';
 import { GlassesErrorCode } from '../websocket/websocket-glasses.service';
 import SessionStorage from './SessionStorage';
 import { PosthogService } from '../logging/posthog.service';
+import { TranscriptionManager } from './transcription/TranscriptionManager';
 import { ManagedStreamingExtension } from '../streaming/ManagedStreamingExtension';
+import { getCapabilitiesForModel } from '../../config/hardware-capabilities';
 
 export const LOG_PING_PONG = false; // Set to true to enable detailed ping/pong logging
 /**
@@ -48,9 +49,6 @@ export class UserSession {
 
   // Transcription
   public isTranscribing: boolean = false;
-  public transcript: { segments: TranscriptSegment[]; languageSegments: Map<string, TranscriptSegment[]>; }
-    = { segments: [], languageSegments: new Map() };
-  public transcriptionStreams: Map<string, ASRStreamInstance> = new Map();
   public lastAudioTimestamp?: number;
 
   // Audio
@@ -67,6 +65,7 @@ export class UserSession {
   public microphoneManager: MicrophoneManager;
   public appManager: AppManager;
   public audioManager: AudioManager;
+  public transcriptionManager: TranscriptionManager;
 
   public videoManager: VideoManager;
   public photoManager: PhotoManager;
@@ -78,11 +77,17 @@ export class UserSession {
   // Heartbeat for glasses connection
   private glassesHeartbeatInterval?: NodeJS.Timeout;
 
+  // Audio play request tracking - maps requestId to packageName
+  public audioPlayRequestMapping: Map<string, string> = new Map();
+
   // Other state
   public userDatetime?: string;
 
   // Capability Discovery
   public capabilities: Capabilities | null = null;
+
+  // Current connected glasses model
+  public currentGlassesModel: string | null = null;
 
   constructor(userId: string, websocket: WebSocket) {
     this.userId = userId;
@@ -95,6 +100,7 @@ export class UserSession {
     this.dashboardManager = new DashboardManager(this);
     this.displayManager = new DisplayManager(this);
     this.microphoneManager = new MicrophoneManager(this);
+    this.transcriptionManager = new TranscriptionManager(this);
     this.photoManager = new PhotoManager(this);
     this.videoManager = new VideoManager(this);
     this.managedStreamingExtension = new ManagedStreamingExtension(this.logger);
@@ -173,6 +179,66 @@ export class UserSession {
   }
 
   /**
+   * Update the current glasses model and refresh capabilities
+   * Called when model information is received from the manager
+   */
+  updateGlassesModel(modelName: string): void {
+    if (this.currentGlassesModel === modelName) {
+      this.logger.debug(`[UserSession:updateGlassesModel] Model unchanged: ${modelName}`);
+      return;
+    }
+
+    this.logger.info(`[UserSession:updateGlassesModel] Updating glasses model from "${this.currentGlassesModel}" to "${modelName}"`);
+
+    this.currentGlassesModel = modelName;
+
+    // Update capabilities based on the new model
+    const capabilities = getCapabilitiesForModel(modelName);
+    if (capabilities) {
+      this.capabilities = capabilities;
+      this.logger.info(`[UserSession:updateGlassesModel] Updated capabilities for ${modelName}`);
+    } else {
+      this.logger.warn(`[UserSession:updateGlassesModel] No capabilities found for model: ${modelName}`);
+
+      // Fallback to Even Realities G1 capabilities if no capabilities found and we don't have any yet
+      if (!this.capabilities) {
+        const fallbackCapabilities = getCapabilitiesForModel("Even Realities G1");
+        if (fallbackCapabilities) {
+          this.capabilities = fallbackCapabilities;
+          this.logger.info(`[UserSession:updateGlassesModel] Applied fallback capabilities (Even Realities G1) for unknown model: ${modelName}`);
+        }
+      }
+    }
+  }
+
+  /**
+   * Get capabilities with fallback to default model if none available
+   */
+  getCapabilities(): Capabilities | null {
+    if (this.capabilities) {
+      return this.capabilities;
+    }
+
+    // If no capabilities set yet, try to use Even Realities G1 as fallback
+    const fallbackCapabilities = getCapabilitiesForModel("Even Realities G1");
+    if (fallbackCapabilities) {
+      this.logger.debug(`[UserSession:getCapabilities] Using fallback capabilities (Even Realities G1)`);
+      return fallbackCapabilities;
+    }
+
+    this.logger.warn(`[UserSession:getCapabilities] No capabilities available, including fallback`);
+    return null;
+  }
+
+  /**
+   * Check if a specific capability is available
+   */
+  hasCapability(capability: keyof Capabilities): boolean {
+    const caps = this.getCapabilities();
+    return caps ? Boolean(caps[capability]) : false;
+  }
+
+  /**
    * Get a user session by ID
    */
   static getById(userId: string): UserSession | undefined {
@@ -248,15 +314,16 @@ export class UserSession {
         startTime: this.startTime.toISOString()
       });
     } catch (error) {
-      this.logger.error('Error tracking disconnected event:', error); 
+      this.logger.error('Error tracking disconnected event:', error);
     }
-    
+
     // Clean up all resources
     if (this.appManager) this.appManager.dispose();
     if (this.audioManager) this.audioManager.dispose();
     if (this.microphoneManager) this.microphoneManager.dispose();
     if (this.displayManager) this.displayManager.dispose();
     if (this.dashboardManager) this.dashboardManager.dispose();
+    if (this.transcriptionManager) this.transcriptionManager.dispose();
     // if (this.heartbeatManager) this.heartbeatManager.dispose();
     if (this.videoManager) this.videoManager.dispose();
     if (this.photoManager) this.photoManager.dispose();
@@ -284,6 +351,9 @@ export class UserSession {
     this.loadingApps.clear();
     this.bufferedAudio = [];
     this.recentAudioBuffer = [];
+
+    // Clear audio play request mappings
+    this.audioPlayRequestMapping.clear();
 
     // Remove from session storage
     SessionStorage.getInstance().delete(this.userId);

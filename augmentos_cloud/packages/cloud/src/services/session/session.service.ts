@@ -18,7 +18,6 @@ import {
 import { Logger } from 'pino';
 import { logger as rootLogger } from '../logging/pino-logger';
 import { DebugService } from '../debug/debug-service';
-import transcriptionService from '../processing/transcription.service';
 import subscriptionService from './subscription.service';
 import { User } from '../../models/user.model';
 import UserSession from './UserSession';
@@ -88,19 +87,6 @@ export class SessionService {
 
       // Create new session with WebSocket
       const userSession = new UserSession(userId, ws);
-
-      // Determine device capabilities based on model
-      // For now, we'll default to Even Realities G1 if no model info is available
-      // In the future, this will be determined from the glasses connection info
-      const modelName = "Even Realities G1"; // TODO: Get from glasses connection info
-      const capabilities = getCapabilitiesForModel(modelName);
-
-      if (capabilities) {
-        userSession.capabilities = capabilities;
-        logger.info(`Set capabilities for ${modelName} on session ${userId}`);
-      } else {
-        logger.warn(`No capabilities found for model: ${modelName}, session ${userId}`);
-      }
 
       // TODO(isaiah): Create a init method in UserSession to handle initialization logic.
       // Fetch installed apps
@@ -187,53 +173,8 @@ export class SessionService {
   }
 
 
-  /**
-   * Add a transcript segment to a user session
-   *
-   * @param userSession User session
-   * @param segment Transcript segment
-   * @param language Language code
-   */
-  addTranscriptSegment(
-    userSession: UserSession,
-    segment: TranscriptSegment,
-    language: string = 'en-US'
-  ): void {
-    try {
-      // Add to main transcript segments (for backward compatibility)
-      if (language === 'en-US') {
-        userSession.transcript.segments.push(segment);
-
-        // Prune old segments
-        const thirtyMinutesAgo = Date.now() - 30 * 60 * 1000;
-        userSession.transcript.segments = userSession.transcript.segments.filter(
-          s => new Date(s.timestamp).getTime() > thirtyMinutesAgo
-        );
-      }
-
-      // Add to language-specific segments
-      if (!userSession.transcript.languageSegments) {
-        userSession.transcript.languageSegments = new Map();
-      }
-
-      if (!userSession.transcript.languageSegments.has(language)) {
-        userSession.transcript.languageSegments.set(language, []);
-      }
-
-      userSession.transcript.languageSegments.get(language)!.push(segment);
-
-      // Prune old language-specific segments
-      const thirtyMinutesAgo = Date.now() - 30 * 60 * 1000;
-      for (const [lang, segments] of userSession.transcript.languageSegments.entries()) {
-        userSession.transcript.languageSegments.set(
-          lang,
-          segments.filter(s => new Date(s.timestamp).getTime() > thirtyMinutesAgo)
-        );
-      }
-    } catch (error) {
-      logger.error(`Error adding transcript segment:`, error);
-    }
-  }
+  // Transcript management is now handled by TranscriptionManager
+  // No need for manual transcript segment addition
 
   /**
    * Get all active sessions
@@ -255,47 +196,8 @@ export class SessionService {
   }
 
 
-  /**
-   * Handle transcription start
-   *
-   * @param userSession User session
-   */
-  async handleTranscriptionStart(userSession: UserSession): Promise<void> {
-    try {
-      // If not already transcribing, start transcription
-      if (!userSession.isTranscribing) {
-        userSession.logger.info('Starting transcription service');
-        userSession.isTranscribing = true;
-        await transcriptionService.startTranscription(userSession);
-      } else {
-        userSession.logger.debug('Transcription already running, ignoring start request');
-      }
-    } catch (error) {
-      userSession.logger.error('Error starting transcription:', error);
-      // Don't throw - we want to handle errors gracefully
-    }
-  }
-
-  /**
-   * Handle transcription stop
-   *
-   * @param userSession User session
-   */
-  async handleTranscriptionStop(userSession: UserSession): Promise<void> {
-    try {
-      // If currently transcribing, stop transcription
-      if (userSession.isTranscribing) {
-        userSession.logger.info('Stopping transcription service');
-        userSession.isTranscribing = false;
-        await transcriptionService.stopTranscription(userSession);
-      } else {
-        userSession.logger.debug('Transcription already stopped, ignoring stop request');
-      }
-    } catch (error) {
-      userSession.logger.error('Error stopping transcription:', error);
-      // Don't throw - we want to handle errors gracefully
-    }
-  }
+  // Transcription is now handled by TranscriptionManager based on app subscriptions
+  // and VAD events. No need for manual start/stop methods.
 
   /**
    * Get user settings
@@ -416,6 +318,65 @@ export class SessionService {
       userSession.audioManager.processAudioData(audioData, false);
     } catch (error) {
       userSession.logger.error({ error }, `Error relaying audio for user: ${userSession.userId}`);
+    }
+  }
+
+  /**
+   * Relay audio play response to the specific app that made the request
+   *
+   * @param userSession User session
+   * @param audioResponse Audio play response from glasses/core
+   */
+  relayAudioPlayResponseToApp(userSession: UserSession, audioResponse: any): void {
+    try {
+      const requestId = audioResponse.requestId;
+      if (!requestId) {
+        userSession.logger.error({ audioResponse }, 'Audio play response missing requestId');
+        return;
+      }
+
+      // Look up which app made this request
+      const packageName = userSession.audioPlayRequestMapping.get(requestId);
+      if (!packageName) {
+        userSession.logger.warn(`🔊 [SessionService] No app mapping found for audio request ${requestId}. Available mappings:`,
+          Array.from(userSession.audioPlayRequestMapping.keys()));
+        return;
+      }
+
+      // Get the app's WebSocket connection
+      const appWebSocket = userSession.appWebsockets.get(packageName);
+      if (!appWebSocket || appWebSocket.readyState !== WebSocket.OPEN) {
+        userSession.logger.warn(`🔊 [SessionService] App ${packageName} not connected or WebSocket not ready for audio response ${requestId}`);
+        // Clean up the mapping even if we can't deliver the response
+        userSession.audioPlayRequestMapping.delete(requestId);
+        return;
+      }
+
+      // Create the audio play response message for the app
+      const appAudioResponse = {
+        type: CloudToAppMessageType.AUDIO_PLAY_RESPONSE,
+        sessionId: `${userSession.sessionId}-${packageName}`,
+        requestId: requestId,
+        success: audioResponse.success,
+        error: audioResponse.error,
+        duration: audioResponse.duration,
+        timestamp: new Date()
+      };
+
+      // Send the response to the app
+      try {
+        appWebSocket.send(JSON.stringify(appAudioResponse));
+        userSession.logger.info(`🔊 [SessionService] Successfully sent audio play response ${requestId} to app ${packageName}`);
+      } catch (sendError) {
+        userSession.logger.error(`🔊 [SessionService] Error sending audio response ${requestId} to app ${packageName}:`, sendError);
+      }
+
+      // Clean up the mapping
+      userSession.audioPlayRequestMapping.delete(requestId);
+      userSession.logger.debug(`🔊 [SessionService] Cleaned up audio request mapping for ${requestId}. Remaining mappings: ${userSession.audioPlayRequestMapping.size}`);
+
+    } catch (error) {
+      userSession.logger.error({ error, audioResponse }, `Error relaying audio play response`);
     }
   }
 

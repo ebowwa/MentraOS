@@ -45,6 +45,7 @@ export interface BehaviorConfig {
   statusUpdateInterval: number;
   locationUpdateInterval: number;
   reconnectOnDisconnect: boolean;
+  disableStatusUpdates?: boolean;
 }
 
 /**

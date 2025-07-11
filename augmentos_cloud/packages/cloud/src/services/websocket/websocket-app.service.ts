@@ -22,6 +22,8 @@ import {
   GlassesToCloudMessageType,
   CloudToGlassesMessageType,
   PhotoRequest,
+  AudioPlayRequest,
+  AudioStopRequest,
   RtmpStreamRequest,
   RtmpStreamStopRequest,
   ManagedStreamRequest,
@@ -32,7 +34,6 @@ import * as developerService from '../core/developer.service';
 import { sessionService } from '../session/session.service';
 import subscriptionService from '../session/subscription.service';
 import { logger as rootLogger } from '../logging/pino-logger';
-import transcriptionService from '../processing/transcription.service';
 import photoRequestService from '../core/photo-request.service';
 import e from 'express';
 import { locationService } from '../core/location.service';
@@ -75,11 +76,11 @@ interface AppIncomingMessage extends IncomingMessage {
 export class AppWebSocketService {
   private static instance: AppWebSocketService;
   private logger = rootLogger.child({ service: SERVICE_NAME });
-  
+
   // Debouncing for subscription changes to prevent rapid stream recreation
   private subscriptionChangeTimers = new Map<string, NodeJS.Timeout>();
   private readonly SUBSCRIPTION_DEBOUNCE_MS = 500; // 500ms debounce
-  
+
   constructor() { }
 
   /**
@@ -271,25 +272,92 @@ export class AppWebSocketService {
           }
           break;
 
+        case AppToCloudMessageType.AUDIO_PLAY_REQUEST:
+          // Forward audio play request to glasses/manager
+          try {
+            const audioRequestMsg = message as AudioPlayRequest;
+
+            // Store the mapping of requestId -> packageName for response routing
+            userSession.audioPlayRequestMapping.set(audioRequestMsg.requestId, audioRequestMsg.packageName);
+            userSession.logger.debug(`🔊 [AppWebSocketService] Stored audio request mapping: ${audioRequestMsg.requestId} -> ${audioRequestMsg.packageName}`);
+
+            // Forward the audio play request to the glasses/manager
+            // Convert from app-to-cloud format to cloud-to-glasses format
+            const glassesAudioRequest = {
+              type: CloudToGlassesMessageType.AUDIO_PLAY_REQUEST,
+              sessionId: userSession.sessionId,
+              requestId: audioRequestMsg.requestId,
+              packageName: audioRequestMsg.packageName,
+              audioUrl: audioRequestMsg.audioUrl,
+              volume: audioRequestMsg.volume,
+              stopOtherAudio: audioRequestMsg.stopOtherAudio,
+              timestamp: new Date()
+            };
+
+            // Send to glasses/manager via WebSocket
+            if (userSession.websocket && userSession.websocket.readyState === 1) {
+              userSession.websocket.send(JSON.stringify(glassesAudioRequest));
+              userSession.logger.debug(`🔊 [AppWebSocketService] Forwarded audio request ${audioRequestMsg.requestId} to glasses`);
+            } else {
+              // Clean up mapping if we can't forward the request
+              userSession.audioPlayRequestMapping.delete(audioRequestMsg.requestId);
+              this.sendError(appWebsocket, AppErrorCode.INTERNAL_ERROR, "Glasses not connected");
+            }
+          } catch(e) {
+            // Clean up mapping if an exception occurs to prevent memory leak
+            const audioRequestMsg = message as AudioPlayRequest;
+            if (audioRequestMsg?.requestId) {
+              userSession.audioPlayRequestMapping.delete(audioRequestMsg.requestId);
+            }
+            this.sendError(appWebsocket, AppErrorCode.INTERNAL_ERROR, (e as Error).message || "Failed to process audio request.");
+          }
+          break;
+
+        case AppToCloudMessageType.AUDIO_STOP_REQUEST:
+          // Forward audio stop request to glasses/manager
+          try {
+            const audioStopMsg = message as AudioStopRequest;
+
+            // Forward the audio stop request to the glasses/manager
+            // Convert from app-to-cloud format to cloud-to-glasses format
+            const glassesAudioStopRequest = {
+              type: CloudToGlassesMessageType.AUDIO_STOP_REQUEST,
+              sessionId: userSession.sessionId,
+              appId: audioStopMsg.packageName,
+              timestamp: new Date()
+            };
+
+            // Send to glasses/manager via WebSocket
+            if (userSession.websocket && userSession.websocket.readyState === 1) {
+              userSession.websocket.send(JSON.stringify(glassesAudioStopRequest));
+              userSession.logger.debug(`🔇 [AppWebSocketService] Forwarded audio stop request from ${audioStopMsg.packageName} to glasses`);
+            } else {
+              this.sendError(appWebsocket, AppErrorCode.INTERNAL_ERROR, "Glasses not connected");
+            }
+          } catch(e) {
+            this.sendError(appWebsocket, AppErrorCode.INTERNAL_ERROR, (e as Error).message || "Failed to process audio stop request.");
+          }
+          break;
+
         case AppToCloudMessageType.MANAGED_STREAM_REQUEST:
           try {
             const managedReq = message as ManagedStreamRequest;
             const streamId = await userSession.managedStreamingExtension.startManagedStream(
-              userSession, 
+              userSession,
               managedReq
             );
-            this.logger.info({ 
-              streamId, 
-              packageName: managedReq.packageName 
+            this.logger.info({
+              streamId,
+              packageName: managedReq.packageName
             }, "Managed stream request processed");
           } catch (e) {
-            this.logger.error({ 
-              e, 
-              packageName: message.packageName 
+            this.logger.error({
+              e,
+              packageName: message.packageName
             }, "Error starting managed stream");
             this.sendError(
-              appWebsocket, 
-              AppErrorCode.INTERNAL_ERROR, 
+              appWebsocket,
+              AppErrorCode.INTERNAL_ERROR,
               (e as Error).message || "Failed to start managed stream"
             );
           }
@@ -299,20 +367,20 @@ export class AppWebSocketService {
           try {
             const stopReq = message as ManagedStreamStopRequest;
             await userSession.managedStreamingExtension.stopManagedStream(
-              userSession, 
+              userSession,
               stopReq
             );
-            this.logger.info({ 
-              packageName: stopReq.packageName 
+            this.logger.info({
+              packageName: stopReq.packageName
             }, "Managed stream stop request processed");
           } catch (e) {
-            this.logger.error({ 
-              e, 
-              packageName: message.packageName 
+            this.logger.error({
+              e,
+              packageName: message.packageName
             }, "Error stopping managed stream");
             this.sendError(
-              appWebsocket, 
-              AppErrorCode.INTERNAL_ERROR, 
+              appWebsocket,
+              AppErrorCode.INTERNAL_ERROR,
               (e as Error).message || "Failed to stop managed stream"
             );
           }
@@ -400,34 +468,34 @@ export class AppWebSocketService {
 
     if (languageSubscriptionsChanged) {
       userSession.logger.info({ service: SERVICE_NAME, languageSubscriptionsChanged, packageName }, `Language subscriptions changed for ${packageName} in session ${userSession.userId}`);
-      
+
       // 🚨 DEBOUNCED SUBSCRIPTION UPDATES - Prevent rapid stream recreation
       const userId = userSession.userId;
-      
+
       // Clear existing timer if present
       if (this.subscriptionChangeTimers.has(userId)) {
         clearTimeout(this.subscriptionChangeTimers.get(userId)!);
       }
-      
+
       // Set debounced timer for transcription stream updates
       this.subscriptionChangeTimers.set(userId, setTimeout(() => {
         try {
-          userSession.logger.debug({ 
-            service: SERVICE_NAME, 
+          userSession.logger.debug({
+            service: SERVICE_NAME,
             newLanguageSubscriptions,
             userId,
             operation: 'debouncedStreamUpdate'
           }, 'Applying debounced transcription stream update');
-          
+
           // Update transcription streams with new language subscriptions
-          transcriptionService.updateTranscriptionStreams(userSession, newLanguageSubscriptions);
+          // Note: subscriptionService automatically syncs TranscriptionManager, so no direct call needed
 
           // Check if we need to update microphone state based on media subscriptions
           userSession.microphoneManager.handleSubscriptionChange();
-          
+
         } catch (error) {
-          userSession.logger.error({ 
-            service: SERVICE_NAME, 
+          userSession.logger.error({
+            service: SERVICE_NAME,
             error,
             userId,
             operation: 'debouncedStreamUpdateError'

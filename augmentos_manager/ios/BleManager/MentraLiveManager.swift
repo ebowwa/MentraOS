@@ -210,7 +210,7 @@ extension MentraLiveManager: CBPeripheralDelegate {
   
   func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
     
-    CoreCommsService.log("GOT CHARACTERISTIC UPDATE @@@@@@@@@@@@@@@@@@@@@")
+    // CoreCommsService.log("GOT CHARACTERISTIC UPDATE @@@@@@@@@@@@@@@@@@@@@")
     if let error = error {
       CoreCommsService.log("Error updating value for characteristic: \(error.localizedDescription)")
       return
@@ -224,15 +224,13 @@ extension MentraLiveManager: CBPeripheralDelegate {
     let threadId = Thread.current.hash
     let uuid = characteristic.uuid
     
-    CoreCommsService.log("Thread-\(threadId): 🎉 didUpdateValueFor CALLBACK TRIGGERED! Characteristic: \(uuid)")
-    
-    if uuid == RX_CHAR_UUID {
-      CoreCommsService.log("Thread-\(threadId): 🎯 RECEIVED DATA ON RX CHARACTERISTIC (Peripheral's TX)")
-    } else if uuid == TX_CHAR_UUID {
-      CoreCommsService.log("Thread-\(threadId): 🎯 RECEIVED DATA ON TX CHARACTERISTIC (Peripheral's RX)")
-    }
-    
-    CoreCommsService.log("Thread-\(threadId): 🔍 Processing received data - \(data.count) bytes")
+    // CoreCommsService.log("Thread-\(threadId): 🎉 didUpdateValueFor CALLBACK TRIGGERED! Characteristic: \(uuid)")
+    // if uuid == RX_CHAR_UUID {
+    //   CoreCommsService.log("Thread-\(threadId): 🎯 RECEIVED DATA ON RX CHARACTERISTIC (Peripheral's TX)")
+    // } else if uuid == TX_CHAR_UUID {
+    //   CoreCommsService.log("Thread-\(threadId): 🎯 RECEIVED DATA ON TX CHARACTERISTIC (Peripheral's RX)")
+    // }
+    // CoreCommsService.log("Thread-\(threadId): 🔍 Processing received data - \(data.count) bytes")
     
     processReceivedData(data)
   }
@@ -394,6 +392,13 @@ typealias JSONObject = [String: Any]
   private var isKilled = false
   public var glassesReady = false
   private var reconnectAttempts = 0
+  private var isNewVersion = false
+  private var globalMessageId = 0
+  private var lastReceivedMessageId = 0
+  public var glassesAppVersion: String = ""
+  public var glassesBuildNumber: String = ""
+  public var glassesDeviceModel: String = ""
+  public var glassesAndroidVersion: String = ""
   
   public var ready: Bool {
     get { return glassesReady }
@@ -406,15 +411,13 @@ typealias JSONObject = [String: Any]
       }
       if (!newValue) {
         // Reset battery levels when disconnected
-        //        batteryLevel = -1
-        //        leftBatteryLevel = -1
-        //        rightBatteryLevel = -1
+        batteryLevel = -1
       }
     }
   }
   
   // Data Properties
-  @Published public var batteryLevel: Int = 50
+  @Published public var batteryLevel: Int = -1
   @Published public var isCharging: Bool = false
   @Published public var isWifiConnected: Bool = false
   @Published public var wifiSsid: String = ""
@@ -432,8 +435,14 @@ typealias JSONObject = [String: Any]
   private var connectionTimeoutTimer: Timer?
   
   // Callbacks
-  public var dataObservable: ((Data) -> Void)?
   public var jsonObservable: ((JSONObject) -> Void)?
+  
+  // onButtonPress (buttonId: String, pressType: String)
+  public var onButtonPress: ((String, String) -> Void)?
+  // onPhotoRequest (requestId: String, appId: String, webhookUrl: String?)
+  public var onPhotoRequest: ((String, String) -> Void)?
+  // onVideoStreamResponse (appId: String, streamUrl: String)
+  public var onVideoStreamResponse: ((String, String) -> Void)?
   
   // MARK: - Initialization
   
@@ -450,43 +459,48 @@ typealias JSONObject = [String: Any]
   
   private var discoveredPeripherals = [String: CBPeripheral]() // name -> peripheral
   
-  @objc func RN_findCompatibleDevices() {
+  func findCompatibleDevices() {
     CoreCommsService.log("Finding compatible Mentra Live glasses")
     
-    if centralManager == nil {
-      centralManager = CBCentralManager(delegate: self, queue: bluetoothQueue, options: ["CBCentralManagerOptionShowPowerAlertKey": 0])
+    Task {
+      if centralManager == nil {
+        centralManager = CBCentralManager(delegate: self, queue: bluetoothQueue, options: ["CBCentralManagerOptionShowPowerAlertKey": 0])
+        // wait for the central manager to be fully initialized before we start scanning:
+        try? await Task.sleep(nanoseconds: 100 * 1_000_000)// 100ms
+      }
+      
+      // clear the saved device name:
+      UserDefaults.standard.set("", forKey: PREFS_DEVICE_NAME)
+      
+      startScan()
     }
-    
-    guard centralManager!.state == .poweredOn else {
-      CoreCommsService.log("Bluetooth is not powered on")
-      return
-    }
-    
-    // clear the saved device name:
-    UserDefaults.standard.set("", forKey: PREFS_DEVICE_NAME)
-    
-    startScan()
   }
   
-  @objc func RN_connectToGlasses(_ deviceName: String) -> Bool {
-    CoreCommsService.log("RN_connectToGlasses: \(deviceName)")
-    
-    // Save the device name for future reconnection
-    UserDefaults.standard.set(deviceName, forKey: PREFS_DEVICE_NAME)
-    
-    // Start scanning to find this specific device
-    if centralManager == nil {
-      centralManager = CBCentralManager(delegate: self, queue: bluetoothQueue, options: ["CBCentralManagerOptionShowPowerAlertKey": 0])
+  func connectById(_ deviceName: String) -> Void {
+    CoreCommsService.log("connectById: \(deviceName)")
+    Task {
+      // Save the device name for future reconnection
+      UserDefaults.standard.set(deviceName, forKey: PREFS_DEVICE_NAME)
+      
+      // Start scanning to find this specific device
+      if centralManager == nil {
+        centralManager = CBCentralManager(delegate: self, queue: bluetoothQueue, options: ["CBCentralManagerOptionShowPowerAlertKey": 0])
+        // wait for the central manager to be fully initialized before we start scanning:
+        try? await Task.sleep(nanoseconds: 100 * 1_000_000)// 100ms
+      }
+      
+      // Will connect when found during scan
+      startScan()
     }
-    
-    // Will connect when found during scan
-    startScan()
-    return true
   }
   
-  @objc func RN_disconnect() {
+  @objc func disconnect() {
     CoreCommsService.log("Disconnecting from Mentra Live glasses")
-    // isKilled = true
+    
+    // Clear any pending messages
+    self.pending = nil
+    pendingMessageTimer?.invalidate()
+    pendingMessageTimer = nil
     
     if let peripheral = connectedPeripheral {
       centralManager?.cancelPeripheralConnection(peripheral)
@@ -496,7 +510,7 @@ typealias JSONObject = [String: Any]
     stopAllTimers()
   }
   
-  @objc func RN_setMicrophoneEnabled(_ enabled: Bool) {
+  @objc func setMicrophoneEnabled(_ enabled: Bool) {
     CoreCommsService.log("Setting microphone state to: \(enabled)")
     
     let json: [String: Any] = [
@@ -507,7 +521,7 @@ typealias JSONObject = [String: Any]
     sendJson(json)
   }
   
-  @objc func RN_requestPhoto(_ requestId: String, appId: String, webhookUrl: String?) {
+  @objc func requestPhoto(_ requestId: String, appId: String, webhookUrl: String?) {
     CoreCommsService.log("Requesting photo: \(requestId) for app: \(appId)")
     
     var json: [String: Any] = [
@@ -523,77 +537,73 @@ typealias JSONObject = [String: Any]
     sendJson(json)
   }
   
-  @objc func RN_startRtmpStream(_ message: [String: Any]) {
+  func startRtmpStream(_ message: [String: Any]) {
     CoreCommsService.log("Starting RTMP stream")
     var json = message
     json.removeValue(forKey: "timestamp")
     sendJson(json)
   }
   
-  @objc func RN_stopRtmpStream() {
+  func stopRtmpStream() {
     CoreCommsService.log("Stopping RTMP stream")
     let json: [String: Any] = ["type": "stop_rtmp_stream"]
     sendJson(json)
   }
   
-  @objc func RN_sendRtmpKeepAlive(_ message: [String: Any]) {
+  func sendRtmpKeepAlive(_ message: [String: Any]) {
     CoreCommsService.log("Sending RTMP keep alive")
     sendJson(message)
   }
   
-  @objc func RN_requestWifiScan() {
-    CoreCommsService.log("Requesting WiFi scan")
-    let json: [String: Any] = ["type": "request_wifi_scan"]
-    sendJson(json)
-  }
-  
-  @objc func RN_sendWifiCredentials(_ ssid: String, password: String) {
-    CoreCommsService.log("Sending WiFi credentials for SSID: \(ssid)")
-    
-    guard !ssid.isEmpty else {
-      CoreCommsService.log("Cannot set WiFi credentials - SSID is empty")
-      return
-    }
-    
-    let json: [String: Any] = [
-      "type": "set_wifi_credentials",
-      "ssid": ssid,
-      "password": password
-    ]
-    
-    sendJson(json)
-  }
-  
-  @objc func RN_startRecordVideo() {
+  @objc func startRecordVideo() {
     let json: [String: Any] = ["type": "start_record_video"]
     sendJson(json)
   }
   
-  @objc func RN_stopRecordVideo() {
+  @objc func stopRecordVideo() {
     let json: [String: Any] = ["type": "stop_record_video"]
     sendJson(json)
   }
   
-  @objc func RN_startVideoStream() {
+  @objc func startVideoStream() {
     let json: [String: Any] = ["type": "start_video_stream"]
     sendJson(json)
   }
   
-  @objc func RN_stopVideoStream() {
+  @objc func stopVideoStream() {
     let json: [String: Any] = ["type": "stop_video_stream"]
     sendJson(json)
   }
   
   // MARK: - Command Queue
   
-  actor CommandQueue {
-    private var commands: [Data] = []
+  class PendingMessage {
+    init(data: Data, id: String, retries: Int) {
+      self.data = data
+      self.id = id
+      self.retries = retries
+    }
     
-    func enqueue(_ command: Data) {
+    let data: Data
+    let retries: Int
+    let id: String
+  }
+  
+  private var pending: PendingMessage?
+  private var pendingMessageTimer: Timer?
+  
+  actor CommandQueue {
+    private var commands: [PendingMessage] = []
+    
+    func enqueue(_ command: PendingMessage) {
       commands.append(command)
     }
     
-    func dequeue() -> Data? {
+    func pushToFront(_ command: PendingMessage) {
+      commands.insert(command, at: 0)
+    }
+    
+    func dequeue() -> PendingMessage? {
       guard !commands.isEmpty else { return nil }
       return commands.removeFirst()
     }
@@ -602,21 +612,18 @@ typealias JSONObject = [String: Any]
   private func setupCommandQueue() {
     Task.detached { [weak self] in
       guard let self = self else { return }
-      while !self.isKilled {
-        if let command = await self.commandQueue.dequeue() {
-          await self.processSendQueue(command)
+      while true {
+        if self.pending == nil {
+          if let command = await self.commandQueue.dequeue() {
+            await self.processSendQueue(command)
+          }
         }
         try? await Task.sleep(nanoseconds: 100_000_000) // 100ms
       }
     }
   }
   
-  private func processSendQueue(_ data: Data) async {
-    // guard connectionState == .connected,
-    //       let peripheral = connectedPeripheral,
-    //       let txChar = txCharacteristic else {
-    //   return
-    // }
+  private func processSendQueue(_ message: PendingMessage) async {
     
     guard let peripheral = connectedPeripheral,
           let txChar = txCharacteristic else {
@@ -627,25 +634,57 @@ typealias JSONObject = [String: Any]
     let currentTime = Date().timeIntervalSince1970 * 1000
     let timeSinceLastSend = currentTime - lastSendTimeMs
     
-    // if timeSinceLastSend < Double(MIN_SEND_DELAY_MS / 1_000_000) {
-    //   let remainingDelay = Double(MIN_SEND_DELAY_MS / 1_000_000) - timeSinceLastSend
-    //   try? await Task.sleep(nanoseconds: UInt64(remainingDelay * 1_000_000))
-    // }
-
-    // 1 second delay
-    try? await Task.sleep(nanoseconds: UInt64(1_000_000_000))
-    
+    try? await Task.sleep(nanoseconds: UInt64(1_000_000))
     lastSendTimeMs = Date().timeIntervalSince1970 * 1000
     
-    CoreCommsService.log("Sending data: \(data)")
-    
     // Send the data
-    peripheral.writeValue(data, for: txChar, type: .withResponse)
+    peripheral.writeValue(message.data, for: txChar, type: .withResponse)
+    
+    
+    // don't do the retry system on the old glasses versions
+    if !isNewVersion {
+      return
+    }
+    
+    // Set the pending message
+    self.pending = message
+    
+    // Start retry timer for 100ms
+    DispatchQueue.main.async { [weak self] in
+      self?.pendingMessageTimer?.invalidate()
+      self?.pendingMessageTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: false) { _ in
+        self?.handlePendingMessageTimeout()
+      }
+    }
+    
   }
   
-  private func queueData(_ data: Data) {
-    Task {
-      await commandQueue.enqueue(data)
+  private func handlePendingMessageTimeout() {
+    guard let pendingMessage = self.pending else { return }
+    
+    CoreCommsService.log("⚠️ Message timeout - no response for mId: \(pendingMessage.id), retry attempt: \(pendingMessage.retries + 1)/3")
+    
+    // Clear the pending message
+    self.pending = nil
+    
+    // Check if we should retry
+    if pendingMessage.retries < 3 {
+      // Create a new message with incremented retry count
+      let retryMessage = PendingMessage(
+        data: pendingMessage.data,
+        id: pendingMessage.id,
+        retries: pendingMessage.retries + 1
+      )
+      
+      // Push to front of queue for immediate retry
+      Task {
+        await self.commandQueue.pushToFront(retryMessage)
+      }
+      
+      CoreCommsService.log("🔄 Retrying message mId: \(pendingMessage.id) (attempt \(retryMessage.retries)/3)")
+    } else {
+      CoreCommsService.log("❌ Message failed after 3 retries - mId: \(pendingMessage.id)")
+      // Optionally emit an event or callback for failed message
     }
   }
   
@@ -653,6 +692,11 @@ typealias JSONObject = [String: Any]
   
   private func startScan() {
     // guard !isScanning else { return }
+    
+    guard centralManager!.state == .poweredOn else {
+      CoreCommsService.log("Attempting to scan but bluetooth is not powered on.")
+      return
+    }
     
     CoreCommsService.log("Starting BLE scan for Mentra Live glasses")
     isScanning = true
@@ -706,28 +750,7 @@ typealias JSONObject = [String: Any]
   }
   
   private func handleReconnection() {
-    guard reconnectAttempts < MAX_RECONNECT_ATTEMPTS else {
-      CoreCommsService.log("Maximum reconnection attempts reached")
-      reconnectAttempts = 0
-      connectionState = .disconnected
-      return
-    }
-    
-    let delay = min(BASE_RECONNECT_DELAY_MS * UInt64(1 << reconnectAttempts), MAX_RECONNECT_DELAY_MS)
-    reconnectAttempts += 1
-    
-    CoreCommsService.log("Scheduling reconnection attempt \(reconnectAttempts) in \(delay / 1_000_000_000)s")
-    
-    Task {
-      try? await Task.sleep(nanoseconds: delay)
-      
-      guard !isKilled && connectionState == .disconnected else { return }
-      
-      if let savedDeviceName = UserDefaults.standard.string(forKey: PREFS_DEVICE_NAME) {
-        CoreCommsService.log("Reconnection attempt \(reconnectAttempts) - looking for device: \(savedDeviceName)")
-        startScan()
-      }
-    }
+    // TODO: implement reconnection
   }
   
   // MARK: - Data Processing
@@ -744,12 +767,6 @@ typealias JSONObject = [String: Any]
     // Check for K900 protocol format (starts with ##)
     if data.count >= 7 && bytes[0] == 0x23 && bytes[1] == 0x23 {
       processK900ProtocolData(data)
-      return
-    }
-    
-    // Check for LC3 audio data
-    if bytes[0] == 0xA0 {
-      processLC3AudioData(data)
       return
     }
     
@@ -791,16 +808,6 @@ typealias JSONObject = [String: Any]
     }
   }
   
-  private func processLC3AudioData(_ data: Data) {
-    CoreCommsService.log("✅ DETECTED LC3 AUDIO PACKET! Size: \(data.count) bytes")
-    
-    // Extract LC3 data (skip command byte)
-    let lc3Data = data.subdata(in: 1..<data.count)
-    
-    // Forward to audio processing callback if available
-    dataObservable?(lc3Data)
-  }
-  
   private func processJsonMessage(_ jsonString: String) {
     CoreCommsService.log("Got JSON from glasses: \(jsonString)")
     
@@ -811,17 +818,6 @@ typealias JSONObject = [String: Any]
       }
       
       processJsonObject(json)
-      // Check for C-wrapped format
-      //      if let cContent = json["C"] as? String {
-      //        if let innerData = cContent.data(using: .utf8),
-      //           let innerJson = try JSONSerialization.jsonObject(with: innerData) as? [String: Any] {
-      //          processJsonObject(innerJson)
-      //        } else {
-      //          processJsonObject(json)
-      //        }
-      //      } else {
-      //        processJsonObject(json)
-      //      }
     } catch {
       CoreCommsService.log("Error parsing JSON: \(error)")
     }
@@ -837,9 +833,20 @@ typealias JSONObject = [String: Any]
     }
     
     guard let type = json["type"] as? String else {
-      // Forward to observable if no type
-      jsonObservable?(json)
       return
+    }
+    
+    if let mId = json["mId"] as? Int {
+      CoreCommsService.log("Received message with mId: \(mId)")
+      if String(mId) == self.pending?.id {
+        CoreCommsService.log("Received expected response! clearing pending")
+        self.pending = nil
+        // Cancel the retry timer
+        self.pendingMessageTimer?.invalidate()
+        self.pendingMessageTimer = nil
+      } else if self.pending?.id != nil {
+        CoreCommsService.log("Received unexpected response! expected: \(self.pending!.id), received: \(mId) global: \(globalMessageId)")
+      }
     }
     
     switch type {
@@ -874,9 +881,13 @@ typealias JSONObject = [String: Any]
     case "keep_alive_ack":
       emitKeepAliveAck(json)
       
+    case "msg_ack":
+      CoreCommsService.log("Received msg_ack")
+      
     default:
       // Forward unknown types to observable
-      jsonObservable?(json)
+      //      jsonObservable?(json)
+      CoreCommsService.log("Unhandled message type: \(type)")
     }
   }
   
@@ -889,23 +900,52 @@ typealias JSONObject = [String: Any]
     let commandJson = try? JSONSerialization.jsonObject(with: command.data(using: .utf8)!) as? [String: Any]
     processJsonObject(commandJson ?? [:])
     
-    // switch command {
-    // case "sr_batv":
-    //   if let body = json["B"] as? [String: Any],
-    //      let voltage = body["vt"] as? Int,
-    //      let percentage = body["pt"] as? Int {
+    if command.starts(with: "{") {
+      return
+    }
     
-    //     let voltageVolts = Double(voltage) / 1000.0
-    //     let isCharging = voltage > 4000
+    switch command {
+    case "sr_batv":
+      if let body = json["B"] as? [String: Any],
+         let voltage = body["vt"] as? Int,
+         let percentage = body["pt"] as? Int {
+        
+        let voltageVolts = Double(voltage) / 1000.0
+        let isCharging = voltage > 4000
+        
+        CoreCommsService.log("🔋 K900 Battery Status - Voltage: \(voltageVolts)V, Level: \(percentage)%")
+        updateBatteryStatus(level: percentage, charging: isCharging)
+      }
+      
+    default:
+      CoreCommsService.log("Unknown K900 command: \(command)")
+      jsonObservable?(json)
+    }
+  }
+  
+  // commands to send to the glasses:
+  
+  public func requestWifiScan() {
+    CoreCommsService.log("LiveManager: Requesting WiFi scan from glasses")
+    let json: [String: Any] = ["type": "request_wifi_scan"]
+    sendJson(json)
+  }
+  
+  public func sendWifiCredentials(_ ssid: String, password: String) {
+    CoreCommsService.log("LiveManager: Sending WiFi credentials for SSID: \(ssid)")
     
-    //     CoreCommsService.log("🔋 K900 Battery Status - Voltage: \(voltageVolts)V, Level: \(percentage)%")
-    //     updateBatteryStatus(level: percentage, charging: isCharging)
-    //   }
+    guard !ssid.isEmpty else {
+      CoreCommsService.log("LiveManager: Cannot set WiFi credentials - SSID is empty")
+      return
+    }
     
-    // default:
-    //   CoreCommsService.log("Unknown K900 command: \(command)")
-    //   jsonObservable?(json)
-    // }
+    let json: [String: Any] = [
+      "type": "set_wifi_credentials",
+      "ssid": ssid,
+      "password": password
+    ]
+    
+    sendJson(json)
   }
   
   // MARK: - Message Handlers
@@ -945,10 +985,9 @@ typealias JSONObject = [String: Any]
   private func handleButtonPress(_ json: [String: Any]) {
     let buttonId = json["buttonId"] as? String ?? "unknown"
     let pressType = json["pressType"] as? String ?? "short"
-    let timestamp = json["timestamp"] as? Int64 ?? Int64(Date().timeIntervalSince1970 * 1000)
     
     CoreCommsService.log("Received button press - buttonId: \(buttonId), pressType: \(pressType)")
-    emitButtonPress(buttonId: buttonId, pressType: pressType, timestamp: timestamp)
+    self.onButtonPress?(buttonId, pressType)
   }
   
   private func handleVersionInfo(_ json: [String: Any]) {
@@ -957,68 +996,67 @@ typealias JSONObject = [String: Any]
     let deviceModel = json["device_model"] as? String ?? ""
     let androidVersion = json["android_version"] as? String ?? ""
     
+    self.glassesAppVersion = appVersion
+    self.glassesBuildNumber = buildNumber
+    self.isNewVersion = (Int(buildNumber) ?? 0) >= 5
+    self.glassesDeviceModel = deviceModel
+    self.glassesAndroidVersion = androidVersion
+    
     CoreCommsService.log("Glasses Version - App: \(appVersion), Build: \(buildNumber), Device: \(deviceModel), Android: \(androidVersion)")
     emitVersionInfo(appVersion: appVersion, buildNumber: buildNumber, deviceModel: deviceModel, androidVersion: androidVersion)
   }
   
+  private func handleAck(_ json: [String: Any]) {
+    CoreCommsService.log("Received ack")
+    //    let messageId = json["mId"] as? Int ?? 0
+    //    if let pendingMessage = pending, pendingMessage.id == messageId {
+    //      pending = nil
+    //    }
+  }
+  
   // MARK: - Sending Data
   
-  private func sendJson(_ json: [String: Any]) {
+  public func queueSend(_ data: Data, id: String) {
+    Task {
+      await commandQueue.enqueue(PendingMessage(data: data, id: id, retries: 0))
+    }
+  }
+  
+  public func sendJson(_ jsonOriginal: [String: Any]) {
     do {
-      let data = try JSONSerialization.data(withJSONObject: json)
-      if let jsonString = String(data: data, encoding: .utf8) {
-        sendDataToGlasses(jsonString)
+      var json = jsonOriginal
+      if isNewVersion {
+        json["mId"] = globalMessageId
+        globalMessageId += 1
+      }
+      
+      let jsonData = try JSONSerialization.data(withJSONObject: json)
+      if let jsonString = String(data: jsonData, encoding: .utf8) {
+        CoreCommsService.log("Sending data to glasses: \(jsonString)")
+        let packedData = packJson(jsonString) ?? Data()
+        queueSend(packedData, id: String(globalMessageId-1))
       }
     } catch {
       CoreCommsService.log("Error creating JSON: \(error)")
     }
   }
   
-  private func sendDataToGlasses(_ data: String) {
-    guard !data.isEmpty else {
-      CoreCommsService.log("Cannot send empty data to glasses")
-      return
-    }
-    
-    do {
-      
-      CoreCommsService.log("Sending data to glasses: \(data)")
-      
-      // Pack the command
-      let packedData = packCommand(data)
-      CoreCommsService.log("Packed data: \(packedData)")
-      // print the hex string of the packed data:
-      let hexString = packedData.map { String(format: "%02X ", $0) }.joined()
-      CoreCommsService.log("Hex string of packed data: \(hexString)")
-      queueData(packedData)
-      
-    } catch {
-      CoreCommsService.log("Error creating data JSON: \(error)")
-    }
-  }
-  
-  private func packCommand(_ jsonString: String) -> Data {
-    return packJsonToK900(jsonString) ?? Data()
-  }
-  
   // MARK: - Status Requests
   
   private func requestBatteryStatus() {
-    requestBatteryK900()
-  }
-  
-  private func requestBatteryK900() {
     let json: [String: Any] = [
       "C": "cs_batv",
       "V": 1,
-      "B": ""
+      "B": "",
+      "mId": globalMessageId
     ]
+    globalMessageId += 1
     
     do {
       let jsonData = try JSONSerialization.data(withJSONObject: json)
       if let jsonString = String(data: jsonData, encoding: .utf8) {
-        let packedData = packCommand(jsonString)
-        queueData(packedData)
+        let packedData = packDataToK900(jsonData, cmdType: CMD_TYPE_STRING) ?? Data()
+        queueSend(packedData, id: String(globalMessageId-1))
       }
     } catch {
       CoreCommsService.log("Error creating K900 battery request: \(error)")
@@ -1057,10 +1095,11 @@ typealias JSONObject = [String: Any]
   private func updateBatteryStatus(level: Int, charging: Bool) {
     batteryLevel = level
     isCharging = charging
-    emitBatteryLevelEvent(level: level, charging: charging)
+    // emitBatteryLevelEvent(level: level, charging: charging)
   }
   
   private func updateWifiStatus(connected: Bool, ssid: String) {
+    CoreCommsService.log("🌐 Updating WiFi status - connected: \(connected), ssid: \(ssid)")
     isWifiConnected = connected
     wifiSsid = ssid
     emitWifiStatusChange(connected: connected, ssid: ssid)
@@ -1129,14 +1168,6 @@ typealias JSONObject = [String: Any]
       ]
       
       self.sendJson(json)
-      
-      // // request battery status:
-      // requestBatteryStatus()
-      // // request wifi status:
-      // requestWifiStatus()
-      // // request version info:
-      // requestVersionInfo()
-      // // send core token to ASG client:
     }
     
     readinessCheckDispatchTimer!.resume()
@@ -1175,6 +1206,8 @@ typealias JSONObject = [String: Any]
     stopHeartbeat()
     stopReadinessCheckLoop()
     stopConnectionTimeout()
+    pendingMessageTimer?.invalidate()
+    pendingMessageTimer = nil
   }
   
   // MARK: - Event Emission
@@ -1199,32 +1232,27 @@ typealias JSONObject = [String: Any]
     // emitEvent("GlassesBluetoothSearchStopEvent", body: eventBody)
   }
   
-  private func emitBatteryLevelEvent(level: Int, charging: Bool) {
-    let eventBody: [String: Any] = [
-      "battery_level": level,
-      "is_charging": charging
-    ]
-    
-    emitEvent("BatteryLevelEvent", body: eventBody)
-  }
+  // private func emitBatteryLevelEvent(level: Int, charging: Bool) {
+  //   let eventBody: [String: Any] = [
+  //     "battery_level": level,
+  //     "is_charging": charging
+  //   ]
+  
+  //   emitEvent("BatteryLevelEvent", body: eventBody)
+  // }
   
   private func emitWifiStatusChange(connected: Bool, ssid: String) {
-    let eventBody: [String: Any] = [
-      "device_model": "Mentra Live",
+    let eventBody = ["glasses_wifi_status_change": [
       "connected": connected,
-      "ssid": ssid
-    ]
-    
-    emitEvent("GlassesWifiStatusChange", body: eventBody)
+      "ssid": ssid,
+      "local_ip": "1234",// TODO
+    ]]
+    emitEvent("CoreMessageEvent", body: eventBody)
   }
   
   private func emitWifiScanResult(_ networks: [String]) {
-    let eventBody: [String: Any] = [
-      "device_model": "Mentra Live",
-      "networks": networks
-    ]
-    
-    emitEvent("GlassesWifiScanResultEvent", body: eventBody)
+    let eventBody = ["wifi_scan_results": networks]
+    emitEvent("CoreMessageEvent", body: eventBody)
   }
   
   private func emitRtmpStreamStatus(_ json: [String: Any]) {
@@ -1239,7 +1267,7 @@ typealias JSONObject = [String: Any]
       "timestamp": timestamp
     ]
     
-    emitEvent("ButtonPressEvent", body: eventBody)
+    // emitEvent("CoreMessageEvent", body: eventBody)
   }
   
   private func emitVersionInfo(appVersion: String, buildNumber: String, deviceModel: String, androidVersion: String) {
@@ -1250,7 +1278,7 @@ typealias JSONObject = [String: Any]
       "android_version": androidVersion
     ]
     
-    emitEvent("GlassesVersionInfoEvent", body: eventBody)
+    emitEvent("CoreMessageEvent", body: eventBody)
   }
   
   private func emitKeepAliveAck(_ json: [String: Any]) {
@@ -1263,6 +1291,10 @@ typealias JSONObject = [String: Any]
       if let jsonString = String(data: jsonData, encoding: .utf8) {
         if eventName == "CoreMessageEvent" {
           CoreCommsService.emitter.sendEvent(withName: eventName, body: jsonString)
+          return
+        }
+        if eventName == "GlassesWifiScanResults" {
+          CoreCommsService.emitter.sendEvent(withName: "CoreMessageEvent", body: jsonString)
           return
         }
         CoreCommsService.log("Would emit event: \(eventName) with body: \(jsonString)")
@@ -1315,32 +1347,6 @@ private let FIELD_V = "V"  // Version field
 private let FIELD_B = "B"  // Body field
 
 extension MentraLiveManager {
-  
-  /**
-   * Pack a JSON string into the proper K900 format:
-   * 1. Wrap with C-field: {"C": jsonData}
-   * 2. Then pack with BES2700 protocol: ## + type + length + {"C": jsonData} + $$
-   */
-  private func packJsonCommand(_ jsonData: String?) -> Data? {
-    guard let jsonData = jsonData else { return nil }
-    
-    do {
-      // First wrap with C-field
-      let wrapper: [String: Any] = [FIELD_C: jsonData]
-      
-      // Convert to string
-      let jsonData = try JSONSerialization.data(withJSONObject: wrapper)
-      guard let wrappedJson = String(data: jsonData, encoding: .utf8) else { return nil }
-      
-      // Then pack with BES2700 protocol format
-      let jsonBytes = wrappedJson.data(using: .utf8)!
-      return packDataCommand(jsonBytes, cmdType: CMD_TYPE_STRING)
-      
-    } catch {
-      CoreCommsService.log("Error creating JSON wrapper: \(error)")
-      return nil
-    }
-  }
   
   /**
    * Pack raw byte data with K900 BES2700 protocol format
@@ -1410,7 +1416,7 @@ extension MentraLiveManager {
    * 1. Wrap with C-field: {"C": jsonData}
    * 2. Then pack with BES2700 protocol using little-endian: ## + type + length + {"C": jsonData} + $$
    */
-  private func packJsonToK900(_ jsonData: String?) -> Data? {
+  private func packJson(_ jsonData: String?) -> Data? {
     guard let jsonData = jsonData else { return nil }
     
     do {
@@ -1527,7 +1533,7 @@ extension MentraLiveManager {
       CoreCommsService.log("📦 JSON DATA BEFORE C-WRAPPING: \(originalData)")
       
       // Use packJsonToK900 for K900 devices
-      if let formattedData = packJsonToK900(originalData) {
+      if let formattedData = packJson(originalData) {
         // Debug log
         let hexDump = formattedData.prefix(50).map { String(format: "%02X ", $0) }.joined()
         CoreCommsService.log("📦 AFTER C-WRAPPING & PROTOCOL FORMATTING (first 50 bytes): \(hexDump)")

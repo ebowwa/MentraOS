@@ -34,7 +34,7 @@ export default function DeveloperSettingsScreen() {
   const [isSavingUrl, setIsSavingUrl] = useState(false) // Add loading state
   const [reconnectOnAppForeground, setReconnectOnAppForeground] = useState(true)
   const {replace} = useNavigationHistory()
-  
+
   // Triple-tap detection for Asia East button
   const [asiaButtonTapCount, setAsiaButtonTapCount] = useState(0)
   const [asiaButtonLastTapTime, setAsiaButtonLastTapTime] = useState(0)
@@ -164,16 +164,16 @@ export default function DeveloperSettingsScreen() {
   const handleAsiaButtonPress = () => {
     const currentTime = Date.now()
     const timeDiff = currentTime - asiaButtonLastTapTime
-    
+
     // Reset counter if more than 2 seconds has passed
     if (timeDiff > 2000) {
       setAsiaButtonTapCount(1)
     } else {
       setAsiaButtonTapCount(prev => prev + 1)
     }
-    
+
     setAsiaButtonLastTapTime(currentTime)
-    
+
     // Check for triple-tap
     if (asiaButtonTapCount + 1 >= 3) {
       setCustomUrlInput("https://devold.augmentos.org:443")
@@ -296,32 +296,29 @@ export default function DeveloperSettingsScreen() {
                 onPress={() => setCustomUrlInput("https://devapi.mentra.glass:443")}
                 buttonStyle={styles.button}
               />
+            </View>
+            <View style={styles.buttonColumn}>
               <PillButton
                 text="Debug"
                 variant="icon"
                 onPress={() => setCustomUrlInput("https://debug.augmentos.cloud:443")}
                 buttonStyle={styles.button}
               />
-            </View>
-            <View style={styles.buttonColumn}>
               <PillButton
                 text="US Central"
                 variant="icon"
                 onPress={() => setCustomUrlInput("https://uscentralapi.mentra.glass:443")}
                 buttonStyle={styles.button}
               />
+            </View>
+            <View style={styles.buttonColumn}>
               <PillButton
                 text="France"
                 variant="icon"
                 onPress={() => setCustomUrlInput("https://franceapi.mentra.glass:443")}
                 buttonStyle={styles.button}
               />
-              <PillButton
-                text="Asia East"
-                variant="icon"
-                onPress={handleAsiaButtonPress}
-                buttonStyle={styles.button}
-              />
+              <PillButton text="Asia East" variant="icon" onPress={handleAsiaButtonPress} buttonStyle={styles.button} />
             </View>
           </View>
         </View>

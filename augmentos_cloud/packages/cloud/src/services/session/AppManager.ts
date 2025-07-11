@@ -653,7 +653,7 @@ export class AppManager {
         const startTime = this.appStartTimes.get(packageName);
         if (startTime) {
           const sessionDuration = Date.now() - startTime;
-          
+
           // Track app_stop event in PostHog
           await PosthogService.trackEvent('app_stop', this.userSession.userId, {
             packageName,
@@ -661,7 +661,7 @@ export class AppManager {
             sessionId: this.userSession.sessionId,
             sessionDuration
           });
-          
+
           // Clean up start time tracking
           this.appStartTimes.delete(packageName);
         } else {
@@ -782,7 +782,7 @@ export class AppManager {
         sessionId: sessionId,
         settings: userSettings,
         augmentosSettings: userAugmentosSettings,
-        capabilities: this.userSession.capabilities || undefined,
+        capabilities: this.userSession.getCapabilities(),
         timestamp: new Date()
       };
 
@@ -814,10 +814,10 @@ export class AppManager {
         }, `App ${packageName} successfully connected and authenticated in ${duration}ms`);
 
         this.setAppConnectionState(packageName, AppConnectionState.RUNNING);
-        
+
         // Track app start time for session duration calculation
         this.appStartTimes.set(packageName, Date.now());
-        
+
         // Track app_start event in PostHog
         try {
           await PosthogService.trackEvent('app_start', this.userSession.userId, {
@@ -828,7 +828,7 @@ export class AppManager {
         } catch (error) {
           this.logger.error({ error, packageName }, 'Error tracking app_start event in PostHog');
         }
-        
+
         pending.resolve({ success: true });
       } else {
         // Log for existing connection (not from startApp)
@@ -1178,7 +1178,7 @@ export class AppManager {
           const startTime = this.appStartTimes.get(packageName);
           if (startTime) {
             const sessionDuration = currentTime - startTime;
-            
+
             // Track app_stop event for session end
             PosthogService.trackEvent('app_stop', this.userSession.userId, {
               packageName,
@@ -1194,7 +1194,7 @@ export class AppManager {
           this.logger.error({ error, packageName }, 'Error tracking app stop during disposal');
         }
       }
-      
+
       // Clear all start time tracking
       this.appStartTimes.clear();
 

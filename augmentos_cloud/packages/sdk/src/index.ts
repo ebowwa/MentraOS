@@ -33,6 +33,7 @@ export {
   AudioChunk,
   PermissionError,
   PermissionErrorDetail,
+  AudioPlayResponse,
   // Type guards (excluding isPhotoResponse and isRtmpStreamStatus which conflict)
   isAppConnectionAck,
   isAppConnectionError,
