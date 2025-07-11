@@ -686,7 +686,7 @@ export class GlassesWebSocketService {
    * @param code Close code
    * @param reason Close reason
    */
-  private async handleGlassesConnectionClose(userSession: UserSession, code: number, reason: string): Promise<void> {
+  private handleGlassesConnectionClose(userSession: UserSession, code: number, reason: string): void {
     userSession.logger.warn(
       { service: SERVICE_NAME, code, reason },
       `[WebsocketGlassesService:handleGlassesConnectionClose]: (${userSession.userId}, ${code}, ${reason}) - Glasses connection closed`
@@ -699,15 +699,18 @@ export class GlassesWebSocketService {
       userSession.cleanupTimerId = undefined;
     }
 
+    // Disconnecting is probably a network issue and the user will likely reconnect.
+    // So we don't want to end the session immediately, but rather wait for a grace period
+    // to see if the user reconnects.
     // Stop transcription
-    if (userSession.isTranscribing) {
-      userSession.isTranscribing = false;
-      try {
-        await userSession.transcriptionManager.stopAndFinalizeAll();
-      } catch (error) {
-        userSession.logger.error({ error }, 'Error stopping transcription on disconnect');
-      }
-    }
+    // if (userSession.isTranscribing) {
+    //   userSession.isTranscribing = false;
+    //   try {
+    //     await userSession.transcriptionManager.stopAndFinalizeAll();
+    //   } catch (error) {
+    //     userSession.logger.error({ error }, 'Error stopping transcription on disconnect');
+    //   }
+    // }
 
     // Mark as disconnected
     userSession.disconnectedAt = new Date();
