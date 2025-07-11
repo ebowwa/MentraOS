@@ -1344,6 +1344,10 @@ struct ViewState {
       connectedGlasses = [
         "model_name": self.defaultWearable,
         "battery_level": self.batteryLevel,
+        "glasses_app_version": self.liveManager?.glassesAppVersion ?? "",
+        "glasses_build_number": self.liveManager?.glassesBuildNumber ?? "",
+        "glasses_device_model": self.liveManager?.glassesDeviceModel ?? "",
+        "glasses_android_version": self.liveManager?.glassesAndroidVersion ?? "",
       ]
     }
 

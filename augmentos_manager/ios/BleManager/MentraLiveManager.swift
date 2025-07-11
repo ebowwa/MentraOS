@@ -392,6 +392,13 @@ typealias JSONObject = [String: Any]
   private var isKilled = false
   public var glassesReady = false
   private var reconnectAttempts = 0
+  private var isNewVersion = false
+  private var globalMessageId = 0
+  private var lastReceivedMessageId = 0
+  public var glassesAppVersion: String = ""
+  public var glassesBuildNumber: String = ""
+  public var glassesDeviceModel: String = ""
+  public var glassesAndroidVersion: String = ""
   
   public var ready: Bool {
     get { return glassesReady }
@@ -565,12 +572,30 @@ typealias JSONObject = [String: Any]
   }
   
   // MARK: - Command Queue
+
+  class PendingMessage {
+    init(message: String, id: String, timestamp: TimeInterval, retries: Int) {
+      self.message = message
+      self.id = id
+      self.retries = retries
+    }
+    
+    let message: String
+    let retries: Int
+    let id: String
+  }
+
+  private var pending: PendingMessage?
   
   actor CommandQueue {
     private var commands: [Data] = []
     
     func enqueue(_ command: Data) {
       commands.append(command)
+    }
+
+    func pushToFront(_ command: Data) {
+      commands.insert(command, at: 0)
     }
     
     func dequeue() -> Data? {
@@ -583,15 +608,17 @@ typealias JSONObject = [String: Any]
     Task.detached { [weak self] in
       guard let self = self else { return }
       while !self.isKilled {
-        if let command = await self.commandQueue.dequeue() {
-          await self.processSendQueue(command)
+        if self.pending == nil {
+          if let command = await self.commandQueue.dequeue() {
+            await self.processSendQueue(command)
+          }
         }
         try? await Task.sleep(nanoseconds: 100_000_000) // 100ms
       }
     }
   }
   
-  private func processSendQueue(_ data: Data) async {
+  private func processSendQueue(_ message: Data) async {
     
     guard let peripheral = connectedPeripheral,
           let txChar = txCharacteristic else {
@@ -606,22 +633,20 @@ typealias JSONObject = [String: Any]
     //   let remainingDelay = Double(MIN_SEND_DELAY_MS / 1_000_000) - timeSinceLastSend
     //   try? await Task.sleep(nanoseconds: UInt64(remainingDelay * 1_000_000))
     // }
-    
-    // 1 second delay
-    try? await Task.sleep(nanoseconds: UInt64(1_000_000_000))
+
+    // self.pending = PendingMessage(message: data, id: globalMessageId, timestamp: 0.0, retries: 0)
+
+    try? await Task.sleep(nanoseconds: UInt64(1_000_000))
     
     lastSendTimeMs = Date().timeIntervalSince1970 * 1000
     
-    CoreCommsService.log("Sending data: \(data)")
+//    CoreCommsService.log("Sending data: \(data)")
     
     // Send the data
-    peripheral.writeValue(data, for: txChar, type: .withResponse)
-  }
-  
-  private func queueData(_ data: Data) {
-    Task {
-      await commandQueue.enqueue(data)
-    }
+    peripheral.writeValue(message, for: txChar, type: .withResponse)
+
+    // set the pending message
+//    self.pending = message
   }
   
   // MARK: - BLE Scanning
@@ -816,6 +841,9 @@ typealias JSONObject = [String: Any]
       
     case "keep_alive_ack":
       emitKeepAliveAck(json)
+
+    case "ack":
+      handleAck(json)
       
     default:
       // Forward unknown types to observable
@@ -924,44 +952,44 @@ typealias JSONObject = [String: Any]
     let buildNumber = json["build_number"] as? String ?? ""
     let deviceModel = json["device_model"] as? String ?? ""
     let androidVersion = json["android_version"] as? String ?? ""
+
+    self.glassesAppVersion = appVersion
+    self.glassesBuildNumber = buildNumber
+    self.glassesDeviceModel = deviceModel
+    self.glassesAndroidVersion = androidVersion
     
     CoreCommsService.log("Glasses Version - App: \(appVersion), Build: \(buildNumber), Device: \(deviceModel), Android: \(androidVersion)")
     emitVersionInfo(appVersion: appVersion, buildNumber: buildNumber, deviceModel: deviceModel, androidVersion: androidVersion)
   }
+
+  private func handleAck(_ json: [String: Any]) {
+    CoreCommsService.log("Received ack")
+//    let messageId = json["mId"] as? Int ?? 0
+//    if let pendingMessage = pending, pendingMessage.id == messageId {
+//      pending = nil
+//    }
+  }
   
   // MARK: - Sending Data
   
-  public func sendJson(_ json: [String: Any]) {
+  public func sendJson(_ jsonOriginal: [String: Any]) {
     do {
-      let data = try JSONSerialization.data(withJSONObject: json)
-      if let jsonString = String(data: data, encoding: .utf8) {
-        sendDataToGlasses(jsonString)
+      var json = jsonOriginal
+      if isNewVersion {
+        json["mId"] = globalMessageId
+        globalMessageId += 1
+      }
+
+      let jsonData = try JSONSerialization.data(withJSONObject: json)
+      if let jsonString = String(data: jsonData, encoding: .utf8) {
+        CoreCommsService.log("Sending data to glasses: \(jsonString)")
+        let packedData = packJson(jsonString) ?? Data()
+        Task {
+          await commandQueue.enqueue(packedData)
+        }
       }
     } catch {
       CoreCommsService.log("Error creating JSON: \(error)")
-    }
-  }
-  
-  private func sendDataToGlasses(_ data: String) {
-    guard !data.isEmpty else {
-      CoreCommsService.log("Cannot send empty data to glasses")
-      return
-    }
-    
-    do {
-      
-      CoreCommsService.log("Sending data to glasses: \(data)")
-      
-      // Pack the command
-      let packedData = packJson(data) ?? Data()
-      CoreCommsService.log("Packed data: \(packedData)")
-      // print the hex string of the packed data:
-      // let hexString = packedData.map { String(format: "%02X ", $0) }.joined()
-      // CoreCommsService.log("Hex string of packed data: \(hexString)")
-      queueData(packedData)
-      
-    } catch {
-      CoreCommsService.log("Error creating data JSON: \(error)")
     }
   }
   
@@ -978,7 +1006,9 @@ typealias JSONObject = [String: Any]
       let jsonData = try JSONSerialization.data(withJSONObject: json)
       if let jsonString = String(data: jsonData, encoding: .utf8) {
         let packedData = packDataToK900(jsonData, cmdType: CMD_TYPE_STRING) ?? Data()
-        queueData(packedData)
+        Task {
+          await commandQueue.enqueue(packedData)
+        }
       }
     } catch {
       CoreCommsService.log("Error creating K900 battery request: \(error)")
