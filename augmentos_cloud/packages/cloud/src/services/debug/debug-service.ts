@@ -103,8 +103,8 @@ export class DebugService {
       loadingApps: Array.from(session.loadingApps || []),
       isTranscribing: Boolean(session.isTranscribing),
       transcript: {
-        segments: session.transcriptionManager ? session.transcriptionManager.getTranscriptHistory('en-US') : [],
-        availableLanguages: session.transcriptionManager ? session.transcriptionManager.getAvailableLanguages() : []
+        segments: [],
+        availableLanguages: []
       },
       subscriptionManager: {
         subscriptions: session.subscriptionManager?.subscriptions ?

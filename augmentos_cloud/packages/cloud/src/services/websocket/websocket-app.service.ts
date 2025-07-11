@@ -337,10 +337,7 @@ export class AppWebSocketService {
           }, 'Applying debounced transcription stream update');
           
           // Update transcription streams with new language subscriptions
-          
-          // Update new TranscriptionManager with subscriptions
-          userSession.transcriptionManager.updateSubscriptions(newLanguageSubscriptions);
-          // Note: This direct call is OK since it's for debounced transcription-specific updates
+          // Note: subscriptionService automatically syncs TranscriptionManager, so no direct call needed
 
           // Check if we need to update microphone state based on media subscriptions
           userSession.microphoneManager.handleSubscriptionChange();

@@ -235,7 +235,6 @@ app.get('/health', (req, res) => {
       timestamp: new Date().toISOString(),
       sessions: {
         activeCount: activeSessions.length,
-        transcriptionEnabled: activeSessions.filter(s => s.isTranscribing).length
       },
       uptime: process.uptime()
     });
@@ -272,27 +271,27 @@ app.get('/api/transcription/stats', (req, res) => {
       };
     });
     
-    const totalStreams = sessionStats.reduce((sum, s) => sum + s.activeStreams, 0);
-    const transcribingSessions = sessionStats.filter(s => s.isTranscribing).length;
+    // const totalStreams = sessionStats.reduce((sum, s) => sum + s.activeStreams, 0);
+    // const transcribingSessions = sessionStats.filter(s => s.isTranscribing).length;
     
     res.json({
       timestamp: new Date().toISOString(),
       sessions: {
         totalSessions: activeSessions.length,
-        transcribingSessions,
-        totalActiveStreams: totalStreams,
-        avgStreamsPerSession: activeSessions.length > 0 ? (totalStreams / activeSessions.length).toFixed(2) : 0,
+        // transcribingSessions,
+        // totalActiveStreams: totalStreams,
+        // avgStreamsPerSession: activeSessions.length > 0 ? (totalStreams / activeSessions.length).toFixed(2) : 0,
         details: sessionStats
       },
-      providers: {
-        // Aggregate provider usage across all sessions
-        summary: sessionStats.reduce((acc: any, session) => {
-          Object.entries(session.byProvider).forEach(([provider, count]) => {
-            acc[provider] = (acc[provider] || 0) + count;
-          });
-          return acc;
-        }, {})
-      }
+      // providers: {
+      //   // Aggregate provider usage across all sessions
+      //   summary: sessionStats.reduce((acc: any, session) => {
+      //     Object.entries(session.byProvider).forEach(([provider, count]) => {
+      //       acc[provider] = (acc[provider] || 0) + count;
+      //     });
+      //     return acc;
+      //   }, {})
+      // }
     });
   } catch (error) {
     res.status(500).json({ 
