@@ -9,7 +9,6 @@
 import { NextFunction, Request, Response } from "express";
 import jwt from 'jsonwebtoken';
 import { logger as rootLogger } from '../../services/logging';
-// import { ExtendedUserSession } from "../../services/processing/transcription.service";
 import { User, UserI } from "../../models/user.model";
 import { sessionService } from "../../services/session/session.service";
 import UserSession from "../../services/session/UserSession";

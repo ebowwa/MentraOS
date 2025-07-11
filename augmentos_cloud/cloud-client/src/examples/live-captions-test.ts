@@ -14,7 +14,7 @@ import { resolve } from 'path';
 import { MentraClient } from '../MentraClient';
 import { AccountService } from '../services/AccountService';
 
-const LIVE_CAPTIONS_PACKAGE = 'isaiah.augmentos.livecaptions';
+const LIVE_CAPTIONS_PACKAGE = 'com.mentra.livecaptions';
 const AUDIO_FILE_PATH = resolve(__dirname, '../audio/good-morning-2033.wav');
 
 async function main() {
@@ -28,7 +28,7 @@ async function main() {
   const client = new MentraClient({
     email: account.email,
     coreToken: account.coreToken,
-    serverUrl: process.env.DEFAULT_SERVER_URL || 'wss://cloud-9702-8ce84edb-2tl7mmvk.onporter.run',
+    serverUrl: process.env.DEFAULT_SERVER_URL || 'ws://localhost:8002',
     debug: {
       logLevel: 'info',
       logWebSocketMessages: true
