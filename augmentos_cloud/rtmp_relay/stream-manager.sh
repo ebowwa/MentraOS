@@ -32,6 +32,7 @@ mkdir -p "$HLS_DIR"
 ffmpeg -fflags +genpts+igndts \
   -use_wallclock_as_timestamps 1 \
   -analyzeduration 3M \
+  -loglevel error \
   -i "rtmp://localhost:1935/$MTX_PATH" \
   -c:v libx264 -preset veryfast -tune zerolatency \
   -profile:v baseline -level 3.1 \
