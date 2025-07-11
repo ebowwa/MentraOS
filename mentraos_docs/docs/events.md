@@ -63,7 +63,6 @@ The following table lists the available event types, their descriptions, and the
 | Glasses Battery Update         | Battery level update from the glasses.                 | [`GlassesBatteryUpdate`](/reference/interfaces/event-types#glassesbatteryupdate)     |
 | Phone Battery Update           | Battery level update from the phone.                   | [`PhoneBatteryUpdate`](/reference/interfaces/event-types#phonebatteryupdate)         |
 | Glasses Connection State       | Connection status of the glasses.                      | [`GlassesConnectionState`](/reference/interfaces/event-types#glassesconnectionstate) |
-| Location Update                | User's GPS location.                                   | [`LocationUpdate`](/reference/interfaces/event-types#locationupdate)                 |
 | Voice Activity Detection (VAD) | Indicates whether voice activity is detected.          | [`Vad`](/reference/interfaces/event-types#vad-voice-activity-detection)              |
 | Notification Dismissed         | User dismissed a notification.                         | [`NotificationDismissed`](/reference/interfaces/event-types#notificationdismissed)   |
 | Audio Chunk                    | Raw audio data (for advanced use cases).               | [`ArrayBuffer`](/reference/interfaces/event-types#audiochunk)                        |

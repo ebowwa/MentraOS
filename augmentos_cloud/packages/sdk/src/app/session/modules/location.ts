@@ -2,17 +2,26 @@ import { AppSession } from '..';
 import { StreamType, AppToCloudMessageType, LocationUpdate, LocationStreamRequest } from '../../../types';
 
 export class LocationManager {
+  private lastLocationCleanupHandler: () => void = () => {};
+
   constructor(private session: AppSession, private send: (message: any) => void) {}
 
   // subscribes to the continuous location stream with a specified accuracy tier
-  public subscribeToStream(options: { accuracy: 'standard' | 'high' | 'realtime' | 'tenMeters' | 'hundredMeters' | 'kilometer' | 'threeKilometers' | 'reduced' }): void {
+  public subscribeToStream(options: { accuracy: 'standard' | 'high' | 'realtime' | 'tenMeters' | 'hundredMeters' | 'kilometer' | 'threeKilometers' | 'reduced' }, handler: (data: LocationUpdate) => void): () => void {
     const subscription: LocationStreamRequest = { stream: 'location_stream', rate: options.accuracy };
     this.session.subscribe(subscription);
+    this.lastLocationCleanupHandler = this.session.events.onLocation(handler);
+    return this.lastLocationCleanupHandler;
   }
 
   // unsubscribes from the continuous location stream
   public unsubscribeFromStream(): void {
-    this.session.unsubscribe('location_stream');
+    if (this.lastLocationCleanupHandler) {
+      this.lastLocationCleanupHandler();
+      this.lastLocationCleanupHandler = () => {};
+    } else {
+      this.session.unsubscribe('location_stream');
+    }
   }
   
   // performs a one-time, intelligent poll for a location fix

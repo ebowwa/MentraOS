@@ -83,7 +83,7 @@ session.events.onTranscription((data) => {
 
 ```typescript
 // Example: Using location permission
-session.events.onLocationUpdate((data) => {
+session.location.subscribeToStream({ accuracy: 'high' }, (data) => {
   console.log(`User is at: ${data.lat}, ${data.lng}`);
   // Update location-based features
 });

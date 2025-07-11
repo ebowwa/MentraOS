@@ -806,11 +806,10 @@ public class ServerComms {
                 break;
 
             case "request_single_location":
-                JSONObject pollPayload = msg.optJSONObject("payload");
-                if (pollPayload != null && serverCommsCallback != null) {
+                if (serverCommsCallback != null) {
                     serverCommsCallback.onRequestSingleLocation(
-                        pollPayload.optString("accuracy"),
-                        pollPayload.optString("correlationId")
+                        msg.optString("accuracy"),
+                        msg.optString("correlationId")
                     );
                 }
                 break;
