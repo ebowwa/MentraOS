@@ -574,13 +574,13 @@ typealias JSONObject = [String: Any]
   // MARK: - Command Queue
 
   class PendingMessage {
-    init(message: String, id: String, timestamp: TimeInterval, retries: Int) {
-      self.message = message
+    init(data: Data, id: String, retries: Int) {
+      self.data = data
       self.id = id
       self.retries = retries
     }
     
-    let message: String
+    let data: Data
     let retries: Int
     let id: String
   }
@@ -588,17 +588,17 @@ typealias JSONObject = [String: Any]
   private var pending: PendingMessage?
   
   actor CommandQueue {
-    private var commands: [Data] = []
+    private var commands: [PendingMessage] = []
     
-    func enqueue(_ command: Data) {
+    func enqueue(_ command: PendingMessage) {
       commands.append(command)
     }
 
-    func pushToFront(_ command: Data) {
+    func pushToFront(_ command: PendingMessage) {
       commands.insert(command, at: 0)
     }
     
-    func dequeue() -> Data? {
+    func dequeue() -> PendingMessage? {
       guard !commands.isEmpty else { return nil }
       return commands.removeFirst()
     }
@@ -607,7 +607,7 @@ typealias JSONObject = [String: Any]
   private func setupCommandQueue() {
     Task.detached { [weak self] in
       guard let self = self else { return }
-      while !self.isKilled {
+      while true {
         if self.pending == nil {
           if let command = await self.commandQueue.dequeue() {
             await self.processSendQueue(command)
@@ -618,7 +618,7 @@ typealias JSONObject = [String: Any]
     }
   }
   
-  private func processSendQueue(_ message: Data) async {
+  private func processSendQueue(_ message: PendingMessage) async {
     
     guard let peripheral = connectedPeripheral,
           let txChar = txCharacteristic else {
@@ -643,10 +643,10 @@ typealias JSONObject = [String: Any]
 //    CoreCommsService.log("Sending data: \(data)")
     
     // Send the data
-    peripheral.writeValue(message, for: txChar, type: .withResponse)
+    peripheral.writeValue(message.data, for: txChar, type: .withResponse)
 
     // set the pending message
-//    self.pending = message
+    // self.pending = message
   }
   
   // MARK: - BLE Scanning
@@ -779,17 +779,6 @@ typealias JSONObject = [String: Any]
       }
       
       processJsonObject(json)
-      // Check for C-wrapped format
-      //      if let cContent = json["C"] as? String {
-      //        if let innerData = cContent.data(using: .utf8),
-      //           let innerJson = try JSONSerialization.jsonObject(with: innerData) as? [String: Any] {
-      //          processJsonObject(innerJson)
-      //        } else {
-      //          processJsonObject(json)
-      //        }
-      //      } else {
-      //        processJsonObject(json)
-      //      }
     } catch {
       CoreCommsService.log("Error parsing JSON: \(error)")
     }
@@ -805,10 +794,20 @@ typealias JSONObject = [String: Any]
     }
     
     guard let type = json["type"] as? String else {
-      // Forward to observable if no type
-      jsonObservable?(json)
       return
     }
+    
+    if let mId = json["mId"] as? Int {
+      CoreCommsService.log("Received message with mId: \(mId)")
+      if String(mId) == self.pending?.id {
+        CoreCommsService.log("Received expected response! clearing pending")
+        self.pending = nil
+      } else if self.pending?.id != nil {
+        CoreCommsService.log("Received unexpected response! expected: \(self.pending!.id), received: \(mId) global: \(globalMessageId)")
+      }
+    }
+    
+    CoreCommsService.log("MESSAGE TYPE: \(type)")
     
     switch type {
     case "glasses_ready":
@@ -841,9 +840,9 @@ typealias JSONObject = [String: Any]
       
     case "keep_alive_ack":
       emitKeepAliveAck(json)
-
-    case "ack":
-      handleAck(json)
+      
+    case "msg_ack":
+      CoreCommsService.log("Received msg ack!")
       
     default:
       // Forward unknown types to observable
@@ -859,6 +858,10 @@ typealias JSONObject = [String: Any]
     // convert command string (which is a json string) to a json object:
     let commandJson = try? JSONSerialization.jsonObject(with: command.data(using: .utf8)!) as? [String: Any]
     processJsonObject(commandJson ?? [:])
+    
+    if command.starts(with: "{") {
+      return
+    }
     
     switch command {
     case "sr_batv":
@@ -941,10 +944,9 @@ typealias JSONObject = [String: Any]
   private func handleButtonPress(_ json: [String: Any]) {
     let buttonId = json["buttonId"] as? String ?? "unknown"
     let pressType = json["pressType"] as? String ?? "short"
-    let timestamp = json["timestamp"] as? Int64 ?? Int64(Date().timeIntervalSince1970 * 1000)
     
     CoreCommsService.log("Received button press - buttonId: \(buttonId), pressType: \(pressType)")
-    emitButtonPress(buttonId: buttonId, pressType: pressType, timestamp: timestamp)
+    self.onButtonPress?(buttonId, pressType)
   }
   
   private func handleVersionInfo(_ json: [String: Any]) {
@@ -973,6 +975,12 @@ typealias JSONObject = [String: Any]
   
   // MARK: - Sending Data
   
+  public func queueSend(_ data: Data, id: String) {
+    Task {
+      await commandQueue.enqueue(PendingMessage(data: data, id: id, retries: 0))
+    }
+  }
+  
   public func sendJson(_ jsonOriginal: [String: Any]) {
     do {
       var json = jsonOriginal
@@ -985,9 +993,7 @@ typealias JSONObject = [String: Any]
       if let jsonString = String(data: jsonData, encoding: .utf8) {
         CoreCommsService.log("Sending data to glasses: \(jsonString)")
         let packedData = packJson(jsonString) ?? Data()
-        Task {
-          await commandQueue.enqueue(packedData)
-        }
+        queueSend(packedData, id: String(globalMessageId-1))
       }
     } catch {
       CoreCommsService.log("Error creating JSON: \(error)")
@@ -1000,16 +1006,16 @@ typealias JSONObject = [String: Any]
     let json: [String: Any] = [
       "C": "cs_batv",
       "V": 1,
-      "B": ""
+      "B": "",
+      "mId": globalMessageId
     ]
+    globalMessageId += 1
     
     do {
       let jsonData = try JSONSerialization.data(withJSONObject: json)
       if let jsonString = String(data: jsonData, encoding: .utf8) {
         let packedData = packDataToK900(jsonData, cmdType: CMD_TYPE_STRING) ?? Data()
-        Task {
-          await commandQueue.enqueue(packedData)
-        }
+        queueSend(packedData, id: String(globalMessageId-1))
       }
     } catch {
       CoreCommsService.log("Error creating K900 battery request: \(error)")
@@ -1218,7 +1224,7 @@ typealias JSONObject = [String: Any]
       "timestamp": timestamp
     ]
     
-    emitEvent("ButtonPressEvent", body: eventBody)
+    // emitEvent("CoreMessageEvent", body: eventBody)
   }
   
   private func emitVersionInfo(appVersion: String, buildNumber: String, deviceModel: String, androidVersion: String) {
@@ -1298,32 +1304,6 @@ private let FIELD_V = "V"  // Version field
 private let FIELD_B = "B"  // Body field
 
 extension MentraLiveManager {
-  
-  /**
-   * Pack a JSON string into the proper K900 format:
-   * 1. Wrap with C-field: {"C": jsonData}
-   * 2. Then pack with BES2700 protocol: ## + type + length + {"C": jsonData} + $$
-   */
-  private func packJsonCommand(_ jsonData: String?) -> Data? {
-    guard let jsonData = jsonData else { return nil }
-    
-    do {
-      // First wrap with C-field
-      let wrapper: [String: Any] = [FIELD_C: jsonData]
-      
-      // Convert to string
-      let jsonData = try JSONSerialization.data(withJSONObject: wrapper)
-      guard let wrappedJson = String(data: jsonData, encoding: .utf8) else { return nil }
-      
-      // Then pack with BES2700 protocol format
-      let jsonBytes = wrappedJson.data(using: .utf8)!
-      return packDataCommand(jsonBytes, cmdType: CMD_TYPE_STRING)
-      
-    } catch {
-      CoreCommsService.log("Error creating JSON wrapper: \(error)")
-      return nil
-    }
-  }
   
   /**
    * Pack raw byte data with K900 BES2700 protocol format

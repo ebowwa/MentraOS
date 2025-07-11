@@ -13,10 +13,10 @@ export default function GlassesWifiSetupScreen() {
   const {deviceModel = "Glasses"} = useLocalSearchParams()
   const {theme, themed} = useAppTheme()
   const {status} = useStatus()
-  const {push} = useNavigationHistory()
+  const {push, goBack} = useNavigationHistory()
 
   const handleGoBack = useCallback(() => {
-    push("/(tabs)/glasses")
+    goBack()
     return true // Prevent default back behavior
   }, [])
 
@@ -30,24 +30,18 @@ export default function GlassesWifiSetupScreen() {
 
   // Get current WiFi status from glasses
   const currentWifi = status.glasses_info?.glasses_wifi_ssid
-  const isWifiConnected = status.glasses_info?.glasses_wifi_connected
+  const isWifiConnected = !!status.glasses_info?.glasses_wifi_ssid
 
   const handleScanForNetworks = () => {
-    router.push({
-      pathname: "/pairing/glasseswifisetup/scan",
-      params: {deviceModel},
-    })
+    push("/pairing/glasseswifisetup/scan", {deviceModel})
   }
 
   const handleManualEntry = () => {
-    router.push({
-      pathname: "/pairing/glasseswifisetup/password",
-      params: {deviceModel, ssid: ""},
-    })
+    push("/pairing/glasseswifisetup/password", {deviceModel, ssid: ""})
   }
 
   return (
-    <Screen preset="scroll" contentContainerStyle={themed($container)} safeAreaEdges={["top"]}>
+    <Screen preset="scroll" contentContainerStyle={themed($container)} safeAreaEdges={[]}>
       <Header title="Glasses WiFi Setup" leftIcon="caretLeft" onLeftPress={handleGoBack} />
       <View style={themed($content)}>
         <Text style={themed($subtitle)}>Your {deviceModel} glasses need WiFi to connect to the internet.</Text>

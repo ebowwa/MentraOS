@@ -602,6 +602,7 @@ struct ViewState {
 
   func onPhotoRequest(_ requestId: String, _ appId: String, _ webhookUrl: String) {
     CoreCommsService.log("AOS: onPhotoRequest: \(requestId), \(appId), \(webhookUrl)")
+    self.liveManager?.requestPhoto(requestId, appId: appId, webhookUrl: webhookUrl.isEmpty ? nil : webhookUrl)
   }
 
   func onRtmpStreamStartRequest(_ message: [String: Any]) {
@@ -1371,6 +1372,7 @@ struct ViewState {
     if liveConnected {
       if let wifiSsid = self.liveManager?.wifiSsid, !wifiSsid.isEmpty {
         connectedGlasses["glasses_wifi_ssid"] = wifiSsid
+        connectedGlasses["glasses_wifi_connected"] = self.glassesWifiConnected
       }
     }
 

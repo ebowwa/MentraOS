@@ -97,6 +97,7 @@ export default function WifiScanScreen() {
           <View style={themed($loadingContainer)}>
             <ActivityIndicator size="large" color={theme.colors.text} />
             <Text style={themed($loadingText)}>Scanning for networks...</Text>
+            <Text style={themed($loadingText)}>(this may take a while, try restarting the app if it doesn't work after 2 minutes)</Text>
           </View>
         ) : networks.length > 0 ? (
           <>

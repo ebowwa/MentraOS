@@ -732,7 +732,7 @@ enum GlassesError: Error {
     
     let side = peripheral == leftPeripheral ? "left" : "right"
     let s = peripheral == leftPeripheral ? "L" : "R"
-    //    CoreCommsService.log("RECV (\(s)) \(data.hexEncodedString())")
+       CoreCommsService.log("RECV (\(s)) \(data.hexEncodedString())")
     
     switch Commands(rawValue: command) {
     case .BLE_REQ_INIT:
