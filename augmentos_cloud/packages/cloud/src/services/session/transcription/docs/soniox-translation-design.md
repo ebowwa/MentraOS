@@ -177,30 +177,67 @@ function routeTokens(token: SonioxToken, streamConfig: StreamConfig) {
 }
 ```
 
-## Language Support Matrix
+## Language Support Matrix (Based on Real Soniox Mappings)
 
-### Supported Configurations (Need to verify with Soniox docs)
+### Key Findings from SonioxTranslationMappings.json
+
+1. **Universal to English**: `"*" -> "en"` with all languages excluded as sources (meaning any language can translate to English)
+2. **Multi-source targets**: Several languages support multiple source languages:
+   - **Chinese (zh)**: en, fr, de, it, ja, ko, es
+   - **French (fr)**: zh, en, de, it, ja, ko, sl, es  
+   - **German (de)**: zh, en, fr, it, ja, ko, sl, es
+   - **Italian (it)**: zh, en, fr, de, ja, ko, sl, es
+   - **Japanese (ja)**: zh, en, fr, de, it, ko, es
+   - **Korean (ko)**: zh, en, fr, de, it, ja, es
+   - **Spanish (es)**: zh, en, fr, de, it, ja, ko, pt, sl
+   - **Slovenian (sl)**: hr, en, fr, de, it, sr, es
+
+3. **Two-way translation pairs**: 197 bidirectional pairs available
+
+### Implementation Constants
 ```typescript
 const SONIOX_TRANSLATION_SUPPORT = {
-  // Universal to English
-  "*->en": true,
+  // Universal to English (most important optimization)
+  universalToEnglish: {
+    sourceLanguages: ["*"],
+    targetLanguage: "en",
+    excludeSourceLanguages: ["en"] // Can't translate English to English
+  },
   
-  // Two-way pairs (common)
-  "en<->es": true,
-  "en<->fr": true,
-  "en<->de": true,
-  // ... other pairs
+  // Multi-source capable targets (for optimization)
+  multiSourceTargets: {
+    "zh": ["en", "fr", "de", "it", "ja", "ko", "es"],
+    "fr": ["zh", "en", "de", "it", "ja", "ko", "sl", "es"],
+    "de": ["zh", "en", "fr", "it", "ja", "ko", "sl", "es"],
+    "it": ["zh", "en", "fr", "de", "ja", "ko", "sl", "es"],
+    "ja": ["zh", "en", "fr", "de", "it", "ko", "es"],
+    "ko": ["zh", "en", "fr", "de", "it", "ja", "es"],
+    "es": ["zh", "en", "fr", "de", "it", "ja", "ko", "pt", "sl"],
+    "sl": ["hr", "en", "fr", "de", "it", "sr", "es"]
+  },
   
-  // Multi-source to single target
-  "multiple->ko": ["zh", "ja"],  // If supported
-  "multiple->ja": ["zh", "ko"],  // If supported
-  // ...
-  
-  // Specific constraints
-  constraints: {
-    maxSourceLanguages: 5,  // Hypothetical limit
-    supportedTargets: ["en", "es", "fr", "de", "ko", "ja", "zh"]
-  }
+  // All two-way pairs (for bidirectional optimization)
+  twoWayPairs: [
+    "af:en", "sq:en", "ar:en", "az:en", "eu:en", "be:en", "bn:en", "bs:en", "bg:en", "ca:en",
+    "zh:en", "zh:fr", "zh:de", "zh:it", "zh:ja", "zh:ko", "zh:es",
+    "hr:en", "hr:sl", "cs:en", "da:en", "nl:en",
+    "en:af", "en:sq", "en:ar", "en:az", "en:eu", "en:be", "en:bn", "en:bs", "en:bg", "en:ca",
+    "en:zh", "en:hr", "en:cs", "en:da", "en:nl", "en:et", "en:fi", "en:fr", "en:gl", "en:de",
+    "en:el", "en:gu", "en:he", "en:hi", "en:hu", "en:id", "en:it", "en:ja", "en:kn", "en:kk",
+    "en:ko", "en:lv", "en:lt", "en:mk", "en:ms", "en:ml", "en:mr", "en:no", "en:fa", "en:pl",
+    "en:pt", "en:pa", "en:ro", "en:ru", "en:sr", "en:sk", "en:sl", "en:es", "en:sw", "en:sv",
+    "en:tl", "en:ta", "en:te", "en:th", "en:tr", "en:uk", "en:ur", "en:vi", "en:cy",
+    "et:en", "fi:en", "fr:zh", "fr:en", "fr:de", "fr:it", "fr:ja", "fr:ko", "fr:sl", "fr:es",
+    "gl:en", "de:zh", "de:en", "de:fr", "de:it", "de:ja", "de:ko", "de:sl", "de:es",
+    "el:en", "gu:en", "he:en", "hi:en", "hu:en", "id:en", "it:zh", "it:en", "it:fr", "it:de",
+    "it:ja", "it:ko", "it:sl", "it:es", "ja:zh", "ja:en", "ja:fr", "ja:de", "ja:it", "ja:ko",
+    "ja:es", "kn:en", "kk:en", "ko:zh", "ko:en", "ko:fr", "ko:de", "ko:it", "ko:ja", "ko:es",
+    "lv:en", "lt:en", "mk:en", "ms:en", "ml:en", "mr:en", "no:en", "fa:en", "pl:en", "pt:en",
+    "pt:es", "pa:en", "ro:en", "ru:en", "sr:en", "sr:sl", "sk:en", "sl:hr", "sl:en", "sl:fr",
+    "sl:de", "sl:it", "sl:sr", "sl:es", "es:zh", "es:en", "es:fr", "es:de", "es:it", "es:ja",
+    "es:ko", "es:pt", "es:sl", "sw:en", "sv:en", "tl:en", "ta:en", "te:en", "th:en", "tr:en",
+    "uk:en", "ur:en", "vi:en", "cy:en"
+  ]
 };
 ```
 

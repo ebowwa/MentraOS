@@ -450,22 +450,24 @@ export class GlassesWebSocketService {
         // Simply ensure streams exist - creates new ones if needed, uses existing healthy ones
         await userSession.transcriptionManager.ensureStreamsExist();
       } else {
-        userSession.logger.info('🤫 VAD detected silence - finalizing pending tokens');
+        userSession.logger.info('🤫 VAD detected silence - finalizing and cleaning up streams');
         userSession.isTranscribing = false;
         
-        // Just finalize pending tokens - let streams decide their own lifecycle
+        // Finalize pending tokens first, then cleanup idle streams
         userSession.transcriptionManager.finalizePendingTokens();
+        await userSession.transcriptionManager.cleanupIdleStreams();
       }
     } catch (error) {
       userSession.logger.error({ error }, '❌ Error handling VAD state change');
       userSession.isTranscribing = false;
       
-      // On error, just finalize pending tokens - don't force stop streams
+      // On error, finalize tokens and cleanup streams
       // Next VAD speech will try to ensure streams exist again
       try {
         userSession.transcriptionManager.finalizePendingTokens();
+        await userSession.transcriptionManager.cleanupIdleStreams();
       } catch (finalizeError) {
-        userSession.logger.error({ error: finalizeError }, '❌ Error finalizing tokens on VAD error');
+        userSession.logger.error({ error: finalizeError }, '❌ Error finalizing tokens and cleaning up streams on VAD error');
       }
     }
   }

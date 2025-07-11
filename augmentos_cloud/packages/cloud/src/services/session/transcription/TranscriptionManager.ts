@@ -152,6 +152,39 @@ export class TranscriptionManager {
   }
 
   /**
+   * Cleanup all idle streams (called when VAD detects silence)
+   * This immediately closes all streams to free resources
+   */
+  async cleanupIdleStreams(): Promise<void> {
+    this.logger.debug({
+      activeStreams: this.streams.size
+    }, 'Cleaning up idle streams due to VAD silence');
+
+    const closePromises: Promise<void>[] = [];
+
+    for (const [subscription, stream] of this.streams) {
+      try {
+        closePromises.push(this.cleanupStream(subscription, 'vad_silence'));
+      } catch (error) {
+        this.logger.warn({
+          subscription,
+          error,
+          streamId: stream.id,
+          provider: stream.provider.name
+        }, 'Error initiating stream cleanup');
+      }
+    }
+
+    // Wait for all streams to close
+    await Promise.allSettled(closePromises);
+    
+    // Clear the streams map
+    this.streams.clear();
+    
+    this.logger.info('All idle streams cleaned up');
+  }
+
+  /**
    * Stop all transcription streams and finalize any pending tokens
    * This is the proper way to stop transcription when VAD detects silence
    */
@@ -1303,25 +1336,6 @@ export class TranscriptionManager {
     }
   }
 
-  private async cleanupIdleStreams(): Promise<void> {
-    const now = Date.now();
-    const idleThreshold = 600000; // 10 minutes
-
-    for (const [subscription, stream] of this.streams) {
-      const timeSinceActivity = now - stream.lastActivity;
-
-      if (timeSinceActivity > idleThreshold &&
-        (stream.state === StreamState.READY || stream.state === StreamState.ACTIVE)) {
-
-        this.logger.info({
-          subscription,
-          timeSinceActivity
-        }, 'Cleaning up idle stream to free memory');
-
-        await this.cleanupStream(subscription, 'idle_cleanup');
-      }
-    }
-  }
 
   private isStreamHealthy(stream: StreamInstance): boolean {
     return stream.state === StreamState.READY ||
