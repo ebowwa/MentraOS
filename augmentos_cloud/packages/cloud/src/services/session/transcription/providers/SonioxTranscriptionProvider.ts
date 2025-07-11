@@ -384,7 +384,10 @@ class SonioxTranscriptionStream implements StreamInstance {
     if (!this.ws || this.isConfigSent) {
       return;
     }
-    
+    const languageHint = this.language.split('-')[0]; // Normalize to base language code (e.g. 'en' from 'en-US')
+    const targetLanguageHint = this.targetLanguage ? this.targetLanguage.split('-')[0] : undefined;
+    const languageHints = targetLanguageHint ? [languageHint, targetLanguageHint] : [languageHint];
+
     const config: any = {
       api_key: this.config.apiKey,
       model: this.config.model || 'stt-rt-preview',
@@ -396,7 +399,7 @@ class SonioxTranscriptionStream implements StreamInstance {
       enable_endpoint_detection: true, // Automatically finalize tokens on speech pauses
       enable_speaker_diarization: true,
       context: "Mentra, MentraOS, Mira, Hey Mira",
-      // language_hints: ["en"], // Default hints, can be overridden
+      language_hints: languageHints, // Default hints, can be overridden
     };
 
     // Configure translation if target language is specified
