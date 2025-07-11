@@ -37,4 +37,7 @@ public interface AugmentOsActionsCallback {
     void requestWifiScan();
     void setPreferredMic(String mic);
     void setServerUrl(String url);
+    void onAudioPlayRequest(JSONObject audioRequest);
+    void onAudioPlayResponse(JSONObject audioResponse);
+    void onAudioStopRequest(JSONObject audioStopParams);
 }

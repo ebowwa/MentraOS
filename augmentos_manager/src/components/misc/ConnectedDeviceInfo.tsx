@@ -198,17 +198,17 @@ export const ConnectedGlasses: React.FC<ConnectedGlassesProps> = ({showTitle}) =
       const style = status.glasses_info?.glasses_style
       const color = status.glasses_info?.glasses_color
       
-      // Determine the state based on case status
-      let state = "folded"
+      // still show the case if it's not removed
       if (!status.glasses_info?.case_removed) {
         if (status.glasses_info?.case_open) {
-          state = "case_open"
+          image = getGlassesOpenImage(wearable)
         } else {
-          state = "case_close"
+          image = getGlassesClosedImage(wearable)
         }
+        return image
       }
       
-      image = getEvenRealitiesG1Image(style, color, state, "l", theme.isDark, status.glasses_info?.case_battery_level)
+      image = getEvenRealitiesG1Image(style, color, "folded", "l", theme.isDark, status.glasses_info?.case_battery_level)
     } else {
       // For other glasses, use the existing logic
       if (!status.glasses_info?.case_removed) {

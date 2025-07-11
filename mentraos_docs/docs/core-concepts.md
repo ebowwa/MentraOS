@@ -71,7 +71,6 @@ Layouts control what is displayed on the smart glasses' screen.  The SDK provide
 *   [`TextWall`](/reference/interfaces/layout-types#textwall):  Displays a single block of text.
 *   [`DoubleTextWall`](/reference/interfaces/layout-types#doubletextwall):  Displays two blocks of text (top and bottom).
 *   [`ReferenceCard`](/reference/interfaces/layout-types#referencecard):  Displays a card with a title and content.
-*   [`BitmapView`](/reference/interfaces/layout-types#bitmapview): Displays an image on the Glasses.
 
 You use the [`LayoutManager`](/reference/managers/layout-manager) (accessible through `session.layouts`) to display layouts.
 
@@ -174,6 +173,28 @@ session.logger.error(error, 'Failed to save user preferences');
 ```
 
 See the [App Session Logger documentation](/reference/app-session#logger) for complete API details.
+
+## 15. Playing Audio
+
+MentraOS provides comprehensive audio functionality through the [`AudioManager`](/reference/managers/audio-manager) (accessible via `session.audio`):
+
+*   **Audio Playback:** Play audio files from URLs directly through the smart glasses speakers or phone
+*   **Text-to-Speech:** Convert text to natural-sounding speech using ElevenLabs TTS with customizable voice settings
+
+Audio routes through your phone by default. To route audio through smart glasses with speakers, connect them via Bluetooth like any other headphones.
+
+See the [Audio Tutorial](/audio) for detailed usage examples.
+
+## 16. Camera
+
+The camera module enables visual functionality on camera-equipped smart glasses through the [`CameraManager`](/reference/managers/camera) (accessible via `session.camera`):
+
+*   **Photo Capture:** Take individual photos from the smart glasses camera with options for gallery saving
+*   **RTMP Streaming:** Stream live video using managed streaming (zero infrastructure) or unmanaged streaming (full control)
+
+Camera functionality requires smart glasses with camera hardware (e.g., Mentra Live) and appropriate permissions.
+
+See the [Camera Documentation](/camera/) for complete guides and examples.
 
 ---
 

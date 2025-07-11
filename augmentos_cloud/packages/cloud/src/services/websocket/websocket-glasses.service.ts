@@ -33,6 +33,7 @@ import { PosthogService } from '../logging/posthog.service';
 import { sessionService } from '../session/session.service';
 import { User } from '../../models/user.model';
 import { SYSTEM_DASHBOARD_PACKAGE_NAME } from '../core/app.service';
+import { locationService } from '../core/location.service';
 
 const SERVICE_NAME = 'websocket-glasses.service';
 const logger = rootLogger.child({ service: SERVICE_NAME });
@@ -221,9 +222,7 @@ export class GlassesWebSocketService {
           break;
 
         case GlassesToCloudMessageType.LOCATION_UPDATE:
-          await this.handleLocationUpdate(userSession, message as LocationUpdate);
-          sessionService.relayMessageToApps(userSession, message);
-          // TODO(isaiah): broadcast to Apps
+          await locationService.handleDeviceLocationUpdate(userSession, message as LocationUpdate);
           break;
 
         case GlassesToCloudMessageType.CALENDAR_EVENT:
@@ -261,12 +260,17 @@ export class GlassesWebSocketService {
               break;
             };
 
+            // Update glasses model if available in status
+            if (connectedGlasses.model_name) {
+              userSession.updateGlassesModel(connectedGlasses.model_name);
+            }
+
             // Map core status fields to augmentos settings
             const newSettings = {
               useOnboardMic: coreInfo.force_core_onboard_mic,
               contextualDashboard: coreInfo.contextual_dashboard_enabled,
               metricSystemEnabled: coreInfo.metric_system_enabled,
-              
+
               // Glasses settings.
               brightness: glassesSettings.brightness,
               autoBrightness: glassesSettings.auto_brightness,
@@ -342,19 +346,40 @@ export class GlassesWebSocketService {
         }
 
         // Mentra Live.
-        case GlassesToCloudMessageType.RTMP_STREAM_STATUS:
-          // Delegate to VideoManager within the user's session
-          userSession.videoManager.handleRtmpStreamStatus(message as RtmpStreamStatus);
+        case GlassesToCloudMessageType.RTMP_STREAM_STATUS: {
+          const status = message as RtmpStreamStatus;
+          // First check if managed streaming extension handles it
+          const managedHandled = await userSession.managedStreamingExtension.handleStreamStatus(
+            userSession,
+            status
+          );
+          // If not handled by managed streaming, delegate to VideoManager
+          if (!managedHandled) {
+            userSession.videoManager.handleRtmpStreamStatus(status);
+          }
           break;
+        }
 
-        case GlassesToCloudMessageType.KEEP_ALIVE_ACK:
-          // Delegate to VideoManager
-          userSession.videoManager.handleKeepAliveAck(message as KeepAliveAck);
+        case GlassesToCloudMessageType.KEEP_ALIVE_ACK: {
+          const ack = message as KeepAliveAck;
+          // Send to both managers - they'll handle their own streams
+          userSession.managedStreamingExtension.handleKeepAliveAck(
+            userSession.userId,
+            ack
+          );
+          userSession.videoManager.handleKeepAliveAck(ack);
           break;
+        }
 
         case GlassesToCloudMessageType.PHOTO_RESPONSE:
           // Delegate to PhotoManager
           userSession.photoManager.handlePhotoResponse(message as PhotoResponse);
+          break;
+
+        case GlassesToCloudMessageType.AUDIO_PLAY_RESPONSE:
+          userSession.logger.debug({ service: SERVICE_NAME, message }, `Audio play response received from glasses/core`);
+          // Forward audio play response to Apps - we need to find the specific app that made the request
+          sessionService.relayAudioPlayResponseToApp(userSession, message);
           break;
 
         case GlassesToCloudMessageType.HEAD_POSITION:
@@ -479,20 +504,16 @@ export class GlassesWebSocketService {
   private async handleLocationUpdate(userSession: UserSession, message: LocationUpdate): Promise<void> {
     userSession.logger.debug({ message, service: SERVICE_NAME }, 'Location update received from glasses');
     try {
-      // Cache the location update in subscription service
-      subscriptionService.cacheLocation(userSession.sessionId, {
-        latitude: message.lat,
-        longitude: message.lng,
-        timestamp: new Date()
-      });
+      // The core logic is now handled by the central LocationService to manage caching and polling.
+      await locationService.handleDeviceLocationUpdate(userSession, message);
 
-      const user = await User.findByEmail(userSession.userId);
-      if (user) {
-        await user.setLocation(message);
-      }
+      // We still relay the message to any apps subscribed to the raw location stream.
+      // The locationService's handleDeviceLocationUpdate will decide if it needs to send a specific
+      // response for a poll request.
+      sessionService.relayMessageToApps(userSession, message);
     }
     catch (error) {
-      userSession.logger.error({ error, service: SERVICE_NAME }, `Error updating user location:`, error);
+      userSession.logger.error({ error, service: SERVICE_NAME }, `Error handling location update:`, error);
     }
   }
 
@@ -551,17 +572,22 @@ export class GlassesWebSocketService {
     const modelName = glassesConnectionStateMessage.modelName;
     const isConnected = glassesConnectionStateMessage.status === 'CONNECTED';
 
+    // Update glasses model in session when connected and model name is available
+    if (isConnected && modelName) {
+      userSession.updateGlassesModel(modelName);
+    }
+
     try {
       // Get or create user to track glasses model
       const user = await User.findOrCreateUser(userSession.userId);
-      
+
       // Track new glasses model if connected and model name exists
       if (isConnected && modelName) {
         const isNewModel = !user.getGlassesModels().includes(modelName);
-        
+
         // Add glasses model to user's history
         await user.addGlassesModel(modelName);
-        
+
         // Update PostHog person properties
         await PosthogService.setPersonProperties(userSession.userId, {
           current_glasses_model: modelName,

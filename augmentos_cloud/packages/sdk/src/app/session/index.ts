@@ -8,7 +8,9 @@ import { WebSocket } from 'ws';
 import { EventManager, EventData, StreamDataTypes } from './events';
 import { LayoutManager } from './layouts';
 import { SettingsManager } from './settings';
+import { LocationManager } from './modules/location';
 import { CameraModule, PhotoRequestOptions, RtmpStreamOptions } from './modules/camera';
+import { AudioManager } from './modules/audio';
 import { ResourceTracker } from '../../utils/resource-tracker';
 import {
   // Message types
@@ -17,6 +19,9 @@ import {
   AppConnectionInit,
   AppSubscriptionUpdate,
   PhotoRequest,
+  AudioPlayRequest,
+  AudioPlayResponse,
+  AudioStopRequest,
   AppToCloudMessageType,
   CloudToAppMessageType,
 
@@ -37,6 +42,7 @@ import {
   isSettingsUpdate,
   isDashboardModeChanged,
   isDashboardAlwaysOnChanged,
+  isAudioPlayResponse,
 
   // Other types
   AppSettings,
@@ -51,6 +57,7 @@ import {
   PhotoResponse,
   VpsCoordinates,
   PhotoTaken,
+  SubscriptionRequest,
   Capabilities,
   PhotoData
 } from '../../types';
@@ -60,10 +67,11 @@ import { Logger } from 'pino';
 import { AppServer } from '../server';
 import axios from 'axios';
 import EventEmitter from 'events';
+import fetch from 'node-fetch';
 
 
 // Import the cloud-to-app specific type guards
-import { isPhotoResponse, isRtmpStreamStatus } from '../../types/messages/cloud-to-app';
+import { isPhotoResponse, isRtmpStreamStatus, isManagedStreamStatus } from '../../types/messages/cloud-to-app';
 
 /**
  * ⚙️ Configuration options for App Session
@@ -140,6 +148,8 @@ export class AppSession {
   private reconnectAttempts = 0;
   /** Active event subscriptions */
   private subscriptions = new Set<ExtendedStreamType>();
+  /** Map to store rate options for streams */
+  private streamRates = new Map<ExtendedStreamType, string>();
   /** Resource tracker for automatic cleanup */
   private resources = new ResourceTracker();
   /** Internal settings storage - use public settings API instead */
@@ -171,8 +181,12 @@ export class AppSession {
   public readonly settings: SettingsManager;
   /** 📊 Dashboard management interface */
   public readonly dashboard: DashboardAPI;
+  /** 📍 Location management interface */
+  public readonly location: LocationManager;
   /** 📷 Camera interface for photos and streaming */
   public readonly camera: CameraModule;
+  /** 🔊 Audio interface for audio playback */
+  public readonly audio: AudioManager;
 
   public readonly appServer: AppServer;
   public readonly logger: Logger;
@@ -275,6 +289,17 @@ export class AppSession {
       this, // Pass session reference
       this.logger.child({ module: 'camera' })
     );
+
+    // Initialize audio module with session reference
+    this.audio = new AudioManager(
+      this.config.packageName,
+      this.sessionId || 'unknown-session-id',
+      this.send.bind(this),
+      this, // Pass session reference
+      this.logger.child({ module: 'audio' })
+    );
+
+    this.location = new LocationManager(this, this.send.bind(this));
   }
 
   /**
@@ -388,14 +413,30 @@ export class AppSession {
 
   /**
    * 📬 Subscribe to a specific event stream
-   * @param type - Type of event to subscribe to
+   * @param sub - A string or a rich subscription object
    */
-  subscribe(type: ExtendedStreamType): void {
+  subscribe(sub: SubscriptionRequest): void {
+    let type: ExtendedStreamType;
+    let rate: string | undefined;
+
+    if (typeof sub === 'string') {
+      type = sub;
+    } else {
+      // it's a LocationStreamRequest object
+      type = sub.stream;
+      rate = sub.rate;
+    }
+
     if (APP_TO_APP_EVENT_TYPES.includes(type as string)) {
       this.logger.warn(`[AppSession] Attempted to subscribe to App-to-App event type '${type}', which is not a valid stream. Use the event handler (e.g., onAppMessage) instead.`);
       return;
     }
+
     this.subscriptions.add(type);
+    if (rate) {
+      this.streamRates.set(type, rate);
+    }
+
     if (this.ws?.readyState === 1) {
       this.updateSubscriptions();
     }
@@ -403,14 +444,22 @@ export class AppSession {
 
   /**
    * 📭 Unsubscribe from a specific event stream
-   * @param type - Type of event to unsubscribe from
+   * @param sub - The subscription to remove
    */
-  unsubscribe(type: ExtendedStreamType): void {
+  unsubscribe(sub: SubscriptionRequest): void {
+    let type: ExtendedStreamType;
+    if (typeof sub === 'string') {
+      type = sub;
+    } else {
+      type = sub.stream;
+    }
+
     if (APP_TO_APP_EVENT_TYPES.includes(type as string)) {
       this.logger.warn(`[AppSession] Attempted to unsubscribe from App-to-App event type '${type}', which is not a valid stream.`);
       return;
     }
     this.subscriptions.delete(type);
+    this.streamRates.delete(type); // also remove from our rate map
     if (this.ws?.readyState === 1) {
       this.updateSubscriptions();
     }
@@ -448,6 +497,11 @@ export class AppSession {
     // Update the sessionId in the camera module
     if (this.camera) {
       this.camera.updateSessionId(sessionId);
+    }
+
+    // Update the sessionId in the audio module
+    if (this.audio) {
+      this.audio.updateSessionId(sessionId);
     }
 
     return new Promise((resolve, reject) => {
@@ -699,6 +753,11 @@ export class AppSession {
       this.camera.cancelAllRequests();
     }
 
+    // Clean up audio module
+    if (this.audio) {
+      this.audio.cancelAllRequests();
+    }
+
     // Use the resource tracker to clean up everything
     this.resources.dispose();
 
@@ -708,6 +767,8 @@ export class AppSession {
     this.subscriptions.clear();
     this.reconnectAttempts = 0;
   }
+
+
 
   /**
    * 🛠️ Get all current user settings
@@ -833,7 +894,7 @@ export class AppSession {
     return this.config.mentraOSWebsocketUrl;
   }
 
-  getHttpsServerUrl(): string | undefined {
+  public getHttpsServerUrl(): string | undefined {
     if (!this.config.mentraOSWebsocketUrl) {
       return undefined;
     }
@@ -892,6 +953,8 @@ export class AppSession {
    */
   private handleMessage(message: CloudToAppMessage): void {
     try {
+
+
       // Validate message before processing
       if (!this.validateMessage(message)) {
         this.events.emit('error', new Error('Invalid message format received'));
@@ -995,6 +1058,15 @@ export class AppSession {
 
           // Update camera module's internal stream state
           this.camera.updateStreamState(message);
+        }
+        else if (isManagedStreamStatus(message)) {
+          // Emit as a standard stream event if subscribed
+          if (this.subscriptions.has(StreamType.MANAGED_STREAM_STATUS)) {
+            this.events.emit(StreamType.MANAGED_STREAM_STATUS, message);
+          }
+
+          // Update camera module's managed stream state
+          this.camera.handleManagedStreamStatus(message);
         }
         else if (isSettingsUpdate(message)) {
           // Store previous settings to check for changes
@@ -1136,6 +1208,12 @@ export class AppSession {
             });
           });
         }
+                                else if (isAudioPlayResponse(message)) {
+          // Delegate audio play response handling to the audio module
+          if (this.audio) {
+            this.audio.handleAudioPlayResponse(message as AudioPlayResponse);
+          }
+        }
         else if (isPhotoResponse(message)) {
           // Legacy photo response handling - now photos come directly via webhook
           // This branch can be removed in the future as all photos now go through /photo-upload
@@ -1143,19 +1221,7 @@ export class AppSession {
         }
         // Handle unrecognized message types gracefully
         else {
-          console.log(`Unrecognized message type: ${(message as any).type}. Full message details:`, {
-            messageType: (message as any).type,
-            fullMessage: message,
-            messageKeys: Object.keys(message || {}),
-            messageStringified: JSON.stringify(message, null, 2)
-          });
-          // Log all message object details for debugging
-          this.logger.warn(`Unrecognized message type: ${(message as any).type}. Full message details:`, {
-            messageType: (message as any).type,
-            fullMessage: message,
-            messageKeys: Object.keys(message || {}),
-            messageStringified: JSON.stringify(message, null, 2)
-          });
+          this.logger.warn(`Unrecognized message type: ${(message as any).type}`);
           this.events.emit('error', new Error(`Unrecognized message type: ${(message as any).type}`));
         }
       } catch (processingError: unknown) {
@@ -1303,10 +1369,20 @@ export class AppSession {
    */
   private updateSubscriptions(): void {
     this.logger.info(`[AppSession] updateSubscriptions: sending subscriptions to cloud:`, Array.from(this.subscriptions));
+
+    // [MODIFIED] builds the array of SubscriptionRequest objects to send to the cloud
+    const subscriptionPayload: SubscriptionRequest[] = Array.from(this.subscriptions).map(stream => {
+      const rate = this.streamRates.get(stream);
+      if (rate && stream === StreamType.LOCATION_STREAM) {
+        return { stream: 'location_stream', rate: rate as any };
+      }
+      return stream;
+    });
+
     const message: AppSubscriptionUpdate = {
       type: AppToCloudMessageType.SUBSCRIPTION_UPDATE,
       packageName: this.config.packageName,
-      subscriptions: Array.from(this.subscriptions),
+      subscriptions: subscriptionPayload, // [MODIFIED]
       sessionId: this.sessionId!,
       timestamp: new Date()
     };
@@ -1731,6 +1807,7 @@ export class TpaSession extends AppSession {
   }
 }
 
-// Export camera module types for developers
+// Export module types for developers
 export { CameraModule, PhotoRequestOptions, RtmpStreamOptions } from './modules/camera';
+export { AudioManager, AudioPlayOptions, AudioPlayResult, SpeakOptions } from './modules/audio';
 

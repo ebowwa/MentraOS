@@ -16,13 +16,18 @@ import {
   AppSubscriptionUpdate,
   AppStateChange,
   StreamType,
+  ExtendedStreamType,
   DataStream,
   LocationUpdate,
   GlassesToCloudMessageType,
   CloudToGlassesMessageType,
   PhotoRequest,
+  AudioPlayRequest,
+  AudioStopRequest,
   RtmpStreamRequest,
   RtmpStreamStopRequest,
+  ManagedStreamRequest,
+  ManagedStreamStopRequest,
 } from '@mentra/sdk';
 import UserSession from '../session/UserSession';
 import * as developerService from '../core/developer.service';
@@ -31,6 +36,7 @@ import subscriptionService from '../session/subscription.service';
 import { logger as rootLogger } from '../logging/pino-logger';
 import photoRequestService from '../core/photo-request.service';
 import e from 'express';
+import { locationService } from '../core/location.service';
 
 const SERVICE_NAME = 'websocket-app.service';
 const logger = rootLogger.child({ service: SERVICE_NAME });
@@ -38,6 +44,8 @@ const logger = rootLogger.child({ service: SERVICE_NAME });
 /**
  * Error codes for App connection issues
  */
+
+// temp comment for porter push
 export enum AppErrorCode {
   INVALID_JWT = 'INVALID_JWT',
   JWT_SIGNATURE_FAILED = 'JWT_SIGNATURE_FAILED',
@@ -68,11 +76,11 @@ interface AppIncomingMessage extends IncomingMessage {
 export class AppWebSocketService {
   private static instance: AppWebSocketService;
   private logger = rootLogger.child({ service: SERVICE_NAME });
-  
+
   // Debouncing for subscription changes to prevent rapid stream recreation
   private subscriptionChangeTimers = new Map<string, NodeJS.Timeout>();
   private readonly SUBSCRIPTION_DEBOUNCE_MS = 500; // 500ms debounce
-  
+
   constructor() { }
 
   /**
@@ -231,6 +239,15 @@ export class AppWebSocketService {
           }
           break;
 
+        case AppToCloudMessageType.LOCATION_POLL_REQUEST:
+          try {
+            await locationService.handlePollRequest(userSession, message.accuracy, message.correlationId, message.packageName);
+          } catch (e) {
+            this.logger.error({ e, packageName: message.packageName }, "Error handling location poll request");
+            this.sendError(appWebsocket, AppErrorCode.INTERNAL_ERROR, (e as Error).message || "Failed to handle location poll.");
+          }
+          break;
+
         case AppToCloudMessageType.PHOTO_REQUEST:
           // Delegate to PhotoManager
           // The AppPhotoRequestSDK type should be used by the App
@@ -253,6 +270,121 @@ export class AppWebSocketService {
             this.logger.error({e, packageName: message.packageName}, "Error requesting photo via PhotoManager");
             this.sendError(appWebsocket, AppErrorCode.INTERNAL_ERROR, (e as Error).message || "Failed to request photo.");
           }
+          break;
+
+        case AppToCloudMessageType.AUDIO_PLAY_REQUEST:
+          // Forward audio play request to glasses/manager
+          try {
+            const audioRequestMsg = message as AudioPlayRequest;
+
+            // Store the mapping of requestId -> packageName for response routing
+            userSession.audioPlayRequestMapping.set(audioRequestMsg.requestId, audioRequestMsg.packageName);
+            userSession.logger.debug(`🔊 [AppWebSocketService] Stored audio request mapping: ${audioRequestMsg.requestId} -> ${audioRequestMsg.packageName}`);
+
+            // Forward the audio play request to the glasses/manager
+            // Convert from app-to-cloud format to cloud-to-glasses format
+            const glassesAudioRequest = {
+              type: CloudToGlassesMessageType.AUDIO_PLAY_REQUEST,
+              sessionId: userSession.sessionId,
+              requestId: audioRequestMsg.requestId,
+              packageName: audioRequestMsg.packageName,
+              audioUrl: audioRequestMsg.audioUrl,
+              volume: audioRequestMsg.volume,
+              stopOtherAudio: audioRequestMsg.stopOtherAudio,
+              timestamp: new Date()
+            };
+
+            // Send to glasses/manager via WebSocket
+            if (userSession.websocket && userSession.websocket.readyState === 1) {
+              userSession.websocket.send(JSON.stringify(glassesAudioRequest));
+              userSession.logger.debug(`🔊 [AppWebSocketService] Forwarded audio request ${audioRequestMsg.requestId} to glasses`);
+            } else {
+              // Clean up mapping if we can't forward the request
+              userSession.audioPlayRequestMapping.delete(audioRequestMsg.requestId);
+              this.sendError(appWebsocket, AppErrorCode.INTERNAL_ERROR, "Glasses not connected");
+            }
+          } catch(e) {
+            // Clean up mapping if an exception occurs to prevent memory leak
+            const audioRequestMsg = message as AudioPlayRequest;
+            if (audioRequestMsg?.requestId) {
+              userSession.audioPlayRequestMapping.delete(audioRequestMsg.requestId);
+            }
+            this.sendError(appWebsocket, AppErrorCode.INTERNAL_ERROR, (e as Error).message || "Failed to process audio request.");
+          }
+          break;
+
+        case AppToCloudMessageType.AUDIO_STOP_REQUEST:
+          // Forward audio stop request to glasses/manager
+          try {
+            const audioStopMsg = message as AudioStopRequest;
+
+            // Forward the audio stop request to the glasses/manager
+            // Convert from app-to-cloud format to cloud-to-glasses format
+            const glassesAudioStopRequest = {
+              type: CloudToGlassesMessageType.AUDIO_STOP_REQUEST,
+              sessionId: userSession.sessionId,
+              appId: audioStopMsg.packageName,
+              timestamp: new Date()
+            };
+
+            // Send to glasses/manager via WebSocket
+            if (userSession.websocket && userSession.websocket.readyState === 1) {
+              userSession.websocket.send(JSON.stringify(glassesAudioStopRequest));
+              userSession.logger.debug(`🔇 [AppWebSocketService] Forwarded audio stop request from ${audioStopMsg.packageName} to glasses`);
+            } else {
+              this.sendError(appWebsocket, AppErrorCode.INTERNAL_ERROR, "Glasses not connected");
+            }
+          } catch(e) {
+            this.sendError(appWebsocket, AppErrorCode.INTERNAL_ERROR, (e as Error).message || "Failed to process audio stop request.");
+          }
+          break;
+
+        case AppToCloudMessageType.MANAGED_STREAM_REQUEST:
+          try {
+            const managedReq = message as ManagedStreamRequest;
+            const streamId = await userSession.managedStreamingExtension.startManagedStream(
+              userSession,
+              managedReq
+            );
+            this.logger.info({
+              streamId,
+              packageName: managedReq.packageName
+            }, "Managed stream request processed");
+          } catch (e) {
+            this.logger.error({
+              e,
+              packageName: message.packageName
+            }, "Error starting managed stream");
+            this.sendError(
+              appWebsocket,
+              AppErrorCode.INTERNAL_ERROR,
+              (e as Error).message || "Failed to start managed stream"
+            );
+          }
+          break;
+
+        case AppToCloudMessageType.MANAGED_STREAM_STOP:
+          try {
+            const stopReq = message as ManagedStreamStopRequest;
+            await userSession.managedStreamingExtension.stopManagedStream(
+              userSession,
+              stopReq
+            );
+            this.logger.info({
+              packageName: stopReq.packageName
+            }, "Managed stream stop request processed");
+          } catch (e) {
+            this.logger.error({
+              e,
+              packageName: message.packageName
+            }, "Error stopping managed stream");
+            this.sendError(
+              appWebsocket,
+              AppErrorCode.INTERNAL_ERROR,
+              (e as Error).message || "Failed to stop managed stream"
+            );
+          }
+          break;
 
         default:
           logger.warn(`Unhandled App message type: ${message.type}`);
@@ -277,30 +409,49 @@ export class AppWebSocketService {
     // Check if the app is newly subscribing to calendar events
     const isNewCalendarSubscription =
       !subscriptionService.hasSubscription(userSession.userId, message.packageName, StreamType.CALENDAR_EVENT) &&
-      message.subscriptions.includes(StreamType.CALENDAR_EVENT);
+      message.subscriptions.some(sub => (typeof sub === 'string' && sub === StreamType.CALENDAR_EVENT));
 
     // Check if the app is newly subscribing to location updates
     const isNewLocationSubscription =
       !subscriptionService.hasSubscription(userSession.userId, message.packageName, StreamType.LOCATION_UPDATE) &&
-      message.subscriptions.includes(StreamType.LOCATION_UPDATE);
+      message.subscriptions.some(sub => {
+        if (typeof sub === 'string') return sub === StreamType.LOCATION_UPDATE;
+        return sub.stream === StreamType.LOCATION_STREAM || sub.stream === StreamType.LOCATION_UPDATE;
+      });
 
-    // Update subscriptions (async) with error handling to prevent crashes
     try {
-      await subscriptionService.updateSubscriptions(
+      // This is now a non-blocking call. We use .then() to chain the next action
+      // without holding up the initial connection handshake.
+      subscriptionService.updateSubscriptions(
         userSession,
         message.packageName,
         message.subscriptions
-      );
-      // Note: subscriptionService automatically syncs TranscriptionManager
+      ).then(updatedUser => {
+        if (updatedUser) {
+          // Pass the updated user object directly to avoid a race condition.
+          locationService.handleSubscriptionChange(updatedUser, userSession);
+        }
+      }).catch(error => {
+        // Since this runs in the background, we can't send a response to the client.
+        // We just log the error.
+        userSession.logger.error({ error }, "Error during background subscription processing.");
+      });
     } catch (error) {
+      // This will only catch synchronous errors from the initial call.
       const errorMessage = error instanceof Error ? error.message : String(error);
       userSession.logger.error({
         service: SERVICE_NAME,
-        error: errorMessage,
+        error: {
+          message: errorMessage,
+          name: (error as Error).name,
+          stack: (error as Error).stack,
+          details: error
+        },
         packageName,
         subscriptions: message.subscriptions,
-        userId: userSession.userId
-      }, `Failed to update subscriptions for App ${packageName}: ${errorMessage}`);
+        userId: userSession.userId,
+        logKey: '##SUBSCRIPTION_ERROR##' // Add a unique key for easy searching
+      }, `##SUBSCRIPTION_ERROR##: Failed to update subscriptions for App ${packageName}, which will cause a disconnect.`);
 
       // Send error response to App instead of crashing the service
       this.sendError(appWebsocket, AppErrorCode.MALFORMED_MESSAGE, `Invalid subscription type: ${errorMessage}`);
@@ -317,34 +468,34 @@ export class AppWebSocketService {
 
     if (languageSubscriptionsChanged) {
       userSession.logger.info({ service: SERVICE_NAME, languageSubscriptionsChanged, packageName }, `Language subscriptions changed for ${packageName} in session ${userSession.userId}`);
-      
+
       // 🚨 DEBOUNCED SUBSCRIPTION UPDATES - Prevent rapid stream recreation
       const userId = userSession.userId;
-      
+
       // Clear existing timer if present
       if (this.subscriptionChangeTimers.has(userId)) {
         clearTimeout(this.subscriptionChangeTimers.get(userId)!);
       }
-      
+
       // Set debounced timer for transcription stream updates
       this.subscriptionChangeTimers.set(userId, setTimeout(() => {
         try {
-          userSession.logger.debug({ 
-            service: SERVICE_NAME, 
+          userSession.logger.debug({
+            service: SERVICE_NAME,
             newLanguageSubscriptions,
             userId,
             operation: 'debouncedStreamUpdate'
           }, 'Applying debounced transcription stream update');
-          
+
           // Update transcription streams with new language subscriptions
           // Note: subscriptionService automatically syncs TranscriptionManager, so no direct call needed
 
           // Check if we need to update microphone state based on media subscriptions
           userSession.microphoneManager.handleSubscriptionChange();
-          
+
         } catch (error) {
-          userSession.logger.error({ 
-            service: SERVICE_NAME, 
+          userSession.logger.error({
+            service: SERVICE_NAME,
             error,
             userId,
             operation: 'debouncedStreamUpdateError'

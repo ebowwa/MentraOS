@@ -28,7 +28,8 @@ import {
   createTranslationStream,
   CustomMessage,
   RtmpStreamStatus,
-  PhotoTaken
+  PhotoTaken,
+  ManagedStreamStatus
 } from '../../types';
 import { DashboardMode } from '../../types/dashboard';
 import { PermissionError, PermissionErrorDetail } from '../../types/messages/cloud-to-app';
@@ -82,7 +83,8 @@ export interface StreamDataTypes {
   [StreamType.NOTIFICATION_DISMISSED]: NotificationDismissed;
   [StreamType.AUDIO_CHUNK]: AudioChunk;
   [StreamType.VIDEO]: ArrayBuffer;
-  [StreamType.RTMP_STREAM_STATUS]: RtmpStreamStatus; // Using any for now, should be StreamStatus
+  [StreamType.RTMP_STREAM_STATUS]: RtmpStreamStatus;
+  [StreamType.MANAGED_STREAM_STATUS]: ManagedStreamStatus;
   [StreamType.VPS_COORDINATES]: VpsCoordinates;
   [StreamType.PHOTO_TAKEN]: PhotoTaken;
   [StreamType.OPEN_DASHBOARD]: never;
