@@ -1,5 +1,5 @@
 import { Logger } from 'pino';
-import { LiveInputResult } from './CloudflareStreamService';
+import { LiveInputResult, CloudflareOutput } from './CloudflareStreamService';
 
 /**
  * Stream types supported by the system
@@ -17,17 +17,18 @@ interface BaseStreamState {
 }
 
 /**
- * Managed stream state with Cloudflare integration
+ * Managed stream state with relay integration
  */
 export interface ManagedStreamState extends BaseStreamState {
   type: 'managed';
-  cfLiveInputId: string;
-  cfIngestUrl: string;
-  hlsUrl: string;
-  dashUrl: string;
-  webrtcUrl?: string;
+  cfLiveInputId: string; // Keep for compatibility but use streamId value
+  cfIngestUrl: string; // Keep for compatibility but empty
+  hlsUrl: string; // Will be set by relay
+  dashUrl: string; // Will be set by relay
+  webrtcUrl?: string; // Not used in relay mode
   activeViewers: Set<string>; // Set of appIds consuming this stream
   streamId: string; // Internal stream ID
+  outputs?: CloudflareOutput[]; // Restream outputs if configured
 }
 
 /**
@@ -168,7 +169,8 @@ export class StreamStateManager {
       activeViewers: new Set([appId]),
       streamId,
       createdAt: new Date(),
-      lastActivity: new Date()
+      lastActivity: new Date(),
+      outputs: liveInput.outputs
     };
     
     // Update all maps
@@ -266,7 +268,31 @@ export class StreamStateManager {
   }
 
   /**
+   * Update stream URLs when HLS becomes available
+   */
+  updateStreamUrls(userId: string, hlsUrl: string, dashUrl?: string): void {
+    const stream = this.userStreams.get(userId);
+    if (!stream || stream.type !== 'managed') {
+      return;
+    }
+
+    stream.hlsUrl = hlsUrl;
+    if (dashUrl) {
+      stream.dashUrl = dashUrl;
+    }
+    stream.lastActivity = new Date();
+
+    this.logger.info({
+      userId,
+      streamId: stream.streamId,
+      hlsUrl,
+      dashUrl
+    }, 'Updated stream URLs');
+  }
+
+  /**
    * Get all active Cloudflare live input IDs
+   * @deprecated Not used in relay mode
    */
   getActiveCfLiveInputIds(): Set<string> {
     const ids = new Set<string>();

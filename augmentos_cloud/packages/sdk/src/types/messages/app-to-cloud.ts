@@ -72,6 +72,16 @@ export interface AppLocationPollRequest extends BaseMessage {
 }
 
 /**
+ * Re-stream destination for managed streams
+ */
+export interface RestreamDestination {
+  /** RTMP URL like rtmp://youtube.com/live/STREAM-KEY */
+  url: string;
+  /** Optional friendly name like "YouTube" or "Twitch" */
+  name?: string;
+}
+
+/**
  * Managed RTMP stream request from App
  * The cloud handles the RTMP endpoint and returns HLS/DASH URLs
  */
@@ -83,6 +93,8 @@ export interface ManagedStreamRequest extends BaseMessage {
   video?: VideoConfig;
   audio?: AudioConfig;
   stream?: StreamConfig;
+  /** Optional RTMP destinations to re-stream to (YouTube, Twitch, etc) */
+  restreamDestinations?: RestreamDestination[];
 }
 
 /**

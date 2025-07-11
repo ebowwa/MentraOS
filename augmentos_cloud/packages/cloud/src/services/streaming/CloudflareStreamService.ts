@@ -1,5 +1,23 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
 import { Logger } from 'pino';
+import { RestreamDestination } from '@mentra/sdk';
+
+/**
+ * Cloudflare Output configuration
+ */
+export interface CloudflareOutput {
+  uid: string;
+  url: string;
+  enabled: boolean;
+  created?: string;
+  modified?: string;
+  status?: {
+    current?: {
+      state: 'connected' | 'disconnected' | 'error' | null;
+      lastError?: string;
+    };
+  };
+}
 
 /**
  * Cloudflare Live Input response structure
@@ -59,6 +77,7 @@ export interface CreateLiveInputConfig {
   enableWebRTC?: boolean;
   enableRecording?: boolean;
   requireSignedURLs?: boolean;
+  restreamDestinations?: RestreamDestination[];
 }
 
 /**
@@ -70,6 +89,7 @@ export interface LiveInputResult {
   hlsUrl: string;
   dashUrl: string;
   webrtcUrl?: string;
+  outputs?: CloudflareOutput[];
 }
 
 /**
@@ -255,10 +275,22 @@ export class CloudflareStreamService {
         webrtcUrl: liveInput.webRTC?.url
       };
       
+      // Create outputs if requested
+      if (config.restreamDestinations && config.restreamDestinations.length > 0) {
+        this.logger.info({ 
+          liveInputId: liveInput.uid, 
+          outputCount: config.restreamDestinations.length 
+        }, '🔄 Creating restream outputs');
+        
+        const outputs = await this.createOutputs(liveInput.uid, config.restreamDestinations);
+        result.outputs = outputs;
+      }
+      
       this.logger.info({ 
         userId, 
         liveInputId: result.liveInputId,
         quality: config.quality,
+        outputCount: result.outputs?.length || 0,
         result: JSON.stringify(result, null, 2)
       }, '✅ Created Cloudflare live input successfully');
       
@@ -275,6 +307,65 @@ export class CloudflareStreamService {
         userId 
       }, '💥 Failed to create Cloudflare live input');
       throw this.wrapError(error, 'Failed to create live stream');
+    }
+  }
+
+  /**
+   * Create outputs for a live input to restream to other platforms
+   */
+  async createOutputs(liveInputId: string, destinations: RestreamDestination[]): Promise<CloudflareOutput[]> {
+    const outputs: CloudflareOutput[] = [];
+    
+    for (const destination of destinations) {
+      try {
+        this.logger.debug({ 
+          liveInputId, 
+          url: destination.url,
+          name: destination.name 
+        }, '📤 Creating output');
+        
+        const response = await this.api.post(`/live_inputs/${liveInputId}/outputs`, {
+          url: destination.url,
+          enabled: true
+        });
+        
+        if (response.data?.result) {
+          const output: CloudflareOutput = response.data.result;
+          outputs.push(output);
+          
+          this.logger.info({ 
+            liveInputId,
+            outputId: output.uid,
+            url: destination.url,
+            name: destination.name 
+          }, '✅ Created output successfully');
+        }
+      } catch (error) {
+        this.logger.error({ 
+          liveInputId,
+          destination,
+          error: error instanceof Error ? error.message : 'Unknown error' 
+        }, '❌ Failed to create output');
+        // Continue with other outputs even if one fails
+      }
+    }
+    
+    return outputs;
+  }
+  
+  /**
+   * Get outputs for a live input
+   */
+  async getOutputs(liveInputId: string): Promise<CloudflareOutput[]> {
+    try {
+      const response = await this.api.get(`/live_inputs/${liveInputId}/outputs`);
+      return response.data?.result || [];
+    } catch (error) {
+      this.logger.error({ 
+        liveInputId,
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      }, '❌ Failed to get outputs');
+      return [];
     }
   }
 

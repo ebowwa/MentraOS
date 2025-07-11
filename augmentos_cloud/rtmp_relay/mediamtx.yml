@@ -20,6 +20,12 @@ rtmp: yes
 rtmpAddress: :1935
 
 ###############################################
+# HLS parameters
+
+# Disable HLS protocol (we're using nginx + FFmpeg instead)
+hls: no
+
+###############################################
 # Path parameters
 
 # These settings are path-dependent, and the map key is the name of the path.
@@ -29,6 +35,11 @@ rtmpAddress: :1935
 # The settings under the path "all" are applied to all paths that do not match
 # any of the path-specific settings.
 paths:
-  all:
+  # Original streams from glasses - trigger cleaning script
+  "~^live/":
     source: publisher
-    runOnReady: /simple-forward.sh
+    runOnReady: /stream-manager.sh
+    
+  # Cleaned streams from FFmpeg - just accept them
+  "~^clean/":
+    source: publisher
