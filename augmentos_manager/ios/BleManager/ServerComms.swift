@@ -393,46 +393,6 @@ class ServerComms {
     }
   }
   
-  // /**
-  //  * Sends a photo response message to the server
-  //  *
-  //  * @param requestId The unique ID of the photo request
-  //  * @param photoUrl URL of the uploaded photo
-  //  */
-  // public void sendPhotoResponse(String requestId, String photoUrl) {
-  //     try {
-  //         JSONObject event = new JSONObject();
-  //         event.put("type", "photo_response");
-  //         event.put("requestId", requestId);
-  //         event.put("photoUrl", photoUrl);
-  //         event.put("timestamp", System.currentTimeMillis());
-  //         wsManager.sendText(event.toString());
-  //         Log.d(TAG, "Sent photo response for requestId: " + requestId);
-  //     } catch (JSONException e) {
-  //         Log.e(TAG, "Error building photo_response JSON", e);
-  //     }
-  // }
-  
-  // /**
-  //  * Sends a video stream response message to the server
-  //  *
-  //  * @param appId The ID of the app requesting the stream
-  //  * @param streamUrl URL of the video stream
-  //  */
-  // public void sendVideoStreamResponse(String appId, String streamUrl) {
-  //     try {
-  //         JSONObject event = new JSONObject();
-  //         event.put("type", "video_stream_response");
-  //         event.put("appId", appId);
-  //         event.put("streamUrl", streamUrl);
-  //         event.put("timestamp", System.currentTimeMillis());
-  //         wsManager.sendText(event.toString());
-  //         Log.d(TAG, "Sent video stream response for appId: " + appId);
-  //     } catch (JSONException e) {
-  //         Log.e(TAG, "Error building video_stream_response JSON", e);
-  //     }
-  // }
-  
   func sendPhotoResponse(requestId: String, photoUrl: String) {
     do {
       let event: [String: Any] = [

@@ -955,6 +955,7 @@ typealias JSONObject = [String: Any]
 
     self.glassesAppVersion = appVersion
     self.glassesBuildNumber = buildNumber
+    self.isNewVersion = (Int(buildNumber) ?? 0) >= 5
     self.glassesDeviceModel = deviceModel
     self.glassesAndroidVersion = androidVersion
     
