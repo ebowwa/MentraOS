@@ -849,8 +849,6 @@ typealias JSONObject = [String: Any]
       }
     }
     
-    CoreCommsService.log("MESSAGE TYPE: \(type)")
-    
     switch type {
     case "glasses_ready":
       handleGlassesReady()
