@@ -56,6 +56,10 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.Random;
+import java.security.SecureRandom;
 
 import io.reactivex.rxjava3.subjects.PublishSubject;
 
@@ -72,6 +76,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     // Glasses version information
     private String glassesAppVersion = "";
     private String glassesBuildNumber = "";
+    private int glassesBuildNumberInt = 0; // Build number as integer for version checks
     private String glassesDeviceModel = "";
     private String glassesAndroidVersion = "";
 
@@ -149,6 +154,38 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     private int heartbeatCounter = 0;
     private boolean glassesReady = false;
 
+    // Message tracking for reliable delivery
+    private final ConcurrentHashMap<Long, PendingMessage> pendingMessages = new ConcurrentHashMap<>();
+    private final AtomicLong messageIdCounter = new AtomicLong(1);
+    private static final long ACK_TIMEOUT_MS = 2000; // 2 seconds
+    private static final int MAX_RETRY_ATTEMPTS = 3;
+    private static final long RETRY_DELAY_MS = 1000; // 1 second base delay
+    
+    // Esoteric message ID generation
+    private final SecureRandom secureRandom = new SecureRandom();
+    private final long deviceId = System.currentTimeMillis() ^ new Random().nextLong();
+
+    // Periodic test message for ACK testing
+    private static final int TEST_MESSAGE_INTERVAL_MS = 5000; // 5 seconds
+    private Handler testMessageHandler = new Handler(Looper.getMainLooper());
+    private Runnable testMessageRunnable;
+    private int testMessageCounter = 0;
+
+    // Pending message data structure
+    private static class PendingMessage {
+        final String messageData;
+        final long timestamp;
+        final int retryCount;
+        final Runnable retryRunnable;
+
+        PendingMessage(String messageData, long timestamp, int retryCount, Runnable retryRunnable) {
+            this.messageData = messageData;
+            this.timestamp = timestamp;
+            this.retryCount = retryCount;
+            this.retryRunnable = retryRunnable;
+        }
+    }
+
     public MentraLiveSGC(Context context, SmartGlassesDevice smartGlassesDevice, PublishSubject<JSONObject> dataObservable) {
         super();
         this.context = context;
@@ -182,6 +219,16 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 heartbeatHandler.postDelayed(this, HEARTBEAT_INTERVAL_MS);
             }
         };
+
+        // Initialize test message runnable for ACK testing
+        // testMessageRunnable = new Runnable() {
+        //     @Override
+        //     public void run() {
+        //         sendTestMessage();
+        //         // Schedule next test message
+        //         testMessageHandler.postDelayed(this, TEST_MESSAGE_INTERVAL_MS);
+        //     }
+        // };
 
         // Initialize scheduler for keep-alive and reconnection
         scheduler = Executors.newScheduledThreadPool(1);
@@ -949,14 +996,156 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     }
 
     /**
-     * Send a JSON object to the glasses
+     * Generate an esoteric message ID using timestamp, device ID, and random values
+     * @return A unique, unpredictable message ID
+     */
+    private long generateEsotericMessageId() {
+        long timestamp = System.currentTimeMillis();
+        long randomComponent = secureRandom.nextLong();
+        long counter = messageIdCounter.getAndIncrement();
+        
+        // Combine timestamp, device ID, random value, and counter in a non-obvious way
+        long messageId = timestamp ^ deviceId ^ randomComponent ^ (counter << 32);
+        
+        // Ensure it's positive (clear the sign bit)
+        messageId = Math.abs(messageId);
+        
+        return messageId;
+    }
+
+    /**
+     * Send a JSON object to the glasses with message ID and ACK tracking
      */
     private void sendJson(JSONObject json) {
         if (json != null) {
-            String jsonStr = json.toString();
-            sendDataToGlasses(jsonStr);
+            try {
+                // Add esoteric message ID to the JSON
+                long messageId = generateEsotericMessageId();
+                json.put("mId", messageId);
+                
+                String jsonStr = json.toString();
+                Log.d(TAG, "📤 Sending JSON with esoteric message ID " + messageId + ": " + jsonStr);
+                
+                // Track the message for ACK
+                trackMessageForAck(messageId, jsonStr);
+                
+                // Send the data
+                sendDataToGlasses(jsonStr);
+            } catch (JSONException e) {
+                Log.e(TAG, "Error adding message ID to JSON", e);
+            }
         } else {
             Log.d(TAG, "Cannot send JSON to ASG, JSON is null");
+        }
+    }
+
+    /**
+     * Track a message for ACK response
+     */
+    private void trackMessageForAck(long messageId, String messageData) {
+        if (!isConnected) {
+            Log.d(TAG, "Not connected, skipping ACK tracking for message " + messageId);
+            return;
+        }
+        
+        // Skip ACK tracking for glasses with build number < 5 (older firmware)
+        if (glassesBuildNumberInt < 5) {
+            Log.d(TAG, "Glasses build number (" + glassesBuildNumberInt + ") < 5, skipping ACK tracking for message " + messageId);
+            return;
+        }
+
+        // Create retry runnable
+        Runnable retryRunnable = new Runnable() {
+            @Override
+            public void run() {
+                retryMessage(messageId);
+            }
+        };
+
+        // Create pending message
+        PendingMessage pendingMessage = new PendingMessage(messageData, System.currentTimeMillis(), 0, retryRunnable);
+        pendingMessages.put(messageId, pendingMessage);
+
+        // Schedule ACK timeout
+        handler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                checkMessageAck(messageId);
+            }
+        }, ACK_TIMEOUT_MS);
+
+        Log.d(TAG, "📋 Tracking message " + messageId + " for ACK (timeout: " + ACK_TIMEOUT_MS + "ms)");
+    }
+
+    /**
+     * Check if a message has been acknowledged
+     */
+    private void checkMessageAck(long messageId) {
+        PendingMessage pendingMessage = pendingMessages.get(messageId);
+        if (pendingMessage != null) {
+            Log.w(TAG, "⏰ ACK timeout for message " + messageId + " (attempt " + pendingMessage.retryCount + ")");
+            
+            if (pendingMessage.retryCount < MAX_RETRY_ATTEMPTS) {
+                // Retry the message
+                Log.d(TAG, "🔄 Retrying message " + messageId + " (attempt " + (pendingMessage.retryCount + 1) + "/" + MAX_RETRY_ATTEMPTS + ")");
+                retryMessage(messageId);
+            } else {
+                // Max retries reached
+                Log.e(TAG, "❌ Message " + messageId + " failed after " + MAX_RETRY_ATTEMPTS + " attempts");
+                pendingMessages.remove(messageId);
+            }
+        }
+    }
+
+    /**
+     * Retry a message
+     */
+    private void retryMessage(long messageId) {
+        PendingMessage pendingMessage = pendingMessages.get(messageId);
+        if (pendingMessage == null) {
+            Log.w(TAG, "Message " + messageId + " no longer tracked for retry");
+            return;
+        }
+
+        if (pendingMessage.retryCount >= MAX_RETRY_ATTEMPTS) {
+            Log.e(TAG, "Max retries reached for message " + messageId);
+            pendingMessages.remove(messageId);
+            return;
+        }
+
+        // Create new pending message with incremented retry count
+        PendingMessage retryMessage = new PendingMessage(
+            pendingMessage.messageData,
+            System.currentTimeMillis(),
+            pendingMessage.retryCount + 1,
+            pendingMessage.retryRunnable
+        );
+
+        // Update the tracked message
+        pendingMessages.put(messageId, retryMessage);
+
+        // Send the message again
+        Log.d(TAG, "📤 Retrying message " + messageId + " (attempt " + retryMessage.retryCount + ")");
+        sendDataToGlasses(pendingMessage.messageData);
+
+        // Schedule next ACK check
+        handler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                checkMessageAck(messageId);
+            }
+        }, ACK_TIMEOUT_MS);
+    }
+
+    /**
+     * Process ACK response from glasses
+     */
+    private void processAckResponse(long messageId) {
+        PendingMessage pendingMessage = pendingMessages.remove(messageId);
+        if (pendingMessage != null) {
+            Log.d(TAG, "✅ Received ACK for message " + messageId + " (attempts: " + pendingMessage.retryCount + ")");
+        } else {
+            Log.w(TAG, "⚠️ Received ACK for untracked message " + messageId);
         }
     }
 
@@ -1111,13 +1300,21 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     private void processJsonMessage(JSONObject json) {
         Log.d(TAG, "Got some JSON from glasses: " + json.toString());
 
+        // Check if this is an ACK response
+        String type = json.optString("type", "");
+        if ("msg_ack".equals(type)) {
+            long messageId = json.optLong("mId", -1);
+            if (messageId != -1) {
+                processAckResponse(messageId);
+                return;
+            }
+        }
+
         // Check if this is a K900 command format (has "C" field instead of "type")
         if (json.has("C")) {
             processK900JsonMessage(json);
             return;
         }
-
-        String type = json.optString("type", "");
 
         switch (type) {
             case "rtmp_stream_status":
@@ -1291,7 +1488,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 try {
                     JSONObject versionRequest = new JSONObject();
                     versionRequest.put("type", "request_version");
-                    sendDataToGlasses(versionRequest.toString());
+                    sendJson(versionRequest);
                 } catch (JSONException e) {
                     Log.e(TAG, "Error creating version request", e);
                 }
@@ -1326,6 +1523,15 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 String buildNumber = json.optString("build_number", "");
                 String deviceModel = json.optString("device_model", "");
                 String androidVersion = json.optString("android_version", "");
+                
+                // Parse build number as integer for version checks
+                try {
+                    glassesBuildNumberInt = Integer.parseInt(buildNumber);
+                    Log.d(TAG, "Parsed build number as integer: " + glassesBuildNumberInt);
+                } catch (NumberFormatException e) {
+                    glassesBuildNumberInt = 0;
+                    Log.e(TAG, "Failed to parse build number as integer: " + buildNumber);
+                }
 
                 Log.d(TAG, "Glasses Version - App: " + appVersion +
                       ", Build: " + buildNumber +
@@ -1561,6 +1767,9 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         EventBus.getDefault().post(new BatteryLevelEvent(level, charging));
         
         // Send battery status via BLE to connected phone
+        // This was necessary for OG beta units
+        // Not required for newer beta units
+        // TODO: remove this line post hackathon
         sendBatteryStatusOverBle(level, charging);
     }
     
@@ -1596,7 +1805,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         try {
             JSONObject json = new JSONObject();
             json.put("type", "request_wifi_status");
-            sendDataToGlasses(json.toString());
+            sendJson(json);
         } catch (JSONException e) {
             Log.e(TAG, "Error creating WiFi status request", e);
         }
@@ -1611,7 +1820,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         try {
             JSONObject json = new JSONObject();
             json.put("type", "request_wifi_scan");
-            sendDataToGlasses(json.toString());
+            sendJson(json);
             Log.d(TAG, "Sending WiFi scan request to glasses");
         } catch (JSONException e) {
             Log.e(TAG, "Error creating WiFi scan request", e);
@@ -1628,10 +1837,10 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         }
 
         try {
-            // Send ping message
+            // Send ping message (no ACK needed for heartbeats)
             JSONObject pingMsg = new JSONObject();
             pingMsg.put("type", "ping");
-            sendDataToGlasses(pingMsg.toString());
+            sendJsonWithoutAck(pingMsg);
 
             // Increment heartbeat counter
             heartbeatCounter++;
@@ -1656,6 +1865,9 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         heartbeatCounter = 0;
         heartbeatHandler.removeCallbacks(heartbeatRunnable); // Remove any existing callbacks
         heartbeatHandler.postDelayed(heartbeatRunnable, HEARTBEAT_INTERVAL_MS);
+        
+        // Also start test messages for ACK verification
+        // startTestMessages();
     }
 
     /**
@@ -1665,6 +1877,54 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         Log.d(TAG, "💓 Stopping heartbeat mechanism");
         heartbeatHandler.removeCallbacks(heartbeatRunnable);
         heartbeatCounter = 0;
+        
+        // Also stop test messages
+        // stopTestMessages();
+    }
+
+    /**
+     * Send a periodic test message to verify ACK system
+     */
+    private void sendTestMessage() {
+        if (!glassesReady || mConnectState != SmartGlassesConnectionState.CONNECTED) {
+            Log.d(TAG, "Skipping test message - glasses not ready or not connected");
+            return;
+        }
+
+        try {
+            testMessageCounter++;
+            JSONObject testMsg = new JSONObject();
+            testMsg.put("type", "test_message");
+            testMsg.put("counter", testMessageCounter);
+            testMsg.put("timestamp", System.currentTimeMillis());
+            testMsg.put("message", "ACK test message #" + testMessageCounter);
+            testMsg.put("deviceId", deviceId); // Include device ID for debugging
+            
+            Log.d(TAG, "🧪 Sending test message #" + testMessageCounter + " for ACK verification");
+            sendJson(testMsg); // This will include esoteric mId and ACK tracking
+            
+        } catch (JSONException e) {
+            Log.e(TAG, "Error creating test message", e);
+        }
+    }
+
+    /**
+     * Start the periodic test message system
+     */
+    private void startTestMessages() {
+        Log.d(TAG, "🧪 Starting periodic test message system (every " + TEST_MESSAGE_INTERVAL_MS + "ms)");
+        testMessageCounter = 0;
+        testMessageHandler.removeCallbacks(testMessageRunnable); // Remove any existing callbacks
+        testMessageHandler.postDelayed(testMessageRunnable, TEST_MESSAGE_INTERVAL_MS);
+    }
+
+    /**
+     * Stop the periodic test message system
+     */
+    private void stopTestMessages() {
+        Log.d(TAG, "🧪 Stopping periodic test message system");
+        testMessageHandler.removeCallbacks(testMessageRunnable);
+        testMessageCounter = 0;
     }
 
     /**
@@ -1935,8 +2195,8 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                         readyMsg.put("type", "phone_ready");
                         readyMsg.put("timestamp", System.currentTimeMillis());
 
-                        // Send it through our data channel
-                        sendDataToGlasses(readyMsg.toString());
+                        // Send it through our data channel (no ACK needed for readiness checks)
+                        sendJsonWithoutAck(readyMsg);
                     } catch (JSONException e) {
                         Log.e(TAG, "Error creating phone_ready message", e);
                     }
@@ -1995,6 +2255,11 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         handler.removeCallbacksAndMessages(null);
         heartbeatHandler.removeCallbacksAndMessages(null);
         connectionTimeoutHandler.removeCallbacksAndMessages(null);
+        testMessageHandler.removeCallbacksAndMessages(null);
+
+        // Clean up message tracking
+        pendingMessages.clear();
+        Log.d(TAG, "Cleared pending message tracking");
 
         // Disconnect from GATT if connected
         if (bluetoothGatt != null) {
@@ -2255,5 +2520,43 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         } catch (JSONException e) {
             Log.e(TAG, "Error parsing custom command JSON", e);
         }
+    }
+
+    /**
+     * Send a JSON object to the glasses without ACK tracking (for non-critical messages)
+     */
+    private void sendJsonWithoutAck(JSONObject json) {
+        if (json != null) {
+            String jsonStr = json.toString();
+            Log.d(TAG, "📤 Sending JSON without ACK tracking: " + jsonStr);
+            sendDataToGlasses(jsonStr);
+        } else {
+            Log.d(TAG, "Cannot send JSON to ASG, JSON is null");
+        }
+    }
+
+    /**
+     * Get statistics about the message tracking system
+     * @return String with tracking statistics
+     */
+    public String getMessageTrackingStats() {
+        StringBuilder stats = new StringBuilder();
+        stats.append("Message Tracking Stats:\n");
+        stats.append("- Pending messages: ").append(pendingMessages.size()).append("\n");
+        stats.append("- Next message ID: ").append(messageIdCounter.get()).append("\n");
+        stats.append("- ACK timeout: ").append(ACK_TIMEOUT_MS).append("ms\n");
+        stats.append("- Max retries: ").append(MAX_RETRY_ATTEMPTS).append("\n");
+        
+        if (!pendingMessages.isEmpty()) {
+            stats.append("- Pending message IDs: ");
+            for (Long messageId : pendingMessages.keySet()) {
+                PendingMessage msg = pendingMessages.get(messageId);
+                if (msg != null) {
+                    stats.append(messageId).append("(retry:").append(msg.retryCount).append(") ");
+                }
+            }
+        }
+        
+        return stats.toString();
     }
 }

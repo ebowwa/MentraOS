@@ -49,7 +49,8 @@ export enum GlassesToCloudMessageType {
   CALENDAR_EVENT = StreamType.CALENDAR_EVENT,
   MENTRAOS_SETTINGS_UPDATE_REQUEST = StreamType.MENTRAOS_SETTINGS_UPDATE_REQUEST,
   CORE_STATUS_UPDATE = StreamType.CORE_STATUS_UPDATE,
-  PHOTO_TAKEN = StreamType.PHOTO_TAKEN
+  PHOTO_TAKEN = StreamType.PHOTO_TAKEN,
+  AUDIO_PLAY_RESPONSE = 'audio_play_response'
 }
 
 /**
@@ -66,6 +67,8 @@ export enum CloudToGlassesMessageType {
   APP_STATE_CHANGE = 'app_state_change',
   MICROPHONE_STATE_CHANGE = 'microphone_state_change',
   PHOTO_REQUEST = 'photo_request',
+  AUDIO_PLAY_REQUEST = 'audio_play_request',
+  AUDIO_STOP_REQUEST = 'audio_stop_request',
   SETTINGS_UPDATE = 'settings_update',
 
   // RTMP streaming
@@ -77,6 +80,10 @@ export enum CloudToGlassesMessageType {
   DASHBOARD_MODE_CHANGE = 'dashboard_mode_change',
   DASHBOARD_ALWAYS_ON_CHANGE = 'dashboard_always_on_change',
 
+  // Location Service
+  SET_LOCATION_TIER = 'set_location_tier',
+  REQUEST_SINGLE_LOCATION = 'request_single_location',
+
   WEBSOCKET_ERROR = 'websocket_error'
 }
 
@@ -87,10 +94,13 @@ export enum AppToCloudMessageType {
   // Commands
   CONNECTION_INIT = 'tpa_connection_init',
   SUBSCRIPTION_UPDATE = 'subscription_update',
+  LOCATION_POLL_REQUEST = 'location_poll_request',
 
   // Requests
   DISPLAY_REQUEST = 'display_event',
   PHOTO_REQUEST = 'photo_request',
+  AUDIO_PLAY_REQUEST = 'audio_play_request',
+  AUDIO_STOP_REQUEST = 'audio_stop_request',
 
   // RTMP streaming
   RTMP_STREAM_REQUEST = 'rtmp_stream_request',
@@ -104,7 +114,7 @@ export enum AppToCloudMessageType {
   DASHBOARD_CONTENT_UPDATE = 'dashboard_content_update',
   DASHBOARD_MODE_CHANGE = 'dashboard_mode_change',
   DASHBOARD_SYSTEM_UPDATE = 'dashboard_system_update',
-
+  
   // App-to-App Communication
   APP_BROADCAST_MESSAGE = 'app_broadcast_message',
   APP_DIRECT_MESSAGE = 'app_direct_message',
@@ -134,6 +144,7 @@ export enum CloudToAppMessageType {
 
   // Media responses
   PHOTO_RESPONSE = 'photo_response',
+  AUDIO_PLAY_RESPONSE = 'audio_play_response',
   RTMP_STREAM_STATUS = 'rtmp_stream_status',
   MANAGED_STREAM_STATUS = 'managed_stream_status',
 
@@ -144,7 +155,7 @@ export enum CloudToAppMessageType {
 
   // General purpose messaging
   CUSTOM_MESSAGE = 'custom_message',
-
+  
   // App-to-App Communication Responses
   APP_MESSAGE_RECEIVED = 'app_message_received',
   APP_USER_JOINED = 'app_user_joined',
@@ -200,6 +211,8 @@ export const UpdateTypes = [
   CloudToGlassesMessageType.APP_STATE_CHANGE,
   CloudToGlassesMessageType.MICROPHONE_STATE_CHANGE,
   CloudToGlassesMessageType.PHOTO_REQUEST,
+  CloudToGlassesMessageType.AUDIO_PLAY_REQUEST,
+  CloudToGlassesMessageType.AUDIO_STOP_REQUEST,
   CloudToGlassesMessageType.SETTINGS_UPDATE,
   CloudToGlassesMessageType.DASHBOARD_MODE_CHANGE,
   CloudToGlassesMessageType.DASHBOARD_ALWAYS_ON_CHANGE,

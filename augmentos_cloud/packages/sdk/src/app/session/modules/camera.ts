@@ -118,7 +118,8 @@ export class CameraModule {
       packageName,
       sessionId,
       send,
-      this.logger
+      this.logger,
+      session
     );
   }
 

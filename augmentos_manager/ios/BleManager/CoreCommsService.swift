@@ -22,9 +22,15 @@ class CoreCommsService: RCTEventEmitter {
   override static func requiresMainQueueSetup() -> Bool {
     return false
   }
+  
+  static func log(_ message: String) {
+    print(message)
+    let msg = "SWIFT:\(message)"
+    self.emitter.sendEvent(withName: "CoreMessageEvent", body: msg)
+  }
 
   override func supportedEvents() -> [String] {
     // add more as needed
-    return ["onReady", "onPending", "onFailure", "onConnectionStateChanged", "CoreMessageIntentEvent", "CoreMessageEvent"]
+    return ["onReady", "onPending", "onFailure", "onConnectionStateChanged", "CoreMessageIntentEvent", "CoreMessageEvent", "WIFI_SCAN_RESULTS"]
   }
 }

@@ -55,7 +55,7 @@ await session.camera.startStream({
 
 - **[Photo Capture Guide](./photo-capture.md)** - Complete guide for taking photos
 - **[RTMP Streaming Guide](./rtmp-streaming.md)** - Comprehensive streaming documentation covering both managed and unmanaged options
-- **[API Reference](../reference/camera.md)** - Detailed API documentation for all camera methods
+- **[API Reference](/reference/managers/camera)** - Detailed API documentation for all camera methods
 
 ## 🎬 Common Use Cases
 
@@ -77,8 +77,8 @@ await session.camera.startStream({
 ### Photo Documentation App
 Capture and save photos for documentation:
 ```typescript
-const photo = await session.camera.requestPhoto({ 
-  saveToGallery: true 
+const photo = await session.camera.requestPhoto({
+  saveToGallery: true
 });
 await uploadToCloudStorage(photo.buffer);
 ```
@@ -101,6 +101,6 @@ await uploadToCloudStorage(photo.buffer);
 
 ## 📖 See Also
 
-- [Permissions Guide](../permissions.md) - Setting up camera permissions
-- [Events Documentation](../events.md) - Handling camera-related events
-- [API Reference](../reference/camera.md) - Complete API documentation
+- [Permissions Guide](/permissions) - Setting up camera permissions
+- [Events Documentation](/events) - Handling camera-related events
+- [API Reference](/reference/managers/camera) - Complete API documentation

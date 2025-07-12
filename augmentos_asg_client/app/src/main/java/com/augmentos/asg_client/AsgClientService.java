@@ -283,17 +283,17 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         @Override
         public void onReceive(Context context, Intent intent) {
             String action = intent.getAction();
-            Log.d(TAG, "@#$$% Received broadcast with action: " + action);
+            //Log.d(TAG, "@#$$% Received broadcast with action: " + action);
 
             if (ACTION_HEARTBEAT.equals(action) || "com.augmentos.otaupdater.ACTION_HEARTBEAT".equals(action)) {
                 lastHeartbeatTime = System.currentTimeMillis();
-                Log.d(TAG, "Service heartbeat received at " + lastHeartbeatTime);
+                //Log.d(TAG, "Service heartbeat received at " + lastHeartbeatTime);
 
                 // Send acknowledgment back to monitor
                 Intent ackIntent = new Intent(ACTION_HEARTBEAT_ACK);
                 ackIntent.setPackage("com.augmentos.otaupdater");
                 sendBroadcast(ackIntent);
-                Log.d(TAG, "Service heartbeat acknowledged and sent back to OTA Updater");
+                //Log.d(TAG, "Service heartbeat acknowledged and sent back to OTA Updater");
             }
         }
     };
@@ -1350,6 +1350,16 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                     parseK900Command(json);
                     return;
                 }
+            }
+
+            // Check for message ID and send ACK if present
+            long messageId = dataToProcess.optLong("mId", -1);
+            if (messageId != -1) {
+                // Send ACK response
+                sendAckResponse(messageId);
+                Log.d(TAG, "📤 Sent ACK for message ID: " + messageId);
+            } else {
+                Log.d(TAG, "📦 No message ID found in payload");
             }
 
             // Process the data (either original or extracted from C field)
@@ -2820,5 +2830,30 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         nn.putExtra("enable", bEnable);
         context.sendBroadcast(nn);
         Log.d(TAG, "Sent WiFi " + (bEnable ? "enable" : "disable") + " broadcast");
+    }
+
+    /**
+     * Send an ACK response for a received message
+     * @param messageId The message ID to acknowledge
+     */
+    private void sendAckResponse(long messageId) {
+        if (bluetoothManager != null && bluetoothManager.isConnected()) {
+            try {
+                JSONObject ackResponse = new JSONObject();
+                ackResponse.put("type", "msg_ack");
+                ackResponse.put("mId", messageId);
+                ackResponse.put("timestamp", System.currentTimeMillis());
+
+                // Convert to string and send via BLE
+                String jsonString = ackResponse.toString();
+                Log.d(TAG, "📤 Sending ACK response: " + jsonString);
+                bluetoothManager.sendData(jsonString.getBytes(StandardCharsets.UTF_8));
+
+            } catch (JSONException e) {
+                Log.e(TAG, "Error creating ACK response JSON", e);
+            }
+        } else {
+            Log.w(TAG, "Cannot send ACK response - not connected to BLE device");
+        }
     }
 }

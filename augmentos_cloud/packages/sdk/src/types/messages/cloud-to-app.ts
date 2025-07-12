@@ -107,6 +107,8 @@ export interface TranscriptionData extends BaseMessage {
   endTime: number;  // End time in milliseconds
   speakerId?: string;  // ID of the speaker if available
   duration?: number;  // Audio duration in milliseconds
+  provider?: string;  // The transcription provider (e.g., "azure", "soniox")
+  confidence?: number;  // Confidence score (0-1)
 }
 
 /**
@@ -124,6 +126,8 @@ export interface TranslationData extends BaseMessage {
   transcribeLanguage?: string;  // The language code of the transcribed text
   translateLanguage?: string;  // The language code of the translated text
   didTranslate?: boolean;  // Whether the text was translated
+  provider?: string;  // The translation provider (e.g., "azure", "google")
+  confidence?: number;  // Confidence score (0-1)
 }
 
 /**
@@ -197,17 +201,44 @@ export interface CustomMessage extends BaseMessage {
 }
 
 /**
+ * Output status for a re-stream destination
+ */
+export interface OutputStatus {
+  /** The destination URL */
+  url: string;
+  /** Friendly name if provided */
+  name?: string;
+  /** Status of this output */
+  status: 'active' | 'error' | 'stopped';
+  /** Error message if status is error */
+  error?: string;
+}
+
+/**
  * Managed RTMP stream status update
  * Sent when managed stream status changes or URLs are ready
  */
 export interface ManagedStreamStatus extends BaseMessage {
   type: CloudToAppMessageType.MANAGED_STREAM_STATUS;
-  status: 'initializing' | 'active' | 'stopping' | 'stopped' | 'error';
+  status: 'initializing' | 'preparing' | 'active' | 'stopping' | 'stopped' | 'error';
   hlsUrl?: string;
   dashUrl?: string;
   webrtcUrl?: string;
   message?: string;
   streamId?: string;
+  /** Status of re-stream outputs if configured */
+  outputs?: OutputStatus[];
+}
+
+/**
+ * Audio play response to App
+ */
+export interface AudioPlayResponse extends BaseMessage {
+  type: CloudToAppMessageType.AUDIO_PLAY_RESPONSE;
+  requestId: string;
+  success: boolean;
+  error?: string; // Error message (if failed)
+  duration?: number; // Duration of audio in milliseconds (if successful)
 }
 
 /**
@@ -238,7 +269,9 @@ export type CloudToAppMessage =
   | AppRoomUpdated
   | AppDirectMessageResponse
   | RtmpStreamStatus
-  | PermissionError;
+  | PhotoResponse
+  | PermissionError
+  | AudioPlayResponse;
 
 //===========================================================
 // Type guards
@@ -286,6 +319,10 @@ export function isRtmpStreamStatus(message: CloudToAppMessage): message is RtmpS
 
 export function isPhotoResponse(message: CloudToAppMessage): message is PhotoResponse {
   return message.type === GlassesToCloudMessageType.PHOTO_RESPONSE;
+}
+
+export function isAudioPlayResponse(message: CloudToAppMessage): message is AudioPlayResponse {
+  return message.type === CloudToAppMessageType.AUDIO_PLAY_RESPONSE;
 }
 
 // New type guards for App-to-App communication

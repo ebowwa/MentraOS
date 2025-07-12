@@ -26,7 +26,7 @@ extension Data {
   
   func hexEncodedString() -> String {
     return map { String(format: "%02x", $0) }.joined(separator: " ")
-//    return map { String(format: "%02x", $0) }.joined(separator: ", ")
+    //    return map { String(format: "%02x", $0) }.joined(separator: ", ")
   }
 }
 
@@ -95,6 +95,14 @@ enum GlassesError: Error {
   @Published public var caseOpen = false
   @Published public var caseRemoved = true
   
+  // Serial number and color information
+  @Published public var glassesSerialNumber: String?
+  @Published public var glassesStyle: String?
+  @Published public var glassesColor: String?
+  
+  // Callback for serial number discovery
+  public var onSerialNumberDiscovered: (() -> Void)?
+  
   public var isDisconnecting = false
   private var reconnectionTimer: Timer?
   private var reconnectionAttempts: Int = 0
@@ -152,35 +160,35 @@ enum GlassesError: Error {
   @Published public var isHeadUp = false
   
   private var leftGlassUUID: UUID? {
-      get {
-          if let uuidString = UserDefaults.standard.string(forKey: "leftGlassUUID") {
-              return UUID(uuidString: uuidString)
-          }
-          return nil
+    get {
+      if let uuidString = UserDefaults.standard.string(forKey: "leftGlassUUID") {
+        return UUID(uuidString: uuidString)
       }
-      set {
-          if let newValue = newValue {
-              UserDefaults.standard.set(newValue.uuidString, forKey: "leftGlassUUID")
-          } else {
-              UserDefaults.standard.removeObject(forKey: "leftGlassUUID")
-          }
+      return nil
+    }
+    set {
+      if let newValue = newValue {
+        UserDefaults.standard.set(newValue.uuidString, forKey: "leftGlassUUID")
+      } else {
+        UserDefaults.standard.removeObject(forKey: "leftGlassUUID")
       }
+    }
   }
   
   private var rightGlassUUID: UUID? {
-      get {
-          if let uuidString = UserDefaults.standard.string(forKey: "rightGlassUUID") {
-              return UUID(uuidString: uuidString)
-          }
-          return nil
+    get {
+      if let uuidString = UserDefaults.standard.string(forKey: "rightGlassUUID") {
+        return UUID(uuidString: uuidString)
       }
-      set {
-          if let newValue = newValue {
-              UserDefaults.standard.set(newValue.uuidString, forKey: "rightGlassUUID")
-          } else {
-              UserDefaults.standard.removeObject(forKey: "rightGlassUUID")
-          }
+      return nil
+    }
+    set {
+      if let newValue = newValue {
+        UserDefaults.standard.set(newValue.uuidString, forKey: "rightGlassUUID")
+      } else {
+        UserDefaults.standard.removeObject(forKey: "rightGlassUUID")
       }
+    }
   }
   
   override init() {
@@ -188,91 +196,220 @@ enum GlassesError: Error {
     startHeartbeatTimer()
   }
   
+  func forgetGlasses() {
+    leftGlassUUID = nil
+    rightGlassUUID = nil
+    DEVICE_SEARCH_ID = "NOT_SET"
+    
+    // Stop the heartbeat timer
+    heartbeatTimer?.invalidate()
+    heartbeatTimer = nil
+    
+    // Stop the reconnection timer if active
+    stopReconnectionTimer()
+    
+    // Clean up central manager delegate
+    centralManager?.delegate = nil
+    
+    // Clean up peripheral delegates
+    leftPeripheral?.delegate = nil
+    rightPeripheral?.delegate = nil
+  }
+  
   deinit {
-      // Stop the heartbeat timer
-      heartbeatTimer?.invalidate()
-      heartbeatTimer = nil
-      
-      // Stop the reconnection timer if active
-      stopReconnectionTimer()
-      
-      // Clean up central manager delegate
-      centralManager?.delegate = nil
-      
-      // Clean up peripheral delegates
-      leftPeripheral?.delegate = nil
-      rightPeripheral?.delegate = nil
-      
-      print("ERG1Manager deinitialized")
+    // Stop the heartbeat timer
+    heartbeatTimer?.invalidate()
+    heartbeatTimer = nil
+    
+    // Stop the reconnection timer if active
+    stopReconnectionTimer()
+    
+    // Clean up central manager delegate
+    centralManager?.delegate = nil
+    
+    // Clean up peripheral delegates
+    leftPeripheral?.delegate = nil
+    rightPeripheral?.delegate = nil
+    
+    // leftGlassUUID = nil
+    // rightGlassUUID = nil
+    
+    CoreCommsService.log("ERG1Manager deinitialized")
+  }
+  
+  // MARK: - Serial Number and Color Detection
+  
+  /// Decodes Even G1 serial number to extract style and color information
+  /// - Parameter serialNumber: The full serial number (e.g., "S110LABD020021")
+  /// - Returns: Tuple containing (style, color) or ("Unknown", "Unknown") if invalid
+  static func decodeEvenG1SerialNumber(_ serialNumber: String) -> (style: String, color: String) {
+    guard serialNumber.count >= 6 else {
+      return ("Unknown", "Unknown")
+    }
+    
+    // Style mapping: 2nd character (index 1)
+    let style: String
+    let styleChar = serialNumber[serialNumber.index(serialNumber.startIndex, offsetBy: 2)]
+    switch styleChar {
+    case "0":
+      style = "Round"
+    case "1":
+      style = "Rectangular"
+    default:
+      style = "Round"
+    }
+    
+    // Color mapping: 5th character (index 4)
+    let color: String
+    let colorChar = serialNumber[serialNumber.index(serialNumber.startIndex, offsetBy: 5)]
+    switch colorChar {
+    case "A":
+      color = "Grey"
+    case "B":
+      color = "Brown"
+    case "C":
+      color = "Green"
+    default:
+      color = "Grey"
+    }
+    
+    return (style, color)
+  }
+  
+  /// Decodes serial number from manufacturer data bytes
+  /// - Parameter manufacturerData: The manufacturer data bytes
+  /// - Returns: Decoded serial number string or nil if not found
+  private func decodeSerialFromManufacturerData(_ manufacturerData: Data) -> String? {
+    guard manufacturerData.count >= 10 else {
+      return nil
+    }
+    
+    // Convert bytes to ASCII string
+    var serialBuilder = ""
+    for byte in manufacturerData {
+      if byte == 0x00 {
+        // Stop at null terminator
+        break
+      }
+      if byte >= 0x20 && byte <= 0x7E {
+        // Only include CoreCommsService.logable ASCII characters
+        serialBuilder.append(Character(UnicodeScalar(byte)))
+      }
+    }
+    
+    let decodedString = serialBuilder.trimmingCharacters(in: .whitespacesAndNewlines)
+    
+    // Check if it looks like a valid Even G1 serial number
+    if decodedString.count >= 12 &&
+        (decodedString.hasPrefix("S1") || decodedString.hasPrefix("100") || decodedString.hasPrefix("110")) {
+      return decodedString
+    }
+    
+    return nil
+  }
+  
+  /// Emits serial number information to React Native
+  private func emitSerialNumberInfo(serialNumber: String, style: String, color: String) {
+    let eventBody: [String: Any] = [
+      "type": "glasses_serial_number",
+      "serialNumber": serialNumber,
+      "style": style,
+      "color": color
+    ]
+    
+    // Convert to JSON string for CoreMessageEvent
+    do {
+      let jsonData = try JSONSerialization.data(withJSONObject: eventBody, options: [])
+      if let jsonString = String(data: jsonData, encoding: .utf8) {
+        CoreCommsService.emitter.sendEvent(withName: "CoreMessageEvent", body: jsonString)
+        CoreCommsService.log("📱 Emitted serial number info: \(serialNumber), Style: \(style), Color: \(color)")
+        
+        // Trigger status update to include serial number in status JSON
+        DispatchQueue.main.async {
+          self.onSerialNumberDiscovered?()
+        }
+      }
+    } catch {
+      CoreCommsService.log("Error creating serial number JSON: \(error)")
+    }
   }
   
   // @@@ REACT NATIVE FUNCTIONS @@@
   
   @objc func RN_setSearchId(_ searchId: String) {
-    print("SETTING SEARCH_ID: \(searchId)")
+    CoreCommsService.log("SETTING SEARCH_ID: \(searchId)")
     DEVICE_SEARCH_ID = searchId
   }
   
-  // this scans for new (un-paired) glasses to connect to:
-  @objc func RN_startScan() -> Bool {
-
-    if centralManager == nil {
-      centralManager = CBCentralManager(delegate: self, queue: ERG1Manager._bluetoothQueue, options: ["CBCentralManagerOptionShowPowerAlertKey": 0])
-      setupCommandQueue()
-    }
-
-    self.isDisconnecting = false// reset intentional disconnect flag
-    guard centralManager!.state == .poweredOn else {
-      print("Bluetooth is not powered on.")
-      return false
-    }
+  // this scans for glasses to connect to and only connnects if SEARCH_ID is set
+  func startScan() -> Void {
     
-    print("startScan()")
-    
-    // send our already connected devices to RN:
-    let devices = getConnectedDevices()
-    print("connnectedDevices.count: (\(devices.count))")
-    for device in devices {
-      if let name = device.name {
-        print("Connected to device: \(name)")
-        if name.contains("_L_") && name.contains(DEVICE_SEARCH_ID) {
-          leftPeripheral = device
-          device.delegate = self
-          device.discoverServices([UART_SERVICE_UUID])
-        } else if name.contains("_R_") && name.contains(DEVICE_SEARCH_ID) {
-          rightPeripheral = device
-          device.delegate = self
-          device.discoverServices([UART_SERVICE_UUID])
-        }
-        emitDiscoveredDevice(name);
+    Task {
+      
+      if centralManager == nil {
+        centralManager = CBCentralManager(delegate: self, queue: ERG1Manager._bluetoothQueue, options: ["CBCentralManagerOptionShowPowerAlertKey": 0])
+        setupCommandQueue()
+        // wait for the central manager to be fully initialized before we start scanning:
+        try? await Task.sleep(nanoseconds: 100 * 1_000_000)// 100ms
       }
-    }
-    
-    
-//    // First try: Connect by UUID (works in background)
-    if connectByUUID() {
-        print("🔄 Found and attempting to connect to stored glasses UUIDs")
+      
+      
+      self.isDisconnecting = false// reset intentional disconnect flag
+      guard centralManager!.state == .poweredOn else {
+        CoreCommsService.log("Attempting to scan but bluetooth is not powered on.")
+        return false
+      }
+      
+      // send our already connected devices to RN:
+      let devices = getConnectedDevices()
+      CoreCommsService.log("connnectedDevices.count: (\(devices.count))")
+      for device in devices {
+        if let name = device.name {
+          CoreCommsService.log("Connected to device: \(name)")
+          if name.contains("_L_") && name.contains(DEVICE_SEARCH_ID) {
+            leftPeripheral = device
+            device.delegate = self
+            device.discoverServices([UART_SERVICE_UUID])
+          } else if name.contains("_R_") && name.contains(DEVICE_SEARCH_ID) {
+            rightPeripheral = device
+            device.delegate = self
+            device.discoverServices([UART_SERVICE_UUID])
+          }
+          emitDiscoveredDevice(name);
+        }
+      }
+      
+      
+      // First try: Connect by UUID (works in background)
+      if connectByUUID() {
+        CoreCommsService.log("🔄 Found and attempting to connect to stored glasses UUIDs")
         // Wait for connection to complete - no need to scan
         return true
-    }
-//
-    let scanOptions: [String: Any] = [
+      }
+      
+      let scanOptions: [String: Any] = [
         CBCentralManagerScanOptionAllowDuplicatesKey: false,  // Don't allow duplicate advertisements
-    ]
-    
-    centralManager!.scanForPeripherals(withServices: nil, options: scanOptions)
+      ]
+      
+      centralManager!.scanForPeripherals(withServices: nil, options: scanOptions)
+      return true
+    }
+  }
+  
+  public func connectById(_ id: String) -> Bool {
+    self.DEVICE_SEARCH_ID = "_" + id + "_"
+    startScan();
     return true
   }
   
-  @objc public func RN_pairById(_ id: String) -> Bool {
-    self.DEVICE_SEARCH_ID = "_" + id + "_"
-    RN_startScan();
-    return true
+  func findCompatibleDevices() -> Void {
+    self.DEVICE_SEARCH_ID = "NOT_SET"
+    startScan();
   }
   
   // connect to glasses we've discovered:
   @objc public func RN_connectGlasses() -> Bool {
-    print("RN_connectGlasses()")
+    CoreCommsService.log("RN_connectGlasses()")
     
     if let side = leftPeripheral {
       centralManager!.connect(side, options: nil)
@@ -287,8 +424,8 @@ enum GlassesError: Error {
       return false;
     }
     
-    print("found both glasses \(leftPeripheral!.name ?? "(unknown)"), \(rightPeripheral!.name ?? "(unknown)") stopping scan");
-//    startHeartbeatTimer();
+    CoreCommsService.log("found both glasses \(leftPeripheral!.name ?? "(unknown)"), \(rightPeripheral!.name ?? "(unknown)") stopping scan");
+    //    startHeartbeatTimer();
     RN_stopScan();
     return true
   }
@@ -314,22 +451,22 @@ enum GlassesError: Error {
     }
     
     // @@@@@@@@ just for testing:
-//    Task {
-//      msgId += 1
-//      let ncsNotification = NCSNotification(
-//          msgId: msgId,
-//          appIdentifier: "io.heckel.ntfy",
-//          title: "Notification Title",
-//          subtitle: "Notification Subtitle",
-//          message: text,
-//          displayName: "Example App"
-//      )
-//
-//      let notification = G1Notification(ncsNotification: ncsNotification)
-//      let encodedChunks = await notification.constructNotification()
-//      print("encodedChunks: \(encodedChunks.count)")
-//      self.queueChunks(encodedChunks)
-//    }
+    //    Task {
+    //      msgId += 1
+    //      let ncsNotification = NCSNotification(
+    //          msgId: msgId,
+    //          appIdentifier: "io.heckel.ntfy",
+    //          title: "Notification Title",
+    //          subtitle: "Notification Subtitle",
+    //          message: text,
+    //          displayName: "Example App"
+    //      )
+    //
+    //      let notification = G1Notification(ncsNotification: ncsNotification)
+    //      let encodedChunks = await notification.constructNotification()
+    //      CoreCommsService.log("encodedChunks: \(encodedChunks.count)")
+    //      self.queueChunks(encodedChunks)
+    //    }
   }
   
   @objc public func RN_sendTextWall(_ text: String) -> Void {
@@ -349,18 +486,18 @@ enum GlassesError: Error {
     
     if left != nil {
       leftReady = left!
-      if (!prevLeftReady) {
-        print("Left ready!")
+      if (!prevLeftReady && leftReady) {
+        CoreCommsService.log("Left ready!")
       }
     }
     if right != nil {
       rightReady = right!
-      if (!prevRightReady) {
-        print("Right ready!")
+      if (!prevRightReady && rightReady) {
+        CoreCommsService.log("Right ready!")
       }
     }
     
-    // print("g1Ready set to \(leftReady) \(rightReady) \(leftReady && rightReady)")
+    // CoreCommsService.log("g1Ready set to \(leftReady) \(rightReady) \(leftReady && rightReady)")
     g1Ready = leftReady && rightReady
     if g1Ready {
       stopReconnectionTimer()
@@ -369,7 +506,15 @@ enum GlassesError: Error {
   
   @objc func RN_stopScan() {
     centralManager!.stopScan()
-    print("Stopped scanning for devices")
+    CoreCommsService.log("Stopped scanning for devices")
+  }
+  
+  @objc func RN_getSerialNumberInfo() -> [String: Any] {
+    return [
+      "serialNumber": glassesSerialNumber ?? "",
+      "style": glassesStyle ?? "",
+      "color": glassesColor ?? ""
+    ]
   }
   
   @objc func disconnect() {
@@ -377,6 +522,7 @@ enum GlassesError: Error {
     leftGlassUUID = nil
     rightGlassUUID = nil
     stopReconnectionTimer()
+    
     if let left = leftPeripheral {
       centralManager!.cancelPeripheralConnection(left)
     }
@@ -388,7 +534,7 @@ enum GlassesError: Error {
     leftPeripheral = nil
     rightPeripheral = nil
     setReadiness(left: false, right: false)
-    print("Disconnected from glasses")
+    CoreCommsService.log("Disconnected from glasses")
   }
   
   // @@@ END REACT NATIVE FUNCTIONS
@@ -458,10 +604,10 @@ enum GlassesError: Error {
     
     while attempts < maxAttempts && !result {
       if (attempts > 0) {
-        print("trying again to send to:\(s): \(attempts)")
+        CoreCommsService.log("trying again to send to:\(s): \(attempts)")
       }
       let data = Data(chunks[0])
-      print("SEND (\(s)) \(data.hexEncodedString())")
+      CoreCommsService.log("SEND (\(s)) \(data.hexEncodedString())")
       
       if self.isDisconnecting {
         // forget whatever we were doing since we're disconnecting:
@@ -477,7 +623,7 @@ enum GlassesError: Error {
       let lastChunk = chunks.last!
       await sendCommandToSide(lastChunk, side: side)
       
-      result = waitForSemaphore(semaphore: semaphore, timeout: 0.3)
+      result = waitForSemaphore(semaphore: semaphore, timeout: (0.3 + (Double(attempts) * 0.1)))
       
       attempts += 1
       if !result && (attempts >= maxAttempts) {
@@ -491,7 +637,7 @@ enum GlassesError: Error {
   // Process a single number with timeouts
   private func processCommand(_ command: BufferedCommand) async {
     
-    //    print("@@@ processing command \(command.chunks[0][0]),\(command.chunks[0][1]) @@@")
+    //    CoreCommsService.log("@@@ processing command \(command.chunks[0][0]),\(command.chunks[0][1]) @@@")
     
     // TODO: this is a total hack but in theory ensure semaphores are at count 1:
     // in theory this shouldn't be necesarry but in practice this helps ensure weird
@@ -500,7 +646,7 @@ enum GlassesError: Error {
     resetSemaphoreToZero(rightSemaphore)
     
     if command.chunks.isEmpty {
-      print("@@@ chunks was empty! @@@")
+      CoreCommsService.log("@@@ chunks was empty! @@@")
       return
     }
     
@@ -509,7 +655,7 @@ enum GlassesError: Error {
       await attemptSend(chunks: command.chunks, side: "left")
     }
     
-    //    print("@@@ sent (or failed) to left, now trying right @@@")
+    //    CoreCommsService.log("@@@ sent (or failed) to left, now trying right @@@")
     
     if command.sendRight {
       await attemptSend(chunks: command.chunks, side: "right")
@@ -533,13 +679,13 @@ enum GlassesError: Error {
     
     // Check if a timer is already running
     if heartbeatTimer != nil && heartbeatTimer!.isValid {
-        print("Heartbeat timer already running")
-        return
+      CoreCommsService.log("Heartbeat timer already running")
+      return
     }
     
     // Create a new queue if needed
     if heartbeatQueue == nil {
-        heartbeatQueue = DispatchQueue(label: "com.sample.heartbeatTimerQueue", qos: .background)
+      heartbeatQueue = DispatchQueue(label: "com.sample.heartbeatTimerQueue", qos: .background)
     }
     
     heartbeatQueue!.async { [weak self] in
@@ -586,7 +732,7 @@ enum GlassesError: Error {
     
     let side = peripheral == leftPeripheral ? "left" : "right"
     let s = peripheral == leftPeripheral ? "L" : "R"
-//    print("RECV (\(s)) \(data.hexEncodedString())")
+       CoreCommsService.log("RECV (\(s)) \(data.hexEncodedString())")
     
     switch Commands(rawValue: command) {
     case .BLE_REQ_INIT:
@@ -608,11 +754,11 @@ enum GlassesError: Error {
       handleAck(from: peripheral, success: data[1] == 0x07 || data[1] == 0x90 || data[1] == 0x0C)
     case .HEAD_UP_ANGLE:
       handleAck(from: peripheral, success: data[1] == CommandResponse.ACK.rawValue)
-    // head up angle ack
-    // position ack
+      // head up angle ack
+      // position ack
     case .BLE_REQ_TRANSFER_MIC_DATA:
       self.compressedVoiceData = data
-      //                print("Got voice data: " + String(data.count))
+      //                CoreCommsService.log("Got voice data: " + String(data.count))
       break
     case .UNK_1:
       handleAck(from: peripheral, success: true)
@@ -635,17 +781,17 @@ enum GlassesError: Error {
       let rawVoltage = (voltageHigh << 8) | voltageLow
       let voltage = rawVoltage / 10  // Scale down by 10 to get actual millivolts
       
-      //      print("Raw battery data - Battery: \(batteryPercent)%, Voltage: \(voltage)mV, Flags: 0x\(String(format: "%02X", flags))")
+      //      CoreCommsService.log("Raw battery data - Battery: \(batteryPercent)%, Voltage: \(voltage)mV, Flags: 0x\(String(format: "%02X", flags))")
       
       // if left, update left battery level, if right, update right battery level
       if peripheral == leftPeripheral {
         if leftBatteryLevel != batteryPercent {
-          print("Left glass battery: \(batteryPercent)%")
+          CoreCommsService.log("Left glass battery: \(batteryPercent)%")
           leftBatteryLevel = batteryPercent
         }
       } else if peripheral == rightPeripheral {
         if rightBatteryLevel != batteryPercent {
-          print("Right glass battery: \(batteryPercent)%")
+          CoreCommsService.log("Right glass battery: \(batteryPercent)%")
           rightBatteryLevel = batteryPercent
         }
       }
@@ -663,82 +809,82 @@ enum GlassesError: Error {
       let order = data[1]
       switch DeviceOrders(rawValue: order) {
       case .HEAD_UP:
-        print("HEAD_UP")
+        CoreCommsService.log("HEAD_UP")
         isHeadUp = true
         break
       case .HEAD_UP2:
-        print("HEAD_UP2")
+        CoreCommsService.log("HEAD_UP2")
         isHeadUp = true
         break
       case .HEAD_DOWN:
-        print("HEAD_DOWN")
+        CoreCommsService.log("HEAD_DOWN")
         isHeadUp = false
         break
       case .HEAD_DOWN2:
-        print("HEAD_DOWN2")
+        CoreCommsService.log("HEAD_DOWN2")
         isHeadUp = false
         break
       case .ACTIVATED:
-        print("ACTIVATED")
+        CoreCommsService.log("ACTIVATED")
       case .SILENCED:
-        print("SILENCED")
+        CoreCommsService.log("SILENCED")
       case .DISPLAY_READY:
-        print("DISPLAY_READY")
-//        sendInitCommand(to: peripheral)// experimental
+        CoreCommsService.log("DISPLAY_READY")
+        //        sendInitCommand(to: peripheral)// experimental
       case .TRIGGER_FOR_AI:
-        print("TRIGGER AI")
+        CoreCommsService.log("TRIGGER AI")
       case .TRIGGER_FOR_STOP_RECORDING:
-        print("STOP RECORDING")
+        CoreCommsService.log("STOP RECORDING")
       case .TRIGGER_CHANGE_PAGE:
-        print("TRIGGER_CHANGE_PAGE")
+        CoreCommsService.log("TRIGGER_CHANGE_PAGE")
       case .CASE_REMOVED:
-        print("REMOVED FROM CASE")
+        CoreCommsService.log("REMOVED FROM CASE")
         self.caseRemoved = true
       case .CASE_REMOVED2:
-        print("REMOVED FROM CASE2")
+        CoreCommsService.log("REMOVED FROM CASE2")
         self.caseRemoved = true
       case .CASE_OPEN:
         self.caseOpen = true
         self.caseRemoved = false
-        print("CASE OPEN");
+        CoreCommsService.log("CASE OPEN");
       case .CASE_CLOSED:
         self.caseOpen = false
         self.caseRemoved = false
-        print("CASE CLOSED");
+        CoreCommsService.log("CASE CLOSED");
       case .CASE_CHARGING_STATUS:
         guard data.count >= 3 else { break }
         let status = data[2]
         if status == 0x01 {
           self.caseCharging = true
-          print("CASE CHARGING")
+          CoreCommsService.log("CASE CHARGING")
         } else {
           self.caseCharging = false
-          print("CASE NOT CHARGING")
+          CoreCommsService.log("CASE NOT CHARGING")
         }
       case .CASE_CHARGE_INFO:
-        print("CASE CHARGE INFO")
+        CoreCommsService.log("CASE CHARGE INFO")
         guard data.count >= 3 else { break }
         if Int(data[2]) != -1 {
           caseBatteryLevel = Int(data[2])
-          print("Case battery level: \(caseBatteryLevel)%")
+          CoreCommsService.log("Case battery level: \(caseBatteryLevel)%")
         } else {
-          print("Case battery level was -1")
+          CoreCommsService.log("Case battery level was -1")
         }
       case .DOUBLE_TAP:
-        print("DOUBLE TAP / display turned off")
-//        Task {
-////          RN_sendText("DOUBLE TAP DETECTED")
-////          queueChunks([[UInt8(0x00), UInt8(0x01)]])
-//          try? await Task.sleep(nanoseconds: 1500 * 1_000_000) // 2s delay after sending
-//          sendInit()
-//          clearState()
-//        }
+        CoreCommsService.log("DOUBLE TAP / display turned off")
+        //        Task {
+        ////          RN_sendText("DOUBLE TAP DETECTED")
+        ////          queueChunks([[UInt8(0x00), UInt8(0x01)]])
+        //          try? await Task.sleep(nanoseconds: 1500 * 1_000_000) // 2s delay after sending
+        //          sendInit()
+        //          clearState()
+        //        }
       default:
-        print("Received device order: \(data.subdata(in: 1..<data.count).hexEncodedString())")
+        CoreCommsService.log("Received device order: \(data.subdata(in: 1..<data.count).hexEncodedString())")
         break
       }
     default:
-      //          print("received from G1(not handled): \(data.hexEncodedString())")
+      //          CoreCommsService.log("received from G1(not handled): \(data.hexEncodedString())")
       break
     }
   }
@@ -756,7 +902,7 @@ extension ERG1Manager {
     ]
     let whitelistJson = createWhitelistJson(apps: apps)
     
-    print("Creating chunks for hardcoded whitelist: \(whitelistJson)")
+    CoreCommsService.log("Creating chunks for hardcoded whitelist: \(whitelistJson)")
     
     // Convert JSON to bytes and split into chunks
     return createWhitelistChunks(json: whitelistJson)
@@ -794,7 +940,7 @@ extension ERG1Manager {
         return "{}"
       }
     } catch {
-      print("Error creating whitelist JSON: \(error.localizedDescription)")
+      CoreCommsService.log("Error creating whitelist JSON: \(error.localizedDescription)")
       return "{}"
     }
   }
@@ -807,7 +953,7 @@ extension ERG1Manager {
     let totalChunks = Int(ceil(Double(jsonData.count) / Double(MAX_CHUNK_SIZE)))
     var chunks: [Data] = []
     
-    print("jsonData.count = \(jsonData.count), totalChunks = \(totalChunks)")
+    CoreCommsService.log("jsonData.count = \(jsonData.count), totalChunks = \(totalChunks)")
     
     for i in 0..<totalChunks {
       let start = i * MAX_CHUNK_SIZE
@@ -859,7 +1005,7 @@ extension ERG1Manager {
     let initDataArray = initData.map { UInt8($0) }
     queueChunks([initDataArray])
   }
-
+  
   func RN_exit() {
     let exitData = Data([Commands.BLE_EXIT_ALL_FUNCTIONS.rawValue])
     let exitDataArray = exitData.map { UInt8($0) }
@@ -870,11 +1016,11 @@ extension ERG1Manager {
   private func handleInitResponse(from peripheral: CBPeripheral, success: Bool) {
     if peripheral == leftPeripheral {
       leftInitialized = success
-      // print("Left arm initialized: \(success)")
+      // CoreCommsService.log("Left arm initialized: \(success)")
       setReadiness(left: true, right: nil)
     } else if peripheral == rightPeripheral {
       rightInitialized = success
-      // print("Right arm initialized: \(success)")
+      // CoreCommsService.log("Right arm initialized: \(success)")
       setReadiness(left: nil, right: true)
     }
     
@@ -894,22 +1040,22 @@ extension ERG1Manager {
     if g1Ready {
       queueChunks([heartbeatArray])
     }
-//    if let txChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: peripheral) {
-//      let hexString = heartbeatData.map { String(format: "%02X", $0) }.joined()
-//      peripheral.writeValue(heartbeatData, for: txChar, type: .withoutResponse)
-//    }
+    //    if let txChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: peripheral) {
+    //      let hexString = heartbeatData.map { String(format: "%02X", $0) }.joined()
+    //      peripheral.writeValue(heartbeatData, for: txChar, type: .withoutResponse)
+    //    }
   }
   
   public func sendCommandToSide(_ command: [UInt8], side: String) async {
     // Ensure command is exactly 20 bytes
-//    var paddedCommand = command
-//    while paddedCommand.count < 20 {
-//      paddedCommand.append(0x00)
-//    }
+    //    var paddedCommand = command
+    //    while paddedCommand.count < 20 {
+    //      paddedCommand.append(0x00)
+    //    }
     
     // Convert to Data
     let commandData = Data(command)
-    //    print("Sending command to glasses: \(paddedCommand.map { String(format: "%02X", $0) }.joined(separator: " "))")
+    //    CoreCommsService.log("Sending command to glasses: \(paddedCommand.map { String(format: "%02X", $0) }.joined(separator: " "))")
     
     if (side == "left") {
       // send to left
@@ -941,7 +1087,7 @@ extension ERG1Manager {
   
   
   @objc func RN_sendWhitelist() {
-    print("RN_sendWhitelist()")
+    CoreCommsService.log("RN_sendWhitelist()")
     let whitelistChunks = getWhitelistChunks()
     queueChunks(whitelistChunks, sendLeft: true, sendRight: true, sleepAfterMs: 100)
   }
@@ -963,7 +1109,7 @@ extension ERG1Manager {
   }
   
   public func setBrightness(_ level: UInt8, autoMode: Bool = false) async -> Bool {
-    print("setBrightness()")
+    CoreCommsService.log("setBrightness()")
     // Ensure level is between 0x00 and 0x29 (0-41)
     var lvl: UInt8 = level
     if (level > 0x29) {
@@ -974,8 +1120,8 @@ extension ERG1Manager {
     queueChunks([command])
     
     // buried data point testing:
-//    let command: [UInt8] = [0x3E]
-//    queueChunks([command])
+    //    let command: [UInt8] = [0x3E]
+    //    queueChunks([command])
     
     //    // Send to both glasses with proper timing
     //    if let rightGlass = rightPeripheral,
@@ -1010,7 +1156,7 @@ extension ERG1Manager {
   }
   
   public func setHeadUpAngle(_ angle: UInt8) async -> Bool {
-    print("setHeadUpAngle()")
+    CoreCommsService.log("setHeadUpAngle()")
     let command: [UInt8] = [Commands.HEAD_UP_ANGLE.rawValue, angle, 0x01]
     queueChunks([command])
     return true
@@ -1023,7 +1169,7 @@ extension ERG1Manager {
   }
   
   public func getBatteryStatus() async {
-    print("getBatteryStatus()")
+    CoreCommsService.log("getBatteryStatus()")
     let command: [UInt8] = [0x2C, 0x01]
     queueChunks([command])
   }
@@ -1039,7 +1185,7 @@ extension ERG1Manager {
       await setDashboardPosition(UInt8(height), UInt8(depth))
     }
   }
-
+  
   public func incrementGlobalCounter() {
     if globalCounter < 255 {
       globalCounter += 1
@@ -1070,9 +1216,9 @@ extension ERG1Manager {
     command.append(h) // height
     command.append(d) // depth
     
-//    while command.count < 20 {
-//      command.append(0x00)
-//    }
+    //    while command.count < 20 {
+    //      command.append(0x00)
+    //    }
     
     // convert command to array of UInt8
     let commandArray = command.map { $0 }
@@ -1081,7 +1227,7 @@ extension ERG1Manager {
   }
   
   @objc public func RN_setMicEnabled(_ enabled: Bool) {
-    print("RN_setMicEnabled()")
+    CoreCommsService.log("RN_setMicEnabled()")
     Task {
       await setMicEnabled(enabled: enabled)
     }
@@ -1168,7 +1314,7 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
           CoreCommsService.emitter.sendEvent(withName: "CoreMessageEvent", body: jsonString)
         }
       } catch {
-        print("Error converting to JSON: \(error)")
+        CoreCommsService.log("Error converting to JSON: \(error)")
       }
     }
   }
@@ -1179,13 +1325,42 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
     guard let name = peripheral.name else { return }
     guard name.contains("Even G1") else { return }
     
-    print("found peripheral: \(name) - SEARCH_ID: \(DEVICE_SEARCH_ID)")
+    CoreCommsService.log("found peripheral: \(name) - SEARCH_ID: \(DEVICE_SEARCH_ID)")
+    
+    // Only process serial number for devices that match our search ID
+    if name.contains(DEVICE_SEARCH_ID) {
+      // Extract manufacturer data to decode serial number
+      if let manufacturerData = advertisementData[CBAdvertisementDataManufacturerDataKey] as? Data {
+        CoreCommsService.log("📱 Found manufacturer data: \(manufacturerData.hexEncodedString())")
+        
+        // Try to decode serial number from manufacturer data
+        if let decodedSerial = decodeSerialFromManufacturerData(manufacturerData) {
+          CoreCommsService.log("📱 Decoded serial number: \(decodedSerial)")
+          
+          // Decode style and color from serial number
+          let (style, color) = ERG1Manager.decodeEvenG1SerialNumber(decodedSerial)
+          CoreCommsService.log("📱 Style: \(style), Color: \(color)")
+          
+          // Store the information
+          glassesSerialNumber = decodedSerial
+          glassesStyle = style
+          glassesColor = color
+          
+          // Emit the serial number information
+          emitSerialNumberInfo(serialNumber: decodedSerial, style: style, color: color)
+        } else {
+          CoreCommsService.log("📱 Could not decode serial number from manufacturer data")
+        }
+      } else {
+        CoreCommsService.log("📱 No manufacturer data found in advertisement")
+      }
+    }
     
     if name.contains("_L_") && name.contains(DEVICE_SEARCH_ID) {
-      print("Found left arm: \(name)")
+      CoreCommsService.log("Found left arm: \(name)")
       leftPeripheral = peripheral
     } else if name.contains("_R_") && name.contains(DEVICE_SEARCH_ID) {
-      print("Found right arm: \(name)")
+      CoreCommsService.log("Found right arm: \(name)")
       rightPeripheral = peripheral
     }
     
@@ -1199,26 +1374,26 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
   }
   
   public func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
-    print("centralManager(_:didConnect:) device connected!: \(peripheral.name ?? "Unknown")")
+    CoreCommsService.log("centralManager(_:didConnect:) device connected!: \(peripheral.name ?? "Unknown")")
     peripheral.delegate = self
     peripheral.discoverServices([UART_SERVICE_UUID])
-
+    
     // Store the UUIDs for future reconnection
     if peripheral == leftPeripheral || (peripheral.name?.contains("_L_") ?? false) {
-        print("🔵 Storing left glass UUID: \(peripheral.identifier.uuidString)")
-        leftGlassUUID = peripheral.identifier
-        leftPeripheral = peripheral
+      CoreCommsService.log("🔵 Storing left glass UUID: \(peripheral.identifier.uuidString)")
+      leftGlassUUID = peripheral.identifier
+      leftPeripheral = peripheral
     }
-
+    
     if peripheral == rightPeripheral || (peripheral.name?.contains("_R_") ?? false) {
-        print("🔵 Storing right glass UUID: \(peripheral.identifier.uuidString)")
-        rightGlassUUID = peripheral.identifier
-        rightPeripheral = peripheral
+      CoreCommsService.log("🔵 Storing right glass UUID: \(peripheral.identifier.uuidString)")
+      rightGlassUUID = peripheral.identifier
+      rightPeripheral = peripheral
     }
     
     // Update the last connection timestamp
     lastConnectionTimestamp = Date()
-    print("Connected to peripheral: \(peripheral.name ?? "Unknown")")
+    CoreCommsService.log("Connected to peripheral: \(peripheral.name ?? "Unknown")")
     
     // Emit connection event
     let isLeft = peripheral == leftPeripheral
@@ -1229,11 +1404,11 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
     ]
     
     // tell iOS to reconnect to this, even from the background
-//    central.connect(peripheral, options: [
-//        CBConnectPeripheralOptionNotifyOnConnectionKey: true,
-//        CBConnectPeripheralOptionNotifyOnDisconnectionKey: true,
-//        CBConnectPeripheralOptionNotifyOnNotificationKey: true
-//    ])
+    //    central.connect(peripheral, options: [
+    //        CBConnectPeripheralOptionNotifyOnConnectionKey: true,
+    //        CBConnectPeripheralOptionNotifyOnDisconnectionKey: true,
+    //        CBConnectPeripheralOptionNotifyOnNotificationKey: true
+    //    ])
     
     // TODO: ios not actually used for anything yet, but we should trigger a re-connect if it was disconnected:
     //    CoreCommsService.emitter.sendEvent(withName: "onConnectionStateChanged", body: eventBody)
@@ -1241,7 +1416,7 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
   
   public func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: (any Error)?) {
     let side = peripheral == leftPeripheral ? "LEFT" : peripheral == rightPeripheral ? "RIGHT" : "unknown"
-    print("@@@@@ \(side) PERIPHERAL DISCONNECTED @@@@@")
+    CoreCommsService.log("@@@@@ \(side) PERIPHERAL DISCONNECTED @@@@@")
     
     // only reconnect if we're not intentionally disconnecting:
     if self.isDisconnecting {
@@ -1258,103 +1433,110 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
   }
   
   private func startReconnectionTimer() {
-      // Cancel any existing timer
-      stopReconnectionTimer()
-      
-      // Reset attempt counter
-      reconnectionAttempts = 0
-      
-      // Create a new timer on a background queue
-      let queue = DispatchQueue(label: "com.sample.reconnectionTimerQueue", qos: .background)
-      queue.async { [weak self] in
-          guard let self = self else {
-            return
-          }
-          self.reconnectionTimer = Timer.scheduledTimer(
-              timeInterval: self.reconnectionInterval,
-              target: self,
-              selector: #selector(self.attemptReconnection),
-              userInfo: nil,
-              repeats: true
-          )
-        
-          guard let recon = reconnectionTimer else {
-            return
-          }
-          
-          // Fire immediately for first attempt
-          recon.fire()
-          
-          // Add timer to the run loop
-          RunLoop.current.add(recon, forMode: .default)
-          RunLoop.current.run()
+    // Cancel any existing timer
+    stopReconnectionTimer()
+    
+    // Reset attempt counter
+    reconnectionAttempts = 0
+    
+    // Create a new timer on a background queue
+    let queue = DispatchQueue(label: "com.sample.reconnectionTimerQueue", qos: .background)
+    queue.async { [weak self] in
+      guard let self = self else {
+        return
       }
+      self.reconnectionTimer = Timer.scheduledTimer(
+        timeInterval: self.reconnectionInterval,
+        target: self,
+        selector: #selector(self.attemptReconnection),
+        userInfo: nil,
+        repeats: true
+      )
+      
+      guard let recon = reconnectionTimer else {
+        return
+      }
+      
+      // Fire immediately for first attempt
+      recon.fire()
+      
+      // Add timer to the run loop
+      RunLoop.current.add(recon, forMode: .default)
+      RunLoop.current.run()
+    }
   }
-
+  
   private func stopReconnectionTimer() {
-      reconnectionTimer?.invalidate()
-      reconnectionTimer = nil
+    reconnectionTimer?.invalidate()
+    reconnectionTimer = nil
   }
   
   // Connect by UUID
   @objc public func connectByUUID() -> Bool {
-      print("🔵 Attempting to connect by UUID")
-      var foundAny = false
-      
-      if let leftUUID = leftGlassUUID {
-          print("🔵 Found stored left glass UUID: \(leftUUID.uuidString)")
-          let leftDevices = centralManager!.retrievePeripherals(withIdentifiers: [leftUUID])
-          
-          if let leftDevice = leftDevices.first {
-              print("🔵 Successfully retrieved left glass: \(leftDevice.name ?? "Unknown")")
-              foundAny = true
-              leftPeripheral = leftDevice
-              leftDevice.delegate = self
-              centralManager!.connect(leftDevice, options: [
-                  CBConnectPeripheralOptionNotifyOnConnectionKey: true,
-                  CBConnectPeripheralOptionNotifyOnDisconnectionKey: true
-              ])
-          }
-      }
-      
-      if let rightUUID = rightGlassUUID {
-          print("🔵 Found stored right glass UUID: \(rightUUID.uuidString)")
-          let rightDevices = centralManager!.retrievePeripherals(withIdentifiers: [rightUUID])
-          
-          if let rightDevice = rightDevices.first {
-              print("🔵 Successfully retrieved right glass: \(rightDevice.name ?? "Unknown")")
-              foundAny = true
-              rightPeripheral = rightDevice
-              rightDevice.delegate = self
-              centralManager!.connect(rightDevice, options: [
-                  CBConnectPeripheralOptionNotifyOnConnectionKey: true,
-                  CBConnectPeripheralOptionNotifyOnDisconnectionKey: true
-              ])
-          }
-      }
-      
-      return foundAny
-  }
-
-  @objc private func attemptReconnection() {
-      // Check if we're already connected
-      if g1Ready {
-          stopReconnectionTimer()
-          return
-      }
-      
-      // Check if we've exceeded maximum attempts
-      if maxReconnectionAttempts > 0 && reconnectionAttempts >= maxReconnectionAttempts {
-          print("Maximum reconnection attempts reached. Stopping reconnection timer.")
-          stopReconnectionTimer()
-          return
-      }
     
-      reconnectionAttempts += 1
-      print("Attempting reconnection (attempt \(reconnectionAttempts))...")
+    // don't do this if we don't have a search id set:
+    if DEVICE_SEARCH_ID == "NOT_SET" || DEVICE_SEARCH_ID.isEmpty {
+      CoreCommsService.log("🔵 No DEVICE_SEARCH_ID set, skipping connect by UUID")
+      return false
+    }
+    
+    CoreCommsService.log("🔵 Attempting to connect by UUID")
+    var foundAny = false
+    
+    if let leftUUID = leftGlassUUID {
+      CoreCommsService.log("🔵 Found stored left glass UUID: \(leftUUID.uuidString)")
+      let leftDevices = centralManager!.retrievePeripherals(withIdentifiers: [leftUUID])
       
-      // Start a new scan
-      RN_startScan()
+      if let leftDevice = leftDevices.first {
+        CoreCommsService.log("🔵 Successfully retrieved left glass: \(leftDevice.name ?? "Unknown")")
+        foundAny = true
+        leftPeripheral = leftDevice
+        leftDevice.delegate = self
+        centralManager!.connect(leftDevice, options: [
+          CBConnectPeripheralOptionNotifyOnConnectionKey: true,
+          CBConnectPeripheralOptionNotifyOnDisconnectionKey: true
+        ])
+      }
+    }
+    
+    if let rightUUID = rightGlassUUID {
+      CoreCommsService.log("🔵 Found stored right glass UUID: \(rightUUID.uuidString)")
+      let rightDevices = centralManager!.retrievePeripherals(withIdentifiers: [rightUUID])
+      
+      if let rightDevice = rightDevices.first {
+        CoreCommsService.log("🔵 Successfully retrieved right glass: \(rightDevice.name ?? "Unknown")")
+        foundAny = true
+        rightPeripheral = rightDevice
+        rightDevice.delegate = self
+        centralManager!.connect(rightDevice, options: [
+          CBConnectPeripheralOptionNotifyOnConnectionKey: true,
+          CBConnectPeripheralOptionNotifyOnDisconnectionKey: true
+        ])
+      }
+    }
+    
+    return foundAny
+  }
+  
+  @objc private func attemptReconnection() {
+    // Check if we're already connected
+    if g1Ready {
+      stopReconnectionTimer()
+      return
+    }
+    
+    // Check if we've exceeded maximum attempts
+    if maxReconnectionAttempts > 0 && reconnectionAttempts >= maxReconnectionAttempts {
+      CoreCommsService.log("Maximum reconnection attempts reached. Stopping reconnection timer.")
+      stopReconnectionTimer()
+      return
+    }
+    
+    reconnectionAttempts += 1
+    CoreCommsService.log("Attempting reconnection (attempt \(reconnectionAttempts))...")
+    
+    // Start a new scan
+    startScan()
   }
   
   public func peripheral(_ peripheral: CBPeripheral, didDiscoverServices error: Error?) {
@@ -1383,16 +1565,16 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
             let value = Data([0x01, 0x00]) // ENABLE_NOTIFICATION_VALUE in iOS
             peripheral.writeValue(value, for: descriptor)
           } else {
-            print("PROC_QUEUE - descriptor not found")
+            CoreCommsService.log("PROC_QUEUE - descriptor not found")
           }
         }
       }
       
       // Mark the services as ready
       if peripheral == leftPeripheral {
-        print("Left glass services discovered and ready")
+        CoreCommsService.log("Left glass services discovered and ready")
       } else if peripheral == rightPeripheral {
-        print("Right glass services discovered and ready")
+        CoreCommsService.log("Right glass services discovered and ready")
       }
     }
   }
@@ -1400,26 +1582,26 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
   // called whenever bluetooth is initialized / turned on or off:
   public func centralManagerDidUpdateState(_ central: CBCentralManager) {
     if central.state == .poweredOn {
-      print("Bluetooth powered on")
+      CoreCommsService.log("Bluetooth was powered on")
       setReadiness(left: false, right: false)
       // only automatically start scanning if we have a SEARCH_ID, otherwise wait for RN to call startScan() itself
       if (DEVICE_SEARCH_ID != "NOT_SET" && !DEVICE_SEARCH_ID.isEmpty) {
-        RN_startScan()
+        startScan()
       }
     } else {
-      print("Bluetooth is not available.")
+      CoreCommsService.log("Bluetooth was turned off.")
     }
   }
   
   // called when we get data from the glasses:
   public func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
     if let error = error {
-      print("Error updating value for characteristic: \(error.localizedDescription)")
+      CoreCommsService.log("Error updating value for characteristic: \(error.localizedDescription)")
       return
     }
     
     guard let data = characteristic.value else {
-      print("Characteristic value is nil.")
+      CoreCommsService.log("Characteristic value is nil.")
       return
     }
     

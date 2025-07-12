@@ -9,6 +9,7 @@ import {ThemedStyle} from "@/theme"
 import {ViewStyle, TextStyle} from "react-native"
 import ActionButton from "@/components/ui/ActionButton"
 import WifiCredentialsService from "@/utils/WifiCredentialsService"
+import { useNavigationHistory } from "@/contexts/NavigationHistoryContext"
 
 export default function WifiConnectingScreen() {
   const params = useLocalSearchParams()
@@ -23,6 +24,7 @@ export default function WifiConnectingScreen() {
   const [errorMessage, setErrorMessage] = useState("")
   const connectionTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const failureGracePeriodRef = useRef<NodeJS.Timeout | null>(null)
+  const {push, goBack} = useNavigationHistory()
 
   useEffect(() => {
     // Start connection attempt
@@ -118,15 +120,15 @@ export default function WifiConnectingScreen() {
   }
 
   const handleCancel = () => {
-    router.back()
+    goBack()
   }
 
   const handleHeaderBack = () => {
     if (connectionStatus === "connecting") {
       // If still connecting, ask for confirmation
-      router.back()
+      goBack()
     } else {
-      router.back()
+      goBack()
     }
   }
 

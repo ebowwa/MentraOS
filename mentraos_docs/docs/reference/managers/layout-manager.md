@@ -222,7 +222,3 @@ enum ViewType {
    - Use the [`DASHBOARD`](/reference/enums#viewtype) view for persistent information the user may need to reference
    - Use the [`MAIN`](/reference/enums#viewtype) view for temporary information or responses to user actions
 
-5. **Bitmap Performance**: When using showBitmapView, optimize your images for performance and readability on AR displays:
-   - Keep images small and simple
-   - Use high contrast
-   - Prefer PNG format for transparency support

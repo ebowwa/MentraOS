@@ -2,10 +2,13 @@
 
 import { BaseMessage } from './base';
 import { AppToCloudMessageType } from '../message-types';
-import { ExtendedStreamType, StreamType } from '../streams';
+import { ExtendedStreamType, LocationStreamRequest } from '../streams';
 import { DisplayRequest } from '../layouts';
 import { DashboardContentUpdate, DashboardModeChange, DashboardSystemUpdate } from '../dashboard';
 import { VideoConfig, AudioConfig, StreamConfig } from '../rtmp-stream';
+
+// a subscription can now be either a simple string or our new rich object
+export type SubscriptionRequest = ExtendedStreamType | LocationStreamRequest;
 
 /**
  * Connection initialization from App
@@ -23,7 +26,7 @@ export interface AppConnectionInit extends BaseMessage {
 export interface AppSubscriptionUpdate extends BaseMessage {
   type: AppToCloudMessageType.SUBSCRIPTION_UPDATE;
   packageName: string;
-  subscriptions: ExtendedStreamType[];
+  subscriptions: SubscriptionRequest[];
 }
 
 /**
@@ -59,6 +62,25 @@ export interface RtmpStreamStopRequest extends BaseMessage {
   streamId?: string;  // Optional stream ID to specify which stream to stop
 }
 
+// defines the structure for our new on-demand location poll command
+export interface AppLocationPollRequest extends BaseMessage {
+  type: AppToCloudMessageType.LOCATION_POLL_REQUEST;
+  packageName: string;
+  sessionId: string;
+  accuracy: string;
+  correlationId: string;
+}
+
+/**
+ * Re-stream destination for managed streams
+ */
+export interface RestreamDestination {
+  /** RTMP URL like rtmp://youtube.com/live/STREAM-KEY */
+  url: string;
+  /** Optional friendly name like "YouTube" or "Twitch" */
+  name?: string;
+}
+
 /**
  * Managed RTMP stream request from App
  * The cloud handles the RTMP endpoint and returns HLS/DASH URLs
@@ -71,6 +93,8 @@ export interface ManagedStreamRequest extends BaseMessage {
   video?: VideoConfig;
   audio?: AudioConfig;
   stream?: StreamConfig;
+  /** Optional RTMP destinations to re-stream to (YouTube, Twitch, etc) */
+  restreamDestinations?: RestreamDestination[];
 }
 
 /**
@@ -82,13 +106,36 @@ export interface ManagedStreamStopRequest extends BaseMessage {
 }
 
 /**
+ * Audio play request from App
+ */
+export interface AudioPlayRequest extends BaseMessage {
+  type: AppToCloudMessageType.AUDIO_PLAY_REQUEST;
+  packageName: string;
+  requestId: string; // SDK-generated request ID to track the request
+  audioUrl: string; // URL to audio file for download and play
+  volume?: number; // Volume level 0.0-1.0, defaults to 1.0
+  stopOtherAudio?: boolean; // Whether to stop other audio playback, defaults to true
+}
+
+/**
+ * Audio stop request from App
+ */
+export interface AudioStopRequest extends BaseMessage {
+  type: AppToCloudMessageType.AUDIO_STOP_REQUEST;
+  packageName: string;
+}
+
+/**
  * Union type for all messages from Apps to cloud
  */
 export type AppToCloudMessage =
   | AppConnectionInit
   | AppSubscriptionUpdate
+  | AppLocationPollRequest
   | DisplayRequest
   | PhotoRequest
+  | AudioPlayRequest
+  | AudioStopRequest
   | RtmpStreamRequest
   | RtmpStreamStopRequest
   | ManagedStreamRequest
@@ -131,6 +178,19 @@ export function isPhotoRequest(message: AppToCloudMessage): message is PhotoRequ
   return message.type === AppToCloudMessageType.PHOTO_REQUEST;
 }
 
+/**
+ * Type guard to check if a message is a App audio play request
+ */
+export function isAudioPlayRequest(message: AppToCloudMessage): message is AudioPlayRequest {
+  return message.type === AppToCloudMessageType.AUDIO_PLAY_REQUEST;
+}
+
+/**
+ * Type guard to check if a message is a App audio stop request
+ */
+export function isAudioStopRequest(message: AppToCloudMessage): message is AudioStopRequest {
+  return message.type === AppToCloudMessageType.AUDIO_STOP_REQUEST;
+}
 
 /**
  * Type guard to check if a message is a dashboard content update

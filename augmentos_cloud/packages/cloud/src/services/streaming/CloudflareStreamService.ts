@@ -1,5 +1,23 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
 import { Logger } from 'pino';
+import { RestreamDestination } from '@mentra/sdk';
+
+/**
+ * Cloudflare Output configuration
+ */
+export interface CloudflareOutput {
+  uid: string;
+  url: string;
+  enabled: boolean;
+  created?: string;
+  modified?: string;
+  status?: {
+    current?: {
+      state: 'connected' | 'disconnected' | 'error' | null;
+      lastError?: string;
+    };
+  };
+}
 
 /**
  * Cloudflare Live Input response structure
@@ -59,6 +77,7 @@ export interface CreateLiveInputConfig {
   enableWebRTC?: boolean;
   enableRecording?: boolean;
   requireSignedURLs?: boolean;
+  restreamDestinations?: RestreamDestination[];
 }
 
 /**
@@ -70,6 +89,7 @@ export interface LiveInputResult {
   hlsUrl: string;
   dashUrl: string;
   webrtcUrl?: string;
+  outputs?: CloudflareOutput[];
 }
 
 /**
@@ -126,14 +146,34 @@ export class CloudflareStreamService {
       timeout: 10000 // 10 second timeout
     });
     
+    // Add request interceptor for logging
+    this.api.interceptors.request.use(
+      config => {
+        this.logger.debug({
+          method: config.method,
+          url: config.url,
+          headers: config.headers,
+          data: config.data ? JSON.stringify(config.data, null, 2) : 'empty',
+          params: config.params
+        }, '📤 Sending Cloudflare API request');
+        return config;
+      },
+      error => {
+        this.logger.error({ error }, '❌ Failed to prepare request');
+        return Promise.reject(error);
+      }
+    );
+    
     // Add response interceptor for logging
     this.api.interceptors.response.use(
       response => {
         this.logger.debug({
           method: response.config.method,
           url: response.config.url,
-          status: response.status
-        }, 'Cloudflare API request successful');
+          status: response.status,
+          responseData: JSON.stringify(response.data, null, 2),
+          responseHeaders: response.headers
+        }, '✅ Cloudflare API request successful');
         return response;
       },
       error => {
@@ -141,8 +181,12 @@ export class CloudflareStreamService {
           method: error.config?.method,
           url: error.config?.url,
           status: error.response?.status,
-          error: error.response?.data
-        }, 'Cloudflare API request failed');
+          error: error.response?.data,
+          errorMessage: error.message,
+          requestData: error.config?.data,
+          responseHeaders: error.response?.headers,
+          fullError: JSON.stringify(error, null, 2)
+        }, '❌ Cloudflare API request failed');
         return Promise.reject(error);
       }
     );
@@ -158,43 +202,170 @@ export class CloudflareStreamService {
     }
     
     try {
+      this.logger.debug({ userId, config }, '🚀 Starting Cloudflare live input creation');
+      
       const response = await this.withRetry(async () => {
-        return await this.api.post('/live_inputs', {
-          meta: {
-            userId,
-            createdAt: new Date().toISOString(),
-            mentraOS: true,
-            quality: config.quality || '720p'
-          },
-          recording: {
-            mode: config.enableRecording ? 'automatic' : 'off',
-            requireSignedURLs: config.requireSignedURLs || false
-          }
-          // No input constraints - Cloudflare is input-agnostic
-          // Perfect for Mentra Live's dynamic bitrate/resolution
-        });
+        // Cloudflare Stream API v2 uses empty body for basic stream creation
+        // Metadata can be updated after creation if needed
+        const requestBody = {};
+        this.logger.debug({ requestBody }, '📤 Sending request to Cloudflare');
+        return await this.api.post('/live_inputs', requestBody);
       });
+      
+      // Log the full response to understand structure
+      this.logger.info({ 
+        userId,
+        responseStatus: response.status,
+        responseHeaders: response.headers,
+        responseData: JSON.stringify(response.data, null, 2),
+        hasResult: !!response.data?.result,
+        resultType: typeof response.data?.result,
+        resultKeys: response.data?.result ? Object.keys(response.data.result) : []
+      }, '📥 Cloudflare API response received');
+      
+      if (!response.data?.result) {
+        this.logger.error({ 
+          userId,
+          responseData: response.data,
+          dataKeys: Object.keys(response.data || {})
+        }, '❌ No result in Cloudflare response');
+        throw new Error('Invalid response from Cloudflare: missing result');
+      }
       
       const liveInput: CloudflareLiveInput = response.data.result;
       
+      // Log the liveInput structure
+      this.logger.debug({
+        userId,
+        liveInput: JSON.stringify(liveInput, null, 2),
+        hasRtmps: !!liveInput.rtmps,
+        hasPlayback: !!liveInput.playback,
+        hasWebRTC: !!liveInput.webRTC,
+        liveInputKeys: Object.keys(liveInput)
+      }, '🔍 Parsing live input data');
+      
+      // Check for required fields
+      if (!liveInput.rtmps?.url || !liveInput.rtmps?.streamKey) {
+        this.logger.error({
+          userId,
+          rtmps: liveInput.rtmps,
+          rtmpsType: typeof liveInput.rtmps
+        }, '❌ Missing RTMPS data');
+        throw new Error('Invalid liveInput: missing RTMPS URL or stream key');
+      }
+      
+      // Construct playback URLs based on Cloudflare's pattern
+      // These URLs will become active once the stream goes live
+      const hlsUrl = this.constructHlsUrl(liveInput.uid);
+      const dashUrl = this.constructDashUrl(liveInput.uid);
+      
+      this.logger.info({
+        userId,
+        uid: liveInput.uid,
+        constructedHls: hlsUrl,
+        constructedDash: dashUrl,
+        note: 'Playback URLs constructed - will be active once stream is live'
+      }, '🎥 Constructed playback URLs for live stream');
+      
       const result: LiveInputResult = {
         liveInputId: liveInput.uid,
-        rtmpUrl: `${liveInput.rtmps.url}/${liveInput.rtmps.streamKey}`,
-        hlsUrl: liveInput.playback.hls,
-        dashUrl: liveInput.playback.dash,
+        rtmpUrl: `${liveInput.rtmps.url}${liveInput.rtmps.streamKey}`,
+        hlsUrl: hlsUrl,
+        dashUrl: dashUrl,
         webrtcUrl: liveInput.webRTC?.url
       };
+      
+      // Create outputs if requested
+      if (config.restreamDestinations && config.restreamDestinations.length > 0) {
+        this.logger.info({ 
+          liveInputId: liveInput.uid, 
+          outputCount: config.restreamDestinations.length 
+        }, '🔄 Creating restream outputs');
+        
+        const outputs = await this.createOutputs(liveInput.uid, config.restreamDestinations);
+        result.outputs = outputs;
+      }
       
       this.logger.info({ 
         userId, 
         liveInputId: result.liveInputId,
-        quality: config.quality 
-      }, 'Created Cloudflare live input');
+        quality: config.quality,
+        outputCount: result.outputs?.length || 0,
+        result: JSON.stringify(result, null, 2)
+      }, '✅ Created Cloudflare live input successfully');
       
       return result;
     } catch (error) {
-      this.logger.error({ error, userId }, 'Failed to create Cloudflare live input');
+      this.logger.error({ 
+        error: {
+          message: error instanceof Error ? error.message : 'Unknown error',
+          stack: error instanceof Error ? error.stack : undefined,
+          name: error instanceof Error ? error.name : undefined,
+          response: (error as any)?.response?.data,
+          fullError: JSON.stringify(error, null, 2)
+        },
+        userId 
+      }, '💥 Failed to create Cloudflare live input');
       throw this.wrapError(error, 'Failed to create live stream');
+    }
+  }
+
+  /**
+   * Create outputs for a live input to restream to other platforms
+   */
+  async createOutputs(liveInputId: string, destinations: RestreamDestination[]): Promise<CloudflareOutput[]> {
+    const outputs: CloudflareOutput[] = [];
+    
+    for (const destination of destinations) {
+      try {
+        this.logger.debug({ 
+          liveInputId, 
+          url: destination.url,
+          name: destination.name 
+        }, '📤 Creating output');
+        
+        const response = await this.api.post(`/live_inputs/${liveInputId}/outputs`, {
+          url: destination.url,
+          enabled: true
+        });
+        
+        if (response.data?.result) {
+          const output: CloudflareOutput = response.data.result;
+          outputs.push(output);
+          
+          this.logger.info({ 
+            liveInputId,
+            outputId: output.uid,
+            url: destination.url,
+            name: destination.name 
+          }, '✅ Created output successfully');
+        }
+      } catch (error) {
+        this.logger.error({ 
+          liveInputId,
+          destination,
+          error: error instanceof Error ? error.message : 'Unknown error' 
+        }, '❌ Failed to create output');
+        // Continue with other outputs even if one fails
+      }
+    }
+    
+    return outputs;
+  }
+  
+  /**
+   * Get outputs for a live input
+   */
+  async getOutputs(liveInputId: string): Promise<CloudflareOutput[]> {
+    try {
+      const response = await this.api.get(`/live_inputs/${liveInputId}/outputs`);
+      return response.data?.result || [];
+    } catch (error) {
+      this.logger.error({ 
+        liveInputId,
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      }, '❌ Failed to get outputs');
+      return [];
     }
   }
 
@@ -386,5 +557,79 @@ export class CloudflareStreamService {
       this.logger.error({ error }, 'Cloudflare Stream API connection failed');
       return false;
     }
+  }
+
+  /**
+   * Construct HLS URL based on Cloudflare's pattern
+   */
+  private constructHlsUrl(streamId: string): string {
+    // Format: https://customer-{accountId}.cloudflarestream.com/{streamId}/manifest/video.m3u8
+    return `https://customer-${this.accountId}.cloudflarestream.com/${streamId}/manifest/video.m3u8`;
+  }
+
+  /**
+   * Construct DASH URL based on Cloudflare's pattern
+   */
+  private constructDashUrl(streamId: string): string {
+    // Format: https://customer-{accountId}.cloudflarestream.com/{streamId}/manifest/video.mpd
+    return `https://customer-${this.accountId}.cloudflarestream.com/${streamId}/manifest/video.mpd`;
+  }
+
+  /**
+   * Wait for stream to go live by polling status
+   * Returns true when stream is connected/live, false if timeout
+   */
+  async waitForStreamLive(
+    liveInputId: string, 
+    maxAttempts = 30, 
+    delayMs = 2000
+  ): Promise<boolean> {
+    if (!this.enabled) {
+      throw new Error('Managed streaming is not configured');
+    }
+
+    this.logger.debug({ liveInputId, maxAttempts, delayMs }, '⏳ Waiting for stream to go live');
+
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      try {
+        const status = await this.getLiveInputStatus(liveInputId);
+        
+        this.logger.debug({
+          liveInputId,
+          attempt: attempt + 1,
+          isConnected: status.isConnected,
+          connectedAt: status.connectedAt
+        }, '🔍 Checking stream status');
+
+        // Stream is live when isConnected is true
+        if (status.isConnected) {
+          this.logger.info({ 
+            liveInputId, 
+            attempts: attempt + 1,
+            connectedAt: status.connectedAt
+          }, '✅ Stream is now live!');
+          return true;
+        }
+
+        // Wait before next check
+        if (attempt < maxAttempts - 1) {
+          await new Promise(resolve => setTimeout(resolve, delayMs));
+        }
+      } catch (error) {
+        this.logger.warn({ 
+          liveInputId, 
+          attempt: attempt + 1, 
+          error 
+        }, 'Error checking stream status, will retry');
+        
+        // Continue trying unless it's the last attempt
+        if (attempt === maxAttempts - 1) {
+          throw error;
+        }
+      }
+    }
+
+    this.logger.warn({ liveInputId, maxAttempts }, '⏱️ Timeout waiting for stream to go live');
+    return false;
   }
 }

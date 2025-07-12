@@ -523,13 +523,21 @@ public class ServerComms {
         }
     }
 
-    public void sendLocationUpdate(double lat, double lng) {
+    public void sendLocationUpdate(double lat, double lng, float accuracy, String correlationId) {
         try {
             JSONObject event = new JSONObject();
             event.put("type", "location_update");
             event.put("lat", lat);
             event.put("lng", lng);
             event.put("timestamp", System.currentTimeMillis());
+
+            if (accuracy > 0) {
+                event.put("accuracy", accuracy);
+            }
+            if (correlationId != null && !correlationId.isEmpty()) {
+                event.put("correlationId", correlationId);
+            }
+
             wsManager.sendText(event.toString());
         } catch (JSONException e) {
             Log.e(TAG, "Error building location_update JSON", e);
@@ -634,7 +642,7 @@ public class ServerComms {
         // Log.d(TAG, "Received message of type: " + type);
         // Log.d(TAG, "Full message: " + msg.toString());
 
-//        Log.d(TAG, "Received message of type: " + msg);
+       Log.d(TAG, "Received message of type: " + msg);
 
         switch (type) {
             case "connection_ack":
@@ -773,6 +781,42 @@ public class ServerComms {
                 if (serverCommsCallback != null) {
                     serverCommsCallback.onAppStopped(stoppedPackage);
                 }
+                break;
+
+            case "audio_play_request":
+                if (serverCommsCallback != null) {
+                    serverCommsCallback.onAudioPlayRequest(msg);
+                }
+                break;
+
+            case "audio_stop_request":
+                Log.d(TAG, "🔇 Received audio stop request from cloud");
+                if (serverCommsCallback != null) {
+                    serverCommsCallback.onAudioStopRequest(msg);
+                }
+                break;
+
+            case "set_location_tier":
+                Log.d(TAG, "Received set_location_tier command");
+                String tier = msg.optString("tier");
+                if (tier != null && serverCommsCallback != null) {
+                    Log.d("LOCATION_DEBUG", "ServerComms: Received set_location_tier command with tier: " + tier);
+                    serverCommsCallback.onSetLocationTier(tier);
+                }
+                break;
+
+            case "request_single_location":
+                if (serverCommsCallback != null) {
+                    serverCommsCallback.onRequestSingleLocation(
+                        msg.optString("accuracy"),
+                        msg.optString("correlationId")
+                    );
+                }
+                break;
+
+            case "debug_log":
+                // Echo back the debug log for confirmation
+                Log.d(TAG, "Received debug log from client: " + msg.toString());
                 break;
 
             default:
@@ -914,13 +958,13 @@ public class ServerComms {
     }
 
     // Add this method to send user datetime to backend
-    public void sendUserDatetimeToBackend(String userId, String isoDatetime) {
+    public void sendUserDatetimeToBackend(String isoDatetime) {
         try {
             String baseUrl = getServerUrlForRest();
             String url = baseUrl + "/api/user-data/set-datetime";
 
             JSONObject body = new JSONObject();
-            body.put("userId", userId);
+            body.put("coreToken", coreToken);
             body.put("datetime", isoDatetime);
 
             RequestBody requestBody = RequestBody.create(
@@ -961,6 +1005,32 @@ public class ServerComms {
             Log.d(TAG, "Sent VPS coordinates: " + vpsJson.toString());
         } catch (Exception e) {
             Log.e(TAG, "Error sending VPS coordinates JSON", e);
+        }
+    }
+
+    /**
+     * Sends audio play response back to the cloud via WebSocket.
+     */
+    public void sendAudioPlayResponse(JSONObject audioResponse) {
+        try {
+            // Create the message in the expected format for the cloud
+            JSONObject message = new JSONObject();
+            message.put("type", "audio_play_response");
+            message.put("requestId", audioResponse.getString("requestId"));
+            message.put("success", audioResponse.getBoolean("success"));
+
+            if (audioResponse.has("error") && !audioResponse.isNull("error")) {
+                message.put("error", audioResponse.getString("error"));
+            }
+
+            if (audioResponse.has("duration") && !audioResponse.isNull("duration")) {
+                message.put("duration", audioResponse.get("duration"));
+            }
+
+            wsManager.sendText(message.toString());
+            Log.d(TAG, "Sent audio play response: " + message.toString());
+        } catch (Exception e) {
+            Log.e(TAG, "Error sending audio play response", e);
         }
     }
 }

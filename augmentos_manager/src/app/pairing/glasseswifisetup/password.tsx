@@ -8,6 +8,9 @@ import {ViewStyle, TextStyle} from "react-native"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
 import ActionButton from "@/components/ui/ActionButton"
 import WifiCredentialsService from "@/utils/WifiCredentialsService"
+import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
+import {ScrollView} from "react-native"
+
 
 export default function WifiPasswordScreen() {
   const params = useLocalSearchParams()
@@ -15,7 +18,7 @@ export default function WifiPasswordScreen() {
   const initialSsid = (params.ssid as string) || ""
 
   const {theme, themed} = useAppTheme()
-
+  const {push, goBack} = useNavigationHistory()
   const [ssid, setSsid] = useState(initialSsid)
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
@@ -77,9 +80,10 @@ export default function WifiPasswordScreen() {
   }
 
   return (
-    <Screen preset="scroll" contentContainerStyle={themed($container)}>
-      <Header title="Enter Glasses WiFi Details" leftIcon="caretLeft" onLeftPress={() => router.back()} />
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={themed($keyboardContainer)}>
+    <Screen preset="fixed" contentContainerStyle={themed($container)}>
+      <Header title="Enter Glasses WiFi Details" leftIcon="caretLeft" onLeftPress={() => goBack()} />
+      <ScrollView
+        style={{marginBottom: 20, marginTop: 10, marginRight: -theme.spacing.md, paddingRight: theme.spacing.md}}>
         <View style={themed($content)}>
           <View style={themed($inputContainer)}>
             <Text style={themed($label)}>Network Name (SSID)</Text>
@@ -134,7 +138,7 @@ export default function WifiPasswordScreen() {
             <ActionButton label="Cancel" variant="secondary" onPress={() => router.back()} />
           </View>
         </View>
-      </KeyboardAvoidingView>
+      </ScrollView>
     </Screen>
   )
 }
@@ -143,13 +147,9 @@ const $container: ThemedStyle<ViewStyle> = () => ({
   flex: 1,
 })
 
-const $keyboardContainer: ThemedStyle<ViewStyle> = () => ({
-  flex: 1,
-})
-
 const $content: ThemedStyle<ViewStyle> = ({spacing}) => ({
   flex: 1,
-  padding: spacing.lg,
+  paddingHorizontal: spacing.lg,
 })
 
 const $inputContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({

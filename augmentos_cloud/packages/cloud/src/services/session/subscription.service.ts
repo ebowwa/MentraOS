@@ -10,12 +10,15 @@
  * - Enforcing permission checks on subscriptions
  */
 
-import { StreamType, ExtendedStreamType, isLanguageStream, parseLanguageStream, createTranscriptionStream, CalendarEvent } from '@mentra/sdk';
+import { StreamType, ExtendedStreamType, isLanguageStream, parseLanguageStream, createTranscriptionStream, CalendarEvent, SubscriptionRequest } from '@mentra/sdk';
 import { logger as rootLogger } from '../logging/pino-logger';
 import { SimplePermissionChecker } from '../permissions/simple-permission-checker';
 import App from '../../models/app.model';
 import { sessionService } from './session.service';
 import UserSession from './UserSession';
+import { User, UserI } from '../../models/user.model';
+import { locationService } from '../core/location.service';
+import { MongoSanitizer } from '../../utils/mongoSanitizer';
 
 const logger = rootLogger.child({ service: 'subscription.service' });
 
@@ -157,8 +160,8 @@ export class SubscriptionService {
   async updateSubscriptions(
     userSession: UserSession,
     packageName: string,
-    subscriptions: ExtendedStreamType[]
-  ): Promise<void> {
+    subscriptions: SubscriptionRequest[]
+  ): Promise<UserI | null> {
     const key = this.getKey(userSession.userId, packageName);
 
     // Increment version for this key
@@ -169,16 +172,23 @@ export class SubscriptionService {
     const thisCallVersion = currentVersion;
 
     logger.info({ key, subscriptions, userId: userSession.userId }, 'Update subscriptions request received');
-    const currentSubs = this.subscriptions.get(key) || new Set();
-    const action: SubscriptionHistory['action'] = currentSubs.size === 0 ? 'add' : 'update';
 
-    logger.info({ key, subscriptions, userId: userSession.userId }, 'Processing subscription update');
+    // Process incoming subscriptions array - handle both strings and rich location objects
+    const streamSubscriptions: ExtendedStreamType[] = [];
+    let locationRate: string | null = null;
 
-    // Validate subscriptions format
-    const processedSubscriptions = subscriptions.map(sub =>
-      sub === StreamType.TRANSCRIPTION ?
-        createTranscriptionStream('en-US') :
-        sub
+    // Separate simple string subscriptions from special location object
+    for (const sub of subscriptions) {
+      if (typeof sub === 'object' && sub !== null && 'stream' in sub && sub.stream === StreamType.LOCATION_STREAM) {
+        locationRate = sub.rate; // Save the rate for later
+        streamSubscriptions.push(sub.stream);
+      } else if (typeof sub === 'string') {
+        streamSubscriptions.push(sub);
+      }
+    }
+
+    const processedSubscriptions = streamSubscriptions.map(sub =>
+      sub === StreamType.TRANSCRIPTION ? createTranscriptionStream('en-US') : sub
     );
 
     for (const sub of processedSubscriptions) {
@@ -253,6 +263,8 @@ export class SubscriptionService {
         processedSubscriptions.length = 0;
         processedSubscriptions.push(...allowed);
       }
+
+      // Update the in-memory subscription map
       const newSubs = new Set(processedSubscriptions);
 
       // At the end, before setting:
@@ -262,13 +274,13 @@ export class SubscriptionService {
           { userId: userSession.userId, key, thisCallVersion, currentVersion: this.subscriptionUpdateVersion.get(key) },
           'Skipping update as newer call has started'
         );
-        return;
+        return null;
       }
 
       // Only now set the subscriptions
       this.subscriptions.set(key, newSubs);
 
-      // Record history
+      const action: SubscriptionHistory['action'] = (this.history.get(key)?.length || 0) === 0 ? 'add' : 'update';
       this.addToHistory(key, {
         timestamp: new Date(),
         subscriptions: [...processedSubscriptions],
@@ -282,21 +294,75 @@ export class SubscriptionService {
         newSubs: Array.from(newSubs),
         serviceSubscriptions: Array.from(this.subscriptions.entries()).map(([k, v]) => [k, Array.from(v)])
       }, 'Updated subscriptions successfully');
+
+      // Auto-update TranscriptionManager with new subscription state
+      await this.syncTranscriptionManager(userSession);
+
     } catch (error) {
       // If there's an error getting the app or checking permissions, log it but don't block
       // This ensures backward compatibility with existing code
       logger.error({ error, packageName, userId: userSession.userId }, 'Error checking permissions');
 
       // Continue with the subscription update
-      this.subscriptions.set(key, new Set(processedSubscriptions));
+      const newSubs = new Set(processedSubscriptions);
+      this.subscriptions.set(key, newSubs);
 
-      // Record history
+      const action: SubscriptionHistory['action'] = (this.history.get(key)?.length || 0) === 0 ? 'add' : 'update';
       this.addToHistory(key, {
         timestamp: new Date(),
         subscriptions: [...processedSubscriptions],
         action
       });
     }
+
+    // --- Database Operations with Retry Logic ---
+    const maxRetries = 3;
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        const user = await User.findOne({ email: userSession.userId });
+        if (!user) {
+          logger.warn({ userId: userSession.userId }, "User not found for subscription DB update.");
+          return null;
+        }
+
+        const sanitizedPackageName = MongoSanitizer.sanitizeKey(packageName);
+
+        // Persist the location rate information to the database
+        if (locationRate) {
+          if (!user.locationSubscriptions) {
+            user.locationSubscriptions = new Map();
+          }
+          // Set the rate for this specific app's package name
+          user.locationSubscriptions.set(sanitizedPackageName, { rate: locationRate });
+        } else {
+          // If there's no locationRate, the app is unsubscribing from the location stream
+          if (user.locationSubscriptions?.has(sanitizedPackageName)) {
+            user.locationSubscriptions.delete(sanitizedPackageName);
+          }
+        }
+
+        // Tell mongoose that we've modified a mixed-type field
+        user.markModified('locationSubscriptions');
+        await user.save();
+        logger.info({ packageName, userId: userSession.userId }, 'Persisted subscription changes successfully');
+        return user; // Success, return the updated user document
+
+      } catch (error) {
+        if ((error as any).name === 'VersionError') {
+          logger.warn(`Version conflict saving user subscriptions for ${userSession.userId}, attempt ${attempt + 1}/${maxRetries}. Retrying...`);
+          if (attempt < maxRetries - 1) {
+            await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 100));
+          } else {
+            logger.error(`Failed to save user subscriptions for ${userSession.userId} after ${maxRetries} attempts due to version conflicts.`);
+            throw error; // Rethrow after final attempt
+          }
+        } else {
+          logger.error({ error, packageName, userId: userSession.userId }, 'Error persisting subscription changes.');
+          throw error; // Rethrow for other errors
+        }
+      }
+    }
+    return null; // This line should be unreachable
   }
 
   /**
@@ -372,6 +438,18 @@ export class SubscriptionService {
           });
           break;
         }
+
+        // Special case for backwards compatibility
+        // If an app is subscribed to 'location_stream', it should also
+        // automatically receive the old 'location_update' events
+        if (subscription === StreamType.LOCATION_UPDATE && sub === StreamType.LOCATION_STREAM) {
+          subscribedApps.push(packageName);
+          subscriptionMatches.push({
+            packageName,
+            matchedOn: 'location_stream_implicit'
+          });
+          break;
+        }
       }
     }
 
@@ -426,37 +504,100 @@ export class SubscriptionService {
    * @param sessionId - User session identifier
    * @param packageName - App identifier
    */
-  removeSubscriptions(userSession: UserSession, packageName: string): void {
+  async removeSubscriptions(userSession: UserSession, packageName: string): Promise<UserI | null> {
     const key = this.getKey(userSession.sessionId, packageName);
-    // if (userSession.appConnections.has(packageName)) {
-    //   // TODO send message to user that we are destroying the connection.
-    //   userSession.appConnections.delete(packageName);
-    // }
 
+    // Perform in-memory removal immediately
     if (this.subscriptions.has(key)) {
       const currentSubs = Array.from(this.subscriptions.get(key) || []);
-
       this.subscriptions.delete(key);
       this.addToHistory(key, {
         timestamp: new Date(),
         subscriptions: currentSubs,
         action: 'remove'
       });
-
-      logger.info({ packageName, sessionId: userSession.sessionId, userId: userSession.userId }, `Removed all subscriptions for App ${packageName} for user ${userSession.userId}`);
+      logger.info({ packageName, sessionId: userSession.sessionId }, `Removed in-memory subscriptions for App ${packageName}`);
     }
+
+    // Remove from user session's transcription manager
+    // Auto-update TranscriptionManager with new subscription state
+    await this.syncTranscriptionManager(userSession);
+
+    // Perform background DB removal
+    try {
+      const user = await User.findOne({ email: userSession.userId });
+      const sanitizedPackageName = MongoSanitizer.sanitizeKey(packageName);
+      if (user && user.locationSubscriptions?.has(sanitizedPackageName)) {
+        user.locationSubscriptions.delete(sanitizedPackageName);
+        user.markModified('locationSubscriptions');
+        await user.save();
+        logger.info({ packageName, userId: userSession.userId }, `Removed location subscription from DB for App ${packageName}`);
+        return user;
+      }
+      return user; // Return user even if no changes were made
+    } catch (error) {
+      logger.error({ error, packageName, userId: userSession.userId }, 'Error removing location subscription from DB.');
+      throw error; // Rethrow to be handled by caller
+    }
+
   }
 
   /**
-   * Removes all subscription history for a session
-   * Used when a session is being killed to free memory
-   * @param sessionId - User session identifier
+   * Get all transcription-related subscriptions for a user session
    */
-  removeSessionSubscriptionHistory(sessionId: string): void {
-    // Find all keys that start with this session ID
-    const keysToRemove: string[] = [];
+  private getTranscriptionSubscriptions(userSession: UserSession): ExtendedStreamType[] {
+    const transcriptionSubs: ExtendedStreamType[] = [];
 
-    for (const key of this.history.keys()) {
+    // Get all subscriptions for this user
+    const userPrefix = `${userSession.userId}:`;
+
+    for (const [key, subs] of this.subscriptions.entries()) {
+      if (key.startsWith(userPrefix)) {
+        for (const sub of subs) {
+          // Include transcription and translation subscriptions
+          if (sub.includes('transcription') || sub.includes('translation')) {
+            transcriptionSubs.push(sub as ExtendedStreamType);
+          }
+        }
+      }
+    }
+
+    return transcriptionSubs;
+  }
+
+  /**
+   * Automatically sync TranscriptionManager with current subscriptions
+   */
+  private async syncTranscriptionManager(userSession: UserSession): Promise<void> {
+    try {
+      const transcriptionSubs = this.getTranscriptionSubscriptions(userSession);
+      userSession.transcriptionManager.updateSubscriptions(transcriptionSubs);
+
+      // Ensure streams are synchronized after subscription update
+      await userSession.transcriptionManager.ensureStreamsExist();
+
+      logger.debug({
+        userId: userSession.userId,
+        transcriptionSubs
+      }, 'Synced TranscriptionManager with current subscriptions');
+    } catch (error) {
+      logger.error({
+        error,
+        userId: userSession.userId
+      }, 'Error syncing TranscriptionManager with subscriptions');
+    }
+  }
+
+    /**
+     * Removes all subscription history for a session
+     * Used when a session is being killed to free memory
+     * @param sessionId - User session identifier
+     */
+    removeSessionSubscriptionHistory(sessionId: string): void {
+      // Find all keys that start with this session ID
+      const keysToRemove: string[] = [];
+
+      for(const key of this.history.keys()) {
       if (key.startsWith(`${sessionId}:`)) {
         keysToRemove.push(key);
       }

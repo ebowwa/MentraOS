@@ -11,7 +11,9 @@ import {
   ManagedStreamStatus,
   AppToCloudMessageType,
   CloudToAppMessageType,
-  isManagedStreamStatus
+  StreamType,
+  isManagedStreamStatus,
+  RestreamDestination
 } from '../../../types';
 import { VideoConfig, AudioConfig, StreamConfig } from '../../../types/rtmp-stream';
 import { Logger } from 'pino';
@@ -30,6 +32,8 @@ export interface ManagedStreamOptions {
   audio?: AudioConfig;
   /** Optional stream configuration settings */
   stream?: StreamConfig;
+  /** Optional RTMP destinations to re-stream to (YouTube, Twitch, etc) */
+  restreamDestinations?: RestreamDestination[];
 }
 
 /**
@@ -76,6 +80,7 @@ export class CameraManagedExtension {
   private packageName: string;
   private sessionId: string;
   private logger: Logger;
+  private session?: any;
 
   // Managed streaming state
   private isManagedStreaming: boolean = false;
@@ -93,12 +98,14 @@ export class CameraManagedExtension {
     packageName: string,
     sessionId: string,
     send: (message: any) => void,
-    logger: Logger
+    logger: Logger,
+    session?: any
   ) {
     this.packageName = packageName;
     this.sessionId = sessionId;
     this.send = send;
     this.logger = logger.child({ module: 'CameraManagedExtension' });
+    this.session = session;
   }
 
   /**
@@ -138,7 +145,8 @@ export class CameraManagedExtension {
       enableWebRTC: options.enableWebRTC,
       video: options.video,
       audio: options.audio,
-      stream: options.stream
+      stream: options.stream,
+      restreamDestinations: options.restreamDestinations
     };
 
     // Send the request
@@ -183,12 +191,8 @@ export class CameraManagedExtension {
 
     this.send(request);
     
-    // Clean up state
-    this.isManagedStreaming = false;
-    this.currentManagedStreamId = undefined;
-    this.currentManagedStreamUrls = undefined;
-    this.managedStreamStatus = undefined;
-    this.pendingManagedStreamRequest = undefined;
+    // Don't clean up state immediately - wait for the 'stopped' status from cloud
+    // This ensures we can retry stop if needed and maintains accurate state
   }
 
   /**
@@ -238,15 +242,15 @@ export class CameraManagedExtension {
    * ```
    */
   onManagedStreamStatus(handler: (status: ManagedStreamStatus) => void): () => void {
-    // In a real implementation, this would use an event emitter
-    // For now, we'll store the handler reference
-    const handlerRef = handler;
+    if (!this.session) {
+      this.logger.error('Cannot listen for managed status updates: session reference not available');
+      return () => {};
+    }
+
+   this.session.subscribe(StreamType.MANAGED_STREAM_STATUS);
     
-    // Return cleanup function
-    return () => {
-      // Remove handler
-      this.logger.debug('Managed stream status handler removed');
-    };
+    // Register the handler using the session's event system
+    return this.session.on(StreamType.MANAGED_STREAM_STATUS, handler);
   }
 
   /**
@@ -261,21 +265,34 @@ export class CameraManagedExtension {
 
     this.managedStreamStatus = status;
 
-    // Handle initial stream ready status
-    if (status.status === 'active' && this.pendingManagedStreamRequest && status.hlsUrl && status.dashUrl) {
-      const result: ManagedStreamResult = {
-        hlsUrl: status.hlsUrl,
-        dashUrl: status.dashUrl,
-        webrtcUrl: status.webrtcUrl,
-        streamId: status.streamId || ''
-      };
-
+    // Handle initializing status - stream is starting
+    if (status.status === 'initializing' && status.streamId) {
+      this.isManagedStreaming = true;
       this.currentManagedStreamId = status.streamId;
-      this.currentManagedStreamUrls = result;
+    }
 
-      // Resolve the pending promise
-      this.pendingManagedStreamRequest.resolve(result);
-      this.pendingManagedStreamRequest = undefined;
+    // Handle initial stream ready status
+    if (status.status === 'active') {
+      // Always update state when stream is active
+      this.isManagedStreaming = true;
+      this.currentManagedStreamId = status.streamId;
+      
+      if (status.hlsUrl && status.dashUrl) {
+        const result: ManagedStreamResult = {
+          hlsUrl: status.hlsUrl,
+          dashUrl: status.dashUrl,
+          webrtcUrl: status.webrtcUrl,
+          streamId: status.streamId || ''
+        };
+        
+        this.currentManagedStreamUrls = result;
+        
+        // Resolve pending promise if exists
+        if (this.pendingManagedStreamRequest) {
+          this.pendingManagedStreamRequest.resolve(result);
+          this.pendingManagedStreamRequest = undefined;
+        }
+      }
     }
 
     // Handle error status

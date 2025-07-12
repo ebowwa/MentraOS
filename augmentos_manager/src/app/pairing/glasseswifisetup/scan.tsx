@@ -11,6 +11,7 @@ import {useStatus} from "@/contexts/AugmentOSStatusProvider"
 import {useCallback} from "react"
 import ActionButton from "@/components/ui/ActionButton"
 import WifiCredentialsService from "@/utils/WifiCredentialsService"
+import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 
 export default function WifiScanScreen() {
   const {deviceModel = "Glasses"} = useLocalSearchParams()
@@ -21,13 +22,14 @@ export default function WifiScanScreen() {
   const [savedNetworks, setSavedNetworks] = useState<string[]>([])
   const [isScanning, setIsScanning] = useState(true)
 
+  const {push, goBack} = useNavigationHistory()
+
   // Get current WiFi status
   const currentWifi = status.glasses_info?.glasses_wifi_ssid
   const isWifiConnected = status.glasses_info?.glasses_wifi_connected
 
   const handleGoBack = useCallback(() => {
-    // Go back to main WiFi setup screen (not to previous screen in stack)
-    router.back()
+    goBack()
     return true // Prevent default back behavior
   }, [])
 
@@ -89,13 +91,7 @@ export default function WifiScanScreen() {
       return
     }
 
-    router.push({
-      pathname: "/pairing/glasseswifisetup/password",
-      params: {
-        deviceModel,
-        ssid: selectedNetwork,
-      },
-    })
+    push("/pairing/glasseswifisetup/password", {deviceModel, ssid: selectedNetwork})
   }
 
   return (
@@ -106,6 +102,9 @@ export default function WifiScanScreen() {
           <View style={themed($loadingContainer)}>
             <ActivityIndicator size="large" color={theme.colors.text} />
             <Text style={themed($loadingText)}>Scanning for networks...</Text>
+            <Text style={themed($loadingText)}>
+              (this may take a while, try restarting the app if it doesn't work after 2 minutes)
+            </Text>
           </View>
         ) : networks.length > 0 ? (
           <>

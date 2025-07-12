@@ -31,9 +31,9 @@ import { logger as rootLogger } from '../logging/pino-logger';
 import subscriptionService from '../session/subscription.service';
 import { PosthogService } from '../logging/posthog.service';
 import { sessionService } from '../session/session.service';
-import transcriptionService from '../processing/transcription.service';
 import { User } from '../../models/user.model';
 import { SYSTEM_DASHBOARD_PACKAGE_NAME } from '../core/app.service';
+import { locationService } from '../core/location.service';
 
 const SERVICE_NAME = 'websocket-glasses.service';
 const logger = rootLogger.child({ service: SERVICE_NAME });
@@ -222,9 +222,7 @@ export class GlassesWebSocketService {
           break;
 
         case GlassesToCloudMessageType.LOCATION_UPDATE:
-          await this.handleLocationUpdate(userSession, message as LocationUpdate);
-          sessionService.relayMessageToApps(userSession, message);
-          // TODO(isaiah): broadcast to Apps
+          await locationService.handleDeviceLocationUpdate(userSession, message as LocationUpdate);
           break;
 
         case GlassesToCloudMessageType.CALENDAR_EVENT:
@@ -262,12 +260,17 @@ export class GlassesWebSocketService {
               break;
             };
 
+            // Update glasses model if available in status
+            if (connectedGlasses.model_name) {
+              userSession.updateGlassesModel(connectedGlasses.model_name);
+            }
+
             // Map core status fields to augmentos settings
             const newSettings = {
               useOnboardMic: coreInfo.force_core_onboard_mic,
               contextualDashboard: coreInfo.contextual_dashboard_enabled,
               metricSystemEnabled: coreInfo.metric_system_enabled,
-              
+
               // Glasses settings.
               brightness: glassesSettings.brightness,
               autoBrightness: glassesSettings.auto_brightness,
@@ -373,6 +376,12 @@ export class GlassesWebSocketService {
           userSession.photoManager.handlePhotoResponse(message as PhotoResponse);
           break;
 
+        case GlassesToCloudMessageType.AUDIO_PLAY_RESPONSE:
+          userSession.logger.debug({ service: SERVICE_NAME, message }, `Audio play response received from glasses/core`);
+          // Forward audio play response to Apps - we need to find the specific app that made the request
+          sessionService.relayAudioPlayResponseToApp(userSession, message);
+          break;
+
         case GlassesToCloudMessageType.HEAD_POSITION:
           await this.handleHeadPosition(userSession, message as HeadPosition);
           // Also relay to Apps in case they want to handle head position events
@@ -418,10 +427,8 @@ export class GlassesWebSocketService {
         userSession.logger.error({ error }, `Error starting user apps`);
       }
 
-      // TODO(isaiah): Check if we really need to start the transcription service here.
-      // or if instead we should be checkig if the user has any media subscriptions and starting the transcription service if they do.
-      // Start transcription
-      transcriptionService.startTranscription(userSession);
+      // Transcription is now handled by TranscriptionManager based on app subscriptions
+      // No need to preemptively start transcription here
 
       // Track connection event.
       PosthogService.trackEvent('connected', userSession.userId, {
@@ -462,20 +469,31 @@ export class GlassesWebSocketService {
 
     try {
       if (isSpeaking) {
-        userSession.logger.info('🎙️ VAD detected speech - starting transcription');
+        userSession.logger.info('🎙️ VAD detected speech - ensuring streams exist');
         userSession.isTranscribing = true;
-        transcriptionService.startTranscription(userSession);
+        
+        // Simply ensure streams exist - creates new ones if needed, uses existing healthy ones
+        await userSession.transcriptionManager.ensureStreamsExist();
       } else {
-        // TODO: Temporarily commented out to prevent frequent stream creation/destruction
-        // This reduces Azure connection churn and improves transcription performance
-        userSession.logger.info('🤫 VAD detected silence - keeping transcription active (streams persistent)');
-        // userSession.isTranscribing = false;
-        // transcriptionService.stopTranscription(userSession);
+        userSession.logger.info('🤫 VAD detected silence - finalizing and cleaning up streams');
+        userSession.isTranscribing = false;
+        
+        // Finalize pending tokens first, then cleanup idle streams
+        userSession.transcriptionManager.finalizePendingTokens();
+        await userSession.transcriptionManager.cleanupIdleStreams();
       }
     } catch (error) {
       userSession.logger.error({ error }, '❌ Error handling VAD state change');
       userSession.isTranscribing = false;
-      transcriptionService.stopTranscription(userSession);
+      
+      // On error, finalize tokens and cleanup streams
+      // Next VAD speech will try to ensure streams exist again
+      try {
+        userSession.transcriptionManager.finalizePendingTokens();
+        await userSession.transcriptionManager.cleanupIdleStreams();
+      } catch (finalizeError) {
+        userSession.logger.error({ error: finalizeError }, '❌ Error finalizing tokens and cleaning up streams on VAD error');
+      }
     }
   }
 
@@ -486,20 +504,16 @@ export class GlassesWebSocketService {
   private async handleLocationUpdate(userSession: UserSession, message: LocationUpdate): Promise<void> {
     userSession.logger.debug({ message, service: SERVICE_NAME }, 'Location update received from glasses');
     try {
-      // Cache the location update in subscription service
-      subscriptionService.cacheLocation(userSession.sessionId, {
-        latitude: message.lat,
-        longitude: message.lng,
-        timestamp: new Date()
-      });
+      // The core logic is now handled by the central LocationService to manage caching and polling.
+      await locationService.handleDeviceLocationUpdate(userSession, message);
 
-      const user = await User.findByEmail(userSession.userId);
-      if (user) {
-        await user.setLocation(message);
-      }
+      // We still relay the message to any apps subscribed to the raw location stream.
+      // The locationService's handleDeviceLocationUpdate will decide if it needs to send a specific
+      // response for a poll request.
+      sessionService.relayMessageToApps(userSession, message);
     }
     catch (error) {
-      userSession.logger.error({ error, service: SERVICE_NAME }, `Error updating user location:`, error);
+      userSession.logger.error({ error, service: SERVICE_NAME }, `Error handling location update:`, error);
     }
   }
 
@@ -558,17 +572,22 @@ export class GlassesWebSocketService {
     const modelName = glassesConnectionStateMessage.modelName;
     const isConnected = glassesConnectionStateMessage.status === 'CONNECTED';
 
+    // Update glasses model in session when connected and model name is available
+    if (isConnected && modelName) {
+      userSession.updateGlassesModel(modelName);
+    }
+
     try {
       // Get or create user to track glasses model
       const user = await User.findOrCreateUser(userSession.userId);
-      
+
       // Track new glasses model if connected and model name exists
       if (isConnected && modelName) {
         const isNewModel = !user.getGlassesModels().includes(modelName);
-        
+
         // Add glasses model to user's history
         await user.addGlassesModel(modelName);
-        
+
         // Update PostHog person properties
         await PosthogService.setPersonProperties(userSession.userId, {
           current_glasses_model: modelName,
@@ -706,11 +725,18 @@ export class GlassesWebSocketService {
       userSession.cleanupTimerId = undefined;
     }
 
+    // Disconnecting is probably a network issue and the user will likely reconnect.
+    // So we don't want to end the session immediately, but rather wait for a grace period
+    // to see if the user reconnects.
     // Stop transcription
-    if (userSession.isTranscribing) {
-      userSession.isTranscribing = false;
-      transcriptionService.stopTranscription(userSession);
-    }
+    // if (userSession.isTranscribing) {
+    //   userSession.isTranscribing = false;
+    //   try {
+    //     await userSession.transcriptionManager.stopAndFinalizeAll();
+    //   } catch (error) {
+    //     userSession.logger.error({ error }, 'Error stopping transcription on disconnect');
+    //   }
+    // }
 
     // Mark as disconnected
     userSession.disconnectedAt = new Date();
