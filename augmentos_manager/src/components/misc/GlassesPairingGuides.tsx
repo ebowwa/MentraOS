@@ -26,7 +26,7 @@ export function EvenRealitiesG1PairingGuide() {
   const glassesOpacity = useSharedValue(1)
   const glassesTranslateY = useSharedValue(0)
   const glassesScale = useSharedValue(1)
-  const caseOpacity = useSharedValue(0)
+  const caseOpacity = useSharedValue(1)
   const arrowOpacity = useSharedValue(0)
   const finalImageOpacity = useSharedValue(0)
 
@@ -66,6 +66,7 @@ export function EvenRealitiesG1PairingGuide() {
   //   const timer = setTimeout(startAnimation, 500)
   //   return () => clearTimeout(timer)
   // }, [])
+
   useEffect(() => {
     const resetValues = () => {
       glassesOpacity.value = 1
@@ -81,19 +82,19 @@ export function EvenRealitiesG1PairingGuide() {
       resetValues()
 
       // Step 1: Show the case
-      caseOpacity.value = withTiming(1, {duration: 800})
+      // caseOpacity.value = withTiming(1, {duration: 800})
 
       // Step 3: Animate glasses moving down and scaling
       glassesTranslateY.value = withDelay(
-        1500,
+        500,
         withTiming(160, {
-          duration: 1500,
+          duration: 1800,
           easing: Easing.out(Easing.cubic),
         }),
       )
 
       glassesScale.value = withDelay(
-        1500,
+        500,
         withTiming(0.7, {
           duration: 1200,
           easing: Easing.out(Easing.cubic),
@@ -101,32 +102,32 @@ export function EvenRealitiesG1PairingGuide() {
       )
 
       // Step 4: Fade out glasses and arrow, show final image
-      glassesOpacity.value = withDelay(2000, withTiming(0, {duration: 400}))
+      glassesOpacity.value = withDelay(1000, withTiming(0, {duration: 400}))
 
       // Step 5: Show final image briefly, then restart
       finalImageOpacity.value = withDelay(
-        2000,
+        1000,
         withTiming(1, {duration: 600}, finished => {
           if (finished) {
             // // Hold the final state for 1.5 seconds, then restart
             finalImageOpacity.value = withDelay(
-              1200,
+              1000,
               withTiming(0, {duration: 400}, finished => {
                 if (finished) {
                   runOnJS(startAnimation)()
                 }
               }),
             )
-            glassesTranslateY.value = 0;
-            glassesScale.value = 1;
-            glassesOpacity.value = withDelay(1200, withTiming(1, {duration: 400}))
+            glassesTranslateY.value = 0
+            glassesScale.value = 1
+            glassesOpacity.value = withDelay(1000, withTiming(1, {duration: 400}))
           }
         }),
       )
     }
 
-    // Start animation after a short delay
-    const timer = setTimeout(startAnimation, 500)
+    // short delay before starting the animation
+    const timer = setTimeout(startAnimation, 300)
     return () => clearTimeout(timer)
   }, [])
 
@@ -368,10 +369,7 @@ export function VirtualWearablePairingGuide() {
   return (
     <View style={styles.guideContainer}>
       <Text text="Simulated Glasses" style={[styles.guideTitle, {color: theme.colors.text}]} />
-      <Text
-        text="The Simulated Glasses allows you to run AugmentOS without physical smart glasses."
-        style={[styles.guideStep, {color: theme.colors.text}]}
-      />
+      <Text tx="pairing:simulatedGlassesDescription" style={[styles.guideStep, {color: theme.colors.text}]} />
     </View>
   )
 }

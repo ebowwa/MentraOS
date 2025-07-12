@@ -27,6 +27,7 @@ const en = {
     selectModel: "Select Model",
     pairingGuide: "Pairing Guide",
     pairing: "Pairing",
+    simulatedGlassesDescription: "Simulated Glasses allows you to run MentraOS without physical smart glasses.",
     permissionRequired: "Permission Required",
     bluetoothPermissionRequiredTitle: "Permission Required",
     bluetoothPermissionRequiredMessage: "Bluetooth permissions are required to connect to glasses",

@@ -25,6 +25,7 @@ interface NavigationHistoryContextType {
   setPendingRoute: (route: string | null) => void
   getPendingRoute: () => string | null
   navigate: (path: string, params?: any) => void
+  clearHistoryAndGoHome: () => void
 }
 
 const NavigationHistoryContext = createContext<NavigationHistoryContextType | undefined>(undefined)
@@ -140,9 +141,16 @@ export function NavigationHistoryProvider({children}: {children: React.ReactNode
     router.navigate({pathname: path as any, params: params as any})
   }
 
+  const clearHistoryAndGoHome = () => {
+    console.log("NAV_HISTORY: clearHistoryAndGoHome()")
+    historyRef.current = []
+    router.dismissAll()
+    router.navigate("/(tabs)/home")
+  }
+
   return (
     <NavigationHistoryContext.Provider
-      value={{goBack, getHistory, clearHistory, push, replace, setPendingRoute, getPendingRoute, navigate}}>
+      value={{goBack, getHistory, clearHistory, push, replace, setPendingRoute, getPendingRoute, navigate, clearHistoryAndGoHome}}>
       {children}
     </NavigationHistoryContext.Provider>
   )

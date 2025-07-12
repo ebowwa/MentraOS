@@ -649,10 +649,10 @@ typealias JSONObject = [String: Any]
     // Set the pending message
     self.pending = message
     
-    // Start retry timer for 100ms
+    // Start retry timer for 1s
     DispatchQueue.main.async { [weak self] in
       self?.pendingMessageTimer?.invalidate()
-      self?.pendingMessageTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: false) { _ in
+      self?.pendingMessageTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: false) { _ in
         self?.handlePendingMessageTimeout()
       }
     }
