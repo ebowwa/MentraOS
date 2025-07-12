@@ -150,7 +150,7 @@ public class K900ProtocolUtils {
      * @param jsonData The JSON string to pack
      * @return Byte array with packed data according to protocol format
      */
-    public static byte[] packJsonToK900(String jsonData) {
+    public static byte[] packJsonToK900(String jsonData, boolean wakeup) {
         if (jsonData == null) {
             return null;
         }
@@ -159,7 +159,9 @@ public class K900ProtocolUtils {
             // First wrap with C-field
             JSONObject wrapper = new JSONObject();
             wrapper.put(FIELD_C, jsonData);
-            //wrapper.put("W", 1); // Add W field as seen in MentraLiveSGC
+            if (wakeup) {
+                wrapper.put("W", 1); // Add W field as seen in MentraLiveSGC
+            }
 
             // Convert to string
             String wrappedJson = wrapper.toString();
