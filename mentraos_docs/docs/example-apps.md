@@ -13,9 +13,8 @@ These examples work with smart glasses that have a heads-up display (HUD), such 
 A simple example app that displays spoken words as live captions on the glasses' HUD. This is the recommended starting point for developers new to MentraOS.
 
 **Features:**
-- Real-time speech-to-text conversion
-- Display of captions on glasses HUD
-- Basic app lifecycle management
+- Real-time speech-to-text conversion example
+- Display captions on glasses HUD
 
 **Best for:** Getting started with HUD-based applications
 
@@ -26,10 +25,9 @@ A simple example app that displays spoken words as live captions on the glasses'
 A more comprehensive example that includes additional features beyond the basic live captions functionality.
 
 **Features:**
-- Live captions with enhanced styling
-- App settings support
-- Advanced event handling
-- Custom layouts and UI elements
+- Real-time speech-to-text conversion example
+- Webview example
+- Mira tools example
 
 **Best for:** Developers who have completed the quickstart and want to explore more advanced features
 
@@ -44,9 +42,8 @@ These examples are designed for smart glasses without a HUD but with camera capa
 An example app that demonstrates camera functionality for glasses without a display. Users can capture photos using the glasses and view them on their phone.
 
 **Features:**
-- Photo capture from glasses camera
-- Display captured images on the companion phone app
-- Basic camera controls and settings
+- Photo capture from glasses camera with a button press
+- Display captured images in the app's webview
 
 **Best for:** Building camera-based applications for non-HUD glasses
 
