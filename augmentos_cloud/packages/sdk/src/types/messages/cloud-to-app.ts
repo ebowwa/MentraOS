@@ -201,6 +201,20 @@ export interface CustomMessage extends BaseMessage {
 }
 
 /**
+ * Output status for a re-stream destination
+ */
+export interface OutputStatus {
+  /** The destination URL */
+  url: string;
+  /** Friendly name if provided */
+  name?: string;
+  /** Status of this output */
+  status: 'active' | 'error' | 'stopped';
+  /** Error message if status is error */
+  error?: string;
+}
+
+/**
  * Managed RTMP stream status update
  * Sent when managed stream status changes or URLs are ready
  */
@@ -212,6 +226,8 @@ export interface ManagedStreamStatus extends BaseMessage {
   webrtcUrl?: string;
   message?: string;
   streamId?: string;
+  /** Status of re-stream outputs if configured */
+  outputs?: OutputStatus[];
 }
 
 /**

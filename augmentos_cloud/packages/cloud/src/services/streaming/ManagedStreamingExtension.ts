@@ -7,6 +7,7 @@ import {
   ManagedStreamRequest,
   ManagedStreamStopRequest,
   ManagedStreamStatus,
+  OutputStatus,
   StartRtmpStream,
   StopRtmpStream,
   KeepRtmpStreamAlive,
@@ -16,8 +17,9 @@ import {
 } from '@mentra/sdk';
 import UserSession from '../session/UserSession';
 import { sessionService } from '../session/session.service';
-import { CloudflareStreamService } from './CloudflareStreamService';
+import { CloudflareStreamService, LiveInputResult } from './CloudflareStreamService';
 import { StreamStateManager, StreamType, ManagedStreamState } from './StreamStateManager';
+import { RtmpRelayService } from './RtmpRelayService';
 
 /**
  * Tracks keep-alive state for managed streams
@@ -45,6 +47,7 @@ export class ManagedStreamingExtension {
   private logger: Logger;
   private cloudflareService: CloudflareStreamService;
   private stateManager: StreamStateManager;
+  private rtmpRelayService: RtmpRelayService;
   
   // Keep-alive tracking for managed streams (per user, not per app)
   private managedKeepAlive: Map<string, ManagedStreamKeepAlive> = new Map(); // userId -> keepAlive
@@ -56,6 +59,7 @@ export class ManagedStreamingExtension {
     this.logger = logger.child({ service: 'ManagedStreamingExtension' });
     this.cloudflareService = new CloudflareStreamService(logger);
     this.stateManager = new StreamStateManager(logger);
+    this.rtmpRelayService = new RtmpRelayService(logger);
     
     this.logger.info('ManagedStreamingExtension initialized');
     
@@ -128,35 +132,23 @@ export class ManagedStreamingExtension {
       return managedStream.streamId;
     }
 
-    // Create new Cloudflare live input
-    this.logger.debug({ userId, packageName }, '📡 Creating new Cloudflare live input');
+    // Generate stream ID
+    const streamId = crypto.randomBytes(8).toString('hex');
     
-    let liveInput;
-    try {
-      liveInput = await this.cloudflareService.createLiveInput(userId, {
-        quality,
-        enableWebRTC,
-        enableRecording: false, // Live-only for now
-        requireSignedURLs: false // Public streams
-      });
-      
-      this.logger.info({ 
-        userId, 
-        packageName,
-        liveInput: JSON.stringify(liveInput, null, 2)
-      }, '✅ Cloudflare live input created successfully');
-    } catch (cfError) {
-      this.logger.error({
-        userId,
-        packageName,
-        error: {
-          message: cfError instanceof Error ? cfError.message : 'Unknown error',
-          stack: cfError instanceof Error ? cfError.stack : undefined,
-          fullError: JSON.stringify(cfError, null, 2)
-        }
-      }, '❌ Failed to create Cloudflare live input');
-      throw cfError;
-    }
+    // Create placeholder live input data (no Cloudflare)
+    const liveInput: LiveInputResult = {
+      liveInputId: streamId, // Use streamId as ID
+      rtmpUrl: '', // Will use relay URL
+      hlsUrl: '', // Will be set by relay
+      dashUrl: '', // Will be set by relay
+      webrtcUrl: undefined
+    };
+    
+    this.logger.info({ 
+      userId, 
+      packageName,
+      streamId
+    }, '📡 Creating relay-based stream (no Cloudflare)');
 
     // Create managed stream state
     this.logger.debug({ userId, packageName }, '📊 Creating managed stream state');
@@ -169,11 +161,13 @@ export class ManagedStreamingExtension {
     // Start keep-alive for this user's managed stream
     this.startKeepAlive(userId, managedStream.streamId, managedStream.cfLiveInputId);
 
-    // Send start command to glasses with Cloudflare RTMP URL
+    // Send start command to glasses with RELAY URL (not Cloudflare!)
+    const relayUrl = this.rtmpRelayService.buildRelayUrl(userId, managedStream.streamId);
+    
     const startMessage: StartRtmpStream = {
       type: CloudToGlassesMessageType.START_RTMP_STREAM,
       sessionId: userSession.sessionId,
-      rtmpUrl: liveInput.rtmpUrl, // Cloudflare ingest URL
+      rtmpUrl: relayUrl, // RELAY URL - this is the key change!
       appId: 'MANAGED_STREAM', // Special app ID for managed streams
       streamId: managedStream.streamId,
       video: video || {},
@@ -198,20 +192,19 @@ export class ManagedStreamingExtension {
         packageName,
         managedStream.streamId,
         'initializing',
-        'Starting stream...',
+        'Waiting for stream to start...',
         undefined, // No HLS URL yet
         undefined, // No DASH URL yet
         undefined  // No WebRTC URL yet
       );
 
-      // Start polling for playback URLs
-      this.startPlaybackUrlPolling(userId, packageName, managedStream);
+      // No polling needed - relay will notify us when HLS is ready
 
     } catch (error) {
       // Cleanup on error
       this.stateManager.removeStream(userId);
       this.stopKeepAlive(userId);
-      await this.cloudflareService.deleteLiveInput(liveInput.liveInputId);
+      // No Cloudflare cleanup needed
       throw error;
     }
 
@@ -360,99 +353,62 @@ export class ManagedStreamingExtension {
   }
 
   /**
-   * Start polling for playback URLs after stream creation
+   * Get stream state by stream ID
+   * Used by relay service to lookup Cloudflare URLs
    */
-  private startPlaybackUrlPolling(
-    userId: string, 
-    packageName: string,
-    managedStream: ManagedStreamState
-  ): void {
-    const pollInterval = setInterval(async () => {
-      try {
-        // Check if stream is still active
-        const currentStream = this.stateManager.getStreamState(userId);
-        if (!currentStream || currentStream.type !== 'managed' || currentStream.streamId !== managedStream.streamId) {
-          clearInterval(pollInterval);
-          return;
-        }
-
-        // Check if URLs are already discovered
-        if (managedStream.hlsUrl && managedStream.dashUrl) {
-          clearInterval(pollInterval);
-          return;
-        }
-
-        this.logger.debug({ 
-          userId, 
-          streamId: managedStream.streamId,
-          cfLiveInputId: managedStream.cfLiveInputId 
-        }, '🔍 Polling for stream live status');
-
-        // Check if stream is live
-        const isLive = await this.cloudflareService.waitForStreamLive(
-          managedStream.cfLiveInputId,
-          1, // Only one attempt per poll
-          0  // No delay, we handle it ourselves
-        );
-
-        if (isLive) {
-          this.logger.info({ 
-            userId, 
-            streamId: managedStream.streamId 
-          }, '🎉 Stream is live! Sending playback URLs to apps');
-
-          // Get user session to send updates
-          const userSession = this.getUserSession(userId);
-          if (!userSession) {
-            clearInterval(pollInterval);
-            return;
-          }
-
-          // Send status update to all apps viewing this stream
-          for (const appId of managedStream.activeViewers) {
-            await this.sendManagedStreamStatus(
-              userSession,
-              appId,
-              managedStream.streamId,
-              'active',
-              'Stream is now live',
-              managedStream.hlsUrl,
-              managedStream.dashUrl,
-              managedStream.webrtcUrl
-            );
-          }
-
-          // Stop polling
-          clearInterval(pollInterval);
-        }
-      } catch (error) {
-        this.logger.error({ 
-          userId, 
-          streamId: managedStream.streamId,
-          error 
-        }, 'Error polling for playback URLs');
-      }
-    }, 2000); // Poll every 2 seconds
-
-    // Store interval for cleanup
-    const existingInterval = this.pollingIntervals.get(userId);
-    if (existingInterval) {
-      clearInterval(existingInterval);
-    }
-    this.pollingIntervals.set(userId, pollInterval);
-
-    // Set timeout to stop polling after 60 seconds
-    setTimeout(() => {
-      if (this.pollingIntervals.get(userId) === pollInterval) {
-        clearInterval(pollInterval);
-        this.pollingIntervals.delete(userId);
-        this.logger.warn({ 
-          userId, 
-          streamId: managedStream.streamId 
-        }, '⏱️ Stopped polling for playback URLs after timeout');
-      }
-    }, 60000);
+  getStreamByStreamId(streamId: string) {
+    return this.stateManager.getStreamByStreamId(streamId);
   }
+
+  /**
+   * Get relay endpoint for a user
+   * Exposes relay service for URL transformation
+   */
+  getRelayForUser(userId: string) {
+    return this.rtmpRelayService.getRelayForUser(userId);
+  }
+
+  /**
+   * Update stream URLs when HLS becomes available
+   * Called by relay service when MediaMTX generates HLS
+   */
+  updateStreamUrls(streamId: string, hlsUrl: string, dashUrl?: string): boolean {
+    const stream = this.stateManager.getStreamByStreamId(streamId);
+    if (!stream || stream.type !== 'managed') {
+      return false;
+    }
+
+    // Update URLs in state
+    this.stateManager.updateStreamUrls(stream.userId, hlsUrl, dashUrl);
+
+    // Get user session to send updates
+    const userSession = this.getUserSession(stream.userId);
+    if (!userSession) {
+      return true; // URLs updated but can't notify
+    }
+
+    // Send updated status to all apps viewing this stream
+    for (const appId of stream.activeViewers) {
+      this.sendManagedStreamStatus(
+        userSession,
+        appId,
+        stream.streamId,
+        'active',
+        'Stream is now live',
+        hlsUrl,
+        dashUrl
+      ).catch(err => {
+        this.logger.error({ 
+          appId, 
+          streamId, 
+          error: err 
+        }, 'Error sending stream status update');
+      });
+    }
+
+    return true;
+  }
+
 
   /**
    * Send managed stream status to app
@@ -476,6 +432,18 @@ export class ManagedStreamingExtension {
       return;
     }
 
+    // Convert CloudflareOutput to OutputStatus format
+    let outputs: OutputStatus[] | undefined;
+    if (stream.outputs && stream.outputs.length > 0) {
+      outputs = stream.outputs.map(output => ({
+        url: output.url,
+        name: undefined, // Cloudflare doesn't store names, would need to track separately
+        status: output.status?.current?.state === 'connected' ? 'active' as const : 
+                output.status?.current?.state === 'error' ? 'error' as const : 'stopped' as const,
+        error: output.status?.current?.lastError
+      }));
+    }
+
     const statusMessage: ManagedStreamStatus = {
       type: CloudToAppMessageType.MANAGED_STREAM_STATUS,
       status,
@@ -483,7 +451,8 @@ export class ManagedStreamingExtension {
       dashUrl: dashUrl !== undefined ? dashUrl : stream.dashUrl,
       webrtcUrl: webrtcUrl !== undefined ? webrtcUrl : stream.webrtcUrl,
       streamId,
-      message
+      message,
+      outputs
     };
 
     appWs.send(JSON.stringify(statusMessage));
@@ -535,13 +504,12 @@ export class ManagedStreamingExtension {
       return;
     }
 
-    const ackId = crypto.randomUUID();
+    // Short ACK ID for BLE efficiency
+    const ackId = `a${Date.now().toString(36).slice(-5)}`;
     const message: KeepRtmpStreamAlive = {
       type: CloudToGlassesMessageType.KEEP_RTMP_STREAM_ALIVE,
-      sessionId: userSession.sessionId,
       streamId: keepAlive.streamId,
-      ackId,
-      timestamp: new Date()
+      ackId
     };
 
     // Set up ACK timeout
@@ -633,8 +601,7 @@ export class ManagedStreamingExtension {
     // Remove from state manager
     this.stateManager.removeStream(userId);
 
-    // Delete Cloudflare live input
-    await this.cloudflareService.deleteLiveInput(stream.cfLiveInputId);
+    // No Cloudflare cleanup needed
   }
 
   /**
@@ -652,9 +619,7 @@ export class ManagedStreamingExtension {
       // Clean up inactive streams
       const removedUsers = this.stateManager.cleanupInactiveStreams(60);
       
-      // Clean up orphaned Cloudflare streams
-      const activeCfIds = this.stateManager.getActiveCfLiveInputIds();
-      await this.cloudflareService.cleanupOrphanedStreams(activeCfIds);
+      // No Cloudflare cleanup needed
       
       this.logger.info({ 
         removedStreams: removedUsers.length 

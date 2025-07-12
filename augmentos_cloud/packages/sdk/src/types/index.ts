@@ -28,6 +28,7 @@ export {
   StandardConnectionError,
   CustomMessage,
   ManagedStreamStatus,
+  OutputStatus,
   MentraosSettingsUpdate,
   TranscriptionData,
   AudioChunk,
