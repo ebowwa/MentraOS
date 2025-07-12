@@ -76,6 +76,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     // Glasses version information
     private String glassesAppVersion = "";
     private String glassesBuildNumber = "";
+    private int glassesBuildNumberInt = 0; // Build number as integer for version checks
     private String glassesDeviceModel = "";
     private String glassesAndroidVersion = "";
 
@@ -1046,6 +1047,12 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             Log.d(TAG, "Not connected, skipping ACK tracking for message " + messageId);
             return;
         }
+        
+        // Skip ACK tracking for glasses with build number < 5 (older firmware)
+        if (glassesBuildNumberInt < 5) {
+            Log.d(TAG, "Glasses build number (" + glassesBuildNumberInt + ") < 5, skipping ACK tracking for message " + messageId);
+            return;
+        }
 
         // Create retry runnable
         Runnable retryRunnable = new Runnable() {
@@ -1516,6 +1523,15 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 String buildNumber = json.optString("build_number", "");
                 String deviceModel = json.optString("device_model", "");
                 String androidVersion = json.optString("android_version", "");
+                
+                // Parse build number as integer for version checks
+                try {
+                    glassesBuildNumberInt = Integer.parseInt(buildNumber);
+                    Log.d(TAG, "Parsed build number as integer: " + glassesBuildNumberInt);
+                } catch (NumberFormatException e) {
+                    glassesBuildNumberInt = 0;
+                    Log.e(TAG, "Failed to parse build number as integer: " + buildNumber);
+                }
 
                 Log.d(TAG, "Glasses Version - App: " + appVersion +
                       ", Build: " + buildNumber +

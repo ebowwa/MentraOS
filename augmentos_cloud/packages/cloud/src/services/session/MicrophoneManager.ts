@@ -12,7 +12,6 @@ import {
   MicrophoneStateChange,
 } from '@mentra/sdk';
 import subscriptionService from './subscription.service';
-import transcriptionService from '../processing/transcription.service';
 import { Logger } from 'pino';
 import UserSession from './UserSession';
 
@@ -121,20 +120,16 @@ export class MicrophoneManager {
 
   /**
    * Update transcription service state based on current microphone state
-   * This replicates the transcription service integration from the original implementation
+   * Transcription is now handled by TranscriptionManager based on app subscriptions and VAD
+   * The microphone state doesn't directly control transcription anymore
    */
   private updateTranscriptionState(): void {
-    try {
-      if (this.enabled) {
-        this.logger.info('Starting transcription based on microphone state');
-        transcriptionService.startTranscription(this.session);
-      } else {
-        this.logger.info('Stopping transcription based on microphone state');
-        transcriptionService.stopTranscription(this.session);
-      }
-    } catch (error) {
-      this.logger.error('Error updating transcription state:', error);
-    }
+    // Transcription is now controlled by:
+    // 1. App subscriptions (via TranscriptionManager.updateSubscriptions)
+    // 2. VAD events (via TranscriptionManager.restartFromActiveSubscriptions/stopAndFinalizeAll)
+    // 
+    // The microphone state is informational and doesn't directly start/stop transcription
+    this.logger.debug('Microphone state updated - transcription handled by TranscriptionManager');
   }
 
   /**

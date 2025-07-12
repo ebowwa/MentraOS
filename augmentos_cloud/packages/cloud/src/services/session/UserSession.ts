@@ -13,12 +13,12 @@ import AudioManager from './AudioManager';
 import MicrophoneManager from './MicrophoneManager';
 import DisplayManager from '../layout/DisplayManager6.1';
 import { DashboardManager } from '../dashboard';
-import { ASRStreamInstance } from '../processing/transcription.service';
 import VideoManager from './VideoManager';
 import PhotoManager from './PhotoManager';
 import { GlassesErrorCode } from '../websocket/websocket-glasses.service';
 import SessionStorage from './SessionStorage';
 import { PosthogService } from '../logging/posthog.service';
+import { TranscriptionManager } from './transcription/TranscriptionManager';
 import { ManagedStreamingExtension } from '../streaming/ManagedStreamingExtension';
 import { getCapabilitiesForModel } from '../../config/hardware-capabilities';
 
@@ -49,9 +49,6 @@ export class UserSession {
 
   // Transcription
   public isTranscribing: boolean = false;
-  public transcript: { segments: TranscriptSegment[]; languageSegments: Map<string, TranscriptSegment[]>; }
-    = { segments: [], languageSegments: new Map() };
-  public transcriptionStreams: Map<string, ASRStreamInstance> = new Map();
   public lastAudioTimestamp?: number;
 
   // Audio
@@ -68,6 +65,7 @@ export class UserSession {
   public microphoneManager: MicrophoneManager;
   public appManager: AppManager;
   public audioManager: AudioManager;
+  public transcriptionManager: TranscriptionManager;
 
   public videoManager: VideoManager;
   public photoManager: PhotoManager;
@@ -102,6 +100,7 @@ export class UserSession {
     this.dashboardManager = new DashboardManager(this);
     this.displayManager = new DisplayManager(this);
     this.microphoneManager = new MicrophoneManager(this);
+    this.transcriptionManager = new TranscriptionManager(this);
     this.photoManager = new PhotoManager(this);
     this.videoManager = new VideoManager(this);
     this.managedStreamingExtension = new ManagedStreamingExtension(this.logger);
@@ -324,6 +323,7 @@ export class UserSession {
     if (this.microphoneManager) this.microphoneManager.dispose();
     if (this.displayManager) this.displayManager.dispose();
     if (this.dashboardManager) this.dashboardManager.dispose();
+    if (this.transcriptionManager) this.transcriptionManager.dispose();
     // if (this.heartbeatManager) this.heartbeatManager.dispose();
     if (this.videoManager) this.videoManager.dispose();
     if (this.photoManager) this.photoManager.dispose();

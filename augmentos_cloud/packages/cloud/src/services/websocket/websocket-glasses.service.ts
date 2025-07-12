@@ -31,7 +31,6 @@ import { logger as rootLogger } from '../logging/pino-logger';
 import subscriptionService from '../session/subscription.service';
 import { PosthogService } from '../logging/posthog.service';
 import { sessionService } from '../session/session.service';
-import transcriptionService from '../processing/transcription.service';
 import { User } from '../../models/user.model';
 import { SYSTEM_DASHBOARD_PACKAGE_NAME } from '../core/app.service';
 import { locationService } from '../core/location.service';
@@ -428,10 +427,8 @@ export class GlassesWebSocketService {
         userSession.logger.error({ error }, `Error starting user apps`);
       }
 
-      // TODO(isaiah): Check if we really need to start the transcription service here.
-      // or if instead we should be checkig if the user has any media subscriptions and starting the transcription service if they do.
-      // Start transcription
-      transcriptionService.startTranscription(userSession);
+      // Transcription is now handled by TranscriptionManager based on app subscriptions
+      // No need to preemptively start transcription here
 
       // Track connection event.
       PosthogService.trackEvent('connected', userSession.userId, {
@@ -472,20 +469,31 @@ export class GlassesWebSocketService {
 
     try {
       if (isSpeaking) {
-        userSession.logger.info('🎙️ VAD detected speech - starting transcription');
+        userSession.logger.info('🎙️ VAD detected speech - ensuring streams exist');
         userSession.isTranscribing = true;
-        transcriptionService.startTranscription(userSession);
+        
+        // Simply ensure streams exist - creates new ones if needed, uses existing healthy ones
+        await userSession.transcriptionManager.ensureStreamsExist();
       } else {
-        // TODO: Temporarily commented out to prevent frequent stream creation/destruction
-        // This reduces Azure connection churn and improves transcription performance
-        userSession.logger.info('🤫 VAD detected silence - keeping transcription active (streams persistent)');
-        // userSession.isTranscribing = false;
-        // transcriptionService.stopTranscription(userSession);
+        userSession.logger.info('🤫 VAD detected silence - finalizing and cleaning up streams');
+        userSession.isTranscribing = false;
+        
+        // Finalize pending tokens first, then cleanup idle streams
+        userSession.transcriptionManager.finalizePendingTokens();
+        await userSession.transcriptionManager.cleanupIdleStreams();
       }
     } catch (error) {
       userSession.logger.error({ error }, '❌ Error handling VAD state change');
       userSession.isTranscribing = false;
-      transcriptionService.stopTranscription(userSession);
+      
+      // On error, finalize tokens and cleanup streams
+      // Next VAD speech will try to ensure streams exist again
+      try {
+        userSession.transcriptionManager.finalizePendingTokens();
+        await userSession.transcriptionManager.cleanupIdleStreams();
+      } catch (finalizeError) {
+        userSession.logger.error({ error: finalizeError }, '❌ Error finalizing tokens and cleaning up streams on VAD error');
+      }
     }
   }
 
@@ -717,11 +725,18 @@ export class GlassesWebSocketService {
       userSession.cleanupTimerId = undefined;
     }
 
+    // Disconnecting is probably a network issue and the user will likely reconnect.
+    // So we don't want to end the session immediately, but rather wait for a grace period
+    // to see if the user reconnects.
     // Stop transcription
-    if (userSession.isTranscribing) {
-      userSession.isTranscribing = false;
-      transcriptionService.stopTranscription(userSession);
-    }
+    // if (userSession.isTranscribing) {
+    //   userSession.isTranscribing = false;
+    //   try {
+    //     await userSession.transcriptionManager.stopAndFinalizeAll();
+    //   } catch (error) {
+    //     userSession.logger.error({ error }, 'Error stopping transcription on disconnect');
+    //   }
+    // }
 
     // Mark as disconnected
     userSession.disconnectedAt = new Date();

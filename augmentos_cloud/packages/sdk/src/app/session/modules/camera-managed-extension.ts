@@ -12,7 +12,8 @@ import {
   AppToCloudMessageType,
   CloudToAppMessageType,
   StreamType,
-  isManagedStreamStatus
+  isManagedStreamStatus,
+  RestreamDestination
 } from '../../../types';
 import { VideoConfig, AudioConfig, StreamConfig } from '../../../types/rtmp-stream';
 import { Logger } from 'pino';
@@ -31,6 +32,8 @@ export interface ManagedStreamOptions {
   audio?: AudioConfig;
   /** Optional stream configuration settings */
   stream?: StreamConfig;
+  /** Optional RTMP destinations to re-stream to (YouTube, Twitch, etc) */
+  restreamDestinations?: RestreamDestination[];
 }
 
 /**
@@ -142,7 +145,8 @@ export class CameraManagedExtension {
       enableWebRTC: options.enableWebRTC,
       video: options.video,
       audio: options.audio,
-      stream: options.stream
+      stream: options.stream,
+      restreamDestinations: options.restreamDestinations
     };
 
     // Send the request
@@ -187,12 +191,8 @@ export class CameraManagedExtension {
 
     this.send(request);
     
-    // Clean up state
-    this.isManagedStreaming = false;
-    this.currentManagedStreamId = undefined;
-    this.currentManagedStreamUrls = undefined;
-    this.managedStreamStatus = undefined;
-    this.pendingManagedStreamRequest = undefined;
+    // Don't clean up state immediately - wait for the 'stopped' status from cloud
+    // This ensures we can retry stop if needed and maintains accurate state
   }
 
   /**
@@ -265,21 +265,34 @@ export class CameraManagedExtension {
 
     this.managedStreamStatus = status;
 
-    // Handle initial stream ready status
-    if (status.status === 'active' && this.pendingManagedStreamRequest && status.hlsUrl && status.dashUrl) {
-      const result: ManagedStreamResult = {
-        hlsUrl: status.hlsUrl,
-        dashUrl: status.dashUrl,
-        webrtcUrl: status.webrtcUrl,
-        streamId: status.streamId || ''
-      };
-
+    // Handle initializing status - stream is starting
+    if (status.status === 'initializing' && status.streamId) {
+      this.isManagedStreaming = true;
       this.currentManagedStreamId = status.streamId;
-      this.currentManagedStreamUrls = result;
+    }
 
-      // Resolve the pending promise
-      this.pendingManagedStreamRequest.resolve(result);
-      this.pendingManagedStreamRequest = undefined;
+    // Handle initial stream ready status
+    if (status.status === 'active') {
+      // Always update state when stream is active
+      this.isManagedStreaming = true;
+      this.currentManagedStreamId = status.streamId;
+      
+      if (status.hlsUrl && status.dashUrl) {
+        const result: ManagedStreamResult = {
+          hlsUrl: status.hlsUrl,
+          dashUrl: status.dashUrl,
+          webrtcUrl: status.webrtcUrl,
+          streamId: status.streamId || ''
+        };
+        
+        this.currentManagedStreamUrls = result;
+        
+        // Resolve pending promise if exists
+        if (this.pendingManagedStreamRequest) {
+          this.pendingManagedStreamRequest.resolve(result);
+          this.pendingManagedStreamRequest = undefined;
+        }
+      }
     }
 
     // Handle error status

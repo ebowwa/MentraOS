@@ -58,6 +58,7 @@ export class MentraClient extends EventEmitter {
         statusUpdateInterval: 10000,
         locationUpdateInterval: 5000,
         reconnectOnDisconnect: true,
+        disableStatusUpdates: false,
         ...config.behavior
       },
       debug: {
