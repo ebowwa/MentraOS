@@ -1,192 +1,182 @@
-# Managed RTMP Streaming Upgrades
+# Managed RTMP Streaming - Relay Architecture
 
-This document outlines two approaches for adding RTMP re-streaming capabilities to the MentraOS managed streaming system.
+This document outlines the relay-centric architecture for MentraOS managed streaming, designed to handle low-quality streams from smart glasses and provide clean HLS output for apps.
 
 ## Current Architecture
 
 ```
-SDK → Cloud → Glasses → Relay → Cloudflare → Apps
+SDK → Cloud → Glasses → Relay → HLS → Apps
 ```
 
 - **SDK** requests managed stream
-- **Cloud** creates Cloudflare Live Input and returns relay URL
-- **Glasses** stream to RTMP relay
-- **Relay** cleans stream and forwards to Cloudflare
-- **Cloudflare** provides HLS/DASH URLs
-- **Apps** consume the HLS/DASH streams
+- **Cloud** assigns relay and returns relay URL
+- **Glasses** stream low-quality RTMP to relay
+- **Relay** cleans stream with FFmpeg and generates HLS
+- **Apps** consume the HLS streams directly from relay
 
-## Option A: Long-term Solution (Relay-centric)
+## Implementation Details
 
-### Architecture
-```
-SDK → Cloud → Glasses → Relay → Apps/Re-streams
-                           ↓
-                     HLS URLs → Cloud
-```
+### Relay Components
 
-### Implementation Details
+1. **MediaMTX** - RTMP server that receives streams from glasses
+2. **FFmpeg** - Cleans dirty streams (fixes timestamps, forces consistent framerate)
+3. **Nginx** - Serves HLS files on port 8888
+4. **Container** - All components run in a single Docker container
 
-1. **MediaMTX as Primary Streaming Server**
-   - Relay receives RTMP from glasses
-   - MediaMTX automatically generates HLS at `http://relay:8888/live/{userId}/{streamId}/index.m3u8`
-   - Relay notifies cloud of available HLS URL
-   - Relay handles all re-streaming to external RTMP endpoints
+### Stream Processing Flow
 
-2. **New Cloud Endpoints Required**
-   ```
-   POST /api/rtmp-relay/hls-ready
-   {
-     "userId": "user@example.com",
-     "streamId": "abc123",
-     "hlsUrl": "http://relay-server:8888/live/user-example-com/abc123/index.m3u8",
-     "dashUrl": "http://relay-server:8888/live/user-example-com/abc123/index.mpd"
-   }
-   
-   GET /api/rtmp-relay/restream-destinations/{userId}/{streamId}
-   Response: {
-     "destinations": [
-       { "url": "rtmp://youtube.com/live/KEY", "name": "YouTube" },
-       { "url": "rtmp://twitch.tv/app/KEY", "name": "Twitch" }
-     ]
-   }
-   
-   POST /api/rtmp-relay/stream-status
-   {
-     "userId": "user@example.com",
-     "streamId": "abc123",
-     "status": "active|error|stopped",
-     "viewers": 42,
-     "bitrate": 2100000
-   }
-   ```
+1. Glasses connect to `rtmp://relay:1935/live/{userId}/{streamId}`
+2. MediaMTX triggers `stream-manager.sh` script
+3. FFmpeg cleans the stream:
+   - Fixes timestamp issues (`-fflags +genpts+igndts`)
+   - Forces 30fps output (duplicates frames as needed)
+   - Re-encodes to H.264 baseline profile
+   - Generates HLS segments directly
+4. Nginx serves HLS at `http://relay:8888/hls/{userId}/{streamId}/index.m3u8`
+5. Cloud is notified of HLS availability
 
-3. **Modified Relay Script**
-   ```bash
-   # Get restream destinations from cloud
-   DESTINATIONS=$(curl -s "$CLOUD_API_URL/api/rtmp-relay/restream-destinations/$USER_ID/$STREAM_ID")
-   
-   # Build FFmpeg command with multiple outputs
-   ffmpeg -i rtmp://localhost:1935/$MTX_PATH \
-     [encoding options] \
-     -f flv $DESTINATION_1 \
-     -f flv $DESTINATION_2 \
-     ...
-   
-   # Notify cloud of HLS availability
-   curl -X POST "$CLOUD_API_URL/api/rtmp-relay/hls-ready" \
-     -d "{\"userId\":\"$USER_ID\",\"streamId\":\"$STREAM_ID\",\"hlsUrl\":\"$HLS_URL\"}"
-   ```
+### Current Implementation
 
-4. **Benefits**
-   - Complete control over streaming infrastructure
-   - Lower latency (no Cloudflare processing)
-   - No external dependencies
-   - Can add WebRTC for ultra-low latency
-   - Direct bandwidth control and optimization
-
-5. **Drawbacks**
-   - Must handle bandwidth for all viewers
-   - Need CDN for global distribution
-   - More complex scaling requirements
-   - No built-in recording (must implement)
-
-## Option B: Short-term Solution (Cloudflare Outputs)
-
-### Architecture
-```
-SDK → Cloud → Glasses → Relay → Cloudflare → Apps
-                                      ↓
-                                 Re-streams → YouTube/Twitch/etc
+```bash
+# stream-manager.sh - Core processing logic
+ffmpeg -fflags +genpts+igndts \
+  -use_wallclock_as_timestamps 1 \
+  -analyzeduration 3M \
+  -loglevel error \
+  -i "rtmp://localhost:1935/$MTX_PATH" \
+  -c:v libx264 -preset veryfast -tune zerolatency \
+  -profile:v baseline -level 3.1 \
+  -r 30 -g 60 -keyint_min 60 -sc_threshold 0 \
+  -b:v 2M -maxrate 2.5M -bufsize 4M \
+  -pix_fmt yuv420p \
+  -c:a aac -ar 48000 -ac 2 -b:a 128k \
+  -reset_timestamps 1 \
+  -f hls \
+  -hls_time 2 \
+  -hls_list_size 5 \
+  -hls_flags delete_segments \
+  -hls_segment_filename "$HLS_DIR/segment_%03d.ts" \
+  "$HLS_DIR/index.m3u8"
 ```
 
-### Implementation Details
+## Cloud Endpoints
 
-1. **SDK Changes**
-   ```typescript
-   // Add to ManagedStreamRequest interface
-   export interface ManagedStreamRequest {
-     // ... existing fields ...
-     restreamDestinations?: {
-       url: string;      // rtmp://youtube.com/live/KEY
-       name?: string;    // "YouTube"
-     }[];
-   }
+```
+POST /api/rtmp-relay/hls-ready
+{
+  "userId": "user@example.com",
+  "streamId": "abc123",
+  "hlsUrl": "http://localhost:8888/hls/user/stream/index.m3u8",
+  "dashUrl": ""  // Not implemented
+}
+```
+
+## Scaling Architecture
+
+### Current Limitations
+- Each stream requires ~50-100% of one CPU core
+- FFmpeg transcoding is CPU intensive
+- Memory usage ~100-200MB per stream
+- Single server can handle ~10-20 concurrent streams
+
+### Horizontal Scaling Strategy
+
+1. **Multiple Relay Instances**
+   - Deploy multiple relay containers
+   - Each handles subset of streams
+   - RtmpRelayService uses consistent hashing for assignment
+
+2. **Ephemeral Design**
+   - No shared storage required
+   - HLS segments are temporary (not recorded)
+   - When relay dies, streams reconnect to new relay
+   - Truly stateless architecture
+
+3. **Auto-scaling with Porter.run**
+   ```yaml
+   # Scaling rules
+   - CPU > 70%: Add relay instance
+   - CPU < 30%: Remove relay instance
+   - Each relay: ~10-20 streams capacity
    ```
 
-2. **Cloud Changes**
-   - When creating Cloudflare Live Input, also create Outputs
-   - Store output configurations with stream state
-   - Return output status in ManagedStreamStatus
+4. **Service Discovery**
+   - New relays register with cloud on startup
+   - Cloud tracks available relays and their load
+   - Users directed to least loaded relay
 
-3. **Cloudflare API Integration**
-   ```typescript
-   // In CloudflareStreamService
-   async createLiveInputWithOutputs(userId: string, outputs: RestreamDestination[]) {
-     // 1. Create Live Input
-     const liveInput = await this.createLiveInput(userId);
-     
-     // 2. Create Outputs for each destination
-     for (const output of outputs) {
-       await fetch(`https://api.cloudflare.com/client/v4/accounts/${accountId}/stream/live_inputs/${liveInput.uid}/outputs`, {
-         method: 'POST',
-         headers: this.headers,
-         body: JSON.stringify({
-           url: output.url,
-           streamKey: this.extractStreamKey(output.url),
-           enabled: true
-         })
-       });
-     }
-     
-     return liveInput;
-   }
-   ```
+### Scaling Flow
 
-4. **Benefits**
-   - Cloudflare handles all transcoding/distribution
-   - No additional CPU/bandwidth costs
-   - Built-in global CDN
-   - Automatic recording
-   - Simple implementation
+```
+1. User requests stream → Cloud checks relay capacity
+2. If current relays full → Porter spins up new relay
+3. New relay registers → Cloud adds to available pool
+4. User gets assigned → Connects directly to relay
+5. If relay dies → Stream ends, user reconnects to new relay
+```
 
-5. **Drawbacks**
-   - Dependent on Cloudflare
-   - Less control over encoding
-   - Additional latency
-   - Cloudflare API rate limits
+### Key Design Decisions
 
-## Migration Path
+1. **Why FFmpeg Re-encoding?**
+   - Smart glasses send "dirty" streams with broken timestamps
+   - Low/variable framerates (9-15fps) incompatible with HLS
+   - Must normalize to standard format for reliable playback
 
-1. **Phase 1**: Implement Option B (Cloudflare Outputs)
-   - Quick to implement
-   - Immediate value for users
-   - Learn usage patterns
+2. **Why No Shared Storage?**
+   - HLS segments are temporary (live streaming only)
+   - Simplifies architecture - each relay is independent
+   - Enables true horizontal scaling without coordination
 
-2. **Phase 2**: Build Option A infrastructure
-   - Deploy relay servers globally
-   - Implement CDN/caching strategy
-   - Add monitoring and analytics
+3. **Why Direct HLS from FFmpeg?**
+   - MediaMTX's HLS generation fails with low FPS streams
+   - FFmpeg handles timestamp fixing and HLS generation together
+   - More reliable for poor quality input streams
 
-3. **Phase 3**: Gradual migration
-   - Offer both options to users
-   - A/B test performance
-   - Migrate based on user needs
+### Future Optimizations
 
-## Decision Matrix
+1. **GPU Acceleration**
+   - Use NVIDIA GPUs for transcoding
+   - 1 GPU can handle 20-50 streams
+   - Much more cost-effective at scale
 
-| Feature | Option A (Relay) | Option B (Cloudflare) |
-|---------|------------------|----------------------|
-| Implementation Time | 2-4 weeks | 3-5 days |
-| Latency | Lower | Higher |
-| Bandwidth Costs | Higher | Lower |
-| Control | Full | Limited |
-| Scalability | Complex | Simple |
-| Recording | Must build | Built-in |
-| Global Distribution | Must build | Built-in |
-| Multi-platform Streaming | Yes | Yes |
+2. **Reduce Transcoding**
+   - Only fix what's broken (timestamps)
+   - Use `-c:v copy` when possible
+   - Adaptive quality based on input
 
-## Recommendation
+3. **Edge Distribution**
+   - Deploy relays geographically
+   - Route users to nearest relay
+   - Reduce latency and bandwidth costs
 
-**Short term**: Implement Option B to quickly deliver value to users while learning usage patterns.
+4. **Re-streaming Support** (Future)
+   - Add capability to forward to YouTube/Twitch
+   - Modify stream-manager.sh to output multiple destinations
+   - Track restream status and report to cloud
 
-**Long term**: Build Option A infrastructure for users who need lower latency and more control, while keeping Option B for users who prefer simplicity.
+## Benefits
+
+- **Handles poor quality streams** from smart glasses
+- **No external dependencies** (no Cloudflare)
+- **Horizontally scalable** with Porter.run
+- **Simple architecture** - stateless relays
+- **Low latency** - direct HLS serving
+- **Full control** over stream processing
+
+## Deployment
+
+```bash
+# Build relay container
+cd rtmp_relay
+docker build -t rtmp-relay .
+
+# Deploy to Porter
+porter app create rtmp-relay
+porter app deploy
+
+# Configure environment
+CLOUD_API_URL=https://api.mentra.glass
+
+# Scale as needed
+porter app scale --instances 5
+```
