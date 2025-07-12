@@ -10,6 +10,7 @@ import {ViewStyle, TextStyle} from "react-native"
 import {useStatus} from "@/contexts/AugmentOSStatusProvider"
 import {useCallback} from "react"
 import ActionButton from "@/components/ui/ActionButton"
+import WifiCredentialsService from "@/utils/WifiCredentialsService"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 
 export default function WifiScanScreen() {
@@ -18,6 +19,7 @@ export default function WifiScanScreen() {
   const {status} = useStatus()
 
   const [networks, setNetworks] = useState<string[]>([])
+  const [savedNetworks, setSavedNetworks] = useState<string[]>([])
   const [isScanning, setIsScanning] = useState(true)
 
   const {push, goBack} = useNavigationHistory()
@@ -40,6 +42,13 @@ export default function WifiScanScreen() {
   )
 
   useEffect(() => {
+    // Load saved networks
+    const loadSavedNetworks = () => {
+      const savedCredentials = WifiCredentialsService.getAllCredentials()
+      setSavedNetworks(savedCredentials.map(cred => cred.ssid))
+    }
+
+    loadSavedNetworks()
     // Start scanning immediately when screen loads
     startScan()
 
@@ -104,19 +113,29 @@ export default function WifiScanScreen() {
               keyExtractor={(item, index) => `network-${index}`}
               renderItem={({item}) => {
                 const isConnected = isWifiConnected && currentWifi === item
+                const isSaved = savedNetworks.includes(item)
                 return (
                   <TouchableOpacity
-                    style={themed(isConnected ? $connectedNetworkItem : $networkItem)}
+                    style={themed(isConnected ? $connectedNetworkItem : isSaved ? $savedNetworkItem : $networkItem)}
                     onPress={() => handleNetworkSelect(item)}>
                     <View style={themed($networkContent)}>
-                      <Text style={themed(isConnected ? $connectedNetworkText : $networkText)}>{item}</Text>
-                      {isConnected && (
-                        <View style={themed($connectedBadge)}>
-                          <Text style={themed($connectedBadgeText)}>Connected</Text>
-                        </View>
-                      )}
+                      <Text style={themed(isConnected ? $connectedNetworkText : isSaved ? $savedNetworkText : $networkText)}>{item}</Text>
+                      <View style={themed($badgeContainer)}>
+                        {isConnected && (
+                          <View style={themed($connectedBadge)}>
+                            <Text style={themed($connectedBadgeText)}>Connected</Text>
+                          </View>
+                        )}
+                        {isSaved && !isConnected && (
+                          <View style={themed($savedBadge)}>
+                            <Text style={themed($savedBadgeText)}>Saved</Text>
+                          </View>
+                        )}
+                      </View>
                     </View>
-                    <Text style={themed(isConnected ? $connectedChevron : $chevron)}>{isConnected ? "✓" : "›"}</Text>
+                    <Text style={themed(isConnected ? $connectedChevron : isSaved ? $savedChevron : $chevron)}>
+                      {isConnected ? "✓" : isSaved ? "🔑" : "›"}
+                    </Text>
                   </TouchableOpacity>
                 )
               }}
@@ -192,6 +211,18 @@ const $connectedNetworkItem: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   opacity: 0.7,
 })
 
+const $savedNetworkItem: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
+  flexDirection: "row",
+  justifyContent: "space-between",
+  alignItems: "center",
+  backgroundColor: colors.background,
+  padding: spacing.md,
+  marginBottom: spacing.xs,
+  borderRadius: spacing.xs,
+  borderWidth: 1,
+  borderColor: colors.tint,
+})
+
 const $networkContent: ThemedStyle<ViewStyle> = () => ({
   flex: 1,
   flexDirection: "row",
@@ -211,6 +242,18 @@ const $connectedNetworkText: ThemedStyle<TextStyle> = ({colors}) => ({
   flex: 1,
 })
 
+const $savedNetworkText: ThemedStyle<TextStyle> = ({colors}) => ({
+  fontSize: 16,
+  color: colors.text,
+  flex: 1,
+  fontWeight: "500",
+})
+
+const $badgeContainer: ThemedStyle<ViewStyle> = () => ({
+  flexDirection: "row",
+  alignItems: "center",
+})
+
 const $connectedBadge: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   backgroundColor: colors.tint,
   paddingHorizontal: spacing.xs,
@@ -219,7 +262,22 @@ const $connectedBadge: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   marginLeft: spacing.sm,
 })
 
+const $savedBadge: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
+  backgroundColor: colors.textDim,
+  paddingHorizontal: spacing.xs,
+  paddingVertical: 2,
+  borderRadius: spacing.xs,
+  marginLeft: spacing.sm,
+})
+
 const $connectedBadgeText: ThemedStyle<TextStyle> = ({colors}) => ({
+  fontSize: 10,
+  fontWeight: "500",
+  color: colors.background,
+  textTransform: "uppercase",
+})
+
+const $savedBadgeText: ThemedStyle<TextStyle> = ({colors}) => ({
   fontSize: 10,
   fontWeight: "500",
   color: colors.background,
@@ -237,6 +295,12 @@ const $connectedChevron: ThemedStyle<TextStyle> = ({colors}) => ({
   color: colors.tint,
   marginLeft: 8,
   fontWeight: "bold",
+})
+
+const $savedChevron: ThemedStyle<TextStyle> = ({colors}) => ({
+  fontSize: 18,
+  color: colors.tint,
+  marginLeft: 8,
 })
 
 const $emptyContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
