@@ -26,6 +26,11 @@ const sidebars: SidebarsConfig = {
       items: [
         {
           type: 'doc',
+          id: 'example-apps',
+          label: 'Example Apps',
+        },
+        {
+          type: 'doc',
           id: 'getting-started',
           label: 'Build From Scratch',
         },

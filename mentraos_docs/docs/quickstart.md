@@ -37,13 +37,11 @@ We are going to use ngrok to expose your local app to the internet.  This is use
 
 ### Register your app with MentraOS
 
-![MentraOS Console](https://github.com/user-attachments/assets/36192c2b-e1ba-423b-90de-47ff8cd91318)
-
 1. Navigate to [console.mentra.glass](https://console.mentra.glass/)
 2. Click "Sign In" and log in with the same account you're using for MentraOS
 3. Click "Create App"
 4. Set a unique package name like `com.yourName.yourAppName`
-5. For "Public URL", enter your ngrok static URL
+5. For "Public URL", enter your ngrok static URL (if using ngrok)
 6. In the edit app screen, add the microphone permission.  See the [Permissions](permissions) guide for details.
 
 > This automatically installs the app for your user.  For other people to test the app (including others in your organization), they need to install the app.  Get the app install link from the app edit page under the `Share with Testers` section.
@@ -51,14 +49,14 @@ We are going to use ngrok to expose your local app to the internet.  This is use
 ### Get your app running
 
 1. [Install bun](https://bun.sh/docs/installation)
-2. Create a new repo from the template using the `Use this template` dropdown in the upper right of [the example app repository](https://github.com/Mentra-Community/MentraOS-Cloud-Example-App) or the following command:
+2. Choose an example app template based on your smart glasses type from our [Example Apps](./example-apps.md) page. For this quickstart, we'll use the Live Captions example:
    ```bash
    gh repo create --template Mentra-Community/MentraOS-Cloud-Example-App
    ```
 
    ![Create repo from template](https://github.com/user-attachments/assets/c10e14e8-2dc5-4dfa-adac-dd334c1b73a5)
 
-   **Note:** If you want a more in-depth example (recommended for those who've already completed this quickstart), you can use the [Extended Example](https://github.com/Mentra-Community/MentraOS-Extended-Example-App) which includes app settings support.
+   **Note:** See our [Example Apps](./example-apps.md) page for other examples, including camera-based apps for non-HUD glasses and more advanced examples with additional features.
 3. Clone your new repo locally:
    ```bash
    git clone <your-repo-url>
@@ -93,12 +91,12 @@ We are going to use ngrok to expose your local app to the internet.  This is use
 
 > **IMPORTANT:** After making changes to your app code or restarting your server, you must restart your app inside the MentraOS phone app.
 
-For more information, visit the [MentraOS-Cloud-Example-App repository](https://github.com/Mentra-Community/MentraOS-Cloud-Example-App). For a more in-depth example with app settings support, see the [Extended Example](https://github.com/Mentra-Community/MentraOS-Extended-Example-App).
+For more example apps and detailed information about each, visit our [Example Apps](./example-apps.md) page.
 
 ## Next Steps
 
 - Explore the [Build From Scratch](/getting-started) guide for a more detailed walkthrough
-- For a more in-depth example with app settings support, see the [Extended Example](https://github.com/Mentra-Community/MentraOS-Extended-Example-App)
+- Check out our [Example Apps](./example-apps.md) page for more templates and advanced examples
 - Learn about [Core Concepts](/core-concepts) to understand how MentraOS apps work
 - Read about [Permissions](/permissions) to access device capabilities like microphone and location
 - Join our [Discord community](https://discord.gg/5ukNvkEAqT) for help and support
