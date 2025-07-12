@@ -1136,7 +1136,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
 
         // Send the message again
         Log.d(TAG, "📤 Retrying message " + messageId + " (attempt " + retryMessage.retryCount + ")");
-        sendDataToGlasses(pendingMessage.messageData);
+        sendDataToGlasses(pendingMessage.messageData, false);
 
         // Schedule next ACK check
         handler.postDelayed(new Runnable() {
@@ -1798,7 +1798,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 // Convert to string and send via BLE
                 String jsonString = batteryStatus.toString();
                 Log.d(TAG, "🔋 Sending battery status via BLE: " + level + "% " + (charging ? "(charging)" : "(not charging)"));
-                sendDataToGlasses(jsonString);
+                sendDataToGlasses(jsonString, false);
                 
             } catch (JSONException e) {
                 Log.e(TAG, "Error creating battery status JSON", e);
