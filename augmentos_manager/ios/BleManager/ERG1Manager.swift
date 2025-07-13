@@ -785,6 +785,8 @@ enum GlassesError: Error {
       handleAck(from: peripheral, success: data[1] == CommandResponse.ACK.rawValue)
       // head up angle ack
       // position ack
+    case .SILENT_MODE:
+      handleAck(from: peripheral, success: data[1] == CommandResponse.ACK.rawValue)
     case .BLE_REQ_TRANSFER_MIC_DATA:
       self.compressedVoiceData = data
       //                CoreCommsService.log("Got voice data: " + String(data.count))
