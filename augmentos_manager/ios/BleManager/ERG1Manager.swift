@@ -660,15 +660,33 @@ enum GlassesError: Error {
       return
     }
     
-    // first send to the left:
-    if command.sendLeft {
-      await attemptSend(chunks: command.chunks, side: "left")
-    }
+//    // first send to the left:
+//    if command.sendLeft {
+//      await attemptSend(chunks: command.chunks, side: "left")
+//    }
+//    
+//    //    CoreCommsService.log("@@@ sent (or failed) to left, now trying right @@@")
+//    
+//    if command.sendRight {
+//      await attemptSend(chunks: command.chunks, side: "right")
+//    }
     
-    //    CoreCommsService.log("@@@ sent (or failed) to left, now trying right @@@")
-    
-    if command.sendRight {
-      await attemptSend(chunks: command.chunks, side: "right")
+    // Send to both sides in parallel
+    await withTaskGroup(of: Void.self) { group in
+        if command.sendLeft {
+            group.addTask {
+                await self.attemptSend(chunks: command.chunks, side: "left")
+            }
+        }
+        
+        if command.sendRight {
+            group.addTask {
+                await self.attemptSend(chunks: command.chunks, side: "right")
+            }
+        }
+        
+        // Wait for all tasks to complete
+        await group.waitForAll()
     }
     
     if command.waitTime > 0 {
@@ -726,7 +744,7 @@ enum GlassesError: Error {
   }
   
   private func handleAck(from peripheral: CBPeripheral, success: Bool) {
-    CoreCommsService.log("handleAck \(success)")
+//    CoreCommsService.log("handleAck \(success)")
     if !success { return }
     if peripheral == self.leftPeripheral {
       leftSemaphore.signal()
