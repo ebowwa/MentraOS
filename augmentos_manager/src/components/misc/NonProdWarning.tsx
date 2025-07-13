@@ -22,12 +22,17 @@ export default function NonProdWarning() {
 
   const checkNonProdBackend = async () => {
     const url = await loadSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL, null)
-    setNonProdBackend(
-      url &&
-        !url.includes("prod.augmentos.cloud") &&
-        !url.includes("global.augmentos.cloud") &&
-        !url.includes("api.mentra.glass"),
-    )
+
+    let isProd = false
+    if (url.includes("prod.augmentos.cloud") || url.includes("global.augmentos.cloud") || url.includes("api.mentra.glass")) {
+      isProd = true
+    }
+    
+    if (url.includes("devapi")) {
+      isProd = false
+    }
+
+    setNonProdBackend(isProd)
   }
 
   useFocusEffect(
