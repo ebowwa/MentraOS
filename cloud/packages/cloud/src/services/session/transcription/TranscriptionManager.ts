@@ -3,7 +3,7 @@
  */
 
 import { Logger } from 'pino';
-import { ExtendedStreamType, getLanguageInfo, StreamType, CloudToAppMessageType, DataStream, TranscriptSegment } from '@mentra/sdk';
+import { ExtendedStreamType, getLanguageInfo, StreamType, CloudToAppMessageType, DataStream, TranscriptSegment, LocalTranscription } from '@mentra/sdk';
 import UserSession from '../UserSession';
 import { PosthogService } from '../../logging/posthog.service';
 import {
@@ -84,6 +84,12 @@ export class TranscriptionManager {
       defaultProvider: this.config.providers.defaultProvider,
       fallbackProvider: this.config.providers.fallbackProvider
     }, 'TranscriptionManager created - initializing providers...');
+  }
+
+  async handleLocalTranscription(message: LocalTranscription): Promise<void> {
+    this.logger.debug({ message }, 'Local transcription received');
+    
+    this.relayDataToApps(StreamType.TRANSCRIPTION, message);
   }
 
   /**
@@ -336,6 +342,15 @@ export class TranscriptionManager {
     }
     
     return true;
+  }
+
+  isCloudSTTDown(): boolean {
+    const stats = this.providerSelector?.getProviderStats()
+    if (!stats) {
+      // Defaulting to true as we don't have any stats
+      return true;
+    }
+    return Object.values(stats).every((provider) => provider.isHealthy === false);
   }
 
   /**

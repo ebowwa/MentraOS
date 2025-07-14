@@ -21,6 +21,9 @@ export enum GlassesToCloudMessageType {
   // Mentra Live
   PHOTO_RESPONSE = StreamType.PHOTO_RESPONSE,
 
+  // Local Transcription
+  LOCAL_TRANSCRIPTION = 'local_transcription',
+
   // RTMP streaming
   RTMP_STREAM_STATUS = StreamType.RTMP_STREAM_STATUS,
   KEEP_ALIVE_ACK = 'keep_alive_ack',
@@ -191,7 +194,8 @@ export const EventTypes = [
   GlassesToCloudMessageType.PHONE_NOTIFICATION_DISMISSED,
   GlassesToCloudMessageType.CALENDAR_EVENT,
   GlassesToCloudMessageType.MENTRAOS_SETTINGS_UPDATE_REQUEST,
-  GlassesToCloudMessageType.CORE_STATUS_UPDATE
+  GlassesToCloudMessageType.CORE_STATUS_UPDATE,
+  GlassesToCloudMessageType.LOCAL_TRANSCRIPTION
 ] as const;
 
 /**

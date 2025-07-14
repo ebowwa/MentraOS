@@ -64,6 +64,7 @@ export interface MicrophoneStateChange extends BaseMessage {
   type: CloudToGlassesMessageType.MICROPHONE_STATE_CHANGE;
   userSession: Partial<UserSession>;
   isMicrophoneEnabled: boolean;
+  requiredData: Array<'pcm' | 'transcription' | 'pcm_or_transcription'>;
 }
 
 /**
@@ -260,4 +261,3 @@ export function isAudioPlayRequestToGlasses(message: CloudToGlassesMessage): mes
 export function isAudioStopRequestToGlasses(message: CloudToGlassesMessage): message is AudioStopRequestToGlasses {
   return message.type === CloudToGlassesMessageType.AUDIO_STOP_REQUEST;
 }
-
