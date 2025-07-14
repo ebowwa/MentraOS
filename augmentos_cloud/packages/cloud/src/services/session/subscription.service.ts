@@ -298,6 +298,12 @@ export class SubscriptionService {
       // Auto-update TranscriptionManager with new subscription state
       await this.syncTranscriptionManager(userSession);
 
+      // Update microphone state AFTER subscription is set
+      // This ensures the microphone state check uses the updated subscription map
+      if (userSession.microphoneManager) {
+        userSession.microphoneManager.handleSubscriptionChange();
+      }
+
     } catch (error) {
       // If there's an error getting the app or checking permissions, log it but don't block
       // This ensures backward compatibility with existing code
@@ -313,6 +319,11 @@ export class SubscriptionService {
         subscriptions: [...processedSubscriptions],
         action
       });
+
+      // Update microphone state AFTER subscription is set (even in error case)
+      if (userSession.microphoneManager) {
+        userSession.microphoneManager.handleSubscriptionChange();
+      }
     }
 
     // --- Database Operations with Retry Logic ---

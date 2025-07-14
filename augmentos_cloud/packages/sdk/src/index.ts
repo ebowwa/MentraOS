@@ -98,7 +98,7 @@ export {
   CalendarEvent,
   Vad,
   PhoneNotification,
-  NotificationDismissed,
+  PhoneNotificationDismissed,
   StartApp,
   StopApp,
   ConnectionInit,

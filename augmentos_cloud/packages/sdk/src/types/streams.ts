@@ -25,7 +25,7 @@ export enum StreamType {
   
   // Phone streams
   PHONE_NOTIFICATION = 'phone_notification',
-  NOTIFICATION_DISMISSED = 'notification_dismissed',
+  PHONE_NOTIFICATION_DISMISSED = 'phone_notification_dismissed',
   CALENDAR_EVENT = 'calendar_event',
   
   // System streams
@@ -93,7 +93,7 @@ export const STREAM_CATEGORIES: Record<StreamType, StreamCategory> = {
   [StreamType.AUDIO_CHUNK]: StreamCategory.AUDIO,
   
   [StreamType.PHONE_NOTIFICATION]: StreamCategory.PHONE,
-  [StreamType.NOTIFICATION_DISMISSED]: StreamCategory.PHONE,
+  [StreamType.PHONE_NOTIFICATION_DISMISSED]: StreamCategory.PHONE,
   [StreamType.CALENDAR_EVENT]: StreamCategory.PHONE,
   [StreamType.START_APP]: StreamCategory.SYSTEM,
   [StreamType.STOP_APP]: StreamCategory.SYSTEM,
