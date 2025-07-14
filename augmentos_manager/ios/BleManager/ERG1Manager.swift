@@ -30,6 +30,36 @@ extension Data {
   }
 }
 
+actor AckTracker {
+    private var leftAckReceived = false
+    private var rightAckReceived = false
+    
+    func setLeftAck(_ received: Bool) {
+        leftAckReceived = received
+    }
+    
+    func setRightAck(_ received: Bool) {
+        rightAckReceived = received
+    }
+    
+    func getLeftAck() -> Bool {
+        return leftAckReceived
+    }
+    
+    func getRightAck() -> Bool {
+        return rightAckReceived
+    }
+    
+    func reset() {
+        leftAckReceived = false
+        rightAckReceived = false
+    }
+    
+    func checkAcks(needsLeft: Bool, needsRight: Bool) -> Bool {
+        return (!needsLeft || leftAckReceived) && (!needsRight || rightAckReceived)
+    }
+}
+
 struct BufferedCommand {
   let chunks: [[UInt8]]
   let sendLeft: Bool
@@ -110,6 +140,11 @@ enum GlassesError: Error {
   private let reconnectionInterval: TimeInterval = 30.0 // Seconds between reconnection attempts
   private var globalCounter: UInt8 = 0
   
+  // Add these new properties for tracking ACKs:
+  private var leftAckReceived = false
+  private var rightAckReceived = false
+  private let ackLock = NSLock()
+  
   enum AiMode: String {
     case AI_REQUESTED
     case AI_MIC_ON
@@ -127,6 +162,7 @@ enum GlassesError: Error {
   private let rightSemaphore = DispatchSemaphore(value: 0)  // Start at 0 to block
   private var leftAck = false
   private var rightAck = false
+  private let ackTracker = AckTracker()
   
   // Constants
   var DEVICE_SEARCH_ID = "NOT_SET"
@@ -543,6 +579,8 @@ enum GlassesError: Error {
   actor CommandQueue {
     private var commands: [BufferedCommand] = []
     private var continuations: [CheckedContinuation<BufferedCommand, Never>] = []
+    private(set) var pending: BufferedCommand? = nil
+    private var pendingContinuation: CheckedContinuation<Void, Never>? = nil
     
     func enqueue(_ command: BufferedCommand) {
       if let continuation = continuations.first {
@@ -554,17 +592,139 @@ enum GlassesError: Error {
     }
     
     func dequeue() async -> BufferedCommand {
+      // Wait until pending is nil
+      while self.pending != nil {
+        await withCheckedContinuation { continuation in
+          self.pendingContinuation = continuation
+        }
+      }
+      
       if let command = commands.first {
         commands.removeFirst()
+        self.pending = command
         return command
       }
       
-      return await withCheckedContinuation { continuation in
+      let command = await withCheckedContinuation { continuation in
         continuations.append(continuation)
       }
+      self.pending = command
+      return command
+    }
+    
+    func clearPending() {
+      self.pending = nil
+      if let continuation = self.pendingContinuation {
+        self.pendingContinuation = nil
+        continuation.resume()
+      }
+    }
+    
+    func getPending() -> BufferedCommand? {
+      return self.pending
     }
   }
   
+  private func attemptSend(chunks: [[UInt8]], side: String) async -> Bool {
+      let maxAttempts = 5
+      var attempts: Int = 0
+      let s = side == "left" ? "L" : "R"
+      
+      while attempts < maxAttempts {
+          if attempts > 0 {
+              CoreCommsService.log("Retrying send to \(s): attempt \(attempts + 1)")
+          }
+          
+          if self.isDisconnecting {
+              CoreCommsService.log("Aborting send - disconnecting")
+              return false
+          }
+          
+          // Reset the appropriate ACK flag before sending
+          if side == "left" {
+              await ackTracker.setLeftAck(false)
+          } else {
+              await ackTracker.setRightAck(false)
+          }
+          
+          // Send all chunks
+          for i in 0..<chunks.count {
+              let chunk = chunks[i]
+              await sendCommandToSide(chunk, side: side)
+              
+              // Add delay between chunks except for the last one
+              if i < chunks.count - 1 {
+                  try? await Task.sleep(nanoseconds: 50 * 1_000_000) // 50ms
+              }
+          }
+          
+          // Wait for ACK with timeout
+          let ackTimeout = 0.3 + (Double(attempts) * 0.2) // Increasing timeout with retries
+          let startTime = Date()
+          
+          while Date().timeIntervalSince(startTime) < ackTimeout {
+              let ackReceived = await (side == "left" ? ackTracker.getLeftAck() : ackTracker.getRightAck())
+              
+              if ackReceived {
+                  return true
+              }
+              
+              // Check every 10ms
+              try? await Task.sleep(nanoseconds: 10 * 1_000_000)
+          }
+          
+          CoreCommsService.log("Timeout waiting for ACK from \(s)")
+          attempts += 1
+      }
+      
+      // Failed after all attempts
+      CoreCommsService.log("Failed to send to \(s) after \(maxAttempts) attempts")
+      startReconnectionTimer()
+      return false
+  }
+  
+  // Update processCommand to properly handle the new flow:
+  private func processCommand(_ command: BufferedCommand) async {
+    // Send to both sides in parallel
+    await withTaskGroup(of: Bool.self) { group in
+      if command.sendLeft {
+        group.addTask {
+          return await self.attemptSend(chunks: command.chunks, side: "left")
+        }
+      }
+      
+      if command.sendRight {
+        group.addTask {
+          return await self.attemptSend(chunks: command.chunks, side: "right")
+        }
+      }
+      
+      // Collect results
+      var allSucceeded = true
+      for await result in group {
+        if !result {
+          allSucceeded = false
+        }
+      }
+      
+      // If ignoreAck is true, clear pending immediately
+      if command.ignoreAck {
+        await self.commandQueue.clearPending()
+      }
+      // Otherwise, pending will be cleared when ACK is received in handleAck
+    }
+    
+    // Apply wait time if specified
+    if command.waitTime > 0 {
+      try? await Task.sleep(nanoseconds: UInt64(command.waitTime) * 1_000_000)
+    } else {
+      try? await Task.sleep(nanoseconds: 100 * 1_000_000) // Default 100ms
+    }
+  }
+  
+  // Remove the resetSemaphoreToZero function as it's no longer needed
+  
+  // Update setupCommandQueue to handle the new flow:
   private func setupCommandQueue() {
     Task.detached { [weak self] in
       guard let self = self else { return }
@@ -574,133 +734,6 @@ enum GlassesError: Error {
         await self.processCommand(command)
       }
     }
-  }
-  
-  func resetSemaphoreToZero(_ semaphore: DispatchSemaphore) {
-    // First, try to acquire the semaphore with a minimal timeout
-    let result = semaphore.wait(timeout: .now() + 0.001)
-    if result == .success {
-      // We acquired it, meaning it was at least 1
-      // Release it to get back to where we were (if it was 1) or to increment it by 1 (if it was >1)
-      semaphore.signal()
-      // Try to acquire it again to see if it's still available (meaning it was >1 before)
-      while semaphore.wait(timeout: .now() + 0.001) == .success {
-        // Keep signaling until we're sure we're at 1
-        semaphore.signal()
-        break
-      }
-    } else {
-      // Timeout occurred, meaning the semaphore was at 0 or less
-      // Signal once to try to bring it to 1
-      semaphore.signal()
-    }
-    // bring it down to 0:
-    semaphore.wait(timeout: .now() + 0.001)
-  }
-  
-  private func attemptSend(chunks: [[UInt8]], side: String) async {
-    var maxAttempts = 5
-    var attempts: Int = 0
-    var result: Bool = false
-    var semaphore = side == "left" ? leftSemaphore : rightSemaphore
-    var s = side == "left" ? "L" : "R"
-    
-    while attempts < maxAttempts && !result {
-      if (attempts > 0) {
-        CoreCommsService.log("trying again to send to:\(s): \(attempts)")
-      }
-      //      let data = Data(chunks[0])
-      //      CoreCommsService.log("SEND (\(s)) \(data.hexEncodedString())")
-      
-      if self.isDisconnecting {
-        // forget whatever we were doing since we're disconnecting:
-        break
-      }
-      
-      
-      
-      for i in 0..<chunks.count-1 {
-        let chunk = chunks[i]
-        await sendCommandToSide(chunk, side: side)
-        try? await Task.sleep(nanoseconds: 50 * 1_000_000)// 50ms
-      }
-      
-      let lastChunk = chunks.last!
-      await sendCommandToSide(lastChunk, side: side)
-      
-      
-      CoreCommsService.log("waiting for \(s)")
-      result = waitForSemaphore(semaphore: semaphore, timeout: (0.3 + (Double(attempts) * 0.2)))
-      if (!result) {
-        CoreCommsService.log("timed out waiting for \(s)")
-      }
-      
-      attempts += 1
-      if !result && (attempts >= maxAttempts) {
-        semaphore.signal()// increment the count
-        startReconnectionTimer()
-        break
-      }
-    }
-  }
-  
-  // Process a single number with timeouts
-  private func processCommand(_ command: BufferedCommand) async {
-    
-    //    CoreCommsService.log("@@@ processing command \(command.chunks[0][0]),\(command.chunks[0][1]) @@@")
-    
-    // TODO: this is a total hack but in theory ensure semaphores are at count 1:
-    // in theory this shouldn't be necesarry but in practice this helps ensure weird
-    // race conditions don't lead me down debugging the wrong thing for hours:
-    resetSemaphoreToZero(leftSemaphore)
-    resetSemaphoreToZero(rightSemaphore)
-    
-    if command.chunks.isEmpty {
-      CoreCommsService.log("@@@ chunks was empty! @@@")
-      return
-    }
-    
-//    // first send to the left:
-//    if command.sendLeft {
-//      await attemptSend(chunks: command.chunks, side: "left")
-//    }
-//    
-//    //    CoreCommsService.log("@@@ sent (or failed) to left, now trying right @@@")
-//    
-//    if command.sendRight {
-//      await attemptSend(chunks: command.chunks, side: "right")
-//    }
-    
-    // Send to both sides in parallel
-    await withTaskGroup(of: Void.self) { group in
-        if command.sendLeft {
-            group.addTask {
-                await self.attemptSend(chunks: command.chunks, side: "left")
-            }
-        }
-        
-        if command.sendRight {
-            group.addTask {
-                await self.attemptSend(chunks: command.chunks, side: "right")
-            }
-        }
-        
-        // Wait for all tasks to complete
-        await group.waitForAll()
-    }
-    
-    if command.waitTime > 0 {
-      // wait waitTime milliseconds before moving on to the next command:
-      try? await Task.sleep(nanoseconds: UInt64(command.waitTime) * 1_000_000)
-    } else {
-      // sleep for a min amount of time unless otherwise specified
-      try? await Task.sleep(nanoseconds: 100 * 1_000_000)// Xms
-    }
-  }
-  
-  private func waitForSemaphore(semaphore: DispatchSemaphore, timeout: TimeInterval) -> Bool {
-    let result = semaphore.wait(timeout: .now() + timeout)
-    return result == .success
   }
   
   func startHeartbeatTimer() {
@@ -744,16 +777,35 @@ enum GlassesError: Error {
   }
   
   private func handleAck(from peripheral: CBPeripheral, success: Bool) {
-//    CoreCommsService.log("handleAck \(success)")
-    if !success { return }
-    if peripheral == self.leftPeripheral {
-      leftSemaphore.signal()
-      setReadiness(left: true, right: nil)
-    }
-    if peripheral == self.rightPeripheral {
-      rightSemaphore.signal()
-      setReadiness(left: nil, right: true)
-    }
+      guard success else { return }
+      
+      Task {
+          let isLeft = peripheral == self.leftPeripheral
+          let isRight = peripheral == self.rightPeripheral
+          
+          if isLeft {
+              await ackTracker.setLeftAck(true)
+              setReadiness(left: true, right: nil)
+          }
+          if isRight {
+              await ackTracker.setRightAck(true)
+              setReadiness(left: nil, right: true)
+          }
+          
+          // Get the pending command to check if we need both ACKs
+          if let pending = await commandQueue.getPending() {
+              let needsBothAcks = pending.sendLeft && pending.sendRight
+              let hasAllAcks = await ackTracker.checkAcks(needsLeft: pending.sendLeft, needsRight: pending.sendRight)
+              
+              if !needsBothAcks || hasAllAcks {
+                  // Reset ACK tracking
+                  await ackTracker.reset()
+                  
+                  // Clear the pending command
+                  await commandQueue.clearPending()
+              }
+          }
+      }
   }
   
   private func handleNotification(from peripheral: CBPeripheral, data: Data) {
