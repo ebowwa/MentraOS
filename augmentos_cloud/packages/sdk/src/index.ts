@@ -155,7 +155,8 @@ export {
   isStopApp,
   isPhotoResponse as isPhotoResponseFromGlasses,
   isRtmpStreamStatus as isRtmpStreamStatusFromGlasses,
-  isKeepAliveAck
+  isKeepAliveAck,
+  isPhoneNotificationDismissed
 } from './types/messages/glasses-to-cloud';
 
 export {

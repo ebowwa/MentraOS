@@ -86,6 +86,14 @@ public class NotificationServiceModule extends ReactContextBaseJavaModule {
                 .emit("onNotificationPosted", jsonString);
     }
 
+    // Send notification dismissals to React Native
+    private void sendNotificationDismissedToJS(String jsonString) {
+        Log.d(TAG, "sendNotificationDismissedToJS - jsonString: " + jsonString);
+        getReactApplicationContext()
+                .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
+                .emit("onNotificationDismissed", jsonString);
+    }
+
     // Method in NotificationServiceModule.java to process notification
     public void onNotificationPosted(String jsonString) {
         try {
@@ -109,6 +117,33 @@ public class NotificationServiceModule extends ReactContextBaseJavaModule {
             }
         } catch (Exception e) {
             Log.e(TAG, "Error in onNotificationPosted: ", e);
+        }
+    }
+
+    // Method to process notification dismissal
+    public void onNotificationDismissed(String jsonString) {
+        try {
+            Log.d(TAG, "onNotificationDismissed START - jsonString: " + jsonString);
+            sendNotificationDismissedToJS(jsonString);
+            
+            // Post to EventBus for AugmentOSCommunicator to handle
+            try {
+                JSONObject json = new JSONObject(jsonString);
+                String appName = json.getString("appName");
+                String title = json.getString("title");
+                String text = json.getString("text");
+                String notificationKey = json.getString("notificationKey");
+                
+                NotificationDismissedEvent event = new NotificationDismissedEvent(appName, title, text, notificationKey);
+                EventBus.getDefault().post(event);
+                
+                // Log confirmation that event was posted
+                Log.d(TAG, "Posted notification dismissal to EventBus: " + event.toString());
+            } catch (Exception e) {
+                Log.e(TAG, "Error parsing notification dismissal JSON", e);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error in onNotificationDismissed: ", e);
         }
     }
 

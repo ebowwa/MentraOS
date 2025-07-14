@@ -2225,6 +2225,27 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     }
 
     @Override
+    public void handleNotificationDismissal(JSONObject dismissalData) {
+        try {
+            String appName = dismissalData.getString("app_name");
+            String title = dismissalData.getString("title");
+            String text = dismissalData.getString("text");
+            String notificationKey = dismissalData.getString("notification_key");
+
+            Log.d(TAG, "🚨 NOTIFICATION DISMISSED: " + appName + " - " + title);
+            Log.d(TAG, "📝 Dismissal details - Text: " + text + ", Key: " + notificationKey);
+            
+            // Send dismissal to server via ServerComms
+            String uuid = java.util.UUID.randomUUID().toString();
+            ServerComms.getInstance().sendPhoneNotificationDismissal(uuid, appName, title, text, notificationKey);
+            Log.d(TAG, "📡 Sent notification dismissal to server - UUID: " + uuid);
+            
+        } catch (JSONException e) {
+            Log.e(TAG, "Error parsing notification dismissal data", e);
+        }
+    }
+
+    @Override
     public void updateGlassesBrightness(int brightness) {
         Log.d("AugmentOsService", "Updating glasses brightness: " + brightness);
         if (smartGlassesManager != null) {

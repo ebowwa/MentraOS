@@ -122,6 +122,25 @@ public class AugmentOSCommunicator {
         }
     }
 
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void onNotificationDismissedEvent(NotificationDismissedEvent event) {
+        try {
+            Log.d(TAG, "Received notification dismissal via EventBus: " + event.toString());
+            // Create JSON object from notification dismissal event
+            String dismissalJson = String.format(
+                "{ \"command\": \"phone_notification_dismissed\", \"params\": { \"app_name\": \"%s\", \"title\": \"%s\", \"text\": \"%s\", \"notification_key\": \"%s\" } }",
+                event.appName, event.title, event.text, event.notificationKey
+            );
+
+            Log.d(TAG, "Sending notification dismissal to core: " + dismissalJson);
+            
+            sendCommandToCore(dismissalJson);
+            Log.d(TAG, "Sent notification dismissal to core: " + dismissalJson);
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to process notification dismissal event", e);
+        }
+    }
+
     // Check if initialized
     public boolean isInitialized() {
         return isInitialized;
