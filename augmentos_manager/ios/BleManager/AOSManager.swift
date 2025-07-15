@@ -18,6 +18,8 @@ struct ViewState {
   var layoutType: String
   var text: String
   var eventStr: String
+  var data: String?
+  var animationData: [String: Any]?
 }
 
 // This class handles logic for managing devices and connections to AugmentOS servers
@@ -846,7 +848,7 @@ struct ViewState {
     var topText = layout["topText"] as? String ?? " "
     var bottomText = layout["bottomText"] as? String ?? " "
     var title = layout["title"] as? String ?? " "
-    var data = layout["data"] as? String ?? ""
+    var data = layout["data"] as? String
 
     text = parsePlaceholders(text)
     topText = parsePlaceholders(topText)
