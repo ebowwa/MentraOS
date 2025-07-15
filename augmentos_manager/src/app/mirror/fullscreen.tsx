@@ -14,6 +14,7 @@ import {requestFeaturePermissions, PermissionFeatures} from "@/utils/Permissions
 import RNFS from "react-native-fs"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import GlassesDisplayMirrorFullscreen from "@/components/misc/GlassesDisplayMirrorFullscreen"
+import {SimulatedGlassesControls} from "@/components/misc/SimulatedGlassesControls"
 
 // Request microphone permission for recording
 const requestMicrophonePermission = async () => {
@@ -405,6 +406,18 @@ export default function GlassesMirrorFullscreen() {
                 </View>
               )}
             </TouchableOpacity>
+          )}
+
+          {/* Simulated glasses controls - only show for simulated glasses */}
+          {status.glasses_info?.model_name?.includes("Simulated") && (
+            <SimulatedGlassesControls 
+              style={{
+                position: 'absolute',
+                bottom: insets.bottom + 100,
+                left: 0,
+                right: 0,
+              }}
+            />
           )}
         </View>
       ) : (

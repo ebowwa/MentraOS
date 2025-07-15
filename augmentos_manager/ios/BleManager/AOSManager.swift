@@ -171,6 +171,8 @@ struct ViewState {
       g1Manager!.$isHeadUp.sink { [weak self] (value: Bool) in
           guard let self = self else { return }
           self.sendCurrentState(value)
+          // Send head position to server
+          ServerComms.getInstance().sendHeadPosition(isUp: value)
       }.store(in: &cancellables)
 
       // listen to case events:

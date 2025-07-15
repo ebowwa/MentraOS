@@ -741,6 +741,14 @@ export class CoreCommunicator extends EventEmitter {
       },
     })
   }
+
+  async simulateHeadPosition(position: 'up' | 'down') {
+    return AOSModule.simulateHeadPosition(position)
+  }
+
+  async simulateButtonPress(buttonId: string = 'camera', pressType: 'short' | 'long' = 'short') {
+    return AOSModule.simulateButtonPress(buttonId, pressType)
+  }
 }
 
 // Create and export the singleton instance

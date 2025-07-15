@@ -735,6 +735,20 @@ export class CoreCommunicator extends EventEmitter {
       }
     });
   }
+
+  async simulateHeadPosition(position: 'up' | 'down') {
+    // For Android, we need to implement this in the native module
+    // For now, return a promise that resolves
+    console.log(`Android simulateHeadPosition: ${position} - Not yet implemented`)
+    return Promise.resolve()
+  }
+
+  async simulateButtonPress(buttonId: string = 'camera', pressType: 'short' | 'long' = 'short') {
+    // For Android, we need to implement this in the native module
+    // For now, return a promise that resolves
+    console.log(`Android simulateButtonPress: ${buttonId} ${pressType} - Not yet implemented`)
+    return Promise.resolve()
+  }
 }
 
 // Create and export the singleton instance
