@@ -116,7 +116,9 @@ export class SonioxTranscriptionProvider implements TranscriptionProvider {
       undefined,
       options.callbacks,
       this.logger,
-      this.config
+      this.config,
+      options.ownsTranscription || [],
+      options.skipTranscriptionFor || []
     );
     
     // Initialize WebSocket connection
@@ -152,7 +154,9 @@ export class SonioxTranscriptionProvider implements TranscriptionProvider {
       targetLanguage, // Pass target language for translation
       options.callbacks,
       this.logger,
-      this.config
+      this.config,
+      options.ownsTranscription || [],
+      options.skipTranscriptionFor || []
     );
     
     // Initialize WebSocket connection
@@ -306,7 +310,9 @@ class SonioxTranscriptionStream implements StreamInstance {
     public readonly targetLanguage: string | undefined,
     public readonly callbacks: StreamCallbacks,
     public readonly logger: Logger,
-    private readonly config: SonioxProviderConfig
+    private readonly config: SonioxProviderConfig,
+    private readonly ownsTranscription: string[] = [],
+    private readonly skipTranscriptionFor: string[] = []
   ) {
     this.metrics = {
       totalDuration: 0,
@@ -720,21 +726,26 @@ class SonioxTranscriptionStream implements StreamInstance {
         }, `🌐 SONIOX TRANSLATION: ${isFinal ? 'FINAL' : 'interim'} [${detectedLanguage}] "${text}"`);
         
       } else if (isOriginalLanguage) {
-        // This is original transcription text  
-        const transcriptionData: TranscriptionData = {
-          type: StreamType.TRANSCRIPTION,
-          text,
-          isFinal,
-          confidence,
-          startTime: Date.now(),
-          endTime: Date.now() + 1000,
-          transcribeLanguage: this.language,
-          provider: 'soniox',
-          speakerId: langTokens[0]?.speaker
-        };
+        // This is original transcription text - only send if we own this language
+        const shouldSendTranscription = this.ownsTranscription.includes(detectedLanguage) && 
+                                       !this.skipTranscriptionFor.includes(detectedLanguage);
         
-        if (this.callbacks.onData) {
-          this.callbacks.onData(transcriptionData);
+        if (shouldSendTranscription) {
+          const transcriptionData: TranscriptionData = {
+            type: StreamType.TRANSCRIPTION,
+            text,
+            isFinal,
+            confidence,
+            startTime: Date.now(),
+            endTime: Date.now() + 1000,
+            transcribeLanguage: this.language,
+            provider: 'soniox',
+            speakerId: langTokens[0]?.speaker
+          };
+          
+          if (this.callbacks.onData) {
+            this.callbacks.onData(transcriptionData);
+          }
         }
         
         this.logger.debug({
