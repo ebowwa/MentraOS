@@ -658,7 +658,7 @@ struct ViewState {
 
   public func sendCurrentState(_ isDashboard: Bool) -> Void {
       // Cancel any pending delayed execution
-      sendStateWorkItem?.cancel()
+      // sendStateWorkItem?.cancel()
 
       // don't send the screen state if we're updating the screen:
       if (self.isUpdatingScreen) {
@@ -668,13 +668,13 @@ struct ViewState {
       // Execute immediately
       executeSendCurrentState(isDashboard)
 
-      // Schedule a delayed execution that will fire in 1 second if not cancelled
-      let workItem = DispatchWorkItem { [weak self] in
-          self?.executeSendCurrentState(isDashboard)
-      }
+      // // Schedule a delayed execution that will fire in 1 second if not cancelled
+      // let workItem = DispatchWorkItem { [weak self] in
+      //     self?.executeSendCurrentState(isDashboard)
+      // }
 
-      sendStateWorkItem = workItem
-      sendStateQueue.asyncAfter(deadline: .now() + 0.5, execute: workItem)
+      // sendStateWorkItem = workItem
+      // sendStateQueue.asyncAfter(deadline: .now() + 0.5, execute: workItem)
   }
 
 

@@ -119,7 +119,7 @@ enum GlassesError: Error {
   private var isAnimationRunning: Bool = false
   
   // L/R Synchronization - Track BLE write completions
-  private var pendingWriteCompletions: [CBCharacteristic: CheckedContinuation<Void, Never>] = [:]
+  private var pendingWriteCompletions: [CBCharacteristic: CheckedContinuation<Bool, Never>] = [:]
   private var writeCompletionCount = 0
   
   var onConnectionStateChanged: (() -> Void)?
@@ -663,7 +663,7 @@ enum GlassesError: Error {
     var attempts: Int = 0
     var result: Bool = false
     var semaphore = side == "left" ? leftSemaphore : rightSemaphore
-    var s = side == "left" ? "L" : "R"
+    let s = side == "left" ? "L" : "R"
     
     while attempts < maxAttempts && !result {
       if (attempts > 0) {
@@ -677,27 +677,28 @@ enum GlassesError: Error {
         break
       }
       
-      
-      
       for i in 0..<chunks.count-1 {
         let chunk = chunks[i]
-        await sendCommandToSide(chunk, side: side)
-        try? await Task.sleep(nanoseconds: 50 * 1_000_000)// 50ms
+        await sendCommandToSideWithoutResponse(chunk, side: side)
+        try? await Task.sleep(nanoseconds: 8 * 1_000_000)// 8ms
       }
       
       let lastChunk = chunks.last!
-      await sendCommandToSide(lastChunk, side: side)
       
+      await sendCommandToSideWithoutResponse(lastChunk, side: side)
       
-      CoreCommsService.log("waiting for \(s)")
-      result = waitForSemaphore(semaphore: semaphore, timeout: (0.3 + (Double(attempts) * 0.2)))
-      if (!result) {
-        CoreCommsService.log("timed out waiting for \(s)")
-      }
+      let success: Bool = true
+      
+//      let success = await sendCommandToSide2(lastChunk, side: side)
+//      
+//      if (!success) {
+//        CoreCommsService.log("timed out waiting for \(s)")
+//      }
       
       attempts += 1
-      if !result && (attempts >= maxAttempts) {
-        semaphore.signal()// increment the count
+      if !success && (attempts >= maxAttempts) {
+        CoreCommsService.log("Command timed out!")
+//        semaphore.signal()// increment the count
         startReconnectionTimer()
         break
       }
@@ -707,29 +708,10 @@ enum GlassesError: Error {
   // Process a single number with timeouts
   private func processCommand(_ command: BufferedCommand) async {
     
-    //    CoreCommsService.log("@@@ processing command \(command.chunks[0][0]),\(command.chunks[0][1]) @@@")
-    
-    // TODO: this is a total hack but in theory ensure semaphores are at count 1:
-    // in theory this shouldn't be necesarry but in practice this helps ensure weird
-    // race conditions don't lead me down debugging the wrong thing for hours:
-    resetSemaphoreToZero(leftSemaphore)
-    resetSemaphoreToZero(rightSemaphore)
-    
     if command.chunks.isEmpty {
       CoreCommsService.log("@@@ chunks was empty! @@@")
       return
     }
-    
-    //    // first send to the left:
-    //    if command.sendLeft {
-    //      await attemptSend(chunks: command.chunks, side: "left")
-    //    }
-    //
-    //    //    CoreCommsService.log("@@@ sent (or failed) to left, now trying right @@@")
-    //
-    //    if command.sendRight {
-    //      await attemptSend(chunks: command.chunks, side: "right")
-    //    }
     
     // Send to both sides in parallel
     await withTaskGroup(of: Void.self) { group in
@@ -754,7 +736,7 @@ enum GlassesError: Error {
       try? await Task.sleep(nanoseconds: UInt64(command.waitTime) * 1_000_000)
     } else {
       // sleep for a min amount of time unless otherwise specified
-      try? await Task.sleep(nanoseconds: 100 * 1_000_000)// Xms
+      try? await Task.sleep(nanoseconds: 10 * 1_000_000)// Xms
     }
   }
   
@@ -1136,88 +1118,85 @@ extension ERG1Manager {
     //    }
   }
   
-  // public func sendCommandToSide(_ command: [UInt8], side: String) async {
-  
-  //   // Convert to Data
-  //   let commandData = Data(command)
-  //   //    CoreCommsService.log("Sending command to glasses: \(paddedCommand.map { String(format: "%02X", $0) }.joined(separator: " "))")
-  //   CoreCommsService.log("SEND (\(side == "left" ? "L" : "R")) \(commandData.hexEncodedString())")
-  
-  //   if (side == "left") {
-  //     // send to left
-  //     if let leftPeripheral = leftPeripheral,
-  //        let characteristic = leftPeripheral.services?
-  //       .first(where: { $0.uuid == UART_SERVICE_UUID })?
-  //       .characteristics?
-  //       .first(where: { $0.uuid == UART_TX_CHAR_UUID }) {
-  //       leftPeripheral.writeValue(commandData, for: characteristic, type: .withResponse)
-  //     }
-  //   } else {
-  //     // send to right
-  //     if let rightPeripheral = rightPeripheral,
-  //        let characteristic = rightPeripheral.services?
-  //       .first(where: { $0.uuid == UART_SERVICE_UUID })?
-  //       .characteristics?
-  //       .first(where: { $0.uuid == UART_TX_CHAR_UUID }) {
-  //       rightPeripheral.writeValue(commandData, for: characteristic, type: .withResponse)
-  //     }
-  //   }
-  // }
-  
   public func sendCommandToSide(_ command: [UInt8], side: String) async {
+    
+    // Convert to Data
+    let commandData = Data(command)
+    //    CoreCommsService.log("Sending command to glasses: \(paddedCommand.map { String(format: "%02X", $0) }.joined(separator: " "))")
+    CoreCommsService.log("SEND (\(side == "left" ? "L" : "R")) \(commandData.hexEncodedString())")
+    
+    if (side == "left") {
+      // send to left
+      if let leftPeripheral = leftPeripheral,
+         let characteristic = leftPeripheral.services?
+        .first(where: { $0.uuid == UART_SERVICE_UUID })?
+        .characteristics?
+        .first(where: { $0.uuid == UART_TX_CHAR_UUID }) {
+        leftPeripheral.writeValue(commandData, for: characteristic, type: .withResponse)
+      }
+    } else {
+      // send to right
+      if let rightPeripheral = rightPeripheral,
+         let characteristic = rightPeripheral.services?
+        .first(where: { $0.uuid == UART_SERVICE_UUID })?
+        .characteristics?
+        .first(where: { $0.uuid == UART_TX_CHAR_UUID }) {
+        rightPeripheral.writeValue(commandData, for: characteristic, type: .withResponse)
+      }
+    }
+  }
+  
+  public func sendCommandToSide2(_ command: [UInt8], side: String) async -> Bool {
     let startTime = Date()
     
     // Convert to Data
     let commandData = Data(command)
     
     return await withCheckedContinuation { continuation in
+      
+      var peripheral: CBPeripheral? = nil;
+      var characteristic: CBCharacteristic? = nil;
+      
       if (side == "left") {
         // send to left
-        if let leftPeripheral = leftPeripheral,
-           let characteristic = leftPeripheral.services?
+        peripheral = leftPeripheral;
+        characteristic = leftPeripheral?.services?
           .first(where: { $0.uuid == UART_SERVICE_UUID })?
           .characteristics?
-          .first(where: { $0.uuid == UART_TX_CHAR_UUID }) {
-          
-          // Store continuation for completion callback
-          self.pendingWriteCompletions[characteristic] = continuation
-          leftPeripheral.writeValue(commandData, for: characteristic, type: .withResponse)
-          
-          // PERFORMANCE FIX: Reduce timeout from 5s to 200ms for faster animations
-          DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-            if let pendingContinuation = self.pendingWriteCompletions.removeValue(forKey: characteristic) {
-              let elapsed = Date().timeIntervalSince(startTime) * 1000
-              CoreCommsService.log("⚠️ BLE write timeout for left side after \(String(format: "%.0f", elapsed))ms, resuming continuation")
-              pendingContinuation.resume()
-            }
-          }
-        } else {
-          CoreCommsService.log("⚠️ Left peripheral/characteristic not found, resuming immediately")
-          continuation.resume()
-        }
+          .first(where: { $0.uuid == UART_TX_CHAR_UUID })
       } else {
         // send to right
-        if let rightPeripheral = rightPeripheral,
-           let characteristic = rightPeripheral.services?
+        peripheral = rightPeripheral;
+        characteristic = rightPeripheral?.services?
           .first(where: { $0.uuid == UART_SERVICE_UUID })?
           .characteristics?
-          .first(where: { $0.uuid == UART_TX_CHAR_UUID }) {
-          
-          // Store continuation for completion callback
-          self.pendingWriteCompletions[characteristic] = continuation
-          rightPeripheral.writeValue(commandData, for: characteristic, type: .withResponse)
-          
-          // PERFORMANCE FIX: Reduce timeout from 5s to 200ms for faster animations
-          DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-            if let pendingContinuation = self.pendingWriteCompletions.removeValue(forKey: characteristic) {
-              let elapsed = Date().timeIntervalSince(startTime) * 1000
-              CoreCommsService.log("⚠️ BLE write timeout for right side after \(String(format: "%.0f", elapsed))ms, resuming continuation")
-              pendingContinuation.resume()
-            }
-          }
-        } else {
-          CoreCommsService.log("⚠️ Right peripheral/characteristic not found, resuming immediately")
-          continuation.resume()
+          .first(where: { $0.uuid == UART_TX_CHAR_UUID })
+      }
+      
+      if peripheral == nil || characteristic == nil {
+        CoreCommsService.log("⚠️ peripheral/characteristic not found, resuming immediately")
+//        continuation.resume()
+        continuation.resume(returning: false)
+        return
+      }
+      
+      
+      // Store continuation for completion callback
+      self.pendingWriteCompletions[characteristic!] = continuation
+//      var didTimeout = true  // Track timeout status
+      // Store continuation
+//      self.pendingWriteCompletions[characteristic!] = {
+//          didTimeout = false
+//          continuation.resume(returning: true)  // Success
+//      }()
+      peripheral!.writeValue(commandData, for: characteristic!, type: .withResponse)
+      
+      // PERFORMANCE FIX: Reduce timeout from 5s to 200ms for faster animations
+      DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) {
+        if let pendingContinuation = self.pendingWriteCompletions.removeValue(forKey: characteristic!) {
+          let elapsed = Date().timeIntervalSince(startTime) * 1000
+          CoreCommsService.log("⚠️ BLE write timeout for left side after \(String(format: "%.0f", elapsed))ms, resuming continuation")
+          pendingContinuation.resume(returning: false)
         }
       }
     }
@@ -1460,7 +1439,7 @@ extension ERG1Manager {
   }
   
   /// Display bitmap using MentraOS-compatible protocol
-  @objc public func RN_displayBitmapMentraOS(_ base64ImageData: String) {
+  public func RN_displayBitmapMentraOS(_ base64ImageData: String) {
     CoreCommsService.log("RN_displayBitmapMentraOS() - Size: \(base64ImageData.count) characters")
     Task {
       await displayBitmapMentraOS(base64ImageData: base64ImageData)
@@ -1468,7 +1447,7 @@ extension ERG1Manager {
   }
   
   /// Display bitmap from hex string using MentraOS-compatible protocol
-  @objc public func RN_displayBitmapFromHex(_ hexString: String) {
+  public func RN_displayBitmapFromHex(_ hexString: String) {
     CoreCommsService.log("RN_displayBitmapFromHex() - Size: \(hexString.count) characters")
     Task {
       await displayBitmapFromHex(hexString: hexString)
@@ -1476,7 +1455,7 @@ extension ERG1Manager {
   }
   
   /// Clear display using MentraOS's 0x18 command (exit to dashboard)
-  @objc public func RN_clearDisplay() {
+  public func RN_clearDisplay() {
     CoreCommsService.log("RN_clearDisplay() - Using MentraOS 0x18 exit command")
     Task {
       await clearDisplayMentraOS()
@@ -1486,7 +1465,7 @@ extension ERG1Manager {
   // MARK: - Animation Batching (iOS-Controlled Timing)
   
   /// Display animation from batched frames with iOS-controlled timing
-  @objc public func RN_displayBitmapAnimation(_ framesJson: String, interval: Double, shouldRepeat: Bool) {
+  public func RN_displayBitmapAnimation(_ framesJson: String, interval: Double, shouldRepeat: Bool) {
     CoreCommsService.log("RN_displayBitmapAnimation() - Frames JSON size: \(framesJson.count), interval: \(interval)ms, repeat: \(shouldRepeat)")
     
     // Parse frames from JSON
@@ -1589,7 +1568,7 @@ extension ERG1Manager {
   }
   
   /// Stop bitmap animation
-  @objc public func RN_stopBitmapAnimation() {
+  public func RN_stopBitmapAnimation() {
     stopBitmapAnimation()
   }
   
@@ -1720,27 +1699,27 @@ extension ERG1Manager {
     }
     
     CoreCommsService.log("✅ Successfully decoded hex to \(bmpData.count) bytes")
-    CoreCommsService.log("🔍 First 10 bytes from hex: \(Array(bmpData.prefix(10)).map { String(format: "0x%02X", $0) }.joined(separator: " "))")
+    // CoreCommsService.log("🔍 First 10 bytes from hex: \(Array(bmpData.prefix(10)).map { String(format: "0x%02X", $0) }.joined(separator: " "))")
     
     // Debug: Check if we have any non-FF bytes in pixel data
     let pixelData = bmpData.dropFirst(62)
     let nonFFCount = pixelData.filter { $0 != 0xFF }.count
-    CoreCommsService.log("🎨 iOS decoded: \(nonFFCount) black pixels out of \(pixelData.count) bytes")
+    // CoreCommsService.log("🎨 iOS decoded: \(nonFFCount) black pixels out of \(pixelData.count) bytes")
     
     // Show first few non-FF bytes
     let nonFFBytes = Array(pixelData.enumerated().filter { $0.element != 0xFF }.prefix(5))
     let nonFFDebug = nonFFBytes.map { "pos \($0.offset)=0x\(String(format: "%02X", $0.element))" }.joined(separator: ", ")
-    CoreCommsService.log("🔍 iOS non-FF bytes: \(nonFFDebug)")
+    // CoreCommsService.log("🔍 iOS non-FF bytes: \(nonFFDebug)")
     
     // Debug: show hex sample received
-    CoreCommsService.log("🔍 iOS received hex sample (chars 100-200): \(hexString.dropFirst(100).prefix(100))")
+    // CoreCommsService.log("🔍 iOS received hex sample (chars 100-200): \(hexString.dropFirst(100).prefix(100))")
     
     // CRITICAL: Check if data is still good right before calling display function
     let pixelCheck = bmpData.dropFirst(62)
     let blackCheck = pixelCheck.filter { $0 != 0xFF }.count
-    CoreCommsService.log("🔍 Just before display call: \(blackCheck) black pixels - DATA IS \(blackCheck > 0 ? "GOOD" : "CORRUPTED")")
+    // CoreCommsService.log("🔍 Just before display call: \(blackCheck) black pixels - DATA IS \(blackCheck > 0 ? "GOOD" : "CORRUPTED")")
     
-    CoreCommsService.log("🖼️ Single frame: Using fast MentraOS transmission method")
+    // CoreCommsService.log("🖼️ Single frame: Using fast MentraOS transmission method")
     let result = await displayBitmapDataMentraOS(bmpData: bmpData, sendLeft: true, sendRight: true, onProgress: onProgress, onSuccess: onSuccess, onError: onError)
     CoreCommsService.log("🖼️ Single frame: Transmission \(result ? "SUCCESS" : "FAILED")")
     return result
@@ -1894,11 +1873,11 @@ extension ERG1Manager {
         CoreCommsService.log("Sending chunk \(packIndex) to \(lr), size: \(packData.count)")
         
         // Debug: Check what's actually in this pack
-        if packIndex < 5 || packIndex > 45 {  // Show first few and last few chunks
-          let packBytes = Array(pack.prefix(20))
-          let packHex = packBytes.map { String(format: "%02X", $0) }.joined(separator: " ")
-          CoreCommsService.log("🔍 Pack \(packIndex) data sample: \(packHex)")
-        }
+        // if packIndex < 5 || packIndex > 45 {  // Show first few and last few chunks
+        //   let packBytes = Array(pack.prefix(20))
+        //   let packHex = packBytes.map { String(format: "%02X", $0) }.joined(separator: " ")
+        //   CoreCommsService.log("🔍 Pack \(packIndex) data sample: \(packHex)")
+        // }
         
         // Send directly like Flutter MentraOS (no retries, direct transmission with .withoutResponse)
         let lr_side = lr == "L" ? "left" : "right"
@@ -1976,20 +1955,41 @@ extension ERG1Manager {
     // MentraOS sends left first, then right, with precise timing
     var results: [(String, Bool)] = []
     
-    if sendLeft {
-      CoreCommsService.log("🔄 Sending to LEFT side (MentraOS sequential method)")
-      let leftResult = await sendToSide("L")
-      results.append(("L", leftResult))
+    // send to both sides at the same time:
+    
+    await withTaskGroup(of: Void.self) { group in
+      if sendLeft {
+        group.addTask {
+          let leftResult = await sendToSide("L")
+          results.append(("L", leftResult))
+        }
+      }
       
-      // Small delay between left and right like MentraOS
-      try? await Task.sleep(nanoseconds: 5_000_000) // 5ms between sides
+      if sendRight {
+        group.addTask {
+          let rightResult = await sendToSide("R")
+          results.append(("R", rightResult))
+        }
+      }
+      
+      // Wait for all tasks to complete
+      await group.waitForAll()
     }
     
-    if sendRight {
-      CoreCommsService.log("🔄 Sending to RIGHT side (MentraOS sequential method)")
-      let rightResult = await sendToSide("R")
-      results.append(("R", rightResult))
-    }
+    // if sendLeft {
+    //   CoreCommsService.log("🔄 Sending to LEFT side (MentraOS sequential method)")
+    //   let leftResult = await sendToSide("L")
+    //   results.append(("L", leftResult))
+    
+    //   // Small delay between left and right like MentraOS
+    //   try? await Task.sleep(nanoseconds: 5_000_000) // 5ms between sides
+    // }
+    
+    // if sendRight {
+    //   CoreCommsService.log("🔄 Sending to RIGHT side (MentraOS sequential method)")
+    //   let rightResult = await sendToSide("R")
+    //   results.append(("R", rightResult))
+    // }
     
     // Check results with detailed synchronization status
     var allSuccess = true
@@ -2090,77 +2090,6 @@ extension ERG1Manager {
     }
     
     return await displayBitmapData(bmpData: bmpData, onProgress: onProgress, onSuccess: onSuccess, onError: onError)
-  }
-  
-  /// Send single BMP to specific side
-  @objc public func RN_sendSingleBmp(_ filePath: String, isLeft: Bool) {
-    CoreCommsService.log("RN_sendSingleBmp() - Path: \(filePath), Side: \(isLeft ? "left" : "right")")
-    Task {
-      await sendSingleBmp(filePath: filePath, isLeft: isLeft)
-    }
-  }
-  
-  public func sendSingleBmp(filePath: String, isLeft: Bool,
-                            onProgress: BmpProgressCallback? = nil,
-                            onSuccess: BmpSuccessCallback? = nil,
-                            onError: BmpErrorCallback? = nil) async -> Bool {
-    
-    guard let bmpData = NSData(contentsOfFile: filePath) as Data? else {
-      CoreCommsService.log("Failed to load BMP file: \(filePath)")
-      onError?(isLeft ? "left" : "right", "Failed to load BMP file")
-      return false
-    }
-    
-    return await displayBitmapData(bmpData: bmpData,
-                                   sendLeft: isLeft,
-                                   sendRight: !isLeft,
-                                   onProgress: onProgress,
-                                   onSuccess: onSuccess,
-                                   onError: onError)
-  }
-  
-  /// Send different BMPs to left and right sides
-  @objc public func RN_sendBinocularBmps(_ leftPath: String, rightPath: String) {
-    CoreCommsService.log("RN_sendBinocularBmps() - Left: \(leftPath), Right: \(rightPath)")
-    Task {
-      await sendBinocularBmps(leftPath: leftPath, rightPath: rightPath)
-    }
-  }
-  
-  public func sendBinocularBmps(leftPath: String, rightPath: String,
-                                onProgress: BmpProgressCallback? = nil,
-                                onSuccess: BmpSuccessCallback? = nil,
-                                onError: BmpErrorCallback? = nil) async -> Bool {
-    
-    guard let leftData = NSData(contentsOfFile: leftPath) as Data?,
-          let rightData = NSData(contentsOfFile: rightPath) as Data? else {
-      CoreCommsService.log("Failed to load one or both BMP files")
-      onError?("both", "Failed to load BMP files")
-      return false
-    }
-    
-    // Send to left side first
-    let leftSuccess = await displayBitmapData(bmpData: leftData,
-                                              sendLeft: true,
-                                              sendRight: false,
-                                              onProgress: onProgress,
-                                              onSuccess: onSuccess,
-                                              onError: onError)
-    
-    if !leftSuccess {
-      return false
-    }
-    
-    // Small delay between sending to different sides
-    try? await Task.sleep(nanoseconds: 100_000_000) // 100ms
-    
-    // Send to right side
-    return await displayBitmapData(bmpData: rightData,
-                                   sendLeft: false,
-                                   sendRight: true,
-                                   onProgress: onProgress,
-                                   onSuccess: onSuccess,
-                                   onError: onError)
   }
   
   public func clearDisplay(onSuccess: BmpSuccessCallback? = nil,
@@ -2731,7 +2660,7 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
     
     // Resume continuation to allow sequential execution
     if let continuation = pendingWriteCompletions.removeValue(forKey: characteristic) {
-      continuation.resume()
+      continuation.resume(returning: false)
     }
   }
 }
