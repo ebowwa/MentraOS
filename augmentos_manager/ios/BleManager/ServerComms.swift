@@ -431,7 +431,24 @@ class ServerComms {
   
   
   
-  // Add other event methods as needed (sendHeadPosition, sendGlassesBatteryUpdate, etc.)
+  func sendHeadPosition(isUp: Bool) {
+    do {
+      let event: [String: Any] = [
+        "type": "head_position",
+        "position": isUp ? "up" : "down",
+        "timestamp": Int(Date().timeIntervalSince1970 * 1000)
+      ]
+      
+      let jsonData = try JSONSerialization.data(withJSONObject: event)
+      if let jsonString = String(data: jsonData, encoding: .utf8) {
+        wsManager.sendText(jsonString)
+      }
+    } catch {
+      CoreCommsService.log("Error sending head position: \(error)")
+    }
+  }
+  
+  // Add other event methods as needed (sendGlassesBatteryUpdate, etc.)
   
   // MARK: - Message Handling
   

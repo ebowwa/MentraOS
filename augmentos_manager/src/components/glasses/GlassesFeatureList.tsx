@@ -2,7 +2,7 @@ import React from "react"
 import {View, Text, StyleSheet} from "react-native"
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons"
 import {useAppTheme} from "@/utils/useAppTheme"
-import {glassesFeatures, featureLabels, GlassesFeature} from "@/config/glassesFeatures"
+import {glassesFeatures, featureLabels, GlassesFeature, hasMicrophone} from "@/config/glassesFeatures"
 
 interface GlassesFeatureListProps {
   glassesModel: string
@@ -19,13 +19,20 @@ export function GlassesFeatureList({glassesModel}: GlassesFeatureListProps) {
 
   const featureOrder: GlassesFeature[] = ["camera", "microphone", "speakers", "display"]
 
+  const getFeatureValue = (feature: GlassesFeature): boolean => {
+    if (feature === "microphone") {
+      return hasMicrophone(features)
+    }
+    return features[feature as keyof typeof features] as boolean
+  }
+
   return (
     <View style={styles.container}>
       <View style={styles.featureRow}>
         {featureOrder.slice(0, 2).map(feature => (
           <View key={feature} style={styles.featureItem}>
             <MaterialCommunityIcons
-              name={features[feature] ? "check" : "close"}
+              name={getFeatureValue(feature) ? "check" : "close"}
               size={24}
               color={theme.colors.text}
               style={styles.icon}
@@ -38,7 +45,7 @@ export function GlassesFeatureList({glassesModel}: GlassesFeatureListProps) {
         {featureOrder.slice(2, 4).map(feature => (
           <View key={feature} style={styles.featureItem}>
             <MaterialCommunityIcons
-              name={features[feature] ? "check" : "close"}
+              name={getFeatureValue(feature) ? "check" : "close"}
               size={24}
               color={theme.colors.text}
               style={styles.icon}

@@ -2901,4 +2901,26 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         Log.d(TAG, "Glasses serial number: " + glassesSerialNumber + ", Style: " + glassesStyle + ", Color: " + glassesColor);
         sendStatusToAugmentOsManager();
     }
+
+    @Override
+    public void simulateHeadPosition(String position) {
+        Log.d(TAG, "Simulating head position: " + position);
+
+        if ("up".equals(position)) {
+            onGlassesHeadUpEvent(new GlassesHeadUpEvent());
+        } else {
+            onGlassesHeadDownEvent(new GlassesHeadDownEvent());
+        }
+    }
+
+    @Override
+    public void simulateButtonPress(String buttonId, String pressType) {
+        Log.d(TAG, "Simulating button press: " + buttonId + " " + pressType);
+
+        String deviceModel = "";
+        if(smartGlassesManager != null && smartGlassesManager.getConnectedSmartGlasses() != null)
+            deviceModel = smartGlassesManager.getConnectedSmartGlasses().deviceModelName;
+
+        EventBus.getDefault().post(new ButtonPressEvent(deviceModel, buttonId, pressType));
+    }
 }

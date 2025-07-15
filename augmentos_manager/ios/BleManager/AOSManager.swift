@@ -175,6 +175,8 @@ struct ViewState {
       g1Manager!.$isHeadUp.sink { [weak self] (value: Bool) in
           guard let self = self else { return }
           self.sendCurrentState(value)
+          // Send head position to server
+          ServerComms.getInstance().sendHeadPosition(isUp: value)
       }.store(in: &cancellables)
 
       // listen to case events:
@@ -1195,6 +1197,8 @@ struct ViewState {
       case showDashboard = "show_dashboard"
       case requestWifiScan = "request_wifi_scan"
       case sendWifiCredentials = "send_wifi_credentials"
+      case simulateHeadPosition = "simulate_head_position"
+      case simulateButtonPress = "simulate_button_press"
       case unknown
     }
 
@@ -1370,6 +1374,26 @@ struct ViewState {
             break
           }
           sendWifiCredentials(ssid, password)
+          break
+        case .simulateHeadPosition:
+          guard let params = params, let position = params["position"] as? String else {
+            CoreCommsService.log("AOS: simulate_head_position invalid params")
+            break
+          }
+          // Send to server
+          ServerComms.getInstance().sendHeadPosition(isUp: position == "up")
+          // Trigger dashboard display locally
+          sendCurrentState(position == "up")
+          break
+        case .simulateButtonPress:
+          guard let params = params, 
+                let buttonId = params["buttonId"] as? String,
+                let pressType = params["pressType"] as? String else {
+            CoreCommsService.log("AOS: simulate_button_press invalid params")
+            break
+          }
+          // Use existing sendButtonPress method
+          ServerComms.getInstance().sendButtonPress(buttonId: buttonId, pressType: pressType)
           break
         case .unknown:
           CoreCommsService.log("AOS: Unknown command type: \(commandString)")
