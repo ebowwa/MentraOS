@@ -732,7 +732,7 @@ public class SmartGlassesManager extends Service {
     }
 
 
-    public void changeMicrophoneState(boolean isMicrophoneEnabled) {
+    public void changeMicrophoneState(boolean isMicrophoneEnable, List<String> requiredData) {
         Log.d(TAG, "Changing microphone state to " + isMicrophoneEnabled);
 
         if (smartGlassesRepresentative == null) {
@@ -745,7 +745,7 @@ public class SmartGlassesManager extends Service {
         smartGlassesRepresentative.changeBluetoothMicState(isMicrophoneEnabled);
 
         // Tell speech rec system about the state change
-        speechRecSwitchSystem.microphoneStateChanged(isMicrophoneEnabled);
+        speechRecSwitchSystem.microphoneStateChanged(isMicrophoneEnabled, requiredData);
     }
 
     // applyMicrophoneState method removed - all mic logic now handled by PhoneMicrophoneManager

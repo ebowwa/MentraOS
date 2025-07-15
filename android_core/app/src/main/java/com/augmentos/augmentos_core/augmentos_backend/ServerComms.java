@@ -707,9 +707,20 @@ public class ServerComms {
 
             case "microphone_state_change":
                 boolean isMicrophoneEnabled = msg.optBoolean("isMicrophoneEnabled", true);
-                Log.d(TAG, "Received microphone_state_change message." + isMicrophoneEnabled);
+
+                // Parse requiredData as JSON array ["pcm", "transcription", ...]
+                JSONArray requiredDataJson = msg.optJSONArray("requiredData");
+                List<String> requiredData = new ArrayList<>();
+                if (requiredDataJson != null) {
+                    for (int i = 0; i < requiredDataJson.length(); i++) {
+                        String datum = requiredDataJson.optString(i, "");
+                        if (!datum.isEmpty()) requiredData.add(datum);
+                    }
+                }
+
+                Log.d(TAG, "Received microphone_state_change message." + isMicrophoneEnabled + " requiredData=" + requiredData);
                 if (serverCommsCallback != null)
-                    serverCommsCallback.onMicrophoneStateChange(isMicrophoneEnabled);
+                    serverCommsCallback.onMicrophoneStateChange(isMicrophoneEnabled, requiredData);
                 break;
 
             case "photo_request":
@@ -947,7 +958,7 @@ public class ServerComms {
                         if (chunk != null) {
                             wsManager.sendBinary(chunk);
                             // Write to PCM file whenever we send binary data over websocket
-//                            writeToPcmFile(chunk);
+                            // writeToPcmFile(chunk);
                         }
                         // If poll times out (1 second with no data), we'll loop back and check conditions again
                     } else {
@@ -1057,6 +1068,15 @@ public class ServerComms {
             Log.d(TAG, "Sent audio play response: " + message.toString());
         } catch (Exception e) {
             Log.e(TAG, "Error sending audio play response", e);
+        }
+    }
+
+    public void sendTranscriptionResult(JSONObject transcriptionResult) {
+        try {
+            wsManager.sendText(transcriptionResult.toString());
+            Log.d(TAG, "Sent transcription result: " + transcriptionResult.toString());
+        } catch (Exception e) {
+            Log.e(TAG, "Error sending transcription result", e);
         }
     }
 }

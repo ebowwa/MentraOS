@@ -49,6 +49,9 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
     private final ArrayList<byte[]> lc3RollingBuffer = new ArrayList<>();
     private final int LC3_BUFFER_MAX_SIZE = 22; // ~220ms of audio at 10ms per LC3 frame
 
+    // Sherpa ONNX Transcriber
+    private SherpaOnnxAugmentosTranscriber sherpaTranscriber;
+
     private SpeechRecAugmentos(Context context) {
         this.mContext = context;
 
@@ -65,6 +68,79 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
 
         // Initialize VAD asynchronously
         initVadAsync();
+        
+        // Initialize Sherpa ONNX Transcriber
+        initSherpaTranscriber();
+    }
+
+    /**
+     * Initialize Sherpa ONNX Transcriber and set up the listener
+     */
+    private void initSherpaTranscriber() {
+        sherpaTranscriber = new SherpaOnnxTranscriber(mContext);
+        
+        // Session start time for relative timestamps
+        final long transcriptionSessionStart = System.currentTimeMillis();
+        
+        sherpaTranscriber.setTranscriptListener(new SherpaOnnxTranscriber.TranscriptListener() {
+            @Override
+            public void onPartialResult(String text) {
+                sendFormattedTranscriptionToBackend(text, false, transcriptionSessionStart);
+            }
+
+            @Override
+            public void onFinalResult(String text) {
+                sendFormattedTranscriptionToBackend(text, true, transcriptionSessionStart);
+            }
+        });
+        
+        // Initialize the transcriber on a background thread
+        new Thread(() -> {
+            try {
+                sherpaTranscriber.init();
+                Log.d(TAG, "Sherpa ONNX transcriber initialized successfully");
+            } catch (Exception e) {
+                Log.e(TAG, "Failed to initialize Sherpa ONNX transcriber", e);
+            }
+        }, "SpeechRecAugmentos_initSherpaAsync").start();
+    }
+    
+    /**
+     * Helper method to format transcription as JSON and send to backend
+     * 
+     * @param text The transcription text
+     * @param isFinal Whether this is a final result
+     * @param sessionStartTime Session start time for relative timestamp calculation
+     */
+    private void sendFormattedTranscriptionToBackend(String text, boolean isFinal, long sessionStartTime) {
+        try {
+            JSONObject transcription = new JSONObject();
+            transcription.put("type", "transcription");
+            transcription.put("text", text);
+            transcription.put("isFinal", isFinal);
+            
+            // Calculate relative timestamps
+            long currentTime = System.currentTimeMillis();
+            long relativeTime = currentTime - sessionStartTime;
+            
+            // Adjust start time based on result type
+            // Final results use longer timespan than partial results
+            int timeOffset = isFinal ? 2000 : 1000;
+            transcription.put("startTime", relativeTime - timeOffset);
+            transcription.put("endTime", relativeTime);
+            
+            // Add metadata
+            transcription.put("speakerId", 0);
+            transcription.put("transcribeLanguage", "en-US");
+            transcription.put("provider", "sherpa-onnx");
+            
+            // Send the JSON to ServerComms
+            ServerComms.getInstance().sendTranscriptionResult(transcription);
+            
+            Log.d(TAG, "Sent " + (isFinal ? "final" : "partial") + " transcription: " + text);
+        } catch (org.json.JSONException e) {
+            Log.e(TAG, "Error creating transcription JSON: " + e.getMessage(), e);
+        }
     }
 
     /**
@@ -189,8 +265,9 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
         ServerComms.getInstance().sendVadStatus(isNowSpeaking);
     }
 
-
     public boolean sendPcmToBackend = true;
+
+    public boolean sendTranscriptionToBackend = false;
 
     /**
      * Called by external code to feed raw PCM chunks (16-bit, 16kHz).
@@ -236,6 +313,14 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
                 ServerComms.getInstance().sendAudioChunk(audioChunk);
             }
         }
+
+        if (sendTranscriptionToBackend) {
+            if (bypassVadForDebugging || isSpeaking) {
+                if (sherpaTranscriber != null) {
+                    sherpaTranscriber.acceptAudio(audioChunk);
+                }
+            }
+        }
     }
 
     /**
@@ -243,6 +328,7 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
      */
     @Override
     public void ingestLC3AudioChunk(byte[] LC3audioChunk) {
+        // NOTE (yash) why is it negative?
         if (!sendPcmToBackend) {
             //BUFFER STUFF
             // Add to rolling buffer regardless of VAD state
@@ -262,6 +348,16 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
             // If bypassing VAD for debugging or currently speaking, send data live
             if (bypassVadForDebugging || isSpeaking) {
                 ServerComms.getInstance().sendAudioChunk(LC3audioChunk);
+            }
+        }
+
+        if (sendTranscriptionToBackend) {
+            if (bypassVadForDebugging || isSpeaking) {
+                // TODO: Integrate transcription into this.
+                // Pass this audio to the sherpa stt which will send it to the backend
+                // LC3 audio can't be directly used with Sherpa ONNX
+                // It would need to be decoded to PCM first
+                // This would be handled in ServerComms when LC3 chunks are received
             }
         }
     }
@@ -368,10 +464,26 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
         }
     }
 
-    public void microphoneStateChanged(boolean state){
+    /**
+     * Handles microphone state changes and propagates to all components
+     * 
+     * @param state true if microphone is on, false otherwise
+     * @param requiredData List of required data
+     */
+    public void microphoneStateChanged(boolean state, List<String> requiredData){
+        // Pass to VAD
         if (vadPolicy != null){
             vadPolicy.microphoneStateChanged(state);
         }
+        
+        // Pass to transcriber
+        if (sherpaTranscriber != null && sherpaTranscriber.isInitialized()) {
+            sherpaTranscriber.microphoneStateChanged(state);
+        }
+
+        
+        
+        Log.d(TAG, "Microphone state changed to: " + (state ? "ON" : "OFF") + " with required data: " + requiredData);
     }
 
     public void changeBypassVadForDebuggingState(boolean bypassVadForDebugging) {

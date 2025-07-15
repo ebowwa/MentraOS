@@ -29,10 +29,10 @@ public class SpeechRecSwitchSystem implements AudioProcessingCallback {
         this.microphoneState = true;
     }
 
-    public void microphoneStateChanged(boolean state){
+    public void microphoneStateChanged(boolean state, List<String> requiredData){
         microphoneState = state;
         if (speechRecFramework != null){
-            speechRecFramework.microphoneStateChanged(state);
+            speechRecFramework.microphoneStateChanged(state, requiredData);
         }
     }
 

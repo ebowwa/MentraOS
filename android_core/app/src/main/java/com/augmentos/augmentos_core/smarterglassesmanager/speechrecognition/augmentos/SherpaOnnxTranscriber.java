@@ -1,0 +1,257 @@
+package com.augmentos.augmentos_core.smarterglassesmanager.speechrecognition.augmentos;
+
+import android.content.Context;
+import android.os.Handler;
+import android.os.Looper;
+import android.util.Log;
+
+import com.k2fsa.sherpa.onnx.*;
+
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+/**
+ * SherpaOnnxTranscriber handles real-time audio transcription using Sherpa-ONNX.
+ * 
+ * It works fully offline and processes PCM audio in real-time to provide partial and final ASR results.
+ * This class runs on a background thread, processes short PCM chunks, and emits transcribed text using a listener.
+ */
+public class SherpaOnnxTranscriber {
+    private static final String TAG = "SherpaOnnxTranscriber";
+
+    private static final int SAMPLE_RATE = 16000; // Sherpa-ONNX model's required sample rate
+    private static final int QUEUE_CAPACITY = 100; // Max number of audio buffers to keep in queue
+
+    private final Context context;
+    private final BlockingQueue<byte[]> pcmQueue = new ArrayBlockingQueue<>(QUEUE_CAPACITY);
+    private final AtomicBoolean running = new AtomicBoolean(false);
+    private final Handler mainHandler = new Handler(Looper.getMainLooper());
+
+    private Thread workerThread;
+
+    private OnlineRecognizer recognizer;
+    private OnlineStream stream;
+
+    private String lastPartialResult = "";
+
+    private volatile TranscriptListener transcriptListener;
+
+    /**
+     * Interface to receive transcription results from Sherpa-ONNX.
+     */
+    public interface TranscriptListener {
+        /** Called with live partial transcription (not final yet). */
+        void onPartialResult(String text);
+
+        /** Called when an utterance ends and final text is available. */
+        void onFinalResult(String text);
+    }
+
+    /**
+     * Constructor that accepts an Android context to load model assets.
+     */
+    public SherpaOnnxAugmentosTranscriber(Context ctx) {
+        this.context = ctx;
+    }
+
+    /**
+     * Initialize the Sherpa-ONNX recognizer.
+     * Loads models and configuration, sets up processing thread.
+     */
+    public void init() {
+        try {
+            // Load model file paths
+            OnlineTransducerModelConfig transducer = new OnlineTransducerModelConfig();
+            transducer.encoder = "sherpa_onnx/encoder.onnx";
+            transducer.decoder = "sherpa_onnx/decoder.onnx";
+            transducer.joiner = "sherpa_onnx/joiner.onnx";
+
+            OnlineModelConfig modelConfig = new OnlineModelConfig();
+            modelConfig.setTransducer(transducer);
+            modelConfig.tokens = "sherpa_onnx/tokens.txt";
+            modelConfig.numThreads = 1; // TODO (yash): can we make this better?
+
+            // Configure decoder and endpoint detection
+            OnlineRecognizerConfig config = new OnlineRecognizerConfig();
+            config.setOnlineModelConfig(modelConfig);
+            config.decodingMethod = "greedy_search"; // Fast decoding
+            config.enableEndpoint = true;
+            config.rule1MinTrailingSilence = 1.2f;
+            config.rule2MinTrailingSilence = 0.8f;
+            config.rule3MinUtteranceLength = 10.0f;
+
+            // Create recognizer and stream
+            recognizer = new OnlineRecognizer(config, context.getAssets());
+            stream = recognizer.createStream();
+
+            startProcessingThread();
+            running.set(true);
+
+            Log.i(TAG, "Sherpa-ONNX ASR initialized successfully");
+
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to initialize Sherpa-ONNX", e);
+        }
+    }
+
+    /**
+     * Feed PCM audio data (16-bit little endian) into the transcriber.
+     * This method should be called continuously with short chunks (e.g., 100-300ms).
+     */
+    public void acceptAudio(byte[] pcm16le) {
+        if (!running.get()) return;
+        pcmQueue.offer(pcm16le);
+    }
+
+    /**
+     * Start a background thread to continuously consume audio and decode using Sherpa.
+     */
+    private void startProcessingThread() {
+        workerThread = new Thread(this::runLoop, "SherpaOnnxProcessor");
+        workerThread.setDaemon(true);
+        workerThread.start();
+    }
+
+    /**
+     * Main processing loop that handles transcription in real-time.
+     * Pulls audio from queue, feeds into Sherpa, emits partial/final results.
+     */
+    private void runLoop() {
+        while (running.get()) {
+            try {
+                byte[] data = pcmQueue.poll(100, TimeUnit.MILLISECONDS);
+                if (data == null || recognizer == null || stream == null) continue;
+
+                // Convert PCM to float [-1.0, 1.0]
+                float[] floatBuf = toFloatArray(data);
+                stream.acceptWaveform(floatBuf, SAMPLE_RATE);
+
+                // Decode continuously while model is ready
+                while (recognizer.isReady(stream)) {
+                    recognizer.decode(stream);
+                }
+
+                // If utterance endpoint detected
+                if (recognizer.isEndpoint(stream)) {
+                    String finalText = recognizer.getResult(stream).getText().trim();
+
+                    if (!finalText.isEmpty() && transcriptListener != null) {
+                        mainHandler.post(() -> transcriptListener.onFinalResult(finalText));
+                    }
+
+                    recognizer.reset(stream); // Start new utterance
+                    lastPartialResult = "";
+                } else {
+                    // Emit partial results if changed
+                    String partial = recognizer.getResult(stream).getText().trim();
+
+                    if (!partial.equals(lastPartialResult) && !partial.isEmpty() && transcriptListener != null) {
+                        lastPartialResult = partial;
+                        mainHandler.post(() -> transcriptListener.onPartialResult(partial));
+                    }
+                }
+
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                Log.i(TAG, "Processing thread interrupted");
+            } catch (Throwable t) {
+                Log.e(TAG, "Unexpected error during ASR loop", t);
+
+                // Attempt stream reset to recover
+                try {
+                    if (recognizer != null && stream != null) {
+                        recognizer.reset(stream);
+                    }
+                } catch (Exception resetEx) {
+                    Log.e(TAG, "Failed to reset stream after error", resetEx);
+                }
+            }
+        }
+
+        Log.i(TAG, "ASR processing thread stopped");
+    }
+
+    /**
+     * Convert 16-bit PCM byte array (little-endian) to float array [-1.0, 1.0].
+     */
+    private float[] toFloatArray(byte[] pcm16leData) {
+        float[] samples = new float[pcm16leData.length / 2];
+        ByteBuffer bb = ByteBuffer.wrap(pcm16leData).order(ByteOrder.LITTLE_ENDIAN);
+
+        for (int i = 0; i < samples.length; ++i) {
+            samples[i] = bb.getShort() / 32768.0f;
+        }
+
+        return samples;
+    }
+
+    /**
+     * Handles mic ON/OFF state changes. Clears audio buffer and resets stream if mic is off.
+     */
+    public void microphoneStateChanged(boolean state) {
+        if (!state) {
+            pcmQueue.clear();
+
+            if (recognizer != null && stream != null) {
+                try {
+                    recognizer.reset(stream);
+                    lastPartialResult = "";
+                    Log.d(TAG, "Microphone off — stream reset");
+                } catch (Exception e) {
+                    Log.e(TAG, "Error resetting stream on mic off", e);
+                }
+            }
+        } else {
+            Log.d(TAG, "Microphone on");
+        }
+    }
+
+    /**
+     * Cleanly shuts down the transcriber.
+     * Stops background thread, clears audio queue, and releases Sherpa resources.
+     */
+    public void shutdown() {
+        running.set(false);
+
+        if (workerThread != null) {
+            workerThread.interrupt();
+            try {
+                workerThread.join(500);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
+
+        try {
+            if (stream != null) {
+                stream.release();
+                stream = null;
+            }
+            if (recognizer != null) {
+                recognizer.release();
+                recognizer = null;
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error releasing Sherpa resources", e);
+        }
+
+        pcmQueue.clear();
+        Log.i(TAG, "Transcriber shut down cleanly");
+    }
+
+    /**
+     * Register a listener to receive partial and final transcription updates.
+     */
+    public void setTranscriptListener(TranscriptListener listener) {
+        this.transcriptListener = listener;
+    }
+
+    /**
+     * Check if the transcriber was successfully initialized.
+     */
+    public boolean isInitialized() {
+        return recognizer != null && stream != null;
+    }
+}

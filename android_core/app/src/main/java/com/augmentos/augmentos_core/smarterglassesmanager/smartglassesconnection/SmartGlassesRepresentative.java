@@ -525,7 +525,7 @@ public class SmartGlassesRepresentative implements PhoneMicListener {
         }
     }
 
-    public void changeMicrophoneState(boolean isMicrophoneEnabled) {}
+    public void changeMicrophoneState(boolean isMicrophoneEnabled, List<String> requiredData) {}
     
     /**
      * Sends WiFi credentials to the smart glasses

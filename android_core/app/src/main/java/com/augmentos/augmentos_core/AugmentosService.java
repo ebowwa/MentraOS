@@ -1680,9 +1680,9 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             }
 
             @Override
-            public void onMicrophoneStateChange(boolean microphoneEnabled) {
+            public void onMicrophoneStateChange(boolean microphoneEnabled, List<String> requiredData) {
                 if (smartGlassesManager != null && SmartGlassesManager.getSensingEnabled(getApplicationContext())) {
-                    smartGlassesManager.changeMicrophoneState(microphoneEnabled);
+                    smartGlassesManager.changeMicrophoneState(microphoneEnabled, requiredData);
                 }
             }
 

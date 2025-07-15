@@ -13,7 +13,7 @@ public interface ServerCommsCallback {
     void onAuthError();
     void onConnectionStatusChange(WebSocketManager.IncomingMessageHandler.WebSocketStatus status);
     void onRequestSingle(String dataType);
-    void onMicrophoneStateChange(boolean isEnabled);
+    void onMicrophoneStateChange(boolean isEnabled, List<String> requiredData);
 
     /**
      * Called when the server requests a photo to be taken
