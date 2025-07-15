@@ -207,10 +207,6 @@ export const ConnectedGlasses: React.FC<ConnectedGlassesProps> = ({showTitle}) =
           state = "case_close"
         }
       }
-
-      console.log("style", style)
-      console.log("color", color)
-      console.log("state", state)
       
       image = getEvenRealitiesG1Image(style, color, state, "l", theme.isDark, status.glasses_info?.case_battery_level)
     } else {

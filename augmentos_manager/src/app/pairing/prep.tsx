@@ -254,6 +254,7 @@ export default function PairingPrepScreen() {
     // skip pairing for simulated glasses:
     if (glassesModelName.startsWith("Simulated")) {
       coreCommunicator.sendSearchForCompatibleDeviceNames("Simulated Glasses")
+      coreCommunicator.sendConnectWearable("Simulated Glasses", "Simulated Glasses")
       clearHistoryAndGoHome()
       return
     }

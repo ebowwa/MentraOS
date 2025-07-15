@@ -202,7 +202,7 @@ class DisplayManager {
       const response = await axios.get(`${CLOUD_PUBLIC_HOST_NAME}/api/onboarding/instructions`, { params: { packageName } });
       return response.data.instructions || null;
     } catch (err) {
-      this.logger.error({ err }, `[${this.getUserId()}] Error fetching onboarding instructions`);
+      this.logger.info({ err }, `[${this.getUserId()}] Error fetching onboarding instructions`);
       return null;
     }
   }

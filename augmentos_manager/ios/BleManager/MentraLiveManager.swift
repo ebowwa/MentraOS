@@ -518,7 +518,7 @@ typealias JSONObject = [String: Any]
       "enabled": enabled
     ]
     
-    sendJson(json)
+    sendJson(json, wakeUp: true)
   }
   
   @objc func requestPhoto(_ requestId: String, appId: String, webhookUrl: String?) {
@@ -534,20 +534,20 @@ typealias JSONObject = [String: Any]
       json["webhookUrl"] = webhookUrl
     }
     
-    sendJson(json)
+    sendJson(json, wakeUp: true)
   }
   
   func startRtmpStream(_ message: [String: Any]) {
     CoreCommsService.log("Starting RTMP stream")
     var json = message
     json.removeValue(forKey: "timestamp")
-    sendJson(json)
+    sendJson(json, wakeUp: true)
   }
   
   func stopRtmpStream() {
     CoreCommsService.log("Stopping RTMP stream")
     let json: [String: Any] = ["type": "stop_rtmp_stream"]
-    sendJson(json)
+    sendJson(json, wakeUp: true)
   }
   
   func sendRtmpKeepAlive(_ message: [String: Any]) {
@@ -557,22 +557,22 @@ typealias JSONObject = [String: Any]
   
   @objc func startRecordVideo() {
     let json: [String: Any] = ["type": "start_record_video"]
-    sendJson(json)
+    sendJson(json, wakeUp: true)
   }
   
   @objc func stopRecordVideo() {
     let json: [String: Any] = ["type": "stop_record_video"]
-    sendJson(json)
+    sendJson(json, wakeUp: true)
   }
   
   @objc func startVideoStream() {
     let json: [String: Any] = ["type": "start_video_stream"]
-    sendJson(json)
+    sendJson(json, wakeUp: true)
   }
   
   @objc func stopVideoStream() {
     let json: [String: Any] = ["type": "stop_video_stream"]
-    sendJson(json)
+    sendJson(json, wakeUp: true)
   }
   
   // MARK: - Command Queue
@@ -945,7 +945,7 @@ typealias JSONObject = [String: Any]
       "password": password
     ]
     
-    sendJson(json)
+    sendJson(json, wakeUp: true)
   }
   
   // MARK: - Message Handlers
@@ -1022,7 +1022,7 @@ typealias JSONObject = [String: Any]
     }
   }
   
-  public func sendJson(_ jsonOriginal: [String: Any]) {
+  public func sendJson(_ jsonOriginal: [String: Any], wakeUp: Bool = false) {
     do {
       var json = jsonOriginal
       if isNewVersion {
@@ -1033,7 +1033,7 @@ typealias JSONObject = [String: Any]
       let jsonData = try JSONSerialization.data(withJSONObject: json)
       if let jsonString = String(data: jsonData, encoding: .utf8) {
         CoreCommsService.log("Sending data to glasses: \(jsonString)")
-        let packedData = packJson(jsonString) ?? Data()
+        let packedData = packJson(jsonString, wakeUp: wakeUp) ?? Data()
         queueSend(packedData, id: String(globalMessageId-1))
       }
     } catch {
@@ -1416,13 +1416,15 @@ extension MentraLiveManager {
    * 1. Wrap with C-field: {"C": jsonData}
    * 2. Then pack with BES2700 protocol using little-endian: ## + type + length + {"C": jsonData} + $$
    */
-  private func packJson(_ jsonData: String?) -> Data? {
+  private func packJson(_ jsonData: String?, wakeUp: Bool = false) -> Data? {
     guard let jsonData = jsonData else { return nil }
     
     do {
       // First wrap with C-field
       var wrapper: [String: Any] = [FIELD_C: jsonData]
-      // wrapper["W"] = 1 // Add W field as seen in MentraLiveSGC (optional)
+      if (wakeUp) {
+        wrapper["W"] = 1 // Add W field as seen in MentraLiveSGC (optional)
+      }
       
       // Convert to string
       let jsonData = try JSONSerialization.data(withJSONObject: wrapper)
@@ -1514,39 +1516,5 @@ extension MentraLiveManager {
     // Extract payload
     let payload = protocolData.subdata(in: 5..<(5 + length))
     return payload
-  }
-  
-  /**
-   * Unified method to prepare data for transmission according to K900 protocol
-   */
-  private func prepareDataForTransmission(_ data: Data?) -> Data? {
-    guard let data = data, !data.isEmpty else { return nil }
-    
-    // If already in protocol format, don't modify
-    if isK900ProtocolFormat(data) {
-      return data
-    }
-    
-    // Try to interpret as a JSON string that needs C-wrapping and protocol formatting
-    if let originalData = String(data: data, encoding: .utf8),
-       originalData.hasPrefix("{") && !isCWrappedJson(originalData) {
-      CoreCommsService.log("📦 JSON DATA BEFORE C-WRAPPING: \(originalData)")
-      
-      // Use packJsonToK900 for K900 devices
-      if let formattedData = packJson(originalData) {
-        // Debug log
-        let hexDump = formattedData.prefix(50).map { String(format: "%02X ", $0) }.joined()
-        CoreCommsService.log("📦 AFTER C-WRAPPING & PROTOCOL FORMATTING (first 50 bytes): \(hexDump)")
-        CoreCommsService.log("📦 Total formatted length: \(formattedData.count) bytes")
-        
-        return formattedData
-      }
-    } else {
-      // Otherwise just apply protocol formatting
-      CoreCommsService.log("📦 Data already C-wrapped or not JSON")
-      return packDataToK900(data, cmdType: CMD_TYPE_STRING)
-    }
-    
-    return nil
   }
 }

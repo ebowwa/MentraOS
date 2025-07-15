@@ -26,6 +26,8 @@ import android.os.Looper;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.greenrobot.eventbus.EventBus;
+
 public class NotificationService extends NotificationListenerService {
 
     private static final String TAG = "NotificationListener";
@@ -80,11 +82,31 @@ public class NotificationService extends NotificationListenerService {
     private final Map<String, Runnable> notificationBuffer = new HashMap<>();
     private final Handler notificationHandler = new Handler(Looper.getMainLooper());
     private static final long DUPLICATE_THRESHOLD_MS = 200;
+    
+    // Track active notifications for dismissal detection
+    private final Map<String, NotificationInfo> activeNotifications = new HashMap<>();
+    
+    // Helper class to store notification information
+    private static class NotificationInfo {
+        String appName;
+        String title;
+        String text;
+        String packageName;
+        long timestamp;
+        
+        NotificationInfo(String appName, String title, String text, String packageName) {
+            this.appName = appName;
+            this.title = title;
+            this.text = text;
+            this.packageName = packageName;
+            this.timestamp = System.currentTimeMillis();
+        }
+    }
 
     @Override
     public void onNotificationPosted(StatusBarNotification sbn) {
         String packageName = sbn.getPackageName();
-        
+
         // 🚨 Filter out blacklisted packages
         if (packageBlacklist.contains(packageName)) {
             Log.d(TAG, "Ignoring blacklisted package: " + packageName);
@@ -156,11 +178,62 @@ public class NotificationService extends NotificationListenerService {
         }
     }
 
+    @Override
+    public void onNotificationRemoved(StatusBarNotification sbn) {
+        String notificationKey = sbn.getKey();
+        String packageName = sbn.getPackageName();
+
+        Log.d(TAG, "Notification Removed: " + packageName + " (Key: " + notificationKey + ")");
+
+        // Check if this was a notification we were tracking
+        NotificationInfo trackedNotification = activeNotifications.get(notificationKey);
+        if (trackedNotification != null) {
+            Log.d(TAG, "🚨 Notification dismissed: " + trackedNotification.title + " - " + trackedNotification.text);
+            
+            // Post dismissal event to EventBus
+            NotificationDismissedEvent dismissalEvent = new NotificationDismissedEvent(
+                trackedNotification.appName,
+                trackedNotification.title,
+                trackedNotification.text,
+                notificationKey
+            );
+            EventBus.getDefault().post(dismissalEvent);
+            
+            // Send dismissal to React Native
+            // if (reactContext != null) {
+            //     try {
+            //         JSONObject obj = new JSONObject();
+            //         obj.put("appName", trackedNotification.appName);
+            //         obj.put("title", trackedNotification.title);
+            //         obj.put("text", trackedNotification.text);
+            //         obj.put("notificationKey", notificationKey);
+            //         obj.put("timestamp", System.currentTimeMillis());
+                    
+            //         NotificationServiceModule notificationUtils = new NotificationServiceModule(reactContext);
+            //         notificationUtils.onNotificationDismissed(obj.toString());
+                    
+            //         Log.d(TAG, "✅ Sent notification dismissal to React Native");
+            //     } catch (JSONException e) {
+            //         Log.d(TAG, "❌ JSONException in dismissal: " + e.getMessage());
+            //     }
+            // }
+            
+            // Remove from tracking
+            activeNotifications.remove(notificationKey);
+            Log.d(TAG, "📝 Removed notification from tracking: " + notificationKey);
+        } else {
+            Log.d(TAG, "⚠️ Notification removed but not tracked: " + notificationKey);
+        }
+    }
+
     // Function to send notification
     private void sendNotification(StatusBarNotification sbn, String title, String text) {
         try {
+            String appName = getAppName(sbn.getPackageName());
+            String notificationKey = sbn.getKey();
+            
             JSONObject obj = new JSONObject();
-            obj.put("appName", getAppName(sbn.getPackageName()));
+            obj.put("appName", appName);
             obj.put("title", title);
             obj.put("text", text);
             obj.put("timestamp", System.currentTimeMillis());
@@ -170,19 +243,16 @@ public class NotificationService extends NotificationListenerService {
                 NotificationServiceModule notificationUtils = new NotificationServiceModule(reactContext);
                 notificationUtils.onNotificationPosted(obj.toString());
 
+                // Track this notification for dismissal detection
+                activeNotifications.put(notificationKey, new NotificationInfo(appName, title, text, sbn.getPackageName()));
                 Log.d(TAG, "✅ Sent notification: " + title + " - " + text);
+                Log.d(TAG, "📝 Tracking notification with key: " + notificationKey);
             } else {
                 Log.d(TAG, "Could not send notification- reactContext is null");
             }
         } catch (JSONException e) {
             Log.d(TAG, "❌ JSONException occurred: " + e.getMessage());
         }
-    }
-
-    @Override
-    public void onNotificationRemoved(StatusBarNotification sbn) {
-        // This method is called when a notification is removed
-        Log.d(TAG, "Notification Removed: " + sbn.getPackageName());
     }
 
     @Override

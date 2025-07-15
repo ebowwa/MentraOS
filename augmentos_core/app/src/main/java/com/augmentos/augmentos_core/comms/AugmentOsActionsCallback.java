@@ -42,4 +42,5 @@ public interface AugmentOsActionsCallback {
     void onAudioStopRequest(JSONObject audioStopParams);
     void simulateHeadPosition(String position);
     void simulateButtonPress(String buttonId, String pressType);
+    void handleNotificationDismissal(JSONObject dismissalData);
 }

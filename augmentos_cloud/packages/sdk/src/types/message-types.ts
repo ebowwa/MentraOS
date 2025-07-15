@@ -34,7 +34,7 @@ export enum GlassesToCloudMessageType {
   // GLASSES_CONNECTION_STATE = 'glasses_connection_state',
   // LOCATION_UPDATE = 'location_update',
   // PHONE_NOTIFICATION = 'phone_notification',
-  // NOTIFICATION_DISMISSED = 'notification_dismissed'
+  // PHONE_NOTIFICATION_DISMISSED = 'phone_notification_dismissed'
 
   BUTTON_PRESS = StreamType.BUTTON_PRESS,
   HEAD_POSITION = StreamType.HEAD_POSITION,
@@ -45,7 +45,7 @@ export enum GlassesToCloudMessageType {
   VPS_COORDINATES = StreamType.VPS_COORDINATES,
   VAD = StreamType.VAD,
   PHONE_NOTIFICATION = StreamType.PHONE_NOTIFICATION,
-  NOTIFICATION_DISMISSED = StreamType.NOTIFICATION_DISMISSED,
+  PHONE_NOTIFICATION_DISMISSED = StreamType.PHONE_NOTIFICATION_DISMISSED,
   CALENDAR_EVENT = StreamType.CALENDAR_EVENT,
   MENTRAOS_SETTINGS_UPDATE_REQUEST = StreamType.MENTRAOS_SETTINGS_UPDATE_REQUEST,
   CORE_STATUS_UPDATE = StreamType.CORE_STATUS_UPDATE,
@@ -188,7 +188,7 @@ export const EventTypes = [
   GlassesToCloudMessageType.VPS_COORDINATES,
   GlassesToCloudMessageType.VAD,
   GlassesToCloudMessageType.PHONE_NOTIFICATION,
-  GlassesToCloudMessageType.NOTIFICATION_DISMISSED,
+  GlassesToCloudMessageType.PHONE_NOTIFICATION_DISMISSED,
   GlassesToCloudMessageType.CALENDAR_EVENT,
   GlassesToCloudMessageType.MENTRAOS_SETTINGS_UPDATE_REQUEST,
   GlassesToCloudMessageType.CORE_STATUS_UPDATE

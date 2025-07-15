@@ -13,6 +13,10 @@ export * from './types/messages/glasses-to-cloud';
 export * from './types/messages/cloud-to-glasses';
 export * from './types/messages/app-to-cloud';
 
+// Utility exports
+export * from "./utils/bitmap-utils";
+export * from "./utils/animation-utils";
+
 // Export cloud-to-app but exclude the conflicting type guards
 export {
   // Types
@@ -98,7 +102,7 @@ export {
   CalendarEvent,
   Vad,
   PhoneNotification,
-  NotificationDismissed,
+  PhoneNotificationDismissed,
   StartApp,
   StopApp,
   ConnectionInit,
@@ -143,7 +147,9 @@ export {
   DashboardCard,
   ReferenceCard,
   Layout,
-  DisplayRequest
+  DisplayRequest,
+  BitmapView,
+  ClearView,
 } from './types/layouts';
 
 // Type guards - re-export the most commonly used ones for convenience
@@ -155,7 +161,8 @@ export {
   isStopApp,
   isPhotoResponse as isPhotoResponseFromGlasses,
   isRtmpStreamStatus as isRtmpStreamStatusFromGlasses,
-  isKeepAliveAck
+  isKeepAliveAck,
+  isPhoneNotificationDismissed
 } from './types/messages/glasses-to-cloud';
 
 export {

@@ -219,7 +219,7 @@ export class PermissionManager {
 
     // Notification streams
     this.streamToPermissionMap.set('phone_notification', PermissionType.READ_NOTIFICATIONS);
-    this.streamToPermissionMap.set('notification_dismissed', PermissionType.READ_NOTIFICATIONS);
+    this.streamToPermissionMap.set('phone_notification_dismissed', PermissionType.READ_NOTIFICATIONS);
 
     // Language-specific streams
     // Handle dynamically during permission checks

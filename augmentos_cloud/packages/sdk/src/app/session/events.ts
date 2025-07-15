@@ -18,7 +18,6 @@ import {
   GlassesConnectionState,
   LocationUpdate,
   Vad,
-  NotificationDismissed,
   AudioChunk,
   CalendarEvent,
   VpsCoordinates,
@@ -29,7 +28,8 @@ import {
   CustomMessage,
   RtmpStreamStatus,
   PhotoTaken,
-  ManagedStreamStatus
+  ManagedStreamStatus,
+  PhoneNotificationDismissed
 } from '../../types';
 import { DashboardMode } from '../../types/dashboard';
 import { PermissionError, PermissionErrorDetail } from '../../types/messages/cloud-to-app';
@@ -80,7 +80,7 @@ export interface StreamDataTypes {
   [StreamType.LOCATION_UPDATE]: LocationUpdate;
   [StreamType.CALENDAR_EVENT]: CalendarEvent;
   [StreamType.VAD]: Vad;
-  [StreamType.NOTIFICATION_DISMISSED]: NotificationDismissed;
+  [StreamType.PHONE_NOTIFICATION_DISMISSED]: PhoneNotificationDismissed;
   [StreamType.AUDIO_CHUNK]: AudioChunk;
   [StreamType.VIDEO]: ArrayBuffer;
   [StreamType.RTMP_STREAM_STATUS]: RtmpStreamStatus;
@@ -186,6 +186,10 @@ export class EventManager {
 
   onPhoneNotifications(handler: Handler<PhoneNotification>) {
     return this.addHandler(StreamType.PHONE_NOTIFICATION, handler);
+  }
+
+  onPhoneNotificationDismissed(handler: Handler<PhoneNotificationDismissed>) {
+    return this.addHandler(StreamType.PHONE_NOTIFICATION_DISMISSED, handler);
   }
 
   onGlassesBattery(handler: Handler<GlassesBatteryUpdate>) {

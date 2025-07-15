@@ -11,6 +11,7 @@ import Foundation
 
 enum CommandResponse: UInt8 {
   case ACK = 0xC9
+  case CONTINUE = 0xCB
 }
 
 enum Commands: UInt8 {

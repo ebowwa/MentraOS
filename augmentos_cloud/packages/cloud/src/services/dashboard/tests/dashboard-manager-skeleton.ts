@@ -118,6 +118,11 @@ function setupEventHandlers(sessionId: string, session: AppSession): void {
     handlePhoneNotification(sessionId, data);
   });
 
+  // Handle phone notification dismissals
+  session.on(StreamType.PHONE_NOTIFICATION_DISMISSED, (data) => {
+    handlePhoneNotificationDismissed(sessionId, data);
+  });
+
   // Handle location updates
   session.on(StreamType.LOCATION_UPDATE, (data) => {
     handleLocationUpdate(sessionId, data);
@@ -342,6 +347,43 @@ function handlePhoneNotification(sessionId: string, data: any): void {
 
   // Process notifications
   processNotifications(sessionId);
+}
+
+function handlePhoneNotificationDismissed(sessionId: string, data: any): void {
+  const sessionInfo = activeSessions.get(sessionId);
+  if (!sessionInfo) return;
+
+  logger.debug(`Phone notification dismissed for session ${sessionId}:`, data);
+
+  // Extract notification ID from dismissal data
+  const dismissedNotificationId = data.notificationId;
+  if (!dismissedNotificationId) {
+    logger.warn(`Dismissal event missing notificationId:`, data);
+    return;
+  }
+
+  // Remove the dismissed notification from cache if it exists
+  if (sessionInfo.phoneNotificationCache && sessionInfo.phoneNotificationCache.length > 0) {
+    const initialCacheSize = sessionInfo.phoneNotificationCache.length;
+
+    // Filter out the dismissed notification by matching notificationId
+    sessionInfo.phoneNotificationCache = sessionInfo.phoneNotificationCache.filter(
+      notification => notification.uuid !== dismissedNotificationId
+    );
+
+    const removedCount = initialCacheSize - sessionInfo.phoneNotificationCache.length;
+    if (removedCount > 0) {
+      logger.info(`Removed ${removedCount} dismissed notification(s) from cache for session ${sessionId}`);
+    } else {
+      logger.debug(`No matching notification found in cache for dismissal ID: ${dismissedNotificationId}`);
+    }
+  }
+
+  // Re-process notifications to update ranking
+  processNotifications(sessionId);
+
+  // Update dashboard to reflect the dismissal
+  updateDashboardSections(sessionId);
 }
 
 function processNotifications(sessionId: string): void {
