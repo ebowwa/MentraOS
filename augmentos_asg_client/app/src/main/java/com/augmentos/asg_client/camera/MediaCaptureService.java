@@ -12,6 +12,7 @@ import androidx.preference.PreferenceManager;
 
 import com.augmentos.augmentos_core.utils.ServerConfigUtil;
 import com.augmentos.asg_client.camera.upload.MediaUploadService;
+import com.augmentos.asg_client.streaming.RtmpStreamingService;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -457,6 +458,18 @@ public class MediaCaptureService {
      * Takes a photo locally when offline or when server communication fails
      */
     public void takePhotoLocally() {
+        // Check if camera is already in use (photo/video capture)
+        if (CameraNeo.isCameraInUse()) {
+            Log.w(TAG, "Cannot take photo locally - camera is busy with photo/video capture");
+            return;
+        }
+        
+        // Check if RTMP streaming is active
+        if (RtmpStreamingService.isStreaming()) {
+            Log.w(TAG, "Cannot take photo locally - camera is busy with RTMP streaming");
+            return;
+        }
+
         // Check storage availability before taking photo
         if (!isExternalStorageAvailable()) {
             Log.e(TAG, "External storage is not available for photo capture");
@@ -512,6 +525,26 @@ public class MediaCaptureService {
      * @param webhookUrl Optional webhook URL for direct upload to app
      */
     public void takePhotoAndUpload(String photoFilePath, String requestId, String webhookUrl) {
+        // Check if camera is already in use (photo/video capture)
+        if (CameraNeo.isCameraInUse()) {
+            Log.w(TAG, "Cannot take photo - camera is busy with photo/video capture. RequestId: " + requestId);
+            sendMediaErrorResponse(requestId, "Camera is busy with photo/video capture", MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
+            if (mMediaCaptureListener != null) {
+                mMediaCaptureListener.onMediaError(requestId, "Camera is busy", MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
+            }
+            return;
+        }
+        
+        // Check if RTMP streaming is active
+        if (RtmpStreamingService.isStreaming()) {
+            Log.w(TAG, "Cannot take photo - camera is busy with RTMP streaming. RequestId: " + requestId);
+            sendMediaErrorResponse(requestId, "Camera is busy with streaming", MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
+            if (mMediaCaptureListener != null) {
+                mMediaCaptureListener.onMediaError(requestId, "Camera is busy with streaming", MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
+            }
+            return;
+        }
+
         // Notify that we're about to take a photo
         if (mMediaCaptureListener != null) {
             mMediaCaptureListener.onPhotoCapturing(requestId);
