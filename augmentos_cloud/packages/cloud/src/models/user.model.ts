@@ -654,6 +654,9 @@ UserSchema.statics.findOrCreateUser = async function (email: string): Promise<Us
     } catch (error) {
       console.error(error, 'Error creating user');
       user = await this.findOne({ email });
+      if (!user) {
+        throw new Error('User not found after error creating user');
+      }
     }
   }
 
