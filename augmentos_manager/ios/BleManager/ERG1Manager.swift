@@ -1187,12 +1187,12 @@ extension ERG1Manager {
           DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
             if let pendingContinuation = self.pendingWriteCompletions.removeValue(forKey: characteristic) {
               let elapsed = Date().timeIntervalSince(startTime) * 1000
-              print("⚠️ BLE write timeout for left side after \(String(format: "%.0f", elapsed))ms, resuming continuation")
+              CoreCommsService.log("⚠️ BLE write timeout for left side after \(String(format: "%.0f", elapsed))ms, resuming continuation")
               pendingContinuation.resume()
             }
           }
         } else {
-          print("⚠️ Left peripheral/characteristic not found, resuming immediately")
+          CoreCommsService.log("⚠️ Left peripheral/characteristic not found, resuming immediately")
           continuation.resume()
         }
       } else {
@@ -1211,12 +1211,12 @@ extension ERG1Manager {
           DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
             if let pendingContinuation = self.pendingWriteCompletions.removeValue(forKey: characteristic) {
               let elapsed = Date().timeIntervalSince(startTime) * 1000
-              print("⚠️ BLE write timeout for right side after \(String(format: "%.0f", elapsed))ms, resuming continuation")
+              CoreCommsService.log("⚠️ BLE write timeout for right side after \(String(format: "%.0f", elapsed))ms, resuming continuation")
               pendingContinuation.resume()
             }
           }
         } else {
-          print("⚠️ Right peripheral/characteristic not found, resuming immediately")
+          CoreCommsService.log("⚠️ Right peripheral/characteristic not found, resuming immediately")
           continuation.resume()
         }
       }
@@ -1439,7 +1439,7 @@ extension ERG1Manager {
   
   /// Display bitmap from base64 encoded data
   @objc public func RN_displayBitmap(_ base64ImageData: String) {
-    print("RN_displayBitmap() - Size: \(base64ImageData.count) characters")
+    CoreCommsService.log("RN_displayBitmap() - Size: \(base64ImageData.count) characters")
     Task {
       await displayBitmap(base64ImageData: base64ImageData)
     }
@@ -1451,7 +1451,7 @@ extension ERG1Manager {
                             onError: BmpErrorCallback? = nil) async -> Bool {
     
     guard let bmpData = Data(base64Encoded: base64ImageData) else {
-      print("Failed to decode base64 image data")
+      CoreCommsService.log("Failed to decode base64 image data")
       onError?("both", "Failed to decode base64 image data")
       return false
     }
@@ -1461,7 +1461,7 @@ extension ERG1Manager {
   
   /// Display bitmap using MentraOS-compatible protocol
   @objc public func RN_displayBitmapMentraOS(_ base64ImageData: String) {
-    print("RN_displayBitmapMentraOS() - Size: \(base64ImageData.count) characters")
+    CoreCommsService.log("RN_displayBitmapMentraOS() - Size: \(base64ImageData.count) characters")
     Task {
       await displayBitmapMentraOS(base64ImageData: base64ImageData)
     }
@@ -1469,7 +1469,7 @@ extension ERG1Manager {
   
   /// Display bitmap from hex string using MentraOS-compatible protocol
   @objc public func RN_displayBitmapFromHex(_ hexString: String) {
-    print("RN_displayBitmapFromHex() - Size: \(hexString.count) characters")
+    CoreCommsService.log("RN_displayBitmapFromHex() - Size: \(hexString.count) characters")
     Task {
       await displayBitmapFromHex(hexString: hexString)
     }
@@ -1477,7 +1477,7 @@ extension ERG1Manager {
   
   /// Clear display using MentraOS's 0x18 command (exit to dashboard)
   @objc public func RN_clearDisplay() {
-    print("RN_clearDisplay() - Using MentraOS 0x18 exit command")
+    CoreCommsService.log("RN_clearDisplay() - Using MentraOS 0x18 exit command")
     Task {
       await clearDisplayMentraOS()
     }
@@ -1487,12 +1487,12 @@ extension ERG1Manager {
   
   /// Display animation from batched frames with iOS-controlled timing
   @objc public func RN_displayBitmapAnimation(_ framesJson: String, interval: Double, shouldRepeat: Bool) {
-    print("RN_displayBitmapAnimation() - Frames JSON size: \(framesJson.count), interval: \(interval)ms, repeat: \(shouldRepeat)")
+    CoreCommsService.log("RN_displayBitmapAnimation() - Frames JSON size: \(framesJson.count), interval: \(interval)ms, repeat: \(shouldRepeat)")
     
     // Parse frames from JSON
     guard let framesData = framesJson.data(using: .utf8),
           let frames = try? JSONSerialization.jsonObject(with: framesData) as? [String] else {
-      print("❌ Failed to parse animation frames JSON")
+      CoreCommsService.log("❌ Failed to parse animation frames JSON")
       return
     }
     
@@ -1513,7 +1513,7 @@ extension ERG1Manager {
     self.currentFrameIndex = 0
     self.isAnimationRunning = true
     
-    print("🎬 Starting iOS-controlled animation: \(frames.count) frames at \(Int(interval * 1000))ms intervals")
+    CoreCommsService.log("🎬 Starting iOS-controlled animation: \(frames.count) frames at \(Int(interval * 1000))ms intervals")
     
     // Display first frame immediately
     if !frames.isEmpty {
@@ -1538,11 +1538,11 @@ extension ERG1Manager {
       if animationRepeat {
         // Restart animation
         currentFrameIndex = 0
-        print("🔄 Animation loop: restarting from frame 1")
+        CoreCommsService.log("🔄 Animation loop: restarting from frame 1")
       } else {
         // Stop animation
         stopBitmapAnimation()
-        print("🏁 Animation completed")
+        CoreCommsService.log("🏁 Animation completed")
         return
       }
     }
@@ -1553,24 +1553,24 @@ extension ERG1Manager {
     
     // CRITICAL FIX: Stop timer while displaying frame to prevent overlap
     animationTimer?.invalidate()
-    print("⏰ Timer invalidated, starting frame \(frameNumber) display...")
+    CoreCommsService.log("⏰ Timer invalidated, starting frame \(frameNumber) display...")
     
     Task {
       let startTime = Date()
       await self.displayAnimationFrame(frameData, frameNumber: frameNumber, totalFrames: self.animationFrames.count)
       let frameDisplayTime = Date().timeIntervalSince(startTime)
       
-      print("✅ Frame \(frameNumber) completed in \(Int(frameDisplayTime * 1000))ms, scheduling next frame in \(Int(self.animationInterval * 1000))ms")
+      CoreCommsService.log("✅ Frame \(frameNumber) completed in \(Int(frameDisplayTime * 1000))ms, scheduling next frame in \(Int(self.animationInterval * 1000))ms")
       
       // Schedule next frame after display completes + interval delay
       DispatchQueue.main.async {
         guard self.isAnimationRunning else {
-          print("🛑 Animation stopped, not scheduling next frame")
+          CoreCommsService.log("🛑 Animation stopped, not scheduling next frame")
           return
         }
-        print("⏰ Scheduling next frame timer...")
+        CoreCommsService.log("⏰ Scheduling next frame timer...")
         self.animationTimer = Timer.scheduledTimer(withTimeInterval: self.animationInterval, repeats: false) { [weak self] _ in
-          print("⏰ Timer fired for next frame!")
+          CoreCommsService.log("⏰ Timer fired for next frame!")
           self?.displayNextFrame()
         }
       }
@@ -1582,7 +1582,7 @@ extension ERG1Manager {
   /// Display single animation frame using our proven sequential method
   private func displayAnimationFrame(_ hexData: String, frameNumber: Int, totalFrames: Int) async {
     let intervalMs = Int(animationInterval * 1000)
-    print("🎬 Frame \(frameNumber)/\(totalFrames): iOS-controlled timing (\(intervalMs)ms interval)")
+    CoreCommsService.log("🎬 Frame \(frameNumber)/\(totalFrames): iOS-controlled timing (\(intervalMs)ms interval)")
     
     // Use our proven sequential display method
     await displayBitmapFromHex(hexString: hexData)
@@ -1600,12 +1600,12 @@ extension ERG1Manager {
     animationTimer?.invalidate()
     animationTimer = nil
     
-    print("⏹️ iOS animation stopped")
+    CoreCommsService.log("⏹️ iOS animation stopped")
   }
   
   /// Start local BMP animation (HACKY SOLUTION)
   @objc public func RN_startLocalAnimation() {
-    print("🎬 RN_startLocalAnimation() - Starting 10-frame local animation")
+    CoreCommsService.log("🎬 RN_startLocalAnimation() - Starting 10-frame local animation")
     Task {
       await startLocalBMPAnimation()
     }
@@ -1613,16 +1613,16 @@ extension ERG1Manager {
   
   /// Local BMP animation (HACKY SOLUTION - eliminates network timing)
   private func startLocalBMPAnimation() async {
-    print("🎬 Starting local BMP animation with known-working data")
+    CoreCommsService.log("🎬 Starting local BMP animation with known-working data")
     
     // Create a simple test BMP pattern that should display
     let testPatternHex = createTestBMPHex()
     
-    print("🔄 Starting animation loop with 1250ms timing (like MentraOS)")
+    CoreCommsService.log("🔄 Starting animation loop with 1250ms timing (like MentraOS)")
     
     // Animation loop - 10 frames, 1250ms each (like MentraOS timing)
     for frameIndex in 1...10 {
-      print("🖼️ Displaying local frame \(frameIndex)")
+      CoreCommsService.log("🖼️ Displaying local frame \(frameIndex)")
       
       // Use our working hex display method
       let success = await displayBitmapFromHex(hexString: testPatternHex,
@@ -1631,9 +1631,9 @@ extension ERG1Manager {
                                                onError: nil)
       
       if success {
-        print("✅ Local frame \(frameIndex) displayed successfully")
+        CoreCommsService.log("✅ Local frame \(frameIndex) displayed successfully")
       } else {
-        print("❌ Local frame \(frameIndex) failed")
+        CoreCommsService.log("❌ Local frame \(frameIndex) failed")
       }
       
       // MentraOS timing: 1250ms between frames
@@ -1642,7 +1642,7 @@ extension ERG1Manager {
       }
     }
     
-    print("🏁 Local animation completed")
+    CoreCommsService.log("🏁 Local animation completed")
   }
   
   /// Create a simple test BMP pattern in hex format
@@ -1670,7 +1670,7 @@ extension ERG1Manager {
   
   /// MentraOS-compatible clear display implementation
   private func clearDisplayMentraOS() async -> Bool {
-    print("Clearing display with 0x18 command (exit to dashboard)")
+    CoreCommsService.log("Clearing display with 0x18 command (exit to dashboard)")
     
     // Send 0x18 to both glasses (MentraOS's clear method)
     let clearCommand: [UInt8] = [0x18]
@@ -1689,7 +1689,7 @@ extension ERG1Manager {
     // Wait for responses (MentraOS waits for 0xc9 success)
     try? await Task.sleep(nanoseconds: 100 * 1_000_000) // 100ms
     
-    print("Display cleared with exit command")
+    CoreCommsService.log("Display cleared with exit command")
     return true
   }
   
@@ -1699,7 +1699,7 @@ extension ERG1Manager {
                                     onError: BmpErrorCallback? = nil) async -> Bool {
     
     guard let bmpData = Data(base64Encoded: base64ImageData) else {
-      print("Failed to decode base64 image data")
+      CoreCommsService.log("Failed to decode base64 image data")
       onError?("both", "Failed to decode base64 image data")
       return false
     }
@@ -1714,35 +1714,35 @@ extension ERG1Manager {
                                    onError: BmpErrorCallback? = nil) async -> Bool {
     
     guard let bmpData = Data(hexString: hexString) else {
-      print("Failed to decode hex image data")
+      CoreCommsService.log("Failed to decode hex image data")
       onError?("both", "Failed to decode hex image data")
       return false
     }
     
-    print("✅ Successfully decoded hex to \(bmpData.count) bytes")
-    print("🔍 First 10 bytes from hex: \(Array(bmpData.prefix(10)).map { String(format: "0x%02X", $0) }.joined(separator: " "))")
+    CoreCommsService.log("✅ Successfully decoded hex to \(bmpData.count) bytes")
+    CoreCommsService.log("🔍 First 10 bytes from hex: \(Array(bmpData.prefix(10)).map { String(format: "0x%02X", $0) }.joined(separator: " "))")
     
     // Debug: Check if we have any non-FF bytes in pixel data
     let pixelData = bmpData.dropFirst(62)
     let nonFFCount = pixelData.filter { $0 != 0xFF }.count
-    print("🎨 iOS decoded: \(nonFFCount) black pixels out of \(pixelData.count) bytes")
+    CoreCommsService.log("🎨 iOS decoded: \(nonFFCount) black pixels out of \(pixelData.count) bytes")
     
     // Show first few non-FF bytes
     let nonFFBytes = Array(pixelData.enumerated().filter { $0.element != 0xFF }.prefix(5))
     let nonFFDebug = nonFFBytes.map { "pos \($0.offset)=0x\(String(format: "%02X", $0.element))" }.joined(separator: ", ")
-    print("🔍 iOS non-FF bytes: \(nonFFDebug)")
+    CoreCommsService.log("🔍 iOS non-FF bytes: \(nonFFDebug)")
     
     // Debug: show hex sample received
-    print("🔍 iOS received hex sample (chars 100-200): \(hexString.dropFirst(100).prefix(100))")
+    CoreCommsService.log("🔍 iOS received hex sample (chars 100-200): \(hexString.dropFirst(100).prefix(100))")
     
     // CRITICAL: Check if data is still good right before calling display function
     let pixelCheck = bmpData.dropFirst(62)
     let blackCheck = pixelCheck.filter { $0 != 0xFF }.count
-    print("🔍 Just before display call: \(blackCheck) black pixels - DATA IS \(blackCheck > 0 ? "GOOD" : "CORRUPTED")")
+    CoreCommsService.log("🔍 Just before display call: \(blackCheck) black pixels - DATA IS \(blackCheck > 0 ? "GOOD" : "CORRUPTED")")
     
-    print("🖼️ Single frame: Using fast MentraOS transmission method")
+    CoreCommsService.log("🖼️ Single frame: Using fast MentraOS transmission method")
     let result = await displayBitmapDataMentraOS(bmpData: bmpData, sendLeft: true, sendRight: true, onProgress: onProgress, onSuccess: onSuccess, onError: onError)
-    print("🖼️ Single frame: Transmission \(result ? "SUCCESS" : "FAILED")")
+    CoreCommsService.log("🖼️ Single frame: Transmission \(result ? "SUCCESS" : "FAILED")")
     return result
   }
   
@@ -1762,7 +1762,7 @@ extension ERG1Manager {
     frameSequence += 1
     lastFrameTime = currentTime
     
-    print("🎬 Frame \(frameSequence): \(String(format: "%.0f", timeSinceLastFrame * 1000))ms since last frame")
+    CoreCommsService.log("🎬 Frame \(frameSequence): \(String(format: "%.0f", timeSinceLastFrame * 1000))ms since last frame")
     
     // Skip duplicate prevention for animation frames
     if !isAnimationRunning {
@@ -1770,10 +1770,10 @@ extension ERG1Manager {
       if isDisplayingBMP {
         let timeSinceStart = currentTime.timeIntervalSince(lastBMPStartTime)
         if timeSinceStart > 2.0 {
-          print("⚠️ Force unlocking BMP display after \(String(format: "%.1f", timeSinceStart))s timeout")
+          CoreCommsService.log("⚠️ Force unlocking BMP display after \(String(format: "%.1f", timeSinceStart))s timeout")
           isDisplayingBMP = false
         } else {
-          print("⚠️ BMP display already in progress (started \(String(format: "%.1f", timeSinceStart))s ago), ignoring duplicate request")
+          CoreCommsService.log("⚠️ BMP display already in progress (started \(String(format: "%.1f", timeSinceStart))s ago), ignoring duplicate request")
           return false
         }
       }
@@ -1781,45 +1781,45 @@ extension ERG1Manager {
       lastBMPStartTime = currentTime
       isDisplayingBMP = true
       defer {
-        print("🏁 BMP display completed, releasing lock")
+        CoreCommsService.log("🏁 BMP display completed, releasing lock")
         isDisplayingBMP = false
       }
     }
     
-    print("Starting MentraOS BMP display process - Size: \(bmpData.count) bytes")
+    CoreCommsService.log("Starting MentraOS BMP display process - Size: \(bmpData.count) bytes")
     
     // CRITICAL: Check if bmpData is already corrupted at function entry
     let pixelData = bmpData.dropFirst(62)
     let blackPixels = pixelData.filter { $0 != 0xFF }.count
-    print("🔍 At function start: \(blackPixels) black pixels out of \(pixelData.count)")
+    CoreCommsService.log("🔍 At function start: \(blackPixels) black pixels out of \(pixelData.count)")
     
     if blackPixels == 0 {
-      print("❌ CRITICAL ERROR: bmpData is already all white at function entry!")
+      CoreCommsService.log("❌ CRITICAL ERROR: bmpData is already all white at function entry!")
       let corruptSample = Array(bmpData[62..<82])
       let corruptHex = corruptSample.map { String(format: "%02X", $0) }.joined(separator: " ")
-      print("❌ Corrupt pixel sample (62-82): \(corruptHex)")
+      CoreCommsService.log("❌ Corrupt pixel sample (62-82): \(corruptHex)")
       return false
     }
     
     // Debug: Check BMP content
     if bmpData.count >= 100 {
       let headerBytes = Array(bmpData.prefix(10))
-      print("BMP Header: \(headerBytes.map { String(format: "0x%02X", $0) }.joined(separator: " "))")
+      CoreCommsService.log("BMP Header: \(headerBytes.map { String(format: "0x%02X", $0) }.joined(separator: " "))")
       
       // Check some data bytes to ensure it's not all white
       let sampleBytes = Array(bmpData[100..<110])
-      print("Sample data bytes (100-110): \(sampleBytes.map { String(format: "0x%02X", $0) }.joined(separator: " "))")
+      CoreCommsService.log("Sample data bytes (100-110): \(sampleBytes.map { String(format: "0x%02X", $0) }.joined(separator: " "))")
     }
     
     // Validate BMP format
     guard bmpData.count >= 2 && bmpData[0] == 0x42 && bmpData[1] == 0x4D else {
-      print("Invalid BMP format - missing BM signature")
+      CoreCommsService.log("Invalid BMP format - missing BM signature")
       onError?("both", "Invalid BMP format")
       return false
     }
     
     // Send HeartBeat first (MentraOS does this before BMP)
-    print("Sending HeartBeat (0x25) before BMP - MentraOS format")
+    CoreCommsService.log("Sending HeartBeat (0x25) before BMP - MentraOS format")
     
     // MentraOS HeartBeat format appears to be just 0x25 (simple single byte)
     let heartbeatCommand: [UInt8] = [0x25]
@@ -1827,11 +1827,11 @@ extension ERG1Manager {
     // Send heartbeat fast like MentraOS (no need to wait for ACK)
     if sendLeft {
       await sendCommandToSideWithoutResponse(heartbeatCommand, side: "left")
-      print("HeartBeat sent to L (fast)")
+      CoreCommsService.log("HeartBeat sent to L (fast)")
     }
     if sendRight {
       await sendCommandToSideWithoutResponse(heartbeatCommand, side: "right")
-      print("HeartBeat sent to R (fast)")
+      CoreCommsService.log("HeartBeat sent to R (fast)")
     }
     
     // Wait for heartbeat response (MentraOS timing - much faster)
@@ -1847,7 +1847,7 @@ extension ERG1Manager {
     if bmpData.count > pixelDataStart + 50 {
       let beforeChunkSample = Array(bmpData[pixelDataStart..<(pixelDataStart + 20)])
       let beforeChunkHex = beforeChunkSample.map { String(format: "%02X", $0) }.joined(separator: " ")
-      print("🔍 Before chunking - pixel data sample (bytes 62-82): \(beforeChunkHex)")
+      CoreCommsService.log("🔍 Before chunking - pixel data sample (bytes 62-82): \(beforeChunkHex)")
     }
     
     // Create chunks exactly like MentraOS
@@ -1861,19 +1861,19 @@ extension ERG1Manager {
       if index < 600 { // First 3 chunks (194 * 3 = 582)
         let chunkSample = Array(singlePack.prefix(20))
         let chunkHex = chunkSample.map { String(format: "%02X", $0) }.joined(separator: " ")
-        print("🔍 Chunk creation - index \(index), sample: \(chunkHex)")
+        CoreCommsService.log("🔍 Chunk creation - index \(index), sample: \(chunkHex)")
       }
       
       multiPacks.append(singlePack)
       index += packLen
     }
     
-    print("Created \(multiPacks.count) packs from BMP data (MentraOS format)")
+    CoreCommsService.log("Created \(multiPacks.count) packs from BMP data (MentraOS format)")
     
     // Function to send to specific side using MentraOS protocol
     func sendToSide(_ lr: String) async -> Bool {
       let sideStartTime = Date()
-      print("📡 Starting \(lr) side transmission - \(multiPacks.count) chunks")
+      CoreCommsService.log("📡 Starting \(lr) side transmission - \(multiPacks.count) chunks")
       
       // Send chunks with MentraOS formatting
       for (packIndex, pack) in multiPacks.enumerated() {
@@ -1891,13 +1891,13 @@ extension ERG1Manager {
           packData = packetData
         }
         
-        print("Sending chunk \(packIndex) to \(lr), size: \(packData.count)")
+        CoreCommsService.log("Sending chunk \(packIndex) to \(lr), size: \(packData.count)")
         
         // Debug: Check what's actually in this pack
         if packIndex < 5 || packIndex > 45 {  // Show first few and last few chunks
           let packBytes = Array(pack.prefix(20))
           let packHex = packBytes.map { String(format: "%02X", $0) }.joined(separator: " ")
-          print("🔍 Pack \(packIndex) data sample: \(packHex)")
+          CoreCommsService.log("🔍 Pack \(packIndex) data sample: \(packHex)")
         }
         
         // Send directly like Flutter MentraOS (no retries, direct transmission with .withoutResponse)
@@ -1916,7 +1916,7 @@ extension ERG1Manager {
       }
       
       // Send finish command like MentraOS: [0x20, 0x0d, 0x0e]
-      print("Sending finish command [0x20, 0x0d, 0x0e] to \(lr)")
+      CoreCommsService.log("Sending finish command [0x20, 0x0d, 0x0e] to \(lr)")
       
       let isLeft = lr == "L"
       let isRight = lr == "R"
@@ -1929,7 +1929,7 @@ extension ERG1Manager {
         await sendCommandToSideWithoutResponse([0x20, 0x0d, 0x0e], side: "right")
       }
       
-      print("Finish command sent to \(lr)")
+      CoreCommsService.log("Finish command sent to \(lr)")
       
       // Small delay after finish command (MentraOS timing)
       try? await Task.sleep(nanoseconds: 10_000_000) // 10ms
@@ -1950,24 +1950,24 @@ extension ERG1Manager {
       var crcCommand = Data([0x16])
       crcCommand.append(crcBytes)
       
-      print("Sending CRC command to \(lr): \(String(format: "%02X %02X %02X %02X", crcBytes[0], crcBytes[1], crcBytes[2], crcBytes[3]))")
-      print("Expected for frame 1: 19 14 AD CF")
+      CoreCommsService.log("Sending CRC command to \(lr): \(String(format: "%02X %02X %02X %02X", crcBytes[0], crcBytes[1], crcBytes[2], crcBytes[3]))")
+      CoreCommsService.log("Expected for frame 1: 19 14 AD CF")
       
       // Send CRC directly like MentraOS (using fast method)
       if isLeft {
         await sendCommandToSideWithoutResponse(Array(crcCommand), side: "left")
-        print("CRC sent to L")
+        CoreCommsService.log("CRC sent to L")
       }
       if isRight {
         await sendCommandToSideWithoutResponse(Array(crcCommand), side: "right")
-        print("CRC sent to R")
+        CoreCommsService.log("CRC sent to R")
       }
       
       // Wait for CRC response (MentraOS timing)
       try? await Task.sleep(nanoseconds: 10_000_000) // 10ms
       
       let sideElapsed = Date().timeIntervalSince(sideStartTime) * 1000
-      print("🏁 \(lr) side transmission completed in \(String(format: "%.0f", sideElapsed))ms")
+      CoreCommsService.log("🏁 \(lr) side transmission completed in \(String(format: "%.0f", sideElapsed))ms")
       
       return true
     }
@@ -1977,7 +1977,7 @@ extension ERG1Manager {
     var results: [(String, Bool)] = []
     
     if sendLeft {
-      print("🔄 Sending to LEFT side (MentraOS sequential method)")
+      CoreCommsService.log("🔄 Sending to LEFT side (MentraOS sequential method)")
       let leftResult = await sendToSide("L")
       results.append(("L", leftResult))
       
@@ -1986,7 +1986,7 @@ extension ERG1Manager {
     }
     
     if sendRight {
-      print("🔄 Sending to RIGHT side (MentraOS sequential method)")
+      CoreCommsService.log("🔄 Sending to RIGHT side (MentraOS sequential method)")
       let rightResult = await sendToSide("R")
       results.append(("R", rightResult))
     }
@@ -1999,23 +1999,23 @@ extension ERG1Manager {
     for (side, success) in results {
       if success {
         successSides.append(side)
-        print("✅ BMP display success for side \(side)")
+        CoreCommsService.log("✅ BMP display success for side \(side)")
       } else {
         failedSides.append(side)
         allSuccess = false
-        print("❌ BMP display failed for side \(side)")
+        CoreCommsService.log("❌ BMP display failed for side \(side)")
       }
     }
     
     // Report synchronization status
     if allSuccess {
       onSuccess?("both")
-      print("✅ BMP display successful on both sides - SYNCHRONIZED")
+      CoreCommsService.log("✅ BMP display successful on both sides - SYNCHRONIZED")
     } else if successSides.count > 0 {
-      print("⚠️ PARTIAL SUCCESS: \(successSides.joined(separator: ", ")) succeeded, \(failedSides.joined(separator: ", ")) failed - DESYNCHRONIZED")
+      CoreCommsService.log("⚠️ PARTIAL SUCCESS: \(successSides.joined(separator: ", ")) succeeded, \(failedSides.joined(separator: ", ")) failed - DESYNCHRONIZED")
       onError?("both", "Partial failure - desynchronized")
     } else {
-      print("❌ COMPLETE FAILURE: Both sides failed")
+      CoreCommsService.log("❌ COMPLETE FAILURE: Both sides failed")
       onError?("both", "BMP display failed")
     }
     
@@ -2072,7 +2072,7 @@ extension ERG1Manager {
   
   /// Display BMP from file path
   @objc public func RN_displayBmpFromFile(_ filePath: String) {
-    print("RN_displayBmpFromFile() - Path: \(filePath)")
+    CoreCommsService.log("RN_displayBmpFromFile() - Path: \(filePath)")
     Task {
       await displayBmpFromFile(filePath: filePath)
     }
@@ -2084,7 +2084,7 @@ extension ERG1Manager {
                                  onError: BmpErrorCallback? = nil) async -> Bool {
     
     guard let bmpData = NSData(contentsOfFile: filePath) as Data? else {
-      print("Failed to load BMP file: \(filePath)")
+      CoreCommsService.log("Failed to load BMP file: \(filePath)")
       onError?("both", "Failed to load BMP file")
       return false
     }
@@ -2094,7 +2094,7 @@ extension ERG1Manager {
   
   /// Send single BMP to specific side
   @objc public func RN_sendSingleBmp(_ filePath: String, isLeft: Bool) {
-    print("RN_sendSingleBmp() - Path: \(filePath), Side: \(isLeft ? "left" : "right")")
+    CoreCommsService.log("RN_sendSingleBmp() - Path: \(filePath), Side: \(isLeft ? "left" : "right")")
     Task {
       await sendSingleBmp(filePath: filePath, isLeft: isLeft)
     }
@@ -2106,7 +2106,7 @@ extension ERG1Manager {
                             onError: BmpErrorCallback? = nil) async -> Bool {
     
     guard let bmpData = NSData(contentsOfFile: filePath) as Data? else {
-      print("Failed to load BMP file: \(filePath)")
+      CoreCommsService.log("Failed to load BMP file: \(filePath)")
       onError?(isLeft ? "left" : "right", "Failed to load BMP file")
       return false
     }
@@ -2121,7 +2121,7 @@ extension ERG1Manager {
   
   /// Send different BMPs to left and right sides
   @objc public func RN_sendBinocularBmps(_ leftPath: String, rightPath: String) {
-    print("RN_sendBinocularBmps() - Left: \(leftPath), Right: \(rightPath)")
+    CoreCommsService.log("RN_sendBinocularBmps() - Left: \(leftPath), Right: \(rightPath)")
     Task {
       await sendBinocularBmps(leftPath: leftPath, rightPath: rightPath)
     }
@@ -2134,7 +2134,7 @@ extension ERG1Manager {
     
     guard let leftData = NSData(contentsOfFile: leftPath) as Data?,
           let rightData = NSData(contentsOfFile: rightPath) as Data? else {
-      print("Failed to load one or both BMP files")
+      CoreCommsService.log("Failed to load one or both BMP files")
       onError?("both", "Failed to load BMP files")
       return false
     }
@@ -2184,11 +2184,11 @@ extension ERG1Manager {
                                  onSuccess: BmpSuccessCallback? = nil,
                                  onError: BmpErrorCallback? = nil) async -> Bool {
     
-    print("Starting BMP display process - Size: \(bmpData.count) bytes")
+    CoreCommsService.log("Starting BMP display process - Size: \(bmpData.count) bytes")
     
     // Validate BMP format
     guard bmpData.count >= 2 && bmpData[0] == 0x42 && bmpData[1] == 0x4D else {
-      print("Invalid BMP format - missing BM signature")
+      CoreCommsService.log("Invalid BMP format - missing BM signature")
       onError?("both", "Invalid BMP format")
       return false
     }
@@ -2202,7 +2202,7 @@ extension ERG1Manager {
     
     // Create chunks with proper formatting
     let chunks = createBmpChunks(from: bmpData, chunkSize: chunkSize)
-    print("Created \(chunks.count) chunks from BMP data")
+    CoreCommsService.log("Created \(chunks.count) chunks from BMP data")
     
     // Send chunks with progress tracking and retry logic
     for (index, chunk) in chunks.enumerated() {
@@ -2221,7 +2221,7 @@ extension ERG1Manager {
         
         if !success {
           attempt += 1
-          print("Chunk \(index) failed, retry attempt \(attempt)")
+          CoreCommsService.log("Chunk \(index) failed, retry attempt \(attempt)")
           
           if attempt < maxRetryAttempts {
             // Exponential backoff for retries
@@ -2232,7 +2232,7 @@ extension ERG1Manager {
       }
       
       if !success {
-        print("Failed to send chunk \(index) after \(maxRetryAttempts) attempts")
+        CoreCommsService.log("Failed to send chunk \(index) after \(maxRetryAttempts) attempts")
         onError?("both", "Failed to send chunk \(index)")
         return false
       }
@@ -2260,11 +2260,11 @@ extension ERG1Manager {
         break
       }
       
-      print("End command failed, attempt \(attempt + 1)")
+      CoreCommsService.log("End command failed, attempt \(attempt + 1)")
     }
     
     if !endSuccess {
-      print("Failed to send end command after \(maxRetryAttempts) attempts")
+      CoreCommsService.log("Failed to send end command after \(maxRetryAttempts) attempts")
       onError?("both", "Failed to send end command")
       return false
     }
@@ -2277,12 +2277,12 @@ extension ERG1Manager {
                                                timeoutMs: crcCommandTimeoutMs)
     
     if !crcSuccess {
-      print("Failed to send CRC after retries")
+      CoreCommsService.log("Failed to send CRC after retries")
       onError?("both", "CRC check failed")
       return false
     }
     
-    print("BMP display process completed successfully")
+    CoreCommsService.log("BMP display process completed successfully")
     onSuccess?("both")
     return true
   }
@@ -2341,7 +2341,7 @@ extension ERG1Manager {
     crcCommand.append(UInt8((crcValue >> 8) & 0xFF))
     crcCommand.append(UInt8(crcValue & 0xFF))
     
-    print("Sending CRC command, CRC value: \(String(format: "%08x", crcValue))")
+    CoreCommsService.log("Sending CRC command, CRC value: \(String(format: "%08x", crcValue))")
     
     // Send CRC with retry
     for attempt in 0..<maxAttempts {
@@ -2351,13 +2351,13 @@ extension ERG1Manager {
       try? await Task.sleep(nanoseconds: UInt64(timeoutMs * 1_000_000))
       
       // For now, assume success (in a real implementation, you'd check for ACK)
-      print("CRC command sent successfully")
+      CoreCommsService.log("CRC command sent successfully")
       return true
       
-      print("CRC command failed, attempt \(attempt + 1)")
+      CoreCommsService.log("CRC command failed, attempt \(attempt + 1)")
     }
     
-    print("Failed to send CRC command after \(maxAttempts) attempts")
+    CoreCommsService.log("Failed to send CRC command after \(maxAttempts) attempts")
     return false
   }
   
