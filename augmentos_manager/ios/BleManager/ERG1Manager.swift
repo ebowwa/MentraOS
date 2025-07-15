@@ -661,11 +661,11 @@ enum GlassesError: Error {
   private func attemptSend(chunks: [[UInt8]], side: String) async {
     var maxAttempts = 5
     var attempts: Int = 0
-    var result: Bool = false
+    var success: Bool = false
     var semaphore = side == "left" ? leftSemaphore : rightSemaphore
     let s = side == "left" ? "L" : "R"
     
-    while attempts < maxAttempts && !result {
+    while attempts < maxAttempts && !success {
       if (attempts > 0) {
         CoreCommsService.log("trying again to send to:\(s): \(attempts)")
       }
@@ -685,15 +685,12 @@ enum GlassesError: Error {
       
       let lastChunk = chunks.last!
       
-      await sendCommandToSideWithoutResponse(lastChunk, side: side)
-      
-      let success: Bool = true
-      
-//      let success = await sendCommandToSide2(lastChunk, side: side)
-//      
+//      success = await sendCommandToSide2(lastChunk, side: side)
 //      if (!success) {
 //        CoreCommsService.log("timed out waiting for \(s)")
 //      }
+      await sendCommandToSideWithoutResponse(lastChunk, side: side)
+      success = true
       
       attempts += 1
       if !success && (attempts >= maxAttempts) {
