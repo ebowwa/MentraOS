@@ -1,96 +1,131 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { TouchableOpacity } from 'react-native';
+import { View, StyleSheet, TouchableOpacity } from 'react-native';
+import Icon from 'react-native-vector-icons/MaterialIcons';
 import CoreCommunicator from '@/bridge/CoreCommunicator';
-import { useAppTheme } from '@/utils/useAppTheme';
 
 interface SimulatedGlassesControlsProps {
-  style?: any;
+  theme: any;
+  insets: any;
 }
 
-export const SimulatedGlassesControls: React.FC<SimulatedGlassesControlsProps> = ({ style }) => {
-  const { theme } = useAppTheme();
+export const SimulatedGlassesControls: React.FC<SimulatedGlassesControlsProps> = ({ theme, insets }) => {
   const handleHeadUp = async () => {
+    console.log('SimulatedGlassesControls: Head up button pressed');
     try {
-      await CoreCommunicator.simulateHeadPosition('up');
+      const result = await CoreCommunicator.simulateHeadPosition('up');
+      console.log('SimulatedGlassesControls: Head up command sent successfully, result:', result);
     } catch (error) {
       console.error('Failed to simulate head up:', error);
+      console.error('Error details:', JSON.stringify(error));
     }
   };
 
   const handleHeadDown = async () => {
+    console.log('SimulatedGlassesControls: Head down button pressed');
     try {
-      await CoreCommunicator.simulateHeadPosition('down');
+      const result = await CoreCommunicator.simulateHeadPosition('down');
+      console.log('SimulatedGlassesControls: Head down command sent successfully, result:', result);
     } catch (error) {
       console.error('Failed to simulate head down:', error);
+      console.error('Error details:', JSON.stringify(error));
     }
   };
 
   const handleButtonPress = async (pressType: 'short' | 'long') => {
+    console.log(`SimulatedGlassesControls: Button ${pressType} press triggered`);
     try {
-      await CoreCommunicator.simulateButtonPress('camera', pressType);
+      const result = await CoreCommunicator.simulateButtonPress('camera', pressType);
+      console.log(`SimulatedGlassesControls: Button ${pressType} press command sent successfully, result:`, result);
     } catch (error) {
       console.error('Failed to simulate button press:', error);
+      console.error('Error details:', JSON.stringify(error));
+    }
+  };
+
+  // Handle press in/out for detecting short vs long press
+  let pressTimer: NodeJS.Timeout | null = null;
+  
+  const handlePressIn = () => {
+    console.log('SimulatedGlassesControls: Button press started');
+    // Set a timer for long press (500ms threshold)
+    pressTimer = setTimeout(() => {
+      handleButtonPress('long');
+      pressTimer = null;
+    }, 500);
+  };
+
+  const handlePressOut = () => {
+    console.log('SimulatedGlassesControls: Button press ended');
+    // If timer is still active, it was a short press
+    if (pressTimer) {
+      clearTimeout(pressTimer);
+      pressTimer = null;
+      handleButtonPress('short');
     }
   };
 
   return (
-    <View style={[styles.container, style]}>
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Head Position</Text>
-        <View style={styles.buttonRow}>
-          <TouchableOpacity onPress={handleHeadUp} style={[styles.button, { backgroundColor: theme.colors.primary }]}>
-            <Text style={[styles.buttonText, { color: theme.colors.textOnPrimary }]}>Head Up</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={handleHeadDown} style={[styles.button, { backgroundColor: theme.colors.primary }]}>
-            <Text style={[styles.buttonText, { color: theme.colors.textOnPrimary }]}>Head Down</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-      
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Button Press</Text>
-        <View style={styles.buttonRow}>
-          <TouchableOpacity onPress={() => handleButtonPress('short')} style={[styles.button, { backgroundColor: theme.colors.primary }]}>
-            <Text style={[styles.buttonText, { color: theme.colors.textOnPrimary }]}>Short Press</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => handleButtonPress('long')} style={[styles.button, { backgroundColor: theme.colors.primary }]}>
-            <Text style={[styles.buttonText, { color: theme.colors.textOnPrimary }]}>Long Press</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </View>
+    <>
+      {/* Head Up button - right side, upper middle */}
+      <TouchableOpacity 
+        onPress={handleHeadUp} 
+        style={[
+          styles.edgeButton, 
+          styles.rightSide,
+          { 
+            backgroundColor: theme.colors.palette.secondary200,
+            top: insets.top + 120,
+          }
+        ]}
+      >
+        <Icon name="keyboard-arrow-up" size={28} color={theme.colors.icon} />
+      </TouchableOpacity>
+
+      {/* Head Down button - right side, below head up */}
+      <TouchableOpacity 
+        onPress={handleHeadDown} 
+        style={[
+          styles.edgeButton, 
+          styles.rightSide,
+          { 
+            backgroundColor: theme.colors.palette.secondary200,
+            top: insets.top + 180,
+          }
+        ]}
+      >
+        <Icon name="keyboard-arrow-down" size={28} color={theme.colors.icon} />
+      </TouchableOpacity>
+
+      {/* Button Press - single button for both short and long press */}
+      <TouchableOpacity 
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        style={[
+          styles.edgeButton, 
+          { 
+            backgroundColor: theme.colors.palette.secondary200,
+            bottom: insets.bottom + 40,
+            left: 20,
+          }
+        ]}
+      >
+        <Icon name="touch-app" size={24} color={theme.colors.icon} />
+      </TouchableOpacity>
+    </>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-    borderRadius: 12,
-    padding: 16,
-    margin: 16,
-  },
-  section: {
-    marginBottom: 16,
-  },
-  sectionTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 8,
-  },
-  buttonRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  button: {
-    flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
+  edgeButton: {
+    position: 'absolute',
+    width: 48,
+    height: 48,
+    borderRadius: 50,
+    justifyContent: 'center',
     alignItems: 'center',
+    zIndex: 20,
   },
-  buttonText: {
-    fontSize: 14,
-    fontWeight: '500',
+  rightSide: {
+    right: 20,
   },
 });

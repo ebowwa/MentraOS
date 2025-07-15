@@ -409,14 +409,10 @@ export default function GlassesMirrorFullscreen() {
           )}
 
           {/* Simulated glasses controls - only show for simulated glasses */}
-          {status.glasses_info?.model_name?.includes("Simulated") && (
+          {status.glasses_info?.model_name?.includes("Simulated") ||true && (
             <SimulatedGlassesControls 
-              style={{
-                position: 'absolute',
-                bottom: insets.bottom + 100,
-                left: 0,
-                right: 0,
-              }}
+              theme={theme}
+              insets={insets}
             />
           )}
         </View>
