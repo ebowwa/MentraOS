@@ -161,7 +161,7 @@ Update your `package.json` with the following scripts:
     "dev": "bun --watch src/index.ts"
   },
   "dependencies": {
-    "@mentra/sdk": "^1.1.10"
+    "@mentra/sdk": "^2.1.2"
   },
   "devDependencies": {
     "typescript": "^5.0.0",
