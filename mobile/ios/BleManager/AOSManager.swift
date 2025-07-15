@@ -24,8 +24,8 @@ struct ViewState {
 }
 
 // This class handles logic for managing devices and connections to AugmentOS servers
-@objc(AOSManager) class AOSManager: NSObject, ServerCommsCallback, MicCallback {
-  
+@objc(AOSManager) class AOSManager: NSObject, ServerCommsCallback, MicCallback, SherpaOnnxTranscriber.TranscriptDelegate {
+
   private static var instance: AOSManager?
   
   static func getInstance() -> AOSManager {
@@ -90,23 +90,50 @@ struct ViewState {
   private var useOnboardMic = false;
   private var preferredMic = "glasses";
   private var micEnabled = false;
-  
+  private var currentRequiredData: [SpeechRequiredDataType] = []
+
   // VAD:
   private var vad: SileroVADStrategy?
   private var vadBuffer = [Data]();
   private var isSpeaking = false;
-  
+
+  private var transcriber: SherpaOnnxTranscriber?
+
+  private var shouldSendPcmData = true
+  private var shouldSendTranscript = false
+
   override init() {
     self.vad = SileroVADStrategy()
     self.serverComms = ServerComms.getInstance()
+    
     super.init()
+    
+    // Initialize SherpaOnnx Transcriber
+    if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+       let window = windowScene.windows.first,
+       let rootViewController = window.rootViewController {
+      self.transcriber = SherpaOnnxTranscriber(context: rootViewController)
+    } else {
+      CoreCommsService.log("Failed to create SherpaOnnxTranscriber - no root view controller found")
+    }
+    
+    // Initialize both components in the same task
     Task {
-      await loadSettings()
-      self.vad?.setup(sampleRate: .rate_16k,
-                      frameSize: .size_1024,
-                      quality: .normal,
-                      silenceTriggerDurationMs: 4000,
-                      speechTriggerDurationMs: 50)
+        await loadSettings()
+        
+        // Set up VAD
+        self.vad?.setup(sampleRate: .rate_16k,
+                       frameSize: .size_1024,
+                       quality: .normal,
+                       silenceTriggerDurationMs: 4000,
+                       speechTriggerDurationMs: 50)
+                       
+        // Initialize the transcriber
+        if let transcriber = self.transcriber {
+            transcriber.initialize()
+            transcriber.transcriptDelegate = self
+            CoreCommsService.log("SherpaOnnxTranscriber fully initialized")
+        }
     }
   }
   
@@ -438,28 +465,31 @@ struct ViewState {
   }
   
   private func setupVoiceDataHandling() {
-    
     // handle incoming PCM data from the microphone manager and feed to the VAD:
     micManager.voiceData
       .sink { [weak self] pcmData in
         guard let self = self else { return }
-        
-        
         // feed PCM to the VAD:
         guard let vad = self.vad else {
           CoreCommsService.log("VAD not initialized")
           return
         }
-        
-        
+
         if self.bypassVad {
-          //          let pcmConverter = PcmConverter()
-          //          let lc3Data = pcmConverter.encode(pcmData) as Data
-          //          checkSetVadStatus(speaking: true)
-          //          // first send out whatever's in the vadBuffer (if there is anything):
-          //          emptyVadBuffer()
-          //          self.serverComms.sendAudioChunk(lc3Data)
-          self.serverComms.sendAudioChunk(pcmData)
+//          let pcmConverter = PcmConverter()
+//          let lc3Data = pcmConverter.encode(pcmData) as Data
+//          checkSetVadStatus(speaking: true)
+//          // first send out whatever's in the vadBuffer (if there is anything):
+//          emptyVadBuffer()
+//          self.serverComms.sendAudioChunk(lc3Data)
+          if self.shouldSendPcmData {
+            self.serverComms.sendAudioChunk(pcmData)
+          }
+          
+          // Also send to local transcriber when bypassing VAD
+          if self.shouldSendTranscript {
+            self.transcriber?.acceptAudio(pcm16le: pcmData)
+          }
           return
         }
         
@@ -486,28 +516,46 @@ struct ViewState {
           checkSetVadStatus(speaking: true)
           // first send out whatever's in the vadBuffer (if there is anything):
           emptyVadBuffer()
-          //          self.serverComms.sendAudioChunk(lc3Data)
-          self.serverComms.sendAudioChunk(pcmData)
+//          self.serverComms.sendAudioChunk(lc3Data)
+          if self.shouldSendPcmData {
+            self.serverComms.sendAudioChunk(pcmData)
+          }
+          
+          // Send to local transcriber when speech is detected
+          if self.shouldSendTranscript {
+            self.transcriber?.acceptAudio(pcm16le: pcmData)
+          }
         } else {
           checkSetVadStatus(speaking: false)
           // add to the vadBuffer:
           //          addToVadBuffer(lc3Data)
           addToVadBuffer(pcmData)
         }
-        
       }
       .store(in: &cancellables)
   }
   
   // MARK: - ServerCommsCallback Implementation
-  
-  func onMicrophoneStateChange(_ isEnabled: Bool) {
+
+  func onMicrophoneStateChange(_ isEnabled: Bool, _ requiredData: [SpeechRequiredDataType]) {
+
+    CoreCommsService.log("AOS: @@@@@@@@ changing microphone state to: \(isEnabled) with requiredData: \(requiredData) @@@@@@@@@@@@@@@@")
     
-    CoreCommsService.log("AOS: @@@@@@@@ changing microphone state to: \(isEnabled) @@@@@@@@@@@@@@@@")
+    // Set flags based on requiredData contents
+    // TODO: Replace this with bandwidth based logic
+    shouldSendPcmData = requiredData.contains(.PCM) || requiredData.contains(.PCM_OR_TRANSCRIPTION)
+    shouldSendTranscript = requiredData.contains(.TRANSCRIPTION) || requiredData.contains(.PCM_OR_TRANSCRIPTION)
+
+
+    currentRequiredData = requiredData
+    
+    CoreCommsService.log("AOS: shouldSendPcmData=\(shouldSendPcmData), shouldSendTranscript=\(shouldSendTranscript)")
+    
     // in any case, clear the vadBuffer:
     self.vadBuffer.removeAll()
     self.micEnabled = isEnabled
-    
+
+
     // Handle microphone state change if needed
     Task {
       // Only enable microphone if sensing is also enabled
@@ -936,10 +984,10 @@ struct ViewState {
     CoreCommsService.log("AOS: Interruption: \(began)")
     if began {
       self.onboardMicUnavailable = true
-      onMicrophoneStateChange(self.micEnabled)
+      onMicrophoneStateChange(self.micEnabled, self.currentRequiredData)
     } else {
       self.onboardMicUnavailable = false
-      onMicrophoneStateChange(self.micEnabled)
+      onMicrophoneStateChange(self.micEnabled, self.currentRequiredData)
     }
   }
   
@@ -1048,7 +1096,7 @@ struct ViewState {
   
   private func setPreferredMic(_ mic: String) {
     self.preferredMic = mic
-    onMicrophoneStateChange(self.micEnabled)
+    onMicrophoneStateChange(self.micEnabled, self.currentRequiredData)
     handleRequestStatus()// to update the UI
     saveSettings()
   }
@@ -1113,7 +1161,7 @@ struct ViewState {
   private func enableSensing(_ enabled: Bool) {
     self.sensingEnabled = enabled
     // Update microphone state when sensing is toggled
-    onMicrophoneStateChange(self.micEnabled)
+    onMicrophoneStateChange(self.micEnabled, self.currentRequiredData)
     handleRequestStatus()// to update the UI
     saveSettings()
   }
@@ -1672,7 +1720,7 @@ struct ViewState {
   
   private func handleDeviceDisconnected() {
     CoreCommsService.log("AOS: Device disconnected")
-    onMicrophoneStateChange(false)// technically shouldn't be necessary
+    onMicrophoneStateChange(false, [])// technically shouldn't be necessary
     self.serverComms.sendGlassesConnectionState(modelName: self.defaultWearable, status: "DISCONNECTED")
     self.handleRequestStatus()
   }
@@ -1977,7 +2025,47 @@ struct ViewState {
   // MARK: - Cleanup
   
   @objc func cleanup() {
+    // Clean up transcriber resources
+    transcriber?.shutdown()
+    transcriber = nil
+    
     cancellables.removeAll()
     saveSettings()
+  }
+  
+  // MARK: - SherpaOnnxTranscriber.TranscriptDelegate
+  
+  func didReceivePartialTranscription(_ text: String) {
+    // Send partial result to server with proper formatting
+    let transcription: [String: Any] = [
+      "type": "local_transcription",
+      "text": text,
+      "isFinal": false,
+      "startTime": Int(Date().timeIntervalSince1970 * 1000) - 1000, // 1 second ago
+      "endTime": Int(Date().timeIntervalSince1970 * 1000),
+      "speakerId": 0,
+      "transcribeLanguage": "en-US",
+      "provider": "sherpa-onnx"
+    ]
+    
+    serverComms.sendTranscriptionResult(transcription: transcription)
+  }
+  
+  func didReceiveFinalTranscription(_ text: String) {
+    // Send final result to server with proper formatting
+    if !text.isEmpty {
+      let transcription: [String: Any] = [
+        "type": "local_transcription",
+        "text": text,
+        "isFinal": true,
+        "startTime": Int(Date().timeIntervalSince1970 * 1000) - 2000, // 2 seconds ago
+        "endTime": Int(Date().timeIntervalSince1970 * 1000),
+        "speakerId": 0,
+        "transcribeLanguage": "en-US",
+        "provider": "sherpa-onnx"
+      ]
+      
+      serverComms.sendTranscriptionResult(transcription: transcription)
+    }
   }
 }

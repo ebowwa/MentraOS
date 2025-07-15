@@ -13,7 +13,7 @@ protocol ServerCommsCallback {
   func onAppStateChange(_ apps: [ThirdPartyCloudApp]/*, _ whatToStream: [String]*/)
   func onConnectionError(_ error: String)
   func onAuthError()
-  func onMicrophoneStateChange(_ isEnabled: Bool)
+  func onMicrophoneStateChange(_ isEnabled: Bool, _ requiredData: [SpeechRequiredDataType])
   func onDisplayEvent(_ event: [String: Any])
   func onRequestSingle(_ dataType: String)
   func onStatusUpdate(_ status: [String: Any])
@@ -487,8 +487,27 @@ class ServerComms {
     case "microphone_state_change":
       CoreCommsService.log("ServerComms: microphone_state_change: \(msg)")
       let isMicrophoneEnabled = msg["isMicrophoneEnabled"] as? Bool ?? true
+      
+      var requiredDataStrings: [String] = []
+      if let requiredDataArray = msg["requiredData"] as? [String] {
+        requiredDataStrings = requiredDataArray
+      } else if let requiredDataArray = msg["requiredData"] as? [Any] {
+        // Handle case where it might come as mixed array
+        requiredDataStrings = requiredDataArray.compactMap { $0 as? String }
+      }
+      
+      // Convert string array to enum array
+      var requiredData = SpeechRequiredDataType.fromStringArray(requiredDataStrings)
+
+      // Treat empty array as PCM only
+      if requiredData.isEmpty {
+        requiredData.append(.PCM)
+      }
+      
+      CoreCommsService.log("ServerComms: requiredData = \(requiredDataStrings)")
+
       if let callback = serverCommsCallback {
-        callback.onMicrophoneStateChange(isMicrophoneEnabled)
+        callback.onMicrophoneStateChange(isMicrophoneEnabled, requiredData)
       }
       
     case "display_event":
@@ -861,6 +880,35 @@ class ServerComms {
     dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ssXXX"
     dateFormatter.locale = Locale(identifier: "en_US")
     return dateFormatter.string(from: Date())
+  }
+  
+  /**
+   * Send transcription result to server
+   * Used by AOSManager to send pre-formatted transcription results
+   * Matches the Java ServerComms structure exactly
+   */
+  public func sendTranscriptionResult(transcription: [String: Any]) {
+    guard wsManager.isConnected() else {
+      CoreCommsService.log("Cannot send transcription result: WebSocket not connected")
+      return
+    }
+    
+    guard let text = transcription["text"] as? String, !text.isEmpty else {
+      CoreCommsService.log("Skipping empty transcription result")
+      return
+    }
+    
+    do {
+      let jsonData = try JSONSerialization.data(withJSONObject: transcription)
+      if let jsonString = String(data: jsonData, encoding: .utf8) {
+        wsManager.sendText(jsonString)
+        
+        let isFinal = transcription["isFinal"] as? Bool ?? false
+        CoreCommsService.log("Sent \(isFinal ? "final" : "partial") transcription: '\(text)'")
+      }
+    } catch {
+      CoreCommsService.log("Error sending transcription result: \(error)")
+    }
   }
 }
 

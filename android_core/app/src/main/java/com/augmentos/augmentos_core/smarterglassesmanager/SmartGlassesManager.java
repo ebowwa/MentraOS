@@ -23,6 +23,7 @@ import com.augmentos.augmentos_core.LocationSystem;
 import com.augmentos.augmentos_core.MainActivity;
 import com.augmentos.augmentos_core.R;
 import com.augmentos.augmentos_core.WindowManagerWithTimeouts;
+import com.augmentos.augmentos_core.enums.SpeechRequiredDataType;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.BypassVadForDebuggingEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.NewAsrLanguagesEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.SmartGlassesConnectionEvent;
@@ -53,6 +54,7 @@ import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 import androidx.preference.PreferenceManager;
 
@@ -732,7 +734,7 @@ public class SmartGlassesManager extends Service {
     }
 
 
-    public void changeMicrophoneState(boolean isMicrophoneEnabled) {
+    public void changeMicrophoneState(boolean isMicrophoneEnabled, List<SpeechRequiredDataType> requiredData) {
         Log.d(TAG, "Changing microphone state to " + isMicrophoneEnabled);
 
         if (smartGlassesRepresentative == null) {
@@ -740,12 +742,19 @@ public class SmartGlassesManager extends Service {
             return;
         }
 
+        // Also change required Data field in phone microphone manager.
+        if (smartGlassesRepresentative.getPhoneMicrophoneManager() != null) {
+            smartGlassesRepresentative.getPhoneMicrophoneManager().setRequiredData(requiredData);
+        } else {
+            Log.w(TAG, "PhoneMicrophoneManager is null, skipping setRequiredData call");
+        }
+
         // Simply delegate to the representative which will use PhoneMicrophoneManager
         // PhoneMicrophoneManager handles all the complexity of choosing the right mic
         smartGlassesRepresentative.changeBluetoothMicState(isMicrophoneEnabled);
 
         // Tell speech rec system about the state change
-        speechRecSwitchSystem.microphoneStateChanged(isMicrophoneEnabled);
+        speechRecSwitchSystem.microphoneStateChanged(isMicrophoneEnabled, requiredData);
     }
 
     // applyMicrophoneState method removed - all mic logic now handled by PhoneMicrophoneManager

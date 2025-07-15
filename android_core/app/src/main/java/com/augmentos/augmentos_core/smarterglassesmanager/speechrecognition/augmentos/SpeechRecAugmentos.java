@@ -4,6 +4,7 @@ import android.content.Context;
 import android.util.Log;
 
 import com.augmentos.augmentos_core.augmentos_backend.ServerComms;
+import com.augmentos.augmentos_core.enums.SpeechRequiredDataType;
 import com.augmentos.augmentos_core.smarterglassesmanager.SmartGlassesManager;
 import com.augmentos.augmentos_core.smarterglassesmanager.speechrecognition.AsrStreamKey;
 import com.augmentos.augmentos_core.smarterglassesmanager.speechrecognition.SpeechRecFramework;
@@ -49,6 +50,13 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
     private final ArrayList<byte[]> lc3RollingBuffer = new ArrayList<>();
     private final int LC3_BUFFER_MAX_SIZE = 22; // ~220ms of audio at 10ms per LC3 frame
 
+    // Sherpa ONNX Transcriber
+    private SherpaOnnxTranscriber sherpaTranscriber;
+    
+    // Backend data sending control flags
+    private volatile boolean sendPcmToBackend = true;
+    private volatile boolean sendTranscriptionToBackend = false;
+
     private SpeechRecAugmentos(Context context) {
         this.mContext = context;
 
@@ -65,6 +73,82 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
 
         // Initialize VAD asynchronously
         initVadAsync();
+        
+        // Initialize Sherpa ONNX Transcriber
+        initSherpaTranscriber();
+    }
+
+    /**
+     * Initialize Sherpa ONNX Transcriber and set up the listener
+     */
+    private void initSherpaTranscriber() {
+        sherpaTranscriber = new SherpaOnnxTranscriber(mContext);
+        
+        // Session start time for relative timestamps
+        final long transcriptionSessionStart = System.currentTimeMillis();
+        
+        sherpaTranscriber.setTranscriptListener(new SherpaOnnxTranscriber.TranscriptListener() {
+            @Override
+            public void onPartialResult(String text) {
+                sendFormattedTranscriptionToBackend(text, false, transcriptionSessionStart);
+            }
+
+            @Override
+            public void onFinalResult(String text) {
+                sendFormattedTranscriptionToBackend(text, true, transcriptionSessionStart);
+            }
+        });
+        
+        // Initialize the transcriber on a background thread
+        new Thread(() -> {
+            try {
+                sherpaTranscriber.init();
+                Log.d(TAG, "Sherpa ONNX transcriber initialized successfully");
+            } catch (Exception e) {
+                Log.e(TAG, "Failed to initialize Sherpa ONNX transcriber", e);
+            }
+        }, "SpeechRecAugmentos_initSherpaAsync").start();
+    }
+    
+    /**
+     * Helper method to format transcription as JSON and send to backend
+     * 
+     * @param text The transcription text
+     * @param isFinal Whether this is a final result
+     * @param sessionStartTime Session start time for relative timestamp calculation
+     */
+    private void sendFormattedTranscriptionToBackend(String text, boolean isFinal, long sessionStartTime) {
+        try {
+            JSONObject transcription = new JSONObject();
+            transcription.put("type", "local_transcription");
+            transcription.put("text", text);
+            transcription.put("isFinal", isFinal);
+            
+            // Calculate relative timestamps
+            long currentTime = System.currentTimeMillis();
+            long relativeTime = currentTime - sessionStartTime;
+            
+
+            // TODO: This is wrong
+            // Instead we should have some timer inside sherpa that is reset on every final result.
+            // Also I don't think we need speaker id as there is no diarization.
+
+            int timeOffset = isFinal ? 2000 : 1000;
+            transcription.put("startTime", relativeTime - timeOffset);
+            transcription.put("endTime", relativeTime);
+            
+            // Add metadata
+            transcription.put("speakerId", 0);
+            transcription.put("transcribeLanguage", "en-US");
+            transcription.put("provider", "sherpa-onnx");
+            
+            // Send the JSON to ServerComms
+            ServerComms.getInstance().sendTranscriptionResult(transcription);
+            
+            Log.d(TAG, "Sent " + (isFinal ? "final" : "partial") + " transcription: " + text);
+        } catch (org.json.JSONException e) {
+            Log.e(TAG, "Error creating transcription JSON: " + e.getMessage(), e);
+        }
     }
 
     /**
@@ -173,7 +257,6 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
                         }
                     }
                     // If poll times out, just continue the loop
-
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     break;
@@ -188,9 +271,6 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
     private void sendVadStatus(boolean isNowSpeaking) {
         ServerComms.getInstance().sendVadStatus(isNowSpeaking);
     }
-
-
-    public boolean sendPcmToBackend = true;
 
     /**
      * Called by external code to feed raw PCM chunks (16-bit, 16kHz).
@@ -228,12 +308,18 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
                     lc3RollingBuffer.remove(0); // Remove oldest chunks to maintain rolling window
                 }
             }
-
-
             //SENDING STUFF
             // If bypassing VAD for debugging or currently speaking, send data live
             if (bypassVadForDebugging || isSpeaking) {
                 ServerComms.getInstance().sendAudioChunk(audioChunk);
+            }
+        }
+
+        if (sendTranscriptionToBackend) {
+            if (bypassVadForDebugging || isSpeaking) {
+                if (sherpaTranscriber != null) {
+                    sherpaTranscriber.acceptAudio(audioChunk);
+                }
             }
         }
     }
@@ -243,6 +329,7 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
      */
     @Override
     public void ingestLC3AudioChunk(byte[] LC3audioChunk) {
+        // NOTE (yash) why is it negative?
         if (!sendPcmToBackend) {
             //BUFFER STUFF
             // Add to rolling buffer regardless of VAD state
@@ -264,6 +351,15 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
                 ServerComms.getInstance().sendAudioChunk(LC3audioChunk);
             }
         }
+
+        // TODO: Should we use this?
+        // if (sendTranscriptionToBackend) {
+        //     if (bypassVadForDebugging || isSpeaking) {
+        //         if (sherpaTranscriber != null) {
+        //             sherpaTranscriber.acceptAudio(LC3audioChunk);
+        //         }
+        //     }
+        // }
     }
 
     /**
@@ -368,10 +464,43 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
         }
     }
 
-    public void microphoneStateChanged(boolean state){
+    /**
+     * Handles microphone state changes and propagates to all components
+     * 
+     * @param state true if microphone is on, false otherwise
+     * @param requiredData List of required data
+     */
+    public void microphoneStateChanged(boolean state, List<SpeechRequiredDataType> requiredData){
+        // Pass to VAD
         if (vadPolicy != null){
             vadPolicy.microphoneStateChanged(state);
         }
+        
+        // Pass to transcriber
+        if (sherpaTranscriber != null && sherpaTranscriber.isInitialized()) {
+            sherpaTranscriber.microphoneStateChanged(state);
+        }
+
+        // Set sendPcmToBackend and sendTranscriptionToBackend based on required data
+        // if state is PCM_OR_TRANS then based on the bandwidth of the internet if it falls below certain threshold decide to send PCM or Transcription
+        if (requiredData.contains(SpeechRequiredDataType.PCM_OR_TRANSCRIPTION)) {
+            // TODO: Implement bandwidth detection logic
+            // For now, default to transcription as it's more bandwidth efficient
+            // In the future, check network quality and decide:
+            // - If high bandwidth: send PCM for better quality
+            // - If low bandwidth: send transcription for efficiency
+            // For now default to pcm
+            sendPcmToBackend = state;
+        }
+        if (requiredData.contains(SpeechRequiredDataType.PCM)) {
+            sendPcmToBackend = state;
+        }
+        if (requiredData.contains(SpeechRequiredDataType.TRANSCRIPTION)) {
+            sendTranscriptionToBackend = state;
+        }
+        
+        
+        Log.d(TAG, "Microphone state changed to: " + (state ? "ON" : "OFF") + " with required data: " + requiredData);
     }
 
     public void changeBypassVadForDebuggingState(boolean bypassVadForDebugging) {
