@@ -13,6 +13,10 @@ export * from './types/messages/glasses-to-cloud';
 export * from './types/messages/cloud-to-glasses';
 export * from './types/messages/app-to-cloud';
 
+// Utility exports
+export * from "./utils/bitmap-utils";
+export * from "./utils/animation-utils";
+
 // Export cloud-to-app but exclude the conflicting type guards
 export {
   // Types
@@ -143,7 +147,9 @@ export {
   DashboardCard,
   ReferenceCard,
   Layout,
-  DisplayRequest
+  DisplayRequest,
+  BitmapView,
+  ClearView,
 } from './types/layouts';
 
 // Type guards - re-export the most commonly used ones for convenience
