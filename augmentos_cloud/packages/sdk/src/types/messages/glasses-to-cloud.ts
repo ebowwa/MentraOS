@@ -165,9 +165,13 @@ export interface PhoneNotification extends BaseMessage {
 /**
  * Notification dismissed from glasses
  */
-export interface NotificationDismissed extends BaseMessage {
-  type: GlassesToCloudMessageType.NOTIFICATION_DISMISSED;
+export interface PhoneNotificationDismissed extends BaseMessage {
+  type: GlassesToCloudMessageType.PHONE_NOTIFICATION_DISMISSED;
   notificationId: string;
+  app: string;
+  title: string;
+  content: string;
+  notificationKey: string;
 }
 
 /**
@@ -267,7 +271,7 @@ export type GlassesToCloudMessage =
   | CalendarEvent
   | Vad
   | PhoneNotification
-  | NotificationDismissed
+  | PhoneNotificationDismissed
   | MentraosSettingsUpdateRequest
   | CoreStatusUpdate
   | RtmpStreamStatus
@@ -341,8 +345,8 @@ export function isPhoneNotification(message: GlassesToCloudMessage): message is 
   return message.type === GlassesToCloudMessageType.PHONE_NOTIFICATION;
 }
 
-export function isNotificationDismissed(message: GlassesToCloudMessage): message is NotificationDismissed {
-  return message.type === GlassesToCloudMessageType.NOTIFICATION_DISMISSED;
+export function isPhoneNotificationDismissed(message: GlassesToCloudMessage): message is PhoneNotificationDismissed {
+  return message.type === GlassesToCloudMessageType.PHONE_NOTIFICATION_DISMISSED;
 }
 
 export function isRtmpStreamStatus(message: GlassesToCloudMessage): message is RtmpStreamStatus {

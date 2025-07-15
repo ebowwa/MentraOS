@@ -36,7 +36,7 @@ Here are the streams that require specific permissions:
 
 - **NOTIFICATIONS Permission**:
   - `phone_notification`
-  - `notification_dismissed`
+  - `phone_notification_dismissed`
 
 Other streams like `button_press`, `head_position`, etc. don't require specific permissions.
 

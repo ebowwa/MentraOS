@@ -517,7 +517,7 @@ enum GlassesError: Error {
     ]
   }
   
-  @objc func disconnect() {
+  func disconnect() {
     self.isDisconnecting = true
     leftGlassUUID = nil
     rightGlassUUID = nil
@@ -542,14 +542,26 @@ enum GlassesError: Error {
   
   actor CommandQueue {
     private var commands: [BufferedCommand] = []
+    private var continuations: [CheckedContinuation<BufferedCommand, Never>] = []
     
     func enqueue(_ command: BufferedCommand) {
-      commands.append(command)
+      if let continuation = continuations.first {
+        continuations.removeFirst()
+        continuation.resume(returning: command)
+      } else {
+        commands.append(command)
+      }
     }
     
-    func dequeue() -> BufferedCommand? {
-      guard !commands.isEmpty else { return nil }
-      return commands.removeFirst()
+    func dequeue() async -> BufferedCommand {
+      if let command = commands.first {
+        commands.removeFirst()
+        return command
+      }
+      
+      return await withCheckedContinuation { continuation in
+        continuations.append(continuation)
+      }
     }
   }
   
@@ -558,18 +570,9 @@ enum GlassesError: Error {
       guard let self = self else { return }
       
       while true {
-        let command = await self.getNextCommand()
+        let command = await self.commandQueue.dequeue()
         await self.processCommand(command)
       }
-    }
-  }
-  
-  private func getNextCommand() async -> BufferedCommand {
-    while true {
-      if let command = await commandQueue.dequeue() {
-        return command
-      }
-      try? await Task.sleep(nanoseconds: 100 * 1_000_000)// 100ms
     }
   }
   
@@ -606,24 +609,31 @@ enum GlassesError: Error {
       if (attempts > 0) {
         CoreCommsService.log("trying again to send to:\(s): \(attempts)")
       }
-      let data = Data(chunks[0])
-      CoreCommsService.log("SEND (\(s)) \(data.hexEncodedString())")
+      //      let data = Data(chunks[0])
+      //      CoreCommsService.log("SEND (\(s)) \(data.hexEncodedString())")
       
       if self.isDisconnecting {
         // forget whatever we were doing since we're disconnecting:
         break
       }
       
+      
+      
       for i in 0..<chunks.count-1 {
         let chunk = chunks[i]
         await sendCommandToSide(chunk, side: side)
-        try? await Task.sleep(nanoseconds: 100 * 1_000_000)// 100ms
+        try? await Task.sleep(nanoseconds: 50 * 1_000_000)// 50ms
       }
       
       let lastChunk = chunks.last!
       await sendCommandToSide(lastChunk, side: side)
       
-      result = waitForSemaphore(semaphore: semaphore, timeout: (0.3 + (Double(attempts) * 0.1)))
+      
+      CoreCommsService.log("waiting for \(s)")
+      result = waitForSemaphore(semaphore: semaphore, timeout: (0.3 + (Double(attempts) * 0.2)))
+      if (!result) {
+        CoreCommsService.log("timed out waiting for \(s)")
+      }
       
       attempts += 1
       if !result && (attempts >= maxAttempts) {
@@ -650,15 +660,33 @@ enum GlassesError: Error {
       return
     }
     
-    // first send to the left:
-    if command.sendLeft {
-      await attemptSend(chunks: command.chunks, side: "left")
-    }
+//    // first send to the left:
+//    if command.sendLeft {
+//      await attemptSend(chunks: command.chunks, side: "left")
+//    }
+//    
+//    //    CoreCommsService.log("@@@ sent (or failed) to left, now trying right @@@")
+//    
+//    if command.sendRight {
+//      await attemptSend(chunks: command.chunks, side: "right")
+//    }
     
-    //    CoreCommsService.log("@@@ sent (or failed) to left, now trying right @@@")
-    
-    if command.sendRight {
-      await attemptSend(chunks: command.chunks, side: "right")
+    // Send to both sides in parallel
+    await withTaskGroup(of: Void.self) { group in
+        if command.sendLeft {
+            group.addTask {
+                await self.attemptSend(chunks: command.chunks, side: "left")
+            }
+        }
+        
+        if command.sendRight {
+            group.addTask {
+                await self.attemptSend(chunks: command.chunks, side: "right")
+            }
+        }
+        
+        // Wait for all tasks to complete
+        await group.waitForAll()
     }
     
     if command.waitTime > 0 {
@@ -716,6 +744,7 @@ enum GlassesError: Error {
   }
   
   private func handleAck(from peripheral: CBPeripheral, success: Bool) {
+//    CoreCommsService.log("handleAck \(success)")
     if !success { return }
     if peripheral == self.leftPeripheral {
       leftSemaphore.signal()
@@ -732,7 +761,7 @@ enum GlassesError: Error {
     
     let side = peripheral == leftPeripheral ? "left" : "right"
     let s = peripheral == leftPeripheral ? "L" : "R"
-       CoreCommsService.log("RECV (\(s)) \(data.hexEncodedString())")
+    CoreCommsService.log("RECV (\(s)) \(data.hexEncodedString())")
     
     switch Commands(rawValue: command) {
     case .BLE_REQ_INIT:
@@ -745,7 +774,7 @@ enum GlassesError: Error {
     case .BLE_EXIT_ALL_FUNCTIONS:
       handleAck(from: peripheral, success: data[1] == CommandResponse.ACK.rawValue)
     case .WHITELIST:
-      // TODO: ios no idea why the glasses send 0xCB before sending ACK:
+      // TODO: ios no idea why the glasses send 0xCB before sending ACK: (CB == continue!)
       handleAck(from: peripheral, success: data[1] == 0xCB || data[1] == CommandResponse.ACK.rawValue)
     case .DASHBOARD_LAYOUT_COMMAND:
       // 0x06 seems arbitrary :/
@@ -756,6 +785,8 @@ enum GlassesError: Error {
       handleAck(from: peripheral, success: data[1] == CommandResponse.ACK.rawValue)
       // head up angle ack
       // position ack
+    case .SILENT_MODE:
+      handleAck(from: peripheral, success: data[1] == CommandResponse.ACK.rawValue)
     case .BLE_REQ_TRANSFER_MIC_DATA:
       self.compressedVoiceData = data
       //                CoreCommsService.log("Got voice data: " + String(data.count))
@@ -1056,6 +1087,7 @@ extension ERG1Manager {
     // Convert to Data
     let commandData = Data(command)
     //    CoreCommsService.log("Sending command to glasses: \(paddedCommand.map { String(format: "%02X", $0) }.joined(separator: " "))")
+    CoreCommsService.log("SEND (\(side == "left" ? "L" : "R")) \(commandData.hexEncodedString())")
     
     if (side == "left") {
       // send to left

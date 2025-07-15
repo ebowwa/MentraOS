@@ -428,6 +428,32 @@ public class ServerComms {
         }
     }
 
+    /**
+     * Sends a phone notification dismissal event to the server
+     *
+     * @param notificationId The unique ID for this dismissal event
+     * @param app The app name that sent the notification
+     * @param title The notification title
+     * @param content The notification content
+     * @param notificationKey The original notification key for tracking
+     */
+    public void sendPhoneNotificationDismissal(String notificationId, String app, String title, String content, String notificationKey) {
+        try {
+            JSONObject event = new JSONObject();
+            event.put("type", "phone_notification_dismissed");
+            event.put("notificationId", notificationId);
+            event.put("app", app);
+            event.put("title", title);
+            event.put("content", content);
+            event.put("notificationKey", notificationKey);
+            event.put("timestamp", System.currentTimeMillis());
+            wsManager.sendText(event.toString());
+            Log.d(TAG, "Sent phone notification dismissal: " + app + " - " + title);
+        } catch (JSONException e) {
+            Log.e(TAG, "Error building phone_notification_dismissed JSON", e);
+        }
+    }
+
     // ------------------------------------------------------------------------
     // HARDWARE EVENTS (if needed)
     // ------------------------------------------------------------------------

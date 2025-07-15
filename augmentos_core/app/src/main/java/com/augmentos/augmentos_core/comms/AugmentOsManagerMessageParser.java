@@ -114,6 +114,12 @@ public class AugmentOsManagerMessageParser {
                     callback.handleNotificationData(notificationData);
                     break;
 
+                case "phone_notification_dismissed":
+                    JSONObject dismissalData = commandObject.getJSONObject("params");
+                    Log.d(TAG, "Received notification dismissal: " + dismissalData.toString());
+                    callback.handleNotificationDismissal(dismissalData);
+                    break;
+
                 case "set_auth_secret_key":
                     String userId = commandObject.getJSONObject("params").getString("userId");
                     String authKey = commandObject.getJSONObject("params").getString("authSecretKey");
