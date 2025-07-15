@@ -737,17 +737,22 @@ export class CoreCommunicator extends EventEmitter {
   }
 
   async simulateHeadPosition(position: 'up' | 'down') {
-    // For Android, we need to implement this in the native module
-    // For now, return a promise that resolves
-    console.log(`Android simulateHeadPosition: ${position} - Not yet implemented`)
-    return Promise.resolve()
+    return await this.sendData({
+      command: "simulate_head_position",
+      params: {
+        position: position,
+      },
+    })
   }
 
   async simulateButtonPress(buttonId: string = 'camera', pressType: 'short' | 'long' = 'short') {
-    // For Android, we need to implement this in the native module
-    // For now, return a promise that resolves
-    console.log(`Android simulateButtonPress: ${buttonId} ${pressType} - Not yet implemented`)
-    return Promise.resolve()
+    return await this.sendData({
+      command: "simulate_button_press",
+      params: {
+        buttonId: buttonId,
+        pressType: pressType,
+      },
+    })
   }
 }
 

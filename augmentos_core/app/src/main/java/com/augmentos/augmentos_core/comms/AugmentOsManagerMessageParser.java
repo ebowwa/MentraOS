@@ -202,6 +202,17 @@ public class AugmentOsManagerMessageParser {
                     callback.onAudioStopRequest(audioStopParams);
                     break;
 
+                case "simulate_head_position":
+                    String position = commandObject.getJSONObject("params").getString("position");
+                    callback.simulateHeadPosition(position);
+                    break;
+
+                case "simulate_button_press":
+                    String buttonId = commandObject.getJSONObject("params").getString("buttonId");
+                    String pressType = commandObject.getJSONObject("params").getString("pressType");
+                    callback.simulateButtonPress(buttonId, pressType);
+                    break;
+
                 default:
                     Log.w(TAG, "Unknown command: " + command);
             }

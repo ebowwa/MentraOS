@@ -221,50 +221,6 @@ RCT_EXPORT_METHOD(
   }
 }
 
-// Simulate head position
-RCT_EXPORT_METHOD(
-  simulateHeadPosition:
-  (NSString *)position
-  resolver:(RCTPromiseResolveBlock)resolve
-  rejecter:(RCTPromiseRejectBlock)reject
-)
-{
-  @try {
-    AOSManager *manager = [AOSManager shared];
-    
-    // Send to server
-    [[ServerComms getInstance] sendHeadPositionWithIsUp:[position isEqualToString:@"up"]];
-    
-    // Trigger dashboard display locally
-    [manager sendCurrentState:[position isEqualToString:@"up"]];
-    
-    resolve(@[@"Head position simulated"]);
-  }
-  @catch(NSException *exception) {
-    reject(@"0", exception.description, nil);
-  }
-}
-
-// Simulate button press
-RCT_EXPORT_METHOD(
-  simulateButtonPress:
-  (NSString *)buttonId
-  pressType:(NSString *)pressType
-  resolver:(RCTPromiseResolveBlock)resolve
-  rejecter:(RCTPromiseRejectBlock)reject
-)
-{
-  @try {
-    // Use existing sendButtonPress method
-    [[ServerComms getInstance] sendButtonPressWithButtonId:buttonId pressType:pressType];
-    
-    resolve(@[@"Button press simulated"]);
-  }
-  @catch(NSException *exception) {
-    reject(@"0", exception.description, nil);
-  }
-}
-
 // Required for Swift interop
 + (BOOL)requiresMainQueueSetup {
     return YES;

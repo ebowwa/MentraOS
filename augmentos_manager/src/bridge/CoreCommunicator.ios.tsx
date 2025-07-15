@@ -743,11 +743,22 @@ export class CoreCommunicator extends EventEmitter {
   }
 
   async simulateHeadPosition(position: 'up' | 'down') {
-    return AOSModule.simulateHeadPosition(position)
+    return await this.sendData({
+      command: "simulate_head_position",
+      params: {
+        position: position,
+      },
+    })
   }
 
   async simulateButtonPress(buttonId: string = 'camera', pressType: 'short' | 'long' = 'short') {
-    return AOSModule.simulateButtonPress(buttonId, pressType)
+    return await this.sendData({
+      command: "simulate_button_press",
+      params: {
+        buttonId: buttonId,
+        pressType: pressType,
+      },
+    })
   }
 }
 
