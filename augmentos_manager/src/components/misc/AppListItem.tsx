@@ -61,7 +61,7 @@ export const AppListItem = ({
       ]}>
       <TouchableOpacity
         style={[themed($appDescription), themed($everythingFlexBox)]}
-        onPress={onTogglePress}
+        onPress={onSettingsPress}
         disabled={isDisabled}
         activeOpacity={0.7}>
         <AppIcon app={app} isForegroundApp={is_foreground} style={themed($appIcon)} />
