@@ -1,6 +1,6 @@
 # React Webviews
 
-The [`@mentraos/react`](https://www.npmjs.com/package/@mentraos/react) library simplifies building React-based webviews that integrate seamlessly with MentraOS authentication. When users open your webview through the MentraOS manager app, they are automatically authenticated without requiring a separate login process.
+The [`@mentra/react`](https://www.npmjs.com/package/@mentra/react) library simplifies building React-based webviews that integrate seamlessly with MentraOS authentication. When users open your webview through the MentraOS manager app, they are automatically authenticated without requiring a separate login process.
 
 ## What Are React Webviews?
 
@@ -11,7 +11,7 @@ React webviews are web applications built with React that run inside the MentraO
 - **Content Management**: Create, edit, and organize user content
 - **Dashboard Interfaces**: Show personalized information and controls
 
-The `@mentraos/react` library handles all the authentication complexity, automatically extracting and verifying user tokens from the MentraOS system.
+The `@mentra/react` library handles all the authentication complexity, automatically extracting and verifying user tokens from the MentraOS system.
 
 ## Complete Example
 
@@ -22,11 +22,11 @@ There's a complete example of a React webview in the [`MentraOS-React-Example-Ap
 Install the React authentication library in your webview project:
 
 ```bash
-npm install @mentraos/react
+npm install @mentra/react
 # or
-yarn add @mentraos/react
+yarn add @mentra/react
 # or
-bun add @mentraos/react
+bun add @mentra/react
 ```
 
 ## Prerequisites
@@ -46,7 +46,7 @@ The `MentraAuthProvider` component manages authentication state for your entire 
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
-import { MentraAuthProvider } from '@mentraos/react';
+import { MentraAuthProvider } from '@mentra/react';
 
 /**
  * Application entry point that provides MentraOS authentication context
@@ -68,7 +68,7 @@ Use the `UseMentraAuth` hook to access user information and authentication statu
 ```tsx
 // src/components/UserProfile.tsx
 import React from 'react';
-import { UseMentraAuth } from '@mentraos/react';
+import { UseMentraAuth } from '@mentra/react';
 
 /**
  * Component that displays user authentication status and profile information.
@@ -123,7 +123,7 @@ Here's a comprehensive example that demonstrates authentication, API calls, and 
  */
 
 import React, { useState } from 'react';
-import { MentraAuthProvider, UseMentraAuth } from '@mentraos/react';
+import { MentraAuthProvider, UseMentraAuth } from '@mentra/react';
 
 /**
  * Type definition for the API response from the notes endpoint
@@ -422,7 +422,7 @@ app.use(cors({
 
 **"Token validation failed"**
 - Verify the device clock is synchronized (token expiration is time-sensitive)
-- Check that you're using the latest version of `@mentraos/react`
+- Check that you're using the latest version of `@mentra/react`
 - Ensure the MentraOS manager app is up to date
 
 **Backend authentication fails**

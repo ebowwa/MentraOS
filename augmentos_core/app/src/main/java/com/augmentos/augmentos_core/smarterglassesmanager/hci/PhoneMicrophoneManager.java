@@ -1140,12 +1140,12 @@ public class PhoneMicrophoneManager {
                                            (unexpectedMode && currentStatus != MicStatus.PAUSED);
             
             if (suspectedExternalAudio != isExternalAudioActive) {
-                Log.d(TAG, "🎤 Samsung audio state change detected - suspected external: " + suspectedExternalAudio);
-                Log.d(TAG, "  Audio mode: " + currentMode + 
-                      " (NORMAL=" + AudioManager.MODE_NORMAL + 
-                      ", IN_CALL=" + AudioManager.MODE_IN_CALL + 
-                      ", IN_COMMUNICATION=" + AudioManager.MODE_IN_COMMUNICATION + ")");
-                Log.d(TAG, "  Current mic status: " + currentStatus);
+                // Log.d(TAG, "🎤 Samsung audio state change detected - suspected external: " + suspectedExternalAudio);
+                // Log.d(TAG, "  Audio mode: " + currentMode + 
+                //       " (NORMAL=" + AudioManager.MODE_NORMAL + 
+                //       ", IN_CALL=" + AudioManager.MODE_IN_CALL + 
+                //       ", IN_COMMUNICATION=" + AudioManager.MODE_IN_COMMUNICATION + ")");
+                // Log.d(TAG, "  Current mic status: " + currentStatus);
                 
                 // Only trigger if this is truly external
                 if (suspectedExternalAudio && currentMode == AudioManager.MODE_IN_CALL) {

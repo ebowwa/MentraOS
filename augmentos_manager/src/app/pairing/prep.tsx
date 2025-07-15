@@ -25,7 +25,7 @@ export default function PairingPrepScreen() {
   const route = useRoute()
   const {theme} = useAppTheme()
   const {glassesModelName} = route.params as {glassesModelName: string}
-  const {goBack, push} = useNavigationHistory()
+  const {goBack, push, clearHistoryAndGoHome} = useNavigationHistory()
   // React.useEffect(() => {
   //   const unsubscribe = navigation.addListener('beforeRemove', (e) => {
   //     const actionType = e.data?.action?.type;
@@ -251,10 +251,15 @@ export default function PairingPrepScreen() {
 
     console.log("needsBluetoothPermissions", needsBluetoothPermissions)
 
-    // slight delay for bluetooth perms
-    push("/pairing/bluetooth", {glassesModelName})
-    // router.push({pathname: "/pairing/bluetooth", params: {glassesModelName}})
+    // skip pairing for simulated glasses:
+    if (glassesModelName.startsWith("Simulated")) {
+      coreCommunicator.sendSearchForCompatibleDeviceNames("Simulated Glasses")
+      coreCommunicator.sendConnectWearable("Simulated Glasses", "Simulated Glasses")
+      clearHistoryAndGoHome()
+      return
+    }
 
+    push("/pairing/bluetooth", {glassesModelName})
   }
 
   return (

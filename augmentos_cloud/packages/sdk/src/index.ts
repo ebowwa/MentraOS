@@ -27,6 +27,7 @@ export {
   StandardConnectionError,
   CustomMessage,
   ManagedStreamStatus,
+  OutputStatus,
   MentraosSettingsUpdate,
   TranscriptionData,
   AudioChunk,
@@ -97,7 +98,7 @@ export {
   CalendarEvent,
   Vad,
   PhoneNotification,
-  NotificationDismissed,
+  PhoneNotificationDismissed,
   StartApp,
   StopApp,
   ConnectionInit,
@@ -154,7 +155,8 @@ export {
   isStopApp,
   isPhotoResponse as isPhotoResponseFromGlasses,
   isRtmpStreamStatus as isRtmpStreamStatusFromGlasses,
-  isKeepAliveAck
+  isKeepAliveAck,
+  isPhoneNotificationDismissed
 } from './types/messages/glasses-to-cloud';
 
 export {

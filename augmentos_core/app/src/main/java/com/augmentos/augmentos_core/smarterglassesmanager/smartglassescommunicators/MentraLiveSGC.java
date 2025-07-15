@@ -76,6 +76,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     // Glasses version information
     private String glassesAppVersion = "";
     private String glassesBuildNumber = "";
+    private int glassesBuildNumberInt = 0; // Build number as integer for version checks
     private String glassesDeviceModel = "";
     private String glassesAndroidVersion = "";
 
@@ -1015,21 +1016,27 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     /**
      * Send a JSON object to the glasses with message ID and ACK tracking
      */
-    private void sendJson(JSONObject json) {
+    private void sendJson(JSONObject json, boolean wakeup) {
         if (json != null) {
             try {
-                // Add esoteric message ID to the JSON
-                long messageId = generateEsotericMessageId();
-                json.put("mId", messageId);
-                
-                String jsonStr = json.toString();
-                Log.d(TAG, "📤 Sending JSON with esoteric message ID " + messageId + ": " + jsonStr);
-                
-                // Track the message for ACK
-                trackMessageForAck(messageId, jsonStr);
-                
-                // Send the data
-                sendDataToGlasses(jsonStr);
+                if (glassesBuildNumberInt < 5) {
+                    String jsonStr = json.toString();
+                    Log.d(TAG, "📤 Sending JSON with esoteric message ID: " + jsonStr);
+                    sendDataToGlasses(jsonStr, wakeup);
+                } else {
+                    // Add esoteric message ID to the JSON
+                    long messageId = generateEsotericMessageId();
+                    json.put("mId", messageId);
+
+                    String jsonStr = json.toString();
+                    Log.d(TAG, "📤 Sending JSON with esoteric message ID " + messageId + ": " + jsonStr);
+
+                    // Track the message for ACK
+                    trackMessageForAck(messageId, jsonStr);
+
+                    // Send the data
+                    sendDataToGlasses(jsonStr, wakeup);
+                }
             } catch (JSONException e) {
                 Log.e(TAG, "Error adding message ID to JSON", e);
             }
@@ -1038,12 +1045,22 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         }
     }
 
+    private void sendJson(JSONObject json){
+        sendJson(json, false);
+    }
+
     /**
      * Track a message for ACK response
      */
     private void trackMessageForAck(long messageId, String messageData) {
         if (!isConnected) {
             Log.d(TAG, "Not connected, skipping ACK tracking for message " + messageId);
+            return;
+        }
+        
+        // Skip ACK tracking for glasses with build number < 5 (older firmware)
+        if (glassesBuildNumberInt < 5) {
+            Log.d(TAG, "Glasses build number (" + glassesBuildNumberInt + ") < 5, skipping ACK tracking for message " + messageId);
             return;
         }
 
@@ -1119,7 +1136,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
 
         // Send the message again
         Log.d(TAG, "📤 Retrying message " + messageId + " (attempt " + retryMessage.retryCount + ")");
-        sendDataToGlasses(pendingMessage.messageData);
+        sendDataToGlasses(pendingMessage.messageData, false);
 
         // Schedule next ACK check
         handler.postDelayed(new Runnable() {
@@ -1516,6 +1533,15 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 String buildNumber = json.optString("build_number", "");
                 String deviceModel = json.optString("device_model", "");
                 String androidVersion = json.optString("android_version", "");
+                
+                // Parse build number as integer for version checks
+                try {
+                    glassesBuildNumberInt = Integer.parseInt(buildNumber);
+                    Log.d(TAG, "Parsed build number as integer: " + glassesBuildNumberInt);
+                } catch (NumberFormatException e) {
+                    glassesBuildNumberInt = 0;
+                    Log.e(TAG, "Failed to parse build number as integer: " + buildNumber);
+                }
 
                 Log.d(TAG, "Glasses Version - App: " + appVersion +
                       ", Build: " + buildNumber +
@@ -1772,7 +1798,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 // Convert to string and send via BLE
                 String jsonString = batteryStatus.toString();
                 Log.d(TAG, "🔋 Sending battery status via BLE: " + level + "% " + (charging ? "(charging)" : "(not charging)"));
-                sendDataToGlasses(jsonString);
+                sendDataToGlasses(jsonString, false);
                 
             } catch (JSONException e) {
                 Log.e(TAG, "Error creating battery status JSON", e);
@@ -1789,7 +1815,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         try {
             JSONObject json = new JSONObject();
             json.put("type", "request_wifi_status");
-            sendJson(json);
+            sendJson(json, true);
         } catch (JSONException e) {
             Log.e(TAG, "Error creating WiFi status request", e);
         }
@@ -1804,7 +1830,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         try {
             JSONObject json = new JSONObject();
             json.put("type", "request_wifi_scan");
-            sendJson(json);
+            sendJson(json, true);
             Log.d(TAG, "Sending WiFi scan request to glasses");
         } catch (JSONException e) {
             Log.e(TAG, "Error creating WiFi scan request", e);
@@ -1885,7 +1911,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             testMsg.put("deviceId", deviceId); // Include device ID for debugging
             
             Log.d(TAG, "🧪 Sending test message #" + testMessageCounter + " for ACK verification");
-            sendJson(testMsg); // This will include esoteric mId and ACK tracking
+            sendJson(testMsg, true); // This will include esoteric mId and ACK tracking
             
         } catch (JSONException e) {
             Log.e(TAG, "Error creating test message", e);
@@ -2040,7 +2066,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             JSONObject json = new JSONObject();
             json.put("type", "set_mic_state");
             json.put("enabled", enable);
-            sendJson(json);
+            sendJson(json, false);
         } catch (JSONException e) {
             Log.e(TAG, "Error creating microphone command", e);
         }
@@ -2058,7 +2084,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             if (webhookUrl != null && !webhookUrl.isEmpty()) {
                 json.put("webhookUrl", webhookUrl);
             }
-            sendJson(json);
+            sendJson(json, true);
         } catch (JSONException e) {
             Log.e(TAG, "Error creating photo request JSON", e);
         }
@@ -2074,7 +2100,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             json.remove("audio");
             //String rtmpUrl=json.getString("rtmpUrl");
             //Log.d(TAG, "Requesting RTMP stream to URL: " + rtmpUrl);
-            sendJson(json);
+            sendJson(json, true);
 //            json.put("type", "start_rtmp_stream");
 //            json.put("rtmpUrl", rtmpUrl);
 //
@@ -2097,7 +2123,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             JSONObject json = new JSONObject();
             json.put("type", "stop_rtmp_stream");
 
-            sendJson(json);
+            sendJson(json, true);
         } catch (JSONException e) {
             Log.e(TAG, "Error creating RTMP stream stop JSON", e);
         }
@@ -2396,7 +2422,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
      *
      * @param data The string data to be sent to the glasses
      */
-    public void sendDataToGlasses(String data) {
+    public void sendDataToGlasses(String data, boolean wakeup) {
         if (data == null || data.isEmpty()) {
             Log.e(TAG, "Cannot send empty data to glasses");
             return;
@@ -2407,7 +2433,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             Log.d(TAG, "Sending data to glasses: " + data);
 
             // Pack the data using the centralized utility
-            byte[] packedData = K900ProtocolUtils.packJsonToK900(data);
+            byte[] packedData = K900ProtocolUtils.packJsonToK900(data, wakeup);
 
             // Queue the data for sending
             queueData(packedData);
@@ -2421,7 +2447,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         try {
             JSONObject command = new JSONObject();
             command.put("type", "start_record_video");
-            sendJson(command);
+            sendJson(command, true);
         } catch (JSONException e) {
             throw new RuntimeException(e);
         }
@@ -2431,7 +2457,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         try {
             JSONObject command = new JSONObject();
             command.put("type", "stop_record_video");
-            sendJson(command);
+            sendJson(command, true);
         } catch (JSONException e) {
             throw new RuntimeException(e);
         }
@@ -2441,7 +2467,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         try {
             JSONObject command = new JSONObject();
             command.put("type", "start_video_stream");
-            sendJson(command);
+            sendJson(command, true);
         } catch (JSONException e) {
             throw new RuntimeException(e);
         }
@@ -2451,7 +2477,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         try {
             JSONObject command = new JSONObject();
             command.put("type", "stop_video_stream");
-            sendJson(command);
+            sendJson(command, true);
         } catch (JSONException e) {
             throw new RuntimeException(e);
         }
@@ -2479,7 +2505,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             wifiCommand.put("type", "set_wifi_credentials");
             wifiCommand.put("ssid", ssid);
             wifiCommand.put("password", password != null ? password : "");
-            sendJson(wifiCommand);
+            sendJson(wifiCommand, true);
         } catch (JSONException e) {
             Log.e(TAG, "Error creating WiFi credentials JSON", e);
         }
@@ -2509,14 +2535,18 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     /**
      * Send a JSON object to the glasses without ACK tracking (for non-critical messages)
      */
-    private void sendJsonWithoutAck(JSONObject json) {
+    private void sendJsonWithoutAck(JSONObject json, boolean wakeup) {
         if (json != null) {
             String jsonStr = json.toString();
             Log.d(TAG, "📤 Sending JSON without ACK tracking: " + jsonStr);
-            sendDataToGlasses(jsonStr);
+            sendDataToGlasses(jsonStr, wakeup);
         } else {
             Log.d(TAG, "Cannot send JSON to ASG, JSON is null");
         }
+    }
+
+    private void sendJsonWithoutAck(JSONObject json){
+        sendJsonWithoutAck(json, false);
     }
 
     /**

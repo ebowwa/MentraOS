@@ -31,6 +31,7 @@ import {
   ButtonPress,
   HeadPosition,
   PhoneNotification,
+  PhoneNotificationDismissed,
   TranscriptionData,
   TranslationData,
 
@@ -383,6 +384,16 @@ export class AppSession {
    */
   onPhoneNotifications(handler: (data: PhoneNotification) => void): () => void {
     return this.events.onPhoneNotifications(handler);
+  }
+
+  /**
+   * 📱 Listen for phone notification dismissed events
+   * @param handler - Function to handle notification dismissal data
+   * @returns Cleanup function to remove the handler
+   * @deprecated Use session.events.onPhoneNotificationDismissed() instead
+   */
+  onPhoneNotificationDismissed(handler: (data: PhoneNotificationDismissed) => void): () => void {
+    return this.events.onPhoneNotificationDismissed(handler);
   }
 
   /**

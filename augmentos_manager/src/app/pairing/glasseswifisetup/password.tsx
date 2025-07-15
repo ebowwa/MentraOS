@@ -1,14 +1,16 @@
-import React, {useState} from "react"
+import React, {useState, useEffect} from "react"
 import {View, Text, TextInput, KeyboardAvoidingView, Platform, TouchableOpacity} from "react-native"
 import {useLocalSearchParams, router} from "expo-router"
-import {Screen, Icon, Header} from "@/components/ignite"
+import {Screen, Icon, Header, Checkbox} from "@/components/ignite"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {ThemedStyle} from "@/theme"
 import {ViewStyle, TextStyle} from "react-native"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
 import ActionButton from "@/components/ui/ActionButton"
+import WifiCredentialsService from "@/utils/WifiCredentialsService"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {ScrollView} from "react-native"
+
 
 export default function WifiPasswordScreen() {
   const params = useLocalSearchParams()
@@ -20,10 +22,34 @@ export default function WifiPasswordScreen() {
   const [ssid, setSsid] = useState(initialSsid)
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
+  const [rememberPassword, setRememberPassword] = useState(false)
+  const [hasSavedPassword, setHasSavedPassword] = useState(false)
 
-  const handleConnect = () => {
-    // console.log("3231 handleConnect called");
+  // Load saved password when component mounts
+  useEffect(() => {
+    if (initialSsid) {
+      const savedPassword = WifiCredentialsService.getPassword(initialSsid)
+      if (savedPassword) {
+        setPassword(savedPassword)
+        setHasSavedPassword(true)
+        setRememberPassword(true) // Check the box if there's a saved password
+      }
+    }
+  }, [initialSsid])
 
+  // Handle checkbox state changes - immediately remove saved password when unchecked
+  useEffect(() => {
+    console.log("321321 rememberPassword", rememberPassword)
+    console.log("321321 initialSsid", initialSsid)
+    if (!rememberPassword && initialSsid) {
+      // Remove saved credentials immediately when checkbox is unchecked
+      WifiCredentialsService.removeCredentials(initialSsid)
+      setHasSavedPassword(false)
+      console.log("$%^&*()_321321 removed credentials")
+    }
+  }, [rememberPassword, initialSsid])
+
+  const handleConnect = async () => {
     if (!ssid) {
       GlobalEventEmitter.emit("SHOW_BANNER", {
         message: "Please enter a network name",
@@ -32,8 +58,25 @@ export default function WifiPasswordScreen() {
       return
     }
 
+    // Handle password saving based on checkbox state
+    if (rememberPassword && password) {
+      // Save credentials if checkbox is checked
+      await WifiCredentialsService.saveCredentials(ssid, password, true)
+    } else if (!rememberPassword) {
+      // Remove saved credentials if checkbox is unchecked
+      await WifiCredentialsService.removeCredentials(ssid)
+    }
+
     // Navigate to connecting screen with credentials
-    push("/pairing/glasseswifisetup/connecting", {deviceModel, ssid, password})
+    router.push({
+      pathname: "/pairing/glasseswifisetup/connecting",
+      params: {
+        deviceModel,
+        ssid,
+        password,
+        rememberPassword: rememberPassword.toString(),
+      },
+    })
   }
 
   return (
@@ -72,6 +115,20 @@ export default function WifiPasswordScreen() {
               <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={themed($eyeButton)}>
                 <Icon icon={showPassword ? "view" : "hidden"} size={20} color={theme.colors.textDim} />
               </TouchableOpacity>
+            </View>
+            {hasSavedPassword && (
+              <Text style={themed($savedPasswordText)}>✓ Password loaded from saved credentials</Text>
+            )}
+          </View>
+
+          <View style={themed($checkboxContainer)}>
+            <Checkbox
+              value={rememberPassword}
+              onValueChange={setRememberPassword}
+            />
+            <View style={themed($checkboxContent)}>
+              <Text style={themed($checkboxLabel)}>Remember Password</Text>
+              <Text style={themed($checkboxDescription)}>Save this password for future connections</Text>
             </View>
           </View>
 
@@ -143,6 +200,37 @@ const $eyeButton: ThemedStyle<ViewStyle> = ({spacing}) => ({
   width: 40,
   justifyContent: "center",
   alignItems: "center",
+})
+
+const $savedPasswordText: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
+  fontSize: 12,
+  color: colors.tint,
+  marginTop: spacing.xs,
+  fontStyle: "italic",
+})
+
+const $checkboxContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  flexDirection: "row",
+  alignItems: "flex-start",
+  marginBottom: spacing.lg,
+  paddingVertical: spacing.sm,
+})
+
+const $checkboxContent: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  flex: 1,
+  marginLeft: spacing.sm,
+})
+
+const $checkboxLabel: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
+  fontSize: 16,
+  fontWeight: "500",
+  color: colors.text,
+  marginBottom: spacing.xs,
+})
+
+const $checkboxDescription: ThemedStyle<TextStyle> = ({colors}) => ({
+  fontSize: 14,
+  color: colors.textDim,
 })
 
 const $buttonContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({

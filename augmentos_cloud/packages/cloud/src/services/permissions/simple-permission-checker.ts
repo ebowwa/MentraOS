@@ -26,7 +26,7 @@ export class SimplePermissionChecker {
 
     // Notification streams
     [StreamType.PHONE_NOTIFICATION, PermissionType.READ_NOTIFICATIONS],
-    [StreamType.NOTIFICATION_DISMISSED, PermissionType.READ_NOTIFICATIONS],
+    [StreamType.PHONE_NOTIFICATION_DISMISSED, PermissionType.READ_NOTIFICATIONS],
   ]);
 
   /**

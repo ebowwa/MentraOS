@@ -40,4 +40,5 @@ public interface AugmentOsActionsCallback {
     void onAudioPlayRequest(JSONObject audioRequest);
     void onAudioPlayResponse(JSONObject audioResponse);
     void onAudioStopRequest(JSONObject audioStopParams);
+    void handleNotificationDismissal(JSONObject dismissalData);
 }

@@ -295,6 +295,15 @@ export class SubscriptionService {
         serviceSubscriptions: Array.from(this.subscriptions.entries()).map(([k, v]) => [k, Array.from(v)])
       }, 'Updated subscriptions successfully');
 
+      // Auto-update TranscriptionManager with new subscription state
+      await this.syncTranscriptionManager(userSession);
+
+      // Update microphone state AFTER subscription is set
+      // This ensures the microphone state check uses the updated subscription map
+      if (userSession.microphoneManager) {
+        userSession.microphoneManager.handleSubscriptionChange();
+      }
+
     } catch (error) {
       // If there's an error getting the app or checking permissions, log it but don't block
       // This ensures backward compatibility with existing code
@@ -310,6 +319,11 @@ export class SubscriptionService {
         subscriptions: [...processedSubscriptions],
         action
       });
+
+      // Update microphone state AFTER subscription is set (even in error case)
+      if (userSession.microphoneManager) {
+        userSession.microphoneManager.handleSubscriptionChange();
+      }
     }
 
     // --- Database Operations with Retry Logic ---
@@ -503,18 +517,22 @@ export class SubscriptionService {
    */
   async removeSubscriptions(userSession: UserSession, packageName: string): Promise<UserI | null> {
     const key = this.getKey(userSession.sessionId, packageName);
-    
+
     // Perform in-memory removal immediately
     if (this.subscriptions.has(key)) {
       const currentSubs = Array.from(this.subscriptions.get(key) || []);
       this.subscriptions.delete(key);
       this.addToHistory(key, {
-          timestamp: new Date(),
-          subscriptions: currentSubs,
-          action: 'remove'
+        timestamp: new Date(),
+        subscriptions: currentSubs,
+        action: 'remove'
       });
       logger.info({ packageName, sessionId: userSession.sessionId }, `Removed in-memory subscriptions for App ${packageName}`);
     }
+
+    // Remove from user session's transcription manager
+    // Auto-update TranscriptionManager with new subscription state
+    await this.syncTranscriptionManager(userSession);
 
     // Perform background DB removal
     try {
@@ -528,22 +546,69 @@ export class SubscriptionService {
         return user;
       }
       return user; // Return user even if no changes were made
-    } catch(error) {
+    } catch (error) {
       logger.error({ error, packageName, userId: userSession.userId }, 'Error removing location subscription from DB.');
       throw error; // Rethrow to be handled by caller
     }
+
   }
 
   /**
-   * Removes all subscription history for a session
-   * Used when a session is being killed to free memory
-   * @param sessionId - User session identifier
+   * Get all transcription-related subscriptions for a user session
    */
-  removeSessionSubscriptionHistory(sessionId: string): void {
-    // Find all keys that start with this session ID
-    const keysToRemove: string[] = [];
+  private getTranscriptionSubscriptions(userSession: UserSession): ExtendedStreamType[] {
+    const transcriptionSubs: ExtendedStreamType[] = [];
 
-    for (const key of this.history.keys()) {
+    // Get all subscriptions for this user
+    const userPrefix = `${userSession.userId}:`;
+
+    for (const [key, subs] of this.subscriptions.entries()) {
+      if (key.startsWith(userPrefix)) {
+        for (const sub of subs) {
+          // Include transcription and translation subscriptions
+          if (sub.includes('transcription') || sub.includes('translation')) {
+            transcriptionSubs.push(sub as ExtendedStreamType);
+          }
+        }
+      }
+    }
+
+    return transcriptionSubs;
+  }
+
+  /**
+   * Automatically sync TranscriptionManager with current subscriptions
+   */
+  private async syncTranscriptionManager(userSession: UserSession): Promise<void> {
+    try {
+      const transcriptionSubs = this.getTranscriptionSubscriptions(userSession);
+      userSession.transcriptionManager.updateSubscriptions(transcriptionSubs);
+
+      // Ensure streams are synchronized after subscription update
+      await userSession.transcriptionManager.ensureStreamsExist();
+
+      logger.debug({
+        userId: userSession.userId,
+        transcriptionSubs
+      }, 'Synced TranscriptionManager with current subscriptions');
+    } catch (error) {
+      logger.error({
+        error,
+        userId: userSession.userId
+      }, 'Error syncing TranscriptionManager with subscriptions');
+    }
+  }
+
+    /**
+     * Removes all subscription history for a session
+     * Used when a session is being killed to free memory
+     * @param sessionId - User session identifier
+     */
+    removeSessionSubscriptionHistory(sessionId: string): void {
+      // Find all keys that start with this session ID
+      const keysToRemove: string[] = [];
+
+      for(const key of this.history.keys()) {
       if (key.startsWith(`${sessionId}:`)) {
         keysToRemove.push(key);
       }

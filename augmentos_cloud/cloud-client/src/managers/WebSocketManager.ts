@@ -275,6 +275,14 @@ export class WebSocketManager extends EventEmitter {
   }
 
   private startStatusUpdates(): void {
+    // Skip status updates if disabled
+    if (this.config.behavior?.disableStatusUpdates) {
+      if (this.config.debug?.logLevel === 'debug') {
+        console.log('[WebSocketManager] Status updates disabled');
+      }
+      return;
+    }
+
     const interval = this.config.behavior?.statusUpdateInterval || 10000;
     
     setInterval(() => {

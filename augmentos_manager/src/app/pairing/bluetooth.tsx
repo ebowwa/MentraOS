@@ -236,8 +236,6 @@ export default function SelectGlassesBluetoothScreen() {
     push("/pairing/guide", {glassesModelName: glassesModelName})
   }
 
-  // Removed hardcoded theme2 object - using semantic theme colors instead
-
   const glassesImage = useMemo(() => getGlassesImage(glassesModelName), [glassesModelName])
 
   return (

@@ -83,12 +83,12 @@ export default function SelectGlassesModelScreen() {
 
     setGlassesModelNameToPair(glassesModelName)
     console.log("TRIGGERING SEARCH SCREEN FOR: " + glassesModelName)
-    router.push({pathname: "/pairing/prep", params: {glassesModelName: glassesModelName}})
+    push("/pairing/prep", {glassesModelName: glassesModelName})
   }
 
   const radialGradient = (size: number, rotation: number) => {
-    const strokeWidth = theme.spacing.xxxs;
-    const halfStroke = strokeWidth / 2;
+    const strokeWidth = theme.spacing.xxxs
+    const halfStroke = strokeWidth / 2
     return (
       <Svg width={size} height={size}>
         <Defs>
@@ -100,11 +100,27 @@ export default function SelectGlassesModelScreen() {
             ry="0.9978"
             gradientUnits="objectBoundingBox"
             gradientTransform={`rotate(${rotation} 10 10)`}>
-            <Stop offset="0" stopColor={theme.isDark ? theme.colors.palette.primary500 : theme.colors.palette.primary300} />
-            <Stop offset="1" stopColor={theme.isDark ? theme.colors.palette.primary200 : theme.colors.palette.primary100} />
+            <Stop
+              offset="0"
+              stopColor={theme.isDark ? theme.colors.palette.primary500 : theme.colors.palette.primary300}
+            />
+            <Stop
+              offset="1"
+              stopColor={theme.isDark ? theme.colors.palette.primary200 : theme.colors.palette.primary100}
+            />
           </RadialGradient>
         </Defs>
-        <Rect x={halfStroke} y={halfStroke} width={size - strokeWidth} height={size - strokeWidth} rx={theme.borderRadius.md - 2} ry={theme.borderRadius.md - 2} fill="url(#grad)" stroke={theme.colors.border} strokeWidth={strokeWidth} />
+        <Rect
+          x={halfStroke}
+          y={halfStroke}
+          width={size - strokeWidth}
+          height={size - strokeWidth}
+          rx={theme.borderRadius.md - 2}
+          ry={theme.borderRadius.md - 2}
+          fill="url(#grad)"
+          stroke={theme.colors.border}
+          strokeWidth={strokeWidth}
+        />
       </Svg>
     )
   }
@@ -151,7 +167,13 @@ export default function SelectGlassesModelScreen() {
             onPress={() => {
               triggerGlassesPairingGuide(glasses.modelName)
             }}>
-            <View style={{position: "relative", marginLeft: -theme.spacing.xxxs, marginTop: -theme.spacing.xxxs, marginBottom: -theme.spacing.xxxs}}>
+            <View
+              style={{
+                position: "relative",
+                marginLeft: -theme.spacing.xxxs,
+                marginTop: -theme.spacing.xxxs,
+                marginBottom: -theme.spacing.xxxs,
+              }}>
               {radialGradient(100 + theme.spacing.xxxs * 2, Math.round(Math.random() * 360))}
               <Image source={getGlassesImage(glasses.modelName)} style={themed($glassesImage)} />
             </View>

@@ -9,6 +9,9 @@
  * - Social media streaming (X, YouTube Live, TikTok Live)
  * - Quick demos and prototypes
  * - Production apps without existing streaming infrastructure
+ * 
+ * NEW: You can now add re-streaming to multiple platforms! See
+ * managed-rtmp-streaming-with-restream-example.ts for details.
  */
 import { AppSession, StreamType, ManagedStreamStatus } from '../';
 
