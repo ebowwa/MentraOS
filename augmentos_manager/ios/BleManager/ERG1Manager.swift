@@ -120,6 +120,7 @@ enum GlassesError: Error {
   
   // L/R Synchronization - Track BLE write completions
   private var pendingWriteCompletions: [CBCharacteristic: CheckedContinuation<Bool, Never>] = [:]
+  private var pendingAckCompletions: [String: CheckedContinuation<Bool, Never>] = [:]
   private var writeCompletionCount = 0
   
   var onConnectionStateChanged: (() -> Void)?
@@ -680,17 +681,18 @@ enum GlassesError: Error {
       for i in 0..<chunks.count-1 {
         let chunk = chunks[i]
         await sendCommandToSideWithoutResponse(chunk, side: side)
-        try? await Task.sleep(nanoseconds: 8 * 1_000_000)// 8ms
+        try? await Task.sleep(nanoseconds: 20 * 1_000_000)// 8ms
       }
       
       let lastChunk = chunks.last!
       
-//      success = await sendCommandToSide2(lastChunk, side: side)
+      success = await sendCommandToSide2(lastChunk, side: side)
+      CoreCommsService.log("command success: \(success)")
 //      if (!success) {
 //        CoreCommsService.log("timed out waiting for \(s)")
 //      }
-      await sendCommandToSideWithoutResponse(lastChunk, side: side)
-      success = true
+//      await sendCommandToSideWithoutResponse(lastChunk, side: side)
+//      success = true
       
       attempts += 1
       if !success && (attempts >= maxAttempts) {
@@ -785,6 +787,15 @@ enum GlassesError: Error {
   private func handleAck(from peripheral: CBPeripheral, success: Bool) {
     //    CoreCommsService.log("handleAck \(success)")
     if !success { return }
+    
+    let side = peripheral == leftPeripheral ? "left" : "right"
+    
+    // Resume any pending ACK continuation for this side
+    if let continuation = pendingAckCompletions.removeValue(forKey: side) {
+        continuation.resume(returning: true)
+        CoreCommsService.log("✅ ACK received for \(side) side, resuming continuation")
+    }
+    
     if peripheral == self.leftPeripheral {
       leftSemaphore.signal()
       setReadiness(left: true, right: nil)
@@ -1177,6 +1188,8 @@ extension ERG1Manager {
         return
       }
       
+      // for ack:
+      self.pendingAckCompletions[side] = continuation
       
       // Store continuation for completion callback
       self.pendingWriteCompletions[characteristic!] = continuation
