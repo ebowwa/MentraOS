@@ -14,14 +14,19 @@ Take high-quality photos from smart glasses with options for gallery saving and 
 - Handle timeouts and errors gracefully
 
 ### [RTMP Streaming](./rtmp-streaming.md)
-Stream live video from smart glasses to custom RTMP endpoints:
+Stream live video from smart glasses with two powerful options:
 
-**Key capabilities:**
+**🚀 Managed Streaming (Recommended)**
+- Zero infrastructure required
+- Automatic HLS/DASH URL generation
+- Multi-app support - multiple apps can access the same stream
+- Perfect for social media integration
+
+**🔧 Unmanaged Streaming**
 - Full control over RTMP endpoints
-- Exclusive camera access for your app
+- Exclusive camera access
 - Custom server integration
-- Low latency streaming options
-- Detailed stream status monitoring
+- Ultra-low latency options
 
 ## 🎯 Quick Start
 
@@ -31,31 +36,38 @@ const photo = await session.camera.requestPhoto({ saveToGallery: true });
 console.log(`Photo captured: ${photo.mimeType}, ${photo.size} bytes`);
 ```
 
-### Starting an RTMP Stream
+### Starting a Managed Stream (Easy Mode)
+```typescript
+// Start streaming with zero configuration!
+const result = await session.camera.startManagedStream();
+console.log('Share this URL with viewers:', result.hlsUrl);
+```
+
+### Starting an Unmanaged Stream (Full Control)
 ```typescript
 await session.camera.startStream({
-  rtmpUrl: 'rtmp://your-server.com/live/stream-key'
+  rtmpUrl: 'rtmp://your-server.com/live/stream-key',
+  video: { width: 1280, height: 720, bitrate: 2000000 }
 });
 ```
 
 ## 📚 Documentation Structure
 
 - **[Photo Capture Guide](./photo-capture.md)** - Complete guide for taking photos
-- **[RTMP Streaming Guide](./rtmp-streaming.md)** - Comprehensive streaming documentation for RTMP streaming
+- **[RTMP Streaming Guide](./rtmp-streaming.md)** - Comprehensive streaming documentation covering both managed and unmanaged options
 - **[API Reference](/reference/managers/camera)** - Detailed API documentation for all camera methods
 
 ## 🎬 Common Use Cases
 
-### Live Streaming
-Stream to platforms like YouTube Live, X (Twitter), and TikTok using their RTMP endpoints:
+### Social Media Streaming
+Use managed streaming for easy integration with platforms like YouTube Live, X (Twitter), and TikTok:
 ```typescript
-await session.camera.startStream({
-  rtmpUrl: 'rtmp://a.rtmp.youtube.com/live2/your-stream-key'
-});
+const stream = await session.camera.startManagedStream();
+// Share stream.hlsUrl with your viewers!
 ```
 
 ### Security Camera App
-Stream to local RTMP servers for security monitoring:
+Use unmanaged streaming for full control and local network streaming:
 ```typescript
 await session.camera.startStream({
   rtmpUrl: 'rtmp://192.168.1.100/security/cam1'
@@ -71,6 +83,14 @@ const photo = await session.camera.requestPhoto({
 await uploadToCloudStorage(photo.buffer);
 ```
 
+## 🔑 Key Differences: Managed vs Unmanaged Streaming
+
+| Feature | Managed Streaming | Unmanaged Streaming |
+|---------|------------------|---------------------|
+| **Infrastructure Required** | ❌ None | ✅ RTMP Server |
+| **Multiple Apps Can Stream** | ✅ Yes | ❌ No (Exclusive) |
+| **Setup Complexity** | 🟢 Easy | 🔴 Complex |
+| **Best For** | Social media, demos, prototypes | Custom servers, local networks |
 
 ## 🚨 Important Notes
 

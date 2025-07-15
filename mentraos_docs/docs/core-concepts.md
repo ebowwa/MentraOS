@@ -190,7 +190,7 @@ See the [Audio Tutorial](/audio) for detailed usage examples.
 The camera module enables visual functionality on camera-equipped smart glasses through the [`CameraManager`](/reference/managers/camera) (accessible via `session.camera`):
 
 *   **Photo Capture:** Take individual photos from the smart glasses camera with options for gallery saving
-*   **RTMP Streaming:** Stream live video to custom RTMP endpoints with full control
+*   **RTMP Streaming:** Stream live video using managed streaming (zero infrastructure) or unmanaged streaming (full control)
 
 Camera functionality requires smart glasses with camera hardware (e.g., Mentra Live) and appropriate permissions.
 
