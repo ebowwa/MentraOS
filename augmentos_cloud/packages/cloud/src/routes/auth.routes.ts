@@ -45,7 +45,7 @@ router.post('/exchange-token', async (req: Request, res: Response) => {
 
     return res.json({ coreToken });
   } catch (error) {
-    console.error('Token verification error:', error);
+    console.error(error, 'Token verification error');
     return res.status(401).json({ error: 'Invalid token' });
   }
 });

@@ -32,4 +32,11 @@ public class ButtonPressEvent {
         this.pressType = pressType;
         this.timestamp = timestamp;
     }
+
+    public ButtonPressEvent(String deviceModel, String buttonId, String pressType) {
+        this.deviceModel = deviceModel;
+        this.buttonId = buttonId;
+        this.pressType = pressType;
+        this.timestamp = System.currentTimeMillis();
+    }
 }
