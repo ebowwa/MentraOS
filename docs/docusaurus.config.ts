@@ -40,7 +40,7 @@ const config: Config = {
           // Please change this to your repo.
           // Remove or update this to remove/edit "edit this page" links.
           editUrl:
-            'https://github.com/mentra-community/mentraos/tree/main/mentraos_docs/create-docusaurus/',
+            'https://github.com/mentra-community/mentraos/tree/main/docs/create-docusaurus/',
           routeBasePath: '/', // Set docs as the root
         },
         blog: false,

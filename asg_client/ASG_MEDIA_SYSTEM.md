@@ -378,7 +378,7 @@ Apps use the MentraOS SDK to interact with the platform, including requesting ph
    - Used for delivering photo capture results back to the App
 
 4. **App Helper Module**
-   *Files: `AppHelpersModule.java` and `AppHelpersPackage.java`* (in mentraos_manager repository)
+   *Files: `AppHelpersModule.java` and `AppHelpersPackage.java`* (in `mobile` repository)
    - Native modules that provide helper functions for Apps
    - Includes functionality for launching apps and checking installation status
 

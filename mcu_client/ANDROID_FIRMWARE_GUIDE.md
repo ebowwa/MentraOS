@@ -284,7 +284,7 @@ From MentraLiveSGC:
 
 Remember: Look at the existing SGC implementations for patterns, but implement based on your specific hardware capabilities and requirements.
 
-## UI Integration in mentraos_manager
+## UI Integration in mobile
 
 To make your new glasses available in the AugmentOS Manager app UI, you need to update several files:
 

@@ -75,7 +75,7 @@ jobs:
             adb install app-debug.apk
             
             # Run Maestro tests
-            cd mentraos_manager
+            cd mobile
             maestro test .maestro/flows \
               --env MAESTRO_APP_ID=com.mentra.mentra \
               --env IS_DEV=false \
