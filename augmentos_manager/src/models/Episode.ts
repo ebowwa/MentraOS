@@ -28,7 +28,11 @@ export const EpisodeModel = types
     enclosure: types.frozen<Enclosure>(),
     categories: types.array(types.string),
   })
-  .actions(withSetPropAction)
+  .actions(self => ({
+    setProp<K extends keyof typeof self>(field: K, value: typeof self[K]) {
+      ;(self as any)[field] = value
+    },
+  }))
   .views(episode => ({
     get parsedTitleAndSubtitle() {
       const defaultValue = {title: episode.title?.trim(), subtitle: ""}

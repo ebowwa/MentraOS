@@ -92,6 +92,9 @@ importers:
       intl-pluralrules:
         specifier: ^2.0.1
         version: 2.0.1
+      mobx-state-tree:
+        specifier: ^7.0.2
+        version: 7.0.2(mobx@6.13.7)(typescript@5.3.3)
       posthog-react-native:
         specifier: ^4.1.4
         version: 4.1.4(28b48ea12e35be250fa469613f9a7082)
@@ -4239,6 +4242,14 @@ packages:
     engines: {node: '>=10'}
     hasBin: true
 
+  mobx-state-tree@7.0.2:
+    resolution: {integrity: sha512-Qmqgo2Ho1/JRTquo0EWw0ZA/k4wTUNPMIBg98ALGN1V/0Gupic7dg4GDYUhNbiLsYHpp48VgpaCDpDIKV+jNkQ==}
+    peerDependencies:
+      mobx: ^6.3.0
+
+  mobx@6.13.7:
+    resolution: {integrity: sha512-aChaVU/DO5aRPmk1GX8L+whocagUUpBQqoPtJk+cm7UOXUk87J4PeWCh6nNmTTIfEhiR9DI/+FnA8dln/hTK7g==}
+
   ms@2.0.0:
     resolution: {integrity: sha512-Tpp60P6IUJDTuOq/5Z8cdskzJujfwqfOTkrwIwj7IRISpnkJnT6SyJ4PCPnGMoFjC9ddhal5KVIYtAt97ix05A==}
 
@@ -5586,6 +5597,14 @@ packages:
     engines: {node: '>=18.12'}
     peerDependencies:
       typescript: '>=4.8.4'
+
+  ts-essentials@9.4.2:
+    resolution: {integrity: sha512-mB/cDhOvD7pg3YCLk2rOtejHjjdSi9in/IBYE13S+8WA5FBSraYf4V/ws55uvs0IvQ/l0wBOlXy5yBNZ9Bl8ZQ==}
+    peerDependencies:
+      typescript: '>=4.1.0'
+    peerDependenciesMeta:
+      typescript:
+        optional: true
 
   ts-interface-checker@0.1.13:
     resolution: {integrity: sha512-Y/arvbn+rrz3JCKl9C4kVNfTfSm2/mEp5FSz5EsZSANGPSlQrpRI5M4PKF+mJnE52jOO90PnPSc3Ur3bTQw0gA==}
@@ -11252,6 +11271,15 @@ snapshots:
 
   mkdirp@1.0.4: {}
 
+  mobx-state-tree@7.0.2(mobx@6.13.7)(typescript@5.3.3):
+    dependencies:
+      mobx: 6.13.7
+      ts-essentials: 9.4.2(typescript@5.3.3)
+    transitivePeerDependencies:
+      - typescript
+
+  mobx@6.13.7: {}
+
   ms@2.0.0: {}
 
   ms@2.1.3: {}
@@ -12670,6 +12698,10 @@ snapshots:
 
   ts-api-utils@2.1.0(typescript@5.3.3):
     dependencies:
+      typescript: 5.3.3
+
+  ts-essentials@9.4.2(typescript@5.3.3):
+    optionalDependencies:
       typescript: 5.3.3
 
   ts-interface-checker@0.1.13: {}

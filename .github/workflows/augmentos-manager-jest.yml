@@ -15,19 +15,24 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '18'
-          cache: 'npm'
-          cache-dependency-path: augmentos_manager/package-lock.json
+          cache: 'pnpm'
+          cache-dependency-path: augmentos_manager/pnpm-lock.yaml
 
       - name: Install dependencies
         working-directory: ./augmentos_manager
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Run Jest tests
         working-directory: ./augmentos_manager
-        run: npm run test
+        run: pnpm test
         env:
           CI: true
