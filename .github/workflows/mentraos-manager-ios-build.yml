@@ -71,13 +71,13 @@ jobs:
                      CODE_SIGNING_ALLOWED=NO
 
       - name: Upload Simulator Build
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ios-simulator-build
           path: augmentos_manager/ios/build/Build/Products/Debug-iphonesimulator/AOS.app
 
       - name: Upload Device Build
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ios-device-build
           path: augmentos_manager/ios/build-device/Build/Products/Release-iphoneos/AOS.app

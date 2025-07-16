@@ -65,13 +65,13 @@ jobs:
         run: ./gradlew assembleRelease
 
       - name: Upload Debug APK
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: app-debug
           path: augmentos_manager/android/app/build/outputs/apk/debug/app-debug.apk
 
       - name: Upload Release APK
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: app-release
           path: augmentos_manager/android/app/build/outputs/apk/release/app-release-unsigned.apk
