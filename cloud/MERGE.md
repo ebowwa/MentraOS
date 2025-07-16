@@ -68,7 +68,7 @@ MentraMerge and augmentos_cloud should be in the same parent directory:
 
 ```
 /path/to/AugmentApps/
-  ├── augmentos_cloud/
+  ├── cloud/
   └── MentraMerge/
 ```
 

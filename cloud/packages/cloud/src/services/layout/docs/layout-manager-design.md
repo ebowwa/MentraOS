@@ -574,7 +574,7 @@ class DashboardManager {
 
 #### New Files
 ```
-augmentos_cloud/packages/cloud/src/services/layout/
+cloud/packages/cloud/src/services/layout/
 ├── FinalMileLayoutManager.ts           # Main layout manager implementation
 ├── layout.types.ts                     # All layout-related types and interfaces
 ├── utils/
@@ -587,7 +587,7 @@ augmentos_cloud/packages/cloud/src/services/layout/
 
 #### Modified Files
 ```
-augmentos_cloud/packages/cloud/src/services/
+cloud/packages/cloud/src/services/
 ├── dashboard/
 │   └── DashboardManager.ts            # Add layout building capability
 └── layout/

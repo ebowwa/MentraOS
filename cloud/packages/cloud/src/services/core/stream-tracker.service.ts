@@ -1,6 +1,6 @@
 // NOTE(isaiah): This file is deprecated and not used, any logic should be in services/session/VideoManager.
 
-// augmentos_cloud/packages/cloud/src/services/core/stream-tracker.service.ts
+// cloud/packages/cloud/src/services/core/stream-tracker.service.ts
 
 /**
  * @fileoverview Stream Tracker Service for managing RTMP stream state and keep-alive functionality.

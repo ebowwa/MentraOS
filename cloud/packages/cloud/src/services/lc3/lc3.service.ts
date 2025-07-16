@@ -1,4 +1,4 @@
-// augmentos_cloud/packages/utils/src/LC3Service.ts
+// cloud/packages/utils/src/LC3Service.ts
 
 import * as fs from 'fs';
 import * as path from 'path';

@@ -5,7 +5,7 @@ name: Test AugmentOS Cloud ☁️
 on:
   push:
     paths:
-      - 'augmentos_cloud/**'
+      - 'cloud/**'
       - '.github/workflows/cloud.yml'
 
 jobs:
@@ -39,7 +39,7 @@ jobs:
           # Path to Bun's global package cache on the runner
           path: ~/.bun/install/cache
           # Key includes OS and lockfile hash. If bun.lockb (lockfile) hasn't changed, cache hits.
-          key: ${{ runner.os }}-bun-${{ hashFiles('augmentos_cloud/bun.lockb') }}
+          key: ${{ runner.os }}-bun-${{ hashFiles('cloud/bun.lockb') }}
           # In case of partial match, allow restore with just OS identifier (fallback).
           restore-keys: |
             ${{ runner.os }}-bun-
@@ -66,7 +66,7 @@ jobs:
 
       # 6. Run tests to verify functionality
       - name: Run tests
-        working-directory: augmentos_cloud/packages/cloud
+        working-directory: cloud/packages/cloud
         run: bun run test
       # ^ Executes the test suite (e.g., via Jest, Bun's built-in test runner, or another framework).
       # If any tests fail, the job (and workflow) will fail, preventing deployment.
@@ -83,4 +83,4 @@ jobs:
       #   uses: actions/upload-artifact@v3
       #   with:
       #     name: augmentos_build
-      #     path: augmentos_cloud/**
+      #     path: cloud/**
