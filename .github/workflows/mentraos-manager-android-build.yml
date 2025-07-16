@@ -1,9 +1,9 @@
-name: MentraOS Manager Android Build
+name: Mobile App Android Build
 
 on:
   pull_request:
     paths:
-      - 'mentraos_manager/**'
+      - 'mobile/**'
       - '.github/workflows/mentraos-manager-android-build.yml'
   push:
     branches:
@@ -38,7 +38,7 @@ jobs:
         with:
           node-version: '18'
           cache: 'pnpm'
-          cache-dependency-path: mentraos_manager/package.json
+          cache-dependency-path: mobile/package.json
 
       - name: Install dependencies
         working-directory: ./mobile
@@ -72,4 +72,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: app-debug
-          path: mentraos_manager/android/app/build/outputs/apk/debug/app-debug.apk
+          path: mobile/android/app/build/outputs/apk/debug/app-debug.apk

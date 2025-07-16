@@ -415,5 +415,5 @@ interface RtmpStreamOptions {
 ## Support
 
 - [Discord Community](https://discord.gg/5ukNvkEAqT)
-- [GitHub Issues](https://github.com/Mentra-Community/augmentos_cloud/issues)
+- [GitHub Issues](https://github.com/Mentra-Community/cloud/issues)
 - Email: support@mentra.me

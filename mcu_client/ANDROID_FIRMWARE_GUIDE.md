@@ -284,13 +284,13 @@ From MentraLiveSGC:
 
 Remember: Look at the existing SGC implementations for patterns, but implement based on your specific hardware capabilities and requirements.
 
-## UI Integration in mentraos_manager
+## UI Integration in mobile
 
 To make your new glasses available in the AugmentOS Manager app UI, you need to update several files:
 
 ### 1. Add to Glasses Model List
 
-In `mentraos_manager/src/app/pairing/select-glasses-model.tsx`, add your glasses to the appropriate platform array:
+In `mobile/src/app/pairing/select-glasses-model.tsx`, add your glasses to the appropriate platform array:
 
 ```javascript
 // For Android support
@@ -307,7 +307,7 @@ const glassesOptions = Platform.select({
 
 ### 2. Define Glasses Features
 
-In `mentraos_manager/src/config/glassesFeatures.ts`, add your glasses capabilities:
+In `mobile/src/config/glassesFeatures.ts`, add your glasses capabilities:
 
 ```javascript
 "Your Glasses Model Name": {
@@ -323,7 +323,7 @@ In `mentraos_manager/src/config/glassesFeatures.ts`, add your glasses capabiliti
 
 ### 3. Add Glasses Image
 
-In `mentraos_manager/src/utils/getGlassesImage.tsx`:
+In `mobile/src/utils/getGlassesImage.tsx`:
 
 ```javascript
 switch (glassesModel) {
@@ -333,11 +333,11 @@ switch (glassesModel) {
 }
 ```
 
-Also add your glasses image to `mentraos_manager/assets/glasses/your-glasses-image.png`
+Also add your glasses image to `mobile/assets/glasses/your-glasses-image.png`
 
 ### 4. Create Pairing Guide
 
-In `mentraos_manager/src/components/misc/GlassesPairingGuides.tsx`, add a pairing guide component:
+In `mobile/src/components/misc/GlassesPairingGuides.tsx`, add a pairing guide component:
 
 ```javascript
 const YourGlassesPairingGuide = () => (
@@ -352,7 +352,7 @@ const YourGlassesPairingGuide = () => (
 );
 ```
 
-Then in `mentraos_manager/src/utils/getPairingGuide.tsx`:
+Then in `mobile/src/utils/getPairingGuide.tsx`:
 
 ```javascript
 switch (glassesModel) {
@@ -364,7 +364,7 @@ switch (glassesModel) {
 
 ### 5. WiFi Support (Optional)
 
-If your glasses support WiFi, update `mentraos_manager/src/config/glassesFeatures.ts` to set `wifi: true` for your glasses model:
+If your glasses support WiFi, update `mobile/src/config/glassesFeatures.ts` to set `wifi: true` for your glasses model:
 
 ```javascript
 "Your Glasses Model Name": {

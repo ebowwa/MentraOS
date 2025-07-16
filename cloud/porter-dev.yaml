@@ -7,8 +7,8 @@ namespace: ${PORTER_NAMESPACE}
 
 build:
   method: docker
-  context: ./augmentos_cloud/.
-  dockerfile: ./augmentos_cloud/docker/Dockerfile.porter
+  context: ./cloud/.
+  dockerfile: ./cloud/docker/Dockerfile.porter
 
 services:
 - name: cloud

@@ -9,8 +9,8 @@ K900Server_open/*
 aar_extract/*
 aar-extract/*
 temp_extract/*
-augmentos_asg_client/temp/*
-augmentos_asg_client/app/libs/temp_check/*
+asg_client/temp/*
+asg_client/app/libs/temp_check/*
 ### REACT
 .idea/
 .vscode/
@@ -31,6 +31,12 @@ augmentos_npm/
 **/.expo
 .docusaurus
 **/.docusaurus
+
+.expo
+**/.expo
+.docusaurus
+**/.docusaurus
+**/expo-env.d.ts
 
 ### PYTHON
 #
@@ -322,5 +328,4 @@ server/auth/serviceAccountKey.json
 .env.development
 .env.production
 .env.staging
-augmentos_asg_client/StreamPackLite/
-augmentos_manager/expo-env.d.ts
+asg_client/StreamPackLite/

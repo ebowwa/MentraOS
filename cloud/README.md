@@ -15,7 +15,7 @@ MentraOS is a cloud-based operating system for smart glasses that enables real-t
 1. **Clone the repository:**
    ```bash
    git clone https://github.com/TeamOpenSmartGlasses/MentraOS.git
-   cd MentraOS/augmentos_cloud
+   cd MentraOS/cloud
    ```
 
 2. **Setup Docker network:**

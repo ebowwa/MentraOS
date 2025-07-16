@@ -58,7 +58,7 @@ graph TD
 
 ### System Components
 
-1. **MentraOS Manager** (`mentraos_manager/`):
+1. **MentraOS Manager** (`mobile/`):
    - React Native application for smartphones
    - User interface for managing glasses, apps, and settings
    - Interfaces with native modules on iOS/Android
@@ -68,7 +68,7 @@ graph TD
    - Handles Bluetooth communication with glasses
    - Manages glass connections and capabilities
 
-3. **iOS Native Module** (`mentraos_manager/ios`):
+3. **iOS Native Module** (`mobile/ios`):
    - iOS native module
    - Handles Bluetooth communication with glasses
    - Manages glass connections and capabilities

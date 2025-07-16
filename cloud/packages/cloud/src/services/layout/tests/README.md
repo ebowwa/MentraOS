@@ -15,9 +15,9 @@ This test suite provides a comprehensive testing framework for the DisplayManage
 Run individual test files:
 
 ```bash
-bun augmentos_cloud/packages/cloud/src/services/layout/tests/scenarios/basic-features.test.ts
-bun augmentos_cloud/packages/cloud/src/services/layout/tests/scenarios/boot-scenarios.test.ts
-bun augmentos_cloud/packages/cloud/src/services/layout/tests/scenarios/throttling-scenarios.test.ts
+bun cloud/packages/cloud/src/services/layout/tests/scenarios/basic-features.test.ts
+bun cloud/packages/cloud/src/services/layout/tests/scenarios/boot-scenarios.test.ts
+bun cloud/packages/cloud/src/services/layout/tests/scenarios/throttling-scenarios.test.ts
 ```
 
 ## Directory Structure
