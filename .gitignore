@@ -28,6 +28,12 @@ yarn-error.log*
 .npm/
 augmentos_npm/
 
+.expo
+**/.expo
+.docusaurus
+**/.docusaurus
+**/expo-env.d.ts
+
 ### PYTHON
 #
 #*.bak
