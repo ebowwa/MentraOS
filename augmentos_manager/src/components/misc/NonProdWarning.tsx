@@ -17,7 +17,7 @@ import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 
 export default function NonProdWarning() {
   const {theme, themed} = useAppTheme()
-  const [nonProdBackend, setNonProdBackend] = useState(false)
+  const [isProdBackend, setIsProdBackend] = useState(true)
   const {push} = useNavigationHistory()
 
   const checkNonProdBackend = async () => {
@@ -32,7 +32,7 @@ export default function NonProdWarning() {
       isProd = false
     }
 
-    setNonProdBackend(isProd)
+    setIsProdBackend(isProd)
   }
 
   useFocusEffect(
@@ -42,7 +42,7 @@ export default function NonProdWarning() {
     }, []),
   )
 
-  if (!nonProdBackend) {
+  if (isProdBackend) {
     return null
   }
 
