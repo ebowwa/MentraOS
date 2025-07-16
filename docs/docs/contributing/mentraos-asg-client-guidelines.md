@@ -261,6 +261,6 @@ Could be supported with the changes above:
 
 ## Resources
 
-- [ANDROID_FIRMWARE_GUIDE.md](../../mentraos_mcu_client/ANDROID_FIRMWARE_GUIDE.md) - Guide for creating SmartGlassesCommunicators
+- [ANDROID_FIRMWARE_GUIDE.md](../../mcu_client/ANDROID_FIRMWARE_GUIDE.md) - Guide for creating SmartGlassesCommunicators
 - [ASG_MEDIA_SYSTEM.md](../../asg_client/ASG_MEDIA_SYSTEM.md) - Detailed media system documentation
 - [MentraOS Manager Guidelines](/contributing/mentraos-manager-guidelines) - Mobile app development guide
