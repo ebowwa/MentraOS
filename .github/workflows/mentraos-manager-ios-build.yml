@@ -1,9 +1,9 @@
-name: MentraOS Manager iOS Build
+name: Mobile App iOS Build
 
 on:
   pull_request:
     paths:
-      - 'mentraos_manager/**'
+      - 'mobile/**'
       - '.github/workflows/mentraos-manager-ios-build.yml'
   push:
     branches:
@@ -34,7 +34,7 @@ jobs:
         with:
           node-version: '18'
           cache: 'pnpm'
-          cache-dependency-path: mentraos_manager/package.json
+          cache-dependency-path: mobile/package.json
 
       - name: Install dependencies
         working-directory: ./mobile
@@ -80,10 +80,10 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ios-simulator-build
-          path: mentraos_manager/ios/build/Build/Products/Debug-iphonesimulator/AOS.app
+          path: mobile/ios/build/Build/Products/Debug-iphonesimulator/AOS.app
 
       - name: Upload Device Build
         uses: actions/upload-artifact@v4
         with:
           name: ios-device-build
-          path: mentraos_manager/ios/build-device/Build/Products/Release-iphoneos/AOS.app
+          path: mobile/ios/build-device/Build/Products/Release-iphoneos/AOS.app

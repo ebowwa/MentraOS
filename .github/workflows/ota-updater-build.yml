@@ -3,7 +3,7 @@ name: OTA Updater Build
 on:
   pull_request:
     paths:
-      - 'augmentos_asg_client/ota_updater/**'
+      - 'asg_client/ota_updater/**'
       - '.github/workflows/ota-updater-build.yml'
   push:
     branches:
@@ -39,11 +39,11 @@ jobs:
             ${{ runner.os }}-gradle-
 
       - name: Build Debug APK
-        working-directory: ./augmentos_asg_client/ota_updater
+        working-directory: ./asg_client/ota_updater
         run: ./gradlew assembleDebug
 
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
         with:
           name: ota-updater-debug
-          path: augmentos_asg_client/ota_updater/app/build/outputs/apk/debug/app-debug.apk
+          path: asg_client/ota_updater/app/build/outputs/apk/debug/app-debug.apk

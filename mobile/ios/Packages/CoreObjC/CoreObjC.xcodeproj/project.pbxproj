@@ -100,7 +100,7 @@
 			buildPhases = (
 			);
 			buildToolPath = /usr/bin/make;
-			buildWorkingDirectory = /Users/fosse/dev/AugmentOS/mentraos_manager/ios/Packages/CoreObjC;
+			buildWorkingDirectory = /Users/fosse/dev/AugmentOS/mobile/ios/Packages/CoreObjC;
 			dependencies = (
 			);
 			name = CoreObjC;
