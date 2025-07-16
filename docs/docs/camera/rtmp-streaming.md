@@ -24,6 +24,14 @@ session.camera.onManagedStreamStatus((status) => {
 await session.camera.stopManagedStream();
 ```
 
+## Permission Required
+
+CAMERA permission is mandatory for all streaming operations. Before starting any stream, ensure your app has proper permissions:
+
+**Add to App Manifest**: Include `CAMERA` in your app's permissions in the [Developer Console](https://console.mentra.glass/)
+
+For complete permission setup instructions, see the [Permissions Guide](/permissions).
+
 ## Streaming Options Comparison
 
 ### 🚀 Managed Streaming (Recommended for Most Users)

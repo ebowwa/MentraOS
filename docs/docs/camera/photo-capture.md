@@ -11,6 +11,14 @@ Photo capture allows your app to request individual photos from connected smart 
 - Social sharing features
 - Accessibility tools
 
+## Permissions Required
+
+Before using photo capture, your app must have the `CAMERA` permission:
+
+**Add to App Manifest**: Include `CAMERA` in your app's permissions in the [Developer Console](https://console.mentra.glass/)
+
+For complete permission setup instructions, see the [Permissions Guide](/permissions).
+
 ## Basic Usage
 
 ### Simple Photo Capture

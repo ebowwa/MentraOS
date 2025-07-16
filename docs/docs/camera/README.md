@@ -94,7 +94,7 @@ await uploadToCloudStorage(photo.buffer);
 
 ## 🚨 Important Notes
 
-- **Permissions**: Camera access requires the `camera` permission in your app manifest
+- **Permissions**: Camera access requires the `CAMERA` permission in your app manifest. See [Permissions Guide](/permissions) for setup instructions.
 - **Hardware**: Only available on camera-equipped glasses (e.g., Mentra Live)
 - **Battery**: Extended streaming can drain battery quickly
 - **Privacy**: Always notify users when camera is active

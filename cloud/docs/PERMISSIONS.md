@@ -15,6 +15,7 @@ MentraOS defines the following permission types:
 | `MICROPHONE` | Access to audio data and speech recognition | Audio streams, transcription, translation |
 | `LOCATION` | Access to user's location data | Location updates |
 | `CALENDAR` | Access to calendar events | Calendar data |
+| `CAMERA` | Access to camera for photo capture and video streaming | Photo requests, RTMP streams |
 | `NOTIFICATIONS` | Access to phone notifications | Phone notifications |
 | `ALL` | Access to all data streams | Legacy apps and system applications |
 
@@ -33,6 +34,12 @@ Here are the streams that require specific permissions:
 
 - **CALENDAR Permission**:
   - `calendar_event`
+
+- **CAMERA Permission**:
+  - `photo_response`
+  - `photo_taken`
+  - `rtmp_stream_status`
+  - `managed_stream_status`
 
 - **NOTIFICATIONS Permission**:
   - `phone_notification`

@@ -5,6 +5,7 @@ export enum PermissionType {
   MICROPHONE = 'MICROPHONE',
   LOCATION = 'LOCATION',
   CALENDAR = 'CALENDAR',
+  CAMERA = 'CAMERA',
 
   // Legacy permission (backward compatibility)
   NOTIFICATIONS = 'NOTIFICATIONS',

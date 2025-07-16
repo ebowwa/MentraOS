@@ -28,6 +28,7 @@ import {
   RtmpStreamStopRequest,
   ManagedStreamRequest,
   ManagedStreamStopRequest,
+  PermissionType,
 } from '@mentra/sdk';
 import UserSession from '../session/UserSession';
 import * as developerService from '../core/developer.service';
@@ -37,6 +38,8 @@ import { logger as rootLogger } from '../logging/pino-logger';
 import photoRequestService from '../core/photo-request.service';
 import e from 'express';
 import { locationService } from '../core/location.service';
+import { SimplePermissionChecker } from '../permissions/simple-permission-checker';
+import App from '../../models/app.model';
 
 const SERVICE_NAME = 'websocket-app.service';
 const logger = rootLogger.child({ service: SERVICE_NAME });
@@ -53,6 +56,7 @@ export enum AppErrorCode {
   INVALID_API_KEY = 'INVALID_API_KEY',
   SESSION_NOT_FOUND = 'SESSION_NOT_FOUND',
   MALFORMED_MESSAGE = 'MALFORMED_MESSAGE',
+  PERMISSION_DENIED = 'PERMISSION_DENIED',
   INTERNAL_ERROR = 'INTERNAL_ERROR'
 }
 
@@ -215,13 +219,21 @@ export class AppWebSocketService {
 
         // Mentra Live Photo / Video Stream Request message handling.
         case AppToCloudMessageType.RTMP_STREAM_REQUEST:
-          // Delegate to VideoManager
-          // The RtmpStreamRequest SDK type should be used by the App
+          // Check camera permission before processing RTMP stream request
           try {
-            const streamId = await userSession.videoManager.startRtmpStream(message as RtmpStreamRequest);
-            // Optionally send an immediate ack to App if startRtmpStream doesn't or if App expects it
-            // (VideoManager.startRtmpStream already sends initial status)
-            this.logger.info({ streamId, packageName: message.packageName }, "RTMP Stream request processed by VideoManager.");
+            const rtmpRequestMsg = message as RtmpStreamRequest;
+
+            // Check if app has camera permission
+            const hasCameraPermission = await this.checkCameraPermission(rtmpRequestMsg.packageName, userSession);
+            if (!hasCameraPermission) {
+              this.logger.warn({ packageName: rtmpRequestMsg.packageName, userId: userSession.userId }, 'RTMP stream request denied: app does not have CAMERA permission');
+              this.sendError(appWebsocket, AppErrorCode.PERMISSION_DENIED, 'Camera permission required to start video streams. Please add the CAMERA permission in the developer console.');
+              break;
+            }
+
+            // Delegate to VideoManager
+            const streamId = await userSession.videoManager.startRtmpStream(rtmpRequestMsg);
+            this.logger.info({ streamId, packageName: rtmpRequestMsg.packageName }, "RTMP Stream request processed by VideoManager.");
           } catch (e) {
             this.logger.error({ e, packageName: message.packageName }, "Error starting RTMP stream via VideoManager");
             this.sendError(appWebsocket, AppErrorCode.INTERNAL_ERROR, (e as Error).message || "Failed to start stream.");
@@ -249,21 +261,19 @@ export class AppWebSocketService {
           break;
 
         case AppToCloudMessageType.PHOTO_REQUEST:
-          // Delegate to PhotoManager
-          // The AppPhotoRequestSDK type should be used by the App
-          // PhotoManager's requestPhoto now takes the AppPhotoRequestSDK object
+          // Check camera permission before processing photo request
           try {
             const photoRequestMsg = message as PhotoRequest;
-            // The PhotoManager's requestPhoto method now takes the entire App request object
-            // and internally extracts what it needs, plus gets the appWebSocket.
-            // The old `photoRequestService.createAppPhotoRequest` took `userId, appId, ws, config`.
-            // The new `PhotoManager.requestPhoto` will take the `AppPhotoRequestSDK` object
-            // and the `appWs` is passed from `handleAppMessage`.
-            // We need to make sure the PhotoManager has access to the appWs that sent this message.
-            // The current PhotoManager.requestPhoto is:
-            // async requestPhoto(appRequest: AppPhotoRequestSDK): Promise<string>
-            // It internally uses this.userSession.appWebsockets.get(appRequest.packageName) to get the websocket.
-            // This is fine if the App ws is already stored by AppManager.handleAppInit.
+
+            // Check if app has camera permission
+            const hasCameraPermission = await this.checkCameraPermission(photoRequestMsg.packageName, userSession);
+            if (!hasCameraPermission) {
+              this.logger.warn({ packageName: photoRequestMsg.packageName, userId: userSession.userId }, 'Photo request denied: app does not have CAMERA permission');
+              this.sendError(appWebsocket, AppErrorCode.PERMISSION_DENIED, 'Camera permission required to take photos. Please add the CAMERA permission in the developer console.');
+              break;
+            }
+
+            // Delegate to PhotoManager
             const requestId = await userSession.photoManager.requestPhoto(photoRequestMsg);
             this.logger.info({ requestId, packageName: photoRequestMsg.packageName }, "Photo request processed by PhotoManager.");
           } catch(e) {
@@ -342,6 +352,15 @@ export class AppWebSocketService {
         case AppToCloudMessageType.MANAGED_STREAM_REQUEST:
           try {
             const managedReq = message as ManagedStreamRequest;
+
+            // Check if app has camera permission
+            const hasCameraPermission = await this.checkCameraPermission(managedReq.packageName, userSession);
+            if (!hasCameraPermission) {
+              this.logger.warn({ packageName: managedReq.packageName, userId: userSession.userId }, 'Managed stream request denied: app does not have CAMERA permission');
+              this.sendError(appWebsocket, AppErrorCode.PERMISSION_DENIED, 'Camera permission required to start managed streams. Please add the CAMERA permission in the developer console.');
+              break;
+            }
+
             const streamId = await userSession.managedStreamingExtension.startManagedStream(
               userSession,
               managedReq
@@ -585,6 +604,31 @@ export class AppWebSocketService {
     };
 
     userSession.websocket.send(JSON.stringify(clientResponse));
+  }
+
+  /**
+   * Check if an app has the CAMERA permission
+   *
+   * @param packageName App package name
+   * @param userSession User session
+   * @returns Promise<boolean> true if app has camera permission, false otherwise
+   */
+  private async checkCameraPermission(packageName: string, userSession: UserSession): Promise<boolean> {
+    try {
+      // Get app details
+      const app = await App.findOne({ packageName });
+
+      if (!app) {
+        logger.warn({ packageName, userId: userSession.userId }, 'App not found when checking camera permissions');
+        return false;
+      }
+
+      // Check if app has camera permission
+      return SimplePermissionChecker.hasPermission(app, PermissionType.CAMERA);
+    } catch (error) {
+      logger.error({ error, packageName, userId: userSession.userId }, 'Error checking camera permission');
+      return false;
+    }
   }
 
   /**

@@ -37,6 +37,13 @@ describe('SimplePermissionChecker', () => {
       expect(SimplePermissionChecker.getRequiredPermissionForStream(StreamType.CALENDAR_EVENT)).toBe(PermissionType.CALENDAR);
     });
 
+    it('should return the correct permission for camera streams', () => {
+      expect(SimplePermissionChecker.getRequiredPermissionForStream(StreamType.PHOTO_RESPONSE)).toBe(PermissionType.CAMERA);
+      expect(SimplePermissionChecker.getRequiredPermissionForStream(StreamType.PHOTO_TAKEN)).toBe(PermissionType.CAMERA);
+      expect(SimplePermissionChecker.getRequiredPermissionForStream(StreamType.RTMP_STREAM_STATUS)).toBe(PermissionType.CAMERA);
+      expect(SimplePermissionChecker.getRequiredPermissionForStream(StreamType.MANAGED_STREAM_STATUS)).toBe(PermissionType.CAMERA);
+    });
+
     it('should return the correct permission for notification streams', () => {
       expect(SimplePermissionChecker.getRequiredPermissionForStream(StreamType.PHONE_NOTIFICATION)).toBe(PermissionType.READ_NOTIFICATIONS);
       expect(SimplePermissionChecker.getRequiredPermissionForStream(StreamType.PHONE_NOTIFICATION_DISMISSED)).toBe(PermissionType.READ_NOTIFICATIONS);
@@ -70,11 +77,22 @@ describe('SimplePermissionChecker', () => {
       expect(SimplePermissionChecker.hasPermission(app, PermissionType.MICROPHONE)).toBe(false);
     });
 
+    it('should return true when app has camera permission', () => {
+      const app = createTestApp([{ type: PermissionType.CAMERA }]);
+      expect(SimplePermissionChecker.hasPermission(app, PermissionType.CAMERA)).toBe(true);
+    });
+
+    it('should return false when app does not have camera permission', () => {
+      const app = createTestApp([{ type: PermissionType.MICROPHONE }]);
+      expect(SimplePermissionChecker.hasPermission(app, PermissionType.CAMERA)).toBe(false);
+    });
+
     it('should return true for any permission when app has ALL permission', () => {
       const app = createTestApp([{ type: PermissionType.ALL }]);
       expect(SimplePermissionChecker.hasPermission(app, PermissionType.MICROPHONE)).toBe(true);
       expect(SimplePermissionChecker.hasPermission(app, PermissionType.LOCATION)).toBe(true);
       expect(SimplePermissionChecker.hasPermission(app, PermissionType.CALENDAR)).toBe(true);
+      expect(SimplePermissionChecker.hasPermission(app, PermissionType.CAMERA)).toBe(true);
       expect(SimplePermissionChecker.hasPermission(app, PermissionType.READ_NOTIFICATIONS)).toBe(true);
     });
 
@@ -137,6 +155,40 @@ describe('SimplePermissionChecker', () => {
         { stream: StreamType.AUDIO_CHUNK, requiredPermission: PermissionType.MICROPHONE },
         { stream: StreamType.CALENDAR_EVENT, requiredPermission: PermissionType.CALENDAR }
       ]);
+    });
+
+    it('should filter out camera streams for apps without camera permission', () => {
+      const app = createTestApp([{ type: PermissionType.MICROPHONE }]);
+      const subscriptions = [
+        StreamType.BUTTON_PRESS,        // No permission required
+        StreamType.AUDIO_CHUNK,         // Has MICROPHONE permission
+        StreamType.PHOTO_RESPONSE,      // No CAMERA permission
+        StreamType.RTMP_STREAM_STATUS   // No CAMERA permission
+      ];
+
+      const { allowed, rejected } = SimplePermissionChecker.filterSubscriptions(app, subscriptions);
+      expect(allowed).toEqual([
+        StreamType.BUTTON_PRESS,
+        StreamType.AUDIO_CHUNK
+      ]);
+      expect(rejected).toEqual([
+        { stream: StreamType.PHOTO_RESPONSE, requiredPermission: PermissionType.CAMERA },
+        { stream: StreamType.RTMP_STREAM_STATUS, requiredPermission: PermissionType.CAMERA }
+      ]);
+    });
+
+    it('should allow camera streams for apps with camera permission', () => {
+      const app = createTestApp([{ type: PermissionType.CAMERA }]);
+      const subscriptions = [
+        StreamType.PHOTO_RESPONSE,
+        StreamType.PHOTO_TAKEN,
+        StreamType.RTMP_STREAM_STATUS,
+        StreamType.MANAGED_STREAM_STATUS
+      ];
+
+      const { allowed, rejected } = SimplePermissionChecker.filterSubscriptions(app, subscriptions);
+      expect(allowed).toEqual(subscriptions);
+      expect(rejected).toEqual([]);
     });
 
     it('should allow all streams when app has ALL permission', () => {
