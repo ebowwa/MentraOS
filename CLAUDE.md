@@ -16,7 +16,7 @@ MentraOS is an open source operating system, app store, and development framewor
 
 ## Build Commands
 
-### React Native (mentraos_manager)
+### React Native (mobile)
 - Start dev server: `npm start`
 - Run on platforms: `npm run android`, `npm run ios`
 - Build Android: `npm run build-android`, `npm run build-android-release`
@@ -24,7 +24,7 @@ MentraOS is an open source operating system, app store, and development framewor
 - Lint code: `npm run lint`
 - iOS setup: `cd ios && pod install && cd ..`
 
-### Cloud Backend (augmentos_cloud)
+### Cloud Backend (cloud)
 - Install deps: `bun install`
 - Setup environment: `./scripts/docker-setup.sh` or `bun run setup-deps && bun run dev`
 - Setup Docker network: `bun run dev:setup-network`
