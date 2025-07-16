@@ -101,8 +101,6 @@ public class CameraNeo extends LifecycleService {
     /**
      * SIMPLIFIED AUTOEXPOSURE AND AUTOFOCUS SYSTEM
      *
-     * This replaces the previous complex 4-phase state machine with a much simpler approach:
-     *
      * 1. WAITING_FOCUS: Trigger both AE and AF precapture, wait up to 0.8 seconds for convergence
      *    - Waits for AE_STATE_CONVERGED/FLASH_REQUIRED/LOCKED and AF_STATE_FOCUSED_LOCKED/PASSIVE_FOCUSED
      *    - Has a 0.8 second timeout for fast response (slightly longer to allow AF to work)
@@ -110,12 +108,6 @@ public class CameraNeo extends LifecycleService {
      * 2. SHOOTING: Capture the photo immediately with high quality settings
      *    - No complex AE/AF locking sequence
      *    - Relies on Camera2 API to handle exposure and focus properly
-     *
-     * Benefits:
-     * - Fast photo capture with good focus (typically <0.8 seconds)
-     * - Simpler state management with fewer failure points
-     * - Modern Camera2 API handles most AE/AF convergence internally
-     * - Better focus accuracy compared to continuous-only mode
      */
 
     // Simplified AE/AF system - wait briefly for both to converge
