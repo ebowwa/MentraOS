@@ -45,9 +45,6 @@ class ServerComms {
   
   private var reconnecting: Bool = false
   private var reconnectionAttempts: Int = 0
-  public let calendarManager = CalendarManager()
-  public let locationManager = LocationManager()
-  public let mediaManager = MediaManager()
   
   static func getInstance() -> ServerComms {
     if instance == nil {
@@ -87,24 +84,6 @@ class ServerComms {
       guard let self = self else { return }
       let isoDatetime = ServerComms.getCurrentIsoDatetime()
       self.sendUserDatetimeToBackend(isoDatetime: isoDatetime)
-    }
-    
-    // send location updates every 15 minutes:
-    // TODO: ios (left out for now for battery savings)
-    //    let fifteenMinutes: TimeInterval = 15 * 60
-    //    Timer.scheduledTimer(withTimeInterval: fifteenMinutes, repeats: true) { [weak self] _ in
-    //      CoreCommsService.log("Periodic location update")
-    //      self?.sendLocationUpdates()
-    //    }
-    
-    // Setup calendar change notifications
-    calendarManager.setCalendarChangedCallback { [weak self] in
-      self?.sendCalendarEvents()
-    }
-    
-    // setup location change notification:
-    locationManager.setLocationChangedCallback { [weak self] in
-      self?.sendLocationUpdates()
     }
     
   }

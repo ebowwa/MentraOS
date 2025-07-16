@@ -41,6 +41,10 @@ struct ViewState {
   @objc var liveManager: MentraLiveManager?
   var micManager: OnboardMicrophoneManager!
   var serverComms: ServerComms!
+  public let calendarManager = CalendarManager()
+  public let locationManager = LocationManager()
+  public let mediaManager = MediaManager()
+  
 
   private var lastStatusObj: [String: Any] = [:]
 
@@ -112,8 +116,6 @@ struct ViewState {
   @objc public func setup() {
 
     self.micManager = OnboardMicrophoneManager()
-    self.serverComms.locationManager.setup()
-    self.serverComms.mediaManager.setup()
 
     // Set up the ServerComms callback
     self.serverComms.setServerCommsCallback(self)
@@ -121,11 +123,16 @@ struct ViewState {
 
     // Set up voice data handling
     setupVoiceDataHandling()
-
-    // configure on board mic:
-    //    setupOnboardMicrophoneIfNeeded()
     
-    // initManagerCallbacks()
+    // Setup calendar change notifications
+    self.calendarManager.setCalendarChangedCallback { [weak self] in
+      self?.sendCalendarEvents()
+    }
+    
+    // setup location change notification:
+    self.locationManager.setLocationChangedCallback { [weak self] in
+      self?.sendLocationUpdates()
+    }
 
     // Subscribe to WebSocket status changes
     serverComms.wsManager.status
@@ -497,6 +504,11 @@ struct ViewState {
     }
   }
 
+  
+  private func sendLocationUpdate() {
+    // TODO: 
+  }
+  
   // MARK: - ServerCommsCallback Implementation
 
   func onMicrophoneStateChange(_ isEnabled: Bool) {
