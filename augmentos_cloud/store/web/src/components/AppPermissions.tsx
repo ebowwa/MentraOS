@@ -6,14 +6,15 @@ export enum PermissionType {
   MICROPHONE = 'MICROPHONE',
   LOCATION = 'LOCATION',
   CALENDAR = 'CALENDAR',
-  
+  CAMERA = 'CAMERA',
+
   // Legacy permission (backward compatibility)
   NOTIFICATIONS = 'NOTIFICATIONS',
-  
+
   // New granular notification permissions
   READ_NOTIFICATIONS = 'READ_NOTIFICATIONS',
   POST_NOTIFICATIONS = 'POST_NOTIFICATIONS',
-  
+
   ALL = 'ALL'
 }
 
@@ -62,6 +63,12 @@ const PERMISSION_DISPLAY_INFO: Record<string, {
     isLegacy: false,
     category: 'calendar'
   },
+  [PermissionType.CAMERA]: {
+    label: 'Camera',
+    description: 'Access to camera for photo capture and video streaming',
+    isLegacy: false,
+    category: 'camera'
+  },
   [PermissionType.ALL]: {
     label: 'All Permissions',
     description: 'Access to all available permissions',
@@ -89,7 +96,7 @@ const getPermissionDescription = (type: string): string => {
   if (info) {
     return info.description;
   }
-  
+
   // Fallback for any unmapped permissions
   switch (type) {
     case 'MICROPHONE':
@@ -117,7 +124,7 @@ const getPermissionLabel = (type: string): string => {
   if (info) {
     return info.label;
   }
-  
+
   // Fallback to just the type name
   return type.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase());
 };
@@ -142,11 +149,11 @@ export function AppPermissions({ permissions }: AppPermissionsProps) {
         <ShieldAlert className="h-5 w-5 text-orange-500 mt-0.5 mr-2" />
         <p className="text-sm text-gray-600">This app requires the following permissions:</p>
       </div>
-      
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {permissions.map((permission, index) => (
-          <div 
-            key={index} 
+          <div
+            key={index}
             className="border border-gray-200 rounded-md p-4 bg-gray-50 hover:bg-gray-100 transition-colors"
           >
             <div className="flex items-center gap-2 mb-2">

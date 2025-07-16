@@ -105,7 +105,31 @@ session.events.on<CalendarEvent>(StreamType.CALENDAR_EVENT, (data) => {
 });
 ```
 
-### 4. **READ_NOTIFICATIONS**
+### 4. **CAMERA**
+
+- **Purpose**: Access to camera for photo capture and video streaming
+- **Data Streams Enabled**:
+  - [`PHOTO_RESPONSE`](/reference/enums#streamtype) - Photo capture responses
+  - [`PHOTO_TAKEN`](/reference/enums#streamtype) - Photo capture events
+  - [`RTMP_STREAM_STATUS`](/reference/enums#streamtype) - RTMP streaming status updates
+  - [`MANAGED_STREAM_STATUS`](/reference/enums#streamtype) - Managed streaming status updates
+
+- **Common Use Cases**: Photo documentation, live streaming, video recording, security monitoring
+
+```typescript
+// Example: Using camera permission
+session.camera.requestPhoto({ saveToGallery: true }).then((photo) => {
+  console.log('Photo captured:', photo.filename);
+  // Process the captured photo
+});
+
+// Start streaming
+session.camera.startStream({
+  rtmpUrl: 'rtmp://example.com/live/stream-key'
+});
+```
+
+### 5. **READ_NOTIFICATIONS**
 
 - **Purpose**: Access to device notifications
 - **Data Streams Enabled**:
