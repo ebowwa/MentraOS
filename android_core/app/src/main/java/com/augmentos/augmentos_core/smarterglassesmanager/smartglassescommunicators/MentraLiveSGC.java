@@ -2206,7 +2206,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                         readyMsg.put("timestamp", System.currentTimeMillis());
 
                         // Send it through our data channel (no ACK needed for readiness checks)
-                        sendJsonWithoutAck(readyMsg);
+                        sendJsonWithoutAck(readyMsg, true);
                     } catch (JSONException e) {
                         Log.e(TAG, "Error creating phone_ready message", e);
                     }
