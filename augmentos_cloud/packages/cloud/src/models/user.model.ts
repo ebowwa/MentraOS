@@ -635,19 +635,28 @@ UserSchema.statics.findOrCreateUser = async function (email: string): Promise<Us
   let isNewUser = false;
 
   if (!user) {
-    user = await this.create({ email });
-    isNewUser = true;
-
-    // Create personal organization for new user if they don't have one
-    // Import OrganizationService to avoid circular dependency
-    const { OrganizationService } = require('../services/core/organization.service');
-
-    // Check if the user already has organizations
-    if (!user.organizations || user.organizations.length === 0) {
-      const personalOrgId = await OrganizationService.createPersonalOrg(user);
-      user.organizations = [personalOrgId];
-      user.defaultOrg = personalOrgId;
+    try {
+      user = await this.create({ email });
       await user.save();
+      isNewUser = true;
+
+      // Create personal organization for new user if they don't have one
+      // Import OrganizationService to avoid circular dependency
+      const { OrganizationService } = require('../services/core/organization.service');
+
+      // Check if the user already has organizations
+      if (!user.organizations || user.organizations.length === 0) {
+        const personalOrgId = await OrganizationService.createPersonalOrg(user);
+        user.organizations = [personalOrgId];
+        user.defaultOrg = personalOrgId;
+        await user.save();
+      }
+    } catch (error) {
+      console.error(error, 'Error creating user');
+      user = await this.findOne({ email });
+      if (!user) {
+        throw new Error('User not found after error creating user');
+      }
     }
   }
 

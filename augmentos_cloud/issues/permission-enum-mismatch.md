@@ -19,7 +19,7 @@ Developer frontend changes modified the permission enum without updating backend
 ```typescript
 // In simple-permission-checker.ts
 [StreamType.PHONE_NOTIFICATION, PermissionType.READ_NOTIFICATIONS],        // ❌ Error
-[StreamType.NOTIFICATION_DISMISSED, PermissionType.READ_NOTIFICATIONS],    // ❌ Error
+[StreamType.PHONE_NOTIFICATION_DISMISSED, PermissionType.READ_NOTIFICATIONS],    // ❌ Error
 
 // Error: Property 'READ_NOTIFICATIONS' does not exist on type 'typeof PermissionType'
 ```
@@ -97,7 +97,7 @@ Permissions are stored as strings in the `permissions` array within app document
 
 | Permission | Purpose | Use Cases | Stream Access |
 |------------|---------|-----------|---------------|
-| **READ_NOTIFICATIONS** | Access incoming phone notifications | Dashboard app, notification summary agents | `PHONE_NOTIFICATION`, `NOTIFICATION_DISMISSED` |
+| **READ_NOTIFICATIONS** | Access incoming phone notifications | Dashboard app, notification summary agents | `PHONE_NOTIFICATION`, `PHONE_NOTIFICATION_DISMISSED` |
 | **POST_NOTIFICATIONS** | Send notifications to phone | Notify App, reminder apps | N/A (uses different API) |
 | **NOTIFICATIONS (Legacy)** | Read phone notifications (deprecated) | Existing apps using old permission | Maps to `READ_NOTIFICATIONS` |
 
@@ -106,7 +106,7 @@ Permissions are stored as strings in the `permissions` array within app document
 ```typescript
 // Stream types to permission mapping (in simple-permission-checker.ts)
 [StreamType.PHONE_NOTIFICATION, PermissionType.READ_NOTIFICATIONS],      // Requires read access
-[StreamType.NOTIFICATION_DISMISSED, PermissionType.READ_NOTIFICATIONS],  // Requires read access
+[StreamType.PHONE_NOTIFICATION_DISMISSED, PermissionType.READ_NOTIFICATIONS],  // Requires read access
 
 // Note: POST_NOTIFICATIONS doesn't map to streams - it's for API-based notification sending
 ```
@@ -190,7 +190,7 @@ export class SimplePermissionChecker {
 
     // Notification streams - now use READ_NOTIFICATIONS
     [StreamType.PHONE_NOTIFICATION, PermissionType.READ_NOTIFICATIONS],
-    [StreamType.NOTIFICATION_DISMISSED, PermissionType.READ_NOTIFICATIONS],
+    [StreamType.PHONE_NOTIFICATION_DISMISSED, PermissionType.READ_NOTIFICATIONS],
   ]);
 
   /**

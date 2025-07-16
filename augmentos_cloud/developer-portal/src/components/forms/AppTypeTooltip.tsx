@@ -17,16 +17,16 @@ const AppTypeTooltip: React.FC = () => {
         <TooltipContent className="max-w-sm p-4">
           <div className="space-y-3">
             <div>
-              <p className="font-semibold text-blue-600">Standard Apps (Foreground)</p>
-              <p className="text-sm text-gray-700">
+              <p className="font-semibold text-blue-300">Standard Apps (Foreground)</p>
+              <p className="text-sm text-gray-200">
                 • Only one standard app can run at a time<br />
                 • Has primary control of the display<br />
                 • Starting a standard app closes any other running standard app
               </p>
             </div>
             <div>
-              <p className="font-semibold text-green-600">Background Apps</p>
-              <p className="text-sm text-gray-700">
+              <p className="font-semibold text-green-300">Background Apps</p>
+              <p className="text-sm text-gray-200">
                 • Multiple background apps can be active simultaneously<br />
                 • Can temporarily take control of the display<br />
                 • Take priority when no standard app is displaying content

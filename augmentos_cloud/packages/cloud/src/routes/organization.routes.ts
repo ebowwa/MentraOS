@@ -52,7 +52,7 @@ const authMiddleware = async (req: Request, res: Response, next: NextFunction) =
 
     next();
   } catch (error) {
-    logger.error('Token verification error:', error);
+    logger.error(error, 'Token verification error:');
     return res.status(401).json({
       success: false,
       message: 'Authentication failed'

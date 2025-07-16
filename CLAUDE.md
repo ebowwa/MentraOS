@@ -6,9 +6,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 MentraOS is an open source operating system, app store, and development framework for smart glasses.
 
 - Architecture: Smart glasses connect to user's phone via BLE; phone connects to backend; backend connects to third-party app servers running the MentraOS SDK
-- Mobile app: `augmentos_manager` (React Native with native modules)
+- Mobile app: `mentraos_manager` (React Native with native modules)
 - Android logic: `augmentos_core`
-- iOS native module: `augmentos_manager/ios`
+- iOS native module: `mentraos_manager/ios`
 - Backend & web portals: `augmentos_cloud` (includes developer portal & app store)
 - Android-based smart glasses client: `augmentos_asg_client` (uses `augmentos_core` as a library)
 - MentraOS Store: `augmentos_cloud/store/` (web app for app discovery)
@@ -16,7 +16,7 @@ MentraOS is an open source operating system, app store, and development framewor
 
 ## Build Commands
 
-### React Native (augmentos_manager)
+### React Native (mentraos_manager)
 - Start dev server: `npm start`
 - Run on platforms: `npm run android`, `npm run ios`
 - Build Android: `npm run build-android`, `npm run build-android-release`

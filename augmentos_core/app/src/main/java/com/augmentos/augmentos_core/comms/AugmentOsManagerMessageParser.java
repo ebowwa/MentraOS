@@ -114,6 +114,12 @@ public class AugmentOsManagerMessageParser {
                     callback.handleNotificationData(notificationData);
                     break;
 
+                case "phone_notification_dismissed":
+                    JSONObject dismissalData = commandObject.getJSONObject("params");
+                    Log.d(TAG, "Received notification dismissal: " + dismissalData.toString());
+                    callback.handleNotificationDismissal(dismissalData);
+                    break;
+
                 case "set_auth_secret_key":
                     String userId = commandObject.getJSONObject("params").getString("userId");
                     String authKey = commandObject.getJSONObject("params").getString("authSecretKey");
@@ -200,6 +206,17 @@ public class AugmentOsManagerMessageParser {
                 case "audio_stop_request":
                     JSONObject audioStopParams = commandObject.getJSONObject("params");
                     callback.onAudioStopRequest(audioStopParams);
+                    break;
+
+                case "simulate_head_position":
+                    String position = commandObject.getJSONObject("params").getString("position");
+                    callback.simulateHeadPosition(position);
+                    break;
+
+                case "simulate_button_press":
+                    String buttonId = commandObject.getJSONObject("params").getString("buttonId");
+                    String pressType = commandObject.getJSONObject("params").getString("pressType");
+                    callback.simulateButtonPress(buttonId, pressType);
                     break;
 
                 default:

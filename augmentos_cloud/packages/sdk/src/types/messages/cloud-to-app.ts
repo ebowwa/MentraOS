@@ -107,6 +107,8 @@ export interface TranscriptionData extends BaseMessage {
   endTime: number;  // End time in milliseconds
   speakerId?: string;  // ID of the speaker if available
   duration?: number;  // Audio duration in milliseconds
+  provider?: string;  // The transcription provider (e.g., "azure", "soniox")
+  confidence?: number;  // Confidence score (0-1)
 }
 
 /**
@@ -124,6 +126,8 @@ export interface TranslationData extends BaseMessage {
   transcribeLanguage?: string;  // The language code of the transcribed text
   translateLanguage?: string;  // The language code of the translated text
   didTranslate?: boolean;  // Whether the text was translated
+  provider?: string;  // The translation provider (e.g., "azure", "google")
+  confidence?: number;  // Confidence score (0-1)
 }
 
 /**
@@ -197,6 +201,20 @@ export interface CustomMessage extends BaseMessage {
 }
 
 /**
+ * Output status for a re-stream destination
+ */
+export interface OutputStatus {
+  /** The destination URL */
+  url: string;
+  /** Friendly name if provided */
+  name?: string;
+  /** Status of this output */
+  status: 'active' | 'error' | 'stopped';
+  /** Error message if status is error */
+  error?: string;
+}
+
+/**
  * Managed RTMP stream status update
  * Sent when managed stream status changes or URLs are ready
  */
@@ -208,6 +226,8 @@ export interface ManagedStreamStatus extends BaseMessage {
   webrtcUrl?: string;
   message?: string;
   streamId?: string;
+  /** Status of re-stream outputs if configured */
+  outputs?: OutputStatus[];
 }
 
 /**

@@ -23,22 +23,22 @@ const APPSTORE_ENABLED = true;
 export const SYSTEM_DASHBOARD_PACKAGE_NAME = process.env.SYSTEM_DASHBOARD_PACKAGE_NAME || 'dev.augmentos.dashboard';
 export const PRE_INSTALLED = ["com.augmentos.livecaptions", "cloud.augmentos.notify", "cloud.augmentos.mira"];
 export const PRE_INSTALLED_DEBUG = [
-  "com.mentra.link",
-  "com.mentra.notes",
-  "com.mentra.soundy",
-  "com.mentra.cactusai",
-  "com.mentra.hive",
+  // "com.mentra.link",
+  // "com.mentra.notes",
+  // "com.mentra.soundy",
+  // "com.mentra.cactusai",
+  // "com.mentra.hive",
 
-  "com.augmentos.calendarreminder",
-  "com.augmentos.xstats",
-  "com.augmentos.tictactoe",
-  "com.augmentos.displaytext",
-  "com.augmentos.shazam",
+  // "com.augmentos.calendarreminder",
+  // "com.augmentos.xstats",
+  // "com.augmentos.tictactoe",
+  // "com.augmentos.displaytext",
+  // "com.augmentos.shazam",
 
-  "cloud.augmentos.aughog",
-  "cloud.augmentos.recorder",
-
+  // "cloud.augmentos.aughog",
+  // "cloud.augmentos.recorder",
 ];
+
 // export const PRE_INSTALLED = ["cloud.augmentos.live-captions-global", "cloud.augmentos.notify", "cloud.augmentos.mira"];
 
 if (process.env.NODE_ENV !== 'production' || process.env.DEBUG_APPS === 'true') {

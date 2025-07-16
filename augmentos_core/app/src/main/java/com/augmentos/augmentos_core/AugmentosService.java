@@ -1918,7 +1918,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         });
     }
 
-    // AugmentOS_Manager Comms Callbacks
+    // MentraOS_Manager Comms Callbacks
     public void sendStatusToBackend() {
         JSONObject status = generateStatusJson();
         Log.d(TAG, "Sending status to backend: " + status.toString());
@@ -2221,6 +2221,27 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             }
         } catch (JSONException e) {
             Log.d(TAG, "JSONException occurred while handling notification data: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public void handleNotificationDismissal(JSONObject dismissalData) {
+        try {
+            String appName = dismissalData.getString("app_name");
+            String title = dismissalData.getString("title");
+            String text = dismissalData.getString("text");
+            String notificationKey = dismissalData.getString("notification_key");
+
+            Log.d(TAG, "🚨 NOTIFICATION DISMISSED: " + appName + " - " + title);
+            Log.d(TAG, "📝 Dismissal details - Text: " + text + ", Key: " + notificationKey);
+            
+            // Send dismissal to server via ServerComms
+            String uuid = java.util.UUID.randomUUID().toString();
+            ServerComms.getInstance().sendPhoneNotificationDismissal(uuid, appName, title, text, notificationKey);
+            Log.d(TAG, "📡 Sent notification dismissal to server - UUID: " + uuid);
+            
+        } catch (JSONException e) {
+            Log.e(TAG, "Error parsing notification dismissal data", e);
         }
     }
 
@@ -2879,5 +2900,27 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         this.glassesColor = event.color;
         Log.d(TAG, "Glasses serial number: " + glassesSerialNumber + ", Style: " + glassesStyle + ", Color: " + glassesColor);
         sendStatusToAugmentOsManager();
+    }
+
+    @Override
+    public void simulateHeadPosition(String position) {
+        Log.d(TAG, "Simulating head position: " + position);
+
+        if ("up".equals(position)) {
+            onGlassesHeadUpEvent(new GlassesHeadUpEvent());
+        } else {
+            onGlassesHeadDownEvent(new GlassesHeadDownEvent());
+        }
+    }
+
+    @Override
+    public void simulateButtonPress(String buttonId, String pressType) {
+        Log.d(TAG, "Simulating button press: " + buttonId + " " + pressType);
+
+        String deviceModel = "";
+        if(smartGlassesManager != null && smartGlassesManager.getConnectedSmartGlasses() != null)
+            deviceModel = smartGlassesManager.getConnectedSmartGlasses().deviceModelName;
+
+        EventBus.getDefault().post(new ButtonPressEvent(deviceModel, buttonId, pressType));
     }
 }

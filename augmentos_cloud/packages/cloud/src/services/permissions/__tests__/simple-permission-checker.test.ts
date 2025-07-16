@@ -39,7 +39,7 @@ describe('SimplePermissionChecker', () => {
 
     it('should return the correct permission for notification streams', () => {
       expect(SimplePermissionChecker.getRequiredPermissionForStream(StreamType.PHONE_NOTIFICATION)).toBe(PermissionType.READ_NOTIFICATIONS);
-      expect(SimplePermissionChecker.getRequiredPermissionForStream(StreamType.NOTIFICATION_DISMISSED)).toBe(PermissionType.READ_NOTIFICATIONS);
+      expect(SimplePermissionChecker.getRequiredPermissionForStream(StreamType.PHONE_NOTIFICATION_DISMISSED)).toBe(PermissionType.READ_NOTIFICATIONS);
     });
 
     it('should return null for streams that do not require permissions', () => {
@@ -146,7 +146,8 @@ describe('SimplePermissionChecker', () => {
         StreamType.LOCATION_UPDATE,
         StreamType.AUDIO_CHUNK,
         StreamType.CALENDAR_EVENT,
-        StreamType.PHONE_NOTIFICATION
+        StreamType.PHONE_NOTIFICATION,
+        StreamType.PHONE_NOTIFICATION_DISMISSED
       ];
 
       const { allowed, rejected } = SimplePermissionChecker.filterSubscriptions(app, subscriptions);
@@ -171,7 +172,7 @@ describe('SimplePermissionChecker', () => {
       const app = createTestApp([{ type: PermissionType.NOTIFICATIONS }]);
       const subscriptions = [
         StreamType.PHONE_NOTIFICATION,
-        StreamType.NOTIFICATION_DISMISSED
+        StreamType.PHONE_NOTIFICATION_DISMISSED
       ];
 
       const { allowed, rejected } = SimplePermissionChecker.filterSubscriptions(app, subscriptions);
