@@ -548,7 +548,7 @@ public class AugmentosBlePeripheral {
         Log.d(TAG, "AugmentOSBlePeripheral TODO: remove ble code");
 //
 //
-//        Log.d(TAG, "Attempt to send data to AugmentOS_Manager via BLE");
+//        Log.d(TAG, "Attempt to send data to MentraOS_Manager via BLE");
 //        if (characteristic == null) {
 //            Log.e(TAG, "Characteristic not initialized");
 //            return;
@@ -562,7 +562,7 @@ public class AugmentosBlePeripheral {
 //            return;
 //        }
 //
-//        Log.d(TAG, "Attempting to send data to AugmentOS_Manager:\n" + jsonData);
+//        Log.d(TAG, "Attempting to send data to MentraOS_Manager:\n" + jsonData);
 //
 //        // Convert the JSON string to bytes
 //        byte[] dataBytes = jsonData.getBytes(StandardCharsets.UTF_8);
@@ -608,7 +608,7 @@ public class AugmentosBlePeripheral {
         boolean notificationSent = gattServer.notifyCharacteristicChanged(connectedDevice, characteristic, false);
 
         if (notificationSent) {
-            Log.d(TAG, "Sent notification to AugmentOS_Manager!!!");
+            Log.d(TAG, "Sent notification to MentraOS_Manager!!!");
         } else {
             Log.e(TAG, "Failed to send notification.");
         }

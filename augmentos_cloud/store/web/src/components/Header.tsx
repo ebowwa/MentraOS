@@ -1,16 +1,28 @@
 import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { usePlatform } from '../hooks/usePlatform';
 import { useTheme } from '../hooks/useTheme';
+import { useIsDesktop } from '../hooks/useMediaQuery';
+import { useSearch } from '../contexts/SearchContext';
 import { Button } from './ui/button';
 import { Baseline } from 'lucide-react';
+import SearchBar from './SearchBar';
 
-const Header: React.FC = () => {
+interface HeaderProps {
+  onSearch?: (e: React.FormEvent) => void;
+  onSearchClear?: () => void;
+}
+
+const Header: React.FC<HeaderProps> = ({ onSearch, onSearchClear }) => {
   const { isAuthenticated, signOut, user } = useAuth();
   const { isWebView } = usePlatform();
   const { theme } = useTheme();
+  const { searchQuery, setSearchQuery } = useSearch();
   const navigate = useNavigate();
+  const location = useLocation();
+  const isDesktop = useIsDesktop();
+  const isStorePage = location.pathname === '/';
 
   // Handle sign out
   const handleSignOut = async () => {
@@ -26,20 +38,37 @@ const Header: React.FC = () => {
   return (
     <header className="sticky top-0 z-10" style={{ background: theme === 'light' ? '#ffffff' : 'linear-gradient(to bottom, #0c0d27, #030514)', borderBottom: `1px solid var(--border-color)` }}>
       <div className="container mx-auto px-4 py-4">
-        <div className="flex items-end justify-between">
+        <div className="flex items-center justify-between">
 
           {/* Logo and Site Name */}
-          <div className="flex flex-col items-start select-none">
+          <div className="flex items-center gap-3 select-none" style={{ minWidth: isDesktop ? '200px' : 'auto' }}>
+            <img 
+              src={theme === 'light' ? '/icon_black.svg' : '/icon_white.svg'} 
+              alt="Mentra Logo" 
+              className="h-8 w-8"
+            />
             <span
               className="text-[26px] font-light"
               style={{ fontFamily: '"SF Pro Rounded", sans-serif', letterSpacing: '0.06em', color: 'var(--text-primary)' }}
             >
-              MentraOS
+              Mentra Store
             </span>
           </div>
 
+          {/* Search bar on desktop for store page */}
+          {isDesktop && isStorePage && onSearch && (
+            <div className="flex-1 max-w-md mx-auto">
+              <SearchBar
+                searchQuery={searchQuery}
+                onSearchChange={setSearchQuery}
+                onSearchSubmit={onSearch}
+                onClear={onSearchClear || (() => setSearchQuery(''))}
+              />
+            </div>
+          )}
+
           {/* Authentication */}
-          <div className="flex items-center">
+          <div className="flex items-center justify-end" style={{ minWidth: isDesktop ? '200px' : 'auto' }}>
               {isAuthenticated ? (
                 <div className="flex flex-col items-end">
                   {/* {user?.email && (

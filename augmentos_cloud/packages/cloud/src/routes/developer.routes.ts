@@ -149,6 +149,99 @@ const validateSupabaseToken = async (req: Request, res: Response, next: NextFunc
           availableOrgs: user?.organizations?.length || 0,
           userOrganizations: user?.organizations?.map(org => org.toString()) || []
         }, 'No default organization found for user');
+
+        // Find any org for the user and set the first as default if any exist
+        if (user && user.organizations && user.organizations.length > 0) {
+          const firstOrgId = user.organizations[0];
+          user.defaultOrg = firstOrgId;
+
+          await user.save();
+          (req as DevPortalRequest).currentOrgId = firstOrgId;
+
+          userLogger.info({
+            newDefaultOrgId: firstOrgId.toString(),
+            totalUserOrgs: user.organizations.length,
+            source: 'auto-assigned-first-org'
+          }, 'Set first available organization as default and using it');
+        } else if (user && (!user.organizations || user.organizations.length === 0)) {
+          // Check if there are any orgs that have this user as an admin member
+          userLogger.info('User has no organizations in their array - checking for orphaned memberships');
+
+          try {
+            const { Organization } = require('../models/organization.model');
+            const orgsWithUserAsMember = await Organization.find({
+              'members.user': user._id
+            }).select('_id name members');
+
+            if (orgsWithUserAsMember && orgsWithUserAsMember.length > 0) {
+              userLogger.info({
+                foundOrganizations: orgsWithUserAsMember.length,
+                orgIds: orgsWithUserAsMember.map((org: any) => org._id.toString())
+              }, 'Found organizations where user is a member - syncing user data');
+
+              // Update user's organizations array with found organizations
+              user.organizations = orgsWithUserAsMember.map((org: any) => org._id);
+
+              // Set the first organization as default
+              user.defaultOrg = orgsWithUserAsMember[0]._id;
+
+              await user.save();
+              (req as DevPortalRequest).currentOrgId = orgsWithUserAsMember[0]._id;
+
+              userLogger.info({
+                syncedOrganizations: user.organizations?.length || 0,
+                newDefaultOrg: user.defaultOrg?.toString(),
+                source: 'synced-from-memberships'
+              }, 'Successfully synced user organizations from existing memberships');
+
+            } else {
+              userLogger.info('No existing organization memberships found - will create new personal org');
+              // Fall through to create personal org
+            }
+          } catch (syncError) {
+            userLogger.error({
+              error: syncError instanceof Error ? syncError.message : String(syncError),
+              userEmail: user.email
+            }, 'Error checking for existing organization memberships');
+            // Fall through to create personal org as fallback
+          }
+        }
+
+        // Only create new org if user still has no organizations after sync attempt
+        if (user && (!user.organizations || user.organizations.length === 0)) {
+          userLogger.warn('No organizations found for user - creating personal organization');
+
+          // Create a personal organization for the user
+          try {
+            const personalOrgId = await OrganizationService.createPersonalOrg(user);
+
+            // Add to user's organizations array
+            if (!user.organizations) {
+              user.organizations = [];
+            }
+            user.organizations.push(personalOrgId);
+            user.defaultOrg = personalOrgId;
+
+            await user.save();
+            (req as DevPortalRequest).currentOrgId = personalOrgId;
+
+            userLogger.info({
+              newOrgId: personalOrgId.toString(),
+              orgName: `${user.profile?.company || user.email.split('@')[0]}'s Org`,
+              source: 'auto-created-personal-org'
+            }, 'Created new personal organization for user and set as default');
+
+          } catch (orgCreationError) {
+            userLogger.error({
+              error: orgCreationError instanceof Error ? orgCreationError.message : String(orgCreationError),
+              userEmail: user.email
+            }, 'Failed to create personal organization for user');
+
+            // This is a critical error - user has no organizations and we can't create one
+            res.status(500).json({ error: 'Failed to create organization context for user' });
+            return;
+          }
+        }
       }
     }
 

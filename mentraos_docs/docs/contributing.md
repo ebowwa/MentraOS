@@ -214,11 +214,19 @@ npm run lint
 
 ## Coding Standards and Guidelines
 
-### Naming Conventions
+### General Guidelines
 
 - Top-level folders follow the pattern: `mentraos_${component}`
 - User-facing names use CamelCase: "MentraOS App", "MentraOS Store", "MentraOS Manager"
 - Code follows language-specific conventions (Java, TypeScript, Swift, etc.)
+
+### Component-Specific Guidelines
+
+Different components of MentraOS have their own coding standards:
+
+- **[MentraOS Manager Guidelines](/contributing/mentraos-manager-guidelines)** - React Native mobile app development standards
+- **MentraOS Cloud Guidelines** - Backend service development (coming soon)
+- **SDK Development Guidelines** - Third-party app development (coming soon)
 
 ### Code Style
 
