@@ -3,7 +3,7 @@ name: MentraOS ASG Client Build
 on:
   pull_request:
     paths:
-      - 'augmentos_asg_client/**'
+      - 'asg_client/**'
       - '.github/workflows/mentraos-asg-client-build.yml'
   push:
     branches:
@@ -29,13 +29,13 @@ jobs:
         uses: android-actions/setup-android@v2
 
       - name: Setup environment
-        working-directory: ./augmentos_asg_client
+        working-directory: ./asg_client
         run: |
           # Create .env from example
           cp .env.example .env
 
       - name: Clone StreamPackLite dependency
-        working-directory: ./augmentos_asg_client
+        working-directory: ./asg_client
         run: |
           # Clone StreamPackLite repository
           git clone https://github.com/Mentra-Community/StreamPackLite.git
@@ -55,11 +55,11 @@ jobs:
             ${{ runner.os }}-gradle-
 
       - name: Build Debug APK
-        working-directory: ./augmentos_asg_client
+        working-directory: ./asg_client
         run: ./gradlew assembleDebug
 
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
         with:
           name: asg-client-debug
-          path: augmentos_asg_client/app/build/outputs/apk/debug/app-debug.apk
+          path: asg_client/app/build/outputs/apk/debug/app-debug.apk
