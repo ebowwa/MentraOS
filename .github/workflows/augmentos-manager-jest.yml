@@ -25,11 +25,11 @@ jobs:
         with:
           node-version: '18'
           cache: 'pnpm'
-          cache-dependency-path: augmentos_manager/pnpm-lock.yaml
+          cache-dependency-path: augmentos_manager/package.json
 
       - name: Install dependencies
         working-directory: ./augmentos_manager
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --no-frozen-lockfile
 
       - name: Run Jest tests
         working-directory: ./augmentos_manager
