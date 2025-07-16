@@ -19,6 +19,3 @@ export const SETTINGS_KEYS = {
   THEME_PREFERENCE: "THEME_PREFERENCE",
   DEV_MODE: "DEV_MODE",
 }
-
-// Models that support WiFi configuration
-export const WIFI_CONFIGURABLE_MODELS = ["Mentra Live", "Android Smart Glasses"]

@@ -311,11 +311,13 @@ In `augmentos_manager/src/config/glassesFeatures.ts`, add your glasses capabilit
 
 ```javascript
 "Your Glasses Model Name": {
-  hasMicrophone: true,    // if it has a microphone
-  hasDisplay: true,       // if it has a display
-  hasCamera: false,       // if it has a camera
-  hasSpeakers: false,     // if it has speakers
-  hasWifi: false,         // if it has WiFi
+  camera: false,       // if it has a camera
+  speakers: false,     // if it has speakers
+  display: true,       // if it has a display
+  binocular: false,    // if it has binocular displays
+  wifi: false,         // if it has WiFi
+  imu: false,          // if it has IMU/motion sensors
+  micTypes: ["sco"],   // microphone types: ["none"], ["sco"], ["custom"], or ["sco", "custom"]
 },
 ```
 
@@ -362,14 +364,18 @@ switch (glassesModel) {
 
 ### 5. WiFi Support (Optional)
 
-If your glasses support WiFi, add to `augmentos_manager/src/consts.tsx`:
+If your glasses support WiFi, update `augmentos_manager/src/config/glassesFeatures.ts` to set `wifi: true` for your glasses model:
 
 ```javascript
-export const WIFI_CONFIGURABLE_MODELS = [
-  "Mentra Live", 
-  "Android Smart Glasses",
-  "Your Glasses Model Name"  // Add if WiFi is supported
-];
+"Your Glasses Model Name": {
+  camera: false,
+  speakers: false,
+  display: true,
+  binocular: false,
+  wifi: true,        // Set to true if WiFi is supported
+  imu: false,
+  micTypes: ["sco"], // or ["custom"], ["none"], or ["sco", "custom"]
+}
 ```
 
 ### Important Notes

@@ -89,44 +89,6 @@ Follow our [Maestro Setup](https://ignitecookbook.com/docs/recipes/MaestroSetup)
 ___
 
 
-### General Codebase Notes and suggestions
+### Development Guidelines
 
-- Don't import `theme` from `@/theme` intead:
-```tsx
-import {useAppTheme} from "@/utils/useAppTheme"
-
-// and then in the component:
-function MyComponent() {
-  const {theme, themed} = useAppTheme();
-}
-```
-
-- Don't create Stylesheets, instead use themed(<name-of-style>)
-```tsx
-const $container: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
-  color: colors.text,
-  fontSize: spacing.md,
-  flexWrap: "wrap",
-})
-```
-
-- Don't use expo router's router.push / replace / etc. instead use the `useNavigationHistory()` hook
-```tsx
-import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
-const {goBack, push, replace} = useNavigationHistory()
-```
-
-- Use the Ignite Components and their tx prop where applicable for translations
-- make sure to define your strings in en.ts
-- if you have to use strings in code, use the translate() function
-```tsx
-<Screen safeAreaEdges={["top"]} contentContainerStyle={themed($container)}>
-  <Text tx="settingsScreen:someSettingsText"/>
-  <Button
-    tx="alerts:showAlert"
-    onPress={() => {
-      showAlert(translate("alerts:someError"));
-    }}
-  />
-</Screen>
-```
+For detailed coding standards and best practices for MentraOS Manager development, please see our [MentraOS Manager Development Guidelines](https://docs.mentraos.com/contributing/mentraos-manager-guidelines).

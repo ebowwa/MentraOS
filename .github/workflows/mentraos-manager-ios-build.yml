@@ -40,6 +40,12 @@ jobs:
         working-directory: ./augmentos_manager
         run: pnpm install --no-frozen-lockfile
 
+      - name: Setup environment
+        working-directory: ./augmentos_manager
+        run: |
+          # Create .env from example
+          cp .env.example .env
+
       - name: Run Expo prebuild
         working-directory: ./augmentos_manager
         run: pnpm expo prebuild --platform ios
@@ -56,7 +62,7 @@ jobs:
                      -configuration Debug \
                      -sdk iphonesimulator \
                      -derivedDataPath build \
-                     -destination 'platform=iOS Simulator,name=iPhone 14,OS=latest'
+                     -destination 'platform=iOS Simulator,name=iPhone 16,OS=18.2'
 
       - name: Build iOS app for Device
         working-directory: ./augmentos_manager/ios

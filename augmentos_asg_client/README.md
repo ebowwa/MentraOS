@@ -7,15 +7,16 @@ This is the Android code that runs on Android-based smart glasses (ex: Mentra Li
 
 ## Compatible Devices
 
-### Tested
 - Mentra Live
 
-### Untested (likely compatible)
+This could be made to be compatible with other Android-based smart glasses with some work, such as:
 - TCL Rayneo X2
+- TCL Rayneo X3
 - INMO Air 2
+- INMO Air 3
 - Other Android-based smart glasses
 
-We'd appreciate testers for these untested devices - let us know if you get it working!
+The necessary changes here would involve re-implementing the K900 checks (K900 or other device), and implementing the ability for the glasses to display text using an activity if the glasses have a display. Maybe use buildprop for device detection.
 
 ### Environment Setup
 
@@ -26,9 +27,9 @@ We'd appreciate testers for these untested devices - let us know if you get it w
 
 2. By default, the example contains production settings:
    ```
-   AUGMENTOS_HOST=cloud.mentra.glass
-   AUGMENTOS_PORT=443
-   AUGMENTOS_SECURE=true
+   MENTRAOS_HOST=cloud.mentra.glass
+   MENTRAOS_PORT=443
+   MENTRAOS_SECURE=true
    ```
 
 3. For local development:
