@@ -29,7 +29,7 @@ export const EpisodeModel = types
     categories: types.array(types.string),
   })
   .actions(self => ({
-    setProp<K extends keyof typeof self>(field: K, value: typeof self[K]) {
+    setProp<K extends keyof typeof self>(field: K, value: (typeof self)[K]) {
       ;(self as any)[field] = value
     },
   }))

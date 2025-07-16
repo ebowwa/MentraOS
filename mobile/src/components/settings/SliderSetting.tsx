@@ -69,7 +69,7 @@ const SliderSetting: React.FC<SliderSettingProps> = ({
             thumbStyle={{
               width: 24,
               height: 24,
-              backgroundColor: theme.isDark ? theme.colors.sliderThumb : '#FFFFFF',
+              backgroundColor: theme.isDark ? theme.colors.sliderThumb : "#FFFFFF",
               borderRadius: 12,
               // Add purple border in light theme to match toggle styling
               ...(!theme.isDark && {

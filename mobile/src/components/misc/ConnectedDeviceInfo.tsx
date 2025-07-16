@@ -4,7 +4,12 @@ import {useFocusEffect} from "@react-navigation/native"
 import {Button, Icon} from "@/components/ignite"
 import coreCommunicator from "@/bridge/CoreCommunicator"
 import {useStatus} from "@/contexts/AugmentOSStatusProvider"
-import {getGlassesClosedImage, getGlassesImage, getGlassesOpenImage, getEvenRealitiesG1Image} from "@/utils/getGlassesImage"
+import {
+  getGlassesClosedImage,
+  getGlassesImage,
+  getGlassesOpenImage,
+  getEvenRealitiesG1Image,
+} from "@/utils/getGlassesImage"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
 import {router} from "expo-router"
 import {useAppTheme} from "@/utils/useAppTheme"
@@ -33,15 +38,15 @@ export const ConnectDeviceButton = () => {
 
     // Show loading state during connectivity check
     setIsCheckingConnectivity(true)
-    
+
     try {
       // Check that Bluetooth and Location are enabled/granted
       const requirementsCheck = await coreCommunicator.checkConnectivityRequirements()
-      
+
       if (!requirementsCheck.isReady) {
         // Show alert about missing requirements with "Turn On" button
         console.log("Requirements not met, showing alert with message:", requirementsCheck.message)
-        
+
         // Use the appropriate connectivity alert based on the requirement
         switch (requirementsCheck.requirement) {
           case "bluetooth":
@@ -52,7 +57,7 @@ export const ConnectDeviceButton = () => {
             break
           case "location":
             showLocationAlert(
-              "Connection Requirements", 
+              "Connection Requirements",
               requirementsCheck.message || "Location permission is required to scan for glasses",
             )
             break
@@ -66,7 +71,7 @@ export const ConnectDeviceButton = () => {
             showAlert(
               "Connection Requirements",
               requirementsCheck.message || "Cannot connect to glasses - check Bluetooth and Location settings",
-              [{text: "OK"}]
+              [{text: "OK"}],
             )
         }
         return
@@ -79,11 +84,7 @@ export const ConnectDeviceButton = () => {
       }
     } catch (error) {
       console.error("connect to glasses error:", error)
-      showAlert(
-        "Connection Error",
-        "Failed to connect to glasses. Please try again.",
-        [{text: "OK"}]
-      )
+      showAlert("Connection Error", "Failed to connect to glasses. Please try again.", [{text: "OK"}])
     } finally {
       setIsCheckingConnectivity(false)
     }
@@ -197,7 +198,7 @@ export const ConnectedGlasses: React.FC<ConnectedGlassesProps> = ({showTitle}) =
     if (wearable && (wearable === "Even Realities G1" || wearable === "evenrealities_g1" || wearable === "g1")) {
       const style = status.glasses_info?.glasses_style
       const color = status.glasses_info?.glasses_color
-      
+
       // Determine the state based on case status
       let state = "folded"
       if (!status.glasses_info?.case_removed) {
@@ -207,7 +208,7 @@ export const ConnectedGlasses: React.FC<ConnectedGlassesProps> = ({showTitle}) =
           state = "case_close"
         }
       }
-      
+
       image = getEvenRealitiesG1Image(style, color, state, "l", theme.isDark, status.glasses_info?.case_battery_level)
     } else {
       // For other glasses, use the existing logic
@@ -258,7 +259,7 @@ export function SplitDeviceInfo() {
   if (wearable && (wearable === "Even Realities G1" || wearable === "evenrealities_g1" || wearable === "g1")) {
     const style = status.glasses_info?.glasses_style
     const color = status.glasses_info?.glasses_color
-    
+
     // Determine the state based on case status
     let state = "folded"
     if (!status.glasses_info?.case_removed) {
@@ -268,8 +269,15 @@ export function SplitDeviceInfo() {
         state = "case_close"
       }
     }
-    
-    glassesImage = getEvenRealitiesG1Image(style, color, state, "l", theme.isDark, status.glasses_info?.case_battery_level)
+
+    glassesImage = getEvenRealitiesG1Image(
+      style,
+      color,
+      state,
+      "l",
+      theme.isDark,
+      status.glasses_info?.case_battery_level,
+    )
   } else {
     // Only show case image if glasses are actually connected (not just paired)
     if (status.glasses_info?.model_name && !status.glasses_info?.case_removed) {
@@ -334,7 +342,8 @@ export function DeviceToolbar() {
               <Text style={{color: theme.colors.statusText}}>Auto</Text>
             ) : (
               <>
-                <Text style={{color: theme.colors.statusText, fontSize: 16, marginLeft: 4, fontFamily: "Inter-Regular"}}>
+                <Text
+                  style={{color: theme.colors.statusText, fontSize: 16, marginLeft: 4, fontFamily: "Inter-Regular"}}>
                   {status.glasses_settings.brightness}%
                 </Text>
               </>
@@ -355,8 +364,7 @@ export function DeviceToolbar() {
                 pathname: "/pairing/glasseswifisetup",
                 params: {deviceModel: status.glasses_info?.model_name || "Glasses"},
               })
-            }}
-          >
+            }}>
             <MaterialCommunityIcons name="wifi" size={18} color={theme.colors.statusIcon} />
             <Text style={{color: theme.colors.statusText, fontSize: 16, fontFamily: "Inter-Regular"}}>
               {wifiSsid || "Disconnected"}
@@ -365,9 +373,7 @@ export function DeviceToolbar() {
         ) : (
           <>
             <MaterialCommunityIcons name="bluetooth" size={18} color={theme.colors.statusIcon} />
-            <Text style={{color: theme.colors.statusText, fontSize: 16, fontFamily: "Inter-Regular"}}>
-              Connected
-            </Text>
+            <Text style={{color: theme.colors.statusText, fontSize: 16, fontFamily: "Inter-Regular"}}>Connected</Text>
           </>
         )}
       </View>

@@ -5,9 +5,9 @@ appId: ${MAESTRO_APP_ID}
 - runFlow:
     when:
       true: ${IS_DEV == "true"}
-    file: './_OpenWithDevClient.yaml'
+    file: "./_OpenWithDevClient.yaml"
 
 - runFlow:
     when:
       true: ${IS_DEV == "false"}
-    file: './_OpenAppClearStateAndKeychain.yaml'
+    file: "./_OpenAppClearStateAndKeychain.yaml"

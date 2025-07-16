@@ -1,6 +1,5 @@
 ### Quickstart
 
-
 ### Windows Setup
 
 ```bash
@@ -9,13 +8,12 @@ git clone https://github.com/Mentra-Community/MentraOS
 git checkout dev
 ```
 
-
 ```
 choco install -y nodejs-lts microsoft-openjdk17
 ```
 
-
 ## Android
+
 ```
 pnpm install
 pnpm expo prebuild
@@ -23,6 +21,7 @@ pnpm android
 ```
 
 ## iOS
+
 ```
 pnpm install
 pnpm expo prebuild
@@ -34,9 +33,10 @@ pnpm run start
 ```
 
 for pure JS changes once you have a build installed all you need to run is
-```pnpm run start```
+`pnpm run start`
 
 ## IF YOU HAVE ISSUES BUILDING DUE TO UI REFRESH, SEE HERE:
+
 Due to the UI refresh there will be some weird cache issues. Do this to fix them...
 
 ```
@@ -44,7 +44,7 @@ pnpm install
 pnpm expo prebuild
 rm -rf android/build android/.gradle node_modules .expo .bundle android/app/build android/app/src/main/assets
 pnpm install
-./fix-react-native-symlinks.sh 
+./fix-react-native-symlinks.sh
 pnpm android
 pnpm run start
 ```
@@ -85,9 +85,7 @@ const MyComponent = () => {
 
 Follow our [Maestro Setup](https://ignitecookbook.com/docs/recipes/MaestroSetup) recipe.
 
-
-___
-
+---
 
 ### Development Guidelines
 

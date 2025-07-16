@@ -76,7 +76,7 @@ export const featureLabels: Record<GlassesFeature, string> = {
   display: "Display",
   binocular: "Binocular",
   wifi: "WiFi",
-  imu: "IMU"
+  imu: "IMU",
 }
 
 // Helper functions for mic type checking
@@ -90,8 +90,4 @@ export function hasCustomMic(featureSet: GlassesFeatureSet): boolean {
 
 export function hasScoMic(featureSet: GlassesFeatureSet): boolean {
   return featureSet.micTypes.includes("sco")
-}
-
-export function hasBothMicTypes(featureSet: GlassesFeatureSet): boolean {
-  return hasCustomMic(featureSet) && hasScoMic(featureSet)
 }

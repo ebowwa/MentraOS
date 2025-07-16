@@ -104,7 +104,7 @@ export function ModalProvider({children}: {children: React.ReactNode}) {
               const currentColor = theme.isDark ? "#090A14" : "#FFFFFF"
               setOriginalNavBarColor(currentColor)
             }
-            
+
             // Set navigation bar to match the dark overlay
             // The modal overlay color is theme.colors.modalOverlay which is semi-transparent
             // We need to use a solid dark color for the navigation bar
@@ -240,12 +240,7 @@ export interface ConnectivityAlertOptions extends AlertOptions {
 /**
  * Shows a standard alert with custom buttons
  */
-const showAlert = (
-  title: string,
-  message: string,
-  buttons: AlertButton[],
-  options?: AlertOptions,
-) => {
+const showAlert = (title: string, message: string, buttons: AlertButton[], options?: AlertOptions) => {
   if (modalRef) {
     modalRef.showModal(title, message, buttons, {
       iconName: options?.iconName,
@@ -292,11 +287,7 @@ const showConnectivityAlert = (
  * Shows a Bluetooth-related alert with a "Turn On Bluetooth" button
  * Uses the new modal system with BasicDialog for consistent design
  */
-const showBluetoothAlert = (
-  title: string,
-  message: string,
-  options?: ConnectivityAlertOptions,
-) => {
+const showBluetoothAlert = (title: string, message: string, options?: ConnectivityAlertOptions) => {
   if (modalRef) {
     const buttons: AlertButton[] = []
 
@@ -335,11 +326,7 @@ const showBluetoothAlert = (
  * Shows a Location-related alert with a "Turn On Location" button
  * Uses the new modal system with BasicDialog for consistent design
  */
-const showLocationAlert = (
-  title: string,
-  message: string,
-  options?: ConnectivityAlertOptions,
-) => {
+const showLocationAlert = (title: string, message: string, options?: ConnectivityAlertOptions) => {
   if (modalRef) {
     const buttons: AlertButton[] = []
 
@@ -378,13 +365,9 @@ const showLocationAlert = (
  * Shows a Location Services alert with a "Turn On Location Services" button
  * Uses Google Play Services dialog on Android for better UX
  */
-const showLocationServicesAlert = (
-  title: string,
-  message: string,
-  options?: ConnectivityAlertOptions,
-) => {
+const showLocationServicesAlert = (title: string, message: string, options?: ConnectivityAlertOptions) => {
   // Show the location services dialog directly for better UX
-  SettingsNavigationUtils.showLocationServicesDialog().catch((error) => {
+  SettingsNavigationUtils.showLocationServicesDialog().catch(error => {
     console.error("Error showing location services dialog:", error)
     // Fallback to regular alert if dialog fails
     showConnectivityAlert(title, message, "locationServices", {
@@ -398,11 +381,7 @@ const showLocationServicesAlert = (
  * Shows a Permissions alert with a "Open Settings" button
  * Uses the new modal system with BasicDialog for consistent design
  */
-const showPermissionsAlert = (
-  title: string,
-  message: string,
-  options?: ConnectivityAlertOptions,
-) => {
+const showPermissionsAlert = (title: string, message: string, options?: ConnectivityAlertOptions) => {
   if (modalRef) {
     const buttons: AlertButton[] = []
 
@@ -441,12 +420,7 @@ const showPermissionsAlert = (
  * Shows a destructive action alert with proper styling
  * Uses the new modal system with BasicDialog for consistent design
  */
-const showDestructiveAlert = (
-  title: string,
-  message: string,
-  buttons: AlertButton[],
-  options?: AlertOptions,
-) => {
+const showDestructiveAlert = (title: string, message: string, buttons: AlertButton[], options?: AlertOptions) => {
   if (modalRef) {
     modalRef.showModal(title, message, buttons, {
       iconName: "delete-forever",
