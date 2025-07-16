@@ -99,25 +99,24 @@ public class CameraNeo extends LifecycleService {
     private boolean hasAutoFocus;
 
     /**
-     * SIMPLIFIED AUTOEXPOSURE AND AUTOFOCUS SYSTEM
+     * SIMPLIFIED AUTOEXPOSURE SYSTEM
      *
-     * 1. WAITING_FOCUS: Trigger both AE and AF precapture, wait up to 0.8 seconds for convergence
-     *    - Waits for AE_STATE_CONVERGED/FLASH_REQUIRED/LOCKED and AF_STATE_FOCUSED_LOCKED/PASSIVE_FOCUSED
-     *    - Has a 0.8 second timeout for fast response (slightly longer to allow AF to work)
+     * 1. WAITING_AE: Trigger AE precapture, wait up to 0.5 seconds for convergence
+     *    - Waits for AE_STATE_CONVERGED/FLASH_REQUIRED/LOCKED
+     *    - CONTINUOUS_PICTURE autofocus runs automatically in background
      *
      * 2. SHOOTING: Capture the photo immediately with high quality settings
-     *    - No complex AE/AF locking sequence
-     *    - Relies on Camera2 API to handle exposure and focus properly
+     *    - Relies on Camera2 API auto-exposure and continuous autofocus
      */
 
-    // Simplified AE/AF system - wait briefly for both to converge
-    private enum ShotState { IDLE, WAITING_FOCUS, SHOOTING }
+    // Simplified AE system - autofocus runs automatically
+    private enum ShotState { IDLE, WAITING_AE, SHOOTING }
     private volatile ShotState shotState = ShotState.IDLE;
-    private long focusStartTimeNs;
-    private static final long FOCUS_WAIT_NS = 800_000_000L; // 0.8 second max wait
+    private long aeStartTimeNs;
+    private static final long AE_WAIT_NS = 500_000_000L; // 0.5 second max wait for AE
 
-    // Simple AE/AF callback for basic convergence
-    private final SimplifiedFocusCallback focusCallback = new SimplifiedFocusCallback();
+    // Simple AE callback - autofocus handled automatically
+    private final SimplifiedAeCallback aeCallback = new SimplifiedAeCallback();
 
     // User-settable exposure compensation (apply BEFORE capture, not during)
     private int userExposureCompensation = 0;
@@ -422,12 +421,6 @@ public class CameraNeo extends LifecycleService {
                 else notifyPhotoError("Camera doesn't support JPEG format");
                 stopSelf();
                 return;
-            }
-
-            // Log available sizes
-            Log.d(TAG, "Available JPEG sizes for camera " + this.cameraId + ":");
-            for (Size size : jpegSizes) {
-                Log.d(TAG, "  " + size.getWidth() + "x" + size.getHeight());
             }
 
             jpegSize = chooseOptimalSize(jpegSizes, TARGET_WIDTH, TARGET_HEIGHT);
@@ -894,9 +887,6 @@ public class CameraNeo extends LifecycleService {
             int heightDiff = Math.abs(option.getHeight() - desiredHeight);
             int totalDifference = widthDiff + heightDiff;
 
-            Log.d(TAG, "Size " + option.getWidth() + "x" + option.getHeight() +
-                  " difference: " + totalDifference + " (width: " + widthDiff + ", height: " + heightDiff + ")");
-
             if (totalDifference < smallestDifference) {
                 smallestDifference = totalDifference;
                 bestSize = option;
@@ -1155,9 +1145,21 @@ public class CameraNeo extends LifecycleService {
 
         // Autofocus capabilities
         availableAfModes = characteristics.get(CameraCharacteristics.CONTROL_AF_AVAILABLE_MODES);
-        hasAutoFocus = characteristics.get(CameraCharacteristics.CONTROL_AF_AVAILABLE_MODES) != null &&
-                        Arrays.asList(characteristics.get(CameraCharacteristics.CONTROL_AF_AVAILABLE_MODES)).contains(CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
-        minimumFocusDistance = characteristics.get(CameraCharacteristics.LENS_INFO_MINIMUM_FOCUS_DISTANCE);
+
+        // Check if continuous picture autofocus is available
+        hasAutoFocus = false;
+        if (availableAfModes != null) {
+            for (int mode : availableAfModes) {
+                if (mode == CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE) {
+                    hasAutoFocus = true;
+                    break;
+                }
+            }
+        }
+
+        // Handle potential null value for minimum focus distance
+        Float minimumFocusDistanceBoxed = characteristics.get(CameraCharacteristics.LENS_INFO_MINIMUM_FOCUS_DISTANCE);
+        minimumFocusDistance = (minimumFocusDistanceBoxed != null) ? minimumFocusDistanceBoxed : 0.0f;
 
         Log.d(TAG, "Camera capabilities - AE modes: " + java.util.Arrays.toString(availableAeModes));
         Log.d(TAG, "Exposure compensation range: " + exposureCompensationRange + ", step: " + exposureCompensationStep);
@@ -1193,7 +1195,7 @@ public class CameraNeo extends LifecycleService {
         try {
             // Start repeating preview request with AE monitoring
             cameraCaptureSession.setRepeatingRequest(previewBuilder.build(),
-                focusCallback, backgroundHandler);
+                aeCallback, backgroundHandler);
 
             // Trigger the capture sequence immediately
             startPrecaptureSequence();
@@ -1211,27 +1213,23 @@ public class CameraNeo extends LifecycleService {
      */
     private void startPrecaptureSequence() {
         try {
-            shotState = ShotState.WAITING_FOCUS;
-            focusStartTimeNs = System.nanoTime();
+            shotState = ShotState.WAITING_AE;
+            aeStartTimeNs = System.nanoTime();
 
-            // Start AE and AF convergence - much simpler approach
-            Log.d(TAG, "Starting simplified AE and AF convergence...");
+            // Start AE convergence - autofocus runs automatically in CONTINUOUS_PICTURE mode
+            Log.d(TAG, "Starting AE convergence" + (hasAutoFocus ? " (autofocus runs automatically)" : "") + "...");
 
-            // Trigger both AE and AF precapture and wait briefly
+            // Trigger only AE precapture - no manual AF trigger needed for CONTINUOUS_PICTURE
             previewBuilder.set(CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER,
                 CameraMetadata.CONTROL_AE_PRECAPTURE_TRIGGER_START);
-            if (hasAutoFocus) {
-                previewBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER,
-                    CameraMetadata.CONTROL_AF_TRIGGER_START);
-            }
 
-            cameraCaptureSession.capture(previewBuilder.build(), focusCallback, backgroundHandler);
+            cameraCaptureSession.capture(previewBuilder.build(), aeCallback, backgroundHandler);
 
-            Log.d(TAG, "Triggered AE" + (hasAutoFocus ? " and AF" : "") + " precapture, waiting for convergence...");
+            Log.d(TAG, "Triggered AE precapture, waiting for convergence...");
 
         } catch (CameraAccessException e) {
-            Log.e(TAG, "Error starting AE/AF convergence", e);
-            notifyPhotoError("Error starting AE/AF convergence: " + e.getMessage());
+            Log.e(TAG, "Error starting AE convergence", e);
+            notifyPhotoError("Error starting AE convergence: " + e.getMessage());
             shotState = ShotState.IDLE;
             closeCamera();
             stopSelf();
@@ -1239,23 +1237,23 @@ public class CameraNeo extends LifecycleService {
     }
 
     /**
-     * Simplified AE/AF callback that waits briefly for both exposure and focus convergence
+     * Simplified AE callback that waits briefly for exposure convergence
+     * Autofocus runs automatically in CONTINUOUS_PICTURE mode
      */
-    private class SimplifiedFocusCallback extends CameraCaptureSession.CaptureCallback {
+    private class SimplifiedAeCallback extends CameraCaptureSession.CaptureCallback {
         @Override
         public void onCaptureCompleted(@NonNull CameraCaptureSession session,
                                      @NonNull CaptureRequest request,
                                      @NonNull TotalCaptureResult result) {
 
             Integer aeState = result.get(CaptureResult.CONTROL_AE_STATE);
-            Integer afState = result.get(CaptureResult.CONTROL_AF_STATE);
-            Log.d(TAG, "AE/AF Callback - Current shotState: " + shotState + ", AE_STATE: " +
-                 (aeState != null ? getAeStateName(aeState) : "null") + ", AF_STATE: " +
-                 (afState != null ? getAfStateName(afState) : "null"));
+            Log.d(TAG, "AE Callback - Current shotState: " + shotState + ", AE_STATE: " +
+                 (aeState != null ? getAeStateName(aeState) : "null") +
+                 (hasAutoFocus ? " (autofocus automatic)" : ""));
 
             if (aeState == null) {
                 Log.w(TAG, "AE_STATE is null, proceeding with capture anyway");
-                if (shotState == ShotState.WAITING_FOCUS) {
+                if (shotState == ShotState.WAITING_AE) {
                     Log.d(TAG, "No AE state available, capturing immediately");
                     capturePhoto();
                 }
@@ -1263,30 +1261,20 @@ public class CameraNeo extends LifecycleService {
             }
 
             switch (shotState) {
-                case WAITING_FOCUS:
-                    // Simple convergence check
+                case WAITING_AE:
+                    // Simple AE convergence check - no AF state checking needed
                     boolean aeConverged = (aeState == CaptureResult.CONTROL_AE_STATE_CONVERGED ||
                                          aeState == CaptureResult.CONTROL_AE_STATE_FLASH_REQUIRED ||
                                          aeState == CaptureResult.CONTROL_AE_STATE_LOCKED);
 
-                    boolean afConverged = true; // Default to true if no AF
-                    if (hasAutoFocus && afState != null) {
-                        afConverged = (afState == CaptureResult.CONTROL_AF_STATE_FOCUSED_LOCKED ||
-                                     afState == CaptureResult.CONTROL_AF_STATE_PASSIVE_FOCUSED);
-                    }
+                    boolean timeout = (System.nanoTime() - aeStartTimeNs) > AE_WAIT_NS;
 
-                    boolean converged = aeConverged && afConverged;
-                    boolean timeout = (System.nanoTime() - focusStartTimeNs) > FOCUS_WAIT_NS;
-
-                    if (converged || timeout) {
-                        String afInfo = hasAutoFocus ? ", AF: " + getAfStateName(afState) : " (no AF)";
-                        Log.d(TAG, "AE/AF ready (AE: " + getAeStateName(aeState) + afInfo +
+                    if (aeConverged || timeout) {
+                        Log.d(TAG, "AE ready (AE: " + getAeStateName(aeState) +
                              (timeout ? " - timeout)" : ")") + ", capturing photo...");
                         capturePhoto();
                     } else {
-                        String afInfo = hasAutoFocus ? ", AF: " + getAfStateName(afState) : " (no AF)";
-                        Log.d(TAG, "AE/AF still converging - AE: " + getAeStateName(aeState) + afInfo +
-                             " (AE ready: " + aeConverged + ", AF ready: " + afConverged + ")");
+                        Log.d(TAG, "AE still converging - AE: " + getAeStateName(aeState));
                     }
                     break;
 
@@ -1314,7 +1302,7 @@ public class CameraNeo extends LifecycleService {
     }
 
     /**
-     * Simplified photo capture - no complex locking sequence
+     * Simplified photo capture - relies on AE convergence and automatic CONTINUOUS_PICTURE autofocus
      */
     private void capturePhoto() {
         try {
@@ -1331,11 +1319,11 @@ public class CameraNeo extends LifecycleService {
             stillBuilder.set(CaptureRequest.CONTROL_AE_EXPOSURE_COMPENSATION, userExposureCompensation);
             stillBuilder.set(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE, selectedFpsRange);
 
-            // Copy autofocus settings from preview
+            // Set up continuous autofocus (no manual triggers needed)
             if (hasAutoFocus) {
                 stillBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
 
-                // Add same center-weighted AF region as preview
+                // Add center-weighted AF region for better subject focus
                 int centerX = jpegSize.getWidth() / 2;
                 int centerY = jpegSize.getHeight() / 2;
                 int regionSize = Math.min(jpegSize.getWidth(), jpegSize.getHeight()) / 3;
