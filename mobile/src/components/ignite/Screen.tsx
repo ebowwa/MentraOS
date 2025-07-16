@@ -254,7 +254,7 @@ export function Screen(props: ScreenProps) {
   const $containerInsets = useSafeAreaInsetsStyle(safeAreaEdges)
   const {theme} = useAppTheme()
 
-  let gradientColors = props.gradientColors ?? [colors.tabBarBackground1, colors.tabBarBackground2]
+  const gradientColors = props.gradientColors ?? [colors.tabBarBackground1, colors.tabBarBackground2]
 
   return (
     <View style={[$containerStyle, {backgroundColor: backgroundColor || colors.background} /*, $containerInsets*/]}>

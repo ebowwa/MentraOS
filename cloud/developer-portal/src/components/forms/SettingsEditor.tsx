@@ -1,13 +1,27 @@
 // components/forms/SettingsEditor.tsx
-import React from 'react';
+import React from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Trash2, GripVertical, ChevronDown, ChevronRight, Settings, Folder } from "lucide-react";
-import { Setting } from '@/types/app';
+import {
+  Plus,
+  Trash2,
+  GripVertical,
+  ChevronDown,
+  ChevronRight,
+  Settings,
+  Folder,
+} from "lucide-react";
+import { Setting } from "@/types/app";
 import {
   DndContext,
   closestCenter,
@@ -18,30 +32,28 @@ import {
   DragEndEvent,
   DragStartEvent,
   DragOverlay,
-} from '@dnd-kit/core';
+} from "@dnd-kit/core";
 import {
   arrayMove,
   SortableContext,
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
-} from '@dnd-kit/sortable';
-import {
-  useSortable,
-} from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
+} from "@dnd-kit/sortable";
+import { useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 export enum AppSettingType {
-  TOGGLE = 'toggle',
-  TEXT = 'text',
-  SELECT = 'select',
-  SLIDER = 'slider',
-  GROUP = 'group',
-  TEXT_NO_SAVE_BUTTON = 'text_no_save_button',
-  SELECT_WITH_SEARCH = 'select_with_search',
-  MULTISELECT = 'multiselect',
-  TITLE_VALUE = 'titleValue',
-  NUMERIC_INPUT = 'numeric_input',
-  TIME_PICKER = 'time_picker'
+  TOGGLE = "toggle",
+  TEXT = "text",
+  SELECT = "select",
+  SLIDER = "slider",
+  GROUP = "group",
+  TEXT_NO_SAVE_BUTTON = "text_no_save_button",
+  SELECT_WITH_SEARCH = "select_with_search",
+  MULTISELECT = "multiselect",
+  TITLE_VALUE = "titleValue",
+  NUMERIC_INPUT = "numeric_input",
+  TIME_PICKER = "time_picker",
 }
 
 interface SettingsEditorProps {
@@ -62,7 +74,12 @@ interface SortableSettingItemProps {
   removeSetting: (index: number) => void;
   updateSetting: (index: number, updates: any) => void;
   handleTypeChange: (index: number, newType: string) => void;
-  updateSelectOptions: (settingIndex: number, optionIndex: number, field: 'label' | 'value', value: string) => void;
+  updateSelectOptions: (
+    settingIndex: number,
+    optionIndex: number,
+    field: "label" | "value",
+    value: string,
+  ) => void;
   addSelectOption: (settingIndex: number) => void;
   removeSelectOption: (settingIndex: number, optionIndex: number) => void;
 }
@@ -99,7 +116,10 @@ const SortableSettingItem: React.FC<SortableSettingItemProps> = ({
 
   // Auto-expand when SELECT type is chosen and has empty options
   React.useEffect(() => {
-    if (setting.type === AppSettingType.SELECT && (!setting.options || setting.options.length === 0)) {
+    if (
+      setting.type === AppSettingType.SELECT &&
+      (!setting.options || setting.options.length === 0)
+    ) {
       onEditToggle(index);
     }
   }, [setting.type, setting.options, index, onEditToggle]);
@@ -107,57 +127,67 @@ const SortableSettingItem: React.FC<SortableSettingItemProps> = ({
   // Helper function to get display text
   const getDisplayText = () => {
     if (isGroup) {
-      return setting.title || 'Untitled Group';
+      return setting.title || "Untitled Group";
     }
-    return setting.key || setting.label || setting.title || 'untitled_setting';
+    return setting.key || setting.label || setting.title || "untitled_setting";
   };
 
   // Helper function to get display label
   const getDisplayLabel = () => {
     if (isGroup) return null;
-    return setting.label || 'No label';
+    return setting.label || "No label";
   };
 
   // Helper function to get default value preview
   const getDefaultValuePreview = () => {
     switch (setting.type) {
       case AppSettingType.TOGGLE:
-        return setting.defaultValue ? '✓ Enabled' : '✗ Disabled';
+        return setting.defaultValue ? "✓ Enabled" : "✗ Disabled";
       case AppSettingType.TEXT:
       case AppSettingType.TEXT_NO_SAVE_BUTTON:
-        return setting.defaultValue || 'No default';
+        return setting.defaultValue || "No default";
       case AppSettingType.SELECT:
       case AppSettingType.SELECT_WITH_SEARCH:
-        const selectedOption = (setting.options || []).find((opt: any) => opt.value === setting.defaultValue);
-        return selectedOption ? selectedOption.label : 'No default';
-      case AppSettingType.MULTISELECT:
-        const selectedOptions = (setting.options || []).filter((opt: any) =>
-          Array.isArray(setting.defaultValue) && setting.defaultValue.includes(opt.value)
+        const selectedOption = (setting.options || []).find(
+          (opt: any) => opt.value === setting.defaultValue,
         );
-        return selectedOptions.length > 0 ? `${selectedOptions.length} selected` : 'No default';
+        return selectedOption ? selectedOption.label : "No default";
+      case AppSettingType.MULTISELECT:
+        const selectedOptions = (setting.options || []).filter(
+          (opt: any) =>
+            Array.isArray(setting.defaultValue) &&
+            setting.defaultValue.includes(opt.value),
+        );
+        return selectedOptions.length > 0
+          ? `${selectedOptions.length} selected`
+          : "No default";
       case AppSettingType.SLIDER:
         return `${setting.defaultValue || 0} (${setting.min || 0}-${setting.max || 100})`;
       case AppSettingType.NUMERIC_INPUT:
-        const minText = setting.min !== undefined ? `min: ${setting.min}` : '';
-        const maxText = setting.max !== undefined ? `max: ${setting.max}` : '';
-        const rangeText = [minText, maxText].filter(Boolean).join(', ');
-        return `${setting.defaultValue || 0}${rangeText ? ` (${rangeText})` : ''}`;
+        const minText = setting.min !== undefined ? `min: ${setting.min}` : "";
+        const maxText = setting.max !== undefined ? `max: ${setting.max}` : "";
+        const rangeText = [minText, maxText].filter(Boolean).join(", ");
+        return `${setting.defaultValue || 0}${rangeText ? ` (${rangeText})` : ""}`;
       case AppSettingType.TIME_PICKER:
         const totalSeconds = setting.defaultValue || 0;
         const hours = Math.floor(totalSeconds / 3600);
         const minutes = Math.floor((totalSeconds % 3600) / 60);
         const seconds = totalSeconds % 60;
-        const timeStr = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        const timeStr = `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
         return `${timeStr} (${totalSeconds}s)`;
       case AppSettingType.TITLE_VALUE:
-        return setting.value ? String(setting.value) : 'No value';
+        return setting.value ? String(setting.value) : "No value";
       default:
-        return '';
+        return "";
     }
   };
 
-    return (
-    <div ref={setNodeRef} style={style} className="border rounded-lg bg-white shadow-sm">
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="border rounded-lg bg-white shadow-sm"
+    >
       {!isEditing ? (
         // Collapsed view - just show the essential info
         <div
@@ -217,7 +247,7 @@ const SortableSettingItem: React.FC<SortableSettingItemProps> = ({
           {/* Header with close button */}
           <div className="flex items-center justify-between mb-4">
             <h4 className="font-medium text-sm">
-              {isGroup ? 'Edit Group' : 'Edit Setting'}
+              {isGroup ? "Edit Group" : "Edit Setting"}
             </h4>
             <div className="flex items-center gap-2">
               <Button
@@ -257,14 +287,26 @@ const SortableSettingItem: React.FC<SortableSettingItemProps> = ({
                   <SelectItem value={AppSettingType.GROUP}>Group</SelectItem>
                   <SelectItem value={AppSettingType.TOGGLE}>Toggle</SelectItem>
                   <SelectItem value={AppSettingType.TEXT}>Text</SelectItem>
-                  <SelectItem value={AppSettingType.TEXT_NO_SAVE_BUTTON}>Text (No Save)</SelectItem>
+                  <SelectItem value={AppSettingType.TEXT_NO_SAVE_BUTTON}>
+                    Text (No Save)
+                  </SelectItem>
                   <SelectItem value={AppSettingType.SELECT}>Select</SelectItem>
-                  <SelectItem value={AppSettingType.SELECT_WITH_SEARCH}>Select with Search</SelectItem>
-                  <SelectItem value={AppSettingType.MULTISELECT}>Multiselect</SelectItem>
+                  <SelectItem value={AppSettingType.SELECT_WITH_SEARCH}>
+                    Select with Search
+                  </SelectItem>
+                  <SelectItem value={AppSettingType.MULTISELECT}>
+                    Multiselect
+                  </SelectItem>
                   <SelectItem value={AppSettingType.SLIDER}>Slider</SelectItem>
-                  <SelectItem value={AppSettingType.NUMERIC_INPUT}>Numeric Input</SelectItem>
-                  <SelectItem value={AppSettingType.TIME_PICKER}>Time Picker</SelectItem>
-                  <SelectItem value={AppSettingType.TITLE_VALUE}>Title/Value Display</SelectItem>
+                  <SelectItem value={AppSettingType.NUMERIC_INPUT}>
+                    Numeric Input
+                  </SelectItem>
+                  <SelectItem value={AppSettingType.TIME_PICKER}>
+                    Time Picker
+                  </SelectItem>
+                  <SelectItem value={AppSettingType.TITLE_VALUE}>
+                    Title/Value Display
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -274,8 +316,10 @@ const SortableSettingItem: React.FC<SortableSettingItemProps> = ({
               <div>
                 <Label className="text-sm font-medium">Group Title</Label>
                 <Input
-                  value={setting.title || ''}
-                  onChange={(e) => updateSetting(index, { title: e.target.value })}
+                  value={setting.title || ""}
+                  onChange={(e) =>
+                    updateSetting(index, { title: e.target.value })
+                  }
                   placeholder="e.g., Display Settings"
                   className="mt-1"
                 />
@@ -288,8 +332,10 @@ const SortableSettingItem: React.FC<SortableSettingItemProps> = ({
                   <div>
                     <Label className="text-sm font-medium">Setting Key</Label>
                     <Input
-                      value={setting.key || ''}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateSetting(index, { key: e.target.value })}
+                      value={setting.key || ""}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                        updateSetting(index, { key: e.target.value })
+                      }
                       placeholder="e.g., theme_color"
                       className="mt-1 font-mono"
                     />
@@ -303,13 +349,16 @@ const SortableSettingItem: React.FC<SortableSettingItemProps> = ({
                 <div>
                   <Label className="text-sm font-medium">Display Label</Label>
                   <Input
-                    value={setting.label || ''}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateSetting(index, { label: e.currentTarget.value })}
+                    value={setting.label || ""}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                      updateSetting(index, { label: e.currentTarget.value })
+                    }
                     placeholder="e.g., Theme Color"
                     className="mt-1"
                   />
                   <p className="text-xs text-gray-500 mt-1">
-                    This is the label for the setting that will be displayed to the user
+                    This is the label for the setting that will be displayed to
+                    the user
                   </p>
                 </div>
 
@@ -320,32 +369,47 @@ const SortableSettingItem: React.FC<SortableSettingItemProps> = ({
                     <div className="flex items-center space-x-2 mt-1">
                       <Checkbox
                         checked={setting.defaultValue}
-                        onCheckedChange={(checked) => updateSetting(index, { defaultValue: checked })}
+                        onCheckedChange={(checked) =>
+                          updateSetting(index, { defaultValue: checked })
+                        }
                       />
                       <Label className="text-sm">Enabled by default</Label>
                     </div>
                   </div>
                 )}
 
-                {(setting.type === AppSettingType.TEXT || setting.type === AppSettingType.TEXT_NO_SAVE_BUTTON) && (
+                {(setting.type === AppSettingType.TEXT ||
+                  setting.type === AppSettingType.TEXT_NO_SAVE_BUTTON) && (
                   <div>
                     <Label className="text-sm font-medium">Default Value</Label>
                     <Input
-                      value={setting.defaultValue || ''}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateSetting(index, { defaultValue: e.currentTarget.value })}
+                      value={setting.defaultValue || ""}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                        updateSetting(index, {
+                          defaultValue: e.currentTarget.value,
+                        })
+                      }
                       placeholder="Default text value"
                       className="mt-1"
                     />
                     <p className="text-xs text-gray-500 mt-1">
-                      This is the default value for the setting if the user does not provide a value
+                      This is the default value for the setting if the user does
+                      not provide a value
                     </p>
                     {setting.type === AppSettingType.TEXT_NO_SAVE_BUTTON && (
                       <div className="mt-2">
-                        <Label className="text-sm font-medium">Max Lines (optional)</Label>
+                        <Label className="text-sm font-medium">
+                          Max Lines (optional)
+                        </Label>
                         <Input
                           type="number"
-                          value={setting.maxLines || ''}
-                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateSetting(index, { maxLines: parseInt(e.currentTarget.value) || undefined })}
+                          value={setting.maxLines || ""}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                            updateSetting(index, {
+                              maxLines:
+                                parseInt(e.currentTarget.value) || undefined,
+                            })
+                          }
                           placeholder="e.g., 5"
                           className="mt-1"
                         />
@@ -356,14 +420,20 @@ const SortableSettingItem: React.FC<SortableSettingItemProps> = ({
 
                 {setting.type === AppSettingType.SLIDER && (
                   <div>
-                    <Label className="text-sm font-medium">Slider Configuration</Label>
+                    <Label className="text-sm font-medium">
+                      Slider Configuration
+                    </Label>
                     <div className="grid grid-cols-3 gap-3 mt-1">
                       <div>
                         <Label className="text-xs">Min</Label>
                         <Input
                           type="number"
                           value={setting.min || 0}
-                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateSetting(index, { min: parseInt(e.currentTarget.value) || 0 })}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                            updateSetting(index, {
+                              min: parseInt(e.currentTarget.value) || 0,
+                            })
+                          }
                           className="mt-1"
                         />
                       </div>
@@ -372,7 +442,11 @@ const SortableSettingItem: React.FC<SortableSettingItemProps> = ({
                         <Input
                           type="number"
                           value={setting.max || 100}
-                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateSetting(index, { max: parseInt(e.currentTarget.value) || 100 })}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                            updateSetting(index, {
+                              max: parseInt(e.currentTarget.value) || 100,
+                            })
+                          }
                           className="mt-1"
                         />
                       </div>
@@ -381,7 +455,12 @@ const SortableSettingItem: React.FC<SortableSettingItemProps> = ({
                         <Input
                           type="number"
                           value={setting.defaultValue || 0}
-                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateSetting(index, { defaultValue: parseInt(e.currentTarget.value) || 0 })}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                            updateSetting(index, {
+                              defaultValue:
+                                parseInt(e.currentTarget.value) || 0,
+                            })
+                          }
                           className="mt-1"
                         />
                       </div>
@@ -391,14 +470,22 @@ const SortableSettingItem: React.FC<SortableSettingItemProps> = ({
 
                 {setting.type === AppSettingType.NUMERIC_INPUT && (
                   <div>
-                    <Label className="text-sm font-medium">Numeric Input Configuration</Label>
+                    <Label className="text-sm font-medium">
+                      Numeric Input Configuration
+                    </Label>
                     <div className="grid grid-cols-2 gap-3 mt-1">
                       <div>
                         <Label className="text-xs">Min Value (optional)</Label>
                         <Input
                           type="number"
-                          value={setting.min || ''}
-                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateSetting(index, { min: e.currentTarget.value ? parseInt(e.currentTarget.value) : undefined })}
+                          value={setting.min || ""}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                            updateSetting(index, {
+                              min: e.currentTarget.value
+                                ? parseInt(e.currentTarget.value)
+                                : undefined,
+                            })
+                          }
                           placeholder="No minimum"
                           className="mt-1"
                         />
@@ -407,8 +494,14 @@ const SortableSettingItem: React.FC<SortableSettingItemProps> = ({
                         <Label className="text-xs">Max Value (optional)</Label>
                         <Input
                           type="number"
-                          value={setting.max || ''}
-                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateSetting(index, { max: e.currentTarget.value ? parseInt(e.currentTarget.value) : undefined })}
+                          value={setting.max || ""}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                            updateSetting(index, {
+                              max: e.currentTarget.value
+                                ? parseInt(e.currentTarget.value)
+                                : undefined,
+                            })
+                          }
                           placeholder="No maximum"
                           className="mt-1"
                         />
@@ -419,8 +512,14 @@ const SortableSettingItem: React.FC<SortableSettingItemProps> = ({
                         <Label className="text-xs">Step (optional)</Label>
                         <Input
                           type="number"
-                          value={setting.step || ''}
-                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateSetting(index, { step: e.currentTarget.value ? parseInt(e.currentTarget.value) : undefined })}
+                          value={setting.step || ""}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                            updateSetting(index, {
+                              step: e.currentTarget.value
+                                ? parseInt(e.currentTarget.value)
+                                : undefined,
+                            })
+                          }
                           placeholder="1"
                           className="mt-1"
                         />
@@ -429,8 +528,14 @@ const SortableSettingItem: React.FC<SortableSettingItemProps> = ({
                         <Label className="text-xs">Default Value</Label>
                         <Input
                           type="number"
-                          value={setting.defaultValue || ''}
-                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateSetting(index, { defaultValue: e.currentTarget.value ? parseInt(e.currentTarget.value) : 0 })}
+                          value={setting.defaultValue || ""}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                            updateSetting(index, {
+                              defaultValue: e.currentTarget.value
+                                ? parseInt(e.currentTarget.value)
+                                : 0,
+                            })
+                          }
                           placeholder="0"
                           className="mt-1"
                         />
@@ -439,8 +544,12 @@ const SortableSettingItem: React.FC<SortableSettingItemProps> = ({
                     <div className="mt-2">
                       <Label className="text-xs">Placeholder (optional)</Label>
                       <Input
-                        value={setting.placeholder || ''}
-                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateSetting(index, { placeholder: e.currentTarget.value })}
+                        value={setting.placeholder || ""}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                          updateSetting(index, {
+                            placeholder: e.currentTarget.value,
+                          })
+                        }
                         placeholder="e.g., Enter a number"
                         className="mt-1"
                       />
@@ -450,14 +559,23 @@ const SortableSettingItem: React.FC<SortableSettingItemProps> = ({
 
                 {setting.type === AppSettingType.TIME_PICKER && (
                   <div>
-                    <Label className="text-sm font-medium">Time Picker Configuration</Label>
+                    <Label className="text-sm font-medium">
+                      Time Picker Configuration
+                    </Label>
                     <div className="grid grid-cols-2 gap-3 mt-1">
                       <div>
-                        <Label className="text-xs">Default Value (seconds)</Label>
+                        <Label className="text-xs">
+                          Default Value (seconds)
+                        </Label>
                         <Input
                           type="number"
                           value={setting.defaultValue || 0}
-                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateSetting(index, { defaultValue: parseInt(e.currentTarget.value) || 0 })}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                            updateSetting(index, {
+                              defaultValue:
+                                parseInt(e.currentTarget.value) || 0,
+                            })
+                          }
                           placeholder="0"
                           className="mt-1"
                         />
@@ -470,16 +588,22 @@ const SortableSettingItem: React.FC<SortableSettingItemProps> = ({
                         <div className="flex items-center space-x-2 mt-1">
                           <Checkbox
                             checked={setting.showSeconds !== false}
-                            onCheckedChange={(checked) => updateSetting(index, { showSeconds: checked })}
+                            onCheckedChange={(checked) =>
+                              updateSetting(index, { showSeconds: checked })
+                            }
                           />
-                          <Label className="text-sm">Include seconds picker</Label>
+                          <Label className="text-sm">
+                            Include seconds picker
+                          </Label>
                         </div>
                       </div>
                     </div>
                   </div>
                 )}
 
-                {(setting.type === AppSettingType.SELECT || setting.type === AppSettingType.SELECT_WITH_SEARCH || setting.type === AppSettingType.MULTISELECT) && (
+                {(setting.type === AppSettingType.SELECT ||
+                  setting.type === AppSettingType.SELECT_WITH_SEARCH ||
+                  setting.type === AppSettingType.MULTISELECT) && (
                   <div>
                     <div className="flex items-center justify-between">
                       <Label className="text-sm font-medium">Options</Label>
@@ -494,49 +618,85 @@ const SortableSettingItem: React.FC<SortableSettingItemProps> = ({
                       </Button>
                     </div>
                     <div className="space-y-2 mt-2">
-                      {(setting.options || []).map((option: any, optionIndex: number) => (
-                        <div key={optionIndex} className="flex items-center gap-2">
-                          <Input
-                            placeholder="Display label"
-                            value={option.label}
-                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateSelectOptions(index, optionIndex, 'label', e.currentTarget.value)}
-                            className="flex-1"
-                          />
-                          <Input
-                            placeholder="Value"
-                            value={option.value}
-                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateSelectOptions(index, optionIndex, 'value', e.currentTarget.value)}
-                            className="flex-1 font-mono"
-                          />
-                          <Button
-                            onClick={() => removeSelectOption(index, optionIndex)}
-                            variant="ghost"
-                            size="sm"
-                            type="button"
-                            className="text-red-600"
+                      {(setting.options || []).map(
+                        (option: any, optionIndex: number) => (
+                          <div
+                            key={optionIndex}
+                            className="flex items-center gap-2"
                           >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      ))}
+                            <Input
+                              placeholder="Display label"
+                              value={option.label}
+                              onChange={(
+                                e: React.ChangeEvent<HTMLInputElement>,
+                              ) =>
+                                updateSelectOptions(
+                                  index,
+                                  optionIndex,
+                                  "label",
+                                  e.currentTarget.value,
+                                )
+                              }
+                              className="flex-1"
+                            />
+                            <Input
+                              placeholder="Value"
+                              value={option.value}
+                              onChange={(
+                                e: React.ChangeEvent<HTMLInputElement>,
+                              ) =>
+                                updateSelectOptions(
+                                  index,
+                                  optionIndex,
+                                  "value",
+                                  e.currentTarget.value,
+                                )
+                              }
+                              className="flex-1 font-mono"
+                            />
+                            <Button
+                              onClick={() =>
+                                removeSelectOption(index, optionIndex)
+                              }
+                              variant="ghost"
+                              size="sm"
+                              type="button"
+                              className="text-red-600"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ),
+                      )}
                     </div>
 
                     {/* Only show default selection for single-select types, not multiselect */}
-                    {(setting.type === AppSettingType.SELECT || setting.type === AppSettingType.SELECT_WITH_SEARCH) && (
+                    {(setting.type === AppSettingType.SELECT ||
+                      setting.type === AppSettingType.SELECT_WITH_SEARCH) && (
                       <div className="mt-3">
-                        <Label className="text-sm font-medium">Default Selection</Label>
+                        <Label className="text-sm font-medium">
+                          Default Selection
+                        </Label>
                         <Select
-                          value={setting.defaultValue || ''}
-                          onValueChange={(value) => updateSetting(index, { defaultValue: value })}
+                          value={setting.defaultValue || ""}
+                          onValueChange={(value) =>
+                            updateSetting(index, { defaultValue: value })
+                          }
                         >
                           <SelectTrigger className="mt-1">
                             <SelectValue placeholder="Choose default option" />
                           </SelectTrigger>
                           <SelectContent>
                             {(setting.options || [])
-                              .filter((option: any) => option.value && option.value.trim() !== '')
+                              .filter(
+                                (option: any) =>
+                                  option.value && option.value.trim() !== "",
+                              )
                               .map((option: any, optionIndex: number) => (
-                                <SelectItem key={optionIndex} value={option.value}>
+                                <SelectItem
+                                  key={optionIndex}
+                                  value={option.value}
+                                >
                                   {option.label}
                                 </SelectItem>
                               ))}
@@ -548,28 +708,51 @@ const SortableSettingItem: React.FC<SortableSettingItemProps> = ({
                     {/* For multiselect, show a different interface for default values */}
                     {setting.type === AppSettingType.MULTISELECT && (
                       <div className="mt-3">
-                        <Label className="text-sm font-medium">Default Selections</Label>
+                        <Label className="text-sm font-medium">
+                          Default Selections
+                        </Label>
                         <div className="space-y-2 mt-2">
                           {(setting.options || [])
-                            .filter((option: any) => option.value && option.value.trim() !== '')
+                            .filter(
+                              (option: any) =>
+                                option.value && option.value.trim() !== "",
+                            )
                             .map((option: any, optionIndex: number) => {
-                              const isSelected = Array.isArray(setting.defaultValue) && setting.defaultValue.includes(option.value);
+                              const isSelected =
+                                Array.isArray(setting.defaultValue) &&
+                                setting.defaultValue.includes(option.value);
                               return (
-                                <div key={optionIndex} className="flex items-center space-x-2">
+                                <div
+                                  key={optionIndex}
+                                  className="flex items-center space-x-2"
+                                >
                                   <Checkbox
                                     checked={isSelected}
                                     onCheckedChange={(checked) => {
-                                      const currentDefaults = Array.isArray(setting.defaultValue) ? setting.defaultValue : [];
+                                      const currentDefaults = Array.isArray(
+                                        setting.defaultValue,
+                                      )
+                                        ? setting.defaultValue
+                                        : [];
                                       let newDefaults;
                                       if (checked) {
-                                        newDefaults = [...currentDefaults, option.value];
+                                        newDefaults = [
+                                          ...currentDefaults,
+                                          option.value,
+                                        ];
                                       } else {
-                                        newDefaults = currentDefaults.filter((val: any) => val !== option.value);
+                                        newDefaults = currentDefaults.filter(
+                                          (val: any) => val !== option.value,
+                                        );
                                       }
-                                      updateSetting(index, { defaultValue: newDefaults });
+                                      updateSetting(index, {
+                                        defaultValue: newDefaults,
+                                      });
                                     }}
                                   />
-                                  <Label className="text-sm">{option.label}</Label>
+                                  <Label className="text-sm">
+                                    {option.label}
+                                  </Label>
                                 </div>
                               );
                             })}
@@ -583,8 +766,10 @@ const SortableSettingItem: React.FC<SortableSettingItemProps> = ({
                   <div>
                     <Label className="text-sm font-medium">Display Value</Label>
                     <Input
-                      value={setting.value || ''}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateSetting(index, { value: e.currentTarget.value })}
+                      value={setting.value || ""}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                        updateSetting(index, { value: e.currentTarget.value })
+                      }
                       placeholder="Value to display"
                       className="mt-1"
                     />
@@ -605,17 +790,22 @@ const SortableSettingItem: React.FC<SortableSettingItemProps> = ({
 /**
  * Compact settings editor component with drag-and-drop functionality
  */
-const SettingsEditor: React.FC<SettingsEditorProps> = ({ settings, onChange, className }) => {
+const SettingsEditor: React.FC<SettingsEditorProps> = ({
+  settings,
+  onChange,
+  className,
+}) => {
   const [activeId, setActiveId] = React.useState<string | null>(null);
   const [editingIndex, setEditingIndex] = React.useState<number | null>(null);
 
   // Generate stable unique IDs for each setting
-  const settingsWithIds = React.useMemo(() =>
-    settings.map((setting, index) => ({
-      ...setting,
-      id: (setting as any).id || `setting-${index}`
-    })),
-    [settings]
+  const settingsWithIds = React.useMemo(
+    () =>
+      settings.map((setting, index) => ({
+        ...setting,
+        id: (setting as any).id || `setting-${index}`,
+      })),
+    [settings],
   );
 
   // Configure sensors for drag and drop
@@ -627,28 +817,29 @@ const SettingsEditor: React.FC<SettingsEditorProps> = ({ settings, onChange, cla
     }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
-    })
+    }),
   );
 
   // Helper function to create a new empty setting
   const createEmptySetting = (): any => ({
     type: AppSettingType.TEXT,
-    key: '',
-    label: '',
-    defaultValue: '',
-    id: `setting-${Date.now()}-${Math.random()}`
+    key: "",
+    label: "",
+    defaultValue: "",
+    id: `setting-${Date.now()}-${Math.random()}`,
   });
 
   // Helper function to create a new empty group setting
   const createEmptyGroupSetting = (): any => ({
     type: AppSettingType.GROUP,
-    title: '',
-    id: `group-${Date.now()}-${Math.random()}`
+    title: "",
+    id: `group-${Date.now()}-${Math.random()}`,
   });
 
   // Add a new setting
-  const addSetting = (type: 'setting' | 'group' = 'setting') => {
-    const newSetting = type === 'group' ? createEmptyGroupSetting() : createEmptySetting();
+  const addSetting = (type: "setting" | "group" = "setting") => {
+    const newSetting =
+      type === "group" ? createEmptyGroupSetting() : createEmptySetting();
     const newSettings = [...settings, newSetting];
     onChange(newSettings);
     // Auto-expand the newly added setting for editing
@@ -678,11 +869,11 @@ const SettingsEditor: React.FC<SettingsEditorProps> = ({ settings, onChange, cla
   // Handle setting type change
   const handleTypeChange = (index: number, newType: string) => {
     const currentSetting = settings[index];
-    let updates: any = { type: newType };
+    const updates: any = { type: newType };
 
     // Type guard to check if setting has key and label properties
     const hasKeyAndLabel = (s: any): s is { key: string; label: string } => {
-      return 'key' in s && 'label' in s;
+      return "key" in s && "label" in s;
     };
 
     // Preserve common fields that exist across most setting types
@@ -695,19 +886,25 @@ const SettingsEditor: React.FC<SettingsEditorProps> = ({ settings, onChange, cla
     switch (newType) {
       case AppSettingType.TOGGLE:
         // Preserve defaultValue if it's boolean, otherwise set to false
-        updates.defaultValue = typeof currentSetting.defaultValue === 'boolean'
-          ? currentSetting.defaultValue
-          : false;
+        updates.defaultValue =
+          typeof currentSetting.defaultValue === "boolean"
+            ? currentSetting.defaultValue
+            : false;
         break;
 
       case AppSettingType.TEXT:
       case AppSettingType.TEXT_NO_SAVE_BUTTON:
         // Preserve defaultValue if it's a string, otherwise set to empty
-        updates.defaultValue = typeof currentSetting.defaultValue === 'string'
-          ? currentSetting.defaultValue
-          : '';
+        updates.defaultValue =
+          typeof currentSetting.defaultValue === "string"
+            ? currentSetting.defaultValue
+            : "";
         // Preserve maxLines for TEXT_NO_SAVE_BUTTON if it exists
-        if (newType === AppSettingType.TEXT_NO_SAVE_BUTTON && 'maxLines' in currentSetting && typeof (currentSetting as any).maxLines === 'number') {
+        if (
+          newType === AppSettingType.TEXT_NO_SAVE_BUTTON &&
+          "maxLines" in currentSetting &&
+          typeof (currentSetting as any).maxLines === "number"
+        ) {
           updates.maxLines = (currentSetting as any).maxLines;
         }
         break;
@@ -715,51 +912,81 @@ const SettingsEditor: React.FC<SettingsEditorProps> = ({ settings, onChange, cla
       case AppSettingType.SELECT:
       case AppSettingType.SELECT_WITH_SEARCH:
         // Always preserve existing options if they exist
-        if ('options' in currentSetting && Array.isArray((currentSetting as any).options)) {
+        if (
+          "options" in currentSetting &&
+          Array.isArray((currentSetting as any).options)
+        ) {
           updates.options = (currentSetting as any).options;
           // Preserve defaultValue if it's a valid option value
-          const validValues = (currentSetting as any).options.map((opt: any) => opt.value);
+          const validValues = (currentSetting as any).options.map(
+            (opt: any) => opt.value,
+          );
           if (validValues.includes(currentSetting.defaultValue)) {
             updates.defaultValue = currentSetting.defaultValue;
           } else {
-            updates.defaultValue = '';
+            updates.defaultValue = "";
           }
         } else {
-          updates.options = [{ label: 'Option Label 1', value: 'option_value_1' }];
-          updates.defaultValue = '';
+          updates.options = [
+            { label: "Option Label 1", value: "option_value_1" },
+          ];
+          updates.defaultValue = "";
         }
         break;
 
       case AppSettingType.MULTISELECT:
         // Always preserve existing options if they exist
-        if ('options' in currentSetting && Array.isArray((currentSetting as any).options)) {
+        if (
+          "options" in currentSetting &&
+          Array.isArray((currentSetting as any).options)
+        ) {
           updates.options = (currentSetting as any).options;
           // Convert single defaultValue to array, or preserve if already array
           if (Array.isArray(currentSetting.defaultValue)) {
             // Filter to only include valid option values
-            const validValues = (currentSetting as any).options.map((opt: any) => opt.value);
-            updates.defaultValue = currentSetting.defaultValue.filter((val: any) => validValues.includes(val));
-          } else if (currentSetting.defaultValue &&
-                     (currentSetting as any).options.some((opt: any) => opt.value === currentSetting.defaultValue)) {
+            const validValues = (currentSetting as any).options.map(
+              (opt: any) => opt.value,
+            );
+            updates.defaultValue = currentSetting.defaultValue.filter(
+              (val: any) => validValues.includes(val),
+            );
+          } else if (
+            currentSetting.defaultValue &&
+            (currentSetting as any).options.some(
+              (opt: any) => opt.value === currentSetting.defaultValue,
+            )
+          ) {
             // Convert single value to array if it's a valid option
             updates.defaultValue = [currentSetting.defaultValue];
           } else {
             updates.defaultValue = [];
           }
         } else {
-          updates.options = [{ label: 'Option Label 1', value: 'option_value_1' }];
+          updates.options = [
+            { label: "Option Label 1", value: "option_value_1" },
+          ];
           updates.defaultValue = [];
         }
         break;
 
       case AppSettingType.SLIDER:
         // Preserve min, max if they exist and are numbers
-        updates.min = 'min' in currentSetting && typeof (currentSetting as any).min === 'number' ? (currentSetting as any).min : 0;
-        updates.max = 'max' in currentSetting && typeof (currentSetting as any).max === 'number' ? (currentSetting as any).max : 100;
+        updates.min =
+          "min" in currentSetting &&
+          typeof (currentSetting as any).min === "number"
+            ? (currentSetting as any).min
+            : 0;
+        updates.max =
+          "max" in currentSetting &&
+          typeof (currentSetting as any).max === "number"
+            ? (currentSetting as any).max
+            : 100;
         // Preserve defaultValue if it's a number within range
-        if (typeof currentSetting.defaultValue === 'number' &&
-            currentSetting.defaultValue >= updates.min &&
-            currentSetting.defaultValue <= updates.max) {
+        if (
+          typeof currentSetting.defaultValue === "number" &&
+          currentSetting.defaultValue >= updates.min &&
+          currentSetting.defaultValue <= updates.max
+        ) {
           updates.defaultValue = currentSetting.defaultValue;
         } else {
           updates.defaultValue = updates.min;
@@ -768,26 +995,53 @@ const SettingsEditor: React.FC<SettingsEditorProps> = ({ settings, onChange, cla
 
       case AppSettingType.NUMERIC_INPUT:
         // Preserve min, max, step if they exist and are numbers
-        updates.min = 'min' in currentSetting && typeof (currentSetting as any).min === 'number' ? (currentSetting as any).min : undefined;
-        updates.max = 'max' in currentSetting && typeof (currentSetting as any).max === 'number' ? (currentSetting as any).max : undefined;
-        updates.step = 'step' in currentSetting && typeof (currentSetting as any).step === 'number' ? (currentSetting as any).step : undefined;
-        updates.placeholder = 'placeholder' in currentSetting && typeof (currentSetting as any).placeholder === 'string' ? (currentSetting as any).placeholder : undefined;
+        updates.min =
+          "min" in currentSetting &&
+          typeof (currentSetting as any).min === "number"
+            ? (currentSetting as any).min
+            : undefined;
+        updates.max =
+          "max" in currentSetting &&
+          typeof (currentSetting as any).max === "number"
+            ? (currentSetting as any).max
+            : undefined;
+        updates.step =
+          "step" in currentSetting &&
+          typeof (currentSetting as any).step === "number"
+            ? (currentSetting as any).step
+            : undefined;
+        updates.placeholder =
+          "placeholder" in currentSetting &&
+          typeof (currentSetting as any).placeholder === "string"
+            ? (currentSetting as any).placeholder
+            : undefined;
         // Preserve defaultValue if it's a number
-        updates.defaultValue = typeof currentSetting.defaultValue === 'number' ? currentSetting.defaultValue : 0;
+        updates.defaultValue =
+          typeof currentSetting.defaultValue === "number"
+            ? currentSetting.defaultValue
+            : 0;
         break;
 
       case AppSettingType.TIME_PICKER:
         // Preserve showSeconds if it exists
-        updates.showSeconds = 'showSeconds' in currentSetting && typeof (currentSetting as any).showSeconds === 'boolean' ? (currentSetting as any).showSeconds : true;
+        updates.showSeconds =
+          "showSeconds" in currentSetting &&
+          typeof (currentSetting as any).showSeconds === "boolean"
+            ? (currentSetting as any).showSeconds
+            : true;
         // Preserve defaultValue if it's a number (total seconds)
-        updates.defaultValue = typeof currentSetting.defaultValue === 'number' ? currentSetting.defaultValue : 0;
+        updates.defaultValue =
+          typeof currentSetting.defaultValue === "number"
+            ? currentSetting.defaultValue
+            : 0;
         break;
 
       case AppSettingType.GROUP:
         // For groups, preserve title if it exists, otherwise use label as title
-        updates.title = ('title' in currentSetting && (currentSetting as any).title) ||
-                       ('label' in currentSetting && currentSetting.label) ||
-                       '';
+        updates.title =
+          ("title" in currentSetting && (currentSetting as any).title) ||
+          ("label" in currentSetting && currentSetting.label) ||
+          "";
         // Remove fields that don't apply to groups
         delete updates.key;
         delete updates.label;
@@ -795,9 +1049,10 @@ const SettingsEditor: React.FC<SettingsEditorProps> = ({ settings, onChange, cla
 
       case AppSettingType.TITLE_VALUE:
         // Preserve value if it exists, otherwise use defaultValue
-        updates.value = ('value' in currentSetting && (currentSetting as any).value) ||
-                       currentSetting.defaultValue ||
-                       '';
+        updates.value =
+          ("value" in currentSetting && (currentSetting as any).value) ||
+          currentSetting.defaultValue ||
+          "";
         break;
     }
 
@@ -805,9 +1060,19 @@ const SettingsEditor: React.FC<SettingsEditorProps> = ({ settings, onChange, cla
   };
 
   // Handle options change for select settings
-  const updateSelectOptions = (settingIndex: number, optionIndex: number, field: 'label' | 'value', value: string) => {
+  const updateSelectOptions = (
+    settingIndex: number,
+    optionIndex: number,
+    field: "label" | "value",
+    value: string,
+  ) => {
     const setting: any = settings[settingIndex];
-    if ((setting.type === AppSettingType.SELECT || setting.type === AppSettingType.SELECT_WITH_SEARCH || setting.type === AppSettingType.MULTISELECT) && setting.options) {
+    if (
+      (setting.type === AppSettingType.SELECT ||
+        setting.type === AppSettingType.SELECT_WITH_SEARCH ||
+        setting.type === AppSettingType.MULTISELECT) &&
+      setting.options
+    ) {
       const newOptions = [...setting.options];
       newOptions[optionIndex] = { ...newOptions[optionIndex], [field]: value };
       updateSetting(settingIndex, { options: newOptions });
@@ -817,12 +1082,19 @@ const SettingsEditor: React.FC<SettingsEditorProps> = ({ settings, onChange, cla
   // Add option for select settings
   const addSelectOption = (settingIndex: number) => {
     const setting: any = settings[settingIndex];
-    if (setting.type === AppSettingType.SELECT || setting.type === AppSettingType.SELECT_WITH_SEARCH || setting.type === AppSettingType.MULTISELECT) {
+    if (
+      setting.type === AppSettingType.SELECT ||
+      setting.type === AppSettingType.SELECT_WITH_SEARCH ||
+      setting.type === AppSettingType.MULTISELECT
+    ) {
       const optionCount = (setting.options || []).length + 1;
-      const newOptions = [...(setting.options || []), {
-        label: `Option Label ${optionCount}`,
-        value: `option_value_${optionCount}`
-      }];
+      const newOptions = [
+        ...(setting.options || []),
+        {
+          label: `Option Label ${optionCount}`,
+          value: `option_value_${optionCount}`,
+        },
+      ];
       updateSetting(settingIndex, { options: newOptions });
     }
   };
@@ -830,8 +1102,15 @@ const SettingsEditor: React.FC<SettingsEditorProps> = ({ settings, onChange, cla
   // Remove option for select settings
   const removeSelectOption = (settingIndex: number, optionIndex: number) => {
     const setting: any = settings[settingIndex];
-    if ((setting.type === AppSettingType.SELECT || setting.type === AppSettingType.SELECT_WITH_SEARCH || setting.type === AppSettingType.MULTISELECT) && setting.options) {
-      const newOptions = setting.options.filter((_: any, i: number) => i !== optionIndex);
+    if (
+      (setting.type === AppSettingType.SELECT ||
+        setting.type === AppSettingType.SELECT_WITH_SEARCH ||
+        setting.type === AppSettingType.MULTISELECT) &&
+      setting.options
+    ) {
+      const newOptions = setting.options.filter(
+        (_: any, i: number) => i !== optionIndex,
+      );
       updateSetting(settingIndex, { options: newOptions });
     }
   };
@@ -846,8 +1125,12 @@ const SettingsEditor: React.FC<SettingsEditorProps> = ({ settings, onChange, cla
     const { active, over } = event;
 
     if (active.id !== over?.id) {
-      const oldIndex = settingsWithIds.findIndex((item) => item.id === active.id);
-      const newIndex = settingsWithIds.findIndex((item) => item.id === over?.id);
+      const oldIndex = settingsWithIds.findIndex(
+        (item) => item.id === active.id,
+      );
+      const newIndex = settingsWithIds.findIndex(
+        (item) => item.id === over?.id,
+      );
 
       if (oldIndex !== -1 && newIndex !== -1) {
         const newSettings = arrayMove(settings, oldIndex, newIndex);
@@ -858,7 +1141,9 @@ const SettingsEditor: React.FC<SettingsEditorProps> = ({ settings, onChange, cla
     setActiveId(null);
   };
 
-  const activeIndex = activeId ? settingsWithIds.findIndex((item) => item.id === activeId) : -1;
+  const activeIndex = activeId
+    ? settingsWithIds.findIndex((item) => item.id === activeId)
+    : -1;
   const activeSetting = activeIndex !== -1 ? settings[activeIndex] : null;
 
   return (
@@ -875,7 +1160,7 @@ const SettingsEditor: React.FC<SettingsEditorProps> = ({ settings, onChange, cla
         </div>
         <div className="flex gap-2">
           <Button
-            onClick={() => addSetting('group')}
+            onClick={() => addSetting("group")}
             variant="outline"
             size="sm"
             type="button"
@@ -885,7 +1170,7 @@ const SettingsEditor: React.FC<SettingsEditorProps> = ({ settings, onChange, cla
             Group
           </Button>
           <Button
-            onClick={() => addSetting('setting')}
+            onClick={() => addSetting("setting")}
             size="sm"
             type="button"
             className="h-8 px-3"
@@ -895,8 +1180,6 @@ const SettingsEditor: React.FC<SettingsEditorProps> = ({ settings, onChange, cla
           </Button>
         </div>
       </div>
-
-
 
       {settings.length === 0 ? (
         <div className="text-center py-8 text-gray-500">
@@ -912,7 +1195,7 @@ const SettingsEditor: React.FC<SettingsEditorProps> = ({ settings, onChange, cla
           onDragEnd={handleDragEnd}
         >
           <SortableContext
-            items={settingsWithIds.map(item => item.id)}
+            items={settingsWithIds.map((item) => item.id)}
             strategy={verticalListSortingStrategy}
           >
             <div className="space-y-2">
@@ -941,8 +1224,8 @@ const SettingsEditor: React.FC<SettingsEditorProps> = ({ settings, onChange, cla
                   <GripVertical className="h-4 w-4 text-gray-400" />
                   <span className="text-sm font-medium">
                     {activeSetting.type === AppSettingType.GROUP
-                      ? `Group: ${activeSetting.title || 'Untitled'}`
-                      : `Setting: ${activeSetting.key || 'Untitled'}`}
+                      ? `Group: ${activeSetting.title || "Untitled"}`
+                      : `Setting: ${activeSetting.key || "Untitled"}`}
                   </span>
                 </div>
               </div>

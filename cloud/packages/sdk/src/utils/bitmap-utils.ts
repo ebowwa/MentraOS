@@ -357,7 +357,7 @@ export class BitmapUtils {
     const errors: string[] = [];
     let byteCount = 0;
     let blackPixels = 0;
-    let metadata: BitmapValidation["metadata"] = {};
+    const metadata: BitmapValidation["metadata"] = {};
 
     try {
       // Basic hex validation
