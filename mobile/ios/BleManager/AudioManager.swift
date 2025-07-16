@@ -13,7 +13,7 @@ class AudioManager: NSObject {
   private static var instance: AudioManager?
 
   private var players: [String: AVPlayer] = [:] // requestId -> player
-
+  private var playerObservers: [String: [NSObjectProtocol]] = [:] // requestId -> observer tokens
   private var streamingPlayers: [String: AVAudioPlayer] = [:] // requestId -> streaming player
   private var cancellables = Set<AnyCancellable>()
 
@@ -48,6 +48,9 @@ class AudioManager: NSObject {
   ) {
     CoreCommsService.log("AudioManager: playAudio called with requestId: \(requestId)")
 
+    // Clean up any existing player with the same requestId first
+    cleanupPlayer(requestId: requestId)
+
     if stopOtherAudio {
       stopAllAudio()
     }
@@ -68,23 +71,26 @@ class AudioManager: NSObject {
     player.volume = volume
     players[requestId] = player
 
+    var observers: [NSObjectProtocol] = []
+
     // Add observer for when playback ends
-    NotificationCenter.default.addObserver(
+    let endObserver = NotificationCenter.default.addObserver(
       forName: .AVPlayerItemDidPlayToEndTime,
       object: player.currentItem,
       queue: .main
     ) { [weak self] _ in
       // Get the actual duration from the player
       let durationSeconds = player.currentItem?.asset.duration.seconds
-      let durationMs = durationSeconds.isFinite ? durationSeconds * 1000 : nil
+      let durationMs = durationSeconds.flatMap { $0.isFinite ? $0 * 1000 : nil }
 
       self?.cleanupPlayer(requestId: requestId)
       self?.sendAudioPlayResponse(requestId: requestId, success: true, duration: durationMs)
       CoreCommsService.log("AudioManager: Audio playback completed successfully for requestId: \(requestId), duration: \(durationMs ?? 0)ms")
     }
+    observers.append(endObserver)
 
     // Add observer for playback failures
-    NotificationCenter.default.addObserver(
+    let failObserver = NotificationCenter.default.addObserver(
       forName: .AVPlayerItemFailedToPlayToEndTime,
       object: player.currentItem,
       queue: .main
@@ -98,15 +104,23 @@ class AudioManager: NSObject {
       self?.sendAudioPlayResponse(requestId: requestId, success: false, error: errorMessage)
       CoreCommsService.log("AudioManager: Audio playback failed for requestId: \(requestId), error: \(errorMessage)")
     }
+    observers.append(failObserver)
+
+    playerObservers[requestId] = observers
 
     // Check for loading errors after a short delay
     DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
-      if let currentItem = player.currentItem, currentItem.status == .failed {
-        let errorMessage = currentItem.error?.localizedDescription ?? "Failed to load audio"
-        self?.cleanupPlayer(requestId: requestId)
-        self?.sendAudioPlayResponse(requestId: requestId, success: false, error: errorMessage)
-        CoreCommsService.log("AudioManager: Audio loading failed for requestId: \(requestId), error: \(errorMessage)")
+      // Only check if the player still exists (hasn't been cleaned up)
+      guard let currentPlayer = self?.players[requestId],
+            let currentItem = currentPlayer.currentItem,
+            currentItem.status == .failed else {
+        return
       }
+
+      let errorMessage = currentItem.error?.localizedDescription ?? "Failed to load audio"
+      self?.cleanupPlayer(requestId: requestId)
+      self?.sendAudioPlayResponse(requestId: requestId, success: false, error: errorMessage)
+      CoreCommsService.log("AudioManager: Audio loading failed for requestId: \(requestId), error: \(errorMessage)")
     }
 
     player.play()
@@ -121,20 +135,21 @@ class AudioManager: NSObject {
       streamingPlayers.removeValue(forKey: requestId)
     }
 
-
     CoreCommsService.log("AudioManager: Stopped audio for requestId: \(requestId)")
   }
 
   func stopAllAudio() {
-    for (requestId, _) in players {
+    // Clean up all players
+    let allRequestIds = Array(players.keys)
+    for requestId in allRequestIds {
       cleanupPlayer(requestId: requestId)
     }
 
+    // Clean up streaming players
     for (_, streamingPlayer) in streamingPlayers {
       streamingPlayer.stop()
     }
     streamingPlayers.removeAll()
-
 
     CoreCommsService.log("AudioManager: Stopped all audio")
   }
@@ -149,11 +164,16 @@ class AudioManager: NSObject {
 
   // Clean up method to remove observers when stopping audio
   private func cleanupPlayer(requestId: String) {
-    if let player = players[requestId] {
-      // Remove notification observers
-      NotificationCenter.default.removeObserver(self, name: .AVPlayerItemDidPlayToEndTime, object: player.currentItem)
-      NotificationCenter.default.removeObserver(self, name: .AVPlayerItemFailedToPlayToEndTime, object: player.currentItem)
+    // Remove and clean up notification observers
+    if let observers = playerObservers[requestId] {
+      for observer in observers {
+        NotificationCenter.default.removeObserver(observer)
+      }
+      playerObservers.removeValue(forKey: requestId)
+    }
 
+    // Clean up player
+    if let player = players[requestId] {
       player.pause()
       players.removeValue(forKey: requestId)
     }
