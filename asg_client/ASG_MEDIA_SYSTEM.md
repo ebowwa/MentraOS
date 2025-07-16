@@ -293,7 +293,7 @@ public boolean queueMedia(String mediaFilePath, String requestId, int mediaType)
 ## Cloud Server Implementation
 
 ### Button Press API Endpoint
-*File: `/packages/cloud/src/routes/hardware.routes.ts` (in augmentos_cloud repository)*
+*File: `/packages/cloud/src/routes/hardware.routes.ts` (in cloud repository)*
 
 The server provides an endpoint that receives button press events from smart glasses:
 
@@ -341,7 +341,7 @@ router.post('/button-press', validateGlassesAuth, async (req, res) => {
 ```
 
 ### Photo Request Service
-*File: `/packages/cloud/src/services/photoRequest.service.ts` (in augmentos_cloud repository)*
+*File: `/packages/cloud/src/services/photoRequest.service.ts` (in cloud repository)*
 
 The photo request service manages the lifecycle of photo requests:
 - Creates a new requestId for each photo request
@@ -362,23 +362,23 @@ Key functions:
 Apps use the MentraOS SDK to interact with the platform, including requesting photos. The main SDK components for photo requests are:
 
 1. **MentraOS SDK Client Library**
-   *File: `/packages/sdk/src/client.ts`* (in augmentos_cloud repository)
+   *File: `/packages/sdk/src/client.ts`* (in cloud repository)
    - Main entry point for Apps to interact with MentraOS
    - Handles authentication and session management
    - Provides methods for various platform features
 
 2. **Photo Request Module**
-   *File: `/packages/sdk/src/modules/photoRequest.ts`* (in augmentos_cloud repository)
+   *File: `/packages/sdk/src/modules/photoRequest.ts`* (in cloud repository)
    - Contains methods specifically for photo capture functionality
    - Provides a clean API for Apps to request photos
 
 3. **WebSocket Communication**
-   *File: `/packages/sdk/src/websocket.ts`* (in augmentos_cloud repository)
+   *File: `/packages/sdk/src/websocket.ts`* (in cloud repository)
    - Manages real-time communication between Apps and the MentraOS platform
    - Used for delivering photo capture results back to the App
 
 4. **App Helper Module**
-   *Files: `AppHelpersModule.java` and `AppHelpersPackage.java`* (in mentraos_manager repository)
+   *Files: `AppHelpersModule.java` and `AppHelpersPackage.java`* (in `mobile` repository)
    - Native modules that provide helper functions for Apps
    - Includes functionality for launching apps and checking installation status
 
@@ -425,7 +425,7 @@ async function capturePhoto() {
 
 ### Backend Server API Endpoints
 
-*Files in `/packages/cloud/src/routes/` (in augmentos_cloud repository)*
+*Files in `/packages/cloud/src/routes/` (in cloud repository)*
 
 The cloud server provides these endpoints for App photo requests:
 
@@ -445,7 +445,7 @@ The cloud server provides these endpoints for App photo requests:
    - Can be used to receive notifications when photos are ready
 
 ### App Message Handler
-*File: `/packages/cloud/src/handlers/appMessage.handler.ts`* (in augmentos_cloud repository)
+*File: `/packages/cloud/src/handlers/appMessage.handler.ts`* (in cloud repository)
 
 Handles messages between Apps and the MentraOS platform:
 - Processes incoming requests from Apps
@@ -564,7 +564,7 @@ public async getGalleryPhotos(): Promise<any> {
 ## Third-Party App (App) Integration
 
 ### App Subscription System
-*File: `/packages/cloud/src/services/subscription.service.ts`* (in augmentos_cloud repository)
+*File: `/packages/cloud/src/services/subscription.service.ts`* (in cloud repository)
 
 The subscription service allows Apps to register for specific events:
 - Apps can subscribe to button press events via API

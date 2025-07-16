@@ -1,6 +1,6 @@
 # MentraMerge Integration Guide
 
-This document explains how to work with the MentraMerge app in augmentos_cloud.
+This document explains how to work with the MentraMerge app in cloud.
 
 ## Quick Start
 
@@ -64,11 +64,11 @@ bun run logs:merge            # View MentraMerge logs
 
 ## Directory Structure
 
-MentraMerge and augmentos_cloud should be in the same parent directory:
+MentraMerge and cloud should be in the same parent directory:
 
 ```
 /path/to/AugmentApps/
-  ├── augmentos_cloud/
+  ├── cloud/
   └── MentraMerge/
 ```
 
@@ -128,7 +128,7 @@ Without the AI API keys, MentraMerge will run in a limited "demo mode" that does
 ## Deployment on Azure VM
 
 1. Clone both repositories in the same parent directory
-2. From the augmentos_cloud directory, run:
+2. From the cloud directory, run:
    ```bash
    ./manage-merge.sh prod
    ```

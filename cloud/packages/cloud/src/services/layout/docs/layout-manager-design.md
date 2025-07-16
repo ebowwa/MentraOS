@@ -345,7 +345,7 @@ interface UserSession {
 
 ## Current Client-Side Layout Building
 
-### 1. Display Manager (mentraos_manager)
+### 1. Display Manager (`mobile`)
 Currently handles layout building in `DisplayManager`:
 ```typescript
 class DisplayManager {
@@ -395,7 +395,7 @@ class G1FontUtility {
   }
 }
 
-// In mentraos_manager
+// In mobile
 class DisplayFontUtility {
   // Similar implementation for display-specific fonts
 }
@@ -406,7 +406,7 @@ class DisplayFontUtility {
 ### 1. Layout Building Migration
 Move all layout building to cloud:
 ```typescript
-// In augmentos_cloud
+// In cloud
 class FinalMileLayoutManager {
   // ... existing code ...
 
@@ -431,7 +431,7 @@ class FinalMileLayoutManager {
   }
 }
 
-// In mentraos_manager (simplified)
+// In mobile (simplified)
 class DisplayManager {
   constructor(private layoutManager: FinalMileLayoutManager) {}
 
@@ -445,7 +445,7 @@ class DisplayManager {
 ### 2. Font Utility Migration
 Move font utilities to cloud:
 ```typescript
-// In augmentos_cloud
+// In cloud
 class CloudFontUtilityManager {
   private fontUtilities: Map<DeviceType, FontUtility>;
 
@@ -469,7 +469,7 @@ class CloudFontUtilityManager {
 ### 3. Device Configuration Migration
 Move device configurations to cloud:
 ```typescript
-// In augmentos_cloud
+// In cloud
 const DEVICE_CONFIGS = {
   [DeviceType.G1]: {
     displayWidth: 640,
@@ -484,7 +484,7 @@ const DEVICE_CONFIGS = {
   }
 } as const;
 
-// In mentraos_manager (simplified)
+// In mobile (simplified)
 interface UserSession {
   deviceType: DeviceType;  // Only need device type, config moved to cloud
 }
@@ -493,7 +493,7 @@ interface UserSession {
 ### 4. Client-Side Changes
 Simplify client components:
 ```typescript
-// In mentraos_manager
+// In mobile
 class DisplayManager {
   constructor(
     private layoutManager: FinalMileLayoutManager,
@@ -570,11 +570,11 @@ class DashboardManager {
 
 ## File Structure and System Operation
 
-### 1. Cloud-Side (augmentos_cloud)
+### 1. Cloud-Side (cloud)
 
 #### New Files
 ```
-augmentos_cloud/packages/cloud/src/services/layout/
+cloud/packages/cloud/src/services/layout/
 ├── FinalMileLayoutManager.ts           # Main layout manager implementation
 ├── layout.types.ts                     # All layout-related types and interfaces
 ├── utils/
@@ -587,7 +587,7 @@ augmentos_cloud/packages/cloud/src/services/layout/
 
 #### Modified Files
 ```
-augmentos_cloud/packages/cloud/src/services/
+cloud/packages/cloud/src/services/
 ├── dashboard/
 │   └── DashboardManager.ts            # Add layout building capability
 └── layout/
@@ -598,7 +598,7 @@ augmentos_cloud/packages/cloud/src/services/
 
 1. **Display Request Flow**:
    ```
-   App/System App -> Cloud (DisplayManager) -> Client (mentraos_manager) -> Device
+   App/System App -> Cloud (DisplayManager) -> Client (`mobile`) -> Device
    ```
    - App or System App sends display request to cloud
    - Cloud's DisplayManager receives request
@@ -627,7 +627,7 @@ augmentos_cloud/packages/cloud/src/services/
 1. **Display Request Flow**:
    ```
    App/System App -> Cloud (DisplayManager) -> Cloud (LayoutManager) -> Device
-                                          -> Client (mentraos_manager) [fallback]
+                                          -> Client (`mobile`) [fallback]
    ```
    - App or System App sends display request to cloud
    - DisplayManager receives request

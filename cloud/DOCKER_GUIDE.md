@@ -24,7 +24,7 @@ MentraOS uses a microservices architecture with Docker to manage its various com
 ```
 Augment/
 ├── MentraOS/
-│   └── augmentos_cloud/  # Core platform services
+│   └── cloud/  # Core platform services
 ├── Apps/
 │   ├── AugHog/          # AugHog App
 │   ├── Live-Captions/   # Live-Captions App

@@ -1,4 +1,4 @@
-# augmentos_asg_client
+# asg_client
 
 This is the Android code that runs on Android-based smart glasses (ex: Mentra Live).
 
@@ -44,7 +44,7 @@ The necessary changes here would involve re-implementing the K900 checks (K900 o
 - Must use Java SDK 17
     - To set this, in Android Studio, go to Settings > Build, Execution, Deployment > Build Tools > Gradle, go to Gradle JDK and select version 17
 
-- augmentos_asg_client currently depends on the "SmartGlassesManager" repo being next to it. In the future, it will be fully merged with augmentos_asg_client and deleted.
+- asg_client currently depends on the "SmartGlassesManager" repo being next to it. In the future, it will be fully merged with asg_client and deleted.
 
 ##### Building OGG/Orbis C++ for ASP
 

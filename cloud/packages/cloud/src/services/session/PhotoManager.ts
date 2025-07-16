@@ -28,7 +28,6 @@ interface PendingPhotoRequest {
   timestamp: number;
   // origin: 'app'; // All requests via PhotoManager are App initiated for now
   packageName: string;    // Renamed from appId for consistency with App messages
-  appWebSocket?: WebSocket; // WebSocket connection for the App (optional since centralized messaging handles this)
   saveToGallery: boolean;
   timeoutId: NodeJS.Timeout;
 }
@@ -67,10 +66,6 @@ export class PhotoManager {
 
     this.logger.info({ packageName, requestId, saveToGallery }, 'Processing App photo request.');
 
-    // Get App websocket for storing in pending request (but don't validate connection -
-    // centralized messaging will handle resurrection when we send the response)
-    const appWebSocket = this.userSession.appWebsockets.get(packageName);
-
     // Get the app's webhook URL for direct photo upload
     const app = this.userSession.installedApps.get(packageName);
     const webhookUrl = app?.publicUrl ? `${app.publicUrl}/photo-upload` : undefined;
@@ -85,7 +80,6 @@ export class PhotoManager {
       userId: this.userSession.userId,
       timestamp: Date.now(),
       packageName,
-      appWebSocket,
       saveToGallery, // This is what we'll tell glasses if it supports it, or use in response
       timeoutId: setTimeout(() => this._handlePhotoRequestTimeout(requestId), PHOTO_REQUEST_TIMEOUT_MS_DEFAULT),
     };

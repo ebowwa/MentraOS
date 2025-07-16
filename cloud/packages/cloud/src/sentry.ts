@@ -1,4 +1,4 @@
-// // augmentos_cloud/packages/cloud/src/sentry.ts
+// // cloud/packages/cloud/src/sentry.ts
 
 // import * as SentryBun from "@sentry/bun";
 // import * as SentryNode from "@sentry/node";

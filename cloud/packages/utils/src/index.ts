@@ -1,4 +1,4 @@
-// augmentos_cloud/utils/src/index.ts
+// cloud/utils/src/index.ts
 
 export * from './LLMProvider';
 export * from './text-wrapping/TranscriptProcessor';

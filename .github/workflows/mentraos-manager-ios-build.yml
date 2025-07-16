@@ -1,9 +1,9 @@
-name: MentraOS Manager iOS Build
+name: Mobile App iOS Build
 
 on:
   pull_request:
     paths:
-      - 'mentraos_manager/**'
+      - 'mobile/**'
       - '.github/workflows/mentraos-manager-ios-build.yml'
   push:
     branches:
@@ -34,28 +34,28 @@ jobs:
         with:
           node-version: '18'
           cache: 'pnpm'
-          cache-dependency-path: mentraos_manager/package.json
+          cache-dependency-path: mobile/package.json
 
       - name: Install dependencies
-        working-directory: ./mentraos_manager
+        working-directory: ./mobile
         run: pnpm install --no-frozen-lockfile
 
       - name: Setup environment
-        working-directory: ./mentraos_manager
+        working-directory: ./mobile
         run: |
           # Create .env from example
           cp .env.example .env
 
       - name: Run Expo prebuild
-        working-directory: ./mentraos_manager
+        working-directory: ./mobile
         run: pnpm expo prebuild --platform ios
 
       - name: Install CocoaPods dependencies
-        working-directory: ./mentraos_manager/ios
+        working-directory: ./mobile/ios
         run: pod install
 
       - name: Build iOS app for Simulator
-        working-directory: ./mentraos_manager/ios
+        working-directory: ./mobile/ios
         run: |
           xcodebuild -workspace AOS.xcworkspace \
                      -scheme AOS \
@@ -65,7 +65,7 @@ jobs:
                      -destination 'platform=iOS Simulator,name=iPhone 16,OS=18.2'
 
       - name: Build iOS app for Device
-        working-directory: ./mentraos_manager/ios
+        working-directory: ./mobile/ios
         run: |
           xcodebuild -workspace AOS.xcworkspace \
                      -scheme AOS \
@@ -80,10 +80,10 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ios-simulator-build
-          path: mentraos_manager/ios/build/Build/Products/Debug-iphonesimulator/AOS.app
+          path: mobile/ios/build/Build/Products/Debug-iphonesimulator/AOS.app
 
       - name: Upload Device Build
         uses: actions/upload-artifact@v4
         with:
           name: ios-device-build
-          path: mentraos_manager/ios/build-device/Build/Products/Release-iphoneos/AOS.app
+          path: mobile/ios/build-device/Build/Products/Release-iphoneos/AOS.app

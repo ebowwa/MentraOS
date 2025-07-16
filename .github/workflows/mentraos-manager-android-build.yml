@@ -1,9 +1,9 @@
-name: MentraOS Manager Android Build
+name: Mobile App Android Build
 
 on:
   pull_request:
     paths:
-      - 'mentraos_manager/**'
+      - 'mobile/**'
       - '.github/workflows/mentraos-manager-android-build.yml'
   push:
     branches:
@@ -38,14 +38,14 @@ jobs:
         with:
           node-version: '18'
           cache: 'pnpm'
-          cache-dependency-path: mentraos_manager/package.json
+          cache-dependency-path: mobile/package.json
 
       - name: Install dependencies
-        working-directory: ./mentraos_manager
+        working-directory: ./mobile
         run: pnpm install --no-frozen-lockfile
 
       - name: Setup environment
-        working-directory: ./mentraos_manager
+        working-directory: ./mobile
         run: |
           # Create .env from example
           cp .env.example .env
@@ -53,11 +53,11 @@ jobs:
           cp .env android/.env
 
       - name: Run Expo prebuild
-        working-directory: ./mentraos_manager
+        working-directory: ./mobile
         run: pnpm expo prebuild --platform android
 
       - name: Fix React Native symlinks
-        working-directory: ./mentraos_manager
+        working-directory: ./mobile
         run: |
           if [ -f "./fix-react-native-symlinks.sh" ]; then
             chmod +x ./fix-react-native-symlinks.sh
@@ -65,11 +65,11 @@ jobs:
           fi
 
       - name: Build Android Debug APK
-        working-directory: ./mentraos_manager/android
+        working-directory: ./mobile/android
         run: ./gradlew assembleDebug
 
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
         with:
           name: app-debug
-          path: mentraos_manager/android/app/build/outputs/apk/debug/app-debug.apk
+          path: mobile/android/app/build/outputs/apk/debug/app-debug.apk

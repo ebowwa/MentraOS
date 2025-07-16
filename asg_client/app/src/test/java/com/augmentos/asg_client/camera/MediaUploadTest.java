@@ -42,7 +42,7 @@ public class MediaUploadTest {
         // Use the provided image file
         String projectDir = System.getProperty("user.dir");
         System.out.println("Project directory: " + projectDir);
-        File imageFile = new File("/Users/nicolomicheletti/StudioProjects/AugmentOS/augmentos_asg_client/app/src/test/java/com/augmentos/asg_client/camera/test_image.png");
+        File imageFile = new File("/Users/nicolomicheletti/StudioProjects/AugmentOS/asg_client/app/src/test/java/com/augmentos/asg_client/camera/test_image.png");
         System.out.println("Looking for image at: " + imageFile.getAbsolutePath());
         System.out.println("Current directory contents:");
         File currentDir = new File(projectDir);

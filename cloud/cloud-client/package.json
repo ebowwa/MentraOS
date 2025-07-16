@@ -52,7 +52,7 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/AugmentOS-Community/AugmentOS.git",
-    "directory": "augmentos_cloud/cloud-client"
+    "directory": "cloud/cloud-client"
   },
   "dependencies": {
     "ws": "^8.18.0",

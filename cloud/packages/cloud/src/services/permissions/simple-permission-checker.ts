@@ -24,6 +24,12 @@ export class SimplePermissionChecker {
     // Calendar stream
     [StreamType.CALENDAR_EVENT, PermissionType.CALENDAR],
 
+    // Camera-related streams
+    [StreamType.PHOTO_RESPONSE, PermissionType.CAMERA],
+    [StreamType.PHOTO_TAKEN, PermissionType.CAMERA],
+    [StreamType.RTMP_STREAM_STATUS, PermissionType.CAMERA],
+    [StreamType.MANAGED_STREAM_STATUS, PermissionType.CAMERA],
+
     // Notification streams
     [StreamType.PHONE_NOTIFICATION, PermissionType.READ_NOTIFICATIONS],
     [StreamType.PHONE_NOTIFICATION_DISMISSED, PermissionType.READ_NOTIFICATIONS],

@@ -1,8 +1,8 @@
-name: MentraOS Manager Maestro E2E Tests (Android)
+name: Mobile App Maestro E2E Tests (Android)
 
 on:
   workflow_run:
-    workflows: ["MentraOS Manager Android Build"]
+    workflows: ["Mobile App Android Build"]
     types:
       - completed
   workflow_dispatch:
@@ -75,7 +75,7 @@ jobs:
             adb install app-debug.apk
             
             # Run Maestro tests
-            cd mentraos_manager
+            cd mobile
             maestro test .maestro/flows \
               --env MAESTRO_APP_ID=com.mentra.mentra \
               --env IS_DEV=false \
@@ -87,11 +87,11 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: maestro-test-results
-          path: mentraos_manager/maestro-results.xml
+          path: mobile/maestro-results.xml
 
       - name: Publish test results
         if: always()
         uses: EnricoMi/publish-unit-test-result-action@v2
         with:
-          files: mentraos_manager/maestro-results.xml
+          files: mobile/maestro-results.xml
           check_name: Maestro E2E Test Results

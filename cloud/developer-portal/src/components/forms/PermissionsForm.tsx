@@ -51,6 +51,12 @@ const PERMISSION_DISPLAY_INFO: Record<PermissionType, {
     isLegacy: false,
     category: 'calendar'
   },
+  [PermissionType.CAMERA]: {
+    label: 'Camera',
+    description: 'Access to camera for photo capture and video streaming',
+    isLegacy: false,
+    category: 'camera'
+  },
   [PermissionType.ALL]: {
     label: 'All Permissions',
     description: 'Access to all available permissions',
