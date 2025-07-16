@@ -8,67 +8,67 @@ MentraOS Manager is a React Native app built with Expo and expo-router for file-
 
 ### Development
 
-- Start dev server: `pnpm start` (expo start --dev-client)
-- Run on Android: `pnpm android` (expo run:android)
-- Run on iOS: `pnpm ios` (expo run:ios)
-- Setup ADB port forwarding: `pnpm adb`
+- Start dev server: `bun start` (expo start --dev-client)
+- Run on Android: `bun android` (expo run:android)
+- Run on iOS: `bun ios` (expo run:ios)
+- Setup ADB port forwarding: `bun adb`
 
 ### Building
 
-- Build Android release APK: `pnpm build:android:release`
-- Build AAB for Google Play: `pnpm build:google:play` (generates signed AAB only)
-- Upload to Google Play: `pnpm upload:google:play` (builds AAB and uploads to Play Store)
-- Build iOS simulator: `pnpm build:ios:sim`
-- Build iOS device (dev): `pnpm build:ios:dev`
-- Build iOS preview: `pnpm build:ios:preview`
-- Build iOS production: `pnpm build:ios:prod`
+- Build Android release APK: `bun build:android:release`
+- Build AAB for Google Play: `bun build:google:play` (generates signed AAB only)
+- Upload to Google Play: `bun upload:google:play` (builds AAB and uploads to Play Store)
+- Build iOS simulator: `bun build:ios:sim`
+- Build iOS device (dev): `bun build:ios:dev`
+- Build iOS preview: `bun build:ios:preview`
+- Build iOS production: `bun build:ios:prod`
 
 ### Testing
 
-- Run tests: `pnpm test`
-- Run tests in watch mode: `pnpm test:watch`
-- Run single test: `pnpm test -- -t "test name"`
-- Run Maestro E2E tests: `pnpm test:maestro`
-- Lint code: `pnpm lint`
-- Type check: `pnpm compile`
+- Run tests: `bun test`
+- Run tests in watch mode: `bun test:watch`
+- Run single test: `bun test -- -t "test name"`
+- Run Maestro E2E tests: `bun test:maestro`
+- Lint code: `bun lint`
+- Type check: `bun compile`
 
 ## Project Setup
 
 ### From Scratch (Android)
 
 ```bash
-pnpm install
-pnpm expo prebuild  # NEVER use --clean or --clear flags! We use custom native code
-pnpm android
+bun install
+bun expo prebuild  # NEVER use --clean or --clear flags! We use custom native code
+bun android
 ```
 
 ### From Scratch (iOS)
 
 ```bash
-pnpm install
-pnpm expo prebuild  # NEVER use --clean or --clear flags! We use custom native code
+bun install
+bun expo prebuild  # NEVER use --clean or --clear flags! We use custom native code
 cd ios && pod install && cd ..
 open ios/AOS.xcworkspace
 # Install dev build on device using Xcode
-pnpm start
+bun start
 ```
 
 ### IMPORTANT: Never Use --clean or --clear with prebuild
 
-**DO NOT** use `pnpm expo prebuild --clean` or `pnpm expo prebuild --clear` as these commands will delete custom native code modifications. This project makes heavy use of native Android and iOS code that must be preserved.
+**DO NOT** use `bun expo prebuild --clean` or `bun expo prebuild --clear` as these commands will delete custom native code modifications. This project makes heavy use of native Android and iOS code that must be preserved.
 
 ### Cache Issues Fix
 
 If experiencing build issues after UI refresh:
 
 ```bash
-pnpm install
-pnpm expo prebuild  # NEVER use --clean or --clear flags!
+bun install
+bun expo prebuild  # NEVER use --clean or --clear flags!
 rm -rf android/build android/.gradle node_modules .expo .bundle android/app/build android/app/src/main/assets
-pnpm install
+bun install
 ./fix-react-native-symlinks.sh
-pnpm android
-pnpm start
+bun android
+bun start
 ```
 
 ## Architecture Changes (Expo Migration)
@@ -103,7 +103,7 @@ pnpm start
 ## Working with MentraOS
 
 - Backend server required for local testing
-- Port forwarding: `pnpm adb` (sets up tcp:9090, tcp:3000, tcp:9001, tcp:8081)
+- Port forwarding: `bun adb` (sets up tcp:9090, tcp:3000, tcp:9001, tcp:8081)
 - Bluetooth functionality for glasses pairing
 
 ## Development Environment Setup
@@ -111,7 +111,7 @@ pnpm start
 ### Prerequisites
 
 - Node.js ^18.18.0 || >=20.0.0
-- pnpm (preferred package manager)
+- bun (preferred package manager)
 - Android Studio (for Android development)
 - Xcode (for iOS development)
 - EAS CLI for building
