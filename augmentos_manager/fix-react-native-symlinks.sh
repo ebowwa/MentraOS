@@ -35,7 +35,7 @@ find node_modules -name "react-native-*" -type d -maxdepth 1 | while read dir; d
     ln -sf ../../react-native react-native
     cd - >/dev/null
     echo "  ✅ Created symlink for $dir"
-    ((count++))
+    count=$((count + 1))
   fi
 done
 
