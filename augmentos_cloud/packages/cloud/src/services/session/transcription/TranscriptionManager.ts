@@ -209,14 +209,20 @@ export class TranscriptionManager {
 
     for (const [subscription, stream] of this.streams) {
       try {
-        // Check if this is a Soniox provider with buffered tokens
-        if (stream.provider.name === 'soniox' && 'forceFinalizePendingTokens' in stream.provider) {
-          (stream.provider as any).forceFinalizePendingTokens();
+        // Check if this is a Soniox stream with buffered tokens
+        if (stream.provider.name === 'soniox') {
+          // Force finalize both transcription and translation tokens
+          if ('forceFinalizePendingTokens' in stream) {
+            (stream as any).forceFinalizePendingTokens();
+          }
+          if ('forceFinalizePendingTranslationTokens' in stream) {
+            (stream as any).forceFinalizePendingTranslationTokens();
+          }
           this.logger.debug({
             subscription,
             streamId: stream.id,
             provider: 'soniox'
-          }, 'Forced finalization of Soniox tokens');
+          }, 'Forced finalization of Soniox tokens (transcription and translation)');
         }
         // Azure doesn't need forced finalization as it sends final results immediately
         // Other providers can be added here as needed
