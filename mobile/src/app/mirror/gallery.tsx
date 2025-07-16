@@ -26,7 +26,7 @@ import BackendServerComms from "@/backend_comms/BackendServerComms"
 import {router} from "expo-router"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
 import {useAppTheme} from "@/utils/useAppTheme"
-import { useNavigationHistory } from "@/contexts/NavigationHistoryContext"
+import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 
 interface GlassesRecordingsGalleryProps {
   isDarkTheme: boolean

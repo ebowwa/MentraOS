@@ -1,12 +1,23 @@
 import React, {useEffect, useRef} from "react"
-import {View, Text, StyleSheet, Animated, Easing, useWindowDimensions, ViewStyle, TextStyle, Image, Platform} from "react-native"
+import {
+  View,
+  Text,
+  StyleSheet,
+  Animated,
+  Easing,
+  useWindowDimensions,
+  ViewStyle,
+  TextStyle,
+  Image,
+  Platform,
+} from "react-native"
 import {getModelSpecificTips} from "./GlassesTroubleshootingModal"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {ThemedStyle} from "@/theme"
 import {Header} from "../ignite/Header"
 import {router} from "expo-router"
 import {getGlassesImage, getEvenRealitiesG1Image} from "@/utils/getGlassesImage"
-import { translate } from "@/i18n"
+import {translate} from "@/i18n"
 
 interface GlassesPairingLoaderProps {
   glassesModelName: string
@@ -83,13 +94,15 @@ const GlassesPairingLoader: React.FC<GlassesPairingLoaderProps> = ({glassesModel
   })
 
   // Get images for phone and glasses
-  const phoneImage = Platform.OS === "ios" 
-    ? require("../../../assets/guide/iphone.png")
-    : require("../../../assets/guide/android.png")
-  
+  const phoneImage =
+    Platform.OS === "ios" ? require("../../../assets/guide/iphone.png") : require("../../../assets/guide/android.png")
+
   // Use dynamic image for Even Realities G1 based on style and color
   let glassesImage = getGlassesImage(glassesModelName)
-  if (glassesModelName && (glassesModelName === "Even Realities G1" || glassesModelName === "evenrealities_g1" || glassesModelName === "g1")) {
+  if (
+    glassesModelName &&
+    (glassesModelName === "Even Realities G1" || glassesModelName === "evenrealities_g1" || glassesModelName === "g1")
+  ) {
     // For pairing, we don't have style/color info yet, so use defaults
     // If battery level is available in props or context, pass it; otherwise, pass undefined
     glassesImage = getEvenRealitiesG1Image("Round", "Grey", "folded", "l", theme.isDark, undefined)
@@ -102,28 +115,29 @@ const GlassesPairingLoader: React.FC<GlassesPairingLoaderProps> = ({glassesModel
           {/* New phone and glasses images layout */}
           <View style={themed($imagesContainer)}>
             <Image source={phoneImage} style={themed($phoneImage)} resizeMode="contain" />
-            
+
             {/* Animated connection bar */}
-            <Animated.View 
+            <Animated.View
               style={[
                 themed($connectionBar),
                 {
                   opacity: connectionBarOpacity,
                   transform: [{scaleX: connectionBarScale}],
-                }
-              ]}
-            >
+                },
+              ]}>
               <View style={themed($connectionDiamond)} />
               <View style={themed($connectionLine)} />
               <View style={themed($connectionDiamond)} />
             </Animated.View>
-            
+
             <Image source={glassesImage} style={themed($glassesImage)} resizeMode="contain" />
           </View>
 
           {/* Status text and tips */}
           <View style={themed($textContainer)}>
-            <Text style={themed($statusText)}>{translate("pairing:pairing").toLocaleUpperCase()} {glassesModelName.toUpperCase()}...</Text>
+            <Text style={themed($statusText)}>
+              {translate("pairing:pairing").toLocaleUpperCase()} {glassesModelName.toUpperCase()}...
+            </Text>
             <Text style={themed($tipText)}>{tips[currentTipIndex]}</Text>
           </View>
         </View>

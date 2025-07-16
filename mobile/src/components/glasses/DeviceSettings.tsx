@@ -356,46 +356,50 @@ export default function DeviceSettings() {
       )}
 
       {/* Only show mic selector if glasses have both SCO and custom mic types */}
-      {status.core_info.default_wearable && glassesFeatures[status.core_info.default_wearable] && hasCustomMic(glassesFeatures[status.core_info.default_wearable]) && (
-        <View style={themed($settingsGroup)}>
-          <TouchableOpacity
-            style={{
-              flexDirection: "row",
-              justifyContent: "space-between",
-              paddingBottom: theme.spacing.xs,
-              paddingTop: theme.spacing.xs,
-            }}
-            onPress={() => setMic("phone")}>
-            <Text style={{color: theme.colors.text}}>{translate("deviceSettings:phoneMic")}</Text>
-            <MaterialCommunityIcons
-              name="check"
-              size={24}
-              color={preferredMic === "phone" ? theme.colors.checkmark : "transparent"}
+      {status.core_info.default_wearable &&
+        glassesFeatures[status.core_info.default_wearable] &&
+        hasCustomMic(glassesFeatures[status.core_info.default_wearable]) && (
+          <View style={themed($settingsGroup)}>
+            <TouchableOpacity
+              style={{
+                flexDirection: "row",
+                justifyContent: "space-between",
+                paddingBottom: theme.spacing.xs,
+                paddingTop: theme.spacing.xs,
+              }}
+              onPress={() => setMic("phone")}>
+              <Text style={{color: theme.colors.text}}>{translate("deviceSettings:phoneMic")}</Text>
+              <MaterialCommunityIcons
+                name="check"
+                size={24}
+                color={preferredMic === "phone" ? theme.colors.checkmark : "transparent"}
+              />
+            </TouchableOpacity>
+            {/* divider */}
+            <View
+              style={{height: StyleSheet.hairlineWidth, backgroundColor: theme.colors.separator, marginVertical: 4}}
             />
-          </TouchableOpacity>
-          {/* divider */}
-          <View style={{height: StyleSheet.hairlineWidth, backgroundColor: theme.colors.separator, marginVertical: 4}} />
-          <TouchableOpacity
-            style={{
-              flexDirection: "row",
-              justifyContent: "space-between",
-              paddingTop: theme.spacing.xs,
-            }}
-            onPress={() => setMic("glasses")}>
-            <View style={{flexDirection: "column", gap: 4}}>
-              <Text style={{color: theme.colors.text}}>{translate("deviceSettings:glassesMic")}</Text>
-              {/* {!status.glasses_info?.model_name && (
+            <TouchableOpacity
+              style={{
+                flexDirection: "row",
+                justifyContent: "space-between",
+                paddingTop: theme.spacing.xs,
+              }}
+              onPress={() => setMic("glasses")}>
+              <View style={{flexDirection: "column", gap: 4}}>
+                <Text style={{color: theme.colors.text}}>{translate("deviceSettings:glassesMic")}</Text>
+                {/* {!status.glasses_info?.model_name && (
                 <Text style={themed($subtitle)}>{translate("deviceSettings:glassesNeededForGlassesMic")}</Text>
               )} */}
-            </View>
-            <MaterialCommunityIcons
-              name="check"
-              size={24}
-              color={preferredMic === "glasses" ? theme.colors.checkmark : "transparent"}
-            />
-          </TouchableOpacity>
-        </View>
-      )}
+              </View>
+              <MaterialCommunityIcons
+                name="check"
+                size={24}
+                color={preferredMic === "glasses" ? theme.colors.checkmark : "transparent"}
+              />
+            </TouchableOpacity>
+          </View>
+        )}
 
       {/* Only show WiFi settings if connected glasses support WiFi */}
       {status.glasses_info?.model_name && glassesFeatures[status.glasses_info.model_name]?.wifi && (
@@ -457,13 +461,15 @@ export default function DeviceSettings() {
         onPress={() => push("/settings/dashboard")}
       />
 
-      {devMode && status.core_info.default_wearable && glassesFeatures[status.core_info.default_wearable]?.binocular && (
-        <RouteButton
-          label={translate("settings:screenSettings")}
-          subtitle={translate("settings:screenDescription")}
-          onPress={() => push("/settings/screen")}
-        />
-      )}
+      {devMode &&
+        status.core_info.default_wearable &&
+        glassesFeatures[status.core_info.default_wearable]?.binocular && (
+          <RouteButton
+            label={translate("settings:screenSettings")}
+            subtitle={translate("settings:screenDescription")}
+            onPress={() => push("/settings/screen")}
+          />
+        )}
 
       {status.glasses_info?.model_name && status.glasses_info.model_name !== "Simulated Glasses" && (
         <ActionButton

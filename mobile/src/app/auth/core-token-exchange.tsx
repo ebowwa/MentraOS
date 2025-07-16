@@ -15,7 +15,7 @@ import {Screen} from "@/components/ignite"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {translate} from "@/i18n/translate"
 import {useDeeplink} from "@/contexts/DeeplinkContext"
-import { router } from "expo-router"
+import {router} from "expo-router"
 
 export default function CoreTokenExchange() {
   const {status} = useStatus()

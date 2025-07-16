@@ -263,10 +263,7 @@ export default function PairingPrepScreen() {
   }
 
   return (
-    <Screen
-      preset="fixed"
-      style={{paddingHorizontal: theme.spacing.md}}
-      safeAreaEdges={["bottom"]}>
+    <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}} safeAreaEdges={["bottom"]}>
       <Header title={glassesModelName} leftIcon="caretLeft" onLeftPress={goBack} />
       <ScrollView style={{marginRight: -theme.spacing.md, paddingRight: theme.spacing.md}}>
         <View style={styles.contentContainer}>{getPairingGuide(glassesModelName)}</View>

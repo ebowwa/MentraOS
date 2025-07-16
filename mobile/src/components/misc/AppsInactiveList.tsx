@@ -446,9 +446,12 @@ export default function InactiveAppList({
   }
 
   const getRunningStandardApps = (packageName: string) => {
-    return appStatus.filter(app => app.is_running &&
-      (app.appType == "standard" || app["tpaType"] == "standard") &&
-      app.packageName !== packageName)
+    return appStatus.filter(
+      app =>
+        app.is_running &&
+        (app.appType == "standard" || app["tpaType"] == "standard") &&
+        app.packageName !== packageName,
+    )
   }
   const openAppSettings = (app: any) => {
     console.log("%%% opening app settings", app)
@@ -542,11 +545,11 @@ export default function InactiveAppList({
             <AppListItem
               app={app}
               // @ts-ignore
-              is_foreground={(app.appType == "standard") || (app["tpaType"] == "standard")}
+              is_foreground={app.appType == "standard" || app["tpaType"] == "standard"}
               isActive={false}
               onTogglePress={async () => {
-                let isForegroundApp = (app.appType == "standard") || (app["tpaType"] == "standard");
-                const res = await checkIsForegroundAppStart(app.packageName, isForegroundApp);
+                let isForegroundApp = app.appType == "standard" || app["tpaType"] == "standard"
+                const res = await checkIsForegroundAppStart(app.packageName, isForegroundApp)
                 if (res) {
                   // Don't animate here - let startApp handle all UI updates
                   startApp(app.packageName)
@@ -591,8 +594,7 @@ export default function InactiveAppList({
                   onClearSearch()
                 }}
                 activeOpacity={0.7}
-                hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}
-              >
+                hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}>
                 <Text style={themed($clearSearchButtonText)}>{translate("home:clearSearch")}</Text>
               </TouchableOpacity>
             </>

@@ -12,59 +12,53 @@ type TimeSettingProps = {
   showSeconds?: boolean
 }
 
-const TimeSetting: React.FC<TimeSettingProps> = ({
-  label,
-  value,
-  onValueChange,
-  containerStyle,
-  showSeconds = true,
-}) => {
+const TimeSetting: React.FC<TimeSettingProps> = ({label, value, onValueChange, containerStyle, showSeconds = true}) => {
   const {theme, themed} = useAppTheme()
   const [modalVisible, setModalVisible] = useState(false)
   const [localHours, setLocalHours] = useState(0)
   const [localMinutes, setLocalMinutes] = useState(0)
   const [localSeconds, setLocalSeconds] = useState(0)
-  
+
   // Refs for scroll positions
   const hoursScrollRef = useRef<ScrollView>(null)
   const minutesScrollRef = useRef<ScrollView>(null)
   const secondsScrollRef = useRef<ScrollView>(null)
 
   // Helper to ensure a safe number
-  const safeNumber = (n: any) => (typeof n === 'number' && !isNaN(n) ? n : 0);
+  const safeNumber = (n: any) => (typeof n === "number" && !isNaN(n) ? n : 0)
 
   // Convert total seconds to hours, minutes, seconds
   useEffect(() => {
-    const totalSeconds = safeNumber(value);
+    const totalSeconds = safeNumber(value)
     const hours = Math.floor(totalSeconds / 3600)
     const minutes = Math.floor((totalSeconds % 3600) / 60)
     const seconds = totalSeconds % 60
-    
+
     setLocalHours(hours)
     setLocalMinutes(minutes)
     setLocalSeconds(seconds)
   }, [value])
 
-  const REPEATS = 5; // Must be odd for perfect centering
-  const ITEM_HEIGHT = 44;
-  const VISIBLE_ITEMS = 3;
-  const CENTER_SLOT = Math.floor(REPEATS / 2);
+  const REPEATS = 5 // Must be odd for perfect centering
+  const ITEM_HEIGHT = 44
+  const VISIBLE_ITEMS = 3
+  const CENTER_SLOT = Math.floor(REPEATS / 2)
 
   // Function to scroll to center the selected value
   const scrollToCenter = (scrollRef: React.RefObject<ScrollView>, value: number, max: number) => {
     if (scrollRef.current) {
       // Center slot index for the selected value
-      const centerIndex = CENTER_SLOT * max + value;
-      const targetOffset = centerIndex * ITEM_HEIGHT;
-      scrollRef.current.scrollTo({ y: targetOffset, animated: false })
+      const centerIndex = CENTER_SLOT * max + value
+      const targetOffset = centerIndex * ITEM_HEIGHT
+      scrollRef.current.scrollTo({y: targetOffset, animated: false})
     }
   }
 
   // Function to check if an item is in the center position
   const isItemInCenter = (itemIndex: number, value: number, max: number) => {
     // Center slot index for the selected value
-    const centerIndex = CENTER_SLOT * max + value;
-    return itemIndex === centerIndex;
+    const centerIndex = CENTER_SLOT * max + value
+    return itemIndex === centerIndex
   }
 
   // Scroll to center when modal opens or values change
@@ -79,13 +73,13 @@ const TimeSetting: React.FC<TimeSettingProps> = ({
   }, [modalVisible, localHours, localMinutes, localSeconds])
 
   const formatTime = (hours: number, minutes: number, seconds: number) => {
-    hours = safeNumber(hours);
-    minutes = safeNumber(minutes);
-    seconds = safeNumber(seconds);
+    hours = safeNumber(hours)
+    minutes = safeNumber(minutes)
+    seconds = safeNumber(seconds)
     if (showSeconds) {
-      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+      return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`
     } else {
-      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
+      return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`
     }
   }
 
@@ -97,11 +91,11 @@ const TimeSetting: React.FC<TimeSettingProps> = ({
 
   const handleCancel = () => {
     // Reset to original values
-    const totalSeconds = safeNumber(value);
+    const totalSeconds = safeNumber(value)
     const hours = Math.floor(totalSeconds / 3600)
     const minutes = Math.floor((totalSeconds % 3600) / 60)
     const seconds = totalSeconds % 60
-    
+
     setLocalHours(hours)
     setLocalMinutes(minutes)
     setLocalSeconds(seconds)
@@ -122,10 +116,10 @@ const TimeSetting: React.FC<TimeSettingProps> = ({
   const secondsArray = generateInfiniteArray(60) // 0-59, repeated 5 times
 
   // When calculating currentHours/currentMinutes/currentSeconds:
-  const currentTotalSeconds = safeNumber(value);
-  const currentHours = Math.floor(currentTotalSeconds / 3600);
-  const currentMinutes = Math.floor((currentTotalSeconds % 3600) / 60);
-  const currentSeconds = currentTotalSeconds % 60;
+  const currentTotalSeconds = safeNumber(value)
+  const currentHours = Math.floor(currentTotalSeconds / 3600)
+  const currentMinutes = Math.floor((currentTotalSeconds % 3600) / 60)
+  const currentSeconds = currentTotalSeconds % 60
 
   // Add a helper to trigger scrollToCenter on layout
   const handleScrollViewLayout = (scrollRef: React.RefObject<ScrollView>, value: number, max: number) => () => {
@@ -135,28 +129,22 @@ const TimeSetting: React.FC<TimeSettingProps> = ({
   return (
     <View style={[themed($container), containerStyle]}>
       <Text style={themed($label)}>{label}</Text>
-      
+
       <Pressable
         style={themed($timeButton)}
         onPress={() => setModalVisible(true)}
         android_ripple={{color: "rgba(0, 0, 0, 0.1)"}}>
-        <Text style={themed($timeText)}>
-          {formatTime(currentHours, currentMinutes, currentSeconds)}
-        </Text>
+        <Text style={themed($timeText)}>{formatTime(currentHours, currentMinutes, currentSeconds)}</Text>
         <Text style={themed($chevronText)}>›</Text>
       </Pressable>
 
-      <Modal
-        visible={modalVisible}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={handleCancel}>
+      <Modal visible={modalVisible} animationType="slide" transparent={true} onRequestClose={handleCancel}>
         <View style={themed($modalOverlay)}>
           <View style={themed($modalContent)}>
             <View style={themed($modalHeader)}>
               <Text style={themed($modalTitle)}>{label}</Text>
             </View>
-            
+
             <View style={themed($pickerContainer)}>
               {/* Hours Picker */}
               <View style={themed($pickerColumn)}>
@@ -171,11 +159,11 @@ const TimeSetting: React.FC<TimeSettingProps> = ({
                   scrollEventThrottle={16}
                   contentContainerStyle={{paddingTop: ITEM_HEIGHT, paddingBottom: ITEM_HEIGHT}}
                   onLayout={handleScrollViewLayout(hoursScrollRef, localHours, 100)}
-                  onMomentumScrollEnd={(event) => {
-                    const offsetY = event.nativeEvent.contentOffset.y;
-                    const index = Math.round(offsetY / ITEM_HEIGHT);
-                    const actualHour = index % 100;
-                    setLocalHours(actualHour);
+                  onMomentumScrollEnd={event => {
+                    const offsetY = event.nativeEvent.contentOffset.y
+                    const index = Math.round(offsetY / ITEM_HEIGHT)
+                    const actualHour = index % 100
+                    setLocalHours(actualHour)
                   }}>
                   {hoursArray.map((hour, index) => (
                     <Pressable
@@ -190,7 +178,7 @@ const TimeSetting: React.FC<TimeSettingProps> = ({
                           themed($pickerItemText),
                           isItemInCenter(index, localHours, 100) && themed($pickerItemTextSelected),
                         ]}>
-                        {hour.toString().padStart(2, '0')}
+                        {hour.toString().padStart(2, "0")}
                       </Text>
                     </Pressable>
                   ))}
@@ -210,11 +198,11 @@ const TimeSetting: React.FC<TimeSettingProps> = ({
                   scrollEventThrottle={16}
                   contentContainerStyle={{paddingTop: ITEM_HEIGHT, paddingBottom: ITEM_HEIGHT}}
                   onLayout={handleScrollViewLayout(minutesScrollRef, localMinutes, 60)}
-                  onMomentumScrollEnd={(event) => {
-                    const offsetY = event.nativeEvent.contentOffset.y;
-                    const index = Math.round(offsetY / ITEM_HEIGHT);
-                    const actualMinute = index % 60;
-                    setLocalMinutes(actualMinute);
+                  onMomentumScrollEnd={event => {
+                    const offsetY = event.nativeEvent.contentOffset.y
+                    const index = Math.round(offsetY / ITEM_HEIGHT)
+                    const actualMinute = index % 60
+                    setLocalMinutes(actualMinute)
                   }}>
                   {minutesArray.map((minute, index) => (
                     <Pressable
@@ -229,7 +217,7 @@ const TimeSetting: React.FC<TimeSettingProps> = ({
                           themed($pickerItemText),
                           isItemInCenter(index, localMinutes, 60) && themed($pickerItemTextSelected),
                         ]}>
-                        {minute.toString().padStart(2, '0')}
+                        {minute.toString().padStart(2, "0")}
                       </Text>
                     </Pressable>
                   ))}
@@ -240,40 +228,40 @@ const TimeSetting: React.FC<TimeSettingProps> = ({
               {showSeconds && (
                 <View style={themed($pickerColumn)}>
                   <Text style={themed($pickerLabel)}>Seconds</Text>
-                                  <ScrollView
-                  ref={secondsScrollRef}
-                  style={themed($pickerScroll)}
-                  showsVerticalScrollIndicator={false}
-                  snapToInterval={ITEM_HEIGHT}
-                  snapToAlignment="center"
-                  decelerationRate="fast"
-                  scrollEventThrottle={16}
-                  contentContainerStyle={{paddingTop: ITEM_HEIGHT, paddingBottom: ITEM_HEIGHT}}
-                  onLayout={handleScrollViewLayout(secondsScrollRef, localSeconds, 60)}
-                  onMomentumScrollEnd={(event) => {
-                    const offsetY = event.nativeEvent.contentOffset.y;
-                    const index = Math.round(offsetY / ITEM_HEIGHT);
-                    const actualSecond = index % 60;
-                    setLocalSeconds(actualSecond);
-                  }}>
-                  {secondsArray.map((second, index) => (
-                    <Pressable
-                      key={`${second}-${index}`}
-                      style={[
-                        themed($pickerItem),
-                        isItemInCenter(index, localSeconds, 60) && themed($pickerItemSelected),
-                      ]}
-                      onPress={() => setLocalSeconds(second)}>
-                      <Text
+                  <ScrollView
+                    ref={secondsScrollRef}
+                    style={themed($pickerScroll)}
+                    showsVerticalScrollIndicator={false}
+                    snapToInterval={ITEM_HEIGHT}
+                    snapToAlignment="center"
+                    decelerationRate="fast"
+                    scrollEventThrottle={16}
+                    contentContainerStyle={{paddingTop: ITEM_HEIGHT, paddingBottom: ITEM_HEIGHT}}
+                    onLayout={handleScrollViewLayout(secondsScrollRef, localSeconds, 60)}
+                    onMomentumScrollEnd={event => {
+                      const offsetY = event.nativeEvent.contentOffset.y
+                      const index = Math.round(offsetY / ITEM_HEIGHT)
+                      const actualSecond = index % 60
+                      setLocalSeconds(actualSecond)
+                    }}>
+                    {secondsArray.map((second, index) => (
+                      <Pressable
+                        key={`${second}-${index}`}
                         style={[
-                          themed($pickerItemText),
-                          isItemInCenter(index, localSeconds, 60) && themed($pickerItemTextSelected),
-                        ]}>
-                        {second.toString().padStart(2, '0')}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </ScrollView>
+                          themed($pickerItem),
+                          isItemInCenter(index, localSeconds, 60) && themed($pickerItemSelected),
+                        ]}
+                        onPress={() => setLocalSeconds(second)}>
+                        <Text
+                          style={[
+                            themed($pickerItemText),
+                            isItemInCenter(index, localSeconds, 60) && themed($pickerItemTextSelected),
+                          ]}>
+                          {second.toString().padStart(2, "0")}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </ScrollView>
                 </View>
               )}
             </View>

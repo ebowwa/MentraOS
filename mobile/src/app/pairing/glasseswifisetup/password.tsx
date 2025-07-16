@@ -11,7 +11,6 @@ import WifiCredentialsService from "@/utils/WifiCredentialsService"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {ScrollView} from "react-native"
 
-
 export default function WifiPasswordScreen() {
   const params = useLocalSearchParams()
   const deviceModel = (params.deviceModel as string) || "Glasses"
@@ -122,10 +121,7 @@ export default function WifiPasswordScreen() {
           </View>
 
           <View style={themed($checkboxContainer)}>
-            <Checkbox
-              value={rememberPassword}
-              onValueChange={setRememberPassword}
-            />
+            <Checkbox value={rememberPassword} onValueChange={setRememberPassword} />
             <View style={themed($checkboxContent)}>
               <Text style={themed($checkboxLabel)}>Remember Password</Text>
               <Text style={themed($checkboxDescription)}>Save this password for future connections</Text>

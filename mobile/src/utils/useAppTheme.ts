@@ -24,7 +24,7 @@ const themeContextToTheme = (themeContext: ThemeContexts): Theme => (themeContex
 
 const setImperativeTheming = async (theme: Theme) => {
   SystemUI.setBackgroundColorAsync(theme.colors.background)
-  
+
   // Set navigation bar color for Android
   if (Platform.OS === "android") {
     try {
@@ -32,7 +32,7 @@ const setImperativeTheming = async (theme: Theme) => {
       // For light theme, use the same blue-tinted white as the tab bar
       const navBarColor = theme.isDark ? "#090A14" : "#F8FAFF"
       await NavigationBar.setBackgroundColorAsync(navBarColor)
-      
+
       // Set button colors based on theme
       await NavigationBar.setButtonStyleAsync(theme.isDark ? "light" : "dark")
     } catch (error) {

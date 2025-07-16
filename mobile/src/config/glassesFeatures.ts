@@ -76,7 +76,7 @@ export const featureLabels: Record<GlassesFeature, string> = {
   display: "Display",
   binocular: "Binocular",
   wifi: "WiFi",
-  imu: "IMU"
+  imu: "IMU",
 }
 
 // Helper functions for mic type checking

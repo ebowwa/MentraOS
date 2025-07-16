@@ -12,7 +12,7 @@ import BleManager from "react-native-ble-manager"
 import BackendServerComms from "../backend_comms/BackendServerComms"
 import {showAlert} from "@/utils/AlertUtils"
 import {translate} from "@/i18n/translate"
-import AudioPlayService, { AudioPlayResponse } from "../services/AudioPlayService"
+import AudioPlayService, {AudioPlayResponse} from "../services/AudioPlayService"
 
 // For checking if location services are enabled
 const {ServiceStarter} = NativeModules
@@ -124,7 +124,6 @@ export class CoreCommunicator extends EventEmitter {
       return {isReady: true}
     }
 
-
     // Only check location on Android
     if (Platform.OS === "android") {
       // First check if location permission is granted
@@ -134,7 +133,8 @@ export class CoreCommunicator extends EventEmitter {
         console.log("Location permission missing, showing error")
         return {
           isReady: false,
-          message: "Location permission is required to scan for glasses on Android. Please grant location permission and try again.",
+          message:
+            "Location permission is required to scan for glasses on Android. Please grant location permission and try again.",
           requirement: "location",
         }
       }
@@ -146,7 +146,8 @@ export class CoreCommunicator extends EventEmitter {
         console.log("Location services disabled, showing error")
         return {
           isReady: false,
-          message: "Location services are disabled. Please enable location services in your device settings and try again.",
+          message:
+            "Location services are disabled. Please enable location services in your device settings and try again.",
           requirement: "locationServices",
         }
       }
@@ -190,8 +191,8 @@ export class CoreCommunicator extends EventEmitter {
 
     // Set up audio play response callback
     AudioPlayService.setResponseCallback((response: AudioPlayResponse) => {
-      this.sendAudioPlayResponse(response);
-    });
+      this.sendAudioPlayResponse(response)
+    })
 
     // set the backend server url
     const backendServerUrl = await BackendServerComms.getInstance().getServerUrl()
@@ -257,7 +258,7 @@ export class CoreCommunicator extends EventEmitter {
         GlobalEventEmitter.emit("GLASSES_WIFI_STATUS_CHANGE", {
           connected: data.glasses_wifi_status_change.connected,
           ssid: data.glasses_wifi_status_change.ssid,
-          local_ip: data.glasses_wifi_status_change.local_ip
+          local_ip: data.glasses_wifi_status_change.local_ip,
         })
       } else if ("glasses_display_event" in data) {
         GlobalEventEmitter.emit("GLASSES_DISPLAY_EVENT", data.glasses_display_event)
@@ -296,17 +297,21 @@ export class CoreCommunicator extends EventEmitter {
         console.log("APP_STOPPED_EVENT", data.packageName)
         GlobalEventEmitter.emit("APP_STOPPED_EVENT", data.packageName)
       } else if (data.type === "audio_play_request") {
-        AudioPlayService.handleAudioPlayRequest(data).then(() => {
-          // Audio play request completed successfully
-        }).catch(error => {
-          console.error("Failed to handle audio play request:", error)
-        })
+        AudioPlayService.handleAudioPlayRequest(data)
+          .then(() => {
+            // Audio play request completed successfully
+          })
+          .catch(error => {
+            console.error("Failed to handle audio play request:", error)
+          })
       } else if (data.type === "audio_stop_request") {
-        AudioPlayService.stopAllAudio().then(() => {
-          console.log("Audio stop request processed successfully")
-        }).catch(error => {
-          console.error("Failed to handle audio stop request:", error)
-        })
+        AudioPlayService.stopAllAudio()
+          .then(() => {
+            console.log("Audio stop request processed successfully")
+          })
+          .catch(error => {
+            console.error("Failed to handle audio stop request:", error)
+          })
       }
     } catch (e) {
       console.error("Error parsing data from Core:", e)
@@ -723,7 +728,9 @@ export class CoreCommunicator extends EventEmitter {
    * Sends audio play response back to Core
    */
   private async sendAudioPlayResponse(response: AudioPlayResponse) {
-    console.log(`CoreCommunicator: Sending audio play response for requestId: ${response.requestId}, success: ${response.success}`);
+    console.log(
+      `CoreCommunicator: Sending audio play response for requestId: ${response.requestId}, success: ${response.success}`,
+    )
 
     await this.sendData({
       command: "audio_play_response",
@@ -731,12 +738,12 @@ export class CoreCommunicator extends EventEmitter {
         requestId: response.requestId,
         success: response.success,
         error: response.error,
-        duration: response.duration
-      }
-    });
+        duration: response.duration,
+      },
+    })
   }
 
-  async simulateHeadPosition(position: 'up' | 'down') {
+  async simulateHeadPosition(position: "up" | "down") {
     return await this.sendData({
       command: "simulate_head_position",
       params: {
@@ -745,7 +752,7 @@ export class CoreCommunicator extends EventEmitter {
     })
   }
 
-  async simulateButtonPress(buttonId: string = 'camera', pressType: 'short' | 'long' = 'short') {
+  async simulateButtonPress(buttonId: string = "camera", pressType: "short" | "long" = "short") {
     return await this.sendData({
       command: "simulate_button_press",
       params: {

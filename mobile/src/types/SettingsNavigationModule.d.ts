@@ -1,4 +1,4 @@
-declare module 'react-native' {
+declare module "react-native" {
   interface NativeModulesStatic {
     SettingsNavigationModule: {
       openBluetoothSettings(): Promise<boolean>
@@ -7,4 +7,4 @@ declare module 'react-native' {
       openAppSettings(): Promise<boolean>
     }
   }
-} 
+}
