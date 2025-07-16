@@ -27,8 +27,8 @@ import {
   AppToCloudMessageType,
   BitmapView,
   BitmapAnimation,
-  ClearView
-} from '../../types';
+  ClearView,
+} from "../../types";
 
 export class LayoutManager {
   /**
@@ -39,7 +39,7 @@ export class LayoutManager {
    */
   constructor(
     private packageName: string,
-    private sendMessage: (message: DisplayRequest) => void
+    private sendMessage: (message: DisplayRequest) => void,
   ) {}
 
   /**
@@ -54,7 +54,7 @@ export class LayoutManager {
   private createDisplayEvent(
     layout: Layout,
     view: ViewType = ViewType.MAIN,
-    durationMs?: number
+    durationMs?: number,
   ): DisplayRequest {
     try {
       // Validate layout data before sending
@@ -69,53 +69,66 @@ export class LayoutManager {
       // Layout-specific validations
       switch (layout.layoutType) {
         case LayoutType.TEXT_WALL:
-          if (typeof (layout as TextWall).text !== 'string') {
+          if (typeof (layout as TextWall).text !== "string") {
             throw new Error("TextWall layout must have a text property");
           }
           // Ensure text is not too long (prevent performance issues)
           if ((layout as TextWall).text.length > 1000) {
-            console.warn("TextWall text is very long, this may cause performance issues");
+            console.warn(
+              "TextWall text is very long, this may cause performance issues",
+            );
           }
           break;
 
         case LayoutType.DOUBLE_TEXT_WALL:
           const doubleText = layout as DoubleTextWall;
-          if (typeof doubleText.topText !== 'string') {
-            throw new Error("DoubleTextWall layout must have a topText property");
+          if (typeof doubleText.topText !== "string") {
+            throw new Error(
+              "DoubleTextWall layout must have a topText property",
+            );
           }
-          if (typeof doubleText.bottomText !== 'string') {
-            throw new Error("DoubleTextWall layout must have a bottomText property");
+          if (typeof doubleText.bottomText !== "string") {
+            throw new Error(
+              "DoubleTextWall layout must have a bottomText property",
+            );
           }
           break;
 
         case LayoutType.REFERENCE_CARD:
           const refCard = layout as ReferenceCard;
-          if (typeof refCard.title !== 'string') {
+          if (typeof refCard.title !== "string") {
             throw new Error("ReferenceCard layout must have a title property");
           }
-          if (typeof refCard.text !== 'string') {
+          if (typeof refCard.text !== "string") {
             throw new Error("ReferenceCard layout must have a text property");
           }
           break;
 
         case LayoutType.DASHBOARD_CARD:
           const dashCard = layout as DashboardCard;
-          if (typeof dashCard.leftText !== 'string') {
-            throw new Error("DashboardCard layout must have a leftText property");
+          if (typeof dashCard.leftText !== "string") {
+            throw new Error(
+              "DashboardCard layout must have a leftText property",
+            );
           }
-          if (typeof dashCard.rightText !== 'string') {
-            throw new Error("DashboardCard layout must have a rightText property");
+          if (typeof dashCard.rightText !== "string") {
+            throw new Error(
+              "DashboardCard layout must have a rightText property",
+            );
           }
           break;
 
         case LayoutType.BITMAP_VIEW:
           const bitmapView = layout as BitmapView;
-          if (typeof bitmapView.data !== 'string') {
+          if (typeof bitmapView.data !== "string") {
             throw new Error("BitmapView layout must have a data property");
           }
           // Check if data is too large (prevent OOM errors)
-          if (bitmapView.data.length > 1000000) { // 1MB limit
-            throw new Error("Bitmap data is too large (>1MB), please reduce size");
+          if (bitmapView.data.length > 1000000) {
+            // 1MB limit
+            throw new Error(
+              "Bitmap data is too large (>1MB), please reduce size",
+            );
           }
           break;
 
@@ -132,7 +145,7 @@ export class LayoutManager {
 
       // Validate duration if provided
       if (durationMs !== undefined) {
-        if (typeof durationMs !== 'number' || durationMs < 0) {
+        if (typeof durationMs !== "number" || durationMs < 0) {
           console.warn(`Invalid duration: ${durationMs}, ignoring`);
           durationMs = undefined;
         }
@@ -141,12 +154,12 @@ export class LayoutManager {
       // Create the display request with validated data
       return {
         timestamp: new Date(),
-        sessionId: '',  // Will be filled by session
+        sessionId: "", // Will be filled by session
         type: AppToCloudMessageType.DISPLAY_REQUEST,
         packageName: this.packageName,
         view,
         layout,
-        durationMs
+        durationMs,
       };
     } catch (error) {
       console.error("Error creating display event:", error);
@@ -174,7 +187,7 @@ export class LayoutManager {
    */
   showTextWall(
     text: string,
-    options?: { view?: ViewType; durationMs?: number}
+    options?: { view?: ViewType; durationMs?: number },
   ) {
     try {
       // Validate input before processing
@@ -184,7 +197,7 @@ export class LayoutManager {
       }
 
       // Ensure text is a string
-      if (typeof text !== 'string') {
+      if (typeof text !== "string") {
         text = String(text); // Convert to string
         console.warn("showTextWall: Non-string input converted to string");
       }
@@ -192,7 +205,7 @@ export class LayoutManager {
       // Create layout with validated text
       const layout: TextWall = {
         layoutType: LayoutType.TEXT_WALL,
-        text
+        text,
       };
 
       // Create and send display event with error handling
@@ -200,7 +213,7 @@ export class LayoutManager {
         const displayEvent = this.createDisplayEvent(
           layout,
           options?.view,
-          options?.durationMs
+          options?.durationMs,
         );
         this.sendMessage(displayEvent);
       } catch (error) {
@@ -237,18 +250,16 @@ export class LayoutManager {
   showDoubleTextWall(
     topText: string,
     bottomText: string,
-    options?: { view?: ViewType; durationMs?: number }
+    options?: { view?: ViewType; durationMs?: number },
   ) {
     const layout: DoubleTextWall = {
       layoutType: LayoutType.DOUBLE_TEXT_WALL,
       topText,
-      bottomText
+      bottomText,
     };
-    this.sendMessage(this.createDisplayEvent(
-      layout,
-      options?.view,
-      options?.durationMs
-    ));
+    this.sendMessage(
+      this.createDisplayEvent(layout, options?.view, options?.durationMs),
+    );
   }
 
   /**
@@ -275,21 +286,19 @@ export class LayoutManager {
   showReferenceCard(
     title: string,
     text: string,
-    options?: { view?: ViewType; durationMs?: number }
+    options?: { view?: ViewType; durationMs?: number },
   ) {
     const layout: ReferenceCard = {
       layoutType: LayoutType.REFERENCE_CARD,
       title,
-      text
+      text,
     };
-    this.sendMessage(this.createDisplayEvent(
-      layout,
-      options?.view,
-      options?.durationMs
-    ));
+    this.sendMessage(
+      this.createDisplayEvent(layout, options?.view, options?.durationMs),
+    );
   }
 
-    /**
+  /**
    * 📇 Shows a bitmap
    *
    * Uses the proven animation system internally for proper L/R eye synchronization.
@@ -306,33 +315,12 @@ export class LayoutManager {
    * );
    * ```
    */
-  showBitmapView(
-    data: string,
-    options?: { view?: ViewType; durationMs?: number }
-  ) {
-    // Use the proven animation system for single frame display
-    // This ensures proper L/R eye synchronization that works with
-    // the optimized iOS BLE transmission system
-    const duration = options?.durationMs || 5000; // Default 5 seconds
-    const frameInterval = 1650; // Use same interval as working animations
-    
-    // Create short multi-frame animation for better L/R sync
-    // Repeat the same frame a few times to mimic continuous animation behavior
-    const frames = [data, data, data]; // Triple the frame for stability
-    
-    const animation = this.showBitmapAnimation(
-      frames,           // Multi-frame array (same image repeated)
-      frameInterval,    // Use proven 1650ms interval
-      false,            // Don't repeat infinitely
-      { view: options?.view }
-    );
-    
-    // Auto-stop after duration
-    setTimeout(() => {
-      animation.stop();
-    }, duration);
-    
-    return animation;
+  showBitmapView(data: string, options?: { view?: ViewType }) {
+    const layout: BitmapView = {
+      layoutType: LayoutType.BITMAP_VIEW,
+      data: data,
+    };
+    this.sendMessage(this.createDisplayEvent(layout, options?.view));
   }
 
   /**
@@ -355,18 +343,20 @@ export class LayoutManager {
   showDashboardCard(
     leftText: string,
     rightText: string,
-    options?: { view?: ViewType; durationMs?: number }
+    options?: { view?: ViewType; durationMs?: number },
   ) {
     const layout: DashboardCard = {
       layoutType: LayoutType.DASHBOARD_CARD,
       leftText,
-      rightText
+      rightText,
     };
-    this.sendMessage(this.createDisplayEvent(
-      layout,
-      options?.view || ViewType.DASHBOARD,
-      options?.durationMs
-    ));
+    this.sendMessage(
+      this.createDisplayEvent(
+        layout,
+        options?.view || ViewType.DASHBOARD,
+        options?.durationMs,
+      ),
+    );
   }
 
   /**
@@ -387,12 +377,9 @@ export class LayoutManager {
    */
   clearView(options?: { view?: ViewType }) {
     const layout: ClearView = {
-      layoutType: LayoutType.CLEAR_VIEW
+      layoutType: LayoutType.CLEAR_VIEW,
     };
-    this.sendMessage(this.createDisplayEvent(
-      layout,
-      options?.view
-    ));
+    this.sendMessage(this.createDisplayEvent(layout, options?.view));
   }
 
   /**
@@ -429,11 +416,13 @@ export class LayoutManager {
     bitmapDataArray: string[],
     intervalMs: number = 1650,
     repeat: boolean = false,
-    options?: { view?: ViewType }
+    options?: { view?: ViewType },
   ): { stop: () => void } {
     // Validation
     if (!Array.isArray(bitmapDataArray) || bitmapDataArray.length === 0) {
-      throw new Error("showBitmapAnimation requires a non-empty array of bitmap data");
+      throw new Error(
+        "showBitmapAnimation requires a non-empty array of bitmap data",
+      );
     }
 
     // Send complete animation package to iOS for device-controlled timing
@@ -441,23 +430,24 @@ export class LayoutManager {
       layoutType: LayoutType.BITMAP_ANIMATION,
       frames: bitmapDataArray,
       interval: intervalMs,
-      repeat: repeat
+      repeat: repeat,
     };
 
-    this.sendMessage(this.createDisplayEvent(
-      layout,
-      options?.view
-    ));
+    this.sendMessage(this.createDisplayEvent(layout, options?.view));
 
-    console.log(`🎬 Sent batched animation to iOS: ${bitmapDataArray.length} frames at ${intervalMs}ms${repeat ? ' (repeating)' : ''}`);
+    console.log(
+      `🎬 Sent batched animation to iOS: ${
+        bitmapDataArray.length
+      } frames at ${intervalMs}ms${repeat ? " (repeating)" : ""}`,
+    );
 
     // Return controller for compatibility
     return {
       stop: () => {
         // Send stop command to iOS
         this.clearView();
-        console.log('🛑 Animation stop requested');
-      }
+        console.log("🛑 Animation stop requested");
+      },
     };
   }
 }
