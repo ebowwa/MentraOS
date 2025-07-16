@@ -1,4 +1,4 @@
-name: AugmentOS Manager Jest Tests
+name: MentraOS Manager Jest Tests
 
 on:
   pull_request:
