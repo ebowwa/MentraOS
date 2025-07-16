@@ -27,6 +27,10 @@ yarn-error.log*
 /.changelog
 .npm/
 augmentos_npm/
+.expo
+**/.expo
+.docusaurus
+**/.docusaurus
 
 ### PYTHON
 #
@@ -319,3 +323,4 @@ server/auth/serviceAccountKey.json
 .env.production
 .env.staging
 augmentos_asg_client/StreamPackLite/
+augmentos_manager/expo-env.d.ts
