@@ -154,7 +154,7 @@ export class SonioxTranslationUtils {
     for (const sub of analysis.remainingSubscriptions) {
       const [type, langPair] = sub.split(':');
       if (type === 'translation') {
-        const [source, target] = langPair.split('->');
+        const [source, target] = langPair.split(/->|-to-/);
         streams.push({
           type: 'individual',
           config: {
@@ -209,7 +209,7 @@ export class SonioxTranslationUtils {
     // Parse translation pairs to identify source languages
     const translationPairs = translationSubs.map(sub => {
       const [, langPair] = sub.split(':');
-      const [source, target] = langPair.split('->');
+      const [source, target] = langPair.split(/->|-to-/);
       return { source, target, subscription: sub };
     });
     
@@ -358,7 +358,7 @@ export class SonioxTranslationUtils {
     // Parse translation subscriptions
     const translationPairs = translationSubs.map(sub => {
       const [, langPair] = sub.split(':');
-      const [source, target] = langPair.split('->');
+      const [source, target] = langPair.split(/->|-to-/);
       return { source, target, subscription: sub };
     });
     
