@@ -548,7 +548,7 @@ export default function InactiveAppList({
               is_foreground={app.appType == "standard" || app["tpaType"] == "standard"}
               isActive={false}
               onTogglePress={async () => {
-                let isForegroundApp = app.appType == "standard" || app["tpaType"] == "standard"
+                const isForegroundApp = app.appType == "standard" || app["tpaType"] == "standard"
                 const res = await checkIsForegroundAppStart(app.packageName, isForegroundApp)
                 if (res) {
                   // Don't animate here - let startApp handle all UI updates

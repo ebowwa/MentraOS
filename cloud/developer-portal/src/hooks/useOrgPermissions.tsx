@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
-import { useAuth } from './useAuth';
-import { useOrganization } from '../context/OrganizationContext';
-import { OrgRole } from '@/services/api.service';
-import api from '@/services/api.service';
+import { useEffect, useState } from "react";
+import { useAuth } from "./useAuth";
+import { useOrganization } from "../context/OrganizationContext";
+import { OrgRole } from "@/services/api.service";
+import api from "@/services/api.service";
 
 /**
  * Interface for organization permissions
@@ -44,15 +44,16 @@ export function useOrgPermissions(): OrgPermissions {
 
         // Find the member entry that matches the current user's email (case-insensitive)
         const emailLower = user.email?.toLowerCase();
-        const memberEntry = orgDetails.members?.find(m => m.user.email?.toLowerCase() === emailLower);
+        const memberEntry = orgDetails.members?.find(
+          (m) => m.user.email?.toLowerCase() === emailLower,
+        );
 
         if (memberEntry) {
           setCurrentRole(memberEntry.role);
-          setIsAdmin(memberEntry.role === 'admin');
+          setIsAdmin(memberEntry.role === "admin");
         }
       } catch (error) {
-        // eslint-disable-next-line no-console
-        console.error('Failed to determine org permissions:', error);
+        console.error("Failed to determine org permissions:", error);
       } finally {
         setLoading(false);
       }
