@@ -1,10 +1,10 @@
-name: AugmentOS ASG Client Build
+name: MentraOS ASG Client Build
 
 on:
   pull_request:
     paths:
       - 'augmentos_asg_client/**'
-      - '.github/workflows/augmentos-asg-client-build.yml'
+      - '.github/workflows/mentraos-asg-client-build.yml'
   push:
     branches:
       - main
@@ -33,6 +33,16 @@ jobs:
         run: |
           # Create .env from example
           cp .env.example .env
+
+      - name: Clone StreamPackLite dependency
+        working-directory: ./augmentos_asg_client
+        run: |
+          # Clone StreamPackLite repository
+          git clone https://github.com/Mentra-Community/StreamPackLite.git
+          
+          # Checkout the working branch
+          cd StreamPackLite
+          git checkout working
 
       - name: Cache Gradle dependencies
         uses: actions/cache@v3
