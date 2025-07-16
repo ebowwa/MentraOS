@@ -32,7 +32,7 @@ If your glasses run Android OS:
    - The existing StandardBluetoothManager can work with most Android glasses
 
 2. **Create an SGC in the phone app** to communicate with your glasses
-   - Location: `augmentos_core/` folder (Android) or `mentraos_manager/ios/` (iOS)
+   - Location: `android_core/` folder (Android) or `mentraos_manager/ios/` (iOS)
    - Your SGC will act as a BLE client connecting to the glasses' BLE server
 
 ### For RTOS/Firmware-Based Glasses
@@ -51,7 +51,7 @@ If your glasses run custom firmware:
 
 ### 1. Create Your SGC Class
 
-Location: `augmentos_core/app/src/main/java/com/augmentos/augmentos_core/smarterglassesmanager/smartglassescommunicators/`
+Location: `android_core/app/src/main/java/com/augmentos/android_core/smarterglassesmanager/smartglassescommunicators/`
 
 Create a new Java file extending `SmartGlassesCommunicator`:
 
@@ -143,7 +143,7 @@ To make your glasses available in the system, you need to:
 
 #### a. Create a SmartGlassesDevice class
 
-In `augmentos_core/app/src/main/java/com/augmentos/augmentos_core/smarterglassesmanager/supportedglasses/`:
+In `android_core/app/src/main/java/com/augmentos/augmentos_core/smarterglassesmanager/supportedglasses/`:
 
 ```java
 public class YourGlasses extends SmartGlassesDevice {
