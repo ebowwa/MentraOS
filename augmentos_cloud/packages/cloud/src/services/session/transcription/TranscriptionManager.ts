@@ -147,24 +147,24 @@ export class TranscriptionManager {
       // Create a mapping from optimized streams to their handled subscriptions
       const optimizedSubscriptions = new Set<ExtendedStreamType>();
       
-      for (const stream of optimizedStreams) {
+      for (const stream of optimizedStreams.streams) {
         // Each optimized stream gets a unique subscription identifier
         let streamSubscription: ExtendedStreamType;
         
-        if (stream.type === 'transcription') {
+        if (stream.type === 'transcription_only') {
           streamSubscription = `transcription:${stream.config.language}`;
-        } else if (stream.type === 'translation') {
-          if (stream.config.translation?.type === 'two_way') {
-            // For two-way translation, use a consolidated identifier
-            streamSubscription = `translation:${stream.config.translation.language_a}-two-way-${stream.config.translation.language_b}`;
-          } else {
-            // For one-way translation
-            const srcLang = stream.config.translation?.source_languages?.[0] || stream.config.language;
-            const tgtLang = stream.config.translation?.target_language;
-            streamSubscription = `translation:${srcLang}-to-${tgtLang}`;
-          }
+        } else if (stream.type === 'two_way') {
+          // For two-way translation streams
+          const langA = stream.config.translation?.language_a || stream.config.language;
+          const langB = stream.config.translation?.language_b;
+          streamSubscription = `translation:${langA}-two-way-${langB}`;
+        } else if (stream.type === 'universal_english' || stream.type === 'individual' || stream.type === 'multi_source') {
+          // For one-way translation streams
+          const srcLang = stream.config.translation?.source_languages?.[0] || stream.config.language;
+          const tgtLang = stream.config.translation?.target_language;
+          streamSubscription = `translation:${srcLang}-to-${tgtLang}`;
         } else {
-          // Multi-source or other types
+          // Fallback for any unknown types
           streamSubscription = `optimized:${stream.type}:${Date.now()}`;
         }
         
@@ -183,7 +183,7 @@ export class TranscriptionManager {
       this.logger.debug({
         originalSubscriptions: subscriptions,
         optimizedSubscriptions: Array.from(optimizedSubscriptions),
-        streamCount: optimizedStreams.length
+        streamCount: optimizedStreams.streams.length
       }, 'Optimized subscriptions using SonioxTranslationUtils');
       
       return optimizedSubscriptions;
