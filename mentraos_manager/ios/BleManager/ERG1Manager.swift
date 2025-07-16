@@ -121,6 +121,7 @@ enum GlassesError: Error {
   // L/R Synchronization - Track BLE write completions
   private var pendingWriteCompletions: [CBCharacteristic: CheckedContinuation<Bool, Never>] = [:]
   private var pendingAckCompletions: [String: CheckedContinuation<Bool, Never>] = [:]
+  private let ackCompletionsQueue = DispatchQueue(label: "com.erg1.ackCompletions", attributes: .concurrent)
   private var writeCompletionCount = 0
   
   var onConnectionStateChanged: (() -> Void)?
@@ -686,7 +687,7 @@ enum GlassesError: Error {
       
       let lastChunk = chunks.last!
       
-      success = await sendCommandToSide2(lastChunk, side: side)
+      success = await sendCommandToSide2(lastChunk, side: side, attemptNumber: attempts)
       CoreCommsService.log("command success: \(success)")
 //      if (!success) {
 //        CoreCommsService.log("timed out waiting for \(s)")
@@ -697,7 +698,6 @@ enum GlassesError: Error {
       attempts += 1
       if !success && (attempts >= maxAttempts) {
         CoreCommsService.log("Command timed out!")
-//        semaphore.signal()// increment the count
         startReconnectionTimer()
         break
       }
@@ -790,8 +790,13 @@ enum GlassesError: Error {
     
     let side = peripheral == leftPeripheral ? "left" : "right"
     
-    // Resume any pending ACK continuation for this side
-    if let continuation = pendingAckCompletions.removeValue(forKey: side) {
+    // Resume any pending ACK continuation for this side (thread-safe)
+    var continuation: CheckedContinuation<Bool, Never>?
+    ackCompletionsQueue.sync(flags: .barrier) {
+        continuation = pendingAckCompletions.removeValue(forKey: side)
+    }
+    
+    if let continuation = continuation {
         continuation.resume(returning: true)
         CoreCommsService.log("✅ ACK received for \(side) side, resuming continuation")
     }
@@ -1154,7 +1159,7 @@ extension ERG1Manager {
     }
   }
   
-  public func sendCommandToSide2(_ command: [UInt8], side: String) async -> Bool {
+  public func sendCommandToSide2(_ command: [UInt8], side: String, attemptNumber: Int = 0) async -> Bool {
     let startTime = Date()
     
     // Convert to Data
@@ -1188,26 +1193,28 @@ extension ERG1Manager {
         return
       }
       
-      // for ack:
-      self.pendingAckCompletions[side] = continuation
+      // Store continuation for ACK callback (thread-safe)
+      ackCompletionsQueue.async(flags: .barrier) {
+          self.pendingAckCompletions[side] = continuation
+      }
       
-      // Store continuation for completion callback
-      self.pendingWriteCompletions[characteristic!] = continuation
-//      var didTimeout = true  // Track timeout status
-      // Store continuation
-//      self.pendingWriteCompletions[characteristic!] = {
-//          didTimeout = false
-//          continuation.resume(returning: true)  // Success
-//      }()
       peripheral!.writeValue(commandData, for: characteristic!, type: .withResponse)
       
-      // PERFORMANCE FIX: Reduce timeout from 5s to 200ms for faster animations
-      DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) {
-        if let pendingContinuation = self.pendingWriteCompletions.removeValue(forKey: characteristic!) {
-          let elapsed = Date().timeIntervalSince(startTime) * 1000
-          CoreCommsService.log("⚠️ BLE write timeout for left side after \(String(format: "%.0f", elapsed))ms, resuming continuation")
-          pendingContinuation.resume(returning: false)
-        }
+      let waitTime = (0.25) + (0.1 * Double(attemptNumber))
+      
+      // after 200ms, if we haven't received the ack, resume:
+      DispatchQueue.main.asyncAfter(deadline: .now() + waitTime) {
+          // Check if ACK continuation still exists (if it does, ACK wasn't received)
+          var pendingContinuation: CheckedContinuation<Bool, Never>?
+          self.ackCompletionsQueue.sync(flags: .barrier) {
+              pendingContinuation = self.pendingAckCompletions.removeValue(forKey: side)
+          }
+          
+          if let pendingContinuation = pendingContinuation {
+              let elapsed = Date().timeIntervalSince(startTime) * 1000
+              CoreCommsService.log("⚠️ ACK timeout for \(side) side after \(String(format: "%.0f", elapsed))ms")
+              pendingContinuation.resume(returning: false)
+          }
       }
     }
   }
@@ -2669,8 +2676,9 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
     }
     
     // Resume continuation to allow sequential execution
-    if let continuation = pendingWriteCompletions.removeValue(forKey: characteristic) {
-      continuation.resume(returning: false)
-    }
+    // TODO: use the ack continuation
+//    if let continuation = pendingWriteCompletions.removeValue(forKey: characteristic) {
+//      continuation.resume(returning: false)
+//    }
   }
 }

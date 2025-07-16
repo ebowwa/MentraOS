@@ -1918,7 +1918,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         });
     }
 
-    // AugmentOS_Manager Comms Callbacks
+    // MentraOS_Manager Comms Callbacks
     public void sendStatusToBackend() {
         JSONObject status = generateStatusJson();
         Log.d(TAG, "Sending status to backend: " + status.toString());

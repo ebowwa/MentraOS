@@ -284,13 +284,13 @@ From MentraLiveSGC:
 
 Remember: Look at the existing SGC implementations for patterns, but implement based on your specific hardware capabilities and requirements.
 
-## UI Integration in augmentos_manager
+## UI Integration in mentraos_manager
 
 To make your new glasses available in the AugmentOS Manager app UI, you need to update several files:
 
 ### 1. Add to Glasses Model List
 
-In `augmentos_manager/src/app/pairing/select-glasses-model.tsx`, add your glasses to the appropriate platform array:
+In `mentraos_manager/src/app/pairing/select-glasses-model.tsx`, add your glasses to the appropriate platform array:
 
 ```javascript
 // For Android support
@@ -307,21 +307,23 @@ const glassesOptions = Platform.select({
 
 ### 2. Define Glasses Features
 
-In `augmentos_manager/src/config/glassesFeatures.ts`, add your glasses capabilities:
+In `mentraos_manager/src/config/glassesFeatures.ts`, add your glasses capabilities:
 
 ```javascript
 "Your Glasses Model Name": {
-  hasMicrophone: true,    // if it has a microphone
-  hasDisplay: true,       // if it has a display
-  hasCamera: false,       // if it has a camera
-  hasSpeakers: false,     // if it has speakers
-  hasWifi: false,         // if it has WiFi
+  camera: false,       // if it has a camera
+  speakers: false,     // if it has speakers
+  display: true,       // if it has a display
+  binocular: false,    // if it has binocular displays
+  wifi: false,         // if it has WiFi
+  imu: false,          // if it has IMU/motion sensors
+  micTypes: ["sco"],   // microphone types: ["none"], ["sco"], ["custom"], or ["sco", "custom"]
 },
 ```
 
 ### 3. Add Glasses Image
 
-In `augmentos_manager/src/utils/getGlassesImage.tsx`:
+In `mentraos_manager/src/utils/getGlassesImage.tsx`:
 
 ```javascript
 switch (glassesModel) {
@@ -331,11 +333,11 @@ switch (glassesModel) {
 }
 ```
 
-Also add your glasses image to `augmentos_manager/assets/glasses/your-glasses-image.png`
+Also add your glasses image to `mentraos_manager/assets/glasses/your-glasses-image.png`
 
 ### 4. Create Pairing Guide
 
-In `augmentos_manager/src/components/misc/GlassesPairingGuides.tsx`, add a pairing guide component:
+In `mentraos_manager/src/components/misc/GlassesPairingGuides.tsx`, add a pairing guide component:
 
 ```javascript
 const YourGlassesPairingGuide = () => (
@@ -350,7 +352,7 @@ const YourGlassesPairingGuide = () => (
 );
 ```
 
-Then in `augmentos_manager/src/utils/getPairingGuide.tsx`:
+Then in `mentraos_manager/src/utils/getPairingGuide.tsx`:
 
 ```javascript
 switch (glassesModel) {
@@ -362,14 +364,18 @@ switch (glassesModel) {
 
 ### 5. WiFi Support (Optional)
 
-If your glasses support WiFi, add to `augmentos_manager/src/consts.tsx`:
+If your glasses support WiFi, update `mentraos_manager/src/config/glassesFeatures.ts` to set `wifi: true` for your glasses model:
 
 ```javascript
-export const WIFI_CONFIGURABLE_MODELS = [
-  "Mentra Live", 
-  "Android Smart Glasses",
-  "Your Glasses Model Name"  // Add if WiFi is supported
-];
+"Your Glasses Model Name": {
+  camera: false,
+  speakers: false,
+  display: true,
+  binocular: false,
+  wifi: true,        // Set to true if WiFi is supported
+  imu: false,
+  micTypes: ["sco"], // or ["custom"], ["none"], or ["sco", "custom"]
+}
 ```
 
 ### Important Notes

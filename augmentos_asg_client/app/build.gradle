@@ -65,9 +65,9 @@ android {
         //    Using them as strings for simplicity.
         //    If you want a boolean, see the note below.
 
-        buildConfigField "String", "AUGMENTOS_HOST", "\"${envProperties['AUGMENTOS_HOST'] ?: ""}\""
-        buildConfigField "String", "AUGMENTOS_PORT", "\"${envProperties['AUGMENTOS_PORT'] ?: ""}\""
-        buildConfigField "String", "AUGMENTOS_SECURE", "\"${envProperties['AUGMENTOS_SECURE'] ?: ""}\""
+        buildConfigField "String", "MENTRAOS_HOST", "\"${envProperties['MENTRAOS_HOST'] ?: ""}\""
+        buildConfigField "String", "MENTRAOS_PORT", "\"${envProperties['MENTRAOS_PORT'] ?: ""}\""
+        buildConfigField "String", "MENTRAOS_SECURE", "\"${envProperties['MENTRAOS_SECURE'] ?: ""}\""
     }
 
     packagingOptions {

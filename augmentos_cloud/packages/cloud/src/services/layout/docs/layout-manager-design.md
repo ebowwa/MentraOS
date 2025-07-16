@@ -345,7 +345,7 @@ interface UserSession {
 
 ## Current Client-Side Layout Building
 
-### 1. Display Manager (augmentos_manager)
+### 1. Display Manager (mentraos_manager)
 Currently handles layout building in `DisplayManager`:
 ```typescript
 class DisplayManager {
@@ -395,7 +395,7 @@ class G1FontUtility {
   }
 }
 
-// In augmentos_manager
+// In mentraos_manager
 class DisplayFontUtility {
   // Similar implementation for display-specific fonts
 }
@@ -431,7 +431,7 @@ class FinalMileLayoutManager {
   }
 }
 
-// In augmentos_manager (simplified)
+// In mentraos_manager (simplified)
 class DisplayManager {
   constructor(private layoutManager: FinalMileLayoutManager) {}
 
@@ -484,7 +484,7 @@ const DEVICE_CONFIGS = {
   }
 } as const;
 
-// In augmentos_manager (simplified)
+// In mentraos_manager (simplified)
 interface UserSession {
   deviceType: DeviceType;  // Only need device type, config moved to cloud
 }
@@ -493,7 +493,7 @@ interface UserSession {
 ### 4. Client-Side Changes
 Simplify client components:
 ```typescript
-// In augmentos_manager
+// In mentraos_manager
 class DisplayManager {
   constructor(
     private layoutManager: FinalMileLayoutManager,
@@ -598,7 +598,7 @@ augmentos_cloud/packages/cloud/src/services/
 
 1. **Display Request Flow**:
    ```
-   App/System App -> Cloud (DisplayManager) -> Client (augmentos_manager) -> Device
+   App/System App -> Cloud (DisplayManager) -> Client (mentraos_manager) -> Device
    ```
    - App or System App sends display request to cloud
    - Cloud's DisplayManager receives request
@@ -627,7 +627,7 @@ augmentos_cloud/packages/cloud/src/services/
 1. **Display Request Flow**:
    ```
    App/System App -> Cloud (DisplayManager) -> Cloud (LayoutManager) -> Device
-                                          -> Client (augmentos_manager) [fallback]
+                                          -> Client (mentraos_manager) [fallback]
    ```
    - App or System App sends display request to cloud
    - DisplayManager receives request

@@ -129,9 +129,29 @@ const sidebars: SidebarsConfig = {
       ],
     },
     {
-      type: 'doc',
-      id: 'contributing',
-      label: '👥 Contributing Guide',
+      type: 'category',
+      label: '👥 Contributing',
+      link: {
+        type: 'doc',
+        id: 'contributing',
+      },
+      items: [
+        {
+          type: 'doc',
+          id: 'contributing/mentraos-manager-guidelines',
+          label: 'MentraOS Manager Guidelines',
+        },
+        {
+          type: 'doc',
+          id: 'contributing/mentraos-asg-client-guidelines',
+          label: 'MentraOS ASG Client Guidelines',
+        },
+        {
+          type: 'doc',
+          id: 'contributing/add-new-glasses-support',
+          label: 'Adding New Glasses Support',
+        },
+      ],
     },
   ],
 };
