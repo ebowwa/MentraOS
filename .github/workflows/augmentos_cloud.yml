@@ -6,7 +6,7 @@ on:
   push:
     paths:
       - 'augmentos_cloud/**'
-      - '.github/workflows/augmentos_cloud.yml'
+      - '.github/workflows/cloud.yml'
 
 jobs:
   build_and_test:
