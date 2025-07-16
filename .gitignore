@@ -27,6 +27,10 @@ yarn-error.log*
 /.changelog
 .npm/
 augmentos_npm/
+.expo
+**/.expo
+.docusaurus
+**/.docusaurus
 
 .expo
 **/.expo
