@@ -1,6 +1,6 @@
 //
 //  CoreCommsService.m
-//  AugmentOS_Manager
+//  MentraOS_Manager
 //
 //  Created by Matthew Fosse on 3/4/25.
 //

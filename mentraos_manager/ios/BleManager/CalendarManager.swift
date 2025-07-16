@@ -1,6 +1,6 @@
 //
 //  CalendarManager.swift
-//  AugmentOS_Manager
+//  MentraOS_Manager
 //
 //  Created by Matthew Fosse on 3/14/25.
 //

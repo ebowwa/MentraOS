@@ -3,7 +3,7 @@ name: MentraOS Manager Jest Tests
 on:
   pull_request:
     paths:
-      - 'augmentos_manager/**'
+      - 'mentraos_manager/**'
       - '.github/workflows/augmentos-manager-jest.yml'
   workflow_dispatch:
 
@@ -25,14 +25,14 @@ jobs:
         with:
           node-version: '18'
           cache: 'pnpm'
-          cache-dependency-path: augmentos_manager/package.json
+          cache-dependency-path: mentraos_manager/package.json
 
       - name: Install dependencies
-        working-directory: ./augmentos_manager
+        working-directory: ./mentraos_manager
         run: pnpm install --no-frozen-lockfile
 
       - name: Run Jest tests
-        working-directory: ./augmentos_manager
+        working-directory: ./mentraos_manager
         run: pnpm test
         env:
           CI: true

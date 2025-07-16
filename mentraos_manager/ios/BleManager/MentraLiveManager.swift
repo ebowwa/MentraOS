@@ -8,7 +8,7 @@
 
 //
 // MentraLiveManager.swift
-// AugmentOS_Manager
+// MentraOS_Manager
 //
 // Converted from MentraLiveSGC.java
 //

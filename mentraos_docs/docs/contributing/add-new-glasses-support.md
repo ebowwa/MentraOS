@@ -32,7 +32,7 @@ If your glasses run Android OS:
    - The existing StandardBluetoothManager can work with most Android glasses
 
 2. **Create an SGC in the phone app** to communicate with your glasses
-   - Location: `augmentos_core/` folder (Android) or `augmentos_manager/ios/` (iOS)
+   - Location: `augmentos_core/` folder (Android) or `mentraos_manager/ios/` (iOS)
    - Your SGC will act as a BLE client connecting to the glasses' BLE server
 
 ### For RTOS/Firmware-Based Glasses
@@ -229,7 +229,7 @@ After creating your SGC, update the MentraOS Manager app UI:
 
 ### 1. Add to Glasses Model List
 
-In `augmentos_manager/src/app/pairing/select-glasses-model.tsx`:
+In `mentraos_manager/src/app/pairing/select-glasses-model.tsx`:
 
 ```javascript
 const glassesOptions = Platform.select({
@@ -245,7 +245,7 @@ const glassesOptions = Platform.select({
 
 ### 2. Define Glasses Features
 
-In `augmentos_manager/src/config/glassesFeatures.ts`:
+In `mentraos_manager/src/config/glassesFeatures.ts`:
 
 ```javascript
 "Your Glasses Model Name": {
@@ -261,8 +261,8 @@ In `augmentos_manager/src/config/glassesFeatures.ts`:
 
 ### 3. Add Glasses Image
 
-1. Add your image to `augmentos_manager/assets/glasses/your-glasses-image.png`
-2. Update `augmentos_manager/src/utils/getGlassesImage.tsx`:
+1. Add your image to `mentraos_manager/assets/glasses/your-glasses-image.png`
+2. Update `mentraos_manager/src/utils/getGlassesImage.tsx`:
 
 ```javascript
 case "Your Glasses Model Name":
@@ -271,7 +271,7 @@ case "Your Glasses Model Name":
 
 ### 4. Create Pairing Guide
 
-In `augmentos_manager/src/components/misc/GlassesPairingGuides.tsx`:
+In `mentraos_manager/src/components/misc/GlassesPairingGuides.tsx`:
 
 ```javascript
 const YourGlassesPairingGuide = () => (
@@ -286,7 +286,7 @@ const YourGlassesPairingGuide = () => (
 );
 ```
 
-Update `augmentos_manager/src/utils/getPairingGuide.tsx`:
+Update `mentraos_manager/src/utils/getPairingGuide.tsx`:
 
 ```javascript
 case "Your Glasses Model Name":

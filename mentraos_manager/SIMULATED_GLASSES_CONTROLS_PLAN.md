@@ -61,7 +61,7 @@ Cloud Backend
 
 ### Phase 1: Native Module Extensions
 
-#### iOS Implementation (`augmentos_manager/ios`)
+#### iOS Implementation (`mentraos_manager/ios`)
 
 1. **Add to `ServerComms.swift`** (Fix missing head position sending):
 ```swift

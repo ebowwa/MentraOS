@@ -1,6 +1,6 @@
 //
 //  OnboardMicrophoneManager.swift
-//  AugmentOS_Manager
+//  MentraOS_Manager
 //
 //  Created on 3/8/25.
 //

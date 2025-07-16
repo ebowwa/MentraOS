@@ -1,6 +1,6 @@
 //
 //  AudioManager.swift
-//  AugmentOS_Manager
+//  MentraOS_Manager
 //
 //  Created by Assistant on date
 //

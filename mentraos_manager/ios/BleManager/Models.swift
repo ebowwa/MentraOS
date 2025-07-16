@@ -1,6 +1,6 @@
 //
 //  Models.swift
-//  AugmentOS_Manager
+//  MentraOS_Manager
 //
 //  Created by Matthew Fosse on 3/3/25.
 //
