@@ -300,12 +300,23 @@ class OnboardMicrophoneManager {
       return false
     }
     
-    // Get the native input format - typically 48kHz floating point samples
-    let inputFormat = inputNode.inputFormat(forBus: 0)
-    print("Input format: \(inputFormat)")
+    let inputFormat: AVAudioFormat?;
+    
+    do {
+      
+      // Get the native input format - typically 48kHz floating point samples
+      inputFormat = inputNode.inputFormat(forBus: 0)
+      print("Input format: \(inputFormat)")
+    } catch {
+      print("Error getting input format: \(error)")
+    }
+    
+    guard inputFormat != nil else {
+      return false
+    }
     
     // Set up a converter node if you need 16-bit PCM
-    let converter = AVAudioConverter(from: inputFormat, to: AVAudioFormat(commonFormat: .pcmFormatInt16,
+    let converter = AVAudioConverter(from: inputFormat!, to: AVAudioFormat(commonFormat: .pcmFormatInt16,
                                                                           sampleRate: 16000,
                                                                           channels: 1,
                                                                           interleaved: true)!)
@@ -322,7 +333,7 @@ class OnboardMicrophoneManager {
       
       // Calculate the correct output buffer capacity based on sample rate conversion
       // For downsampling from inputFormat.sampleRate to 16000 Hz
-      let outputCapacity = AVAudioFrameCount(Double(frameCount) * (16000.0 / inputFormat.sampleRate))
+      let outputCapacity = AVAudioFrameCount(Double(frameCount) * (16000.0 / inputFormat!.sampleRate))
       
       // Create a 16-bit PCM data buffer with adjusted capacity
       let convertedBuffer = AVAudioPCMBuffer(pcmFormat: converter.outputFormat, frameCapacity: outputCapacity)!
