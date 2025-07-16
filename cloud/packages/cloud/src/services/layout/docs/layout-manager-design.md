@@ -406,7 +406,7 @@ class DisplayFontUtility {
 ### 1. Layout Building Migration
 Move all layout building to cloud:
 ```typescript
-// In augmentos_cloud
+// In cloud
 class FinalMileLayoutManager {
   // ... existing code ...
 
@@ -445,7 +445,7 @@ class DisplayManager {
 ### 2. Font Utility Migration
 Move font utilities to cloud:
 ```typescript
-// In augmentos_cloud
+// In cloud
 class CloudFontUtilityManager {
   private fontUtilities: Map<DeviceType, FontUtility>;
 
@@ -469,7 +469,7 @@ class CloudFontUtilityManager {
 ### 3. Device Configuration Migration
 Move device configurations to cloud:
 ```typescript
-// In augmentos_cloud
+// In cloud
 const DEVICE_CONFIGS = {
   [DeviceType.G1]: {
     displayWidth: 640,
@@ -570,7 +570,7 @@ class DashboardManager {
 
 ## File Structure and System Operation
 
-### 1. Cloud-Side (augmentos_cloud)
+### 1. Cloud-Side (cloud)
 
 #### New Files
 ```
