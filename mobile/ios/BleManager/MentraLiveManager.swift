@@ -1167,7 +1167,7 @@ typealias JSONObject = [String: Any]
         "timestamp": Int64(Date().timeIntervalSince1970 * 1000)
       ]
       
-      self.sendJson(json)
+      self.sendJson(json, wakeUp: true)
     }
     
     readinessCheckDispatchTimer!.resume()
