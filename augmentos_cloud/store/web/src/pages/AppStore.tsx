@@ -4,6 +4,9 @@ import { Search, X, Building, Lock } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../hooks/useTheme';
 import { usePlatform } from '../hooks/usePlatform';
+import { useSearch } from '../contexts/SearchContext';
+import { useIsMobile } from '../hooks/useMediaQuery';
+import SearchBar from '../components/SearchBar';
 import api, { AppFilterOptions } from '../api';
 import { AppI } from '../types';
 import Header from '../components/Header';
@@ -33,7 +36,8 @@ const AppStore: React.FC = () => {
   // Get organization ID from URL query parameter
   const orgId = searchParams.get('orgId');
 
-  const [searchQuery, setSearchQuery] = useState('');
+  const { searchQuery, setSearchQuery } = useSearch();
+  const isMobile = useIsMobile();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [apps, setApps] = useState<AppI[]>([]);
@@ -289,49 +293,28 @@ const AppStore: React.FC = () => {
   return (
       <div className="min-h-screen text-white" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
       {/* Header */}
-      <Header />
+      <Header onSearch={handleSearch} onSearchClear={() => {
+        setSearchQuery('');
+        fetchApps();
+      }} />
 
       {/* Main Content */}
       <main className="container mx-auto py-4 sm:py-8">
-        {/* Heading + Search */}
-        <div className="flex flex-col lg:flex-row mb-4 sm:mb-8 lg:items-center lg:justify-between gap-4 px-4 pb-4 sm:pb-8" style={{ borderBottom: '1px solid var(--border-color)' }}>
-          {/* App Store heading */}
-          <h1 className="text-4xl font-light hidden min-[850px]:block" style={{fontFamily:'"SF Pro Rounded", sans-serif', letterSpacing: '2.4px', color: 'var(--text-primary)'}}>Store</h1>
-
-          {/* Search bar */}
-          <form onSubmit={handleSearch} className="flex-1 lg:max-w-md flex items-center space-x-3">
-            <div className="relative w-full">
-              <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                <Search className="h-5 w-5" style={{ color: 'var(--text-secondary)' }} />
-              </div>
-              <input
-                type="text"
-                className="theme-search-input w-full pl-10 pr-4 py-2 rounded-3xl focus:outline-none focus:ring-2 focus:ring-[#47478E] border"
-                style={{
-                  backgroundColor: theme === 'light' ? 'var(--bg-secondary)' : '#141834',
-                  color: 'var(--text-primary)',
-                  borderColor: 'var(--border-color)'
-                }}
-                placeholder="Search"
-                value={searchQuery}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
-              />
-            </div>
-            {searchQuery && (
-              <button
-                type="button"
-                className="text-[15px] font-normal tracking-[0.1em]"
-                style={{ color: 'var(--text-primary)' }}
-                onClick={() => {
-                  setSearchQuery('');
-                  fetchApps();
-                }}
-              >
-                Cancel
-              </button>
-            )}
-          </form>
-        </div>
+        {/* Search bar on mobile only */}
+        {isMobile && (
+          <div className="mb-4 sm:mb-8 px-4 pb-4 sm:pb-8" style={{ borderBottom: '1px solid var(--border-color)' }}>
+            <SearchBar
+              searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
+              onSearchSubmit={handleSearch}
+              onClear={() => {
+                setSearchQuery('');
+                fetchApps();
+              }}
+              className="w-full"
+            />
+          </div>
+        )}
 
         {/* Organization filter indicator */}
         {activeOrgFilter && (
@@ -355,7 +338,7 @@ const AppStore: React.FC = () => {
         {/* Search result indicator */}
         {searchQuery && (
           <div className="my-2 sm:my-4 max-w-2xl mx-auto px-4">
-            <p className="text-gray-600">
+            <p className="text-gray-600 text-left sm:text-center">
               {filteredApps.length} {filteredApps.length === 1 ? 'result' : 'results'} for "{searchQuery}"
               {activeOrgFilter && ` in ${orgName}`}
             </p>

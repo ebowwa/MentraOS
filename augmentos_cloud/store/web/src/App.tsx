@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import { PlatformProvider } from './hooks/usePlatform';
+import { SearchProvider } from './contexts/SearchContext';
 import { Toaster } from 'sonner';
 
 // Pages
@@ -60,10 +61,12 @@ const App: React.FC = () => {
   return (
     <PlatformProvider>
       <AuthProvider>
-        <BrowserRouter>
-          <AppRoutes />
-          <Toaster position="top-right" richColors />
-        </BrowserRouter>
+        <SearchProvider>
+          <BrowserRouter>
+            <AppRoutes />
+            <Toaster position="top-right" richColors />
+          </BrowserRouter>
+        </SearchProvider>
       </AuthProvider>
     </PlatformProvider>
   );
