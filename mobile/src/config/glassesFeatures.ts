@@ -91,7 +91,3 @@ export function hasCustomMic(featureSet: GlassesFeatureSet): boolean {
 export function hasScoMic(featureSet: GlassesFeatureSet): boolean {
   return featureSet.micTypes.includes("sco")
 }
-
-export function hasBothMicTypes(featureSet: GlassesFeatureSet): boolean {
-  return hasCustomMic(featureSet) && hasScoMic(featureSet)
-}

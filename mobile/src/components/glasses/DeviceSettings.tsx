@@ -29,7 +29,7 @@ import {PermissionFeatures, requestFeaturePermissions} from "@/utils/Permissions
 import RouteButton from "@/components/ui/RouteButton"
 import ActionButton from "@/components/ui/ActionButton"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
-import {glassesFeatures, hasBothMicTypes} from "@/config/glassesFeatures"
+import {glassesFeatures, hasCustomMic} from "@/config/glassesFeatures"
 import {useAuth} from "@/contexts/AuthContext"
 import {isMentraUser} from "@/utils/isMentraUser"
 import {loadSetting} from "@/utils/SettingsHelper"
@@ -356,7 +356,7 @@ export default function DeviceSettings() {
       )}
 
       {/* Only show mic selector if glasses have both SCO and custom mic types */}
-      {status.core_info.default_wearable && glassesFeatures[status.core_info.default_wearable] && hasBothMicTypes(glassesFeatures[status.core_info.default_wearable]) && (
+      {status.core_info.default_wearable && glassesFeatures[status.core_info.default_wearable] && hasCustomMic(glassesFeatures[status.core_info.default_wearable]) && (
         <View style={themed($settingsGroup)}>
           <TouchableOpacity
             style={{
