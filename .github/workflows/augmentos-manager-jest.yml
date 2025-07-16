@@ -28,11 +28,11 @@ jobs:
           cache-dependency-path: mentraos_manager/package.json
 
       - name: Install dependencies
-        working-directory: ./mentraos_manager
+        working-directory: ./mobile
         run: pnpm install --no-frozen-lockfile
 
       - name: Run Jest tests
-        working-directory: ./mentraos_manager
+        working-directory: ./mobile
         run: pnpm test
         env:
           CI: true

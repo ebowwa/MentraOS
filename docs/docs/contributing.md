@@ -147,7 +147,7 @@ Third-party apps in the MentraOS ecosystem follow a specific pattern:
 ```bash
 # Clone the repository
 git clone https://github.com/Mentra-Community/MentraOS.git
-cd MentraOS/mentraos_manager
+cd MentraOS/mobile
 
 # Install dependencies
 npm install

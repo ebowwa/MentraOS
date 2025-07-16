@@ -37,25 +37,25 @@ jobs:
           cache-dependency-path: mentraos_manager/package.json
 
       - name: Install dependencies
-        working-directory: ./mentraos_manager
+        working-directory: ./mobile
         run: pnpm install --no-frozen-lockfile
 
       - name: Setup environment
-        working-directory: ./mentraos_manager
+        working-directory: ./mobile
         run: |
           # Create .env from example
           cp .env.example .env
 
       - name: Run Expo prebuild
-        working-directory: ./mentraos_manager
+        working-directory: ./mobile
         run: pnpm expo prebuild --platform ios
 
       - name: Install CocoaPods dependencies
-        working-directory: ./mentraos_manager/ios
+        working-directory: ./mobile/ios
         run: pod install
 
       - name: Build iOS app for Simulator
-        working-directory: ./mentraos_manager/ios
+        working-directory: ./mobile/ios
         run: |
           xcodebuild -workspace AOS.xcworkspace \
                      -scheme AOS \
@@ -65,7 +65,7 @@ jobs:
                      -destination 'platform=iOS Simulator,name=iPhone 16,OS=18.2'
 
       - name: Build iOS app for Device
-        working-directory: ./mentraos_manager/ios
+        working-directory: ./mobile/ios
         run: |
           xcodebuild -workspace AOS.xcworkspace \
                      -scheme AOS \
