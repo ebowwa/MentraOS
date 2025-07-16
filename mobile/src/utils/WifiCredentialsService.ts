@@ -171,4 +171,4 @@ class WifiCredentialsService {
   }
 }
 
-export default WifiCredentialsService 
+export default WifiCredentialsService

@@ -6,15 +6,13 @@
  * This follows the pattern used by other managers like MicrophoneManager and DisplayManager.
  */
 
-import WebSocket from 'ws';
-import {
-  StreamType
-} from '@mentra/sdk';
-import { Logger } from 'pino';
-import subscriptionService from './subscription.service';
+import WebSocket from "ws";
+import { StreamType } from "@mentra/sdk";
+import { Logger } from "pino";
+import subscriptionService from "./subscription.service";
 import { createLC3Service } from "../lc3/lc3.service";
-import { AudioWriter } from '../debug/audio-writer';
-import UserSession from './UserSession';
+import { AudioWriter } from "../debug/audio-writer";
+import UserSession from "./UserSession";
 
 /**
  * Represents a sequenced audio chunk with metadata
@@ -55,7 +53,8 @@ export class AudioManager {
   private audioWriter?: AudioWriter;
 
   // Buffer for recent audio (last 10 seconds)
-  private recentAudioBuffer: { data: ArrayBufferLike; timestamp: number }[] = [];
+  private recentAudioBuffer: { data: ArrayBufferLike; timestamp: number }[] =
+    [];
 
   // Ordered buffer for sequenced audio chunks
   private orderedBuffer: OrderedAudioBuffer;
@@ -67,7 +66,7 @@ export class AudioManager {
 
   constructor(userSession: UserSession) {
     this.userSession = userSession;
-    this.logger = userSession.logger.child({ service: 'AudioManager' });
+    this.logger = userSession.logger.child({ service: "AudioManager" });
 
     // Initialize ordered buffer
     this.orderedBuffer = {
@@ -77,13 +76,13 @@ export class AudioManager {
       expectedNextSequence: 0,
       bufferSizeLimit: 100,
       bufferTimeWindowMs: 500,
-      bufferProcessingInterval: null
+      bufferProcessingInterval: null,
     };
 
     // Initialize LC3 service if needed
     this.initializeLc3Service();
 
-    this.logger.info('AudioManager initialized');
+    this.logger.info("AudioManager initialized");
   }
 
   /**
@@ -109,7 +108,10 @@ export class AudioManager {
    * @param isLC3 Whether the audio is LC3 encoded
    * @returns Processed audio data
    */
-  async processAudioData(audioData: ArrayBuffer | any, isLC3 = this.IS_LC3): Promise<ArrayBuffer | void> {
+  async processAudioData(
+    audioData: ArrayBuffer | any,
+    isLC3 = this.IS_LC3,
+  ): Promise<ArrayBuffer | void> {
     try {
       // Update the last audio timestamp
       this.userSession.lastAudioTimestamp = Date.now();
@@ -127,7 +129,7 @@ export class AudioManager {
 
       // Process the audio data
       // let processedAudioData = await this.processAudioInternal(audioData, isLC3);
-      let processedAudioData = audioData;
+      const processedAudioData = audioData;
 
       // Send to transcription services
       if (processedAudioData) {
@@ -155,7 +157,10 @@ export class AudioManager {
    * @param isLC3 Whether the audio is LC3 encoded
    * @returns Processed audio data
    */
-  private async processAudioInternal(audioData: ArrayBuffer | any, isLC3: boolean): Promise<ArrayBuffer | void> {
+  private async processAudioInternal(
+    audioData: ArrayBuffer | any,
+    isLC3: boolean,
+  ): Promise<ArrayBuffer | void> {
     // Return early if no data
     if (!audioData) return undefined;
 
@@ -203,13 +208,13 @@ export class AudioManager {
     // Add to buffer
     this.recentAudioBuffer.push({
       data: audioData,
-      timestamp: now
+      timestamp: now,
     });
 
     // Prune old data (keep only last 10 seconds)
     const tenSecondsAgo = now - 10_000;
     this.recentAudioBuffer = this.recentAudioBuffer.filter(
-      chunk => chunk.timestamp >= tenSecondsAgo
+      (chunk) => chunk.timestamp >= tenSecondsAgo,
     );
   }
 
@@ -259,13 +264,17 @@ export class AudioManager {
       this.orderedBuffer.chunks.push(chunk);
 
       // Sort by sequence number (in case chunks arrive out of order)
-      this.orderedBuffer.chunks.sort((a, b) => a.sequenceNumber - b.sequenceNumber);
+      this.orderedBuffer.chunks.sort(
+        (a, b) => a.sequenceNumber - b.sequenceNumber,
+      );
 
       // Enforce buffer size limit
-      if (this.orderedBuffer.chunks.length > this.orderedBuffer.bufferSizeLimit) {
+      if (
+        this.orderedBuffer.chunks.length > this.orderedBuffer.bufferSizeLimit
+      ) {
         // Remove oldest chunks
         this.orderedBuffer.chunks = this.orderedBuffer.chunks.slice(
-          this.orderedBuffer.chunks.length - this.orderedBuffer.bufferSizeLimit
+          this.orderedBuffer.chunks.length - this.orderedBuffer.bufferSizeLimit,
         );
       }
     } catch (error) {
@@ -308,7 +317,8 @@ export class AudioManager {
 
       // Remove processed chunks
       this.orderedBuffer.chunks = this.orderedBuffer.chunks.filter(
-        chunk => chunk.sequenceNumber > this.orderedBuffer.lastProcessedSequence
+        (chunk) =>
+          chunk.sequenceNumber > this.orderedBuffer.lastProcessedSequence,
       );
     } catch (error) {
       this.logger.error(`Error processing ordered buffer:`, error);
@@ -329,10 +339,12 @@ export class AudioManager {
     // Start new interval
     this.orderedBuffer.bufferProcessingInterval = setInterval(
       () => this.processOrderedBuffer(),
-      intervalMs
+      intervalMs,
     );
 
-    this.logger.info(`Started ordered buffer processing with interval ${intervalMs}ms`);
+    this.logger.info(
+      `Started ordered buffer processing with interval ${intervalMs}ms`,
+    );
   }
 
   /**
@@ -356,7 +368,7 @@ export class AudioManager {
       // Get subscribers using subscriptionService instead of subscriptionManager
       const subscribedPackageNames = subscriptionService.getSubscribedApps(
         this.userSession,
-        StreamType.AUDIO_CHUNK
+        StreamType.AUDIO_CHUNK,
       );
 
       // Skip if no subscribers
@@ -372,7 +384,10 @@ export class AudioManager {
           try {
             connection.send(audioData);
           } catch (sendError) {
-            this.logger.error(`Error sending audio to ${packageName}:`, sendError);
+            this.logger.error(
+              `Error sending audio to ${packageName}:`,
+              sendError,
+            );
           }
         }
       }
@@ -407,7 +422,7 @@ export class AudioManager {
    */
   dispose(): void {
     try {
-      this.logger.info('Disposing AudioManager');
+      this.logger.info("Disposing AudioManager");
 
       // Stop buffer processing
       this.stopOrderedBufferProcessing();

@@ -33,7 +33,6 @@ const GlassesDisplayMirror: React.FC<GlassesDisplayMirrorProps> = ({
  * Render logic for each layoutType
  */
 function renderLayout(layout: any, containerStyle?: any, textStyle?: TextStyle) {
-
   switch (layout.layoutType) {
     case "reference_card": {
       const {title, text} = layout

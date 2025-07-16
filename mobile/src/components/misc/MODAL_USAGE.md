@@ -1,6 +1,7 @@
 # Modal System Usage Guide
 
 ## Setup
+
 The modal system is already set up in the app root at `App.tsx`:
 
 ```tsx
@@ -8,33 +9,26 @@ The modal system is already set up in the app root at `App.tsx`:
 ```
 
 ## Usage Option 1: Use the `showAlert` Function
+
 Replace all instances of `Alert.alert` with `showAlert` from `utils/AlertUtils`:
 
 ```tsx
-import showAlert from '../utils/AlertUtils';
+import showAlert from "../utils/AlertUtils"
 
 // Instead of:
-Alert.alert(
-  "Title",
-  "Message",
-  [{ text: "OK", onPress: () => {} }]
-);
+Alert.alert("Title", "Message", [{text: "OK", onPress: () => {}}])
 
 // Use:
-showAlert(
-  "Title",
-  "Message",
-  [{ text: "OK", onPress: () => {} }],
-  { 
-    isDarkTheme, // Pass current theme
-    iconName: "information-outline", // Optional - can use any icon from react-native-vector-icons/MaterialCommunityIcons
-    iconSize: 40, // Optional - defaults to 40
-    iconColor: "#2196F3" // Optional - defaults to theme-appropriate color
-  }
-);
+showAlert("Title", "Message", [{text: "OK", onPress: () => {}}], {
+  isDarkTheme, // Pass current theme
+  iconName: "information-outline", // Optional - can use any icon from react-native-vector-icons/MaterialCommunityIcons
+  iconSize: 40, // Optional - defaults to 40
+  iconColor: "#2196F3", // Optional - defaults to theme-appropriate color
+})
 ```
 
 ### Options
+
 The `showAlert` function accepts the same parameters as `Alert.alert` plus additional options:
 
 ```tsx
@@ -42,8 +36,8 @@ showAlert(
   title: string,
   message: string,
   buttons: Array<{ text: string, onPress?: () => void }> = [{ text: 'OK' }],
-  options?: { 
-    cancelable?: boolean; 
+  options?: {
+    cancelable?: boolean;
     onDismiss?: () => void;
     useNativeAlert?: boolean; // Set to true to force using React Native's Alert.alert
     isDarkTheme?: boolean;
@@ -84,13 +78,13 @@ const [modalVisible, setModalVisible] = useState(false);
   title="Confirm Action"
   message="Are you sure you want to proceed with this action?"
   buttons={[
-    { 
-      text: "Cancel", 
+    {
+      text: "Cancel",
       onPress: () => setConfirmModalVisible(false),
       style: "cancel" // Styles available: 'default', 'cancel', 'destructive'
     },
-    { 
-      text: "Yes, proceed", 
+    {
+      text: "Yes, proceed",
       onPress: () => {
         setConfirmModalVisible(false);
         performAction();
@@ -103,25 +97,26 @@ const [modalVisible, setModalVisible] = useState(false);
 ```
 
 ### Props
+
 The `MessageModal` component accepts the following props:
 
 ```tsx
 interface ButtonProps {
-  text: string;
-  onPress?: () => void;
-  style?: 'default' | 'cancel' | 'destructive';
+  text: string
+  onPress?: () => void
+  style?: "default" | "cancel" | "destructive"
 }
 
 interface MessageModalProps {
-  visible: boolean;
-  title: string;
-  message: string;
-  buttons?: ButtonProps[]; // Array of buttons with text, onPress and optional style
-  onDismiss?: () => void;
-  isDarkTheme?: boolean; // Defaults to false
-  iconName?: string; // Defaults to "information-outline"
-  iconSize?: number; // Defaults to 40
-  iconColor?: string; // Optional, defaults to theme-appropriate color
+  visible: boolean
+  title: string
+  message: string
+  buttons?: ButtonProps[] // Array of buttons with text, onPress and optional style
+  onDismiss?: () => void
+  isDarkTheme?: boolean // Defaults to false
+  iconName?: string // Defaults to "information-outline"
+  iconSize?: number // Defaults to 40
+  iconColor?: string // Optional, defaults to theme-appropriate color
 }
 ```
 

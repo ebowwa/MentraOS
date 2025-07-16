@@ -605,113 +605,113 @@ export default function AppSettings() {
           onScroll={Animated.event([{nativeEvent: {contentOffset: {y: scrollY}}}], {useNativeDriver: true})}
           scrollEventThrottle={16}
           keyboardShouldPersistTaps="handled">
-        <View style={{gap: theme.spacing.lg}}>
-          {/* Combined App Info and Action Section */}
-          <View style={themed($topSection)}>
-            <AppIcon app={appInfo} isForegroundApp={appInfo.is_foreground} style={themed($appIconLarge)} />
+          <View style={{gap: theme.spacing.lg}}>
+            {/* Combined App Info and Action Section */}
+            <View style={themed($topSection)}>
+              <AppIcon app={appInfo} isForegroundApp={appInfo.is_foreground} style={themed($appIconLarge)} />
 
-            <View style={themed($rightColumn)}>
-              <View style={themed($textContainer)}>
-                <Text style={themed($appNameSmall)}>{appInfo.name}</Text>
-                <Text style={themed($versionText)}>{appInfo.version || "1.0.0"}</Text>
-              </View>
-              <View style={themed($buttonContainer)}>
-                <PillButton
-                  text={appInfo.is_running ? "Stop" : "Start"}
-                  onPress={handleStartStopApp}
-                  variant="icon"
-                  buttonStyle={{paddingHorizontal: theme.spacing.lg, minWidth: 80}}
-                />
+              <View style={themed($rightColumn)}>
+                <View style={themed($textContainer)}>
+                  <Text style={themed($appNameSmall)}>{appInfo.name}</Text>
+                  <Text style={themed($versionText)}>{appInfo.version || "1.0.0"}</Text>
+                </View>
+                <View style={themed($buttonContainer)}>
+                  <PillButton
+                    text={appInfo.is_running ? "Stop" : "Start"}
+                    onPress={handleStartStopApp}
+                    variant="icon"
+                    buttonStyle={{paddingHorizontal: theme.spacing.lg, minWidth: 80}}
+                  />
+                </View>
               </View>
             </View>
-          </View>
 
-          <Divider variant="full" />
+            <Divider variant="full" />
 
-          {/* Description Section */}
-          <View style={themed($descriptionSection)}>
-            <Text style={themed($descriptionText)}>{appInfo.description || "No description available."}</Text>
-          </View>
-
-          <Divider variant="full" />
-
-          {/* App Instructions Section */}
-          {serverAppInfo?.instructions && (
-            <View style={themed($sectionContainer)}>
-              <Text style={themed($sectionTitle)}>About this App</Text>
-              <Text style={themed($instructionsText)}>{serverAppInfo.instructions}</Text>
+            {/* Description Section */}
+            <View style={themed($descriptionSection)}>
+              <Text style={themed($descriptionText)}>{appInfo.description || "No description available."}</Text>
             </View>
-          )}
 
-          {/* App Settings Section */}
-          <View style={themed($settingsContainer)}>
-            {settingsLoading && (!serverAppInfo?.settings || typeof serverAppInfo.settings === "undefined") ? (
-              <SettingsSkeleton />
-            ) : serverAppInfo?.settings && serverAppInfo.settings.length > 0 ? (
-              serverAppInfo.settings.map((setting: any, index: number) =>
-                renderSetting({...setting, uniqueKey: `${setting.key}-${index}`}, index),
-              )
-            ) : (
-              <Text style={themed($noSettingsText)}>No settings available for this app</Text>
+            <Divider variant="full" />
+
+            {/* App Instructions Section */}
+            {serverAppInfo?.instructions && (
+              <View style={themed($sectionContainer)}>
+                <Text style={themed($sectionTitle)}>About this App</Text>
+                <Text style={themed($instructionsText)}>{serverAppInfo.instructions}</Text>
+              </View>
             )}
-          </View>
 
-          {/* Additional Information Section */}
-          <View>
-            <Text
-              style={[
-                themed($groupTitle),
-                {
-                  marginTop: theme.spacing.md,
-                  marginBottom: theme.spacing.xs,
-                  paddingHorizontal: theme.spacing.md,
-                  fontSize: 16,
-                  fontFamily: "Montserrat-Regular",
-                  color: theme.colors.textDim,
-                },
-              ]}>
-              Other
-            </Text>
-            <SettingsGroup>
-              <View style={{paddingVertical: theme.spacing.sm}}>
-                <Text style={{fontSize: 15, color: theme.colors.text}}>Additional Information</Text>
-              </View>
-              <InfoRow label="Company" value={serverAppInfo?.organization?.name || "-"} showDivider={false} />
-              <InfoRow label="Website" value={serverAppInfo?.organization?.website || "-"} showDivider={false} />
-              <InfoRow label="Contact" value={serverAppInfo?.organization?.contactEmail || "-"} showDivider={false} />
-              <InfoRow
-                label="App Type"
-                value={
-                  appInfo?.appType === "standard"
-                    ? "Foreground"
-                    : appInfo?.appType === "background"
-                      ? "Background"
-                      : "-"
+            {/* App Settings Section */}
+            <View style={themed($settingsContainer)}>
+              {settingsLoading && (!serverAppInfo?.settings || typeof serverAppInfo.settings === "undefined") ? (
+                <SettingsSkeleton />
+              ) : serverAppInfo?.settings && serverAppInfo.settings.length > 0 ? (
+                serverAppInfo.settings.map((setting: any, index: number) =>
+                  renderSetting({...setting, uniqueKey: `${setting.key}-${index}`}, index),
+                )
+              ) : (
+                <Text style={themed($noSettingsText)}>No settings available for this app</Text>
+              )}
+            </View>
+
+            {/* Additional Information Section */}
+            <View>
+              <Text
+                style={[
+                  themed($groupTitle),
+                  {
+                    marginTop: theme.spacing.md,
+                    marginBottom: theme.spacing.xs,
+                    paddingHorizontal: theme.spacing.md,
+                    fontSize: 16,
+                    fontFamily: "Montserrat-Regular",
+                    color: theme.colors.textDim,
+                  },
+                ]}>
+                Other
+              </Text>
+              <SettingsGroup>
+                <View style={{paddingVertical: theme.spacing.sm}}>
+                  <Text style={{fontSize: 15, color: theme.colors.text}}>Additional Information</Text>
+                </View>
+                <InfoRow label="Company" value={serverAppInfo?.organization?.name || "-"} showDivider={false} />
+                <InfoRow label="Website" value={serverAppInfo?.organization?.website || "-"} showDivider={false} />
+                <InfoRow label="Contact" value={serverAppInfo?.organization?.contactEmail || "-"} showDivider={false} />
+                <InfoRow
+                  label="App Type"
+                  value={
+                    appInfo?.appType === "standard"
+                      ? "Foreground"
+                      : appInfo?.appType === "background"
+                        ? "Background"
+                        : "-"
+                  }
+                  showDivider={false}
+                />
+                <InfoRow label="Package Name" value={packageName} showDivider={false} />
+              </SettingsGroup>
+            </View>
+
+            {/* Uninstall Button at the bottom */}
+            <ActionButton
+              label="Uninstall"
+              variant="destructive"
+              onPress={() => {
+                if (serverAppInfo?.uninstallable) {
+                  handleUninstallApp()
+                } else {
+                  showAlert("Cannot Uninstall", "This app cannot be uninstalled.", [{text: "OK", style: "default"}])
                 }
-                showDivider={false}
-              />
-              <InfoRow label="Package Name" value={packageName} showDivider={false} />
-            </SettingsGroup>
+              }}
+              disabled={!serverAppInfo?.uninstallable}
+            />
+
+            {/* Bottom safe area padding */}
+            <View style={{height: Math.max(40, insets.bottom + 20)}} />
           </View>
-
-          {/* Uninstall Button at the bottom */}
-          <ActionButton
-            label="Uninstall"
-            variant="destructive"
-            onPress={() => {
-              if (serverAppInfo?.uninstallable) {
-                handleUninstallApp()
-              } else {
-                showAlert("Cannot Uninstall", "This app cannot be uninstalled.", [{text: "OK", style: "default"}])
-              }
-            }}
-            disabled={!serverAppInfo?.uninstallable}
-          />
-
-          {/* Bottom safe area padding */}
-          <View style={{height: Math.max(40, insets.bottom + 20)}} />
-        </View>
-      </Animated.ScrollView>
+        </Animated.ScrollView>
       </KeyboardAvoidingView>
     </Screen>
   )

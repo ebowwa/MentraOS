@@ -127,7 +127,9 @@ export class SettingsNavigationUtils {
   /**
    * Opens the appropriate settings page based on the requirement
    */
-  static async openSettingsForRequirement(requirement: "bluetooth" | "location" | "locationServices" | "permissions"): Promise<boolean> {
+  static async openSettingsForRequirement(
+    requirement: "bluetooth" | "location" | "locationServices" | "permissions",
+  ): Promise<boolean> {
     try {
       switch (requirement) {
         case "bluetooth":
@@ -147,4 +149,4 @@ export class SettingsNavigationUtils {
       return false
     }
   }
-} 
+}

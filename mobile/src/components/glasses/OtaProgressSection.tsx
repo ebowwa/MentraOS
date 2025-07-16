@@ -79,9 +79,7 @@ export default function OtaProgressSection({otaProgress}: OtaProgressSectionProp
             </Text>
           </View>
 
-          {installation.status === "STARTED" && (
-            <Text style={themed($progressText)}>Installing update...</Text>
-          )}
+          {installation.status === "STARTED" && <Text style={themed($progressText)}>Installing update...</Text>}
 
           {installation.status === "FINISHED" && (
             <Text style={themed($progressText)}>Installation completed successfully</Text>
@@ -111,9 +109,7 @@ export default function OtaProgressSection({otaProgress}: OtaProgressSectionProp
                 <View style={[themed($progressBar), {width: "0%"}]} />
               </View>
               <View style={themed($progressDetails)}>
-                <Text style={themed($progressText)}>
-                  0% (0 B / {formatBytes(download.total_bytes)})
-                </Text>
+                <Text style={themed($progressText)}>0% (0 B / {formatBytes(download.total_bytes)})</Text>
               </View>
             </>
           )}
@@ -131,14 +127,10 @@ export default function OtaProgressSection({otaProgress}: OtaProgressSectionProp
             </>
           )}
 
-          {download.status === "FINISHED" && (
-            <Text style={themed($progressText)}>Download completed successfully</Text>
-          )}
+          {download.status === "FINISHED" && <Text style={themed($progressText)}>Download completed successfully</Text>}
 
           {download.status === "FAILED" && download.error_message && (
-            <Text style={[themed($progressText), {color: theme.colors.error}]}>
-              Error: {download.error_message}
-            </Text>
+            <Text style={[themed($progressText), {color: theme.colors.error}]}>Error: {download.error_message}</Text>
           )}
         </View>
       )}
@@ -203,4 +195,4 @@ const $progressDetails: ThemedStyle<any> = ({spacing}) => ({
 const $progressText: ThemedStyle<any> = ({colors}) => ({
   color: colors.text,
   fontSize: 12,
-}) 
+})

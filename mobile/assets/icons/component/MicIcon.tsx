@@ -16,7 +16,7 @@ interface MicIconProps {
 const MicIcon = ({color, width = 17, height = 16, withBackground = false}: MicIconProps) => {
   const {themed, theme} = useAppTheme()
   const {status} = useStatus()
-  
+
   const iconColor = color || theme.colors.icon
 
   const handleMicPress = () => {
@@ -27,7 +27,7 @@ const MicIcon = ({color, width = 17, height = 16, withBackground = false}: MicIc
       {
         iconName: "microphone",
         iconColor: theme.colors.icon,
-      }
+      },
     )
   }
 
@@ -94,11 +94,7 @@ const MicIcon = ({color, width = 17, height = 16, withBackground = false}: MicIc
     )
   }
 
-  return (
-    <TouchableOpacity onPress={handleMicPress}>
-      {svgElement}
-    </TouchableOpacity>
-  )
+  return <TouchableOpacity onPress={handleMicPress}>{svgElement}</TouchableOpacity>
 }
 
 export default MicIcon

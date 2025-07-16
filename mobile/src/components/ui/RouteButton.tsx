@@ -52,5 +52,5 @@ const $settingsGroup: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
 const $subtitle: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
   color: colors.textDim,
   fontSize: spacing.sm,
-  fontWeight: "400"
+  fontWeight: "400",
 })

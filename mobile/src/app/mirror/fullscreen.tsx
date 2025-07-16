@@ -343,14 +343,20 @@ export default function GlassesMirrorFullscreen() {
 
           {/* Fullscreen exit button */}
           <TouchableOpacity
-            style={[styles.exitFullscreenButton, {backgroundColor: theme.colors.palette.secondary200, top: insets.top + 20}]}
+            style={[
+              styles.exitFullscreenButton,
+              {backgroundColor: theme.colors.palette.secondary200, top: insets.top + 20},
+            ]}
             onPress={handleExitFullscreen}>
             <Text style={[styles.exitFullscreenText, {color: theme.colors.icon}]}>Exit</Text>
           </TouchableOpacity>
 
           {/* Camera toggle on/off button */}
           <TouchableOpacity
-            style={[styles.cameraToggleButton, {backgroundColor: theme.colors.palette.secondary200, top: insets.top + 20}]}
+            style={[
+              styles.cameraToggleButton,
+              {backgroundColor: theme.colors.palette.secondary200, top: insets.top + 20},
+            ]}
             onPress={toggleCameraOnOff}>
             <Icon name={isCameraOn ? "videocam" : "videocam-off"} size={28} color={theme.colors.icon} />
           </TouchableOpacity>
@@ -358,7 +364,10 @@ export default function GlassesMirrorFullscreen() {
           {/* Camera flip button - only show when camera is on */}
           {isCameraOn && (
             <TouchableOpacity
-              style={[styles.flipCameraButton, {backgroundColor: theme.colors.palette.secondary200, top: insets.top + 20}]}
+              style={[
+                styles.flipCameraButton,
+                {backgroundColor: theme.colors.palette.secondary200, top: insets.top + 20},
+              ]}
               onPress={toggleCamera}>
               <Icon name="flip-camera-ios" size={28} color={theme.colors.icon} />
             </TouchableOpacity>
@@ -393,7 +402,10 @@ export default function GlassesMirrorFullscreen() {
           {/* Gallery button - goes back to main screen to view gallery */}
           {!isRecording && (
             <TouchableOpacity
-              style={[styles.videosButton, {backgroundColor: theme.colors.palette.secondary200, bottom: insets.bottom + 40}]}
+              style={[
+                styles.videosButton,
+                {backgroundColor: theme.colors.palette.secondary200, bottom: insets.bottom + 40},
+              ]}
               onPress={() => router.back()}>
               <Icon name="photo-library" size={24} color={theme.colors.icon} />
               {recordingCount > 0 && (
@@ -410,10 +422,7 @@ export default function GlassesMirrorFullscreen() {
 
           {/* Simulated glasses controls - only show for simulated glasses */}
           {status.glasses_info?.model_name?.includes("Simulated") && (
-            <SimulatedGlassesControls 
-              theme={theme}
-              insets={insets}
-            />
+            <SimulatedGlassesControls theme={theme} insets={insets} />
           )}
         </View>
       ) : (
@@ -422,7 +431,10 @@ export default function GlassesMirrorFullscreen() {
             {!isGlassesConnected ? "Connect glasses to use the Glasses Mirror" : "No display events available"}
           </Text>
           <TouchableOpacity
-            style={[styles.exitFullscreenButton, {backgroundColor: theme.colors.palette.secondary200, top: insets.top + 20}]}
+            style={[
+              styles.exitFullscreenButton,
+              {backgroundColor: theme.colors.palette.secondary200, top: insets.top + 20},
+            ]}
             onPress={handleExitFullscreen}>
             <Text style={[styles.exitFullscreenText, {color: theme.colors.icon}]}>Back</Text>
           </TouchableOpacity>

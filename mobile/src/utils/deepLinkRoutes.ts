@@ -75,7 +75,7 @@ export const deepLinkRoutes: DeepLinkRoute[] = [
   {
     pattern: "/pairing",
     handler: async (url: string, params: Record<string, string>, navObject: NavObject) => {
-        navObject.push("/pairing/guide")
+      navObject.push("/pairing/guide")
     },
     requiresAuth: true,
   },

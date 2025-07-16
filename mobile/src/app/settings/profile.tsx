@@ -86,7 +86,7 @@ export default function ProfileSettingsPage() {
 
   const handleDeleteAccount = () => {
     console.log("Profile: Starting account deletion process - Step 1")
-    
+
     // Step 1: Initial warning
     showAlert(
       translate("profileSettings:deleteAccountWarning1Title"),
@@ -97,7 +97,7 @@ export default function ProfileSettingsPage() {
           text: translate("common:continue"),
           onPress: () => {
             console.log("Profile: User passed step 1 - Step 2")
-            
+
             // Step 2: Generic confirmation - delay to let first modal close
             setTimeout(() => {
               showAlert(
@@ -109,13 +109,14 @@ export default function ProfileSettingsPage() {
                     text: translate("common:continue"),
                     onPress: () => {
                       console.log("Profile: User passed step 2 - Step 3")
-                      
+
                       // Step 3: Final severe warning - delay to let second modal close
                       setTimeout(() => {
                         showAlert(
                           translate("profileSettings:deleteAccountWarning2Title"),
-                          translate("profileSettings:deleteAccountWarning2Message") + "\n\n" + 
-                          "⚠️ THIS IS YOUR FINAL CHANCE TO CANCEL ⚠️",
+                          translate("profileSettings:deleteAccountWarning2Message") +
+                            "\n\n" +
+                            "⚠️ THIS IS YOUR FINAL CHANCE TO CANCEL ⚠️",
                           [
                             {text: translate("common:cancel"), style: "cancel"},
                             {

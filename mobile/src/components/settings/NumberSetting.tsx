@@ -106,15 +106,12 @@ const NumberSetting: React.FC<NumberSettingProps> = ({
   return (
     <View style={[themed($container), containerStyle]}>
       <Text style={themed($label)}>{label}</Text>
-      
+
       <View style={themed($inputContainer)}>
-        <Pressable
-          style={themed($decrementButton)}
-          onPress={decrement}
-          disabled={min !== undefined && value <= min}>
+        <Pressable style={themed($decrementButton)} onPress={decrement} disabled={min !== undefined && value <= min}>
           <Text style={themed($buttonText)}>-</Text>
         </Pressable>
-        
+
         <TextInput
           style={themed($input)}
           value={localValue}
@@ -132,22 +129,19 @@ const NumberSetting: React.FC<NumberSettingProps> = ({
           autoCorrect={false}
           autoCapitalize="none"
         />
-        
-        <Pressable
-          style={themed($incrementButton)}
-          onPress={increment}
-          disabled={max !== undefined && value >= max}>
+
+        <Pressable style={themed($incrementButton)} onPress={increment} disabled={max !== undefined && value >= max}>
           <Text style={themed($buttonText)}>+</Text>
         </Pressable>
       </View>
-      
+
       {(min !== undefined || max !== undefined) && (
         <Text style={themed($constraintsText)}>
           {min !== undefined && max !== undefined
             ? `Range: ${min} - ${max}`
             : min !== undefined
-            ? `Min: ${min}`
-            : `Max: ${max}`}
+              ? `Min: ${min}`
+              : `Max: ${max}`}
         </Text>
       )}
     </View>
@@ -225,4 +219,4 @@ const $constraintsText: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
   textAlign: "center",
 })
 
-export default NumberSetting 
+export default NumberSetting

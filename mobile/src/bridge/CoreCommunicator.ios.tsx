@@ -27,21 +27,21 @@ export class CoreCommunicator extends EventEmitter {
     try {
       console.log("Checking Bluetooth state...")
       await BleManager.start({showAlert: false})
-      
+
       // Poll for Bluetooth state every 50ms, up to 10 times (max 500ms)
       for (let attempt = 0; attempt < 10; attempt++) {
         const state = await BleManager.checkState()
         console.log(`Bluetooth state check ${attempt + 1}:`, state)
-        
+
         if (state !== "unknown") {
           console.log("Bluetooth state determined:", state)
           return state === "on"
         }
-        
+
         // Wait 50ms before next check
         await new Promise(resolve => setTimeout(resolve, 50))
       }
-      
+
       // If still unknown after 10 attempts, assume it's available
       console.log("Bluetooth state still unknown after 500ms, assuming available")
       return true
@@ -109,7 +109,6 @@ export class CoreCommunicator extends EventEmitter {
       return {isReady: true}
     }
 
-
     // Only check location on Android
     if (Platform.OS === "android") {
       // First check if location permission is granted
@@ -174,7 +173,7 @@ export class CoreCommunicator extends EventEmitter {
     setTimeout(async () => {
       // Check connectivity requirements before auto-connecting
       // const requirementsCheck = await this.checkConnectivityRequirements()
-      
+
       // if (requirementsCheck.isReady) {
       //   console.log("Auto-connecting to previously paired glasses...")
       //   AOSModule.sendCommand(JSON.stringify({command: "connect_wearable"}))
@@ -269,7 +268,7 @@ export class CoreCommunicator extends EventEmitter {
         GlobalEventEmitter.emit("GLASSES_WIFI_STATUS_CHANGE", {
           connected: data.glasses_wifi_status_change.connected,
           ssid: data.glasses_wifi_status_change.ssid,
-          local_ip: data.glasses_wifi_status_change.local_ip
+          local_ip: data.glasses_wifi_status_change.local_ip,
         })
       } else if ("glasses_display_event" in data) {
         GlobalEventEmitter.emit("GLASSES_DISPLAY_EVENT", data.glasses_display_event)
@@ -308,17 +307,21 @@ export class CoreCommunicator extends EventEmitter {
         console.log("APP_STOPPED_EVENT", data.packageName)
         GlobalEventEmitter.emit("APP_STOPPED_EVENT", data.packageName)
       } else if (data.type === "audio_play_request") {
-        AudioPlayService.handleAudioPlayRequest(data).then(() => {
-          // Audio play request completed successfully
-        }).catch(error => {
-          console.error("Failed to handle audio play request:", error)
-        })
+        AudioPlayService.handleAudioPlayRequest(data)
+          .then(() => {
+            // Audio play request completed successfully
+          })
+          .catch(error => {
+            console.error("Failed to handle audio play request:", error)
+          })
       } else if (data.type === "audio_stop_request") {
-        AudioPlayService.stopAllAudio().then(() => {
-          console.log("Audio stop request processed successfully")
-        }).catch(error => {
-          console.error("Failed to handle audio stop request:", error)
-        })
+        AudioPlayService.stopAllAudio()
+          .then(() => {
+            console.log("Audio stop request processed successfully")
+          })
+          .catch(error => {
+            console.error("Failed to handle audio stop request:", error)
+          })
       }
     } catch (e) {
       console.error("Error parsing data from Core:", e)
@@ -742,7 +745,7 @@ export class CoreCommunicator extends EventEmitter {
     })
   }
 
-  async simulateHeadPosition(position: 'up' | 'down') {
+  async simulateHeadPosition(position: "up" | "down") {
     return await this.sendData({
       command: "simulate_head_position",
       params: {
@@ -751,7 +754,7 @@ export class CoreCommunicator extends EventEmitter {
     })
   }
 
-  async simulateButtonPress(buttonId: string = 'camera', pressType: 'short' | 'long' = 'short') {
+  async simulateButtonPress(buttonId: string = "camera", pressType: "short" | "long" = "short") {
     return await this.sendData({
       command: "simulate_button_press",
       params: {

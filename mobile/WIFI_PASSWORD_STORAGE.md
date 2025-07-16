@@ -107,6 +107,7 @@ const isSaved = WifiCredentialsService.hasCredentials("MyWiFi")
 ## Testing
 
 The implementation includes:
+
 - Error handling for storage operations
 - Graceful fallbacks when storage fails
 - Input validation and sanitization
@@ -118,4 +119,4 @@ The implementation includes:
 - No passwords are transmitted to external servers
 - Users have full control over saved credentials
 - Easy removal of all saved data
-- Limited storage prevents excessive data accumulation 
+- Limited storage prevents excessive data accumulation
