@@ -217,7 +217,7 @@ export class BitmapUtils {
       // Check if we need to add padding
       if (image.width !== 576 || image.height !== 135) {
         console.log(
-          `Adding padding to BMP since it isn't 576x135 (current: ${image.width}x${image.height})`,
+          `Adding padding to BMP since it isn't 576x135 (assuming it's 526x100!)(current: ${image.width}x${image.height})`,
         );
 
         // Create a new 576x135 white canvas
@@ -228,7 +228,7 @@ export class BitmapUtils {
         });
 
         // // Calculate position to place the original image (with padding)
-        const leftPadding = 45; // 45px padding on left
+        const leftPadding = 50; // 45px padding on left
         const topPadding = 35; // 35px padding on top
 
         // Composite the original image onto the white canvas

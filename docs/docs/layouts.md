@@ -86,8 +86,8 @@ The SDK currently supports the following layout types:
 
 ### 5. `BitmapView`
 
-- **Purpose:** Displays bitmap images on the AR glasses. Supports monochrome bitmaps at 531x100 (576×135 when padded) pixel resolution.
-  > Only use 531x100 images unless you know what you're doing! (the file size should be ~7-10kb)
+- **Purpose:** Displays bitmap images on the AR glasses. Supports monochrome bitmaps at 526x100 (576×135 when padded) pixel resolution.
+  > Only use 526x100 images unless you know what you're doing! (the file size should be ~7-10kb)
 - **Type:** [`LayoutType.BITMAP_VIEW`](/reference/enums#layouttype)
 - **Properties:**
   - `data`: Bitmap data as hex or base64 encoded string.
