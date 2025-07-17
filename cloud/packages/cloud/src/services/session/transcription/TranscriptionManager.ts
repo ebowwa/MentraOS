@@ -40,6 +40,10 @@ export class TranscriptionManager {
   // Stream Management
   private streams = new Map<string, StreamInstance>();
   private activeSubscriptions = new Set<ExtendedStreamType>();
+  
+  // Optimization mappings for consolidated streams
+  private streamSubscriptionMappings = new Map<ExtendedStreamType, ExtendedStreamType[]>();
+  private streamOwnershipMappings = new Map<ExtendedStreamType, { ownsTranscription: string[], skipTranscriptionFor: string[] }>();
 
   // Retry Logic
   private streamRetryAttempts = new Map<string, number>();
@@ -93,29 +97,161 @@ export class TranscriptionManager {
     // Ensure we're initialized before processing subscriptions
     await this.ensureInitialized();
 
-    const desired = new Set(subscriptions);
+    // Filter out invalid subscriptions before processing
+    const validSubscriptions = subscriptions.filter(sub => {
+      // Check for invalid same-language translation
+      if (typeof sub === 'string' && sub.startsWith('translation:')) {
+        const match = sub.match(/translation:([^-]+)-to-([^-]+)$/);
+        if (match && match[1] === match[2]) {
+          this.logger.warn({
+            subscription: sub,
+            source: match[1],
+            target: match[2]
+          }, 'Filtering out invalid same-language translation subscription');
+          return false;
+        }
+      }
+      return true;
+    });
+
+    const desired = new Set(validSubscriptions);
     const current = new Set(this.streams.keys());
 
     this.logger.debug({
       desired: Array.from(desired),
-      current: Array.from(current)
+      current: Array.from(current),
+      filtered: subscriptions.filter(s => !validSubscriptions.includes(s))
     }, 'Updating transcription subscriptions');
 
-    // Start new streams
-    for (const subscription of desired) {
+    // Use optimization for Soniox subscriptions to prevent resource conflicts
+    const optimizedStreams = await this.optimizeSubscriptions(validSubscriptions);
+
+    // Stop removed streams and clear their mappings
+    for (const subscription of current) {
+      if (!optimizedStreams.has(subscription)) {
+        await this.stopStream(subscription);
+        this.streamSubscriptionMappings.delete(subscription);
+        this.streamOwnershipMappings.delete(subscription);
+      }
+    }
+
+    // Start new optimized streams
+    for (const subscription of optimizedStreams) {
       if (!current.has(subscription)) {
         await this.startStream(subscription);
       }
     }
 
-    // Stop removed streams
-    for (const subscription of current) {
-      if (!desired.has(subscription)) {
-        await this.stopStream(subscription);
-      }
+    this.activeSubscriptions = optimizedStreams;
+  }
+
+  /**
+   * Optimize subscriptions to prevent resource conflicts and enable efficient stream consolidation
+   * This integrates the SonioxTranslationUtils optimization logic into the main flow
+   */
+  private async optimizeSubscriptions(subscriptions: ExtendedStreamType[]): Promise<Set<ExtendedStreamType>> {
+    // For non-Soniox providers, use subscriptions as-is
+    if (this.config.providers.defaultProvider !== 'soniox') {
+      return new Set(subscriptions);
     }
 
-    this.activeSubscriptions = desired;
+    try {
+      // Import the optimization utility
+      const { SonioxTranslationUtils } = await import('./providers/SonioxTranslationUtils');
+      
+      // Get optimized stream configurations
+      const optimizedStreams = SonioxTranslationUtils.optimizeTranslationStreams(subscriptions);
+      
+      // Create a mapping from optimized streams to their handled subscriptions
+      const optimizedSubscriptions = new Set<ExtendedStreamType>();
+      
+      for (const stream of optimizedStreams.streams) {
+        // Each optimized stream gets a unique subscription identifier
+        let streamSubscription: ExtendedStreamType;
+        
+        if (stream.type === 'transcription_only') {
+          streamSubscription = `transcription:${stream.config.language}`;
+        } else if (stream.type === 'two_way') {
+          // For two-way translation streams
+          const langA = stream.config.translation?.language_a || stream.config.language;
+          const langB = stream.config.translation?.language_b;
+          
+          // Skip invalid same-language translations
+          if (langA === langB) {
+            this.logger.warn({
+              langA,
+              langB,
+              streamType: stream.type,
+              streamConfig: stream.config
+            }, 'Skipping invalid same-language two-way translation stream from optimization');
+            continue;
+          }
+          
+          streamSubscription = `translation:${langA}-two-way-${langB}`;
+        } else if (stream.type === 'universal_english' || stream.type === 'individual' || stream.type === 'multi_source') {
+          // For one-way translation streams
+          const srcLang = stream.config.translation?.source_languages?.[0] || stream.config.language;
+          const tgtLang = stream.config.translation?.target_language;
+          
+          // Skip invalid same-language translations
+          if (srcLang === tgtLang) {
+            this.logger.warn({
+              srcLang,
+              tgtLang,
+              streamType: stream.type,
+              streamConfig: stream.config
+            }, 'Skipping invalid same-language translation stream from optimization');
+            continue;
+          }
+          
+          streamSubscription = `translation:${srcLang}-to-${tgtLang}`;
+        } else {
+          // Fallback for any unknown types
+          streamSubscription = `optimized:${stream.type}:${Date.now()}`;
+        }
+        
+        // Final validation check before adding
+        if (typeof streamSubscription === 'string' && streamSubscription.startsWith('translation:')) {
+          const match = streamSubscription.match(/translation:([^-]+)-(?:to|two-way)-([^-]+)$/);
+          if (match && match[1] === match[2]) {
+            this.logger.error({
+              streamSubscription,
+              source: match[1],
+              target: match[2],
+              streamType: stream.type
+            }, 'Attempted to add invalid same-language translation after optimization - skipping');
+            continue;
+          }
+        }
+        
+        optimizedSubscriptions.add(streamSubscription);
+        
+        // Store the mapping for data routing
+        this.streamSubscriptionMappings.set(streamSubscription, stream.handledSubscriptions);
+        
+        // Store the ownership information
+        this.streamOwnershipMappings.set(streamSubscription, {
+          ownsTranscription: stream.ownsTranscription,
+          skipTranscriptionFor: stream.skipTranscriptionFor
+        });
+      }
+      
+      this.logger.debug({
+        originalSubscriptions: subscriptions,
+        optimizedSubscriptions: Array.from(optimizedSubscriptions),
+        streamCount: optimizedStreams.streams.length
+      }, 'Optimized subscriptions using SonioxTranslationUtils');
+      
+      return optimizedSubscriptions;
+    } catch (error) {
+      this.logger.warn({
+        error: error instanceof Error ? error.message : String(error),
+        subscriptions
+      }, 'Failed to optimize subscriptions, falling back to original');
+      
+      // Fallback to original subscriptions if optimization fails
+      return new Set(subscriptions);
+    }
   }
 
   /**
@@ -129,14 +265,20 @@ export class TranscriptionManager {
 
     for (const [subscription, stream] of this.streams) {
       try {
-        // Check if this is a Soniox provider with buffered tokens
-        if (stream.provider.name === 'soniox' && 'forceFinalizePendingTokens' in stream.provider) {
-          (stream.provider as any).forceFinalizePendingTokens();
+        // Check if this is a Soniox stream with buffered tokens
+        if (stream.provider.name === 'soniox') {
+          // Force finalize both transcription and translation tokens
+          if ('forceFinalizePendingTokens' in stream) {
+            (stream as any).forceFinalizePendingTokens();
+          }
+          if ('forceFinalizePendingTranslationTokens' in stream) {
+            (stream as any).forceFinalizePendingTranslationTokens();
+          }
           this.logger.debug({
             subscription,
             streamId: stream.id,
             provider: 'soniox'
-          }, 'Forced finalization of Soniox tokens');
+          }, 'Forced finalization of Soniox tokens (transcription and translation)');
         }
         // Azure doesn't need forced finalization as it sends final results immediately
         // Other providers can be added here as needed
@@ -189,16 +331,21 @@ export class TranscriptionManager {
    * This is the proper way to stop transcription when VAD detects silence
    */
   async stopAndFinalizeAll(): Promise<void> {
-    this.logger.info('Stopping all transcription streams and finalizing pending tokens');
-
-    // First finalize any pending tokens
-    this.finalizePendingTokens();
-
-    // Clear any VAD audio buffer (don't flush since VAD stopped)
-    this.clearVADBuffer();
-
-    // Then stop all streams
-    await this.updateSubscriptions([]);
+    try {
+      this.logger.info('Stopping all transcription streams and finalizing pending tokens');
+  
+      // First finalize any pending tokens
+      this.finalizePendingTokens();
+  
+      // Clear any VAD audio buffer (don't flush since VAD stopped)
+      this.clearVADBuffer();
+  
+      // Then stop all streams
+      await this.updateSubscriptions([]);
+    }
+    catch (error) {
+      this.logger.error(error, 'Error stopping and finalizing all transcription streams');
+    }
   }
 
 
@@ -207,7 +354,26 @@ export class TranscriptionManager {
    * Removes unused streams and creates missing ones
    */
   async ensureStreamsExist(): Promise<void> {
-    const currentSubscriptions = Array.from(this.activeSubscriptions);
+    // Filter out any invalid subscriptions that may have slipped through
+    const validSubscriptions = Array.from(this.activeSubscriptions).filter(sub => {
+      // Check for invalid same-language translation
+      if (typeof sub === 'string' && sub.startsWith('translation:')) {
+        const match = sub.match(/translation:([^-]+)-to-([^-]+)$/);
+        if (match && match[1] === match[2]) {
+          this.logger.warn({
+            subscription: sub,
+            source: match[1],
+            target: match[2]
+          }, 'Removing invalid same-language translation from active subscriptions');
+          // Remove from activeSubscriptions set
+          this.activeSubscriptions.delete(sub);
+          return false;
+        }
+      }
+      return true;
+    });
+
+    const currentSubscriptions = validSubscriptions;
 
     this.logger.info({
       subscriptions: currentSubscriptions,
@@ -442,7 +608,15 @@ export class TranscriptionManager {
       }, 'Fast stream start failed - falling back to regular startup');
 
       // Fallback to regular startup with full timeout
-      await this.startStream(subscription);
+      try {
+        await this.startStream(subscription);
+      }
+      catch (fallbackError) {
+        this.logger.error({
+          subscription,
+          error: fallbackError
+        }, 'Regular stream start also failed');
+      }
     }
   }
 
@@ -858,11 +1032,20 @@ export class TranscriptionManager {
     const streamId = this.generateStreamId(subscription);
 
     const callbacks = this.createStreamCallbacks(subscription);
+    
+    // Get ownership information from optimized stream configuration
+    const ownershipInfo = this.streamOwnershipMappings.get(subscription) || {
+      ownsTranscription: [],
+      skipTranscriptionFor: []
+    };
+    
     const options = {
       streamId,
       userSession: this.userSession,
       subscription,
-      callbacks
+      callbacks,
+      ownsTranscription: ownershipInfo.ownsTranscription,
+      skipTranscriptionFor: ownershipInfo.skipTranscriptionFor
     };
 
     if (languageInfo.type === 'translation') {
@@ -1347,6 +1530,23 @@ export class TranscriptionManager {
     return `${this.userSession.sessionId}-${subscription}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   }
 
+  /**
+   * Get the target subscriptions for routing data from an optimized stream
+   * This handles the mapping between consolidated streams and their original subscriptions
+   */
+  private getTargetSubscriptions(streamSubscription: ExtendedStreamType, effectiveSubscription: ExtendedStreamType): ExtendedStreamType[] {
+    // Check if this stream has mapped subscriptions (from optimization)
+    const mappedSubscriptions = this.streamSubscriptionMappings.get(streamSubscription);
+    
+    if (mappedSubscriptions && mappedSubscriptions.length > 0) {
+      // For optimized streams, route to all mapped subscriptions
+      return mappedSubscriptions;
+    }
+    
+    // For non-optimized streams, use the effective subscription
+    return [effectiveSubscription];
+  }
+
   private async relayDataToApps(subscription: ExtendedStreamType, data: any): Promise<void> {
     try {
       // CONSTRUCT EFFECTIVE SUBSCRIPTION like the old system
@@ -1365,18 +1565,29 @@ export class TranscriptionManager {
       // Add to transcript history before relaying to apps
       this.addToTranscriptHistory(data, streamType);
 
-      // Get subscribed apps using EFFECTIVE subscription (like old system)
-      const subscribedApps = subscriptionService.getSubscribedApps(this.userSession, effectiveSubscription);
+      // Handle optimized subscription routing
+      const targetSubscriptions = this.getTargetSubscriptions(subscription, effectiveSubscription);
+      let allSubscribedApps = new Set<string>();
+
+      // Get subscribed apps for all target subscriptions
+      for (const targetSub of targetSubscriptions) {
+        const subscribedApps = subscriptionService.getSubscribedApps(this.userSession, targetSub);
+        subscribedApps.forEach(app => allSubscribedApps.add(app));
+      }
+
+      const subscribedApps = Array.from(allSubscribedApps);
 
       this.logger.debug({
         originalSubscription: subscription,
         effectiveSubscription,
+        targetSubscriptions,
         subscribedApps,
         streamType,
         dataType: data.type,
         transcribeLanguage: data.transcribeLanguage,
-        translateLanguage: data.translateLanguage
-      }, 'Broadcasting transcription data with effective subscription');
+        translateLanguage: data.translateLanguage,
+        isOptimized: this.streamSubscriptionMappings.has(subscription)
+      }, 'Broadcasting transcription data with optimized routing');
 
       // Send to each app using APP MANAGER (with resurrection) instead of direct WebSocket
       for (const packageName of subscribedApps) {
@@ -1706,6 +1917,8 @@ export class TranscriptionManager {
       this.activeSubscriptions.clear();
       this.streamRetryAttempts.clear();
       this.streamCreationInProgress.clear();
+      this.streamSubscriptionMappings.clear();
+      this.streamOwnershipMappings.clear();
 
       // Clear pending operations
       this.pendingOperations = [];
