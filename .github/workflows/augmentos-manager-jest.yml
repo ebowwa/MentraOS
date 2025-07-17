@@ -1,9 +1,9 @@
-name: MentraOS Manager Jest Tests
+name: Mobile App Jest Tests
 
 on:
   pull_request:
     paths:
-      - 'mentraos_manager/**'
+      - 'mobile/**'
       - '.github/workflows/augmentos-manager-jest.yml'
   workflow_dispatch:
 
@@ -25,14 +25,14 @@ jobs:
         with:
           node-version: '18'
           cache: 'pnpm'
-          cache-dependency-path: mentraos_manager/package.json
+          cache-dependency-path: mobile/package.json
 
       - name: Install dependencies
-        working-directory: ./mentraos_manager
+        working-directory: ./mobile
         run: pnpm install --no-frozen-lockfile
 
       - name: Run Jest tests
-        working-directory: ./mentraos_manager
+        working-directory: ./mobile
         run: pnpm test
         env:
           CI: true
