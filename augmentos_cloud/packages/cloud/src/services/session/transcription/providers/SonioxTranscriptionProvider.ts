@@ -188,6 +188,11 @@ export class SonioxTranscriptionProvider implements TranscriptionProvider {
   }
   
   validateLanguagePair(source: string, target: string): boolean {
+    // Cannot translate a language to itself
+    if (source === target) {
+      return false;
+    }
+    
     // Soniox supports two-way translation between many language pairs
     // For now, implement common pairs - this could be expanded
     const supportedPairs = new Map([

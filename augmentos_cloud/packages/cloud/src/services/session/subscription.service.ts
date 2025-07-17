@@ -724,6 +724,22 @@ export class SubscriptionService {
       return true;
     }
 
+    // Check for invalid same-language translation
+    if (typeof subscription === 'string' && subscription.startsWith('translation:')) {
+      const langInfo = parseLanguageStream(subscription);
+      if (langInfo && langInfo.type === StreamType.TRANSLATION) {
+        // Reject if source and target languages are the same
+        if (langInfo.transcribeLanguage === langInfo.translateLanguage) {
+          logger.error({
+            subscription,
+            source: langInfo.transcribeLanguage,
+            target: langInfo.translateLanguage
+          }, 'Invalid translation subscription: cannot translate a language to itself');
+          return false;
+        }
+      }
+    }
+
     // Enhanced debugging for RTMP stream status
     if (subscription === 'rtmp_stream_status' || subscription === StreamType.RTMP_STREAM_STATUS) {
       logger.info({

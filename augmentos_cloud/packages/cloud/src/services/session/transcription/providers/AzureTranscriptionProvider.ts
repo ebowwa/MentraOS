@@ -229,6 +229,11 @@ export class AzureTranscriptionProvider implements TranscriptionProvider {
   }
   
   validateLanguagePair(source: string, target: string): boolean {
+    // Cannot translate a language to itself
+    if (source === target) {
+      return false;
+    }
+    
     const targetLanguages = AZURE_TRANSLATION_PAIRS.get(source);
     return targetLanguages ? targetLanguages.includes(target) : false;
   }

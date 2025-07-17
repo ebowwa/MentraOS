@@ -97,16 +97,34 @@ export class TranscriptionManager {
     // Ensure we're initialized before processing subscriptions
     await this.ensureInitialized();
 
-    const desired = new Set(subscriptions);
+    // Filter out invalid subscriptions before processing
+    const validSubscriptions = subscriptions.filter(sub => {
+      // Check for invalid same-language translation
+      if (typeof sub === 'string' && sub.startsWith('translation:')) {
+        const match = sub.match(/translation:([^-]+)-to-([^-]+)$/);
+        if (match && match[1] === match[2]) {
+          this.logger.warn({
+            subscription: sub,
+            source: match[1],
+            target: match[2]
+          }, 'Filtering out invalid same-language translation subscription');
+          return false;
+        }
+      }
+      return true;
+    });
+
+    const desired = new Set(validSubscriptions);
     const current = new Set(this.streams.keys());
 
     this.logger.debug({
       desired: Array.from(desired),
-      current: Array.from(current)
+      current: Array.from(current),
+      filtered: subscriptions.filter(s => !validSubscriptions.includes(s))
     }, 'Updating transcription subscriptions');
 
     // Use optimization for Soniox subscriptions to prevent resource conflicts
-    const optimizedStreams = await this.optimizeSubscriptions(subscriptions);
+    const optimizedStreams = await this.optimizeSubscriptions(validSubscriptions);
 
     // Stop removed streams and clear their mappings
     for (const subscription of current) {
@@ -157,15 +175,53 @@ export class TranscriptionManager {
           // For two-way translation streams
           const langA = stream.config.translation?.language_a || stream.config.language;
           const langB = stream.config.translation?.language_b;
+          
+          // Skip invalid same-language translations
+          if (langA === langB) {
+            this.logger.warn({
+              langA,
+              langB,
+              streamType: stream.type,
+              streamConfig: stream.config
+            }, 'Skipping invalid same-language two-way translation stream from optimization');
+            continue;
+          }
+          
           streamSubscription = `translation:${langA}-two-way-${langB}`;
         } else if (stream.type === 'universal_english' || stream.type === 'individual' || stream.type === 'multi_source') {
           // For one-way translation streams
           const srcLang = stream.config.translation?.source_languages?.[0] || stream.config.language;
           const tgtLang = stream.config.translation?.target_language;
+          
+          // Skip invalid same-language translations
+          if (srcLang === tgtLang) {
+            this.logger.warn({
+              srcLang,
+              tgtLang,
+              streamType: stream.type,
+              streamConfig: stream.config
+            }, 'Skipping invalid same-language translation stream from optimization');
+            continue;
+          }
+          
           streamSubscription = `translation:${srcLang}-to-${tgtLang}`;
         } else {
           // Fallback for any unknown types
           streamSubscription = `optimized:${stream.type}:${Date.now()}`;
+        }
+        
+        // Final validation check before adding
+        if (typeof streamSubscription === 'string' && streamSubscription.startsWith('translation:')) {
+          const match = streamSubscription.match(/translation:([^-]+)-(?:to|two-way)-([^-]+)$/);
+          if (match && match[1] === match[2]) {
+            this.logger.error({
+              streamSubscription,
+              source: match[1],
+              target: match[2],
+              streamType: stream.type
+            }, 'Attempted to add invalid same-language translation after optimization - skipping');
+            continue;
+          }
         }
         
         optimizedSubscriptions.add(streamSubscription);
@@ -275,16 +331,21 @@ export class TranscriptionManager {
    * This is the proper way to stop transcription when VAD detects silence
    */
   async stopAndFinalizeAll(): Promise<void> {
-    this.logger.info('Stopping all transcription streams and finalizing pending tokens');
-
-    // First finalize any pending tokens
-    this.finalizePendingTokens();
-
-    // Clear any VAD audio buffer (don't flush since VAD stopped)
-    this.clearVADBuffer();
-
-    // Then stop all streams
-    await this.updateSubscriptions([]);
+    try {
+      this.logger.info('Stopping all transcription streams and finalizing pending tokens');
+  
+      // First finalize any pending tokens
+      this.finalizePendingTokens();
+  
+      // Clear any VAD audio buffer (don't flush since VAD stopped)
+      this.clearVADBuffer();
+  
+      // Then stop all streams
+      await this.updateSubscriptions([]);
+    }
+    catch (error) {
+      this.logger.error(error, 'Error stopping and finalizing all transcription streams');
+    }
   }
 
 
@@ -293,7 +354,26 @@ export class TranscriptionManager {
    * Removes unused streams and creates missing ones
    */
   async ensureStreamsExist(): Promise<void> {
-    const currentSubscriptions = Array.from(this.activeSubscriptions);
+    // Filter out any invalid subscriptions that may have slipped through
+    const validSubscriptions = Array.from(this.activeSubscriptions).filter(sub => {
+      // Check for invalid same-language translation
+      if (typeof sub === 'string' && sub.startsWith('translation:')) {
+        const match = sub.match(/translation:([^-]+)-to-([^-]+)$/);
+        if (match && match[1] === match[2]) {
+          this.logger.warn({
+            subscription: sub,
+            source: match[1],
+            target: match[2]
+          }, 'Removing invalid same-language translation from active subscriptions');
+          // Remove from activeSubscriptions set
+          this.activeSubscriptions.delete(sub);
+          return false;
+        }
+      }
+      return true;
+    });
+
+    const currentSubscriptions = validSubscriptions;
 
     this.logger.info({
       subscriptions: currentSubscriptions,
@@ -528,7 +608,15 @@ export class TranscriptionManager {
       }, 'Fast stream start failed - falling back to regular startup');
 
       // Fallback to regular startup with full timeout
-      await this.startStream(subscription);
+      try {
+        await this.startStream(subscription);
+      }
+      catch (fallbackError) {
+        this.logger.error({
+          subscription,
+          error: fallbackError
+        }, 'Regular stream start also failed');
+      }
     }
   }
 
