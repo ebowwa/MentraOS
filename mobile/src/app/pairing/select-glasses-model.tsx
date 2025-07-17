@@ -76,8 +76,6 @@ export default function SelectGlassesModelScreen() {
     }, [isOnboarding]),
   )
 
-  useEffect(() => {}, [status])
-
   const triggerGlassesPairingGuide = async (glassesModelName: string) => {
     // No need for Bluetooth permissions anymore as we're using direct communication
 

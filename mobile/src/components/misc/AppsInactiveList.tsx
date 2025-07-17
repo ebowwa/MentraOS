@@ -370,14 +370,14 @@ export default function InactiveAppList({
     if (itemOpacity) {
       Animated.timing(itemOpacity, {
         toValue: 0,
-        duration: 300,
+        duration: 150,
         easing: Easing.out(Easing.ease),
         useNativeDriver: true,
       }).start()
     }
 
     // Wait a bit for animation to complete
-    await new Promise(resolve => setTimeout(resolve, 300))
+    await new Promise(resolve => setTimeout(resolve, 150))
 
     // Only update UI optimistically after user confirms and animation completes
     optimisticallyStartApp(packageName)

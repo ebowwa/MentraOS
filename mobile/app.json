@@ -17,7 +17,7 @@
     "android": {
       "icon": "./assets/app-icons/ic_launcher.png",
       "package": "com.mentra.mentra",
-      "versionCode": 36,
+      "versionCode": 37,
       "adaptiveIcon": {
         "foregroundImage": "./assets/app-icons/ic_launcher_foreground.png",
         "backgroundImage": "./assets/app-icons/ic_launcher.png"
@@ -31,7 +31,8 @@
           "data": [
             {
               "scheme": "https",
-              "host": "apps.mentra.glass"
+              "host": "apps.mentra.glass",
+              "pathPrefix": "/package/"
             }
           ],
           "category": ["DEFAULT", "BROWSABLE"]
