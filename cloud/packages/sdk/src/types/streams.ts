@@ -208,11 +208,15 @@ export function parseLanguageStream(subscription: ExtendedStreamType): LanguageS
  * @param language Language code (e.g., "en-US")
  * @returns Typed stream identifier
  */
-export function createTranscriptionStream(language: string): ExtendedStreamType {
+export function createTranscriptionStream(language: string, options?: { disableLanguageIdentification?: boolean }): ExtendedStreamType {
   if (!isValidLanguageCode(language)) {
     throw new Error(`Invalid language code: ${language}`);
   }
-  return createLanguageStream(`${StreamType.TRANSCRIPTION}:${language}`);
+  const base = `${StreamType.TRANSCRIPTION}:${language}`;
+  if (options?.disableLanguageIdentification) {
+    return `${base}:no-language-identification` as ExtendedStreamType;
+  }
+  return base as ExtendedStreamType;
 }
 
 /**
