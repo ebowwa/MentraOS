@@ -1,4 +1,4 @@
-import React, { memo } from 'react';
+import React, { memo, useState } from 'react';
 import { Lock } from 'lucide-react';
 import { Button } from './ui/button';
 import { AppI } from '../types';
@@ -28,6 +28,9 @@ const AppCard: React.FC<AppCardProps> = memo(({
   onCardClick,
   onLogin
 }) => {
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageError, setImageError] = useState(false);
+
   const handleCardClick = () => {
     onCardClick(app.packageName);
   };
@@ -47,6 +50,15 @@ const AppCard: React.FC<AppCardProps> = memo(({
     onLogin();
   };
 
+  const handleImageLoad = () => {
+    setImageLoaded(true);
+  };
+
+  const handleImageError = () => {
+    setImageError(true);
+    setImageLoaded(true);
+  };
+
   return (
     <div 
       className="p-4 sm:p-6 flex gap-3 transition-colors rounded-lg relative cursor-pointer" 
@@ -58,16 +70,29 @@ const AppCard: React.FC<AppCardProps> = memo(({
       
       {/* Image Column */}
       <div className="shrink-0 flex items-start pt-2">
-        <img
-          src={app.logoURL}
-          alt={`${app.name} logo`}
-          className="w-12 h-12 object-cover rounded-full"
-          loading="lazy"
-          decoding="async"
-          onError={(e) => {
-            (e.target as HTMLImageElement).src = 'https://placehold.co/48x48/gray/white?text=App';
-          }}
-        />
+        <div className="relative w-12 h-12">
+          {/* Placeholder that shows immediately */}
+          <div 
+            className={`absolute inset-0 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center transition-opacity duration-200 ${
+              imageLoaded ? 'opacity-0' : 'opacity-100'
+            }`}
+          >
+            <div className="w-6 h-6 bg-gray-300 dark:bg-gray-600 rounded-full animate-pulse"></div>
+          </div>
+          
+          {/* Actual image that loads in background */}
+          <img
+            src={imageError ? 'https://placehold.co/48x48/gray/white?text=App' : app.logoURL}
+            alt={`${app.name} logo`}
+            className={`w-12 h-12 object-cover rounded-full transition-opacity duration-200 ${
+              imageLoaded ? 'opacity-100' : 'opacity-0'
+            }`}
+            loading="lazy"
+            decoding="async"
+            onLoad={handleImageLoad}
+            onError={handleImageError}
+          />
+        </div>
       </div>
 
       {/* Content Column */}
