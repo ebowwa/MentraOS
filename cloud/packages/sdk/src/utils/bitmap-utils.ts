@@ -232,6 +232,7 @@ export class BitmapUtils {
         const topPadding = 35; // 35px padding on top
 
         // Composite the original image onto the white canvas
+        // paddedImage.composite(image, leftPadding, topPadding);
         paddedImage.composite(image, leftPadding, topPadding);
 
         finalBmpData = await this.convert24BitTo1BitBMP(
