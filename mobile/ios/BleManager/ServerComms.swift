@@ -149,7 +149,7 @@ class ServerComms {
   
   func sendAudioChunk(_ audioData: Data) {
     // If the queue is full, remove the oldest entry before adding a new one
-    CoreCommsService.log("ServerComms: Sending audio chunk: \(audioData.count)")
+    // CoreCommsService.log("ServerComms: Sending audio chunk: \(audioData.count)")
     audioBuffer.offer(audioData)
   }
   

@@ -228,7 +228,7 @@ export class BitmapUtils {
         });
 
         // // Calculate position to place the original image (with padding)
-        const leftPadding = 40; // 40px padding on left
+        const leftPadding = 45; // 45px padding on left
         const topPadding = 35; // 35px padding on top
 
         // Composite the original image onto the white canvas
