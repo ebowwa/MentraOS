@@ -14,17 +14,21 @@ import {
   RtmpStreamStatus,
   isRtmpStreamStatus,
   ManagedStreamStatus,
-  isManagedStreamStatus
-} from '../../../types';
+  isManagedStreamStatus,
+} from "../../../types";
 import {
   VideoConfig,
   AudioConfig,
   StreamConfig,
-  StreamStatusHandler
-} from '../../../types/rtmp-stream';
-import { StreamType } from '../../../types/streams';
-import { Logger } from 'pino';
-import { CameraManagedExtension, ManagedStreamOptions, ManagedStreamResult } from './camera-managed-extension';
+  StreamStatusHandler,
+} from "../../../types/rtmp-stream";
+import { StreamType } from "../../../types/streams";
+import { Logger } from "pino";
+import {
+  CameraManagedExtension,
+  ManagedStreamOptions,
+  ManagedStreamResult,
+} from "./camera-managed-extension";
 
 /**
  * Options for photo requests
@@ -84,16 +88,19 @@ export class CameraModule {
 
   // Photo functionality
   /** Map to store pending photo request promises */
-  private pendingPhotoRequests = new Map<string, {
-    resolve: (value: PhotoData) => void;
-    reject: (reason?: any) => void;
-  }>();
+  private pendingPhotoRequests = new Map<
+    string,
+    {
+      resolve: (value: PhotoData) => void;
+      reject: (reason?: string) => void;
+    }
+  >();
 
   // Streaming functionality
   private isStreaming: boolean = false;
   private currentStreamUrl?: string;
   private currentStreamState?: RtmpStreamStatus;
-  
+
   // Managed streaming extension
   private managedExtension: CameraManagedExtension;
 
@@ -106,20 +113,26 @@ export class CameraModule {
    * @param session - Reference to the parent AppSession (optional)
    * @param logger - Logger instance for debugging
    */
-  constructor(packageName: string, sessionId: string, send: (message: any) => void, session?: any, logger?: Logger) {
+  constructor(
+    packageName: string,
+    sessionId: string,
+    send: (message: any) => void,
+    session?: any,
+    logger?: Logger,
+  ) {
     this.packageName = packageName;
     this.sessionId = sessionId;
     this.send = send;
     this.session = session;
-    this.logger = logger || console as any;
-    
+    this.logger = logger || (console as any);
+
     // Initialize managed extension
     this.managedExtension = new CameraManagedExtension(
       packageName,
       sessionId,
       send,
       this.logger,
-      session
+      session,
     );
   }
 
@@ -155,13 +168,16 @@ export class CameraModule {
           sessionId: this.sessionId,
           requestId,
           timestamp: new Date(),
-          saveToGallery: options?.saveToGallery || false
+          saveToGallery: options?.saveToGallery || false,
         };
 
         // Send request to cloud
         this.send(message);
 
-        this.logger.info({ requestId, saveToGallery: options?.saveToGallery }, `📸 Photo request sent`);
+        this.logger.info(
+          { requestId, saveToGallery: options?.saveToGallery },
+          `📸 Photo request sent`,
+        );
 
         // Set timeout to avoid hanging promises
         const timeoutMs = 30000; // 30 seconds
@@ -169,7 +185,9 @@ export class CameraModule {
           // Use session's resource tracker for automatic cleanup
           this.session.resources.setTimeout(() => {
             if (this.pendingPhotoRequests.has(requestId)) {
-              this.pendingPhotoRequests.get(requestId)!.reject(new Error('Photo request timed out'));
+              this.pendingPhotoRequests
+                .get(requestId)!
+                .reject("Photo request timed out");
               this.pendingPhotoRequests.delete(requestId);
               this.logger.warn({ requestId }, `📸 Photo request timed out`);
             }
@@ -178,15 +196,18 @@ export class CameraModule {
           // Fallback to regular setTimeout if session not available
           setTimeout(() => {
             if (this.pendingPhotoRequests.has(requestId)) {
-              this.pendingPhotoRequests.get(requestId)!.reject(new Error('Photo request timed out'));
+              this.pendingPhotoRequests
+                .get(requestId)!
+                .reject("Photo request timed out");
               this.pendingPhotoRequests.delete(requestId);
               this.logger.warn({ requestId }, `📸 Photo request timed out`);
             }
           }, timeoutMs);
         }
       } catch (error: unknown) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        reject(new Error(`Failed to request photo: ${errorMessage}`));
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        reject(`Failed to request photo: ${errorMessage}`);
       }
     });
   }
@@ -205,7 +226,10 @@ export class CameraModule {
     const pendingRequest = this.pendingPhotoRequests.get(requestId);
 
     if (pendingRequest) {
-      this.logger.info({ requestId }, `📸 Photo received for request ${requestId}`);
+      this.logger.info(
+        { requestId },
+        `📸 Photo received for request ${requestId}`,
+      );
 
       // Resolve the promise with the photo data
       pendingRequest.resolve(photoData);
@@ -213,7 +237,10 @@ export class CameraModule {
       // Clean up
       this.pendingPhotoRequests.delete(requestId);
     } else {
-      this.logger.warn({ requestId }, `📸 Received photo for unknown request ID: ${requestId}`);
+      this.logger.warn(
+        { requestId },
+        `📸 Received photo for unknown request ID: ${requestId}`,
+      );
     }
   }
 
@@ -254,7 +281,7 @@ export class CameraModule {
   cancelPhotoRequest(requestId: string): boolean {
     const pendingRequest = this.pendingPhotoRequests.get(requestId);
     if (pendingRequest) {
-      pendingRequest.reject(new Error('Photo request cancelled'));
+      pendingRequest.reject("Photo request cancelled");
       this.pendingPhotoRequests.delete(requestId);
       this.logger.info({ requestId }, `📸 Photo request cancelled`);
       return true;
@@ -271,8 +298,11 @@ export class CameraModule {
     const count = this.pendingPhotoRequests.size;
 
     for (const [requestId, { reject }] of this.pendingPhotoRequests) {
-      reject(new Error('Photo request cancelled - session cleanup'));
-      this.logger.info({ requestId }, `📸 Photo request cancelled during cleanup`);
+      reject("Photo request cancelled - session cleanup");
+      this.logger.info(
+        { requestId },
+        `📸 Photo request cancelled during cleanup`,
+      );
     }
 
     this.pendingPhotoRequests.clear();
@@ -299,18 +329,26 @@ export class CameraModule {
    * ```
    */
   async startStream(options: RtmpStreamOptions): Promise<void> {
-    this.logger.info({ rtmpUrl: options.rtmpUrl }, `📹 RTMP stream request starting`);
+    this.logger.info(
+      { rtmpUrl: options.rtmpUrl },
+      `📹 RTMP stream request starting`,
+    );
 
     if (!options.rtmpUrl) {
-      throw new Error('rtmpUrl is required');
+      throw new Error("rtmpUrl is required");
     }
 
     if (this.isStreaming) {
-      this.logger.error({
-        currentStreamUrl: this.currentStreamUrl,
-        requestedUrl: options.rtmpUrl
-      }, `📹 Already streaming error`);
-      throw new Error('Already streaming. Stop the current stream before starting a new one.');
+      this.logger.error(
+        {
+          currentStreamUrl: this.currentStreamUrl,
+          requestedUrl: options.rtmpUrl,
+        },
+        `📹 Already streaming error`,
+      );
+      throw new Error(
+        "Already streaming. Stop the current stream before starting a new one.",
+      );
     }
 
     // Create stream request message
@@ -322,7 +360,7 @@ export class CameraModule {
       video: options.video,
       audio: options.audio,
       stream: options.stream,
-      timestamp: new Date()
+      timestamp: new Date(),
     };
 
     // Save stream URL for reference
@@ -333,12 +371,19 @@ export class CameraModule {
       this.send(message);
       this.isStreaming = true;
 
-      this.logger.info({ rtmpUrl: options.rtmpUrl }, `📹 RTMP stream request sent successfully`);
+      this.logger.info(
+        { rtmpUrl: options.rtmpUrl },
+        `📹 RTMP stream request sent successfully`,
+      );
       return Promise.resolve();
     } catch (error) {
-      this.logger.error({ error, rtmpUrl: options.rtmpUrl }, `📹 Failed to send RTMP stream request`);
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      return Promise.reject(new Error(`Failed to request RTMP stream: ${errorMessage}`));
+      this.logger.error(
+        { error, rtmpUrl: options.rtmpUrl },
+        `📹 Failed to send RTMP stream request`,
+      );
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      return Promise.reject(`Failed to request RTMP stream: ${errorMessage}`);
     }
   }
 
@@ -353,10 +398,13 @@ export class CameraModule {
    * ```
    */
   async stopStream(): Promise<void> {
-    this.logger.info({
-      isCurrentlyStreaming: this.isStreaming,
-      currentStreamUrl: this.currentStreamUrl
-    }, `📹 RTMP stream stop request`);
+    this.logger.info(
+      {
+        isCurrentlyStreaming: this.isStreaming,
+        currentStreamUrl: this.currentStreamUrl,
+      },
+      `📹 RTMP stream stop request`,
+    );
 
     if (!this.isStreaming) {
       this.logger.info(`📹 Not streaming - no-op`);
@@ -369,8 +417,8 @@ export class CameraModule {
       type: AppToCloudMessageType.RTMP_STREAM_STOP,
       packageName: this.packageName,
       sessionId: this.sessionId,
-      streamId: this.currentStreamState?.streamId,  // Include streamId if available
-      timestamp: new Date()
+      streamId: this.currentStreamState?.streamId, // Include streamId if available
+      timestamp: new Date(),
     };
 
     // Send the request
@@ -378,8 +426,9 @@ export class CameraModule {
       this.send(message);
       return Promise.resolve();
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      return Promise.reject(new Error(`Failed to stop RTMP stream: ${errorMessage}`));
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      return Promise.reject(`Failed to stop RTMP stream: ${errorMessage}`);
     }
   }
 
@@ -418,7 +467,9 @@ export class CameraModule {
     if (this.session) {
       this.session.subscribe(StreamType.RTMP_STREAM_STATUS);
     } else {
-      this.logger.error('Cannot subscribe to status updates: session reference not available');
+      this.logger.error(
+        "Cannot subscribe to status updates: session reference not available",
+      );
     }
   }
 
@@ -451,7 +502,9 @@ export class CameraModule {
    */
   onStreamStatus(handler: StreamStatusHandler): () => void {
     if (!this.session) {
-      this.logger.error('Cannot listen for status updates: session reference not available');
+      this.logger.error(
+        "Cannot listen for status updates: session reference not available",
+      );
       return () => {};
     }
 
@@ -466,15 +519,21 @@ export class CameraModule {
    * @internal This method is used internally by AppSession
    */
   updateStreamState(message: any): void {
-    this.logger.debug({
-      messageType: message?.type,
-      messageStatus: message?.status,
-      currentIsStreaming: this.isStreaming
-    }, `📹 Stream state update`);
+    this.logger.debug(
+      {
+        messageType: message?.type,
+        messageStatus: message?.status,
+        currentIsStreaming: this.isStreaming,
+      },
+      `📹 Stream state update`,
+    );
 
     // Verify this is a valid stream response
     if (!isRtmpStreamStatus(message)) {
-      this.logger.warn({ message }, `📹 Received invalid stream status message`);
+      this.logger.warn(
+        { message },
+        `📹 Received invalid stream status message`,
+      );
       return;
     }
 
@@ -486,22 +545,32 @@ export class CameraModule {
       errorDetails: message.errorDetails,
       appId: message.appId,
       stats: message.stats,
-      timestamp: message.timestamp || new Date()
+      timestamp: message.timestamp || new Date(),
     };
 
-    this.logger.info({
-      streamId: status.streamId,
-      oldStatus: this.currentStreamState?.status,
-      newStatus: status.status,
-      wasStreaming: this.isStreaming
-    }, `📹 Stream status processed`);
+    this.logger.info(
+      {
+        streamId: status.streamId,
+        oldStatus: this.currentStreamState?.status,
+        newStatus: status.status,
+        wasStreaming: this.isStreaming,
+      },
+      `📹 Stream status processed`,
+    );
 
     // Update local state based on status
-    if (status.status === 'stopped' || status.status === 'error' || status.status === 'timeout') {
-      this.logger.info({
-        status: status.status,
-        wasStreaming: this.isStreaming
-      }, `📹 Stream stopped - updating local state`);
+    if (
+      status.status === "stopped" ||
+      status.status === "error" ||
+      status.status === "timeout"
+    ) {
+      this.logger.info(
+        {
+          status: status.status,
+          wasStreaming: this.isStreaming,
+        },
+        `📹 Stream stopped - updating local state`,
+      );
       this.isStreaming = false;
       this.currentStreamUrl = undefined;
     }
@@ -516,7 +585,7 @@ export class CameraModule {
 
   /**
    * 📹 Start a managed stream
-   * 
+   *
    * The cloud handles the RTMP endpoint and returns HLS/DASH URLs for viewing.
    * Multiple apps can consume the same managed stream simultaneously.
    *
@@ -532,7 +601,9 @@ export class CameraModule {
    * console.log('HLS URL:', urls.hlsUrl);
    * ```
    */
-  async startManagedStream(options?: ManagedStreamOptions): Promise<ManagedStreamResult> {
+  async startManagedStream(
+    options?: ManagedStreamOptions,
+  ): Promise<ManagedStreamResult> {
     return this.managedExtension.startManagedStream(options);
   }
 
@@ -554,7 +625,9 @@ export class CameraModule {
    * @param handler - Function to call when stream status changes
    * @returns Cleanup function to unregister the handler
    */
-  onManagedStreamStatus(handler: (status: ManagedStreamStatus) => void): () => void {
+  onManagedStreamStatus(
+    handler: (status: ManagedStreamStatus) => void,
+  ): () => void {
     return this.managedExtension.onManagedStreamStatus(handler);
   }
 
@@ -609,7 +682,7 @@ export class CameraModule {
     // Stop streaming if active
     if (this.isStreaming) {
       this.stopStream().catch((error) => {
-        this.logger.error({ error }, 'Error stopping stream during cleanup');
+        this.logger.error({ error }, "Error stopping stream during cleanup");
       });
     }
 
@@ -621,9 +694,4 @@ export class CameraModule {
 }
 
 // Re-export types for convenience
-export {
-  VideoConfig,
-  AudioConfig,
-  StreamConfig,
-  StreamStatusHandler
-};
+export { VideoConfig, AudioConfig, StreamConfig, StreamStatusHandler };
