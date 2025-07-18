@@ -727,14 +727,12 @@ struct ViewState {
         break
       case "bitmap_view":
         CoreCommsService.log("AOS: Processing bitmap_view layout")
-        if let hexString = currentViewState.data {
-          CoreCommsService.log("AOS: Processing bitmap_view with hex data, length: \(hexString.count)")
-          
-          // Use hex directly - no conversion needed
-          self.g1Manager?.RN_displayBitmapFromHex(hexString)
-        } else {
+        guard let data = currentViewState.data else {
           CoreCommsService.log("AOS: ERROR: bitmap_view missing data field")
+          return
         }
+        CoreCommsService.log("AOS: Processing bitmap_view with base64 data, length: \(data.count)")
+        await self.g1Manager?.displayBitmap(base64ImageData: data)
         break
       case "bitmap_animation":
         CoreCommsService.log("AOS: Processing bitmap_animation layout")
@@ -849,7 +847,7 @@ struct ViewState {
     var topText = layout["topText"] as? String ?? " "
     var bottomText = layout["bottomText"] as? String ?? " "
     var title = layout["title"] as? String ?? " "
-    var data = layout["data"] as? String
+    var data = layout["data"] as? String ?? ""
     
     text = parsePlaceholders(text)
     topText = parsePlaceholders(topText)
@@ -872,7 +870,6 @@ struct ViewState {
       break
     case "bitmap_view":
       self.viewStates[stateIndex].data = data
-      print("Parsed bitmap_view with data length: \(data?.count ?? 0)")
       break
     case "bitmap_animation":
       // Store animation data with frames and timing

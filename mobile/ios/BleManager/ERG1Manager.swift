@@ -1455,22 +1455,6 @@ extension ERG1Manager {
     return await displayBitmapData(bmpData: bmpData, onProgress: onProgress, onSuccess: onSuccess, onError: onError)
   }
   
-  /// Display bitmap using MentraOS-compatible protocol
-  public func RN_displayBitmapMentraOS(_ base64ImageData: String) {
-    CoreCommsService.log("RN_displayBitmapMentraOS() - Size: \(base64ImageData.count) characters")
-    Task {
-      await displayBitmapMentraOS(base64ImageData: base64ImageData)
-    }
-  }
-  
-  /// Display bitmap from hex string using MentraOS-compatible protocol
-  public func RN_displayBitmapFromHex(_ hexString: String) {
-    CoreCommsService.log("RN_displayBitmapFromHex() - Size: \(hexString.count) characters")
-    Task {
-      await displayBitmapFromHex(hexString: hexString)
-    }
-  }
-  
   /// Clear display using MentraOS's 0x18 command (exit to dashboard)
   public func RN_clearDisplay() {
     CoreCommsService.log("RN_clearDisplay() - Using MentraOS 0x18 exit command")
@@ -1689,7 +1673,7 @@ extension ERG1Manager {
     return true
   }
   
-  public func displayBitmapMentraOS(base64ImageData: String,
+  public func displayBitmapBase64(base64ImageData: String,
                                     onProgress: BmpProgressCallback? = nil,
                                     onSuccess: BmpSuccessCallback? = nil,
                                     onError: BmpErrorCallback? = nil) async -> Bool {

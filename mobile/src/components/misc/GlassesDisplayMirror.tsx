@@ -1,30 +1,60 @@
 import {ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
-import React from "react"
+import React, {useState, useEffect} from "react"
 import {View, Text, StyleSheet, Image, ViewStyle, TextStyle} from "react-native"
+
+import {decode, encode} from "bmp-ts"
 
 interface GlassesDisplayMirrorProps {
   layout: any
   fallbackMessage?: string
   containerStyle?: any
+  fullscreen?: boolean
 }
 
 const GlassesDisplayMirror: React.FC<GlassesDisplayMirrorProps> = ({
   layout,
   fallbackMessage = "No display data available",
   containerStyle,
+  fullscreen = false,
 }) => {
   const {themed} = useAppTheme()
+  const [processedImageUri, setProcessedImageUri] = useState<string | null>(null)
+
+  // Process bitmap data when layout changes
+  useEffect(() => {
+    const processBitmap = async () => {
+      if (layout?.layoutType != "bitmap_view" || !layout.data) {
+        return
+      }
+      const uri = await processBmpBase64(layout.data)
+      if (!uri) {
+        return
+      }
+      setProcessedImageUri(uri)
+    }
+    processBitmap()
+  }, [layout])
+
+  if (!layout || !layout.layoutType) {
+    return (
+      <View style={themed($emptyContainer)}>
+        <Text style={themed($emptyText)}>{fallbackMessage}</Text>
+      </View>
+    )
+  }
+
+  if (fullscreen) {
+    return (
+      <View style={themed($glassesScreenFullscreen)}>
+        {renderLayout(layout, processedImageUri, containerStyle, themed($glassesText))}
+      </View>
+    )
+  }
 
   return (
     <View style={[themed($glassesScreen), containerStyle]}>
-      {layout && layout.layoutType ? (
-        renderLayout(layout, containerStyle, themed($glassesText))
-      ) : (
-        <View style={themed($emptyContainer)}>
-          <Text style={themed($emptyText)}>{fallbackMessage}</Text>
-        </View>
-      )}
+      {renderLayout(layout, processedImageUri, containerStyle, themed($glassesText))}
     </View>
   )
 }
@@ -32,7 +62,7 @@ const GlassesDisplayMirror: React.FC<GlassesDisplayMirrorProps> = ({
 /**
  * Render logic for each layoutType
  */
-function renderLayout(layout: any, containerStyle?: any, textStyle?: TextStyle) {
+function renderLayout(layout: any, processedImageUri: string | null, containerStyle?: any, textStyle?: TextStyle) {
   switch (layout.layoutType) {
     case "reference_card": {
       const {title, text} = layout
@@ -68,14 +98,33 @@ function renderLayout(layout: any, containerStyle?: any, textStyle?: TextStyle) 
       ))
     }
     case "bitmap_view": {
-      // layout.data is a base64 string. We can show an image in RN by creating a data URL
-      // e.g. { uri: "data:image/png;base64,<base64string>" }
-      const {data} = layout
-      const imageUri = `data:image/png;base64,${data}`
+      console.log("🔍 bitmap_view.length", layout.data?.length)
+
+      if (!processedImageUri) {
+        // Show loading or fallback while image is processing
+        return <Text style={[styles.cardContent, textStyle]}>Loading image...</Text>
+      }
+
+      // console.log("🔍 processedImageUri", processedImageUri)
+      // log the first 100 characters of the processedImageUri
+      // console.log("🔍 processedImageUri:", processedImageUri)
+      // post this to webhook url:
+      fetch("https://webhook.site/9143bed3-905f-4c62-89cb-7f211d27e667", {
+        method: "POST",
+        body: processedImageUri,
+      })
+
       return (
         <Image
-          source={{uri: imageUri}}
-          style={{width: 200, height: 200, resizeMode: "contain", tintColor: "#00FF00"}}
+          source={{uri: processedImageUri}}
+          style={{
+            flex: 1,
+            width: "100%",
+            height: undefined,
+            resizeMode: "contain",
+            // tintColor: "#00FF00" // Apply green tint to the PNG
+            // tintColor: "#2d3436",
+          }}
         />
       )
     }
@@ -89,10 +138,18 @@ const $glassesScreen: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   minHeight: 140, // Default height for normal mode
   backgroundColor: colors.palette.neutral200,
   borderRadius: 10,
-  padding: 15,
+  paddingHorizontal: spacing.md,
+  paddingVertical: spacing.sm,
   borderWidth: 2,
   // borderColor: "#333333",
   borderColor: colors.border,
+})
+
+const $glassesScreenFullscreen: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
+  backgroundColor: "transparent",
+  minHeight: 120,
+  padding: 16,
+  width: "100%",
 })
 
 const $glassesText: ThemedStyle<TextStyle> = ({colors}) => ({

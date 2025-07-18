@@ -13,8 +13,9 @@ import {useSafeAreaInsets} from "react-native-safe-area-context"
 import {requestFeaturePermissions, PermissionFeatures} from "@/utils/PermissionsUtils"
 import RNFS from "react-native-fs"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
-import GlassesDisplayMirrorFullscreen from "@/components/misc/GlassesDisplayMirrorFullscreen"
+// import GlassesDisplayMirrorFullscreen from "@/components/misc/GlassesDisplayMirrorFullscreen"
 import {SimulatedGlassesControls} from "@/components/misc/SimulatedGlassesControls"
+import GlassesDisplayMirror from "@/components/misc/GlassesDisplayMirror"
 
 // Request microphone permission for recording
 const requestMicrophonePermission = async () => {
@@ -338,7 +339,7 @@ export default function GlassesMirrorFullscreen() {
 
           {/* Overlay the glasses display content */}
           <View style={styles.fullscreenOverlay}>
-            <GlassesDisplayMirrorFullscreen layout={lastEvent.layout} fallbackMessage="Unknown layout data" />
+            <GlassesDisplayMirror layout={lastEvent.layout} fullscreen={true} fallbackMessage="Unknown layout data" />
           </View>
 
           {/* Fullscreen exit button */}
