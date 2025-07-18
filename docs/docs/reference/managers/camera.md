@@ -78,10 +78,6 @@ interface PhotoData {
   size: number
   /** Timestamp when the photo was captured */
   timestamp: Date
-  /** Actual width of the captured photo in pixels */
-  width?: number
-  /** Actual height of the captured photo in pixels */
-  height?: number
 }
 ```
 
@@ -92,7 +88,6 @@ interface PhotoData {
 const photo = await session.camera.requestPhoto()
 console.log(`Photo taken at timestamp: ${photo.timestamp}`)
 console.log(`MIME type: ${photo.mimeType}, size: ${photo.size} bytes`)
-console.log(`Dimensions: ${photo.width}x${photo.height} pixels`)
 
 // Access raw photo data
 const photoBuffer = photo.buffer
@@ -104,8 +99,6 @@ const highResPhoto = await session.camera.requestPhoto({
   quality: 95,
   saveToGallery: true,
 })
-
-console.log(`High-res photo: ${highResPhoto.width}x${highResPhoto.height} pixels`)
 ```
 
 ## Managed Streaming Functionality (Recommended)
