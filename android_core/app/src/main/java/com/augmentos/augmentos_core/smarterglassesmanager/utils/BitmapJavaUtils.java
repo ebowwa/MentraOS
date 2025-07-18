@@ -85,17 +85,22 @@ public class BitmapJavaUtils {
         // ================== COLOR TABLE (8 bytes: 2 entries × 4 bytes each) ==================
         // Each color entry: (Blue, Green, Red, Reserved)
         // If invert=false, then 0 => White, 1 => Black. Otherwise, 0 => Black, 1 => White.
-        if (!invert) {
-            // color index 0 => white
-            baos.write(0xFF); baos.write(0xFF); baos.write(0xFF); baos.write(0x00);
-            // color index 1 => black
-            baos.write(0x00); baos.write(0x00); baos.write(0x00); baos.write(0x00);
-        } else {
-            // color index 0 => black
-            baos.write(0x00); baos.write(0x00); baos.write(0x00); baos.write(0x00);
-            // color index 1 => white
-            baos.write(0xFF); baos.write(0xFF); baos.write(0xFF); baos.write(0x00);
-        }
+        // if (!invert) {
+        //     // color index 0 => white
+        //     baos.write(0xFF); baos.write(0xFF); baos.write(0xFF); baos.write(0x00);
+        //     // color index 1 => black
+        //     baos.write(0x00); baos.write(0x00); baos.write(0x00); baos.write(0x00);
+        // } else {
+        //     // color index 0 => black
+        //     baos.write(0x00); baos.write(0x00); baos.write(0x00); baos.write(0x00);
+        //     // color index 1 => white
+        //     baos.write(0xFF); baos.write(0xFF); baos.write(0xFF); baos.write(0x00);
+        // }
+
+        // color index 0 => white
+        baos.write(0xFF); baos.write(0xFF); baos.write(0xFF); baos.write(0x00);
+        // color index 1 => black
+        baos.write(0x00); baos.write(0x00); baos.write(0x00); baos.write(0x00);
 
         // ================== PIXEL DATA (1-bpp, bottom-to-top) ==================
         // We'll iterate from top row to bottom row in the Android sense,
@@ -118,7 +123,13 @@ public class BitmapJavaUtils {
 
                 // Simple threshold (tweak if you want better dithering)
                 int gray = (r + g + b) / 3;
-                int pixelVal = (gray < 128) ? 1 : 0; // 0=white or 1=black depending on palette
+                // int pixelVal = (gray < 128) ? 1 : 0; // 0=white or 1=black depending on palette
+                int pixelVal = 0;
+                if (!invert) {
+                    pixelVal = (gray < 128) ? 1 : 0; // Dark → 1 (black), Light → 0 (white)
+                } else {
+                    pixelVal = (gray < 128) ? 0 : 1; // Dark → 0 (black), Light → 1 (white)
+                }
 
                 // The leftmost pixel goes in the MSB of the byte => bit position = 7 - bitIndex
                 packedRow[byteIndex] |= (pixelVal << (7 - bitIndex));
