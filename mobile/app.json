@@ -31,7 +31,8 @@
           "data": [
             {
               "scheme": "https",
-              "host": "apps.mentra.glass"
+              "host": "apps.mentra.glass",
+              "pathPrefix": "/package/"
             }
           ],
           "category": ["DEFAULT", "BROWSABLE"]

@@ -3,6 +3,13 @@ import {NativeModules} from "react-native"
 
 const {SettingsNavigationModule} = NativeModules
 
+interface SettingsNavigationModule {
+  openBluetoothSettings(): Promise<boolean>
+  openLocationSettings(): Promise<boolean>
+  showLocationServicesDialog(): Promise<boolean>
+  openAppSettings(): Promise<boolean>
+}
+
 /**
  * Utility functions for navigating to system settings pages
  */
