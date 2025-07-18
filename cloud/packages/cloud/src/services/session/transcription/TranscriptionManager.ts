@@ -996,12 +996,10 @@ export class TranscriptionManager {
         provider: provider.name,
         sessionId: this.userSession.sessionId
       });
-
     } catch (error) {
-      this.logger.error({ subscription, error }, 'Stream creation failed');
+      const logger = this.logger.child({ subscription });
+      logger.error(error, 'Stream creation failed');
       await this.handleStreamError(subscription, null, error as Error);
-      throw error;
-
     } finally {
       this.streamCreationInProgress.delete(subscription);
     }
