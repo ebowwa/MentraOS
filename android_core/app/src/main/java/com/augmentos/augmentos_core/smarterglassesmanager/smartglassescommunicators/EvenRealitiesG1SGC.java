@@ -1917,7 +1917,7 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
     @Override
     public void displayBitmap(Bitmap bmp) {
         try {
-            byte[] bmpBytes = convertBitmapTo1BitBmpBytes(bmp, false);
+            byte[] bmpBytes = convertBitmapTo1BitBmpBytes(bmp, true);
             displayBitmapImage(bmpBytes);
         } catch (Exception e) {
             Log.e(TAG, e.getMessage());
@@ -1948,7 +1948,7 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
         byte[] theClearBitmapOrSomething = loadEmptyBmpFromAssets();
         Bitmap bmp = BitmapJavaUtils.bytesToBitmap(theClearBitmapOrSomething);
         try {
-            byte[] bmpBytes = convertBitmapTo1BitBmpBytes(bmp, false);
+            byte[] bmpBytes = convertBitmapTo1BitBmpBytes(bmp, true);
             displayBitmapImage(bmpBytes);
         } catch (Exception e) {
             Log.e(TAG, "Error displaying clear bitmap: " + e.getMessage());
@@ -2868,7 +2868,8 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
     private static final long BMP_RETRY_DELAY_MS = 1000;
 
     // Platform-specific timing (matching Flutter implementation)
-    private static final long ANDROID_CHUNK_DELAY_MS = 5;
+    // private static final long ANDROID_CHUNK_DELAY_MS = 5;
+    private static final long ANDROID_CHUNK_DELAY_MS = 8;
     private static final long IOS_CHUNK_DELAY_MS = 8;
     private static final long END_COMMAND_TIMEOUT_MS = 3000;
     private static final long CRC_COMMAND_TIMEOUT_MS = 3000;
