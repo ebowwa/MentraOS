@@ -885,6 +885,9 @@ typealias JSONObject = [String: Any]
     case "button_press":
       handleButtonPress(json)
       
+    case "photo_response":
+      handlePhotoResponse(json)
+
     case "version_info":
       handleVersionInfo(json)
       
@@ -1001,6 +1004,20 @@ typealias JSONObject = [String: Any]
     
     CoreCommsService.log("Received button press - buttonId: \(buttonId), pressType: \(pressType)")
     self.onButtonPress?(buttonId, pressType)
+  }
+
+  private func handlePhotoResponse(_ json: [String: Any]) {
+    let requestId = json["requestId"] as? String ?? ""
+    let photoUrl = json["photoUrl"] as? String ?? ""
+    let success = json["success"] as? Bool ?? false
+
+    if success && !photoUrl.isEmpty {
+      CoreCommsService.log("Received successful photo response - requestId: \(requestId), photoUrl: \(photoUrl)")
+      self.onPhotoRequest?(requestId, photoUrl)
+    } else {
+      let errorMsg = json["error"] as? String ?? "Unknown error"
+      CoreCommsService.log("Photo request failed - requestId: \(requestId), error: \(errorMsg)")
+    }
   }
   
   private func handleVersionInfo(_ json: [String: Any]) {
