@@ -22,7 +22,7 @@ public class OtaUpdaterManager {
     private static final String OTA_UPDATER_SERVICE = "com.augmentos.otaupdater.OtaUpdaterService";
     private static final String OTA_APK_ASSET_NAME = "ota_updater.apk";
     private static final String OTA_APK_FILE_PATH = "/storage/emulated/0/asg/ota_updater.apk";
-    
+    private static final int ASSETS_OTA_UPDATER_VERSION = 3;
     private final Context context;
     private final Handler handler;
     private PackageInstallReceiver packageInstallReceiver;
@@ -41,7 +41,7 @@ public class OtaUpdaterManager {
         registerPackageInstallReceiver();
         
         // Check and ensure OTA updater after delay
-        handler.postDelayed(this::ensureOtaUpdaterV2, 5000);
+        handler.postDelayed(this::ensureOtaUpdater, 5000);
     }
     
     /**
@@ -54,22 +54,22 @@ public class OtaUpdaterManager {
     }
     
     /**
-     * Ensure OTA Updater v2 is installed and launch it
+     * Ensure OTA Updater is installed and launch it
      */
-    private void ensureOtaUpdaterV2() {
+    private void ensureOtaUpdater() {
         try {
             int currentVersion = getInstalledVersion(OTA_UPDATER_PACKAGE);
             
             // Deploy/recover if: not installed (-1), version 1, or corrupted
-            if (currentVersion == -1 || currentVersion < 2) {
+            if (currentVersion == -1 || currentVersion < ASSETS_OTA_UPDATER_VERSION) {
                 Log.i(TAG, "OTA Updater needs deployment/recovery. Version: " + currentVersion);
                 deployOtaUpdaterFromAssets();
             } else {
-                // Current version is v2 or higher, just launch it
+                // Current version OK, just launch it
                 launchOtaUpdater();
             }
         } catch (Exception e) {
-            Log.e(TAG, "Failed to ensure OTA updater v2", e);
+            Log.e(TAG, "Failed to ensure OTA updater version v" + ASSETS_OTA_UPDATER_VERSION, e);
             launchOtaUpdater(); // Try to launch whatever exists
         }
     }
@@ -81,16 +81,16 @@ public class OtaUpdaterManager {
         try {
             // Extract from assets
             InputStream assetStream = context.getAssets().open(OTA_APK_ASSET_NAME);
-            File otaV2File = new File(OTA_APK_FILE_PATH);
+            File otaFile = new File(OTA_APK_FILE_PATH);
             
             // Ensure directory exists
-            File parentDir = otaV2File.getParentFile();
+            File parentDir = otaFile.getParentFile();
             if (parentDir != null && !parentDir.exists()) {
                 parentDir.mkdirs();
             }
             
             // Copy to filesystem
-            try (FileOutputStream fos = new FileOutputStream(otaV2File)) {
+            try (FileOutputStream fos = new FileOutputStream(otaFile)) {
                 byte[] buffer = new byte[8192];
                 int bytesRead;
                 while ((bytesRead = assetStream.read(buffer)) != -1) {
@@ -103,10 +103,10 @@ public class OtaUpdaterManager {
             Intent intent = new Intent("com.xy.xsetting.action");
             intent.setPackage("com.android.systemui");
             intent.putExtra("cmd", "install");
-            intent.putExtra("pkpath", otaV2File.getAbsolutePath());
+            intent.putExtra("pkpath", otaFile.getAbsolutePath());
             context.sendBroadcast(intent);
             
-            Log.i(TAG, "Installing OTA Updater v2");
+            Log.i(TAG, "Installing OTA Updater");
             
             // Note: PackageInstallReceiver will launch it when installation completes
             
@@ -124,8 +124,8 @@ public class OtaUpdaterManager {
         try {
             int version = getInstalledVersion(OTA_UPDATER_PACKAGE);
             
-            if (version >= 2) {
-                // v2+ has service - try that first
+            if (version >= ASSETS_OTA_UPDATER_VERSION) {
+                // has service - try that first
                 Intent serviceIntent = new Intent();
                 serviceIntent.setClassName(OTA_UPDATER_PACKAGE, OTA_UPDATER_SERVICE);
                 
