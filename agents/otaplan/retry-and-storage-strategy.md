@@ -187,7 +187,7 @@ private void cleanupAfterInstall(String packageName) {
 ├── asg_client_backup.1.apk       # Previous ASG backup
 ├── ota_updater_backup.apk        # Most recent OTA backup  
 ├── ota_updater_backup.1.apk      # Previous OTA backup
-├── ota_updater_v2.apk           # Temporary (deleted after v2 deployed)
+├── ota_updater.apk           # Temporary (deleted after v2 deployed)
 └── metadata.json                 # Version tracking
 ```
 

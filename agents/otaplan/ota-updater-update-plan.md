@@ -45,8 +45,8 @@ private void ensureOtaUpdaterV2() {
             Log.i(TAG, "OTA Updater needs deployment/recovery. Version: " + currentVersion);
             
             // Extract from assets
-            InputStream assetStream = getAssets().open("ota_updater_v2.apk");
-            File otaV2File = new File("/storage/emulated/0/asg/ota_updater_v2.apk");
+            InputStream assetStream = getAssets().open("ota_updater.apk");
+            File otaV2File = new File("/storage/emulated/0/asg/ota_updater.apk");
             
             // Copy to filesystem
             try (FileOutputStream fos = new FileOutputStream(otaV2File)) {

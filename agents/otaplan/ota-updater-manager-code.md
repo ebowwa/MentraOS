@@ -25,8 +25,8 @@ public class OtaUpdaterManager {
     private static final String TAG = "OtaUpdaterManager";
     private static final String OTA_UPDATER_PACKAGE = "com.augmentos.otaupdater";
     private static final String OTA_UPDATER_MAIN_ACTIVITY = "com.augmentos.otaupdater.MainActivity";
-    private static final String OTA_APK_ASSET_NAME = "ota_updater_v2.apk";
-    private static final String OTA_APK_FILE_PATH = "/storage/emulated/0/asg/ota_updater_v2.apk";
+    private static final String OTA_APK_ASSET_NAME = "ota_updater.apk";
+    private static final String OTA_APK_FILE_PATH = "/storage/emulated/0/asg/ota_updater.apk";
     
     private final Context context;
     private final Handler handler;
