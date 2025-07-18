@@ -78,12 +78,12 @@ public class CameraNeo extends LifecycleService {
     private Size jpegSize;
     private String cameraId;
 
-    // Target photo resolution (4:3 landscape orientation) - can be overridden by preferences
-    private static int TARGET_WIDTH = 1440;
-    private static int TARGET_HEIGHT = 1080;
-
-    // Auto-exposure settings for better photo quality - now dynamic
-    private static int JPEG_QUALITY = 90; // High quality JPEG - can be overridden
+    /**
+     * Camera parameters for the current request - instance variables to avoid race conditions
+     */
+    private int currentTargetWidth = 1440;  // Default 4:3 landscape orientation
+    private int currentTargetHeight = 1080;
+    private int currentJpegQuality = 90;    // Default high quality JPEG
     private static final int JPEG_ORIENTATION = 270; // Standard orientation
 
     // Camera characteristics for dynamic auto-exposure and autofocus
@@ -314,10 +314,10 @@ public class CameraNeo extends LifecycleService {
     private void setupCameraAndTakePicture(String filePath, int preferredWidth, int preferredHeight, int quality) {
         // Store parameters for use during camera setup
         if (preferredWidth > 0 && preferredHeight > 0) {
-            TARGET_WIDTH = preferredWidth;
-            TARGET_HEIGHT = preferredHeight;
+            currentTargetWidth = preferredWidth;
+            currentTargetHeight = preferredHeight;
         }
-        JPEG_QUALITY = quality;
+        currentJpegQuality = quality;
 
         wakeUpScreen();
         openCameraInternal(filePath, false); // false indicates not for video
@@ -454,7 +454,7 @@ public class CameraNeo extends LifecycleService {
                 return;
             }
 
-            jpegSize = chooseOptimalSize(jpegSizes, TARGET_WIDTH, TARGET_HEIGHT);
+            jpegSize = chooseOptimalSize(jpegSizes, currentTargetWidth, currentTargetHeight);
             Log.d(TAG, "Selected JPEG size: " + jpegSize.getWidth() + "x" + jpegSize.getHeight());
 
             // If this is for video, set up video size too
@@ -801,7 +801,7 @@ public class CameraNeo extends LifecycleService {
 
             if (!forVideo) {
                 // Photo-specific settings
-                previewBuilder.set(CaptureRequest.JPEG_QUALITY, (byte) JPEG_QUALITY);
+                previewBuilder.set(CaptureRequest.JPEG_QUALITY, (byte) currentJpegQuality);
                 previewBuilder.set(CaptureRequest.JPEG_ORIENTATION, JPEG_ORIENTATION);
             }
 
@@ -1376,7 +1376,7 @@ public class CameraNeo extends LifecycleService {
             // High quality settings
             stillBuilder.set(CaptureRequest.NOISE_REDUCTION_MODE, CaptureRequest.NOISE_REDUCTION_MODE_HIGH_QUALITY);
             stillBuilder.set(CaptureRequest.EDGE_MODE, CaptureRequest.EDGE_MODE_HIGH_QUALITY);
-            stillBuilder.set(CaptureRequest.JPEG_QUALITY, (byte) JPEG_QUALITY);
+            stillBuilder.set(CaptureRequest.JPEG_QUALITY, (byte) currentJpegQuality);
             stillBuilder.set(CaptureRequest.JPEG_ORIENTATION, JPEG_ORIENTATION);
 
             // Capture the photo immediately
