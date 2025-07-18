@@ -1,9 +1,8 @@
 import {ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
-import React, {useState, useEffect} from "react"
+import React, {useState, useEffect, useRef} from "react"
 import {View, Text, StyleSheet, Image, ViewStyle, TextStyle} from "react-native"
-
-import {decode, encode} from "bmp-ts"
+import Canvas, {Image as CanvasImage, ImageData} from "react-native-canvas"
 
 interface GlassesDisplayMirrorProps {
   layout: any
@@ -20,49 +19,113 @@ const GlassesDisplayMirror: React.FC<GlassesDisplayMirrorProps> = ({
 }) => {
   const {themed} = useAppTheme()
   const [processedImageUri, setProcessedImageUri] = useState<string | null>(null)
+  const canvasRef = useRef<Canvas>(null)
+
+  const processBitmap = async () => {
+    if (layout?.layoutType !== "bitmap_view" || !layout.data) {
+      return
+    }
+
+    // First process the BMP to get base64
+    const uri = `data:image/bmp;base64,${layout.data}`
+    if (!canvasRef.current) {
+      return
+    }
+
+    // Process with canvas to make black pixels transparent
+    const canvas = canvasRef.current
+    const ctx = canvas.getContext("2d")
+
+    // Create image from base64
+    const img = new CanvasImage(canvas)
+    img.src = uri
+
+    // console.log("starting canvas processing", uri.substring(0, 100))
+    img.addEventListener("load", async () => {
+      // const WIDTH = 400
+      // const HEIGHT = 100
+      const WIDTH = img.width / 2
+      const HEIGHT = img.height / 2
+
+      // Set canvas size to match image
+      canvas.width = WIDTH
+      canvas.height = HEIGHT
+
+      // Draw image to canvas
+      // ctx.drawImage(img, 0, 0, img.width / 1.8, img.height / 1.8)
+      ctx.drawImage(img, 0, 0, WIDTH, HEIGHT)
+
+      // ctx.drawImage(img, 0, 0, 100, 100)
+
+      // Get image data
+      const imageData = await ctx.getImageData(0, 0, WIDTH, HEIGHT)
+      const data = Object.values(imageData.data)
+      const len = Object.keys(data).length
+      for (let i = 0; i < len; i += 4) {
+        // console.log("🔍 data[i]", data[i], data[i + 1], data[i + 2])
+        // @ts-ignore
+        if (data[i] < 240 || data[i + 1] < 240 || data[i + 2] < 240) {
+          data[i] = 0
+          data[i + 1] = 0
+          data[i + 2] = 0
+          data[i + 3] = 0
+        }
+      }
+
+      // console.log("🔍 imageData", imageData)
+
+      // for (let i = 0; i < 2500; i++) {
+      //   for (let j = 0; j < 4; j++) {
+      //     data.push(0)
+      //   }
+      // }
+
+      // console.log("🔍 data.length", data.length)
+      // const newImageData = new ImageData(canvas, data, WIDTH, HEIGHT)
+      // ctx.putImageData(newImageData, 0, 0)
+
+      // Convert canvas to base64
+      // canvas.toDataURL("image/png").then((processedUri: string) => {
+      //   console.log("🔍 processedUri", processedUri.substring(0, 100))
+      //   setProcessedImageUri(processedUri)
+      // })
+    })
+  }
 
   // Process bitmap data when layout changes
   useEffect(() => {
-    const processBitmap = async () => {
-      if (layout?.layoutType != "bitmap_view" || !layout.data) {
-        return
-      }
-      const uri = await processBmpBase64(layout.data)
-      if (!uri) {
-        return
-      }
-      setProcessedImageUri(uri)
-    }
     processBitmap()
   }, [layout])
 
   if (!layout || !layout.layoutType) {
     return (
-      <View style={themed($emptyContainer)}>
-        <Text style={themed($emptyText)}>{fallbackMessage}</Text>
+      <View style={[themed($glassesScreen), containerStyle]}>
+        <View style={themed($emptyContainer)}>
+          <Text style={themed($emptyText)}>{fallbackMessage}</Text>
+        </View>
       </View>
     )
   }
+
+  const content = <>{renderLayout(layout, processedImageUri, containerStyle, themed($glassesText), canvasRef)}</>
 
   if (fullscreen) {
-    return (
-      <View style={themed($glassesScreenFullscreen)}>
-        {renderLayout(layout, processedImageUri, containerStyle, themed($glassesText))}
-      </View>
-    )
+    return <View style={themed($glassesScreenFullscreen)}>{content}</View>
   }
 
-  return (
-    <View style={[themed($glassesScreen), containerStyle]}>
-      {renderLayout(layout, processedImageUri, containerStyle, themed($glassesText))}
-    </View>
-  )
+  return <View style={[themed($glassesScreen), containerStyle]}>{content}</View>
 }
 
 /**
  * Render logic for each layoutType
  */
-function renderLayout(layout: any, processedImageUri: string | null, containerStyle?: any, textStyle?: TextStyle) {
+function renderLayout(
+  layout: any,
+  processedImageUri: string | null,
+  containerStyle?: any,
+  textStyle?: TextStyle,
+  canvasRef?: React.RefObject<Canvas>,
+) {
   switch (layout.layoutType) {
     case "reference_card": {
       const {title, text} = layout
@@ -76,7 +139,6 @@ function renderLayout(layout: any, processedImageUri: string | null, containerSt
     case "text_wall":
     case "text_line": {
       const {text} = layout
-      // Even if text is empty, show a placeholder message for text_wall layouts
       return <Text style={[styles.cardContent, textStyle]}>{text || text === "" ? text : ""}</Text>
     }
     case "double_text_wall": {
@@ -89,7 +151,6 @@ function renderLayout(layout: any, processedImageUri: string | null, containerSt
       )
     }
     case "text_rows": {
-      // layout.text is presumably an array of strings
       const rows = layout.text || []
       return rows.map((row: string, index: number) => (
         <Text key={index} style={[styles.cardContent, textStyle]}>
@@ -100,33 +161,29 @@ function renderLayout(layout: any, processedImageUri: string | null, containerSt
     case "bitmap_view": {
       console.log("🔍 bitmap_view.length", layout.data?.length)
 
-      if (!processedImageUri) {
-        // Show loading or fallback while image is processing
-        return <Text style={[styles.cardContent, textStyle]}>Loading image...</Text>
-      }
+      // if (!processedImageUri) {
+      //   return <Text style={[styles.cardContent, textStyle]}>Processing image...</Text>
+      // }
 
-      // console.log("🔍 processedImageUri", processedImageUri)
-      // log the first 100 characters of the processedImageUri
-      // console.log("🔍 processedImageUri:", processedImageUri)
-      // post this to webhook url:
+      // Post to webhook for debugging
       fetch("https://webhook.site/9143bed3-905f-4c62-89cb-7f211d27e667", {
         method: "POST",
         body: processedImageUri,
       })
 
-      return (
-        <Image
-          source={{uri: processedImageUri}}
-          style={{
-            flex: 1,
-            width: "100%",
-            height: undefined,
-            resizeMode: "contain",
-            // tintColor: "#00FF00" // Apply green tint to the PNG
-            // tintColor: "#2d3436",
-          }}
-        />
-      )
+      return <Canvas ref={canvasRef} style={{flex: 1, width: "100%"}} />
+
+      // return (
+      //   <Image
+      //     source={{uri: processedImageUri}}
+      //     style={{
+      //       flex: 1,
+      //       width: "100%",
+      //       height: undefined,
+      //       resizeMode: "contain",
+      //     }}
+      //   />
+      // )
     }
     default:
       return <Text style={[styles.cardContent, textStyle]}>Unknown layout type: {layout.layoutType}</Text>
@@ -135,13 +192,12 @@ function renderLayout(layout: any, processedImageUri: string | null, containerSt
 
 const $glassesScreen: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   width: "100%",
-  minHeight: 140, // Default height for normal mode
+  minHeight: 140,
   backgroundColor: colors.palette.neutral200,
   borderRadius: 10,
   paddingHorizontal: spacing.md,
   paddingVertical: spacing.sm,
   borderWidth: 2,
-  // borderColor: "#333333",
   borderColor: colors.border,
 })
 
@@ -176,7 +232,6 @@ const styles = StyleSheet.create({
     fontFamily: "Montserrat-Regular",
     fontSize: 16,
   },
-
   cardTitle: {
     fontFamily: "Montserrat-Bold",
     fontSize: 18,
