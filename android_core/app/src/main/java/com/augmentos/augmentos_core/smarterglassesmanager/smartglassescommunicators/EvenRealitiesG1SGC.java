@@ -1917,7 +1917,7 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
     @Override
     public void displayBitmap(Bitmap bmp) {
         try {
-            byte[] bmpBytes = convertBitmapTo1BitBmpBytes(bmp, true);
+            byte[] bmpBytes = convertBitmapTo1BitBmpBytes(bmp, false);
             displayBitmapImage(bmpBytes);
         } catch (Exception e) {
             Log.e(TAG, e.getMessage());
@@ -1948,7 +1948,7 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
         byte[] theClearBitmapOrSomething = loadEmptyBmpFromAssets();
         Bitmap bmp = BitmapJavaUtils.bytesToBitmap(theClearBitmapOrSomething);
         try {
-            byte[] bmpBytes = convertBitmapTo1BitBmpBytes(bmp, true);
+            byte[] bmpBytes = convertBitmapTo1BitBmpBytes(bmp, false);
             displayBitmapImage(bmpBytes);
         } catch (Exception e) {
             Log.e(TAG, "Error displaying clear bitmap: " + e.getMessage());

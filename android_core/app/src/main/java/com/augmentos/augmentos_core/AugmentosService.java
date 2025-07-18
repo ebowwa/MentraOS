@@ -1227,16 +1227,10 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                     return () -> smartGlassesManager.sendRowsCard(stringsArray);
                 case "bitmap_view":
                     String base64Data = layout.getString("data");
-                    Log.d(TAG, "Received bitmap data: " + base64Data);
-                    // check if the data is base64 or raw hex:
-                    if (base64Data.endsWith("=")) {
-                        byte[] decodedBytes = android.util.Base64.decode(base64Data, android.util.Base64.DEFAULT);
-                        Bitmap bmp = BitmapJavaUtils.bytesToBitmap(decodedBytes);
-                        return () -> smartGlassesManager.sendBitmap(bmp);
-                    }
-                    byte[] bmpData = hexStringToByteArray(base64Data);
-                    Bitmap bitmap = BitmapFactory.decodeByteArray(bmpData, 0, bmpData.length);
-                    return () -> smartGlassesManager.sendBitmap(bitmap);
+                    Log.d(TAG, "Received bitmap data: " + base64Data.length());
+                    byte[] decodedBytes = android.util.Base64.decode(base64Data, android.util.Base64.DEFAULT);
+                    Bitmap bmp = BitmapJavaUtils.bytesToBitmap(decodedBytes);
+                    return () -> smartGlassesManager.sendBitmap(bmp);
                 default:
                     Log.d(TAG, "ISSUE PARSING LAYOUT");
             }
