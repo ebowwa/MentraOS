@@ -51,6 +51,10 @@ public class OtaHelper {
     private Context context;
     private Runnable periodicCheckRunnable;
     private boolean isPeriodicCheckActive = false;
+    
+    // Retry logic constants
+    private static final int MAX_DOWNLOAD_RETRIES = 3;
+    private static final long[] RETRY_DELAYS = {30000, 60000, 120000}; // 30s, 1m, 2m
 
     public OtaHelper(Context context) {
         this.context = context.getApplicationContext(); // Use application context to avoid memory leaks
@@ -232,45 +236,18 @@ public class OtaHelper {
             }
 
             try {
-                // 1. Get installed asg_client version
-                long currentVersion;
-                try {
-                    PackageManager pm = context.getPackageManager();
-                    PackageInfo info = pm.getPackageInfo("com.augmentos.asg_client", 0);
-                    currentVersion = info.getLongVersionCode();
-                } catch (PackageManager.NameNotFoundException e) {
-                    Log.e(TAG, "Package not found");
-                    currentVersion = 0;
-                }
-
-                Log.d(TAG, "Installed version: " + currentVersion);
-
-                // 2. Fetch server version from JSON
-                JSONObject json = new JSONObject(new BufferedReader(
-                        new InputStreamReader(new URL(Constants.VERSION_JSON_URL).openStream())
-                ).lines().collect(Collectors.joining("\n")));
-                int serverVersion = json.getInt("versionCode");
-                String apkUrl = json.getString("apkUrl");
-
-//                long metaDataVer = getMetadataVersion();
-
-                // Check if APK exists and is older than 3 hours
-                File apkFile = new File(Constants.APK_FULL_PATH);
-                if (apkFile.exists()) {
-                    Log.d(TAG, "Existing APK found. Deleting and forcing new download.");
-                    boolean deleted = apkFile.delete();
-                    Log.d(TAG, "Old APK deleted: " + deleted);
-                }
-
-                Log.d(TAG, "Ver server: " + serverVersion + "\ncurrentVer: " + currentVersion);
-//                Log.d(TAG, "Metadata version: " + metaDataVer);
-
-                if (serverVersion > currentVersion) {
-                    Log.d(TAG, "new version found.");
-                    boolean downloadOk = downloadApk(apkUrl, json, context);
-                    if (downloadOk) {
-                        installApk(context);
-                    }
+                // Fetch version info
+                String versionInfo = fetchVersionInfo(Constants.VERSION_JSON_URL);
+                JSONObject json = new JSONObject(versionInfo);
+                
+                // Check if new format (multiple apps) or legacy format
+                if (json.has("apps")) {
+                    // New format - process sequentially
+                    processAppsSequentially(json.getJSONObject("apps"), context);
+                } else {
+                    // Legacy format - only ASG client
+                    Log.d(TAG, "Using legacy version.json format");
+                    checkAndUpdateApp("com.augmentos.asg_client", json, context);
                 }
             } catch (Exception e) {
                 Log.e(TAG, "Exception during OTA check", e);
@@ -281,88 +258,268 @@ public class OtaHelper {
             }
         }).start();
     }
-
-    public boolean downloadApk(String urlStr, JSONObject json, Context context) {
+    
+    private String fetchVersionInfo(String url) throws Exception {
+        BufferedReader reader = new BufferedReader(
+            new InputStreamReader(new URL(url).openStream())
+        );
+        return reader.lines().collect(Collectors.joining("\n"));
+    }
+    
+    private void processAppsSequentially(JSONObject apps, Context context) throws Exception {
+        // Process apps in order - important for sequential updates
+        String[] orderedPackages = {
+            "com.augmentos.asg_client",     // Update ASG client first
+            "com.augmentos.otaupdater"      // Then OTA updater
+        };
+        
+        for (String packageName : orderedPackages) {
+            if (!apps.has(packageName)) continue;
+            
+            JSONObject appInfo = apps.getJSONObject(packageName);
+            
+            // Check if update needed
+            long currentVersion = getInstalledVersion(packageName, context);
+            long serverVersion = appInfo.getLong("versionCode");
+            
+            if (serverVersion > currentVersion) {
+                Log.i(TAG, "Update available for " + packageName + 
+                         " (current: " + currentVersion + ", server: " + serverVersion + ")");
+                
+                // Update this app and wait for completion
+                boolean success = checkAndUpdateApp(packageName, appInfo, context);
+                
+                if (success) {
+                    Log.i(TAG, "Successfully updated " + packageName);
+                    
+                    // Wait a bit for installation to complete before checking next app
+                    Thread.sleep(5000); // 5 seconds
+                } else {
+                    Log.e(TAG, "Failed to update " + packageName + ", stopping sequential updates");
+                    break; // Stop if update fails
+                }
+            } else {
+                Log.d(TAG, packageName + " is up to date (version " + currentVersion + ")");
+            }
+        }
+        
+        Log.d(TAG, "Sequential app updates completed");
+    }
+    
+    private long getInstalledVersion(String packageName, Context context) {
         try {
-            File asgDir = new File(BASE_DIR);
-
-            if (asgDir.exists()) {
-                File targetApk = new File(Constants.APK_FULL_PATH);
-                if (targetApk.exists()) {
-                    boolean deleted = targetApk.delete();
-                    Log.d(TAG, "Deleted existing update.apk: " + deleted);
-                }
-            } else {
-                boolean created = asgDir.mkdirs();
-                Log.d(TAG, "ASG directory created: " + created);
-            }
-
-            File apkFile = new File(Constants.APK_FULL_PATH);
-
-            Log.d(TAG, "Download started ...");
-            // Download new APK file
-            URL url = new URL(urlStr);
-            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-            conn.connect();
-
-            InputStream in = conn.getInputStream();
-            FileOutputStream out = new FileOutputStream(apkFile);
-
-            byte[] buffer = new byte[4096];
-            int len;
-            long total = 0;
-            long fileSize = conn.getContentLength();
-            int lastProgress = 0;
-
-            Log.d(TAG, "Download started, file size: " + fileSize + " bytes");
+            PackageManager pm = context.getPackageManager();
+            PackageInfo info = pm.getPackageInfo(packageName, 0);
+            return info.getLongVersionCode();
+        } catch (PackageManager.NameNotFoundException e) {
+            Log.d(TAG, packageName + " not installed");
+            return 0;
+        }
+    }
+    
+    private boolean checkAndUpdateApp(String packageName, JSONObject appInfo, Context context) {
+        try {
+            long currentVersion = getInstalledVersion(packageName, context);
+            long serverVersion = appInfo.getLong("versionCode");
+            String apkUrl = appInfo.getString("apkUrl");
             
-            // Emit download started event
-            EventBus.getDefault().post(DownloadProgressEvent.createStarted(fileSize));
-
-            while ((len = in.read(buffer)) > 0) {
-                out.write(buffer, 0, len);
-                total += len;
-
-                // Calculate progress percentage
-                int progress = fileSize > 0 ? (int) (total * 100 / fileSize) : 0;
-
-                // Log progress at 5% intervals and emit progress events
-                if (progress >= lastProgress + 5 || progress == 100) {
-                    Log.d(TAG, "Download progress: " + progress + "% (" + total + "/" + fileSize + " bytes)");
-                    // Emit progress event
-                    EventBus.getDefault().post(new DownloadProgressEvent(DownloadProgressEvent.DownloadStatus.PROGRESS, progress, total, fileSize));
-                    lastProgress = progress;
-                }
-            }
-
-            out.close();
-            in.close();
-
-            Log.d(TAG, "APK downloaded to: " + apkFile.getAbsolutePath());
+            Log.d(TAG, "Checking " + packageName + " - current: " + currentVersion + ", server: " + serverVersion);
             
-            // Emit download finished event
-            EventBus.getDefault().post(DownloadProgressEvent.createFinished(fileSize));
-            
-            // Immediately check hash after download
-            boolean hashOk = verifyApkFile(apkFile.getAbsolutePath(), json);
-            Log.d(TAG, "SHA256 verification result: " + hashOk);
-            if (hashOk) {
-                createMetaDataJson(json, context);
-                return true;
-            } else {
-                Log.e(TAG, "Downloaded APK hash does not match expected value! Deleting APK.");
+            if (serverVersion > currentVersion) {
+                // Delete old APK if exists
+                String filename = packageName.equals(context.getPackageName()) 
+                    ? "ota_updater_update.apk" 
+                    : "asg_client_update.apk";
+                File apkFile = new File(BASE_DIR, filename);
+                
                 if (apkFile.exists()) {
-                    boolean deleted = apkFile.delete();
-                    Log.d(TAG, "SHA256 mismatch – APK deleted: " + deleted);
+                    Log.d(TAG, "Deleting existing APK: " + apkFile.getName());
+                    apkFile.delete();
                 }
-                // Emit download failed event due to hash mismatch
-                EventBus.getDefault().post(new DownloadProgressEvent(DownloadProgressEvent.DownloadStatus.FAILED, "SHA256 hash verification failed"));
-                return false;
+                
+                // Create backup before update
+                createAppBackup(packageName, context);
+                
+                // Download new version
+                boolean downloadOk = downloadApk(apkUrl, appInfo, context, filename);
+                if (downloadOk) {
+                    // Install
+                    installApk(context, apkFile.getAbsolutePath());
+                    
+                    // Clean up update file after 30 seconds
+                    new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                        if (apkFile.exists()) {
+                            boolean deleted = apkFile.delete();
+                            Log.d(TAG, "Cleaned up update file " + filename + ": " + deleted);
+                        }
+                    }, 30000);
+                    
+                    return true;
+                }
             }
+            return false;
         } catch (Exception e) {
-            Log.e(TAG, "OTA failed", e);
-            // Emit download failed event due to exception
-            EventBus.getDefault().post(new DownloadProgressEvent(DownloadProgressEvent.DownloadStatus.FAILED, "Download failed: " + e.getMessage()));
+            Log.e(TAG, "Failed to update " + packageName, e);
+            return false;
+        }
+    }
+    
+    private void createAppBackup(String packageName, Context context) {
+        // Only backup ASG client - OTA updater can be restored from ASG client assets
+        if (!packageName.equals("com.augmentos.asg_client")) {
+            Log.d(TAG, "Skipping backup for " + packageName + " (can be restored from assets)");
+            return;
+        }
+        
+        try {
+            PackageInfo info = context.getPackageManager().getPackageInfo(packageName, 0);
+            String sourceApk = info.applicationInfo.sourceDir;
+            
+            File backupFile = new File(BASE_DIR, "asg_client_backup.apk");
+            File sourceFile = new File(sourceApk);
+            
+            // Simple file copy
+            FileInputStream fis = new FileInputStream(sourceFile);
+            FileOutputStream fos = new FileOutputStream(backupFile);
+            byte[] buffer = new byte[8192];
+            int bytesRead;
+            while ((bytesRead = fis.read(buffer)) != -1) {
+                fos.write(buffer, 0, bytesRead);
+            }
+            fis.close();
+            fos.close();
+            
+            Log.i(TAG, "Created backup for " + packageName + " at: " + backupFile.getAbsolutePath());
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to create backup for " + packageName, e);
+        }
+    }
+
+    // Backward compatibility - default to "asg_client_update.apk"
+    public boolean downloadApk(String urlStr, JSONObject json, Context context) {
+        return downloadApk(urlStr, json, context, "asg_client_update.apk");
+    }
+    
+    // Modified to accept custom filename for different apps
+    public boolean downloadApk(String urlStr, JSONObject json, Context context, String filename) {
+        int retryCount = 0;
+        Exception lastException = null;
+        
+        while (retryCount < MAX_DOWNLOAD_RETRIES) {
+            try {
+                // Attempt download
+                if (downloadApkInternal(urlStr, json, context, filename)) {
+                    return true; // Success!
+                }
+            } catch (Exception e) {
+                lastException = e;
+                Log.e(TAG, "Download attempt " + (retryCount + 1) + " failed", e);
+                
+                // Clean up partial download
+                File partialFile = new File(BASE_DIR, filename);
+                if (partialFile.exists()) {
+                    partialFile.delete();
+                    Log.d(TAG, "Cleaned up partial download file");
+                }
+                
+                retryCount++;
+                if (retryCount < MAX_DOWNLOAD_RETRIES) {
+                    long delay = RETRY_DELAYS[Math.min(retryCount - 1, RETRY_DELAYS.length - 1)];
+                    Log.i(TAG, "Retrying download in " + (delay / 1000) + " seconds...");
+                    
+                    // Emit retry event
+                    EventBus.getDefault().post(new DownloadProgressEvent(
+                        DownloadProgressEvent.DownloadStatus.FAILED, 
+                        "Retrying in " + (delay / 1000) + " seconds..."
+                    ));
+                    
+                    try {
+                        Thread.sleep(delay);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
+                }
+            }
+        }
+        
+        Log.e(TAG, "Download failed after " + MAX_DOWNLOAD_RETRIES + " attempts", lastException);
+        EventBus.getDefault().post(new DownloadProgressEvent(
+            DownloadProgressEvent.DownloadStatus.FAILED, 
+            "Failed after " + MAX_DOWNLOAD_RETRIES + " attempts"
+        ));
+        return false;
+    }
+    
+    // Internal download method (original logic)
+    private boolean downloadApkInternal(String urlStr, JSONObject json, Context context, String filename) throws Exception {
+        File asgDir = new File(BASE_DIR);
+
+        if (!asgDir.exists()) {
+            boolean created = asgDir.mkdirs();
+            Log.d(TAG, "ASG directory created: " + created);
+        }
+
+        File apkFile = new File(asgDir, filename);
+
+        Log.d(TAG, "Download started ...");
+        // Download new APK file
+        URL url = new URL(urlStr);
+        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+        conn.connect();
+
+        InputStream in = conn.getInputStream();
+        FileOutputStream out = new FileOutputStream(apkFile);
+
+        byte[] buffer = new byte[4096];
+        int len;
+        long total = 0;
+        long fileSize = conn.getContentLength();
+        int lastProgress = 0;
+
+        Log.d(TAG, "Download started, file size: " + fileSize + " bytes");
+        
+        // Emit download started event
+        EventBus.getDefault().post(DownloadProgressEvent.createStarted(fileSize));
+
+        while ((len = in.read(buffer)) > 0) {
+            out.write(buffer, 0, len);
+            total += len;
+
+            // Calculate progress percentage
+            int progress = fileSize > 0 ? (int) (total * 100 / fileSize) : 0;
+
+            // Log progress at 5% intervals and emit progress events
+            if (progress >= lastProgress + 5 || progress == 100) {
+                Log.d(TAG, "Download progress: " + progress + "% (" + total + "/" + fileSize + " bytes)");
+                // Emit progress event
+                EventBus.getDefault().post(new DownloadProgressEvent(DownloadProgressEvent.DownloadStatus.PROGRESS, progress, total, fileSize));
+                lastProgress = progress;
+            }
+        }
+
+        out.close();
+        in.close();
+
+        Log.d(TAG, "APK downloaded to: " + apkFile.getAbsolutePath());
+        
+        // Emit download finished event
+        EventBus.getDefault().post(DownloadProgressEvent.createFinished(fileSize));
+        
+        // Immediately check hash after download
+        boolean hashOk = verifyApkFile(apkFile.getAbsolutePath(), json);
+        Log.d(TAG, "SHA256 verification result: " + hashOk);
+        if (hashOk) {
+            createMetaDataJson(json, context);
+            return true;
+        } else {
+            Log.e(TAG, "Downloaded APK hash does not match expected value! Deleting APK.");
+            if (apkFile.exists()) {
+                boolean deleted = apkFile.delete();
+                Log.d(TAG, "SHA256 mismatch – APK deleted: " + deleted);
+            }
+            // Emit download failed event due to hash mismatch
+            EventBus.getDefault().post(new DownloadProgressEvent(DownloadProgressEvent.DownloadStatus.FAILED, "SHA256 hash verification failed"));
             return false;
         }
     }

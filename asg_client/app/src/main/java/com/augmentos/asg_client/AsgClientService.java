@@ -202,6 +202,8 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     // ---------------------------------------------
     // Lifecycle Methods
     // ---------------------------------------------
+    private OtaUpdaterManager otaUpdaterManager;
+    
     public AsgClientService() {
         // Empty constructor
     }
@@ -214,14 +216,9 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         // Enable WiFi when service starts
         openWifi(this, true);
 
-        // Start OTA Updater after 5 seconds
-        new Handler(Looper.getMainLooper()).postDelayed(() -> {
-            Log.d(TAG, "Starting OTA Updater MainActivity after delay");
-            Intent otaIntent = new Intent();
-            otaIntent.setClassName("com.augmentos.otaupdater", "com.augmentos.otaupdater.MainActivity");
-            otaIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            startActivity(otaIntent);
-        }, 5000); // 5 seconds delay
+        // Initialize OTA updater manager
+        otaUpdaterManager = new OtaUpdaterManager(this);
+        otaUpdaterManager.initialize();
 
         // Send version info after 3 seconds
 //        new Handler(Looper.getMainLooper()).postDelayed(() -> {
@@ -697,6 +694,12 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     public void onDestroy() {
         super.onDestroy();
         Log.d(TAG, "AsgClientService onDestroy");
+        
+        // Clean up OTA updater manager
+        if (otaUpdaterManager != null) {
+            otaUpdaterManager.cleanup();
+            otaUpdaterManager = null;
+        }
 
         // Unregister service health monitor
         try {
