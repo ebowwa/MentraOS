@@ -133,12 +133,12 @@ export class EventManager {
   /**
    * 🎤 Listen for transcription events in a specific language
    * @param language - Language code (e.g., "en-US")
-   * @param disableLanguageIdentification - Optional flag to disable language identification (defaults to false/enabled)
    * @param handler - Function to handle transcription data
+   * @param disableLanguageIdentification - Optional flag to disable language identification (defaults to false/enabled)
    * @returns Cleanup function to remove the handler
    * @throws Error if language code is invalid
    */
-  onTranscriptionForLanguage(language: string, disableLanguageIdentification = false, handler: Handler<TranscriptionData>): () => void {
+  onTranscriptionForLanguage(language: string, handler: Handler<TranscriptionData>, disableLanguageIdentification = false): () => void {
     if (!isValidLanguageCode(language)) {
       throw new Error(`Invalid language code: ${language}`);
     }

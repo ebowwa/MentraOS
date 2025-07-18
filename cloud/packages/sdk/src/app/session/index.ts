@@ -339,8 +339,8 @@ export class AppSession {
    * @throws Error if language code is invalid
    * @deprecated Use session.events.onTranscriptionForLanguage() instead
    */
-  onTranscriptionForLanguage(language: string, handler: (data: TranscriptionData) => void): () => void {
-    return this.events.onTranscriptionForLanguage(language, handler);
+  onTranscriptionForLanguage(language: string, handler: (data: TranscriptionData) => void, disableLanguageIdentification = false): () => void {
+    return this.events.onTranscriptionForLanguage(language, handler, disableLanguageIdentification);
   }
 
   /**
