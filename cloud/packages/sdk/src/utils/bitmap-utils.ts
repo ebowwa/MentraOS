@@ -70,10 +70,25 @@ export class BitmapUtils {
    *
    * @example
    * ```typescript
-   * const bmpHex = await BitmapUtils.loadBmpAsHex('./assets/icon.bmp');
-   * session.layouts.showBitmapView(bmpHex);
+   * const bmpBase64 = await BitmapUtils.loadBmpFromFileAsBase64('./assets/icon.bmp');
+   * session.layouts.showBitmapView(bmpBase64);
    * ```
    */
+  static async loadBmpFromFileAsBase64(filePath: string): Promise<string> {
+    try {
+      const bmpData = await fs.readFile(filePath);
+
+      return this.loadBmpFromDataAsBase64(bmpData);
+    } catch (error) {
+      if (error instanceof Error) {
+        throw new Error(
+          `Failed to load BMP file ${filePath}: ${error.message}`,
+        );
+      }
+      throw new Error(`Failed to load BMP file ${filePath}: Unknown error`);
+    }
+  }
+
   static async loadBmpFromFileAsHex(filePath: string): Promise<string> {
     try {
       const bmpData = await fs.readFile(filePath);
@@ -201,6 +216,16 @@ export class BitmapUtils {
   }
 
   static async loadBmpFromDataAsHex(bmpData: Buffer): Promise<string> {
+    const paddedBmpData = await this.padBmpData(bmpData);
+    return paddedBmpData.toString("hex");
+  }
+
+  static async loadBmpFromDataAsBase64(bmpData: Buffer): Promise<string> {
+    const paddedBmpData = await this.padBmpData(bmpData);
+    return paddedBmpData.toString("base64");
+  }
+
+  static async padBmpData(bmpData: Buffer): Promise<Buffer> {
     try {
       // Basic BMP validation - check for BMP signature
       if (bmpData.length < 14 || bmpData[0] !== 0x42 || bmpData[1] !== 0x4d) {
@@ -224,7 +249,7 @@ export class BitmapUtils {
         const paddedImage = new Jimp({
           width: 576,
           height: 135,
-          color: 0xffffffff,
+          color: 0x00000000,
         });
 
         // // Calculate position to place the original image (with padding)
@@ -241,7 +266,7 @@ export class BitmapUtils {
       }
       // No padding needed, just return as hex
       console.log(`finalBmpData: ${finalBmpData.length} bytes`);
-      return finalBmpData.toString("hex");
+      return finalBmpData;
     } catch (error) {
       if (error instanceof Error) {
         throw new Error(`Failed to load BMP data: ${error.message}`);
@@ -291,10 +316,10 @@ export class BitmapUtils {
       const filePath = path.join(basePath, fileName);
 
       try {
-        const frameHex = await this.loadBmpFromFileAsHex(filePath);
+        const frameHex = await this.loadBmpFromFileAsBase64(filePath);
 
         if (validateFrames) {
-          const validation = this.validateBmpHex(frameHex);
+          const validation = this.validateBmpBase64(frameHex);
           if (!validation.isValid) {
             const errorMsg = `Frame ${frameNumber} validation failed: ${validation.errors.join(
               ", ",
@@ -354,13 +379,14 @@ export class BitmapUtils {
    * }
    * ```
    */
-  static validateBmpHex(hexString: string): BitmapValidation {
+  static validateBmpBase64(base64String: string): BitmapValidation {
     const errors: string[] = [];
     let byteCount = 0;
     let blackPixels = 0;
     const metadata: BitmapValidation["metadata"] = {};
 
     try {
+      const hexString = Buffer.from(base64String, "base64").toString("hex");
       // Basic hex validation
       if (typeof hexString !== "string" || hexString.length === 0) {
         errors.push("Hex string is empty or invalid");
