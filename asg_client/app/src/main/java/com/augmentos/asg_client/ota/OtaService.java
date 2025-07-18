@@ -20,6 +20,7 @@ import org.greenrobot.eventbus.ThreadMode;
 import com.augmentos.asg_client.ota.events.DownloadProgressEvent;
 import com.augmentos.asg_client.ota.events.InstallationProgressEvent;
 import com.augmentos.asg_client.events.BatteryStatusEvent;
+import com.augmentos.asg_client.SysControl;
 
 public class OtaService extends Service {
     private static final String TAG = Constants.TAG;
@@ -39,6 +40,16 @@ public class OtaService extends Service {
         // Start as foreground service
         startForeground(NOTIFICATION_ID, createNotification("OTA Service Running"));
         
+        // TEMPORARY: Kill external OTA updater app if it's running
+        // This prevents dual OTA checks when updating from older versions
+        try {
+            Log.w(TAG, "Stopping external OTA updater app to prevent conflicts");
+            SysControl.stopApp(this, "com.augmentos.otaupdater");
+            Log.i(TAG, "External OTA updater stopped");
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to stop external OTA updater", e);
+        }
+        
         // Initialize OTA helper
         otaHelper = new OtaHelper(this);
         
@@ -47,9 +58,11 @@ public class OtaService extends Service {
             EventBus.getDefault().register(this);
         }
         
-        // Start checking for updates
-        Log.i(TAG, "Starting OTA update check");
-        otaHelper.startVersionCheck(this);
+        // OtaHelper will automatically start checking:
+        // - After 15 seconds (initial check)
+        // - Every 30 minutes (periodic checks)
+        // - When WiFi becomes available
+        Log.i(TAG, "OTA service initialized - checks will begin automatically");
     }
     
     @Override

@@ -46,6 +46,7 @@ public class OtaHelper {
     private static ConnectivityManager.NetworkCallback networkCallback;
     private static ConnectivityManager connectivityManager;
     private static volatile boolean isCheckingVersion = false;
+    private static volatile boolean isUpdating = false;  // Tracks download/install in progress
     private static final Object versionCheckLock = new Object();
     private Handler handler;
     private Context context;
@@ -228,8 +229,8 @@ public class OtaHelper {
         new Thread(() -> {
             // Use synchronized block to ensure thread safety
             synchronized (versionCheckLock) {
-                if (isCheckingVersion) {
-                    Log.d(TAG, "Another thread started version check, skipping");
+                if (isCheckingVersion || isUpdating) {
+                    Log.d(TAG, "Version check or update already in progress, skipping");
                     return;
                 }
                 isCheckingVersion = true;
@@ -326,6 +327,10 @@ public class OtaHelper {
             Log.d(TAG, "Checking " + packageName + " - current: " + currentVersion + ", server: " + serverVersion);
             
             if (serverVersion > currentVersion) {
+                // Set update flag to prevent concurrent updates
+                isUpdating = true;
+                Log.i(TAG, "Starting update process for " + packageName);
+                
                 // Delete old APK if exists
                 String filename = packageName.equals(context.getPackageName()) 
                     ? "ota_updater_update.apk" 
@@ -788,6 +793,10 @@ public class OtaHelper {
                     Log.i(TAG, "Sent update completion broadcast");
                 } catch (Exception e) {
                     Log.e(TAG, "Failed to send delayed update completion broadcast", e);
+                } finally {
+                    // Always clear the update flag when done
+                    isUpdating = false;
+                    Log.d(TAG, "Update process completed, ready for next check");
                 }
             }, 1000); // 1 second delay between reset and completion
         } catch (Exception e) {
@@ -800,6 +809,9 @@ public class OtaHelper {
                 Log.i(TAG, "Sent fallback update completion broadcast");
             } catch (Exception ex) {
                 Log.e(TAG, "Failed to send fallback update completion broadcast", ex);
+            } finally {
+                // Make sure to clear flag even on error
+                isUpdating = false;
             }
         }
     }
