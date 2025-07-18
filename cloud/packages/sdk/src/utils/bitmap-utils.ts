@@ -89,6 +89,21 @@ export class BitmapUtils {
     }
   }
 
+  static async loadBmpFromFileAsHex(filePath: string): Promise<string> {
+    try {
+      const bmpData = await fs.readFile(filePath);
+
+      return this.loadBmpFromDataAsHex(bmpData);
+    } catch (error) {
+      if (error instanceof Error) {
+        throw new Error(
+          `Failed to load BMP file ${filePath}: ${error.message}`,
+        );
+      }
+      throw new Error(`Failed to load BMP file ${filePath}: Unknown error`);
+    }
+  }
+
   static async convert24BitTo1BitBMP(input24BitBmp: Buffer): Promise<Buffer> {
     // Read header information from 24-bit BMP
     const width = input24BitBmp.readUInt32LE(18);

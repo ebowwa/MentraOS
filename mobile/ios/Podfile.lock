@@ -120,7 +120,6 @@ PODS:
     - React-RCTText (= 0.76.9)
     - React-RCTVibration (= 0.76.9)
   - React-callinvoker (0.76.9)
-  - React-Codegen (0.1.0)
   - React-Core (0.76.9):
     - glog
     - hermes-engine
@@ -1392,13 +1391,6 @@ PODS:
     - React-Core
   - react-native-create-thumbnail (2.1.1):
     - React-Core
-  - react-native-fast-base64 (0.1.4):
-    - RCT-Folly
-    - RCTRequired
-    - RCTTypeSafety
-    - React-Codegen
-    - React-Core
-    - ReactCommon/turbomodule/core
   - react-native-image-picker (8.2.1):
     - DoubleConversion
     - glog
@@ -2292,7 +2284,6 @@ DEPENDENCIES:
   - react-native-bottom-tabs (from `../node_modules/react-native-bottom-tabs`)
   - react-native-config (from `../node_modules/react-native-config`)
   - react-native-create-thumbnail (from `../node_modules/react-native-create-thumbnail`)
-  - react-native-fast-base64 (from `../node_modules/react-native-fast-base64`)
   - react-native-image-picker (from `../node_modules/react-native-image-picker`)
   - react-native-keyboard-controller (from `../node_modules/react-native-keyboard-controller`)
   - react-native-mmkv (from `../node_modules/react-native-mmkv`)
@@ -2347,7 +2338,6 @@ SPEC REPOS:
     - libdav1d
     - onnxruntime-c
     - onnxruntime-objc
-    - React-Codegen
     - SDWebImage
     - SDWebImageAVIFCoder
     - SDWebImageSVGCoder
@@ -2473,8 +2463,6 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native-config"
   react-native-create-thumbnail:
     :path: "../node_modules/react-native-create-thumbnail"
-  react-native-fast-base64:
-    :path: "../node_modules/react-native-fast-base64"
   react-native-image-picker:
     :path: "../node_modules/react-native-image-picker"
   react-native-keyboard-controller:
@@ -2602,7 +2590,6 @@ SPEC CHECKSUMS:
   RCTTypeSafety: e7678bd60850ca5a41df9b8dc7154638cb66871f
   React: 4641770499c39f45d4e7cde1eba30e081f9d8a3d
   React-callinvoker: 4bef67b5c7f3f68db5929ab6a4d44b8a002998ea
-  React-Codegen: 4b8b4817cea7a54b83851d4c1f91f79aa73de30a
   React-Core: a68cea3e762814e60ecc3fa521c7f14c36c99245
   React-CoreModules: d81b1eaf8066add66299bab9d23c9f00c9484c7c
   React-cxxreact: 984f8b1feeca37181d4e95301fcd6f5f6501c6ab
@@ -2630,7 +2617,6 @@ SPEC CHECKSUMS:
   react-native-bottom-tabs: 4e29ba5631b9890b9d15d3f1ef35c03a89a1bc2e
   react-native-config: 644074ab88db883fcfaa584f03520ec29589d7df
   react-native-create-thumbnail: 733160dca9a548262e1030e7fcdae90a93d203ca
-  react-native-fast-base64: 2a9843c6b97ebd26fda8fd7ab384a750d033fdc5
   react-native-image-picker: c5da8aa14fdffbd4d77338c352f52a8d85fcacec
   react-native-keyboard-controller: b3d68f377e97666bf539ee7d8d6d77ac7a50f9ca
   react-native-mmkv: 5c69dce0d439e1791a884f6b166e76fc7fadaca6

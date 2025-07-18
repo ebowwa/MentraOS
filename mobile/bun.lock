@@ -49,7 +49,6 @@
         "react-native-create-thumbnail": "^2.1.1",
         "react-native-drawer-layout": "^4.1.11",
         "react-native-elements": "^3.4.3",
-        "react-native-fast-base64": "^0.1.4",
         "react-native-fs": "^2.20.0",
         "react-native-gesture-handler": "~2.20.2",
         "react-native-image-picker": "^8.2.1",

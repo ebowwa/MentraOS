@@ -710,11 +710,6 @@ struct ViewState {
       switch layoutType {
       case "text_wall":
         let text = currentViewState.text
-        //        let chunks = textHelper.createTextWallChunks(text)
-        //        for chunk in chunks {
-        //          CoreCommsService.log("Sending chunk: \(chunk)")
-        //          await sendCommand(chunk)
-        //        }
         sendText(text);
         break
       case "double_text_wall":

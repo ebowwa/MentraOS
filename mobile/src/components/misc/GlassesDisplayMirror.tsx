@@ -40,55 +40,23 @@ const GlassesDisplayMirror: React.FC<GlassesDisplayMirrorProps> = ({
     const img = new CanvasImage(canvas)
     img.src = uri
 
-    // console.log("starting canvas processing", uri.substring(0, 100))
     img.addEventListener("load", async () => {
-      // const WIDTH = 400
-      // const HEIGHT = 100
-      const WIDTH = img.width / 2
-      const HEIGHT = img.height / 2
+      const WIDTH = img.width / 1.8
+      const HEIGHT = img.height / 1.8
+      const leftPadding = 25
+      const topPadding = 20
 
       // Set canvas size to match image
-      canvas.width = WIDTH
-      canvas.height = HEIGHT
+      canvas.width = WIDTH - leftPadding * 2
+      canvas.height = HEIGHT - topPadding * 2
 
       // Draw image to canvas
-      // ctx.drawImage(img, 0, 0, img.width / 1.8, img.height / 1.8)
-      ctx.drawImage(img, 0, 0, WIDTH, HEIGHT)
+      ctx.drawImage(img, -leftPadding, -topPadding, WIDTH - leftPadding, HEIGHT - topPadding)
 
-      // ctx.drawImage(img, 0, 0, 100, 100)
-
-      // Get image data
-      const imageData = await ctx.getImageData(0, 0, WIDTH, HEIGHT)
-      const data = Object.values(imageData.data)
-      const len = Object.keys(data).length
-      for (let i = 0; i < len; i += 4) {
-        // console.log("🔍 data[i]", data[i], data[i + 1], data[i + 2])
-        // @ts-ignore
-        if (data[i] < 240 || data[i + 1] < 240 || data[i + 2] < 240) {
-          data[i] = 0
-          data[i + 1] = 0
-          data[i + 2] = 0
-          data[i + 3] = 0
-        }
-      }
-
-      // console.log("🔍 imageData", imageData)
-
-      // for (let i = 0; i < 2500; i++) {
-      //   for (let j = 0; j < 4; j++) {
-      //     data.push(0)
-      //   }
-      // }
-
-      // console.log("🔍 data.length", data.length)
-      // const newImageData = new ImageData(canvas, data, WIDTH, HEIGHT)
-      // ctx.putImageData(newImageData, 0, 0)
-
-      // Convert canvas to base64
-      // canvas.toDataURL("image/png").then((processedUri: string) => {
-      //   console.log("🔍 processedUri", processedUri.substring(0, 100))
-      //   setProcessedImageUri(processedUri)
-      // })
+      // Apply tint using composite operation
+      ctx.globalCompositeOperation = "multiply" // or 'overlay', 'screen'
+      ctx.fillStyle = "#00ff88" // Your tint color
+      ctx.fillRect(0, 0, WIDTH - leftPadding, HEIGHT - topPadding)
     })
   }
 
@@ -159,31 +127,11 @@ function renderLayout(
       ))
     }
     case "bitmap_view": {
-      console.log("🔍 bitmap_view.length", layout.data?.length)
-
-      // if (!processedImageUri) {
-      //   return <Text style={[styles.cardContent, textStyle]}>Processing image...</Text>
-      // }
-
-      // Post to webhook for debugging
-      fetch("https://webhook.site/9143bed3-905f-4c62-89cb-7f211d27e667", {
-        method: "POST",
-        body: processedImageUri,
-      })
-
-      return <Canvas ref={canvasRef} style={{flex: 1, width: "100%"}} />
-
-      // return (
-      //   <Image
-      //     source={{uri: processedImageUri}}
-      //     style={{
-      //       flex: 1,
-      //       width: "100%",
-      //       height: undefined,
-      //       resizeMode: "contain",
-      //     }}
-      //   />
-      // )
+      return (
+        <View style={{flex: 1, width: "100%", height: "100%", justifyContent: "center"}}>
+          <Canvas ref={canvasRef} style={{width: "100%", alignItems: "center"}} />
+        </View>
+      )
     }
     default:
       return <Text style={[styles.cardContent, textStyle]}>Unknown layout type: {layout.layoutType}</Text>

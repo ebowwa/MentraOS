@@ -1433,14 +1433,6 @@ extension ERG1Manager {
   public typealias BmpSuccessCallback = (String) -> Void
   public typealias BmpErrorCallback = (String, String) -> Void
   
-  /// Display bitmap from base64 encoded data
-  @objc public func RN_displayBitmap(_ base64ImageData: String) {
-    CoreCommsService.log("RN_displayBitmap() - Size: \(base64ImageData.count) characters")
-    Task {
-      await displayBitmap(base64ImageData: base64ImageData)
-    }
-  }
-  
   public func displayBitmap(base64ImageData: String,
                             onProgress: BmpProgressCallback? = nil,
                             onSuccess: BmpSuccessCallback? = nil,
@@ -1452,7 +1444,32 @@ extension ERG1Manager {
       return false
     }
     
-    return await displayBitmapData(bmpData: bmpData, onProgress: onProgress, onSuccess: onSuccess, onError: onError)
+    CoreCommsService.log("✅ Successfully decoded base64 image data to \(bmpData.count) bytes")
+    // CoreCommsService.log("🔍 First 10 bytes from hex: \(Array(bmpData.prefix(10)).map { String(format: "0x%02X", $0) }.joined(separator: " "))")
+    
+    let invertedBmpData = invertBmpPixels(bmpData)
+    // Debug: Check if we have any non-FF bytes in pixel data
+    let pixelData = bmpData.dropFirst(62)
+    let nonFFCount = pixelData.filter { $0 != 0xFF }.count
+    // CoreCommsService.log("🎨 iOS decoded: \(nonFFCount) black pixels out of \(pixelData.count) bytes")
+    
+    // Show first few non-FF bytes
+    let nonFFBytes = Array(pixelData.enumerated().filter { $0.element != 0xFF }.prefix(5))
+    let nonFFDebug = nonFFBytes.map { "pos \($0.offset)=0x\(String(format: "%02X", $0.element))" }.joined(separator: ", ")
+    // CoreCommsService.log("🔍 iOS non-FF bytes: \(nonFFDebug)")
+    
+    // Debug: show hex sample received
+    // CoreCommsService.log("🔍 iOS received hex sample (chars 100-200): \(hexString.dropFirst(100).prefix(100))")
+    
+    // CRITICAL: Check if data is still good right before calling display function
+    let pixelCheck = bmpData.dropFirst(62)
+    let blackCheck = pixelCheck.filter { $0 != 0xFF }.count
+    // CoreCommsService.log("🔍 Just before display call: \(blackCheck) black pixels - DATA IS \(blackCheck > 0 ? "GOOD" : "CORRUPTED")")
+    
+    // CoreCommsService.log("🖼️ Single frame: Using fast MentraOS transmission method")
+    let result = await displayBitmapDataMentraOS(bmpData: invertedBmpData, sendLeft: true, sendRight: true, onProgress: onProgress, onSuccess: onSuccess, onError: onError)
+    CoreCommsService.log("🖼️ Single frame: Transmission \(result ? "SUCCESS" : "FAILED")")
+    return result
   }
   
   /// Clear display using MentraOS's 0x18 command (exit to dashboard)
@@ -1673,20 +1690,6 @@ extension ERG1Manager {
     return true
   }
   
-  public func displayBitmapBase64(base64ImageData: String,
-                                    onProgress: BmpProgressCallback? = nil,
-                                    onSuccess: BmpSuccessCallback? = nil,
-                                    onError: BmpErrorCallback? = nil) async -> Bool {
-    
-    guard let bmpData = Data(base64Encoded: base64ImageData) else {
-      CoreCommsService.log("Failed to decode base64 image data")
-      onError?("both", "Failed to decode base64 image data")
-      return false
-    }
-    
-    return await displayBitmapDataMentraOS(bmpData: bmpData, onProgress: onProgress, onSuccess: onSuccess, onError: onError)
-  }
-  
   /// Display bitmap from hex string using MentraOS-compatible protocol
   public func displayBitmapFromHex(hexString: String,
                                    onProgress: BmpProgressCallback? = nil,
@@ -1698,6 +1701,8 @@ extension ERG1Manager {
       onError?("both", "Failed to decode hex image data")
       return false
     }
+
+    CoreCommsService.log("🔍 iOS hex decoded image data: \(bmpData.map { String(format: "%02X", $0) }.joined(separator: " "))")
     
     CoreCommsService.log("✅ Successfully decoded hex to \(bmpData.count) bytes")
     // CoreCommsService.log("🔍 First 10 bytes from hex: \(Array(bmpData.prefix(10)).map { String(format: "0x%02X", $0) }.joined(separator: " "))")
@@ -1724,6 +1729,29 @@ extension ERG1Manager {
     let result = await displayBitmapDataMentraOS(bmpData: bmpData, sendLeft: true, sendRight: true, onProgress: onProgress, onSuccess: onSuccess, onError: onError)
     CoreCommsService.log("🖼️ Single frame: Transmission \(result ? "SUCCESS" : "FAILED")")
     return result
+  }
+  
+  private func invertBmpPixels(_ bmpData: Data) -> Data {
+      guard bmpData.count > 62 else {
+          CoreCommsService.log("BMP data too small to contain pixel data")
+          return bmpData
+      }
+      
+      // BMP header is 62 bytes for your format (14 byte file header + 40 byte DIB header + 8 byte color table)
+      let headerSize = 62
+      var invertedData = Data(bmpData.prefix(headerSize)) // Keep header unchanged
+      
+      // Invert the pixel data (everything after the header)
+      let pixelData = bmpData.dropFirst(headerSize)
+      
+      for byte in pixelData {
+          // Invert each byte (flip all bits)
+          let invertedByte = ~byte
+          invertedData.append(invertedByte)
+      }
+      
+      CoreCommsService.log("Inverted BMP pixels: \(pixelData.count) bytes processed")
+      return invertedData
   }
   
   /// Core MentraOS-compatible BMP display implementation
@@ -1976,21 +2004,6 @@ extension ERG1Manager {
       // Wait for all tasks to complete
       await group.waitForAll()
     }
-    
-    // if sendLeft {
-    //   CoreCommsService.log("🔄 Sending to LEFT side (MentraOS sequential method)")
-    //   let leftResult = await sendToSide("L")
-    //   results.append(("L", leftResult))
-    
-    //   // Small delay between left and right like MentraOS
-    //   try? await Task.sleep(nanoseconds: 5_000_000) // 5ms between sides
-    // }
-    
-    // if sendRight {
-    //   CoreCommsService.log("🔄 Sending to RIGHT side (MentraOS sequential method)")
-    //   let rightResult = await sendToSide("R")
-    //   results.append(("R", rightResult))
-    // }
     
     // Check results with detailed synchronization status
     var allSuccess = true
