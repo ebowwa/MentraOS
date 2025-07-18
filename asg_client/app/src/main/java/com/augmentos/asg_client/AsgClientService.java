@@ -80,7 +80,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     public static final String ACTION_RESTART_SERVICE = "com.augmentos.asg_client.ACTION_RESTART_SERVICE";
     public static final String ACTION_RESTART_COMPLETE = "com.augmentos.asg_client.ACTION_RESTART_COMPLETE";
     public static final String ACTION_RESTART_CAMERA = "com.augmentos.asg_client.ACTION_RESTART_CAMERA";
-    
+
     // OTA Update progress actions
     public static final String ACTION_DOWNLOAD_PROGRESS = "com.augmentos.otaupdater.ACTION_DOWNLOAD_PROGRESS";
     public static final String ACTION_INSTALLATION_PROGRESS = "com.augmentos.otaupdater.ACTION_INSTALLATION_PROGRESS";
@@ -141,11 +141,11 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     private Runnable wifiDebounceRunnable;
     private boolean lastWifiState = false;
     private boolean pendingWifiState = false;
-    
+
     // Battery status tracking
     private int glassesBatteryLevel = -1; // -1 means unknown
     private boolean glassesCharging = false;
-    
+
     // Track last broadcasted battery status to avoid redundant broadcasts
     private int lastBroadcastedBatteryLevel = -1;
     private boolean lastBroadcastedCharging = false;
@@ -155,7 +155,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
 
     // Receiver for handling restart requests from OTA updater
     private BroadcastReceiver restartReceiver;
-    
+
     // Receiver for handling OTA update progress from OTA updater
     private BroadcastReceiver otaProgressReceiver;
 
@@ -881,7 +881,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         }
         return false;
     }
-    
+
     /**
      * Get the current battery level of the connected glasses
      * @return battery level as percentage (0-100), or -1 if unknown
@@ -889,7 +889,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     public int getGlassesBatteryLevel() {
         return glassesBatteryLevel;
     }
-    
+
     /**
      * Check if the connected glasses are currently charging
      * @return true if charging, false if not charging or unknown
@@ -897,7 +897,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     public boolean isGlassesCharging() {
         return glassesCharging;
     }
-    
+
     /**
      * Get the current battery status as a formatted string
      * @return formatted battery status string
@@ -908,7 +908,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         }
         return glassesBatteryLevel + "% " + (glassesCharging ? "(charging)" : "(not charging)");
     }
-    
+
     /**
      * Broadcast battery status to OTA updater only if the status has changed
      * @param level Battery level (0-100)
@@ -921,21 +921,21 @@ public class AsgClientService extends Service implements NetworkStateListener, B
             Log.d(TAG, "🔋 Battery status unchanged - skipping broadcast: " + level + "% " + (charging ? "(charging)" : "(not charging)"));
             return;
         }
-        
+
         try {
             Intent batteryIntent = new Intent(AsgConstants.ACTION_GLASSES_BATTERY_STATUS);
             batteryIntent.setPackage("com.augmentos.otaupdater");
             batteryIntent.putExtra("battery_level", level);
             batteryIntent.putExtra("charging", charging);
             batteryIntent.putExtra("timestamp", timestamp);
-            
+
             sendBroadcast(batteryIntent);
             Log.d(TAG, "📡 Broadcasted battery status to OTA updater: " + level + "% " + (charging ? "(charging)" : "(not charging)"));
-            
+
             // Update last broadcasted values
             lastBroadcastedBatteryLevel = level;
             lastBroadcastedCharging = charging;
-            
+
         } catch (Exception e) {
             Log.e(TAG, "Error broadcasting battery status to OTA updater", e);
         }
@@ -957,12 +957,12 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                     downloadProgress.put("error_message", errorMessage);
                 }
                 downloadProgress.put("timestamp", timestamp);
-                
+
                 // Convert to string and send via BLE
                 String jsonString = downloadProgress.toString();
                 Log.d(TAG, "📥 Sending download progress via BLE: " + status + " - " + progress + "%");
                 bluetoothManager.sendData(jsonString.getBytes());
-                
+
             } catch (JSONException e) {
                 Log.e(TAG, "Error creating download progress JSON", e);
             }
@@ -985,12 +985,12 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                     installationProgress.put("error_message", errorMessage);
                 }
                 installationProgress.put("timestamp", timestamp);
-                
+
                 // Convert to string and send via BLE
                 String jsonString = installationProgress.toString();
                 Log.d(TAG, "🔧 Sending installation progress via BLE: " + status + " - " + apkPath);
                 bluetoothManager.sendData(jsonString.getBytes());
-                
+
             } catch (JSONException e) {
                 Log.e(TAG, "Error creating installation progress JSON", e);
             }
@@ -1099,7 +1099,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                     } else {
                         wifiStatus.put("ssid", "unknown");
                     }
-                    
+
                     // Add local IP address
                     String localIp = networkManager.getLocalIpAddress();
                     if (localIp != null && !localIp.isEmpty()) {
@@ -1421,6 +1421,22 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                     String requestId = dataToProcess.optString("requestId", "");
                     String webhookUrl = dataToProcess.optString("webhookUrl", "");
 
+                    // Extract preferred size parameters
+                    int preferredWidth = 0;
+                    int preferredHeight = 0;
+                    if (dataToProcess.has("preferredSize")) {
+                        try {
+                            org.json.JSONObject sizeObj = dataToProcess.getJSONObject("preferredSize");
+                            preferredWidth = sizeObj.optInt("width", 0);
+                            preferredHeight = sizeObj.optInt("height", 0);
+                        } catch (org.json.JSONException e) {
+                            Log.w(TAG, "Failed to parse preferredSize: " + e.getMessage());
+                        }
+                    }
+
+                    // Extract quality parameter (1-100)
+                    int quality = dataToProcess.optInt("quality", 90); // Default to 90 if not specified
+
                     if (requestId.isEmpty()) {
                         Log.e(TAG, "Cannot take photo - missing requestId");
                         return;
@@ -1432,9 +1448,13 @@ public class AsgClientService extends Service implements NetworkStateListener, B
 
                     Log.d(TAG, "Taking photo with requestId: " + requestId);
                     Log.d(TAG, "Photo will be saved to: " + photoFilePath);
+                    if (preferredWidth > 0 && preferredHeight > 0) {
+                        Log.d(TAG, "Preferred size: " + preferredWidth + "x" + preferredHeight);
+                    }
+                    Log.d(TAG, "Quality: " + quality);
 
-                    // Take the photo using MediaCaptureService with webhook URL
-                    mMediaCaptureService.takePhotoAndUpload(photoFilePath, requestId, webhookUrl);
+                    // Take the photo using MediaCaptureService with all parameters
+                    mMediaCaptureService.takePhotoAndUpload(photoFilePath, requestId, webhookUrl, preferredWidth, preferredHeight, quality);
                     break;
 
                 case "start_video_recording":
@@ -1731,19 +1751,19 @@ public class AsgClientService extends Service implements NetworkStateListener, B
 
                 case "request_battery_state":
                     break;
-                    
+
                 case "battery_status":
                     // Process battery status from glasses
                     int level = dataToProcess.optInt("level", -1);
                     boolean charging = dataToProcess.optBoolean("charging", false);
                     long timestamp = dataToProcess.optLong("timestamp", System.currentTimeMillis());
-                    
+
                     // Store battery status locally
                     glassesBatteryLevel = level;
                     glassesCharging = charging;
-                    
+
                     Log.d(TAG, "🔋 Received battery status from glasses: " + level + "% " + (charging ? "(charging)" : "(not charging)") + " at " + timestamp);
-                    
+
                     // Broadcast battery status to OTA updater immediately
                     broadcastBatteryStatusToOtaUpdater(level, charging, timestamp);
                     break;
@@ -1841,7 +1861,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         try {
             String command = json.optString("C", "");
             JSONObject bData = json.optJSONObject("B");
-            
+
             switch (command) {
                 case "cs_pho":
                     handleButtonPress(false);
@@ -1862,7 +1882,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                     if (bData != null) {
                         int newBatteryPercentage = bData.optInt("pt", -1);
                         int newBatteryVoltage = bData.optInt("vt", -1);
-                        
+
                         if (newBatteryPercentage != -1) {
                             this.batteryPercentage = newBatteryPercentage;
                             Log.d(TAG, "🔋 Battery percentage: " + batteryPercentage + "%");
@@ -1871,7 +1891,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                             this.batteryVoltage = newBatteryVoltage;
                             Log.d(TAG, "🔋 Battery voltage: " + batteryVoltage + "mV");
                         }
-                        
+
                         // Send battery status over BLE if we have valid data
                         if (batteryPercentage != -1 || batteryVoltage != -1) {
                             sendBatteryStatusOverBle();
@@ -2475,7 +2495,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                 @Override
                 public void onReceive(Context context, Intent intent) {
                     String action = intent.getAction();
-                    
+
                     if (ACTION_DOWNLOAD_PROGRESS.equals(action)) {
                         handleDownloadProgress(intent);
                     } else if (ACTION_INSTALLATION_PROGRESS.equals(action)) {
@@ -2785,7 +2805,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                 Log.d(TAG, "📥 Mock: Download Started");
                 sendDownloadProgressOverBle("STARTED", 0, 0, 10000000, null, System.currentTimeMillis());
                 Thread.sleep(2000);
-                
+
                 // Step 2: Download Progress (every 5% from 5% to 95%)
                 for (int progress = 5; progress <= 95; progress += 5) {
                     long bytesDownloaded = (progress * 10000000L) / 100;
@@ -2793,23 +2813,23 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                     sendDownloadProgressOverBle("PROGRESS", progress, bytesDownloaded, 10000000, null, System.currentTimeMillis());
                     Thread.sleep(500); // 1000ms between progress updates
                 }
-                
+
                 // Step 3: Download Finished
                 Log.d(TAG, "📥 Mock: Download Finished");
                 sendDownloadProgressOverBle("FINISHED", 100, 10000000, 10000000, null, System.currentTimeMillis());
                 Thread.sleep(1000);
-                
+
                 // Step 4: Installation Started
                 Log.d(TAG, "🔧 Mock: Installation Started");
                 sendInstallationProgressOverBle("STARTED", "/data/app/com.augmentos.otaupdater-1.apk", null, System.currentTimeMillis());
                 Thread.sleep(2000);
-                
+
                 // Step 5: Installation Finished
                 Log.d(TAG, "🔧 Mock: Installation Finished");
                 sendInstallationProgressOverBle("FINISHED", "/data/app/com.augmentos.otaupdater-1.apk", null, System.currentTimeMillis());
-                
+
                 Log.d(TAG, "✅ Mock OTA progress simulation completed successfully");
-                
+
             } catch (InterruptedException e) {
                 Log.e(TAG, "Mock OTA progress simulation interrupted", e);
             } catch (Exception e) {

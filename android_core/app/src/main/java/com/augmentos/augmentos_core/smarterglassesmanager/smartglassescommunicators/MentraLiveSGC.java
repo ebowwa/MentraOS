@@ -160,7 +160,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     private static final long ACK_TIMEOUT_MS = 2000; // 2 seconds
     private static final int MAX_RETRY_ATTEMPTS = 3;
     private static final long RETRY_DELAY_MS = 1000; // 1 second base delay
-    
+
     // Esoteric message ID generation
     private final SecureRandom secureRandom = new SecureRandom();
     private final long deviceId = System.currentTimeMillis() ^ new Random().nextLong();
@@ -981,7 +981,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         if (data != null) {
             sendQueue.add(data);
             Log.d(TAG, "📋 Added " + data.length + " to send queue - New queue size: " + sendQueue.size());
-            
+
             // Log all outgoing bytes for testing
             StringBuilder hexBytes = new StringBuilder();
             for (byte b : data) {
@@ -1003,13 +1003,13 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         long timestamp = System.currentTimeMillis();
         long randomComponent = secureRandom.nextLong();
         long counter = messageIdCounter.getAndIncrement();
-        
+
         // Combine timestamp, device ID, random value, and counter in a non-obvious way
         long messageId = timestamp ^ deviceId ^ randomComponent ^ (counter << 32);
-        
+
         // Ensure it's positive (clear the sign bit)
         messageId = Math.abs(messageId);
-        
+
         return messageId;
     }
 
@@ -1057,7 +1057,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             Log.d(TAG, "Not connected, skipping ACK tracking for message " + messageId);
             return;
         }
-        
+
         // Skip ACK tracking for glasses with build number < 5 (older firmware)
         if (glassesBuildNumberInt < 5) {
             Log.d(TAG, "Glasses build number (" + glassesBuildNumberInt + ") < 5, skipping ACK tracking for message " + messageId);
@@ -1094,7 +1094,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         PendingMessage pendingMessage = pendingMessages.get(messageId);
         if (pendingMessage != null) {
             Log.w(TAG, "⏰ ACK timeout for message " + messageId + " (attempt " + pendingMessage.retryCount + ")");
-            
+
             if (pendingMessage.retryCount < MAX_RETRY_ATTEMPTS) {
                 // Retry the message
                 Log.d(TAG, "🔄 Retrying message " + messageId + " (attempt " + (pendingMessage.retryCount + 1) + "/" + MAX_RETRY_ATTEMPTS + ")");
@@ -1330,7 +1330,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             case "rtmp_stream_status":
                 // Process RTMP streaming status update from ASG client
                 Log.d(TAG, "Received RTMP status update from glasses: " + json.toString());
-                
+
                 // Check if this is an error status
                 String status = json.optString("status", "");
                 if ("error".equals(status)) {
@@ -1338,16 +1338,16 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                     Log.e(TAG, "🚨🚨🚨 RTMP STREAM ERROR DETECTED 🚨🚨🚨");
                     Log.e(TAG, "📄 Error details: " + errorDetails);
                     Log.e(TAG, "⏱️ Timestamp: " + System.currentTimeMillis());
-                    
+
                     // Check if it's the timeout error we're investigating
                     if (errorDetails.contains("Stream timed out") || errorDetails.contains("no keep-alive")) {
                         Log.e(TAG, "🔍 RTMP TIMEOUT ERROR - Dumping diagnostic info:");
                         Log.e(TAG, "💓 Last heartbeat counter: " + heartbeatCounter);
                         Log.e(TAG, "⏱️ Current timestamp: " + System.currentTimeMillis());
-                        
+
                         // Dump thread states for debugging
                         dumpThreadStates();
-                        
+
                         // Log BLE connection state
                         Log.e(TAG, "🔌 BLE Connection state:");
                         Log.e(TAG, "   - isConnected: " + isConnected);
@@ -1533,7 +1533,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 String buildNumber = json.optString("build_number", "");
                 String deviceModel = json.optString("device_model", "");
                 String androidVersion = json.optString("android_version", "");
-                
+
                 // Parse build number as integer for version checks
                 try {
                     glassesBuildNumberInt = Integer.parseInt(buildNumber);
@@ -1556,7 +1556,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             case "ota_download_progress":
                 // Process OTA download progress from ASG client
                 Log.d(TAG, "📥 Received OTA download progress from ASG client: " + json.toString());
-                
+
                 // Extract download progress information
                 String downloadStatus = json.optString("status", "");
                 int downloadProgress = json.optInt("progress", 0);
@@ -1564,12 +1564,12 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 long totalBytes = json.optLong("total_bytes", 0);
                 String downloadErrorMessage = json.optString("error_message", null);
                 long downloadTimestamp = json.optLong("timestamp", System.currentTimeMillis());
-                
-                Log.d(TAG, "📥 OTA Download Progress - Status: " + downloadStatus + 
+
+                Log.d(TAG, "📥 OTA Download Progress - Status: " + downloadStatus +
                       ", Progress: " + downloadProgress + "%" +
                       ", Bytes: " + bytesDownloaded + "/" + totalBytes +
                       (downloadErrorMessage != null ? ", Error: " + downloadErrorMessage : ""));
-                
+
                 // Emit EventBus event for AugmentosService on main thread
                 try {
                     DownloadProgressEvent.DownloadStatus downloadEventStatus;
@@ -1595,7 +1595,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                             Log.w(TAG, "Unknown download status: " + downloadStatus);
                             return;
                     }
-                    
+
                     // Post event on main thread to ensure proper delivery
                     handler.post(() -> {
                         Log.d(TAG, "📡 Posting download progress event on main thread: " + downloadEventStatus);
@@ -1604,7 +1604,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 } catch (Exception e) {
                     Log.e(TAG, "Error creating download progress event", e);
                 }
-                
+
                 // Forward to data observable for cloud communication
                 if (dataObservable != null) {
                     dataObservable.onNext(json);
@@ -1614,17 +1614,17 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             case "ota_installation_progress":
                 // Process OTA installation progress from ASG client
                 Log.d(TAG, "🔧 Received OTA installation progress from ASG client: " + json.toString());
-                
+
                 // Extract installation progress information
                 String installationStatus = json.optString("status", "");
                 String apkPath = json.optString("apk_path", "");
                 String installationErrorMessage = json.optString("error_message", null);
                 long installationTimestamp = json.optLong("timestamp", System.currentTimeMillis());
-                
-                Log.d(TAG, "🔧 OTA Installation Progress - Status: " + installationStatus + 
+
+                Log.d(TAG, "🔧 OTA Installation Progress - Status: " + installationStatus +
                       ", APK: " + apkPath +
                       (installationErrorMessage != null ? ", Error: " + installationErrorMessage : ""));
-                
+
                 // Emit EventBus event for AugmentosService on main thread
                 try {
                     InstallationProgressEvent.InstallationStatus installationEventStatus;
@@ -1646,7 +1646,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                             Log.w(TAG, "Unknown installation status: " + installationStatus);
                             return;
                     }
-                    
+
                     // Post event on main thread to ensure proper delivery
                     handler.post(() -> {
                         Log.d(TAG, "📡 Posting installation progress event on main thread: " + installationEventStatus);
@@ -1655,7 +1655,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 } catch (Exception e) {
                     Log.e(TAG, "Error creating installation progress event", e);
                 }
-                
+
                 // Forward to data observable for cloud communication
                 if (dataObservable != null) {
                     dataObservable.onNext(json);
@@ -1775,14 +1775,14 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
 
         // Post battery event so the system knows the battery level
         EventBus.getDefault().post(new BatteryLevelEvent(level, charging));
-        
+
         // Send battery status via BLE to connected phone
         // This was necessary for OG beta units
         // Not required for newer beta units
         // TODO: remove this line post hackathon
         sendBatteryStatusOverBle(level, charging);
     }
-    
+
     /**
      * Send battery status to connected phone via BLE
      */
@@ -1794,12 +1794,12 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 batteryStatus.put("level", level);
                 batteryStatus.put("charging", charging);
                 batteryStatus.put("timestamp", System.currentTimeMillis());
-                
+
                 // Convert to string and send via BLE
                 String jsonString = batteryStatus.toString();
                 Log.d(TAG, "🔋 Sending battery status via BLE: " + level + "% " + (charging ? "(charging)" : "(not charging)"));
                 sendDataToGlasses(jsonString, false);
-                
+
             } catch (JSONException e) {
                 Log.e(TAG, "Error creating battery status JSON", e);
             }
@@ -1875,7 +1875,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         heartbeatCounter = 0;
         heartbeatHandler.removeCallbacks(heartbeatRunnable); // Remove any existing callbacks
         heartbeatHandler.postDelayed(heartbeatRunnable, HEARTBEAT_INTERVAL_MS);
-        
+
         // Also start test messages for ACK verification
         // startTestMessages();
     }
@@ -1887,7 +1887,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         Log.d(TAG, "💓 Stopping heartbeat mechanism");
         heartbeatHandler.removeCallbacks(heartbeatRunnable);
         heartbeatCounter = 0;
-        
+
         // Also stop test messages
         // stopTestMessages();
     }
@@ -1909,10 +1909,10 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             testMsg.put("timestamp", System.currentTimeMillis());
             testMsg.put("message", "ACK test message #" + testMessageCounter);
             testMsg.put("deviceId", deviceId); // Include device ID for debugging
-            
+
             Log.d(TAG, "🧪 Sending test message #" + testMessageCounter + " for ACK verification");
             sendJson(testMsg, true); // This will include esoteric mId and ACK tracking
-            
+
         } catch (JSONException e) {
             Log.e(TAG, "Error creating test message", e);
         }
@@ -1947,12 +1947,12 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             for (Map.Entry<Thread, StackTraceElement[]> entry : allThreads.entrySet()) {
                 Thread thread = entry.getKey();
                 StackTraceElement[] stack = entry.getValue();
-                
-                Log.e(TAG, "📌 Thread: " + thread.getName() + 
-                      " (ID: " + thread.getId() + 
-                      ", State: " + thread.getState() + 
+
+                Log.e(TAG, "📌 Thread: " + thread.getName() +
+                      " (ID: " + thread.getId() +
+                      ", State: " + thread.getState() +
                       ", Priority: " + thread.getPriority() + ")");
-                
+
                 // Only print first 5 stack frames to avoid log spam
                 for (int i = 0; i < Math.min(5, stack.length); i++) {
                     Log.e(TAG, "    at " + stack[i].toString());
@@ -1966,7 +1966,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         }
         Log.e(TAG, "📸 THREAD STATE DUMP - END");
     }
-    
+
     /**
      * Check if we have the necessary permissions
      */
@@ -2073,8 +2073,8 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     }
 
     @Override
-    public void requestPhoto(String requestId, String appId, String webhookUrl) {
-        Log.d(TAG, "Requesting photo: " + requestId + " for app: " + appId + " with webhookUrl: " + webhookUrl);
+    public void requestPhoto(String requestId, String appId, String webhookUrl, int preferredWidth, int preferredHeight, int quality) {
+        Log.d(TAG, "Requesting photo: " + requestId + " for app: " + appId + " with webhookUrl: " + webhookUrl + ", preferredSize: " + preferredWidth + "x" + preferredHeight + ", quality: " + quality);
 
         try {
             JSONObject json = new JSONObject();
@@ -2084,6 +2084,20 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             if (webhookUrl != null && !webhookUrl.isEmpty()) {
                 json.put("webhookUrl", webhookUrl);
             }
+
+            // Add preferred size if specified
+            if (preferredWidth > 0 && preferredHeight > 0) {
+                JSONObject preferredSize = new JSONObject();
+                preferredSize.put("width", preferredWidth);
+                preferredSize.put("height", preferredHeight);
+                json.put("preferredSize", preferredSize);
+            }
+
+            // Add quality if different from default
+            if (quality > 0 && quality <= 100) {
+                json.put("quality", quality);
+            }
+
             sendJson(json, true);
         } catch (JSONException e) {
             Log.e(TAG, "Error creating photo request JSON", e);
@@ -2414,8 +2428,8 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             Log.e(TAG, "Error creating video command", e);
         }
     }
-    
-    
+
+
     /**
      * Send data directly to the glasses using the K900 protocol utility.
      * This method uses K900ProtocolUtils.packJsonToK900 to handle C-wrapping and protocol formatting.
@@ -2560,7 +2574,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         stats.append("- Next message ID: ").append(messageIdCounter.get()).append("\n");
         stats.append("- ACK timeout: ").append(ACK_TIMEOUT_MS).append("ms\n");
         stats.append("- Max retries: ").append(MAX_RETRY_ATTEMPTS).append("\n");
-        
+
         if (!pendingMessages.isEmpty()) {
             stats.append("- Pending message IDs: ");
             for (Long messageId : pendingMessages.keySet()) {
@@ -2570,7 +2584,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 }
             }
         }
-        
+
         return stats.toString();
     }
 }

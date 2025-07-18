@@ -20,7 +20,7 @@ protocol ServerCommsCallback {
   func onAppStarted(_ packageName: String)
   func onAppStopped(_ packageName: String)
   func onJsonMessage(_ message: [String: Any])
-  func onPhotoRequest(_ requestId: String, _ appId: String, _ webhookUrl: String)
+  func onPhotoRequest(_ requestId: String, _ appId: String, _ webhookUrl: String, _ preferredWidth: Int, _ preferredHeight: Int, _ quality: Int)
   func onRtmpStreamStartRequest(_ message: [String: Any])
   func onRtmpStreamStop()
   func onRtmpStreamKeepAlive(_ message: [String: Any])
@@ -568,9 +568,21 @@ class ServerComms {
       let requestId = msg["requestId"] as? String ?? ""
       let appId = msg["appId"] as? String ?? ""
       let webhookUrl = msg["webhookUrl"] as? String ?? ""
-      CoreCommsService.log("Received photo_request, requestId: \(requestId), appId: \(appId), webhookUrl: \(webhookUrl)")
+
+      // Extract preferred size parameters
+      var preferredWidth = 0
+      var preferredHeight = 0
+      if let preferredSize = msg["preferredSize"] as? [String: Any] {
+        preferredWidth = preferredSize["width"] as? Int ?? 0
+        preferredHeight = preferredSize["height"] as? Int ?? 0
+      }
+
+      // Extract quality parameter
+      let quality = msg["quality"] as? Int ?? 90 // Default to 90 if not specified
+
+      CoreCommsService.log("Received photo_request, requestId: \(requestId), appId: \(appId), webhookUrl: \(webhookUrl), preferredSize: \(preferredWidth)x\(preferredHeight), quality: \(quality)")
       if !requestId.isEmpty && !appId.isEmpty {
-        serverCommsCallback?.onPhotoRequest(requestId, appId, webhookUrl);
+        serverCommsCallback?.onPhotoRequest(requestId, appId, webhookUrl, preferredWidth, preferredHeight, quality);
       } else {
         CoreCommsService.log("Invalid photo request: missing requestId or appId");
       }

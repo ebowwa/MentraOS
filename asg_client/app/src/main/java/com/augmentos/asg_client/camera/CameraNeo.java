@@ -78,12 +78,12 @@ public class CameraNeo extends LifecycleService {
     private Size jpegSize;
     private String cameraId;
 
-    // Target photo resolution (4:3 landscape orientation)
-    private static final int TARGET_WIDTH = 1440;
-    private static final int TARGET_HEIGHT = 1080;
+    // Target photo resolution (4:3 landscape orientation) - can be overridden by preferences
+    private static int TARGET_WIDTH = 1440;
+    private static int TARGET_HEIGHT = 1080;
 
     // Auto-exposure settings for better photo quality - now dynamic
-    private static final int JPEG_QUALITY = 90; // High quality JPEG
+    private static int JPEG_QUALITY = 90; // High quality JPEG - can be overridden
     private static final int JPEG_ORIENTATION = 270; // Standard orientation
 
     // Camera characteristics for dynamic auto-exposure and autofocus
@@ -206,6 +206,28 @@ public class CameraNeo extends LifecycleService {
     }
 
     /**
+     * Take a picture with camera parameters and get notified through callback when complete
+     *
+     * @param context Application context
+     * @param filePath File path to save the photo
+     * @param preferredWidth Preferred photo width (0 = use default)
+     * @param preferredHeight Preferred photo height (0 = use default)
+     * @param quality JPEG quality (1-100)
+     * @param callback Callback to be notified when photo is captured
+     */
+    public static void takePictureWithCallback(Context context, String filePath, int preferredWidth, int preferredHeight, int quality, PhotoCaptureCallback callback) {
+        sPhotoCallback = callback;
+
+        Intent intent = new Intent(context, CameraNeo.class);
+        intent.setAction(ACTION_TAKE_PHOTO);
+        intent.putExtra(EXTRA_PHOTO_FILE_PATH, filePath);
+        intent.putExtra("EXTRA_PREFERRED_WIDTH", preferredWidth);
+        intent.putExtra("EXTRA_PREFERRED_HEIGHT", preferredHeight);
+        intent.putExtra("EXTRA_QUALITY", quality);
+        context.startForegroundService(intent);
+    }
+
+    /**
      * Take a picture and get notified through callback when complete
      *
      * @param context Application context
@@ -213,12 +235,8 @@ public class CameraNeo extends LifecycleService {
      * @param callback Callback to be notified when photo is captured
      */
     public static void takePictureWithCallback(Context context, String filePath, PhotoCaptureCallback callback) {
-        sPhotoCallback = callback;
-
-        Intent intent = new Intent(context, CameraNeo.class);
-        intent.setAction(ACTION_TAKE_PHOTO);
-        intent.putExtra(EXTRA_PHOTO_FILE_PATH, filePath);
-        context.startForegroundService(intent);
+        // Call overloaded method with default parameters
+        takePictureWithCallback(context, filePath, 0, 0, 90, callback);
     }
 
     /**
@@ -267,7 +285,13 @@ public class CameraNeo extends LifecycleService {
                         String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
                         photoFilePath = getExternalFilesDir(null) + File.separator + "IMG_" + timeStamp + ".jpg";
                     }
-                    setupCameraAndTakePicture(photoFilePath);
+
+                    // Extract camera parameters
+                    int preferredWidth = intent.getIntExtra("EXTRA_PREFERRED_WIDTH", 0);
+                    int preferredHeight = intent.getIntExtra("EXTRA_PREFERRED_HEIGHT", 0);
+                    int quality = intent.getIntExtra("EXTRA_QUALITY", 90);
+
+                    setupCameraAndTakePicture(photoFilePath, preferredWidth, preferredHeight, quality);
                     break;
                 case ACTION_START_VIDEO_RECORDING:
                     currentVideoId = intent.getStringExtra(EXTRA_VIDEO_ID);
@@ -287,7 +311,14 @@ public class CameraNeo extends LifecycleService {
         return START_STICKY;
     }
 
-    private void setupCameraAndTakePicture(String filePath) {
+    private void setupCameraAndTakePicture(String filePath, int preferredWidth, int preferredHeight, int quality) {
+        // Store parameters for use during camera setup
+        if (preferredWidth > 0 && preferredHeight > 0) {
+            TARGET_WIDTH = preferredWidth;
+            TARGET_HEIGHT = preferredHeight;
+        }
+        JPEG_QUALITY = quality;
+
         wakeUpScreen();
         openCameraInternal(filePath, false); // false indicates not for video
     }

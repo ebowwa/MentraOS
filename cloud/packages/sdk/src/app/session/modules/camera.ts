@@ -8,6 +8,7 @@
 import {
   PhotoRequest,
   PhotoData,
+  PhotoSize,
   AppToCloudMessageType,
   RtmpStreamRequest,
   RtmpStreamStopRequest,
@@ -36,6 +37,10 @@ import {
 export interface PhotoRequestOptions {
   /** Whether to save the photo to the device gallery */
   saveToGallery?: boolean;
+  /** Preferred photo size (width x height in pixels) */
+  preferredSize?: PhotoSize;
+  /** JPEG quality (1-100, where 100 is highest quality) */
+  quality?: number;
 }
 
 /**
@@ -169,6 +174,8 @@ export class CameraModule {
           requestId,
           timestamp: new Date(),
           saveToGallery: options?.saveToGallery || false,
+          preferredSize: options?.preferredSize,
+          quality: options?.quality,
         };
 
         // Send request to cloud
@@ -694,4 +701,10 @@ export class CameraModule {
 }
 
 // Re-export types for convenience
-export { VideoConfig, AudioConfig, StreamConfig, StreamStatusHandler };
+export {
+  VideoConfig,
+  AudioConfig,
+  StreamConfig,
+  StreamStatusHandler,
+  PhotoSize,
+};

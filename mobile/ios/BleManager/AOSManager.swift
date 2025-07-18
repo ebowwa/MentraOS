@@ -604,10 +604,10 @@ struct ViewState {
     CoreCommsService.log("AOS: onJsonMessage: \(message)")
     self.liveManager?.sendJson(message)
   }
-  
-  func onPhotoRequest(_ requestId: String, _ appId: String, _ webhookUrl: String) {
-    CoreCommsService.log("AOS: onPhotoRequest: \(requestId), \(appId), \(webhookUrl)")
-    self.liveManager?.requestPhoto(requestId, appId: appId, webhookUrl: webhookUrl.isEmpty ? nil : webhookUrl)
+
+  func onPhotoRequest(_ requestId: String, _ appId: String, _ webhookUrl: String, _ preferredWidth: Int, _ preferredHeight: Int, _ quality: Int) {
+    CoreCommsService.log("AOS: onPhotoRequest: \(requestId), \(appId), \(webhookUrl), preferredSize: \(preferredWidth)x\(preferredHeight), quality: \(quality)")
+    self.liveManager?.requestPhoto(requestId, appId: appId, webhookUrl: webhookUrl.isEmpty ? nil : webhookUrl, preferredWidth: preferredWidth, preferredHeight: preferredHeight, quality: quality)
   }
   
   func onRtmpStreamStartRequest(_ message: [String: Any]) {

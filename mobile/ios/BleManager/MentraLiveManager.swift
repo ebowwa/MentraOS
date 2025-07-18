@@ -520,10 +520,10 @@ typealias JSONObject = [String: Any]
     
     sendJson(json, wakeUp: true)
   }
-  
-  @objc func requestPhoto(_ requestId: String, appId: String, webhookUrl: String?) {
-    CoreCommsService.log("Requesting photo: \(requestId) for app: \(appId)")
-    
+
+  @objc func requestPhoto(_ requestId: String, appId: String, webhookUrl: String?, preferredWidth: Int = 0, preferredHeight: Int = 0, quality: Int = 90) {
+    CoreCommsService.log("Requesting photo: \(requestId) for app: \(appId), preferredSize: \(preferredWidth)x\(preferredHeight), quality: \(quality)")
+
     var json: [String: Any] = [
       "type": "take_photo",
       "requestId": requestId,
@@ -533,7 +533,20 @@ typealias JSONObject = [String: Any]
     if let webhookUrl = webhookUrl, !webhookUrl.isEmpty {
       json["webhookUrl"] = webhookUrl
     }
-    
+
+    // Add preferred size if specified
+    if preferredWidth > 0 && preferredHeight > 0 {
+      json["preferredSize"] = [
+        "width": preferredWidth,
+        "height": preferredHeight
+      ]
+    }
+
+    // Add quality if different from default
+    if quality > 0 && quality <= 100 {
+      json["quality"] = quality
+    }
+
     sendJson(json, wakeUp: true)
   }
   

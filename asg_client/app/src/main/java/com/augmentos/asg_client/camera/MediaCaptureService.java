@@ -506,22 +506,28 @@ public class MediaCaptureService {
     }
 
     /**
-     * Take a photo and upload it to the specified destination
+     * Take photo with camera parameters
      * @param photoFilePath Local path where photo will be saved
      * @param requestId Unique request ID for tracking
      * @param webhookUrl Optional webhook URL for direct upload to app
+     * @param preferredWidth Preferred photo width (0 = use default)
+     * @param preferredHeight Preferred photo height (0 = use default)
+     * @param quality JPEG quality (1-100)
      */
-    public void takePhotoAndUpload(String photoFilePath, String requestId, String webhookUrl) {
+    public void takePhotoAndUpload(String photoFilePath, String requestId, String webhookUrl, int preferredWidth, int preferredHeight, int quality) {
         // Notify that we're about to take a photo
         if (mMediaCaptureListener != null) {
             mMediaCaptureListener.onPhotoCapturing(requestId);
         }
 
         try {
-            // Use CameraNeo for photo capture
+            // Use CameraNeo for photo capture with preferred parameters
             CameraNeo.takePictureWithCallback(
                     mContext,
                     photoFilePath,
+                    preferredWidth,
+                    preferredHeight,
+                    quality,
                     new CameraNeo.PhotoCaptureCallback() {
                         @Override
                         public void onPhotoCaptured(String filePath) {
@@ -552,14 +558,24 @@ public class MediaCaptureService {
                     }
             );
         } catch (Exception e) {
-            Log.e(TAG, "Error taking photo", e);
+            Log.e(TAG, "Error taking photo: " + e.getMessage(), e);
             sendMediaErrorResponse(requestId, "Error taking photo: " + e.getMessage(), MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
 
             if (mMediaCaptureListener != null) {
-                mMediaCaptureListener.onMediaError(requestId, "Error taking photo: " + e.getMessage(),
-                        MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
+                mMediaCaptureListener.onMediaError(requestId, "Error taking photo: " + e.getMessage(), MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
             }
         }
+    }
+
+    /**
+     * Take a photo and upload it to the specified destination
+     * @param photoFilePath Local path where photo will be saved
+     * @param requestId Unique request ID for tracking
+     * @param webhookUrl Optional webhook URL for direct upload to app
+     */
+    public void takePhotoAndUpload(String photoFilePath, String requestId, String webhookUrl) {
+        // Call the overloaded method with default parameters
+        takePhotoAndUpload(photoFilePath, requestId, webhookUrl, 0, 0, 90);
     }
 
     /**

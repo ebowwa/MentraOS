@@ -1702,12 +1702,12 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             }
 
             @Override
-            public void onPhotoRequest(String requestId, String appId, String webhookUrl) {
-                Log.d(TAG, "Photo request received: requestId=" + requestId + ", appId=" + appId + ", webhookUrl=" + webhookUrl);
+            public void onPhotoRequest(String requestId, String appId, String webhookUrl, int preferredWidth, int preferredHeight, int quality) {
+                Log.d(TAG, "Photo request received: requestId=" + requestId + ", appId=" + appId + ", webhookUrl=" + webhookUrl + ", preferredSize=" + preferredWidth + "x" + preferredHeight + ", quality=" + quality);
 
                 // Forward the request to the smart glasses manager
                 if (smartGlassesManager != null) {
-                    boolean requestSent = smartGlassesManager.requestPhoto(requestId, appId, webhookUrl);
+                    boolean requestSent = smartGlassesManager.requestPhoto(requestId, appId, webhookUrl, preferredWidth, preferredHeight, quality);
                     if (!requestSent) {
                         Log.e(TAG, "Failed to send photo request to glasses");
                     }
@@ -2234,12 +2234,12 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
 
             Log.d(TAG, "🚨 NOTIFICATION DISMISSED: " + appName + " - " + title);
             Log.d(TAG, "📝 Dismissal details - Text: " + text + ", Key: " + notificationKey);
-            
+
             // Send dismissal to server via ServerComms
             String uuid = java.util.UUID.randomUUID().toString();
             ServerComms.getInstance().sendPhoneNotificationDismissal(uuid, appName, title, text, notificationKey);
             Log.d(TAG, "📡 Sent notification dismissal to server - UUID: " + uuid);
-            
+
         } catch (JSONException e) {
             Log.e(TAG, "Error parsing notification dismissal data", e);
         }

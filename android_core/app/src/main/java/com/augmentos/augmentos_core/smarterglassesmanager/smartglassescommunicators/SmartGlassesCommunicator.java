@@ -166,10 +166,25 @@ public abstract class SmartGlassesCommunicator {
      * @param requestId The unique ID for this photo request
      * @param appId The ID of the app requesting the photo
      * @param webhookUrl The webhook URL where the photo should be uploaded directly
+     * @param preferredWidth Preferred photo width (0 = use default)
+     * @param preferredHeight Preferred photo height (0 = use default)
+     * @param quality JPEG quality (1-100)
      */
-    public void requestPhoto(String requestId, String appId, String webhookUrl) {
+    public void requestPhoto(String requestId, String appId, String webhookUrl, int preferredWidth, int preferredHeight, int quality) {
         // Default implementation does nothing
         Log.d("SmartGlassesCommunicator", "Photo request not implemented for this device");
+    }
+
+    /**
+     * Requests the smart glasses to take a photo (backward compatibility)
+     *
+     * @param requestId The unique ID for this photo request
+     * @param appId The ID of the app requesting the photo
+     * @param webhookUrl The webhook URL where the photo should be uploaded directly
+     */
+    public void requestPhoto(String requestId, String appId, String webhookUrl) {
+        // Call the new method with default parameters
+        requestPhoto(requestId, appId, webhookUrl, 0, 0, 90);
     }
 
     /**

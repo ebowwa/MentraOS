@@ -716,9 +716,22 @@ public class ServerComms {
                 String requestId = msg.optString("requestId");
                 String appId = msg.optString("appId");
                 String webhookUrl = msg.optString("webhookUrl", "");
-                Log.d(TAG, "Received photo_request, requestId: " + requestId + ", appId: " + appId + ", webhookUrl: " + webhookUrl);
+
+                // Extract preferred size parameters
+                int preferredWidth = 0;
+                int preferredHeight = 0;
+                JSONObject preferredSize = msg.optJSONObject("preferredSize");
+                if (preferredSize != null) {
+                    preferredWidth = preferredSize.optInt("width", 0);
+                    preferredHeight = preferredSize.optInt("height", 0);
+                }
+
+                // Extract quality parameter
+                int quality = msg.optInt("quality", 90); // Default to 90 if not specified
+
+                Log.d(TAG, "Received photo_request, requestId: " + requestId + ", appId: " + appId + ", webhookUrl: " + webhookUrl + ", preferredSize: " + preferredWidth + "x" + preferredHeight + ", quality: " + quality);
                 if (serverCommsCallback != null && !requestId.isEmpty() && !appId.isEmpty()) {
-                    serverCommsCallback.onPhotoRequest(requestId, appId, webhookUrl);
+                    serverCommsCallback.onPhotoRequest(requestId, appId, webhookUrl, preferredWidth, preferredHeight, quality);
                 } else {
                     Log.e(TAG, "Invalid photo request: missing requestId or appId");
                 }
