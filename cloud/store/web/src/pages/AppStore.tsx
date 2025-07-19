@@ -29,7 +29,7 @@ declare global {
  */
 const AppStore: React.FC = () => {
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, supabaseToken, coreToken, isLoading: authLoading } = useAuth();
   const { theme } = useTheme();
   const { isWebView } = usePlatform();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -46,11 +46,21 @@ const AppStore: React.FC = () => {
   const [activeOrgFilter, setActiveOrgFilter] = useState<string | null>(orgId);
   const [orgName, setOrgName] = useState<string>('');
 
+  // Helper function to check if authentication tokens are ready
+  const isAuthTokenReady = () => {
+    if (!isAuthenticated) return true; // Not authenticated, no token needed
+    return !authLoading && (supabaseToken || coreToken); // Authenticated and has token
+  };
+
   // Fetch apps on component mount or when org filter changes
   useEffect(() => {
     setActiveOrgFilter(orgId);
-    fetchApps();
-  }, [isAuthenticated, orgId]); // Re-fetch when authentication state or org filter changes
+    
+    // Only fetch apps if auth state is settled and tokens are ready
+    if (isAuthTokenReady()) {
+      fetchApps();
+    }
+  }, [isAuthenticated, supabaseToken, coreToken, authLoading, orgId]); // Re-fetch when authentication state, tokens, or org filter changes
 
   /**
    * Fetches available apps and installed status
@@ -162,8 +172,8 @@ const AppStore: React.FC = () => {
         orgId ? filterOptions : undefined
       );
 
-      // If authenticated, update the search results with installed status
-      if (isAuthenticated) {
+      // If authenticated and tokens are ready, update the search results with installed status
+      if (isAuthenticated && isAuthTokenReady()) {
         try {
           // Get user's installed apps
           const installedApps = await api.app.getInstalledApps();
