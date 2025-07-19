@@ -1,38 +1,99 @@
 import {ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
-import React from "react"
+import React, {useState, useEffect, useRef} from "react"
 import {View, Text, StyleSheet, Image, ViewStyle, TextStyle} from "react-native"
+import Canvas, {Image as CanvasImage, ImageData} from "react-native-canvas"
 
 interface GlassesDisplayMirrorProps {
   layout: any
   fallbackMessage?: string
   containerStyle?: any
+  fullscreen?: boolean
 }
 
 const GlassesDisplayMirror: React.FC<GlassesDisplayMirrorProps> = ({
   layout,
   fallbackMessage = "No display data available",
   containerStyle,
+  fullscreen = false,
 }) => {
   const {themed} = useAppTheme()
+  const [processedImageUri, setProcessedImageUri] = useState<string | null>(null)
+  const canvasRef = useRef<Canvas>(null)
 
-  return (
-    <View style={[themed($glassesScreen), containerStyle]}>
-      {layout && layout.layoutType ? (
-        renderLayout(layout, containerStyle, themed($glassesText))
-      ) : (
+  const processBitmap = async () => {
+    if (layout?.layoutType !== "bitmap_view" || !layout.data) {
+      return
+    }
+
+    // First process the BMP to get base64
+    const uri = `data:image/bmp;base64,${layout.data}`
+    if (!canvasRef.current) {
+      return
+    }
+
+    // Process with canvas to make black pixels transparent
+    const canvas = canvasRef.current
+    const ctx = canvas.getContext("2d")
+
+    // Create image from base64
+    const img = new CanvasImage(canvas)
+    img.src = uri
+
+    img.addEventListener("load", async () => {
+      const WIDTH = img.width / 1.8
+      const HEIGHT = img.height / 1.8
+      const leftPadding = 25
+      const topPadding = 20
+
+      // Set canvas size to match image
+      canvas.width = WIDTH - leftPadding * 2
+      canvas.height = HEIGHT - topPadding * 2
+
+      // Draw image to canvas
+      ctx.drawImage(img, -leftPadding, -topPadding, WIDTH - leftPadding, HEIGHT - topPadding)
+
+      // Apply tint using composite operation
+      ctx.globalCompositeOperation = "multiply" // or 'overlay', 'screen'
+      ctx.fillStyle = "#00ff88" // Your tint color
+      ctx.fillRect(0, 0, WIDTH - leftPadding, HEIGHT - topPadding)
+    })
+  }
+
+  // Process bitmap data when layout changes
+  useEffect(() => {
+    processBitmap()
+  }, [layout])
+
+  if (!layout || !layout.layoutType) {
+    return (
+      <View style={[themed($glassesScreen), containerStyle]}>
         <View style={themed($emptyContainer)}>
           <Text style={themed($emptyText)}>{fallbackMessage}</Text>
         </View>
-      )}
-    </View>
-  )
+      </View>
+    )
+  }
+
+  const content = <>{renderLayout(layout, processedImageUri, containerStyle, themed($glassesText), canvasRef)}</>
+
+  if (fullscreen) {
+    return <View style={themed($glassesScreenFullscreen)}>{content}</View>
+  }
+
+  return <View style={[themed($glassesScreen), containerStyle]}>{content}</View>
 }
 
 /**
  * Render logic for each layoutType
  */
-function renderLayout(layout: any, containerStyle?: any, textStyle?: TextStyle) {
+function renderLayout(
+  layout: any,
+  processedImageUri: string | null,
+  containerStyle?: any,
+  textStyle?: TextStyle,
+  canvasRef?: React.RefObject<Canvas>,
+) {
   switch (layout.layoutType) {
     case "reference_card": {
       const {title, text} = layout
@@ -46,7 +107,6 @@ function renderLayout(layout: any, containerStyle?: any, textStyle?: TextStyle) 
     case "text_wall":
     case "text_line": {
       const {text} = layout
-      // Even if text is empty, show a placeholder message for text_wall layouts
       return <Text style={[styles.cardContent, textStyle]}>{text || text === "" ? text : ""}</Text>
     }
     case "double_text_wall": {
@@ -59,7 +119,6 @@ function renderLayout(layout: any, containerStyle?: any, textStyle?: TextStyle) 
       )
     }
     case "text_rows": {
-      // layout.text is presumably an array of strings
       const rows = layout.text || []
       return rows.map((row: string, index: number) => (
         <Text key={index} style={[styles.cardContent, textStyle]}>
@@ -68,15 +127,10 @@ function renderLayout(layout: any, containerStyle?: any, textStyle?: TextStyle) 
       ))
     }
     case "bitmap_view": {
-      // layout.data is a base64 string. We can show an image in RN by creating a data URL
-      // e.g. { uri: "data:image/png;base64,<base64string>" }
-      const {data} = layout
-      const imageUri = `data:image/png;base64,${data}`
       return (
-        <Image
-          source={{uri: imageUri}}
-          style={{width: 200, height: 200, resizeMode: "contain", tintColor: "#00FF00"}}
-        />
+        <View style={{flex: 1, width: "100%", height: "100%", justifyContent: "center"}}>
+          <Canvas ref={canvasRef} style={{width: "100%", alignItems: "center"}} />
+        </View>
       )
     }
     default:
@@ -86,13 +140,20 @@ function renderLayout(layout: any, containerStyle?: any, textStyle?: TextStyle) 
 
 const $glassesScreen: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   width: "100%",
-  minHeight: 140, // Default height for normal mode
+  minHeight: 140,
   backgroundColor: colors.palette.neutral200,
   borderRadius: 10,
-  padding: 15,
+  paddingHorizontal: spacing.md,
+  paddingVertical: spacing.sm,
   borderWidth: 2,
-  // borderColor: "#333333",
   borderColor: colors.border,
+})
+
+const $glassesScreenFullscreen: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
+  backgroundColor: "transparent",
+  minHeight: 120,
+  padding: 16,
+  width: "100%",
 })
 
 const $glassesText: ThemedStyle<TextStyle> = ({colors}) => ({
@@ -119,7 +180,6 @@ const styles = StyleSheet.create({
     fontFamily: "Montserrat-Regular",
     fontSize: 16,
   },
-
   cardTitle: {
     fontFamily: "Montserrat-Bold",
     fontSize: 18,

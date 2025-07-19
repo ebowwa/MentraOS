@@ -20,7 +20,7 @@
       "@/*": ["./src/*"],
       "assets/*": ["./assets/*"]
     },
-    "typeRoots": ["./node_modules/@types", "./types"]
+    "typeRoots": ["./node_modules/@types", "./types", "./src/types"]
   },
   "extends": "expo/tsconfig.base",
   "ts-node": {

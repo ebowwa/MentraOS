@@ -996,12 +996,10 @@ export class TranscriptionManager {
         provider: provider.name,
         sessionId: this.userSession.sessionId
       });
-
     } catch (error) {
-      this.logger.error({ subscription, error }, 'Stream creation failed');
+      const logger = this.logger.child({ subscription });
+      logger.error(error, 'Stream creation failed');
       await this.handleStreamError(subscription, null, error as Error);
-      throw error;
-
     } finally {
       this.streamCreationInProgress.delete(subscription);
     }
@@ -1387,19 +1385,25 @@ export class TranscriptionManager {
 
         // Don't retry authentication/authorization errors (typically 401, 403)
         if (errorCode === 401 || errorCode === 403) {
-          this.logger.warn({ errorCode }, 'Soniox authentication error - not retrying');
+          this.logger.warn({ errorCode, message: error.message }, 'Soniox authentication error - not retrying');
           return false;
+        }
+
+        // Retry 400 error (usually just timed out if the stream reaches 65 minutes. on soniox)
+        if (errorCode === 400) {
+          this.logger.warn({ errorCode, message: error.message }, 'Soniox error - retrying');
+          return true;
         }
 
         // Don't retry client errors (4xx range except rate limits and timeouts)
         if (errorCode >= 400 && errorCode < 500 && errorCode !== 429 && errorCode !== 408) {
-          this.logger.warn({ errorCode }, 'Soniox client error - not retrying');
+          this.logger.warn({ errorCode, message: error.message }, 'Soniox client error - not retrying');
           return false;
         }
 
         // Retry rate limits (429), timeouts (408), and server errors (5xx range)
         if (errorCode === 429 || errorCode === 408 || errorCode >= 500) {
-          this.logger.info({ errorCode }, 'Soniox retryable error detected');
+          this.logger.info({ errorCode, message: error.message }, 'Soniox retryable error detected');
           return true;
         }
       }

@@ -78,7 +78,7 @@ export const AppListItem = ({
 
       <View style={[themed($toggleParent), themed($everythingFlexBox)]}>
         <View pointerEvents={isDisabled ? "none" : "auto"}>
-          <Switch value={isActive} onValueChange={onTogglePress} />
+          <Switch value={isActive} hitSlop={12} onValueChange={onTogglePress} />
         </View>
         <TouchableOpacity onPress={onSettingsPress} hitSlop={12} style={themed($chevronHitbox)}>
           <ChevronRight color={theme.colors.chevron} />

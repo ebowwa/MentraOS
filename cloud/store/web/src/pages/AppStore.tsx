@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, useSearchParams, Link, useLocation } from 'react-router-dom';
 import { Search, X, Building, Lock } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
@@ -10,6 +10,7 @@ import SearchBar from '../components/SearchBar';
 import api, { AppFilterOptions } from '../api';
 import { AppI } from '../types';
 import Header from '../components/Header';
+import AppCard from '../components/AppCard';
 import { toast } from 'sonner';
 import { Button } from '../components/ui/button';
 
@@ -28,7 +29,7 @@ declare global {
  */
 const AppStore: React.FC = () => {
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, supabaseToken, coreToken, isLoading: authLoading } = useAuth();
   const { theme } = useTheme();
   const { isWebView } = usePlatform();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -45,11 +46,21 @@ const AppStore: React.FC = () => {
   const [activeOrgFilter, setActiveOrgFilter] = useState<string | null>(orgId);
   const [orgName, setOrgName] = useState<string>('');
 
+  // Helper function to check if authentication tokens are ready
+  const isAuthTokenReady = () => {
+    if (!isAuthenticated) return true; // Not authenticated, no token needed
+    return !authLoading && (supabaseToken || coreToken); // Authenticated and has token
+  };
+
   // Fetch apps on component mount or when org filter changes
   useEffect(() => {
     setActiveOrgFilter(orgId);
-    fetchApps();
-  }, [isAuthenticated, orgId]); // Re-fetch when authentication state or org filter changes
+    
+    // Only fetch apps if auth state is settled and tokens are ready
+    if (isAuthTokenReady()) {
+      fetchApps();
+    }
+  }, [isAuthenticated, supabaseToken, coreToken, authLoading, orgId]); // Re-fetch when authentication state, tokens, or org filter changes
 
   /**
    * Fetches available apps and installed status
@@ -124,12 +135,15 @@ const AppStore: React.FC = () => {
   };
 
   // Filter apps based on search query (client-side filtering now, adjust if needed for server-side)
-  const filteredApps = searchQuery.trim() === ''
-    ? apps
-    : apps.filter(app =>
-      app.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (app.description && app.description.toLowerCase().includes(searchQuery.toLowerCase()))
+  const filteredApps = useMemo(() => {
+    if (searchQuery.trim() === '') return apps;
+    
+    const query = searchQuery.toLowerCase();
+    return apps.filter(app =>
+      app.name.toLowerCase().includes(query) ||
+      (app.description && app.description.toLowerCase().includes(query))
     );
+  }, [apps, searchQuery]);
 
   /**
    * Handles search form submission
@@ -158,8 +172,8 @@ const AppStore: React.FC = () => {
         orgId ? filterOptions : undefined
       );
 
-      // If authenticated, update the search results with installed status
-      if (isAuthenticated) {
+      // If authenticated and tokens are ready, update the search results with installed status
+      if (isAuthenticated && isAuthTokenReady()) {
         try {
           // Get user's installed apps
           const installedApps = await api.app.getInstalledApps();
@@ -203,7 +217,7 @@ const AppStore: React.FC = () => {
   };
 
   // Handle app installation
-  const handleInstall = async (packageName: string) => {
+  const handleInstall = useCallback(async (packageName: string) => {
     if (!isAuthenticated) {
       navigate('/login');
       return;
@@ -235,10 +249,10 @@ const AppStore: React.FC = () => {
     } finally {
       setInstallingApp(null);
     }
-  };
+  }, [isAuthenticated, navigate]);
 
   // Handle app uninstallation
-  const handleUninstall = async (packageName: string) => {
+  const handleUninstall = useCallback(async (packageName: string) => {
     if (!isAuthenticated) {
       navigate('/login');
       return;
@@ -270,9 +284,9 @@ const AppStore: React.FC = () => {
     } finally {
       setInstallingApp(null);
     }
-  };
+  }, [isAuthenticated, navigate]);
 
-  const handleOpen = (packageName: string) => {
+  const handleOpen = useCallback((packageName: string) => {
     // If we're in webview, send message to React Native to open TPA settings
     if (isWebView && window.ReactNativeWebView) {
       window.ReactNativeWebView.postMessage(JSON.stringify({
@@ -283,12 +297,16 @@ const AppStore: React.FC = () => {
       // Fallback: navigate to app details page
       navigate(`/package/${packageName}`);
     }
-  };
+  }, [isWebView, navigate]);
 
-  const handleCardClick = (packageName: string) => {
+  const handleCardClick = useCallback((packageName: string) => {
     // Always navigate to app details page when clicking the card
     navigate(`/package/${packageName}`);
-  };
+  }, [navigate]);
+
+  const handleLogin = useCallback(() => {
+    navigate('/login');
+  }, [navigate]);
 
   return (
       <div className="min-h-screen text-white" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
@@ -369,111 +387,19 @@ const AppStore: React.FC = () => {
         {!isLoading && !error && (
           <div className="mt-2 mb-2 sm:mt-8 sm:mb-8 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-x-8 gap-y-2 sm:gap-y-12 px-0">
             {filteredApps.map(app => (
-              <div key={app.packageName} className="p-4 sm:p-6 flex gap-3 transition-colors rounded-lg relative cursor-pointer" onClick={() => handleCardClick(app.packageName)} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-secondary)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
-                <div className="absolute bottom-0 left-3 right-3 h-px" style={{ backgroundColor: 'var(--border-color)' }}></div>
-                {/* Image Column */}
-                <div className="shrink-0 flex items-start pt-2">
-                  <img
-                    src={app.logoURL}
-                    alt={`${app.name} logo`}
-                    className="w-12 h-12 object-cover rounded-full"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).src = 'https://placehold.co/48x48/gray/white?text=App';
-                    }}
-                  />
-                </div>
-
-                {/* Content Column */}
-                <div className="flex-1 flex flex-col justify-center">
-                  <div>
-                    <h3 className="text-[15px] font-medium mb-1" style={{fontFamily: '"SF Pro Rounded", sans-serif', letterSpacing: '0.04em', color: 'var(--text-primary)'}}>{app.name}</h3>
-                    {app.description && (
-                      <p className="text-[15px] font-normal leading-[1.3] line-clamp-3" style={{fontFamily: '"SF Pro Rounded", sans-serif', letterSpacing: '0.04em', color: theme === 'light' ? '#4a4a4a' : '#9A9CAC', WebkitLineClamp: 3, height: '3.9em', display: '-webkit-box', WebkitBoxOrient: 'vertical', overflow: 'hidden'}}>{app.description}</p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Button Column */}
-                <div className="shrink-0 flex items-center">
-                  {isAuthenticated ? (
-                    app.isInstalled ? (
-                      isWebView ? (
-                        // Show Open button only in webview for installed apps
-                        <Button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleOpen(app.packageName);
-                          }}
-                          disabled={installingApp === app.packageName}
-                          className="text-[15px] font-normal tracking-[0.1em] px-4 py-[6px] rounded-full w-fit h-fit"
-                          style={{
-                            backgroundColor: 'var(--button-bg)',
-                            color: 'var(--button-text)'
-                          }}
-                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--button-hover)'}
-                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--button-bg)'}
-                        >
-                          <>Open</>
-                        </Button>
-                      ) : (
-                        // Show greyed out Installed button for installed apps on desktop/mobile
-                        <Button
-                          disabled={true}
-                          className="text-[15px] font-normal tracking-[0.1em] px-4 py-[6px] rounded-full w-fit h-fit opacity-30 cursor-not-allowed"
-                          style={{
-                            backgroundColor: 'var(--button-bg)',
-                            color: 'var(--button-text)',
-                            filter: 'grayscale(100%)'
-                          }}
-                        >
-                          <>Installed</>
-                        </Button>
-                      )
-                    ) : (
-                      <Button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleInstall(app.packageName);
-                        }}
-                        disabled={installingApp === app.packageName}
-                        className="text-[15px] font-normal tracking-[0.1em] px-4 py-[6px] rounded-full w-fit h-fit"
-                        style={{
-                          backgroundColor: 'var(--button-bg)',
-                          color: 'var(--button-text)'
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--button-hover)'}
-                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--button-bg)'}
-                      >
-                        {installingApp === app.packageName ? (
-                          <>
-                            <div className="animate-spin h-4 w-4 border-2 border-t-transparent rounded-full mr-2" style={{ borderColor: 'var(--button-text)', borderTopColor: 'transparent' }}></div>
-                            Installing
-                          </>
-                        ) : (
-                          <>Get</>
-                        )}
-                      </Button>
-                    )
-                  ) : (
-                    <Button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigate('/login');
-                      }}
-                      className="text-[15px] font-normal tracking-[0.1em] px-4 py-[6px] rounded-full w-fit h-fit flex items-center gap-2"
-                      style={{
-                        backgroundColor: 'var(--button-bg)',
-                        color: 'var(--button-text)'
-                      }}
-                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--button-hover)'}
-                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--button-bg)'}
-                    >
-                      <Lock className="h-4 w-4 mr-1" />
-                      Sign in
-                    </Button>
-                  )}
-                </div>
-              </div>
+              <AppCard
+                key={app.packageName}
+                app={app}
+                theme={theme}
+                isAuthenticated={isAuthenticated}
+                isWebView={isWebView}
+                installingApp={installingApp}
+                onInstall={handleInstall}
+                onUninstall={handleUninstall}
+                onOpen={handleOpen}
+                onCardClick={handleCardClick}
+                onLogin={handleLogin}
+              />
             ))}
           </div>
         )}
