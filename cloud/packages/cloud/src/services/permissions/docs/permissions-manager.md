@@ -41,11 +41,12 @@ We'll define a simplified set of permission types that directly map to OS-level 
 
 ```typescript
 export enum PermissionType {
-  MICROPHONE = 'MICROPHONE',     // Microphone access for audio/speech features
-  LOCATION = 'LOCATION',         // Location services access
-  CALENDAR = 'CALENDAR',         // Calendar events access
-  NOTIFICATIONS = 'NOTIFICATIONS', // Phone notification access
-  ALL = 'ALL',                   // Convenience type requiring all permissions
+  MICROPHONE                        = 'MICROPHONE',         // Microphone access for audio/speech features
+  LOCATION                          = 'LOCATION',           // Location services access
+  BACKGROUND_LOCATION               = 'BACKGROUND_LOCATION' // Background location
+  CALENDAR                          = 'CALENDAR',           // Calendar events access
+  NOTIFICATIONS                     = 'NOTIFICATIONS',      // Phone notification access
+  ALL                               = 'ALL',                // Convenience type requiring all permissions
 }
 ```
 
@@ -53,10 +54,18 @@ Each permission type will map to one or more stream types:
 
 ```typescript
 // Example mapping
-MICROPHONE => [StreamType.AUDIO_CHUNK, StreamType.TRANSCRIPTION, StreamType.TRANSLATION, StreamType.VAD]
-LOCATION => [StreamType.LOCATION_UPDATE]
-CALENDAR => [StreamType.CALENDAR_EVENT]
-NOTIFICATIONS => [StreamType.PHONE_NOTIFICATION, StreamType.NOTIFICATION_DISMISSED]
+(MICROPHONE) => [
+  StreamType.AUDIO_CHUNK,
+  StreamType.TRANSCRIPTION,
+  StreamType.TRANSLATION,
+  StreamType.VAD,
+];
+(LOCATION) => [StreamType.LOCATION_UPDATE];
+(CALENDAR) => [StreamType.CALENDAR_EVENT];
+(NOTIFICATIONS) => [
+  StreamType.PHONE_NOTIFICATION,
+  StreamType.NOTIFICATION_DISMISSED,
+];
 ```
 
 Any stream types not explicitly mapped to these permissions (like button presses, head position) will be considered basic functionality available to all Apps.
@@ -84,13 +93,13 @@ Path: `/packages/sdk/src/app/permission/permission-manager.ts`
  *
  * Provides permission status checks for Apps
  */
-import { PermissionType, PermissionStatus } from '../../types/permissions';
-import { EventManager } from '../session/events';
-import { AppToCloudMessageType } from '../../types/message-types';
+import { PermissionType, PermissionStatus } from "../../types/permissions";
+import { EventManager } from "../session/events";
+import { AppToCloudMessageType } from "../../types/message-types";
 
 // Import AppSession interface for typing
-import type { AppSession } from '../session/index';
-import { AppToCloudMessage } from '../../types';
+import type { AppSession } from "../session/index";
+import { AppToCloudMessage } from "../../types";
 
 export class PermissionManager {
   private permissions: Map<PermissionType, PermissionStatus> = new Map();
@@ -99,7 +108,7 @@ export class PermissionManager {
     private session: AppSession,
     private packageName: string,
     private send: (message: AppToCloudMessage) => void,
-    private events: EventManager
+    private events: EventManager,
   ) {}
 
   /**
@@ -118,11 +127,14 @@ export class PermissionManager {
         permission,
         packageName: this.packageName,
         sessionId: this.session.getSessionId(),
-        timestamp: new Date()
+        timestamp: new Date(),
       });
 
       const granted = response.status === PermissionStatus.GRANTED;
-      this.permissions.set(permission, granted ? PermissionStatus.GRANTED : PermissionStatus.DENIED);
+      this.permissions.set(
+        permission,
+        granted ? PermissionStatus.GRANTED : PermissionStatus.DENIED,
+      );
       return granted;
     } catch (error) {
       console.error(`Permission check failed: ${error}`);
@@ -133,8 +145,10 @@ export class PermissionManager {
   /**
    * Listen for permission status changes
    */
-  onPermissionChange(callback: (permission: PermissionType, status: PermissionStatus) => void): () => void {
-    return this.events.on('permission_change', (data) => {
+  onPermissionChange(
+    callback: (permission: PermissionType, status: PermissionStatus) => void,
+  ): () => void {
+    return this.events.on("permission_change", (data) => {
       this.permissions.set(data.permission, data.status);
       callback(data.permission, data.status);
     });
@@ -145,7 +159,7 @@ export class PermissionManager {
    */
   updatePermission(permission: PermissionType, status: PermissionStatus): void {
     this.permissions.set(permission, status);
-    this.events.emit('permission_change', { permission, status });
+    this.events.emit("permission_change", { permission, status });
   }
 }
 ```
@@ -187,9 +201,9 @@ async subscribe(type: ExtendedStreamType): Promise<void> {
 Path: `/packages/cloud/src/services/permissions/permission-manager.ts`
 
 ```typescript
-import { PermissionType, PermissionStatus } from '@mentra/sdk';
-import { ExtendedUserSession } from '../core/session.service';
-import { Logger } from 'winston';
+import { PermissionType, PermissionStatus } from "@mentra/sdk";
+import { ExtendedUserSession } from "../core/session.service";
+import { Logger } from "winston";
 
 export class PermissionManager {
   private phonePermissions: Map<PermissionType, PermissionStatus> = new Map();
@@ -206,20 +220,26 @@ export class PermissionManager {
    */
   private initStreamToPermissionMap(): void {
     // Audio-related streams
-    this.streamToPermissionMap.set('audio_chunk', PermissionType.MICROPHONE);
-    this.streamToPermissionMap.set('transcription', PermissionType.MICROPHONE);
-    this.streamToPermissionMap.set('translation', PermissionType.MICROPHONE);
-    this.streamToPermissionMap.set('vad', PermissionType.MICROPHONE);
+    this.streamToPermissionMap.set("audio_chunk", PermissionType.MICROPHONE);
+    this.streamToPermissionMap.set("transcription", PermissionType.MICROPHONE);
+    this.streamToPermissionMap.set("translation", PermissionType.MICROPHONE);
+    this.streamToPermissionMap.set("vad", PermissionType.MICROPHONE);
 
     // Location stream
-    this.streamToPermissionMap.set('location_update', PermissionType.LOCATION);
+    this.streamToPermissionMap.set("location_update", PermissionType.LOCATION);
 
     // Calendar stream
-    this.streamToPermissionMap.set('calendar_event', PermissionType.CALENDAR);
+    this.streamToPermissionMap.set("calendar_event", PermissionType.CALENDAR);
 
     // Notification streams
-    this.streamToPermissionMap.set('phone_notification', PermissionType.READ_NOTIFICATIONS);
-    this.streamToPermissionMap.set('phone_notification_dismissed', PermissionType.READ_NOTIFICATIONS);
+    this.streamToPermissionMap.set(
+      "phone_notification",
+      PermissionType.READ_NOTIFICATIONS,
+    );
+    this.streamToPermissionMap.set(
+      "phone_notification_dismissed",
+      PermissionType.READ_NOTIFICATIONS,
+    );
 
     // Language-specific streams
     // Handle dynamically during permission checks
@@ -230,10 +250,10 @@ export class PermissionManager {
    */
   getRequiredPermissionForStream(streamType: string): PermissionType | null {
     // Handle language-specific streams
-    if (streamType.startsWith('transcription:')) {
+    if (streamType.startsWith("transcription:")) {
       return PermissionType.MICROPHONE;
     }
-    if (streamType.startsWith('translation:')) {
+    if (streamType.startsWith("translation:")) {
       return PermissionType.MICROPHONE;
     }
 
@@ -269,14 +289,20 @@ export class PermissionManager {
   /**
    * Update phone permission status
    */
-  updatePhonePermission(permission: PermissionType, status: PermissionStatus): void {
+  updatePhonePermission(
+    permission: PermissionType,
+    status: PermissionStatus,
+  ): void {
     const oldStatus = this.phonePermissions.get(permission);
     this.phonePermissions.set(permission, status);
 
     this.logger.info(`Updated phone permission: ${permission} = ${status}`);
 
     // If this is a newly revoked permission, check running Apps
-    if (oldStatus === PermissionStatus.GRANTED && status === PermissionStatus.DENIED) {
+    if (
+      oldStatus === PermissionStatus.GRANTED &&
+      status === PermissionStatus.DENIED
+    ) {
       this.handleRevokedPermission(permission);
     }
 
@@ -290,24 +316,31 @@ export class PermissionManager {
   private handleRevokedPermission(permission: PermissionType): void {
     // Check all running Apps
     for (const packageName of this.userSession.activeAppSessions) {
-      const app = this.userSession.installedApps.find(a => a.packageName === packageName);
+      const app = this.userSession.installedApps.find(
+        (a) => a.packageName === packageName,
+      );
 
       // Skip if app not found
       if (!app) continue;
 
       // Check if app requires this permission
-      if (app.permissions && app.permissions.some(p => p.type === permission && p.required)) {
+      if (
+        app.permissions &&
+        app.permissions.some((p) => p.type === permission && p.required)
+      ) {
         // This is a required permission, stop the app
-        this.logger.info(`Stopping App ${packageName} due to revoked required permission: ${permission}`);
+        this.logger.info(
+          `Stopping App ${packageName} due to revoked required permission: ${permission}`,
+        );
 
         // Send notification before stopping
         const connection = this.userSession.appConnections.get(packageName);
         if (connection && connection.readyState === 1) {
           const message = {
-            type: 'permission_required',
+            type: "permission_required",
             permission,
             message: `This app requires the ${permission} permission which has been disabled`,
-            timestamp: new Date()
+            timestamp: new Date(),
           };
           connection.send(JSON.stringify(message));
         }
@@ -321,17 +354,20 @@ export class PermissionManager {
   /**
    * Notify Apps of permission changes
    */
-  private notifyPermissionChange(permission: PermissionType, status: PermissionStatus): void {
+  private notifyPermissionChange(
+    permission: PermissionType,
+    status: PermissionStatus,
+  ): void {
     // For each active App
     for (const packageName of this.userSession.activeAppSessions) {
       const connection = this.userSession.appConnections.get(packageName);
       if (connection && connection.readyState === 1) {
         // Send permission change notification
         const message = {
-          type: 'permission_change',
+          type: "permission_change",
           permission,
           status,
-          timestamp: new Date()
+          timestamp: new Date(),
         };
         connection.send(JSON.stringify(message));
       }
@@ -341,8 +377,13 @@ export class PermissionManager {
   /**
    * Check if a App can start based on its required permissions
    */
-  canAppStart(packageName: string): { canStart: boolean; missingPermissions: PermissionType[] } {
-    const app = this.userSession.installedApps.find(a => a.packageName === packageName);
+  canAppStart(packageName: string): {
+    canStart: boolean;
+    missingPermissions: PermissionType[];
+  } {
+    const app = this.userSession.installedApps.find(
+      (a) => a.packageName === packageName,
+    );
     if (!app || !app.permissions) {
       // No declared permissions, allow start
       return { canStart: true, missingPermissions: [] };
@@ -352,14 +393,17 @@ export class PermissionManager {
     const missingPermissions: PermissionType[] = [];
 
     for (const perm of app.permissions) {
-      if (perm.required && this.phonePermissions.get(perm.type) !== PermissionStatus.GRANTED) {
+      if (
+        perm.required &&
+        this.phonePermissions.get(perm.type) !== PermissionStatus.GRANTED
+      ) {
         missingPermissions.push(perm.type);
       }
     }
 
     return {
       canStart: missingPermissions.length === 0,
-      missingPermissions
+      missingPermissions,
     };
   }
 
@@ -417,29 +461,40 @@ Path: `/packages/cloud/src/models/app.model.ts`
 
 ```typescript
 // Add to AppSchema
-const AppSchema = new Schema({
-  // Existing fields...
+const AppSchema = new Schema(
+  {
+    // Existing fields...
 
-  // Add permissions array
-  permissions: [{
-    type: {
-      type: String,
-      enum: ['MICROPHONE', 'LOCATION', 'CALENDAR', 'NOTIFICATIONS', 'ALL'],
-      required: true
-    },
-    required: {
-      type: Boolean,
-      default: false
-    },
-    description: {
-      type: String,
-      required: true
-    }
-  }]
-}, {
-  strict: false,
-  timestamps: true
-});
+    // Add permissions array
+    permissions: [
+      {
+        type: {
+          type: String,
+          enum: [
+            "MICROPHONE",
+            "BACKGROUND_LOCATION",
+            "CALENDAR",
+            "NOTIFICATIONS",
+            "ALL",
+          ],
+          required: true,
+        },
+        required: {
+          type: Boolean,
+          default: false,
+        },
+        description: {
+          type: String,
+          required: true,
+        },
+      },
+    ],
+  },
+  {
+    strict: false,
+    timestamps: true,
+  },
+);
 ```
 
 #### Session Service Integration
@@ -532,6 +587,7 @@ The iOS/Android client apps will need to:
    - Monitor system permission changes (microphone, location, etc.)
 
 2. **Send Permission Updates**:
+
    ```json
    {
      "type": "phone_permissions_update",
@@ -572,6 +628,7 @@ The iOS/Android client apps will need to:
 ### 4. Runtime Permission Changes
 
 **When phone permissions are enabled:**
+
 1. Client sends `PHONE_PERMISSIONS_UPDATE` to cloud
 2. Cloud updates its permission state
 3. Previously blocked Apps can now be started
@@ -579,6 +636,7 @@ The iOS/Android client apps will need to:
 5. Notification sent to affected Apps about permission change
 
 **When phone permissions are disabled:**
+
 1. Client sends `PHONE_PERMISSIONS_UPDATE` to cloud
 2. Cloud updates its permission state
 3. Running Apps that require the permission as optional:
@@ -593,6 +651,7 @@ The iOS/Android client apps will need to:
 ### Handling Existing Apps
 
 For backward compatibility, existing Apps without declared permissions will:
+
 - Be treated as if they have no required permissions
 - Still be subject to OS permission constraints for sensitive streams
 - Not appear in app store with explicit permission requirements
@@ -600,11 +659,13 @@ For backward compatibility, existing Apps without declared permissions will:
 ### Required vs Optional Permission Behaviors
 
 **Required Permissions:**
+
 - App cannot start without these permissions enabled at OS level
 - When revoked at runtime, App is stopped with an error message
 - User must enable the permission at OS level to use the App
 
 **Optional Permissions:**
+
 - App can start without these permissions
 - When revoked at runtime, App continues with limited functionality
 - Data streams dependent on the permission are filtered out
@@ -612,6 +673,7 @@ For backward compatibility, existing Apps without declared permissions will:
 ### Clear User Messaging
 
 When permissions prevent functionality, users will see:
+
 1. Which permission is needed at the OS level
 2. Why it's needed (from developer description)
 3. How to enable it in device settings
@@ -688,14 +750,16 @@ This callback helps developers distinguish between normal user-initiated stops a
 
 ```typescript
 // Check if stream is allowed (cloud-side)
-const canAccessLocation = userSession.permissionManager.isStreamAllowed('location_update');
+const canAccessLocation =
+  userSession.permissionManager.isStreamAllowed("location_update");
 
 // Check if App can start based on permissions
-const { canStart, missingPermissions } = userSession.permissionManager.canAppStart(packageName);
+const { canStart, missingPermissions } =
+  userSession.permissionManager.canAppStart(packageName);
 
 // Update phone permission status
 userSession.permissionManager.updatePhonePermission(
   PermissionType.LOCATION,
-  PermissionStatus.GRANTED
+  PermissionStatus.GRANTED,
 );
 ```

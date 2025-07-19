@@ -13,9 +13,11 @@ The PermissionType enum definitions are inconsistent across the MentraOS codebas
 ## Problem Statement
 
 ### Root Cause
+
 Developer frontend changes modified the permission enum without updating backend dependencies, creating misaligned enum definitions across packages.
 
 ### Current TypeScript Errors
+
 ```typescript
 // In simple-permission-checker.ts
 [StreamType.PHONE_NOTIFICATION, PermissionType.READ_NOTIFICATIONS],        // ❌ Error
@@ -25,7 +27,9 @@ Developer frontend changes modified the permission enum without updating backend
 ```
 
 ### Semantic Confusion
+
 The current `NOTIFICATIONS` permission conflates two distinct operations:
+
 - **Reading** phone notifications (accessing notification data)
 - **Posting** notifications to phone (sending notifications)
 
@@ -35,22 +39,24 @@ The current `NOTIFICATIONS` permission conflates two distinct operations:
 
 ### SDK vs Backend Enum Differences
 
-| Location | NOTIFICATIONS | READ_NOTIFICATIONS | POST_NOTIFICATIONS |
-|----------|---------------|-------------------|-------------------|
-| **SDK** (`packages/sdk/src/types/models.ts`) | ✅ `'NOTIFICATIONS'` | ❌ Missing | ❌ Missing |
-| **Cloud Model** (`packages/cloud/src/models/app.model.ts`) | ✅ `'NOTIFICATIONS'` | ❌ Missing | ❌ Missing |
-| **Developer Portal** (`developer-portal/src/types/app.ts`) | ❌ Missing | ✅ `'READ_NOTIFICATIONS'` | ✅ `'POST_NOTIFICATIONS'` |
-| **Permission Checker** (`simple-permission-checker.ts`) | ❌ Not used | ✅ Expected | ❌ Not used |
+| Location                                                   | NOTIFICATIONS        | READ_NOTIFICATIONS        | POST_NOTIFICATIONS        |
+| ---------------------------------------------------------- | -------------------- | ------------------------- | ------------------------- |
+| **SDK** (`packages/sdk/src/types/models.ts`)               | ✅ `'NOTIFICATIONS'` | ❌ Missing                | ❌ Missing                |
+| **Cloud Model** (`packages/cloud/src/models/app.model.ts`) | ✅ `'NOTIFICATIONS'` | ❌ Missing                | ❌ Missing                |
+| **Developer Portal** (`developer-portal/src/types/app.ts`) | ❌ Missing           | ✅ `'READ_NOTIFICATIONS'` | ✅ `'POST_NOTIFICATIONS'` |
+| **Permission Checker** (`simple-permission-checker.ts`)    | ❌ Not used          | ✅ Expected               | ❌ Not used               |
 
 ### File-by-File Impact Assessment
 
 #### 🔴 **High Priority - TypeScript Errors**
+
 - `packages/cloud/src/services/permissions/simple-permission-checker.ts:28,29`
   - **Current**: Uses `PermissionType.READ_NOTIFICATIONS`
   - **Status**: ❌ Doesn't exist in imported SDK enum
   - **Fix**: Add READ_NOTIFICATIONS to SDK enum
 
 #### 🟡 **Medium Priority - Semantic Inconsistencies**
+
 - `packages/sdk/src/types/models.ts:39`
   - **Current**: `NOTIFICATIONS = 'NOTIFICATIONS'`
   - **Issue**: Conflates read/post operations
@@ -62,6 +68,7 @@ The current `NOTIFICATIONS` permission conflates two distinct operations:
   - **Fix**: Match SDK updates
 
 #### 🟢 **Low Priority - Frontend Alignments**
+
 - `developer-portal/src/components/forms/PermissionsForm.tsx`
   - **Current**: Uses correct granular permissions
   - **Status**: ✅ Already correct
@@ -95,11 +102,11 @@ Permissions are stored as strings in the `permissions` array within app document
 
 ### Permission Definitions
 
-| Permission | Purpose | Use Cases | Stream Access |
-|------------|---------|-----------|---------------|
-| **READ_NOTIFICATIONS** | Access incoming phone notifications | Dashboard app, notification summary agents | `PHONE_NOTIFICATION`, `PHONE_NOTIFICATION_DISMISSED` |
-| **POST_NOTIFICATIONS** | Send notifications to phone | Notify App, reminder apps | N/A (uses different API) |
-| **NOTIFICATIONS (Legacy)** | Read phone notifications (deprecated) | Existing apps using old permission | Maps to `READ_NOTIFICATIONS` |
+| Permission                 | Purpose                               | Use Cases                                  | Stream Access                                        |
+| -------------------------- | ------------------------------------- | ------------------------------------------ | ---------------------------------------------------- |
+| **READ_NOTIFICATIONS**     | Access incoming phone notifications   | Dashboard app, notification summary agents | `PHONE_NOTIFICATION`, `PHONE_NOTIFICATION_DISMISSED` |
+| **POST_NOTIFICATIONS**     | Send notifications to phone           | Notify App, reminder apps                  | N/A (uses different API)                             |
+| **NOTIFICATIONS (Legacy)** | Read phone notifications (deprecated) | Existing apps using old permission         | Maps to `READ_NOTIFICATIONS`                         |
 
 ### Current Stream Type Mappings
 
@@ -123,6 +130,7 @@ Permissions are stored as strings in the `permissions` array within app document
 4. **Maintain database compatibility** by supporting both permission strings
 
 ### Key Benefits
+
 - ✅ **Zero database migration** required
 - ✅ **No breaking changes** for existing Apps
 - ✅ **Gradual migration** possible
@@ -134,7 +142,7 @@ Permissions are stored as strings in the `permissions` array within app document
 ```typescript
 // NOTIFICATIONS (legacy) maps to READ_NOTIFICATIONS only
 export const LEGACY_PERMISSION_MAP = new Map<PermissionType, PermissionType[]>([
-  [PermissionType.NOTIFICATIONS, [PermissionType.READ_NOTIFICATIONS]]
+  [PermissionType.NOTIFICATIONS, [PermissionType.READ_NOTIFICATIONS]],
 ]);
 ```
 
@@ -149,23 +157,23 @@ export const LEGACY_PERMISSION_MAP = new Map<PermissionType, PermissionType[]>([
 ```typescript
 // packages/sdk/src/types/models.ts
 export enum PermissionType {
-  MICROPHONE = 'MICROPHONE',
-  LOCATION = 'LOCATION',
-  CALENDAR = 'CALENDAR',
+  MICROPHONE = "MICROPHONE",
+  LOCATION = "LOCATION",
+  CALENDAR = "CALENDAR",
 
   // Legacy notification permission (backward compatibility)
-  NOTIFICATIONS = 'NOTIFICATIONS',
+  NOTIFICATIONS = "NOTIFICATIONS",
 
   // New granular notification permissions
-  READ_NOTIFICATIONS = 'READ_NOTIFICATIONS',
-  POST_NOTIFICATIONS = 'POST_NOTIFICATIONS',
+  READ_NOTIFICATIONS = "READ_NOTIFICATIONS",
+  POST_NOTIFICATIONS = "POST_NOTIFICATIONS",
 
-  ALL = 'ALL'
+  ALL = "ALL",
 }
 
 // Legacy permission mapping for backward compatibility
 export const LEGACY_PERMISSION_MAP = new Map<PermissionType, PermissionType[]>([
-  [PermissionType.NOTIFICATIONS, [PermissionType.READ_NOTIFICATIONS]]
+  [PermissionType.NOTIFICATIONS, [PermissionType.READ_NOTIFICATIONS]],
 ]);
 ```
 
@@ -190,7 +198,10 @@ export class SimplePermissionChecker {
 
     // Notification streams - now use READ_NOTIFICATIONS
     [StreamType.PHONE_NOTIFICATION, PermissionType.READ_NOTIFICATIONS],
-    [StreamType.PHONE_NOTIFICATION_DISMISSED, PermissionType.READ_NOTIFICATIONS],
+    [
+      StreamType.PHONE_NOTIFICATION_DISMISSED,
+      PermissionType.READ_NOTIFICATIONS,
+    ],
   ]);
 
   /**
@@ -198,12 +209,12 @@ export class SimplePermissionChecker {
    */
   static hasPermission(app: AppI, requiredPermission: PermissionType): boolean {
     // ALL permission grants access to everything
-    if (app.permissions?.some(p => p.type === PermissionType.ALL)) {
+    if (app.permissions?.some((p) => p.type === PermissionType.ALL)) {
       return true;
     }
 
     // Direct permission match
-    if (app.permissions?.some(p => p.type === requiredPermission)) {
+    if (app.permissions?.some((p) => p.type === requiredPermission)) {
       return true;
     }
 
@@ -214,7 +225,10 @@ export class SimplePermissionChecker {
   /**
    * Check if app has legacy permission that covers the required permission
    */
-  private static hasLegacyPermission(app: AppI, requiredPermission: PermissionType): boolean {
+  private static hasLegacyPermission(
+    app: AppI,
+    requiredPermission: PermissionType,
+  ): boolean {
     if (!app.permissions) return false;
 
     // Check if any app permission is a legacy permission that maps to the required one
@@ -242,7 +256,7 @@ export class SimplePermissionChecker {
         if (!seenPermissions.has(PermissionType.READ_NOTIFICATIONS)) {
           normalized.push({
             type: PermissionType.READ_NOTIFICATIONS,
-            description: permission.description || 'Read phone notifications'
+            description: permission.description || "Read phone notifications",
           });
           seenPermissions.add(PermissionType.READ_NOTIFICATIONS);
         }
@@ -263,23 +277,24 @@ export class SimplePermissionChecker {
 // developer-portal/src/types/app.ts - Add permission metadata
 export const PERMISSION_DISPLAY_INFO = {
   [PermissionType.NOTIFICATIONS]: {
-    label: 'Notifications (Legacy)',
-    description: 'Read phone notifications (deprecated - use READ_NOTIFICATIONS)',
+    label: "Notifications (Legacy)",
+    description:
+      "Read phone notifications (deprecated - use READ_NOTIFICATIONS)",
     isLegacy: true,
     replacedBy: [PermissionType.READ_NOTIFICATIONS],
-    category: 'phone'
+    category: "phone",
   },
   [PermissionType.READ_NOTIFICATIONS]: {
-    label: 'Read Notifications',
-    description: 'Access incoming phone notifications',
+    label: "Read Notifications",
+    description: "Access incoming phone notifications",
     isLegacy: false,
-    category: 'phone'
+    category: "phone",
   },
   [PermissionType.POST_NOTIFICATIONS]: {
-    label: 'Send Notifications',
-    description: 'Send notifications to the phone',
+    label: "Send Notifications",
+    description: "Send notifications to the phone",
     isLegacy: false,
-    category: 'phone'
+    category: "phone",
   },
   // ... other permissions
 };
@@ -426,18 +441,19 @@ const addPermission = () => {
 ```typescript
 // packages/cloud/src/models/app.model.ts
 export enum PermissionType {
-  MICROPHONE = 'MICROPHONE',
-  LOCATION = 'LOCATION',
-  CALENDAR = 'CALENDAR',
+  MICROPHONE = "MICROPHONE",
+  LOCATION = "LOCATION",
+  BACKGROUND_LOCATION = "BACKGROUND_LOCATION",
+  CALENDAR = "CALENDAR",
 
   // Legacy permission (kept for backward compatibility)
-  NOTIFICATIONS = 'NOTIFICATIONS',
+  NOTIFICATIONS = "NOTIFICATIONS",
 
   // New granular permissions
-  READ_NOTIFICATIONS = 'READ_NOTIFICATIONS',
-  POST_NOTIFICATIONS = 'POST_NOTIFICATIONS',
+  READ_NOTIFICATIONS = "READ_NOTIFICATIONS",
+  POST_NOTIFICATIONS = "POST_NOTIFICATIONS",
 
-  ALL = 'ALL'
+  ALL = "ALL",
 }
 
 // Schema validation now accepts all permission types
@@ -455,9 +471,9 @@ const dashboardAppConfig = {
   permissions: [
     {
       type: PermissionType.READ_NOTIFICATIONS,
-      description: 'Access phone notifications for dashboard display'
-    }
-  ]
+      description: "Access phone notifications for dashboard display",
+    },
+  ],
 };
 
 // packages/cloud/src/services/core/system-apps.ts
@@ -466,9 +482,9 @@ const notifyAppConfig = {
   permissions: [
     {
       type: PermissionType.POST_NOTIFICATIONS,
-      description: 'Send notifications to phone'
-    }
-  ]
+      description: "Send notifications to phone",
+    },
+  ],
 };
 ```
 
@@ -477,6 +493,7 @@ const notifyAppConfig = {
 ## Migration Path
 
 ### Phase 1: Fix TypeScript Compilation (Immediate - Day 1)
+
 **Priority**: 🔴 Critical
 **Estimated Time**: 2-3 hours
 
@@ -495,6 +512,7 @@ const notifyAppConfig = {
    - Validate permission checker tests pass
 
 ### Phase 2: Enhance Permission Logic (Day 1-2)
+
 **Priority**: 🟡 High
 **Estimated Time**: 4-6 hours
 
@@ -513,6 +531,7 @@ const notifyAppConfig = {
    - Test edge cases with `ALL` permission
 
 ### Phase 3: Frontend Updates (Day 2)
+
 **Priority**: 🟡 Medium
 **Estimated Time**: 3-4 hours
 
@@ -530,6 +549,7 @@ const notifyAppConfig = {
    - Test permission form with both old and new permission types
 
 ### Phase 4: System App Updates (Day 2-3)
+
 **Priority**: 🟢 Low
 **Estimated Time**: 2-3 hours
 
@@ -542,6 +562,7 @@ const notifyAppConfig = {
    - Update App configuration
 
 ### Phase 5: Documentation and Migration Guidance (Day 3)
+
 **Priority**: 🟢 Low
 **Estimated Time**: 2-3 hours
 
@@ -560,16 +581,19 @@ const notifyAppConfig = {
 ## Risk Mitigation
 
 ### Zero Breaking Changes Strategy
+
 - **Existing Apps continue working**: Legacy `NOTIFICATIONS` permission maps to `READ_NOTIFICATIONS`
 - **Database remains unchanged**: No data migration required
 - **Gradual adoption**: Developers can migrate when convenient
 
 ### Data Integrity Preservation
+
 - **String-based storage**: Permissions stored as strings support both old and new values
 - **Enum validation**: MongoDB schema validation updated to accept all permission types
 - **Backward compatibility**: Legacy permission checking logic ensures continuity
 
 ### Rollback Strategy
+
 - **Simple revert**: Changes are additive - can easily remove new permission types
 - **No data loss**: No database changes means no risk of data corruption
 - **Isolated changes**: Permission logic is well-contained in specific files
@@ -577,29 +601,40 @@ const notifyAppConfig = {
 ### Testing Strategy
 
 #### Unit Tests
+
 ```typescript
 // Test legacy permission mapping
-describe('Legacy Permission Compatibility', () => {
-  it('should allow NOTIFICATIONS permission to access phone notification streams', () => {
+describe("Legacy Permission Compatibility", () => {
+  it("should allow NOTIFICATIONS permission to access phone notification streams", () => {
     const app = { permissions: [{ type: PermissionType.NOTIFICATIONS }] };
-    expect(SimplePermissionChecker.hasPermission(app, PermissionType.READ_NOTIFICATIONS)).toBe(true);
+    expect(
+      SimplePermissionChecker.hasPermission(
+        app,
+        PermissionType.READ_NOTIFICATIONS,
+      ),
+    ).toBe(true);
   });
 
-  it('should normalize legacy permissions', () => {
-    const legacyPermissions = [{ type: PermissionType.NOTIFICATIONS, description: 'Legacy' }];
-    const normalized = SimplePermissionChecker.normalizePermissions(legacyPermissions);
+  it("should normalize legacy permissions", () => {
+    const legacyPermissions = [
+      { type: PermissionType.NOTIFICATIONS, description: "Legacy" },
+    ];
+    const normalized =
+      SimplePermissionChecker.normalizePermissions(legacyPermissions);
     expect(normalized[0].type).toBe(PermissionType.READ_NOTIFICATIONS);
   });
 });
 ```
 
 #### Integration Tests
+
 - Test dashboard app notification access with legacy permission
 - Test new apps with granular permissions
 - Test permission checking across WebSocket streams
 - Test UI display of both permission types
 
 #### Production Validation
+
 - Deploy to staging environment
 - Test existing Apps continue working
 - Verify new permission types function correctly
@@ -612,40 +647,58 @@ describe('Legacy Permission Compatibility', () => {
 ### Clear Migration Guidance
 
 #### For Existing Apps
+
 ```typescript
 // Old way (still works)
 const permissions = [
-  { type: PermissionType.NOTIFICATIONS, description: 'Access notifications' }
+  { type: PermissionType.NOTIFICATIONS, description: "Access notifications" },
 ];
 
 // New way (recommended)
 const permissions = [
-  { type: PermissionType.READ_NOTIFICATIONS, description: 'Read phone notifications' }
+  {
+    type: PermissionType.READ_NOTIFICATIONS,
+    description: "Read phone notifications",
+  },
 ];
 ```
 
 #### For New Apps
+
 ```typescript
 // Reading notifications (dashboard, summary apps)
 const readPermissions = [
-  { type: PermissionType.READ_NOTIFICATIONS, description: 'Read phone notifications' }
+  {
+    type: PermissionType.READ_NOTIFICATIONS,
+    description: "Read phone notifications",
+  },
 ];
 
 // Sending notifications (reminder apps, notify App)
 const postPermissions = [
-  { type: PermissionType.POST_NOTIFICATIONS, description: 'Send notifications to phone' }
+  {
+    type: PermissionType.POST_NOTIFICATIONS,
+    description: "Send notifications to phone",
+  },
 ];
 
 // Both (comprehensive notification apps)
 const bothPermissions = [
-  { type: PermissionType.READ_NOTIFICATIONS, description: 'Read phone notifications' },
-  { type: PermissionType.POST_NOTIFICATIONS, description: 'Send notifications to phone' }
+  {
+    type: PermissionType.READ_NOTIFICATIONS,
+    description: "Read phone notifications",
+  },
+  {
+    type: PermissionType.POST_NOTIFICATIONS,
+    description: "Send notifications to phone",
+  },
 ];
 ```
 
 ### UI Warnings and Guidance
 
 #### Developer Portal Changes
+
 - **No legacy in dropdown**: `NOTIFICATIONS` not available when adding new permissions
 - **Legacy permission display**: Visual "Legacy" badge for existing deprecated permissions
 - **Migration suggestions**: Inline hints for upgrading to new permissions when viewing/editing legacy permissions
@@ -653,6 +706,7 @@ const bothPermissions = [
 - **Edit legacy permissions**: Can edit existing legacy permissions with migration warnings
 
 #### App Store Display (Customer-Facing)
+
 - **Clean permission display**: No "legacy" badges or developer terminology shown to customers
 - **User-friendly descriptions**: Clear explanations of what each permission does for the user
 - **Consistent labeling**: All permissions (legacy and new) displayed with clean, consumer-friendly labels
@@ -702,12 +756,13 @@ const PERMISSION_DESCRIPTIONS = {
 
 ### UI Behavior Summary
 
-| Interface | Audience | Legacy Permission Handling |
-|-----------|----------|---------------------------|
-| **App Store** | End users/customers | ✅ Clean display, no "legacy" terminology, user-friendly labels |
-| **Developer Portal** | App developers | ✅ Show legacy badges, migration warnings, exclude from new selections |
+| Interface            | Audience            | Legacy Permission Handling                                             |
+| -------------------- | ------------------- | ---------------------------------------------------------------------- |
+| **App Store**        | End users/customers | ✅ Clean display, no "legacy" terminology, user-friendly labels        |
+| **Developer Portal** | App developers      | ✅ Show legacy badges, migration warnings, exclude from new selections |
 
 **Key Principles:**
+
 1. **Customer-facing interfaces** (App Store) should be clean and professional with no technical jargon
 2. **Developer-facing interfaces** (Developer Portal) should provide technical guidance and migration paths
 3. **Backend logic** handles legacy permissions transparently for both interfaces
@@ -740,24 +795,28 @@ POST_NOTIFICATIONS = 'POST_NOTIFICATIONS',
 ## Success Criteria
 
 ### Technical Validation
+
 - ✅ **TypeScript compilation succeeds** without errors
 - ✅ **All tests pass** including new permission compatibility tests
 - ✅ **Existing Apps continue working** without modification
 - ✅ **New permission types function correctly** in permission checking
 
 ### Functional Validation
+
 - ✅ **Dashboard app can access notification streams** using legacy permission
 - ✅ **Permission checking logic correctly maps** legacy to new permissions
 - ✅ **UI displays both permission types** appropriately
 - ✅ **SDK exports both old and new permission constants**
 
 ### System Integration
+
 - ✅ **WebSocket stream subscriptions work** with both permission types
 - ✅ **Database operations continue** without modification
 - ✅ **Frontend permission forms handle** both legacy and new permissions
 - ✅ **API responses include correct permission information**
 
 ### Performance Validation
+
 - ✅ **No significant performance impact** from additional permission checking
 - ✅ **Memory usage remains stable** with expanded enum
 - ✅ **Database queries remain efficient** (no schema changes)
@@ -766,13 +825,13 @@ POST_NOTIFICATIONS = 'POST_NOTIFICATIONS',
 
 ## Timeline Summary
 
-| Phase | Duration | Priority | Deliverables |
-|-------|----------|----------|--------------|
-| **Phase 1** | 2-3 hours | 🔴 Critical | TypeScript compilation fix, SDK enum updates |
-| **Phase 2** | 4-6 hours | 🟡 High | Enhanced permission checker with legacy support |
-| **Phase 3** | 3-4 hours | 🟡 Medium | Frontend UI updates for both permission types |
-| **Phase 4** | 2-3 hours | 🟢 Low | System app permission declarations |
-| **Phase 5** | 2-3 hours | 🟢 Low | Documentation and migration guidance |
+| Phase       | Duration  | Priority    | Deliverables                                    |
+| ----------- | --------- | ----------- | ----------------------------------------------- |
+| **Phase 1** | 2-3 hours | 🔴 Critical | TypeScript compilation fix, SDK enum updates    |
+| **Phase 2** | 4-6 hours | 🟡 High     | Enhanced permission checker with legacy support |
+| **Phase 3** | 3-4 hours | 🟡 Medium   | Frontend UI updates for both permission types   |
+| **Phase 4** | 2-3 hours | 🟢 Low      | System app permission declarations              |
+| **Phase 5** | 2-3 hours | 🟢 Low      | Documentation and migration guidance            |
 
 **Total Estimated Time**: 13-19 hours (1.5-2.5 days)
 **Recommended Timeline**: 2-3 days with proper testing
@@ -782,20 +841,23 @@ POST_NOTIFICATIONS = 'POST_NOTIFICATIONS',
 ## Future Considerations
 
 ### Eventual Legacy Removal
+
 - **Timeline**: 6-12 months after implementation
 - **Process**: Deprecation warnings → migration period → removal
 - **Database migration**: Convert legacy `NOTIFICATIONS` to `READ_NOTIFICATIONS`
 
 ### Permission System Enhancements
+
 - **Granular stream permissions**: Individual stream-level access control
 - **Dynamic permissions**: Runtime permission requests
 - **Permission scopes**: Time-limited or context-specific permissions
 
 ### Monitoring and Analytics
+
 - **Legacy permission usage tracking**: Identify apps still using deprecated permissions
 - **Migration metrics**: Track adoption of new permission types
 - **Performance monitoring**: Ensure permission checking remains efficient
 
 ---
 
-*This document should be updated as implementation progresses and any edge cases or additional requirements are discovered.*
+_This document should be updated as implementation progresses and any edge cases or additional requirements are discovered._

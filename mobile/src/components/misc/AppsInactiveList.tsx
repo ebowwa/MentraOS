@@ -171,6 +171,7 @@ export default function InactiveAppList({
         {type: "POST_NOTIFICATIONS", required: true},
         {type: "READ_NOTIFICATIONS", required: true},
         {type: "LOCATION", required: true},
+        {type: "BACKGROUND_LOCATION", required: true},
       ] as AppPermission[]
     }
 
