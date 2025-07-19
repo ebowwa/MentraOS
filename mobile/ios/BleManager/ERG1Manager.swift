@@ -1200,7 +1200,7 @@ extension ERG1Manager {
       
       peripheral!.writeValue(commandData, for: characteristic!, type: .withResponse)
       
-      let waitTime = (0.6) + (0.3 * Double(attemptNumber))
+      let waitTime = (0.2) + (0.3 * Double(attemptNumber))
       
       // after 200ms, if we haven't received the ack, resume:
       DispatchQueue.main.asyncAfter(deadline: .now() + waitTime) {
