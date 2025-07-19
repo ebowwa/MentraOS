@@ -87,12 +87,12 @@ When RTMP stream times out, the system now logs:
 2. Build and deploy both apps:
    ```bash
    # Phone app
-   cd augmentos_manager
+   cd mobile
    ./gradlew assembleDebug
    adb install -r app/build/outputs/apk/debug/app-debug.apk
    
    # Glasses app
-   cd augmentos_asg_client
+   cd asg_client
    ./gradlew assembleDebug
    adb install -r app/build/outputs/apk/debug/app-debug.apk
    ```
