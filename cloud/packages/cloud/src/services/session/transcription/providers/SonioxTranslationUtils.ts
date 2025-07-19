@@ -202,14 +202,18 @@ export class SonioxTranslationUtils {
     // Extract all languages that need transcription
     const dedicatedTranscriptionLanguages = new Set<string>();
     transcriptionSubs.forEach(sub => {
-      const [, langCode] = sub.split(':');
+      const [, langCodeWithParams] = sub.split(':');
+      // Strip query parameters for language code extraction
+      const langCode = langCodeWithParams?.split('?')[0];
       dedicatedTranscriptionLanguages.add(langCode);
     });
     
     // Parse translation pairs to identify source languages
     const translationPairs = translationSubs.map(sub => {
-      const [, langPair] = sub.split(':');
-      const [source, target] = langPair.split(/->|-to-/);
+      const [, langPairWithParams] = sub.split(':');
+      // Strip query parameters for language pair parsing
+      const langPair = langPairWithParams?.split('?')[0];
+      const [source, target] = langPair?.split(/->|-to-/) ?? [];
       return { source, target, subscription: sub };
     });
     
@@ -357,8 +361,10 @@ export class SonioxTranslationUtils {
     
     // Parse translation subscriptions
     const translationPairs = translationSubs.map(sub => {
-      const [, langPair] = sub.split(':');
-      const [source, target] = langPair.split(/->|-to-/);
+      const [, langPairWithParams] = sub.split(':');
+      // Strip query parameters for language pair parsing
+      const langPair = langPairWithParams?.split('?')[0];
+      const [source, target] = langPair?.split(/->|-to-/) ?? [];
       return { source, target, subscription: sub };
     });
     

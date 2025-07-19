@@ -404,7 +404,7 @@ class SonioxTranscriptionStream implements StreamInstance {
     const targetLanguageHint = this.targetLanguage ? this.targetLanguage.split('-')[0] : undefined;
     const languageHints = targetLanguageHint ? [languageHint, targetLanguageHint] : [languageHint];
 
-    const disableLanguageIdentification = this.subscription.endsWith(':no-language-identification');
+    const disableLanguageIdentification = this.subscription.endsWith('?no-language-identification=true');
     const config: any = {
       api_key: this.config.apiKey,
       model: this.config.model || 'stt-rt-preview',

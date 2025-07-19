@@ -161,10 +161,13 @@ export function parseLanguageStream(subscription: ExtendedStreamType): LanguageS
   
   // Handle transcription format (transcription:en-US)
   if (subscription.startsWith(`${StreamType.TRANSCRIPTION}:`)) {
-    const [baseType, languageCode] = subscription.split(':');
-
-      // console.log(`🎤 Parsing transcription stream: ${subscription}`);
-      // console.log(`🎤 Language code: ${languageCode}`);
+    const [baseType, languageCodeWithParams] = subscription.split(':');
+    
+    // Strip query parameters for language code validation
+    const languageCode = languageCodeWithParams?.split('?')[0];
+    
+    // console.log(`🎤 Parsing transcription stream: ${subscription}`);
+    // console.log(`🎤 Language code: ${languageCode}`);
       
     if (languageCode && isValidLanguageCode(languageCode)) {
       return {
@@ -178,7 +181,10 @@ export function parseLanguageStream(subscription: ExtendedStreamType): LanguageS
   
   // Handle translation format (translation:es-ES-to-en-US)
   if (subscription.startsWith(`${StreamType.TRANSLATION}:`)) {
-    const [baseType, languagePair] = subscription.split(':');
+    const [baseType, languagePairWithParams] = subscription.split(':');
+    
+    // Strip query parameters for language pair parsing
+    const languagePair = languagePairWithParams?.split('?')[0];
     const [sourceLanguage, targetLanguage] = languagePair?.split('-to-') ?? [];
 
     // console.log(`🎤 Parsing translation stream: ${subscription}`);
@@ -209,12 +215,14 @@ export function parseLanguageStream(subscription: ExtendedStreamType): LanguageS
  * @returns Typed stream identifier
  */
 export function createTranscriptionStream(language: string, options?: { disableLanguageIdentification?: boolean }): ExtendedStreamType {
+  console.log(`🎤 Creating transcription stream for language: ${language}`);
+  console.log(`🎤 Options: ${JSON.stringify(options)}`);
   if (!isValidLanguageCode(language)) {
     throw new Error(`Invalid language code: ${language}`);
   }
   const base = `${StreamType.TRANSCRIPTION}:${language}`;
   if (options?.disableLanguageIdentification) {
-    return `${base}:no-language-identification` as ExtendedStreamType;
+    return `${base}?no-language-identification=true` as ExtendedStreamType;
   }
   return base as ExtendedStreamType;
 }
@@ -225,13 +233,22 @@ export function createTranscriptionStream(language: string, options?: { disableL
  * 
  * @param sourceLanguage Source language code (e.g., "es-ES")
  * @param targetLanguage Target language code (e.g., "en-US")
+ * @param options Optional configuration options
  * @returns Typed stream identifier
  */
-export function createTranslationStream(sourceLanguage: string, targetLanguage: string): ExtendedStreamType {
+export function createTranslationStream(
+  sourceLanguage: string, 
+  targetLanguage: string,
+  options?: { disableLanguageIdentification?: boolean }
+): ExtendedStreamType {
   if (!isValidLanguageCode(sourceLanguage) || !isValidLanguageCode(targetLanguage)) {
     throw new Error(`Invalid language code(s): ${sourceLanguage}, ${targetLanguage}`);
   }
-  return createLanguageStream(`${StreamType.TRANSLATION}:${sourceLanguage}-to-${targetLanguage}`);
+  const base = `${StreamType.TRANSLATION}:${sourceLanguage}-to-${targetLanguage}`;
+  if (options?.disableLanguageIdentification) {
+    return `${base}?no-language-identification=true` as ExtendedStreamType;
+  }
+  return createLanguageStream(base);
 }
 
 /**
