@@ -32,7 +32,8 @@ import com.augmentos.augmentos_core.smarterglassesmanager.smartglassesconnection
 import com.augmentos.augmentos_core.smarterglassesmanager.speechrecognition.ASR_FRAMEWORKS;
 import com.augmentos.augmentos_core.smarterglassesmanager.speechrecognition.SpeechRecSwitchSystem;
 import com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses.AudioWearable;
-import com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses.EvenRealitiesG1;
+import com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses.EvenRealitiesG1; 
+import com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses.MentraNextGlasses; 
 import com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses.InmoAirOne;
 import com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses.MentraMach1;
 import com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses.MentraLive;
@@ -877,6 +878,7 @@ public class SmartGlassesManager extends Service {
                         new MentraMach1(),
                         new MentraLive(),
                         new EvenRealitiesG1(),
+                        new MentraNextGlasses(),
                         new VuzixShield(),
                         new InmoAirOne(),
                         new TCLRayNeoXTwo(),

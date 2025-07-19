@@ -75,7 +75,7 @@ export default function Homepage() {
       <ScrollView
         style={{marginRight: -theme.spacing.md, paddingRight: theme.spacing.md}}
         contentInsetAdjustmentBehavior="automatic">
-        <CloudConnection />
+        {/* <CloudConnection /> */}
         {status.glasses_info?.model_name && <ConnectedSimulatedGlassesInfo />}
         <Spacer height={theme.spacing.lg} />
         <ConnectDeviceButton />

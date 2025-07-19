@@ -18,6 +18,7 @@ import {useAppTheme} from "./useAppTheme"
 export const getPairingGuide = (glassesModelName: string) => {
   switch (glassesModelName) {
     case "Even Realities G1":
+    case "E2:D5:A2:9E:A0:7A":
       return <EvenRealitiesG1PairingGuide />
     case "Vuzix Z100":
       return <VuzixZ100PairingGuide />

@@ -182,10 +182,10 @@ export default function SelectGlassesBluetoothScreen() {
 
   useEffect(() => {
     // If puck gets d/c'd here, return to home
-    if (!status.core_info.puck_connected) {
-      router.dismissAll()
-      replace("/(tabs)/home")
-    }
+    //     if (!status.core_info.puck_connected) {
+    //       router.dismissAll()
+    //       replace("/(tabs)/home")
+    //     }
 
     // If pairing successful, return to home
     if (status.core_info.puck_connected && status.glasses_info?.model_name) {
