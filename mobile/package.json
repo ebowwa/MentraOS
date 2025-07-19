@@ -13,7 +13,7 @@
     "test:maestro": "maestro test -e MAESTRO_APP_ID=com.mentra.mentra -e IS_DEV=true .maestro/flows",
     "test:maestro:ci": "maestro test -e MAESTRO_APP_ID=com.mentra.mentra -e IS_DEV=false .maestro/flows",
     "adb": "adb reverse tcp:9090 tcp:9090 && adb reverse tcp:3000 tcp:3000 && adb reverse tcp:9001 tcp:9001 && adb reverse tcp:8081 tcp:8081",
-    "postinstall": "patch-package",
+    "postinstall": "node scripts/conditional-patch.js",
     "build:ios:sim": "eas build --profile development --platform ios --local",
     "build:ios:dev": "eas build --profile development:device --platform ios --local",
     "build:ios:preview": "eas build --profile preview --platform ios --local",

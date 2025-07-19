@@ -128,3 +128,32 @@ This is needed because:
 - Android Studio doesn't inherit shell PATH from nvm
 - Some React Native libraries try to execute `node` commands during Gradle configuration
 - The symlinks provide the React Native path directly, avoiding node command execution
+
+## Conditional Patching
+
+The expo-localization patch is conditionally applied based on the operating system:
+
+- **macOS 26 (Tahoe beta)**: Patch is applied
+- **macOS 15 (Sequoia)**: Patch is NOT applied (causes build issues)
+- **All other macOS versions**: Patch is NOT applied
+- **Linux/Windows**: Patch is NOT applied
+
+### Manual Control
+
+You can override the automatic behavior with environment variables:
+
+```bash
+# Force apply the patch
+FORCE_EXPO_LOCALIZATION_PATCH=true bun install
+
+# Skip the patch
+SKIP_EXPO_LOCALIZATION_PATCH=true bun install
+```
+
+### Check Patch Status
+
+To see which patches will be applied on your system:
+
+```bash
+node scripts/check-patch-status.js
+```
