@@ -67,7 +67,7 @@ const AppCard: React.FC<AppCardProps> = memo(({
       onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
     >
       <div className="absolute bottom-0 left-3 right-3 h-px" style={{ backgroundColor: 'var(--border-color)' }}></div>
-
+      
       {/* Image Column */}
       <div className="shrink-0 flex items-start pt-2">
         <div className="relative w-12 h-12">
@@ -79,7 +79,7 @@ const AppCard: React.FC<AppCardProps> = memo(({
           >
             <div className="w-6 h-6 bg-gray-300 dark:bg-gray-600 rounded-full animate-pulse"></div>
           </div>
-
+          
           {/* Actual image that loads in background */}
           <img
             src={imageError ? 'https://placehold.co/48x48/gray/white?text=App' : app.logoURL}
