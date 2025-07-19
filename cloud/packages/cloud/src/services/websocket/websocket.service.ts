@@ -1,3 +1,5 @@
+// cloud/packages/cloud/src/services/websocket/websocket.service.ts
+
 /**
  * @fileoverview Core WebSocket service that initializes and manages WebSocket servers.
  * This service handles connection upgrade requests and routes them to the appropriate

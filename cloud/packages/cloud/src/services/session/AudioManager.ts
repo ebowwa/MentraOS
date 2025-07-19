@@ -1,3 +1,5 @@
+// cloud/packages/cloud/src/services/session/AudioManager.ts
+
 /**
  * @fileoverview AudioManager manages audio processing within a user session.
  * It encapsulates all audio-related functionality that was previously
@@ -45,6 +47,8 @@ export interface OrderedAudioBuffer {
 export class AudioManager {
   private userSession: UserSession;
   private logger: Logger;
+  private audioSource: 'websocket' | 'webrtc' = 'websocket';
+  private webrtcAudioStream?: any; // WebRTC audio stream reference
 
   // LC3 decoding service
   private lc3Service?: any;
@@ -99,6 +103,16 @@ export class AudioManager {
     } catch (error) {
       this.logger.error(`❌ Failed to initialize LC3 service:`, error);
     }
+  }
+
+  /**
+   * Set the audio source (websocket or webrtc)
+   *
+   * @param source The audio source to set
+   */
+  setAudioSource(source: 'websocket' | 'webrtc') {
+    this.audioSource = source;
+    this.logger.info(`Switched audio source to: ${source}`);
   }
 
   /**

@@ -1,3 +1,5 @@
+// cloud/packages/cloud/src/services/websocket/websocket-glasses.service.ts
+
 /**
  * @fileoverview Glasses WebSocket service that handles WebSocket connections from smart glasses clients.
  * This service manages glasses authentication, message processing, and session management.
