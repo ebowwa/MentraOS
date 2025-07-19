@@ -135,6 +135,7 @@ export interface LanguageStreamInfo {
   baseType: string;                // String representation of base type (e.g., "transcription")
   transcribeLanguage: string;      // Source language code (e.g., "en-US")
   translateLanguage?: string;      // Target language code for translations (e.g., "es-ES")
+  options?: Record<string, string | boolean>; // Query parameters/options
   original: ExtendedStreamType;    // Original subscription string
 }
 
@@ -149,56 +150,81 @@ export function isValidLanguageCode(code: string): boolean {
 /**
  * Parse a subscription string to extract language information
  * 
- * @param subscription Subscription string (e.g., "transcription:en-US" or "translation:es-ES-to-en-US")
+ * @param subscription Subscription string (e.g., "transcription:en-US" or "translation:es-ES-to-en-US" or "transcription:en-US?no-language-identification=true")
  * @returns Parsed language stream info or null if not a language-specific subscription
  */
 export function parseLanguageStream(subscription: ExtendedStreamType): LanguageStreamInfo | null {
+  console.log(`🎤 Parsing language stream: ${subscription}`);
+
   if (typeof subscription !== 'string') {
     return null;
   }
-
-  // console.log(`🎤 Parsing language stream: ${subscription}`);
   
-  // Handle transcription format (transcription:en-US)
+  // Handle transcription format (transcription:en-US or transcription:en-US?options)
   if (subscription.startsWith(`${StreamType.TRANSCRIPTION}:`)) {
-    const [baseType, languageCodeWithParams] = subscription.split(':');
-    
-    // Strip query parameters for language code validation
-    const languageCode = languageCodeWithParams?.split('?')[0];
-    
-    // console.log(`🎤 Parsing transcription stream: ${subscription}`);
-    // console.log(`🎤 Language code: ${languageCode}`);
+    const [baseType, rest] = subscription.split(':');
+    const [languageCode, queryString] = rest?.split('?') ?? [];
       
     if (languageCode && isValidLanguageCode(languageCode)) {
+      const options: Record<string, string | boolean> = {};
+      
+      // Parse query parameters if present
+      if (queryString) {
+        const params = new URLSearchParams(queryString);
+        for (const [key, value] of params.entries()) {
+          // Convert string values to boolean when appropriate
+          if (value === 'true') {
+            options[key] = true;
+          } else if (value === 'false') {
+            options[key] = false;
+          } else {
+            options[key] = value;
+          }
+        }
+      }
+      
       return {
         type: StreamType.TRANSCRIPTION,
         baseType,
         transcribeLanguage: languageCode,
+        options: Object.keys(options).length > 0 ? options : undefined,
         original: subscription
       };
     }
   }
   
-  // Handle translation format (translation:es-ES-to-en-US)
+  // Handle translation format (translation:es-ES-to-en-US or translation:es-ES-to-en-US?options)
   if (subscription.startsWith(`${StreamType.TRANSLATION}:`)) {
-    const [baseType, languagePairWithParams] = subscription.split(':');
-    
-    // Strip query parameters for language pair parsing
-    const languagePair = languagePairWithParams?.split('?')[0];
+    const [baseType, rest] = subscription.split(':');
+    const [languagePair, queryString] = rest?.split('?') ?? [];
     const [sourceLanguage, targetLanguage] = languagePair?.split('-to-') ?? [];
-
-    // console.log(`🎤 Parsing translation stream: ${subscription}`);
-    // console.log(`🎤 Source language: ${sourceLanguage}`);
-    // console.log(`🎤 Target language: ${targetLanguage}`);
     
     if (sourceLanguage && targetLanguage && 
         isValidLanguageCode(sourceLanguage) && 
         isValidLanguageCode(targetLanguage)) {
+      const options: Record<string, string | boolean> = {};
+      
+      // Parse query parameters if present
+      if (queryString) {
+        const params = new URLSearchParams(queryString);
+        for (const [key, value] of params.entries()) {
+          // Convert string values to boolean when appropriate
+          if (value === 'true') {
+            options[key] = true;
+          } else if (value === 'false') {
+            options[key] = false;
+          } else {
+            options[key] = value;
+          }
+        }
+      }
+      
       return {
         type: StreamType.TRANSLATION,
         baseType,
         transcribeLanguage: sourceLanguage,
         translateLanguage: targetLanguage,
+        options: Object.keys(options).length > 0 ? options : undefined,
         original: subscription
       };
     }
@@ -217,10 +243,14 @@ export function parseLanguageStream(subscription: ExtendedStreamType): LanguageS
 export function createTranscriptionStream(language: string, options?: { disableLanguageIdentification?: boolean }): ExtendedStreamType {
   console.log(`🎤 Creating transcription stream for language: ${language}`);
   console.log(`🎤 Options: ${JSON.stringify(options)}`);
-  if (!isValidLanguageCode(language)) {
-    throw new Error(`Invalid language code: ${language}`);
+
+  // Defensively remove any query string from the language parameter
+  const languageCode = language.split('?')[0];
+
+  if (!isValidLanguageCode(languageCode)) {
+    throw new Error(`Invalid language code: ${languageCode}`);
   }
-  const base = `${StreamType.TRANSCRIPTION}:${language}`;
+  const base = `${StreamType.TRANSCRIPTION}:${languageCode}`;
   if (options?.disableLanguageIdentification) {
     return `${base}?no-language-identification=true` as ExtendedStreamType;
   }
@@ -241,10 +271,15 @@ export function createTranslationStream(
   targetLanguage: string,
   options?: { disableLanguageIdentification?: boolean }
 ): ExtendedStreamType {
-  if (!isValidLanguageCode(sourceLanguage) || !isValidLanguageCode(targetLanguage)) {
-    throw new Error(`Invalid language code(s): ${sourceLanguage}, ${targetLanguage}`);
+
+  // Defensively remove any query string from the language parameters
+  const cleanSourceLanguage = sourceLanguage.split('?')[0];
+  const cleanTargetLanguage = targetLanguage.split('?')[0];
+
+  if (!isValidLanguageCode(cleanSourceLanguage) || !isValidLanguageCode(cleanTargetLanguage)) {
+    throw new Error(`Invalid language code(s): ${cleanSourceLanguage}, ${cleanTargetLanguage}`);
   }
-  const base = `${StreamType.TRANSLATION}:${sourceLanguage}-to-${targetLanguage}`;
+  const base = `${StreamType.TRANSLATION}:${cleanSourceLanguage}-to-${cleanTargetLanguage}`;
   if (options?.disableLanguageIdentification) {
     return `${base}?no-language-identification=true` as ExtendedStreamType;
   }
