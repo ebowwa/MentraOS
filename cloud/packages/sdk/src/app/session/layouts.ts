@@ -15,7 +15,7 @@
  * layouts.showReferenceCard('Weather', 'Sunny and 75°F');
  * ```
  */
-import { BitmapUtils } from "src/utils/bitmap-utils";
+import { BitmapUtils } from "../../utils/bitmap-utils";
 import {
   DisplayRequest,
   Layout,
