@@ -1609,36 +1609,38 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
                         boolean leftSuccess = true;
                         boolean rightSuccess = true;
 
-                        // Send to left glass
-                        if (!request.onlyRight && leftGlassGatt != null && leftTxChar != null && isLeftConnected) {
-                            leftWaiter.setTrue();
-                            leftTxChar.setValue(request.data);
-                            leftSuccess = leftGlassGatt.writeCharacteristic(leftTxChar);
-                            if (leftSuccess) {
-                                lastSendTimestamp = System.currentTimeMillis();
-                            }
-                        }
+                        // Start both writes without waiting
+                        boolean leftStarted = false;
+                        boolean rightStarted = false;
 
-                        if (leftSuccess) {
-                            leftWaiter.waitWhileTrue();
-                        } else {
-                            //Log.d(TAG, "PROC_QUEUE - LEFT send fail");
-                        }
-
-                        // Send to right glass
+                        // Start right glass write (non-blocking)
                         if (!request.onlyLeft && rightGlassGatt != null && rightTxChar != null && isRightConnected) {
                             rightWaiter.setTrue();
                             rightTxChar.setValue(request.data);
                             rightSuccess = rightGlassGatt.writeCharacteristic(rightTxChar);
                             if (rightSuccess) {
+                                rightStarted = true;
                                 lastSendTimestamp = System.currentTimeMillis();
                             }
                         }
 
-                        if (rightSuccess) {
+                        // Start left glass write immediately (non-blocking)
+                        if (!request.onlyRight && leftGlassGatt != null && leftTxChar != null && isLeftConnected) {
+                            leftWaiter.setTrue();
+                            leftTxChar.setValue(request.data);
+                            leftSuccess = leftGlassGatt.writeCharacteristic(leftTxChar);
+                            if (leftSuccess) {
+                                leftStarted = true;
+                                lastSendTimestamp = System.currentTimeMillis();
+                            }
+                        }
+
+                        // Now wait for both to complete
+                        if (rightStarted) {
                             rightWaiter.waitWhileTrue();
-                        } else {
-                            //Log.d(TAG, "PROC_QUEUE - RIGHT send fail");
+                        }
+                        if (leftStarted) {
+                            leftWaiter.waitWhileTrue();
                         }
 
                         Thread.sleep(DELAY_BETWEEN_CHUNKS_SEND);
@@ -2910,8 +2912,6 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
                 return;
             }
 
-            // Send end command
-            sendBmpEndCommand();
             // Send end command with retry
             boolean endSuccess = sendBmpEndCommandWithRetry();
             if (!endSuccess) {
@@ -2920,8 +2920,6 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
                 return;
             }
 
-            // Calculate and send CRC
-            sendBmpCRC(bmpData);
             // Calculate and send CRC with proper algorithm
             boolean crcSuccess = sendBmpCrcWithRetry(bmpData);
             if (!crcSuccess) {
@@ -3112,67 +3110,6 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
 
     private void sendBmpCRC(byte[] bmpData) {
         sendBmpCrcWithRetry(bmpData);
-    }
-
-    // Service layer methods for cleaner API
-    public void sendSingleBmp(String filePath, boolean isLeft) {
-        try {
-            // Load BMP file
-            byte[] bmpData = loadBmpFromFile(filePath);
-            if (bmpData == null) {
-                Log.e(TAG, "Failed to load BMP file: " + filePath);
-                return;
-            }
-            
-            // Send to specific side or both
-            if (isLeft) {
-                // Send to left side only
-                sendBmpToSide(bmpData, "left");
-            } else {
-                // Send to right side only
-                sendBmpToSide(bmpData, "right");
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "Error sending single BMP: " + e.getMessage());
-        }
-    }
-
-    public void sendBinocularBmps(String leftPath, String rightPath) {
-        try {
-            byte[] leftBmp = loadBmpFromFile(leftPath);
-            byte[] rightBmp = loadBmpFromFile(rightPath);
-            
-            if (leftBmp == null || rightBmp == null) {
-                Log.e(TAG, "Failed to load one or both BMP files");
-                return;
-            }
-            
-            // Send to both sides
-            sendBmpToSide(leftBmp, "left");
-            sendBmpToSide(rightBmp, "right");
-            
-        } catch (Exception e) {
-            Log.e(TAG, "Error sending binocular BMPs: " + e.getMessage());
-        }
-    }
-
-    public void sendMultipleBmps(List<String> bmpPaths) {
-        for (int i = 0; i < bmpPaths.size(); i++) {
-            String path = bmpPaths.get(i);
-            Log.d(TAG, "Sending BMP " + (i + 1) + " of " + bmpPaths.size() + ": " + path);
-            
-            try {
-                byte[] bmpData = loadBmpFromFile(path);
-                if (bmpData != null) {
-                    displayBitmapImage(bmpData);
-                    
-                    // Small delay between images
-                    Thread.sleep(1000);
-                }
-            } catch (Exception e) {
-                Log.e(TAG, "Error sending BMP " + path + ": " + e.getMessage());
-            }
-        }
     }
 
     private void sendBmpToSide(byte[] bmpData, String side) {
