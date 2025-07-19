@@ -2,7 +2,7 @@
 
 import { BaseMessage } from './base';
 import { CloudToAppMessageType, GlassesToCloudMessageType } from '../message-types';
-import { StreamType } from '../streams';
+import { ExtendedStreamType, StreamType } from '../streams';
 import { AppSettings, AppConfig, PermissionType } from '../models';
 import { LocationUpdate, CalendarEvent, RtmpStreamStatus, PhotoResponse } from './glasses-to-cloud';
 import { DashboardMode } from '../dashboard';
@@ -160,6 +160,7 @@ export interface ToolCall {
 export interface DataStream extends BaseMessage {
   type: CloudToAppMessageType.DATA_STREAM;
   streamType: StreamType;
+  fullStreamType: ExtendedStreamType;
   data: unknown; // Type depends on the streamType
 }
 
