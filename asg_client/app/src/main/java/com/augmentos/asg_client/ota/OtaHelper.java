@@ -1,8 +1,8 @@
-package com.augmentos.otaupdater.helper;
+package com.augmentos.asg_client.ota;
 
-import static com.augmentos.otaupdater.helper.Constants.APK_FILENAME;
-import static com.augmentos.otaupdater.helper.Constants.BASE_DIR;
-import static com.augmentos.otaupdater.helper.Constants.METADATA_JSON;
+import static com.augmentos.asg_client.ota.Constants.APK_FILENAME;
+import static com.augmentos.asg_client.ota.Constants.BASE_DIR;
+import static com.augmentos.asg_client.ota.Constants.METADATA_JSON;
 
 import android.content.Context;
 import android.content.pm.PackageInfo;
@@ -23,9 +23,9 @@ import org.json.JSONObject;
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
-import com.augmentos.otaupdater.events.BatteryStatusEvent;
-import com.augmentos.otaupdater.events.DownloadProgressEvent;
-import com.augmentos.otaupdater.events.InstallationProgressEvent;
+import com.augmentos.asg_client.events.BatteryStatusEvent;
+import com.augmentos.asg_client.ota.events.DownloadProgressEvent;
+import com.augmentos.asg_client.ota.events.InstallationProgressEvent;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -46,6 +46,7 @@ public class OtaHelper {
     private static ConnectivityManager.NetworkCallback networkCallback;
     private static ConnectivityManager connectivityManager;
     private static volatile boolean isCheckingVersion = false;
+    private static volatile boolean isUpdating = false;  // Tracks download/install in progress
     private static final Object versionCheckLock = new Object();
     private Handler handler;
     private Context context;
@@ -228,8 +229,8 @@ public class OtaHelper {
         new Thread(() -> {
             // Use synchronized block to ensure thread safety
             synchronized (versionCheckLock) {
-                if (isCheckingVersion) {
-                    Log.d(TAG, "Another thread started version check, skipping");
+                if (isCheckingVersion || isUpdating) {
+                    Log.d(TAG, "Version check or update already in progress, skipping");
                     return;
                 }
                 isCheckingVersion = true;
@@ -326,6 +327,10 @@ public class OtaHelper {
             Log.d(TAG, "Checking " + packageName + " - current: " + currentVersion + ", server: " + serverVersion);
             
             if (serverVersion > currentVersion) {
+                // Set update flag to prevent concurrent updates
+                isUpdating = true;
+                Log.i(TAG, "Starting update process for " + packageName);
+                
                 // Delete old APK if exists
                 String filename = packageName.equals(context.getPackageName()) 
                     ? "ota_updater_update.apk" 
@@ -617,12 +622,6 @@ public class OtaHelper {
                 return;
             }
 
-            // First send a broadcast to pause heartbeats during installation
-            Intent pauseHeartbeatIntent = new Intent(Constants.ACTION_INSTALL_OTA);
-            pauseHeartbeatIntent.setPackage(context.getPackageName());
-            context.sendBroadcast(pauseHeartbeatIntent);
-            Log.i(TAG, "Sent broadcast to pause heartbeats during installation");
-
             Log.d(TAG, "Sending install broadcast to system UI...");
             context.sendBroadcast(intent);
             Log.i(TAG, "Install broadcast sent successfully. System will handle installation.");
@@ -785,12 +784,6 @@ public class OtaHelper {
     // Send update completion broadcast with a delay to ensure proper sequencing
     private static void sendUpdateCompletedBroadcast(Context context) {
         try {
-            // Send a preparatory broadcast to reset the heartbeat system
-            Intent resetIntent = new Intent(Constants.ACTION_INSTALL_OTA);
-            resetIntent.setPackage(context.getPackageName());
-            context.sendBroadcast(resetIntent);
-
-            // Short delay to allow the system to process the reset
             new Handler(Looper.getMainLooper()).postDelayed(() -> {
                 try {
                     // Now send the completion broadcast
@@ -800,6 +793,10 @@ public class OtaHelper {
                     Log.i(TAG, "Sent update completion broadcast");
                 } catch (Exception e) {
                     Log.e(TAG, "Failed to send delayed update completion broadcast", e);
+                } finally {
+                    // Always clear the update flag when done
+                    isUpdating = false;
+                    Log.d(TAG, "Update process completed, ready for next check");
                 }
             }, 1000); // 1 second delay between reset and completion
         } catch (Exception e) {
@@ -812,6 +809,9 @@ public class OtaHelper {
                 Log.i(TAG, "Sent fallback update completion broadcast");
             } catch (Exception ex) {
                 Log.e(TAG, "Failed to send fallback update completion broadcast", ex);
+            } finally {
+                // Make sure to clear flag even on error
+                isUpdating = false;
             }
         }
     }

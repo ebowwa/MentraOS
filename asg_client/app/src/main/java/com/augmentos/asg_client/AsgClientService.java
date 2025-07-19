@@ -48,6 +48,8 @@ import com.augmentos.asg_client.network.INetworkManager;
 import com.augmentos.asg_client.network.NetworkManagerFactory;
 import com.augmentos.asg_client.network.NetworkStateListener; // Make sure this is the correct import path for your library
 import com.augmentos.augmentos_core.smarterglassesmanager.camera.CameraRecordingService;
+import org.greenrobot.eventbus.EventBus;
+import com.augmentos.asg_client.events.BatteryStatusEvent;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Iterator;
@@ -202,6 +204,8 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     // ---------------------------------------------
     // Lifecycle Methods
     // ---------------------------------------------
+    private OtaUpdaterManager otaUpdaterManager;
+    
     public AsgClientService() {
         // Empty constructor
     }
@@ -216,11 +220,22 @@ public class AsgClientService extends Service implements NetworkStateListener, B
 
         // Start OTA Updater after 5 seconds
         new Handler(Looper.getMainLooper()).postDelayed(() -> {
+            // TEMPORARY: Using internal OTA service instead of separate app
+            Log.d(TAG, "Starting internal OTA service after delay");
+            Intent otaIntent = new Intent(this, com.augmentos.asg_client.ota.OtaService.class);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                startForegroundService(otaIntent);
+            } else {
+                startService(otaIntent);
+            }
+            
+            /* ORIGINAL CODE - Will restore for production
             Log.d(TAG, "Starting OTA Updater MainActivity after delay");
             Intent otaIntent = new Intent();
             otaIntent.setClassName("com.augmentos.otaupdater", "com.augmentos.otaupdater.MainActivity");
             otaIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             startActivity(otaIntent);
+            */
         }, 5000); // 5 seconds delay
 
         // Send version info after 3 seconds
@@ -697,6 +712,12 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     public void onDestroy() {
         super.onDestroy();
         Log.d(TAG, "AsgClientService onDestroy");
+        
+        // Clean up OTA updater manager
+        if (otaUpdaterManager != null) {
+            otaUpdaterManager.cleanup();
+            otaUpdaterManager = null;
+        }
 
         // Unregister service health monitor
         try {
@@ -923,6 +944,12 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         }
         
         try {
+            // TEMPORARY: Post to EventBus for internal OTA service
+            BatteryStatusEvent batteryEvent = new BatteryStatusEvent(level, charging, timestamp);
+            EventBus.getDefault().post(batteryEvent);
+            Log.d(TAG, "📡 Posted battery status to internal OTA service: " + level + "% " + (charging ? "(charging)" : "(not charging)"));
+            
+            /* ORIGINAL CODE - Will restore for production
             Intent batteryIntent = new Intent(AsgConstants.ACTION_GLASSES_BATTERY_STATUS);
             batteryIntent.setPackage("com.augmentos.otaupdater");
             batteryIntent.putExtra("battery_level", level);
@@ -931,6 +958,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
             
             sendBroadcast(batteryIntent);
             Log.d(TAG, "📡 Broadcasted battery status to OTA updater: " + level + "% " + (charging ? "(charging)" : "(not charging)"));
+            */
             
             // Update last broadcasted values
             lastBroadcastedBatteryLevel = level;
