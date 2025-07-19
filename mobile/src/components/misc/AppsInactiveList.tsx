@@ -208,6 +208,12 @@ export default function InactiveAppList({
             neededPermissions.push(PermissionFeatures.LOCATION)
           }
           break
+        case "BACKGROUND_LOCATION":
+          const hasBackgroundLocation = await checkFeaturePermissions(PermissionFeatures.BACKGROUND_LOCATION)
+          if (!hasBackgroundLocation) {
+            neededPermissions.push(PermissionFeatures.BACKGROUND_LOCATION)
+          }
+          break
         case "POST_NOTIFICATIONS":
           const hasNotificationPermission = await checkFeaturePermissions(PermissionFeatures.POST_NOTIFICATIONS)
           if (!hasNotificationPermission) {
