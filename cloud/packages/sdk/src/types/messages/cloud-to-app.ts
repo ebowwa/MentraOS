@@ -159,8 +159,7 @@ export interface ToolCall {
  */
 export interface DataStream extends BaseMessage {
   type: CloudToAppMessageType.DATA_STREAM;
-  streamType: StreamType;
-  fullStreamType: ExtendedStreamType;
+  streamType: ExtendedStreamType;
   data: unknown; // Type depends on the streamType
 }
 
