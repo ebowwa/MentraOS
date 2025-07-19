@@ -6,17 +6,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 MentraOS is an open source operating system, app store, and development framework for smart glasses.
 
 - Architecture: Smart glasses connect to user's phone via BLE; phone connects to backend; backend connects to third-party app servers running the MentraOS SDK
-- Mobile app: `augmentos_manager` (React Native with native modules)
-- Android logic: `augmentos_core`
-- iOS native module: `augmentos_manager/ios`
-- Backend & web portals: `augmentos_cloud` (includes developer portal & app store)
-- Android-based smart glasses client: `augmentos_asg_client` (uses `augmentos_core` as a library)
-- MentraOS Store: `augmentos_cloud/store/` (web app for app discovery)
-- Developer Console: `augmentos_cloud/developer-portal/` (web app for app management)
+- Mobile app: `mobile` (React Native with native modules)
+- Android logic: `android_core`
+- iOS native module: `mobile/ios`
+- Backend & web portals: `cloud` (includes developer portal & app store)
+- Android-based smart glasses client: `asg_client` (uses `android_core` as a library)
+- MentraOS Store: `cloud/store/` (web app for app discovery)
+- Developer Console: `cloud/developer-portal/` (web app for app management)
 
 ## Build Commands
 
-### React Native (augmentos_manager)
+### React Native (mobile)
 - Start dev server: `npm start`
 - Run on platforms: `npm run android`, `npm run ios`
 - Build Android: `npm run build-android`, `npm run build-android-release`
@@ -24,7 +24,7 @@ MentraOS is an open source operating system, app store, and development framewor
 - Lint code: `npm run lint`
 - iOS setup: `cd ios && pod install && cd ..`
 
-### Cloud Backend (augmentos_cloud)
+### Cloud Backend (cloud)
 - Install deps: `bun install`
 - Setup environment: `./scripts/docker-setup.sh` or `bun run setup-deps && bun run dev`
 - Setup Docker network: `bun run dev:setup-network`
@@ -56,13 +56,11 @@ MentraOS is an open source operating system, app store, and development framewor
   - Use try/catch with meaningful error messages
 
 ## Naming Conventions
-- Top-level folders: `augmentos_${component}`
 - User-facing names: CamelCase ("MentraOS App", "MentraOS Store", "MentraOS Manager")
 - Code follows language-specific conventions (Java, TypeScript, Swift)
 
 ## Project Resources
 - [GitHub Project Board - General Tasks](https://github.com/orgs/Mentra-Community/projects/2)
-- [GitHub Project Board - iOS Tasks](https://github.com/orgs/Mentra-Community/projects/1)
 - [Discord Community](https://discord.gg/5ukNvkEAqT)
 
 ## AugmentosService.java Update for WiFi Support
