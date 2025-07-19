@@ -883,59 +883,65 @@ export class SubscriptionService {
    * @private
    */
   private isValidSubscription(subscription: ExtendedStreamType): boolean {
-    const validTypes = new Set(Object.values(StreamType));
-    const isValid =
-      validTypes.has(subscription as StreamType) ||
-      isLanguageStream(subscription);
-
-    // Allow augmentos:<key> subscriptions for AugmentOS settings
-    if (
-      typeof subscription === "string" &&
-      subscription.startsWith("augmentos:")
-    ) {
+    // 1. Check for standard StreamType enum values
+    if (Object.values(StreamType).includes(subscription as StreamType)) {
+      logger.debug({ subscription }, "Subscription is a valid standard StreamType");
       return true;
     }
 
-    // Check for invalid same-language translation
-    if (typeof subscription === 'string' && subscription.startsWith('translation:')) {
+    // For any other format, subscription must be a string
+    if (typeof subscription !== "string") {
+      logger.warn(
+        { subscription, type: typeof subscription },
+        "Invalid subscription: not a standard StreamType and not a string.",
+      );
+      return false;
+    }
+
+    // 2. Check for language-specific streams (e.g., transcription, translation)
+    // This relies on the SDK's isLanguageStream, which correctly handles query
+    // parameters by stripping them before validating the language code.
+
+    logger.debug({ subscription }, "Checking if subscription is a language stream");
+    logger.debug({ isLanguageStream: isLanguageStream(subscription) }, "isLanguageStream result");
+
+    if (isLanguageStream(subscription)) {
       const langInfo = parseLanguageStream(subscription);
-      if (langInfo && langInfo.type === StreamType.TRANSLATION) {
-        // Reject if source and target languages are the same
+
+      // Check for invalid same-language translation
+      if (langInfo?.type === StreamType.TRANSLATION) {
         if (langInfo.transcribeLanguage === langInfo.translateLanguage) {
-          logger.error({
-            subscription,
-            source: langInfo.transcribeLanguage,
-            target: langInfo.translateLanguage
-          }, 'Invalid translation subscription: cannot translate a language to itself');
+          logger.error(
+            {
+              subscription,
+              source: langInfo.transcribeLanguage,
+              target: langInfo.translateLanguage,
+            },
+            "Invalid translation subscription: cannot translate a language to itself",
+          );
           return false;
         }
       }
+
+      logger.debug({ subscription }, "Subscription is a valid language stream");
+      return true;
     }
 
-    // Enhanced debugging for RTMP stream status
-    if (
-      subscription === "rtmp_stream_status" ||
-      subscription === StreamType.RTMP_STREAM_STATUS
-    ) {
-      logger.info(
-        {
-          debugKey: "RTMP_SUB_VALIDATION_CHECK",
-          subscription,
-          subscriptionType: typeof subscription,
-          isValid,
-          hasInValidTypes: validTypes.has(subscription as StreamType),
-          isLanguageStream: isLanguageStream(subscription),
-          streamTypeEnum: StreamType.RTMP_STREAM_STATUS,
-          validTypesArray: Array.from(validTypes).slice(0, 10), // First 10 to avoid log spam
-          validTypesSize: validTypes.size,
-          validTypesHasRtmp: validTypes.has(StreamType.RTMP_STREAM_STATUS),
-          streamTypeImport: "@mentra/sdk",
-        },
-        "RTMP_SUB_VALIDATION_CHECK: Validating RTMP stream status subscription in session service",
+    // 3. Allow augmentos:<key> subscriptions for AugmentOS settings
+    if (subscription.startsWith("augmentos:")) {
+      logger.debug(
+        { subscription },
+        "Subscription is a valid Augmentos setting stream",
       );
+      return true;
     }
 
-    return isValid;
+    // 4. If none of the above, the subscription is invalid
+    logger.warn(
+      { subscription },
+      "Invalid subscription type: does not match any known format (Standard, Language, or Augmentos).",
+    );
+    return false;
   }
 
   public getSubscriptionEntries() {
