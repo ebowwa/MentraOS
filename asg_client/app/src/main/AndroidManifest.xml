@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-package="com.augmentos.asg_client">
+    xmlns:tools="http://schemas.android.com/tools"
+    package="com.augmentos.asg_client">
 
   <uses-feature
       android:name="android.hardware.telephony"
@@ -22,6 +23,7 @@ package="com.augmentos.asg_client">
 <!--  <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>-->
   <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
   <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+  <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" tools:ignore="ScopedStorage" />
   <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
   <uses-permission android:name="android.permission.BLUETOOTH" />
@@ -124,6 +126,12 @@ package="com.augmentos.asg_client">
         android:exported="true"
         android:foregroundServiceType="camera|microphone" />
 
+    <service
+        android:name=".ota.OtaService"
+        android:enabled="true"
+        android:exported="false"
+        android:foregroundServiceType="dataSync" />
+
       <activity
         android:name="com.augmentos.asg_client.MainActivity"
         android:exported="true"
@@ -174,6 +182,7 @@ package="com.augmentos.asg_client">
 
   <queries>
     <package android:name="com.augmentos.augmentos" />
+    <package android:name="com.augmentos.otaupdater" />
   </queries>
 
 </manifest>
