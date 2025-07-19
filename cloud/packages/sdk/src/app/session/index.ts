@@ -1044,17 +1044,17 @@ export class AppSession {
         else if (isDataStream(message)) {
           // Ensure streamType exists before emitting the event
           let messageStreamType = message.streamType as ExtendedStreamType;
-          if (message.streamType === StreamType.TRANSCRIPTION) {
-            const transcriptionData = message.data as TranscriptionData;
-            if (transcriptionData.transcribeLanguage) {
-              messageStreamType = createTranscriptionStream(transcriptionData.transcribeLanguage) as ExtendedStreamType;
-            }
-          } else if (message.streamType === StreamType.TRANSLATION) {
-            const translationData = message.data as TranslationData;
-            if (translationData.transcribeLanguage && translationData.translateLanguage) {
-              messageStreamType = createTranslationStream(translationData.transcribeLanguage, translationData.translateLanguage) as ExtendedStreamType;
-            }
-          }
+          // if (message.streamType === StreamType.TRANSCRIPTION) {
+          //   const transcriptionData = message.data as TranscriptionData;
+          //   if (transcriptionData.transcribeLanguage) {
+          //     messageStreamType = createTranscriptionStream(transcriptionData.transcribeLanguage) as ExtendedStreamType;
+          //   }
+          // } else if (message.streamType === StreamType.TRANSLATION) {
+          //   const translationData = message.data as TranslationData;
+          //   if (translationData.transcribeLanguage && translationData.translateLanguage) {
+          //     messageStreamType = createTranslationStream(translationData.transcribeLanguage, translationData.translateLanguage) as ExtendedStreamType;
+          //   }
+          // }
 
           if (messageStreamType && this.subscriptions.has(messageStreamType)) {
             const sanitizedData = this.sanitizeEventData(messageStreamType, message.data) as EventData<typeof messageStreamType>;
