@@ -21,12 +21,10 @@ export default function AppStoreWeb() {
   const {packageName} = useLocalSearchParams()
   const [canGoBack, setCanGoBack] = useState(false)
   const {
-    appStoreUrl: prefetchedURL,
+    appStoreUrl,
     webviewLoading: prefetchedWebviewLoading,
     webViewRef: prefetchedWebviewRef,
   } = useAppStoreWebviewPrefetch()
-
-  const appStoreUrl = "http://localhost:5173";
   const {refreshAppStatus} = useAppStatus()
   const {theme, themed} = useAppTheme()
 
