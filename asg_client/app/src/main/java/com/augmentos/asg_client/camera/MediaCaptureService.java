@@ -50,6 +50,8 @@ public class MediaCaptureService {
     private String currentVideoId = null;
     private String currentVideoPath = null;
     private long recordingStartTime = 0;
+    public static final int bleImageTargetWidth = 320;
+    public static final int bleImageTargetHeight = 240;
     
     // Track which photos should be saved to gallery
     private Map<String, Boolean> photoSaveFlags = new HashMap<>();
@@ -942,9 +944,8 @@ public class MediaCaptureService {
                 }
                 
                 // 2. Calculate new dimensions maintaining aspect ratio
-                // AGGRESSIVE: Use 320x240 as base resolution
-                int targetWidth = 320;
-                int targetHeight = 240;
+                int targetWidth = bleImageTargetWidth;
+                int targetHeight = bleImageTargetHeight;
                 float aspectRatio = (float) original.getWidth() / original.getHeight();
                 
                 if (aspectRatio > targetWidth / (float) targetHeight) {
