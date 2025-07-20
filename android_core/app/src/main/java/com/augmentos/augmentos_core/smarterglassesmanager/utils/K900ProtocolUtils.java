@@ -328,13 +328,20 @@ public class K900ProtocolUtils {
      */
     public static byte[] extractPayloadFromK900(byte[] protocolData) {
         if (!isK900ProtocolFormat(protocolData) || protocolData.length < 7) {
+            Log.e("K900ProtocolUtils", "extractPayloadFromK900: Not K900 format or too short. Length=" + 
+                  (protocolData != null ? protocolData.length : 0));
             return null;
         }
 
         // Extract length (little-endian for device-to-phone)
         int length = (protocolData[3] & 0xFF) | ((protocolData[4] & 0xFF) << 8);
+        
+        Log.d("K900ProtocolUtils", "extractPayloadFromK900: Extracted length=" + length + 
+              ", message length=" + protocolData.length + ", expected total=" + (length + 7));
 
         if (length + 7 > protocolData.length) {
+            Log.e("K900ProtocolUtils", "extractPayloadFromK900: Invalid length. Need " + 
+                  (length + 7) + " bytes but have " + protocolData.length);
             return null; // Invalid length
         }
 
@@ -667,6 +674,9 @@ public class K900ProtocolUtils {
      */
     public static FilePacketInfo extractFilePacket(byte[] protocolData) {
         if (!isK900ProtocolFormat(protocolData) || protocolData.length < 31) {
+            Log.e("K900ProtocolUtils", "extractFilePacket: Invalid format or too short. Length=" + 
+                  (protocolData != null ? protocolData.length : 0) + 
+                  ", isK900Format=" + isK900ProtocolFormat(protocolData));
             return null;
         }
         
@@ -710,6 +720,10 @@ public class K900ProtocolUtils {
         
         // Verify packet has enough data
         if (protocolData.length < pos + info.packSize + LENGTH_FILE_VERIFY + LENGTH_FILE_END) {
+            Log.e("K900ProtocolUtils", "File packet too short for data. Need: " + 
+                  (pos + info.packSize + LENGTH_FILE_VERIFY + LENGTH_FILE_END) + 
+                  ", Have: " + protocolData.length + 
+                  ", packSize=" + info.packSize + ", pos=" + pos);
             return null;
         }
         
@@ -736,6 +750,15 @@ public class K900ProtocolUtils {
         
         info.isValid = (calculatedVerify == info.verifyCode);
         
+        if (!info.isValid) {
+            Log.e("K900ProtocolUtils", "File packet checksum failed. Expected: " + 
+                  String.format("%02X", info.verifyCode) + ", Calculated: " + 
+                  String.format("%02X", calculatedVerify));
+        } else {
+            Log.d("K900ProtocolUtils", "File packet extracted successfully: index=" + info.packIndex + 
+                  ", size=" + info.packSize + ", fileName=" + info.fileName);
+        }
+        
         return info;
     }
     
@@ -754,8 +777,7 @@ public class K900ProtocolUtils {
             
             JSONObject message = new JSONObject();
             message.put("C", "cs_flts");
-            message.put("V", 1);
-            message.put("B", body.toString());
+            message.put("B", body); // Send as JSON object, not string
             
             return message.toString();
         } catch (JSONException e) {

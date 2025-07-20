@@ -274,6 +274,7 @@ public class K900BluetoothManager extends BaseBluetoothManager implements Serial
     
     @Override
     public void onSerialRead(String serialPath, byte[] data, int size) {
+        Log.d(TAG, "onSerialRead called with " + size + " bytes");
         if (data != null && size > 0) {
             // Copy the data to avoid issues with buffer reuse
             byte[] dataCopy = new byte[size];
@@ -499,30 +500,49 @@ public class K900BluetoothManager extends BaseBluetoothManager implements Serial
     }
     
     /**
-     * Handle file transfer acknowledgment from phone
+     * Handle file transfer acknowledgment from BES chip
+     * Note: BES chip auto-acknowledges packets, not the phone
      */
     private void handleFileTransferAck(int state, int index) {
-        Log.d(TAG, "Received file transfer ACK: state=" + state + ", index=" + index);
+        Log.d(TAG, "Received BES chip ACK: state=" + state + ", index=" + index);
         
         if (currentFileTransfer == null || !currentFileTransfer.isActive) {
             Log.w(TAG, "Received ACK but no active file transfer");
             return;
         }
         
+        // BES chip sends ACK with index+1 (e.g., sends index=1 for packet 0)
+        // This is expected behavior from the BES chip
+        int expectedBesIndex = currentFileTransfer.currentPacketIndex + 1;
+        if (index != expectedBesIndex) {
+            Log.w(TAG, "Ignoring ACK with unexpected index " + index + 
+                      " (expected BES index " + expectedBesIndex + " for packet " + 
+                      currentFileTransfer.currentPacketIndex + ")");
+            return;
+        }
+        
         if (state == 1) {
-            // Success - remove from pending and move to next packet
-            pendingPackets.remove(index);
+            // Success - BES chip acknowledged receipt
+            // Convert BES index back to packet index
+            int packetIndex = index - 1;
+            FilePacketState packetState = pendingPackets.remove(packetIndex);
             
-            if (index == currentFileTransfer.currentPacketIndex) {
+            if (packetState != null) {
+                Log.d(TAG, "BES ACK received for packet " + packetIndex + " after " + 
+                          (System.currentTimeMillis() - packetState.lastSendTime) + "ms");
+            }
+            
+            if (packetIndex == currentFileTransfer.currentPacketIndex) {
                 currentFileTransfer.currentPacketIndex++;
-                sendNextFilePacket();
-            } else {
-                Log.w(TAG, "Received ACK for packet " + index + " but expected " + 
+                Log.d(TAG, "BES confirmed packet " + packetIndex + ", moving to packet " + 
                           currentFileTransfer.currentPacketIndex);
+                sendNextFilePacket();
+            } else if (packetIndex < currentFileTransfer.currentPacketIndex) {
+                Log.d(TAG, "Received late BES ACK for already processed packet " + packetIndex);
             }
         } else {
-            // Failure - packet will be retried by timeout handler
-            Log.w(TAG, "Received negative ACK for packet " + index);
+            // Failure - BES chip failed to receive packet
+            Log.w(TAG, "BES chip reported failure for packet index " + (index - 1));
         }
     }
     
@@ -530,41 +550,71 @@ public class K900BluetoothManager extends BaseBluetoothManager implements Serial
      * Process received message to check for file transfer acknowledgments
      */
     private void processReceivedMessage(byte[] message) {
+        Log.d(TAG, "processReceivedMessage called with " + message.length + " bytes");
+        
         // First check if it's a K900 protocol message
         if (!com.augmentos.augmentos_core.smarterglassesmanager.utils.K900ProtocolUtils.isK900ProtocolFormat(message)) {
+            Log.d(TAG, "Message is not K900 protocol format");
             return;
         }
         
-        // Extract payload
-        byte[] payload = com.augmentos.augmentos_core.smarterglassesmanager.utils.K900ProtocolUtils.extractPayloadFromK900(message);
+        // Extract payload - try big-endian first (BES chip uses big-endian)
+        byte[] payload = com.augmentos.augmentos_core.smarterglassesmanager.utils.K900ProtocolUtils.extractPayload(message);
         if (payload == null) {
-            return;
+            // Fallback to little-endian
+            payload = com.augmentos.augmentos_core.smarterglassesmanager.utils.K900ProtocolUtils.extractPayloadFromK900(message);
+            if (payload == null) {
+                Log.e(TAG, "Failed to extract payload from message");
+                // Log first few bytes for debugging
+                if (message.length >= 10) {
+                    StringBuilder hex = new StringBuilder();
+                    for (int i = 0; i < Math.min(10, message.length); i++) {
+                        hex.append(String.format("%02X ", message[i]));
+                    }
+                    Log.e(TAG, "Message start: " + hex.toString());
+                }
+                return;
+            }
         }
         
         // Try to parse as JSON
         try {
             String jsonStr = new String(payload, "UTF-8");
+            Log.d(TAG, "Extracted payload JSON: " + jsonStr);
             JSONObject json = new JSONObject(jsonStr);
             
             // Check if it's a C-wrapped message
             if (json.has("C")) {
                 String command = json.getString("C");
+                Log.d(TAG, "Found C-wrapped command: " + command);
                 
-                // Check for file transfer acknowledgment
+                // Check for file transfer acknowledgment from BES chip
                 if ("cs_flts".equals(command) && json.has("B")) {
-                    String bodyStr = json.getString("B");
-                    JSONObject body = new JSONObject(bodyStr);
+                    JSONObject body;
+                    
+                    // Handle both string and object formats for B field
+                    if (json.get("B") instanceof String) {
+                        String bodyStr = json.getString("B");
+                        body = new JSONObject(bodyStr);
+                    } else {
+                        body = json.getJSONObject("B");
+                    }
                     
                     int state = body.optInt("state", 0);
                     int index = body.optInt("index", -1);
                     
                     if (index >= 0) {
+                        // This is a BES chip auto-acknowledgment
+                        Log.d(TAG, "BES chip auto-ACK detected: state=" + state + ", index=" + index);
                         handleFileTransferAck(state, index);
+                    } else {
+                        Log.e(TAG, "BES ACK missing index field!");
                     }
                 }
             }
         } catch (Exception e) {
-            // Not a JSON message or parsing error - ignore
+            // Not a JSON message or parsing error - log it
+            Log.e(TAG, "Error parsing received message as JSON", e);
         }
     }
     
@@ -609,6 +659,7 @@ public class K900BluetoothManager extends BaseBluetoothManager implements Serial
             
             Log.d(TAG, "🎾 TEST: Starting file transfer from assets: " + fileName + 
                        " (" + fileData.length + " bytes, " + currentFileTransfer.totalPackets + " packets)");
+            Log.d(TAG, "📡 Using BES chip auto-acknowledgment protocol");
             
             notificationManager.showDebugNotification("Test File Transfer", 
                 "Starting transfer of " + fileName + " from assets (" + currentFileTransfer.totalPackets + " packets)");

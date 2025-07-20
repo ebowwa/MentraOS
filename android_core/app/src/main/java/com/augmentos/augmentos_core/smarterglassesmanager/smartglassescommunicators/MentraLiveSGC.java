@@ -1271,14 +1271,22 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 Log.d(TAG, "Thread-" + threadId + ": 📦 DETECTED FILE TRANSFER PACKET (type: 0x" + 
                       String.format("%02X", cmdType) + ")");
                 
-                // Extract file packet information
+                // Debug: Log the raw data
+                StringBuilder hexDump = new StringBuilder();
+                for (int i = 0; i < Math.min(data.length, 64); i++) {
+                    hexDump.append(String.format("%02X ", data[i]));
+                }
+                Log.d(TAG, "Thread-" + threadId + ": 📦 Raw file packet data length=" + data.length + 
+                      ", first 64 bytes: " + hexDump.toString());
+                
+                // The data IS the file packet - it starts with ## and contains the full file packet structure
                 K900ProtocolUtils.FilePacketInfo packetInfo = K900ProtocolUtils.extractFilePacket(data);
                 if (packetInfo != null && packetInfo.isValid) {
                     processFilePacket(packetInfo);
                 } else {
                     Log.e(TAG, "Thread-" + threadId + ": Failed to extract or validate file packet");
-                    // Send negative acknowledgment
-                    sendFileTransferAck(0, -1);
+                    // BES chip handles ACKs automatically - no need to send from phone
+                    // sendFileTransferAck(0, -1);
                 }
                 
                 return; // Exit after processing file packet
@@ -2703,8 +2711,9 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         boolean added = session.addPacket(packetInfo.packIndex, packetInfo.data);
         
         if (added) {
-            // Send positive acknowledgment
-            sendFileTransferAck(1, packetInfo.packIndex);
+            // BES chip handles ACKs automatically - no need to send from phone
+            // sendFileTransferAck(1, packetInfo.packIndex);
+            Log.d(TAG, "📦 Packet " + packetInfo.packIndex + " received successfully (BES will auto-ACK)");
             
             // Check if transfer is complete
             if (session.isComplete) {
@@ -2722,20 +2731,25 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         } else {
             // Packet already received or invalid index
             Log.w(TAG, "📦 Duplicate or invalid packet: " + packetInfo.packIndex);
-            // Still send positive ack for duplicate packets
-            sendFileTransferAck(1, packetInfo.packIndex);
+            // BES chip handles ACKs automatically - no need to send from phone
+            // sendFileTransferAck(1, packetInfo.packIndex);
         }
     }
     
     /**
      * Send file transfer acknowledgment
+     * NOTE: BES chip handles ACKs automatically - this method is kept for reference but not used
      */
     private void sendFileTransferAck(int state, int index) {
+        // BES chip auto-acknowledges file packets - phone doesn't need to send ACKs
+        Log.d(TAG, "📤 [DISABLED] Phone ACK not needed - BES chip handles: state=" + state + ", index=" + index);
+        /*
         String ackMessage = K900ProtocolUtils.createFileTransferAck(state, index);
         if (ackMessage != null) {
             Log.d(TAG, "📤 Sending file transfer ACK: state=" + state + ", index=" + index);
             sendDataToGlasses(ackMessage, false);
         }
+        */
     }
     
     /**

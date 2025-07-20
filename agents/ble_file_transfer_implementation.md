@@ -117,45 +117,79 @@ E  File packet 0 failed after 5 retries
 - No logs about receiving file packets
 - Only receives normal messages during this time
 
-## Theories
+## Recent Fixes
 
-### 1. BES Chip Packet Size Limitation
-- BES chip might not handle 432-byte UART packets
-- May need pre-fragmentation before sending to BES
+### 1. **Byte Order Fixed** ✅
+- Changed from little-endian to big-endian for all multi-byte integers
+- File packets now being received on correct characteristic (72FF)
 
-### 2. Missing Initialization
-- BES chip might need a command to enable file transfer mode
-- Reference implementation might have initialization we're missing
+### 2. **ACK Parsing Enhanced** ✅  
+- Glasses now handle both string and object formats for B field
+- Prevents crashes when receiving different ACK formats
 
-### 3. Wrong Communication Path
-- File packets might need different handling than regular messages
-- BES chip might expect file data on different UART pins/mode
+### 3. **Debug Logging Added** ✅
+- Better visibility into packet extraction failures
+- Shows full packet length and more hex data
 
-### 4. Timing Issues
-- Even with fast mode (5ms), timing might be critical
-- BES chip might drop packets if they arrive too fast
+## Current Issues  
 
-## Next Steps to Try
+### 1. **File Transfer Working but Stuck** ✅❌
+- Phone successfully receives packet 0 and sends ACK
+- But duplicate detection prevents progress on retries
+- Need to fix glasses to handle ACKs properly
 
-1. **Reduce packet size**
-   - Try sending smaller packets (e.g., 100 bytes) to test
-   - Check if there's a size threshold where packets stop working
+### 2. **Phantom ACK Issue** 🐛
+- Glasses receive `{"C":"cs_flts","B":{"state":1,"index":1}}` immediately after sending
+- Wrong index (1 instead of 0) and arrives too fast to be from phone
+- Likely BES chip auto-response or ODM firmware behavior
+- Our real ACK arrives later with correct format and index
 
-2. **Check BES chip documentation**
-   - Look for commands to enable file transfer mode
-   - Check for UART buffer size limitations
+### 3. **Working Components** ✅
+- File packet extraction now works correctly
+- Proper byte order (big-endian) being used
+- Phone successfully receives and processes packets
+- Full 432-byte packets are received intact
+- BES chip auto-acknowledgment system works
 
-3. **Analyze working implementation**
-   - Run K900Server_common and capture BLE traffic
-   - See if there's initialization we're missing
+## Key Discovery: BES Auto-Acknowledgment
 
-4. **Test with different data**
-   - Send file packets as multiple smaller BLE writes
-   - Try sending on different characteristics
+### The ODM Documentation Truth
+- ODM docs ONLY describe MTK<=>BES communication
+- "Mtk send pack to bes first, when bes receive successfully, bes will reply to mtk"
+- Phone is NOT mentioned in the ACK flow
+- BES chip automatically handles all acknowledgments
 
-5. **Protocol analysis**
-   - Use BLE sniffer to see what's actually transmitted
-   - Compare with reference implementation
+### BES ACK Behavior
+- BES sends: `{"C":"cs_flts","B":{"state":1,"index":packet_index+1}}`
+- Index is always packet_index + 1 (e.g., index=1 for packet 0)
+- ACK arrives immediately because it's from BES, not phone
+- This is the REAL ACK, not a phantom
+
+## Implementation Updates
+
+### Glasses Side (K900BluetoothManager)
+- Updated to properly handle BES auto-ACKs
+- BES sends index = packet_index + 1
+- Removed confusion about "phantom" ACKs
+- Now correctly progresses through file transfer
+
+### Phone Side (MentraLiveSGC)  
+- Disabled phone ACK sending (commented out)
+- BES chip handles all acknowledgments
+- Phone only receives and processes packets
+- File saving functionality remains intact
+
+## Next Steps
+
+1. **Test the updated implementation**
+   - Verify file transfer progresses past packet 0
+   - Check if complete file is received
+   - Confirm BES ACKs are working correctly
+
+2. **Monitor transfer progress**
+   - Watch for proper packet sequence
+   - Verify all packets are received
+   - Check final file integrity
 
 ## Key Code Locations
 

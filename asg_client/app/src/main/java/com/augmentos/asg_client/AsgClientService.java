@@ -28,6 +28,7 @@ import android.widget.FrameLayout;
 import org.json.JSONException;
 import org.json.JSONObject;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import androidx.core.app.NotificationCompat;
@@ -42,12 +43,14 @@ import com.augmentos.augmentos_core.AugmentosService;
 import com.augmentos.asg_client.bluetooth.BluetoothManagerFactory;
 import com.augmentos.asg_client.bluetooth.BluetoothStateListener;
 import com.augmentos.asg_client.bluetooth.IBluetoothManager;
+import com.augmentos.asg_client.bluetooth.K900BluetoothManager;
 import com.augmentos.asg_client.camera.MediaCaptureService;
 import com.augmentos.asg_client.camera.MediaUploadQueueManager;
 import com.augmentos.asg_client.network.INetworkManager;
 import com.augmentos.asg_client.network.NetworkManagerFactory;
 import com.augmentos.asg_client.network.NetworkStateListener; // Make sure this is the correct import path for your library
 import com.augmentos.augmentos_core.smarterglassesmanager.camera.CameraRecordingService;
+import com.augmentos.augmentos_core.smarterglassesmanager.utils.K900ProtocolUtils;
 import org.greenrobot.eventbus.EventBus;
 import com.augmentos.asg_client.events.BatteryStatusEvent;
 
@@ -105,6 +108,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
 
     // Bluetooth management
     private IBluetoothManager bluetoothManager;
+    private K900BluetoothManager k900BluetoothManager; // Keep reference if it's K900
 
     // Microphone management for non-K900 devices
     private com.augmentos.asg_client.audio.GlassesMicrophoneManager glassesMicrophoneManager;
@@ -477,6 +481,11 @@ public class AsgClientService extends Service implements NetworkStateListener, B
 
         // Create the bluetooth manager using the factory
         bluetoothManager = BluetoothManagerFactory.getBluetoothManager(getApplicationContext());
+        
+        // Keep K900 reference if applicable
+        if (bluetoothManager instanceof K900BluetoothManager) {
+            k900BluetoothManager = (K900BluetoothManager) bluetoothManager;
+        }
 
         // Enhanced logging about which manager was created
         Log.e(TAG, "==========================================================");
@@ -1282,6 +1291,9 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         }
 
         Log.d(TAG, "Received " + data.length + " bytes from Bluetooth");
+        
+        // Store raw data for potential forwarding (e.g., file transfer ACKs)
+        byte[] rawDataCopy = Arrays.copyOf(data, data.length);
 
         // Process the data
 
@@ -1947,6 +1959,13 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                     }
                     break;
 
+                case "cs_flts":
+                    // File transfer acknowledgment from BES chip
+                    Log.d(TAG, "📦 BES file transfer ACK detected in AsgClientService");
+                    // K900BluetoothManager should have already processed this in processReceivedMessage
+                    // before forwarding it here, so we don't need to do anything
+                    break;
+                    
                 default:
                     Log.d(TAG, "📦 Unknown ODM payload: " + command);
                     break;
