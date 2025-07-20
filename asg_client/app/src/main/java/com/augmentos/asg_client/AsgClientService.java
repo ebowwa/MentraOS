@@ -108,7 +108,6 @@ public class AsgClientService extends Service implements NetworkStateListener, B
 
     // Bluetooth management
     private IBluetoothManager bluetoothManager;
-    private K900BluetoothManager k900BluetoothManager; // Keep reference if it's K900
 
     // Microphone management for non-K900 devices
     private com.augmentos.asg_client.audio.GlassesMicrophoneManager glassesMicrophoneManager;
@@ -481,11 +480,6 @@ public class AsgClientService extends Service implements NetworkStateListener, B
 
         // Create the bluetooth manager using the factory
         bluetoothManager = BluetoothManagerFactory.getBluetoothManager(getApplicationContext());
-        
-        // Keep K900 reference if applicable
-        if (bluetoothManager instanceof K900BluetoothManager) {
-            k900BluetoothManager = (K900BluetoothManager) bluetoothManager;
-        }
 
         // Enhanced logging about which manager was created
         Log.e(TAG, "==========================================================");
@@ -1868,40 +1862,40 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         }
     }
 
-    // These are plain text commands from the K900's MCU, usually from button presses on the device
-    public void parseK900Command(String command){
-        switch (command) {
-            case "cs_pho":
-                // TESTING: Commented out normal photo handling
-                // handleButtonPress(false);
-                
-                // TEST: Send test image from assets
-                Log.d(TAG, "🎾 TEST: cs_pho pressed - sending test.jpg from assets");
-                if (bluetoothManager != null) {
-                    boolean started = ((com.augmentos.asg_client.bluetooth.BaseBluetoothManager)bluetoothManager)
-                        .sendTestImageFromAssets("test.jpg");
-                    Log.d(TAG, "🎾 TEST: File transfer started: " + started);
-                } else {
-                    Log.e(TAG, "🎾 TEST: bluetoothManager is null!");
-                }
-                break;
-
-            case "hm_htsp":
-            case "mh_htsp":
-                Log.d(TAG, "📦 Payload is hm_htsp or mh_htsp");
-                networkManager.startHotspot("Mentra Live", "MentraLive");
-                break;
-
-            case "cs_vdo":
-                handleButtonPress(true);
-            case "hm_batv":
-                //looks something like... {"C":"hm_batv","B":{"vt":4351,"pt":94}}
-                Log.d(TAG, "got a hm_batv");
-            default:
-                Log.d(TAG, "📦 Unknown payload: " + command);
-                break;
-        }
-    }
+//    // These are plain text commands from the K900's MCU, usually from button presses on the device
+//    public void parseK900Command(String command){
+//        switch (command) {
+//            case "cs_pho":
+//                // TESTING: Commented out normal photo handling
+//                // handleButtonPress(false);
+//
+//                // TEST: Send test image from assets
+//                Log.d(TAG, "🎾 TEST: cs_pho pressed - sending test.jpg from assets");
+//                if (bluetoothManager != null) {
+//                    boolean started = ((com.augmentos.asg_client.bluetooth.BaseBluetoothManager)bluetoothManager)
+//                        .sendTestImageFromAssets("test.jpg");
+//                    Log.d(TAG, "🎾 TEST: File transfer started: " + started);
+//                } else {
+//                    Log.e(TAG, "🎾 TEST: bluetoothManager is null!");
+//                }
+//                break;
+//
+//            case "hm_htsp":
+//            case "mh_htsp":
+//                Log.d(TAG, "📦 Payload is hm_htsp or mh_htsp");
+//                networkManager.startHotspot("Mentra Live", "MentraLive");
+//                break;
+//
+//            case "cs_vdo":
+//                handleButtonPress(true);
+//            case "hm_batv":
+//                //looks something like... {"C":"hm_batv","B":{"vt":4351,"pt":94}}
+//                Log.d(TAG, "got a hm_batv");
+//            default:
+//                Log.d(TAG, "📦 Unknown payload: " + command);
+//                break;
+//        }
+//    }
 
     // Overloaded version for ODM format JSON commands
     public void parseK900Command(JSONObject json) {
@@ -1960,10 +1954,10 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                     break;
 
                 case "cs_flts":
-                    // File transfer acknowledgment from BES chip
-                    Log.d(TAG, "📦 BES file transfer ACK detected in AsgClientService");
+                    // File transfer acknowledgment from BES chip (K900 specific code)
                     // K900BluetoothManager should have already processed this in processReceivedMessage
-                    // before forwarding it here, so we don't need to do anything
+                    // no need to do anything here
+                    Log.d(TAG, "📦 BES file transfer ACK detected in AsgClientService");
                     break;
                     
                 default:
