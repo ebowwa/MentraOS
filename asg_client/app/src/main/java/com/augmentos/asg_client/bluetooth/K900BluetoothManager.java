@@ -401,6 +401,18 @@ public class K900BluetoothManager extends BaseBluetoothManager implements Serial
             notificationManager.showDebugNotification("File Transfer Complete", 
                 currentFileTransfer.fileName + " in " + transferDuration + "ms");
             
+            // Delete the file after successful transfer
+            try {
+                File file = new File(currentFileTransfer.filePath);
+                if (file.exists() && file.delete()) {
+                    Log.d(TAG, "🗑️ Deleted file after successful BLE transfer: " + currentFileTransfer.filePath);
+                } else {
+                    Log.w(TAG, "Failed to delete file: " + currentFileTransfer.filePath);
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Error deleting file after BLE transfer", e);
+            }
+            
             // Disable fast mode
             comManager.setFastMode(false);
             

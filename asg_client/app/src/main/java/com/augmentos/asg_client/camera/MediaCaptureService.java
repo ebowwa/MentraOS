@@ -18,7 +18,9 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Locale;
+import java.util.Map;
 
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -48,6 +50,9 @@ public class MediaCaptureService {
     private String currentVideoId = null;
     private String currentVideoPath = null;
     private long recordingStartTime = 0;
+    
+    // Track which photos should be saved to gallery
+    private Map<String, Boolean> photoSaveFlags = new HashMap<>();
 
     /**
      * Interface for listening to media capture and upload events
@@ -177,14 +182,14 @@ public class MediaCaptureService {
                         // Check if we need to take a photo
                         if ("take_photo".equals(jsonResponse.optString("action"))) {
                             String requestId = jsonResponse.optString("requestId");
-                            boolean saveToGallery = jsonResponse.optBoolean("saveToGallery", true);
+                            boolean save = jsonResponse.optBoolean("save", false);  // Default to false
 
-                            Log.d(TAG, "Server requesting photo with requestId: " + requestId);
+                            Log.d(TAG, "Server requesting photo with requestId: " + requestId + ", save: " + save);
 
                             // Take photo and upload directly to server
                             String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
                             String photoFilePath = mContext.getExternalFilesDir(null) + File.separator + "IMG_" + timeStamp + ".jpg";
-                            takePhotoAndUpload(photoFilePath, requestId);
+                            takePhotoAndUpload(photoFilePath, requestId, null, save);
                         } else {
                             Log.d(TAG, "Button press handled by server, no photo needed");
                         }
@@ -516,8 +521,11 @@ public class MediaCaptureService {
      * @param photoFilePath Local path where photo will be saved
      * @param requestId Unique request ID for tracking
      * @param webhookUrl Optional webhook URL for direct upload to app
+     * @param save Whether to keep the photo on device after upload
      */
-    public void takePhotoAndUpload(String photoFilePath, String requestId, String webhookUrl) {
+    public void takePhotoAndUpload(String photoFilePath, String requestId, String webhookUrl, boolean save) {
+        // Store the save flag for this request
+        photoSaveFlags.put(requestId, save);
         // Notify that we're about to take a photo
         if (mMediaCaptureListener != null) {
             mMediaCaptureListener.onPhotoCapturing(requestId);
@@ -611,6 +619,26 @@ public class MediaCaptureService {
                     Log.d(TAG, "Photo uploaded successfully to webhook: " + webhookUrl);
                     Log.d(TAG, "Response: " + responseBody);
 
+                    // Check if we should save the photo
+                    Boolean save = photoSaveFlags.get(requestId);
+                    if (save == null || !save) {
+                        // Delete the photo file to save storage
+                        try {
+                            if (photoFile.delete()) {
+                                Log.d(TAG, "🗑️ Deleted photo file after successful webhook upload: " + photoFilePath);
+                            } else {
+                                Log.w(TAG, "Failed to delete photo file: " + photoFilePath);
+                            }
+                        } catch (Exception e) {
+                            Log.e(TAG, "Error deleting photo file after webhook upload", e);
+                        }
+                    } else {
+                        Log.d(TAG, "💾 Keeping photo file as requested: " + photoFilePath);
+                    }
+                    
+                    // Clean up the flag
+                    photoSaveFlags.remove(requestId);
+
                     // Notify success
                     if (mMediaCaptureListener != null) {
                         mMediaCaptureListener.onPhotoUploaded(requestId, webhookUrl);
@@ -618,6 +646,26 @@ public class MediaCaptureService {
                 } else {
                     String errorMessage = "Upload failed with status: " + response.code();
                     Log.e(TAG, errorMessage + " to webhook: " + webhookUrl);
+                    
+                    // Check if we should save the photo
+                    Boolean save = photoSaveFlags.get(requestId);
+                    if (save == null || !save) {
+                        // Delete the photo file on failure
+                        try {
+                            if (photoFile.delete()) {
+                                Log.d(TAG, "🗑️ Deleted photo file after failed webhook upload: " + photoFilePath);
+                            } else {
+                                Log.w(TAG, "Failed to delete photo file: " + photoFilePath);
+                            }
+                        } catch (Exception e) {
+                            Log.e(TAG, "Error deleting photo file after failed webhook upload", e);
+                        }
+                    } else {
+                        Log.d(TAG, "💾 Keeping photo file despite failed upload as requested: " + photoFilePath);
+                    }
+                    
+                    // Clean up the flag
+                    photoSaveFlags.remove(requestId);
 
                     if (mMediaCaptureListener != null) {
                         mMediaCaptureListener.onMediaError(requestId, errorMessage, MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
@@ -628,6 +676,28 @@ public class MediaCaptureService {
 
             } catch (Exception e) {
                 Log.e(TAG, "Error uploading photo to webhook: " + webhookUrl, e);
+                
+                // Check if we should save the photo on exception
+                Boolean save = photoSaveFlags.get(requestId);
+                if (save == null || !save) {
+                    // Delete the photo file on exception
+                    try {
+                        File photoFile = new File(photoFilePath);
+                        if (photoFile.exists() && photoFile.delete()) {
+                            Log.d(TAG, "🗑️ Deleted photo file after webhook upload exception: " + photoFilePath);
+                        } else {
+                            Log.w(TAG, "Failed to delete photo file: " + photoFilePath);
+                        }
+                    } catch (Exception deleteEx) {
+                        Log.e(TAG, "Error deleting photo file after webhook upload exception", deleteEx);
+                    }
+                } else {
+                    Log.d(TAG, "💾 Keeping photo file despite upload exception as requested: " + photoFilePath);
+                }
+                
+                // Clean up the flag
+                photoSaveFlags.remove(requestId);
+                
                 if (mMediaCaptureListener != null) {
                     mMediaCaptureListener.onMediaError(requestId, "Upload error: " + e.getMessage(), MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
                 }
@@ -635,12 +705,6 @@ public class MediaCaptureService {
         }).start();
     }
 
-    /**
-     * Backward compatibility method
-     */
-    public void takePhotoAndUpload(String photoFilePath, String requestId) {
-        takePhotoAndUpload(photoFilePath, requestId, "");
-    }
 
     /**
      * Upload a video file to AugmentOS Cloud
@@ -673,6 +737,27 @@ public class MediaCaptureService {
                         Log.d(TAG, mediaTypeStr + " uploaded successfully: " + url);
                         sendMediaSuccessResponse(requestId, url, mediaType);
 
+                        // Check if we should save the photo
+                        Boolean save = photoSaveFlags.get(requestId);
+                        if (save == null || !save) {
+                            // Delete the original file to save storage
+                            try {
+                                File file = new File(mediaFilePath);
+                                if (file.exists() && file.delete()) {
+                                    Log.d(TAG, "🗑️ Deleted " + mediaTypeStr.toLowerCase() + " file after successful upload: " + mediaFilePath);
+                                } else {
+                                    Log.w(TAG, "Failed to delete " + mediaTypeStr.toLowerCase() + " file: " + mediaFilePath);
+                                }
+                            } catch (Exception e) {
+                                Log.e(TAG, "Error deleting " + mediaTypeStr.toLowerCase() + " file after upload", e);
+                            }
+                        } else {
+                            Log.d(TAG, "💾 Keeping " + mediaTypeStr.toLowerCase() + " file as requested: " + mediaFilePath);
+                        }
+                        
+                        // Clean up the flag
+                        photoSaveFlags.remove(requestId);
+
                         // Notify listener about successful upload
                         if (mMediaCaptureListener != null) {
                             if (mediaType == MediaUploadQueueManager.MEDIA_TYPE_PHOTO) {
@@ -688,6 +773,27 @@ public class MediaCaptureService {
                         String mediaTypeStr = mediaType == MediaUploadQueueManager.MEDIA_TYPE_PHOTO ? "Photo" : "Video";
                         Log.e(TAG, mediaTypeStr + " upload failed: " + errorMessage);
                         sendMediaErrorResponse(requestId, errorMessage, mediaType);
+
+                        // Check if we should save the photo
+                        Boolean save = photoSaveFlags.get(requestId);
+                        if (save == null || !save) {
+                            // Delete the file even on failure to prevent storage buildup
+                            try {
+                                File file = new File(mediaFilePath);
+                                if (file.exists() && file.delete()) {
+                                    Log.d(TAG, "🗑️ Deleted " + mediaTypeStr.toLowerCase() + " file after failed upload: " + mediaFilePath);
+                                } else {
+                                    Log.w(TAG, "Failed to delete " + mediaTypeStr.toLowerCase() + " file: " + mediaFilePath);
+                                }
+                            } catch (Exception e) {
+                                Log.e(TAG, "Error deleting " + mediaTypeStr.toLowerCase() + " file after failed upload", e);
+                            }
+                        } else {
+                            Log.d(TAG, "💾 Keeping " + mediaTypeStr.toLowerCase() + " file despite failed upload as requested: " + mediaFilePath);
+                        }
+                        
+                        // Clean up the flag
+                        photoSaveFlags.remove(requestId);
 
                         // Notify listener about error
                         if (mMediaCaptureListener != null) {
@@ -768,8 +874,11 @@ public class MediaCaptureService {
      * @param photoFilePath Path to save the original photo
      * @param requestId Request ID for tracking
      * @param bleImgId BLE image ID to use as filename
+     * @param save Whether to keep the original photo on device
      */
-    public void takePhotoForBleTransfer(String photoFilePath, String requestId, String bleImgId) {
+    public void takePhotoForBleTransfer(String photoFilePath, String requestId, String bleImgId, boolean save) {
+        // Store the save flag for this request
+        photoSaveFlags.put(requestId, save);
         // Notify that we're about to take a photo
         if (mMediaCaptureListener != null) {
             mMediaCaptureListener.onPhotoCapturing(requestId);
@@ -815,6 +924,7 @@ public class MediaCaptureService {
             }
         }
     }
+    
     
     /**
      * Compress photo and send via BLE
@@ -881,9 +991,32 @@ public class MediaCaptureService {
                 // 6. Send via BLE using K900BluetoothManager
                 sendCompressedPhotoViaBle(compressedPath, bleImgId, requestId, startTime);
                 
+                // 7. Delete original photo if not saving to gallery
+                Boolean save = photoSaveFlags.get(requestId);
+                if (save == null || !save) {
+                    try {
+                        File originalFile = new File(originalPath);
+                        if (originalFile.exists() && originalFile.delete()) {
+                            Log.d(TAG, "🗑️ Deleted original photo after BLE compression: " + originalPath);
+                        } else {
+                            Log.w(TAG, "Failed to delete original photo: " + originalPath);
+                        }
+                    } catch (Exception deleteEx) {
+                        Log.e(TAG, "Error deleting original photo after BLE compression", deleteEx);
+                    }
+                } else {
+                    Log.d(TAG, "💾 Keeping original photo as requested: " + originalPath);
+                }
+                
+                // Clean up the flag
+                photoSaveFlags.remove(requestId);
+                
             } catch (Exception e) {
                 Log.e(TAG, "Error compressing photo for BLE", e);
                 sendBleTransferError(requestId, e.getMessage());
+                
+                // Clean up flag on error too
+                photoSaveFlags.remove(requestId);
             }
         }).start();
     }

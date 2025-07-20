@@ -1499,6 +1499,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                     String webhookUrl = dataToProcess.optString("webhookUrl", "");
                     String transferMethod = dataToProcess.optString("transferMethod", "direct"); // Defaults to direct
                     String bleImgId = dataToProcess.optString("bleImgId", "");
+                    boolean save = dataToProcess.optBoolean("save", false); // Default to false
 
                     if (requestId.isEmpty()) {
                         Log.e(TAG, "Cannot take photo - missing requestId");
@@ -1509,16 +1510,16 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                     String timeStamp = new java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.US).format(new java.util.Date());
                     String photoFilePath = getExternalFilesDir(null) + java.io.File.separator + "IMG_" + timeStamp + ".jpg";
 
-                    Log.d(TAG, "Taking photo with requestId: " + requestId + ", transferMethod: " + transferMethod);
+                    Log.d(TAG, "Taking photo with requestId: " + requestId + ", transferMethod: " + transferMethod + ", save: " + save);
                     Log.d(TAG, "Photo will be saved to: " + photoFilePath);
 
                     if ("ble".equals(transferMethod)) {
                         // Take photo, compress with AVIF, and send via BLE
                         Log.d(TAG, "Using BLE transfer with ID: " + bleImgId);
-                        mMediaCaptureService.takePhotoForBleTransfer(photoFilePath, requestId, bleImgId);
+                        mMediaCaptureService.takePhotoForBleTransfer(photoFilePath, requestId, bleImgId, save);
                     } else {
                         // Existing direct upload path
-                        mMediaCaptureService.takePhotoAndUpload(photoFilePath, requestId, webhookUrl);
+                        mMediaCaptureService.takePhotoAndUpload(photoFilePath, requestId, webhookUrl, save);
                     }
                     break;
 
