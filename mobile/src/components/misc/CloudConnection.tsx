@@ -1,4 +1,4 @@
-import React, {useEffect, useRef} from "react"
+import React, {useEffect, useRef, useState} from "react"
 import {View, ViewStyle, TextStyle} from "react-native"
 import LinearGradient from "react-native-linear-gradient"
 import Icon from "react-native-vector-icons/FontAwesome"
@@ -13,6 +13,7 @@ export default function CloudConnection() {
   const {status} = useStatus()
   const {theme, themed} = useAppTheme()
   const cloudConnectionStatusAnim = useSharedValue(1)
+  const [hideCloudConnection, setHideCloudConnection] = useState(true)
 
   /**
    * Return gradient colors based on the cloud connection status
@@ -66,19 +67,28 @@ export default function CloudConnection() {
 
   const {name: iconName, color: iconColor, label: statusLabel} = getIcon(status.core_info.cloud_connection_status)
 
-  // useEffect(() => {
-  //   console.log("Cloud Connection Status:", status.core_info.cloud_connection_status)
-  //   // if it changes to CONNECTED, fade out the cloud connection status
-  //   if (status.core_info.cloud_connection_status === "CONNECTED") {
-  //     cloudConnectionStatusAnim.value = withTiming(0, {duration: 1000})
-  //     return
-  //   }
-  //   // fade in the cloud connection status
-  //   cloudConnectionStatusAnim.value = withTiming(1, {duration: 1000})
-  // }, [status.core_info.cloud_connection_status])
+  useEffect(() => {
+    console.log("Cloud Connection Status:", status.core_info.cloud_connection_status)
+    // if it changes to CONNECTED, fade out the cloud connection status
+    if (status.core_info.cloud_connection_status === "CONNECTED") {
+      cloudConnectionStatusAnim.value = withTiming(0, {duration: 1000})
+      setTimeout(() => {
+        setHideCloudConnection(true)
+      }, 1000)
+      return
+    } else {
+      setHideCloudConnection(false)
+    }
+    // fade in the cloud connection status
+    cloudConnectionStatusAnim.value = withTiming(1, {duration: 1000})
+  }, [status.core_info.cloud_connection_status])
 
-  if (status.core_info.cloud_connection_status === "CONNECTED") {
-    return
+  // if (status.core_info.cloud_connection_status === "CONNECTED") {
+  //   return
+  // }
+
+  if (hideCloudConnection) {
+    return null
   }
 
   return (
@@ -98,11 +108,11 @@ export default function CloudConnection() {
 }
 
 const $animatedContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
-  zIndex: 999,
-  position: "absolute",
-  top: 0,
-  left: 0,
-  right: 0,
+  // zIndex: 999,
+  // position: "absolute",
+  // top: 0,
+  // left: 0,
+  // right: 0,
 })
 
 const $outerContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({

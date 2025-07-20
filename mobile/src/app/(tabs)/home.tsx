@@ -76,7 +76,9 @@ export default function Homepage() {
       const hasNotifications =
         Platform.OS === "android" ? await checkFeaturePermissions(PermissionFeatures.READ_NOTIFICATIONS) : true
 
-      const shouldShowBell = !hasCalendar || !hasNotifications
+      const hasLocation = await checkFeaturePermissions(PermissionFeatures.BACKGROUND_LOCATION)
+
+      const shouldShowBell = !hasCalendar || !hasNotifications || !hasLocation
       setHasMissingPermissions(shouldShowBell)
 
       // Animate bell in if needed

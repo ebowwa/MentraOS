@@ -48,7 +48,7 @@ class LocationManager: NSObject, CLLocationManagerDelegate {
     if currentCorrelationId != nil || currentLocation == nil || location.distance(from: currentLocation!) > locationManager.distanceFilter {
       currentLocation = location
 
-      print("LocationManager: Location updated to \(location.coordinate.latitude), \(location.coordinate.longitude) with accuracy \(location.horizontalAccuracy)m")
+      CoreCommsService.log("LocationManager: Location updated to \(location.coordinate.latitude), \(location.coordinate.longitude) with accuracy \(location.horizontalAccuracy)m")
       
       // Notify ServerComms to send the update to the cloud
       ServerComms.getInstance().sendLocationUpdate(
@@ -66,7 +66,7 @@ class LocationManager: NSObject, CLLocationManagerDelegate {
   }
   
   func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-    print("LocationManager: Failed to get location. Error: \(error.localizedDescription)")
+    CoreCommsService.log("LocationManager: Failed to get location. Error: \(error.localizedDescription)")
   }
   
   func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
@@ -74,18 +74,18 @@ class LocationManager: NSObject, CLLocationManagerDelegate {
     case .authorizedWhenInUse, .authorizedAlways:
       locationManager.startUpdatingLocation()
     case .denied, .restricted:
-      print("LocationManager: Location access denied or restricted")
+      CoreCommsService.log("LocationManager: Location access denied or restricted")
     case .notDetermined:
-      print("LocationManager: Location permission not determined yet")
+      CoreCommsService.log("LocationManager: Location permission not determined yet")
     @unknown default:
-      print("LocationManager: Unknown authorization status")
+      CoreCommsService.log("LocationManager: Unknown authorization status")
     }
   }
   
   // MARK: - New Methods for Intelligent Location Service
 
   public func setTier(tier: String) {
-    print("LocationManager: Setting location tier to \(tier)")
+    CoreCommsService.log("LocationManager: Setting location tier to \(tier)")
     
     switch tier {
     case "realtime":
@@ -110,7 +110,7 @@ class LocationManager: NSObject, CLLocationManagerDelegate {
       locationManager.desiredAccuracy = kCLLocationAccuracyReduced
       locationManager.distanceFilter = 3000 // Use a wider filter for reduced accuracy
     default:
-      print("LocationManager: Unknown location tier \(tier), defaulting to reduced.")
+      CoreCommsService.log("LocationManager: Unknown location tier \(tier), defaulting to reduced.")
       locationManager.desiredAccuracy = kCLLocationAccuracyReduced
       locationManager.distanceFilter = kCLDistanceFilterNone
     }
@@ -120,7 +120,7 @@ class LocationManager: NSObject, CLLocationManagerDelegate {
   }
 
   public func requestSingleUpdate(accuracy: String, correlationId: String) {
-    print("LocationManager: Requesting single location update with accuracy \(accuracy) and correlationId \(correlationId)")
+    CoreCommsService.log("LocationManager: Requesting single location update with accuracy \(accuracy) and correlationId \(correlationId)")
     self.currentCorrelationId = correlationId
 
     // Map the accuracy string to a CLLocationAccuracy value
