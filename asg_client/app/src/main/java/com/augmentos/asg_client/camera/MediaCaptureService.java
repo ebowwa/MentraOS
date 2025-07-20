@@ -22,6 +22,8 @@ import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import okhttp3.Call;
 import okhttp3.Callback;
 import okhttp3.MediaType;
@@ -55,6 +57,12 @@ public class MediaCaptureService {
     
     // Track which photos should be saved to gallery
     private Map<String, Boolean> photoSaveFlags = new HashMap<>();
+    
+    // Track BLE IDs for auto fallback mode
+    private Map<String, String> photoBleIds = new HashMap<>();
+    
+    // Track original photo paths for BLE fallback
+    private Map<String, String> photoOriginalPaths = new HashMap<>();
 
     /**
      * Interface for listening to media capture and upload events
@@ -649,6 +657,21 @@ public class MediaCaptureService {
                     String errorMessage = "Upload failed with status: " + response.code();
                     Log.e(TAG, errorMessage + " to webhook: " + webhookUrl);
                     
+                    // Check if we can fallback to BLE
+                    String bleImgId = photoBleIds.get(requestId);
+                    if (bleImgId != null) {
+                        Log.d(TAG, "📱 Webhook upload failed, attempting BLE fallback for " + requestId);
+                        
+                        // Clean up tracking (will be re-added by BLE transfer)
+                        photoBleIds.remove(requestId);
+                        photoOriginalPaths.remove(requestId);
+                        
+                        // Trigger BLE fallback
+                        takePhotoForBleTransfer(photoFilePath, requestId, bleImgId, photoSaveFlags.get(requestId));
+                        return; // Exit early - BLE transfer will handle cleanup
+                    }
+                    
+                    // No BLE fallback available
                     // Check if we should save the photo
                     Boolean save = photoSaveFlags.get(requestId);
                     if (save == null || !save) {
@@ -666,8 +689,10 @@ public class MediaCaptureService {
                         Log.d(TAG, "💾 Keeping photo file despite failed upload as requested: " + photoFilePath);
                     }
                     
-                    // Clean up the flag
+                    // Clean up tracking
                     photoSaveFlags.remove(requestId);
+                    photoBleIds.remove(requestId);
+                    photoOriginalPaths.remove(requestId);
 
                     if (mMediaCaptureListener != null) {
                         mMediaCaptureListener.onMediaError(requestId, errorMessage, MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
@@ -679,6 +704,21 @@ public class MediaCaptureService {
             } catch (Exception e) {
                 Log.e(TAG, "Error uploading photo to webhook: " + webhookUrl, e);
                 
+                // Check if we can fallback to BLE on exception
+                String bleImgId = photoBleIds.get(requestId);
+                if (bleImgId != null) {
+                    Log.d(TAG, "📱 Webhook upload exception, attempting BLE fallback for " + requestId);
+                    
+                    // Clean up tracking (will be re-added by BLE transfer)
+                    photoBleIds.remove(requestId);
+                    photoOriginalPaths.remove(requestId);
+                    
+                    // Trigger BLE fallback
+                    takePhotoForBleTransfer(photoFilePath, requestId, bleImgId, photoSaveFlags.get(requestId));
+                    return; // Exit early - BLE transfer will handle cleanup
+                }
+                
+                // No BLE fallback available
                 // Check if we should save the photo on exception
                 Boolean save = photoSaveFlags.get(requestId);
                 if (save == null || !save) {
@@ -697,8 +737,10 @@ public class MediaCaptureService {
                     Log.d(TAG, "💾 Keeping photo file despite upload exception as requested: " + photoFilePath);
                 }
                 
-                // Clean up the flag
+                // Clean up tracking
                 photoSaveFlags.remove(requestId);
+                photoBleIds.remove(requestId);
+                photoOriginalPaths.remove(requestId);
                 
                 if (mMediaCaptureListener != null) {
                     mMediaCaptureListener.onMediaError(requestId, "Upload error: " + e.getMessage(), MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
@@ -757,8 +799,10 @@ public class MediaCaptureService {
                             Log.d(TAG, "💾 Keeping " + mediaTypeStr.toLowerCase() + " file as requested: " + mediaFilePath);
                         }
                         
-                        // Clean up the flag
+                        // Clean up all tracking
                         photoSaveFlags.remove(requestId);
+                        photoBleIds.remove(requestId);
+                        photoOriginalPaths.remove(requestId);
 
                         // Notify listener about successful upload
                         if (mMediaCaptureListener != null) {
@@ -776,6 +820,22 @@ public class MediaCaptureService {
                         Log.e(TAG, mediaTypeStr + " upload failed: " + errorMessage);
                         sendMediaErrorResponse(requestId, errorMessage, mediaType);
 
+                        // Check if we can fallback to BLE for photos
+                        String bleImgId = photoBleIds.get(requestId);
+                        if (mediaType == MediaUploadQueueManager.MEDIA_TYPE_PHOTO && bleImgId != null) {
+                            Log.d(TAG, "📱 WiFi upload failed, attempting BLE fallback for " + requestId);
+                            
+                            // Don't delete the photo yet - we need it for BLE
+                            // Clean up tracking (will be re-added by BLE transfer)
+                            photoBleIds.remove(requestId);
+                            photoOriginalPaths.remove(requestId);
+                            
+                            // Trigger BLE fallback
+                            takePhotoForBleTransfer(mediaFilePath, requestId, bleImgId, photoSaveFlags.get(requestId));
+                            return; // Exit early - BLE transfer will handle cleanup
+                        }
+                        
+                        // No BLE fallback available, handle as normal failure
                         // Check if we should save the photo
                         Boolean save = photoSaveFlags.get(requestId);
                         if (save == null || !save) {
@@ -794,8 +854,10 @@ public class MediaCaptureService {
                             Log.d(TAG, "💾 Keeping " + mediaTypeStr.toLowerCase() + " file despite failed upload as requested: " + mediaFilePath);
                         }
                         
-                        // Clean up the flag
+                        // Clean up tracking
                         photoSaveFlags.remove(requestId);
+                        photoBleIds.remove(requestId);
+                        photoOriginalPaths.remove(requestId);
 
                         // Notify listener about error
                         if (mMediaCaptureListener != null) {
@@ -869,6 +931,46 @@ public class MediaCaptureService {
     private boolean isExternalStorageAvailable() {
         String state = android.os.Environment.getExternalStorageState();
         return android.os.Environment.MEDIA_MOUNTED.equals(state);
+    }
+    
+    /**
+     * Check if WiFi is connected
+     */
+    private boolean isWiFiConnected() {
+        try {
+            ConnectivityManager cm = (ConnectivityManager) mContext.getSystemService(Context.CONNECTIVITY_SERVICE);
+            NetworkInfo wifiInfo = cm.getNetworkInfo(ConnectivityManager.TYPE_WIFI);
+            return wifiInfo != null && wifiInfo.isConnected();
+        } catch (Exception e) {
+            Log.e(TAG, "Error checking WiFi connectivity", e);
+            return false;
+        }
+    }
+    
+    /**
+     * Take a photo with auto transfer (WiFi with BLE fallback)
+     * @param photoFilePath Path to save the original photo
+     * @param requestId Request ID for tracking
+     * @param webhookUrl Webhook URL for upload
+     * @param bleImgId BLE image ID for fallback
+     * @param save Whether to keep the photo on device
+     */
+    public void takePhotoAutoTransfer(String photoFilePath, String requestId, String webhookUrl, String bleImgId, boolean save) {
+        // Store the save flag and BLE ID for this request
+        photoSaveFlags.put(requestId, save);
+        photoBleIds.put(requestId, bleImgId);
+        photoOriginalPaths.put(requestId, photoFilePath);
+        
+        // Check WiFi connectivity
+        if (isWiFiConnected()) {
+            Log.d(TAG, "📶 WiFi connected, attempting direct upload for " + requestId);
+            // Try WiFi upload (with automatic BLE fallback on failure)
+            takePhotoAndUpload(photoFilePath, requestId, webhookUrl, save);
+        } else {
+            Log.d(TAG, "📵 No WiFi connection, using BLE transfer for " + requestId);
+            // No WiFi, go straight to BLE
+            takePhotoForBleTransfer(photoFilePath, requestId, bleImgId, save);
+        }
     }
     
     /**

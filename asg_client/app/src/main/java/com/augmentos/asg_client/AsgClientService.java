@@ -1517,8 +1517,16 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                         // Take photo, compress with AVIF, and send via BLE
                         Log.d(TAG, "Using BLE transfer with ID: " + bleImgId);
                         mMediaCaptureService.takePhotoForBleTransfer(photoFilePath, requestId, bleImgId, save);
+                    } else if ("auto".equals(transferMethod)) {
+                        // Auto mode: Try WiFi first, fallback to BLE if needed
+                        Log.d(TAG, "Using auto transfer mode with BLE fallback ID: " + bleImgId);
+                        if (bleImgId.isEmpty()) {
+                            Log.e(TAG, "Auto mode requires bleImgId for fallback");
+                            return;
+                        }
+                        mMediaCaptureService.takePhotoAutoTransfer(photoFilePath, requestId, webhookUrl, bleImgId, save);
                     } else {
-                        // Existing direct upload path
+                        // Existing direct upload path (WiFi only, no fallback)
                         mMediaCaptureService.takePhotoAndUpload(photoFilePath, requestId, webhookUrl, save);
                     }
                     break;

@@ -2252,22 +2252,21 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 json.put("webhookUrl", webhookUrl);
             }
             
-            // Check if glasses have WiFi and route accordingly
-            if (true|| !isWifiConnected) {
-                // No WiFi - use BLE transfer
-                json.put("transferMethod", "ble");
-                
-                // Generate short unique ID (10 chars max for K900 filename)
-                // Format: "I" + 9 digit counter/random
-                String bleImgId = "I" + String.format("%09d", System.currentTimeMillis() % 1000000000);
-                json.put("bleImgId", bleImgId);
-                
-                Log.d(TAG, "Glasses have no WiFi - using BLE transfer with ID: " + bleImgId);
-                
-                // Track this transfer
-                trackBlePhotoTransfer(bleImgId, requestId, webhookUrl);
+            // Always generate BLE ID for potential fallback
+            // Format: "I" + 9 digit counter/random
+            String bleImgId = "I" + String.format("%09d", System.currentTimeMillis() % 1000000000);
+            json.put("bleImgId", bleImgId);
+            
+            // Use auto mode by default - glasses will decide based on connectivity
+            json.put("transferMethod", "auto");
+            
+            // Always prepare for potential BLE transfer
+            if (webhookUrl != null && !webhookUrl.isEmpty()) {
+                // Store the transfer info for BLE route
+                blePhotoTransfers.put(bleImgId, new BlePhotoTransfer(bleImgId, requestId, webhookUrl));
             }
-            // Note: transferMethod defaults to "direct" on glasses side if not specified
+            
+            Log.d(TAG, "Using auto transfer mode with BLE fallback ID: " + bleImgId);
             
             sendJson(json, true);
         } catch (JSONException e) {
