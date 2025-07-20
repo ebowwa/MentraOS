@@ -327,6 +327,7 @@ public class K900BluetoothManager extends BaseBluetoothManager implements Serial
      * @param filePath Path to the image file
      * @return true if transfer started successfully, false otherwise
      */
+    @Override
     public boolean sendImageFile(String filePath) {
         if (!isSerialOpen) {
             Log.e(TAG, "Cannot send file - serial port not open");
@@ -392,9 +393,13 @@ public class K900BluetoothManager extends BaseBluetoothManager implements Serial
         
         if (currentFileTransfer.currentPacketIndex >= currentFileTransfer.totalPackets) {
             // Transfer complete
-            Log.d(TAG, "File transfer complete: " + currentFileTransfer.fileName);
-            notificationManager.showDebugNotification("File Transfer", 
-                "Transfer complete: " + currentFileTransfer.fileName);
+            long transferDuration = System.currentTimeMillis() - currentFileTransfer.startTime;
+            Log.d(TAG, "✅ File transfer complete: " + currentFileTransfer.fileName);
+            Log.d(TAG, "⏱️ Transfer took: " + transferDuration + "ms for " + currentFileTransfer.fileSize + " bytes");
+            Log.d(TAG, "📊 Transfer rate: " + (currentFileTransfer.fileSize * 1000 / transferDuration) + " bytes/sec");
+            
+            notificationManager.showDebugNotification("File Transfer Complete", 
+                currentFileTransfer.fileName + " in " + transferDuration + "ms");
             
             // Disable fast mode
             comManager.setFastMode(false);

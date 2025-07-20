@@ -427,6 +427,33 @@ public class AsgClientService extends Service implements NetworkStateListener, B
 
             // Set the media capture listener
             mMediaCaptureService.setMediaCaptureListener(mediaCaptureListener);
+            
+            // Set the service callback for BLE communication
+            mMediaCaptureService.setServiceCallback(new com.augmentos.asg_client.camera.ServiceCallbackInterface() {
+                @Override
+                public void sendThroughBluetooth(byte[] data) {
+                    if (bluetoothManager != null) {
+                        bluetoothManager.sendData(data);
+                    }
+                }
+                
+                @Override
+                public boolean sendFileViaBluetooth(String filePath) {
+                    if (bluetoothManager != null) {
+                        K900BluetoothManager k900 = (K900BluetoothManager) bluetoothManager;
+                        boolean started = bluetoothManager.sendImageFile(filePath);
+                        if (started) {
+                            Log.d(TAG, "BLE file transfer started for: " + filePath);
+                        } else {
+                            Log.e(TAG, "Failed to start BLE file transfer for: " + filePath);
+                        }
+                        return started;
+                    } else {
+                        Log.e(TAG, "K900BluetoothManager not available for BLE file transfer");
+                        return false;
+                    }
+                }
+            });
         }
     }
 
@@ -1470,6 +1497,8 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                 case "take_photo":
                     String requestId = dataToProcess.optString("requestId", "");
                     String webhookUrl = dataToProcess.optString("webhookUrl", "");
+                    String transferMethod = dataToProcess.optString("transferMethod", "direct"); // Defaults to direct
+                    String bleImgId = dataToProcess.optString("bleImgId", "");
 
                     if (requestId.isEmpty()) {
                         Log.e(TAG, "Cannot take photo - missing requestId");
@@ -1480,11 +1509,17 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                     String timeStamp = new java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.US).format(new java.util.Date());
                     String photoFilePath = getExternalFilesDir(null) + java.io.File.separator + "IMG_" + timeStamp + ".jpg";
 
-                    Log.d(TAG, "Taking photo with requestId: " + requestId);
+                    Log.d(TAG, "Taking photo with requestId: " + requestId + ", transferMethod: " + transferMethod);
                     Log.d(TAG, "Photo will be saved to: " + photoFilePath);
 
-                    // Take the photo using MediaCaptureService with webhook URL
-                    mMediaCaptureService.takePhotoAndUpload(photoFilePath, requestId, webhookUrl);
+                    if ("ble".equals(transferMethod)) {
+                        // Take photo, compress with AVIF, and send via BLE
+                        Log.d(TAG, "Using BLE transfer with ID: " + bleImgId);
+                        mMediaCaptureService.takePhotoForBleTransfer(photoFilePath, requestId, bleImgId);
+                    } else {
+                        // Existing direct upload path
+                        mMediaCaptureService.takePhotoAndUpload(photoFilePath, requestId, webhookUrl);
+                    }
                     break;
 
                 case "start_video_recording":
@@ -1852,6 +1887,13 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                     }
                     break;
                 }
+                
+//                case "ble_photo_ready":
+//                    // This message is now only sent to the phone as a notification
+//                    // The actual file transfer is triggered via the ServiceCallbackInterface
+//                    // in MediaCaptureService.sendCompressedPhotoViaBle()
+//                    Log.d(TAG, "BLE photo ready notification received (for phone only)");
+//                    break;
 
                 default:
                     Log.w(TAG, "Unknown message type: " + type);
@@ -1906,17 +1948,17 @@ public class AsgClientService extends Service implements NetworkStateListener, B
             switch (command) {
                 case "cs_pho":
                     // TESTING: Commented out normal photo handling
-                    // handleButtonPress(false);
+                    handleButtonPress(false);
                     
                     // TEST: Send test image from assets
-                    Log.d(TAG, "🎾 TEST: cs_pho (JSON) pressed - sending test.jpg from assets");
-                    if (bluetoothManager != null) {
-                        boolean started = ((com.augmentos.asg_client.bluetooth.BaseBluetoothManager)bluetoothManager)
-                            .sendTestImageFromAssets("test.jpg");
-                        Log.d(TAG, "🎾 TEST: File transfer started: " + started);
-                    } else {
-                        Log.e(TAG, "🎾 TEST: bluetoothManager is null!");
-                    }
+//                    Log.d(TAG, "🎾 TEST: cs_pho (JSON) pressed - sending test.jpg from assets");
+//                    if (bluetoothManager != null) {
+//                        boolean started = ((com.augmentos.asg_client.bluetooth.BaseBluetoothManager)bluetoothManager)
+//                            .sendTestImageFromAssets("test.jpg");
+//                        Log.d(TAG, "🎾 TEST: File transfer started: " + started);
+//                    } else {
+//                        Log.e(TAG, "🎾 TEST: bluetoothManager is null!");
+//                    }
                     break;
 
                 case "hm_htsp":
@@ -2362,6 +2404,26 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         }
     }
 
+    /**
+     * Send BLE photo transfer completion message
+     */
+    private void sendBlePhotoTransferComplete(String requestId, String bleImgId, boolean success) {
+        try {
+            JSONObject json = new JSONObject();
+            json.put("type", "ble_photo_complete");
+            json.put("requestId", requestId);
+            json.put("bleImgId", bleImgId);
+            json.put("success", success);
+            
+            if (bluetoothManager != null && bluetoothManager.isConnected()) {
+                bluetoothManager.sendData(json.toString().getBytes());
+                Log.d(TAG, "Sent BLE photo transfer complete: " + json.toString());
+            }
+        } catch (JSONException e) {
+            Log.e(TAG, "Error creating BLE photo transfer complete message", e);
+        }
+    }
+    
     /**
      * Send an RTMP status response via BLE
      *

@@ -664,6 +664,11 @@ public class StandardBluetoothManager extends BaseBluetoothManager {
             }
         }
     }
+
+    public boolean sendImageFile(String path){
+        Log.w(TAG, "sendImageFile not implemented in " + getClass().getSimpleName());
+        return false;
+    }
     
     @Override
     public boolean sendData(byte[] data) {

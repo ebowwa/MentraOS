@@ -108,4 +108,9 @@ public abstract class BaseBluetoothManager implements IBluetoothManager {
         Log.w(TAG, "sendTestImageFromAssets not implemented in " + getClass().getSimpleName());
         return false;
     }
+
+    public boolean sendImageFile(String path){
+        Log.w(TAG, "sendImageFile not implemented in " + getClass().getSimpleName());
+        return false;
+    }
 }

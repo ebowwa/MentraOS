@@ -1,10 +1,6 @@
 package com.augmentos.asg_client.camera;
 
 import android.content.Context;
-import android.content.SharedPreferences;
-import android.os.Handler;
-import android.os.Looper;
-import android.provider.MediaStore;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
@@ -32,6 +28,8 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
+import com.radzivon.bartoshyk.avif.coder.HeifCoder;
+import com.radzivon.bartoshyk.avif.coder.PreciseMode;
 
 /**
  * Service that handles media capturing (photo and video) and uploading functionality.
@@ -43,6 +41,7 @@ public class MediaCaptureService {
     private final Context mContext;
     private final MediaUploadQueueManager mMediaQueueManager;
     private MediaCaptureListener mMediaCaptureListener;
+    private ServiceCallbackInterface mServiceCallback;
 
     // Track current video recording
     private boolean isRecordingVideo = false;
@@ -92,6 +91,13 @@ public class MediaCaptureService {
      */
     public void setMediaCaptureListener(MediaCaptureListener listener) {
         this.mMediaCaptureListener = listener;
+    }
+
+    /**
+     * Set the service callback for communication with AsgClientService
+     */
+    public void setServiceCallback(ServiceCallbackInterface callback) {
+        this.mServiceCallback = callback;
     }
 
     /**
@@ -755,5 +761,194 @@ public class MediaCaptureService {
     private boolean isExternalStorageAvailable() {
         String state = android.os.Environment.getExternalStorageState();
         return android.os.Environment.MEDIA_MOUNTED.equals(state);
+    }
+    
+    /**
+     * Take a photo for BLE transfer with compression
+     * @param photoFilePath Path to save the original photo
+     * @param requestId Request ID for tracking
+     * @param bleImgId BLE image ID to use as filename
+     */
+    public void takePhotoForBleTransfer(String photoFilePath, String requestId, String bleImgId) {
+        // Notify that we're about to take a photo
+        if (mMediaCaptureListener != null) {
+            mMediaCaptureListener.onPhotoCapturing(requestId);
+        }
+        
+        try {
+            // Use CameraNeo for photo capture
+            CameraNeo.takePictureWithCallback(
+                    mContext,
+                    photoFilePath,
+                    new CameraNeo.PhotoCaptureCallback() {
+                        @Override
+                        public void onPhotoCaptured(String filePath) {
+                            Log.d(TAG, "Photo captured successfully for BLE transfer: " + filePath);
+                            
+                            // Notify that we've captured the photo
+                            if (mMediaCaptureListener != null) {
+                                mMediaCaptureListener.onPhotoCaptured(requestId, filePath);
+                            }
+                            
+                            // Compress and send via BLE
+                            compressAndSendViaBle(filePath, requestId, bleImgId);
+                        }
+                        
+                        @Override
+                        public void onPhotoError(String errorMessage) {
+                            Log.e(TAG, "Failed to capture photo for BLE: " + errorMessage);
+                            sendMediaErrorResponse(requestId, errorMessage, MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
+                            
+                            if (mMediaCaptureListener != null) {
+                                mMediaCaptureListener.onMediaError(requestId, errorMessage, MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
+                            }
+                        }
+                    }
+            );
+        } catch (Exception e) {
+            Log.e(TAG, "Error taking photo for BLE", e);
+            sendMediaErrorResponse(requestId, "Error taking photo: " + e.getMessage(), MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
+            
+            if (mMediaCaptureListener != null) {
+                mMediaCaptureListener.onMediaError(requestId, "Error taking photo: " + e.getMessage(),
+                        MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
+            }
+        }
+    }
+    
+    /**
+     * Compress photo and send via BLE
+     */
+    private void compressAndSendViaBle(String originalPath, String requestId, String bleImgId) {
+        new Thread(() -> {
+            long startTime = System.currentTimeMillis();
+            Log.d(TAG, "🚀 BLE photo transfer started for " + bleImgId);
+            
+            try {
+                // 1. Load original image
+                android.graphics.Bitmap original = android.graphics.BitmapFactory.decodeFile(originalPath);
+                if (original == null) {
+                    throw new Exception("Failed to decode image file");
+                }
+                
+                // 2. Calculate new dimensions maintaining aspect ratio
+                // AGGRESSIVE: Use 320x240 as base resolution
+                int targetWidth = 320;
+                int targetHeight = 240;
+                float aspectRatio = (float) original.getWidth() / original.getHeight();
+                
+                if (aspectRatio > targetWidth / (float) targetHeight) {
+                    targetHeight = (int) (targetWidth / aspectRatio);
+                } else {
+                    targetWidth = (int) (targetHeight * aspectRatio);
+                }
+                
+                // 3. Resize bitmap
+                android.graphics.Bitmap resized = android.graphics.Bitmap.createScaledBitmap(original, targetWidth, targetHeight, true);
+                original.recycle();
+                
+                // 4. Encode as AVIF with aggressive compression
+                byte[] compressedData;
+                try {
+                    // Use avif-coder library for AVIF encoding
+                    HeifCoder heifCoder = new HeifCoder();
+                    compressedData = heifCoder.encodeAvif(
+                        resized, 
+                        30,  // quality (0-100)
+                        PreciseMode.LOSSY   // Use FAST mode for reasonable compression speed
+                    );
+                    Log.d(TAG, "Successfully encoded as AVIF");
+                } catch (Exception e) {
+                    Log.w(TAG, "AVIF encoding failed, falling back to JPEG: " + e.getMessage());
+                    // Fallback to JPEG if AVIF fails
+                    java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+                    resized.compress(android.graphics.Bitmap.CompressFormat.JPEG, 30, baos);
+                    compressedData = baos.toByteArray();
+                }
+                resized.recycle();
+                
+                long compressionTime = System.currentTimeMillis() - startTime;
+                Log.d(TAG, "✅ Compressed photo for BLE: " + originalPath + " -> " + compressedData.length + " bytes");
+                Log.d(TAG, "⏱️ Compression took: " + compressionTime + "ms");
+                
+                // 5. Save compressed data to temporary file with bleImgId as name
+                // For BLE, we ALWAYS use AVIF (no extension in filename due to 16-char limit)
+                String compressedPath = mContext.getExternalFilesDir(null) + "/" + bleImgId;
+                try (java.io.FileOutputStream fos = new java.io.FileOutputStream(compressedPath)) {
+                    fos.write(compressedData);
+                }
+                
+                // 6. Send via BLE using K900BluetoothManager
+                sendCompressedPhotoViaBle(compressedPath, bleImgId, requestId, startTime);
+                
+            } catch (Exception e) {
+                Log.e(TAG, "Error compressing photo for BLE", e);
+                sendBleTransferError(requestId, e.getMessage());
+            }
+        }).start();
+    }
+    
+    /**
+     * Send compressed photo via BLE
+     */
+    private void sendCompressedPhotoViaBle(String compressedPath, String bleImgId, String requestId, long transferStartTime) {
+        Log.d(TAG, "Ready to send compressed photo via BLE: " + compressedPath + " with ID: " + bleImgId);
+        
+        // First, notify the phone that the photo is ready (include timing info)
+        sendBlePhotoReadyMsg(compressedPath, bleImgId, requestId, transferStartTime);
+        
+        // Then, trigger the actual file transfer
+        if (mServiceCallback != null) {
+            boolean started = mServiceCallback.sendFileViaBluetooth(compressedPath);
+            if (!started) {
+                Log.e(TAG, "Failed to start BLE file transfer");
+                sendBleTransferError(requestId, "Failed to start file transfer");
+            }
+        } else {
+            Log.e(TAG, "Service callback not available for BLE file transfer");
+            sendBleTransferError(requestId, "Service callback not available");
+        }
+    }
+    
+    /**
+     * Request BLE file transfer through AsgClientService
+     */
+    private void sendBlePhotoReadyMsg(String filePath, String bleImgId, String requestId, long transferStartTime) {
+        try {
+            // Calculate compression duration on glasses side
+            long compressionDuration = System.currentTimeMillis() - transferStartTime;
+            
+            JSONObject json = new JSONObject();
+            json.put("type", "ble_photo_ready");
+            json.put("requestId", requestId);
+            json.put("bleImgId", bleImgId);
+            json.put("filePath", filePath);
+            json.put("compressionDurationMs", compressionDuration);  // Send duration, not timestamp
+            
+            // Send through bluetooth if available
+            if (mServiceCallback != null) {
+                mServiceCallback.sendThroughBluetooth(json.toString().getBytes());
+            }
+        } catch (JSONException e) {
+            Log.e(TAG, "Error creating BLE transfer request", e);
+        }
+    }
+    
+    /**
+     * Send BLE transfer error
+     */
+    private void sendBleTransferError(String requestId, String error) {
+        try {
+            JSONObject json = new JSONObject();
+            json.put("type", "ble_photo_error");
+            json.put("requestId", requestId);
+            json.put("error", error);
+            
+            if (mServiceCallback != null) {
+                mServiceCallback.sendThroughBluetooth(json.toString().getBytes());
+            }
+        } catch (JSONException e) {
+            Log.e(TAG, "Error creating BLE transfer error", e);
+        }
     }
 }

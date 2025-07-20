@@ -170,6 +170,9 @@ dependencies {
     
     // JSON handling
     implementation 'org.json:json:20210307'
+    
+    // AVIF encoding/decoding support
+    implementation 'com.github.awxkee:avif-coder:1.7.3'
 
     // AndroidX Test dependencies
     androidTestImplementation 'androidx.test:core:1.5.0'
