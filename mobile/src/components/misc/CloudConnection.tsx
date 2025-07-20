@@ -13,7 +13,7 @@ export default function CloudConnection() {
   const {status} = useStatus()
   const {theme, themed} = useAppTheme()
   const cloudConnectionStatusAnim = useSharedValue(1)
-  const [hideCloudConnection, setHideCloudConnection] = useState(false)
+  const [hideCloudConnection, setHideCloudConnection] = useState(true)
 
   /**
    * Return gradient colors based on the cloud connection status
