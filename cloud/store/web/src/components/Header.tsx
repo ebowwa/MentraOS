@@ -7,7 +7,7 @@ import { useIsDesktop } from '../hooks/useMediaQuery';
 import { useSearch } from '../contexts/SearchContext';
 import { Button } from './ui/button';
 import { Baseline } from 'lucide-react';
-import AppStoreButtons from './AppStoreButtons';
+import GetMentraOSButton from './GetMentraOSButton';
 import SearchBar from './SearchBar';
 
 interface HeaderProps {
@@ -47,31 +47,23 @@ const Header: React.FC<HeaderProps> = ({ onSearch, onSearchClear }) => {
       <div className="container mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
 
-          {/* Logo, Site Name and App Store Buttons */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:gap-4 select-none">
-            {/* Logo and Site Name */}
-            <div className="flex items-center gap-3 select-none" style={{ minWidth: isDesktop ? '200px' : 'auto' }}>
-              <img 
-                src={theme === 'light' ? '/icon_black.svg' : '/icon_white.svg'} 
-                alt="Mentra Logo" 
-                className="h-8 w-8"
-              />
-              <span
-                className="text-[26px] font-light"
-                style={{ 
-                  fontFamily: '"SF Pro Rounded", sans-serif', 
-                  letterSpacing: '0.06em', 
-                  color: 'var(--text-primary)' 
-                }}
-              >
-                Mentra Store
-              </span>
-            </div>
-            
-            {/* App Store Buttons - below on mobile, to the right on desktop */}
-            <div className="mt-2 sm:mt-0 -translate-y-1 sm:translate-y-0">
-              <AppStoreButtons size="small" />
-            </div>
+          {/* Logo and Site Name */}
+          <div className="flex items-center gap-3 select-none" style={{ minWidth: isDesktop ? '200px' : 'auto' }}>
+            <img 
+              src={theme === 'light' ? '/icon_black.svg' : '/icon_white.svg'} 
+              alt="Mentra Logo" 
+              className="h-8 w-8"
+            />
+            <span
+              className="text-[26px] font-light"
+              style={{ 
+                fontFamily: '"SF Pro Rounded", sans-serif', 
+                letterSpacing: '0.06em', 
+                color: 'var(--text-primary)' 
+              }}
+            >
+              Mentra Store
+            </span>
           </div>
 
           {/* Search bar on desktop for store page */}
@@ -86,18 +78,39 @@ const Header: React.FC<HeaderProps> = ({ onSearch, onSearchClear }) => {
             </div>
           )}
 
-          {/* Authentication */}
-          <div className="flex items-center justify-end" style={{ minWidth: isDesktop ? '200px' : 'auto' }}>
-            {isAuthenticated ? (
-              <div className="flex flex-col items-end">
-                {/* Uncomment if you want to show user email
-                {user?.email && (
-                  <span className="text-sm text-gray-600 px-3">
-                    {user.email}
-                  </span>
-                )} */}
+          {/* Get MentraOS Button and Authentication */}
+          <div className="flex flex-col sm:flex-row items-end sm:items-center gap-3 sm:gap-4" style={{ minWidth: isDesktop ? '200px' : 'auto' }}>
+            {/* Get MentraOS Button */}
+            <div className="order-2 sm:order-1">
+              <GetMentraOSButton size="small" />
+            </div>
+            
+            {/* Authentication */}
+            <div className="order-1 sm:order-2">
+              {isAuthenticated ? (
+                <div className="flex flex-col items-end">
+                  {/* Uncomment if you want to show user email
+                  {user?.email && (
+                    <span className="text-sm text-gray-600 px-3">
+                      {user.email}
+                    </span>
+                  )} */}
+                  <Button
+                    onClick={handleSignOut}
+                    variant={theme === 'light' ? 'default' : 'outline'}
+                    className="rounded-full border-[1.5px]"
+                    style={{ 
+                      backgroundColor: theme === 'light' ? '#000000' : 'transparent',
+                      borderColor: theme === 'light' ? '#000000' : '#C0C4FF',
+                      color: theme === 'light' ? '#ffffff' : '#C0C4FF'
+                    }}
+                  >
+                    Sign Out
+                  </Button>
+                </div>
+              ) : (
                 <Button
-                  onClick={handleSignOut}
+                  onClick={() => navigate('/login')}
                   variant={theme === 'light' ? 'default' : 'outline'}
                   className="rounded-full border-[1.5px]"
                   style={{ 
@@ -106,23 +119,10 @@ const Header: React.FC<HeaderProps> = ({ onSearch, onSearchClear }) => {
                     color: theme === 'light' ? '#ffffff' : '#C0C4FF'
                   }}
                 >
-                  Sign Out
+                  Sign In
                 </Button>
-              </div>
-            ) : (
-              <Button
-                onClick={() => navigate('/login')}
-                variant={theme === 'light' ? 'default' : 'outline'}
-                className="rounded-full border-[1.5px]"
-                style={{ 
-                  backgroundColor: theme === 'light' ? '#000000' : 'transparent',
-                  borderColor: theme === 'light' ? '#000000' : '#C0C4FF',
-                  color: theme === 'light' ? '#ffffff' : '#C0C4FF'
-                }}
-              >
-                Sign In
-              </Button>
-            )}
+              )}
+            </div>
           </div>
 
         </div>

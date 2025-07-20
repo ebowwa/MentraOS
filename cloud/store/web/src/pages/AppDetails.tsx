@@ -11,7 +11,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import Header from '../components/Header';
 import AppPermissions from '../components/AppPermissions';
-import AppStoreButtons from '../components/AppStoreButtons';
+import GetMentraOSButton from '../components/GetMentraOSButton';
 
 // Extend window interface for React Native WebView
 declare global {
@@ -512,16 +512,9 @@ const AppDetails: React.FC = () => {
                 {/* Get MentraOS - Hide in React Native WebView */}
                 {!isWebView && (
                   <div className="text-center mb-8">
-                    <p
-                      className="text-[14px] mb-4"
-                      style={{
-                        fontFamily: '"SF Pro Rounded", sans-serif',
-                        color: theme === 'light' ? '#666666' : '#9CA3AF'
-                      }}
-                    >
-                      Get MentraOS
-                    </p>
-                    <AppStoreButtons className="justify-center" size="small" />
+                    <div className="flex justify-center">
+                      <GetMentraOSButton size="small" />
+                    </div>
                   </div>
                 )}
               </div>
