@@ -739,22 +739,21 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             long threadId = Thread.currentThread().getId();
             UUID uuid = characteristic.getUuid();
 
-            Log.e(TAG, "Thread-" + threadId + ": 🎉 onCharacteristicChanged CALLBACK TRIGGERED! Characteristic: " + uuid);
+            Log.d(TAG, "onCharacteristicChanged triggered for: " + uuid);
 
             boolean isRxCharacteristic = uuid.equals(RX_CHAR_UUID);
             boolean isTxCharacteristic = uuid.equals(TX_CHAR_UUID);
 
             if (isRxCharacteristic) {
-                Log.e(TAG, "Thread-" + threadId + ": 🎯 RECEIVED DATA ON RX CHARACTERISTIC (Peripheral's TX)");
+                Log.d(TAG, "Received data on RX characteristic");
             } else if (isTxCharacteristic) {
-                Log.e(TAG, "Thread-" + threadId + ": 🎯 RECEIVED DATA ON TX CHARACTERISTIC (Peripheral's RX)");
+                Log.d(TAG, "Received data on TX characteristic");
             } else {
-                Log.e(TAG, "Thread-" + threadId + ": 🎯 RECEIVED DATA ON UNKNOWN CHARACTERISTIC: " + uuid);
+                Log.w(TAG, "Received data on unknown characteristic: " + uuid);
             }
 
             // Process ALL data regardless of which characteristic it came from
             {
-                Log.e(TAG, "Thread-" + threadId + ": 🔍 Processing received data");
                 byte[] data = characteristic.getValue();
 
                 // Convert first few bytes to hex for better viewing
@@ -762,8 +761,6 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
 //                for (int i = 0; i < Math.min(data.length, 40); i++) {
 //                    hexDump.append(String.format("%02X ", data[i]));
 //                }
-       //         Log.e(TAG, "Thread-" + threadId + ": 🔍 First 40 bytes: " + hexDump);
-     //           Log.e(TAG, "Thread-" + threadId + ": 🔍 Total data length: " + data.length + " bytes");
 
                 if (data != null && data.length > 0) {
 //                    // Critical debugging for LC3 audio issue - dump ALL received data
@@ -783,10 +780,6 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                     // Combined result
        //             isLc3Command = method1 || method2 || method3;
 
-//                    Log.e(TAG, "Thread-" + threadId + ": 🎤 BLE PACKET RECEIVED - " + data.length + " bytes");
-//                    Log.e(TAG, "Thread-" + threadId + ": 🔍 LC3 Detection - Method1: " + method1 + ", Method2: " + method2 + ", Method3: " + method3);
-//                    Log.e(TAG, "Thread-" + threadId + ": 🔍 Command byte: 0x" + String.format("%02X", data[0]) + " (" + (int)(data[0] & 0xFF) + ")");
-//                    Log.e(TAG, "Thread-" + threadId + ": 🔍 First 32 bytes: " + hexDump);
 
                     // Log MTU information with packet
 //                    int mtuSize = -1;
@@ -794,14 +787,6 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
 //                        try {
 //                            // Calculate effective MTU (current MTU - 3 bytes BLE overhead)
 //                            int effectiveMtu = currentMtu - 3;
-//                            //Log.e(TAG, "Thread-" + threadId + ": 📏 Packet size: " + data.length + " bytes, MTU limit: " + effectiveMtu + " bytes");
-//
-//                            if (data.length > effectiveMtu) {
-//                                Log.e(TAG, "Thread-" + threadId + ": ⚠️ WARNING: Packet size exceeds MTU limit - may be truncated!");
-//                            }
-//                        } catch (Exception e) {
-//                            Log.e(TAG, "Thread-" + threadId + ": ❌ Error getting MTU size: " + e.getMessage());
-//                        }
 //                    }
 //
 
@@ -916,14 +901,14 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
 
         // Get all characteristics
         List<BluetoothGattCharacteristic> characteristics = service.getCharacteristics();
-        Log.e(TAG, "Thread-" + threadId + ": 🔍 Found " + characteristics.size() + " characteristics in service " + SERVICE_UUID);
+        Log.d(TAG, "Thread-" + threadId + ": Found " + characteristics.size() + " characteristics in service " + SERVICE_UUID);
 
         boolean notificationSuccess = false;
 
         // Enable notifications for each characteristic
         for (BluetoothGattCharacteristic characteristic : characteristics) {
             UUID uuid = characteristic.getUuid();
-            Log.e(TAG, "Thread-" + threadId + ": 🔍 Examining characteristic: " + uuid);
+            Log.d(TAG, "Thread-" + threadId + ": Examining characteristic: " + uuid);
             
             // Log if this is one of the file transfer characteristics
             if (uuid.equals(FILE_READ_UUID)) {
@@ -939,7 +924,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             boolean hasWrite = (properties & BluetoothGattCharacteristic.PROPERTY_WRITE) != 0;
             boolean hasWriteNoResponse = (properties & BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE) != 0;
 
-            Log.e(TAG, "Thread-" + threadId + ": 🔍 Characteristic " + uuid + " properties: " +
+            Log.d(TAG, "Thread-" + threadId + ": Characteristic " + uuid + " properties: " +
                    (hasNotify ? "NOTIFY " : "") +
                    (hasIndicate ? "INDICATE " : "") +
                    (hasRead ? "READ " : "") +
@@ -995,7 +980,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
 
         // Log notification status but AVOID any delayed operations!
         if (notificationSuccess) {
-            Log.e(TAG, "Thread-" + threadId + ": 🎯 Local notification registration SUCCESS for at least one characteristic");
+            Log.d(TAG, "Thread-" + threadId + ": Local notification registration SUCCESS for at least one characteristic");
             Log.e(TAG, "Thread-" + threadId + ": 🔔 Ready to receive data via onCharacteristicChanged()");
         } else {
             Log.e(TAG, "Thread-" + threadId + ": ❌ Failed to enable notifications on any characteristic");
@@ -1285,8 +1270,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                     processFilePacket(packetInfo);
                 } else {
                     Log.e(TAG, "Thread-" + threadId + ": Failed to extract or validate file packet");
-                    // BES chip handles ACKs automatically - no need to send from phone
-                    // sendFileTransferAck(0, -1);
+                    // BES chip handles ACKs automatically
                 }
                 
                 return; // Exit after processing file packet
@@ -2711,8 +2695,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         boolean added = session.addPacket(packetInfo.packIndex, packetInfo.data);
         
         if (added) {
-            // BES chip handles ACKs automatically - no need to send from phone
-            // sendFileTransferAck(1, packetInfo.packIndex);
+            // BES chip handles ACKs automatically
             Log.d(TAG, "📦 Packet " + packetInfo.packIndex + " received successfully (BES will auto-ACK)");
             
             // Check if transfer is complete
@@ -2731,26 +2714,10 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         } else {
             // Packet already received or invalid index
             Log.w(TAG, "📦 Duplicate or invalid packet: " + packetInfo.packIndex);
-            // BES chip handles ACKs automatically - no need to send from phone
-            // sendFileTransferAck(1, packetInfo.packIndex);
+            // BES chip handles ACKs automatically
         }
     }
     
-    /**
-     * Send file transfer acknowledgment
-     * NOTE: BES chip handles ACKs automatically - this method is kept for reference but not used
-     */
-    private void sendFileTransferAck(int state, int index) {
-        // BES chip auto-acknowledges file packets - phone doesn't need to send ACKs
-        Log.d(TAG, "📤 [DISABLED] Phone ACK not needed - BES chip handles: state=" + state + ", index=" + index);
-        /*
-        String ackMessage = K900ProtocolUtils.createFileTransferAck(state, index);
-        if (ackMessage != null) {
-            Log.d(TAG, "📤 Sending file transfer ACK: state=" + state + ", index=" + index);
-            sendDataToGlasses(ackMessage, false);
-        }
-        */
-    }
     
     /**
      * Save received file to storage
