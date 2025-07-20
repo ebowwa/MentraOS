@@ -154,6 +154,9 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     // Battery status tracking
     private int batteryVoltage = -1;
     private int batteryPercentage = -1;
+    // Track last sent battery status over BLE to avoid redundant messages
+    private int lastSentBatteryPercentage = -1;
+    private boolean lastSentBatteryCharging = false;
 
     // Receiver for handling restart requests from OTA updater
     private BroadcastReceiver restartReceiver;
@@ -1157,9 +1160,22 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     private void sendBatteryStatusOverBle() {
         if (bluetoothManager != null && bluetoothManager.isConnected()) {
             try {
+                // Calculate charging status based on voltage
+                boolean isCharging = batteryVoltage > 3900;
+                
+                // Check if battery status has changed from last sent status
+                if (batteryPercentage == lastSentBatteryPercentage && isCharging == lastSentBatteryCharging) {
+                    Log.d(TAG, "🔋 Battery status unchanged - skipping BLE send (percent: " + batteryPercentage + "%, charging: " + isCharging + ")");
+                    return;
+                }
+                
+                // Update last sent values
+                lastSentBatteryPercentage = batteryPercentage;
+                lastSentBatteryCharging = isCharging;
+                
                 JSONObject obj = new JSONObject();
                 obj.put("type", "battery_status");
-                obj.put("charging", batteryVoltage > 3900);
+                obj.put("charging", isCharging);
                 obj.put("percent", batteryPercentage);
                 String jsonString = obj.toString();
                 Log.d(TAG, "Formatted battery status message: " + jsonString);
@@ -1844,7 +1860,18 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     public void parseK900Command(String command){
         switch (command) {
             case "cs_pho":
-                handleButtonPress(false);
+                // TESTING: Commented out normal photo handling
+                // handleButtonPress(false);
+                
+                // TEST: Send test image from assets
+                Log.d(TAG, "🎾 TEST: cs_pho pressed - sending test.jpg from assets");
+                if (bluetoothManager != null) {
+                    boolean started = ((com.augmentos.asg_client.bluetooth.BaseBluetoothManager)bluetoothManager)
+                        .sendTestImageFromAssets("test.jpg");
+                    Log.d(TAG, "🎾 TEST: File transfer started: " + started);
+                } else {
+                    Log.e(TAG, "🎾 TEST: bluetoothManager is null!");
+                }
                 break;
 
             case "hm_htsp":
@@ -1872,7 +1899,18 @@ public class AsgClientService extends Service implements NetworkStateListener, B
             
             switch (command) {
                 case "cs_pho":
-                    handleButtonPress(false);
+                    // TESTING: Commented out normal photo handling
+                    // handleButtonPress(false);
+                    
+                    // TEST: Send test image from assets
+                    Log.d(TAG, "🎾 TEST: cs_pho (JSON) pressed - sending test.jpg from assets");
+                    if (bluetoothManager != null) {
+                        boolean started = ((com.augmentos.asg_client.bluetooth.BaseBluetoothManager)bluetoothManager)
+                            .sendTestImageFromAssets("test.jpg");
+                        Log.d(TAG, "🎾 TEST: File transfer started: " + started);
+                    } else {
+                        Log.e(TAG, "🎾 TEST: bluetoothManager is null!");
+                    }
                     break;
 
                 case "hm_htsp":

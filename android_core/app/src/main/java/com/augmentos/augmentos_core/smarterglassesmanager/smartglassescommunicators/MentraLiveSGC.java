@@ -60,6 +60,11 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.Random;
 import java.security.SecureRandom;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
 
 import io.reactivex.rxjava3.subjects.PublishSubject;
 
@@ -90,6 +95,10 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     private static final UUID RX_CHAR_UUID = UUID.fromString("000070FF-0000-1000-8000-00805f9b34fb"); // Central receives on peripheral's TX
     private static final UUID TX_CHAR_UUID = UUID.fromString("000071FF-0000-1000-8000-00805f9b34fb"); // Central transmits on peripheral's RX
     private static final UUID CLIENT_CHARACTERISTIC_CONFIG_UUID = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb");
+
+    // BES => PHONE
+    private static final UUID FILE_READ_UUID = UUID.fromString("000072FF-0000-1000-8000-00805f9b34fb");
+    private static final UUID FILE_WRITE_UUID = UUID.fromString("000073FF-0000-1000-8000-00805f9b34fb");
 
     // Reconnection parameters
     private static final int BASE_RECONNECT_DELAY_MS = 1000; // Start with 1 second
@@ -143,6 +152,66 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     private int batteryLevel = 50; // Default until we get actual value
     private boolean isCharging = false;
     private boolean isConnected = false;
+    
+    // File transfer management
+    private ConcurrentHashMap<String, FileTransferSession> activeFileTransfers = new ConcurrentHashMap<>();
+    private static final String FILE_SAVE_DIR = "MentraLive_Images";
+    
+    // Inner class to track incoming file transfers
+    private static class FileTransferSession {
+        String fileName;
+        int fileSize;
+        int totalPackets;
+        int expectedNextPacket;
+        ConcurrentHashMap<Integer, byte[]> receivedPackets;
+        long startTime;
+        boolean isComplete;
+        
+        FileTransferSession(String fileName, int fileSize) {
+            this.fileName = fileName;
+            this.fileSize = fileSize;
+            this.totalPackets = (fileSize + K900ProtocolUtils.FILE_PACK_SIZE - 1) / K900ProtocolUtils.FILE_PACK_SIZE;
+            this.expectedNextPacket = 0;
+            this.receivedPackets = new ConcurrentHashMap<>();
+            this.startTime = System.currentTimeMillis();
+            this.isComplete = false;
+        }
+        
+        boolean addPacket(int index, byte[] data) {
+            if (index >= 0 && index < totalPackets && !receivedPackets.containsKey(index)) {
+                receivedPackets.put(index, data);
+                
+                // Update expected next packet if this was the one we were waiting for
+                while (receivedPackets.containsKey(expectedNextPacket)) {
+                    expectedNextPacket++;
+                }
+                
+                // Check if complete
+                isComplete = (receivedPackets.size() == totalPackets);
+                return true;
+            }
+            return false;
+        }
+        
+        byte[] assembleFile() {
+            if (!isComplete) {
+                return null;
+            }
+            
+            byte[] fileData = new byte[fileSize];
+            int offset = 0;
+            
+            for (int i = 0; i < totalPackets; i++) {
+                byte[] packet = receivedPackets.get(i);
+                if (packet != null) {
+                    System.arraycopy(packet, 0, fileData, offset, packet.length);
+                    offset += packet.length;
+                }
+            }
+            
+            return fileData;
+        }
+    }
 
     // WiFi state tracking
     private boolean isWifiConnected = false;
@@ -855,6 +924,13 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         for (BluetoothGattCharacteristic characteristic : characteristics) {
             UUID uuid = characteristic.getUuid();
             Log.e(TAG, "Thread-" + threadId + ": 🔍 Examining characteristic: " + uuid);
+            
+            // Log if this is one of the file transfer characteristics
+            if (uuid.equals(FILE_READ_UUID)) {
+                Log.e(TAG, "Thread-" + threadId + ": 📁 Found FILE_READ characteristic (72FF)!");
+            } else if (uuid.equals(FILE_WRITE_UUID)) {
+                Log.e(TAG, "Thread-" + threadId + ": 📁 Found FILE_WRITE characteristic (73FF)!");
+            }
 
             int properties = characteristic.getProperties();
             boolean hasNotify = (properties & BluetoothGattCharacteristic.PROPERTY_NOTIFY) != 0;
@@ -1182,8 +1258,33 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         // First check if this looks like a K900 protocol formatted message (starts with ##)
         if (size >= 7 && data[0] == 0x23 && data[1] == 0x23) {
             Log.d(TAG, "Thread-" + threadId + ": 🔍 DETECTED K900 PROTOCOL FORMAT (## prefix)");
+            
+            // Check the command type byte
+            byte cmdType = data[2];
+            
+            // Check if this is a file transfer packet
+            if (cmdType == K900ProtocolUtils.CMD_TYPE_PHOTO || 
+                cmdType == K900ProtocolUtils.CMD_TYPE_VIDEO ||
+                cmdType == K900ProtocolUtils.CMD_TYPE_AUDIO ||
+                cmdType == K900ProtocolUtils.CMD_TYPE_DATA) {
+                
+                Log.d(TAG, "Thread-" + threadId + ": 📦 DETECTED FILE TRANSFER PACKET (type: 0x" + 
+                      String.format("%02X", cmdType) + ")");
+                
+                // Extract file packet information
+                K900ProtocolUtils.FilePacketInfo packetInfo = K900ProtocolUtils.extractFilePacket(data);
+                if (packetInfo != null && packetInfo.isValid) {
+                    processFilePacket(packetInfo);
+                } else {
+                    Log.e(TAG, "Thread-" + threadId + ": Failed to extract or validate file packet");
+                    // Send negative acknowledgment
+                    sendFileTransferAck(0, -1);
+                }
+                
+                return; // Exit after processing file packet
+            }
 
-            // Use K900ProtocolUtils to process the protocol data
+            // Otherwise it's a normal JSON message
             JSONObject json = K900ProtocolUtils.processReceivedBytesToJson(data);
             if (json != null) {
                 processJsonMessage(json);
@@ -1780,7 +1881,8 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         // This was necessary for OG beta units
         // Not required for newer beta units
         // TODO: remove this line post hackathon
-        sendBatteryStatusOverBle(level, charging);
+        // Commented out to prevent battery status echo loop between phone and glasses
+        // sendBatteryStatusOverBle(level, charging);
     }
     
     /**
@@ -2572,5 +2674,152 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         }
         
         return stats.toString();
+    }
+    
+    //---------------------------------------
+    // File Transfer Methods
+    //---------------------------------------
+    
+    /**
+     * Process a received file packet
+     */
+    private void processFilePacket(K900ProtocolUtils.FilePacketInfo packetInfo) {
+        Log.d(TAG, "📦 Processing file packet: " + packetInfo.fileName + 
+              " [" + packetInfo.packIndex + "/" + ((packetInfo.fileSize + K900ProtocolUtils.FILE_PACK_SIZE - 1) / K900ProtocolUtils.FILE_PACK_SIZE - 1) + "]" +
+              " (" + packetInfo.packSize + " bytes)");
+        
+        // Get or create file transfer session
+        FileTransferSession session = activeFileTransfers.get(packetInfo.fileName);
+        if (session == null) {
+            // New file transfer
+            session = new FileTransferSession(packetInfo.fileName, packetInfo.fileSize);
+            activeFileTransfers.put(packetInfo.fileName, session);
+            
+            Log.d(TAG, "📦 Started new file transfer: " + packetInfo.fileName + 
+                  " (" + packetInfo.fileSize + " bytes, " + session.totalPackets + " packets)");
+        }
+        
+        // Add packet to session
+        boolean added = session.addPacket(packetInfo.packIndex, packetInfo.data);
+        
+        if (added) {
+            // Send positive acknowledgment
+            sendFileTransferAck(1, packetInfo.packIndex);
+            
+            // Check if transfer is complete
+            if (session.isComplete) {
+                Log.d(TAG, "📦 File transfer complete: " + packetInfo.fileName);
+                
+                // Assemble and save the file
+                byte[] fileData = session.assembleFile();
+                if (fileData != null) {
+                    saveReceivedFile(packetInfo.fileName, fileData, packetInfo.fileType);
+                }
+                
+                // Remove from active transfers
+                activeFileTransfers.remove(packetInfo.fileName);
+            }
+        } else {
+            // Packet already received or invalid index
+            Log.w(TAG, "📦 Duplicate or invalid packet: " + packetInfo.packIndex);
+            // Still send positive ack for duplicate packets
+            sendFileTransferAck(1, packetInfo.packIndex);
+        }
+    }
+    
+    /**
+     * Send file transfer acknowledgment
+     */
+    private void sendFileTransferAck(int state, int index) {
+        String ackMessage = K900ProtocolUtils.createFileTransferAck(state, index);
+        if (ackMessage != null) {
+            Log.d(TAG, "📤 Sending file transfer ACK: state=" + state + ", index=" + index);
+            sendDataToGlasses(ackMessage, false);
+        }
+    }
+    
+    /**
+     * Save received file to storage
+     */
+    private void saveReceivedFile(String fileName, byte[] fileData, byte fileType) {
+        try {
+            // Get or create the directory for saving files
+            File dir = new File(context.getExternalFilesDir(null), FILE_SAVE_DIR);
+            if (!dir.exists()) {
+                dir.mkdirs();
+            }
+            
+            // Generate unique filename with timestamp
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US);
+            String timestamp = sdf.format(new Date());
+            
+            // Determine file extension based on type
+            String extension = "";
+            switch (fileType) {
+                case K900ProtocolUtils.CMD_TYPE_PHOTO:
+                    extension = ".jpg"; // Assume JPEG for photos
+                    break;
+                case K900ProtocolUtils.CMD_TYPE_VIDEO:
+                    extension = ".mp4";
+                    break;
+                case K900ProtocolUtils.CMD_TYPE_AUDIO:
+                    extension = ".wav";
+                    break;
+                default:
+                    // Try to get extension from original filename
+                    int dotIndex = fileName.lastIndexOf('.');
+                    if (dotIndex > 0) {
+                        extension = fileName.substring(dotIndex);
+                    }
+                    break;
+            }
+            
+            // Create unique filename
+            String baseFileName = fileName;
+            if (baseFileName.contains(".")) {
+                baseFileName = baseFileName.substring(0, baseFileName.lastIndexOf('.'));
+            }
+            String uniqueFileName = baseFileName + "_" + timestamp + extension;
+            
+            // Save the file
+            File file = new File(dir, uniqueFileName);
+            try (FileOutputStream fos = new FileOutputStream(file)) {
+                fos.write(fileData);
+                fos.flush();
+                
+                Log.d(TAG, "💾 Saved file: " + file.getAbsolutePath());
+                
+                // Notify about the received file
+                notifyFileReceived(file.getAbsolutePath(), fileType);
+            }
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Error saving received file: " + fileName, e);
+        }
+    }
+    
+    /**
+     * Notify listeners about received file
+     */
+    private void notifyFileReceived(String filePath, byte fileType) {
+        // Create event based on file type
+        JSONObject event = new JSONObject();
+        try {
+            event.put("type", "file_received");
+            event.put("filePath", filePath);
+            event.put("fileType", String.format("0x%02X", fileType));
+            event.put("timestamp", System.currentTimeMillis());
+            
+            // Emit event through data observable
+            if (dataObservable != null) {
+                dataObservable.onNext(event);
+            }
+            
+            // You could also post an EventBus event here if needed
+            // EventBus.getDefault().post(new FileReceivedEvent(filePath, fileType));
+            
+        } catch (JSONException e) {
+            Log.e(TAG, "Error creating file received event", e);
+        }
     }
 }
