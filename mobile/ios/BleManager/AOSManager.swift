@@ -849,7 +849,7 @@ struct ViewState {
     bottomText = parsePlaceholders(bottomText)
     title = parsePlaceholders(title)
     
-    // CoreCommsService.log("Updating view state \(stateIndex) with \(layoutType) \(text) \(topText) \(bottomText)")
+    CoreCommsService.log("Updating view state \(stateIndex) with \(layoutType) \(text) \(topText) \(bottomText)")
     
     switch layoutType {
     case "text_wall":
