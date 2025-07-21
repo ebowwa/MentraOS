@@ -226,8 +226,8 @@ export default function Homepage() {
       <View ref={connectButtonRef}>
         <ConnectDeviceButton />
       </View>
-      <Spacer height={theme.spacing.lg} />
-      <Divider variant="full" />
+      {/* <Spacer height={theme.spacing.lg} /> */}
+      {/* <Divider variant="full" /> */}
       <Spacer height={theme.spacing.md} />
       <AppsInactiveList key={`apps-list-${appStatus.length}`} liveCaptionsRef={liveCaptionsRef} />
 

@@ -55,7 +55,7 @@ const $listHeaderIcon: ThemedStyle<ViewStyle> = ({spacing}) => ({
   gap: 0,
   flexDirection: "row",
   width: "100%",
-  paddingRight: spacing.lg,
+  paddingRight: spacing.xl,
 })
 const $wrapper: ThemedStyle<ViewStyle> = () => ({
   width: 24,

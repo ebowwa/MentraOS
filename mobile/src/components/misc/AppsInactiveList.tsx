@@ -432,6 +432,10 @@ export default function InactiveAppList({
     } finally {
       setIsLoading(false)
     }
+
+    setTimeout(() => {
+      animateItemToTop(packageName)
+    }, 1000)
   }
 
   const getRunningStandardApps = (packageName: string) => {
@@ -638,16 +642,36 @@ export default function InactiveAppList({
     )
   }
 
-  // <ScrollView
-  // style={{marginRight: -theme.spacing.md, paddingRight: theme.spacing.md}}
-  // contentInsetAdjustmentBehavior="automatic"
-  // scrollEnabled={false}>
+  const animateItemToTop = async (packageName: string) => {
+    // Find the index of the item to move
+    const currentIndex = availableApps.findIndex(app => app.packageName === packageName)
+
+    if (currentIndex === -1 || currentIndex === 0) {
+      // Item not found or already at top
+      return
+    }
+
+    // Create a new array with the item moved to the top
+    const newData = [...availableApps]
+    const [movedItem] = newData.splice(currentIndex, 1)
+    newData.unshift(movedItem)
+
+    // Update the data (this will trigger the animation)
+    // You'll need to update availableApps through state
+    // Since availableApps is derived from appStatus, you might need to:
+    // 1. Update the saved app order
+    // 2. Let the sorting logic handle it
+
+    await saveAppOrder(newData)
+
+    // Force a refresh to apply the new order
+    // You might need to add a state variable to trigger re-render
+    setSavedAppOrder(newData.map(app => app.packageName))
+  }
 
   return (
-    <View style={{flex: 1}}>
-      {/* {!isSearchPage && (
-        <AppsHeader title="home:apps" showSearchIcon={true} />
-      )} */}
+    <View style={{flex: 1, paddingTop: theme.spacing.md}}>
+      {!isSearchPage && <AppsHeader title="home:apps" showSearchIcon={true} />}
 
       <DraggableFlatList
         style={{marginRight: -theme.spacing.md, paddingRight: theme.spacing.md}}
@@ -655,18 +679,16 @@ export default function InactiveAppList({
         renderItem={renderDraggableItem}
         keyExtractor={keyExtractor}
         onDragEnd={handleDragEnd}
-        activationDistance={4}
+        // activationDistance={40}
         autoscrollThreshold={10}
         ListFooterComponent={
-          availableApps.length > 0 ? (
-            <>
-              <Spacer height={8} />
-              <Divider variant="inset" />
-              <Spacer height={8} />
-              <AppListStoreLink />
-              <Spacer height={40} />
-            </>
-          ) : null
+          <>
+            <Spacer height={8} />
+            <Divider variant="inset" />
+            <Spacer height={8} />
+            <AppListStoreLink />
+            <Spacer height={40} />
+          </>
         }
       />
     </View>
