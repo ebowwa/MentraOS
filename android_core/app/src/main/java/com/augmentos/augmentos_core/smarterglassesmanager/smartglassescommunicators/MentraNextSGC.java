@@ -82,7 +82,7 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
     private int micBeatCount = 0;
     private BluetoothAdapter bluetoothAdapter;
 
-    public static final String LEFT_DEVICE_KEY = "SavedNextLeftName";
+    public static final String NEXT_MAIN_DEVICE_KEY = "SavedNextMainName";
 
     private boolean isKilled = false;
 
@@ -91,11 +91,11 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
     private static final UUID UART_RX_CHAR_UUID = UUID.fromString("000070FF-0000-1000-8000-00805f9b34fb");
     private static final UUID CLIENT_CHARACTERISTIC_CONFIG_UUID = UUID
             .fromString("00002902-0000-1000-8000-00805f9b34fb");
-    private static final String SAVED_G1_ID_KEY = "SAVED_Next_New_ID_KEY";
+    private static final String SAVED_NEXT_ID_KEY = "SAVED_Next_New_ID_KEY";
     private Context context;
-    private BluetoothGatt leftGlassGatt;
-    private BluetoothGattCharacteristic leftTxChar;
-    private BluetoothGattCharacteristic leftRxChar;
+    private BluetoothGatt mainGlassGatt;
+    private BluetoothGattCharacteristic mainTxChar;
+    private BluetoothGattCharacteristic mainRxChar;
 
     private SmartGlassesConnectionState connectionState = SmartGlassesConnectionState.DISCONNECTED;
     private final Handler handler = new Handler(Looper.getMainLooper());
@@ -105,7 +105,7 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
     private Handler reconnectHandler = new Handler(Looper.getMainLooper());
     private Handler characteristicHandler = new Handler(Looper.getMainLooper());
     private final Semaphore sendSemaphore = new Semaphore(1);
-    private boolean isLeftConnected = false;
+    private boolean isMainConnected = false;
     private int currentSeq = 0;
     private boolean stopper = false;
     private boolean debugStopper = false;
@@ -122,8 +122,8 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
     private boolean caseCharging = false;
     private boolean caseOpen = false;
     private boolean caseRemoved = true;
-    private int batteryLeft = -1;
-    private int leftReconnectAttempts = 0;
+    private int batteryMain = -1;
+    private int mainReconnectAttempts = 0;
     private int reconnectAttempts = 0; // Counts the number of reconnect attempts
     private static final long BASE_RECONNECT_DELAY_MS = 3000; // Start with 3 seconds
     private static final long MAX_RECONNECT_DELAY_MS = 60000;
@@ -161,11 +161,11 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
     private boolean textWallsStarted = false;
     private int textWallNum = 10;
 
-    private BluetoothDevice leftDevice = null;
+    private BluetoothDevice mainDevice = null;
     private String preferredG1Id = null;
-    private String pendingSavedG1LeftName = null;
-    private String savedG1LeftName = null;
-    private String preferredG1DeviceId = null;
+    private String pendingSavedNextMainName = null;
+    private String savedNextMainName = null;
+    private String preferredMainDeviceId = null;
 
     // handler to turn off screen
     // Handler goHomeHandler;
@@ -182,11 +182,10 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
     private static final long CONNECTION_TIMEOUT_MS = 10000; // 10 seconds
 
     // Handlers for connection timeouts
-    private final Handler leftConnectionTimeoutHandler = new Handler(Looper.getMainLooper());
+    private final Handler mainConnectionTimeoutHandler = new Handler(Looper.getMainLooper());
 
     // Runnable tasks for handling timeouts
-    private Runnable leftConnectionTimeoutRunnable;
-    // private Runnable rightConnectionTimeoutRunnable;
+    private Runnable mainConnectionTimeoutRunnable;
     private boolean isBondingReceiverRegistered = false;
     private boolean shouldUseGlassesMic;
     private boolean lastThingDisplayedWasAnImage = false;
@@ -206,7 +205,7 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
         // loadPairedDeviceNames();
         // goHomeHandler = new Handler();
         this.smartGlassesDevice = smartGlassesDevice;
-        preferredG1DeviceId = getPreferredG1DeviceId(context);
+        preferredMainDeviceId = getPreferredMainDeviceId(context);
         brightnessValue = getSavedBrightnessValue(context);
         shouldUseAutoBrightness = getSavedAutoBrightnessValue(context);
         this.bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
@@ -221,7 +220,7 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
         fontLoader = new G1FontLoader(context);
     }
 
-    private final BluetoothGattCallback leftGattCallback = createGattCallback();
+    private final BluetoothGattCallback mainGattCallback = createGattCallback();
 
     private BluetoothGattCallback createGattCallback() {
         return new BluetoothGattCallback() {
@@ -229,9 +228,9 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
             public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
                 Log.d(TAG, "onConnectionStateChange newState " + (status == BluetoothGatt.GATT_SUCCESS));
                 // Cancel the connection timeout
-                if (leftConnectionTimeoutRunnable != null) {
-                    leftConnectionTimeoutHandler.removeCallbacks(leftConnectionTimeoutRunnable);
-                    leftConnectionTimeoutRunnable = null;
+                if (mainConnectionTimeoutRunnable != null) {
+                    mainConnectionTimeoutHandler.removeCallbacks(mainConnectionTimeoutRunnable);
+                    mainConnectionTimeoutRunnable = null;
                 }
 
                 if (status == BluetoothGatt.GATT_SUCCESS) {
@@ -244,10 +243,10 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
                                 BluetoothDevice.PHY_LE_2M_MASK,
                                 BluetoothDevice.PHY_OPTION_NO_PREFERRED);
 
-                        isLeftConnected = true;
-                        leftReconnectAttempts = 0;
+                        isMainConnected = true;
+                        mainReconnectAttempts = 0;
 
-                        if (isLeftConnected) {
+                        if (isMainConnected) {
                             stopScan();
                             Log.d(TAG, "Both glasses connected. Stopping BLE scan.");
                         }
@@ -264,8 +263,8 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
                         Log.d(TAG, "Entering STATE_DISCONNECTED branch for side: ");
 
                         // Mark both sides as not ready (you could also clear both if one disconnects)
-                        leftServicesWaiter.setTrue();
-                        Log.d(TAG, "Set leftServicesWaiter and rightServicesWaiter to true.");
+                        mainServicesWaiter.setTrue();
+                        Log.d(TAG, "Set mainServicesWaiter and rightServicesWaiter to true.");
 
                         forceSideDisconnection();
                         Log.d(TAG, "Called forceSideDisconnection().");
@@ -292,7 +291,7 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
 
                         Log.d(TAG,
                                 " glass disconnected. Scheduling reconnection for both glasses in " + delay
-                                        + " ms (Left attempts: " + leftReconnectAttempts);
+                                        + " ms (main attempts: " + mainReconnectAttempts);
 
                         // if (gatt.getDevice() != null) {
                         // // Close the current gatt connection
@@ -311,11 +310,11 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
                             if (gatt.getDevice() != null && !isKilled) {
                                 Log.d(TAG, "Reconnecting to both glasses. isKilled = " + isKilled);
                                 // Assuming you have stored references to both devices:
-                                if (leftDevice != null) {
-                                    Log.d(TAG, "Attempting to reconnect to leftDevice: " + leftDevice.getAddress());
-                                    reconnectToGatt(leftDevice);
+                                if (mainDevice != null) {
+                                    Log.d(TAG, "Attempting to reconnect to mainDevice: " + mainDevice.getAddress());
+                                    reconnectToGatt(mainDevice);
                                 } else {
-                                    Log.d(TAG, "Left device reference is null.");
+                                    Log.d(TAG, "Main device reference is null.");
                                 }
 
                             } else {
@@ -330,18 +329,18 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
                     sendQueue.clear();
 
                     // Mark both sides as not ready (you could also clear both if one disconnects)
-                    leftServicesWaiter.setTrue();
+                    mainServicesWaiter.setTrue();
 
                     Log.d(TAG, "Stopped heartbeat and mic beat; cleared sendQueue due to connection failure.");
 
                     Log.e(TAG, " glass connection failed with status: " + status);
-                    isLeftConnected = false;
-                    leftReconnectAttempts++;
-                    if (leftGlassGatt != null) {
-                        leftGlassGatt.disconnect();
-                        leftGlassGatt.close();
+                    isMainConnected = false;
+                    mainReconnectAttempts++;
+                    if (mainGlassGatt != null) {
+                        mainGlassGatt.disconnect();
+                        mainGlassGatt.close();
                     }
-                    leftGlassGatt = null;
+                    mainGlassGatt = null;
 
                     forceSideDisconnection();
                     Log.d(TAG, "Called forceSideDisconnection() after connection failure.");
@@ -351,8 +350,8 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
                     Log.d(TAG, "GATT connection disconnected and closed due to failure.");
 
                     connectHandler.postDelayed(() -> {
-                        Log.d(TAG, "Attempting GATT connection for leftDevice immediately.");
-                        attemptGattConnection(leftDevice);
+                        Log.d(TAG, "Attempting GATT connection for mainDevice immediately.");
+                        attemptGattConnection(mainDevice);
                     }, 0);
 
                 }
@@ -361,17 +360,17 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
             private void forceSideDisconnection() {
                 Log.d(TAG, "forceSideDisconnection() called for side: ");
                 // Force disconnection from the other side if necessary
-                isLeftConnected = false;
-                leftReconnectAttempts++;
-                Log.d(TAG, "Left glass: Marked as disconnected and incremented leftReconnectAttempts to "
-                        + leftReconnectAttempts);
-                if (leftGlassGatt != null) {
-                    Log.d(TAG, "Left glass GATT exists. Disconnecting and closing leftGlassGatt.");
-                    leftGlassGatt.disconnect();
-                    leftGlassGatt.close();
-                    leftGlassGatt = null;
+                isMainConnected = false;
+                mainReconnectAttempts++;
+                Log.d(TAG, "Main glass: Marked as disconnected and incremented mainReconnectAttempts to "
+                        + mainReconnectAttempts);
+                if (mainGlassGatt != null) {
+                    Log.d(TAG, "Main glass GATT exists. Disconnecting and closing mainGlassGatt.");
+                    mainGlassGatt.disconnect();
+                    mainGlassGatt.close();
+                    mainGlassGatt = null;
                 } else {
-                    Log.d(TAG, "Left glass GATT is already null.");
+                    Log.d(TAG, "Main glass GATT is already null.");
                 }
             }
 
@@ -398,7 +397,7 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
                 }
 
                 // clear the waiter
-                leftWaiter.setFalse();
+                mainWaiter.setFalse();
             }
 
             @Override
@@ -406,7 +405,7 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
                 Log.d(TAG, "PROC - GOT DESCRIPTOR WRITE: " + status);
 
                 // clear the waiter
-                leftServicesWaiter.setFalse();
+                mainServicesWaiter.setFalse();
             }
 
             @Override
@@ -499,10 +498,10 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
                         // BATTERY RESPONSE
                         else if (data.length > 2 && data[0] == 0x2C && data[1] == 0x66) {
 
-                            batteryLeft = data[2];
+                            batteryMain = data[2];
 
-                            if (batteryLeft != -1) {
-                                int minBatt = batteryLeft;
+                            if (batteryMain != -1) {
+                                int minBatt = batteryMain;
                                 // Log.d(TAG, "Minimum Battery Level: " + minBatt);
                                 EventBus.getDefault().post(new BatteryLevelEvent(minBatt, false));
                             }
@@ -611,27 +610,27 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
             BluetoothGattCharacteristic rxChar = uartService.getCharacteristic(UART_RX_CHAR_UUID);
 
             if (txChar != null) {
-                leftTxChar = txChar;
+                mainTxChar = txChar;
                 // enableNotification(gatt, txChar, side);
                 // txChar.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
                 Log.d(TAG, " glass TX characteristic found");
             }
 
             if (rxChar != null) {
-                leftRxChar = rxChar;
+                mainRxChar = rxChar;
                 enableNotification(gatt, rxChar);
                 // rxChar.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
                 Log.d(TAG, " glass RX characteristic found");
             }
 
             // Mark as connected but wait for setup below to update connection state
-            isLeftConnected = true;
+            isMainConnected = true;
             Log.d(TAG, "PROC_QUEUE - left side setup complete");
 
             // Manufacturer data decoding moved to connection start
 
             // setup the G1s
-            if (isLeftConnected) {
+            if (isMainConnected) {
                 Log.d(TAG, "Sending firmware request Command");
                 sendDataSequentially(new byte[] { (byte) 0x6E, (byte) 0x74 });
 
@@ -715,7 +714,7 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
     }
 
     private void updateConnectionState() {
-        if (isLeftConnected) {
+        if (isMainConnected) {
             connectionState = SmartGlassesConnectionState.CONNECTED;
             Log.d(TAG, "Both glasses connected");
             lastConnectionTimestamp = System.currentTimeMillis();
@@ -728,8 +727,8 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
     }
 
     public boolean doPendingPairingIdsMatch() {
-        String leftId = parsePairingIdFromDeviceName(pendingSavedG1LeftName);
-        Log.d(TAG, "LeftID: " + leftId);
+        String mainId = parsePairingIdFromDeviceName(pendingSavedNextMainName);
+        Log.d(TAG, "MainID: " + mainId);
 
         // ok, HACKY, but if one of them is null, that means that we connected to the
         // other on a previous connect
@@ -737,11 +736,11 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
         // the device name, so it should be fine
         // in the future, the way to actually check this would be to check the final ID
         // string, which is the only one guaranteed to be unique
-        if (leftId == null) {
+        if (mainId == null) {
             return true;
         }
 
-        return leftId != null;
+        return mainId != null;
     }
 
     public String parsePairingIdFromDeviceName(String input) {
@@ -760,13 +759,13 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
     public static void savePreferredG1DeviceId(Context context, String deviceName) {
         context.getSharedPreferences(SHARED_PREFS_NAME, Context.MODE_PRIVATE)
                 .edit()
-                .putString(SAVED_G1_ID_KEY, deviceName)
+                .putString(SAVED_NEXT_ID_KEY, deviceName)
                 .apply();
     }
 
-    public static String getPreferredG1DeviceId(Context context) {
+    public static String getPreferredMainDeviceId(Context context) {
         SharedPreferences prefs = context.getSharedPreferences(SHARED_PREFS_NAME, Context.MODE_PRIVATE);
-        return prefs.getString(SAVED_G1_ID_KEY, null);
+        return prefs.getString(SAVED_NEXT_ID_KEY, null);
     }
 
     public static int getSavedBrightnessValue(Context context) {
@@ -780,19 +779,19 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
     }
 
     private void savePairedDeviceNames() {
-        if (savedG1LeftName != null) {
+        if (savedNextMainName != null) {
             context.getSharedPreferences(SHARED_PREFS_NAME, Context.MODE_PRIVATE)
                     .edit()
-                    .putString(LEFT_DEVICE_KEY, savedG1LeftName)
+                    .putString(NEXT_MAIN_DEVICE_KEY, savedNextMainName)
                     .apply();
-            Log.d(TAG, "Saved paired device names: Left=" + savedG1LeftName);
+            Log.d(TAG, "Saved paired device names: " + savedNextMainName);
         }
     }
 
     private void loadPairedDeviceNames() {
         SharedPreferences prefs = context.getSharedPreferences(SHARED_PREFS_NAME, Context.MODE_PRIVATE);
-        savedG1LeftName = prefs.getString(LEFT_DEVICE_KEY, null);
-        Log.d(TAG, "Loaded paired device names: Left=" + savedG1LeftName);
+        savedNextMainName = prefs.getString(NEXT_MAIN_DEVICE_KEY, null);
+        Log.d(TAG, "Loaded paired device names: " + savedNextMainName);
     }
 
     public static void deleteEvenSharedPreferences(Context context) {
@@ -816,14 +815,14 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
         }
 
         // Reset the services waiter based on device name
-        Log.d(TAG, "Device identified as left side. Resetting leftServicesWaiter.");
-        leftServicesWaiter.setTrue();
+        Log.d(TAG, "Device identified as main side. Resetting ServicesWaiter.");
+        mainServicesWaiter.setTrue();
 
         // Establish GATT connection based on device name and current connection state
-        Log.d(TAG, "Connecting GATT to left side.");
-        leftGlassGatt = device.connectGatt(context, false, leftGattCallback);
-        isLeftConnected = false; // Reset connection state
-        Log.d(TAG, "Left GATT connection initiated. isLeftConnected set to false.");
+        Log.d(TAG, "Connecting GATT to main side.");
+        mainGlassGatt = device.connectGatt(context, false, mainGattCallback);
+        isMainConnected = false; // Reset connection state
+        Log.d(TAG, "Main GATT connection initiated. isMainConnected set to false.");
     }
 
     private void reconnectToGatt(BluetoothDevice device) {
@@ -873,7 +872,7 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
             // Log.d(TAG, "Could not get device alias: " + e.getMessage());
             // }
 
-            // Capture manufacturer data for left device during scanning
+            // Capture manufacturer data for main device during scanning
             // if (name != null && result.getScanRecord() != null) {
             // SparseArray<byte[]> allManufacturerData =
             // result.getScanRecord().getManufacturerSpecificData();
@@ -885,17 +884,17 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
 
             // int manufacturerId = allManufacturerData.keyAt(i);
             // byte[] data = allManufacturerData.valueAt(i);
-            // Log.d(TAG, "Left Device Manufacturer ID " + manufacturerId + ": " +
+            // Log.d(TAG, "Main Device Manufacturer ID " + manufacturerId + ": " +
             // bytesToHex(data));
 
             // // Try to decode serial number from this manufacturer data
             // String decodedSerial = decodeSerialFromManufacturerData(data);
             // if (decodedSerial != null) {
             // Log.d(TAG,
-            // "LEFT DEVICE DECODED SERIAL NUMBER from ID " + manufacturerId + ": " +
+            // "MAIN DEVICE DECODED SERIAL NUMBER from ID " + manufacturerId + ": " +
             // decodedSerial);
             // String[] decoded = decodeEvenG1SerialNumber(decodedSerial);
-            // Log.d(TAG, "LEFT DEVICE Style: " + decoded[0] + ", Color: " + decoded[1]);
+            // Log.d(TAG, "MAIN DEVICE Style: " + decoded[0] + ", Color: " + decoded[1]);
 
             // if (preferredG1DeviceId != null &&
             // preferredG1DeviceId.equals(parsedDeviceName)) {
@@ -916,24 +915,20 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
 
             // Log.d(TAG, "FOUND OUR PREFERRED ID: " + preferredG1DeviceId);
 
-            boolean isLeft = true;
 
-            // If we already have saved device names for left/right...
-            if (savedG1LeftName != null) {
-                if (!(name.contains(savedG1LeftName))) {
+            // If we already have saved device names for main...
+            if (savedNextMainName != null) {
+                if (!(name.contains(savedNextMainName))) {
                     return; // Not a matching device
                 }
             }
 
-            // Identify which side (left/right)
-            Log.e(TAG, "onScanResult isLeft: " + isLeft);
-            if (isLeft) {
+            // Identify which side (main)
                 stopScan();
-                leftDevice = device;
+                mainDevice = device;
                 connectHandler.postDelayed(() -> {
-                    attemptGattConnection(leftDevice);
+                    attemptGattConnection(mainDevice);
                 }, 0);
-            }
         }
 
         @Override
@@ -946,21 +941,21 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
         Log.d(TAG, "Resetting ALL bonds and internal state for complete fresh start");
 
         // Remove both bonds if devices exist
-        if (leftDevice != null) {
-            removeBond(leftDevice);
+        if (mainDevice != null) {
+            removeBond(mainDevice);
         }
 
         // Reset all internal state
-        isLeftConnected = false;
+        isMainConnected = false;
 
         // Clear saved device names
-        pendingSavedG1LeftName = null;
+        pendingSavedNextMainName = null;
 
         // Close any existing GATT connections
-        if (leftGlassGatt != null) {
-            leftGlassGatt.disconnect();
-            leftGlassGatt.close();
-            leftGlassGatt = null;
+        if (mainGlassGatt != null) {
+            mainGlassGatt.disconnect();
+            mainGlassGatt.close();
+            mainGlassGatt = null;
         }
 
         // Wait briefly for bond removal to complete
@@ -981,11 +976,11 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
         // Update state
 
         // If both glasses are bonded, connect to GATT
-        if (leftDevice != null) {
+        if (mainDevice != null) {
             Log.d(TAG, "Both glasses have valid bonds - ready to connect to GATT");
 
             connectHandler.postDelayed(() -> {
-                attemptGattConnection(leftDevice);
+                attemptGattConnection(mainDevice);
             }, 0);
         } else {
             // Continue scanning for the other glass
@@ -1020,7 +1015,7 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
 
         Log.d(TAG, "try to ConnectToSmartGlassesing ");
 
-        preferredG1DeviceId = getPreferredG1DeviceId(context);
+        preferredMainDeviceId = getPreferredMainDeviceId(context);
 
         if (!bluetoothAdapter.isEnabled()) {
             return;
@@ -1104,23 +1099,18 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
         Log.d(TAG, "Setting connectionState to CONNECTING. Notifying connectionEvent.");
         connectionEvent(connectionState);
 
-        boolean isLeftDevice = true;// deviceName.contains("_L_");
 
-        if (isLeftDevice) {
-            connectLeftDevice(device);
-        } else {
-            Log.d(TAG, "Unknown device type: " + deviceName);
-        }
+        connectLeftDevice(device);
     }
 
     private void connectLeftDevice(BluetoothDevice device) {
-        if (leftGlassGatt == null) {
-            Log.d(TAG, "Attempting GATT connection for Left Glass...");
-            leftGlassGatt = device.connectGatt(context, false, leftGattCallback);
-            isLeftConnected = false;
-            Log.d(TAG, "Left GATT connection initiated. isLeftConnected set to false.");
+        if (mainGlassGatt == null) {
+            Log.d(TAG, "Attempting GATT connection for Main Glass...");
+            mainGlassGatt = device.connectGatt(context, false, mainGattCallback);
+            isMainConnected = false;
+            Log.d(TAG, "Main GATT connection initiated. isMainConnected set to false.");
         } else {
-            Log.d(TAG, "Left Glass GATT already exists");
+            Log.d(TAG, "Main Glass GATT already exists");
         }
     }
 
@@ -1266,15 +1256,15 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
         }
     }
 
-    private final BooleanWaiter leftWaiter = new BooleanWaiter();
-    private final BooleanWaiter leftServicesWaiter = new BooleanWaiter();
+    private final BooleanWaiter mainWaiter = new BooleanWaiter();
+    private final BooleanWaiter mainServicesWaiter = new BooleanWaiter();
     private static final long INITIAL_CONNECTION_DELAY_MS = 350; // Adjust this value as needed
 
     private void processQueue() {
         // First wait until the services are setup and ready to receive data
         Log.d(TAG, "PROC_QUEUE - waiting on services waiters");
         try {
-            leftServicesWaiter.waitWhileTrue();
+            mainServicesWaiter.waitWhileTrue();
         } catch (InterruptedException e) {
             Log.e(TAG, "Interrupted waiting for descriptor writes: " + e);
         }
@@ -1283,7 +1273,7 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
         while (!isKilled) {
             try {
                 // Make sure services are ready before processing requests
-                leftServicesWaiter.waitWhileTrue();
+                mainServicesWaiter.waitWhileTrue();
 
                 // This will block until data is available - no CPU spinning!
                 SendRequest[] requests = sendQueue.take();
@@ -1301,24 +1291,16 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
                             Thread.sleep(INITIAL_CONNECTION_DELAY_MS - timeSinceConnection);
                         }
 
-                        boolean leftSuccess = true;
-                        boolean rightSuccess = true;
 
-                        // Send to left glass
-                        if (!request.onlyRight && leftGlassGatt != null && leftTxChar != null && isLeftConnected) {
-                            leftWaiter.setTrue();
-                            leftTxChar.setValue(request.data);
-                            leftSuccess = leftGlassGatt.writeCharacteristic(leftTxChar);
-                            if (leftSuccess) {
-                                lastSendTimestamp = System.currentTimeMillis();
-                            }
+                        // Send to main glass
+                        if (!request.onlyRight && mainGlassGatt != null && mainTxChar != null && isMainConnected) {
+                            mainWaiter.setTrue();
+                            mainTxChar.setValue(request.data);
+                              mainGlassGatt.writeCharacteristic(mainTxChar);
+                            lastSendTimestamp = System.currentTimeMillis();
                         }
 
-                        if (leftSuccess) {
-                            leftWaiter.waitWhileTrue();
-                        } else {
-                            // Log.d(TAG, "PROC_QUEUE - LEFT send fail");
-                        }
+                        mainWaiter.waitWhileTrue();
 
                         Thread.sleep(DELAY_BETWEEN_CHUNKS_SEND);
 
@@ -1492,10 +1474,10 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
         // Stop periodic text wall
         // stopPeriodicNotifications();
 
-        if (leftGlassGatt != null) {
-            leftGlassGatt.disconnect();
-            leftGlassGatt.close();
-            leftGlassGatt = null;
+        if (mainGlassGatt != null) {
+            mainGlassGatt.disconnect();
+            mainGlassGatt.close();
+            mainGlassGatt = null;
         }
 
         if (handler != null)
@@ -1524,8 +1506,8 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
         if (reconnectHandler != null) {
             reconnectHandler.removeCallbacksAndMessages(null);
         }
-        if (leftConnectionTimeoutHandler != null && leftConnectionTimeoutRunnable != null) {
-            leftConnectionTimeoutHandler.removeCallbacks(leftConnectionTimeoutRunnable);
+        if (mainConnectionTimeoutHandler != null && mainConnectionTimeoutRunnable != null) {
+            mainConnectionTimeoutHandler.removeCallbacks(mainConnectionTimeoutRunnable);
         }
 
         if (queryBatteryStatusHandler != null && queryBatteryStatusHandler != null) {
@@ -1545,7 +1527,7 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
 
         isWorkerRunning = false;
 
-        isLeftConnected = false;
+        isMainConnected = false;
 
         Log.d(TAG, "EvenRealitiesG1SGC cleanup complete");
     }
@@ -1841,7 +1823,7 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
 
         sendDataSequentially(heartbeatPacket, false, 100);
 
-        if (batteryLeft == -1 || heartbeatCount % 10 == 0) {
+        if (batteryMain == -1 || heartbeatCount % 10 == 0) {
             queryBatteryStatusHandler.postDelayed(this::queryBatteryStatus, 500);
         }
         // queryBatteryStatusHandler.postDelayed(this::queryBatteryStatus, 500);
@@ -2098,7 +2080,7 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
         // Get width of single space character
         int spaceWidth = calculateTextWidth(" ");
 
-        // Calculate effective display width after accounting for left and right margins
+        // Calculate effective display width after accounting for Main margins
         // in spaces
         int marginWidth = margin * spaceWidth; // Width of left margin in pixels
         int effectiveWidth = DISPLAY_WIDTH - (2 * marginWidth); // Subtract left and right margins
