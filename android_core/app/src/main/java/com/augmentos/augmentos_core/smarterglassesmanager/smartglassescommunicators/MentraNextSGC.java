@@ -1,6 +1,6 @@
 package com.augmentos.augmentos_core.smarterglassesmanager.smartglassescommunicators;
 
-import static com.augmentos.augmentos_core.smarterglassesmanager.utils.BitmapJavaUtils.convertBitmapTo1BitBmpBytes;
+import com.augmentos.augmentos_core.smarterglassesmanager.utils.BitmapJavaUtils;
 
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
@@ -36,6 +36,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 //BMP
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -79,28 +80,35 @@ import java.util.Map;
 import java.util.HashMap;
 
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesSerialNumberEvent;
+import com.augmentos.augmentos_core.statushelpers.DeviceInfo;
 
 public class MentraNextSGC extends SmartGlassesCommunicator {
-    private static final String TAG = "WearableAi_NextSGC";
-    public static final String SHARED_PREFS_NAME = "EvenRealitiesPrefs";
+    private final String TAG = "WearableAi_MentraNextSGC";
+    public final String SHARED_PREFS_NAME = "EvenRealitiesPrefs";
     private int heartbeatCount = 0;
     private int micBeatCount = 0;
     private BluetoothAdapter bluetoothAdapter;
 
-    public static final String NEXT_MAIN_DEVICE_KEY = "SavedNextMainName";
+    public final String NEXT_MAIN_DEVICE_KEY = "SavedNextMainName";
 
     private boolean isKilled = false;
 
-    private static final UUID UART_SERVICE_UUID = UUID.fromString("00004860-0000-1000-8000-00805f9b34fb");
-    private static final UUID UART_TX_CHAR_UUID = UUID.fromString("000071FF-0000-1000-8000-00805f9b34fb");
-    private static final UUID UART_RX_CHAR_UUID = UUID.fromString("000070FF-0000-1000-8000-00805f9b34fb");
-    private static final UUID CLIENT_CHARACTERISTIC_CONFIG_UUID = UUID
+    private final UUID UART_SERVICE_UUID = UUID.fromString("00004860-0000-1000-8000-00805f9b34fb");
+    private final UUID UART_TX_CHAR_UUID = UUID.fromString("000071FF-0000-1000-8000-00805f9b34fb");
+    private final UUID UART_RX_CHAR_UUID = UUID.fromString("000070FF-0000-1000-8000-00805f9b34fb");
+    private final UUID CLIENT_CHARACTERISTIC_CONFIG_UUID = UUID
             .fromString("00002902-0000-1000-8000-00805f9b34fb");
-    private static final String SAVED_NEXT_ID_KEY = "SAVED_Next_New_ID_KEY";
+    private final String SAVED_NEXT_ID_KEY = "SAVED_Next_New_ID_KEY";
+
+    private final byte PACKET_TYPE_JSON = (byte) 0x01;
+    private final byte PACKET_TYPE_AUDIO = (byte) 0xA0;
+    private final byte PACKET_TYPE_IMAGE = (byte) 0xB0;
+
     private Context context;
     private BluetoothGatt mainGlassGatt;
     private BluetoothGattCharacteristic mainTxChar;
     private BluetoothGattCharacteristic mainRxChar;
+    private int currentMTU = 0;
 
     private SmartGlassesConnectionState connectionState = SmartGlassesConnectionState.DISCONNECTED;
     private final Handler handler = new Handler(Looper.getMainLooper());
@@ -118,11 +126,11 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
     private int brightnessValue;
     private boolean updatingScreen = false;
 
-    private static final long DELAY_BETWEEN_SENDS_MS = 5; // not using now
-    private static final long DELAY_BETWEEN_CHUNKS_SEND = 5; // super small just in case
-    private static final long DELAY_BETWEEN_ACTIONS_SEND = 250; // not using now
-    private static final long HEARTBEAT_INTERVAL_MS = 15000;
-    private static final long MICBEAT_INTERVAL_MS = (1000 * 60) * 30; // micbeat every 30 minutes
+    private final long DELAY_BETWEEN_SENDS_MS = 5; // not using now
+    private final long DELAY_BETWEEN_CHUNKS_SEND = 5; // super small just in case
+    private final long DELAY_BETWEEN_ACTIONS_SEND = 250; // not using now
+    private final long HEARTBEAT_INTERVAL_MS = 15000;
+    private final long MICBEAT_INTERVAL_MS = (1000 * 60) * 30; // micbeat every 30 minutes
     private int caseBatteryLevel = -1;
     private boolean caseCharging = false;
     private boolean caseOpen = false;
@@ -130,8 +138,8 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
     private int batteryMain = -1;
     private int mainReconnectAttempts = 0;
     private int reconnectAttempts = 0; // Counts the number of reconnect attempts
-    private static final long BASE_RECONNECT_DELAY_MS = 3000; // Start with 3 seconds
-    private static final long MAX_RECONNECT_DELAY_MS = 60000;
+    private final long BASE_RECONNECT_DELAY_MS = 3000; // Start with 3 seconds
+    private final long MAX_RECONNECT_DELAY_MS = 60000;
 
     // heartbeat sender
     private Handler heartbeatHandler = new Handler();
@@ -169,7 +177,7 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
     private int textWallNum = 10;
 
     private BluetoothDevice mainDevice = null;
-    private String preferredG1Id = null;
+    private String preferredNextId = null;
     private String pendingSavedNextMainName = null;
     private String savedNextMainName = null;
     private String preferredMainDeviceId = null;
@@ -180,13 +188,13 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
 
     // Retry handler
     Handler retryBondHandler;
-    private static final long BOND_RETRY_DELAY_MS = 5000; // 5-second backoff
+    private final long BOND_RETRY_DELAY_MS = 5000; // 5-second backoff
 
     // remember when we connected
     private long lastConnectionTimestamp = 0;
     private SmartGlassesDevice smartGlassesDevice;
 
-    private static final long CONNECTION_TIMEOUT_MS = 10000; // 10 seconds
+    private final long CONNECTION_TIMEOUT_MS = 10000; // 10 seconds
 
     // Handlers for connection timeouts
     private final Handler mainConnectionTimeoutHandler = new Handler(Looper.getMainLooper());
@@ -198,10 +206,10 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
     private boolean lastThingDisplayedWasAnImage = false;
 
     // lock writing until the last write is successful
-    // fonts in G1
+    // fonts in NextGlasses
     G1FontLoader fontLoader;
 
-    private static final long DEBOUNCE_DELAY_MS = 270; // Minimum time between chunk sends
+    private final long DEBOUNCE_DELAY_MS = 270; // Minimum time between chunk sends
     private volatile long lastSendTimestamp = 0;
     private long lc3DecoderPtr = 0;
 
@@ -278,7 +286,7 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
 
                         forceSideDisconnection();
                         Log.d(TAG, "Called forceSideDisconnection().");
-
+                        currentMTU = 0;
                         // Stop any periodic transmissions
                         stopHeartbeat();
                         stopMicBeat();
@@ -426,9 +434,9 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
                 final boolean statusBool = status == BluetoothGatt.GATT_SUCCESS;
                 Log.d(TAG, "onMtuChanged: " + statusBool + "  " + mtu);
                 if (statusBool) {
-
+                    currentMTU = mtu;
                 } else {
-
+                    currentMTU = 0;
                 }
             }
 
@@ -642,7 +650,7 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
 
             // Manufacturer data decoding moved to connection start
 
-            // setup the G1s
+            // setup the Nexts
             if (isMainConnected) {
                 Log.d(TAG, "Sending firmware request Command");
                 sendDataSequentially(new byte[] { (byte) 0x6E, (byte) 0x74 });
@@ -680,7 +688,7 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
                 // start mic beat
                 // startMicBeat(30000);
 
-                showHomeScreen(); // turn on the g1 display
+                showHomeScreen(); // turn on the nextGlasses display
 
                 updateConnectionState();
 
@@ -776,24 +784,24 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
         return null; // Return null if no match is found
     }
 
-    public static void savePreferredG1DeviceId(Context context, String deviceName) {
+    public void savePreferredNextGlassesDeviceId(Context context, String deviceName) {
         context.getSharedPreferences(SHARED_PREFS_NAME, Context.MODE_PRIVATE)
                 .edit()
                 .putString(SAVED_NEXT_ID_KEY, deviceName)
                 .apply();
     }
 
-    public static String getPreferredMainDeviceId(Context context) {
+    public String getPreferredMainDeviceId(Context context) {
         SharedPreferences prefs = context.getSharedPreferences(SHARED_PREFS_NAME, Context.MODE_PRIVATE);
         return prefs.getString(SAVED_NEXT_ID_KEY, null);
     }
 
-    public static int getSavedBrightnessValue(Context context) {
+    public int getSavedBrightnessValue(Context context) {
         return Integer.parseInt(PreferenceManager.getDefaultSharedPreferences(context)
                 .getString(context.getResources().getString(R.string.SHARED_PREF_BRIGHTNESS), "50"));
     }
 
-    public static boolean getSavedAutoBrightnessValue(Context context) {
+    public boolean getSavedAutoBrightnessValue(Context context) {
         return PreferenceManager.getDefaultSharedPreferences(context)
                 .getBoolean(context.getResources().getString(R.string.SHARED_PREF_AUTO_BRIGHTNESS), false);
     }
@@ -814,8 +822,8 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
         Log.d(TAG, "Loaded paired device names: " + savedNextMainName);
     }
 
-    public static void deleteEvenSharedPreferences(Context context) {
-        savePreferredG1DeviceId(context, null);
+    public void deleteEvenSharedPreferences(Context context) {
+        savePreferredNextGlassesDeviceId(context, null);
         SharedPreferences prefs = context.getSharedPreferences(SHARED_PREFS_NAME, Context.MODE_PRIVATE);
         prefs.edit().clear().apply();
         Log.d(TAG, "Nuked EvenRealities SharedPreferences");
@@ -864,7 +872,7 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
                 return;
             }
 
-            // Check if G1 arm filter device
+            // Check if next glasses arm filter device
             // if (name == null || !name.contains("Even G1_")) {
             // return;
             // }
@@ -1197,7 +1205,7 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
     // }
 
     // Data class to represent a send request
-    private static class SendRequest {
+    private class SendRequest {
         final byte[] data;
         final boolean onlyLeft;
         final boolean onlyRight;
@@ -1266,7 +1274,7 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
     private synchronized void startWorkerIfNeeded() {
         if (!isWorkerRunning) {
             isWorkerRunning = true;
-            new Thread(this::processQueue, "EvenRealitiesG1SGCProcessQueue").start();
+            new Thread(this::processQueue, "MentraNextSGCProcessQueue").start();
         }
     }
 
@@ -1291,7 +1299,7 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
 
     private final BooleanWaiter mainWaiter = new BooleanWaiter();
     private final BooleanWaiter mainServicesWaiter = new BooleanWaiter();
-    private static final long INITIAL_CONNECTION_DELAY_MS = 350; // Adjust this value as needed
+    private final long INITIAL_CONNECTION_DELAY_MS = 350; // Adjust this value as needed
 
     private void processQueue() {
         // First wait until the services are setup and ready to receive data
@@ -1364,7 +1372,7 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
     // displayReferenceCardSimple(title, body, lingerTimeMs);
     // }
 
-    private static final int NOTIFICATION = 0x4B; // Notification command
+    private final int NOTIFICATION = 0x4B; // Notification command
 
     private String createNotificationJson(String appIdentifier, String title, String subtitle, String message) {
         long currentTime = System.currentTimeMillis() / 1000L; // Unix timestamp in seconds
@@ -1483,7 +1491,7 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
 
     @Override
     public void destroy() {
-        Log.d(TAG, "EvenRealitiesG1SGC ONDESTROY");
+        Log.d(TAG, "MentraNextSGC ONDESTROY");
         showHomeScreen();
         isKilled = true;
 
@@ -1560,7 +1568,7 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
 
         isMainConnected = false;
 
-        Log.d(TAG, "EvenRealitiesG1SGC cleanup complete");
+        Log.d(TAG, "MentraNextSGC cleanup complete");
     }
 
     @Override
@@ -1600,7 +1608,7 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
     @Override
     public void displayBitmap(Bitmap bmp) {
         try {
-            byte[] bmpBytes = convertBitmapTo1BitBmpBytes(bmp, false);
+            byte[] bmpBytes = BitmapJavaUtils.convertBitmapTo1BitBmpBytes(bmp, false);
             displayBitmapImage(bmpBytes);
         } catch (Exception e) {
             Log.e(TAG, e.getMessage());
@@ -1621,19 +1629,19 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
         displayTextWall(" ");
 
         if (lastThingDisplayedWasAnImage) {
-            // clearG1Screen();
+            // clearNextScreen();
             lastThingDisplayedWasAnImage = false;
         }
     }
 
-    public void clearG1Screen() {
-        Log.d(TAG, "Clearing G1 screen");
+    public void clearNextGlassesScreen() {
+        Log.d(TAG, "Clearing NextGlasses screen");
         byte[] exitCommand = new byte[] { (byte) 0x18 };
         // sendDataSequentially(exitCommand, false);
         byte[] theClearBitmapOrSomething = loadEmptyBmpFromAssets();
         Bitmap bmp = BitmapJavaUtils.bytesToBitmap(theClearBitmapOrSomething);
         try {
-            byte[] bmpBytes = convertBitmapTo1BitBmpBytes(bmp, false);
+            byte[] bmpBytes = BitmapJavaUtils.convertBitmapTo1BitBmpBytes(bmp, false);
             displayBitmapImage(bmpBytes);
         } catch (Exception e) {
             Log.e(TAG, "Error displaying clear bitmap: " + e.getMessage());
@@ -1698,7 +1706,7 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
                 sendHeartbeat();
                 // sendLoremIpsum();
 
-                // quickRestartG1();
+                // quickRestartNextGlasses();
 
                 heartbeatHandler.postDelayed(this, HEARTBEAT_INTERVAL_MS);
             }
@@ -1764,6 +1772,7 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
             public void onScanResult(int callbackType, ScanResult result) {
                 BluetoothDevice device = result.getDevice();
                 String name = device.getName();
+                String address=device.getAddress();
                 // if (name != null && name.contains("Even G1_") && name.contains("_L_")) {
                 if (name != null && name.toUpperCase().startsWith("E2:D5")) {
                     Log.d(TAG, "bleScanCallback onScanResult: " + name + " address " + device.getAddress());
@@ -1776,7 +1785,8 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
                             EventBus.getDefault().post(
                                     new GlassesBluetoothSearchDiscoverEvent(
                                             smartGlassesDevice.deviceModelName,
-                                            adjustedName));
+                                            adjustedName,
+                                            address));
                         }
                     }
                 }
@@ -1977,7 +1987,7 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
         sendDataSequentially(new byte[] { (byte) 0x18 }, false, 100);
     }
 
-    private static String bytesToHex(byte[] bytes) {
+    private String bytesToHex(byte[] bytes) {
         StringBuilder sb = new StringBuilder();
         for (byte b : bytes) {
             sb.append(String.format("%02X ", b));
@@ -2099,15 +2109,15 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
     }
 
     // Constants for text wall display
-    private static final int TEXT_COMMAND = 0x4E; // Text command
-    private static final int DISPLAY_WIDTH = 488;
-    private static final int DISPLAY_USE_WIDTH = 488; // How much of the display to use
-    private static final float FONT_MULTIPLIER = 1 / 50.0f;
-    private static final int OLD_FONT_SIZE = 21; // Font size
-    private static final float FONT_DIVIDER = 2.0f;
-    private static final int LINES_PER_SCREEN = 5; // Lines per screen
-    private static final int MAX_CHUNK_SIZE = 176; // Maximum chunk size for BLE packets
-    // private static final int INDENT_SPACES = 32; // Number of spaces to indent
+    private final int TEXT_COMMAND = 0x4E; // Text command
+    private final int DISPLAY_WIDTH = 488;
+    private final int DISPLAY_USE_WIDTH = 488; // How much of the display to use
+    private final float FONT_MULTIPLIER = 1 / 50.0f;
+    private final int OLD_FONT_SIZE = 21; // Font size
+    private final float FONT_DIVIDER = 2.0f;
+    private final int LINES_PER_SCREEN = 5; // Lines per screen
+    private final int MAX_CHUNK_SIZE = 176; // Maximum chunk size for BLE packets
+    // private final int INDENT_SPACES = 32; // Number of spaces to indent
     // text
 
     private int textSeqNum = 0; // Sequence number for text packets
@@ -2198,7 +2208,27 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
 
         ByteBuffer chunk = ByteBuffer.allocate(contentBytes.length + 1);
 
-        chunk.put((byte) 1);
+        chunk.put(PACKET_TYPE_JSON);
+        chunk.put(contentBytes);
+
+        byte[] result = new byte[chunk.position()];
+        chunk.flip(); // 切换到读模式
+        chunk.get(result);
+        return result;
+    }
+
+    // build image chunks ,for next glasses
+    private byte[] createImageChunksForNextTest(String text) {
+
+        DisplayText displayText = new DisplayText();
+        displayText.setText(text);
+        final String jsonData = gson.toJson(displayText);
+
+        byte[] contentBytes = jsonData.getBytes(StandardCharsets.UTF_8);
+
+        ByteBuffer chunk = ByteBuffer.allocate(contentBytes.length + 1);
+
+        chunk.put(PACKET_TYPE_JSON);
         chunk.put(contentBytes);
 
         byte[] result = new byte[chunk.position()];
@@ -2448,7 +2478,7 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
         // Log.d(TAG, "Sent text wall");
     }
 
-    private static String bytesToUtf8(byte[] bytes) {
+    private String bytesToUtf8(byte[] bytes) {
         return new String(bytes, StandardCharsets.UTF_8);
     }
 
@@ -2460,7 +2490,7 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
     }
 
     // handle white list stuff
-    private static final int WHITELIST_CMD = 0x04; // Command ID for whitelist
+    private final int WHITELIST_CMD = 0x04; // Command ID for whitelist
 
     public List<byte[]> getWhitelistChunks() {
         // Define the hardcoded whitelist JSON
@@ -2595,9 +2625,9 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
     // BMP handling
 
     // Add these class variables
-    private static final int BMP_CHUNK_SIZE = 194;
-    private static final byte[] GLASSES_ADDRESS = new byte[] { 0x00, 0x1c, 0x00, 0x00 };
-    private static final byte[] END_COMMAND = new byte[] { 0x20, 0x0d, 0x0e };
+    private final int BMP_CHUNK_SIZE = 194;
+    private final byte[] GLASSES_ADDRESS = new byte[] { 0x00, 0x1c, 0x00, 0x00 };
+    private final byte[] END_COMMAND = new byte[] { 0x20, 0x0d, 0x0e };
 
     public void displayBitmapImage(byte[] bmpData) {
         Log.d(TAG, "Starting BMP display process");
@@ -2736,7 +2766,7 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
         sendDataSequentially(createTextWallChunks(text));
     }
 
-    private void quickRestartG1() {
+    private void quickRestartNextGlasses() {
         Log.d(TAG, "Sending restart 0x23 0x72 Command");
         sendDataSequentially(new byte[] { (byte) 0x23, (byte) 0x72 }); // quick restart comand
     }
@@ -2771,12 +2801,12 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
     }
 
     /**
-     * Decodes Even G1 serial number to extract style and color information
+     * Decodes Even NextGlasses serial number to extract style and color information
      *
      * @param serialNumber The full serial number (e.g., "S110LABD020021")
      * @return Array containing [style, color] or ["Unknown", "Unknown"] if invalid
      */
-    public static String[] decodeEvenG1SerialNumber(String serialNumber) {
+    public String[] decodeEvenNextGlassesSerialNumber(String serialNumber) {
         if (serialNumber == null || serialNumber.length() < 6) {
             return new String[] { "Unknown", "Unknown" };
         }
@@ -2816,40 +2846,41 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
     }
 
     private void decodeJsons(byte[] jsonBytes) {
-        final String jsoString=new String(jsonBytes, Charset.defaultCharset());
+        final String jsoString = new String(jsonBytes, Charset.defaultCharset());
         try {
             JSONObject commandObject = new JSONObject(jsoString);
             String type = commandObject.getString("type");
-        switch (type) {
-            case "image_transfer_complete":
-                break;
-            case "disconnect":
-                break;
-            case "request_battery_state":
-                break;
-            case "charging_state":
-                break;
-            case "device_info":
-                break;
-            case "enter_pairing_mode":
-                break;
-            case "request_head_position":
-                break;
-            case "set_head_up_angle":
-                break;
-            case "ping":
-                break;
-            case "vad_event":
-                break;
-            case "imu_data":
-                break;
-            case "button_event":
-                break;
-            case "head_gesture":
-                break;
-            default:
-                break;
-        }
+            switch (type) {
+                case "image_transfer_complete":
+                    break;
+                case "disconnect":
+                    break;
+                case "request_battery_state":
+                    break;
+                case "charging_state":
+                    break;
+                case "device_info":
+                    final DeviceInfo deviceInfo = gson.fromJson(jsoString, DeviceInfo.class);
+                    break;
+                case "enter_pairing_mode":
+                    break;
+                case "request_head_position":
+                    break;
+                case "set_head_up_angle":
+                    break;
+                case "ping":
+                    break;
+                case "vad_event":
+                    break;
+                case "imu_data":
+                    break;
+                case "button_event":
+                    break;
+                case "head_gesture":
+                    break;
+                default:
+                    break;
+            }
         } catch (Exception e) {
         }
     }
@@ -2882,7 +2913,7 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
 
             String decodedString = serialBuilder.toString().trim();
 
-            // Check if it looks like a valid Even G1 serial number
+            // Check if it looks like a valid Even NextGlasses serial number
             if (decodedString.length() >= 12 &&
                     (decodedString.startsWith("S1") || decodedString.startsWith("100")
                             || decodedString.startsWith("110"))) {

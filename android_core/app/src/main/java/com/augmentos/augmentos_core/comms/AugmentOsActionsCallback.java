@@ -7,7 +7,7 @@ public interface AugmentOsActionsCallback {
     void requestPing();
     void requestStatus();
     void searchForCompatibleDeviceNames(String modelName);
-    void connectToWearable(String modelName, String deviceName);
+    void connectToWearable(String modelName, String deviceName,String deviceAddress);
     void disconnectWearable(String wearableId);
     void forgetSmartGlasses();
     void startApp(String packageName);

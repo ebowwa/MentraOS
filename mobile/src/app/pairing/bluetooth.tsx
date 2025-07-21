@@ -22,7 +22,7 @@ import {NavigationProps} from "@/components/misc/types"
 import {getGlassesImage} from "@/utils/getGlassesImage"
 import PairingDeviceInfo from "@/components/misc/PairingDeviceInfo"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
-import {useSearchResults} from "@/contexts/SearchResultsContext"
+import {useSearchResults, SearchResultDevice} from "@/contexts/SearchResultsContext"
 import {requestFeaturePermissions, PermissionFeatures} from "@/utils/PermissionsUtils"
 import showAlert from "@/utils/AlertUtils"
 import {router, useLocalSearchParams} from "expo-router"
@@ -43,7 +43,7 @@ export default function SelectGlassesBluetoothScreen() {
   const {goBack, push, clearHistory, navigate, replace} = useNavigationHistory()
   const [showTroubleshootingModal, setShowTroubleshootingModal] = useState(false)
   // Create a ref to track the current state of searchResults
-  const searchResultsRef = useRef<string[]>(searchResults)
+  const searchResultsRef = useRef<SearchResultDevice[]>(searchResults)
 
   const scrollViewOpacity = useSharedValue(0)
   const scrollViewAnimatedStyle = useAnimatedStyle(() => ({
@@ -103,7 +103,15 @@ export default function SelectGlassesBluetoothScreen() {
   const backHandlerRef = useRef<any>(null)
 
   useEffect(() => {
-    const handleSearchResult = ({modelName, deviceName}: {modelName: string; deviceName: string}) => {
+    const handleSearchResult = ({
+      modelName,
+      deviceName,
+      deviceAddress,
+    }: {
+      modelName: string
+      deviceName: string
+      deviceAddress: string
+    }) => {
       // console.log("GOT SOME SEARCH RESULTS:");
       // console.log("ModelName: " + modelName);
       // console.log("DeviceName: " + deviceName);
@@ -114,13 +122,14 @@ export default function SelectGlassesBluetoothScreen() {
         // Quick hack // bugfix => we get NOTREQUIREDSKIP twice in some cases, so just stop after the initial one
         GlobalEventEmitter.removeListener("COMPATIBLE_GLASSES_SEARCH_RESULT", handleSearchResult)
 
-        triggerGlassesPairingGuide(glassesModelName as string, "")
+        triggerGlassesPairingGuide(glassesModelName as string, deviceName, deviceAddress as string)
         return
       }
 
       setSearchResults(prevResults => {
-        if (!prevResults.includes(deviceName)) {
-          return [...prevResults, deviceName]
+        if (!prevResults.some(device => device.deviceAddress === deviceAddress)) {
+          const newDevice = new SearchResultDevice(modelName, deviceName, deviceAddress)
+          return [...prevResults, newDevice]
         }
         return prevResults
       })
@@ -194,7 +203,7 @@ export default function SelectGlassesBluetoothScreen() {
     }
   }, [status])
 
-  const triggerGlassesPairingGuide = async (glassesModelName: string, deviceName: string) => {
+  const triggerGlassesPairingGuide = async (glassesModelName: string, deviceName: string, deviceAddress: string) => {
     // On Android, we need to check both microphone and location permissions
     if (Platform.OS === "android") {
       // First check location permission, which is required for Bluetooth scanning on Android
@@ -231,7 +240,7 @@ export default function SelectGlassesBluetoothScreen() {
     // All permissions granted, proceed with connecting to the wearable
     setTimeout(() => {
       // give some time to show the loader (otherwise it's a bit jarring)
-      coreCommunicator.sendConnectWearable(glassesModelName, deviceName)
+      coreCommunicator.sendConnectWearable(glassesModelName, deviceName, deviceAddress)
     }, 2000)
     push("/pairing/guide", {glassesModelName: glassesModelName})
   }
@@ -261,17 +270,17 @@ export default function SelectGlassesBluetoothScreen() {
           {/* DISPLAY LIST OF BLUETOOTH SEARCH RESULTS */}
           {searchResults && searchResults.length > 0 && (
             <>
-              {searchResults.map((deviceName, index) => (
+              {searchResults.map((device, index) => (
                 <TouchableOpacity
                   key={index}
                   style={themed($settingItem)}
                   onPress={() => {
-                    triggerGlassesPairingGuide(glassesModelName, deviceName)
+                    triggerGlassesPairingGuide(device.deviceMode, device.deviceName, device.deviceAddress)
                   }}>
                   {/* <Image source={glassesImage} style={styles.glassesImage} /> */}
                   <View style={styles.settingTextContainer}>
                     <Text
-                      text={`${glassesModelName}  ${deviceName}`}
+                      text={`${glassesModelName}  ${device.deviceName}`}
                       style={[
                         styles.label,
                         {

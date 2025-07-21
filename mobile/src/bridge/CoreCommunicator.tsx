@@ -263,9 +263,11 @@ export class CoreCommunicator extends EventEmitter {
           type: data.notify_manager.type,
         })
       } else if ("compatible_glasses_search_result" in data) {
+        console.log("compatible_glasses_search_result xxx", data)
         GlobalEventEmitter.emit("COMPATIBLE_GLASSES_SEARCH_RESULT", {
           modelName: data.compatible_glasses_search_result.model_name,
           deviceName: data.compatible_glasses_search_result.device_name,
+          deviceAddress: data.compatible_glasses_search_result.device_address,
         })
       } else if ("compatible_glasses_search_stop" in data) {
         GlobalEventEmitter.emit("COMPATIBLE_GLASSES_SEARCH_STOP", {
@@ -436,12 +438,20 @@ export class CoreCommunicator extends EventEmitter {
     })
   }
 
-  async sendConnectWearable(modelName: string, deviceName: string = "") {
+  async sendConnectWearable(modelName: string, deviceName: string = "", deviceAddress: string) {
+    console.log(
+      "sendConnectWearable modelName:",
+      modelName,
+      " deviceName",
+      deviceName,
+      " deviceAddress " + deviceAddress,
+    )
     return await this.sendData({
       command: "connect_wearable",
       params: {
         model_name: modelName,
         device_name: deviceName,
+        device_address: deviceAddress,
       },
     })
   }

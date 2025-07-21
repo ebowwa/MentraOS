@@ -1368,7 +1368,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
 
     @Subscribe
     public void onGlassesBluetoothSearchDiscoverEvent(GlassesBluetoothSearchDiscoverEvent event){
-        blePeripheral.sendGlassesBluetoothDiscoverResultToManager(event.modelName, event.deviceName);
+        blePeripheral.sendGlassesBluetoothDiscoverResultToManager(event.modelName, event.deviceName,event.deviceAddress);
     }
 
     @Subscribe
@@ -2013,8 +2013,8 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     }
 
     @Override
-    public void connectToWearable(String modelName, String deviceName) {
-        Log.d("AugmentOsService", "Connecting to wearable: " + modelName + ". DeviceName: " + deviceName + ".");
+    public void connectToWearable(String modelName, String deviceName,String deviceAddress) {
+        Log.d("AugmentOsService", "Connecting to wearable: " + modelName + ". DeviceName: " + deviceName + ".deviceAddress:"+deviceAddress);
 
         SmartGlassesDevice device = SmartGlassesManager.getSmartGlassesDeviceFromModelName(modelName);
         if (device == null) {
@@ -2034,6 +2034,8 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                 Log.d("AugmentOsService", "Saved Mentra Live device name: " + deviceName);
             }
         }
+
+        device.setDeviceAddress(deviceAddress);
 
         executeOnceSmartGlassesManagerReady(() -> {
             smartGlassesManager.connectToSmartGlasses(device);

@@ -496,13 +496,14 @@ public class AugmentosBlePeripheral {
         sendDataToAugmentOsManager(message.toString());
     }
 
-    public void sendGlassesBluetoothDiscoverResultToManager(String modelName, String deviceName) {
+    public void sendGlassesBluetoothDiscoverResultToManager(String modelName, String deviceName,String deviceAddress) {
         Log.d(TAG, "sendGlassesSearchResultsToManager");
         JSONObject data = new JSONObject();
         JSONObject messageObj = new JSONObject();
         try{
             messageObj.put("model_name", modelName);
             messageObj.put("device_name", deviceName);
+            messageObj.put("device_address", deviceAddress);
             data.put("compatible_glasses_search_result", messageObj);
         } catch (JSONException e) {
             throw new RuntimeException(e);
