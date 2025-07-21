@@ -1,6 +1,6 @@
 // YourAppsList.tsx
 import React, {useEffect, useRef, useState} from "react"
-import {View, TouchableOpacity, Animated, Platform, ViewStyle, TextStyle, Keyboard} from "react-native"
+import {View, TouchableOpacity, Animated as RNAnimated, Platform, ViewStyle, TextStyle, Keyboard} from "react-native"
 import {Text} from "@/components/ignite"
 import {useStatus} from "@/contexts/AugmentOSStatusProvider"
 import BackendServerComms from "@/backend_comms/BackendServerComms"
@@ -28,6 +28,12 @@ import {
 } from "@/utils/NotificationServiceUtils"
 import {AppListStoreLink} from "./AppListStoreLink"
 import DraggableFlatList, {RenderItemParams, ScaleDecorator} from "react-native-draggable-flatlist"
+import Animated, {
+  EntryExitTransition,
+  FadingTransition,
+  JumpingTransition,
+  LinearTransition,
+} from "react-native-reanimated"
 
 // Add a new settings key for app order
 const APP_ORDER_KEY = "APP_ORDER_PREFERENCE"
@@ -62,8 +68,8 @@ export default function InactiveAppList({
   const {themed, theme} = useAppTheme()
 
   // Static values instead of animations
-  const bounceAnim = React.useRef(new Animated.Value(0)).current
-  const pulseAnim = React.useRef(new Animated.Value(0)).current
+  const bounceAnim = React.useRef(new RNAnimated.Value(0)).current
+  const pulseAnim = React.useRef(new RNAnimated.Value(0)).current
 
   const [containerWidth, setContainerWidth] = React.useState(0)
 
@@ -558,6 +564,38 @@ export default function InactiveAppList({
     )
   }
 
+  const renderItem = ({item: app}: {item: AppInterface}) => {
+    // Check if this is the LiveCaptions app
+    const isLiveCaptions =
+      app.packageName === "com.augmentos.livecaptions" ||
+      app.packageName === "cloud.augmentos.live-captions" ||
+      app.packageName === "com.mentra.livecaptions"
+
+    // Only set ref for LiveCaptions app
+    const ref = isLiveCaptions ? actualLiveCaptionsRef : null
+
+    return (
+      <View>
+        <AppListItem
+          app={app}
+          // @ts-ignore
+          is_foreground={app.appType == "standard" || app["tpaType"] == "standard"}
+          isActive={app.is_running ?? false}
+          onTogglePress={async () => {
+            handleTogglePress(app)
+          }}
+          onSettingsPress={() => openAppSettings(app)}
+          refProp={ref}
+          opacity={1 as any}
+        />
+        {/* <Spacer height={16} />
+            <Text>{app.name}</Text>
+            <Spacer height={16} /> */}
+        {/* <Divider variant="inset" /> */}
+      </View>
+    )
+  }
+
   const keyExtractor = (app: AppInterface) => app.packageName
 
   const handleDragEnd = ({data}: {data: AppInterface[]}) => {
@@ -673,12 +711,13 @@ export default function InactiveAppList({
     <View style={{flex: 1, paddingTop: theme.spacing.md}}>
       {!isSearchPage && <AppsHeader title="home:apps" showSearchIcon={true} />}
 
-      <DraggableFlatList
+      {/* <DraggableFlatList
         style={{marginRight: -theme.spacing.md, paddingRight: theme.spacing.md}}
         data={availableApps}
         renderItem={renderDraggableItem}
         keyExtractor={keyExtractor}
         onDragEnd={handleDragEnd}
+        itemLayoutAnimation={LinearTransition}
         // activationDistance={40}
         autoscrollThreshold={10}
         ListFooterComponent={
@@ -690,6 +729,27 @@ export default function InactiveAppList({
             <Spacer height={40} />
           </>
         }
+      /> */}
+
+      <Animated.FlatList
+        style={{marginRight: -theme.spacing.md, paddingRight: theme.spacing.md}}
+        data={availableApps}
+        // renderItem={renderDraggableItem}
+        renderItem={renderItem}
+        // keyExtractor={keyExtractor}
+        // onDragEnd={handleDragEnd}
+        itemLayoutAnimation={JumpingTransition.duration(5000)}
+        // activationDistance={40}
+        // autoscrollThreshold={10}
+        // ListFooterComponent={
+        //   <>
+        //     <Spacer height={8} />
+        //     <Divider variant="inset" />
+        //     <Spacer height={8} />
+        //     <AppListStoreLink />
+        //     <Spacer height={40} />
+        //   </>
+        // }
       />
     </View>
   )
