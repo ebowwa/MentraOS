@@ -72,6 +72,38 @@ interface ToolCall {
 }
 ```
 
+## GIVE_APP_CONTROL_OF_TOOL_REPONSE
+
+The string `GIVE_APP_CONTROL_OF_TOOL_REPONSE` is a special string that can be returned by your app to indicate that Mira should not respond to the user, and your app will respond directly.
+
+```typescript
+import {GIVE_APP_CONTROL_OF_TOOL_REPONSE} from "@mentra/sdk"
+
+export class TodoAppServer extends AppServer {
+  protected async onToolCall(toolCall: ToolCall): Promise<string | undefined> {
+    const {toolId, activeSession} = toolCall
+
+    // Handle different tool calls
+    switch (toolId) {
+      case "get_todos": {
+        const todoList = userTodos
+          .map(todo => `- ${todo.completed ? "✓" : "○"} ${todo.text}${todo.dueDate ? ` (due ${todo.dueDate})` : ""}`)
+          .join("\n")
+
+        if (activeSession) {
+          // if the user is currently using the app, display the todo list in the app directly
+          activeSession.layouts.showTextWall(todoList)
+          return GIVE_APP_CONTROL_OF_TOOL_REPONSE
+        } else {
+          // if the user is not currently using the app, return the todo list to Mira for Mira to relay
+          return `Your todo list:\n${todoList}`
+        }
+      }
+    }
+  }
+}
+```
+
 ## Tool Configuration
 
 Tools are defined in the devloper console. Go to [console.mentra.glass/apps](https://console.mentra.glass/apps) and edit your App, then look for the "AI Tools" section.
