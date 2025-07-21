@@ -359,7 +359,7 @@ public class SmartGlassesManager extends Service {
 
         // Connect directly instead of using a handler
         Log.d(TAG, "CONNECTING TO SMART GLASSES");
-        smartGlassesRepresentative.connectToSmartGlasses();
+        smartGlassesRepresentative.connectToSmartGlasses(device);
 
         // BATTERY OPTIMIZATION: Explicitly register callback with the communicator
         // This ensures it's immediately available when audio events start coming in

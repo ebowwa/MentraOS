@@ -118,7 +118,7 @@ public class SelfSGC extends SmartGlassesCommunicator {
         SMALL_FONT = 0;
     }
 
-    public void connectToSmartGlasses(){
+    public void connectToSmartGlasses(SmartGlassesDevice device){
         // Right now, this is the code running onboard our android-based meta ray-ban alternative
         // It has speakers, mic, camera, wifi
         // Let's just figure out camera for now

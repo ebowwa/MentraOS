@@ -73,6 +73,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.Map;
 import java.util.HashMap;
+
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesSerialNumberEvent;
 
 public class MentraNextSGC extends SmartGlassesCommunicator {
@@ -226,7 +227,8 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
         return new BluetoothGattCallback() {
             @Override
             public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
-                Log.d(TAG, "onConnectionStateChange newState " + (status == BluetoothGatt.GATT_SUCCESS));
+                Log.d(TAG, "onConnectionStateChange action State " + (status == BluetoothGatt.GATT_SUCCESS));
+                Log.d(TAG, "onConnectionStateChange connected State " + (newState == BluetoothProfile.STATE_CONNECTED));
                 // Cancel the connection timeout
                 if (mainConnectionTimeoutRunnable != null) {
                     mainConnectionTimeoutHandler.removeCallbacks(mainConnectionTimeoutRunnable);
@@ -716,12 +718,19 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
     private void updateConnectionState() {
         if (isMainConnected) {
             connectionState = SmartGlassesConnectionState.CONNECTED;
-            Log.d(TAG, "Both glasses connected");
+            Log.d(TAG, "Main glasses connected");
             lastConnectionTimestamp = System.currentTimeMillis();
+            try {
+                Thread.sleep(50);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
             connectionEvent(connectionState);
-        } else {
+        } else
+
+        {
             connectionState = SmartGlassesConnectionState.DISCONNECTED;
-            Log.d(TAG, "No glasses connected");
+            Log.d(TAG, "No Main glasses connected");
             connectionEvent(connectionState);
         }
     }
@@ -915,7 +924,6 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
 
             // Log.d(TAG, "FOUND OUR PREFERRED ID: " + preferredG1DeviceId);
 
-
             // If we already have saved device names for main...
             if (savedNextMainName != null) {
                 if (!(name.contains(savedNextMainName))) {
@@ -924,11 +932,11 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
             }
 
             // Identify which side (main)
-                stopScan();
-                mainDevice = device;
-                connectHandler.postDelayed(() -> {
-                    attemptGattConnection(mainDevice);
-                }, 0);
+            stopScan();
+            mainDevice = device;
+            connectHandler.postDelayed(() -> {
+                attemptGattConnection(mainDevice);
+            }, 0);
         }
 
         @Override
@@ -1010,10 +1018,11 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
     }
 
     @Override
-    public void connectToSmartGlasses() {
+    public void connectToSmartGlasses(SmartGlassesDevice device) {
         // Register bonding receiver
 
-        Log.d(TAG, "try to ConnectToSmartGlassesing ");
+        Log.d(TAG, "try to ConnectToSmartGlassesing deviceModelName " + device.deviceModelName);
+        Log.d(TAG, "try to ConnectToSmartGlassesing " + device.deviceAddress);
 
         preferredMainDeviceId = getPreferredMainDeviceId(context);
 
@@ -1022,10 +1031,19 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
         }
 
         // Start scanning for devices
-        stopScan();
-        connectionState = SmartGlassesConnectionState.SCANNING;
-        connectionEvent(connectionState);
-        startScan();
+        if (device.deviceModelName != null) {
+            stopScan();
+            mainDevice = bluetoothAdapter.getRemoteDevice(device.deviceModelName);
+            connectHandler.postDelayed(() -> {
+                attemptGattConnection(mainDevice);
+            }, 0);
+        } else {
+            stopScan();
+            connectionState = SmartGlassesConnectionState.SCANNING;
+            connectionEvent(connectionState);
+            startScan();
+        }
+
     }
 
     private void startScan() {
@@ -1098,7 +1116,6 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
         connectionState = SmartGlassesConnectionState.CONNECTING;
         Log.d(TAG, "Setting connectionState to CONNECTING. Notifying connectionEvent.");
         connectionEvent(connectionState);
-
 
         connectLeftDevice(device);
     }
@@ -1291,12 +1308,11 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
                             Thread.sleep(INITIAL_CONNECTION_DELAY_MS - timeSinceConnection);
                         }
 
-
                         // Send to main glass
                         if (!request.onlyRight && mainGlassGatt != null && mainTxChar != null && isMainConnected) {
                             mainWaiter.setTrue();
                             mainTxChar.setValue(request.data);
-                              mainGlassGatt.writeCharacteristic(mainTxChar);
+                            mainGlassGatt.writeCharacteristic(mainTxChar);
                             lastSendTimestamp = System.currentTimeMillis();
                         }
 
@@ -1337,10 +1353,10 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
     private String createNotificationJson(String appIdentifier, String title, String subtitle, String message) {
         long currentTime = System.currentTimeMillis() / 1000L; // Unix timestamp in seconds
         String currentDate = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new java.util.Date()); // Date
-                                                                                                                 // format
-                                                                                                                 // for
-                                                                                                                 // 'date'
-                                                                                                                 // field
+        // format
+        // for
+        // 'date'
+        // field
 
         NCSNotification ncsNotification = new NCSNotification(
                 notificationNum++, // Increment sequence ID for uniqueness
@@ -2688,7 +2704,7 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
 
         // Update the shouldUseGlassesMic flag to reflect the current state
         this.shouldUseGlassesMic = isMicrophoneEnabled && SmartGlassesManager.getSensingEnabled(context);// &&
-                                                                                                         // !SmartGlassesManager.getForceCoreOnboardMic(context);
+        // !SmartGlassesManager.getForceCoreOnboardMic(context);
         Log.d(TAG, "Updated shouldUseGlassesMic to: " + shouldUseGlassesMic);
 
         if (isMicrophoneEnabled) {

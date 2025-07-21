@@ -126,7 +126,7 @@ public class SmartGlassesRepresentative implements PhoneMicListener {
         }
     }
 
-    public void connectToSmartGlasses(){
+    public void connectToSmartGlasses(SmartGlassesDevice device){
         // Similar to findCompatibleDeviceNames, always create a fresh communicator
         // This ensures we don't reuse a communicator with null fields after destroy()
         if (smartGlassesCommunicator != null) {
@@ -139,7 +139,7 @@ public class SmartGlassesRepresentative implements PhoneMicListener {
 
         if (smartGlassesCommunicator != null) {
             Log.d(TAG, "Connecting to smart glasses with fresh communicator");
-            smartGlassesCommunicator.connectToSmartGlasses();
+            smartGlassesCommunicator.connectToSmartGlasses(device);
         } else {
             Log.e(TAG, "Failed to create SmartGlassesCommunicator for connection");
         }

@@ -5,6 +5,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 
+import com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses.SmartGlassesDevice;
 import com.augmentos.augmentoslib.events.GlassesTapOutputEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.SmartGlassesConnectionEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.hci.AudioProcessingCallback;
@@ -21,7 +22,7 @@ public abstract class SmartGlassesCommunicator {
     // Audio callback for direct processing (replacing EventBus)
     public AudioProcessingCallback audioProcessingCallback;
 
-    public abstract void connectToSmartGlasses();
+    public abstract void connectToSmartGlasses(SmartGlassesDevice device);
     public abstract void findCompatibleDeviceNames();
     public abstract void blankScreen();
     public abstract void destroy();

@@ -7,6 +7,8 @@ import java.io.Serializable;
 public class SmartGlassesDevice implements Serializable {
     public String deviceModelName;
     public String deviceIconName;
+    public String deviceName;
+    public String deviceAddress;
     public boolean anySupport;
     public boolean fullSupport;
     public SmartGlassesOperatingSystem glassesOs;
@@ -114,5 +116,21 @@ public class SmartGlassesDevice implements Serializable {
 
     public void setConnectionState(int connectionState) {
         this.connectionState = connectionState;
+    }
+
+    public String getDeviceAddress() {
+        return deviceAddress;
+    }
+
+    public void setDeviceAddress(String deviceAddress) {
+        this.deviceAddress = deviceAddress;
+    }
+
+    public String getDeviceName() {
+        return deviceName;
+    }
+
+    public void setDeviceName(String deviceName) {
+        this.deviceName = deviceName;
     }
 }

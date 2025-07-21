@@ -236,7 +236,7 @@ public class UltraliteSGC extends SmartGlassesCommunicator {
     }
 
     @Override
-    public void connectToSmartGlasses(){
+    public void connectToSmartGlasses(SmartGlassesDevice device){
         Log.d(TAG, "connectToSmartGlasses running...");
 //        int mCount = 10;
 //        while ((mConnectState != 2) && (!hasUltraliteControl) && (mCount > 0)){
