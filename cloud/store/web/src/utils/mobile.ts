@@ -71,19 +71,19 @@ export function openInApp(packageName?: string): void {
 
 /**
  * Opens the appropriate app store for downloading MentraOS
+ * - iOS devices (iPhone, iPad) → App Store
+ * - Android devices → Play Store
+ * - All desktop/laptop devices → mentra.glass/install
  */
 export function openAppStore(): void {
-  if (isAndroid()) {
-    // Android mobile device
+  if (isIOS()) {
+    // iOS devices (iPhone, iPad, iPod)
+    window.open('https://apps.apple.com/us/app/mentra-the-smart-glasses-app/id6747363193', '_blank');
+  } else if (isAndroid()) {
+    // Android devices
     window.open('https://play.google.com/store/apps/details?id=com.mentra.mentra', '_blank');
-  } else if (isIOS()) {
-    // iOS mobile device
-    window.open('https://apps.apple.com/us/app/mentra-the-smart-glasses-app/id6747363193', '_blank');
-  } else if (isMacOS()) {
-    // macOS desktop - likely iOS user, direct to App Store
-    window.open('https://apps.apple.com/us/app/mentra-the-smart-glasses-app/id6747363193', '_blank');
   } else {
-    // Other desktop platforms (Windows, Linux) - likely Android user, direct to Play Store
-    window.open('https://play.google.com/store/apps/details?id=com.mentra.mentra', '_blank');
+    // All desktop/laptop devices (macOS, Windows, Linux, etc.)
+    window.open('https://mentra.glass/install', '_blank');
   }
 }

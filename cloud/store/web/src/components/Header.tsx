@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { usePlatform } from '../hooks/usePlatform';
 import { useTheme } from '../hooks/useTheme';
-import { useIsDesktop } from '../hooks/useMediaQuery';
+import { useIsDesktop, useIsMobile } from '../hooks/useMediaQuery';
 import { useSearch } from '../contexts/SearchContext';
 import { Button } from './ui/button';
 import { Baseline } from 'lucide-react';
@@ -23,6 +23,7 @@ const Header: React.FC<HeaderProps> = ({ onSearch, onSearchClear }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const isDesktop = useIsDesktop();
+  const isMobile = useIsMobile();
   const isStorePage = location.pathname === '/';
 
   // Handle sign out
@@ -45,69 +46,51 @@ const Header: React.FC<HeaderProps> = ({ onSearch, onSearchClear }) => {
       }}
     >
       <div className="container mx-auto px-4 py-4">
-        <div className="flex items-center justify-between">
-
-          {/* Logo and Site Name */}
-          <div className="flex items-center gap-3 select-none" style={{ minWidth: isDesktop ? '200px' : 'auto' }}>
-            <img 
-              src={theme === 'light' ? '/icon_black.svg' : '/icon_white.svg'} 
-              alt="Mentra Logo" 
-              className="h-8 w-8"
-            />
-            <span
-              className="text-[26px] font-light"
-              style={{ 
-                fontFamily: '"SF Pro Rounded", sans-serif', 
-                letterSpacing: '0.06em', 
-                color: 'var(--text-primary)' 
-              }}
-            >
-              Mentra Store
-            </span>
-          </div>
-
-          {/* Search bar on desktop for store page */}
-          {isDesktop && isStorePage && onSearch && (
-            <div className="flex-1 max-w-md mx-auto">
-              <SearchBar
-                searchQuery={searchQuery}
-                onSearchChange={setSearchQuery}
-                onSearchSubmit={onSearch}
-                onClear={onSearchClear || (() => setSearchQuery(''))}
+        {/* Two-row layout for medium screens, single row for large+ */}
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          
+          {/* Top row: Logo and Buttons */}
+          <div className="flex items-center justify-between">
+            {/* Logo and Site Name */}
+            <Link to="/" className="flex items-center gap-3 select-none hover:opacity-80 transition-opacity">
+              <img 
+                src={theme === 'light' ? '/icon_black.svg' : '/icon_white.svg'} 
+                alt="Mentra Logo" 
+                className="h-8 w-8"
               />
-            </div>
-          )}
+              <span
+                className="text-[26px] font-light"
+                style={{ 
+                  fontFamily: '"SF Pro Rounded", sans-serif', 
+                  letterSpacing: '0.06em', 
+                  color: 'var(--text-primary)' 
+                }}
+              >
+                Mentra Store
+              </span>
+            </Link>
 
-          {/* Get MentraOS Button and Authentication */}
-          <div className="flex flex-col sm:flex-row items-end sm:items-center gap-3 sm:gap-4" style={{ minWidth: isDesktop ? '200px' : 'auto' }}>
-            {/* Get MentraOS Button */}
-            <div className="order-2 sm:order-1">
-              <GetMentraOSButton size="small" />
-            </div>
-            
-            {/* Authentication */}
-            <div className="order-1 sm:order-2">
+            {/* Buttons container - only visible on mobile/tablet in top row */}
+            <div className="flex items-center gap-3 lg:hidden">
+              {/* Get MentraOS Button - Only visible on small screens and up */}
+              <div className="hidden sm:block">
+                <GetMentraOSButton size="small" />
+              </div>
+              
+              {/* Authentication */}
               {isAuthenticated ? (
-                <div className="flex flex-col items-end">
-                  {/* Uncomment if you want to show user email
-                  {user?.email && (
-                    <span className="text-sm text-gray-600 px-3">
-                      {user.email}
-                    </span>
-                  )} */}
-                  <Button
-                    onClick={handleSignOut}
-                    variant={theme === 'light' ? 'default' : 'outline'}
-                    className="rounded-full border-[1.5px]"
-                    style={{ 
-                      backgroundColor: theme === 'light' ? '#000000' : 'transparent',
-                      borderColor: theme === 'light' ? '#000000' : '#C0C4FF',
-                      color: theme === 'light' ? '#ffffff' : '#C0C4FF'
-                    }}
-                  >
-                    Sign Out
-                  </Button>
-                </div>
+                <Button
+                  onClick={handleSignOut}
+                  variant={theme === 'light' ? 'default' : 'outline'}
+                  className="rounded-full border-[1.5px]"
+                  style={{ 
+                    backgroundColor: theme === 'light' ? '#000000' : 'transparent',
+                    borderColor: theme === 'light' ? '#000000' : '#C0C4FF',
+                    color: theme === 'light' ? '#ffffff' : '#C0C4FF'
+                  }}
+                >
+                  Sign Out
+                </Button>
               ) : (
                 <Button
                   onClick={() => navigate('/login')}
@@ -123,6 +106,59 @@ const Header: React.FC<HeaderProps> = ({ onSearch, onSearchClear }) => {
                 </Button>
               )}
             </div>
+          </div>
+
+          {/* Search bar - second row on medium, center on large+ */}
+          {!isMobile && isStorePage && onSearch && (
+            <div 
+              className="w-full lg:flex-1 lg:max-w-md lg:mx-auto pt-4 lg:pt-0"
+              style={{ 
+                borderTop: !isDesktop ? `1px solid var(--border-color)` : 'none',
+                marginTop: !isDesktop ? '1rem' : '0'
+              }}
+            >
+              <SearchBar
+                searchQuery={searchQuery}
+                onSearchChange={setSearchQuery}
+                onSearchSubmit={onSearch}
+                onClear={onSearchClear || (() => setSearchQuery(''))}
+              />
+            </div>
+          )}
+
+          {/* Buttons for large screens - in the same row */}
+          <div className="hidden lg:flex items-center gap-4">
+            {/* Get MentraOS Button */}
+            <GetMentraOSButton size="small" />
+            
+            {/* Authentication */}
+            {isAuthenticated ? (
+              <Button
+                onClick={handleSignOut}
+                variant={theme === 'light' ? 'default' : 'outline'}
+                className="rounded-full border-[1.5px]"
+                style={{ 
+                  backgroundColor: theme === 'light' ? '#000000' : 'transparent',
+                  borderColor: theme === 'light' ? '#000000' : '#C0C4FF',
+                  color: theme === 'light' ? '#ffffff' : '#C0C4FF'
+                }}
+              >
+                Sign Out
+              </Button>
+            ) : (
+              <Button
+                onClick={() => navigate('/login')}
+                variant={theme === 'light' ? 'default' : 'outline'}
+                className="rounded-full border-[1.5px]"
+                style={{ 
+                  backgroundColor: theme === 'light' ? '#000000' : 'transparent',
+                  borderColor: theme === 'light' ? '#000000' : '#C0C4FF',
+                  color: theme === 'light' ? '#ffffff' : '#C0C4FF'
+                }}
+              >
+                Sign In
+              </Button>
+            )}
           </div>
 
         </div>
