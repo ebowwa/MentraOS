@@ -307,22 +307,23 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
                         // }
 
                         // Schedule a reconnection for both devices after the delay
-                        reconnectHandler.postDelayed(() -> {
-                            Log.d(TAG, "Reconnect handler triggered after delay.");
-                            if (gatt.getDevice() != null && !isKilled) {
-                                Log.d(TAG, "Reconnecting to both glasses. isKilled = " + isKilled);
-                                // Assuming you have stored references to both devices:
-                                if (mainDevice != null) {
-                                    Log.d(TAG, "Attempting to reconnect to mainDevice: " + mainDevice.getAddress());
-                                    reconnectToGatt(mainDevice);
-                                } else {
-                                    Log.d(TAG, "Main device reference is null.");
-                                }
-
-                            } else {
-                                Log.d(TAG, "Reconnect handler aborted: either no GATT device or system is killed.");
-                            }
-                        }, delay);
+                        //cancel
+//                        reconnectHandler.postDelayed(() -> {
+//                            Log.d(TAG, "Reconnect handler triggered after delay.");
+//                            if (gatt.getDevice() != null && !isKilled) {
+//                                Log.d(TAG, "Reconnecting to both glasses. isKilled = " + isKilled);
+//                                // Assuming you have stored references to both devices:
+//                                if (mainDevice != null) {
+//                                    Log.d(TAG, "Attempting to reconnect to mainDevice: " + mainDevice.getAddress());
+//                                    reconnectToGatt(mainDevice);
+//                                } else {
+//                                    Log.d(TAG, "Main device reference is null.");
+//                                }
+//
+//                            } else {
+//                                Log.d(TAG, "Reconnect handler aborted: either no GATT device or system is killed.");
+//                            }
+//                        }, delay);
                     }
                 } else {
                     Log.e(TAG, "Unexpected connection state encountered for " + " glass: " + newState);
@@ -379,7 +380,7 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
             @Override
             public void onServicesDiscovered(BluetoothGatt gatt, int status) {
                 if (status == BluetoothGatt.GATT_SUCCESS) {
-                    new Handler(Looper.getMainLooper()).post(() -> initG1s(gatt));
+                    new Handler(Looper.getMainLooper()).post(() -> initNextGlasses(gatt));
                 }
             }
 
@@ -601,7 +602,7 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
         };
     }
 
-    private void initG1s(BluetoothGatt gatt) {
+    private void initNextGlasses(BluetoothGatt gatt) {
         gatt.requestMtu(512); // Request a higher MTU size
         Log.d(TAG, "Requested MTU size: 512");
 
@@ -720,11 +721,11 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
             connectionState = SmartGlassesConnectionState.CONNECTED;
             Log.d(TAG, "Main glasses connected");
             lastConnectionTimestamp = System.currentTimeMillis();
-            try {
-                Thread.sleep(50);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+//            try {
+//                Thread.sleep(100);
+//            } catch (InterruptedException e) {
+//                e.printStackTrace();
+//            }
             connectionEvent(connectionState);
         } else
 
@@ -1714,12 +1715,17 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
 
     @Override
     public void findCompatibleDeviceNames() {
+
+        findCompatibleDeviceNamesHandler();
+
+    }
+
+    private void findCompatibleDeviceNamesHandler(){
         if (isScanningForCompatibleDevices) {
             Log.d(TAG, "Scan already in progress, skipping...");
             return;
         }
         isScanningForCompatibleDevices = true;
-
         BluetoothLeScanner scanner = bluetoothAdapter.getBluetoothLeScanner();
         if (scanner == null) {
             Log.e(TAG, "BluetoothLeScanner not available");

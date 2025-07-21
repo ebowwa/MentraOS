@@ -53,7 +53,18 @@ export default function GlassesPairingGuideScreen() {
   // Handle Android hardware back button
   useEffect(() => {
     // Only handle on Android
-    if (Platform.OS !== "android") return
+    if (Platform.OS !== "android") {
+      return
+    }
+    //when the device is connected ,then return to home
+    if (status.core_info.puck_connected && status.glasses_info?.model_name) {
+      // console.log("RETURN HOME FROM PAIR SCREEN: GOT MODEL NAME: " + status.glasses_info?.model_name);
+      // Clear any pending timers when pairing succeeds
+      if (timerRef.current) {
+        clearTimeout(timerRef.current)
+      }
+      replace("/(tabs)/home")
+    }
 
     const onBackPress = () => {
       // Call our custom back handler
