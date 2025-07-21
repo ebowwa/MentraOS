@@ -1869,6 +1869,19 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 }
                 break;
 
+            case "sr_shut":
+                Log.d(TAG, "K900 shutdown command received - glasses shutting down");
+                // Mark as killed to prevent reconnection attempts
+                isKilled = true;
+                // Clean disconnect without reconnection
+                if (bluetoothGatt != null) {
+                    Log.d(TAG, "Disconnecting from glasses due to shutdown");
+                    bluetoothGatt.disconnect();
+                }
+                // Notify the system that glasses are intentionally disconnected
+                connectionEvent(SmartGlassesConnectionState.DISCONNECTED);
+                break;
+
             default:
                 Log.d(TAG, "Unknown K900 command: " + command);
                 // Pass to data observable for custom processing
