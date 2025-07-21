@@ -478,7 +478,6 @@ const styles = StyleSheet.create({
   },
   connectedContent: {
     alignItems: "center",
-    flex: 1,
     flexShrink: 1,
     justifyContent: "space-between",
   },

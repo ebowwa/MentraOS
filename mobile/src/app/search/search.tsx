@@ -43,13 +43,6 @@ export default function SearchAppsPage() {
         style={themed($scrollView)}
         contentContainerStyle={themed($scrollContent)}
         showsVerticalScrollIndicator={false}>
-        {activeApps.length > 0 && (
-          <>
-            <AppsActiveList isSearchPage={true} searchQuery={searchQuery} />
-            <Divider variant="inset" />
-          </>
-        )}
-
         <AppsInactiveList isSearchPage={true} searchQuery={searchQuery} onClearSearch={() => setSearchQuery("")} />
         <Spacer height={40} />
       </ScrollView>

@@ -132,10 +132,10 @@ function renderLayout(
     case "double_text_wall": {
       const {topText, bottomText} = layout
       return (
-        <>
+        <View style={{flex: 1, flexDirection: "row", justifyContent: "space-between"}}>
           <Text style={[styles.cardContent, textStyle]}>{topText}</Text>
           <Text style={[styles.cardContent, textStyle]}>{bottomText}</Text>
-        </>
+        </View>
       )
     }
     case "text_rows": {

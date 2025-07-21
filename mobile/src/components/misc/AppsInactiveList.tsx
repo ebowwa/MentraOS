@@ -1,43 +1,25 @@
 // YourAppsList.tsx
-import React, {useCallback, useEffect, useRef, useState} from "react"
-import {
-  View,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-  Animated,
-  Platform,
-  ViewStyle,
-  TextStyle,
-  ActivityIndicator,
-  Easing,
-  Keyboard,
-} from "react-native"
+import React, {useEffect, useRef, useState} from "react"
+import {View, TouchableOpacity, Animated, Platform, ViewStyle, TextStyle, Keyboard} from "react-native"
 import {Text} from "@/components/ignite"
-import MessageModal from "./MessageModal"
 import {useStatus} from "@/contexts/AugmentOSStatusProvider"
 import BackendServerComms from "@/backend_comms/BackendServerComms"
 import {loadSetting, saveSetting} from "@/utils/SettingsHelper"
 import {SETTINGS_KEYS} from "@/consts"
-import Icon from "react-native-vector-icons/MaterialCommunityIcons"
-import {useFocusEffect, useNavigation} from "@react-navigation/native"
-import AppIcon from "./AppIcon"
-import {NavigationProps} from "./types"
+import {useFocusEffect} from "@react-navigation/native"
 import {AppInterface, AppPermission, useAppStatus} from "@/contexts/AppStatusProvider"
 import {requestFeaturePermissions} from "@/utils/PermissionsUtils"
 import {checkFeaturePermissions} from "@/utils/PermissionsUtils"
 import {PermissionFeatures} from "@/utils/PermissionsUtils"
 import showAlert from "@/utils/AlertUtils"
 import {PERMISSION_CONFIG} from "@/utils/PermissionsUtils"
-import ChevronRight from "assets/icons/component/ChevronRight"
 import {translate} from "@/i18n"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {router} from "expo-router"
-import EmptyAppsView from "../home/EmptyAppsView"
 import {AppListItem} from "./AppListItem"
 import {Spacer} from "./Spacer"
 import Divider from "./Divider"
-import {spacing, ThemedStyle} from "@/theme"
+import {ThemedStyle} from "@/theme"
 import {TreeIcon} from "assets/icons/component/TreeIcon"
 import AppsHeader from "./AppsHeader"
 import {
@@ -45,6 +27,10 @@ import {
   checkNotificationAccessSpecialPermission,
 } from "@/utils/NotificationServiceUtils"
 import {AppListStoreLink} from "./AppListStoreLink"
+import DraggableFlatList, {RenderItemParams, ScaleDecorator} from "react-native-draggable-flatlist"
+
+// Add a new settings key for app order
+const APP_ORDER_KEY = "APP_ORDER_PREFERENCE"
 
 export default function InactiveAppList({
   isSearchPage = false,
@@ -72,6 +58,7 @@ export default function InactiveAppList({
   const [showSettingsHint, setShowSettingsHint] = useState(false)
   const [showOnboardingTip, setShowOnboardingTip] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  const [savedAppOrder, setSavedAppOrder] = useState<string[]>([])
   const {themed, theme} = useAppTheme()
 
   // Static values instead of animations
@@ -95,7 +82,21 @@ export default function InactiveAppList({
 
   const backendComms = BackendServerComms.getInstance()
 
-  // console.log('%%% appStatus', appStatus);
+  // Load saved app order on mount
+  useEffect(() => {
+    const loadAppOrder = async () => {
+      const order = await loadSetting(APP_ORDER_KEY, [])
+      setSavedAppOrder(order)
+    }
+    loadAppOrder()
+  }, [])
+
+  // Save app order when it changes
+  const saveAppOrder = async (apps: AppInterface[]) => {
+    const order = apps.map(app => app.packageName)
+    await saveSetting(APP_ORDER_KEY, order)
+    setSavedAppOrder(order)
+  }
 
   // Check onboarding status whenever the screen comes into focus
   useFocusEffect(
@@ -274,6 +275,28 @@ export default function InactiveAppList({
       )
     })
   }
+
+  const stopApp = async (packageName: string) => {
+    console.log("STOP APP")
+
+    // Optimistically update UI first
+    optimisticallyStopApp(packageName)
+
+    setIsLoading(true)
+    try {
+      await backendComms.stopApp(packageName)
+      // Clear the pending operation since it completed successfully
+      clearPendingOperation(packageName)
+      // showToast()
+    } catch (error) {
+      // On error, refresh from the server to get the accurate state
+      refreshAppStatus()
+      console.error("Stop app error:", error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   const startApp = async (packageName: string) => {
     if (!onboardingCompleted) {
       if (packageName !== "com.augmentos.livecaptions" && packageName !== "com.mentra.livecaptions") {
@@ -345,47 +368,6 @@ export default function InactiveAppList({
       )
     }
 
-    // Check if glasses are connected and this is the first app being activated
-    // const glassesConnected = status.glasses_info?.model_name != null
-    // const activeApps = appStatus.filter(app => app.is_running)
-
-    // if (!glassesConnected && activeApps.length === 0) {
-    //   // Show alert for first app activation when glasses aren't connected
-    //   const shouldContinue = await new Promise<boolean>(resolve => {
-    //     showAlert(translate("home:glassesNotConnected"), translate("home:appWillRunWhenConnected"), [
-    //       {
-    //         text: translate("common:cancel"),
-    //         style: "cancel",
-    //         onPress: () => resolve(false),
-    //       },
-    //       {
-    //         text: translate("common:ok"),
-    //         onPress: () => resolve(true),
-    //       },
-    //     ])
-    //   })
-
-    //   if (!shouldContinue) {
-    //     return
-    //   }
-    // }
-
-    // Find the opacity value for this app
-    const itemOpacity = opacities[packageName]
-
-    // Animate the app disappearing
-    if (itemOpacity) {
-      Animated.timing(itemOpacity, {
-        toValue: 0,
-        duration: 150,
-        easing: Easing.out(Easing.ease),
-        useNativeDriver: true,
-      }).start()
-    }
-
-    // Wait a bit for animation to complete
-    await new Promise(resolve => setTimeout(resolve, 150))
-
     // Only update UI optimistically after user confirms and animation completes
     optimisticallyStartApp(packageName)
 
@@ -453,13 +435,9 @@ export default function InactiveAppList({
   }
 
   const getRunningStandardApps = (packageName: string) => {
-    return appStatus.filter(
-      app =>
-        app.is_running &&
-        (app.appType == "standard" || app["tpaType"] == "standard") &&
-        app.packageName !== packageName,
-    )
+    return appStatus.filter(app => app.is_running && app.appType == "standard" && app.packageName !== packageName)
   }
+
   const openAppSettings = (app: any) => {
     console.log("%%% opening app settings", app)
     router.push({
@@ -473,9 +451,6 @@ export default function InactiveAppList({
 
   // Filter out duplicate apps and running apps
   let availableApps = appStatus.filter(app => {
-    if (app.is_running) {
-      return false
-    }
     // Check if this is the first occurrence of this package name
     const firstIndex = appStatus.findIndex(a => a.packageName === app.packageName)
     return firstIndex === appStatus.indexOf(app)
@@ -486,131 +461,214 @@ export default function InactiveAppList({
     availableApps = availableApps.filter(app => app.packageName !== "cloud.augmentos.notify" && app.name !== "Notify")
   }
 
-  // Sort apps: during onboarding, put Live Captions first, otherwise alphabetical
-  if (!onboardingCompleted) {
-    availableApps.sort((a, b) => {
-      // Check if either app is Live Captions
-      const aIsLiveCaptions =
-        a.packageName === "com.augmentos.livecaptions" || a.packageName === "com.mentra.livecaptions"
-      const bIsLiveCaptions =
-        b.packageName === "com.augmentos.livecaptions" || b.packageName === "com.mentra.livecaptions"
+  // Sort apps based on saved order or default sorting
+  const sortApps = (apps: AppInterface[]) => {
+    if (savedAppOrder.length > 0 && onboardingCompleted) {
+      // Sort based on saved order
+      return apps.sort((a, b) => {
+        const aIndex = savedAppOrder.indexOf(a.packageName)
+        const bIndex = savedAppOrder.indexOf(b.packageName)
 
-      // If a is Live Captions, it should come first
-      if (aIsLiveCaptions && !bIsLiveCaptions) return -1
-      // If b is Live Captions, it should come first
-      if (!aIsLiveCaptions && bIsLiveCaptions) return 1
-      // Otherwise sort alphabetically
-      return a.name.localeCompare(b.name)
-    })
-  } else {
-    // Normal alphabetical sort when onboarding is completed
-    availableApps.sort((a, b) => a.name.localeCompare(b.name))
+        // If both are in saved order, sort by their saved position
+        if (aIndex !== -1 && bIndex !== -1) {
+          return aIndex - bIndex
+        }
+
+        // If only one is in saved order, it comes first
+        if (aIndex !== -1) return -1
+        if (bIndex !== -1) return 1
+
+        // If neither are in saved order, sort alphabetically
+        return a.name.localeCompare(b.name)
+      })
+    } else if (!onboardingCompleted) {
+      // During onboarding, put Live Captions first
+      return apps.sort((a, b) => {
+        const aIsLiveCaptions =
+          a.packageName === "com.augmentos.livecaptions" || a.packageName === "com.mentra.livecaptions"
+        const bIsLiveCaptions =
+          b.packageName === "com.augmentos.livecaptions" || b.packageName === "com.mentra.livecaptions"
+
+        if (aIsLiveCaptions && !bIsLiveCaptions) return -1
+        if (!aIsLiveCaptions && bIsLiveCaptions) return 1
+        return a.name.localeCompare(b.name)
+      })
+    } else {
+      // Normal alphabetical sort
+      return apps.sort((a, b) => a.name.localeCompare(b.name))
+    }
   }
+
+  availableApps = sortApps(availableApps)
 
   if (searchQuery) {
     availableApps = availableApps.filter(app => app.name.toLowerCase().includes(searchQuery.toLowerCase()))
   }
 
-  // Create a ref for all app opacities, keyed by packageName
-  const opacities = useRef<Record<string, Animated.Value>>(
-    Object.fromEntries(appStatus.map(app => [app.packageName, new Animated.Value(0)])),
-  ).current
+  const handleTogglePress = async (app: AppInterface) => {
+    if (!app.is_running) {
+      const isForegroundApp = app.appType == "standard"
+      const res = await checkIsForegroundAppStart(app.packageName, isForegroundApp)
+      if (res) {
+        startApp(app.packageName)
+      }
+      return
+    }
 
-  // Animate all availableApps' opacities to 1 on mount or change
-  useEffect(() => {
-    availableApps.forEach(app => {
-      Animated.timing(opacities[app.packageName], {
-        toValue: 1,
-        duration: 300,
-        easing: Easing.in(Easing.ease),
-        useNativeDriver: true,
-      }).start()
-    })
-  }, [availableApps])
+    stopApp(app.packageName)
+  }
 
-  return (
-    <View>
-      {!isSearchPage && (
-        <AppsHeader title="home:inactiveApps" showSearchIcon={appStatus.filter(app => app.is_running).length === 0} />
-      )}
+  const renderDraggableItem = ({item: app, drag, isActive}: RenderItemParams<AppInterface>) => {
+    // Check if this is the LiveCaptions app
+    const isLiveCaptions =
+      app.packageName === "com.augmentos.livecaptions" ||
+      app.packageName === "cloud.augmentos.live-captions" ||
+      app.packageName === "com.mentra.livecaptions"
 
-      {availableApps.map((app, index) => {
-        // Check if this is the LiveCaptions app
-        const isLiveCaptions =
-          app.packageName === "com.augmentos.livecaptions" ||
-          app.packageName === "cloud.augmentos.live-captions" ||
-          app.packageName === "com.mentra.livecaptions"
+    // Only set ref for LiveCaptions app
+    const ref = isLiveCaptions ? actualLiveCaptionsRef : null
 
-        // Only set ref for LiveCaptions app
-        const ref = isLiveCaptions ? actualLiveCaptionsRef : null
-
-        // Get the shared opacity Animated.Value for this app
-        const itemOpacity = opacities[app.packageName]
-
-        return (
-          <React.Fragment key={app.packageName}>
+    return (
+      <ScaleDecorator activeScale={0.98}>
+        <TouchableOpacity onLongPress={drag} disabled={isActive} activeOpacity={1} hitSlop={12}>
+          <View>
             <AppListItem
               app={app}
               // @ts-ignore
               is_foreground={app.appType == "standard" || app["tpaType"] == "standard"}
-              isActive={false}
+              isActive={app.is_running ?? false}
               onTogglePress={async () => {
-                const isForegroundApp = app.appType == "standard" || app["tpaType"] == "standard"
-                const res = await checkIsForegroundAppStart(app.packageName, isForegroundApp)
-                if (res) {
-                  // Don't animate here - let startApp handle all UI updates
-                  startApp(app.packageName)
-                }
+                handleTogglePress(app)
               }}
               onSettingsPress={() => openAppSettings(app)}
               refProp={ref}
-              opacity={itemOpacity}
+              opacity={1 as any}
             />
-            {index < availableApps.length - 1 && (
+            {/* <Spacer height={16} />
+            <Text>{app.name}</Text>
+            <Spacer height={16} /> */}
+            {/* <Divider variant="inset" /> */}
+          </View>
+        </TouchableOpacity>
+      </ScaleDecorator>
+    )
+  }
+
+  const keyExtractor = (app: AppInterface) => app.packageName
+
+  const handleDragEnd = ({data}: {data: AppInterface[]}) => {
+    // Save the new order
+    saveAppOrder(data)
+  }
+
+  // If searching or in onboarding, don't use draggable list
+  if (isSearchPage || searchQuery || !onboardingCompleted) {
+    return (
+      <View>
+        {!isSearchPage && <AppsHeader title="home:apps" showSearchIcon={true} />}
+
+        {availableApps.map((app, index) => {
+          const isLiveCaptions =
+            app.packageName === "com.augmentos.livecaptions" ||
+            app.packageName === "cloud.augmentos.live-captions" ||
+            app.packageName === "com.mentra.livecaptions"
+
+          const ref = isLiveCaptions ? actualLiveCaptionsRef : null
+
+          return (
+            <React.Fragment key={app.packageName}>
+              <AppListItem
+                app={app}
+                // @ts-ignore
+                is_foreground={app.appType == "standard" || app["tpaType"] == "standard"}
+                isActive={app.is_running ?? false}
+                onTogglePress={async () => {
+                  handleTogglePress(app)
+                }}
+                onSettingsPress={() => openAppSettings(app)}
+                refProp={ref}
+                opacity={1 as any}
+              />
+              {index < availableApps.length - 1 && (
+                <>
+                  <Spacer height={8} />
+                  <Divider variant="inset" />
+                  <Spacer height={8} />
+                </>
+              )}
+            </React.Fragment>
+          )
+        })}
+
+        {/* Add "Get More Apps" link at the bottom - only on home page, not search */}
+        {availableApps.length > 0 && !isSearchPage && (
+          <>
+            <Spacer height={8} />
+            <Divider variant="inset" />
+            <Spacer height={8} />
+            <AppListStoreLink />
+          </>
+        )}
+
+        {/* Show "No apps found" message when searching returns no results */}
+        {isSearchPage && searchQuery && availableApps.length === 0 && (
+          <View style={themed($noAppsContainer)}>
+            <Text style={themed($noAppsText)}>{translate("home:noAppsFoundForQuery", {query: searchQuery})}</Text>
+            {onClearSearch && (
               <>
-                <Spacer height={8} />
-                <Divider variant="inset" />
-                <Spacer height={8} />
+                <Spacer height={16} />
+                <TouchableOpacity
+                  style={themed($clearSearchButton)}
+                  onPress={() => {
+                    Keyboard.dismiss()
+                    onClearSearch()
+                  }}
+                  activeOpacity={0.7}
+                  hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}>
+                  <Text style={themed($clearSearchButtonText)}>{translate("home:clearSearch")}</Text>
+                </TouchableOpacity>
               </>
             )}
-          </React.Fragment>
-        )
-      })}
+          </View>
+        )}
 
-      {/* Add "Get More Apps" link at the bottom - only on home page, not search */}
-      {availableApps.length > 0 && !isSearchPage && (
-        <>
-          <Spacer height={8} />
-          <Divider variant="inset" />
-          <Spacer height={8} />
-          <AppListStoreLink />
-        </>
-      )}
+        {/* Add bottom padding for better scrolling experience */}
+        <Spacer height={40} />
+      </View>
+    )
+  }
 
-      {/* Show "No apps found" message when searching returns no results */}
-      {isSearchPage && searchQuery && availableApps.length === 0 && (
-        <View style={themed($noAppsContainer)}>
-          <Text style={themed($noAppsText)}>{translate("home:noAppsFoundForQuery", {query: searchQuery})}</Text>
-          {onClearSearch && (
+  // <ScrollView
+  // style={{marginRight: -theme.spacing.md, paddingRight: theme.spacing.md}}
+  // contentInsetAdjustmentBehavior="automatic"
+  // scrollEnabled={false}>
+
+  return (
+    <View style={{flex: 1}}>
+      {/* {!isSearchPage && (
+        <AppsHeader title="home:apps" showSearchIcon={true} />
+      )} */}
+
+      <DraggableFlatList
+        style={{marginRight: -theme.spacing.md, paddingRight: theme.spacing.md}}
+        data={availableApps}
+        renderItem={renderDraggableItem}
+        keyExtractor={keyExtractor}
+        onDragEnd={handleDragEnd}
+        activationDistance={4}
+        autoscrollThreshold={10}
+        ListFooterComponent={
+          availableApps.length > 0 ? (
             <>
-              <Spacer height={16} />
-              <TouchableOpacity
-                style={themed($clearSearchButton)}
-                onPress={() => {
-                  Keyboard.dismiss()
-                  onClearSearch()
-                }}
-                activeOpacity={0.7}
-                hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}>
-                <Text style={themed($clearSearchButtonText)}>{translate("home:clearSearch")}</Text>
-              </TouchableOpacity>
+              <Spacer height={8} />
+              <Divider variant="inset" />
+              <Spacer height={8} />
+              <AppListStoreLink />
+              <Spacer height={40} />
             </>
-          )}
-        </View>
-      )}
-
-      {/* Add bottom padding for better scrolling experience */}
-      <Spacer height={40} />
+          ) : null
+        }
+      />
     </View>
   )
 }
@@ -648,182 +706,4 @@ const $clearSearchButtonText: ThemedStyle<TextStyle> = ({colors}) => ({
   fontWeight: "600",
   color: colors.textAlt,
   textAlign: "center",
-})
-
-const styles = StyleSheet.create({
-  // appsContainer: {
-  //   marginTop: -8,
-  //   marginBottom: 0,
-  //   width: "100%",
-  //   paddingHorizontal: 0,
-  //   paddingVertical: 10,
-  // },
-  // titleContainer: {
-  //   width: "100%",
-  //   flexDirection: "row",
-  //   alignItems: "center",
-  //   justifyContent: "space-between",
-  //   marginLeft: 0,
-  //   paddingLeft: 0,
-  // },
-  // gridContainer: {
-  //   flexDirection: "row",
-  //   flexWrap: "wrap",
-  //   justifyContent: "flex-start",
-  // },
-  // listContainer: {
-  //   gap: 16,
-  // },
-  // appContent: {
-  //   flexDirection: "row",
-  //   alignItems: "center",
-  //   minHeight: 40, // Match RunningAppsList minHeight
-  // },
-  // itemContainer: {
-  //   alignItems: "center",
-  //   justifyContent: "center",
-  // },
-  // emptyContainer: {
-  //   alignItems: "center",
-  //   justifyContent: "center",
-  // },
-  // tipButton: {
-  //   flexDirection: "row",
-  //   alignItems: "center",
-  //   paddingHorizontal: 10,
-  //   paddingVertical: 5,
-  //   borderRadius: 15,
-  // },
-  // tipText: {
-  //   marginLeft: 5,
-  //   fontSize: 14,
-  // },
-  // appTextContainer: {
-  //   flex: 1,
-  //   marginLeft: 8,
-  //   justifyContent: "center",
-  // },
-  // settingsButton: {
-  //   padding: 50,
-  //   margin: -46,
-  // },
-  // appIconStyle: {
-  //   width: 50, // Match RunningAppsList icon size
-  //   height: 50, // Match RunningAppsList icon size
-  // },
-  // settingsHintContainer: {
-  //   padding: 12,
-  //   borderRadius: 8,
-  //   borderWidth: 1,
-  //   marginBottom: 12,
-  // },
-  // hintContent: {
-  //   flexDirection: "row",
-  //   alignItems: "center",
-  // },
-  // hintText: {
-  //   marginLeft: 10,
-  //   fontSize: 14,
-  //   fontWeight: "500",
-  // },
-  // sensingWarningContainer: {
-  //   flexDirection: "row",
-  //   alignItems: "center",
-  //   justifyContent: "space-between",
-  //   padding: 12,
-  //   borderRadius: 8,
-  //   borderWidth: 1,
-  //   marginBottom: 12,
-  // },
-  // warningContent: {
-  //   flexDirection: "row",
-  //   alignItems: "center",
-  //   flex: 1,
-  // },
-  // warningText: {
-  //   marginLeft: 10,
-  //   fontSize: 14,
-  //   fontWeight: "500",
-  //   color: "#E65100",
-  //   flex: 1,
-  // },
-  // settingsButtonText: {
-  //   color: "#FFFFFF",
-  //   fontSize: 13,
-  //   fontWeight: "bold",
-  // },
-  // settingsButtonBlue: {
-  //   backgroundColor: "#007AFF",
-  //   borderRadius: 5,
-  //   paddingVertical: 5,
-  //   paddingHorizontal: 10,
-  //   margin: 0,
-  // },
-  // settingsButtonTextBlue: {
-  //   color: "#007AFF",
-  //   fontSize: 14,
-  //   fontWeight: "bold",
-  // },
-  // scrollViewContent: {
-  //   paddingBottom: Platform.OS === "ios" ? 24 : 38, // Account for nav bar height + iOS home indicator
-  // },
-  // appIcon: {
-  //   width: 32,
-  //   height: 32,
-  // },
-  // toggle: {
-  //   width: 36,
-  //   height: 20,
-  // },
-  // toggleBarIcon: {
-  //   height: "80%",
-  //   width: "94.44%",
-  //   top: "15%",
-  //   right: "5.56%",
-  //   bottom: "15%",
-  //   left: "0%",
-  //   borderRadius: 8,
-  //   maxHeight: "100%",
-  // },
-  // toggleCircleIcon: {
-  //   width: "55.56%",
-  //   top: 0,
-  //   right: "47.22%",
-  //   left: "-2.78%",
-  //   borderRadius: 12,
-  //   height: 20,
-  // },
-  // toggleIconLayout: {
-  //   maxWidth: "100%",
-  //   position: "absolute",
-  //   overflow: "hidden",
-  // },
-  // everythingFlexBox: {
-  //   flexDirection: "row",
-  //   alignItems: "center",
-  // },
-  // everything: {
-  //   justifyContent: "space-between",
-  //   gap: 0,
-  //   alignSelf: "stretch",
-  // },
-  // toggleParent: {
-  //   gap: 12,
-  // },
-  // appDescription: {
-  //   gap: 17,
-  //   justifyContent: "center",
-  // },
-  // appNameWrapper: {
-  //   justifyContent: "center",
-  // },
-  // appName: {
-  //   fontSize: 15,
-  //   letterSpacing: 0.6,
-  //   lineHeight: 20,
-  //   fontFamily: "SF Pro Rounded",
-  //   color: "#ced2ed",
-  //   textAlign: "left",
-  //   overflow: "hidden",
-  // },
 })

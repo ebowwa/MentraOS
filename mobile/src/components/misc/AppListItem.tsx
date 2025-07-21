@@ -59,11 +59,12 @@ export const AppListItem = ({
             }
           : {},
       ]}>
-      <TouchableOpacity
+      {/* <TouchableOpacity
         style={[themed($appDescription), themed($everythingFlexBox)]}
         onPress={onSettingsPress}
         disabled={isDisabled}
-        activeOpacity={0.7}>
+        activeOpacity={0.7}> */}
+      <View style={[themed($appDescription), themed($everythingFlexBox)]}>
         <AppIcon app={app} isForegroundApp={is_foreground} style={themed($appIcon)} />
         <View style={themed($appNameWrapper)}>
           <Text
@@ -74,15 +75,16 @@ export const AppListItem = ({
           />
           <Tag isActive={isActive} isForeground={is_foreground} />
         </View>
-      </TouchableOpacity>
+      </View>
+      {/* </TouchableOpacity> */}
 
       <View style={[themed($toggleParent), themed($everythingFlexBox)]}>
         <View pointerEvents={isDisabled ? "none" : "auto"}>
           <Switch value={isActive} hitSlop={12} onValueChange={onTogglePress} />
         </View>
-        <TouchableOpacity onPress={onSettingsPress} hitSlop={12} style={themed($chevronHitbox)}>
+        {/* <TouchableOpacity onPress={onSettingsPress} hitSlop={12} style={themed($chevronHitbox)}>
           <ChevronRight color={theme.colors.chevron} />
-        </TouchableOpacity>
+        </TouchableOpacity> */}
       </View>
     </Animated.View>
   )
