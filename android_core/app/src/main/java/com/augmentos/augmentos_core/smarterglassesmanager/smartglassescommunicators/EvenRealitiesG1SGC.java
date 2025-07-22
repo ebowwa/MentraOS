@@ -1557,16 +1557,25 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
     private void sendBitmapChunkNoWait(byte[] data, boolean sendLeft, boolean sendRight) {
         if (data == null || data.length == 0) return;
         
+        // IMPORTANT: Set write type to NO_RESPONSE for fire-and-forget behavior
+        // This prevents waiting for BLE acknowledgments
+        
         // Send to right glass without waiting
         if (sendRight && rightGlassGatt != null && rightTxChar != null && isRightConnected) {
             rightTxChar.setValue(data);
+            rightTxChar.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE);
             rightGlassGatt.writeCharacteristic(rightTxChar);
+            // Restore default write type
+            rightTxChar.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
         }
         
         // Send to left glass without waiting  
         if (sendLeft && leftGlassGatt != null && leftTxChar != null && isLeftConnected) {
             leftTxChar.setValue(data);
+            leftTxChar.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE);
             leftGlassGatt.writeCharacteristic(leftTxChar);
+            // Restore default write type
+            leftTxChar.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
         }
     }
 
@@ -3132,8 +3141,12 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
                 bitmapExecutor.execute(() -> {
                     try {
                         if (leftGlassGatt != null && leftTxChar != null && isLeftConnected) {
-                            leftTxChar.setValue(chunk);
-                            leftGlassGatt.writeCharacteristic(leftTxChar);
+                            synchronized(leftTxChar) {
+                                leftTxChar.setValue(chunk);
+                                leftTxChar.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE);
+                                leftGlassGatt.writeCharacteristic(leftTxChar);
+                                leftTxChar.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
+                            }
                         }
                     } finally {
                         latch.countDown();
@@ -3144,8 +3157,12 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
                 bitmapExecutor.execute(() -> {
                     try {
                         if (rightGlassGatt != null && rightTxChar != null && isRightConnected) {
-                            rightTxChar.setValue(chunk);
-                            rightGlassGatt.writeCharacteristic(rightTxChar);
+                            synchronized(rightTxChar) {
+                                rightTxChar.setValue(chunk);
+                                rightTxChar.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE);
+                                rightGlassGatt.writeCharacteristic(rightTxChar);
+                                rightTxChar.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
+                            }
                         }
                     } finally {
                         latch.countDown();
