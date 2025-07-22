@@ -28,6 +28,7 @@ import android.widget.FrameLayout;
 import org.json.JSONException;
 import org.json.JSONObject;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import androidx.core.app.NotificationCompat;
@@ -42,12 +43,14 @@ import com.augmentos.augmentos_core.AugmentosService;
 import com.augmentos.asg_client.bluetooth.BluetoothManagerFactory;
 import com.augmentos.asg_client.bluetooth.BluetoothStateListener;
 import com.augmentos.asg_client.bluetooth.IBluetoothManager;
+import com.augmentos.asg_client.bluetooth.K900BluetoothManager;
 import com.augmentos.asg_client.camera.MediaCaptureService;
 import com.augmentos.asg_client.camera.MediaUploadQueueManager;
 import com.augmentos.asg_client.network.INetworkManager;
 import com.augmentos.asg_client.network.NetworkManagerFactory;
 import com.augmentos.asg_client.network.NetworkStateListener; // Make sure this is the correct import path for your library
 import com.augmentos.augmentos_core.smarterglassesmanager.camera.CameraRecordingService;
+import com.augmentos.augmentos_core.smarterglassesmanager.utils.K900ProtocolUtils;
 import org.greenrobot.eventbus.EventBus;
 import com.augmentos.asg_client.events.BatteryStatusEvent;
 
@@ -154,6 +157,9 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     // Battery status tracking
     private int batteryVoltage = -1;
     private int batteryPercentage = -1;
+    // Track last sent battery status over BLE to avoid redundant messages
+    private int lastSentBatteryPercentage = -1;
+    private boolean lastSentBatteryCharging = false;
 
     // Receiver for handling restart requests from OTA updater
     private BroadcastReceiver restartReceiver;
@@ -421,6 +427,33 @@ public class AsgClientService extends Service implements NetworkStateListener, B
 
             // Set the media capture listener
             mMediaCaptureService.setMediaCaptureListener(mediaCaptureListener);
+            
+            // Set the service callback for BLE communication
+            mMediaCaptureService.setServiceCallback(new com.augmentos.asg_client.camera.ServiceCallbackInterface() {
+                @Override
+                public void sendThroughBluetooth(byte[] data) {
+                    if (bluetoothManager != null) {
+                        bluetoothManager.sendData(data);
+                    }
+                }
+                
+                @Override
+                public boolean sendFileViaBluetooth(String filePath) {
+                    if (bluetoothManager != null) {
+                        K900BluetoothManager k900 = (K900BluetoothManager) bluetoothManager;
+                        boolean started = bluetoothManager.sendImageFile(filePath);
+                        if (started) {
+                            Log.d(TAG, "BLE file transfer started for: " + filePath);
+                        } else {
+                            Log.e(TAG, "Failed to start BLE file transfer for: " + filePath);
+                        }
+                        return started;
+                    } else {
+                        Log.e(TAG, "K900BluetoothManager not available for BLE file transfer");
+                        return false;
+                    }
+                }
+            });
         }
     }
 
@@ -1157,9 +1190,22 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     private void sendBatteryStatusOverBle() {
         if (bluetoothManager != null && bluetoothManager.isConnected()) {
             try {
+                // Calculate charging status based on voltage
+                boolean isCharging = batteryVoltage > 3900;
+                
+                // Check if battery status has changed from last sent status
+                if (batteryPercentage == lastSentBatteryPercentage && isCharging == lastSentBatteryCharging) {
+                    Log.d(TAG, "🔋 Battery status unchanged - skipping BLE send (percent: " + batteryPercentage + "%, charging: " + isCharging + ")");
+                    return;
+                }
+                
+                // Update last sent values
+                lastSentBatteryPercentage = batteryPercentage;
+                lastSentBatteryCharging = isCharging;
+                
                 JSONObject obj = new JSONObject();
                 obj.put("type", "battery_status");
-                obj.put("charging", batteryVoltage > 3900);
+                obj.put("charging", isCharging);
                 obj.put("percent", batteryPercentage);
                 String jsonString = obj.toString();
                 Log.d(TAG, "Formatted battery status message: " + jsonString);
@@ -1266,6 +1312,9 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         }
 
         Log.d(TAG, "Received " + data.length + " bytes from Bluetooth");
+        
+        // Store raw data for potential forwarding (e.g., file transfer ACKs)
+        byte[] rawDataCopy = Arrays.copyOf(data, data.length);
 
         // Process the data
 
@@ -1448,6 +1497,9 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                 case "take_photo":
                     String requestId = dataToProcess.optString("requestId", "");
                     String webhookUrl = dataToProcess.optString("webhookUrl", "");
+                    String transferMethod = dataToProcess.optString("transferMethod", "direct"); // Defaults to direct
+                    String bleImgId = dataToProcess.optString("bleImgId", "");
+                    boolean save = dataToProcess.optBoolean("save", false); // Default to false
 
                     if (requestId.isEmpty()) {
                         Log.e(TAG, "Cannot take photo - missing requestId");
@@ -1458,11 +1510,25 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                     String timeStamp = new java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.US).format(new java.util.Date());
                     String photoFilePath = getExternalFilesDir(null) + java.io.File.separator + "IMG_" + timeStamp + ".jpg";
 
-                    Log.d(TAG, "Taking photo with requestId: " + requestId);
+                    Log.d(TAG, "Taking photo with requestId: " + requestId + ", transferMethod: " + transferMethod + ", save: " + save);
                     Log.d(TAG, "Photo will be saved to: " + photoFilePath);
 
-                    // Take the photo using MediaCaptureService with webhook URL
-                    mMediaCaptureService.takePhotoAndUpload(photoFilePath, requestId, webhookUrl);
+                    if ("ble".equals(transferMethod)) {
+                        // Take photo, compress with AVIF, and send via BLE
+                        Log.d(TAG, "Using BLE transfer with ID: " + bleImgId);
+                        mMediaCaptureService.takePhotoForBleTransfer(photoFilePath, requestId, bleImgId, save);
+                    } else if ("auto".equals(transferMethod)) {
+                        // Auto mode: Try WiFi first, fallback to BLE if needed
+                        Log.d(TAG, "Using auto transfer mode with BLE fallback ID: " + bleImgId);
+                        if (bleImgId.isEmpty()) {
+                            Log.e(TAG, "Auto mode requires bleImgId for fallback");
+                            return;
+                        }
+                        mMediaCaptureService.takePhotoAutoTransfer(photoFilePath, requestId, webhookUrl, bleImgId, save);
+                    } else {
+                        // Existing direct upload path (WiFi only, no fallback)
+                        mMediaCaptureService.takePhotoAndUpload(photoFilePath, requestId, webhookUrl, save);
+                    }
                     break;
 
                 case "start_video_recording":
@@ -1830,6 +1896,13 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                     }
                     break;
                 }
+                
+//                case "ble_photo_ready":
+//                    // This message is now only sent to the phone as a notification
+//                    // The actual file transfer is triggered via the ServiceCallbackInterface
+//                    // in MediaCaptureService.sendCompressedPhotoViaBle()
+//                    Log.d(TAG, "BLE photo ready notification received (for phone only)");
+//                    break;
 
                 default:
                     Log.w(TAG, "Unknown message type: " + type);
@@ -1840,29 +1913,40 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         }
     }
 
-    // These are plain text commands from the K900's MCU, usually from button presses on the device
-    public void parseK900Command(String command){
-        switch (command) {
-            case "cs_pho":
-                handleButtonPress(false);
-                break;
-
-            case "hm_htsp":
-            case "mh_htsp":
-                Log.d(TAG, "📦 Payload is hm_htsp or mh_htsp");
-                networkManager.startHotspot("Mentra Live", "MentraLive");
-                break;
-
-            case "cs_vdo":
-                handleButtonPress(true);
-            case "hm_batv":
-                //looks something like... {"C":"hm_batv","B":{"vt":4351,"pt":94}}
-                Log.d(TAG, "got a hm_batv");
-            default:
-                Log.d(TAG, "📦 Unknown payload: " + command);
-                break;
-        }
-    }
+//    // These are plain text commands from the K900's MCU, usually from button presses on the device
+//    public void parseK900Command(String command){
+//        switch (command) {
+//            case "cs_pho":
+//                // TESTING: Commented out normal photo handling
+//                // handleButtonPress(false);
+//
+//                // TEST: Send test image from assets
+//                Log.d(TAG, "🎾 TEST: cs_pho pressed - sending test.jpg from assets");
+//                if (bluetoothManager != null) {
+//                    boolean started = ((com.augmentos.asg_client.bluetooth.BaseBluetoothManager)bluetoothManager)
+//                        .sendTestImageFromAssets("test.jpg");
+//                    Log.d(TAG, "🎾 TEST: File transfer started: " + started);
+//                } else {
+//                    Log.e(TAG, "🎾 TEST: bluetoothManager is null!");
+//                }
+//                break;
+//
+//            case "hm_htsp":
+//            case "mh_htsp":
+//                Log.d(TAG, "📦 Payload is hm_htsp or mh_htsp");
+//                networkManager.startHotspot("Mentra Live", "MentraLive");
+//                break;
+//
+//            case "cs_vdo":
+//                handleButtonPress(true);
+//            case "hm_batv":
+//                //looks something like... {"C":"hm_batv","B":{"vt":4351,"pt":94}}
+//                Log.d(TAG, "got a hm_batv");
+//            default:
+//                Log.d(TAG, "📦 Unknown payload: " + command);
+//                break;
+//        }
+//    }
 
     // Overloaded version for ODM format JSON commands
     public void parseK900Command(JSONObject json) {
@@ -1872,7 +1956,18 @@ public class AsgClientService extends Service implements NetworkStateListener, B
             
             switch (command) {
                 case "cs_pho":
+                    // TESTING: Commented out normal photo handling
                     handleButtonPress(false);
+                    
+                    // TEST: Send test image from assets
+//                    Log.d(TAG, "🎾 TEST: cs_pho (JSON) pressed - sending test.jpg from assets");
+//                    if (bluetoothManager != null) {
+//                        boolean started = ((com.augmentos.asg_client.bluetooth.BaseBluetoothManager)bluetoothManager)
+//                            .sendTestImageFromAssets("test.jpg");
+//                        Log.d(TAG, "🎾 TEST: File transfer started: " + started);
+//                    } else {
+//                        Log.e(TAG, "🎾 TEST: bluetoothManager is null!");
+//                    }
                     break;
 
                 case "hm_htsp":
@@ -1909,6 +2004,13 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                     }
                     break;
 
+                case "cs_flts":
+                    // File transfer acknowledgment from BES chip (K900 specific code)
+                    // K900BluetoothManager should have already processed this in processReceivedMessage
+                    // no need to do anything here
+                    Log.d(TAG, "📦 BES file transfer ACK detected in AsgClientService");
+                    break;
+                    
                 default:
                     Log.d(TAG, "📦 Unknown ODM payload: " + command);
                     break;
@@ -2311,6 +2413,26 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         }
     }
 
+    /**
+     * Send BLE photo transfer completion message
+     */
+    private void sendBlePhotoTransferComplete(String requestId, String bleImgId, boolean success) {
+        try {
+            JSONObject json = new JSONObject();
+            json.put("type", "ble_photo_complete");
+            json.put("requestId", requestId);
+            json.put("bleImgId", bleImgId);
+            json.put("success", success);
+            
+            if (bluetoothManager != null && bluetoothManager.isConnected()) {
+                bluetoothManager.sendData(json.toString().getBytes());
+                Log.d(TAG, "Sent BLE photo transfer complete: " + json.toString());
+            }
+        } catch (JSONException e) {
+            Log.e(TAG, "Error creating BLE photo transfer complete message", e);
+        }
+    }
+    
     /**
      * Send an RTMP status response via BLE
      *
