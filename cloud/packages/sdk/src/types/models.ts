@@ -1,12 +1,11 @@
 // @mentra/sdk
 // packages/sdk/types/src/models.ts - Core models
 
-import { AppSettingType, AppState, Language, AppType } from './enums';
-
+import { AppSettingType, AppState, Language, AppType } from "./enums";
 
 // Tool parameter type definition
 export interface ToolParameterSchema {
-  type: 'string' | 'number' | 'boolean';
+  type: "string" | "number" | "boolean";
   description: string;
   enum?: string[];
   required?: boolean;
@@ -33,24 +32,25 @@ export interface DeveloperProfile {
 
 // Define PermissionType enum with legacy support
 export enum PermissionType {
-  MICROPHONE = 'MICROPHONE',
-  LOCATION = 'LOCATION',
-  CALENDAR = 'CALENDAR',
-  CAMERA = 'CAMERA',
+  MICROPHONE = "MICROPHONE",
+  LOCATION = "LOCATION",
+  BACKGROUND_LOCATION = "BACKGROUND_LOCATION",
+  CALENDAR = "CALENDAR",
+  CAMERA = "CAMERA",
 
   // Legacy notification permission (backward compatibility)
-  NOTIFICATIONS = 'NOTIFICATIONS',
+  NOTIFICATIONS = "NOTIFICATIONS",
 
   // New granular notification permissions
-  READ_NOTIFICATIONS = 'READ_NOTIFICATIONS',
-  POST_NOTIFICATIONS = 'POST_NOTIFICATIONS',
+  READ_NOTIFICATIONS = "READ_NOTIFICATIONS",
+  POST_NOTIFICATIONS = "POST_NOTIFICATIONS",
 
-  ALL = 'ALL'
+  ALL = "ALL",
 }
 
 // Legacy permission mapping for backward compatibility
 export const LEGACY_PERMISSION_MAP = new Map<PermissionType, PermissionType[]>([
-  [PermissionType.NOTIFICATIONS, [PermissionType.READ_NOTIFICATIONS]]
+  [PermissionType.NOTIFICATIONS, [PermissionType.READ_NOTIFICATIONS]],
 ]);
 
 // Permission interface
@@ -65,20 +65,20 @@ export interface Permission {
 export interface AppI {
   packageName: string;
   name: string;
-  publicUrl: string;              // Base URL of the app server
-  isSystemApp?: boolean;          // Is this a system app?
-  uninstallable?: boolean;        // Can the app be uninstalled?
+  publicUrl: string; // Base URL of the app server
+  isSystemApp?: boolean; // Is this a system app?
+  uninstallable?: boolean; // Can the app be uninstalled?
 
-  webviewURL?: string;            // URL for phone UI
+  webviewURL?: string; // URL for phone UI
   logoURL: string;
-  appType: AppType;               // Type of app
-  appStoreId?: string;            // Which app store registered this app
+  appType: AppType; // Type of app
+  appStoreId?: string; // Which app store registered this app
 
   /**
    * @deprecated Use organizationId instead. Will be removed after migration.
    */
-  developerId?: string;           // ID of the developer who created the app
-  organizationId?: any;        // ID of the organization that owns this app
+  developerId?: string; // ID of the developer who created the app
+  organizationId?: any; // ID of the organization that owns this app
 
   // Auth
   hashedEndpointSecret?: string;
@@ -92,7 +92,7 @@ export interface AppI {
   tools?: ToolSchema[];
 
   isPublic?: boolean;
-  appStoreStatus?: 'DEVELOPMENT' | 'SUBMITTED' | 'REJECTED' | 'PUBLISHED';
+  appStoreStatus?: "DEVELOPMENT" | "SUBMITTED" | "REJECTED" | "PUBLISHED";
 }
 
 /**
@@ -109,9 +109,22 @@ export interface BaseAppSetting {
  * Setting types for applications
  */
 export type AppSetting =
-  | (BaseAppSetting & { type: AppSettingType.TOGGLE; defaultValue: boolean; value?: boolean })
-  | (BaseAppSetting & { type: AppSettingType.TEXT; defaultValue?: string; value?: string })
-  | (BaseAppSetting & { type: AppSettingType.TEXT_NO_SAVE_BUTTON; defaultValue?: string; value?: string; maxLines?: number })
+  | (BaseAppSetting & {
+      type: AppSettingType.TOGGLE;
+      defaultValue: boolean;
+      value?: boolean;
+    })
+  | (BaseAppSetting & {
+      type: AppSettingType.TEXT;
+      defaultValue?: string;
+      value?: string;
+    })
+  | (BaseAppSetting & {
+      type: AppSettingType.TEXT_NO_SAVE_BUTTON;
+      defaultValue?: string;
+      value?: string;
+      maxLines?: number;
+    })
   | (BaseAppSetting & {
       type: AppSettingType.SELECT;
       options: { label: string; value: any }[];
@@ -183,12 +196,14 @@ export interface AppConfig {
  * @returns True if the config is valid
  */
 export function validateAppConfig(config: any): config is AppConfig {
-  if (!config || typeof config !== 'object') return false;
+  if (!config || typeof config !== "object") return false;
 
   // Check required string properties
-  if (typeof config.name !== 'string' ||
-      typeof config.description !== 'string' ||
-      typeof config.version !== 'string') {
+  if (
+    typeof config.name !== "string" ||
+    typeof config.description !== "string" ||
+    typeof config.version !== "string"
+  ) {
     return false;
   }
 
@@ -198,63 +213,83 @@ export function validateAppConfig(config: any): config is AppConfig {
   // Validate each setting
   return config.settings.every((setting: any) => {
     // Group settings just need a title
-    if (setting.type === 'group') {
-      return typeof setting.title === 'string';
+    if (setting.type === "group") {
+      return typeof setting.title === "string";
     }
 
     // TITLE_VALUE settings just need label and value
-    if (setting.type === 'titleValue') {
-      return typeof setting.label === 'string' && 'value' in setting;
+    if (setting.type === "titleValue") {
+      return typeof setting.label === "string" && "value" in setting;
     }
 
     // Regular settings need key and label
-    if (typeof setting.key !== 'string' || typeof setting.label !== 'string') {
+    if (typeof setting.key !== "string" || typeof setting.label !== "string") {
       return false;
     }
 
     // Type-specific validation
     switch (setting.type) {
       case AppSettingType.TOGGLE:
-        return typeof setting.defaultValue === 'boolean';
+        return typeof setting.defaultValue === "boolean";
 
       case AppSettingType.TEXT:
       case AppSettingType.TEXT_NO_SAVE_BUTTON:
-        return setting.defaultValue === undefined || typeof setting.defaultValue === 'string';
+        return (
+          setting.defaultValue === undefined ||
+          typeof setting.defaultValue === "string"
+        );
 
       case AppSettingType.SELECT:
       case AppSettingType.SELECT_WITH_SEARCH:
-        return Array.isArray(setting.options) &&
-               setting.options.every((opt: any) =>
-                 typeof opt.label === 'string' && 'value' in opt);
+        return (
+          Array.isArray(setting.options) &&
+          setting.options.every(
+            (opt: any) => typeof opt.label === "string" && "value" in opt,
+          )
+        );
 
       case AppSettingType.MULTISELECT:
-        return Array.isArray(setting.options) &&
-               setting.options.every((opt: any) =>
-                 typeof opt.label === 'string' && 'value' in opt) &&
-               (setting.defaultValue === undefined || Array.isArray(setting.defaultValue));
+        return (
+          Array.isArray(setting.options) &&
+          setting.options.every(
+            (opt: any) => typeof opt.label === "string" && "value" in opt,
+          ) &&
+          (setting.defaultValue === undefined ||
+            Array.isArray(setting.defaultValue))
+        );
 
       case AppSettingType.SLIDER:
-        return typeof setting.defaultValue === 'number' &&
-               typeof setting.min === 'number' &&
-               typeof setting.max === 'number' &&
-               setting.min <= setting.max;
+        return (
+          typeof setting.defaultValue === "number" &&
+          typeof setting.min === "number" &&
+          typeof setting.max === "number" &&
+          setting.min <= setting.max
+        );
 
       case AppSettingType.NUMERIC_INPUT:
-        return (setting.defaultValue === undefined || typeof setting.defaultValue === 'number') &&
-               (setting.min === undefined || typeof setting.min === 'number') &&
-               (setting.max === undefined || typeof setting.max === 'number') &&
-               (setting.step === undefined || typeof setting.step === 'number') &&
-               (setting.placeholder === undefined || typeof setting.placeholder === 'string');
+        return (
+          (setting.defaultValue === undefined ||
+            typeof setting.defaultValue === "number") &&
+          (setting.min === undefined || typeof setting.min === "number") &&
+          (setting.max === undefined || typeof setting.max === "number") &&
+          (setting.step === undefined || typeof setting.step === "number") &&
+          (setting.placeholder === undefined ||
+            typeof setting.placeholder === "string")
+        );
 
       case AppSettingType.TIME_PICKER:
-        return (setting.defaultValue === undefined || typeof setting.defaultValue === 'number') &&
-               (setting.showSeconds === undefined || typeof setting.showSeconds === 'boolean');
+        return (
+          (setting.defaultValue === undefined ||
+            typeof setting.defaultValue === "number") &&
+          (setting.showSeconds === undefined ||
+            typeof setting.showSeconds === "boolean")
+        );
 
       case AppSettingType.GROUP:
-        return typeof setting.title === 'string';
+        return typeof setting.title === "string";
 
       case AppSettingType.TITLE_VALUE:
-        return typeof setting.label === 'string' && 'value' in setting;
+        return typeof setting.label === "string" && "value" in setting;
 
       default:
         return false;

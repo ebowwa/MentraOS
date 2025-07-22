@@ -139,7 +139,7 @@ struct ViewState {
   func initManager(_ wearable: String) {
     CoreCommsService.log("Initializing manager for wearable: \(wearable)")
     if (wearable.contains("G1") && self.g1Manager == nil) {
-      self.g1Manager = ERG1Manager()
+      self.g1Manager = ERG1Manager.shared
     } else if (wearable.contains("Live") && self.liveManager == nil) {
       self.liveManager = MentraLiveManager()
     }
@@ -849,7 +849,7 @@ struct ViewState {
     bottomText = parsePlaceholders(bottomText)
     title = parsePlaceholders(title)
     
-    // CoreCommsService.log("Updating view state \(stateIndex) with \(layoutType) \(text) \(topText) \(bottomText)")
+    CoreCommsService.log("Updating view state \(stateIndex) with \(layoutType) \(text) \(topText) \(bottomText)")
     
     switch layoutType {
     case "text_wall":

@@ -253,7 +253,9 @@ enum GlassesError: Error {
     }
   }
   
-  override init() {
+  static let shared = ERG1Manager()
+  
+  private override init() {
     super.init()
     startHeartbeatTimer()
   }
@@ -688,7 +690,7 @@ enum GlassesError: Error {
       let lastChunk = chunks.last!
       
       success = await sendCommandToSide2(lastChunk, side: side, attemptNumber: attempts)
-      CoreCommsService.log("command success: \(success)")
+      // CoreCommsService.log("command success: \(success)")
 //      if (!success) {
 //        CoreCommsService.log("timed out waiting for \(s)")
 //      }
@@ -798,7 +800,7 @@ enum GlassesError: Error {
     
     if let continuation = continuation {
         continuation.resume(returning: true)
-        CoreCommsService.log("✅ ACK received for \(side) side, resuming continuation")
+        // CoreCommsService.log("✅ ACK received for \(side) side, resuming continuation")
     }
     
     if peripheral == self.leftPeripheral {

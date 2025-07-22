@@ -1,4 +1,4 @@
-import React, { Suspense } from 'react';
+import { Suspense, lazy, type ReactNode, type FC } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import { PlatformProvider } from './hooks/usePlatform';
@@ -6,20 +6,20 @@ import { SearchProvider } from './contexts/SearchContext';
 import { Toaster } from 'sonner';
 
 // Lazy load pages for better performance
-const AppStore = React.lazy(() => import('./pages/AppStore'));
-const AppDetails = React.lazy(() => import('./pages/AppDetails'));
-const LoginPage = React.lazy(() => import('./pages/LoginPage'));
-const NotFound = React.lazy(() => import('./pages/NotFound'));
+const AppStore = lazy(() => import('./pages/AppStore'));
+const AppDetails = lazy(() => import('./pages/AppDetails'));
+const LoginPage = lazy(() => import('./pages/LoginPage'));
+const NotFound = lazy(() => import('./pages/NotFound'));
 
 // Loading spinner component (simplified)
-const LoadingSpinner: React.FC = () => (
+const LoadingSpinner: FC = () => (
   <div className="flex items-center justify-center min-h-screen">
     <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
   </div>
 );
 
 // Protected route component
-const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+const ProtectedRoute: FC<{ children: ReactNode }> = ({ children }) => {
   const { isAuthenticated, isLoading } = useAuth();
 
   if (isLoading) {
@@ -34,7 +34,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 };
 
 // Main routes component
-const AppRoutes: React.FC = () => {
+const AppRoutes: FC = () => {
   return (
     <Suspense fallback={<LoadingSpinner />}>
       <Routes>
@@ -53,7 +53,7 @@ const AppRoutes: React.FC = () => {
 };
 
 // Main App component
-const App: React.FC = () => {
+const App: FC = () => {
   return (
     <PlatformProvider>
       <AuthProvider>
