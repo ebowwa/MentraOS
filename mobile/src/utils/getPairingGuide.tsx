@@ -3,6 +3,7 @@ import {View} from "react-native"
 import {
   AudioWearablePairingGuide,
   EvenRealitiesG1PairingGuide,
+  MentraNextGlassesPairingGuide,
   MentraLivePairingGuide,
   MentraMach1PairingGuide,
   VirtualWearablePairingGuide,
@@ -18,8 +19,9 @@ import {useAppTheme} from "./useAppTheme"
 export const getPairingGuide = (glassesModelName: string) => {
   switch (glassesModelName) {
     case "Even Realities G1":
-    case "E2:D5:A2:9E:A0:7A":
       return <EvenRealitiesG1PairingGuide />
+    case "E2:D5:A2:9E:A0:7A":
+      return <MentraNextGlassesPairingGuide />
     case "Vuzix Z100":
       return <VuzixZ100PairingGuide />
     case "Mentra Live":

@@ -83,7 +83,7 @@ import java.util.HashMap;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesSerialNumberEvent;
 import com.augmentos.augmentos_core.statushelpers.DeviceInfo;
 
-public class MentraNextSGC extends SmartGlassesCommunicator {
+public final class MentraNextSGC extends SmartGlassesCommunicator {
     private final String TAG = "WearableAi_MentraNextSGC";
     public final String SHARED_PREFS_NAME = "NextGlassesPrefs";
     private int heartbeatCount = 0;
@@ -104,14 +104,14 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
     private final byte PACKET_TYPE_JSON = (byte) 0x01;
     private final byte PACKET_TYPE_AUDIO = (byte) 0xA0;
     private final byte PACKET_TYPE_IMAGE = (byte) 0xB0;
-    private final Random random=new Random();
+    private final Random random = new Random();
 
     private Context context;
     private BluetoothGatt mainGlassGatt;
     private BluetoothGattCharacteristic mainTxChar;
     private BluetoothGattCharacteristic mainRxChar;
-    private final int MTU_512=512;
-    private final int MTU_256=256;
+    private final int MTU_512 = 512;
+    private final int MTU_256 = 256;
     private int currentMTU = 0;
 
     private SmartGlassesConnectionState connectionState = SmartGlassesConnectionState.DISCONNECTED;
@@ -348,8 +348,8 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
                         // }, delay);
                     }
                 } else {
-                    MAX_CHUNK_SIZE=MAX_CHUNK_SIZE_DEFAULT;
-                    BMP_CHUNK_SIZE=MAX_CHUNK_SIZE_DEFAULT;
+                    MAX_CHUNK_SIZE = MAX_CHUNK_SIZE_DEFAULT;
+                    BMP_CHUNK_SIZE = MAX_CHUNK_SIZE_DEFAULT;
                     Log.e(TAG, "Unexpected connection state encountered for " + " glass: " + newState);
                     stopHeartbeat();
                     stopMicBeat();
@@ -412,7 +412,7 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
             public void onCharacteristicWrite(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic,
                     int status) {
                 Log.d(TAG, "onCharacteristicWrite callback - ");
-               final byte[]values=characteristic.getValue();
+                final byte[] values = characteristic.getValue();
                 if (status == BluetoothGatt.GATT_SUCCESS) {
                     Log.d(TAG, "onCharacteristicWrite PROC_QUEUE - " + " glass write successful");
                     Log.d(TAG, "onCharacteristicWrite Values - " + bytesToHex(values));
@@ -443,16 +443,16 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
                 Log.d(TAG, "onMtuChanged: " + statusBool + "  " + mtu);
                 if (statusBool) {
                     currentMTU = mtu;
-                    MAX_CHUNK_SIZE=currentMTU-10;
-                    //BMP has more cofig bytes
-                    BMP_CHUNK_SIZE=currentMTU-20;
+                    MAX_CHUNK_SIZE = currentMTU - 10;
+                    // BMP has more cofig bytes
+                    BMP_CHUNK_SIZE = currentMTU - 20;
                 } else {
-                    if(mtu==MTU_512){
+                    if (mtu == MTU_512) {
                         gatt.requestMtu(MTU_256);
                     }
                     currentMTU = 0;
-                    MAX_CHUNK_SIZE=MAX_CHUNK_SIZE_DEFAULT;
-                    BMP_CHUNK_SIZE=MAX_CHUNK_SIZE_DEFAULT;
+                    MAX_CHUNK_SIZE = MAX_CHUNK_SIZE_DEFAULT;
+                    BMP_CHUNK_SIZE = MAX_CHUNK_SIZE_DEFAULT;
                 }
             }
 
@@ -465,25 +465,23 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
                         if (deviceName == null) {
                             return;
                         }
-                        final int dataLen=data.length;
-                        if (dataLen==0){
-                            return ;
+                        final int dataLen = data.length;
+                        if (dataLen == 0) {
+                            return;
                         }
-                        byte packetType=data[0];
-                        switch (packetType){
-                            case PACKET_TYPE_JSON:
-                            {
-                                byte[] jsonData = Arrays.copyOfRange(data, 2, dataLen);
+                        byte packetType = data[0];
+                        switch (packetType) {
+                            case PACKET_TYPE_JSON: {
+                                byte[] jsonData = Arrays.copyOfRange(data, 1, dataLen);
                                 decodeJsons(jsonData);
                             }
                                 break;
-                            case PACKET_TYPE_AUDIO:
-                            {
+                            case PACKET_TYPE_AUDIO: {
                                 // Log.d(TAG, "Lc3 Audio data received. Data: " + Arrays.toString(data) + ",
                                 // from: " + deviceName);
-                                int streamId = data[1] & 0xFF; // Sequence number
+                                final int streamId = data[1] & 0xFF; // Sequence number
                                 // eg. LC3 to PCM
-                                byte[] lc3 = Arrays.copyOfRange(data, 2, dataLen);
+                                final byte[] lc3 = Arrays.copyOfRange(data, 2, dataLen);
                                 // byte[] pcmData = L3cCpp.decodeLC3(lc3);
                                 // if (pcmData == null) {
                                 // throw new IllegalStateException("Failed to decode LC3 data");
@@ -491,7 +489,7 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
 
                                 // decode the LC3 audio
                                 if (lc3DecoderPtr != 0) {
-                                    byte[] pcmData = L3cCpp.decodeLC3(lc3DecoderPtr, lc3);
+                                    final byte[] pcmData = L3cCpp.decodeLC3(lc3DecoderPtr, lc3);
                                     // send the PCM out
                                     if (shouldUseGlassesMic) {
                                         if (audioProcessingCallback != null) {
@@ -765,7 +763,7 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
                 // start sending debug notifications
                 // startPeriodicNotifications(302);
                 // start sending debug notifications
-                 startPeriodicTextWall(302);
+                startPeriodicTextWall(302);
             }
         } else {
             Log.e(TAG, " glass UART service not found");
@@ -1110,7 +1108,8 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
     public void connectToSmartGlasses(SmartGlassesDevice device) {
         // Register bonding receiver
 
-        Log.d(TAG, "try to ConnectToSmartGlassesing deviceModelName:" + device.deviceModelName+"  deviceAddress:"+device.deviceAddress );
+        Log.d(TAG, "try to ConnectToSmartGlassesing deviceModelName:" + device.deviceModelName + "  deviceAddress:"
+                + device.deviceAddress);
 
         preferredMainDeviceId = getPreferredMainDeviceId(context);
 
@@ -1119,7 +1118,7 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
         }
 
         // Start scanning for devices
-        if (device.deviceModelName != null && device.deviceAddress!=null) {
+        if (device.deviceModelName != null && device.deviceAddress != null) {
             stopScan();
             mainDevice = bluetoothAdapter.getRemoteDevice(device.deviceAddress);
             connectHandler.postDelayed(() -> {
@@ -1746,7 +1745,7 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
     public void setFontSizes() {
     }
 
-    // Heartbeat methods
+    // Heartbeat methods for g1
     private byte[] constructHeartbeat() {
         ByteBuffer buffer = ByteBuffer.allocate(6);
         buffer.put((byte) 0x25);
@@ -1756,6 +1755,28 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
         buffer.put((byte) 0x04);
         buffer.put((byte) (currentSeq++ & 0xFF));
         return buffer.array();
+    }
+
+    // Heartbeat methods for Next Glass
+    private byte[] constructHeartbeatForNextGlasses() {
+        NextGlassesHeartBeat nextGlassesHeartBeat = new NextGlassesHeartBeat();
+        nextGlassesHeartBeat.setType("ping");
+        nextGlassesHeartBeat.setMsg_id("ping_001");
+
+        final String jsonData = gson.toJson(nextGlassesHeartBeat);
+        Log.d(TAG, "constructHeartbeatForNextGlasses " + jsonData);
+
+        byte[] contentBytes = jsonData.getBytes(StandardCharsets.UTF_8);
+
+        ByteBuffer chunk = ByteBuffer.allocate(contentBytes.length + 1);
+
+        chunk.put(PACKET_TYPE_JSON);
+        chunk.put(contentBytes);
+
+        byte[] result = new byte[chunk.position()];
+        chunk.flip();
+        chunk.get(result);
+        return result;
     }
 
     private byte[] constructBatteryLevelQuery() {
@@ -1842,7 +1863,7 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
             public void onScanResult(int callbackType, ScanResult result) {
                 BluetoothDevice device = result.getDevice();
                 String name = device.getName();
-                String address=device.getAddress();
+                String address = device.getAddress();
                 // if (name != null && name.contains("Even G1_") && name.contains("_L_")) {
                 if (name != null && name.toUpperCase().startsWith("E2:D5")) {
                     Log.d(TAG, "bleScanCallback onScanResult: " + name + " address " + device.getAddress());
@@ -1937,7 +1958,10 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
     }
 
     private void sendHeartbeat() {
-        byte[] heartbeatPacket = constructHeartbeat();
+        // for G1
+        // byte[] heartbeatPacket = constructHeartbeat();
+        // for Mentra Nex Glasses
+        byte[] heartbeatPacket = constructHeartbeatForNextGlasses();
         // Log.d(TAG, "Sending heartbeat: " + bytesToHex(heartbeatPacket));
 
         sendDataSequentially(heartbeatPacket, false, 100);
@@ -2039,7 +2063,7 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
     @Override
     public void updateGlassesAutoBrightness(boolean autoBrightness) {
         Log.d(TAG, "Updating glasses auto brightness: " + autoBrightness);
-       // sendBrightnessCommand(-1, autoBrightness);
+        // sendBrightnessCommand(-1, autoBrightness);
         sendPeriodicTextWall();
     }
 
@@ -2187,9 +2211,9 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
     private final int OLD_FONT_SIZE = 21; // Font size
     private final float FONT_DIVIDER = 2.0f;
     private final int LINES_PER_SCREEN = 5; // Lines per screen
-    private final  int MAX_CHUNK_SIZE_DEFAULT = 176; // Maximum chunk size for BLE packets
-    private   int MAX_CHUNK_SIZE = MAX_CHUNK_SIZE_DEFAULT; // Maximum chunk size for BLE packets
-    private   int BMP_CHUNK_SIZE = 194;
+    private final int MAX_CHUNK_SIZE_DEFAULT = 176; // Maximum chunk size for BLE packets
+    private int MAX_CHUNK_SIZE = MAX_CHUNK_SIZE_DEFAULT; // Maximum chunk size for BLE packets
+    private int BMP_CHUNK_SIZE = 194;
 
     // private final int INDENT_SPACES = 32; // Number of spaces to indent
     // text
@@ -2279,7 +2303,7 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
         displayText.setSize(20);
         final String jsonData = gson.toJson(displayText);
 
-        Log.d(TAG, "createTextWallChunksForNext json "+jsonData);
+        Log.d(TAG, "createTextWallChunksForNext json " + jsonData);
 
         byte[] contentBytes = jsonData.getBytes(StandardCharsets.UTF_8);
 
@@ -2294,14 +2318,14 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
         return result;
     }
 
-    //create a VerticalScrollingfor next glasses
+    // create a VerticalScrollingfor next glasses
     private byte[] createVerticalScrollingTextWallChunksForNext(String text) {
         DisplayVerticalScrollingText displayText = new DisplayVerticalScrollingText();
         displayText.setText(text);
         displayText.setSize(20);
         final String jsonData = gson.toJson(displayText);
 
-        Log.d(TAG, "createVerticalScrollingTextWallChunksForNext json "+jsonData);
+        Log.d(TAG, "createVerticalScrollingTextWallChunksForNext json " + jsonData);
 
         byte[] contentBytes = jsonData.getBytes(StandardCharsets.UTF_8);
 
@@ -2317,10 +2341,9 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
     }
 
     // send a tast image and display
-    private void startSendingDisplayImageTest(){
+    private void startSendingDisplayImageTest() {
 
-
-       // byte[] exitCommand = new byte[] { (byte) 0x18 };
+        // byte[] exitCommand = new byte[] { (byte) 0x18 };
         // sendDataSequentially(exitCommand, false);
 
         byte[] theClearBitmapOrSomething = loadEmptyBmpFromAssets();
@@ -2333,7 +2356,7 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
         }
     }
 
-    private byte[] createSendingImageChunksCommand(char streamId,int totalChunks) {
+    private byte[] createSendingImageChunksCommand(char streamId, int totalChunks) {
 
         DisplayBitmapCommand displayBitmapCommand = new DisplayBitmapCommand();
         displayBitmapCommand.setStream_id(streamId);
@@ -2372,12 +2395,10 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
         List<String> lines2 = splitIntoLines(text2, DISPLAY_WIDTH - RIGHT_COLUMN_START);
 
         // Ensure we have exactly LINES_PER_SCREEN lines (typically 5)
-        while (lines1.size() < LINES_PER_SCREEN)
-        {
+        while (lines1.size() < LINES_PER_SCREEN) {
             lines1.add("");
         }
-        while (lines2.size() < LINES_PER_SCREEN)
-        {
+        while (lines2.size() < LINES_PER_SCREEN) {
             lines2.add("");
         }
 
@@ -2581,11 +2602,11 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
                 "It demonstrates how text can be split into multiple pages and displayed sequentially. " +
                 "Each page contains multiple lines, and each line is carefully formatted to fit the display width. " +
                 "The text continues across multiple pages, showing how longer content can be handled effectively.";
-        final boolean isForG1Glasses=false;
-        //for g1
-        if(isForG1Glasses){
-             List<byte[]> chunks = createTextWallChunks(sampleText);
-            //for next glasses
+        final boolean isForG1Glasses = false;
+        // for g1
+        if (isForG1Glasses) {
+            List<byte[]> chunks = createTextWallChunks(sampleText);
+            // for next glasses
             // Send each chunk with a delay between sends
             for (byte[] chunk : chunks) {
                 sendDataSequentially(chunk);
@@ -2598,16 +2619,16 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
             }
 
             // Log.d(TAG, "Sent text wall");
-        }else{
-            final boolean isDisplayVerticalScrollingText=false;
-            if(isDisplayVerticalScrollingText){
-                Log.d(TAG, "Sent scrolling text wall "+sampleText+" to Next Glasses ");
+        } else {
+            final boolean isDisplayVerticalScrollingText = false;
+            if (isDisplayVerticalScrollingText) {
+                Log.d(TAG, "Sent scrolling text wall " + sampleText + " to Next Glasses ");
 
                 byte[] singleChunks = createVerticalScrollingTextWallChunksForNext(sampleText);
                 sendDataSequentially(singleChunks);
-            }else{
-                sampleText="Hello world";
-                Log.d(TAG, "Sent text wall "+sampleText+" to Next Glasses ");
+            } else {
+                sampleText = "Hello world";
+                Log.d(TAG, "Sent text wall " + sampleText + " to Next Glasses ");
 
                 byte[] singleChunks = createTextWallChunksForNext(sampleText);
                 sendDataSequentially(singleChunks);
@@ -2693,7 +2714,7 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
 
     // Helper function to split JSON into chunks
     private List<byte[]> createWhitelistChunks(String json) {
-       // final int MAX_CHUNK_SIZE = 180 - 4; // Reserve space for the header
+        // final int MAX_CHUNK_SIZE = 180 - 4; // Reserve space for the header
         byte[] jsonBytes = json.getBytes(StandardCharsets.UTF_8);
         int totalChunks = (int) Math.ceil((double) jsonBytes.length / MAX_CHUNK_SIZE);
 
@@ -2797,7 +2818,7 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
         }
     }
 
-    //for Next Glasses
+    // for Next Glasses
     public void displayBitmapImageForNextGlass(byte[] bmpData) {
         Log.d(TAG, "Starting BMP display process");
 
@@ -2810,24 +2831,23 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
 
             // Split into chunks and send
             final int totalChunks = (int) Math.ceil((double) bmpData.length / BMP_CHUNK_SIZE);
-            final char streamId=(char)random.nextInt();
+            final char streamId = (char) random.nextInt();
 
-            byte[]startImageSendingBytes=createSendingImageChunksCommand(streamId,totalChunks);
+            byte[] startImageSendingBytes = createSendingImageChunksCommand(streamId, totalChunks);
             sendDataSequentially(startImageSendingBytes);
             // Send all chunks
             // Split into chunks and send
-            List<byte[]> chunks = createBmpChunksForNextGlasses(streamId,bmpData,totalChunks);
-
+            List<byte[]> chunks = createBmpChunksForNextGlasses(streamId, bmpData, totalChunks);
 
             sendBmpChunks(chunks);
 
             // Send end command
-           // sendBmpEndCommand();
+            // sendBmpEndCommand();
 
             // Calculate and send CRC
-           // sendBmpCRC(bmpData);
+            // sendBmpCRC(bmpData);
 
-           // lastThingDisplayedWasAnImage = true;
+            // lastThingDisplayedWasAnImage = true;
 
         } catch (Exception e) {
             Log.e(TAG, "Error in displayBitmapImage: " + e.getMessage());
@@ -2864,22 +2884,22 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
         return chunks;
     }
 
-    //for Next Glasses
-    private List<byte[]> createBmpChunksForNextGlasses(char streamId,byte[] bmpData,int totalChunks) {
+    // for Next Glasses
+    private List<byte[]> createBmpChunksForNextGlasses(char streamId, byte[] bmpData, int totalChunks) {
         List<byte[]> chunks = new ArrayList<>();
-       // int totalChunks = (int) Math.ceil((double) bmpData.length / BMP_CHUNK_SIZE);
+        // int totalChunks = (int) Math.ceil((double) bmpData.length / BMP_CHUNK_SIZE);
         Log.d(TAG, "Creating " + totalChunks + " chunks from " + bmpData.length + " bytes");
         int start;
         int end;
         byte[] chunk;
         byte[] header;
         for (int i = 0; i < totalChunks; i++) {
-              start = i * BMP_CHUNK_SIZE;
-              end = Math.min(start + BMP_CHUNK_SIZE, bmpData.length);
-              chunk = Arrays.copyOfRange(bmpData, start, end);
+            start = i * BMP_CHUNK_SIZE;
+            end = Math.min(start + BMP_CHUNK_SIZE, bmpData.length);
+            chunk = Arrays.copyOfRange(bmpData, start, end);
             header = new byte[4 + chunk.length];
             header[0] = PACKET_TYPE_IMAGE; // Command
-            header[1] = (byte) ((streamId>>8) & 0xFF); // Sequence
+            header[1] = (byte) ((streamId >> 8) & 0xFF); // Sequence
             header[2] = (byte) (streamId & 0xFF); // Sequence
             header[3] = (byte) (i & 0xFF); // Sequence
             System.arraycopy(chunk, 0, header, 4, chunk.length);
@@ -3371,18 +3391,19 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
         }
     }
 
-    private  enum  DisplayVerticalScrollingTextAlign{
+    private enum DisplayVerticalScrollingTextAlign {
         LEFT("left"),
         RIGHT("right"),
         CENTER("center");
 
         private String value;
-        DisplayVerticalScrollingTextAlign(String align){
-            this.value=align;
+
+        DisplayVerticalScrollingTextAlign(String align) {
+            this.value = align;
         }
 
-        public String getValue(){
-            return  value;
+        public String getValue() {
+            return value;
         }
     }
 
@@ -3777,6 +3798,27 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
 
         public void setImage_chunk_buffer(int image_chunk_buffer) {
             this.image_chunk_buffer = image_chunk_buffer;
+        }
+    }
+
+    private class NextGlassesHeartBeat {
+        private String type;
+        private String msg_id;
+
+        public String getType() {
+            return type;
+        }
+
+        public void setType(String type) {
+            this.type = type;
+        }
+
+        public String getMsg_id() {
+            return msg_id;
+        }
+
+        public void setMsg_id(String msg_id) {
+            this.msg_id = msg_id;
         }
     }
 }
