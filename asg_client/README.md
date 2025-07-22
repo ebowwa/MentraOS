@@ -3,6 +3,7 @@
 This is the Android code that runs on Android-based smart glasses (ex: Mentra Live).
 
 ## Documentation
+
 - [ASG_MEDIA_SYSTEM.md](./ASG_MEDIA_SYSTEM.md) - Detailed documentation about the camera button press system, photo/video capture workflow, and how Apps (Third Party Applications) can interact with the media system.
 
 ## Compatible Devices
@@ -10,6 +11,7 @@ This is the Android code that runs on Android-based smart glasses (ex: Mentra Li
 - Mentra Live
 
 This could be made to be compatible with other Android-based smart glasses with some work, such as:
+
 - TCL Rayneo X2
 - TCL Rayneo X3
 - INMO Air 2
@@ -21,28 +23,39 @@ The necessary changes here would involve re-implementing the K900 checks (K900 o
 ### Environment Setup
 
 1. Create a `.env` file by copying the provided example:
+
    ```
    cp .env.example .env
    ```
 
 2. By default, the example contains production settings:
+
    ```
    MENTRAOS_HOST=cloud.mentra.glass
    MENTRAOS_PORT=443
    MENTRAOS_SECURE=true
    ```
 
-3. For local development:
-   - If using an Android device, you can use either:
-     - The ADB tunnel: uncomment the localhost settings in `.env`
-     - Your computer's local IP: replace `localhost` with your IP address
-   - Ensure your device and computer are on the same network
-   - To use ADB tunnel: `adb reverse tcp:8002 tcp:8002`
+3. Clone the RTMP streaming library in this directory
+   ```
+   git clone git@github.com:Mentra-Community/StreamPackLite.git
+   cd StreamPackLite
+   git checkout working
+   ```
+
+### How to connect to Mentra Live with ADB
+
+Mentra Live suppports ADB over WiFi. The best way to access this is:
+
+1. Pair your Mentra Live in the MentraOS app
+2. Connect it to your local WiFi network in the MentraOS app
+3. Get its IP address from the "Glasses" screen in the MentraOS app
+4. On your computer that's on the same WiFi network, enter `adb connect {IP_ADDRESS}:5555`
 
 ### Build Notes
 
 - Must use Java SDK 17
-    - To set this, in Android Studio, go to Settings > Build, Execution, Deployment > Build Tools > Gradle, go to Gradle JDK and select version 17
+  - To set this, in Android Studio, go to Settings > Build, Execution, Deployment > Build Tools > Gradle, go to Gradle JDK and select version 17
 
 - asg_client currently depends on the "SmartGlassesManager" repo being next to it. In the future, it will be fully merged with asg_client and deleted.
 

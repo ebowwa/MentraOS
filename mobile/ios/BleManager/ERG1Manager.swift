@@ -71,13 +71,13 @@ extension Data {
 }
 
 public struct QuickNote: Equatable {
-  let id: UUID
-  let text: String
-  let timestamp: Date
-  
-  public static func == (lhs: QuickNote, rhs: QuickNote) -> Bool {
-    return lhs.id == rhs.id
-  }
+    let id: UUID
+    let text: String
+    let timestamp: Date
+
+    public static func == (lhs: QuickNote, rhs: QuickNote) -> Bool {
+        return lhs.id == rhs.id
+    }
 }
 
 struct BufferedCommand {
@@ -159,6 +159,7 @@ enum GlassesError: Error {
   
   @Published public var compressedVoiceData: Data = Data()
   @Published public var aiListening: Bool = false
+  @Published public var quickNotes: [QuickNote] = []
   @Published public var batteryLevel: Int = -1
   @Published public var caseBatteryLevel: Int = -1
   @Published public var leftBatteryLevel: Int = -1
@@ -522,6 +523,11 @@ enum GlassesError: Error {
       ]
       command.append(contentsOf: Array(textData))
       self.queueChunks([command])
+
+      // await sendTextWall(text)
+
+      // // await createQuickNoteIfNeeded(text)
+      // // await sendQuickNotesToGlasses()
     }
     
     // @@@@@@@@ just for testing:
@@ -547,7 +553,14 @@ enum GlassesError: Error {
     let chunks = textHelper.createTextWallChunks(text)
     queueChunks(chunks, sleepAfterMs: 10)
   }
-  
+
+  func createQuickNoteIfNeeded(_ text: String) async {
+    if quickNotes.count == 0 {
+      await addQuickNote(text)
+    } else {
+      await updateQuickNote(id: quickNotes[0].id, newText: text)
+    }
+  }
   
   @objc public func RN_sendDoubleTextWall(_ top: String, _ bottom: String) -> Void {
     let chunks = textHelper.createDoubleTextWallChunks(textTop: top, textBottom: bottom)
@@ -559,104 +572,104 @@ enum GlassesError: Error {
     //   await sendQuickNotesToGlasses()
     // }
   }
-  
+
   private func sendQuickNotesToGlasses() async {
-    //      guard let rightGlass = rightPeripheral,
-    //            let leftGlass = leftPeripheral,
-    //            let rightTxChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: rightGlass),
-    //            let leftTxChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: leftGlass) else {
-    //          return
-    //      }
-    
+//      guard let rightGlass = rightPeripheral,
+//            let leftGlass = leftPeripheral,
+//            let rightTxChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: rightGlass),
+//            let leftTxChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: leftGlass) else {
+//          return
+//      }
+
     // if !self.isHeadUp {
     //   return
     // }
-    
-    // First, clear all existing notes
-    //      for noteNumber in 1...2 {
+
+      // First, clear all existing notes
+//      for noteNumber in 1...2 {
     let noteNumber = 1
-    var command = Data()
-    command.append(Commands.QUICK_NOTE_ADD.rawValue)
-    command.append(0x10) // Fixed length for delete command
-    command.append(0x00) // Fixed byte
-    command.append(0xE0) // Version byte for delete
-    command.append(contentsOf: [0x03, 0x01, 0x00, 0x01, 0x00]) // Fixed bytes
-    command.append(UInt8(noteNumber)) // Note number to delete
-    command.append(contentsOf: [0x00, 0x01, 0x00, 0x01, 0x00, 0x00]) // Fixed bytes for delete
-    
-    //          // Send delete command to both glasses with proper timing
-    //          rightGlass.writeValue(command, for: rightTxChar, type: .withResponse)
-    //          try? await Task.sleep(nanoseconds: 50 * 1_000_000)
-    //          leftGlass.writeValue(command, for: leftTxChar, type: .withResponse)
-    //          try? await Task.sleep(nanoseconds: 150 * 1_000_000)
-    
-    // convert command to array of UInt8
-    let commandArray = command.map { $0 }
-    queueChunks([commandArray])
-    //      }
-    
-    // Then add all current notes
-    for (index, note) in quickNotes.prefix(4).enumerated() {
-      let slotNumber = index + 1
-      
-      guard let textData = note.text.data(using: .utf8),
-            let nameData = "Quick Note2".data(using: .utf8) else {
-        continue
+          var command = Data()
+          command.append(Commands.QUICK_NOTE_ADD.rawValue)
+          command.append(0x10) // Fixed length for delete command
+          command.append(0x00) // Fixed byte
+          command.append(0xE0) // Version byte for delete
+          command.append(contentsOf: [0x03, 0x01, 0x00, 0x01, 0x00]) // Fixed bytes
+          command.append(UInt8(noteNumber)) // Note number to delete
+          command.append(contentsOf: [0x00, 0x01, 0x00, 0x01, 0x00, 0x00]) // Fixed bytes for delete
+
+//          // Send delete command to both glasses with proper timing
+//          rightGlass.writeValue(command, for: rightTxChar, type: .withResponse)
+//          try? await Task.sleep(nanoseconds: 50 * 1_000_000)
+//          leftGlass.writeValue(command, for: leftTxChar, type: .withResponse)
+//          try? await Task.sleep(nanoseconds: 150 * 1_000_000)
+
+        // convert command to array of UInt8
+        let commandArray = command.map { $0 }
+        queueChunks([commandArray])
+//      }
+
+      // Then add all current notes
+      for (index, note) in quickNotes.prefix(4).enumerated() {
+          let slotNumber = index + 1
+
+          guard let textData = note.text.data(using: .utf8),
+                let nameData = "Quick Note2".data(using: .utf8) else {
+              continue
+          }
+
+          // Calculate payload length
+          let fixedBytes: [UInt8] = [0x03, 0x01, 0x00, 0x01, 0x00]
+          let versionByte = UInt8(Date().timeIntervalSince1970.truncatingRemainder(dividingBy: 256))
+          let payloadLength = 1 + // Fixed byte
+                             1 + // Version byte
+                             fixedBytes.count + // Fixed bytes sequence
+                             1 + // Note number
+                             1 + // Fixed byte 2
+                             1 + // Name length
+                             nameData.count + // Name bytes
+                             1 + // Text length
+                             1 + // Fixed byte after text length
+                             textData.count + // Text bytes
+                             2 // Final bytes
+
+          // Build command
+          var command = Data()
+          command.append(Commands.QUICK_NOTE_ADD.rawValue)
+          command.append(UInt8(payloadLength & 0xFF))
+          command.append(0x00) // Fixed byte
+          command.append(versionByte)
+          command.append(contentsOf: fixedBytes)
+          command.append(UInt8(slotNumber))
+          command.append(0x01) // Fixed byte 2
+          command.append(UInt8(nameData.count))
+          command.append(nameData)
+          command.append(UInt8(textData.count))
+          command.append(0x00) // Fixed byte
+          command.append(textData)
+
+          // convert command to array of UInt8
+          let commandArray = command.map { $0 }
+          queueChunks([commandArray])
       }
-      
-      // Calculate payload length
-      let fixedBytes: [UInt8] = [0x03, 0x01, 0x00, 0x01, 0x00]
-      let versionByte = UInt8(Date().timeIntervalSince1970.truncatingRemainder(dividingBy: 256))
-      let payloadLength = 1 + // Fixed byte
-      1 + // Version byte
-      fixedBytes.count + // Fixed bytes sequence
-      1 + // Note number
-      1 + // Fixed byte 2
-      1 + // Name length
-      nameData.count + // Name bytes
-      1 + // Text length
-      1 + // Fixed byte after text length
-      textData.count + // Text bytes
-      2 // Final bytes
-      
-      // Build command
-      var command = Data()
-      command.append(Commands.QUICK_NOTE_ADD.rawValue)
-      command.append(UInt8(payloadLength & 0xFF))
-      command.append(0x00) // Fixed byte
-      command.append(versionByte)
-      command.append(contentsOf: fixedBytes)
-      command.append(UInt8(slotNumber))
-      command.append(0x01) // Fixed byte 2
-      command.append(UInt8(nameData.count))
-      command.append(nameData)
-      command.append(UInt8(textData.count))
-      command.append(0x00) // Fixed byte
-      command.append(textData)
-      
-      // convert command to array of UInt8
-      let commandArray = command.map { $0 }
-      queueChunks([commandArray])
-    }
   }
-  
+
   public func addQuickNote(_ text: String) async {
-    let note = QuickNote(id: UUID(), text: text, timestamp: Date())
-    quickNotes.append(note)
+      let note = QuickNote(id: UUID(), text: text, timestamp: Date())
+      quickNotes.append(note)
   }
-  
+
   public func updateQuickNote(id: UUID, newText: String) async {
-    if let index = quickNotes.firstIndex(where: { $0.id == id }) {
-      quickNotes[index] = QuickNote(id: id, text: newText, timestamp: Date())
-    }
+      if let index = quickNotes.firstIndex(where: { $0.id == id }) {
+          quickNotes[index] = QuickNote(id: id, text: newText, timestamp: Date())
+      }
   }
-  
+
   public func removeQuickNote(id: UUID) async {
-    quickNotes.removeAll { $0.id == id }
+      quickNotes.removeAll { $0.id == id }
   }
-  
+
   public func clearQuickNotes() async {
-    quickNotes.removeAll()
+      quickNotes.removeAll()
   }
   
   public func setReadiness(left: Bool?, right: Bool?) {
@@ -799,7 +812,7 @@ enum GlassesError: Error {
       for i in 0..<chunks.count-1 {
         let chunk = chunks[i]
         await sendCommandToSideWithoutResponse(chunk, side: side)
-        try? await Task.sleep(nanoseconds: 20 * 1_000_000)// 8ms
+        try? await Task.sleep(nanoseconds: 8 * 1_000_000)// 8ms
       }
       
       let lastChunk = chunks.last!
@@ -939,6 +952,8 @@ enum GlassesError: Error {
     case .BLE_REQ_INIT:
       handleAck(from: peripheral, success: data[1] == CommandResponse.ACK.rawValue)
       handleInitResponse(from: peripheral, success: data[1] == CommandResponse.ACK.rawValue)
+    case .QUICK_NOTE_ADD:
+      handleAck(from: peripheral, success: data[1] == 0x10 || data[1] == 0x43)
     case .BLE_REQ_MIC_ON:
       handleAck(from: peripheral, success: data[1] == CommandResponse.ACK.rawValue)
     case .BRIGHTNESS:
@@ -1083,7 +1098,7 @@ enum GlassesError: Error {
         //          clearState()
         //        }
       default:
-        CoreCommsService.log("Received device order: \(data.subdata(in: 1..<data.count).hexEncodedString())")
+        // CoreCommsService.log("Received device order: \(data.subdata(in: 1..<data.count).hexEncodedString())")
         break
       }
     default:
