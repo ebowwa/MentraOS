@@ -26,7 +26,13 @@ import {
   RequestSettings,
   RtmpStreamStatus,
   SettingsUpdate,
-  Vad
+  Vad,
+  WebRTCOffer,
+  WebRTCAnswer,
+  WebRTCAudioStart,
+  WebRTCAudioStop,
+  WebRTCCapability,
+  WebRTCIceCandidate
 } from '@mentra/sdk';
 import UserSession from '../session/UserSession';
 import { logger as rootLogger } from '../logging/pino-logger';
@@ -165,18 +171,22 @@ export class GlassesWebSocketService {
 
 
   /**
-   * Handle binary message (audio data)
-   *
-   * @param userSession User session
-   * @param data Binary audio data
+   * Handle binary message (audio data) with WebRTC awareness
    */
   private async handleBinaryMessage(userSession: UserSession, data: WebSocket.Data): Promise<void> {
     try {
-      // Process audio data
-      // userSession.logger.debug({ service: SERVICE_NAME, data }, `Handling binary message for user: ${userSession.userId}`);
-      userSession.audioManager.processAudioData(data);
-      // userSession.logger.debug({ service: SERVICE_NAME }, `Processed binary message for user: ${userSession.userId}`);
-      // await sessionService.(userSession, data);
+      // Check if WebRTC is active - if so, log but don't process WebSocket audio
+      if (userSession.isWebRTCAudioActive()) {
+        userSession.logger.debug('Ignoring WebSocket audio - WebRTC is active');
+        return;
+      }
+
+      // Process WebSocket audio as usual (backwards compatibility)
+      // Avoid await to process audio data asynchronously to prevent out-of-order issues.
+      userSession.audioManager.processAudioData(data, false, 'websocket')
+      .catch((error) => {
+        userSession.logger.error( error , 'Error processing WebSocket audio data:');
+      });
     } catch (error) {
       userSession.logger.error('Error handling binary message:', error);
     }
@@ -390,6 +400,31 @@ export class GlassesWebSocketService {
           sessionService.relayMessageToApps(userSession, message);
           break;
 
+        //WebRTC messages.
+        case GlassesToCloudMessageType.WEBRTC_CAPABILITY:
+          await userSession.webRTCManager.handleWebRTCCapability(message as WebRTCCapability);
+          break;
+
+        case GlassesToCloudMessageType.WEBRTC_OFFER:
+          await userSession.webRTCManager.handleWebRTCOffer(message as WebRTCOffer);
+          break;
+
+        case GlassesToCloudMessageType.WEBRTC_ANSWER:
+          await userSession.webRTCManager.handleWebRTCAnswer(message as WebRTCAnswer);
+          break;
+
+        case GlassesToCloudMessageType.WEBRTC_ICE_CANDIDATE:
+          await userSession.webRTCManager.handleWebRTCIceCandidate(message as WebRTCIceCandidate);
+          break;
+
+        case GlassesToCloudMessageType.WEBRTC_AUDIO_START:
+          await userSession.webRTCManager.handleWebRTCAudioStart(message as WebRTCAudioStart);
+          break;
+
+        case GlassesToCloudMessageType.WEBRTC_AUDIO_STOP:
+          await userSession.webRTCManager.handleWebRTCAudioStop(message as WebRTCAudioStop);
+          break;
+
         // TODO(isaiah): Add other message type handlers as needed
         default:
           // For messages that don't need special handling, relay to Apps
@@ -473,13 +508,13 @@ export class GlassesWebSocketService {
       if (isSpeaking) {
         userSession.logger.info('🎙️ VAD detected speech - ensuring streams exist');
         userSession.isTranscribing = true;
-        
+
         // Simply ensure streams exist - creates new ones if needed, uses existing healthy ones
         await userSession.transcriptionManager.ensureStreamsExist();
       } else {
         userSession.logger.info('🤫 VAD detected silence - finalizing and cleaning up streams');
         userSession.isTranscribing = false;
-        
+
         // Finalize pending tokens first, then cleanup idle streams
         userSession.transcriptionManager.finalizePendingTokens();
         await userSession.transcriptionManager.cleanupIdleStreams();
@@ -487,7 +522,7 @@ export class GlassesWebSocketService {
     } catch (error) {
       userSession.logger.error({ error }, '❌ Error handling VAD state change');
       userSession.isTranscribing = false;
-      
+
       // On error, finalize tokens and cleanup streams
       // Next VAD speech will try to ensure streams exist again
       try {

@@ -1,4 +1,4 @@
-// src/message-types.ts
+// cloud/packages/sdk/src/message-types.ts
 
 import { StreamType } from "./streams";
 
@@ -25,16 +25,13 @@ export enum GlassesToCloudMessageType {
   RTMP_STREAM_STATUS = StreamType.RTMP_STREAM_STATUS,
   KEEP_ALIVE_ACK = 'keep_alive_ack',
 
-  // OPEN_DASHBOARD = 'open_dashboard',
-  // Events and data
-  // BUTTON_PRESS = 'button_press',
-  // HEAD_POSITION = 'head_position',
-  // GLASSES_BATTERY_UPDATE = 'glasses_battery_update',
-  // PHONE_BATTERY_UPDATE = 'phone_battery_update',
-  // GLASSES_CONNECTION_STATE = 'glasses_connection_state',
-  // LOCATION_UPDATE = 'location_update',
-  // PHONE_NOTIFICATION = 'phone_notification',
-  // PHONE_NOTIFICATION_DISMISSED = 'phone_notification_dismissed'
+  // New WebRTC message types
+  WEBRTC_OFFER = 'webrtc_offer',
+  WEBRTC_ANSWER = 'webrtc_answer',
+  WEBRTC_ICE_CANDIDATE = 'webrtc_ice_candidate',
+  WEBRTC_CAPABILITY = 'webrtc_capability',
+  WEBRTC_AUDIO_START = 'webrtc_audio_start',
+  WEBRTC_AUDIO_STOP = 'webrtc_audio_stop',
 
   BUTTON_PRESS = StreamType.BUTTON_PRESS,
   HEAD_POSITION = StreamType.HEAD_POSITION,
@@ -76,6 +73,13 @@ export enum CloudToGlassesMessageType {
   STOP_RTMP_STREAM = 'stop_rtmp_stream',
   KEEP_RTMP_STREAM_ALIVE = 'keep_rtmp_stream_alive',
 
+  // New WebRTC message types
+  WEBRTC_OFFER = 'webrtc_offer',
+  WEBRTC_ANSWER = 'webrtc_answer',
+  WEBRTC_ICE_CANDIDATE = 'webrtc_ice_candidate',
+  WEBRTC_READY = 'webrtc_ready',
+  WEBRTC_ERROR = 'webrtc_error',
+
   // Dashboard updates
   DASHBOARD_MODE_CHANGE = 'dashboard_mode_change',
   DASHBOARD_ALWAYS_ON_CHANGE = 'dashboard_always_on_change',
@@ -105,7 +109,7 @@ export enum AppToCloudMessageType {
   // RTMP streaming
   RTMP_STREAM_REQUEST = 'rtmp_stream_request',
   RTMP_STREAM_STOP = 'rtmp_stream_stop',
-  
+
   // Managed RTMP streaming
   MANAGED_STREAM_REQUEST = 'managed_stream_request',
   MANAGED_STREAM_STOP = 'managed_stream_stop',
@@ -114,7 +118,7 @@ export enum AppToCloudMessageType {
   DASHBOARD_CONTENT_UPDATE = 'dashboard_content_update',
   DASHBOARD_MODE_CHANGE = 'dashboard_mode_change',
   DASHBOARD_SYSTEM_UPDATE = 'dashboard_system_update',
-  
+
   // App-to-App Communication
   APP_BROADCAST_MESSAGE = 'app_broadcast_message',
   APP_DIRECT_MESSAGE = 'app_direct_message',
@@ -155,7 +159,7 @@ export enum CloudToAppMessageType {
 
   // General purpose messaging
   CUSTOM_MESSAGE = 'custom_message',
-  
+
   // App-to-App Communication Responses
   APP_MESSAGE_RECEIVED = 'app_message_received',
   APP_USER_JOINED = 'app_user_joined',

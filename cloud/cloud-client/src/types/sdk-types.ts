@@ -1,3 +1,5 @@
+// cloud/cloud-client/src/types/sdk-types.ts
+
 /**
  * Re-exported types from the AugmentOS SDK for external use
  * This allows the client to expose necessary types without requiring
@@ -5,7 +7,7 @@
  */
 
 // Message types from glasses to cloud
-export type GlassesToCloudMessageType = 
+export type GlassesToCloudMessageType =
   | 'connection_init'
   | 'start_app'
   | 'stop_app'
@@ -15,16 +17,29 @@ export type GlassesToCloudMessageType =
   | 'button_press'
   | 'core_status_update'
   | 'glasses_connection_state'
-  | 'request_settings';
+  | 'request_settings'
+  // WebRTC related messages
+  | 'webrtc_offer'
+  | 'webrtc_answer'
+  | 'webrtc_ice_candidate'
+  | 'webrtc_capability'
+  | 'webrtc_audio_start'
+  | 'webrtc_audio_stop';
 
 // Message types from cloud to glasses  
-export type CloudToGlassesMessageType = 
+export type CloudToGlassesMessageType =
   | 'connection_ack'
   | 'connection_error'
   | 'display_event'
   | 'app_state_change'
   | 'microphone_state_change'
-  | 'settings_update';
+  | 'settings_update'
+  // WebRTC related messages
+  | 'webrtc_offer'
+  | 'webrtc_answer'
+  | 'webrtc_ice_candidate'
+  | 'webrtc_ready'
+  | 'webrtc_error';
 
 // Layout types
 export enum LayoutType {
@@ -97,4 +112,50 @@ export interface DisplayRequest {
   layout: Layout;
   durationMs?: number;
   forceDisplay?: boolean;
+}
+
+// WebRTC-specific message interfaces
+export interface WebRTCCapability extends GlassesToCloudMessage {
+  type: 'webrtc_capability';
+  supported: boolean;
+  clientVersion?: string;
+}
+
+export interface WebRTCOffer extends BaseMessage {
+  type: 'webrtc_offer';
+  sdp: string;
+  sessionId: string;
+}
+
+export interface WebRTCAnswer extends BaseMessage {
+  type: 'webrtc_answer';
+  sdp: string;
+  sessionId: string;
+}
+
+export interface WebRTCIceCandidate extends BaseMessage {
+  type: 'webrtc_ice_candidate';
+  candidate: string;
+  sdpMLineIndex: number;
+  sdpMid: string;
+  sessionId: string;
+}
+
+export interface WebRTCAudioStart extends GlassesToCloudMessage {
+  type: 'webrtc_audio_start';
+}
+
+export interface WebRTCAudioStop extends GlassesToCloudMessage {
+  type: 'webrtc_audio_stop';
+}
+
+export interface WebRTCReady extends CloudToGlassesMessage {
+  type: 'webrtc_ready';
+  sessionId: string;
+}
+
+export interface WebRTCError extends CloudToGlassesMessage {
+  type: 'webrtc_error';
+  message: string;
+  code?: string;
 }

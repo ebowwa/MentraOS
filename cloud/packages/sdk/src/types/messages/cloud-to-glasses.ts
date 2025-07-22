@@ -4,6 +4,7 @@ import { BaseMessage } from './base';
 import { CloudToGlassesMessageType, ResponseTypes, UpdateTypes } from '../message-types';
 import { UserSession } from '../user-session';
 import { Layout } from '../layouts';
+import { WebRTCCapability, WebRTCOffer, WebRTCAnswer, WebRTCIceCandidate, WebRTCAudioStart, WebRTCAudioStop } from './webrtc';
 
 //===========================================================
 // Responses
@@ -194,7 +195,14 @@ export type CloudToGlassesMessage =
   | StopRtmpStream
   | KeepRtmpStreamAlive
   | SetLocationTier
-  | RequestSingleLocation;
+  | RequestSingleLocation
+    // New WebRTC message types
+  | WebRTCCapability
+  | WebRTCOffer
+  | WebRTCAnswer
+  | WebRTCIceCandidate
+  | WebRTCAudioStart
+  | WebRTCAudioStop;
 
 //===========================================================
 // Type guards

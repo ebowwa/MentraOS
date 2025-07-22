@@ -17,6 +17,9 @@ export * from './types/messages/app-to-cloud';
 export * from "./utils/bitmap-utils";
 export * from "./utils/animation-utils";
 
+// WebRTC messages
+export * from './types/messages/webrtc';
+
 // Export cloud-to-app but exclude the conflicting type guards
 export {
   // Types

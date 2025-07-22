@@ -4,6 +4,7 @@ import { BaseMessage } from './base';
 import { GlassesToCloudMessageType, ControlActionTypes, EventTypes } from '../message-types';
 import { StreamType } from '../streams';
 import { PhotoRequest } from './app-to-cloud';
+import { WebRTCCapability, WebRTCOffer, WebRTCAnswer, WebRTCIceCandidate, WebRTCAudioStart, WebRTCAudioStop } from './webrtc';
 
 //===========================================================
 // Control actions
@@ -278,7 +279,14 @@ export type GlassesToCloudMessage =
   | KeepAliveAck
   | PhotoResponse
   | PhotoTaken
-  | AudioPlayResponse;
+  | AudioPlayResponse
+    // New WebRTC message types
+  | WebRTCCapability
+  | WebRTCOffer
+  | WebRTCAnswer
+  | WebRTCIceCandidate
+  | WebRTCAudioStart
+  | WebRTCAudioStop;
 
 //===========================================================
 // Type guards

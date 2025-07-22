@@ -47,8 +47,6 @@ export interface OrderedAudioBuffer {
 export class AudioManager {
   private userSession: UserSession;
   private logger: Logger;
-  private audioSource: 'websocket' | 'webrtc' = 'websocket';
-  private webrtcAudioStream?: any; // WebRTC audio stream reference
 
   // LC3 decoding service
   private lc3Service?: any;
@@ -67,6 +65,9 @@ export class AudioManager {
   private readonly LOG_AUDIO = false;
   private readonly DEBUG_AUDIO = false;
   private readonly IS_LC3 = false;
+  // WebRTC audio state
+  private audioSource: 'websocket' | 'webrtc' = 'websocket';
+  private webrtcAudioEnabled: boolean = false;
 
   constructor(userSession: UserSession) {
     this.userSession = userSession;
@@ -106,43 +107,65 @@ export class AudioManager {
   }
 
   /**
-   * Set the audio source (websocket or webrtc)
-   *
-   * @param source The audio source to set
+   * Set the audio source for this session
    */
-  setAudioSource(source: 'websocket' | 'webrtc') {
+  setAudioSource(source: 'websocket' | 'webrtc'): void {
+    const previousSource = this.audioSource;
     this.audioSource = source;
-    this.logger.info(`Switched audio source to: ${source}`);
+
+    this.logger.info(`Audio source changed: ${previousSource} → ${source}`);
+
+    if (source === 'webrtc') {
+      this.webrtcAudioEnabled = true;
+    } else {
+      this.webrtcAudioEnabled = false;
+    }
+  }
+
+  /** 
+  * Get the current audio source
+  */
+  getAudioSource(): 'websocket' | 'webrtc' {
+    return this.audioSource;
   }
 
   /**
-   * Process incoming audio data
-   *
-   * @param audioData The audio data to process
-   * @param isLC3 Whether the audio is LC3 encoded
-   * @returns Processed audio data
+   * Check if WebRTC audio is enabled
    */
+  isWebRTCEnabled(): boolean {
+    return this.webrtcAudioEnabled;
+  }
+
+  /**
+ * Process incoming audio data with source awareness
+ */
   async processAudioData(
     audioData: ArrayBuffer | any,
     isLC3 = this.IS_LC3,
+    source: 'websocket' | 'webrtc' = this.audioSource
   ): Promise<ArrayBuffer | void> {
     try {
+      // If WebRTC is active and this is WebSocket data, ignore it
+      if (this.webrtcAudioEnabled && source === 'websocket') {
+        this.logger.debug('Ignoring WebSocket audio data - WebRTC is active');
+        return;
+      }
+
+      // If this is WebRTC audio but we're not expecting it, log warning
+      if (source === 'webrtc' && !this.webrtcAudioEnabled) {
+        this.logger.warn('Received WebRTC audio data but WebRTC not enabled');
+        return;
+      }
+
+      // Log audio source for debugging (can be removed later)
+      if (this.LOG_AUDIO) {
+        this.logger.debug(`Processing audio from source: ${source}`);
+      }
+
       // Update the last audio timestamp
       this.userSession.lastAudioTimestamp = Date.now();
 
-      // Add to recent audio buffer
-      // this.addToRecentBuffer(audioData);
-
-      // Lazy initialize the audio writer if needed
-      // this.initializeAudioWriterIfNeeded();
-
-      // Write raw LC3 audio for debugging if applicable
-      // if (this.DEBUG_AUDIO && isLC3 && audioData) {
-      //   await this.audioWriter?.writeLC3(audioData);
-      // }
-
-      // Process the audio data
-      // let processedAudioData = await this.processAudioInternal(audioData, isLC3);
+      // Process the audio data (existing logic remains the same)
       const processedAudioData = audioData;
 
       // Send to transcription services
@@ -151,18 +174,88 @@ export class AudioManager {
         this.userSession.transcriptionManager.feedAudio(processedAudioData);
 
         // Relay to Apps if there are subscribers
-        // Note: Using subscriptionService instead of subscriptionManager
-        // if (subscriptionService.hasMediaSubscriptions(this.userSession.sessionId)) {
         this.relayAudioToApps(processedAudioData);
-        // }
       }
 
       return processedAudioData;
     } catch (error) {
-      this.logger.error({ error }, `Error processing audio data`);
+      this.logger.error({ error, source }, `Error processing audio data from ${source}`);
       return undefined;
     }
   }
+
+  /**
+ * Process WebRTC audio data specifically
+ */
+  async processWebRTCAudioData(audioData: ArrayBuffer): Promise<void> {
+    if (!this.webrtcAudioEnabled) {
+      this.logger.warn('Received WebRTC audio but WebRTC not enabled');
+      return;
+    }
+
+    // Process with WebRTC source indicator
+    await this.processAudioData(audioData, false, 'webrtc');
+  }
+
+  /**
+ * Get current audio source info for debugging
+ */
+  getAudioSourceInfo(): object {
+    return {
+      currentSource: this.audioSource,
+      webrtcEnabled: this.webrtcAudioEnabled,
+      lastAudioTimestamp: this.userSession.lastAudioTimestamp,
+      isTranscribing: this.userSession.isTranscribing
+    };
+  }
+  /**
+   * Process incoming audio data
+   *
+   * @param audioData The audio data to process
+   * @param isLC3 Whether the audio is LC3 encoded
+   * @returns Processed audio data
+   */
+  // async processAudioData(
+  //   audioData: ArrayBuffer | any,
+  //   isLC3 = this.IS_LC3,
+  // ): Promise<ArrayBuffer | void> {
+  //   try {
+  //     // Update the last audio timestamp
+  //     this.userSession.lastAudioTimestamp = Date.now();
+
+  //     // Add to recent audio buffer
+  //     // this.addToRecentBuffer(audioData);
+
+  //     // Lazy initialize the audio writer if needed
+  //     // this.initializeAudioWriterIfNeeded();
+
+  //     // Write raw LC3 audio for debugging if applicable
+  //     // if (this.DEBUG_AUDIO && isLC3 && audioData) {
+  //     //   await this.audioWriter?.writeLC3(audioData);
+  //     // }
+
+  //     // Process the audio data
+  //     // let processedAudioData = await this.processAudioInternal(audioData, isLC3);
+  //     const processedAudioData = audioData;
+
+  //     // Send to transcription services
+  //     if (processedAudioData) {
+  //       // Feed to TranscriptionManager
+  //       this.userSession.transcriptionManager.feedAudio(processedAudioData);
+
+  //       // Relay to Apps if there are subscribers
+  //       // Note: Using subscriptionService instead of subscriptionManager
+  //       // if (subscriptionService.hasMediaSubscriptions(this.userSession.sessionId)) {
+  //       this.relayAudioToApps(processedAudioData);
+  //       // }
+  //     }
+
+  //     return processedAudioData;
+  //   } catch (error) {
+  //     this.logger.error({ error }, `Error processing audio data`);
+  //     return undefined;
+  //   }
+  // }
 
   /**
    * Process audio data internally
@@ -462,6 +555,11 @@ export class AudioManager {
     } catch (error) {
       this.logger.error(`Error disposing AudioManager:`, error);
     }
+
+        // Reset WebRTC state
+    this.audioSource = 'websocket';
+    this.webrtcAudioEnabled = false;
+    this.logger.info("AudioManager disposed");
   }
 }
 

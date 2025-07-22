@@ -1,3 +1,5 @@
+// cloud/packages/cloud/src/services/session/UserSession.ts
+
 /**
  * @fileoverview UserSession class that encapsulates all session-related
  * functionality and state for the server.
@@ -21,6 +23,7 @@ import { PosthogService } from '../logging/posthog.service';
 import { TranscriptionManager } from './transcription/TranscriptionManager';
 import { ManagedStreamingExtension } from '../streaming/ManagedStreamingExtension';
 import { getCapabilitiesForModel } from '../../config/hardware-capabilities';
+import WebRTCManager from './WebRTCManager';
 
 export const LOG_PING_PONG = false; // Set to true to enable detailed ping/pong logging
 /**
@@ -70,6 +73,7 @@ export class UserSession {
   public videoManager: VideoManager;
   public photoManager: PhotoManager;
   public managedStreamingExtension: ManagedStreamingExtension;
+  public webRTCManager: WebRTCManager;
 
   // Reconnection
   public _reconnectionTimers: Map<string, NodeJS.Timeout>;
@@ -104,6 +108,7 @@ export class UserSession {
     this.photoManager = new PhotoManager(this);
     this.videoManager = new VideoManager(this);
     this.managedStreamingExtension = new ManagedStreamingExtension(this.logger);
+    this.webRTCManager = new WebRTCManager(this);
 
     this._reconnectionTimers = new Map();
     this.startTime = new Date();
@@ -295,6 +300,10 @@ export class UserSession {
     }
   }
 
+  isWebRTCAudioActive(): boolean {
+    return this.webRTCManager.isActive() && this.audioManager.getAudioSource() === 'webrtc';
+  }
+
   /**
    * Dispose of all resources and remove from sessions map
    */
@@ -324,7 +333,7 @@ export class UserSession {
     if (this.displayManager) this.displayManager.dispose();
     if (this.dashboardManager) this.dashboardManager.dispose();
     if (this.transcriptionManager) this.transcriptionManager.dispose();
-    // if (this.heartbeatManager) this.heartbeatManager.dispose();
+    if (this.webRTCManager) this.webRTCManager.dispose(); // Add this line
     if (this.videoManager) this.videoManager.dispose();
     if (this.photoManager) this.photoManager.dispose();
     if (this.managedStreamingExtension) this.managedStreamingExtension.dispose();
