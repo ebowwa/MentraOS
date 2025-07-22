@@ -196,11 +196,12 @@ export class SonioxTranscriptionProvider implements TranscriptionProvider {
     // Soniox supports two-way translation between many language pairs
     // For now, implement common pairs - this could be expanded
     const supportedPairs = new Map([
-      ['en-US', ['es-ES', 'es-US', 'fr-FR', 'de-DE', 'it-IT', 'pt-BR', 'ja-JP', 'ko-KR', 'zh-CN']],
-      ['es-ES', ['en-US', 'fr-FR', 'de-DE', 'it-IT', 'pt-BR']],
-      ['es-US', ['en-US', 'fr-FR', 'de-DE', 'it-IT', 'pt-BR']],
-      ['fr-FR', ['en-US', 'es-ES', 'es-US', 'de-DE', 'it-IT', 'pt-BR']],
-      ['de-DE', ['en-US', 'es-ES', 'es-US', 'fr-FR', 'it-IT', 'pt-BR']],
+      ['en-US', ['es-ES', 'es-US', 'es-MX', 'fr-FR', 'de-DE', 'it-IT', 'pt-BR', 'ja-JP', 'ko-KR', 'zh-CN']],
+      ['es-ES', ['en-US', 'es-US', 'es-MX', 'fr-FR', 'de-DE', 'it-IT', 'pt-BR']],
+      ['es-US', ['en-US', 'es-ES', 'es-MX', 'fr-FR', 'de-DE', 'it-IT', 'pt-BR']],
+      ['es-MX', ['en-US', 'es-ES', 'es-US', 'fr-FR', 'de-DE', 'it-IT', 'pt-BR']],
+      ['fr-FR', ['en-US', 'es-ES', 'es-US', 'es-MX', 'de-DE', 'it-IT', 'pt-BR']],
+      ['de-DE', ['en-US', 'es-ES', 'es-US', 'es-MX', 'fr-FR', 'it-IT', 'pt-BR']],
       ['zh-CN', ['en-US', 'ja-JP', 'ko-KR']],
       ['ja-JP', ['en-US', 'zh-CN', 'ko-KR']],
       ['ko-KR', ['en-US', 'zh-CN', 'ja-JP']]
@@ -217,11 +218,12 @@ export class SonioxTranscriptionProvider implements TranscriptionProvider {
   getLanguageCapabilities(): ProviderLanguageCapabilities {
     // Build translation pairs map from our validateLanguagePair logic
     const translationPairs = new Map([
-      ['en-US', ['es-ES', 'es-US', 'fr-FR', 'de-DE', 'it-IT', 'pt-BR', 'ja-JP', 'ko-KR', 'zh-CN']],
-      ['es-ES', ['en-US', 'fr-FR', 'de-DE', 'it-IT', 'pt-BR']],
-      ['es-US', ['en-US', 'fr-FR', 'de-DE', 'it-IT', 'pt-BR']],
-      ['fr-FR', ['en-US', 'es-ES', 'es-US', 'de-DE', 'it-IT', 'pt-BR']],
-      ['de-DE', ['en-US', 'es-ES', 'es-US', 'fr-FR', 'it-IT', 'pt-BR']],
+      ['en-US', ['es-ES', 'es-US', 'es-MX', 'fr-FR', 'de-DE', 'it-IT', 'pt-BR', 'ja-JP', 'ko-KR', 'zh-CN']],
+      ['es-ES', ['en-US', 'es-US', 'es-MX', 'fr-FR', 'de-DE', 'it-IT', 'pt-BR']],
+      ['es-US', ['en-US', 'es-ES', 'es-MX', 'fr-FR', 'de-DE', 'it-IT', 'pt-BR']],
+      ['es-MX', ['en-US', 'es-ES', 'es-US', 'fr-FR', 'de-DE', 'it-IT', 'pt-BR']],
+      ['fr-FR', ['en-US', 'es-ES', 'es-US', 'es-MX', 'de-DE', 'it-IT', 'pt-BR']],
+      ['de-DE', ['en-US', 'es-ES', 'es-US', 'es-MX', 'fr-FR', 'it-IT', 'pt-BR']],
       ['zh-CN', ['en-US', 'ja-JP', 'ko-KR']],
       ['ja-JP', ['en-US', 'zh-CN', 'ko-KR']],
       ['ko-KR', ['en-US', 'zh-CN', 'ja-JP']]
