@@ -1,7 +1,7 @@
 "on":
   push:
     branches:
-      - transcription-manager
+      - soniox/fix-bugs
 name: Deploy cloud-isaiah
 jobs:
   porter-deploy:
@@ -16,7 +16,7 @@ jobs:
         uses: porter-dev/setup-porter@v0.1.0
       - name: Deploy stack
         timeout-minutes: 30
-        run: exec porter apply -f ./augmentos_cloud/porter.yaml
+        run: exec porter apply -f ./cloud/porter.yaml
         env:
           PORTER_APP_NAME: cloud-isaiah
           PORTER_CLUSTER: "4965"

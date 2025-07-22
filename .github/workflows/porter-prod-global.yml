@@ -21,7 +21,7 @@ jobs:
 
       - name: Deploy to east-asia
         timeout-minutes: 30
-        run: exec porter apply -f ./augmentos_cloud/porter.yaml
+        run: exec porter apply -f ./cloud/porter.yaml
         env:
           PORTER_APP_NAME: cloud-prod
           NODE_ENV: production
@@ -50,7 +50,7 @@ jobs:
 
       - name: Deploy stack to Production
         timeout-minutes: 30
-        run: exec porter apply -f ./augmentos_cloud/porter.yaml
+        run: exec porter apply -f ./cloud/porter.yaml
         env:
           PORTER_APP_NAME: cloud-prod
           NODE_ENV: production

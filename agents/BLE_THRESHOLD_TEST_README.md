@@ -57,7 +57,7 @@ private static final int MAX_MISSED_PONGS = 3; // Failure after 3 missed pongs
 ## Running the Test
 
 1. **Enable Test**: Ensure `BLE_THRESHOLD_TEST_ENABLED = true` in MentraLiveSGC.java
-2. **Build & Deploy**: Build augmentos_manager and install on phone
+2. **Build & Deploy**: Build `mobile` and install on phone
 3. **Connect Glasses**: Connect Mentra Live glasses via the app
 4. **Monitor Logs**: Use `adb logcat | grep "BLE TEST"` to see test output
 5. **Wait for Failure**: Test will run until BLE receive fails (~5-7 minutes based on RTMP data)

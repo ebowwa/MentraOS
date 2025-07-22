@@ -1,9 +1,9 @@
-name: AugmentOS Manager Jest Tests
+name: Mobile App Jest Tests
 
 on:
   pull_request:
     paths:
-      - 'augmentos_manager/**'
+      - 'mobile/**'
       - '.github/workflows/augmentos-manager-jest.yml'
   workflow_dispatch:
 
@@ -15,19 +15,24 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '18'
-          cache: 'npm'
-          cache-dependency-path: augmentos_manager/package-lock.json
+          cache: 'pnpm'
+          cache-dependency-path: mobile/package.json
 
       - name: Install dependencies
-        working-directory: ./augmentos_manager
-        run: npm ci
+        working-directory: ./mobile
+        run: pnpm install --no-frozen-lockfile
 
       - name: Run Jest tests
-        working-directory: ./augmentos_manager
-        run: npm run test
+        working-directory: ./mobile
+        run: pnpm test
         env:
           CI: true

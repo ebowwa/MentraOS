@@ -5,8 +5,8 @@ name: Test AugmentOS Cloud ☁️
 on:
   push:
     paths:
-      - 'augmentos_cloud/**'
-      - '.github/workflows/augmentos_cloud.yml'
+      - 'cloud/**'
+      - '.github/workflows/cloud.yml'
 
 jobs:
   build_and_test:
@@ -39,19 +39,19 @@ jobs:
           # Path to Bun's global package cache on the runner
           path: ~/.bun/install/cache
           # Key includes OS and lockfile hash. If bun.lockb (lockfile) hasn't changed, cache hits.
-          key: ${{ runner.os }}-bun-${{ hashFiles('augmentos_cloud/bun.lockb') }}
+          key: ${{ runner.os }}-bun-${{ hashFiles('cloud/bun.lockb') }}
           # In case of partial match, allow restore with just OS identifier (fallback).
           restore-keys: |
             ${{ runner.os }}-bun-
       # ^ Uses GitHub cache to store Bun's package cache for faster installs
 
       - name: Install Dependencies
-        working-directory: augmentos_cloud
+        working-directory: cloud
         run: bun run setup-deps
 
       # 3. build other projects
       - name: Build all projects
-        working-directory: augmentos_cloud
+        working-directory: cloud
         run: bun run build
 
       # ^ Installs NPM packages. Bun uses its lockfile to ensure deterministic installs.
@@ -59,21 +59,21 @@ jobs:
 
       # 5. Run linter to ensure code quality
       #- name: Lint code
-      #  working-directory: augmentos_cloud
+      #  working-directory: cloud
       #  run: bun run lint
       # ^ Runs the lint script (assumes package.json has a "lint" script or use bunx directly for ESLint).
       # Linting is done before tests to fail fast on syntax/style issues&#8203;:contentReference[oaicite:17]{index=17}.
 
       # 6. Run tests to verify functionality
       - name: Run tests
-        working-directory: augmentos_cloud/packages/cloud
+        working-directory: cloud/packages/cloud
         run: bun run test
       # ^ Executes the test suite (e.g., via Jest, Bun's built-in test runner, or another framework).
       # If any tests fail, the job (and workflow) will fail, preventing deployment.
 
       # 7. (Optional) Build step for production
       #- name: Build project
-      #  working-directory: augmentos_cloud
+      #  working-directory: cloud
       #  run: bun run build
       # ^ If the server requires a build (e.g., TypeScript compilation or bundling), do it here.
       # If not needed, this step can be removed or left as a no-op.
@@ -83,4 +83,4 @@ jobs:
       #   uses: actions/upload-artifact@v3
       #   with:
       #     name: augmentos_build
-      #     path: augmentos_cloud/**
+      #     path: cloud/**
