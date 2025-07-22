@@ -3,6 +3,7 @@ package com.augmentos.augmentos_core.smarterglassesmanager.speechrecognition;
 import android.content.Context;
 import android.util.Log;
 
+import com.augmentos.augmentos_core.enums.SpeechRequiredDataType;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.AudioChunkNewEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.BypassVadForDebuggingEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.LC3AudioChunkNewEvent;
@@ -29,7 +30,7 @@ public class SpeechRecSwitchSystem implements AudioProcessingCallback {
         this.microphoneState = true;
     }
 
-    public void microphoneStateChanged(boolean state, List<String> requiredData){
+    public void microphoneStateChanged(boolean state, List<SpeechRequiredDataType> requiredData){
         microphoneState = state;
         if (speechRecFramework != null){
             speechRecFramework.microphoneStateChanged(state, requiredData);

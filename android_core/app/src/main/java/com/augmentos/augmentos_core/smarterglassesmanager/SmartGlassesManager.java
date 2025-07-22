@@ -23,6 +23,7 @@ import com.augmentos.augmentos_core.LocationSystem;
 import com.augmentos.augmentos_core.MainActivity;
 import com.augmentos.augmentos_core.R;
 import com.augmentos.augmentos_core.WindowManagerWithTimeouts;
+import com.augmentos.augmentos_core.enums.SpeechRequiredDataType;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.BypassVadForDebuggingEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.NewAsrLanguagesEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.SmartGlassesConnectionEvent;
@@ -733,7 +734,7 @@ public class SmartGlassesManager extends Service {
     }
 
 
-    public void changeMicrophoneState(boolean isMicrophoneEnabled, List<String> requiredData) {
+    public void changeMicrophoneState(boolean isMicrophoneEnabled, List<SpeechRequiredDataType> requiredData) {
         Log.d(TAG, "Changing microphone state to " + isMicrophoneEnabled);
 
         if (smartGlassesRepresentative == null) {

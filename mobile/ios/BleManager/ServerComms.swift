@@ -13,7 +13,7 @@ protocol ServerCommsCallback {
   func onAppStateChange(_ apps: [ThirdPartyCloudApp]/*, _ whatToStream: [String]*/)
   func onConnectionError(_ error: String)
   func onAuthError()
-  func onMicrophoneStateChange(_ isEnabled: Bool, _ requiredData: [String])
+  func onMicrophoneStateChange(_ isEnabled: Bool, _ requiredData: [SpeechRequiredDataType])
   func onDisplayEvent(_ event: [String: Any])
   func onRequestSingle(_ dataType: String)
   func onStatusUpdate(_ status: [String: Any])
@@ -488,16 +488,24 @@ class ServerComms {
       CoreCommsService.log("ServerComms: microphone_state_change: \(msg)")
       let isMicrophoneEnabled = msg["isMicrophoneEnabled"] as? Bool ?? true
       
-      // Parse requiredData as JSON array ["pcm", "transcription", ...]
-      var requiredData: [String] = []
+      var requiredDataStrings: [String] = []
       if let requiredDataArray = msg["requiredData"] as? [String] {
-        requiredData = requiredDataArray
+        requiredDataStrings = requiredDataArray
       } else if let requiredDataArray = msg["requiredData"] as? [Any] {
         // Handle case where it might come as mixed array
-        requiredData = requiredDataArray.compactMap { $0 as? String }
+        requiredDataStrings = requiredDataArray.compactMap { $0 as? String }
       }
       
-      CoreCommsService.log("ServerComms: requiredData = \(requiredData)")
+      // Convert string array to enum array
+      let requiredData = SpeechRequiredDataType.fromStringArray(requiredDataStrings)
+
+      // Treat empty array as PCM only
+      if requiredData.isEmpty {
+        requiredData.append(.PCM)
+      }
+      
+      CoreCommsService.log("ServerComms: requiredData = \(requiredDataStrings)")
+
       if let callback = serverCommsCallback {
         callback.onMicrophoneStateChange(isMicrophoneEnabled, requiredData)
       }

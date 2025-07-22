@@ -4,6 +4,7 @@ import android.content.Context;
 import android.util.Log;
 
 import com.augmentos.augmentos_core.augmentos_backend.ServerComms;
+import com.augmentos.augmentos_core.enums.SpeechRequiredDataType;
 import com.augmentos.augmentos_core.smarterglassesmanager.SmartGlassesManager;
 import com.augmentos.augmentos_core.smarterglassesmanager.speechrecognition.AsrStreamKey;
 import com.augmentos.augmentos_core.smarterglassesmanager.speechrecognition.SpeechRecFramework;
@@ -51,6 +52,10 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
 
     // Sherpa ONNX Transcriber
     private SherpaOnnxTranscriber sherpaTranscriber;
+    
+    // Backend data sending control flags
+    private volatile boolean shouldSendPcmToBackend = true;
+    private volatile boolean shouldSendTranscriptionToBackend = false;
 
     private SpeechRecAugmentos(Context context) {
         this.mContext = context;
@@ -115,7 +120,7 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
     private void sendFormattedTranscriptionToBackend(String text, boolean isFinal, long sessionStartTime) {
         try {
             JSONObject transcription = new JSONObject();
-            transcription.put("type", "transcription");
+            transcription.put("type", "local_transcription");
             transcription.put("text", text);
             transcription.put("isFinal", isFinal);
             
@@ -353,11 +358,12 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
 
         if (sendTranscriptionToBackend) {
             if (bypassVadForDebugging || isSpeaking) {
-                // TODO: Integrate transcription into this.
-                // Pass this audio to the sherpa stt which will send it to the backend
-                // LC3 audio can't be directly used with Sherpa ONNX
-                // It would need to be decoded to PCM first
-                // This would be handled in ServerComms when LC3 chunks are received
+                if (sherpaTranscriber != null) {
+                    // TODO: Verify whether this would work properly
+                    // Invoking this because same sendAudioChunk handling in servercomms
+                    // So assuming this would also work
+                    sherpaTranscriber.acceptAudio(LC3audioChunk);
+                }
             }
         }
     }
@@ -470,7 +476,7 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
      * @param state true if microphone is on, false otherwise
      * @param requiredData List of required data
      */
-    public void microphoneStateChanged(boolean state, List<String> requiredData){
+    public void microphoneStateChanged(boolean state, List<SpeechRequiredDataType> requiredData){
         // Pass to VAD
         if (vadPolicy != null){
             vadPolicy.microphoneStateChanged(state);
@@ -481,6 +487,23 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
             sherpaTranscriber.microphoneStateChanged(state);
         }
 
+        // Set shouldSendPcmToBackend and shouldSendTranscriptionToBackend based on required data
+        // if state is PCM_OR_TRANS then based on the bandwidth of the internet if it falls below certain threshold decide to send PCM or Transcription
+        if (requiredData.contains(SpeechRequiredDataType.PCM_OR_TRANS)) {
+            // TODO: Implement bandwidth detection logic
+            // For now, default to transcription as it's more bandwidth efficient
+            // In the future, check network quality and decide:
+            // - If high bandwidth: send PCM for better quality
+            // - If low bandwidth: send transcription for efficiency
+            // For now default to pcm
+            shouldSendPcmToBackend = state;
+        }
+        if (requiredData.contains(SpeechRequiredDataType.PCM_AUDIO)) {
+            shouldSendPcmToBackend = state;
+            }
+            if (requiredData.contains(SpeechRequiredDataType.TRANSCRIPTION)) {
+            shouldSendTranscriptionToBackend = state;
+        }
         
         
         Log.d(TAG, "Microphone state changed to: " + (state ? "ON" : "OFF") + " with required data: " + requiredData);

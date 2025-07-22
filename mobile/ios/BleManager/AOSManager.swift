@@ -90,7 +90,7 @@ struct ViewState {
   private var useOnboardMic = false;
   private var preferredMic = "glasses";
   private var micEnabled = false;
-  private var currentRequiredData: [String] = []
+  private var currentRequiredData: [SpeechRequiredDataType] = []
 
   // VAD:
   private var vad: SileroVADStrategy?
@@ -533,109 +533,18 @@ struct ViewState {
         }
       }
       .store(in: &cancellables)
-
-    // decode the g1 audio data to PCM and feed to the VAD:
-    if (g1Manager != nil) {
-      self.g1Manager!.$compressedVoiceData.sink { [weak self] rawLC3Data in
-        guard let self = self else { return }
-
-        // Ensure we have enough data to process
-        guard rawLC3Data.count > 2 else {
-          CoreCommsService.log("Received invalid PCM data size: \(rawLC3Data.count)")
-          return
-        }
-
-        // Skip the first 2 bytes which are command bytes
-        let lc3Data = rawLC3Data.subdata(in: 2..<rawLC3Data.count)
-
-        // Ensure we have valid PCM data
-        guard lc3Data.count > 0 else {
-          CoreCommsService.log("No PCM data after removing command bytes")
-          return
-        }
-
-
-        if self.bypassVad {
-          checkSetVadStatus(speaking: true)
-          // first send out whatever's in the vadBuffer (if there is anything):
-          emptyVadBuffer()
-          let pcmConverter = PcmConverter()
-          let pcmData = pcmConverter.decode(lc3Data) as Data
-  //        self.serverComms.sendAudioChunk(lc3Data)
-          if self.shouldSendPcmData {
-            self.serverComms.sendAudioChunk(pcmData)
-          }
-          
-          // Also send to local transcriber when bypassing VAD
-          if self.shouldSendTranscript {
-            self.transcriber?.acceptAudio(pcm16le: pcmData)
-          }
-          return
-        }
-
-        let pcmConverter = PcmConverter()
-        let pcmData = pcmConverter.decode(lc3Data) as Data
-
-        guard pcmData.count > 0 else {
-          CoreCommsService.log("PCM conversion resulted in empty data")
-          return
-        }
-
-        // feed PCM to the VAD:
-        guard let vad = self.vad else {
-          CoreCommsService.log("VAD not initialized")
-          return
-        }
-
-        // convert audioData to Int16 array:
-        let pcmDataArray = pcmData.withUnsafeBytes { pointer -> [Int16] in
-          Array(UnsafeBufferPointer(
-            start: pointer.bindMemory(to: Int16.self).baseAddress,
-            count: pointer.count / MemoryLayout<Int16>.stride
-          ))
-        }
-
-        vad.checkVAD(pcm: pcmDataArray) { [weak self] state in
-          guard let self = self else { return }
-          CoreCommsService.log("VAD State: \(state)")
-        }
-
-        let vadState = vad.currentState()
-        if vadState == .speeching {
-          checkSetVadStatus(speaking: true)
-          // first send out whatever's in the vadBuffer (if there is anything):
-          emptyVadBuffer()
-          
-          // Send to server when speech is detected
-          if self.shouldSendPcmData {
-            self.serverComms.sendAudioChunk(pcmData)
-          }
-          
-          // Also send to local transcriber when speech is detected
-          if self.shouldSendTranscript {
-            self.transcriber?.acceptAudio(pcm16le: pcmData)
-          }
-        } else {
-          checkSetVadStatus(speaking: false)
-          // add to the vadBuffer:
-  //        addToVadBuffer(lc3Data)
-          addToVadBuffer(pcmData)
-        }
-      }
-      .store(in: &cancellables)
-    }
   }
   
   // MARK: - ServerCommsCallback Implementation
 
-  func onMicrophoneStateChange(_ isEnabled: Bool, _ requiredData: [String]) {
+  func onMicrophoneStateChange(_ isEnabled: Bool, _ requiredData: [SpeechRequiredDataType]) {
 
     CoreCommsService.log("AOS: @@@@@@@@ changing microphone state to: \(isEnabled) with requiredData: \(requiredData) @@@@@@@@@@@@@@@@")
     
     // Set flags based on requiredData contents
     // TODO: Replace this with bandwidth based logic
-    shouldSendPcmData = requiredData.contains("pcm") || requiredData.contains("pcm_or_transcription")
-    shouldSendTranscript = requiredData.contains("transcription") || requiredData.contains("pcm_or_transcription")
+    shouldSendPcmData = requiredData.contains(.PCM) || requiredData.contains(.PCM_OR_TRANSCRIPTION)
+    shouldSendTranscript = requiredData.contains(.TRANSCRIPTION) || requiredData.contains(.PCM_OR_TRANSCRIPTION)
 
 
     currentRequiredData = requiredData
@@ -2127,11 +2036,9 @@ struct ViewState {
   // MARK: - SherpaOnnxTranscriber.TranscriptDelegate
   
   func didReceivePartialTranscription(_ text: String) {
-    CoreCommsService.log("Sherpa-ONNX Partial: \(text)")
-    
     // Send partial result to server with proper formatting
     let transcription: [String: Any] = [
-      "type": "transcription",
+      "type": "local_transcription",
       "text": text,
       "isFinal": false,
       "startTime": Int(Date().timeIntervalSince1970 * 1000) - 1000, // 1 second ago
@@ -2145,12 +2052,10 @@ struct ViewState {
   }
   
   func didReceiveFinalTranscription(_ text: String) {
-    CoreCommsService.log("Sherpa-ONNX Final: \(text)")
-    
     // Send final result to server with proper formatting
     if !text.isEmpty {
       let transcription: [String: Any] = [
-        "type": "transcription",
+        "type": "local_transcription",
         "text": text,
         "isFinal": true,
         "startTime": Int(Date().timeIntervalSince1970 * 1000) - 2000, // 2 seconds ago

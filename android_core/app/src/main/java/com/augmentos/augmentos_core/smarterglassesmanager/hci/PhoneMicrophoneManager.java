@@ -21,6 +21,7 @@ import android.telephony.PhoneStateListener;
 import android.telephony.TelephonyManager;
 import android.util.Log;
 
+import com.augmentos.augmentos_core.enums.SpeechRequiredDataType;
 import com.augmentos.augmentos_core.microphone.MicrophoneService;
 import com.augmentos.augmentos_core.smarterglassesmanager.speechrecognition.SpeechRecSwitchSystem;
 
@@ -67,7 +68,7 @@ public class PhoneMicrophoneManager {
     }
     
     private MicStatus currentStatus = MicStatus.PAUSED;
-    private List<String> requiredData = new ArrayList<>();
+    private List<SpeechRequiredDataType> requiredData = new ArrayList<>();
     
     private final Context context;
     private final AudioChunkCallback audioChunkCallback;
@@ -1391,7 +1392,7 @@ public class PhoneMicrophoneManager {
         }
     }
 
-    public void setRequiredData(List<String> requiredData) {
+    public void setRequiredData(List<SpeechRequiredDataType> requiredData) {
         this.requiredData = requiredData;
     }
 }
