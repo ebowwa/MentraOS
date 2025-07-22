@@ -61,49 +61,6 @@ export interface LoadFramesOptions {
  * Utility class for working with bitmap images in MentraOS applications
  */
 export class BitmapUtils {
-  /**
-   * Load a BMP file as hex string from filesystem
-   *
-   * @param filePath - Path to the BMP file
-   * @returns Promise resolving to hex-encoded bitmap data
-   * @throws Error if file cannot be read or is not a valid BMP
-   *
-   * @example
-   * ```typescript
-   * const bmpBase64 = await BitmapUtils.loadBmpFromFileAsBase64('./assets/icon.bmp');
-   * session.layouts.showBitmapView(bmpBase64);
-   * ```
-   */
-  static async loadBmpFromFileAsBase64(filePath: string): Promise<string> {
-    try {
-      const bmpData = await fs.readFile(filePath);
-
-      return this.loadBmpFromDataAsBase64(bmpData);
-    } catch (error) {
-      if (error instanceof Error) {
-        throw new Error(
-          `Failed to load BMP file ${filePath}: ${error.message}`,
-        );
-      }
-      throw new Error(`Failed to load BMP file ${filePath}: Unknown error`);
-    }
-  }
-
-  static async loadBmpFromFileAsHex(filePath: string): Promise<string> {
-    try {
-      const bmpData = await fs.readFile(filePath);
-
-      return this.loadBmpFromDataAsHex(bmpData);
-    } catch (error) {
-      if (error instanceof Error) {
-        throw new Error(
-          `Failed to load BMP file ${filePath}: ${error.message}`,
-        );
-      }
-      throw new Error(`Failed to load BMP file ${filePath}: Unknown error`);
-    }
-  }
-
   static async convert24BitTo1BitBMP(input24BitBmp: Buffer): Promise<Buffer> {
     // Read header information from 24-bit BMP
     const width = input24BitBmp.readUInt32LE(18);
@@ -215,17 +172,56 @@ export class BitmapUtils {
     return output1BitBmp;
   }
 
-  static async loadBmpFromDataAsHex(bmpData: Buffer): Promise<string> {
-    const paddedBmpData = await this.padBmpData(bmpData);
-    return paddedBmpData.toString("hex");
+  /**
+   * Load a BMP file as hex string from filesystem
+   *
+   * @param filePath - Path to the BMP file
+   * @returns Promise resolving to hex-encoded bitmap data
+   * @throws Error if file cannot be read or is not a valid BMP
+   *
+   * @example
+   * ```typescript
+   * const bmpBase64 = await BitmapUtils.loadBmpFromFileAsBase64('./assets/icon.bmp');
+   * session.layouts.showBitmapView(bmpBase64);
+   * ```
+   */
+  static async fileToBase64(filePath: string): Promise<string> {
+    try {
+      const bmpData = await fs.readFile(filePath);
+
+      return this.bufferToBase64(bmpData);
+    } catch (error) {
+      if (error instanceof Error) {
+        throw new Error(
+          `Failed to load BMP file ${filePath}: ${error.message}`,
+        );
+      }
+      throw new Error(`Failed to load BMP file ${filePath}: Unknown error`);
+    }
   }
 
-  static async loadBmpFromDataAsBase64(bmpData: Buffer): Promise<string> {
-    const paddedBmpData = await this.padBmpData(bmpData);
-    return paddedBmpData.toString("base64");
+  static async bufferToBase64(bmpData: Buffer): Promise<string> {
+    return bmpData.toString("base64");
   }
 
-  static async padBmpData(bmpData: Buffer): Promise<Buffer> {
+  static async padBase64Bitmap(
+    bmpBase64: string,
+    padding?: { left: number; top: number },
+  ): Promise<string> {
+    const buffer = Buffer.from(bmpBase64, "base64");
+    const paddedBuffer = await this.padBmpForGlasses(
+      buffer,
+      padding?.left,
+      padding?.top,
+    );
+    return paddedBuffer.toString("base64");
+  }
+
+  static async padBmpForGlasses(
+    bmpData: Buffer,
+    leftPadding: number = 50,
+    topPadding: number = 35,
+  ): Promise<Buffer> {
     try {
       // Basic BMP validation - check for BMP signature
       if (bmpData.length < 14 || bmpData[0] !== 0x42 || bmpData[1] !== 0x4d) {
@@ -316,10 +312,10 @@ export class BitmapUtils {
       const filePath = path.join(basePath, fileName);
 
       try {
-        const frameHex = await this.loadBmpFromFileAsBase64(filePath);
+        const frameBase64 = await this.fileToBase64(filePath);
 
         if (validateFrames) {
-          const validation = this.validateBmpBase64(frameHex);
+          const validation = this.validateBase64Bitmap(frameBase64);
           if (!validation.isValid) {
             const errorMsg = `Frame ${frameNumber} validation failed: ${validation.errors.join(
               ", ",
@@ -336,7 +332,7 @@ export class BitmapUtils {
           );
         }
 
-        frames.push(frameHex);
+        frames.push(frameBase64);
       } catch (error) {
         const errorMsg = `Failed to load frame ${frameNumber} (${fileName}): ${
           error instanceof Error ? error.message : "Unknown error"
@@ -379,14 +375,14 @@ export class BitmapUtils {
    * }
    * ```
    */
-  static validateBmpBase64(base64String: string): BitmapValidation {
+  static validateBase64Bitmap(bmpFrame: string): BitmapValidation {
     const errors: string[] = [];
     let byteCount = 0;
     let blackPixels = 0;
     const metadata: BitmapValidation["metadata"] = {};
 
     try {
-      const hexString = Buffer.from(base64String, "base64").toString("hex");
+      const hexString = Buffer.from(bmpFrame, "base64").toString("hex");
       // Basic hex validation
       if (typeof hexString !== "string" || hexString.length === 0) {
         errors.push("Hex string is empty or invalid");

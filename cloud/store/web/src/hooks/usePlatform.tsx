@@ -1,5 +1,5 @@
 // src/hooks/usePlatform.tsx
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 
 // Platform types
 export type Platform = 'desktop' | 'mobile' | 'webview';
@@ -78,7 +78,7 @@ const checkIsMobile = (userAgent: string): boolean => {
 };
 
 // Platform Provider component
-export function PlatformProvider({ children }: { children: React.ReactNode }) {
+export function PlatformProvider({ children }: { children: ReactNode }) {
   const [platform, setPlatform] = useState<Platform>(() => detectPlatform());
   const userAgent = navigator.userAgent;
   

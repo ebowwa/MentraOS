@@ -30,6 +30,15 @@ export function isIOS(): boolean {
 }
 
 /**
+ * Detects if the user is on macOS (desktop)
+ */
+export function isMacOS(): boolean {
+  const userAgent = navigator.userAgent || navigator.vendor;
+  const platform = navigator.platform;
+  return /mac/i.test(platform) || /mac/i.test(userAgent);
+}
+
+/**
  * Generates a deeplink URL for opening the MentraOS app
  * @param packageName - Optional package name to navigate to a specific app
  * @returns The deeplink URL
@@ -62,16 +71,19 @@ export function openInApp(packageName?: string): void {
 
 /**
  * Opens the appropriate app store for downloading MentraOS
+ * - iOS devices (iPhone, iPad) → App Store
+ * - Android devices → Play Store
+ * - All desktop/laptop devices → mentra.glass/install
  */
 export function openAppStore(): void {
-  if (isAndroid()) {
-    // TODO: Replace with actual Google Play Store URL when available
+  if (isIOS()) {
+    // iOS devices (iPhone, iPad, iPod)
+    window.open('https://apps.apple.com/us/app/mentra-the-smart-glasses-app/id6747363193', '_blank');
+  } else if (isAndroid()) {
+    // Android devices
     window.open('https://play.google.com/store/apps/details?id=com.mentra.mentra', '_blank');
-  } else if (isIOS()) {
-    // TODO: Replace with actual App Store URL when available
-    window.open('https://apps.apple.com/app/mentraos/id123456789', '_blank');
   } else {
-    // Fallback to a landing page
-    window.open('https://mentra.glass', '_blank');
+    // All desktop/laptop devices (macOS, Windows, Linux, etc.)
+    window.open('https://mentra.glass/install', '_blank');
   }
 }

@@ -77,6 +77,7 @@ const en = {
     noActiveApps: "No Active Apps",
     noInactiveApps: "No Inactive Apps",
     activeApps: "Active Apps",
+    apps: "Apps",
     inactiveApps: "Inactive Apps",
     tapToStart: "TAP TO START",
     completeOnboardingTitle: "Complete Onboarding",

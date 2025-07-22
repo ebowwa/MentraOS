@@ -456,7 +456,7 @@ class ServerComms {
   private func handleIncomingMessage(_ msg: [String: Any]) {
     guard let type = msg["type"] as? String else { return }
     
-    CoreCommsService.log("Received message of type: \(type)")
+    // CoreCommsService.log("Received message of type: \(type)")
     
     switch type {
     case "connection_ack":
