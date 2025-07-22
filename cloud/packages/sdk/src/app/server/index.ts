@@ -142,10 +142,13 @@ export class AppServer {
       createAuthMiddleware({
         apiKey: this.config.apiKey,
         packageName: this.config.packageName,
+        getAppSessionForUser: (userId: string) => {
+          return this.activeSessionsByUserId.get(userId) || null;
+        },
         cookieSecret:
           this.config.cookieSecret ||
           `AOS_${this.config.packageName}_${this.config.apiKey.substring(0, 8)}`,
-      }),
+      }) as any,
     );
 
     this.appInstructions = (config as any).appInstructions || null;

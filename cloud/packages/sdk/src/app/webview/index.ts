@@ -1,15 +1,16 @@
 // src/app/webview/index.ts
-import axios from 'axios';
-import { Response, NextFunction } from 'express';
-import { AuthenticatedRequest } from '../../types';
+import axios from "axios";
+import { Response, NextFunction } from "express";
+import { AuthenticatedRequest } from "../../types";
 // Note: Your Express app needs to use cookie-parser middleware for this to work
 // Example: app.use(require('cookie-parser')());
-import * as crypto from 'crypto';
+import * as crypto from "crypto";
 import { KEYUTIL, KJUR, RSAKey } from "jsrsasign";
+import { AppSession } from "../session";
 
-
-const userTokenPublicKey = process.env.MENTRAOS_CLOUD_USER_TOKEN_PUBLIC_KEY || "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA0Yt2RtNOdeKQxWMY0c84\nADpY1Jy58YWZhaEgP2A5tBwFUKgy/TH9gQLWZjQ3dQ/6XXO8qq0kluoYFqM7ZDRF\nzJ0E4Yi0WQncioLRcCx4q8pDmqY9vPKgv6PruJdFWca0l0s3gZ3BqSeWum/C23xK\nFPHPwi8gvRdc6ALrkcHeciM+7NykU8c0EY8PSitNL+Tchti95kGu+j6APr5vNewi\nzRpQGOdqaLWe+ahHmtj6KtUZjm8o6lan4f/o08C6litizguZXuw2Nn/Kd9fFI1xF\nIVNJYMy9jgGaOi71+LpGw+vIpwAawp/7IvULDppvY3DdX5nt05P1+jvVJXPxMKzD\nTQIDAQAB\n-----END PUBLIC KEY-----";
-
+const userTokenPublicKey =
+  process.env.MENTRAOS_CLOUD_USER_TOKEN_PUBLIC_KEY ||
+  "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA0Yt2RtNOdeKQxWMY0c84\nADpY1Jy58YWZhaEgP2A5tBwFUKgy/TH9gQLWZjQ3dQ/6XXO8qq0kluoYFqM7ZDRF\nzJ0E4Yi0WQncioLRcCx4q8pDmqY9vPKgv6PruJdFWca0l0s3gZ3BqSeWum/C23xK\nFPHPwi8gvRdc6ALrkcHeciM+7NykU8c0EY8PSitNL+Tchti95kGu+j6APr5vNewi\nzRpQGOdqaLWe+ahHmtj6KtUZjm8o6lan4f/o08C6litizguZXuw2Nn/Kd9fFI1xF\nIVNJYMy9jgGaOi71+LpGw+vIpwAawp/7IvULDppvY3DdX5nt05P1+jvVJXPxMKzD\nTQIDAQAB\n-----END PUBLIC KEY-----";
 
 /**
  * Extracts the temporary token from a URL string.
@@ -19,7 +20,7 @@ const userTokenPublicKey = process.env.MENTRAOS_CLOUD_USER_TOKEN_PUBLIC_KEY || "
 export function extractTempToken(url: string): string | null {
   try {
     const parsedUrl = new URL(url);
-    return parsedUrl.searchParams.get('aos_temp_token');
+    return parsedUrl.searchParams.get("aos_temp_token");
   } catch (e) {
     console.error("Error parsing URL for temp token:", e);
     return null;
@@ -39,7 +40,7 @@ export async function exchangeToken(
   cloudApiUrl: string,
   tempToken: string,
   apiKey: string,
-  packageName: string
+  packageName: string,
 ): Promise<{ userId: string }> {
   const endpoint = `${cloudApiUrl}/api/auth/exchange-user-token`;
   console.log(`Exchanging token for user at ${endpoint}`);
@@ -49,30 +50,36 @@ export async function exchangeToken(
       { aos_temp_token: tempToken, packageName: packageName },
       {
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
         },
         timeout: 10000, // 10 second timeout
-      }
+      },
     );
 
-    if (response.status === 200 && response.data.success && response.data.userId) {
+    if (
+      response.status === 200 &&
+      response.data.success &&
+      response.data.userId
+    ) {
       return { userId: response.data.userId };
     } else {
       // Handle specific error messages from the server if available
-      const errorMessage = response.data?.error || `Failed with status ${response.status}`;
+      const errorMessage =
+        response.data?.error || `Failed with status ${response.status}`;
       throw new Error(errorMessage);
     }
   } catch (error) {
     if (axios.isAxiosError(error)) {
       const status = error.response?.status;
       const data = error.response?.data;
-      const message = data?.error || error.message || 'Unknown error during token exchange';
+      const message =
+        data?.error || error.message || "Unknown error during token exchange";
       console.error(`Token exchange failed with status ${status}: ${message}`);
       throw new Error(`Token exchange failed: ${message}`);
     } else {
-      console.error('Unexpected error during token exchange:', error);
-      throw new Error('An unexpected error occurred during token exchange.');
+      console.error("Unexpected error during token exchange:", error);
+      throw new Error("An unexpected error occurred during token exchange.");
     }
   }
 }
@@ -88,9 +95,9 @@ function signSession(userId: string, secret: string): string {
   const timestamp = Date.now();
   const data = `${userId}|${timestamp}`;
   const signature = crypto
-    .createHmac('sha256', secret)
+    .createHmac("sha256", secret)
     .update(data)
-    .digest('hex');
+    .digest("hex");
 
   return `${data}|${signature}`;
 }
@@ -102,9 +109,13 @@ function signSession(userId: string, secret: string): string {
  * @param maxAge The maximum age of the token in milliseconds
  * @returns The extracted user ID if valid, or null if invalid
  */
-function verifySession(token: string, secret: string, maxAge?: number): string | null {
+function verifySession(
+  token: string,
+  secret: string,
+  maxAge?: number,
+): string | null {
   try {
-    const parts = token.split('|');
+    const parts = token.split("|");
     if (parts.length !== 3) return null;
 
     const [userId, timestampStr, signature] = parts;
@@ -112,19 +123,23 @@ function verifySession(token: string, secret: string, maxAge?: number): string |
 
     // Check if token has expired
     if (maxAge && Date.now() - timestamp > maxAge) {
-      console.log(`Session token expired: ${token}.  Parsed date is ${timestamp}, meaning age is ${Date.now() - timestamp}, but maxAge is ${maxAge}`);
+      console.log(
+        `Session token expired: ${token}.  Parsed date is ${timestamp}, meaning age is ${Date.now() - timestamp}, but maxAge is ${maxAge}`,
+      );
       return null;
     }
 
     // Verify signature
     const data = `${userId}|${timestamp}`;
     const expectedSignature = crypto
-      .createHmac('sha256', secret)
+      .createHmac("sha256", secret)
       .update(data)
-      .digest('hex');
+      .digest("hex");
 
     if (signature !== expectedSignature) {
-      console.log(`Session token signature mismatch: ${signature} !== ${expectedSignature}`);
+      console.log(
+        `Session token signature mismatch: ${signature} !== ${expectedSignature}`,
+      );
       return null;
     }
 
@@ -140,7 +155,9 @@ function verifySession(token: string, secret: string, maxAge?: number): string |
  * @param signedUserToken The JWT token to verify
  * @returns The user ID (subject) from the token, or null if invalid
  */
-async function verifySignedUserToken(signedUserToken: string): Promise<string | null> {
+async function verifySignedUserToken(
+  signedUserToken: string,
+): Promise<string | null> {
   try {
     // 1. Parse the PEM public key into a jsrsasign key object
     const publicKeyObj = KEYUTIL.getKey(userTokenPublicKey) as RSAKey;
@@ -169,10 +186,13 @@ async function verifySignedUserToken(signedUserToken: string): Promise<string | 
  * @param userId Optional user ID that may be embedded in the token format
  * @returns The user ID if the token is valid, or null if invalid
  */
-function verifyFrontendToken(frontendToken: string, apiKey: string): string | null {
+function verifyFrontendToken(
+  frontendToken: string,
+  apiKey: string,
+): string | null {
   try {
     // Check if the token contains a user ID and hash separated by a colon
-    const tokenParts = frontendToken.split(':');
+    const tokenParts = frontendToken.split(":");
 
     if (tokenParts.length === 2) {
       // Format: userId:hash
@@ -180,12 +200,16 @@ function verifyFrontendToken(frontendToken: string, apiKey: string): string | nu
 
       // Align the hashing algorithm with server-side `hashWithApiKey`
       // 1. Hash the API key first (server only stores the hashed version)
-      const hashedApiKey = crypto.createHash('sha256').update(apiKey).digest('hex');
+      const hashedApiKey = crypto
+        .createHash("sha256")
+        .update(apiKey)
+        .digest("hex");
       // 2. Create the expected hash using userId + hashedApiKey (same order & update calls)
-      const expectedHash = crypto.createHash('sha256')
+      const expectedHash = crypto
+        .createHash("sha256")
         .update(tokenUserId)
         .update(hashedApiKey)
-        .digest('hex');
+        .digest("hex");
 
       if (tokenHash === expectedHash) {
         return tokenUserId;
@@ -201,11 +225,17 @@ function verifyFrontendToken(frontendToken: string, apiKey: string): string | nu
   }
 }
 
-function validateCloudApiUrlChecksum(checksum: string, cloudApiUrl: string, apiKey: string): boolean {
-  const hashedApiKey = crypto.createHash('sha256').update(apiKey).digest('hex');
-  const expectedChecksum = crypto.createHash('sha256').update(cloudApiUrl)
+function validateCloudApiUrlChecksum(
+  checksum: string,
+  cloudApiUrl: string,
+  apiKey: string,
+): boolean {
+  const hashedApiKey = crypto.createHash("sha256").update(apiKey).digest("hex");
+  const expectedChecksum = crypto
+    .createHash("sha256")
+    .update(cloudApiUrl)
     .update(hashedApiKey)
-    .digest('hex');
+    .digest("hex");
 
   return expectedChecksum === checksum;
 }
@@ -227,41 +257,55 @@ export function createAuthMiddleware(options: {
   packageName: string;
   cookieName?: string;
   cookieSecret: string;
+  getAppSessionForUser?: (userId: string) => AppSession | null;
   cookieOptions?: {
     httpOnly?: boolean;
     secure?: boolean;
     maxAge?: number;
-    sameSite?: boolean | 'lax' | 'strict' | 'none';
+    sameSite?: boolean | "lax" | "strict" | "none";
     path?: string;
   };
 }) {
   const {
     apiKey,
     packageName,
-    cookieName = 'aos_session',
+    cookieName = "aos_session",
     cookieSecret,
+    getAppSessionForUser,
     cookieOptions = {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: process.env.NODE_ENV === "production",
       maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days by default
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-      path: '/'
-    }
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      path: "/",
+    },
   } = options;
 
   if (!apiKey) {
     throw new Error("API Key are required for the auth middleware.");
   }
 
-  if (!cookieSecret || typeof cookieSecret !== 'string' || cookieSecret.length < 8) {
-    throw new Error("A strong cookieSecret (at least 8 characters) is required for secure session management.");
+  if (
+    !cookieSecret ||
+    typeof cookieSecret !== "string" ||
+    cookieSecret.length < 8
+  ) {
+    throw new Error(
+      "A strong cookieSecret (at least 8 characters) is required for secure session management.",
+    );
   }
 
-  return async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  return async (
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction,
+  ) => {
     // First check for temporary token in the query string
-    const tempToken = req.query['aos_temp_token'] as string;
-    const frontendToken = req.headers.authorization?.replace('Bearer ', '') as string || req.query['aos_frontend_token'] as string;
-    const signedUserToken = req.query['aos_signed_user_token'] as string;
+    const tempToken = req.query["aos_temp_token"] as string;
+    const frontendToken =
+      (req.headers.authorization?.replace("Bearer ", "") as string) ||
+      (req.query["aos_frontend_token"] as string);
+    const signedUserToken = req.query["aos_signed_user_token"] as string;
 
     // first check for signed user token
     if (signedUserToken) {
@@ -269,43 +313,78 @@ export function createAuthMiddleware(options: {
       if (userId) {
         // Set the user ID on the request
         req.authUserId = userId;
+        if (getAppSessionForUser) {
+          const appSession = getAppSessionForUser(userId);
+          if (appSession) {
+            req.activeSession = appSession;
+          }
+        }
 
         // Create a signed session token and store it in a cookie
         const signedSession = signSession(userId, cookieSecret);
         res.cookie(cookieName, signedSession, cookieOptions);
 
-        console.log('[auth.middleware] User ID verified from signed user token: ', userId);
+        console.log(
+          "[auth.middleware] User ID verified from signed user token: ",
+          userId,
+        );
         return next();
       } else {
-        console.log('[auth.middleware] Signed user token invalid');
+        console.log("[auth.middleware] Signed user token invalid");
       }
     }
     // If temporary token exists, authenticate with it
     if (tempToken) {
       try {
-        let cloudApiUrl = `https://prod.augmentos.cloud`;
-        const cloudApiUrlFromQuery = req.query['cloudApiUrl'] as string;
+        let cloudApiUrl = `https://api.mentra.glass`;
+        const cloudApiUrlFromQuery = req.query["cloudApiUrl"] as string;
         if (cloudApiUrlFromQuery) {
-          const cloudApiUrlChecksum = req.query['cloudApiUrlChecksum'] as string;
+          const cloudApiUrlChecksum = req.query[
+            "cloudApiUrlChecksum"
+          ] as string;
 
-          if (validateCloudApiUrlChecksum(cloudApiUrlChecksum, cloudApiUrlFromQuery, apiKey)) {
-            console.log(`Cloud API is being routed to alternate url at request of the server: ${cloudApiUrlFromQuery}`);
+          if (
+            validateCloudApiUrlChecksum(
+              cloudApiUrlChecksum,
+              cloudApiUrlFromQuery,
+              apiKey,
+            )
+          ) {
+            console.log(
+              `Cloud API is being routed to alternate url at request of the server: ${cloudApiUrlFromQuery}`,
+            );
             cloudApiUrl = cloudApiUrlFromQuery;
           } else {
-            console.error(`Server requested alternate cloud url of ${cloudApiUrlFromQuery} but the checksum is invalid (checksum: ${cloudApiUrlChecksum}).  Using default cloud url of ${cloudApiUrl} instead.`);
+            console.error(
+              `Server requested alternate cloud url of ${cloudApiUrlFromQuery} but the checksum is invalid (checksum: ${cloudApiUrlChecksum}).  Using default cloud url of ${cloudApiUrl} instead.`,
+            );
           }
         }
 
-        const { userId } = await exchangeToken(cloudApiUrl, tempToken, apiKey, packageName);
+        const { userId } = await exchangeToken(
+          cloudApiUrl,
+          tempToken,
+          apiKey,
+          packageName,
+        );
 
         // Set the user ID on the request
         req.authUserId = userId;
+        if (getAppSessionForUser) {
+          const appSession = getAppSessionForUser(userId);
+          if (appSession) {
+            req.activeSession = appSession;
+          }
+        }
 
         // Create a signed session token and store it in a cookie
         const signedSession = signSession(userId, cookieSecret);
         res.cookie(cookieName, signedSession, cookieOptions);
 
-        console.log('[auth.middleware] User ID verified from temporary token: ', userId);
+        console.log(
+          "[auth.middleware] User ID verified from temporary token: ",
+          userId,
+        );
 
         return next();
       } catch (error) {
@@ -320,13 +399,22 @@ export function createAuthMiddleware(options: {
 
       if (userId) {
         req.authUserId = userId;
+        if (getAppSessionForUser) {
+          const appSession = getAppSessionForUser(userId);
+          if (appSession) {
+            req.activeSession = appSession;
+          }
+        }
         // Create a signed session token and store it in a cookie
         const signedSession = signSession(userId, cookieSecret);
         res.cookie(cookieName, signedSession, cookieOptions);
-        console.log('[auth.middleware] User ID verified from frontend user token: ', userId);
+        console.log(
+          "[auth.middleware] User ID verified from frontend user token: ",
+          userId,
+        );
         return next();
       } else {
-        console.log('[auth.middleware] Frontend token invalid');
+        console.log("[auth.middleware] Frontend token invalid");
       }
     }
 
@@ -336,9 +424,19 @@ export function createAuthMiddleware(options: {
     if (sessionCookie) {
       try {
         // Verify the signed session cookie and extract the user ID
-        const userId = verifySession(sessionCookie, cookieSecret, cookieOptions.maxAge);
+        const userId = verifySession(
+          sessionCookie,
+          cookieSecret,
+          cookieOptions.maxAge,
+        );
         if (userId) {
           req.authUserId = userId;
+          if (getAppSessionForUser) {
+            const appSession = getAppSessionForUser(userId);
+            if (appSession) {
+              req.activeSession = appSession;
+            }
+          }
           return next();
         }
 
