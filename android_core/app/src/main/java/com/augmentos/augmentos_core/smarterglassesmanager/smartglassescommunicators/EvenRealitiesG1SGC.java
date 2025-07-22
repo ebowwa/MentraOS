@@ -1770,6 +1770,11 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
             return;
         }
 
+        if (title.trim().isEmpty() && body.trim().isEmpty()){
+            sendExitCommand();
+            return;
+        }
+
         List<byte[]> chunks = createTextWallChunks(title + "\n\n" + body);
         for (int i = 0; i < chunks.size(); i++) {
             byte[] chunk = chunks.get(i);
@@ -1930,12 +1935,19 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
 
     public void displayDoubleTextWall(String textTop, String textBottom) {
         if (updatingScreen) return;
+
+        if (textTop.trim().isEmpty() && textBottom.trim().isEmpty()){
+            sendExitCommand();
+            return;
+        }
+
         List<byte[]> chunks = createDoubleTextWallChunks(textTop, textBottom);
         sendChunks(chunks);
     }
 
     public void showHomeScreen() {
-        displayTextWall(" ");
+        //displayTextWall(" ");
+        sendExitCommand();
 
         if (lastThingDisplayedWasAnImage) {
             //clearG1Screen();
@@ -1968,6 +1980,11 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
 
     public void displayTextWall(String a) {
         if (updatingScreen) return;
+        if (a.trim().isEmpty()){
+            sendExitCommand();
+            return;
+        }
+
         List<byte[]> chunks = createTextWallChunks(a);
         sendChunks(chunks);
     }
