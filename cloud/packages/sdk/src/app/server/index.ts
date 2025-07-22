@@ -22,8 +22,8 @@ import { Logger } from "pino";
 import { logger as rootLogger } from "../../logging/logger";
 import axios from "axios";
 
-export const GIVE_APP_CONTROL_OF_TOOL_REPONSE: string =
-  "GIVE_APP_CONTROL_OF_TOOL_REPONSE";
+export const GIVE_APP_CONTROL_OF_TOOL_RESPONSE: string =
+  "GIVE_APP_CONTROL_OF_TOOL_RESPONSE";
 
 /**
  * 🔧 Configuration options for App Server
@@ -227,9 +227,7 @@ export class AppServer {
    * @param toolCall - The tool call request containing tool details and parameters
    * @returns Optional string response that will be sent back to MentraOS Cloud
    */
-  protected async onToolCall(
-    toolCall: ToolCall,
-  ): Promise<string | typeof GIVE_APP_CONTROL_OF_TOOL_REPONSE | undefined> {
+  protected async onToolCall(toolCall: ToolCall): Promise<string | undefined> {
     this.logger.debug(`Tool call received: ${toolCall.toolId}`);
     this.logger.debug(`Parameters: ${JSON.stringify(toolCall.toolParameters)}`);
     return undefined;

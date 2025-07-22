@@ -96,7 +96,7 @@ export class MyAppServer extends AppServer {
 
 ### 2. Return Values
 
-Your `onToolCall` method should return a string that will be passed to Mira's AI to formulate a response. Alternatively, you can return the special string `GIVE_APP_CONTROL_OF_TOOL_REPONSE` to indicate that Mira should not respond because your app will respond directly.
+Your `onToolCall` method should return a string that will be passed to Mira's AI to formulate a response. Alternatively, you can return the special string `GIVE_APP_CONTROL_OF_TOOL_RESPONSE` to indicate that Mira should not respond because your app will respond directly.
 
 ## Common Tool Patterns
 
@@ -221,7 +221,7 @@ Your `onToolCall` method should return a string that will be passed to Mira's AI
 Here's how to implement a complete todo list app with Mira integration:
 
 ```typescript
-import {AppServer, ToolCall, GIVE_APP_CONTROL_OF_TOOL_REPONSE} from "@mentra/sdk"
+import {AppServer, ToolCall, GIVE_APP_CONTROL_OF_TOOL_RESPONSE} from "@mentra/sdk"
 
 // Simple in-memory todo storage
 const todos = new Map<string, Map<string, Todo>>()
@@ -288,7 +288,7 @@ export class TodoAppServer extends AppServer {
         if (toolCall.activeSession) {
           // if the user is currently using the app, display the todo list in the app directly
           toolCall.activeSession.layouts.showTextWall(todoList)
-          return GIVE_APP_CONTROL_OF_TOOL_REPONSE
+          return GIVE_APP_CONTROL_OF_TOOL_RESPONSE
         } else {
           // if the user is not currently using the app, return the todo list to Mira for Mira to relay
           return `Your todo list:\n${todoList}`
@@ -352,8 +352,8 @@ export class TodoAppServer extends AppServer {
 2. **Parameter Extraction**: Mira extracts parameters from the user's request
 3. **Tool Call Execution**: Mira calls the `/tool` endpoint of your app server with the extracted parameters. You don't need to handle this manually, the SDK handles this for you.
 4. **Your App Handles the Tool Call**: Your overridden `onToolCall` method is called with the tool call details. You can handle the tool call logic here.
-5. **Your App Responds**: Your app responds with a text string that Mira's AI will use to formulate a response. Or you can return `GIVE_APP_CONTROL_OF_TOOL_REPONSE` to indicate that your app will respond directly.
-6. **Mira Responds to the User**: Mira uses your response to formulate a response to the user, or call other tools as needed. Your response is not necessarily the final response to the user, it is just information the AI uses to formulate a response. If you return `GIVE_APP_CONTROL_OF_TOOL_REPONSE`, Mira will not respond to the user.
+5. **Your App Responds**: Your app responds with a text string that Mira's AI will use to formulate a response. Or you can return `GIVE_APP_CONTROL_OF_TOOL_RESPONSE` to indicate that your app will respond directly.
+6. **Mira Responds to the User**: Mira uses your response to formulate a response to the user, or call other tools as needed. Your response is not necessarily the final response to the user, it is just information the AI uses to formulate a response. If you return `GIVE_APP_CONTROL_OF_TOOL_RESPONSE`, Mira will not respond to the user.
 
 ## Related Documentation
 

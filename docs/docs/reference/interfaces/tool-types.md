@@ -72,12 +72,12 @@ interface ToolCall {
 }
 ```
 
-## GIVE_APP_CONTROL_OF_TOOL_REPONSE
+## GIVE_APP_CONTROL_OF_TOOL_RESPONSE
 
-The string `GIVE_APP_CONTROL_OF_TOOL_REPONSE` is a special string that can be returned by your app to indicate that Mira should not respond to the user, and your app will respond directly.
+The string `GIVE_APP_CONTROL_OF_TOOL_RESPONSE` is a special string that can be returned by your app to indicate that Mira should not respond to the user, and your app will respond directly.
 
 ```typescript
-import {GIVE_APP_CONTROL_OF_TOOL_REPONSE} from "@mentra/sdk"
+import {GIVE_APP_CONTROL_OF_TOOL_RESPONSE} from "@mentra/sdk"
 
 export class TodoAppServer extends AppServer {
   protected async onToolCall(toolCall: ToolCall): Promise<string | undefined> {
@@ -93,7 +93,7 @@ export class TodoAppServer extends AppServer {
         if (activeSession) {
           // if the user is currently using the app, display the todo list in the app directly
           activeSession.layouts.showTextWall(todoList)
-          return GIVE_APP_CONTROL_OF_TOOL_REPONSE
+          return GIVE_APP_CONTROL_OF_TOOL_RESPONSE
         } else {
           // if the user is not currently using the app, return the todo list to Mira for Mira to relay
           return `Your todo list:\n${todoList}`
