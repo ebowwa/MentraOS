@@ -253,7 +253,9 @@ enum GlassesError: Error {
     }
   }
   
-  override init() {
+  static let shared = ERG1Manager()
+  
+  private override init() {
     super.init()
     startHeartbeatTimer()
   }
