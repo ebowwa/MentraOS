@@ -819,12 +819,20 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
                         isRightPairing = false;
                         pendingSavedG1RightName = device.getName();
                     }
+                    
+                    // Reset both pairing flags when a device bonds successfully
+                    // This prevents the other device from being blocked when scan restarts
+                    isLeftPairing = false;
+                    isRightPairing = false;
 
                     // Restart scan for the next device
                     if (!isLeftBonded || !isRightBonded) {
                         // if (!(isLeftBonded && !isRightBonded)){// || !doPendingPairingIdsMatch()) {
                         Log.d(TAG, "Restarting scan to find remaining device...");
-                        startScan();
+                        // Add delay for vendor-specific timing issues (e.g., Motorola devices)
+                        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                            startScan();
+                        }, 500); // 500ms delay
                     } else if (isLeftBonded && isRightBonded && !doPendingPairingIdsMatch()) {
                         // We've connected to two different G1s...
                         // Let's unpair the right, try to pair to a different one
@@ -1134,13 +1142,15 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
                     connectionEvent(connectionState);
                     bondDevice(device);
                 } else if (!isLeft && !isRightPairing && !isRightBonded) {
-//                    Log.d(TAG, "Bonding with Right Glass...");
+                    Log.d(TAG, "Attempting to bond with right device. isRightPairing=" + isRightPairing + ", isRightBonded=" + isRightBonded);
                     isRightPairing = true;
                     connectionState = SmartGlassesConnectionState.BONDING;
                     connectionEvent(connectionState);
                     bondDevice(device);
                 } else {
-                    Log.d(TAG, "Not running a53dd");
+                    Log.d(TAG, "Not running bonding - isLeft=" + isLeft + ", isLeftPairing=" + isLeftPairing + 
+                              ", isLeftBonded=" + isLeftBonded + ", isRightPairing=" + isRightPairing + 
+                              ", isRightBonded=" + isRightBonded);
                 }
             } else {
                 // Already bonded
