@@ -164,9 +164,8 @@ public class OtaService extends Service {
     
     @Subscribe(threadMode = ThreadMode.MAIN)
     public void onBatteryStatus(BatteryStatusEvent event) {
-        // Forward battery status to OTA helper
-        if (otaHelper != null) {
-            EventBus.getDefault().post(event);
-        }
+        // OtaHelper is already subscribed to EventBus and will receive this event directly
+        // No need to re-post the event - this was causing an infinite loop
+        Log.d(TAG, "Received battery status: " + event.getBatteryLevel() + "%, charging: " + event.isCharging());
     }
 }

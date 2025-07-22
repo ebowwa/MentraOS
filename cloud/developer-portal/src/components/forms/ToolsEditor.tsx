@@ -27,6 +27,7 @@ interface InternalParameter {
 
 // Internal tool representation for editing
 interface InternalTool {
+  internalId: string; // Stable ID for React keys
   id: string;
   description: string;
   activationPhrases: string[];
@@ -55,6 +56,7 @@ const convertToolToInternal = (tool: any): InternalTool => {
   }
 
   return {
+    internalId: `tool_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, // Stable ID
     id: tool.id || '',
     description: tool.description || '',
     activationPhrases: tool.activationPhrases || [],
@@ -398,6 +400,7 @@ const ToolsEditor: React.FC<ToolsEditorProps> = ({ tools, onChange, className })
 
   // Helper function to create a new empty tool
   const createEmptyTool = (): InternalTool => ({
+    internalId: `tool_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, // Stable ID
     id: '',
     description: '',
     activationPhrases: [],
@@ -516,7 +519,7 @@ const ToolsEditor: React.FC<ToolsEditorProps> = ({ tools, onChange, className })
         <div className="space-y-2">
           {internalTools.map((tool, index) => (
             <ToolItem
-              key={tool.id || `tool-${index}`}
+              key={tool.internalId}
               tool={tool}
               index={index}
               isEditing={editingIndex === index}
