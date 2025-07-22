@@ -37,6 +37,26 @@ class BlePhotoUploadService {
     func onError(requestId: String, error: String)
   }
   
+  enum PhotoUploadError: LocalizedError {
+      case decodingFailed
+      case avifNotSupported
+      case uploadFailed(String)
+      case invalidData
+      
+      var errorDescription: String? {
+          switch self {
+          case .decodingFailed:
+              return "Failed to decode image data"
+          case .avifNotSupported:
+              return "AVIF format not supported on this iOS version"
+          case .uploadFailed(let message):
+              return "Upload failed: \(message)"
+          case .invalidData:
+              return "Invalid image data"
+          }
+      }
+  }
+  
   /**
    * Process image data and upload to webhook
    * - Parameters:
@@ -49,10 +69,9 @@ class BlePhotoUploadService {
   static func processAndUploadPhoto(imageData: Data,
                                     requestId: String,
                                     webhookUrl: String,
-                                    authToken: String,
-                                    callback: UploadCallback) {
+                                    authToken: String) {
     
-    DispatchQueue.global(qos: .userInitiated).async {
+    Task {
       do {
         CoreCommsService.log("\(TAG): Processing BLE photo for upload. Image size: \(imageData.count) bytes")
         
@@ -75,23 +94,23 @@ class BlePhotoUploadService {
         CoreCommsService.log("\(TAG): Converted to JPEG for upload. Size: \(jpegData.count) bytes")
         
         // 3. Upload to webhook
-        try uploadToWebhook(jpegData: jpegData,
-                            requestId: requestId,
-                            webhookUrl: webhookUrl,
-                            authToken: authToken)
+        try await uploadToWebhook(jpegData: jpegData,
+                                  requestId: requestId,
+                                  webhookUrl: webhookUrl,
+                                  authToken: authToken)
         
         CoreCommsService.log("\(TAG): Photo uploaded successfully for requestId: \(requestId)")
         
-        DispatchQueue.main.async {
-          callback.onSuccess(requestId: requestId)
-        }
+        //        DispatchQueue.main.async {
+        //          callback.onSuccess(requestId: requestId)
+        //        }
         
       } catch {
         CoreCommsService.log("\(TAG): Error processing BLE photo for requestId: \(requestId), error: \(error)")
         
-        DispatchQueue.main.async {
-          callback.onError(requestId: requestId, error: error.localizedDescription)
-        }
+        //        DispatchQueue.main.async {
+        //          callback.onError(requestId: requestId, error: error.localizedDescription)
+        //        }
       }
     }
   }
@@ -118,84 +137,104 @@ class BlePhotoUploadService {
     }
   }
   
-  /**
-   * Upload JPEG data to webhook URL
-   */
   private static func uploadToWebhook(jpegData: Data,
                                       requestId: String,
                                       webhookUrl: String,
-                                      authToken: String) throws {
-    
+                                      authToken: String?) async throws {
     guard let url = URL(string: webhookUrl) else {
-      throw NSError(domain: "BlePhotoUpload",
-                    code: -3,
-                    userInfo: [NSLocalizedDescriptionKey: "Invalid webhook URL"])
+      CoreCommsService.log("LIVE: Invalid webhook URL: \(webhookUrl)")
+      return
     }
     
     var request = URLRequest(url: url)
     request.httpMethod = "POST"
+    request.timeoutInterval = 30
     
-    // Set headers
-    let boundary = "Boundary-\(UUID().uuidString)"
+    // Add auth header if provided
+    if let authToken = authToken, !authToken.isEmpty {
+      request.setValue("Bearer \(authToken)", forHTTPHeaderField: "Authorization")
+    }
+    
+    // Create multipart form data
+    let boundary = UUID().uuidString
     request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
-    request.setValue("Bearer \(authToken)", forHTTPHeaderField: "Authorization")
     
-    // Create multipart body
     var body = Data()
     
-    // Add image data
-    body.append("--\(boundary)\r\n".data(using: .utf8)!)
-    body.append("Content-Disposition: form-data; name=\"image\"; filename=\"photo_\(requestId).jpg\"\r\n".data(using: .utf8)!)
-    body.append("Content-Type: image/jpeg\r\n\r\n".data(using: .utf8)!)
-    body.append(jpegData)
-    body.append("\r\n".data(using: .utf8)!)
-    
-    // Add request ID
+    // Add requestId field
     body.append("--\(boundary)\r\n".data(using: .utf8)!)
     body.append("Content-Disposition: form-data; name=\"requestId\"\r\n\r\n".data(using: .utf8)!)
     body.append("\(requestId)\r\n".data(using: .utf8)!)
     
-    // Close boundary
+    // Add source field
+    body.append("--\(boundary)\r\n".data(using: .utf8)!)
+    body.append("Content-Disposition: form-data; name=\"source\"\r\n\r\n".data(using: .utf8)!)
+    body.append("ble_transfer\r\n".data(using: .utf8)!)
+    
+    // Add photo field
+    body.append("--\(boundary)\r\n".data(using: .utf8)!)
+    body.append("Content-Disposition: form-data; name=\"photo\"; filename=\"\(requestId).jpg\"\r\n".data(using: .utf8)!)
+    body.append("Content-Type: image/jpeg\r\n\r\n".data(using: .utf8)!)
+    body.append(jpegData)
+    body.append("\r\n".data(using: .utf8)!)
+    
+    // Close multipart form
     body.append("--\(boundary)--\r\n".data(using: .utf8)!)
     
     request.httpBody = body
     
-    // Perform synchronous request
-    let semaphore = DispatchSemaphore(value: 0)
-    var responseError: Error?
-    var responseCode: Int = 0
+    print("LIVE: Uploading photo to webhook: \(webhookUrl)")
     
-    let task = URLSession.shared.dataTask(with: request) { data, response, error in
-      responseError = error
-      if let httpResponse = response as? HTTPURLResponse {
-        responseCode = httpResponse.statusCode
+    do {
+      let (data, response) = try await URLSession.shared.data(for: request)
+      
+      guard let httpResponse = response as? HTTPURLResponse else {
+        throw PhotoUploadError.uploadFailed("Invalid response")
       }
-      semaphore.signal()
+      
+      if httpResponse.statusCode < 200 || httpResponse.statusCode >= 300 {
+        let errorBody = String(data: data, encoding: .utf8) ?? "No response body"
+        throw PhotoUploadError.uploadFailed("Upload failed with code \(httpResponse.statusCode): \(errorBody)")
+      }
+      
+      print("LIVE: Upload successful. Response code: \(httpResponse.statusCode)")
+      
+    } catch {
+      if error is PhotoUploadError {
+        throw error
+      } else {
+        throw PhotoUploadError.uploadFailed(error.localizedDescription)
+      }
     }
-    
-    task.resume()
-    semaphore.wait()
-    
-    if let error = responseError {
-      throw error
-    }
-    
-    if responseCode < 200 || responseCode >= 300 {
-      throw NSError(domain: "BlePhotoUpload",
-                    code: responseCode,
-                    userInfo: [NSLocalizedDescriptionKey: "HTTP error: \(responseCode)"])
+  }
+}
+
+extension Data {
+  mutating func append(_ string: String) {
+    if let data = string.data(using: .utf8) {
+      append(data)
     }
   }
 }
 
 private struct K900ProtocolUtils {
   
+  // Protocol constants
+  static let CMD_START_CODE: [UInt8] = [0x23, 0x23] // ##
+  static let CMD_END_CODE: [UInt8] = [0x24, 0x24]   // $$
+  static let CMD_TYPE_STRING: UInt8 = 0x30          // String/JSON type
+  
+  // JSON Field constants
+  static let FIELD_C = "C"  // Command/Content field
+  static let FIELD_V = "V"  // Version field
+  static let FIELD_B = "B"  // Body field
+  
   // Command types
-  static let CMD_TYPE_PHOTO: UInt8 = 0x031
-  static let CMD_TYPE_VIDEO: UInt8 = 0x032
-  static let CMD_TYPE_MUSIC: UInt8 = 0x033
-  static let CMD_TYPE_AUDIO: UInt8 = 0x034
-  static let CMD_TYPE_DATA: UInt8 = 0x035
+  static let CMD_TYPE_PHOTO: UInt8 = 0x31
+  static let CMD_TYPE_VIDEO: UInt8 = 0x32
+  static let CMD_TYPE_MUSIC: UInt8 = 0x33
+  static let CMD_TYPE_AUDIO: UInt8 = 0x34
+  static let CMD_TYPE_DATA: UInt8 = 0x35
   
   // File transfer constants
   static let FILE_PACK_SIZE = 400; // Max data size per packet
@@ -725,7 +764,6 @@ typealias JSONObject = [String: Any]
   
   // Device Settings Keys
   private let PREFS_DEVICE_NAME = "MentraLiveLastConnectedDeviceName"
-  private let KEY_CORE_TOKEN = "core_token"
   
   // MARK: - Properties
   
@@ -898,9 +936,9 @@ typealias JSONObject = [String: Any]
     ]
     
     // Always generate BLE ID for potential fallback
-    let bleImgId = "I" + String(format: "%09d", Int(Date().timeIntervalSince1970 * 1000) % 1000000000)
+    let bleImgId = "I" + String(format: "%09d", Int(Date().timeIntervalSince1970 * 1000) % 100000000)
     json["bleImgId"] = bleImgId
-    json["transferMethod"] = "auto"
+    json["transferMethod"] = "ble"
     
     if let webhookUrl = webhookUrl, !webhookUrl.isEmpty {
       json["webhookUrl"] = webhookUrl
@@ -1470,7 +1508,7 @@ typealias JSONObject = [String: Any]
   // MARK: - File Transfer Processing
   
   private func processFilePacket(_ packetInfo: K900ProtocolUtils.FilePacketInfo) {
-//    CoreCommsService.log("📦 Processing file packet: \(packetInfo.fileName) [\(packetInfo.packIndex)/\(((packetInfo.fileSize + K900ProtocolUtils.FILE_PACK_SIZE - 1) / K900ProtocolUtils.FILE_PACK_SIZE - 1))] (\(packetInfo.packSize) bytes)")
+    //    CoreCommsService.log("📦 Processing file packet: \(packetInfo.fileName) [\(packetInfo.packIndex)/\(((packetInfo.fileSize + K900ProtocolUtils.FILE_PACK_SIZE - 1) / K900ProtocolUtils.FILE_PACK_SIZE - 1))] (\(packetInfo.packSize) bytes)")
     
     // Check if this is a BLE photo transfer we're tracking
     var bleImgId = packetInfo.fileName
@@ -1635,30 +1673,31 @@ typealias JSONObject = [String: Any]
     let uploadStartTime = Date()
     
     // Save BLE photo locally for debugging/backup
-    do {
-      let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
-      let saveDirectory = documentsDirectory.appendingPathComponent(FILE_SAVE_DIR)
-      
-      if !FileManager.default.fileExists(atPath: saveDirectory.path) {
-        try FileManager.default.createDirectory(at: saveDirectory, withIntermediateDirectories: true)
-      }
-      
-      // BLE photos are ALWAYS AVIF format
-      let fileName = "BLE_\(transfer.bleImgId)_\(Int64(Date().timeIntervalSince1970 * 1000)).avif"
-      let fileURL = saveDirectory.appendingPathComponent(fileName)
-      
-      try imageData.write(to: fileURL)
-      CoreCommsService.log("💾 Saved BLE photo locally: \(fileURL.path)")
-    } catch {
-      CoreCommsService.log("Error saving BLE photo locally: \(error)")
-    }
+    //    do {
+    //      let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+    //      let saveDirectory = documentsDirectory.appendingPathComponent(FILE_SAVE_DIR)
+    //
+    //      if !FileManager.default.fileExists(atPath: saveDirectory.path) {
+    //        try FileManager.default.createDirectory(at: saveDirectory, withIntermediateDirectories: true)
+    //      }
+    //
+    //      // BLE photos are ALWAYS AVIF format
+    //      let fileName = "BLE_\(transfer.bleImgId)_\(Int64(Date().timeIntervalSince1970 * 1000)).avif"
+    //      let fileURL = saveDirectory.appendingPathComponent(fileName)
+    //
+    //      try imageData.write(to: fileURL)
+    //      CoreCommsService.log("💾 Saved BLE photo locally: \(fileURL.path)")
+    //    } catch {
+    //      CoreCommsService.log("Error saving BLE photo locally: \(error)")
+    //    }
     
     // Get core token for authentication
-    let coreToken = UserDefaults.standard.string(forKey: KEY_CORE_TOKEN) ?? ""
+    guard let coreToken = UserDefaults.standard.string(forKey: "core_token") else {
+      CoreCommsService.log("LIVE: core_token not set!")
+      return
+    }
     
-    
-    //    ServerComms.getInstance().sendPhotoRespons
-    
+    BlePhotoUploadService.processAndUploadPhoto(imageData: imageData, requestId: transfer.requestId, webhookUrl: transfer.webhookUrl, authToken: coreToken)
   }
   
   private func sendBleTransferComplete(requestId: String, bleImgId: String, success: Bool) {
@@ -1715,7 +1754,7 @@ typealias JSONObject = [String: Any]
     do {
       let jsonData = try JSONSerialization.data(withJSONObject: json)
       if let jsonString = String(data: jsonData, encoding: .utf8) {
-        let packedData = packDataToK900(jsonData, cmdType: CMD_TYPE_STRING) ?? Data()
+        let packedData = packDataToK900(jsonData, cmdType: K900ProtocolUtils.CMD_TYPE_STRING) ?? Data()
         queueSend(packedData, id: String(globalMessageId-1))
       }
     } catch {
@@ -1736,7 +1775,7 @@ typealias JSONObject = [String: Any]
   private func sendCoreTokenToAsgClient() {
     CoreCommsService.log("Preparing to send coreToken to ASG client")
     
-    guard let coreToken = UserDefaults.standard.string(forKey: KEY_CORE_TOKEN), !coreToken.isEmpty else {
+    guard let coreToken = UserDefaults.standard.string(forKey: "core_token"), !coreToken.isEmpty else {
       CoreCommsService.log("No coreToken available to send to ASG client")
       return
     }
@@ -1996,16 +2035,6 @@ typealias JSONObject = [String: Any]
 
 // MARK: - K900 Protocol Utilities
 
-// Protocol constants
-private let CMD_START_CODE: [UInt8] = [0x23, 0x23] // ##
-private let CMD_END_CODE: [UInt8] = [0x24, 0x24]   // $$
-private let CMD_TYPE_STRING: UInt8 = 0x30          // String/JSON type
-
-// JSON Field constants
-private let FIELD_C = "C"  // Command/Content field
-private let FIELD_V = "V"  // Version field
-private let FIELD_B = "B"  // Body field
-
 extension MentraLiveManager {
   
   /**
@@ -2021,7 +2050,7 @@ extension MentraLiveManager {
     var result = Data(capacity: dataLength + 7) // 2(start) + 1(type) + 2(length) + data + 2(end)
     
     // Start code ##
-    result.append(contentsOf: CMD_START_CODE)
+    result.append(contentsOf: K900ProtocolUtils.CMD_START_CODE)
     
     // Command type
     result.append(cmdType)
@@ -2034,7 +2063,7 @@ extension MentraLiveManager {
     result.append(data)
     
     // End code $$
-    result.append(contentsOf: CMD_END_CODE)
+    result.append(contentsOf: K900ProtocolUtils.CMD_END_CODE)
     
     return result
   }
@@ -2053,7 +2082,7 @@ extension MentraLiveManager {
     var result = Data(capacity: dataLength + 7) // 2(start) + 1(type) + 2(length) + data + 2(end)
     
     // Start code ##
-    result.append(contentsOf: CMD_START_CODE)
+    result.append(contentsOf: K900ProtocolUtils.CMD_START_CODE)
     
     // Command type
     result.append(cmdType)
@@ -2066,7 +2095,7 @@ extension MentraLiveManager {
     result.append(data)
     
     // End code $$
-    result.append(contentsOf: CMD_END_CODE)
+    result.append(contentsOf: K900ProtocolUtils.CMD_END_CODE)
     
     return result
   }
@@ -2081,7 +2110,7 @@ extension MentraLiveManager {
     
     do {
       // First wrap with C-field
-      var wrapper: [String: Any] = [FIELD_C: jsonData]
+      var wrapper: [String: Any] = [K900ProtocolUtils.FIELD_C: jsonData]
       if (wakeUp) {
         wrapper["W"] = 1 // Add W field as seen in MentraLiveSGC (optional)
       }
@@ -2092,7 +2121,7 @@ extension MentraLiveManager {
       
       // Then pack with BES2700 protocol format using little-endian
       let jsonBytes = wrappedJson.data(using: .utf8)!
-      return packDataToK900(jsonBytes, cmdType: CMD_TYPE_STRING)
+      return packDataToK900(jsonBytes, cmdType: K900ProtocolUtils.CMD_TYPE_STRING)
       
     } catch {
       CoreCommsService.log("Error creating JSON wrapper for K900: \(error)")
@@ -2106,7 +2135,7 @@ extension MentraLiveManager {
    */
   private func createCWrappedJson(_ content: String) -> String? {
     do {
-      let wrapper: [String: Any] = [FIELD_C: content]
+      let wrapper: [String: Any] = [K900ProtocolUtils.FIELD_C: content]
       let jsonData = try JSONSerialization.data(withJSONObject: wrapper)
       return String(data: jsonData, encoding: .utf8)
     } catch {
@@ -2123,7 +2152,7 @@ extension MentraLiveManager {
     guard let data = data, data.count >= 7 else { return false }
     
     let bytes = [UInt8](data)
-    return bytes[0] == CMD_START_CODE[0] && bytes[1] == CMD_START_CODE[1]
+    return bytes[0] == K900ProtocolUtils.CMD_START_CODE[0] && bytes[1] == K900ProtocolUtils.CMD_START_CODE[1]
   }
   
   /**
@@ -2135,15 +2164,15 @@ extension MentraLiveManager {
       let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
       
       // Check for simple C-wrapping {"C": "content"} - only one field
-      if let json = json, json.keys.contains(FIELD_C) && json.count == 1 {
+      if let json = json, json.keys.contains(K900ProtocolUtils.FIELD_C) && json.count == 1 {
         return true
       }
       
       // Check for full K900 format {"C": "command", "V": val, "B": body}
       if let json = json,
-         json.keys.contains(FIELD_C) &&
-          json.keys.contains(FIELD_V) &&
-          json.keys.contains(FIELD_B) {
+         json.keys.contains(K900ProtocolUtils.FIELD_C) &&
+          json.keys.contains(K900ProtocolUtils.FIELD_V) &&
+          json.keys.contains(K900ProtocolUtils.FIELD_B) {
         return true
       }
       

@@ -112,6 +112,8 @@ class ServerComms {
   func setAuthCredentials(_ userid: String, _ coreToken: String) {
     self.coreToken = coreToken
     self.userid = userid
+    // set core token user pref:
+    UserDefaults.standard.set(coreToken, forKey: "core_token")
   }
   
   func setServerUrl(_ url: String) {
