@@ -53,6 +53,7 @@ import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 import androidx.preference.PreferenceManager;
 
@@ -732,12 +733,19 @@ public class SmartGlassesManager extends Service {
     }
 
 
-    public void changeMicrophoneState(boolean isMicrophoneEnable, List<String> requiredData) {
+    public void changeMicrophoneState(boolean isMicrophoneEnabled, List<String> requiredData) {
         Log.d(TAG, "Changing microphone state to " + isMicrophoneEnabled);
 
         if (smartGlassesRepresentative == null) {
             Log.d(TAG, "Cannot change microphone state: smartGlassesRepresentative is null");
             return;
+        }
+
+        // Also change required Data field in phone microphone manager.
+        if (smartGlassesRepresentative.getPhoneMicrophoneManager() != null) {
+            smartGlassesRepresentative.getPhoneMicrophoneManager().setRequiredData(requiredData);
+        } else {
+            Log.w(TAG, "PhoneMicrophoneManager is null, skipping setRequiredData call");
         }
 
         // Simply delegate to the representative which will use PhoneMicrophoneManager

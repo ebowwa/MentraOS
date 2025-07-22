@@ -50,7 +50,7 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
     private final int LC3_BUFFER_MAX_SIZE = 22; // ~220ms of audio at 10ms per LC3 frame
 
     // Sherpa ONNX Transcriber
-    private SherpaOnnxAugmentosTranscriber sherpaTranscriber;
+    private SherpaOnnxTranscriber sherpaTranscriber;
 
     private SpeechRecAugmentos(Context context) {
         this.mContext = context;

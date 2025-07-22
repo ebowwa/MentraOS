@@ -137,8 +137,13 @@ android {
         jniLibs {
             useLegacyPackaging (findProperty('expo.useLegacyPackaging')?.toBoolean() ?: false)
         }
+
         pickFirst '**/libjsc.so'
         pickFirst '**/libc++_shared.so'
+        // Sherpa-ONNX AAR dependency and silero-vad import the same lib in android_core/app
+        pickFirst '**/libonnxruntime.so'
+        pickFirst '**/libonnxruntime4j_jni.so'
+
         resources {
             excludes += ["META-INF/INDEX.LIST"]
         }
@@ -209,5 +214,21 @@ dependencies {
         implementation("com.facebook.react:hermes-android")
     } else {
         implementation jscFlavor
+    }
+}
+
+// Force override onnxruntime version to 1.17.1 because sherpa-onnx bundles `libsherpa-onnx-jni.so` which depends on this version
+configurations.all {
+    resolutionStrategy {
+        eachDependency { DependencyResolveDetails details ->
+            if (details.requested.group == 'com.microsoft.onnxruntime') {
+                details.useVersion '1.17.1'
+                details.because('Force override vad’s transitive version')
+            }
+            if (details.requested.name == 'onnxruntime-android') {
+                details.useVersion '1.17.1'
+                details.because('Force override vad’s transitive version')
+            }
+        }
     }
 }

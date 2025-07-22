@@ -52,7 +52,7 @@ public class SherpaOnnxTranscriber {
     /**
      * Constructor that accepts an Android context to load model assets.
      */
-    public SherpaOnnxAugmentosTranscriber(Context ctx) {
+    public SherpaOnnxTranscriber(Context ctx) {
         this.context = ctx;
     }
 
@@ -64,27 +64,27 @@ public class SherpaOnnxTranscriber {
         try {
             // Load model file paths
             OnlineTransducerModelConfig transducer = new OnlineTransducerModelConfig();
-            transducer.encoder = "sherpa_onnx/encoder.onnx";
-            transducer.decoder = "sherpa_onnx/decoder.onnx";
-            transducer.joiner = "sherpa_onnx/joiner.onnx";
+            transducer.setEncoder("sherpa_onnx/encoder.onnx");
+            transducer.setDecoder("sherpa_onnx/decoder.onnx");
+            transducer.setJoiner("sherpa_onnx/joiner.onnx");
 
             OnlineModelConfig modelConfig = new OnlineModelConfig();
             modelConfig.setTransducer(transducer);
-            modelConfig.tokens = "sherpa_onnx/tokens.txt";
-            modelConfig.numThreads = 1; // TODO (yash): can we make this better?
+            modelConfig.setTokens("sherpa_onnx/tokens.txt");
+            modelConfig.setNumThreads(1);
 
             // Configure decoder and endpoint detection
             OnlineRecognizerConfig config = new OnlineRecognizerConfig();
-            config.setOnlineModelConfig(modelConfig);
-            config.decodingMethod = "greedy_search"; // Fast decoding
-            config.enableEndpoint = true;
-            config.rule1MinTrailingSilence = 1.2f;
-            config.rule2MinTrailingSilence = 0.8f;
-            config.rule3MinUtteranceLength = 10.0f;
+            config.setModelConfig(modelConfig);
+            config.setDecodingMethod("greedy_search"); // Fast decoding
+            config.setEnableEndpoint(true);
+            // .setRule1MinTrailingSilence(1.2f)
+            // .setRule2MinTrailingSilence(0.8f)
+            // .setRule3MinUtteranceLength(10.0f)
 
             // Create recognizer and stream
-            recognizer = new OnlineRecognizer(config, context.getAssets());
-            stream = recognizer.createStream();
+            recognizer = new OnlineRecognizer(context.getAssets(), config);
+            stream = recognizer.createStream("");
 
             startProcessingThread();
             running.set(true);
