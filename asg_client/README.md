@@ -32,12 +32,21 @@ The necessary changes here would involve re-implementing the K900 checks (K900 o
    MENTRAOS_SECURE=true
    ```
 
-3. For local development:
-   - If using an Android device, you can use either:
-     - The ADB tunnel: uncomment the localhost settings in `.env`
-     - Your computer's local IP: replace `localhost` with your IP address
-   - Ensure your device and computer are on the same network
-   - To use ADB tunnel: `adb reverse tcp:8002 tcp:8002`
+3. Clone the RTMP streaming library in this directory
+   ```
+   git clone git@github.com:Mentra-Community/StreamPackLite.git
+   cd StreamPackLite
+   git checkout working
+   ```
+
+### How to connect to Mentra Live with ADB
+
+Mentra Live suppports ADB over WiFi. The best way to access this is:
+
+1. Pair your Mentra Live in the MentraOS app
+2. Connect it to your local WiFi network in the MentraOS app
+3. Get its IP address from the "Glasses" screen in the MentraOS app
+4. On your computer that's on the same WiFi network, enter `adb connect {IP_ADDRESS}:5555`
 
 ### Build Notes
 
