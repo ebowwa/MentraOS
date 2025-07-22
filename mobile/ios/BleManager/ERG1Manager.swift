@@ -70,6 +70,16 @@ extension Data {
   }
 }
 
+public struct QuickNote: Equatable {
+  let id: UUID
+  let text: String
+  let timestamp: Date
+  
+  public static func == (lhs: QuickNote, rhs: QuickNote) -> Bool {
+    return lhs.id == rhs.id
+  }
+}
+
 struct BufferedCommand {
   let chunks: [[UInt8]]
   let sendLeft: Bool
@@ -535,13 +545,118 @@ enum GlassesError: Error {
   
   @objc public func RN_sendTextWall(_ text: String) -> Void {
     let chunks = textHelper.createTextWallChunks(text)
-    queueChunks(chunks, sleepAfterMs: 50)
+    queueChunks(chunks, sleepAfterMs: 10)
   }
   
   
   @objc public func RN_sendDoubleTextWall(_ top: String, _ bottom: String) -> Void {
     let chunks = textHelper.createDoubleTextWallChunks(textTop: top, textBottom: bottom)
-    queueChunks(chunks, sleepAfterMs: 50)
+    queueChunks(chunks, sleepAfterMs: 10)
+    
+    // quick note testing:
+    // Task {
+    //   await createQuickNoteIfNeeded(top + "\n" + bottom)
+    //   await sendQuickNotesToGlasses()
+    // }
+  }
+  
+  private func sendQuickNotesToGlasses() async {
+    //      guard let rightGlass = rightPeripheral,
+    //            let leftGlass = leftPeripheral,
+    //            let rightTxChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: rightGlass),
+    //            let leftTxChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: leftGlass) else {
+    //          return
+    //      }
+    
+    // if !self.isHeadUp {
+    //   return
+    // }
+    
+    // First, clear all existing notes
+    //      for noteNumber in 1...2 {
+    let noteNumber = 1
+    var command = Data()
+    command.append(Commands.QUICK_NOTE_ADD.rawValue)
+    command.append(0x10) // Fixed length for delete command
+    command.append(0x00) // Fixed byte
+    command.append(0xE0) // Version byte for delete
+    command.append(contentsOf: [0x03, 0x01, 0x00, 0x01, 0x00]) // Fixed bytes
+    command.append(UInt8(noteNumber)) // Note number to delete
+    command.append(contentsOf: [0x00, 0x01, 0x00, 0x01, 0x00, 0x00]) // Fixed bytes for delete
+    
+    //          // Send delete command to both glasses with proper timing
+    //          rightGlass.writeValue(command, for: rightTxChar, type: .withResponse)
+    //          try? await Task.sleep(nanoseconds: 50 * 1_000_000)
+    //          leftGlass.writeValue(command, for: leftTxChar, type: .withResponse)
+    //          try? await Task.sleep(nanoseconds: 150 * 1_000_000)
+    
+    // convert command to array of UInt8
+    let commandArray = command.map { $0 }
+    queueChunks([commandArray])
+    //      }
+    
+    // Then add all current notes
+    for (index, note) in quickNotes.prefix(4).enumerated() {
+      let slotNumber = index + 1
+      
+      guard let textData = note.text.data(using: .utf8),
+            let nameData = "Quick Note2".data(using: .utf8) else {
+        continue
+      }
+      
+      // Calculate payload length
+      let fixedBytes: [UInt8] = [0x03, 0x01, 0x00, 0x01, 0x00]
+      let versionByte = UInt8(Date().timeIntervalSince1970.truncatingRemainder(dividingBy: 256))
+      let payloadLength = 1 + // Fixed byte
+      1 + // Version byte
+      fixedBytes.count + // Fixed bytes sequence
+      1 + // Note number
+      1 + // Fixed byte 2
+      1 + // Name length
+      nameData.count + // Name bytes
+      1 + // Text length
+      1 + // Fixed byte after text length
+      textData.count + // Text bytes
+      2 // Final bytes
+      
+      // Build command
+      var command = Data()
+      command.append(Commands.QUICK_NOTE_ADD.rawValue)
+      command.append(UInt8(payloadLength & 0xFF))
+      command.append(0x00) // Fixed byte
+      command.append(versionByte)
+      command.append(contentsOf: fixedBytes)
+      command.append(UInt8(slotNumber))
+      command.append(0x01) // Fixed byte 2
+      command.append(UInt8(nameData.count))
+      command.append(nameData)
+      command.append(UInt8(textData.count))
+      command.append(0x00) // Fixed byte
+      command.append(textData)
+      
+      // convert command to array of UInt8
+      let commandArray = command.map { $0 }
+      queueChunks([commandArray])
+    }
+  }
+  
+  public func addQuickNote(_ text: String) async {
+    let note = QuickNote(id: UUID(), text: text, timestamp: Date())
+    quickNotes.append(note)
+  }
+  
+  public func updateQuickNote(id: UUID, newText: String) async {
+    if let index = quickNotes.firstIndex(where: { $0.id == id }) {
+      quickNotes[index] = QuickNote(id: id, text: newText, timestamp: Date())
+    }
+  }
+  
+  public func removeQuickNote(id: UUID) async {
+    quickNotes.removeAll { $0.id == id }
+  }
+  
+  public func clearQuickNotes() async {
+    quickNotes.removeAll()
   }
   
   public func setReadiness(left: Bool?, right: Bool?) {
@@ -691,11 +806,11 @@ enum GlassesError: Error {
       
       success = await sendCommandToSide2(lastChunk, side: side, attemptNumber: attempts)
       // CoreCommsService.log("command success: \(success)")
-//      if (!success) {
-//        CoreCommsService.log("timed out waiting for \(s)")
-//      }
-//      await sendCommandToSideWithoutResponse(lastChunk, side: side)
-//      success = true
+      //      if (!success) {
+      //        CoreCommsService.log("timed out waiting for \(s)")
+      //      }
+      //      await sendCommandToSideWithoutResponse(lastChunk, side: side)
+      //      success = true
       
       attempts += 1
       if !success && (attempts >= maxAttempts) {
@@ -795,12 +910,12 @@ enum GlassesError: Error {
     // Resume any pending ACK continuation for this side (thread-safe)
     var continuation: CheckedContinuation<Bool, Never>?
     ackCompletionsQueue.sync(flags: .barrier) {
-        continuation = pendingAckCompletions.removeValue(forKey: side)
+      continuation = pendingAckCompletions.removeValue(forKey: side)
     }
     
     if let continuation = continuation {
-        continuation.resume(returning: true)
-        // CoreCommsService.log("✅ ACK received for \(side) side, resuming continuation")
+      continuation.resume(returning: true)
+      // CoreCommsService.log("✅ ACK received for \(side) side, resuming continuation")
     }
     
     if peripheral == self.leftPeripheral {
@@ -904,10 +1019,10 @@ enum GlassesError: Error {
         CoreCommsService.log("HEAD_UP2")
         isHeadUp = true
         break
-      case .HEAD_DOWN:
-        CoreCommsService.log("HEAD_DOWN")
-        isHeadUp = false
-        break
+        // case .HEAD_DOWN:
+        //   CoreCommsService.log("HEAD_DOWN")
+        //   isHeadUp = false
+        //   break
       case .HEAD_DOWN2:
         CoreCommsService.log("HEAD_DOWN2")
         isHeadUp = false
@@ -1190,14 +1305,14 @@ extension ERG1Manager {
       
       if peripheral == nil || characteristic == nil {
         CoreCommsService.log("⚠️ peripheral/characteristic not found, resuming immediately")
-//        continuation.resume()
+        //        continuation.resume()
         continuation.resume(returning: false)
         return
       }
       
       // Store continuation for ACK callback (thread-safe)
       ackCompletionsQueue.async(flags: .barrier) {
-          self.pendingAckCompletions[side] = continuation
+        self.pendingAckCompletions[side] = continuation
       }
       
       peripheral!.writeValue(commandData, for: characteristic!, type: .withResponse)
@@ -1206,17 +1321,17 @@ extension ERG1Manager {
       
       // after 200ms, if we haven't received the ack, resume:
       DispatchQueue.main.asyncAfter(deadline: .now() + waitTime) {
-          // Check if ACK continuation still exists (if it does, ACK wasn't received)
-          var pendingContinuation: CheckedContinuation<Bool, Never>?
-          self.ackCompletionsQueue.sync(flags: .barrier) {
-              pendingContinuation = self.pendingAckCompletions.removeValue(forKey: side)
-          }
-          
-          if let pendingContinuation = pendingContinuation {
-              let elapsed = Date().timeIntervalSince(startTime) * 1000
-              CoreCommsService.log("⚠️ ACK timeout for \(side) side after \(String(format: "%.0f", elapsed))ms")
-              pendingContinuation.resume(returning: false)
-          }
+        // Check if ACK continuation still exists (if it does, ACK wasn't received)
+        var pendingContinuation: CheckedContinuation<Bool, Never>?
+        self.ackCompletionsQueue.sync(flags: .barrier) {
+          pendingContinuation = self.pendingAckCompletions.removeValue(forKey: side)
+        }
+        
+        if let pendingContinuation = pendingContinuation {
+          let elapsed = Date().timeIntervalSince(startTime) * 1000
+          CoreCommsService.log("⚠️ ACK timeout for \(side) side after \(String(format: "%.0f", elapsed))ms")
+          pendingContinuation.resume(returning: false)
+        }
       }
     }
   }
@@ -1672,23 +1787,36 @@ extension ERG1Manager {
     CoreCommsService.log("Clearing display with 0x18 command (exit to dashboard)")
     
     // Send 0x18 to both glasses (MentraOS's clear method)
-    let clearCommand: [UInt8] = [0x18]
     
-    // Create BufferedCommand with proper structure
-    let clearCmd = BufferedCommand(
-      chunks: [clearCommand],
-      sendLeft: true,
-      sendRight: true,
-      waitTime: 100,
-      ignoreAck: false
-    )
+    // var cmd: [UInt8] = [0x18]
+    // var cmd: [UInt8] = [0x23, 0x72]
+
     
-    await commandQueue.enqueue(clearCmd)
+    // let bufferedCommand = BufferedCommand(
+    //   chunks: [cmd],
+    //   sendLeft: false,
+    //   sendRight: true,
+    //   waitTime: 50,
+    //   ignoreAck: false
+    // )
+
+    // await commandQueue.enqueue(bufferedCommand)
+    Task {
+      await setSilentMode(true)
+      try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
+      await setSilentMode(false)
+      await setSilentMode(false)
+    }
     
-    // Wait for responses (MentraOS waits for 0xc9 success)
-    try? await Task.sleep(nanoseconds: 100 * 1_000_000) // 100ms
+    // RN_sendText("DISPLAY SLEEPING...")
+
+    // // queue the command after 0.5 seconds
+    // Task {
+    //   try await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+    //   await commandQueue.enqueue(bufferedCommand)
+    // }
     
-    CoreCommsService.log("Display cleared with exit command")
+    // CoreCommsService.log("Display cleared with exit command")
     return true
   }
   
@@ -1703,7 +1831,7 @@ extension ERG1Manager {
       onError?("both", "Failed to decode hex image data")
       return false
     }
-
+    
     CoreCommsService.log("🔍 iOS hex decoded image data: \(bmpData.map { String(format: "%02X", $0) }.joined(separator: " "))")
     
     CoreCommsService.log("✅ Successfully decoded hex to \(bmpData.count) bytes")
@@ -1734,26 +1862,26 @@ extension ERG1Manager {
   }
   
   private func invertBmpPixels(_ bmpData: Data) -> Data {
-      guard bmpData.count > 62 else {
-          CoreCommsService.log("BMP data too small to contain pixel data")
-          return bmpData
-      }
-      
-      // BMP header is 62 bytes for your format (14 byte file header + 40 byte DIB header + 8 byte color table)
-      let headerSize = 62
-      var invertedData = Data(bmpData.prefix(headerSize)) // Keep header unchanged
-      
-      // Invert the pixel data (everything after the header)
-      let pixelData = bmpData.dropFirst(headerSize)
-      
-      for byte in pixelData {
-          // Invert each byte (flip all bits)
-          let invertedByte = ~byte
-          invertedData.append(invertedByte)
-      }
-      
-      CoreCommsService.log("Inverted BMP pixels: \(pixelData.count) bytes processed")
-      return invertedData
+    guard bmpData.count > 62 else {
+      CoreCommsService.log("BMP data too small to contain pixel data")
+      return bmpData
+    }
+    
+    // BMP header is 62 bytes for your format (14 byte file header + 40 byte DIB header + 8 byte color table)
+    let headerSize = 62
+    var invertedData = Data(bmpData.prefix(headerSize)) // Keep header unchanged
+    
+    // Invert the pixel data (everything after the header)
+    let pixelData = bmpData.dropFirst(headerSize)
+    
+    for byte in pixelData {
+      // Invert each byte (flip all bits)
+      let invertedByte = ~byte
+      invertedData.append(invertedByte)
+    }
+    
+    CoreCommsService.log("Inverted BMP pixels: \(pixelData.count) bytes processed")
+    return invertedData
   }
   
   /// Core MentraOS-compatible BMP display implementation
@@ -2676,8 +2804,8 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
     
     // Resume continuation to allow sequential execution
     // TODO: use the ack continuation
-//    if let continuation = pendingWriteCompletions.removeValue(forKey: characteristic) {
-//      continuation.resume(returning: false)
-//    }
+    //    if let continuation = pendingWriteCompletions.removeValue(forKey: characteristic) {
+    //      continuation.resume(returning: false)
+    //    }
   }
 }

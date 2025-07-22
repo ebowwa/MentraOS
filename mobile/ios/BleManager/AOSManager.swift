@@ -705,12 +705,25 @@ struct ViewState {
       if (!self.somethingConnected) {
         return
       }
+
+      // cancel any pending clear display work item:
+      sendStateWorkItem?.cancel()
       
       let layoutType = currentViewState.layoutType
       switch layoutType {
       case "text_wall":
         let text = currentViewState.text
         sendText(text);
+        if text == " " || text == "" {
+          CoreCommsService.log("AOS: Clearing display after 3 seconds")
+          // if we're clearing the display, after a delay, send a clear command if not cancelled with another
+          let workItem = DispatchWorkItem { [weak self] in
+            guard let self = self else { return }
+            self.g1Manager?.RN_clearDisplay()
+          }
+          sendStateWorkItem = workItem
+          sendStateQueue.asyncAfter(deadline: .now() + 3, execute: workItem)
+        }
         break
       case "double_text_wall":
         let topText = currentViewState.topText
@@ -848,6 +861,16 @@ struct ViewState {
     topText = parsePlaceholders(topText)
     bottomText = parsePlaceholders(bottomText)
     title = parsePlaceholders(title)
+
+    let cS = self.viewStates[stateIndex]
+    let currentState = cS.layoutType + " " + cS.text + " " + cS.topText + " " + cS.bottomText
+    let newState = layoutType + " " + text + " " + topText + " " + bottomText
+    if currentState == newState {
+      CoreCommsService.log("AOS: View state is the same, skipping update")
+      return
+    } else {
+      CoreCommsService.log("AOS: View state changed from \(currentState) to \(newState)")
+    }
     
     CoreCommsService.log("Updating view state \(stateIndex) with \(layoutType) \(text) \(topText) \(bottomText)")
     
