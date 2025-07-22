@@ -75,6 +75,8 @@ export interface CoreInfo {
   puck_battery_life: number | null
   puck_charging_status: boolean
   default_wearable: string | null
+  default_wearable_name: string | null
+  default_wearable_address: string | null
   sensing_enabled: boolean
   force_core_onboard_mic: boolean
   preferred_mic: string

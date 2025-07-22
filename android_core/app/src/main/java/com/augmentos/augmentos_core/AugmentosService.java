@@ -589,6 +589,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             } else {
                 // We have some invalid device saved... delete from preferences
                 SmartGlassesManager.savePreferredWearable(this, "");
+                SmartGlassesManager.savePreferredWearableAddress(this, "");
             }
         }
 
@@ -2063,6 +2064,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     public void forgetSmartGlasses() {
         Log.d("AugmentOsService", "Forgetting wearable");
         SmartGlassesManager.savePreferredWearable(this, "");
+        SmartGlassesManager.savePreferredWearableAddress(this, "");
         deleteEvenSharedPreferences(this);
 
         // Clear MentraLive device name preference
@@ -2640,13 +2642,14 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             smartGlassesManager.getSmartGlassesConnectState() == SmartGlassesConnectionState.DISCONNECTED) {
 
             String preferredWearable = SmartGlassesManager.getPreferredWearable(this);
+            final String preferredWearableAddress = SmartGlassesManager.getPreferredWearableAddress(this);
             Log.d(TAG, "Found preferred wearable: " + preferredWearable);
 
             if (preferredWearable != null && !preferredWearable.isEmpty()) {
                 SmartGlassesDevice preferredDevice = SmartGlassesManager.getSmartGlassesDeviceFromModelName(preferredWearable);
                 if (preferredDevice != null) {
                     Log.d(TAG, "Auto-connecting to glasses due to app start: " + preferredWearable);
-
+                    preferredDevice.setDeviceAddress(preferredWearable);
                     // Always run on main thread to avoid threading issues
                     new Handler(Looper.getMainLooper()).post(() -> {
                         // Use executeOnceSmartGlassesManagerReady to ensure proper connection flow

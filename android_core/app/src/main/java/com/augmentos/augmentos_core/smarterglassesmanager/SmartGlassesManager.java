@@ -441,6 +441,7 @@ public class SmartGlassesManager extends Service {
             // Save preferred wearable if connected
             if (connectionState == SmartGlassesConnectionState.CONNECTED) {
                 savePreferredWearable(this, smartGlassesRepresentative.smartGlassesDevice.deviceModelName);
+                savePreferredWearableAddress(this, smartGlassesRepresentative.smartGlassesDevice.deviceAddress);
 
                 setFontSize(SmartGlassesFontSize.MEDIUM);
             }
@@ -470,6 +471,18 @@ public class SmartGlassesManager extends Service {
     public static String getPreferredWearable(Context context) {
         return PreferenceManager.getDefaultSharedPreferences(context)
                 .getString(context.getResources().getString(R.string.PREFERRED_WEARABLE), "");
+    }
+
+    public static void savePreferredWearableAddress(Context context, String deviceAddress) {
+        PreferenceManager.getDefaultSharedPreferences(context)
+                .edit()
+                .putString(context.getResources().getString(R.string.PREFERRED_WEARABLE_ADDRESS), deviceAddress)
+                .apply();
+    }
+
+    public static String getPreferredWearableAddress(Context context) {
+        return PreferenceManager.getDefaultSharedPreferences(context)
+                .getString(context.getResources().getString(R.string.PREFERRED_WEARABLE_ADDRESS), "");
     }
 
     public static ASR_FRAMEWORKS getChosenAsrFramework(Context context) {

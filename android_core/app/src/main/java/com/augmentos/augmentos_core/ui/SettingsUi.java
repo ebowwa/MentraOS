@@ -81,6 +81,7 @@ public class SettingsUi extends Fragment {
                 }
                 else {
                     SmartGlassesManager.savePreferredWearable(getContext(), "");
+                    SmartGlassesManager.savePreferredWearableAddress(getContext(), "");
                     ((MainActivity)getActivity()).mService.disconnectWearable("");
                     ((MainActivity)getActivity()).mService.connectToWearable("","","");
                 }

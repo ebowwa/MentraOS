@@ -37,6 +37,7 @@ import org.json.JSONObject;
 
 //BMP
 
+import java.util.Random;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -84,12 +85,12 @@ import com.augmentos.augmentos_core.statushelpers.DeviceInfo;
 
 public class MentraNextSGC extends SmartGlassesCommunicator {
     private final String TAG = "WearableAi_MentraNextSGC";
-    public final String SHARED_PREFS_NAME = "EvenRealitiesPrefs";
+    public final String SHARED_PREFS_NAME = "NextGlassesPrefs";
     private int heartbeatCount = 0;
     private int micBeatCount = 0;
     private BluetoothAdapter bluetoothAdapter;
 
-    public final String NEXT_MAIN_DEVICE_KEY = "SavedNextMainName";
+    public final String NEXT_MAIN_DEVICE_KEY = "SavedNextDeviceName";
 
     private boolean isKilled = false;
 
@@ -103,11 +104,14 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
     private final byte PACKET_TYPE_JSON = (byte) 0x01;
     private final byte PACKET_TYPE_AUDIO = (byte) 0xA0;
     private final byte PACKET_TYPE_IMAGE = (byte) 0xB0;
+    private final Random random=new Random();
 
     private Context context;
     private BluetoothGatt mainGlassGatt;
     private BluetoothGattCharacteristic mainTxChar;
     private BluetoothGattCharacteristic mainRxChar;
+    private final int MTU_512=512;
+    private final int MTU_256=256;
     private int currentMTU = 0;
 
     private SmartGlassesConnectionState connectionState = SmartGlassesConnectionState.DISCONNECTED;
@@ -207,7 +211,7 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
 
     // lock writing until the last write is successful
     // fonts in NextGlasses
-    G1FontLoader fontLoader;
+    private G1FontLoader fontLoader;
 
     private final long DEBOUNCE_DELAY_MS = 270; // Minimum time between chunk sends
     private volatile long lastSendTimestamp = 0;
@@ -344,6 +348,8 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
                         // }, delay);
                     }
                 } else {
+                    MAX_CHUNK_SIZE=MAX_CHUNK_SIZE_DEFAULT;
+                    BMP_CHUNK_SIZE=MAX_CHUNK_SIZE_DEFAULT;
                     Log.e(TAG, "Unexpected connection state encountered for " + " glass: " + newState);
                     stopHeartbeat();
                     stopMicBeat();
@@ -406,8 +412,10 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
             public void onCharacteristicWrite(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic,
                     int status) {
                 Log.d(TAG, "onCharacteristicWrite callback - ");
+               final byte[]values=characteristic.getValue();
                 if (status == BluetoothGatt.GATT_SUCCESS) {
                     Log.d(TAG, "onCharacteristicWrite PROC_QUEUE - " + " glass write successful");
+                    Log.d(TAG, "onCharacteristicWrite Values - " + bytesToHex(values));
                 } else {
                     Log.e(TAG, " glass write failed with status: " + status);
 
@@ -435,8 +443,16 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
                 Log.d(TAG, "onMtuChanged: " + statusBool + "  " + mtu);
                 if (statusBool) {
                     currentMTU = mtu;
+                    MAX_CHUNK_SIZE=currentMTU-10;
+                    //BMP has more cofig bytes
+                    BMP_CHUNK_SIZE=currentMTU-20;
                 } else {
+                    if(mtu==MTU_512){
+                        gatt.requestMtu(MTU_256);
+                    }
                     currentMTU = 0;
+                    MAX_CHUNK_SIZE=MAX_CHUNK_SIZE_DEFAULT;
+                    BMP_CHUNK_SIZE=MAX_CHUNK_SIZE_DEFAULT;
                 }
             }
 
@@ -448,6 +464,60 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
                         String deviceName = gatt.getDevice().getName();
                         if (deviceName == null) {
                             return;
+                        }
+                        final int dataLen=data.length;
+                        if (dataLen==0){
+                            return ;
+                        }
+                        byte packetType=data[0];
+                        switch (packetType){
+                            case PACKET_TYPE_JSON:
+                            {
+                                byte[] jsonData = Arrays.copyOfRange(data, 2, dataLen);
+                                decodeJsons(jsonData);
+                            }
+                                break;
+                            case PACKET_TYPE_AUDIO:
+                            {
+                                // Log.d(TAG, "Lc3 Audio data received. Data: " + Arrays.toString(data) + ",
+                                // from: " + deviceName);
+                                int streamId = data[1] & 0xFF; // Sequence number
+                                // eg. LC3 to PCM
+                                byte[] lc3 = Arrays.copyOfRange(data, 2, dataLen);
+                                // byte[] pcmData = L3cCpp.decodeLC3(lc3);
+                                // if (pcmData == null) {
+                                // throw new IllegalStateException("Failed to decode LC3 data");
+                                // }
+
+                                // decode the LC3 audio
+                                if (lc3DecoderPtr != 0) {
+                                    byte[] pcmData = L3cCpp.decodeLC3(lc3DecoderPtr, lc3);
+                                    // send the PCM out
+                                    if (shouldUseGlassesMic) {
+                                        if (audioProcessingCallback != null) {
+                                            if (pcmData != null && pcmData.length > 0) {
+                                                audioProcessingCallback.onAudioDataAvailable(pcmData);
+                                            }
+                                        } else {
+                                            // If we get here, it means the callback wasn't properly registered
+                                            Log.e(TAG,
+                                                    "Audio processing callback is null - callback registration failed!");
+                                        }
+                                    }
+
+                                    // if (shouldUseGlassesMic) { TODO: add this back if needed
+                                    // EventBus.getDefault().post(new AudioChunkNewEvent(pcmData));
+                                    // } else {
+                                    // Log.e(TAG, "Failed to decode LC3 frame, got null or empty result");
+                                    // }
+                                }
+
+                                // send through the LC3
+                                audioProcessingCallback.onLC3AudioDataAvailable(lc3);
+                            }
+                                break;
+                            case PACKET_TYPE_IMAGE:
+                                break;
                         }
 
                         // Handle MIC audio data
@@ -621,7 +691,7 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
     }
 
     private void initNextGlasses(BluetoothGatt gatt) {
-        gatt.requestMtu(512); // Request a higher MTU size
+        gatt.requestMtu(MTU_512); // Request a higher MTU size
         Log.d(TAG, "Requested MTU size: 512");
 
         BluetoothGattService uartService = gatt.getService(UART_SERVICE_UUID);
@@ -695,7 +765,7 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
                 // start sending debug notifications
                 // startPeriodicNotifications(302);
                 // start sending debug notifications
-                // startPeriodicTextWall(302);
+                 startPeriodicTextWall(302);
             }
         } else {
             Log.e(TAG, " glass UART service not found");
@@ -1040,8 +1110,7 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
     public void connectToSmartGlasses(SmartGlassesDevice device) {
         // Register bonding receiver
 
-        Log.d(TAG, "try to ConnectToSmartGlassesing deviceModelName " + device.deviceModelName);
-        Log.d(TAG, "try to ConnectToSmartGlassesing " + device.deviceAddress);
+        Log.d(TAG, "try to ConnectToSmartGlassesing deviceModelName:" + device.deviceModelName+"  deviceAddress:"+device.deviceAddress );
 
         preferredMainDeviceId = getPreferredMainDeviceId(context);
 
@@ -1050,9 +1119,9 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
         }
 
         // Start scanning for devices
-        if (device.deviceModelName != null) {
+        if (device.deviceModelName != null && device.deviceAddress!=null) {
             stopScan();
-            mainDevice = bluetoothAdapter.getRemoteDevice(device.deviceModelName);
+            mainDevice = bluetoothAdapter.getRemoteDevice(device.deviceAddress);
             connectHandler.postDelayed(() -> {
                 attemptGattConnection(mainDevice);
             }, 0);
@@ -1085,6 +1154,7 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
         // Start scanning
         isScanning = true;
         scanner.startScan(filters, settings, modernScanCallback);
+        scanner.flushPendingScanResults(modernScanCallback);
         Log.d(TAG, "CALL START SCAN - Started scanning for devices...");
 
         // Ensure scanning state is immediately communicated to UI
@@ -1737,7 +1807,7 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
 
     @Override
     public void findCompatibleDeviceNames() {
-
+        Log.d(TAG, "findCompatibleDeviceNames action");
         findCompatibleDeviceNamesHandler();
 
     }
@@ -1806,7 +1876,7 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
         // Start scanning
         scanner.startScan(filters, settings, bleScanCallback);
         Log.d(TAG, "Started scanning for smart glasses with BluetoothLeScanner...");
-
+        scanner.flushPendingScanResults(bleScanCallback);
         // Stop scanning after 10 seconds (adjust as needed)
         findCompatibleDevicesHandler.postDelayed(() -> {
             if (bleScanCallback != null) {
@@ -1969,7 +2039,8 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
     @Override
     public void updateGlassesAutoBrightness(boolean autoBrightness) {
         Log.d(TAG, "Updating glasses auto brightness: " + autoBrightness);
-        sendBrightnessCommand(-1, autoBrightness);
+       // sendBrightnessCommand(-1, autoBrightness);
+        sendPeriodicTextWall();
     }
 
     @Override
@@ -2116,7 +2187,10 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
     private final int OLD_FONT_SIZE = 21; // Font size
     private final float FONT_DIVIDER = 2.0f;
     private final int LINES_PER_SCREEN = 5; // Lines per screen
-    private final int MAX_CHUNK_SIZE = 176; // Maximum chunk size for BLE packets
+    private final  int MAX_CHUNK_SIZE_DEFAULT = 176; // Maximum chunk size for BLE packets
+    private   int MAX_CHUNK_SIZE = MAX_CHUNK_SIZE_DEFAULT; // Maximum chunk size for BLE packets
+    private   int BMP_CHUNK_SIZE = 194;
+
     // private final int INDENT_SPACES = 32; // Number of spaces to indent
     // text
 
@@ -2202,7 +2276,10 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
 
         DisplayText displayText = new DisplayText();
         displayText.setText(text);
+        displayText.setSize(20);
         final String jsonData = gson.toJson(displayText);
+
+        Log.d(TAG, "createTextWallChunksForNext json "+jsonData);
 
         byte[] contentBytes = jsonData.getBytes(StandardCharsets.UTF_8);
 
@@ -2212,17 +2289,56 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
         chunk.put(contentBytes);
 
         byte[] result = new byte[chunk.position()];
-        chunk.flip(); // 切换到读模式
+        chunk.flip();
         chunk.get(result);
         return result;
     }
 
-    // build image chunks ,for next glasses
-    private byte[] createImageChunksForNextTest(String text) {
-
-        DisplayText displayText = new DisplayText();
+    //create a VerticalScrollingfor next glasses
+    private byte[] createVerticalScrollingTextWallChunksForNext(String text) {
+        DisplayVerticalScrollingText displayText = new DisplayVerticalScrollingText();
         displayText.setText(text);
+        displayText.setSize(20);
         final String jsonData = gson.toJson(displayText);
+
+        Log.d(TAG, "createVerticalScrollingTextWallChunksForNext json "+jsonData);
+
+        byte[] contentBytes = jsonData.getBytes(StandardCharsets.UTF_8);
+
+        ByteBuffer chunk = ByteBuffer.allocate(contentBytes.length + 1);
+
+        chunk.put(PACKET_TYPE_JSON);
+        chunk.put(contentBytes);
+
+        byte[] result = new byte[chunk.position()];
+        chunk.flip();
+        chunk.get(result);
+        return result;
+    }
+
+    // send a tast image and display
+    private void startSendingDisplayImageTest(){
+
+
+       // byte[] exitCommand = new byte[] { (byte) 0x18 };
+        // sendDataSequentially(exitCommand, false);
+
+        byte[] theClearBitmapOrSomething = loadEmptyBmpFromAssets();
+        Bitmap bmp = BitmapJavaUtils.bytesToBitmap(theClearBitmapOrSomething);
+        try {
+            byte[] bmpBytes = BitmapJavaUtils.convertBitmapTo1BitBmpBytes(bmp, false);
+            displayBitmapImageForNextGlass(bmpBytes);
+        } catch (Exception e) {
+            Log.e(TAG, "Error displaying clear bitmap: " + e.getMessage());
+        }
+    }
+
+    private byte[] createSendingImageChunksCommand(char streamId,int totalChunks) {
+
+        DisplayBitmapCommand displayBitmapCommand = new DisplayBitmapCommand();
+        displayBitmapCommand.setStream_id(streamId);
+        displayBitmapCommand.setTotal_chunks(totalChunks);
+        final String jsonData = gson.toJson(displayBitmapCommand);
 
         byte[] contentBytes = jsonData.getBytes(StandardCharsets.UTF_8);
 
@@ -2257,9 +2373,13 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
 
         // Ensure we have exactly LINES_PER_SCREEN lines (typically 5)
         while (lines1.size() < LINES_PER_SCREEN)
+        {
             lines1.add("");
+        }
         while (lines2.size() < LINES_PER_SCREEN)
+        {
             lines2.add("");
+        }
 
         lines1 = lines1.subList(0, LINES_PER_SCREEN);
         lines2 = lines2.subList(0, LINES_PER_SCREEN);
@@ -2461,21 +2581,39 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
                 "It demonstrates how text can be split into multiple pages and displayed sequentially. " +
                 "Each page contains multiple lines, and each line is carefully formatted to fit the display width. " +
                 "The text continues across multiple pages, showing how longer content can be handled effectively.";
+        final boolean isForG1Glasses=false;
+        //for g1
+        if(isForG1Glasses){
+             List<byte[]> chunks = createTextWallChunks(sampleText);
+            //for next glasses
+            // Send each chunk with a delay between sends
+            for (byte[] chunk : chunks) {
+                sendDataSequentially(chunk);
 
-        List<byte[]> chunks = createTextWallChunks(sampleText);
+                // try {
+                // Thread.sleep(150); // 150ms delay between chunks
+                // } catch (InterruptedException e) {
+                // e.printStackTrace();
+                // }
+            }
 
-        // Send each chunk with a delay between sends
-        for (byte[] chunk : chunks) {
-            sendDataSequentially(chunk);
+            // Log.d(TAG, "Sent text wall");
+        }else{
+            final boolean isDisplayVerticalScrollingText=false;
+            if(isDisplayVerticalScrollingText){
+                Log.d(TAG, "Sent scrolling text wall "+sampleText+" to Next Glasses ");
 
-            // try {
-            // Thread.sleep(150); // 150ms delay between chunks
-            // } catch (InterruptedException e) {
-            // e.printStackTrace();
-            // }
+                byte[] singleChunks = createVerticalScrollingTextWallChunksForNext(sampleText);
+                sendDataSequentially(singleChunks);
+            }else{
+                sampleText="Hello world";
+                Log.d(TAG, "Sent text wall "+sampleText+" to Next Glasses ");
+
+                byte[] singleChunks = createTextWallChunksForNext(sampleText);
+                sendDataSequentially(singleChunks);
+            }
+
         }
-
-        // Log.d(TAG, "Sent text wall");
     }
 
     private String bytesToUtf8(byte[] bytes) {
@@ -2555,7 +2693,7 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
 
     // Helper function to split JSON into chunks
     private List<byte[]> createWhitelistChunks(String json) {
-        final int MAX_CHUNK_SIZE = 180 - 4; // Reserve space for the header
+       // final int MAX_CHUNK_SIZE = 180 - 4; // Reserve space for the header
         byte[] jsonBytes = json.getBytes(StandardCharsets.UTF_8);
         int totalChunks = (int) Math.ceil((double) jsonBytes.length / MAX_CHUNK_SIZE);
 
@@ -2625,10 +2763,10 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
     // BMP handling
 
     // Add these class variables
-    private final int BMP_CHUNK_SIZE = 194;
     private final byte[] GLASSES_ADDRESS = new byte[] { 0x00, 0x1c, 0x00, 0x00 };
     private final byte[] END_COMMAND = new byte[] { 0x20, 0x0d, 0x0e };
 
+    // for g1 glasses
     public void displayBitmapImage(byte[] bmpData) {
         Log.d(TAG, "Starting BMP display process");
 
@@ -2659,6 +2797,44 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
         }
     }
 
+    //for Next Glasses
+    public void displayBitmapImageForNextGlass(byte[] bmpData) {
+        Log.d(TAG, "Starting BMP display process");
+
+        try {
+            if (bmpData == null || bmpData.length == 0) {
+                Log.e(TAG, "Invalid BMP data provided");
+                return;
+            }
+            Log.d(TAG, "Processing BMP data, size: " + bmpData.length + " bytes");
+
+            // Split into chunks and send
+            final int totalChunks = (int) Math.ceil((double) bmpData.length / BMP_CHUNK_SIZE);
+            final char streamId=(char)random.nextInt();
+
+            byte[]startImageSendingBytes=createSendingImageChunksCommand(streamId,totalChunks);
+            sendDataSequentially(startImageSendingBytes);
+            // Send all chunks
+            // Split into chunks and send
+            List<byte[]> chunks = createBmpChunksForNextGlasses(streamId,bmpData,totalChunks);
+
+
+            sendBmpChunks(chunks);
+
+            // Send end command
+           // sendBmpEndCommand();
+
+            // Calculate and send CRC
+           // sendBmpCRC(bmpData);
+
+           // lastThingDisplayedWasAnImage = true;
+
+        } catch (Exception e) {
+            Log.e(TAG, "Error in displayBitmapImage: " + e.getMessage());
+        }
+    }
+
+    // for g1
     private List<byte[]> createBmpChunks(byte[] bmpData) {
         List<byte[]> chunks = new ArrayList<>();
         int totalChunks = (int) Math.ceil((double) bmpData.length / BMP_CHUNK_SIZE);
@@ -2684,6 +2860,30 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
                 System.arraycopy(chunk, 0, header, 2, chunk.length);
                 chunks.add(header);
             }
+        }
+        return chunks;
+    }
+
+    //for Next Glasses
+    private List<byte[]> createBmpChunksForNextGlasses(char streamId,byte[] bmpData,int totalChunks) {
+        List<byte[]> chunks = new ArrayList<>();
+       // int totalChunks = (int) Math.ceil((double) bmpData.length / BMP_CHUNK_SIZE);
+        Log.d(TAG, "Creating " + totalChunks + " chunks from " + bmpData.length + " bytes");
+        int start;
+        int end;
+        byte[] chunk;
+        byte[] header;
+        for (int i = 0; i < totalChunks; i++) {
+              start = i * BMP_CHUNK_SIZE;
+              end = Math.min(start + BMP_CHUNK_SIZE, bmpData.length);
+              chunk = Arrays.copyOfRange(bmpData, start, end);
+            header = new byte[4 + chunk.length];
+            header[0] = PACKET_TYPE_IMAGE; // Command
+            header[1] = (byte) ((streamId>>8) & 0xFF); // Sequence
+            header[2] = (byte) (streamId & 0xFF); // Sequence
+            header[3] = (byte) (i & 0xFF); // Sequence
+            System.arraycopy(chunk, 0, header, 4, chunk.length);
+            chunks.add(header);
         }
         return chunks;
     }
@@ -3033,7 +3233,7 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
      * "pause_ms": 1000, // optional: delay (in ms) before restarting loop
      * }
      */
-    private class DisplayScrollingText {
+    private class DisplayVerticalScrollingText {
         private String type;
         private String msg_id;
         private String text;
@@ -3171,6 +3371,21 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
         }
     }
 
+    private  enum  DisplayVerticalScrollingTextAlign{
+        LEFT("left"),
+        RIGHT("right"),
+        CENTER("center");
+
+        private String value;
+        DisplayVerticalScrollingTextAlign(String align){
+            this.value=align;
+        }
+
+        public String getValue(){
+            return  value;
+        }
+    }
+
     /**
      * {
      * "type": "display_image",
@@ -3184,10 +3399,11 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
      * "total_chunks": 9
      * }
      */
-    private class DisplayBitmap {
+    // start send a command for going to transport image chunks
+    private class DisplayBitmapCommand {
         private String type;
         private String msg_id;
-        private String stream_id;
+        private char stream_id;
         private int x;
         private int y;
         private int width;
@@ -3211,11 +3427,11 @@ public class MentraNextSGC extends SmartGlassesCommunicator {
             this.msg_id = msg_id;
         }
 
-        public String getStream_id() {
+        public char getStream_id() {
             return stream_id;
         }
 
-        public void setStream_id(String stream_id) {
+        public void setStream_id(char stream_id) {
             this.stream_id = stream_id;
         }
 
