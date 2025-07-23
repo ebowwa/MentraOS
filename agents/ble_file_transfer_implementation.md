@@ -7,16 +7,19 @@ This document tracks the successful implementation of BLE file transfer protocol
 ## Protocol Documentation (from ODM)
 
 ### 1. BLE Service and Characteristics
+
 - **Service UUID**: `00004860-0000-1000-8000-00805f9b34fb`
 - **File Read UUID**: `000072FF-0000-1000-8000-00805f9b34fb` (BES → Phone)
 - **File Write UUID**: `000073FF-0000-1000-8000-00805f9b34fb` (Phone → BES)
 - **Normal TX/RX UUIDs**: `000070FF/000071FF`
 
 ### 2. File Transfer Protocol Format
+
 ```
-head(2) + file_type(1) + pack_size(2) + pack_index(2) + file_size(4) + 
+head(2) + file_type(1) + pack_size(2) + pack_index(2) + file_size(4) +
 file_name(16) + flags(2) + data(n) + verify(1) + tail(2)
 ```
+
 - **Head**: `##` (0x23, 0x23)
 - **File type**: `0x31` for photos
 - **Pack size**: 400 bytes per packet (except last)
@@ -49,16 +52,19 @@ The implementation achieves remarkable speed (13KB in ~600ms) because:
 ## Critical Implementation Details
 
 ### 1. Byte Order (MANDATORY)
+
 - **All multi-byte integers MUST use big-endian byte order**
 - This includes: pack_size, pack_index, file_size, flags
 - BES chip expects big-endian and won't parse packets otherwise
 
 ### 2. Message Extraction Order (MANDATORY)
+
 - **Try big-endian extraction first** for messages from BES chip
 - **Fall back to little-endian** for messages from phone
 - Different components use different byte orders!
 
 ### 3. BES ACK Index Behavior (MANDATORY)
+
 - BES sends `index = packet_index + 1`
 - For packet 0, BES sends index=1
 - For packet 1, BES sends index=2
@@ -67,12 +73,14 @@ The implementation achieves remarkable speed (13KB in ~600ms) because:
 ### 4. Phone-Side Changes Required in MentraLiveSGC.java
 
 **MANDATORY changes:**
+
 1. **Remove phone ACK sending** - BES handles this automatically
 2. **Add file packet detection** for 0x31 command type
 3. **Implement file reassembly** with duplicate detection
 4. **Save complete files** to app storage
 
 **What we changed:**
+
 ```java
 // In processReceivedData():
 // 1. Detect file packets (type 0x31)
@@ -97,26 +105,31 @@ if (receivedBytes == fileSize) {
 ## Code Cleanup Opportunities
 
 ### 1. **Remove Phone ACK Code**
+
 - `MentraLiveSGC.sendFileTransferAck()` - NOT NEEDED
 - `K900ProtocolUtils.createFileTransferAck()` - NOT NEEDED (except for BES simulation)
 - Any phone-side ACK sending logic - NOT NEEDED
 
 ### 2. **Simplify K900BluetoothManager**
+
 - Remove complex ACK timeout/retry logic if BES is reliable
 - Consider removing `pendingPackets` tracking if not needed
 - Simplify `FilePacketState` class
 
 ### 3. **Clean Up Byte Order Handling**
+
 - Standardize on big-endian for file packets
 - Document byte order requirements clearly
 - Remove little-endian file packet code paths
 
 ### 4. **Remove Debug/Test Code**
+
 - Excessive logging in production paths
 - Test image sending from assets (keep for dev only)
 - Notification manager debug messages
 
 ### 5. **Consolidate Duplicate Code**
+
 - File packet parsing appears in multiple places
 - Byte order conversion utilities could be centralized
 - JSON wrapping/unwrapping logic is repeated
@@ -124,6 +137,7 @@ if (receivedBytes == fileSize) {
 ## What's Essential vs What Can Go
 
 ### Essential Code:
+
 1. **K900ProtocolUtils.packFilePacket()** - Creates file packets
 2. **K900ProtocolUtils.extractFilePacket()** - Parses file packets
 3. **K900BluetoothManager file transfer methods** - Sends packets
@@ -132,6 +146,7 @@ if (receivedBytes == fileSize) {
 6. **Big-endian byte order** - Required by BES chip
 
 ### Can Be Removed:
+
 1. **Phone ACK sending/receiving** - BES handles this
 2. **Complex retry logic** - BES ACKs are reliable
 3. **Little-endian file packet code** - Not used
@@ -141,6 +156,7 @@ if (receivedBytes == fileSize) {
 ## Performance Metrics
 
 Based on successful transfer of test.jpg:
+
 - **File Size**: 13,147 bytes
 - **Packets**: 33 (0-32)
 - **Transfer Time**: ~600ms

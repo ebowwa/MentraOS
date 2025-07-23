@@ -59,6 +59,7 @@ struct ViewState {
   private var dashboardHeight: Int = 4;
   private var dashboardDepth: Int = 5;
   private var sensingEnabled: Bool = true;
+  private var powerSavingMode: Bool = false;
   private var isSearching: Bool = true;
   private var isUpdatingScreen: Bool = false;
   private var alwaysOnStatusBar: Bool = false;
@@ -848,6 +849,16 @@ struct ViewState {
     topText = parsePlaceholders(topText)
     bottomText = parsePlaceholders(bottomText)
     title = parsePlaceholders(title)
+
+    let cS = self.viewStates[stateIndex]
+    let currentState = cS.layoutType + " " + cS.text + " " + cS.topText + " " + cS.bottomText
+    let newState = layoutType + " " + text + " " + topText + " " + bottomText
+    if currentState == newState {
+      CoreCommsService.log("AOS: View state is the same, skipping update")
+      return
+    } else {
+      CoreCommsService.log("AOS: View state changed from \(currentState) to \(newState)")
+    }
     
     CoreCommsService.log("Updating view state \(stateIndex) with \(layoutType) \(text) \(topText) \(bottomText)")
     
@@ -958,6 +969,21 @@ struct ViewState {
     }
     // self.g1Manager?.RN_sendText(text)
     self.g1Manager?.RN_sendTextWall(text)
+
+    // cancel any pending clear display work item:
+    sendStateWorkItem?.cancel()
+
+    // clear the screen after 3 seconds if the text is empty or a space:
+    if (text == " " || text == "") && self.powerSavingMode {
+      CoreCommsService.log("AOS: Clearing display after 3 seconds")
+      // if we're clearing the display, after a delay, send a clear command if not cancelled with another
+      let workItem = DispatchWorkItem { [weak self] in
+        guard let self = self else { return }
+        self.g1Manager?.RN_clearDisplay()
+      }
+      sendStateWorkItem = workItem
+      sendStateQueue.asyncAfter(deadline: .now() + 3, execute: workItem)
+    }
   }
   
   
@@ -1104,6 +1130,12 @@ struct ViewState {
     handleRequestStatus()// to update the UI
     saveSettings()
   }
+
+  private func enablePowerSavingMode(_ enabled: Bool) {
+    self.powerSavingMode = enabled
+    handleRequestStatus()// to update the UI
+    saveSettings()
+  }
   
   private func enableAlwaysOnStatusBar(_ enabled: Bool) {
     self.alwaysOnStatusBar = enabled
@@ -1180,6 +1212,7 @@ struct ViewState {
       case updateGlassesDepth = "update_glasses_depth"
       case updateGlassesHeight = "update_glasses_height"
       case enableSensing = "enable_sensing"
+      case enablePowerSavingMode = "enable_power_saving_mode"
       case enableAlwaysOnStatusBar = "enable_always_on_status_bar"
       case bypassVad = "bypass_vad_for_debugging"
       case bypassAudioEncoding = "bypass_audio_encoding_for_debugging"
@@ -1321,6 +1354,13 @@ struct ViewState {
             break
           }
           enableSensing(enabled)
+          break
+        case .enablePowerSavingMode:
+          guard let params = params, let enabled = params["enabled"] as? Bool else {
+            CoreCommsService.log("AOS: enable_power_saving_mode invalid params")
+            break
+          }
+          enablePowerSavingMode(enabled)
           break
         case .enableAlwaysOnStatusBar:
           guard let params = params, let enabled = params["enabled"] as? Bool else {
@@ -1481,6 +1521,7 @@ struct ViewState {
       // todo: this isn't robust:
       "is_mic_enabled_for_frontend": self.micEnabled && (self.preferredMic == "glasses") && self.somethingConnected,
       "sensing_enabled": self.sensingEnabled,
+      "power_saving_mode": self.powerSavingMode,
       "always_on_status_bar": self.alwaysOnStatusBar,
       "bypass_vad_for_debugging": self.bypassVad,
       "bypass_audio_encoding_for_debugging": self.bypassAudioEncoding,
@@ -1730,6 +1771,7 @@ struct ViewState {
     static let brightness = "brightness"
     static let autoBrightness = "autoBrightness"
     static let sensingEnabled = "sensingEnabled"
+    static let powerSavingMode = "powerSavingMode"
     static let dashboardHeight = "dashboardHeight"
     static let dashboardDepth = "dashboardDepth"
     static let alwaysOnStatusBar = "alwaysOnStatusBar"
@@ -1816,6 +1858,10 @@ struct ViewState {
     if let sensingEnabled = coreInfo?["sensing_enabled"] as? Bool, sensingEnabled != self.sensingEnabled {
       enableSensing(sensingEnabled)
     }
+
+    if let powerSavingMode = coreInfo?["power_saving_mode"] as? Bool, powerSavingMode != self.powerSavingMode {
+      enablePowerSavingMode(powerSavingMode)
+    }
     
     if let newAlwaysOnStatusBar = coreInfo?["always_on_status_bar_enabled"] as? Bool, newAlwaysOnStatusBar != self.alwaysOnStatusBar {
       enableAlwaysOnStatusBar(newAlwaysOnStatusBar)
@@ -1865,6 +1911,7 @@ struct ViewState {
     defaults.set(brightness, forKey: SettingsKeys.brightness)
     defaults.set(autoBrightness, forKey: SettingsKeys.autoBrightness)
     defaults.set(sensingEnabled, forKey: SettingsKeys.sensingEnabled)
+    defaults.set(powerSavingMode, forKey: SettingsKeys.powerSavingMode)
     defaults.set(dashboardHeight, forKey: SettingsKeys.dashboardHeight)
     defaults.set(dashboardDepth, forKey: SettingsKeys.dashboardDepth)
     defaults.set(alwaysOnStatusBar, forKey: SettingsKeys.alwaysOnStatusBar)
@@ -1887,6 +1934,7 @@ struct ViewState {
     
     // set default settings here:
     sensingEnabled = true
+    powerSavingMode = false
     contextualDashboard = true
     bypassVad = false
     preferredMic = "glasses"
@@ -1894,12 +1942,14 @@ struct ViewState {
     headUpAngle = 30
     metricSystemEnabled = false
     autoBrightness = true
+    powerSavingMode = false
     dashboardHeight = 4
     dashboardDepth = 5
     alwaysOnStatusBar = false
     bypassAudioEncoding = false
     
     UserDefaults.standard.register(defaults: [SettingsKeys.sensingEnabled: true])
+    UserDefaults.standard.register(defaults: [SettingsKeys.powerSavingMode: false])
     UserDefaults.standard.register(defaults: [SettingsKeys.contextualDashboard: true])
     UserDefaults.standard.register(defaults: [SettingsKeys.bypassVad: false])
     UserDefaults.standard.register(defaults: [SettingsKeys.preferredMic: "glasses"])
@@ -1917,6 +1967,7 @@ struct ViewState {
     contextualDashboard = defaults.bool(forKey: SettingsKeys.contextualDashboard)
     autoBrightness = defaults.bool(forKey: SettingsKeys.autoBrightness)
     sensingEnabled = defaults.bool(forKey: SettingsKeys.sensingEnabled)
+    powerSavingMode = defaults.bool(forKey: SettingsKeys.powerSavingMode)
     dashboardHeight = defaults.integer(forKey: SettingsKeys.dashboardHeight)
     dashboardDepth = defaults.integer(forKey: SettingsKeys.dashboardDepth)
     alwaysOnStatusBar = defaults.bool(forKey: SettingsKeys.alwaysOnStatusBar)

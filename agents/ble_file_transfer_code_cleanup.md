@@ -7,6 +7,7 @@ The BLE file transfer is working perfectly with the BES chip's auto-acknowledgme
 ## 1. Phone-Side ACK Code (Can Remove)
 
 ### In MentraLiveSGC.java:
+
 ```java
 // REMOVE THIS METHOD - NOT NEEDED
 private void sendFileTransferAck(int state, int index) {
@@ -18,6 +19,7 @@ private void sendFileTransferAck(int state, int index) {
 ```
 
 ### In K900ProtocolUtils.java:
+
 ```java
 // KEEP but mark as "For testing/simulation only"
 public static String createFileTransferAck(int state, int index) {
@@ -30,6 +32,7 @@ public static String createFileTransferAck(int state, int index) {
 ### In K900BluetoothManager.java:
 
 **Can simplify or remove:**
+
 - `FilePacketState` class - might not need retry tracking
 - `pendingPackets` map - if BES is reliable
 - `checkFilePacketAck()` method - complex timeout logic
@@ -37,6 +40,7 @@ public static String createFileTransferAck(int state, int index) {
 - `FILE_TRANSFER_MAX_RETRIES` constant
 
 **Must keep:**
+
 - BES ACK handling with index+1 behavior
 - Fast mode switching
 - Basic packet sending logic
@@ -44,6 +48,7 @@ public static String createFileTransferAck(int state, int index) {
 ## 3. Debug/Test Code to Clean
 
 ### Remove excessive logging:
+
 ```java
 // Change from:
 Log.e(TAG, "📦 JSON DATA BEFORE C-WRAPPING: " + originalData);
@@ -52,6 +57,7 @@ Log.d(TAG, "Wrapping JSON data");
 ```
 
 ### Make test method conditional:
+
 ```java
 @DebugOnly  // or similar annotation
 public boolean sendTestImageFromAssets(String assetFileName) {
@@ -62,6 +68,7 @@ public boolean sendTestImageFromAssets(String assetFileName) {
 ## 4. Byte Order Consolidation
 
 ### Create utility methods:
+
 ```java
 public class ByteOrderUtils {
     // Consolidate all big-endian conversions
@@ -73,18 +80,21 @@ public class ByteOrderUtils {
 ```
 
 ### Remove little-endian file packet code:
+
 - Keep little-endian only for phone-to-glasses JSON messages
 - All file packets use big-endian exclusively
 
 ## 5. Essential Code to Keep
 
 ### K900ProtocolUtils.java:
+
 - `packFilePacket()` - exactly as is
 - `extractFilePacket()` - exactly as is
 - `CMD_TYPE_PHOTO` and related constants
 - `FilePacketInfo` class
 
 ### K900BluetoothManager.java:
+
 - `sendImageFile()` core logic
 - `sendNextFilePacket()` method
 - `handleFileTransferAck()` with BES index+1 logic
@@ -92,6 +102,7 @@ public class ByteOrderUtils {
 - Fast mode switching
 
 ### MentraLiveSGC.java:
+
 - File packet detection (0x31 type)
 - `FileTransferSession` for reassembly
 - `processFilePacket()` method
@@ -99,12 +110,14 @@ public class ByteOrderUtils {
 - Duplicate packet detection
 
 ### ComManager.java:
+
 - `sendFile()` method
 - `setFastMode()` and fast/normal sleep modes
 
 ## 6. Recommended Refactoring
 
 ### Create dedicated file transfer classes:
+
 ```java
 // New class for cleaner separation
 public class BleFileTransferManager {
@@ -120,6 +133,7 @@ public class FileTransferProtocol {
 ```
 
 ### Add proper callbacks:
+
 ```java
 public interface FileTransferListener {
     void onTransferStarted(String fileName, int totalPackets);
@@ -145,6 +159,7 @@ public interface FileTransferListener {
 ## 8. Keep for Documentation
 
 ### Critical knowledge to preserve:
+
 1. BES chip auto-ACKs with index = packet_index + 1
 2. Big-endian byte order for file packets
 3. 72FF characteristic for file transfer

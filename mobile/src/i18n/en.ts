@@ -154,6 +154,10 @@ const en = {
     reconnectOnAppForeground: "Reconnect on App Foreground",
     reconnectOnAppForegroundSubtitle:
       "Automatically attempt to reconnect to glasses when the app comes back to the foreground.",
+    powerSavingMode: "Power Saving Mode",
+    powerSavingModeSubtitle:
+      "Allows the display to fully turn off. May briefly show \"Even AI Listening\".",
+    powerSavingModeSubtitle2: "TODO",
   },
   profileSettings: {
     title: "Profile Settings",
