@@ -23,6 +23,37 @@ export class SonioxTranslationUtils {
   private static readonly mappings = translationMappings.models.find(m => m.id === 'stt-rt-preview')!;
   
   /**
+   * Normalize BCP 47 language codes (e.g., "fr-FR") to Soniox base codes (e.g., "fr")
+   * Soniox uses ISO 639-1 base language codes without region specifiers
+   */
+  static normalizeLanguageCode(languageCode: string): string {
+    if (!languageCode) return languageCode;
+    
+    // Extract base language code (remove region/country code)
+    const baseCode = languageCode.split('-')[0].toLowerCase();
+    
+    // Special cases for Soniox mappings
+    const normalizedCode = this.mapToSonioxLanguageCode(baseCode);
+    
+    return normalizedCode;
+  }
+  
+  /**
+   * Map base language codes to Soniox-specific language codes
+   * Handle any special cases where Soniox uses different codes
+   */
+  private static mapToSonioxLanguageCode(baseCode: string): string {
+    // Current Soniox mappings use standard ISO 639-1 codes
+    // Add any special mappings here if needed in the future
+    const specialMappings: Record<string, string> = {
+      // Example: 'zh-cn': 'zh', 'zh-tw': 'zh' - but we already handle this above
+      // Add any Soniox-specific mappings here if discovered
+    };
+    
+    return specialMappings[baseCode] || baseCode;
+  }
+  
+  /**
    * Get all supported languages for transcription
    */
   static getSupportedLanguages(): string[] {
@@ -58,24 +89,32 @@ export class SonioxTranslationUtils {
    * Check if a language pair supports two-way translation
    */
   static supportsTwoWayTranslation(langA: string, langB: string): boolean {
-    return this.mappings.two_way_translation_pairs.includes(`${langA}:${langB}`) ||
-           this.mappings.two_way_translation_pairs.includes(`${langB}:${langA}`);
+    // Normalize language codes for Soniox format
+    const normalizedLangA = this.normalizeLanguageCode(langA);
+    const normalizedLangB = this.normalizeLanguageCode(langB);
+    
+    return this.mappings.two_way_translation_pairs.includes(`${normalizedLangA}:${normalizedLangB}`) ||
+           this.mappings.two_way_translation_pairs.includes(`${normalizedLangB}:${normalizedLangA}`);
   }
   
   /**
    * Check if a source->target translation is supported
    */
   static supportsTranslation(sourceLanguage: string, targetLanguage: string): boolean {
-    if (sourceLanguage === targetLanguage) return false;
+    // Normalize language codes for Soniox format
+    const normalizedSource = this.normalizeLanguageCode(sourceLanguage);
+    const normalizedTarget = this.normalizeLanguageCode(targetLanguage);
     
-    const target = this.mappings.translation_targets.find(t => t.target_language === targetLanguage);
+    if (normalizedSource === normalizedTarget) return false;
+    
+    const target = this.mappings.translation_targets.find(t => t.target_language === normalizedTarget);
     if (!target) return false;
     
     // Check if source is explicitly excluded
-    if (target.exclude_source_languages.includes(sourceLanguage)) return false;
+    if (target.exclude_source_languages.includes(normalizedSource)) return false;
     
     // Check if source is in the allowed list (or wildcard)
-    return target.source_languages.includes(sourceLanguage) || 
+    return target.source_languages.includes(normalizedSource) || 
            target.source_languages.includes('*');
   }
   
@@ -109,7 +148,10 @@ export class SonioxTranslationUtils {
         },
         handledSubscriptions: analysis.englishTranslations,
         ownsTranscription: ownershipAnalysis.universalEnglishOwnership,
-        skipTranscriptionFor: ownershipAnalysis.universalEnglishSkip
+        skipTranscriptionFor: ownershipAnalysis.universalEnglishSkip,
+        originalLanguageCodes: {
+          target: 'en-US'  // Use standard US English for subscription format
+        }
       });
     }
     
@@ -128,7 +170,11 @@ export class SonioxTranslationUtils {
         },
         handledSubscriptions: pair.subscriptions,
         ownsTranscription: ownershipAnalysis.twoWayOwnership.get(pairKey) || [],
-        skipTranscriptionFor: ownershipAnalysis.twoWaySkip.get(pairKey) || []
+        skipTranscriptionFor: ownershipAnalysis.twoWaySkip.get(pairKey) || [],
+        originalLanguageCodes: {
+          langA: pair.originalLangA,
+          langB: pair.originalLangB
+        }
       });
     }
     
@@ -146,7 +192,10 @@ export class SonioxTranslationUtils {
         },
         handledSubscriptions: analysis.multiSourceSubscriptions.get(targetLang) || [],
         ownsTranscription: ownershipAnalysis.multiSourceOwnership.get(targetLang) || [],
-        skipTranscriptionFor: ownershipAnalysis.multiSourceSkip.get(targetLang) || []
+        skipTranscriptionFor: ownershipAnalysis.multiSourceSkip.get(targetLang) || [],
+        originalLanguageCodes: {
+          target: analysis.multiSourceOriginalTargets.get(targetLang) || targetLang
+        }
       });
     }
     
@@ -155,28 +204,38 @@ export class SonioxTranslationUtils {
       const [type, langPair] = sub.split(':');
       if (type === 'translation') {
         const [source, target] = langPair.split(/->|-to-/);
+        const normalizedSource = this.normalizeLanguageCode(source);
+        const normalizedTarget = this.normalizeLanguageCode(target);
         streams.push({
           type: 'individual',
           config: {
-            language: source,
+            language: normalizedSource,
             translation: {
               type: 'one_way',
-              target_language: target
+              target_language: normalizedTarget
             }
           },
           handledSubscriptions: [sub],
           ownsTranscription: ownershipAnalysis.individualOwnership.get(sub) || [],
-          skipTranscriptionFor: ownershipAnalysis.individualSkip.get(sub) || []
+          skipTranscriptionFor: ownershipAnalysis.individualSkip.get(sub) || [],
+          originalLanguageCodes: {
+            source: source,
+            target: target
+          }
         });
       } else if (type === 'transcription') {
+        const normalizedLangPair = this.normalizeLanguageCode(langPair);
         streams.push({
           type: 'transcription_only',
           config: {
-            language: langPair
+            language: normalizedLangPair
           },
           handledSubscriptions: [sub],
-          ownsTranscription: [langPair], // Dedicated transcription always owns its language
-          skipTranscriptionFor: []
+          ownsTranscription: [normalizedLangPair], // Dedicated transcription always owns its language
+          skipTranscriptionFor: [],
+          originalLanguageCodes: {
+            source: langPair
+          }
         });
       }
     }
@@ -210,7 +269,13 @@ export class SonioxTranslationUtils {
     const translationPairs = translationSubs.map(sub => {
       const [, langPair] = sub.split(':');
       const [source, target] = langPair.split(/->|-to-/);
-      return { source, target, subscription: sub };
+      return { 
+        source: this.normalizeLanguageCode(source), 
+        target: this.normalizeLanguageCode(target), 
+        originalSource: source,
+        originalTarget: target,
+        subscription: sub 
+      };
     });
     
     // Build ownership mappings based on hierarchy
@@ -322,8 +387,8 @@ export class SonioxTranslationUtils {
   /**
    * Helper method to find two-way pairs from translation pairs
    */
-  private static findTwoWayPairs(translationPairs: Array<{ source: string; target: string; subscription: string }>) {
-    const pairs: Array<{ langA: string; langB: string; subscriptions: string[] }> = [];
+  private static findTwoWayPairs(translationPairs: Array<{ source: string; target: string; originalSource: string; originalTarget: string; subscription: string }>) {
+    const pairs: Array<{ langA: string; langB: string; originalLangA: string; originalLangB: string; subscriptions: string[] }> = [];
     const processed = new Set<string>();
     
     for (const pair of translationPairs) {
@@ -338,6 +403,8 @@ export class SonioxTranslationUtils {
         pairs.push({
           langA: pair.source,
           langB: pair.target,
+          originalLangA: pair.originalSource,
+          originalLangB: pair.originalTarget,
           subscriptions: [pair.subscription, reversePair.subscription]
         });
         processed.add(`${pair.source}:${pair.target}`);
@@ -359,7 +426,13 @@ export class SonioxTranslationUtils {
     const translationPairs = translationSubs.map(sub => {
       const [, langPair] = sub.split(':');
       const [source, target] = langPair.split(/->|-to-/);
-      return { source, target, subscription: sub };
+      return { 
+        source: this.normalizeLanguageCode(source), 
+        target: this.normalizeLanguageCode(target), 
+        originalSource: source,
+        originalTarget: target,
+        subscription: sub 
+      };
     });
     
     // Find English translations
@@ -367,7 +440,7 @@ export class SonioxTranslationUtils {
     const needsUniversalEnglish = englishTranslations.length > 0;
     
     // Find two-way pairs
-    const twoWayPairs: Array<{ langA: string; langB: string; subscriptions: string[] }> = [];
+    const twoWayPairs: Array<{ langA: string; langB: string; originalLangA: string; originalLangB: string; subscriptions: string[] }> = [];
     const processedPairs = new Set<string>();
     
     for (const pair of translationPairs) {
@@ -381,6 +454,8 @@ export class SonioxTranslationUtils {
         twoWayPairs.push({
           langA: pair.source,
           langB: pair.target,
+          originalLangA: pair.originalSource,
+          originalLangB: pair.originalTarget,
           subscriptions: [pair.subscription, reversePair.subscription]
         });
         processedPairs.add(`${pair.source}:${pair.target}`);
@@ -391,6 +466,7 @@ export class SonioxTranslationUtils {
     // Find multi-source opportunities
     const multiSourceTargets = new Map<string, string[]>();
     const multiSourceSubscriptions = new Map<string, string[]>();
+    const multiSourceOriginalTargets = new Map<string, string>();  // Track original target codes
     
     for (const [targetLang, supportedSources] of this.getMultiSourceTargets()) {
       const targetPairs = translationPairs.filter(p => p.target === targetLang);
@@ -401,6 +477,8 @@ export class SonioxTranslationUtils {
         if (validSources.length > 1) {
           multiSourceTargets.set(targetLang, validSources);
           multiSourceSubscriptions.set(targetLang, targetPairs.map(p => p.subscription));
+          // Use the original target from the first pair (they should all normalize to the same target)
+          multiSourceOriginalTargets.set(targetLang, targetPairs[0]?.originalTarget || targetLang);
         }
       }
     }
@@ -421,6 +499,7 @@ export class SonioxTranslationUtils {
       twoWayPairs,
       multiSourceTargets,
       multiSourceSubscriptions,
+      multiSourceOriginalTargets,
       remainingSubscriptions
     };
   }
@@ -430,9 +509,10 @@ export class SonioxTranslationUtils {
 interface SubscriptionAnalysis {
   needsUniversalEnglish: boolean;
   englishTranslations: string[];
-  twoWayPairs: Array<{ langA: string; langB: string; subscriptions: string[] }>;
+  twoWayPairs: Array<{ langA: string; langB: string; originalLangA: string; originalLangB: string; subscriptions: string[] }>;
   multiSourceTargets: Map<string, string[]>;
   multiSourceSubscriptions: Map<string, string[]>;
+  multiSourceOriginalTargets: Map<string, string>;
   remainingSubscriptions: string[];
 }
 
@@ -453,6 +533,12 @@ interface OptimizedStream {
   handledSubscriptions: string[];
   ownsTranscription: string[];        // Languages this stream owns for transcription
   skipTranscriptionFor: string[];     // Languages to skip sending transcription for
+  originalLanguageCodes?: {           // Original language codes for subscription creation
+    source?: string;
+    target?: string;
+    langA?: string;
+    langB?: string;
+  };
 }
 
 interface StreamOptimization {
