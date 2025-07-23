@@ -38,6 +38,11 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+
+import com.augmentos.asg_client.server.CameraWebServer;
+import com.augmentos.asg_client.server.ServerManager;
+import com.augmentos.asg_client.server.impl.DefaultServerFactory;
+import com.augmentos.asg_client.server.interfaces.Logger;
 import com.augmentos.asg_client.streaming.RtmpStreamingService;
 import com.augmentos.augmentos_core.AugmentosService;
 import com.augmentos.asg_client.bluetooth.BluetoothManagerFactory;
@@ -118,6 +123,11 @@ public class AsgClientService extends Service implements NetworkStateListener, B
 
     // Media capture service
     private MediaCaptureService mMediaCaptureService;
+    
+    // Camera Web Server for local network access
+    private CameraWebServer cameraWebServer;
+    private ServerManager serverManager;
+    private boolean isWebServerEnabled = true;
 
     // 1. Add enum for photo capture mode at the top of the class
     private enum PhotoCaptureMode {
@@ -263,10 +273,13 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         initializeBluetoothManager();
 
         // Initialize the photo queue manager
-        initializeMediaQueueManager();
+        //initializeMediaQueueManager();
 
         // Initialize the photo capture service
         initializeMediaCaptureService();
+
+        // Initialize the camera web server
+        initializeCameraWebServer();
 
         // Initialize streaming callbacks
         initializeStreamingCallbacks();
@@ -454,6 +467,192 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                     }
                 }
             });
+        }
+    }
+
+    /**
+     * Initialize the camera web server for local network access
+     */
+    private void initializeCameraWebServer() {
+        if (serverManager == null) {
+            serverManager = ServerManager.getInstance(getApplicationContext());
+        }
+        
+        if (cameraWebServer == null && isWebServerEnabled) {
+            try {
+                // Create logger for the server
+                Logger logger = DefaultServerFactory.createLogger();
+                
+                // Create camera web server using the new factory pattern
+                cameraWebServer = DefaultServerFactory.createCameraWebServer(
+                    8089, 
+                    "CameraWebServer", 
+                    getApplicationContext(), 
+                    logger
+                );
+                
+                // Set up the picture request listener
+                cameraWebServer.setOnPictureRequestListener(new com.augmentos.asg_client.server.CameraWebServer.OnPictureRequestListener() {
+                    @Override
+                    public void onPictureRequest() {
+                        Log.d(TAG, "📸 Camera web server requested photo capture");
+                        
+                        // Use the media capture service to take a photo
+                        if (mMediaCaptureService != null) {
+                            // Generate a unique request ID
+                            String requestId = "web_" + System.currentTimeMillis();
+                            
+                            // Take photo and save locally
+                            mMediaCaptureService.takePhotoAndUpload(
+                                null, // Let the service generate the file path
+                                requestId,
+                                null, // No webhook URL for local capture
+                                true  // Save to gallery
+                            );
+                        } else {
+                            Log.e(TAG, "Media capture service not available for web server photo request");
+                        }
+                    }
+                });
+                
+                // Register the server with the server manager
+                serverManager.registerServer("camera", cameraWebServer);
+                
+                // Start the web server
+                cameraWebServer.startServer();
+                
+                Log.d(TAG, "✅ Camera web server initialized and started via new SOLID architecture");
+                Log.d(TAG, "🌐 Web server URL: " + cameraWebServer.getServerUrl());
+                Log.d(TAG, "🏗️ Architecture benefits:");
+                Log.d(TAG, "   - Dependency injection for better testability");
+                Log.d(TAG, "   - Interface segregation for modularity");
+                Log.d(TAG, "   - Single responsibility for maintainability");
+                Log.d(TAG, "   - Open/closed principle for extensibility");
+                Log.d(TAG, "   - Mediated access for controlled server management");
+                
+            } catch (Exception e) {
+                Log.e(TAG, "❌ Failed to initialize camera web server: " + e.getMessage(), e);
+                cameraWebServer = null;
+            }
+        }
+    }
+
+    /**
+     * Get the camera web server instance
+     *
+     * @return CameraWebServer instance, or null if not available
+     */
+    public com.augmentos.asg_client.server.CameraWebServer getCameraWebServer() {
+        return cameraWebServer;
+    }
+
+    /**
+     * Get the camera web server URL using mediated access
+     *
+     * @return Server URL, or null if not available
+     */
+    public String getCameraWebServerUrl() {
+        if (serverManager != null) {
+            return serverManager.getServerUrl("camera");
+        }
+        return null;
+    }
+
+    /**
+     * Get all server URLs using mediated access
+     *
+     * @return Map of server names to URLs
+     */
+    public java.util.Map<String, String> getAllServerUrls() {
+        if (serverManager != null) {
+            return serverManager.getAllServerUrls();
+        }
+        return new java.util.HashMap<>();
+    }
+
+    /**
+     * Get the primary server URL using mediated access
+     *
+     * @return Primary server URL, or null if not available
+     */
+    public String getPrimaryServerUrl() {
+        if (serverManager != null) {
+            return serverManager.getPrimaryServerUrl();
+        }
+        return null;
+    }
+
+    /**
+     * Check if the camera web server is running
+     *
+     * @return true if running, false otherwise
+     */
+    public boolean isCameraWebServerRunning() {
+        if (serverManager != null) {
+            return serverManager.isServerRunning("camera");
+        }
+        return cameraWebServer != null && cameraWebServer.isAlive();
+    }
+
+    /**
+     * Get server count and names for debugging
+     *
+     * @return Array of server names
+     */
+    public String[] getServerNames() {
+        if (serverManager != null) {
+            return serverManager.getServerNames();
+        }
+        return new String[0];
+    }
+
+    /**
+     * Restart the camera web server
+     *
+     * @return true if restart was successful, false otherwise
+     */
+    public boolean restartCameraWebServer() {
+        if (serverManager != null) {
+            // Stop the server first
+            serverManager.stopServer("camera");
+            
+            // Wait a moment for cleanup
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            
+            // Reinitialize the web server
+            cameraWebServer = null;
+            initializeCameraWebServer();
+            
+            return cameraWebServer != null;
+        }
+        return false;
+    }
+
+    /**
+     * Enable or disable the camera web server
+     *
+     * @param enabled true to enable, false to disable
+     */
+    public void setWebServerEnabled(boolean enabled) {
+        if (isWebServerEnabled != enabled) {
+            isWebServerEnabled = enabled;
+            
+            if (enabled && cameraWebServer == null) {
+                // Start the web server if it was disabled
+                initializeCameraWebServer();
+            } else if (!enabled && cameraWebServer != null) {
+                // Stop the web server if it was enabled
+                if (serverManager != null) {
+                    serverManager.stopServer("camera");
+                } else {
+                    cameraWebServer.stopServer();
+                }
+                cameraWebServer = null;
+            }
         }
     }
 
@@ -833,6 +1032,22 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         if (glassesMicrophoneManager != null) {
             glassesMicrophoneManager.destroy();
             glassesMicrophoneManager = null;
+        }
+
+        // Stop the camera web server if it's running
+        if (cameraWebServer != null) {
+            if (serverManager != null) {
+                serverManager.stopServer("camera");
+            } else {
+                cameraWebServer.stopServer();
+            }
+            cameraWebServer = null;
+        }
+
+        // Clean up server manager (this will stop all servers and clean up resources)
+        if (serverManager != null) {
+            serverManager.cleanup();
+            serverManager = null;
         }
 
         // No need to clean up MediaQueueManager as it's stateless and file-based
@@ -1956,8 +2171,9 @@ public class AsgClientService extends Service implements NetworkStateListener, B
             
             switch (command) {
                 case "cs_pho":
+                    mMediaCaptureService.takePhotoLocally();
                     // TESTING: Commented out normal photo handling
-                    handleButtonPress(false);
+//                    handleButtonPress(false);
                     
                     // TEST: Send test image from assets
 //                    Log.d(TAG, "🎾 TEST: cs_pho (JSON) pressed - sending test.jpg from assets");
