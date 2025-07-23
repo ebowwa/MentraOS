@@ -24,6 +24,7 @@ export default function DeveloperSettingsScreen() {
   const [isBypassAudioEncodingForDebuggingEnabled, setIsBypassAudioEncodingForDebuggingEnabled] = useState(
     status.core_info.bypass_audio_encoding_for_debugging,
   )
+  const [powerSavingMode, setPowerSavingMode] = useState(status.core_info.power_saving_mode)
   const [isTestFlightOrDev, setIsTestFlightOrDev] = useState<boolean>(false)
 
   const {theme} = useAppTheme()
@@ -56,6 +57,10 @@ export default function DeveloperSettingsScreen() {
     setIsBypassVADForDebuggingEnabled(status.core_info.bypass_vad_for_debugging)
   }, [status.core_info.bypass_vad_for_debugging])
 
+  useEffect(() => {
+    setPowerSavingMode(status.core_info.power_saving_mode)
+  }, [status.core_info.power_saving_mode])
+
   const toggleBypassVadForDebugging = async () => {
     const newSetting = !isBypassVADForDebuggingEnabled
     await coreCommunicator.sendToggleBypassVadForDebugging(newSetting)
@@ -66,6 +71,12 @@ export default function DeveloperSettingsScreen() {
     const newSetting = !reconnectOnAppForeground
     await saveSetting(SETTINGS_KEYS.RECONNECT_ON_APP_FOREGROUND, newSetting)
     setReconnectOnAppForeground(newSetting)
+  }
+
+  const togglePowerSavingMode = async () => {
+    const newSetting = !powerSavingMode
+    await coreCommunicator.sendTogglePowerSavingMode(newSetting)
+    setPowerSavingMode(newSetting)
   }
 
   const toggleBypassAudioEncodingForDebugging = async () => {
@@ -233,6 +244,13 @@ export default function DeveloperSettingsScreen() {
         />
 
         <Spacer height={theme.spacing.md} />
+
+        <ToggleSetting
+          label={translate("settings:powerSavingMode")}
+          subtitle={translate("settings:powerSavingModeSubtitle")}
+          value={powerSavingMode}
+          onValueChange={togglePowerSavingMode}
+        />
 
         <View
           style={[
