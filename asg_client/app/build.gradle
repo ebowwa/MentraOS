@@ -1,6 +1,7 @@
 plugins {
     id 'com.android.application'
     id 'androidx.navigation.safeargs'
+    id 'org.jetbrains.kotlin.android'
 }
 
 // 1. Import classes for file/stream and properties
@@ -27,7 +28,19 @@ android {
     namespace 'com.augmentos.asg_client'
     compileSdk 34
 
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17 // Or VERSION_1_8, VERSION_11, etc.
+        targetCompatibility JavaVersion.VERSION_17 // Should generally match sourceCompatibility
+    }
+
     signingConfigs {
+        debug {
+            storeFile file("../credentials/debug.keystore")
+            storePassword "android"
+            keyAlias "androiddebugkey"
+            keyPassword "android"
+        }
         release {
             storeFile file("../credentials/asg-keystore.jks")
             storePassword = asgStorePassword
@@ -81,11 +94,17 @@ android {
     }
 
     buildTypes {
+        debug {
+            signingConfig signingConfigs.debug
+        }
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             signingConfig asgStorePassword ? signingConfigs.release : signingConfigs.debug
         }
+    }
+    kotlinOptions {
+        jvmTarget = '17'
     }
 }
 
