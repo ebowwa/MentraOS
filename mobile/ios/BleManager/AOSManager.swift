@@ -956,7 +956,8 @@ struct ViewState {
     if self.defaultWearable.contains("Simulated") || self.defaultWearable.isEmpty {
       return
     }
-    self.g1Manager?.RN_sendText(text)
+    // self.g1Manager?.RN_sendText(text)
+    self.g1Manager?.RN_sendTextWall(text)
   }
   
   
