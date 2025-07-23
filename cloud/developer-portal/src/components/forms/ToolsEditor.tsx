@@ -469,10 +469,25 @@ const ToolsEditor: React.FC<ToolsEditorProps> = ({
 }) => {
   const [editingIndex, setEditingIndex] = React.useState<number | null>(null);
 
-  // Convert tools to internal format for editing (only initialize once)
+  // Convert tools to internal format for editing
   const [internalTools, setInternalTools] = React.useState<InternalTool[]>(() =>
     tools.map(convertToolToInternal),
   );
+
+  // Track if changes are coming from internal editing vs external (like imports)
+  const isInternalUpdate = React.useRef(false);
+
+  // Sync internal tools with the tools prop when it changes from external sources (like imports)
+  React.useEffect(() => {
+    // Don't sync if the change came from our own internal update
+    if (isInternalUpdate.current) {
+      isInternalUpdate.current = false;
+      return;
+    }
+
+    // Sync from external source (like import)
+    setInternalTools(tools.map(convertToolToInternal));
+  }, [tools]);
 
   // Helper function to create a new empty tool
   const createEmptyTool = (): InternalTool => ({
@@ -487,6 +502,9 @@ const ToolsEditor: React.FC<ToolsEditorProps> = ({
   const updateExternalTools = (newInternalTools: InternalTool[]) => {
     setInternalTools(newInternalTools);
     const externalTools = newInternalTools.map(convertToolToSDK);
+
+    // Mark this as an internal update to prevent the useEffect from syncing back
+    isInternalUpdate.current = true;
     onChange(externalTools);
   };
 
