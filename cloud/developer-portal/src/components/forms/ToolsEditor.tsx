@@ -1,12 +1,26 @@
-import React from 'react';
+import React from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Trash2, Brain, ChevronDown, ChevronRight, Settings, GripVertical } from "lucide-react";
-import { Tool } from '@/types/app';
+import {
+  Plus,
+  Trash2,
+  Brain,
+  ChevronDown,
+  ChevronRight,
+  Settings,
+  GripVertical,
+} from "lucide-react";
+import { Tool } from "@/types/app";
 
 interface ToolsEditorProps {
   tools: Tool[];
@@ -41,27 +55,27 @@ interface InternalTool {
 const convertToolToInternal = (tool: any): InternalTool => {
   const parameters: InternalParameter[] = [];
 
-  if (tool.parameters && typeof tool.parameters === 'object') {
+  if (tool.parameters && typeof tool.parameters === "object") {
     Object.entries(tool.parameters).forEach(([key, param]: [string, any]) => {
       parameters.push({
         id: `param_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         key,
-        type: param.type || 'string',
-        description: param.description || '',
+        type: param.type || "string",
+        description: param.description || "",
         required: param.required || false,
         enum: param.enum,
-        enumRaw: param.enumRaw
+        enumRaw: param.enumRaw,
       });
     });
   }
 
   return {
     internalId: `tool_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, // Stable ID
-    id: tool.id || '',
-    description: tool.description || '',
+    id: tool.id || "",
+    description: tool.description || "",
     activationPhrases: tool.activationPhrases || [],
     activationPhrasesRaw: tool.activationPhrasesRaw,
-    parameters
+    parameters,
   };
 };
 
@@ -71,12 +85,12 @@ const convertToolToInternal = (tool: any): InternalTool => {
 const convertToolToSDK = (internalTool: InternalTool): any => {
   const parameters: { [key: string]: any } = {};
 
-  internalTool.parameters.forEach(param => {
+  internalTool.parameters.forEach((param) => {
     parameters[param.key] = {
       type: param.type,
       description: param.description,
       required: param.required,
-      ...(param.enum && param.enum.length > 0 ? { enum: param.enum } : {})
+      ...(param.enum && param.enum.length > 0 ? { enum: param.enum } : {}),
     };
   });
 
@@ -84,7 +98,7 @@ const convertToolToSDK = (internalTool: InternalTool): any => {
     id: internalTool.id,
     description: internalTool.description,
     activationPhrases: internalTool.activationPhrases,
-    parameters
+    parameters,
   };
 };
 
@@ -102,7 +116,11 @@ interface ToolItemProps {
   parseActivationPhrases: (index: number, value: string) => void;
   addParameter: (toolIndex: number) => void;
   removeParameter: (toolIndex: number, paramId: string) => void;
-  updateParameter: (toolIndex: number, paramId: string, updates: Partial<InternalParameter>) => void;
+  updateParameter: (
+    toolIndex: number,
+    paramId: string,
+    updates: Partial<InternalParameter>,
+  ) => void;
 }
 
 const ToolItem: React.FC<ToolItemProps> = ({
@@ -120,7 +138,7 @@ const ToolItem: React.FC<ToolItemProps> = ({
 }) => {
   // Helper function to get display text
   const getDisplayText = () => {
-    return tool.id || 'untitled_tool';
+    return tool.id || "untitled_tool";
   };
 
   // Helper function to get parameter count
@@ -131,9 +149,9 @@ const ToolItem: React.FC<ToolItemProps> = ({
   // Helper function to get activation phrases preview
   const getActivationPhrasesPreview = () => {
     const phrases = tool.activationPhrases || [];
-    if (phrases.length === 0) return 'No phrases';
-    if (phrases.length <= 2) return phrases.join(', ');
-    return `${phrases.slice(0, 2).join(', ')}, +${phrases.length - 2} more`;
+    if (phrases.length === 0) return "No phrases";
+    if (phrases.length <= 2) return phrases.join(", ");
+    return `${phrases.slice(0, 2).join(", ")}, +${phrases.length - 2} more`;
   };
 
   // Helper function to get the raw activation phrases string for editing
@@ -143,7 +161,7 @@ const ToolItem: React.FC<ToolItemProps> = ({
       return tool.activationPhrasesRaw;
     }
     // Otherwise, convert the array back to a string
-    return (tool.activationPhrases || []).join(', ');
+    return (tool.activationPhrases || []).join(", ");
   };
 
   return (
@@ -168,7 +186,7 @@ const ToolItem: React.FC<ToolItemProps> = ({
               </div>
               <div className="flex flex-col gap-1 text-xs text-gray-500">
                 <span className="truncate">
-                  {tool.description || 'No description'}
+                  {tool.description || "No description"}
                 </span>
                 <span className="truncate">
                   Phrases: {getActivationPhrasesPreview()}
@@ -228,8 +246,10 @@ const ToolItem: React.FC<ToolItemProps> = ({
             <div>
               <Label className="text-sm font-medium">Tool ID</Label>
               <Input
-                value={tool.id || ''}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateTool(index, { id: e.target.value })}
+                value={tool.id || ""}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  updateTool(index, { id: e.target.value })
+                }
                 placeholder="e.g., search_notes"
                 className="mt-1 font-mono"
               />
@@ -242,8 +262,10 @@ const ToolItem: React.FC<ToolItemProps> = ({
             <div>
               <Label className="text-sm font-medium">Description</Label>
               <Textarea
-                value={tool.description || ''}
-                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => updateTool(index, { description: e.target.value })}
+                value={tool.description || ""}
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                  updateTool(index, { description: e.target.value })
+                }
                 placeholder="Describe what this tool does..."
                 rows={3}
                 className="mt-1"
@@ -258,8 +280,12 @@ const ToolItem: React.FC<ToolItemProps> = ({
               <Label className="text-sm font-medium">Activation Phrases</Label>
               <Input
                 value={getActivationPhrasesString()}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateActivationPhrasesRaw(index, e.target.value)}
-                onBlur={(e: React.FocusEvent<HTMLInputElement>) => parseActivationPhrases(index, e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  updateActivationPhrasesRaw(index, e.target.value)
+                }
+                onBlur={(e: React.FocusEvent<HTMLInputElement>) =>
+                  parseActivationPhrases(index, e.target.value)
+                }
                 placeholder="search my notes, find information, look up"
                 className="mt-1"
               />
@@ -285,15 +311,21 @@ const ToolItem: React.FC<ToolItemProps> = ({
 
               {tool.parameters.length === 0 ? (
                 <div className="text-center py-6 text-gray-500 text-sm border-2 border-dashed rounded">
-                  No parameters defined. Parameters allow the tool to receive additional data.
+                  No parameters defined. Parameters allow the tool to receive
+                  additional data.
                 </div>
               ) : (
                 <div className="space-y-3">
                   {tool.parameters.map((param) => (
-                    <div key={param.id} className="bg-gray-50 rounded-lg p-4 border">
+                    <div
+                      key={param.id}
+                      className="bg-gray-50 rounded-lg p-4 border"
+                    >
                       <div className="space-y-3">
                         <div className="flex items-center justify-between">
-                          <h5 className="font-medium text-sm">Parameter: {param.key}</h5>
+                          <h5 className="font-medium text-sm">
+                            Parameter: {param.key}
+                          </h5>
                           <Button
                             onClick={() => removeParameter(index, param.id)}
                             variant="ghost"
@@ -310,7 +342,13 @@ const ToolItem: React.FC<ToolItemProps> = ({
                             <Label className="text-xs">Parameter Name</Label>
                             <Input
                               value={param.key}
-                              onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateParameter(index, param.id, { key: e.target.value })}
+                              onChange={(
+                                e: React.ChangeEvent<HTMLInputElement>,
+                              ) =>
+                                updateParameter(index, param.id, {
+                                  key: e.target.value,
+                                })
+                              }
                               placeholder="parameter_name"
                               className="mt-1 font-mono"
                             />
@@ -318,8 +356,12 @@ const ToolItem: React.FC<ToolItemProps> = ({
                           <div>
                             <Label className="text-xs">Type</Label>
                             <Select
-                              value={param.type || 'string'}
-                              onValueChange={(value) => updateParameter(index, param.id, { type: value })}
+                              value={param.type || "string"}
+                              onValueChange={(value) =>
+                                updateParameter(index, param.id, {
+                                  type: value,
+                                })
+                              }
                             >
                               <SelectTrigger className="mt-1">
                                 <SelectValue />
@@ -336,8 +378,14 @@ const ToolItem: React.FC<ToolItemProps> = ({
                         <div>
                           <Label className="text-xs">Description</Label>
                           <Textarea
-                            value={param.description || ''}
-                            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => updateParameter(index, param.id, { description: e.target.value })}
+                            value={param.description || ""}
+                            onChange={(
+                              e: React.ChangeEvent<HTMLTextAreaElement>,
+                            ) =>
+                              updateParameter(index, param.id, {
+                                description: e.target.value,
+                              })
+                            }
                             placeholder="Describe this parameter..."
                             rows={2}
                             className="mt-1"
@@ -348,24 +396,48 @@ const ToolItem: React.FC<ToolItemProps> = ({
                           <div className="flex items-center space-x-2">
                             <Checkbox
                               checked={param.required || false}
-                              onCheckedChange={(checked) => updateParameter(index, param.id, { required: checked as boolean })}
+                              onCheckedChange={(checked) =>
+                                updateParameter(index, param.id, {
+                                  required: checked as boolean,
+                                })
+                              }
                             />
-                            <Label className="text-xs">Required parameter</Label>
+                            <Label className="text-xs">
+                              Required parameter
+                            </Label>
                           </div>
 
-                          {param.type === 'string' && (
+                          {param.type === "string" && (
                             <div className="flex-1">
-                              <Label className="text-xs">Enum Values (optional)</Label>
+                              <Label className="text-xs">
+                                Enum Values (optional)
+                              </Label>
                               <Input
-                                value={param.enumRaw !== undefined ? param.enumRaw : (param.enum || []).join(', ')}
-                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                                  updateParameter(index, param.id, { enumRaw: e.target.value });
-                                }}
-                                onBlur={(e: React.FocusEvent<HTMLInputElement>) => {
-                                  const enumValues = e.target.value.split(',').map((v: string) => v.trim()).filter((v: string) => v.length > 0);
+                                value={
+                                  param.enumRaw !== undefined
+                                    ? param.enumRaw
+                                    : (param.enum || []).join(", ")
+                                }
+                                onChange={(
+                                  e: React.ChangeEvent<HTMLInputElement>,
+                                ) => {
                                   updateParameter(index, param.id, {
-                                    enum: enumValues.length > 0 ? enumValues : undefined,
-                                    enumRaw: undefined
+                                    enumRaw: e.target.value,
+                                  });
+                                }}
+                                onBlur={(
+                                  e: React.FocusEvent<HTMLInputElement>,
+                                ) => {
+                                  const enumValues = e.target.value
+                                    .split(",")
+                                    .map((v: string) => v.trim())
+                                    .filter((v: string) => v.length > 0);
+                                  updateParameter(index, param.id, {
+                                    enum:
+                                      enumValues.length > 0
+                                        ? enumValues
+                                        : undefined,
+                                    enumRaw: undefined,
                                   });
                                 }}
                                 placeholder="option1, option2, option3"
@@ -390,21 +462,25 @@ const ToolItem: React.FC<ToolItemProps> = ({
 /**
  * Compact tools editor component with mobile-friendly design
  */
-const ToolsEditor: React.FC<ToolsEditorProps> = ({ tools, onChange, className }) => {
+const ToolsEditor: React.FC<ToolsEditorProps> = ({
+  tools,
+  onChange,
+  className,
+}) => {
   const [editingIndex, setEditingIndex] = React.useState<number | null>(null);
 
   // Convert tools to internal format for editing (only initialize once)
   const [internalTools, setInternalTools] = React.useState<InternalTool[]>(() =>
-    tools.map(convertToolToInternal)
+    tools.map(convertToolToInternal),
   );
 
   // Helper function to create a new empty tool
   const createEmptyTool = (): InternalTool => ({
     internalId: `tool_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, // Stable ID
-    id: '',
-    description: '',
+    id: "",
+    description: "",
     activationPhrases: [],
-    parameters: []
+    parameters: [],
   });
 
   // Helper function to update external tools from internal tools
@@ -451,8 +527,14 @@ const ToolsEditor: React.FC<ToolsEditorProps> = ({ tools, onChange, className })
 
   // Parse activation phrases (string to array)
   const parseActivationPhrases = (index: number, value: string) => {
-    const phrases = value.split(',').map(phrase => phrase.trim()).filter(phrase => phrase.length > 0);
-    updateTool(index, { activationPhrases: phrases, activationPhrasesRaw: undefined });
+    const phrases = value
+      .split(",")
+      .map((phrase) => phrase.trim())
+      .filter((phrase) => phrase.length > 0);
+    updateTool(index, {
+      activationPhrases: phrases,
+      activationPhrasesRaw: undefined,
+    });
   };
 
   // Add parameter to a tool
@@ -461,9 +543,9 @@ const ToolsEditor: React.FC<ToolsEditorProps> = ({ tools, onChange, className })
     const newParameter: InternalParameter = {
       id: `param_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       key: `param${tool.parameters.length + 1}`,
-      type: 'string',
-      description: '',
-      required: false
+      type: "string",
+      description: "",
+      required: false,
     };
 
     const newParameters = [...tool.parameters, newParameter];
@@ -473,15 +555,21 @@ const ToolsEditor: React.FC<ToolsEditorProps> = ({ tools, onChange, className })
   // Remove parameter from a tool
   const removeParameter = (toolIndex: number, paramId: string) => {
     const tool = internalTools[toolIndex];
-    const newParameters = tool.parameters.filter(param => param.id !== paramId);
+    const newParameters = tool.parameters.filter(
+      (param) => param.id !== paramId,
+    );
     updateTool(toolIndex, { parameters: newParameters });
   };
 
   // Update parameter
-  const updateParameter = (toolIndex: number, paramId: string, updates: Partial<InternalParameter>) => {
+  const updateParameter = (
+    toolIndex: number,
+    paramId: string,
+    updates: Partial<InternalParameter>,
+  ) => {
     const tool = internalTools[toolIndex];
-    const newParameters = tool.parameters.map(param =>
-      param.id === paramId ? { ...param, ...updates } : param
+    const newParameters = tool.parameters.map((param) =>
+      param.id === paramId ? { ...param, ...updates } : param,
     );
     updateTool(toolIndex, { parameters: newParameters });
   };
@@ -498,12 +586,7 @@ const ToolsEditor: React.FC<ToolsEditorProps> = ({ tools, onChange, className })
             Define AI tools for voice interactions
           </p>
         </div>
-        <Button
-          onClick={addTool}
-          size="sm"
-          type="button"
-          className="h-8 px-3"
-        >
+        <Button onClick={addTool} size="sm" type="button" className="h-8 px-3">
           <Plus className="h-4 w-4 mr-1" />
           Add Tool
         </Button>
@@ -513,7 +596,9 @@ const ToolsEditor: React.FC<ToolsEditorProps> = ({ tools, onChange, className })
         <div className="text-center py-8 text-gray-500">
           <Brain className="h-12 w-12 mx-auto mb-2 opacity-50" />
           <p>No AI tools defined yet.</p>
-          <p className="text-sm">Add your first tool to enable AI interactions.</p>
+          <p className="text-sm">
+            Add your first tool to enable AI interactions.
+          </p>
         </div>
       ) : (
         <div className="space-y-2">

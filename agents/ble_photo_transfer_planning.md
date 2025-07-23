@@ -50,8 +50,8 @@ Modify the take_photo command to include transfer method and BLE image ID:
   "requestId": "uuid-123",
   "appId": "com.example.app",
   "webhookUrl": "https://api.example.com/photo",
-  "transferMethod": "ble",     // Optional: defaults to "direct" if not present
-  "bleImgId": "IMG123456"      // New field: 10 char max filename for BLE transfer
+  "transferMethod": "ble", // Optional: defaults to "direct" if not present
+  "bleImgId": "IMG123456" // New field: 10 char max filename for BLE transfer
 }
 ```
 
@@ -61,13 +61,13 @@ Modify the take_photo command to include transfer method and BLE image ID:
 public void requestPhoto(String requestId, String appId, String webhookUrl) {
     // Check if glasses have WiFi
     boolean glassesHaveWifi = isGlassesConnectedToWifi(); // From status tracking
-    
+
     JSONObject json = new JSONObject();
     json.put("type", "take_photo");
     json.put("requestId", requestId);
     json.put("appId", appId);
     json.put("webhookUrl", webhookUrl);
-    
+
     if (glassesHaveWifi) {
         json.put("transferMethod", "direct");
     } else {
@@ -76,11 +76,11 @@ public void requestPhoto(String requestId, String appId, String webhookUrl) {
         // Format: "I" + 9 digit counter/random
         String bleImgId = "I" + String.format("%09d", System.currentTimeMillis() % 1000000000);
         json.put("bleImgId", bleImgId);
-        
+
         // Track this transfer
         trackBlePhotoTransfer(bleImgId, requestId, webhookUrl);
     }
-    
+
     sendJson(json, true);
 }
 ```
@@ -93,15 +93,15 @@ case "take_photo":
     String webhookUrl = dataToProcess.optString("webhookUrl", "");
     String transferMethod = dataToProcess.optString("transferMethod", "direct"); // Defaults to direct
     String bleImgId = dataToProcess.optString("bleImgId", "");
-    
+
     if (requestId.isEmpty()) {
         Log.e(TAG, "Cannot take photo - missing requestId");
         return;
     }
-    
+
     String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
     String photoFilePath = getExternalFilesDir(null) + File.separator + "IMG_" + timeStamp + ".jpg";
-    
+
     if ("ble".equals(transferMethod)) {
         // Take photo, compress with AVIF, and send via BLE
         mMediaCaptureService.takePhotoForBleTransfer(photoFilePath, requestId, bleImgId);
@@ -132,40 +132,40 @@ private void compressAndSendViaBle(String originalPath, String requestId, String
         try {
             // 1. Load original image
             Bitmap original = BitmapFactory.decodeFile(originalPath);
-            
+
             // 2. Calculate new dimensions maintaining aspect ratio
             // AGGRESSIVE: Use 320x240 as base resolution
             int targetWidth = 320;
             int targetHeight = 240;
             float aspectRatio = (float) original.getWidth() / original.getHeight();
-            
+
             if (aspectRatio > targetWidth / (float) targetHeight) {
                 targetHeight = (int) (targetWidth / aspectRatio);
             } else {
                 targetWidth = (int) (targetHeight * aspectRatio);
             }
-            
+
             // 3. Resize bitmap
             Bitmap resized = Bitmap.createScaledBitmap(original, targetWidth, targetHeight, true);
             original.recycle();
-            
+
             // 4. Encode as AVIF with aggressive settings
             // AVIF quality: 30 (low quality for fast BLE transfer)
             byte[] avifData = encodeAsAvif(resized, 30); // quality param
             resized.recycle();
-            
+
             // 5. Send via BLE using existing file transfer
             String avifPath = getExternalFilesDir(null) + "/" + bleImgId + ".avif";
             FileOutputStream fos = new FileOutputStream(avifPath);
             fos.write(avifData);
             fos.close();
-            
+
             // Use K900BluetoothManager to send file with bleImgId as filename
             if (bluetoothManager instanceof K900BluetoothManager) {
                 K900BluetoothManager k900 = (K900BluetoothManager) bluetoothManager;
                 k900.sendImageFile(avifPath, bleImgId); // Uses bleImgId as filename in protocol
             }
-            
+
         } catch (Exception e) {
             Log.e(TAG, "Error compressing photo for BLE", e);
             sendPhotoError(requestId, e.getMessage());
@@ -174,7 +174,7 @@ private void compressAndSendViaBle(String originalPath, String requestId, String
 }
 ```
 
-#### 5. Phone-Side Reception and Decoding 
+#### 5. Phone-Side Reception and Decoding
 
 In MentraLiveSGC.java, handle the BLE photo reception:
 
@@ -201,7 +201,7 @@ private void trackBlePhotoTransfer(String bleImgId, String requestId, String web
 // In processFilePacket - check if this is a tracked photo
 private void processFilePacket(byte[] data) {
     FilePacketInfo packetInfo = K900ProtocolUtils.extractFilePacket(data);
-    
+
     // Check if this is a BLE photo transfer we're tracking
     BlePhotoTransfer photoTransfer = blePhotoTransfers.get(packetInfo.fileName);
     if (photoTransfer != null) {
@@ -209,9 +209,9 @@ private void processFilePacket(byte[] data) {
         if (photoTransfer.session == null) {
             photoTransfer.session = new FileTransferSession(packetInfo.fileName, packetInfo.fileSize);
         }
-        
+
         photoTransfer.session.addPacket(packetInfo);
-        
+
         if (photoTransfer.session.isComplete()) {
             // Decode AVIF and upload
             decodeAndUploadPhoto(photoTransfer);
@@ -224,8 +224,8 @@ private void decodeAndUploadPhoto(BlePhotoTransfer transfer) {
     // Delegate to separate utility class
     byte[] avifData = transfer.session.getCompleteData();
     BlePhotoUploadService.processAndUploadPhoto(
-        avifData, 
-        transfer.requestId, 
+        avifData,
+        transfer.requestId,
         transfer.webhookUrl,
         getCoreToken(),
         new BlePhotoUploadService.UploadCallback() {
@@ -234,7 +234,7 @@ private void decodeAndUploadPhoto(BlePhotoTransfer transfer) {
                 Log.d(TAG, "Photo uploaded successfully via phone relay");
                 sendPhotoUploadSuccess(requestId);
             }
-            
+
             @Override
             public void onError(String requestId, String error) {
                 Log.e(TAG, "Photo upload failed: " + error);
@@ -252,37 +252,37 @@ Create `BlePhotoUploadService.java` to handle AVIF decoding and webhook upload:
 ```java
 public class BlePhotoUploadService {
     private static final String TAG = "BlePhotoUploadService";
-    
+
     public interface UploadCallback {
         void onSuccess(String requestId);
         void onError(String requestId, String error);
     }
-    
-    public static void processAndUploadPhoto(byte[] avifData, String requestId, 
+
+    public static void processAndUploadPhoto(byte[] avifData, String requestId,
                                             String webhookUrl, String authToken,
                                             UploadCallback callback) {
         new Thread(() -> {
             try {
                 // 1. Decode AVIF to Bitmap
                 Bitmap bitmap = decodeAvif(avifData);
-                
+
                 // 2. Convert to JPEG for upload
                 ByteArrayOutputStream baos = new ByteArrayOutputStream();
                 bitmap.compress(Bitmap.CompressFormat.JPEG, 90, baos);
                 byte[] jpegData = baos.toByteArray();
                 bitmap.recycle();
-                
+
                 // 3. Upload to webhook
                 uploadToWebhook(jpegData, requestId, webhookUrl, authToken);
                 callback.onSuccess(requestId);
-                
+
             } catch (Exception e) {
                 Log.e(TAG, "Error processing BLE photo", e);
                 callback.onError(requestId, e.getMessage());
             }
         }).start();
     }
-    
+
     private static Bitmap decodeAvif(byte[] avifData) {
         // AVIF decoding implementation
         // Requires Android API 31+ or external library
@@ -293,28 +293,28 @@ public class BlePhotoUploadService {
             throw new UnsupportedOperationException("AVIF not supported on this Android version");
         }
     }
-    
-    private static void uploadToWebhook(byte[] jpegData, String requestId, 
+
+    private static void uploadToWebhook(byte[] jpegData, String requestId,
                                        String webhookUrl, String authToken) throws IOException {
         OkHttpClient client = new OkHttpClient.Builder()
             .connectTimeout(30, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
             .build();
-        
+
         RequestBody requestBody = new MultipartBody.Builder()
             .setType(MultipartBody.FORM)
             .addFormDataPart("requestId", requestId)
             .addFormDataPart("photo", requestId + ".jpg",
                 RequestBody.create(MediaType.parse("image/jpeg"), jpegData))
             .build();
-        
+
         Request request = new Request.Builder()
             .url(webhookUrl)
             .post(requestBody)
             .addHeader("Authorization", "Bearer " + authToken)
             .build();
-        
+
         try (Response response = client.newCall(request).execute()) {
             if (!response.isSuccessful()) {
                 throw new IOException("Upload failed: " + response.code());
@@ -336,7 +336,7 @@ private void sendBleTransferComplete(String requestId, String bleImgId, boolean 
     json.put("requestId", requestId);
     json.put("bleImgId", bleImgId);
     json.put("success", success);
-    
+
     bluetoothManager.sendData(json.toString().getBytes());
 }
 ```
@@ -363,17 +363,20 @@ private void sendBleTransferComplete(String requestId, String bleImgId, boolean 
 ## Implementation Phases
 
 ### Phase 1: Basic BLE Photo Transfer
+
 - Add BLE transfer method to take_photo command
 - Implement basic image resizing
 - Use JPEG compression initially (if AVIF not available)
 - Track transfers by bleImgId
 
 ### Phase 2: AVIF Integration
+
 - Add AVIF encoding on glasses
 - Add AVIF decoding on phone
 - Fallback to JPEG if AVIF unavailable
 
 ### Phase 3: Optimization
+
 - Fine-tune compression parameters
 - Add progress tracking
 - Implement transfer cancellation

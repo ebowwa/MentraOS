@@ -1449,6 +1449,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             coreInfo.put("default_wearable", SmartGlassesManager.getPreferredWearable(this));
             coreInfo.put("is_mic_enabled_for_frontend", isMicEnabledForFrontend);
             coreInfo.put("metric_system_enabled", this.metricSystemEnabled);
+            coreInfo.put("power_saving_mode", SmartGlassesManager.getPowerSavingMode(this));
             coreInfo.put("is_searching", getIsSearchingForGlasses());
             status.put("core_info", coreInfo);
             //Log.d(TAG, "PREFER - Got default wearable: " + SmartGlassesManager.getPreferredWearable(this));
@@ -2172,6 +2173,16 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     @Override
     public void setMetricSystemEnabled(boolean metricSystemEnabled) {
         this.metricSystemEnabled = metricSystemEnabled;
+        sendStatusToBackend();
+        sendStatusToAugmentOsManager();
+    }
+
+    @Override
+    public void setPowerSavingMode(boolean powerSavingMode) {
+        SmartGlassesManager.savePowerSavingMode(this, powerSavingMode);
+        if(smartGlassesManager != null && smartGlassesManager.getConnectedSmartGlasses() != null) {
+            blePeripheral.sendNotifyManager(this.getResources().getString(R.string.SETTING_WILL_APPLY_ON_NEXT_GLASSES_CONNECTION), "success");
+        }
         sendStatusToBackend();
         sendStatusToAugmentOsManager();
     }
