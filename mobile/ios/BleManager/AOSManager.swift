@@ -73,6 +73,7 @@ struct ViewState {
   private var connectTask: Task<Void, Never>?
   private var glassesWifiConnected: Bool = false;
   private var glassesWifiSsid: String = "";
+  private var isHeadUp: Bool = false;
   
   var viewStates: [ViewState] = [
     ViewState(topText: " ", bottomText: " ", title: " ", layoutType: "text_wall", text: "", eventStr: ""),
@@ -689,6 +690,7 @@ struct ViewState {
       } else {
         currentViewState = self.viewStates[0]
       }
+      self.isHeadUp = isDashboard
       
       if (isDashboard && !self.contextualDashboard) {
         return
@@ -871,7 +873,7 @@ struct ViewState {
     let newState = nS.layoutType + nS.text + nS.topText + nS.bottomText + nS.title + (nS.data ?? "")
 
     if currentState == newState { 
-      CoreCommsService.log("AOS: View state is the same, skipping update")
+      // CoreCommsService.log("AOS: View state is the same, skipping update")
       return
     }
     
@@ -950,14 +952,20 @@ struct ViewState {
     self.g1Manager?.RN_sendTextWall(text)
     
     // cancel any pending clear display work item:
+    // TODO: this doesn't seem to work:
     sendStateWorkItem?.cancel()
     
     // clear the screen after 3 seconds if the text is empty or a space:
     if (text == " " || text == "") && self.powerSavingMode {
+      sendStateWorkItem?.cancel()
       CoreCommsService.log("AOS: Clearing display after 3 seconds")
       // if we're clearing the display, after a delay, send a clear command if not cancelled with another
       let workItem = DispatchWorkItem { [weak self] in
         guard let self = self else { return }
+        CoreCommsService.log("isDashboard: \(self.isHeadUp)")
+        if self.isHeadUp {
+          return
+        }
         self.g1Manager?.RN_clearDisplay()
       }
       sendStateWorkItem = workItem
