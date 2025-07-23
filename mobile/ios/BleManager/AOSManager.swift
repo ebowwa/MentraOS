@@ -15,6 +15,7 @@ import AVFoundation
 struct ViewState {
   var topText: String
   var bottomText: String
+  var title: String
   var layoutType: String
   var text: String
   var eventStr: String
@@ -74,10 +75,10 @@ struct ViewState {
   private var glassesWifiSsid: String = "";
   
   var viewStates: [ViewState] = [
-    ViewState(topText: " ", bottomText: " ", layoutType: "text_wall", text: "", eventStr: ""),
-    ViewState(topText: " ", bottomText: " ", layoutType: "text_wall", text: "$TIME12$ $DATE$ $GBATT$ $CONNECTION_STATUS", eventStr: ""),
-    ViewState(topText: " ", bottomText: " ", layoutType: "text_wall", text: "", eventStr: "", data: nil, animationData: nil),
-    ViewState(topText: " ", bottomText: " ", layoutType: "text_wall", text: "$TIME12$ $DATE$ $GBATT$ $CONNECTION_STATUS", eventStr: "", data: nil, animationData: nil),
+    ViewState(topText: " ", bottomText: " ", title: " ", layoutType: "text_wall", text: "", eventStr: ""),
+    ViewState(topText: " ", bottomText: " ", title: " ", layoutType: "text_wall", text: "$TIME12$ $DATE$ $GBATT$ $CONNECTION_STATUS$", eventStr: ""),
+    ViewState(topText: " ", bottomText: " ", title: " ", layoutType: "text_wall", text: "", eventStr: "", data: nil, animationData: nil),
+    ViewState(topText: " ", bottomText: " ", title: " ", layoutType: "text_wall", text: "$TIME12$ $DATE$ $GBATT$ $CONNECTION_STATUS$", eventStr: "", data: nil, animationData: nil),
   ]
   
   private var sendStateWorkItem: DispatchWorkItem?
@@ -719,7 +720,7 @@ struct ViewState {
         self.g1Manager?.RN_sendDoubleTextWall(topText, bottomText);
         break
       case "reference_card":
-        sendText(currentViewState.topText + "\n\n" + currentViewState.bottomText);
+        sendText(currentViewState.topText + "\n\n" + currentViewState.title);
         break
       case "bitmap_view":
         CoreCommsService.log("AOS: Processing bitmap_view layout")
@@ -832,28 +833,44 @@ struct ViewState {
     } catch {
       CoreCommsService.log("AOS: Error converting to JSON: \(error)")
     }
-    
-    self.viewStates[stateIndex].eventStr = eventStr
+
+
     let layout = event["layout"] as! [String: Any];
     let layoutType = layout["layoutType"] as! String
-    self.viewStates[stateIndex].layoutType = layoutType
-    
-    
     var text = layout["text"] as? String ?? " "
     var topText = layout["topText"] as? String ?? " "
     var bottomText = layout["bottomText"] as? String ?? " "
     var title = layout["title"] as? String ?? " "
     var data = layout["data"] as? String ?? ""
-    
+
     text = parsePlaceholders(text)
     topText = parsePlaceholders(topText)
     bottomText = parsePlaceholders(bottomText)
     title = parsePlaceholders(title)
-
+    
+    var newViewState = ViewState(topText: topText, bottomText: bottomText, title: title, layoutType: layoutType, text: text, eventStr: eventStr, data: data, animationData: nil)
+    
+    if (layoutType == "bitmap_animation") {
+      if let frames = layout["frames"] as? [String],
+         let interval = layout["interval"] as? Double {
+        let animationData: [String: Any] = [
+          "frames": frames,
+          "interval": interval,
+          "repeat": layout["repeat"] as? Bool ?? true
+        ]
+        newViewState.animationData = animationData
+        CoreCommsService.log("AOS: Parsed bitmap_animation with \(frames.count) frames, interval: \(interval)ms")
+      } else {
+        CoreCommsService.log("AOS: ERROR: bitmap_animation missing frames or interval")
+      }
+    }
+    
     let cS = self.viewStates[stateIndex]
-    let currentState = cS.layoutType + " " + cS.text + " " + cS.topText + " " + cS.bottomText
-    let newState = layoutType + " " + text + " " + topText + " " + bottomText
-    if currentState == newState {
+    let nS = newViewState
+    let currentState = cS.layoutType + cS.text + cS.topText + cS.bottomText + cS.title + (cS.data ?? "")
+    let newState = nS.layoutType + nS.text + nS.topText + nS.bottomText + nS.title + (nS.data ?? "")
+
+    if currentState == newState { 
       CoreCommsService.log("AOS: View state is the same, skipping update")
       return
     } else {
@@ -862,43 +879,7 @@ struct ViewState {
     
     CoreCommsService.log("Updating view state \(stateIndex) with \(layoutType) \(text) \(topText) \(bottomText)")
     
-    switch layoutType {
-    case "text_wall":
-      self.viewStates[stateIndex].text = text
-      break
-    case "double_text_wall":
-      self.viewStates[stateIndex].topText = topText
-      self.viewStates[stateIndex].bottomText = bottomText
-      break
-    case "reference_card":
-      self.viewStates[stateIndex].topText = text
-      self.viewStates[stateIndex].bottomText = title
-      break
-    case "bitmap_view":
-      self.viewStates[stateIndex].data = data
-      break
-    case "bitmap_animation":
-      // Store animation data with frames and timing
-      if let frames = layout["frames"] as? [String],
-         let interval = layout["interval"] as? Double {
-        let animationData: [String: Any] = [
-          "frames": frames,
-          "interval": interval,
-          "repeat": layout["repeat"] as? Bool ?? true
-        ]
-        self.viewStates[stateIndex].animationData = animationData
-        print("Parsed bitmap_animation with \(frames.count) frames, interval: \(interval)ms")
-      } else {
-        print("ERROR: bitmap_animation missing frames or interval")
-      }
-      break
-    case "clear_view":
-      print("Parsed clear_view layout")
-      break
-    default:
-      CoreCommsService.log("AOS: UNHANDLED LAYOUT_TYPE \(layoutType)")
-      break
-    }
+    self.viewStates[stateIndex] = newViewState
     
     let headUp = self.g1Manager?.isHeadUp ?? false
     // send the state we just received if the user is currently in that state:
@@ -963,16 +944,16 @@ struct ViewState {
   }
   
   private func sendText(_ text: String) {
-    CoreCommsService.log("AOS: Sending text: \(text)")
+    // CoreCommsService.log("AOS: Sending text: \(text)")
     if self.defaultWearable.contains("Simulated") || self.defaultWearable.isEmpty {
       return
     }
     // self.g1Manager?.RN_sendText(text)
     self.g1Manager?.RN_sendTextWall(text)
-
+    
     // cancel any pending clear display work item:
     sendStateWorkItem?.cancel()
-
+    
     // clear the screen after 3 seconds if the text is empty or a space:
     if (text == " " || text == "") && self.powerSavingMode {
       CoreCommsService.log("AOS: Clearing display after 3 seconds")
@@ -1130,7 +1111,7 @@ struct ViewState {
     handleRequestStatus()// to update the UI
     saveSettings()
   }
-
+  
   private func enablePowerSavingMode(_ enabled: Bool) {
     self.powerSavingMode = enabled
     handleRequestStatus()// to update the UI
@@ -1419,7 +1400,7 @@ struct ViewState {
           break
         case .simulateButtonPress:
           guard let params = params,
-                  let buttonId = params["buttonId"] as? String,
+                let buttonId = params["buttonId"] as? String,
                 let pressType = params["pressType"] as? String else {
             CoreCommsService.log("AOS: simulate_button_press invalid params")
             break
@@ -1858,7 +1839,7 @@ struct ViewState {
     if let sensingEnabled = coreInfo?["sensing_enabled"] as? Bool, sensingEnabled != self.sensingEnabled {
       enableSensing(sensingEnabled)
     }
-
+    
     if let powerSavingMode = coreInfo?["power_saving_mode"] as? Bool, powerSavingMode != self.powerSavingMode {
       enablePowerSavingMode(powerSavingMode)
     }
