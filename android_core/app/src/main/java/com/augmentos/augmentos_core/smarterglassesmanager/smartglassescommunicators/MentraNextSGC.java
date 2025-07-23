@@ -2,6 +2,12 @@ package com.augmentos.augmentos_core.smarterglassesmanager.smartglassescommunica
 
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.BitmapJavaUtils;
 
+import mentraos.ble.MentraosBle.DisplayText;
+import mentraos.ble.MentraosBle.PhoneToGlasses;
+import mentraos.ble.MentraosBle.PingRequest;
+
+import com.google.protobuf.InvalidProtocolBufferException;
+
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;
@@ -22,6 +28,8 @@ import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.os.Handler;
+import android.os.Message;
+import android.os.Handler.Callback;
 import android.os.Looper;
 import android.util.Log;
 import android.util.SparseArray;
@@ -83,6 +91,8 @@ import java.util.HashMap;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesSerialNumberEvent;
 import com.augmentos.augmentos_core.statushelpers.DeviceInfo;
 
+import mentraos.ble.MentraosBle;
+
 public final class MentraNextSGC extends SmartGlassesCommunicator {
     private final String TAG = "WearableAi_MentraNextSGC";
     public final String SHARED_PREFS_NAME = "NextGlassesPrefs";
@@ -102,6 +112,7 @@ public final class MentraNextSGC extends SmartGlassesCommunicator {
     private final String SAVED_NEXT_ID_KEY = "SAVED_Next_New_ID_KEY";
 
     private final byte PACKET_TYPE_JSON = (byte) 0x01;
+    private final byte PACKET_TYPE_PROTOBUF = (byte) 0x02;
     private final byte PACKET_TYPE_AUDIO = (byte) 0xA0;
     private final byte PACKET_TYPE_IMAGE = (byte) 0xB0;
     private final Random random = new Random();
@@ -115,6 +126,46 @@ public final class MentraNextSGC extends SmartGlassesCommunicator {
     private int currentMTU = 0;
 
     private SmartGlassesConnectionState connectionState = SmartGlassesConnectionState.DISCONNECTED;
+    // gatt callbacks
+    private final int MAIN_TASK_HANDLER_CODE_GATT_STATUS_CHANGED = 110;
+    private final int MAIN_TASK_HANDLER_CODE_DISCOVER_SERVICES = 120;
+    private final int MAIN_TASK_HANDLER_CODE_CHARACTERISTIC_VALUE_NOTIFIED = 210;
+    // actions of device or gatt
+    private final int MAIN_TASK_HANDLER_CODE_CONNECT_DEVICE = 310;
+    private final int MAIN_TASK_HANDLER_CODE_DISCONNECT_DEVICE = 320;
+    private final int MAIN_TASK_HANDLER_CODE_RECONNECT_DEVICE = 350;
+    private final int MAIN_TASK_HANDLER_CODE_RECONNECT_GATT = 360;
+    private final int MAIN_TASK_HANDLER_CODE_SCAN_START = 410;
+    private final int MAIN_TASK_HANDLER_CODE_SCAN_END = 420;
+    private final Handler mainTaskMandler = new Handler(Looper.getMainLooper(), new Callback() {
+        @Override
+        public boolean handleMessage(Message msg) {
+            final int msgCode = msg.what;
+            switch (msgCode) {
+                case MAIN_TASK_HANDLER_CODE_GATT_STATUS_CHANGED:
+                    break;
+                case MAIN_TASK_HANDLER_CODE_DISCOVER_SERVICES:
+                    break;
+                case MAIN_TASK_HANDLER_CODE_CHARACTERISTIC_VALUE_NOTIFIED:
+                    break;
+                case MAIN_TASK_HANDLER_CODE_CONNECT_DEVICE:
+                    break;
+                case MAIN_TASK_HANDLER_CODE_DISCONNECT_DEVICE:
+                    break;
+                case MAIN_TASK_HANDLER_CODE_RECONNECT_DEVICE:
+                    break;
+                case MAIN_TASK_HANDLER_CODE_RECONNECT_GATT:
+                    break;
+                case MAIN_TASK_HANDLER_CODE_SCAN_START:
+                    break;
+                case MAIN_TASK_HANDLER_CODE_SCAN_END:
+                    break;
+                default:
+                    break;
+            }
+            return true;
+        }
+    });
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final Handler queryBatteryStatusHandler = new Handler(Looper.getMainLooper());
     private final Handler sendBrightnessCommandHandler = new Handler(Looper.getMainLooper());
@@ -267,27 +318,21 @@ public final class MentraNextSGC extends SmartGlassesCommunicator {
 
                         isMainConnected = true;
                         mainReconnectAttempts = 0;
-
-                        if (isMainConnected) {
-                            stopScan();
-                            Log.d(TAG, "Both glasses connected. Stopping BLE scan.");
-                        }
-
+                        Log.d(TAG, "Both glasses connected. Stopping BLE scan.");
+                        stopScan();
                         Log.d(TAG, "Discover services calling...");
                         gatt.discoverServices();
-
                         updateConnectionState();
-
-                        // just for test ,created by walker
+                        // just for test
                         // EventBus.getDefault().post(new BatteryLevelEvent(20, true));
                     } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
                         Log.d(TAG, " glass disconnected, stopping heartbeats");
                         Log.d(TAG, "Entering STATE_DISCONNECTED branch for side: ");
-
                         // Mark both sides as not ready (you could also clear both if one disconnects)
+                        MAX_CHUNK_SIZE = MAX_CHUNK_SIZE_DEFAULT;
+                        BMP_CHUNK_SIZE = MAX_CHUNK_SIZE_DEFAULT;
                         mainServicesWaiter.setTrue();
                         Log.d(TAG, "Set mainServicesWaiter and rightServicesWaiter to true.");
-
                         forceSideDisconnection();
                         Log.d(TAG, "Called forceSideDisconnection().");
                         currentMTU = 0;
@@ -296,11 +341,8 @@ public final class MentraNextSGC extends SmartGlassesCommunicator {
                         stopMicBeat();
                         sendQueue.clear();
                         Log.d(TAG, "Stopped heartbeat and mic beat; cleared sendQueue.");
-
                         updateConnectionState();
-
                         Log.d(TAG, "Updated connection state after disconnection.");
-
                         // Compute reconnection delay for both sides (here you could choose the maximum
                         // of the two delays or a new delay)
                         // long delayLeft = Math.min(BASE_RECONNECT_DELAY_MS * (1L <<
@@ -315,16 +357,16 @@ public final class MentraNextSGC extends SmartGlassesCommunicator {
                                 " glass disconnected. Scheduling reconnection for both glasses in " + delay
                                         + " ms (main attempts: " + mainReconnectAttempts);
 
-                        // if (gatt.getDevice() != null) {
-                        // // Close the current gatt connection
-                        // Log.d(TAG, "Closing GATT connection for device: " +
-                        // gatt.getDevice().getAddress());
-                        // gatt.disconnect();
-                        // gatt.close();
-                        // Log.d(TAG, "GATT connection closed.");
-                        // } else {
-                        // Log.d(TAG, "No GATT device available to disconnect.");
-                        // }
+                        if (gatt.getDevice() != null) {
+                            // Close the current gatt connection
+                            Log.d(TAG, "Closing GATT connection for device: " +
+                                    gatt.getDevice().getAddress());
+                            gatt.disconnect();
+                            gatt.close();
+                            Log.d(TAG, "GATT connection closed.");
+                        } else {
+                            Log.d(TAG, "No GATT device available to disconnect.");
+                        }
 
                         // Schedule a reconnection for both devices after the delay
                         // cancel
@@ -348,9 +390,10 @@ public final class MentraNextSGC extends SmartGlassesCommunicator {
                         // }, delay);
                     }
                 } else {
+                    currentMTU = 0;
                     MAX_CHUNK_SIZE = MAX_CHUNK_SIZE_DEFAULT;
                     BMP_CHUNK_SIZE = MAX_CHUNK_SIZE_DEFAULT;
-                    Log.e(TAG, "Unexpected connection state encountered for " + " glass: " + newState);
+                    Log.d(TAG, "Unexpected connection state encountered for " + " glass: " + newState);
                     stopHeartbeat();
                     stopMicBeat();
                     sendQueue.clear();
@@ -360,7 +403,7 @@ public final class MentraNextSGC extends SmartGlassesCommunicator {
 
                     Log.d(TAG, "Stopped heartbeat and mic beat; cleared sendQueue due to connection failure.");
 
-                    Log.e(TAG, " glass connection failed with status: " + status);
+                    Log.d(TAG, " glass connection failed with status: " + status);
                     isMainConnected = false;
                     mainReconnectAttempts++;
                     if (mainGlassGatt != null) {
@@ -416,15 +459,22 @@ public final class MentraNextSGC extends SmartGlassesCommunicator {
                 if (status == BluetoothGatt.GATT_SUCCESS) {
                     Log.d(TAG, "onCharacteristicWrite PROC_QUEUE - " + " glass write successful");
                     Log.d(TAG, "onCharacteristicWrite Values - " + bytesToHex(values));
+                    final int dataLen = values.length;
+                    if (dataLen > 0) {
+                        final byte packetType = values[0];
+                        final byte[] protobufData = Arrays.copyOfRange(values, 1, dataLen);
+                        switch (packetType) {
+                            case PACKET_TYPE_PROTOBUF:
+                                decodeProtobufs(protobufData);
+                                break;
+                        }
+                    }
                 } else {
                     Log.e(TAG, " glass write failed with status: " + status);
-
                     if (status == 133) {
                         Log.d(TAG, "GOT THAT 133 STATUS!");
-
                     }
                 }
-
                 // clear the waiter
                 mainWaiter.setFalse();
             }
@@ -432,7 +482,6 @@ public final class MentraNextSGC extends SmartGlassesCommunicator {
             @Override
             public void onDescriptorWrite(BluetoothGatt gatt, BluetoothGattDescriptor descriptor, int status) {
                 Log.d(TAG, "PROC - GOT DESCRIPTOR WRITE: " + status);
-
                 // clear the waiter
                 mainServicesWaiter.setFalse();
             }
@@ -474,6 +523,11 @@ public final class MentraNextSGC extends SmartGlassesCommunicator {
                             case PACKET_TYPE_JSON: {
                                 byte[] jsonData = Arrays.copyOfRange(data, 1, dataLen);
                                 decodeJsons(jsonData);
+                            }
+                                break;
+                            case PACKET_TYPE_PROTOBUF: {
+                                byte[] jsonData = Arrays.copyOfRange(data, 1, dataLen);
+                                decodeProtobufs(jsonData);
                             }
                                 break;
                             case PACKET_TYPE_AUDIO: {
@@ -720,17 +774,19 @@ public final class MentraNextSGC extends SmartGlassesCommunicator {
 
             // setup the Nexts
             if (isMainConnected) {
-                Log.d(TAG, "Sending firmware request Command");
-                sendDataSequentially(new byte[] { (byte) 0x6E, (byte) 0x74 });
+                // only for G1，not for Mentra Next Glasses
+                // Log.d(TAG, "Sending firmware request Command");
+                // sendDataSequentially(new byte[] { (byte) 0x6E, (byte) 0x74 });
 
-                Log.d(TAG, "Sending init 0x4D Command");
-                sendDataSequentially(new byte[] { (byte) 0x4D, (byte) 0xFB }); // told this is only left
+                // Log.d(TAG, "Sending init 0x4D Command");
+                // sendDataSequentially(new byte[] { (byte) 0x4D, (byte) 0xFB }); // told this
+                // is only left
 
-                Log.d(TAG, "Sending turn off wear detection command");
-                sendDataSequentially(new byte[] { (byte) 0x27, (byte) 0x00 });
+                // Log.d(TAG, "Sending turn off wear detection command");
+                // sendDataSequentially(new byte[] { (byte) 0x27, (byte) 0x00 });
 
-                Log.d(TAG, "Sending turn off silent mode Command");
-                sendDataSequentially(new byte[] { (byte) 0x03, (byte) 0x0A });
+                // Log.d(TAG, "Sending turn off silent mode Command");
+                // sendDataSequentially(new byte[] { (byte) 0x03, (byte) 0x0A });
 
                 // debug command
                 // Log.d(TAG, "Sending debug 0xF4 Command");
@@ -738,11 +794,12 @@ public final class MentraNextSGC extends SmartGlassesCommunicator {
 
                 // no longer need to be staggered as we fixed the sender
                 // do first battery status query
-                queryBatteryStatusHandler.postDelayed(() -> queryBatteryStatus(), 10);
+                // queryBatteryStatusHandler.postDelayed(() -> queryBatteryStatus(), 10);
 
                 // setup brightness
-                sendBrightnessCommandHandler
-                        .postDelayed(() -> sendBrightnessCommand(brightnessValue, shouldUseAutoBrightness), 10);
+                // sendBrightnessCommandHandler
+                // .postDelayed(() -> sendBrightnessCommand(brightnessValue,
+                // shouldUseAutoBrightness), 10);
 
                 // Maybe start MIC streaming
                 setMicEnabled(false, 10); // Disable the MIC
@@ -1588,6 +1645,8 @@ public final class MentraNextSGC extends SmartGlassesCommunicator {
             mainGlassGatt = null;
         }
 
+        mainTaskMandler.removeCallbacksAndMessages(null);
+
         if (handler != null)
             handler.removeCallbacksAndMessages(null);
         if (heartbeatHandler != null)
@@ -1668,10 +1727,12 @@ public final class MentraNextSGC extends SmartGlassesCommunicator {
 
     @Override
     public void displayPromptView(String title, String[] options) {
+        Log.d(TAG, "displayPromptView text:" + title);
     }
 
     @Override
     public void displayTextLine(String text) {
+        Log.d(TAG, "displayTextLine text:" + text);
     }
 
     @Override
@@ -1688,13 +1749,16 @@ public final class MentraNextSGC extends SmartGlassesCommunicator {
     }
 
     public void displayDoubleTextWall(String textTop, String textBottom) {
-        if (updatingScreen)
+        Log.d(TAG, "displayDoubleTextWall textTop:" + textTop + " textBottom:" + textBottom);
+        if (updatingScreen) {
             return;
+        }
         List<byte[]> chunks = createDoubleTextWallChunks(textTop, textBottom);
         sendChunks(chunks);
     }
 
     public void showHomeScreen() {
+        Log.d(TAG, "showHomeScreen ");
         displayTextWall(" ");
 
         if (lastThingDisplayedWasAnImage) {
@@ -1730,10 +1794,13 @@ public final class MentraNextSGC extends SmartGlassesCommunicator {
     public void displayReferenceCardImage(String title, String body, String imgUrl) {
     }
 
-    public void displayTextWall(String a) {
-        if (updatingScreen)
+    public void displayTextWall(String text) {
+        Log.d(TAG, "displayTextWall updatingScreen: " + updatingScreen + " text:" + text);
+
+        if (updatingScreen) {
             return;
-        List<byte[]> chunks = createTextWallChunks(a);
+        }
+        List<byte[]> chunks = createTextWallChunks(text);
         sendChunks(chunks);
     }
 
@@ -1757,26 +1824,45 @@ public final class MentraNextSGC extends SmartGlassesCommunicator {
         return buffer.array();
     }
 
+    // get the final binary packet
+    private byte[] generateJsonCommandBytes(PhoneToGlasses phoneToGlasses) {
+        final byte[] contentBytes = phoneToGlasses.toByteArray();
+        final ByteBuffer chunk = ByteBuffer.allocate(contentBytes.length + 1);
+
+        chunk.put(PACKET_TYPE_PROTOBUF);
+        chunk.put(contentBytes);
+        return chunk.array();
+    }
+
     // Heartbeat methods for Next Glass
     private byte[] constructHeartbeatForNextGlasses() {
-        NextGlassesHeartBeat nextGlassesHeartBeat = new NextGlassesHeartBeat();
-        nextGlassesHeartBeat.setType("ping");
-        nextGlassesHeartBeat.setMsg_id("ping_001");
+        // NextGlassesHeartBeat nextGlassesHeartBeat = new NextGlassesHeartBeat();
+        // nextGlassesHeartBeat.setType("ping");
+        // nextGlassesHeartBeat.setMsg_id("ping_001");
 
-        final String jsonData = gson.toJson(nextGlassesHeartBeat);
-        Log.d(TAG, "constructHeartbeatForNextGlasses " + jsonData);
+        // final String jsonData = gson.toJson(nextGlassesHeartBeat);
+        // Log.d(TAG, "constructHeartbeatForNextGlasses " + jsonData);
 
-        byte[] contentBytes = jsonData.getBytes(StandardCharsets.UTF_8);
+        // byte[] contentBytes = jsonData.getBytes(StandardCharsets.UTF_8);
 
-        ByteBuffer chunk = ByteBuffer.allocate(contentBytes.length + 1);
+        // ByteBuffer chunk = ByteBuffer.allocate(contentBytes.length + 1);
 
-        chunk.put(PACKET_TYPE_JSON);
-        chunk.put(contentBytes);
+        // chunk.put(PACKET_TYPE_JSON);
+        // chunk.put(contentBytes);
 
-        byte[] result = new byte[chunk.position()];
-        chunk.flip();
-        chunk.get(result);
-        return result;
+        // byte[] result = new byte[chunk.position()];
+        // chunk.flip();
+        // chunk.get(result);
+
+        PingRequest pingNewBuilder = PingRequest.newBuilder()
+                .build();
+
+        // Create the PhoneToGlasses using its builder and set the DisplayText
+        PhoneToGlasses phoneToGlasses = PhoneToGlasses.newBuilder()
+                .setPing(pingNewBuilder) // This expects a DisplayText object, not a builder
+                .build();
+
+        return generateJsonCommandBytes(phoneToGlasses);
     }
 
     private byte[] constructBatteryLevelQuery() {
@@ -2297,47 +2383,58 @@ public final class MentraNextSGC extends SmartGlassesCommunicator {
 
     // currently only a single page - 1PAGE CHANGE ,for next glasses
     private byte[] createTextWallChunksForNext(String text) {
+        DisplayText textNewBuilder = DisplayText.newBuilder()
+                .setText(text)
+                .setSize(20)
+                .setX(0)
+                .setY(0)
+                .setFontCode(20)
+                .setColor(10000)
+                .build();
 
-        DisplayText displayText = new DisplayText();
-        displayText.setText(text);
-        displayText.setSize(20);
-        final String jsonData = gson.toJson(displayText);
+        Log.d(TAG, "createTextWallChunksForNext " + textNewBuilder.toString());
+        // Create the PhoneToGlasses using its builder and set the DisplayText
+        PhoneToGlasses phoneToGlasses = PhoneToGlasses.newBuilder()
+                .setDisplayText(textNewBuilder) // This expects a DisplayText object, not a builder
+                .build();
 
-        Log.d(TAG, "createTextWallChunksForNext json " + jsonData);
-
-        byte[] contentBytes = jsonData.getBytes(StandardCharsets.UTF_8);
-
-        ByteBuffer chunk = ByteBuffer.allocate(contentBytes.length + 1);
-
-        chunk.put(PACKET_TYPE_JSON);
-        chunk.put(contentBytes);
-
-        byte[] result = new byte[chunk.position()];
-        chunk.flip();
-        chunk.get(result);
-        return result;
+        return generateJsonCommandBytes(phoneToGlasses);
     }
 
     // create a VerticalScrollingfor next glasses
     private byte[] createVerticalScrollingTextWallChunksForNext(String text) {
-        DisplayVerticalScrollingText displayText = new DisplayVerticalScrollingText();
-        displayText.setText(text);
-        displayText.setSize(20);
-        final String jsonData = gson.toJson(displayText);
+        // DisplayVerticalScrollingText displayText = new
+        // DisplayVerticalScrollingText();
+        // displayText.setText(text);
+        // displayText.setSize(20);
+        // final String jsonData = gson.toJson(displayText);
 
-        Log.d(TAG, "createVerticalScrollingTextWallChunksForNext json " + jsonData);
+        // Log.d(TAG, "createVerticalScrollingTextWallChunksForNext json " + jsonData);
 
-        byte[] contentBytes = jsonData.getBytes(StandardCharsets.UTF_8);
+        // byte[] contentBytes = jsonData.getBytes(StandardCharsets.UTF_8);
 
-        ByteBuffer chunk = ByteBuffer.allocate(contentBytes.length + 1);
+        // ByteBuffer chunk = ByteBuffer.allocate(contentBytes.length + 1);
 
-        chunk.put(PACKET_TYPE_JSON);
-        chunk.put(contentBytes);
+        // chunk.put(PACKET_TYPE_JSON);
+        // chunk.put(contentBytes);
 
-        byte[] result = new byte[chunk.position()];
-        chunk.flip();
-        chunk.get(result);
-        return result;
+        // byte[] result = new byte[chunk.position()];
+        // chunk.flip();
+        // chunk.get(result);
+
+        DisplayText textNewBuilder = DisplayText.newBuilder()
+                .setText("11111")
+                .setSize(20)
+                .setX(0)
+                .setY(0)
+                .build();
+
+        // Create the PhoneToGlasses using its builder and set the DisplayText
+        PhoneToGlasses phoneToGlasses = PhoneToGlasses.newBuilder()
+                .setDisplayText(textNewBuilder) // This expects a DisplayText object, not a builder
+                .build();
+
+        return generateJsonCommandBytes(phoneToGlasses);
     }
 
     // send a tast image and display
@@ -2358,22 +2455,35 @@ public final class MentraNextSGC extends SmartGlassesCommunicator {
 
     private byte[] createSendingImageChunksCommand(char streamId, int totalChunks) {
 
-        DisplayBitmapCommand displayBitmapCommand = new DisplayBitmapCommand();
-        displayBitmapCommand.setStream_id(streamId);
-        displayBitmapCommand.setTotal_chunks(totalChunks);
-        final String jsonData = gson.toJson(displayBitmapCommand);
+        // DisplayBitmapCommand displayBitmapCommand = new DisplayBitmapCommand();
+        // displayBitmapCommand.setStream_id(streamId);
+        // displayBitmapCommand.setTotal_chunks(totalChunks);
+        // final String jsonData = gson.toJson(displayBitmapCommand);
 
-        byte[] contentBytes = jsonData.getBytes(StandardCharsets.UTF_8);
+        // byte[] contentBytes = jsonData.getBytes(StandardCharsets.UTF_8);
 
-        ByteBuffer chunk = ByteBuffer.allocate(contentBytes.length + 1);
+        // ByteBuffer chunk = ByteBuffer.allocate(contentBytes.length + 1);
 
-        chunk.put(PACKET_TYPE_JSON);
-        chunk.put(contentBytes);
+        // chunk.put(PACKET_TYPE_JSON);
+        // chunk.put(contentBytes);
 
-        byte[] result = new byte[chunk.position()];
-        chunk.flip(); // 切换到读模式
-        chunk.get(result);
-        return result;
+        // byte[] result = new byte[chunk.position()];
+        // chunk.flip(); // 切换到读模式
+        // chunk.get(result);
+        // return result;
+        DisplayText textNewBuilder = DisplayText.newBuilder()
+                .setText("11111")
+                .setSize(20)
+                .setX(0)
+                .setY(0)
+                .build();
+
+        // Create the PhoneToGlasses using its builder and set the DisplayText
+        PhoneToGlasses phoneToGlasses = PhoneToGlasses.newBuilder()
+                .setDisplayText(textNewBuilder) // This expects a DisplayText object, not a builder
+                .build();
+
+        return generateJsonCommandBytes(phoneToGlasses);
     }
 
     private int calculateTextWidth(String text) {
@@ -2925,8 +3035,9 @@ public final class MentraNextSGC extends SmartGlassesCommunicator {
     }
 
     private void sendBmpEndCommand() {
-        if (updatingScreen)
+        if (updatingScreen) {
             return;
+        }
         Log.d(TAG, "Sending BMP end command");
         sendDataSequentially(END_COMMAND);
 
@@ -2972,16 +3083,18 @@ public final class MentraNextSGC extends SmartGlassesCommunicator {
     }
 
     public void clearBmpDisplay() {
-        if (updatingScreen)
+        if (updatingScreen) {
             return;
+        }
         Log.d(TAG, "Clearing BMP display with EXIT command");
         byte[] exitCommand = new byte[] { 0x18 };
         sendDataSequentially(exitCommand);
     }
 
     private void sendLoremIpsum() {
-        if (updatingScreen)
+        if (updatingScreen) {
             return;
+        }
         String text = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. ";
         sendDataSequentially(createTextWallChunks(text));
     }
@@ -3105,6 +3218,18 @@ public final class MentraNextSGC extends SmartGlassesCommunicator {
         }
     }
 
+    private void decodeProtobufs(byte[] protobufBytes) {
+        try {
+            final PhoneToGlasses receivedBytes = PhoneToGlasses.parseFrom(protobufBytes);
+            Log.d(TAG, "decodeProtobufs data: " + receivedBytes.toString());
+            Log.d(TAG, "decodeProtobufs case: " + receivedBytes.getPayloadCase());
+
+        } catch (InvalidProtocolBufferException e) {
+            e.printStackTrace(); // Handle parsing error
+        }
+
+    }
+
     /**
      * Decodes serial number from manufacturer data bytes
      *
@@ -3144,681 +3269,6 @@ public final class MentraNextSGC extends SmartGlassesCommunicator {
         } catch (Exception e) {
             Log.e(TAG, "Error decoding manufacturer data: " + e.getMessage());
             return null;
-        }
-    }
-
-    /**
-     * {
-     * "type": "display_text",
-     * "msg_id": "txt_001",
-     * "text": "Hello World",
-     * "color": "0xF800",
-     * "font_code": "0x11",
-     * "x": 10,
-     * "y": 20,
-     * "size": 2
-     * }
-     */
-    private class DisplayText {
-        private String type;
-        private String msg_id;
-        private String text;
-        private String color;
-        private String font_code;
-        private int x;
-        private int y;
-        private int size;
-
-        public String getType() {
-            return type;
-        }
-
-        public void setType(String type) {
-            this.type = type;
-        }
-
-        public String getMsg_id() {
-            return msg_id;
-        }
-
-        public void setMsg_id(String msg_id) {
-            this.msg_id = msg_id;
-        }
-
-        public String getColor() {
-            return color;
-        }
-
-        public void setColor(String color) {
-            this.color = color;
-        }
-
-        public String getFont_code() {
-            return font_code;
-        }
-
-        public void setFont_code(String font_code) {
-            this.font_code = font_code;
-        }
-
-        public int getX() {
-            return x;
-        }
-
-        public void setX(int x) {
-            this.x = x;
-        }
-
-        public int getY() {
-            return y;
-        }
-
-        public void setY(int y) {
-            this.y = y;
-        }
-
-        public int getSize() {
-            return size;
-        }
-
-        public void setSize(int size) {
-            this.size = size;
-        }
-
-        public String getText() {
-            return text;
-        }
-
-        public void setText(String text) {
-            this.text = text;
-        }
-    }
-
-    /**
-     * {
-     * "type": "display_vertical_scrolling_text",
-     * "msg_id": "vscroll_001",
-     * "text": "Line 1\nLine 2\nLine 3\nLine 4",
-     * "color": "0xF800",
-     * "font_code": "0x11",
-     * "x": 0,
-     * "y": 0,
-     * "width": 128,
-     * "height": 64,
-     * "align": "left", // Or "center", "right"
-     * "line_spacing": 2, // optional: pixels between lines
-     * "speed": 20, // optional: pixels/sec (scrolling up)
-     * "size": 1, // optional: font size multiplier
-     * "loop": false, // optional: if true, wraps to top when finished
-     * "pause_ms": 1000, // optional: delay (in ms) before restarting loop
-     * }
-     */
-    private class DisplayVerticalScrollingText {
-        private String type;
-        private String msg_id;
-        private String text;
-        private String color;
-        private String font_code;
-        private int x;
-        private int y;
-        private int width;
-        private int height;
-        private String align;
-        private int line_spacing;
-        private int speed;
-        private int size;
-        private boolean loop;
-        private int pause_ms;
-
-        public String getType() {
-            return type;
-        }
-
-        public void setType(String type) {
-            this.type = type;
-        }
-
-        public String getMsg_id() {
-            return msg_id;
-        }
-
-        public void setMsg_id(String msg_id) {
-            this.msg_id = msg_id;
-        }
-
-        public String getText() {
-            return text;
-        }
-
-        public void setText(String text) {
-            this.text = text;
-        }
-
-        public String getColor() {
-            return color;
-        }
-
-        public void setColor(String color) {
-            this.color = color;
-        }
-
-        public String getFont_code() {
-            return font_code;
-        }
-
-        public void setFont_code(String font_code) {
-            this.font_code = font_code;
-        }
-
-        public int getX() {
-            return x;
-        }
-
-        public void setX(int x) {
-            this.x = x;
-        }
-
-        public int getY() {
-            return y;
-        }
-
-        public void setY(int y) {
-            this.y = y;
-        }
-
-        public int getWidth() {
-            return width;
-        }
-
-        public void setWidth(int width) {
-            this.width = width;
-        }
-
-        public int getHeight() {
-            return height;
-        }
-
-        public void setHeight(int height) {
-            this.height = height;
-        }
-
-        public String getAlign() {
-            return align;
-        }
-
-        public void setAlign(String align) {
-            this.align = align;
-        }
-
-        public int getLine_spacing() {
-            return line_spacing;
-        }
-
-        public void setLine_spacing(int line_spacing) {
-            this.line_spacing = line_spacing;
-        }
-
-        public int getSpeed() {
-            return speed;
-        }
-
-        public void setSpeed(int speed) {
-            this.speed = speed;
-        }
-
-        public int getSize() {
-            return size;
-        }
-
-        public void setSize(int size) {
-            this.size = size;
-        }
-
-        public boolean isLoop() {
-            return loop;
-        }
-
-        public void setLoop(boolean loop) {
-            this.loop = loop;
-        }
-
-        public int getPause_ms() {
-            return pause_ms;
-        }
-
-        public void setPause_ms(int pause_ms) {
-            this.pause_ms = pause_ms;
-        }
-    }
-
-    private enum DisplayVerticalScrollingTextAlign {
-        LEFT("left"),
-        RIGHT("right"),
-        CENTER("center");
-
-        private String value;
-
-        DisplayVerticalScrollingTextAlign(String align) {
-            this.value = align;
-        }
-
-        public String getValue() {
-            return value;
-        }
-    }
-
-    /**
-     * {
-     * "type": "display_image",
-     * "msg_id": "img_start_1",
-     * "stream_id": "002A",
-     * "x": 0,
-     * "y": 0,
-     * "width": 128,
-     * "height": 64,
-     * "encoding": "rle",
-     * "total_chunks": 9
-     * }
-     */
-    // start send a command for going to transport image chunks
-    private class DisplayBitmapCommand {
-        private String type;
-        private String msg_id;
-        private char stream_id;
-        private int x;
-        private int y;
-        private int width;
-        private int height;
-        private String encoding;
-        private int total_chunks;
-
-        public String getType() {
-            return type;
-        }
-
-        public void setType(String type) {
-            this.type = type;
-        }
-
-        public String getMsg_id() {
-            return msg_id;
-        }
-
-        public void setMsg_id(String msg_id) {
-            this.msg_id = msg_id;
-        }
-
-        public char getStream_id() {
-            return stream_id;
-        }
-
-        public void setStream_id(char stream_id) {
-            this.stream_id = stream_id;
-        }
-
-        public int getX() {
-            return x;
-        }
-
-        public void setX(int x) {
-            this.x = x;
-        }
-
-        public int getY() {
-            return y;
-        }
-
-        public void setY(int y) {
-            this.y = y;
-        }
-
-        public int getWidth() {
-            return width;
-        }
-
-        public void setWidth(int width) {
-            this.width = width;
-        }
-
-        public int getHeight() {
-            return height;
-        }
-
-        public void setHeight(int height) {
-            this.height = height;
-        }
-
-        public String getEncoding() {
-            return encoding;
-        }
-
-        public void setEncoding(String encoding) {
-            this.encoding = encoding;
-        }
-
-        public int getTotal_chunks() {
-            return total_chunks;
-        }
-
-        public void setTotal_chunks(int total_chunks) {
-            this.total_chunks = total_chunks;
-        }
-    }
-
-    /**
-     * {
-     * "type": "display_cached_image",
-     * "msg_id": "disp_cache_01",
-     * "image_id": 42,
-     * "x": 10,
-     * "y": 20,
-     * "width": 128,
-     * "height": 64
-     * }
-     */
-    private class DisplayCachedBitmap {
-        private String type;
-        private String msg_id;
-        private String image_id;
-        private int x;
-        private int y;
-        private int width;
-        private int height;
-
-        public String getType() {
-            return type;
-        }
-
-        public void setType(String type) {
-            this.type = type;
-        }
-
-        public String getMsg_id() {
-            return msg_id;
-        }
-
-        public void setMsg_id(String msg_id) {
-            this.msg_id = msg_id;
-        }
-
-        public String getImage_id() {
-            return image_id;
-        }
-
-        public void setImage_id(String image_id) {
-            this.image_id = image_id;
-        }
-
-        public int getX() {
-            return x;
-        }
-
-        public void setX(int x) {
-            this.x = x;
-        }
-
-        public int getY() {
-            return y;
-        }
-
-        public void setY(int y) {
-            this.y = y;
-        }
-
-        public int getWidth() {
-            return width;
-        }
-
-        public void setWidth(int width) {
-            this.width = width;
-        }
-
-        public int getHeight() {
-            return height;
-        }
-
-        public void setHeight(int height) {
-            this.height = height;
-        }
-    }
-
-    /**
-     * {
-     * "type": "draw_line",
-     * "msg_id": "drawline_001",
-     * "color": "0xF800",
-     * "stroke": 1,
-     * "x1": 0,
-     * "y1": 0,
-     * "x2": 100,
-     * "y2": 50
-     * }
-     */
-    private class DisplayDrawLine {
-        private String type;
-        private String msg_id;
-        private String color;
-        private int stroke;
-        private int x1;
-        private int y1;
-        private int x2;
-
-        public String getType() {
-            return type;
-        }
-
-        public void setType(String type) {
-            this.type = type;
-        }
-
-        public String getMsg_id() {
-            return msg_id;
-        }
-
-        public void setMsg_id(String msg_id) {
-            this.msg_id = msg_id;
-        }
-
-        public String getColor() {
-            return color;
-        }
-
-        public void setColor(String color) {
-            this.color = color;
-        }
-
-        public int getStroke() {
-            return stroke;
-        }
-
-        public void setStroke(int stroke) {
-            this.stroke = stroke;
-        }
-
-        public int getX1() {
-            return x1;
-        }
-
-        public void setX1(int x1) {
-            this.x1 = x1;
-        }
-
-        public int getY1() {
-            return y1;
-        }
-
-        public void setY1(int y1) {
-            this.y1 = y1;
-        }
-
-        public int getX2() {
-            return x2;
-        }
-
-        public void setX2(int x2) {
-            this.x2 = x2;
-        }
-
-        public int getY2() {
-            return y2;
-        }
-
-        public void setY2(int y2) {
-            this.y2 = y2;
-        }
-
-        private int y2;
-    }
-
-    /**
-     * {
-     * "type": "device_info",
-     * "fw": "1.2.3",
-     * "hw": "MentraLive",
-     * "features": {
-     * "camera": true,
-     * "display": true,
-     * "audio_tx": true,
-     * "audio_rx": false,
-     * "imu": true,
-     * "vad": true,
-     * "mic_switching": true,
-     * "image_chunk_buffer": 12
-     * }
-     * }
-     */
-    private class NextGlassesDeviceInfo {
-        private String type;
-        private String fw;
-        private String hw;
-        private NextGlassesDeviceFeatures features;
-
-        public String getType() {
-            return type;
-        }
-
-        public void setType(String type) {
-            this.type = type;
-        }
-
-        public String getFw() {
-            return fw;
-        }
-
-        public void setFw(String fw) {
-            this.fw = fw;
-        }
-
-        public String getHw() {
-            return hw;
-        }
-
-        public void setHw(String hw) {
-            this.hw = hw;
-        }
-
-        public NextGlassesDeviceFeatures getFeatures() {
-            return features;
-        }
-
-        public void setFeatures(NextGlassesDeviceFeatures features) {
-            this.features = features;
-        }
-    }
-
-    private class NextGlassesDeviceFeatures {
-        private boolean camera;
-        private boolean display;
-        private boolean audio_tx;
-        private boolean audio_rx;
-        private boolean imu;
-        private boolean vad;
-        private boolean mic_switching;
-        private int image_chunk_buffer;
-
-        public boolean isCamera() {
-            return camera;
-        }
-
-        public void setCamera(boolean camera) {
-            this.camera = camera;
-        }
-
-        public boolean isDisplay() {
-            return display;
-        }
-
-        public void setDisplay(boolean display) {
-            this.display = display;
-        }
-
-        public boolean isAudio_tx() {
-            return audio_tx;
-        }
-
-        public void setAudio_tx(boolean audio_tx) {
-            this.audio_tx = audio_tx;
-        }
-
-        public boolean isAudio_rx() {
-            return audio_rx;
-        }
-
-        public void setAudio_rx(boolean audio_rx) {
-            this.audio_rx = audio_rx;
-        }
-
-        public boolean isImu() {
-            return imu;
-        }
-
-        public void setImu(boolean imu) {
-            this.imu = imu;
-        }
-
-        public boolean isVad() {
-            return vad;
-        }
-
-        public void setVad(boolean vad) {
-            this.vad = vad;
-        }
-
-        public boolean isMic_switching() {
-            return mic_switching;
-        }
-
-        public void setMic_switching(boolean mic_switching) {
-            this.mic_switching = mic_switching;
-        }
-
-        public int getImage_chunk_buffer() {
-            return image_chunk_buffer;
-        }
-
-        public void setImage_chunk_buffer(int image_chunk_buffer) {
-            this.image_chunk_buffer = image_chunk_buffer;
-        }
-    }
-
-    private class NextGlassesHeartBeat {
-        private String type;
-        private String msg_id;
-
-        public String getType() {
-            return type;
-        }
-
-        public void setType(String type) {
-            this.type = type;
-        }
-
-        public String getMsg_id() {
-            return msg_id;
-        }
-
-        public void setMsg_id(String msg_id) {
-            this.msg_id = msg_id;
         }
     }
 }

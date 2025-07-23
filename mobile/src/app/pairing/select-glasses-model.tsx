@@ -49,7 +49,7 @@ export default function SelectGlassesModelScreen() {
           {modelName: "Mentra Mach1", key: "mentra_mach1"},
           {modelName: "Mentra Live", key: "mentra_live"},
           {modelName: "Even Realities G1", key: "evenrealities_g1"},
-          {modelName: "E2:D5:A2:9E:A0:7A", key: "mentra_next"},
+          {modelName: "Mentra Nex", key: "mentra_next"},
           {modelName: "Audio Wearable", key: "Audio Wearable"},
         ]
 

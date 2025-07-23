@@ -18,7 +18,7 @@ export const getGlassesImage = (glasses: string | null) => {
     case "Vuzix_shield":
       return require("../../assets/glasses/vuzix_shield.png")
     case "Even Realities G1":
-    case "E2:D5:A2:9E:A0:7A":
+    case "Mentra Nex":
     case "evenrealities_g1":
     case "g1":
       return require("../../assets/glasses/g1.png")

@@ -184,7 +184,7 @@ public class SmartGlassesRepresentative implements PhoneMicListener {
                 communicator = new EvenRealitiesG1SGC(context, smartGlassesDevice);
                 break;
 
-            case MENTRA_NEXT_GLASSES:
+            case MENTRA_NEX_GLASSES:
                 communicator = new MentraNextSGC(context, smartGlassesDevice);
                 break;
                 

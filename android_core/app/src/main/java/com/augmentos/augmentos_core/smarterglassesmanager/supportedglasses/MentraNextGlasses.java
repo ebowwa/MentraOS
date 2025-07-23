@@ -5,11 +5,11 @@ import com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses.Smart
 
 public class MentraNextGlasses extends SmartGlassesDevice {
     public MentraNextGlasses() {
-        deviceModelName = "E2:D5:A2:9E:A0:7A";
+        deviceModelName = "Mentra Nex";
         deviceIconName = "er_g1";
         anySupport = true;
         fullSupport = true;
-        glassesOs = SmartGlassesOperatingSystem.MENTRA_NEXT_GLASSES;
+        glassesOs = SmartGlassesOperatingSystem.MENTRA_NEX_GLASSES;
         hasDisplay = true;
         hasSpeakers = false;
         hasCamera = false;

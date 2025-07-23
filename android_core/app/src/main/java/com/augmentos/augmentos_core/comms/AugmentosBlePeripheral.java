@@ -497,7 +497,7 @@ public class AugmentosBlePeripheral {
     }
 
     public void sendGlassesBluetoothDiscoverResultToManager(String modelName, String deviceName,String deviceAddress) {
-        Log.d(TAG, "sendGlassesSearchResultsToManager");
+        Log.d(TAG, "sendGlassesSearchResultsToManager modelName: "+modelName+" deviceName: "+deviceName+" deviceAddress: "+deviceAddress);
         JSONObject data = new JSONObject();
         JSONObject messageObj = new JSONObject();
         try{
