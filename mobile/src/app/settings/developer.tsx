@@ -56,10 +56,6 @@ export default function DeveloperSettingsScreen() {
     setIsBypassVADForDebuggingEnabled(status.core_info.bypass_vad_for_debugging)
   }, [status.core_info.bypass_vad_for_debugging])
 
-  useEffect(() => {
-    setPowerSavingMode(status.core_info.power_saving_mode)
-  }, [status.core_info.power_saving_mode])
-
   const toggleBypassVadForDebugging = async () => {
     const newSetting = !isBypassVADForDebuggingEnabled
     await coreCommunicator.sendToggleBypassVadForDebugging(newSetting)
