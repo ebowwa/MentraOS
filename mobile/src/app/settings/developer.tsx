@@ -252,6 +252,8 @@ export default function DeveloperSettingsScreen() {
           onValueChange={togglePowerSavingMode}
         />
 
+        <Spacer height={theme.spacing.md} />
+
         <View
           style={[
             styles.settingContainer,
