@@ -1803,25 +1803,23 @@ extension ERG1Manager {
     
     // Send 0x18 to both glasses (MentraOS's clear method)
     
-    // var cmd: [UInt8] = [0x18]
-    // var cmd: [UInt8] = [0x23, 0x72]
-
-    
-    // let bufferedCommand = BufferedCommand(
-    //   chunks: [cmd],
-    //   sendLeft: false,
-    //   sendRight: true,
-    //   waitTime: 50,
-    //   ignoreAck: false
-    // )
+     var cmd: [UInt8] = [0x18]// turns off display
+//     var cmd: [UInt8] = [0x23, 0x72]// restarts the glasses
+     var bufferedCommand = BufferedCommand(
+       chunks: [cmd],
+       sendLeft: false,
+       sendRight: true,
+       waitTime: 50,
+       ignoreAck: false
+     )
 
     // await commandQueue.enqueue(bufferedCommand)
-    Task {
-      await setSilentMode(true)
-      try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
-      await setSilentMode(false)
-      await setSilentMode(false)
-    }
+//    Task {
+//      await setSilentMode(true)
+//      try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
+//      await setSilentMode(false)
+//      await setSilentMode(false)
+//    }
     
     // RN_sendText("DISPLAY SLEEPING...")
 
