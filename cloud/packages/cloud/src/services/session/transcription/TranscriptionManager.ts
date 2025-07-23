@@ -170,7 +170,9 @@ export class TranscriptionManager {
         let streamSubscription: ExtendedStreamType;
         
         if (stream.type === 'transcription_only') {
-          streamSubscription = `transcription:${stream.config.language}`;
+          // Use original language code if available, fall back to normalized config language
+          const lang = stream.originalLanguageCodes?.source || stream.config.language;
+          streamSubscription = `transcription:${lang}`;
         } else if (stream.type === 'two_way') {
           // For two-way translation streams, use original language codes if available
           const langA = stream.originalLanguageCodes?.langA || stream.config.translation?.language_a || stream.config.language;
@@ -1553,7 +1555,15 @@ export class TranscriptionManager {
     
     if (mappedSubscriptions && mappedSubscriptions.length > 0) {
       // For optimized streams, route to all mapped subscriptions
-      return mappedSubscriptions;
+      const targetSubs = [...mappedSubscriptions];
+      
+      // If effective subscription is different (e.g., transcription from translation stream),
+      // also include apps subscribed directly to the effective subscription
+      if (effectiveSubscription !== streamSubscription && !targetSubs.includes(effectiveSubscription)) {
+        targetSubs.push(effectiveSubscription);
+      }
+      
+      return targetSubs;
     }
     
     // For non-optimized streams, use the effective subscription
