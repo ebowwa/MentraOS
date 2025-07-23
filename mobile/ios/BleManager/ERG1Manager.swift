@@ -794,15 +794,14 @@ enum GlassesError: Error {
     var maxAttempts = 5
     var attempts: Int = 0
     var success: Bool = false
-    var semaphore = side == "left" ? leftSemaphore : rightSemaphore
-    let s = side == "left" ? "L" : "R"
+    var semaphore = side == "L" ? leftSemaphore : rightSemaphore
     
     while attempts < maxAttempts && !success {
       if (attempts > 0) {
-        CoreCommsService.log("trying again to send to:\(s): \(attempts)")
+        CoreCommsService.log("trying again to send to:\(side): \(attempts)")
       }
-      //      let data = Data(chunks[0])
-      //      CoreCommsService.log("SEND (\(s)) \(data.hexEncodedString())")
+      let data = Data(chunks[0])
+      CoreCommsService.log("SEND (\(side)) \(data.hexEncodedString())")
       
       if self.isDisconnecting {
         // forget whatever we were doing since we're disconnecting:
@@ -816,8 +815,17 @@ enum GlassesError: Error {
       }
       
       let lastChunk = chunks.last!
+
+      var sequenceNumber = -1
+
+      // if this is a text chunk, set the sequence to the 2nd byte of the chunk:
+      if (lastChunk[0] == 0x4E) {
+        sequenceNumber = Int(lastChunk[1])
+      }
+
+      CoreCommsService.log("SENDING with sequenceNumber: \(sequenceNumber)")
       
-      success = await sendCommandToSide2(lastChunk, side: side, attemptNumber: attempts)
+      success = await sendCommandToSide2(lastChunk, side: side, attemptNumber: attempts, sequenceNumber: sequenceNumber)
       // CoreCommsService.log("command success: \(success)")
       //      if (!success) {
       //        CoreCommsService.log("timed out waiting for \(s)")
@@ -846,13 +854,13 @@ enum GlassesError: Error {
     await withTaskGroup(of: Void.self) { group in
       if command.sendLeft {
         group.addTask {
-          await self.attemptSend(chunks: command.chunks, side: "left")
+          await self.attemptSend(chunks: command.chunks, side: "L")
         }
       }
       
       if command.sendRight {
         group.addTask {
-          await self.attemptSend(chunks: command.chunks, side: "right")
+          await self.attemptSend(chunks: command.chunks, side: "R")
         }
       }
       
@@ -914,16 +922,19 @@ enum GlassesError: Error {
     return connectedPeripherals
   }
   
-  private func handleAck(from peripheral: CBPeripheral, success: Bool) {
+  private func handleAck(from peripheral: CBPeripheral, success: Bool, sequenceNumber: Int = -1) {
     //    CoreCommsService.log("handleAck \(success)")
     if !success { return }
     
-    let side = peripheral == leftPeripheral ? "left" : "right"
+    let side = peripheral == leftPeripheral ? "L" : "R"
+    let key = sequenceNumber == -1 ? side : "\(side)-\(sequenceNumber)"
+
+    CoreCommsService.log("ACK received for \(key)")
     
     // Resume any pending ACK continuation for this side (thread-safe)
     var continuation: CheckedContinuation<Bool, Never>?
     ackCompletionsQueue.sync(flags: .barrier) {
-      continuation = pendingAckCompletions.removeValue(forKey: side)
+      continuation = pendingAckCompletions.removeValue(forKey: key)
     }
     
     if let continuation = continuation {
@@ -944,7 +955,7 @@ enum GlassesError: Error {
   private func handleNotification(from peripheral: CBPeripheral, data: Data) {
     guard let command = data.first else { return }// ensure the data isn't empty
     
-    let side = peripheral == leftPeripheral ? "left" : "right"
+    let side = peripheral == leftPeripheral ? "L" : "R"
     let s = peripheral == leftPeripheral ? "L" : "R"
     CoreCommsService.log("RECV (\(s)) \(data.hexEncodedString())")
     
@@ -1022,7 +1033,7 @@ enum GlassesError: Error {
       break
     case .BLE_REQ_EVENAI:
       guard data.count > 1 else { break }
-      handleAck(from: peripheral, success: data[1] == CommandResponse.ACK.rawValue)
+      handleAck(from: peripheral, success: data[1] == CommandResponse.ACK.rawValue, sequenceNumber: Int(data[2]))
     case .BLE_REQ_DEVICE_ORDER:
       let order = data[1]
       switch DeviceOrders(rawValue: order) {
@@ -1268,9 +1279,9 @@ extension ERG1Manager {
     // Convert to Data
     let commandData = Data(command)
     //    CoreCommsService.log("Sending command to glasses: \(paddedCommand.map { String(format: "%02X", $0) }.joined(separator: " "))")
-    CoreCommsService.log("SEND (\(side == "left" ? "L" : "R")) \(commandData.hexEncodedString())")
+    CoreCommsService.log("SEND (\(side)) \(commandData.hexEncodedString())")
     
-    if (side == "left") {
+    if (side == "L") {
       // send to left
       if let leftPeripheral = leftPeripheral,
          let characteristic = leftPeripheral.services?
@@ -1291,7 +1302,7 @@ extension ERG1Manager {
     }
   }
   
-  public func sendCommandToSide2(_ command: [UInt8], side: String, attemptNumber: Int = 0) async -> Bool {
+  public func sendCommandToSide2(_ command: [UInt8], side: String, attemptNumber: Int = 0, sequenceNumber: Int = -1) async -> Bool {
     let startTime = Date()
     
     // Convert to Data
@@ -1302,7 +1313,7 @@ extension ERG1Manager {
       var peripheral: CBPeripheral? = nil;
       var characteristic: CBCharacteristic? = nil;
       
-      if (side == "left") {
+      if (side == "L") {
         // send to left
         peripheral = leftPeripheral;
         characteristic = leftPeripheral?.services?
@@ -1324,27 +1335,29 @@ extension ERG1Manager {
         continuation.resume(returning: false)
         return
       }
+
+      let key = sequenceNumber == -1 ? side : "\(side)-\(sequenceNumber)"
       
       // Store continuation for ACK callback (thread-safe)
       ackCompletionsQueue.async(flags: .barrier) {
-        self.pendingAckCompletions[side] = continuation
+        self.pendingAckCompletions[key] = continuation
       }
       
       peripheral!.writeValue(commandData, for: characteristic!, type: .withResponse)
       
-      let waitTime = (0.2) + (0.3 * Double(attemptNumber))
+      let waitTime = (0.05) + (0.2 * Double(attemptNumber))
       
       // after 200ms, if we haven't received the ack, resume:
       DispatchQueue.main.asyncAfter(deadline: .now() + waitTime) {
         // Check if ACK continuation still exists (if it does, ACK wasn't received)
         var pendingContinuation: CheckedContinuation<Bool, Never>?
         self.ackCompletionsQueue.sync(flags: .barrier) {
-          pendingContinuation = self.pendingAckCompletions.removeValue(forKey: side)
+          pendingContinuation = self.pendingAckCompletions.removeValue(forKey: key)
         }
         
         if let pendingContinuation = pendingContinuation {
           let elapsed = Date().timeIntervalSince(startTime) * 1000
-          CoreCommsService.log("⚠️ ACK timeout for \(side) side after \(String(format: "%.0f", elapsed))ms")
+          CoreCommsService.log("⚠️ ACK timeout for \(key) after \(String(format: "%.0f", elapsed))ms")
           pendingContinuation.resume(returning: false)
         }
       }
@@ -1356,7 +1369,7 @@ extension ERG1Manager {
     // Convert to Data
     let commandData = Data(command)
     
-    if (side == "left") {
+    if (side == "L") {
       // send to left
       if let leftPeripheral = leftPeripheral,
          let characteristic = leftPeripheral.services?
@@ -1813,7 +1826,7 @@ extension ERG1Manager {
        ignoreAck: false
      )
 
-    // await commandQueue.enqueue(bufferedCommand)
+    await commandQueue.enqueue(bufferedCommand)
 //    Task {
 //      await setSilentMode(true)
 //      try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
@@ -1977,11 +1990,11 @@ extension ERG1Manager {
     
     // Send heartbeat fast like MentraOS (no need to wait for ACK)
     if sendLeft {
-      await sendCommandToSideWithoutResponse(heartbeatCommand, side: "left")
+      await sendCommandToSideWithoutResponse(heartbeatCommand, side: "L")
       CoreCommsService.log("HeartBeat sent to L (fast)")
     }
     if sendRight {
-      await sendCommandToSideWithoutResponse(heartbeatCommand, side: "right")
+      await sendCommandToSideWithoutResponse(heartbeatCommand, side: "R")
       CoreCommsService.log("HeartBeat sent to R (fast)")
     }
     
@@ -2052,8 +2065,7 @@ extension ERG1Manager {
         // }
         
         // Send directly like Flutter MentraOS (no retries, direct transmission with .withoutResponse)
-        let lr_side = lr == "L" ? "left" : "right"
-        await sendCommandToSideWithoutResponse(Array(packData), side: lr_side)
+        await sendCommandToSideWithoutResponse(Array(packData), side: lr)
         
         // MentraOS timing - 8ms delay between chunks (iOS optimized)
         if packIndex < multiPacks.count - 1 {
@@ -2074,10 +2086,10 @@ extension ERG1Manager {
       
       // Send finish command directly to ensure it gets sent (using fast method)
       if isLeft {
-        await sendCommandToSideWithoutResponse([0x20, 0x0d, 0x0e], side: "left")
+        await sendCommandToSideWithoutResponse([0x20, 0x0d, 0x0e], side: "L")
       }
       if isRight {
-        await sendCommandToSideWithoutResponse([0x20, 0x0d, 0x0e], side: "right")
+        await sendCommandToSideWithoutResponse([0x20, 0x0d, 0x0e], side: "R")
       }
       
       CoreCommsService.log("Finish command sent to \(lr)")
@@ -2106,11 +2118,11 @@ extension ERG1Manager {
       
       // Send CRC directly like MentraOS (using fast method)
       if isLeft {
-        await sendCommandToSideWithoutResponse(Array(crcCommand), side: "left")
+        await sendCommandToSideWithoutResponse(Array(crcCommand), side: "L")
         CoreCommsService.log("CRC sent to L")
       }
       if isRight {
-        await sendCommandToSideWithoutResponse(Array(crcCommand), side: "right")
+        await sendCommandToSideWithoutResponse(Array(crcCommand), side: "R")
         CoreCommsService.log("CRC sent to R")
       }
       
@@ -2592,7 +2604,7 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
     // Emit connection event
     let isLeft = peripheral == leftPeripheral
     let eventBody: [String: Any] = [
-      "side": isLeft ? "left" : "right",
+      "side": isLeft ? "L" : "R",
       "name": peripheral.name ?? "Unknown",
       "id": peripheral.identifier.uuidString
     ]
