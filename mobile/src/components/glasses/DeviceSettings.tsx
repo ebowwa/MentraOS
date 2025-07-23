@@ -1,4 +1,4 @@
-import React, {useCallback, useEffect, useRef, useState} from "react"
+import React, { useCallback, useEffect, useRef, useState } from "react"
 import {
   View,
   Text,
@@ -11,32 +11,32 @@ import {
   TextStyle,
   Platform,
 } from "react-native"
-import {useFocusEffect} from "@react-navigation/native"
-import {Button, Icon} from "@/components/ignite"
+import { useFocusEffect } from "@react-navigation/native"
+import { Button, Icon } from "@/components/ignite"
 import coreCommunicator from "@/bridge/CoreCommunicator"
-import {useStatus} from "@/contexts/AugmentOSStatusProvider"
-import {getGlassesImage} from "@/utils/getGlassesImage"
+import { useStatus } from "@/contexts/AugmentOSStatusProvider"
+import { getGlassesImage } from "@/utils/getGlassesImage"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
-import {Slider} from "react-native-elements"
-import {router} from "expo-router"
-import {useAppTheme} from "@/utils/useAppTheme"
-import {ThemedStyle} from "@/theme"
+import { Slider } from "react-native-elements"
+import { router } from "expo-router"
+import { useAppTheme } from "@/utils/useAppTheme"
+import { ThemedStyle } from "@/theme"
 import ToggleSetting from "../settings/ToggleSetting"
 import SliderSetting from "../settings/SliderSetting"
-import {FontAwesome, MaterialCommunityIcons} from "@expo/vector-icons"
-import {translate} from "@/i18n/translate"
-import showAlert, {showDestructiveAlert} from "@/utils/AlertUtils"
-import {PermissionFeatures, requestFeaturePermissions} from "@/utils/PermissionsUtils"
+import { FontAwesome, MaterialCommunityIcons } from "@expo/vector-icons"
+import { translate } from "@/i18n/translate"
+import showAlert, { showDestructiveAlert } from "@/utils/AlertUtils"
+import { PermissionFeatures, requestFeaturePermissions } from "@/utils/PermissionsUtils"
 import RouteButton from "@/components/ui/RouteButton"
 import ActionButton from "@/components/ui/ActionButton"
-import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
-import {glassesFeatures, hasCustomMic} from "@/config/glassesFeatures"
-import {useAuth} from "@/contexts/AuthContext"
-import {isMentraUser} from "@/utils/isMentraUser"
-import {loadSetting} from "@/utils/SettingsHelper"
-import {SETTINGS_KEYS} from "@/consts"
-import {isDeveloperBuildOrTestflight} from "@/utils/buildDetection"
-import {SvgXml} from "react-native-svg"
+import { useNavigationHistory } from "@/contexts/NavigationHistoryContext"
+import { glassesFeatures, hasCustomMic } from "@/config/glassesFeatures"
+import { useAuth } from "@/contexts/AuthContext"
+import { isMentraUser } from "@/utils/isMentraUser"
+import { loadSetting } from "@/utils/SettingsHelper"
+import { SETTINGS_KEYS } from "@/consts"
+import { isDeveloperBuildOrTestflight } from "@/utils/buildDetection"
+import { SvgXml } from "react-native-svg"
 import OtaProgressSection from "./OtaProgressSection"
 
 // Icon components defined directly in this file to avoid path resolution issues
@@ -47,7 +47,7 @@ interface CaseIconProps {
   isDark?: boolean
 }
 
-const CaseIcon = ({size = 24, color, isCharging = false, isDark = false}: CaseIconProps) => {
+const CaseIcon = ({ size = 24, color, isCharging = false, isDark = false }: CaseIconProps) => {
   const caseSvg = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
 <path fill-rule="evenodd" clip-rule="evenodd" d="M3 16.125L10.5 16.125L10.5 17.625L3 17.625L3 16.125Z" fill="${color || (isDark ? "#D3D3D3" : "#232323")}"/>
 <path fill-rule="evenodd" clip-rule="evenodd" d="M3 4.875L21 4.875L21 6.375L3 6.375L3 4.875Z" fill="${color || (isDark ? "#D3D3D3" : "#232323")}"/>
@@ -72,7 +72,7 @@ interface GlassesIconProps {
   isDark?: boolean
 }
 
-const GlassesIcon = ({size = 24, color, isOn = false, isDark = false}: GlassesIconProps) => {
+const GlassesIcon = ({ size = 24, color, isOn = false, isDark = false }: GlassesIconProps) => {
   const glassesSvg = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
 <path d="M1.5 9H3.00005V15.0002H1.5V9Z" fill="${color || (isDark ? "#D3D3D3" : "#232323")}"/>
 <path d="M13.502 12H15.002V15.0001H13.502V12Z" fill="${color || (isDark ? "#D3D3D3" : "#232323")}"/>
@@ -93,16 +93,16 @@ export default function DeviceSettings() {
   const fadeAnim = useRef(new Animated.Value(0)).current
   const scaleAnim = useRef(new Animated.Value(0.8)).current
   const slideAnim = useRef(new Animated.Value(-50)).current
-  const {theme, themed} = useAppTheme()
+  const { theme, themed } = useAppTheme()
   const [connectedGlasses, setConnectedGlasses] = useState("")
-  const {status} = useStatus()
+  const { status } = useStatus()
   const [preferredMic, setPreferredMic] = useState(status.core_info.preferred_mic)
   const [powerSavingMode, setPowerSavingMode] = useState(status.core_info.power_saving_mode)
 
   const [isConnectButtonDisabled, setConnectButtonDisabled] = useState(false)
   const [isDisconnectButtonDisabled, setDisconnectButtonDisabled] = useState(false)
-  const {push} = useNavigationHistory()
-  const {user} = useAuth()
+  const { push } = useNavigationHistory()
+  const { user } = useAuth()
 
   const [devMode, setDevMode] = useState(true)
   const [isSigningOut, setIsSigningOut] = useState(false)
@@ -115,8 +115,8 @@ export default function DeviceSettings() {
     checkDevMode()
   }, [])
 
-  const {model_name} = status.glasses_info ?? {}
-  const {default_wearable} = status.core_info ?? {}
+  const { model_name } = status.glasses_info ?? {}
+  const { default_wearable } = status.core_info ?? {}
 
   useFocusEffect(
     useCallback(() => {
@@ -171,7 +171,7 @@ export default function DeviceSettings() {
 
     try {
       await coreCommunicator.sendDisconnectWearable()
-    } catch (error) {}
+    } catch (error) { }
   }
 
   const [autoBrightness, setAutoBrightness] = useState(status?.glasses_settings?.auto_brightness ?? true)
@@ -192,7 +192,7 @@ export default function DeviceSettings() {
         showAlert(
           "Microphone Permission Required",
           "Microphone permission is required to use the phone microphone feature. Please grant microphone permission in settings.",
-          [{text: "OK"}],
+          [{ text: "OK" }],
           {
             iconName: "microphone",
             iconColor: "#2196F3",
@@ -211,7 +211,7 @@ export default function DeviceSettings() {
       translate("settings:forgetGlasses"),
       translate("settings:forgetGlassesConfirm"),
       [
-        {text: translate("common:cancel"), style: "cancel"},
+        { text: translate("common:cancel"), style: "cancel" },
         {
           text: translate("common:yes"),
           onPress: () => {
@@ -264,22 +264,25 @@ export default function DeviceSettings() {
         </View>
       )}
 
+
       {/* Battery Status Section */}
       {status.glasses_info?.battery_level !== undefined && status.glasses_info.battery_level !== -1 && (
-        <View style={themed($settingsGroup)}>
-          <Text style={[themed($subtitle), {marginBottom: theme.spacing.xs}]}>Battery Status</Text>
 
+
+
+        <View style={themed($settingsGroup)}>
+          <Text style={[themed($subtitle), { marginBottom: theme.spacing.xs }]}>Battery Status</Text>
           {/* Glasses Battery */}
           {status.glasses_info.battery_level !== -1 && (
             <View
-              style={{flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 4}}>
-              <View style={{flexDirection: "row", alignItems: "center"}}>
+              style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 4 }}>
+              <View style={{ flexDirection: "row", alignItems: "center" }}>
                 <GlassesIcon size={20} isDark={theme.isDark} />
-                <Text style={{color: theme.colors.text, marginLeft: theme.spacing.xs}}>Glasses</Text>
+                <Text style={{ color: theme.colors.text, marginLeft: theme.spacing.xs }}>Glasses</Text>
               </View>
-              <View style={{flexDirection: "row", alignItems: "center"}}>
+              <View style={{ flexDirection: "row", alignItems: "center" }}>
                 <Icon icon="battery" size={16} color={theme.colors.text} />
-                <Text style={{color: theme.colors.text, marginLeft: 4, fontWeight: "500"}}>
+                <Text style={{ color: theme.colors.text, marginLeft: 4, fontWeight: "500" }}>
                   {status.glasses_info.battery_level}%
                 </Text>
               </View>
@@ -297,15 +300,15 @@ export default function DeviceSettings() {
                   justifyContent: "space-between",
                   paddingVertical: theme.spacing.xs,
                 }}>
-                <View style={{flexDirection: "row", alignItems: "center"}}>
+                <View style={{ flexDirection: "row", alignItems: "center" }}>
                   <CaseIcon size={20} isCharging={status.glasses_info.case_charging} isDark={theme.isDark} />
-                  <Text style={{color: theme.colors.text, marginLeft: theme.spacing.xxs}}>
+                  <Text style={{ color: theme.colors.text, marginLeft: theme.spacing.xxs }}>
                     Case {status.glasses_info.case_charging ? "(Charging)" : ""}
                   </Text>
                 </View>
-                <View style={{flexDirection: "row", alignItems: "center"}}>
+                <View style={{ flexDirection: "row", alignItems: "center" }}>
                   <Icon icon="battery" size={16} color={theme.colors.text} />
-                  <Text style={{color: theme.colors.text, marginLeft: theme.spacing.xxs, fontWeight: "500"}}>
+                  <Text style={{ color: theme.colors.text, marginLeft: theme.spacing.xxs, fontWeight: "500" }}>
                     {status.glasses_info.case_battery_level}%
                   </Text>
                 </View>
@@ -349,7 +352,7 @@ export default function DeviceSettings() {
                 onValueSet={value => {
                   coreCommunicator.setGlassesBrightnessMode(value, autoBrightness)
                 }}
-                containerStyle={{paddingHorizontal: 0, paddingTop: 0, paddingBottom: 0}}
+                containerStyle={{ paddingHorizontal: 0, paddingTop: 0, paddingBottom: 0 }}
                 disableBorder
               />
             </>
@@ -357,6 +360,7 @@ export default function DeviceSettings() {
         </View>
       )}
 
+    
       {/* Power Saving Mode - Only show for glasses that support it */}
       {status.core_info.default_wearable &&
         glassesFeatures[status.core_info.default_wearable] &&
@@ -393,7 +397,7 @@ export default function DeviceSettings() {
                 paddingTop: theme.spacing.xs,
               }}
               onPress={() => setMic("phone")}>
-              <Text style={{color: theme.colors.text}}>{translate("deviceSettings:phoneMic")}</Text>
+              <Text style={{ color: theme.colors.text }}>{translate("deviceSettings:phoneMic")}</Text>
               <MaterialCommunityIcons
                 name="check"
                 size={24}
@@ -402,7 +406,7 @@ export default function DeviceSettings() {
             </TouchableOpacity>
             {/* divider */}
             <View
-              style={{height: StyleSheet.hairlineWidth, backgroundColor: theme.colors.separator, marginVertical: 4}}
+              style={{ height: StyleSheet.hairlineWidth, backgroundColor: theme.colors.separator, marginVertical: 4 }}
             />
             <TouchableOpacity
               style={{
@@ -411,8 +415,8 @@ export default function DeviceSettings() {
                 paddingTop: theme.spacing.xs,
               }}
               onPress={() => setMic("glasses")}>
-              <View style={{flexDirection: "column", gap: 4}}>
-                <Text style={{color: theme.colors.text}}>{translate("deviceSettings:glassesMic")}</Text>
+              <View style={{ flexDirection: "column", gap: 4 }}>
+                <Text style={{ color: theme.colors.text }}>{translate("deviceSettings:glassesMic")}</Text>
                 {/* {!status.glasses_info?.model_name && (
                 <Text style={themed($subtitle)}>{translate("deviceSettings:glassesNeededForGlassesMic")}</Text>
               )} */}
@@ -432,7 +436,7 @@ export default function DeviceSettings() {
           label={translate("settings:glassesWifiSettings")}
           subtitle={translate("settings:glassesWifiDescription")}
           onPress={() => {
-            push("/pairing/glasseswifisetup", {deviceModel: status.glasses_info?.model_name || "Glasses"})
+            push("/pairing/glasseswifisetup", { deviceModel: status.glasses_info?.model_name || "Glasses" })
           }}
         />
       )}
@@ -440,39 +444,46 @@ export default function DeviceSettings() {
       {/* Show ASG Client version info for Mentra Live glasses */}
       {status.glasses_info?.model_name?.toLowerCase().includes("mentra live") &&
         (status.glasses_info.glasses_app_version || status.glasses_info.glasses_build_number) && (
-          <View style={themed($settingsGroup)}>
-            <Text style={[themed($subtitle), {marginBottom: theme.spacing.xs}]}>Glasses Software Version</Text>
-            {/* {status.glasses_info.glasses_app_version && (
+          <>
+            <RouteButton
+              label={translate("glasses:gallery")}
+              subtitle={translate("glasses:galleryDescription")}
+              onPress={() => push("/asg/gallery")}
+            />
+            <View style={themed($settingsGroup)}>
+              <Text style={[themed($subtitle), { marginBottom: theme.spacing.xs }]}>Glasses Software Version</Text>
+              {/* {status.glasses_info.glasses_app_version && (
             <View style={{flexDirection: "row", justifyContent: "space-between", paddingVertical: 4}}>
               <Text style={{color: theme.colors.text}}>App Version</Text>
               <Text style={{color: theme.colors.textDim}}>{status.glasses_info.glasses_app_version}</Text>
             </View>
           )} */}
-            {status.glasses_info.glasses_build_number && (
-              <View style={{flexDirection: "row", justifyContent: "space-between", paddingVertical: 4}}>
-                <Text style={{color: theme.colors.text}}>Build Number</Text>
-                <Text style={{color: theme.colors.textDim}}>{status.glasses_info.glasses_build_number}</Text>
-              </View>
-            )}
-            {status.glasses_info.glasses_wifi_local_ip && status.glasses_info.glasses_wifi_local_ip !== "" && (
-              <View style={{flexDirection: "row", justifyContent: "space-between", paddingVertical: 4}}>
-                <Text style={{color: theme.colors.text}}>Local IP Address</Text>
-                <Text style={{color: theme.colors.textDim}}>{status.glasses_info.glasses_wifi_local_ip}</Text>
-              </View>
-            )}
-            {/* {status.glasses_info.glasses_device_model && (
+              {status.glasses_info.glasses_build_number && (
+                <View style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: 4 }}>
+                  <Text style={{ color: theme.colors.text }}>Build Number</Text>
+                  <Text style={{ color: theme.colors.textDim }}>{status.glasses_info.glasses_build_number}</Text>
+                </View>
+              )}
+              {status.glasses_info.glasses_wifi_local_ip && status.glasses_info.glasses_wifi_local_ip !== "" && (
+                <View style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: 4 }}>
+                  <Text style={{ color: theme.colors.text }}>Local IP Address</Text>
+                  <Text style={{ color: theme.colors.textDim }}>{status.glasses_info.glasses_wifi_local_ip}</Text>
+                </View>
+              )}
+              {/* {status.glasses_info.glasses_device_model && (
             <View style={{flexDirection: "row", justifyContent: "space-between", paddingVertical: 4}}>
               <Text style={{color: theme.colors.text}}>Device Model</Text>
               <Text style={{color: theme.colors.textDim}}>{status.glasses_info.glasses_device_model}</Text>
             </View>
           )} */}
-            {/* {status.glasses_info.glasses_android_version && (
+              {/* {status.glasses_info.glasses_android_version && (
             <View style={{flexDirection: "row", justifyContent: "space-between", paddingVertical: 4}}>
               <Text style={{color: theme.colors.text}}>Android Version</Text>
               <Text style={{color: theme.colors.textDim}}>{status.glasses_info.glasses_android_version}</Text>
             </View>
           )} */}
-          </View>
+            </View>
+          </>
         )}
 
       {/* OTA Progress Section - Only show for Mentra Live glasses */}
@@ -485,6 +496,7 @@ export default function DeviceSettings() {
         subtitle={translate("settings:dashboardDescription")}
         onPress={() => push("/settings/dashboard")}
       />
+
 
       {devMode &&
         status.core_info.default_wearable &&
@@ -514,7 +526,7 @@ export default function DeviceSettings() {
         />
       )}
 
-      <View style={{height: 30}}>{/* this just gives the user a bit more space to scroll */}</View>
+      <View style={{ height: 30 }}>{/* this just gives the user a bit more space to scroll */}</View>
     </View>
   )
 }
@@ -530,7 +542,7 @@ const $container: ThemedStyle<ViewStyle> = () => ({
   gap: 16,
 })
 
-const $settingsGroup: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
+const $settingsGroup: ThemedStyle<ViewStyle> = ({ colors, spacing }) => ({
   backgroundColor: colors.background,
   paddingVertical: 12,
   paddingHorizontal: 16,
@@ -539,24 +551,24 @@ const $settingsGroup: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   borderColor: colors.border,
 })
 
-const $subtitle: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
+const $subtitle: ThemedStyle<TextStyle> = ({ colors, spacing }) => ({
   color: colors.textDim,
   fontSize: spacing.sm,
 })
 
-const $infoContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
+const $infoContainer: ThemedStyle<ViewStyle> = ({ spacing }) => ({
   padding: spacing.sm,
   marginBottom: spacing.sm,
   marginTop: spacing.sm,
 })
 
-const $infoText: ThemedStyle<TextStyle> = ({colors}) => ({
+const $infoText: ThemedStyle<TextStyle> = ({ colors }) => ({
   color: colors.text,
   fontSize: 14,
   textAlign: "center",
 })
 
-const $emptyStateContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
+const $emptyStateContainer: ThemedStyle<ViewStyle> = ({ spacing }) => ({
   flex: 1,
   justifyContent: "center",
   alignItems: "center",
@@ -564,7 +576,7 @@ const $emptyStateContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
   minHeight: 300,
 })
 
-const $emptyStateText: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
+const $emptyStateText: ThemedStyle<TextStyle> = ({ colors, spacing }) => ({
   color: colors.text,
   fontSize: 20,
   textAlign: "center",

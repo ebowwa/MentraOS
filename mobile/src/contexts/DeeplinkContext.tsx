@@ -128,6 +128,11 @@ export const DeeplinkProvider: React.FC<{children: React.ReactNode}> = ({childre
 
   const processUrl = async (url: string, initial: boolean = false) => {
     try {
+      // Add delay to ensure Root Layout is mounted
+      if (initial) {
+        await new Promise(resolve => setTimeout(resolve, 1000))
+      }
+      
       console.log("[LOGIN DEBUG] Deep link received:", url)
 
       // small hack since some sources strip the host and we want to put the url into URL object here
@@ -153,7 +158,11 @@ export const DeeplinkProvider: React.FC<{children: React.ReactNode}> = ({childre
         // Store the URL for after authentication
         setPendingRoute(url)
         setTimeout(() => {
-          replace("/auth/login")
+          try {
+            replace("/auth/login")
+          } catch (error) {
+            console.warn("Navigation failed, router may not be ready:", error)
+          }
         }, 100)
       }
 
@@ -166,7 +175,11 @@ export const DeeplinkProvider: React.FC<{children: React.ReactNode}> = ({childre
         params.preloaded = "true"
       }
 
-      matchedRoute.handler(url, params, {push, replace, goBack, setPendingRoute, getPendingRoute})
+      try {
+        matchedRoute.handler(url, params, {push, replace, goBack, setPendingRoute, getPendingRoute})
+      } catch (error) {
+        console.warn("Route handler failed, router may not be ready:", error)
+      }
     } catch (error) {
       console.error("Error handling deep link:", error)
       config.fallbackHandler?.(url)

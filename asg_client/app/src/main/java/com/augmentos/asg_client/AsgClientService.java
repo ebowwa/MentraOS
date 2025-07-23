@@ -22,8 +22,6 @@ import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
 import android.util.Log;
-import android.view.View;
-import android.widget.FrameLayout;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -35,9 +33,12 @@ import androidx.core.app.NotificationCompat;
 import androidx.preference.PreferenceManager;
 
 import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
 
+
+import com.augmentos.asg_client.server.AsgCameraServer;
+import com.augmentos.asg_client.server.AsgServerManager;
+import com.augmentos.asg_client.server.impl.DefaultServerFactory;
+import com.augmentos.asg_client.server.interfaces.Logger;
 import com.augmentos.asg_client.streaming.RtmpStreamingService;
 import com.augmentos.augmentos_core.AugmentosService;
 import com.augmentos.asg_client.bluetooth.BluetoothManagerFactory;
@@ -49,8 +50,7 @@ import com.augmentos.asg_client.camera.MediaUploadQueueManager;
 import com.augmentos.asg_client.network.INetworkManager;
 import com.augmentos.asg_client.network.NetworkManagerFactory;
 import com.augmentos.asg_client.network.NetworkStateListener; // Make sure this is the correct import path for your library
-import com.augmentos.augmentos_core.smarterglassesmanager.camera.CameraRecordingService;
-import com.augmentos.augmentos_core.smarterglassesmanager.utils.K900ProtocolUtils;
+
 import org.greenrobot.eventbus.EventBus;
 import com.augmentos.asg_client.events.BatteryStatusEvent;
 
@@ -118,6 +118,11 @@ public class AsgClientService extends Service implements NetworkStateListener, B
 
     // Media capture service
     private MediaCaptureService mMediaCaptureService;
+    
+    // Camera Web Server for local network access
+    private AsgCameraServer asgCameraServer;
+    private AsgServerManager asgServerManager;
+    private boolean isWebServerEnabled = true;
 
     // 1. Add enum for photo capture mode at the top of the class
     private enum PhotoCaptureMode {
@@ -263,10 +268,13 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         initializeBluetoothManager();
 
         // Initialize the photo queue manager
-        initializeMediaQueueManager();
+        //initializeMediaQueueManager();
 
         // Initialize the photo capture service
         initializeMediaCaptureService();
+
+        // Initialize the camera web server
+        initializeCameraWebServer();
 
         // Initialize streaming callbacks
         initializeStreamingCallbacks();
@@ -454,6 +462,184 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                     }
                 }
             });
+        }
+    }
+
+    /**
+     * Initialize the camera web server for local network access
+     */
+    private void initializeCameraWebServer() {
+        if (asgServerManager == null) {
+            asgServerManager = AsgServerManager.getInstance(getApplicationContext());
+        }
+        
+        if (asgCameraServer == null && isWebServerEnabled) {
+            try {
+                // Create logger for the server
+                Logger logger = DefaultServerFactory.createLogger();
+                
+                // Create camera web server using the new factory pattern
+                asgCameraServer = DefaultServerFactory.createCameraWebServer(
+                    8089, 
+                    "CameraWebServer", 
+                    getApplicationContext(), 
+                    logger
+                );
+                
+                // Set up the picture request listener
+                asgCameraServer.setOnPictureRequestListener(() -> {
+                    Log.d(TAG, "📸 Camera web server requested photo capture");
+
+                    // Use the media capture service to take a photo
+                    if (mMediaCaptureService != null) {
+                        // Generate a unique request ID
+                        String requestId = "web_" + System.currentTimeMillis();
+
+                        // Take photo and save locally
+                        mMediaCaptureService.takePhotoLocally();
+                    } else {
+                        Log.e(TAG, "Media capture service not available for web server photo request");
+                    }
+                });
+                
+                // Register the server with the server manager
+                asgServerManager.registerServer("camera", asgCameraServer);
+                
+                // Start the web server
+                asgCameraServer.startServer();
+                
+                Log.d(TAG, "✅ Camera web server initialized and started via new SOLID architecture");
+                Log.d(TAG, "🌐 Web server URL: " + asgCameraServer.getServerUrl());
+                Log.d(TAG, "🏗️ Architecture benefits:");
+                Log.d(TAG, "   - Dependency injection for better testability");
+                Log.d(TAG, "   - Interface segregation for modularity");
+                Log.d(TAG, "   - Single responsibility for maintainability");
+                Log.d(TAG, "   - Open/closed principle for extensibility");
+                Log.d(TAG, "   - Mediated access for controlled server management");
+                
+            } catch (Exception e) {
+                Log.e(TAG, "❌ Failed to initialize camera web server: " + e.getMessage(), e);
+                asgCameraServer = null;
+            }
+        }
+    }
+
+    /**
+     * Get the camera web server instance
+     *
+     * @return CameraWebServer instance, or null if not available
+     */
+    public AsgCameraServer getCameraWebServer() {
+        return asgCameraServer;
+    }
+
+    /**
+     * Get the camera web server URL using mediated access
+     *
+     * @return Server URL, or null if not available
+     */
+    public String getCameraWebServerUrl() {
+        if (asgServerManager != null) {
+            return asgServerManager.getServerUrl("camera");
+        }
+        return null;
+    }
+
+    /**
+     * Get all server URLs using mediated access
+     *
+     * @return Map of server names to URLs
+     */
+    public java.util.Map<String, String> getAllServerUrls() {
+        if (asgServerManager != null) {
+            return asgServerManager.getAllServerUrls();
+        }
+        return new java.util.HashMap<>();
+    }
+
+    /**
+     * Get the primary server URL using mediated access
+     *
+     * @return Primary server URL, or null if not available
+     */
+    public String getPrimaryServerUrl() {
+        if (asgServerManager != null) {
+            return asgServerManager.getPrimaryServerUrl();
+        }
+        return null;
+    }
+
+    /**
+     * Check if the camera web server is running
+     *
+     * @return true if running, false otherwise
+     */
+    public boolean isCameraWebServerRunning() {
+        if (asgServerManager != null) {
+            return asgServerManager.isServerRunning("camera");
+        }
+        return asgCameraServer != null && asgCameraServer.isAlive();
+    }
+
+    /**
+     * Get server count and names for debugging
+     *
+     * @return Array of server names
+     */
+    public String[] getServerNames() {
+        if (asgServerManager != null) {
+            return asgServerManager.getServerNames();
+        }
+        return new String[0];
+    }
+
+    /**
+     * Restart the camera web server
+     *
+     * @return true if restart was successful, false otherwise
+     */
+    public boolean restartCameraWebServer() {
+        if (asgServerManager != null) {
+            // Stop the server first
+            asgServerManager.stopServer("camera");
+            
+            // Wait a moment for cleanup
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            
+            // Reinitialize the web server
+            asgCameraServer = null;
+            initializeCameraWebServer();
+            
+            return asgCameraServer != null;
+        }
+        return false;
+    }
+
+    /**
+     * Enable or disable the camera web server
+     *
+     * @param enabled true to enable, false to disable
+     */
+    public void setWebServerEnabled(boolean enabled) {
+        if (isWebServerEnabled != enabled) {
+            isWebServerEnabled = enabled;
+            
+            if (enabled && asgCameraServer == null) {
+                // Start the web server if it was disabled
+                initializeCameraWebServer();
+            } else if (!enabled && asgCameraServer != null) {
+                // Stop the web server if it was enabled
+                if (asgServerManager != null) {
+                    asgServerManager.stopServer("camera");
+                } else {
+                    asgCameraServer.stopServer();
+                }
+                asgCameraServer = null;
+            }
         }
     }
 
@@ -833,6 +1019,22 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         if (glassesMicrophoneManager != null) {
             glassesMicrophoneManager.destroy();
             glassesMicrophoneManager = null;
+        }
+
+        // Stop the camera web server if it's running
+        if (asgCameraServer != null) {
+            if (asgServerManager != null) {
+                asgServerManager.stopServer("camera");
+            } else {
+                asgCameraServer.stopServer();
+            }
+            asgCameraServer = null;
+        }
+
+        // Clean up server manager (this will stop all servers and clean up resources)
+        if (asgServerManager != null) {
+            asgServerManager.cleanup();
+            asgServerManager = null;
         }
 
         // No need to clean up MediaQueueManager as it's stateless and file-based
@@ -1781,6 +1983,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                         Log.d(TAG, "Connecting to WiFi network: " + ssid);
                         if (networkManager != null) {
                             networkManager.connectToWifi(ssid, password);
+                            initializeCameraWebServer();
                         }
                     }
                     break;
@@ -1953,11 +2156,21 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         try {
             String command = json.optString("C", "");
             JSONObject bData = json.optJSONObject("B");
-            
+            Log.d(TAG, "📦 Received command: " + command);
+
             switch (command) {
                 case "cs_pho":
+
+                    if(mMediaCaptureService == null){
+                        Log.d(TAG, "MediaCaptureService is null, initializing");
+                        initializeMediaCaptureService();
+                    }
+                    Log.d(TAG, "📸 Taking photo locally");
+                    mMediaCaptureService.takePhotoLocally();
+
+
                     // TESTING: Commented out normal photo handling
-                    handleButtonPress(false);
+//                    handleButtonPress(false);
                     
                     // TEST: Send test image from assets
 //                    Log.d(TAG, "🎾 TEST: cs_pho (JSON) pressed - sending test.jpg from assets");

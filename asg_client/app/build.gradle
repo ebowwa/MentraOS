@@ -64,7 +64,7 @@ android {
 
         minSdk 28
         targetSdk 33
-        versionCode 8
+        versionCode 10
         versionName "8.0"
 
         ndk {
