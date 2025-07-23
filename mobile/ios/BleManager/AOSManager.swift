@@ -873,8 +873,6 @@ struct ViewState {
     if currentState == newState { 
       CoreCommsService.log("AOS: View state is the same, skipping update")
       return
-    } else {
-      CoreCommsService.log("AOS: View state changed from \(currentState) to \(newState)")
     }
     
     CoreCommsService.log("Updating view state \(stateIndex) with \(layoutType) \(text) \(topText) \(bottomText)")
