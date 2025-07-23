@@ -156,7 +156,7 @@ const en = {
       "Automatically attempt to reconnect to glasses when the app comes back to the foreground.",
     powerSavingMode: "Power Saving Mode",
     powerSavingModeSubtitle:
-      "Allows the display to fully turn off. On iOS, this also allows notifications to be shown.",
+      "Allows the display to fully turn off. May briefly show \"Even AI Listening\".",
     powerSavingModeSubtitle2: "TODO",
   },
   profileSettings: {

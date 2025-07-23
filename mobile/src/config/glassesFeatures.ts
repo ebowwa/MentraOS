@@ -1,4 +1,4 @@
-export type GlassesFeature = "camera" | "speakers" | "microphone" | "display" | "binocular" | "wifi" | "imu"
+export type GlassesFeature = "camera" | "speakers" | "microphone" | "display" | "binocular" | "wifi" | "imu" | "powerSavingMode"
 
 export type MicType = "none" | "sco" | "custom"
 
@@ -10,6 +10,7 @@ export interface GlassesFeatureSet {
   wifi: boolean
   imu: boolean
   micTypes: MicType[]
+  powerSavingMode: boolean
 }
 
 export const glassesFeatures: Record<string, GlassesFeatureSet> = {
@@ -21,6 +22,7 @@ export const glassesFeatures: Record<string, GlassesFeatureSet> = {
     wifi: false,
     imu: true,
     micTypes: ["custom"],
+    powerSavingMode: true,
   },
   "Vuzix Z100": {
     camera: false,
@@ -30,6 +32,7 @@ export const glassesFeatures: Record<string, GlassesFeatureSet> = {
     wifi: false,
     imu: false,
     micTypes: ["none"],
+    powerSavingMode: false,
   },
   "Mentra Live": {
     camera: true,
@@ -39,6 +42,7 @@ export const glassesFeatures: Record<string, GlassesFeatureSet> = {
     wifi: true,
     imu: false,
     micTypes: ["sco"],
+    powerSavingMode: false,
   },
   "Mentra Mach1": {
     camera: false,
@@ -48,6 +52,7 @@ export const glassesFeatures: Record<string, GlassesFeatureSet> = {
     wifi: false,
     imu: false,
     micTypes: ["none"],
+    powerSavingMode: false,
   },
   "Audio Wearable": {
     camera: false,
@@ -57,6 +62,7 @@ export const glassesFeatures: Record<string, GlassesFeatureSet> = {
     wifi: false,
     imu: false,
     micTypes: ["sco"],
+    powerSavingMode: false,
   },
   "Simulated Glasses": {
     camera: true,
@@ -66,6 +72,7 @@ export const glassesFeatures: Record<string, GlassesFeatureSet> = {
     wifi: false,
     imu: false,
     micTypes: ["sco"],
+    powerSavingMode: false,
   },
 }
 
@@ -77,6 +84,7 @@ export const featureLabels: Record<GlassesFeature, string> = {
   binocular: "Binocular",
   wifi: "WiFi",
   imu: "IMU",
+  powerSavingMode: "Power Saving Mode",
 }
 
 // Helper functions for mic type checking
