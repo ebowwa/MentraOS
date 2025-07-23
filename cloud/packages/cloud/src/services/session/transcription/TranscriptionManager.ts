@@ -170,11 +170,13 @@ export class TranscriptionManager {
         let streamSubscription: ExtendedStreamType;
         
         if (stream.type === 'transcription_only') {
-          streamSubscription = `transcription:${stream.config.language}`;
+          // Use original language code if available, fall back to normalized config language
+          const lang = stream.originalLanguageCodes?.source || stream.config.language;
+          streamSubscription = `transcription:${lang}`;
         } else if (stream.type === 'two_way') {
-          // For two-way translation streams
-          const langA = stream.config.translation?.language_a || stream.config.language;
-          const langB = stream.config.translation?.language_b;
+          // For two-way translation streams, use original language codes if available
+          const langA = stream.originalLanguageCodes?.langA || stream.config.translation?.language_a || stream.config.language;
+          const langB = stream.originalLanguageCodes?.langB || stream.config.translation?.language_b;
           
           // Skip invalid same-language translations
           if (langA === langB) {
@@ -188,13 +190,22 @@ export class TranscriptionManager {
           }
           
           streamSubscription = `translation:${langA}-two-way-${langB}`;
-        } else if (stream.type === 'universal_english' || stream.type === 'individual' || stream.type === 'multi_source') {
-          // For one-way translation streams
-          const srcLang = stream.config.translation?.source_languages?.[0] || stream.config.language;
-          const tgtLang = stream.config.translation?.target_language;
+        } else if (stream.type === 'universal_english') {
+          // Universal English streams handle multiple original subscriptions, don't create artificial ones
+          // Instead, add all the handled subscriptions directly to the optimized set
+          for (const handledSub of stream.handledSubscriptions) {
+            optimizedSubscriptions.add(handledSub as ExtendedStreamType);
+          }
+          continue; // Skip creating an artificial subscription for this stream
+        } else if (stream.type === 'individual' || stream.type === 'multi_source') {
+          // For individual and multi-source streams, use original language codes if available
+          const srcLang = stream.originalLanguageCodes?.source || stream.config.translation?.source_languages?.[0] || stream.config.language;
+          const tgtLang = stream.originalLanguageCodes?.target || stream.config.translation?.target_language;
           
           // Skip invalid same-language translations
-          if (srcLang === tgtLang) {
+          const normalizedSrc = srcLang?.split('-')[0]?.toLowerCase();
+          const normalizedTgt = tgtLang?.split('-')[0]?.toLowerCase();
+          if (normalizedSrc === normalizedTgt) {
             this.logger.warn({
               srcLang,
               tgtLang,
@@ -1544,7 +1555,15 @@ export class TranscriptionManager {
     
     if (mappedSubscriptions && mappedSubscriptions.length > 0) {
       // For optimized streams, route to all mapped subscriptions
-      return mappedSubscriptions;
+      const targetSubs = [...mappedSubscriptions];
+      
+      // If effective subscription is different (e.g., transcription from translation stream),
+      // also include apps subscribed directly to the effective subscription
+      if (effectiveSubscription !== streamSubscription && !targetSubs.includes(effectiveSubscription)) {
+        targetSubs.push(effectiveSubscription);
+      }
+      
+      return targetSubs;
     }
     
     // For non-optimized streams, use the effective subscription
@@ -1642,7 +1661,8 @@ export class TranscriptionManager {
         originalText: data.originalText ? `"${data.originalText.substring(0, 50)}${data.originalText.length > 50 ? '...' : ''}"` : undefined,
         translatedTo: data.translateLanguage,
         confidence: data.confidence,
-        appsNotified: subscribedApps.length
+        appsNotified: subscribedApps.length,
+        subscribedApps
       }, `📝 TRANSCRIPTION: [${data.provider || 'unknown'}] ${data.isFinal ? 'FINAL' : 'interim'} "${data.text || 'no text'}" → ${subscribedApps.length} apps`);
 
     } catch (error) {
