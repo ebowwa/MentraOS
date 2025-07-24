@@ -40,6 +40,7 @@ struct ViewState {
   
   @objc var g1Manager: ERG1Manager?
   @objc var liveManager: MentraLiveManager?
+  @objc var mach1Manager: Mach1Manager?
   var micManager: OnboardMicrophoneManager!
   var serverComms: ServerComms!
   
@@ -145,6 +146,10 @@ struct ViewState {
       self.g1Manager = ERG1Manager.shared
     } else if (wearable.contains("Live") && self.liveManager == nil) {
       self.liveManager = MentraLiveManager()
+    } else if (wearable.contains("Mach1") && self.mach1Manager == nil) {
+//      self.mach1Manager = Mach1Manager.shared
+      self.mach1Manager = Mach1Manager()
+
     }
     initManagerCallbacks()
   }
@@ -321,6 +326,27 @@ struct ViewState {
         guard let self = self else { return }
         self.serverComms.sendVideoStreamResponse(appId: appId, streamUrl: streamUrl)
       }
+    }
+    
+    if mach1Manager != nil {
+      mach1Manager!.onConnectionStateChanged = { [weak self] in
+        guard let self = self else { return }
+        CoreCommsService.log("Mach1 glasses connection changed to: \(self.mach1Manager!.ready ? "Connected" : "Disconnected")")
+        if (self.mach1Manager!.ready) {
+          handleDeviceReady()
+        } else {
+          handleDeviceDisconnected()
+          handleRequestStatus()
+        }
+      }
+      
+      mach1Manager!.$batteryLevel.sink { [weak self] (level: Int) in
+        guard let self = self else { return }
+        guard level >= 0 else { return }
+        self.batteryLevel = level
+        self.serverComms.sendBatteryStatus(level: self.batteryLevel, charging: false);
+        handleRequestStatus()
+      }.store(in: &cancellables)
     }
   }
   
@@ -948,8 +974,13 @@ struct ViewState {
     if self.defaultWearable.contains("Simulated") || self.defaultWearable.isEmpty {
       return
     }
-    // self.g1Manager?.RN_sendText(text)
-    self.g1Manager?.RN_sendTextWall(text)
+    
+    // Send to appropriate manager based on device type
+    if self.defaultWearable.contains("G1") {
+      self.g1Manager?.RN_sendTextWall(text)
+    } else if self.defaultWearable.contains("Mach1") {
+      self.mach1Manager?.RN_sendTextWall(text)
+    }
     
     // cancel any pending clear display work item:
     // TODO: this doesn't seem to work:
@@ -966,7 +997,11 @@ struct ViewState {
         if self.isHeadUp {
           return
         }
-        self.g1Manager?.RN_clearDisplay()
+        if self.defaultWearable.contains("G1") {
+          self.g1Manager?.RN_clearDisplay()
+        } else if self.defaultWearable.contains("Mach1") {
+          self.mach1Manager?.RN_clearDisplay()
+        }
       }
       sendStateWorkItem = workItem
       sendStateQueue.asyncAfter(deadline: .now() + 3, execute: workItem)
@@ -1000,6 +1035,7 @@ struct ViewState {
       self.somethingConnected = false
       self.g1Manager?.disconnect()
       self.liveManager?.disconnect()
+      self.mach1Manager?.disconnect()
       self.isSearching = false
       handleRequestStatus()
     }
@@ -1037,6 +1073,10 @@ struct ViewState {
       self.defaultWearable = "Mentra Live"
       initManager(self.defaultWearable)
       self.liveManager?.findCompatibleDevices()
+    } else if (modelName.contains("Mach1")) {
+      self.defaultWearable = "Mach1"
+      initManager(self.defaultWearable)
+      self.mach1Manager?.findCompatibleDevices()
     }
   }
   
@@ -1433,6 +1473,9 @@ struct ViewState {
     if self.defaultWearable.contains("Live") {
       return false
     }
+    if self.defaultWearable.contains("Mach1") {
+      return false
+    }
     return false
   }
   
@@ -1442,8 +1485,9 @@ struct ViewState {
     
     let g1Connected = self.g1Manager?.g1Ready ?? false
     let liveConnected = self.liveManager?.connectionState == .connected
+    let mach1Connected = self.mach1Manager?.ready ?? false
     let simulatedConnected = self.defaultWearable == "Simulated Glasses"
-    let isGlassesConnected = g1Connected || liveConnected || simulatedConnected
+    let isGlassesConnected = g1Connected || liveConnected || mach1Connected || simulatedConnected
     self.somethingConnected = isGlassesConnected
     
     // also referenced as glasses_info:
@@ -1624,6 +1668,8 @@ struct ViewState {
       handleLiveReady()
     } else if self.defaultWearable.contains("G1") {
       handleG1Ready()
+    } else if self.defaultWearable.contains("Mach1") {
+      handleMach1Ready()
     }
   }
   
@@ -1668,6 +1714,22 @@ struct ViewState {
     self.isSearching = false
     self.defaultWearable = "Mentra Live"
     self.handleRequestStatus()
+  }
+  
+  private func handleMach1Ready() {
+    CoreCommsService.log("AOS: Mach1 device ready")
+    self.isSearching = false
+    self.defaultWearable = "Mach1 Ultralite"
+    self.handleRequestStatus()
+    
+    Task {
+      // Send startup message
+      sendText("// MACH1 CONNECTED")
+      try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
+      sendText(" ")// clear screen
+      
+      self.handleRequestStatus()
+    }
   }
   
   private func handleDeviceDisconnected() {
@@ -1717,6 +1779,16 @@ struct ViewState {
         if self.deviceName != "" {
           CoreCommsService.log("AOS: pairing by id: \(self.deviceName)")
           self.g1Manager?.connectById(self.deviceName)
+        } else {
+          CoreCommsService.log("AOS: this shouldn't happen (we don't have a deviceName saved, connecting will fail if we aren't already paired)")
+          self.defaultWearable = ""
+          handleRequestStatus()
+        }
+      } else if (self.defaultWearable.contains("Mach1")) {
+        initManager(self.defaultWearable)
+        if self.deviceName != "" {
+          CoreCommsService.log("AOS: pairing Mach1 by id: \(self.deviceName)")
+          self.mach1Manager?.connectById(self.deviceName)
         } else {
           CoreCommsService.log("AOS: this shouldn't happen (we don't have a deviceName saved, connecting will fail if we aren't already paired)")
           self.defaultWearable = ""
