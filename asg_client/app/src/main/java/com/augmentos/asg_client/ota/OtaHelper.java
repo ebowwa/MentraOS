@@ -10,6 +10,7 @@ import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.StatFs;
 import android.util.Log;
 import android.content.Intent;
 import android.net.ConnectivityManager;
@@ -39,6 +40,8 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.stream.Collectors;
 
 public class OtaHelper {
@@ -56,6 +59,10 @@ public class OtaHelper {
     // Retry logic constants
     private static final int MAX_DOWNLOAD_RETRIES = 3;
     private static final long[] RETRY_DELAYS = {30000, 60000, 120000}; // 30s, 1m, 2m
+    
+    // Storage management constants
+    private static final long REQUIRED_STORAGE_BYTES = 2L * 1024 * 1024 * 1024; // 2GB
+    private static final String[] MEDIA_EXTENSIONS = {".jpg", ".jpeg", ".png", ".mp4", ".avi", ".mov", ".avif"};
 
     public OtaHelper(Context context) {
         this.context = context.getApplicationContext(); // Use application context to avoid memory leaks
@@ -456,8 +463,130 @@ public class OtaHelper {
         return false;
     }
     
+    /**
+     * Check available storage space
+     * @return available space in bytes
+     */
+    private long getAvailableStorage() {
+        try {
+            StatFs stat = new StatFs(BASE_DIR);
+            long blockSize = stat.getBlockSizeLong();
+            long availableBlocks = stat.getAvailableBlocksLong();
+            return availableBlocks * blockSize;
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to get storage stats", e);
+            return 0;
+        }
+    }
+    
+    /**
+     * Clean up old media files to free up storage space
+     * @param bytesNeeded amount of space needed in bytes
+     * @return true if enough space was freed, false otherwise
+     */
+    private boolean cleanupStorageForOTA(long bytesNeeded) {
+        Log.i(TAG, "Starting storage cleanup - need to free " + (bytesNeeded / 1024 / 1024) + " MB");
+        
+        try {
+            // Get the app's external files directory where photos/videos are stored
+            File mediaDir = context.getExternalFilesDir(null);
+            if (mediaDir == null || !mediaDir.exists()) {
+                Log.w(TAG, "Media directory not found");
+                return false;
+            }
+            
+            // Get all media files
+            File[] allFiles = mediaDir.listFiles((dir, name) -> {
+                String lowerName = name.toLowerCase();
+                for (String ext : MEDIA_EXTENSIONS) {
+                    if (lowerName.endsWith(ext)) {
+                        return true;
+                    }
+                }
+                return false;
+            });
+            
+            if (allFiles == null || allFiles.length == 0) {
+                Log.w(TAG, "No media files found to cleanup");
+                return false;
+            }
+            
+            // Sort files by last modified date (oldest first)
+            Arrays.sort(allFiles, Comparator.comparingLong(File::lastModified));
+            
+            long bytesFreed = 0;
+            int filesDeleted = 0;
+            
+            // Delete oldest files first until we have enough space
+            for (File file : allFiles) {
+                if (bytesFreed >= bytesNeeded) {
+                    break;
+                }
+                
+                long fileSize = file.length();
+                String fileName = file.getName();
+                
+                if (file.delete()) {
+                    bytesFreed += fileSize;
+                    filesDeleted++;
+                    Log.d(TAG, "Deleted " + fileName + " (" + (fileSize / 1024) + " KB)");
+                } else {
+                    Log.w(TAG, "Failed to delete " + fileName);
+                }
+            }
+            
+            Log.i(TAG, "Storage cleanup complete - deleted " + filesDeleted + " files, freed " + 
+                  (bytesFreed / 1024 / 1024) + " MB");
+            
+            // Check if we freed enough space
+            long availableNow = getAvailableStorage();
+            return availableNow >= REQUIRED_STORAGE_BYTES;
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Error during storage cleanup", e);
+            return false;
+        }
+    }
+    
+    /**
+     * Ensure sufficient storage is available for OTA update
+     * @return true if sufficient storage is available, false otherwise
+     */
+    private boolean ensureSufficientStorage() {
+        long availableStorage = getAvailableStorage();
+        Log.i(TAG, "Available storage: " + (availableStorage / 1024 / 1024) + " MB, required: " + 
+              (REQUIRED_STORAGE_BYTES / 1024 / 1024) + " MB");
+        
+        if (availableStorage >= REQUIRED_STORAGE_BYTES) {
+            Log.i(TAG, "Sufficient storage available for OTA update");
+            return true;
+        }
+        
+        // Not enough space, try cleanup
+        long bytesNeeded = REQUIRED_STORAGE_BYTES - availableStorage;
+        Log.w(TAG, "Insufficient storage - attempting to free " + (bytesNeeded / 1024 / 1024) + " MB");
+        
+        boolean cleanupSuccess = cleanupStorageForOTA(bytesNeeded);
+        
+        if (!cleanupSuccess) {
+            Log.e(TAG, "Failed to free sufficient storage for OTA update");
+            EventBus.getDefault().post(new DownloadProgressEvent(
+                DownloadProgressEvent.DownloadStatus.FAILED, 
+                "Insufficient storage space"
+            ));
+        }
+        
+        return cleanupSuccess;
+    }
+
     // Internal download method (original logic)
     private boolean downloadApkInternal(String urlStr, JSONObject json, Context context, String filename) throws Exception {
+        // Check storage space before attempting download
+        if (!ensureSufficientStorage()) {
+            Log.e(TAG, "Cannot proceed with OTA download - insufficient storage space");
+            throw new IOException("Insufficient storage space for OTA update");
+        }
+        
         File asgDir = new File(BASE_DIR);
 
         if (!asgDir.exists()) {
