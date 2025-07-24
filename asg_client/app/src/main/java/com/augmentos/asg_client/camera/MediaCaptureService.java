@@ -374,9 +374,6 @@ public class MediaCaptureService {
                     Log.d(TAG, "Video recording stopped: " + videoId + ", file: " + filePath);
                     isRecordingVideo = false;
 
-                    // Queue the video for upload
-                    mMediaQueueManager.queueMedia(filePath, requestId, MediaUploadQueueManager.MEDIA_TYPE_VIDEO);
-
                     // Notify listener
                     if (mMediaCaptureListener != null) {
                         mMediaCaptureListener.onVideoRecordingStopped(requestId, filePath);
@@ -490,8 +487,6 @@ public class MediaCaptureService {
         // Generate a temporary requestId
         String requestId = "local_" + timeStamp;
 
-        // Log.d(TAG, "Taking photo locally in offline mode");
-
         // For offline mode, take photo and queue it for later upload
         CameraNeo.takePictureWithCallback(
                 mContext,
@@ -500,13 +495,6 @@ public class MediaCaptureService {
                     @Override
                     public void onPhotoCaptured(String filePath) {
                         Log.d(TAG, "Offline photo captured successfully at: " + filePath);
-
-                        // Queue the photo for later upload
-                        mMediaQueueManager.queueMedia(filePath, requestId, MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
-
-                        // Notify the user about offline mode
-                        Log.d(TAG, "Photo queued for later upload (offline mode)");
-
                         // Notify through standard capture listener if set up
                         if (mMediaCaptureListener != null) {
                             mMediaCaptureListener.onPhotoCaptured(requestId, filePath);

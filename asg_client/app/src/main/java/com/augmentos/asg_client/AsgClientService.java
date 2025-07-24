@@ -492,26 +492,18 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                 );
                 
                 // Set up the picture request listener
-                cameraWebServer.setOnPictureRequestListener(new com.augmentos.asg_client.server.CameraWebServer.OnPictureRequestListener() {
-                    @Override
-                    public void onPictureRequest() {
-                        Log.d(TAG, "📸 Camera web server requested photo capture");
-                        
-                        // Use the media capture service to take a photo
-                        if (mMediaCaptureService != null) {
-                            // Generate a unique request ID
-                            String requestId = "web_" + System.currentTimeMillis();
-                            
-                            // Take photo and save locally
-                            mMediaCaptureService.takePhotoAndUpload(
-                                null, // Let the service generate the file path
-                                requestId,
-                                null, // No webhook URL for local capture
-                                true  // Save to gallery
-                            );
-                        } else {
-                            Log.e(TAG, "Media capture service not available for web server photo request");
-                        }
+                cameraWebServer.setOnPictureRequestListener(() -> {
+                    Log.d(TAG, "📸 Camera web server requested photo capture");
+
+                    // Use the media capture service to take a photo
+                    if (mMediaCaptureService != null) {
+                        // Generate a unique request ID
+                        String requestId = "web_" + System.currentTimeMillis();
+
+                        // Take photo and save locally
+                        mMediaCaptureService.takePhotoLocally();
+                    } else {
+                        Log.e(TAG, "Media capture service not available for web server photo request");
                     }
                 });
                 

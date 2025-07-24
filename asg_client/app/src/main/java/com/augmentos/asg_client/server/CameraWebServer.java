@@ -2,6 +2,11 @@ package com.augmentos.asg_client.server;
 
 import android.content.Context;
 import com.augmentos.asg_client.camera.CameraNeo;
+import com.augmentos.asg_client.server.impl.AndroidLogger;
+import com.augmentos.asg_client.server.impl.DefaultCacheManager;
+import com.augmentos.asg_client.server.impl.DefaultNetworkProvider;
+import com.augmentos.asg_client.server.impl.DefaultRateLimiter;
+import com.augmentos.asg_client.server.impl.DefaultServerConfig;
 import com.augmentos.asg_client.server.interfaces.*;
 import fi.iki.elonen.NanoHTTPD;
 import java.io.ByteArrayOutputStream;
@@ -81,7 +86,7 @@ public class CameraWebServer extends AsgServer {
 
     // Helper methods for creating default implementations
     private static ServerConfig createDefaultConfig(Context context, int port) {
-        return new com.augmentos.asg_client.server.impl.DefaultServerConfig.Builder()
+        return new DefaultServerConfig.Builder()
                 .port(port)
                 .serverName("CameraWebServer")
                 .context(context)
@@ -90,21 +95,21 @@ public class CameraWebServer extends AsgServer {
 
     private static NetworkProvider createDefaultNetworkProvider() {
         Logger logger = createDefaultLogger();
-        return new com.augmentos.asg_client.server.impl.DefaultNetworkProvider(logger);
+        return new DefaultNetworkProvider(logger);
     }
 
     private static CacheManager createDefaultCacheManager() {
         Logger logger = createDefaultLogger();
-        return new com.augmentos.asg_client.server.impl.DefaultCacheManager(logger);
+        return new DefaultCacheManager(logger);
     }
 
     private static RateLimiter createDefaultRateLimiter() {
         Logger logger = createDefaultLogger();
-        return new com.augmentos.asg_client.server.impl.DefaultRateLimiter(100, 60000, logger);
+        return new DefaultRateLimiter(100, 60000, logger);
     }
 
     private static Logger createDefaultLogger() {
-        return new com.augmentos.asg_client.server.impl.AndroidLogger();
+        return new AndroidLogger();
     }
 
     /**
@@ -538,7 +543,7 @@ public class CameraWebServer extends AsgServer {
         }
         
         // Fallback to default directory
-        File externalDir = config.getContext().getExternalFilesDir("Photos");
+        File externalDir = config.getContext().getExternalFilesDir(null);
         if (externalDir != null) {
             return externalDir.getAbsolutePath();
         }

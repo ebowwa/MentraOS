@@ -3,6 +3,7 @@ package com.augmentos.asg_client.server.impl;
 import com.augmentos.asg_client.server.interfaces.RateLimiter;
 import com.augmentos.asg_client.server.interfaces.Logger;
 
+import java.util.Locale;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -27,7 +28,7 @@ public class DefaultRateLimiter implements RateLimiter {
         
         // Schedule cleanup of expired windows
         this.cleanupExecutor = Executors.newSingleThreadScheduledExecutor();
-        this.cleanupExecutor.scheduleAtFixedRate(this::cleanupExpiredWindows, 
+        this.cleanupExecutor.scheduleWithFixedDelay(this::cleanupExpiredWindows,
                                                timeWindow, timeWindow, TimeUnit.MILLISECONDS);
     }
     
@@ -42,9 +43,7 @@ public class DefaultRateLimiter implements RateLimiter {
         window.removeExpiredRequests(currentTime);
         
         boolean allowed = window.getRequestCount() < maxRequests;
-        logger.debug("RateLimiter", String.format("Client %s: %s (count: %d/%d)", 
-                                                 clientId, allowed ? "ALLOWED" : "RATE_LIMITED", 
-                                                 window.getRequestCount(), maxRequests));
+        logger.debug("RateLimiter", String.format(Locale.getDefault(),"Client %s: %s (count: %d/%d)", clientId, allowed ? "ALLOWED" : "RATE_LIMITED", window.getRequestCount(), maxRequests));
         return allowed;
     }
     
