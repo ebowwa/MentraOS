@@ -31,15 +31,21 @@ class Mach1Manager: UltraliteBaseViewController {
   // Store discovered peripherals by their identifier
   private var discoveredPeripherals: [String: CBPeripheral] = [:]
   
-  
   func linked(unk: UltraliteSDK.Ultralite?) {
     CoreCommsService.log("Mach1Manager: Connected")
-    isConnected = true
     ready = true
-    
+    onConnectionStateChanged?()
   }
   
   public func connectById(_ id: String) {
+    
+    if (UltraliteManager.shared.isLinked.value) {
+      CoreCommsService.log("Mach1Manager: Connected")
+      ready = true
+      onConnectionStateChanged?()
+      return
+    }
+    
     guard let peripheral = discoveredPeripherals[id] else {
       CoreCommsService.log("Mach1Manager: No peripheral found with ID: \(id)")
       return
@@ -99,13 +105,10 @@ class Mach1Manager: UltraliteBaseViewController {
     
     // Store the peripheral by its identifier
     discoveredPeripherals[String(deviceName)] = device
-
     emitDiscoveredDevice(String(deviceName))
-    
   }
   
   func findCompatibleDevices() {
-    
     CoreCommsService.log("@@@@@@@@@@@@@@@@@@@@@ FINDING COMPATIBLE DEVICES @@@@@@@@@@@@@@@@@@@@@@")
     UltraliteManager.shared.setBluetoothManger()
     let scanResult = UltraliteManager.shared.startScan(callback: foundDevice)
