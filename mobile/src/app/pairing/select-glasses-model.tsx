@@ -41,7 +41,6 @@ export default function SelectGlassesModelScreen() {
           {modelName: "Even Realities G1", key: "evenrealities_g1"},
           {modelName: "Mentra Live", key: "mentra_live"},
           {modelName: "Mentra Mach1", key: "mentra_mach1"},
-          {modelName: "Vuzix Z100", key: "vuzix-z100"},
         ]
       : [
           // Android:
