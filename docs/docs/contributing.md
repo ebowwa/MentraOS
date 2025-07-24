@@ -170,7 +170,7 @@ npm run ios
 ### Setting Up the Cloud Backend
 
 ```bash
-cd MentraOS/mentraos_cloud
+cd MentraOS/cloud
 
 # Install dependencies
 bun install
