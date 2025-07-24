@@ -154,6 +154,10 @@ const en = {
     reconnectOnAppForeground: "Reconnect on App Foreground",
     reconnectOnAppForegroundSubtitle:
       "Automatically attempt to reconnect to glasses when the app comes back to the foreground.",
+    powerSavingMode: "Power Saving Mode",
+    powerSavingModeSubtitle:
+      "Allows the display to fully turn off. May briefly show \"Even AI Listening\".",
+    powerSavingModeSubtitle2: "TODO",
   },
   profileSettings: {
     title: "Profile Settings",
@@ -217,6 +221,22 @@ const en = {
     useGoogleSignIn: "This email is associated with a Google account. Please use 'Continue with Google' to sign in.",
     useAppleSignIn: "This email is associated with an Apple account. Please use 'Continue with Apple' to sign in.",
     connectionError: "Connection Error",
+    invalidEmail: "Please enter a valid email address",
+    forgotPasswordTitle: "Forgot Password",
+    forgotPasswordSubtitle: "Enter your email address and we'll send you a link to reset your password.",
+    sendResetEmail: "Send Reset Email",
+    resetEmailSent: "Reset Email Sent",
+    checkEmailForReset: "Please check your email for the password reset link",
+    rememberPassword: "Remember your password?",
+    backToLogin: "Back to Login",
+    resetPasswordTitle: "Reset Password",
+    resetPasswordSubtitle: "Enter your new password below",
+    resetPassword: "Reset Password",
+    passwordResetSuccess: "Password Reset Successful",
+    redirectingToLogin: "Redirecting to login...",
+    loggingYouIn: "Logging you in...",
+    invalidResetLink: "Invalid or expired reset link",
+    verifyingResetLink: "Verifying reset link...",
   },
   warning: {
     nonProdBackend: "You are using a non-production backend.",

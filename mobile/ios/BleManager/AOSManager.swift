@@ -15,6 +15,7 @@ import AVFoundation
 struct ViewState {
   var topText: String
   var bottomText: String
+  var title: String
   var layoutType: String
   var text: String
   var eventStr: String
@@ -59,6 +60,7 @@ struct ViewState {
   private var dashboardHeight: Int = 4;
   private var dashboardDepth: Int = 5;
   private var sensingEnabled: Bool = true;
+  private var powerSavingMode: Bool = false;
   private var isSearching: Bool = true;
   private var isUpdatingScreen: Bool = false;
   private var alwaysOnStatusBar: Bool = false;
@@ -71,12 +73,13 @@ struct ViewState {
   private var connectTask: Task<Void, Never>?
   private var glassesWifiConnected: Bool = false;
   private var glassesWifiSsid: String = "";
+  private var isHeadUp: Bool = false;
   
   var viewStates: [ViewState] = [
-    ViewState(topText: " ", bottomText: " ", layoutType: "text_wall", text: "", eventStr: ""),
-    ViewState(topText: " ", bottomText: " ", layoutType: "text_wall", text: "$TIME12$ $DATE$ $GBATT$ $CONNECTION_STATUS", eventStr: ""),
-    ViewState(topText: " ", bottomText: " ", layoutType: "text_wall", text: "", eventStr: "", data: nil, animationData: nil),
-    ViewState(topText: " ", bottomText: " ", layoutType: "text_wall", text: "$TIME12$ $DATE$ $GBATT$ $CONNECTION_STATUS", eventStr: "", data: nil, animationData: nil),
+    ViewState(topText: " ", bottomText: " ", title: " ", layoutType: "text_wall", text: "", eventStr: ""),
+    ViewState(topText: " ", bottomText: " ", title: " ", layoutType: "text_wall", text: "$TIME12$ $DATE$ $GBATT$ $CONNECTION_STATUS$", eventStr: ""),
+    ViewState(topText: " ", bottomText: " ", title: " ", layoutType: "text_wall", text: "", eventStr: "", data: nil, animationData: nil),
+    ViewState(topText: " ", bottomText: " ", title: " ", layoutType: "text_wall", text: "$TIME12$ $DATE$ $GBATT$ $CONNECTION_STATUS$", eventStr: "", data: nil, animationData: nil),
   ]
   
   private var sendStateWorkItem: DispatchWorkItem?
@@ -687,6 +690,7 @@ struct ViewState {
       } else {
         currentViewState = self.viewStates[0]
       }
+      self.isHeadUp = isDashboard
       
       if (isDashboard && !self.contextualDashboard) {
         return
@@ -718,7 +722,7 @@ struct ViewState {
         self.g1Manager?.RN_sendDoubleTextWall(topText, bottomText);
         break
       case "reference_card":
-        sendText(currentViewState.topText + "\n\n" + currentViewState.bottomText);
+        sendText(currentViewState.topText + "\n\n" + currentViewState.title);
         break
       case "bitmap_view":
         CoreCommsService.log("AOS: Processing bitmap_view layout")
@@ -831,43 +835,24 @@ struct ViewState {
     } catch {
       CoreCommsService.log("AOS: Error converting to JSON: \(error)")
     }
-    
-    self.viewStates[stateIndex].eventStr = eventStr
+
+
     let layout = event["layout"] as! [String: Any];
     let layoutType = layout["layoutType"] as! String
-    self.viewStates[stateIndex].layoutType = layoutType
-    
-    
     var text = layout["text"] as? String ?? " "
     var topText = layout["topText"] as? String ?? " "
     var bottomText = layout["bottomText"] as? String ?? " "
     var title = layout["title"] as? String ?? " "
     var data = layout["data"] as? String ?? ""
-    
+
     text = parsePlaceholders(text)
     topText = parsePlaceholders(topText)
     bottomText = parsePlaceholders(bottomText)
     title = parsePlaceholders(title)
     
-    CoreCommsService.log("Updating view state \(stateIndex) with \(layoutType) \(text) \(topText) \(bottomText)")
+    var newViewState = ViewState(topText: topText, bottomText: bottomText, title: title, layoutType: layoutType, text: text, eventStr: eventStr, data: data, animationData: nil)
     
-    switch layoutType {
-    case "text_wall":
-      self.viewStates[stateIndex].text = text
-      break
-    case "double_text_wall":
-      self.viewStates[stateIndex].topText = topText
-      self.viewStates[stateIndex].bottomText = bottomText
-      break
-    case "reference_card":
-      self.viewStates[stateIndex].topText = text
-      self.viewStates[stateIndex].bottomText = title
-      break
-    case "bitmap_view":
-      self.viewStates[stateIndex].data = data
-      break
-    case "bitmap_animation":
-      // Store animation data with frames and timing
+    if (layoutType == "bitmap_animation") {
       if let frames = layout["frames"] as? [String],
          let interval = layout["interval"] as? Double {
         let animationData: [String: Any] = [
@@ -875,19 +860,26 @@ struct ViewState {
           "interval": interval,
           "repeat": layout["repeat"] as? Bool ?? true
         ]
-        self.viewStates[stateIndex].animationData = animationData
-        print("Parsed bitmap_animation with \(frames.count) frames, interval: \(interval)ms")
+        newViewState.animationData = animationData
+        CoreCommsService.log("AOS: Parsed bitmap_animation with \(frames.count) frames, interval: \(interval)ms")
       } else {
-        print("ERROR: bitmap_animation missing frames or interval")
+        CoreCommsService.log("AOS: ERROR: bitmap_animation missing frames or interval")
       }
-      break
-    case "clear_view":
-      print("Parsed clear_view layout")
-      break
-    default:
-      CoreCommsService.log("AOS: UNHANDLED LAYOUT_TYPE \(layoutType)")
-      break
     }
+    
+    let cS = self.viewStates[stateIndex]
+    let nS = newViewState
+    let currentState = cS.layoutType + cS.text + cS.topText + cS.bottomText + cS.title + (cS.data ?? "")
+    let newState = nS.layoutType + nS.text + nS.topText + nS.bottomText + nS.title + (nS.data ?? "")
+
+    if currentState == newState { 
+      // CoreCommsService.log("AOS: View state is the same, skipping update")
+      return
+    }
+    
+    CoreCommsService.log("Updating view state \(stateIndex) with \(layoutType) \(text) \(topText) \(bottomText)")
+    
+    self.viewStates[stateIndex] = newViewState
     
     let headUp = self.g1Manager?.isHeadUp ?? false
     // send the state we just received if the user is currently in that state:
@@ -952,12 +944,33 @@ struct ViewState {
   }
   
   private func sendText(_ text: String) {
-    CoreCommsService.log("AOS: Sending text: \(text)")
+    // CoreCommsService.log("AOS: Sending text: \(text)")
     if self.defaultWearable.contains("Simulated") || self.defaultWearable.isEmpty {
       return
     }
     // self.g1Manager?.RN_sendText(text)
     self.g1Manager?.RN_sendTextWall(text)
+    
+    // cancel any pending clear display work item:
+    // TODO: this doesn't seem to work:
+    sendStateWorkItem?.cancel()
+    
+    // clear the screen after 3 seconds if the text is empty or a space:
+    if (text == " " || text == "") && self.powerSavingMode {
+      sendStateWorkItem?.cancel()
+      CoreCommsService.log("AOS: Clearing display after 3 seconds")
+      // if we're clearing the display, after a delay, send a clear command if not cancelled with another
+      let workItem = DispatchWorkItem { [weak self] in
+        guard let self = self else { return }
+        CoreCommsService.log("isDashboard: \(self.isHeadUp)")
+        if self.isHeadUp {
+          return
+        }
+        self.g1Manager?.RN_clearDisplay()
+      }
+      sendStateWorkItem = workItem
+      sendStateQueue.asyncAfter(deadline: .now() + 3, execute: workItem)
+    }
   }
   
   
@@ -1105,6 +1118,12 @@ struct ViewState {
     saveSettings()
   }
   
+  private func enablePowerSavingMode(_ enabled: Bool) {
+    self.powerSavingMode = enabled
+    handleRequestStatus()// to update the UI
+    saveSettings()
+  }
+  
   private func enableAlwaysOnStatusBar(_ enabled: Bool) {
     self.alwaysOnStatusBar = enabled
     saveSettings()
@@ -1180,6 +1199,7 @@ struct ViewState {
       case updateGlassesDepth = "update_glasses_depth"
       case updateGlassesHeight = "update_glasses_height"
       case enableSensing = "enable_sensing"
+      case enablePowerSavingMode = "enable_power_saving_mode"
       case enableAlwaysOnStatusBar = "enable_always_on_status_bar"
       case bypassVad = "bypass_vad_for_debugging"
       case bypassAudioEncoding = "bypass_audio_encoding_for_debugging"
@@ -1322,6 +1342,13 @@ struct ViewState {
           }
           enableSensing(enabled)
           break
+        case .enablePowerSavingMode:
+          guard let params = params, let enabled = params["enabled"] as? Bool else {
+            CoreCommsService.log("AOS: enable_power_saving_mode invalid params")
+            break
+          }
+          enablePowerSavingMode(enabled)
+          break
         case .enableAlwaysOnStatusBar:
           guard let params = params, let enabled = params["enabled"] as? Bool else {
             CoreCommsService.log("AOS: enable_always_on_status_bar invalid params")
@@ -1379,7 +1406,7 @@ struct ViewState {
           break
         case .simulateButtonPress:
           guard let params = params,
-                  let buttonId = params["buttonId"] as? String,
+                let buttonId = params["buttonId"] as? String,
                 let pressType = params["pressType"] as? String else {
             CoreCommsService.log("AOS: simulate_button_press invalid params")
             break
@@ -1481,6 +1508,7 @@ struct ViewState {
       // todo: this isn't robust:
       "is_mic_enabled_for_frontend": self.micEnabled && (self.preferredMic == "glasses") && self.somethingConnected,
       "sensing_enabled": self.sensingEnabled,
+      "power_saving_mode": self.powerSavingMode,
       "always_on_status_bar": self.alwaysOnStatusBar,
       "bypass_vad_for_debugging": self.bypassVad,
       "bypass_audio_encoding_for_debugging": self.bypassAudioEncoding,
@@ -1730,6 +1758,7 @@ struct ViewState {
     static let brightness = "brightness"
     static let autoBrightness = "autoBrightness"
     static let sensingEnabled = "sensingEnabled"
+    static let powerSavingMode = "powerSavingMode"
     static let dashboardHeight = "dashboardHeight"
     static let dashboardDepth = "dashboardDepth"
     static let alwaysOnStatusBar = "alwaysOnStatusBar"
@@ -1817,6 +1846,10 @@ struct ViewState {
       enableSensing(sensingEnabled)
     }
     
+    if let powerSavingMode = coreInfo?["power_saving_mode"] as? Bool, powerSavingMode != self.powerSavingMode {
+      enablePowerSavingMode(powerSavingMode)
+    }
+    
     if let newAlwaysOnStatusBar = coreInfo?["always_on_status_bar_enabled"] as? Bool, newAlwaysOnStatusBar != self.alwaysOnStatusBar {
       enableAlwaysOnStatusBar(newAlwaysOnStatusBar)
     }
@@ -1865,6 +1898,7 @@ struct ViewState {
     defaults.set(brightness, forKey: SettingsKeys.brightness)
     defaults.set(autoBrightness, forKey: SettingsKeys.autoBrightness)
     defaults.set(sensingEnabled, forKey: SettingsKeys.sensingEnabled)
+    defaults.set(powerSavingMode, forKey: SettingsKeys.powerSavingMode)
     defaults.set(dashboardHeight, forKey: SettingsKeys.dashboardHeight)
     defaults.set(dashboardDepth, forKey: SettingsKeys.dashboardDepth)
     defaults.set(alwaysOnStatusBar, forKey: SettingsKeys.alwaysOnStatusBar)
@@ -1887,6 +1921,7 @@ struct ViewState {
     
     // set default settings here:
     sensingEnabled = true
+    powerSavingMode = false
     contextualDashboard = true
     bypassVad = false
     preferredMic = "glasses"
@@ -1894,12 +1929,14 @@ struct ViewState {
     headUpAngle = 30
     metricSystemEnabled = false
     autoBrightness = true
+    powerSavingMode = false
     dashboardHeight = 4
     dashboardDepth = 5
     alwaysOnStatusBar = false
     bypassAudioEncoding = false
     
     UserDefaults.standard.register(defaults: [SettingsKeys.sensingEnabled: true])
+    UserDefaults.standard.register(defaults: [SettingsKeys.powerSavingMode: false])
     UserDefaults.standard.register(defaults: [SettingsKeys.contextualDashboard: true])
     UserDefaults.standard.register(defaults: [SettingsKeys.bypassVad: false])
     UserDefaults.standard.register(defaults: [SettingsKeys.preferredMic: "glasses"])
@@ -1917,6 +1954,7 @@ struct ViewState {
     contextualDashboard = defaults.bool(forKey: SettingsKeys.contextualDashboard)
     autoBrightness = defaults.bool(forKey: SettingsKeys.autoBrightness)
     sensingEnabled = defaults.bool(forKey: SettingsKeys.sensingEnabled)
+    powerSavingMode = defaults.bool(forKey: SettingsKeys.powerSavingMode)
     dashboardHeight = defaults.integer(forKey: SettingsKeys.dashboardHeight)
     dashboardDepth = defaults.integer(forKey: SettingsKeys.dashboardDepth)
     alwaysOnStatusBar = defaults.bool(forKey: SettingsKeys.alwaysOnStatusBar)
