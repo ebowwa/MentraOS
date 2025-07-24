@@ -1,4 +1,4 @@
-import type {SidebarsConfig} from '@docusaurus/plugin-content-docs';
+import type {SidebarsConfig} from "@docusaurus/plugin-content-docs"
 
 // This runs in Node.js - Don't use client-side code here (browser APIs, JSX...)
 
@@ -15,145 +15,142 @@ import type {SidebarsConfig} from '@docusaurus/plugin-content-docs';
 const sidebars: SidebarsConfig = {
   // Manually defined sidebar structure
   tutorialSidebar: [
-    'index',
+    "index",
     {
-      type: 'category',
-      label: 'Getting Started',
+      type: "category",
+      label: "Getting Started",
       link: {
-        type: 'doc',
-        id: 'quickstart',
+        type: "doc",
+        id: "quickstart",
       },
       items: [
         {
-          type: 'doc',
-          id: 'example-apps',
-          label: 'Example Apps',
+          type: "doc",
+          id: "example-apps",
+          label: "Example Apps",
         },
         {
-          type: 'doc',
-          id: 'getting-started',
-          label: 'Build From Scratch',
+          type: "doc",
+          id: "getting-started",
+          label: "Build From Scratch",
         },
         {
-          type: 'doc',
-          id: 'voice-activation',
-          label: 'Voice Activation Tutorial',
+          type: "doc",
+          id: "voice-activation",
+          label: "Voice Activation Tutorial",
         },
         {
-          type: 'doc',
-          id: 'railway-deployment',
-          label: 'Deploy to Railway',
+          type: "doc",
+          id: "railway-deployment",
+          label: "Deploy to Railway",
         },
         {
-          type: 'doc',
-          id: 'ubuntu-deployment',
-          label: 'Deploy to Ubuntu Server',
-        }
+          type: "doc",
+          id: "ubuntu-deployment",
+          label: "Deploy to Ubuntu Server",
+        },
       ],
     },
     {
-      type: 'category',
-      label: 'Core Concepts',
+      type: "category",
+      label: "Core Concepts",
       link: {
-        type: 'doc',
-        id: 'core-concepts',
+        type: "doc",
+        id: "core-concepts",
       },
       items: [
         {
-          type: 'doc',
-          id: 'app-lifecycle',
-          label: 'App Lifecycle',
+          type: "doc",
+          id: "app-lifecycle",
+          label: "App Lifecycle",
         },
-        'events',
-        'permissions',
-        'layouts',
-        'settings',
-        'audio',
-        'tools',
-        'capabilities',
+        "events",
+        "permissions",
+        "layouts",
+        "settings",
+        "audio",
+        "tools",
+        "capabilities",
         {
-          type: 'category',
-          label: 'Camera',
+          type: "category",
+          label: "Camera",
           link: {
-            type: 'doc',
-            id: 'camera/README',
+            type: "doc",
+            id: "camera/README",
           },
-          items: [
-            'camera/photo-capture',
-            'camera/rtmp-streaming'
-          ],
+          items: ["camera/photo-capture", "camera/rtmp-streaming"],
         },
-        'webview-auth-overview',
-        'react-webviews',
-        'dashboard'
+        "webview-auth-overview",
+        "react-webviews",
+        "dashboard",
       ],
     },
     {
-      type: 'category',
-      label: 'SDK Reference',
+      type: "category",
+      label: "SDK Reference",
       link: {
-        type: 'doc',
-        id: 'reference/index',
+        type: "doc",
+        id: "reference/index",
       },
       items: [
-        'reference/app-server',
-        'reference/app-session',
+        "reference/app-server",
+        "reference/app-session",
         {
-          type: 'category',
-          label: 'Managers',
+          type: "category",
+          label: "Managers",
           items: [
-            'reference/managers/event-manager',
-            'reference/managers/layout-manager',
-            'reference/managers/settings-manager',
-            'reference/managers/audio-manager',
-            'reference/managers/camera',
-              ],
-        },
-        'reference/enums',
-        {
-          type: 'category',
-          label: 'Interfaces',
-          items: [
-            'reference/interfaces/config-types',
-            'reference/interfaces/event-types',
-            'reference/interfaces/layout-types',
-            'reference/interfaces/capabilities',
-            'reference/interfaces/webhook-types',
-            'reference/interfaces/message-types',
-            'reference/interfaces/tool-types',
-            'reference/interfaces/setting-types',
+            "reference/managers/event-manager",
+            "reference/managers/layout-manager",
+            "reference/managers/settings-manager",
+            "reference/managers/audio-manager",
+            "reference/managers/camera",
           ],
         },
-        'reference/dashboard-api',
-        'reference/utilities',
+        "reference/enums",
+        {
+          type: "category",
+          label: "Interfaces",
+          items: [
+            "reference/interfaces/config-types",
+            "reference/interfaces/event-types",
+            "reference/interfaces/layout-types",
+            "reference/interfaces/capabilities",
+            "reference/interfaces/webhook-types",
+            "reference/interfaces/message-types",
+            "reference/interfaces/tool-types",
+            "reference/interfaces/setting-types",
+          ],
+        },
+        "reference/dashboard-api",
+        "reference/utilities",
       ],
     },
     {
-      type: 'category',
-      label: '👥 Contributing',
+      type: "category",
+      label: "👥 Contributing",
       link: {
-        type: 'doc',
-        id: 'contributing',
+        type: "doc",
+        id: "contributing",
       },
       items: [
         {
-          type: 'doc',
-          id: 'contributing/mentraos-manager-guidelines',
-          label: 'MentraOS Manager Guidelines',
+          type: "doc",
+          id: "contributing/mentraos-manager-guidelines",
+          label: "MentraOS Mobile App Guidelines",
         },
         {
-          type: 'doc',
-          id: 'contributing/mentraos-asg-client-guidelines',
-          label: 'MentraOS ASG Client Guidelines',
+          type: "doc",
+          id: "contributing/mentraos-asg-client-guidelines",
+          label: "MentraOS ASG Client Guidelines",
         },
         {
-          type: 'doc',
-          id: 'contributing/add-new-glasses-support',
-          label: 'Adding New Glasses Support',
+          type: "doc",
+          id: "contributing/add-new-glasses-support",
+          label: "Adding New Glasses Support",
         },
       ],
     },
   ],
-};
+}
 
-export default sidebars;
+export default sidebars

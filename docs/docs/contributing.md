@@ -23,7 +23,7 @@ graph TD
 
     subgraph "Client Layer"
         MobileApp[Mobile App]
-        AOSCore[MentraOS Core Module]
+        AOSCore[Android Core Module]
         AOSiOS[MentraOS iOS Module]
     end
 

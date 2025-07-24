@@ -1,34 +1,34 @@
 # Webview Authentication
 
-MentraOS provides a simple and secure way for apps to identify users within webviews. When a user opens your web application through the MentraOS manager app, you can automatically identify them without requiring a separate login process.
+MentraOS provides a simple and secure way for apps to identify users within webviews. When a user opens your web application through the MentraOS Mobile App, you can automatically identify them without requiring a separate login process.
 
 ```typescript
 // Example of using webview authentication in your app
-import { AppServer, AuthenticatedRequest } from '@mentra/sdk';
+import {AppServer, AuthenticatedRequest} from "@mentra/sdk"
 
 const server = new AppServer({
-  packageName: 'org.example.myapp',
-  apiKey: process.env.API_KEY // Load from environment variables
-});
+  packageName: "org.example.myapp",
+  apiKey: process.env.API_KEY, // Load from environment variables
+})
 
-const app = server.getExpressApp();
+const app = server.getExpressApp()
 
-app.get('/webview', (req: AuthenticatedRequest, res) => {
-  const userId = req.authUserId;
+app.get("/webview", (req: AuthenticatedRequest, res) => {
+  const userId = req.authUserId
 
   if (userId) {
     // User is authenticated, show personalized content
-    res.send(`Welcome user ${userId}!`);
+    res.send(`Welcome user ${userId}!`)
   } else {
     // User is not authenticated
-    res.send('Please open this page from the MentraOS app');
+    res.send("Please open this page from the MentraOS app")
   }
-});
+})
 ```
 
 ## What Is Webview Authentication?
 
-Webview authentication lets your web application identify MentraOS users without requiring them to log in separately. When a user opens your webview through the MentraOS manager app:
+Webview authentication lets your web application identify MentraOS users without requiring them to log in separately. When a user opens your webview through the MentraOS Mobile App:
 
 1. The manager app automatically appends a temporary authentication token to your URL
 2. The MentraOS SDK middleware automatically exchanges this token for the user's ID
@@ -50,13 +50,13 @@ First, specify a webview URL in your app's configuration through the MentraOS De
 The MentraOS SDK provides built-in middleware that handles the token exchange process automatically:
 
 ```typescript
-import { AppServer, AuthenticatedRequest } from '@mentra/sdk';
+import {AppServer, AuthenticatedRequest} from "@mentra/sdk"
 
 // Create an app server instance
 const server = new AppServer({
-  packageName: 'org.example.myapp',
-  apiKey: process.env.API_KEY // Load from environment variables, never check it into source control
-});
+  packageName: "org.example.myapp",
+  apiKey: process.env.API_KEY, // Load from environment variables, never check it into source control
+})
 
 // The SDK automatically sets up the authentication middleware
 ```
@@ -66,24 +66,24 @@ const server = new AppServer({
 In your Express route handlers, access the authenticated user ID:
 
 ```typescript
-const app = server.getExpressApp();
+const app = server.getExpressApp()
 
-app.get('/webview', (req: AuthenticatedRequest, res) => {
+app.get("/webview", (req: AuthenticatedRequest, res) => {
   // Access the authenticated user ID
-  const userId = req.authUserId;
+  const userId = req.authUserId
 
   if (userId) {
     // User is authenticated, provide personalized content
-    res.render('dashboard', {
-      userId
-    });
+    res.render("dashboard", {
+      userId,
+    })
   } else {
     // User is not authenticated
-    res.render('login', {
-      message: 'Please open this page from the MentraOS app'
-    });
+    res.render("login", {
+      message: "Please open this page from the MentraOS app",
+    })
   }
-});
+})
 ```
 
 ## Common Use Cases
@@ -98,5 +98,3 @@ Webview authentication enables:
 ## React Webviews
 
 If you want to build your frontend webview using React, see the [React Webviews](/react-webviews) guide.
-
-

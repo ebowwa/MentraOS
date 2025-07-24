@@ -1,10 +1,10 @@
-# MentraOS Manager Development Guidelines
+# MentraOS Mobile App Development Guidelines
 
-This guide provides coding standards and best practices for contributing to MentraOS Manager, the React Native mobile app component of the MentraOS ecosystem.
+This guide provides coding standards and best practices for contributing to MentraOS Mobile App, the React Native mobile app component of the MentraOS ecosystem.
 
 ## Architecture Overview
 
-MentraOS Manager is a React Native app built with:
+MentraOS Mobile App is a React Native app built with:
 
 - **Expo** for development tooling and managed workflow
 - **expo-router** for file-based routing

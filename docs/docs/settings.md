@@ -4,18 +4,18 @@ MentraOS provides a powerful settings system that allows apps to offer customiza
 
 ```typescript
 // Example of accessing settings in your app
-import { AppServer, AppSession } from '@mentra/sdk';
+import {AppServer, AppSession} from "@mentra/sdk"
 
 export class MyAppServer extends AppServer {
   protected async onSession(session: AppSession, sessionId: string, userId: string): Promise<void> {
     // Get a specific setting value
-    const language = session.settings.get<string>('transcribe_language', 'English');
+    const language = session.settings.get<string>("transcribe_language", "English")
 
     // Listen for setting changes
-    session.settings.onValueChange('line_width', (newValue, oldValue) => {
-      console.log(`Line width changed from ${oldValue} to ${newValue}`);
-      this.updateDisplay(newValue);
-    });
+    session.settings.onValueChange("line_width", (newValue, oldValue) => {
+      console.log(`Line width changed from ${oldValue} to ${newValue}`)
+      this.updateDisplay(newValue)
+    })
   }
 }
 ```
@@ -30,6 +30,7 @@ App settings are user-configurable options that control how your application beh
 - **User-friendly**: Displayed in the MentraOS app with proper UI controls
 
 Settings allow users to customize aspects like:
+
 - Display preferences (langauges, layouts)
 - Feature toggles (enable/disable functionality)
 - User login or API keys
@@ -40,21 +41,23 @@ Settings are defined in the developer console. Go to [console.mentra.glass/apps]
 
 ![App Settings Section](/img/settings-editor.png)
 
- * **`key`**: The unique identifier for the setting, used in your app code
- * **`label`**: The human-readable name of the setting shown in the settings UI
- * **`defaultValue`**: The default value for the setting
- * **`type`**: The type of the setting (toggle, text, select, etc.)
- * **`options`**: For select settings, a list of allowed values
-    * **`label`**: The human-readable name of the option shown in the settings UI
-    * **`value`**: The unique value of the option, used in your app code
- * **`min`** and **`max`**: For slider settings, the minimum and maximum values
+- **`key`**: The unique identifier for the setting, used in your app code
+- **`label`**: The human-readable name of the setting shown in the settings UI
+- **`defaultValue`**: The default value for the setting
+- **`type`**: The type of the setting (toggle, text, select, etc.)
+- **`options`**: For select settings, a list of allowed values
+  - **`label`**: The human-readable name of the option shown in the settings UI
+  - **`value`**: The unique value of the option, used in your app code
+- **`min`** and **`max`**: For slider settings, the minimum and maximum values
 
 ### Setting Types
 
 MentraOS supports several setting types:
 
 #### Toggle (Boolean)
+
 On/off switches for boolean values.
+
 ```json
 {
   "type": "toggle",
@@ -65,7 +68,9 @@ On/off switches for boolean values.
 ```
 
 #### Text Input
+
 Text input with a save button, that only updates when the user presses the save button.
+
 ```json
 {
   "type": "text",
@@ -76,7 +81,9 @@ Text input with a save button, that only updates when the user presses the save 
 ```
 
 #### Text (No Save Button)
-Multi-line text input without save button.  It saves whenever the user makes a change.
+
+Multi-line text input without save button. It saves whenever the user makes a change.
+
 ```json
 {
   "type": "text_no_save_button",
@@ -88,55 +95,63 @@ Multi-line text input without save button.  It saves whenever the user makes a c
 ```
 
 #### Select (Dropdown)
-Single choice from predefined options.  The default value should be a single value matching the value of one of the options.
+
+Single choice from predefined options. The default value should be a single value matching the value of one of the options.
+
 ```json
 {
   "type": "select",
   "key": "theme",
   "label": "Color Theme",
   "options": [
-    { "label": "Light", "value": "light" },
-    { "label": "Dark", "value": "dark" },
-    { "label": "Auto", "value": "auto" }
+    {"label": "Light", "value": "light"},
+    {"label": "Dark", "value": "dark"},
+    {"label": "Auto", "value": "auto"}
   ],
   "defaultValue": "auto"
 }
 ```
 
 #### Select with Search
-Dropdown with search functionality for long lists.  The default value should be a single value matching the value of one of the options.
+
+Dropdown with search functionality for long lists. The default value should be a single value matching the value of one of the options.
+
 ```json
 {
   "type": "select_with_search",
   "key": "language",
   "label": "Language",
   "options": [
-    { "label": "English", "value": "en" },
-    { "label": "Spanish", "value": "es" },
-    { "label": "French", "value": "fr" }
+    {"label": "English", "value": "en"},
+    {"label": "Spanish", "value": "es"},
+    {"label": "French", "value": "fr"}
   ],
   "defaultValue": "en"
 }
 ```
 
 #### Multiselect
-Multiple choices from options.  The default value should be an array of values (which may be empty).
+
+Multiple choices from options. The default value should be an array of values (which may be empty).
+
 ```json
 {
   "type": "multiselect",
   "key": "enabled_features",
   "label": "Enabled Features",
   "options": [
-    { "label": "Auto-save", "value": "autosave" },
-    { "label": "Notifications", "value": "notifications" },
-    { "label": "Analytics", "value": "analytics" }
+    {"label": "Auto-save", "value": "autosave"},
+    {"label": "Notifications", "value": "notifications"},
+    {"label": "Analytics", "value": "analytics"}
   ],
   "defaultValue": ["autosave"]
 }
 ```
 
 #### Slider
+
 Numeric value selection.
+
 ```json
 {
   "type": "slider",
@@ -149,7 +164,9 @@ Numeric value selection.
 ```
 
 #### Group
-Organize settings into logical sections.  Displays the title as a group seperator.  Use this to delieate the start of a new section of settings.
+
+Organize settings into logical sections. Displays the title as a group seperator. Use this to delieate the start of a new section of settings.
+
 ```json
 {
   "type": "group",
@@ -158,7 +175,9 @@ Organize settings into logical sections.  Displays the title as a group seperato
 ```
 
 #### Title/Value Display
+
 Read-only display of information, shown in the UI as the title (label) and the value.
+
 ```json
 {
   "type": "titleValue",
@@ -176,23 +195,23 @@ For additional information on the types, see [Setting Types Reference](/referenc
 The app session provides a `settings` property with methods to access and monitor settings:
 
 ```typescript
-import { AppServer, AppSession } from '@mentra/sdk';
+import {AppServer, AppSession} from "@mentra/sdk"
 
 export class MyAppServer extends AppServer {
   protected async onSession(session: AppSession, sessionId: string, userId: string): Promise<void> {
     // Get a setting value with type safety
-    const fontSize = session.settings.get<number>('font_size', 16);
-    const theme = session.settings.get<string>('theme', 'auto');
+    const fontSize = session.settings.get<number>("font_size", 16)
+    const theme = session.settings.get<string>("theme", "auto")
 
     // Check if a setting exists
-    if (session.settings.has('show_subtitles')) {
-      const showSubtitles = session.settings.get<boolean>('show_subtitles');
-      this.toggleSubtitles(showSubtitles);
+    if (session.settings.has("show_subtitles")) {
+      const showSubtitles = session.settings.get<boolean>("show_subtitles")
+      this.toggleSubtitles(showSubtitles)
     }
 
     // Get all settings
-    const allSettings = session.settings.getAll();
-    console.log('Current settings:', allSettings);
+    const allSettings = session.settings.getAll()
+    console.log("Current settings:", allSettings)
   }
 }
 ```
@@ -202,34 +221,34 @@ export class MyAppServer extends AppServer {
 React to setting changes in real-time:
 
 ```typescript
-import { AppServer, AppSession } from '@mentra/sdk';
+import {AppServer, AppSession} from "@mentra/sdk"
 
 export class MyAppServer extends AppServer {
-  private cleanupHandlers: Array<() => void> = [];
+  private cleanupHandlers: Array<() => void> = []
 
   protected async onSession(session: AppSession, sessionId: string, userId: string): Promise<void> {
     // Listen for any setting change
-    const cleanup1 = session.settings.onChange((changes) => {
-      console.log('Settings changed:', changes);
+    const cleanup1 = session.settings.onChange(changes => {
+      console.log("Settings changed:", changes)
       // changes is a map of key -> { oldValue, newValue }
       for (const [key, change] of Object.entries(changes)) {
-        console.log(`${key}: ${change.oldValue} → ${change.newValue}`);
+        console.log(`${key}: ${change.oldValue} → ${change.newValue}`)
       }
-    });
+    })
 
     // Listen for specific setting changes
-    const cleanup2 = session.settings.onValueChange('theme', (newTheme, oldTheme) => {
-      console.log(`Theme changed from ${oldTheme} to ${newTheme}`);
-      this.applyTheme(newTheme);
-    });
+    const cleanup2 = session.settings.onValueChange("theme", (newTheme, oldTheme) => {
+      console.log(`Theme changed from ${oldTheme} to ${newTheme}`)
+      this.applyTheme(newTheme)
+    })
 
     // Store cleanup functions
-    this.cleanupHandlers.push(cleanup1, cleanup2);
+    this.cleanupHandlers.push(cleanup1, cleanup2)
   }
 
   protected async onStop(sessionId: string, userId: string, reason: string): Promise<void> {
     // Clean up listeners
-    this.cleanupHandlers.forEach(cleanup => cleanup());
+    this.cleanupHandlers.forEach(cleanup => cleanup())
   }
 }
 ```
@@ -239,26 +258,26 @@ export class MyAppServer extends AppServer {
 ### Feature Toggles
 
 ```typescript
-import { AppServer, AppSession } from '@mentra/sdk';
+import {AppServer, AppSession} from "@mentra/sdk"
 
 export class FeatureToggleServer extends AppServer {
   protected async onSession(session: AppSession, sessionId: string, userId: string): Promise<void> {
     // Check initial state
-    this.updateFeatures(session);
+    this.updateFeatures(session)
 
     // Listen for toggle changes
-    session.settings.onValueChange('enable_advanced_mode', (enabled) => {
-      this.updateFeatures(session);
-    });
+    session.settings.onValueChange("enable_advanced_mode", enabled => {
+      this.updateFeatures(session)
+    })
   }
 
   private updateFeatures(session: AppSession): void {
-    const advancedMode = session.settings.get<boolean>('enable_advanced_mode', false);
+    const advancedMode = session.settings.get<boolean>("enable_advanced_mode", false)
 
     if (advancedMode) {
-      this.enableAdvancedFeatures();
+      this.enableAdvancedFeatures()
     } else {
-      this.disableAdvancedFeatures();
+      this.disableAdvancedFeatures()
     }
   }
 }
@@ -267,33 +286,33 @@ export class FeatureToggleServer extends AppServer {
 ### Language Selection
 
 ```typescript
-import { AppServer, AppSession } from '@mentra/sdk';
+import {AppServer, AppSession} from "@mentra/sdk"
 
 export class MultilingualServer extends AppServer {
   protected async onSession(session: AppSession, sessionId: string, userId: string): Promise<void> {
-    const language = session.settings.get<string>('ui_language', 'en');
-    this.setLanguage(language);
+    const language = session.settings.get<string>("ui_language", "en")
+    this.setLanguage(language)
 
     // Update subscriptions based on language
-    this.updateTranscriptionSubscription(session);
+    this.updateTranscriptionSubscription(session)
 
     // Listen for language changes
-    session.settings.onValueChange('ui_language', (newLang) => {
-      this.setLanguage(newLang);
-      this.updateTranscriptionSubscription(session);
-    });
+    session.settings.onValueChange("ui_language", newLang => {
+      this.setLanguage(newLang)
+      this.updateTranscriptionSubscription(session)
+    })
   }
 
   private updateTranscriptionSubscription(session: AppSession): void {
-    const transcribeLang = session.settings.get<string>('transcribe_language', 'en-US');
+    const transcribeLang = session.settings.get<string>("transcribe_language", "en-US")
 
     // Unsubscribe from all transcription streams
-    session.events.unsubscribe('transcription');
+    session.events.unsubscribe("transcription")
 
     // Subscribe to language-specific stream
-    session.onTranscriptionForLanguage(transcribeLang, (data) => {
-      this.handleTranscription(data);
-    });
+    session.onTranscriptionForLanguage(transcribeLang, data => {
+      this.handleTranscription(data)
+    })
   }
 }
 ```
@@ -301,6 +320,7 @@ export class MultilingualServer extends AppServer {
 ## Best Practices
 
 ### 1. Provide Sensible Defaults
+
 Always specify appropriate default values that work for most users:
 
 ```typescript
@@ -322,6 +342,7 @@ Always specify appropriate default values that work for most users:
 ```
 
 ### 2. Group Related Settings
+
 Use group settings to organize related options:
 
 ```typescript
@@ -338,6 +359,7 @@ Use group settings to organize related options:
 ```
 
 ### 3. Use Descriptive Labels
+
 Make settings self-explanatory:
 
 ```typescript
@@ -355,27 +377,28 @@ Make settings self-explanatory:
 ```
 
 ### 4. Clean Up Listeners
+
 Remove setting change listeners when your app stops:
 
 ```typescript
-import { AppServer, AppSession } from '@mentra/sdk';
+import {AppServer, AppSession} from "@mentra/sdk"
 
 export class CleanupExampleServer extends AppServer {
-  private settingsCleanup: Array<() => void> = [];
+  private settingsCleanup: Array<() => void> = []
 
   protected async onSession(session: AppSession, sessionId: string, userId: string): Promise<void> {
     // Store cleanup functions
     this.settingsCleanup.push(
-      session.settings.onValueChange('setting1', this.handleSetting1),
-      session.settings.onValueChange('setting2', this.handleSetting2),
-      session.settings.onChange(this.handleAnyChange)
-    );
+      session.settings.onValueChange("setting1", this.handleSetting1),
+      session.settings.onValueChange("setting2", this.handleSetting2),
+      session.settings.onChange(this.handleAnyChange),
+    )
   }
 
   protected async onStop(sessionId: string, userId: string, reason: string): Promise<void> {
     // Clean up all listeners
-    this.settingsCleanup.forEach(cleanup => cleanup());
-    this.settingsCleanup = [];
+    this.settingsCleanup.forEach(cleanup => cleanup())
+    this.settingsCleanup = []
   }
 }
 ```
@@ -385,13 +408,13 @@ export class CleanupExampleServer extends AppServer {
 1. **Definition**: Settings are defined in the developer console
 2. **Storage**: Settings are stored in MentraOS Cloud
 3. **Synchronization**: When an app starts, settings are automatically loaded
-4. **User Changes**: Users modify settings through the MentraOS manager app
+4. **User Changes**: Users modify settings through the MentraOS Mobile App
 5. **Real-time Sync**: Changes are immediately pushed to running apps
 6. **Persistence**: Settings persist across app restarts and devices
 
 ## Related Documentation
 
-* [Setting Types Reference](/reference/interfaces/setting-types) - Detailed type definitions for settings
-* [Settings Manager](/reference/managers/settings-manager) - API reference for the settings manager
-* [Getting Started with Apps](/getting-started) - Complete guide to building an app
-* [Core Concepts](/core-concepts) - Understanding app architecture
+- [Setting Types Reference](/reference/interfaces/setting-types) - Detailed type definitions for settings
+- [Settings Manager](/reference/managers/settings-manager) - API reference for the settings manager
+- [Getting Started with Apps](/getting-started) - Complete guide to building an app
+- [Core Concepts](/core-concepts) - Understanding app architecture
