@@ -150,7 +150,7 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
     private final int MAIN_TASK_HANDLER_CODE_RECONNECT_GATT = 360;
     private final int MAIN_TASK_HANDLER_CODE_SCAN_START = 410;
     private final int MAIN_TASK_HANDLER_CODE_SCAN_END = 420;
-    //actions of NEX Glasses
+    // actions of NEX Glasses
     private final int MAIN_TASK_HANDLER_CODE_BATTERY_QUERY = 620;
     private final int MAIN_TASK_HANDLER_CODE_HEART_BEAT = 630;
     private final Handler mainTaskHandler = new Handler(Looper.getMainLooper(), new Callback() {
@@ -184,10 +184,9 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
                     break;
                 case MAIN_TASK_HANDLER_CODE_SCAN_END:
                     break;
-                case MAIN_TASK_HANDLER_CODE_BATTERY_QUERY:
-                    {
-                        queryBatteryStatus();
-                    }
+                case MAIN_TASK_HANDLER_CODE_BATTERY_QUERY: {
+                    queryBatteryStatus();
+                }
                     break;
                 case MAIN_TASK_HANDLER_CODE_HEART_BEAT:
                     sendHeartbeat();
@@ -224,14 +223,11 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
     private final int MAX_RECONNECT_DELAY_MS = 60000;
 
     // heartbeat sender
-    private Handler heartbeatHandler = new Handler();
     private Handler findCompatibleDevicesHandler;
     private boolean isScanningForCompatibleDevices = false;
     private boolean isScanning = false;
 
     private ScanCallback bleScanCallback;
-
-    private Runnable heartbeatRunnable;
 
     // mic heartbeat turn on
     private Handler micBeatHandler = new Handler();
@@ -242,7 +238,7 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
     private boolean whiteListedAlready = false;
 
     // mic enable Handler
-    private Handler micEnableHandler = new Handler();
+    private final Handler micEnableHandler = new Handler();
     private boolean micEnabledAlready = false;
     private boolean isMicrophoneEnabled = false; // Track current microphone state
 
@@ -265,8 +261,7 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
     private String preferredMainDeviceId = null;
 
     // Retry handler
-    Handler retryBondHandler;
-    private final long BOND_RETRY_DELAY_MS = 5000; // 5-second backoff
+    private final int BOND_RETRY_DELAY_MS = 5000; // 5-second backoff
 
     // remember when we connected
     private long lastConnectionTimestamp = 0;
@@ -275,7 +270,6 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
     private final long CONNECTION_TIMEOUT_MS = 10000; // 10 seconds
 
     // Runnable tasks for handling timeouts
-    private Runnable mainConnectionTimeoutRunnable;
     private boolean isBondingReceiverRegistered = false;
     private boolean shouldUseGlassesMic;
     private boolean lastThingDisplayedWasAnImage = false;
@@ -284,7 +278,7 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
     // fonts in NexGlasses
     private G1FontLoader fontLoader;
 
-    private final long DEBOUNCE_DELAY_MS = 270; // Minimum time between chunk sends
+    private final int DEBOUNCE_DELAY_MS = 270; // Minimum time between chunk sends
     private volatile long lastSendTimestamp = 0;
     private long lc3DecoderPtr = 0;
 
@@ -548,7 +542,7 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
                 // sendDataSequentially(new byte[]{(byte) 0xF4, (byte) 0x01});
 
                 // no longer need to be staggered as we fixed the sender
-                // do first battery status query 
+                // do first battery status query
                 mainTaskHandler.sendEmptyMessageDelayed(MAIN_TASK_HANDLER_CODE_BATTERY_QUERY, 10);
 
                 // setup brightness
@@ -599,7 +593,7 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
         Log.d(TAG, "PROC_QUEUE - waiting to enable it on this side: ");
 
         try {
-            Thread.sleep(500);
+            Thread.sleep(100);
         } catch (InterruptedException e) {
             Log.e(TAG, "Error sending data: " + e.getMessage());
         }
@@ -625,9 +619,7 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
             // e.printStackTrace();
             // }
             connectionEvent(connectionState);
-        } else
-
-        {
+        } else{
             connectionState = SmartGlassesConnectionState.DISCONNECTED;
             Log.d(TAG, "No Main glasses connected");
             connectionEvent(connectionState);
@@ -756,9 +748,9 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
             // if (name == null || !name.contains("Even G1_")) {
             // return;
             // }
-//            if (name == null || !name.toUpperCase().startsWith("E2:D5")) {
-//                return;
-//            }
+            // if (name == null || !name.toUpperCase().startsWith("E2:D5")) {
+            // return;
+            // }
             Log.d(TAG, " === New Device is Found ===" + name + " " + device.getAddress());
             Log.d(TAG, " === new Glasses Device Information ===");
 
@@ -1055,30 +1047,6 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
     private void sendDataSequentially(List<byte[]> data) {
         sendDataSequentially(data, false);
     }
-
-    // private void sendDataSequentially(byte[] data, boolean onlyLeft) {
-    // if (stopper) return;
-    // stopper = true;
-    //
-    // new Thread(() -> {
-    // try {
-    // if (leftGlassGatt != null && leftTxChar != null) {
-    // leftTxChar.setValue(data);
-    // leftGlassGatt.writeCharacteristic(leftTxChar);
-    // Thread.sleep(DELAY_BETWEEN_SENDS_MS);
-    // }
-    //
-    // if (!onlyLeft && rightGlassGatt != null && rightTxChar != null) {
-    // rightTxChar.setValue(data);
-    // rightGlassGatt.writeCharacteristic(rightTxChar);
-    // Thread.sleep(DELAY_BETWEEN_SENDS_MS);
-    // }
-    // stopper = false;
-    // } catch (InterruptedException e) {
-    // Log.e(TAG, "Error sending data: " + e.getMessage());
-    // }
-    // }).start();
-    // }
 
     // Data class to represent a send request
     private class SendRequest {
@@ -1392,10 +1360,6 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
         if (mainTaskHandler != null) {
             mainTaskHandler.removeCallbacksAndMessages(null);
         }
-
-        if (heartbeatHandler != null) {
-            heartbeatHandler.removeCallbacks(heartbeatRunnable);
-        }
         if (whiteListHandler != null) {
             whiteListHandler.removeCallbacksAndMessages(null);
         }
@@ -1412,9 +1376,6 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
         // goHomeHandler.removeCallbacks(goHomeRunnable);
         if (findCompatibleDevicesHandler != null) {
             findCompatibleDevicesHandler.removeCallbacksAndMessages(null);
-        }
-        if (retryBondHandler != null) {
-            retryBondHandler.removeCallbacksAndMessages(null);
         }
         // free LC3 decoder
         if (lc3DecoderPtr != 0) {
@@ -1555,18 +1516,6 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
     public void setFontSizes() {
     }
 
-    // Heartbeat methods for g1
-    private byte[] constructHeartbeat() {
-        ByteBuffer buffer = ByteBuffer.allocate(6);
-        buffer.put((byte) 0x25);
-        buffer.put((byte) 6);
-        buffer.put((byte) (currentSeq & 0xFF));
-        buffer.put((byte) 0x00);
-        buffer.put((byte) 0x04);
-        buffer.put((byte) (currentSeq++ & 0xFF));
-        return buffer.array();
-    }
-
     // get the final full binary packet
     private byte[] generateJsonCommandBytes(PhoneToGlasses phoneToGlasses) {
         final byte[] contentBytes = phoneToGlasses.toByteArray();
@@ -1585,24 +1534,19 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
 
         // Create the PhoneToGlasses using its builder and set the DisplayText
         PhoneToGlasses phoneToGlasses = PhoneToGlasses.newBuilder()
-                .setPing(pingNewBuilder) // This expects a DisplayText object, not a builder
+                .setPing(pingNewBuilder) 
                 .build();
 
         return generateJsonCommandBytes(phoneToGlasses);
     }
 
     private byte[] constructBatteryLevelQuery() {
-        // ByteBuffer buffer = ByteBuffer.allocate(2);
-        // buffer.put((byte) 0x2C); // Command
-        // buffer.put((byte) 0x01); // use 0x02 for iOS
-        // Ï return buffer.array();
-
         BatteryStateRequest batteryStateRequest = BatteryStateRequest.newBuilder()
                 .build();
 
-        // Create the PhoneToGlasses using its builder and set the DisplayText
+        // Create the PhoneToGlasses using its builder and set the batteryStateRequest
         PhoneToGlasses phoneToGlasses = PhoneToGlasses.newBuilder()
-                .setBatteryState(batteryStateRequest) // This expects a DisplayText object, not a builder
+                .setBatteryState(batteryStateRequest) 
                 .build();
 
         return generateJsonCommandBytes(phoneToGlasses);
@@ -1611,13 +1555,10 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
 
     private void startHeartbeat(int delay) {
         Log.d(TAG, "Starting heartbeat");
-        if (heartbeatCount > 0)
-        {
+        if (heartbeatCount > 0) {
             stopHeartbeat();
         }
-
         mainTaskHandler.sendEmptyMessageDelayed(MAIN_TASK_HANDLER_CODE_HEART_BEAT, delay);
-
     }
 
     // periodically send a mic ON request so it never turns off
@@ -1679,8 +1620,8 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
                 String name = device.getName();
                 String address = device.getAddress();
                 // if (name != null && name.contains("Even G1_") && name.contains("_L_")) {
-                //if (name != null && name.toUpperCase().startsWith("E2:D5")) {
-                if (name != null  ) {
+                // if (name != null && name.toUpperCase().startsWith("E2:D5")) {
+                if (name != null) {
                     Log.d(TAG, "bleScanCallback onScanResult: " + name + " address " + device.getAddress());
                     synchronized (foundDeviceNames) {
                         if (!foundDeviceNames.contains(name)) {
@@ -1769,11 +1710,8 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
     }
 
     private void sendHeartbeat() {
-        // for G1
-        // byte[] heartbeatPacket = constructHeartbeat();
         // for Mentra Nex Glasses
         byte[] heartbeatPacket = constructHeartbeatForNexGlasses();
-        // Log.d(TAG, "Sending heartbeat: " + bytesToHex(heartbeatPacket));
 
         sendDataSequentially(heartbeatPacket, false, 100);
 
@@ -1794,7 +1732,6 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
 
     public void sendBrightnessCommand(int brightness, boolean autoLight) {
         // Validate brightness range
-
         int validBrightness;
         if (brightness != -1) {
             validBrightness = (brightness * 63) / 100;
@@ -1932,7 +1869,7 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
 
                 // Create the PhoneToGlasses using its builder and set the DisplayText
                 PhoneToGlasses phoneToGlasses = PhoneToGlasses.newBuilder()
-                        .setMicState(micStateConfig) // This expects a DisplayText object, not a builder
+                        .setMicState(micStateConfig) 
                         .build();
 
                 byte[] micConfigBytes = generateJsonCommandBytes(phoneToGlasses);
@@ -2129,10 +2066,33 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
         Log.d(TAG, "createTextWallChunksForNex textNewBuilder:" + textNewBuilder.toString());
         // Create the PhoneToGlasses using its builder and set the DisplayText
         PhoneToGlasses phoneToGlasses = PhoneToGlasses.newBuilder()
-                .setDisplayText(textNewBuilder) // This expects a DisplayText object, not a builder
+                .setDisplayText(textNewBuilder) 
                 .build();
 
         return generateJsonCommandBytes(phoneToGlasses);
+    }
+
+    private byte[] createTextWallChunksForNexForJson(String text) {
+
+        DisplayTextJson displayText = new DisplayTextJson();
+        displayText.setText(text);
+        displayText.setSize(20);
+        final String jsonData = gson.toJson(displayText);
+
+        Log.d(TAG, "createTextWallChunksForNext json " + jsonData);
+
+        byte[] contentBytes = jsonData.getBytes(StandardCharsets.UTF_8);
+
+        ByteBuffer chunk = ByteBuffer.allocate(contentBytes.length + 1);
+        // Create the PhoneToGlasses using its builder and set the DisplayText
+
+        chunk.put(PACKET_TYPE_JSON);
+        chunk.put(contentBytes);
+
+        byte[] result = new byte[chunk.position()];
+        chunk.flip();
+        chunk.get(result);
+        return result;
     }
 
     // create a VerticalScrollingfor Nex glasses
@@ -2152,9 +2112,9 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
                 .setY(50)
                 .build();
 
-        // Create the PhoneToGlasses using its builder and set the DisplayText
+        // Create the PhoneToGlasses using its builder and set the DisplayScrollingText
         PhoneToGlasses phoneToGlasses = PhoneToGlasses.newBuilder()
-                .setDisplayScrollingText(textNewBuilder) // This expects a DisplayText object, not a builder
+                .setDisplayScrollingText(textNewBuilder) 
                 .build();
 
         return generateJsonCommandBytes(phoneToGlasses);
@@ -2189,7 +2149,7 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
 
         // Create the PhoneToGlasses using its builder and set the DisplayText
         PhoneToGlasses phoneToGlasses = PhoneToGlasses.newBuilder()
-                .setDisplayImage(displayImage) // This expects a DisplayText object, not a builder
+                .setDisplayImage(displayImage) 
                 .build();
 
         return generateJsonCommandBytes(phoneToGlasses);
@@ -2450,6 +2410,7 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
                 Log.d(TAG, "Sent text wall " + sampleText + " to NexGlasses ");
 
                 byte[] singleChunks = createTextWallChunksForNex(sampleText);
+                // byte[] singleChunks = createTextWallChunksForNexForJson(sampleText);
                 sendDataSequentially(singleChunks);
             }
 
@@ -2578,30 +2539,6 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
             // }
         }
     }
-
-    // public int DEFAULT_CARD_SHOW_TIME = 6;
-    // public void homeScreenInNSeconds(int n){
-    // if (n == -1){
-    // return;
-    // }
-    //
-    // if (n == 0){
-    // n = DEFAULT_CARD_SHOW_TIME;
-    // }
-    //
-    // //disconnect after slight delay, so our above text gets a chance to show up
-    // goHomeHandler.removeCallbacksAndMessages(goHomeRunnable);
-    // goHomeHandler.removeCallbacksAndMessages(null);
-    // goHomeRunnable = new Runnable() {
-    // @Override
-    // public void run() {
-    // showHomeScreen();
-    // }};
-    // goHomeHandler.postDelayed(goHomeRunnable, n * 1000);
-    // }
-
-    // BMP handling
-
     // Add these class variables
     private final byte[] GLASSES_ADDRESS = new byte[] { 0x00, 0x1c, 0x00, 0x00 };
     private final byte[] END_COMMAND = new byte[] { 0x20, 0x0d, 0x0e };
@@ -3118,6 +3055,81 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
         } catch (Exception e) {
             Log.e(TAG, "Error decoding manufacturer data: " + e.getMessage());
             return null;
+        }
+    }
+
+    private class DisplayTextJson {
+        private String type;
+        private String msg_id;
+        private String text;
+        private String color;
+        private String font_code;
+        private int x;
+        private int y;
+        private int size;
+
+        public String getType() {
+            return type;
+        }
+
+        public void setType(String type) {
+            this.type = type;
+        }
+
+        public String getMsg_id() {
+            return msg_id;
+        }
+
+        public void setMsg_id(String msg_id) {
+            this.msg_id = msg_id;
+        }
+
+        public String getColor() {
+            return color;
+        }
+
+        public void setColor(String color) {
+            this.color = color;
+        }
+
+        public String getFont_code() {
+            return font_code;
+        }
+
+        public void setFont_code(String font_code) {
+            this.font_code = font_code;
+        }
+
+        public int getX() {
+            return x;
+        }
+
+        public void setX(int x) {
+            this.x = x;
+        }
+
+        public int getY() {
+            return y;
+        }
+
+        public void setY(int y) {
+            this.y = y;
+        }
+
+        public int getSize() {
+            return size;
+        }
+
+        public void setSize(int size) {
+            this.size = size;
+        }
+
+        public String getText() {
+            return text;
+        }
+
+        public void setText(String text) {
+            this.text = text;
         }
     }
 }
