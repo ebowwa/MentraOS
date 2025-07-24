@@ -13,6 +13,7 @@ MentraOS supports different types of smart glasses through a modular architectur
 ## What is a SmartGlassesCommunicator (SGC)?
 
 A SmartGlassesCommunicator (SGC) is the bridge between MentraOS and your specific smart glasses hardware. It handles:
+
 - Bluetooth/USB connection to the glasses
 - Translating MentraOS commands to your glasses' protocol
 - Sending display data, audio, and control commands
@@ -60,12 +61,12 @@ package com.augmentos.augmentos_core.smarterglassesmanager.smartglassescommunica
 
 public class YourGlassesSGC extends SmartGlassesCommunicator {
     private static final String TAG = "YourGlassesSGC";
-    
+
     // BLE Service and Characteristic UUIDs
     private static final String SERVICE_UUID = "your-service-uuid";
     private static final String RX_CHAR_UUID = "your-rx-characteristic-uuid";
     private static final String TX_CHAR_UUID = "your-tx-characteristic-uuid";
-    
+
     // Constructor
     public YourGlassesSGC(Context context, String glassesId) {
         super(context, glassesId);
@@ -82,10 +83,10 @@ public class YourGlassesSGC extends SmartGlassesCommunicator {
 @Override
 public void findCompatibleDeviceNames() {
     BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
-    
+
     if (adapter != null && adapter.isEnabled()) {
         Set<BluetoothDevice> pairedDevices = adapter.getBondedDevices();
-        
+
         for (BluetoothDevice device : pairedDevices) {
             String deviceName = device.getName();
             if (deviceName != null && isYourGlassesDevice(deviceName)) {
@@ -99,7 +100,7 @@ public void findCompatibleDeviceNames() {
             }
         }
     }
-    
+
     // Signal search complete
     EventBus.getDefault().post(
         new GlassesBluetoothSearchStopEvent(deviceModelName)
@@ -113,7 +114,7 @@ public void findCompatibleDeviceNames() {
 @Override
 public void connectToSmartGlasses() {
     connectionEvent(SmartGlassesConnectionState.CONNECTING);
-    
+
     BluetoothDevice device = bluetoothAdapter.getRemoteDevice(deviceMacAddress);
     bluetoothGatt = device.connectGatt(context, false, gattCallback);
 }
@@ -185,7 +186,7 @@ public static SmartGlassesDevice getSmartGlassesDeviceFromModelName(String model
             // ... other devices
         )
     );
-    
+
     for (SmartGlassesDevice device : allDevices) {
         if (device.deviceModelName.equals(modelName)) {
             return device;
@@ -199,33 +200,33 @@ public static SmartGlassesDevice getSmartGlassesDeviceFromModelName(String model
 
 In `SmartGlassesRepresentative.java`, update the `createCommunicator()` method:
 
-```java
+````java
 private SmartGlassesCommunicator createCommunicator() {
     SmartGlassesCommunicator communicator;
-    
+
     switch (smartGlassesDevice.getGlassesOs()) {
         // ... existing cases
-        
+
         case YOUR_GLASSES_OS:
             communicator = new YourGlassesSGC(context, smartGlassesDevice);
             break;
-            
+
         default:
             return null;
     }
-    
+
     // Register audio callback if needed
     if (communicator != null && audioProcessingCallback != null) {
         communicator.registerAudioProcessingCallback(audioProcessingCallback);
     }
-    
+
     return communicator;
 }
 
 
 ## UI Integration
 
-After creating your SGC, update the MentraOS Manager app UI:
+After creating your SGC, update the MentraOS Mobile App UI:
 
 ### 1. Add to Glasses Model List
 
@@ -241,7 +242,7 @@ const glassesOptions = Platform.select({
     // Add here if iOS is supported
   ],
 })
-```
+````
 
 ### 2. Define Glasses Features
 
@@ -278,12 +279,12 @@ const YourGlassesPairingGuide = () => (
   <View>
     <Text style={styles.subtitle}>How to pair Your Glasses:</Text>
     <Text style={styles.instructions}>
-      1. Turn on your glasses{'\n'}
-      2. Enable Bluetooth pairing mode{'\n'}
+      1. Turn on your glasses{"\n"}
+      2. Enable Bluetooth pairing mode{"\n"}
       3. Select your glasses from the list
     </Text>
   </View>
-);
+)
 ```
 
 Update `mobile/src/utils/getPairingGuide.tsx`:
