@@ -33,6 +33,22 @@ A more comprehensive example that includes additional features beyond the basic 
 
 **Best for:** Developers who have completed the quickstart and want to explore more advanced features
 
+### Hangman Game
+
+**Repository:** [Hangman](https://github.com/Mentra-Community/Hangman)
+
+**Mentra Store:** [Download the app](https://apps.mentra.glass/package/com.mentra.hangman)
+
+A classic hangman game that demonstrates how to display bitmap images on glasses with HUD displays. This example shows advanced display capabilities beyond simple text.
+
+**Features:**
+
+- **Bitmap image rendering** - Shows how to create and display custom graphics on the HUD
+- **Game state visualization** - Updates hangman drawing as the game progresses
+- **Interactive gameplay** - Combines voice input with visual feedback
+
+**Best for:** Learning how to work with bitmap images and create graphical interfaces for HUD glasses
+
 ## Advanced Examples
 
 ### Mira AI Assistant
@@ -84,3 +100,4 @@ To use any of these examples:
 - **Have HUD glasses and want advanced features?** Try the [Extended Example](https://github.com/Mentra-Community/MentraOS-Extended-Example-App)
 - **Have camera-only glasses (like Mentra Live)?** Use the [Camera Example](https://github.com/Mentra-Community/photo-taker)
 - **Want to see TTS, camera, and adaptive capabilities?** Check out [Mira AI Assistant](https://github.com/Mentra-Community/Mira)
+- **Want to display bitmap images on HUD glasses?** Try the [Hangman Game](https://github.com/Mentra-Community/Hangman)
