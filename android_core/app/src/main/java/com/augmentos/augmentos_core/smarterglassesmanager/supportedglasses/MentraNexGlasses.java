@@ -3,8 +3,8 @@ package com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses;
 import com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses.SmartGlassesDevice;
 import com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses.SmartGlassesOperatingSystem;
 
-public class MentraNextGlasses extends SmartGlassesDevice {
-    public MentraNextGlasses() {
+public class MentraNexGlasses extends SmartGlassesDevice {
+    public MentraNexGlasses() {
         deviceModelName = "Mentra Nex";
         deviceIconName = "er_g1";
         anySupport = true;
