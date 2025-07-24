@@ -113,7 +113,7 @@ struct ViewState {
   
   // MARK: - Public Methods (for React Native)
   
-  @objc public func setup() {
+  public func setup() {
     
     self.micManager = OnboardMicrophoneManager()
     self.serverComms.locationManager.setup()
@@ -149,7 +149,6 @@ struct ViewState {
     } else if (wearable.contains("Mach1") && self.mach1Manager == nil) {
 //      self.mach1Manager = Mach1Manager.shared
       self.mach1Manager = Mach1Manager()
-
     }
     initManagerCallbacks()
   }
@@ -182,9 +181,7 @@ struct ViewState {
       // listen to headUp events:
       g1Manager!.$isHeadUp.sink { [weak self] (value: Bool) in
         guard let self = self else { return }
-        self.sendCurrentState(value)
-        // Send head position to server
-        ServerComms.getInstance().sendHeadPosition(isUp: value)
+        updateHeadUp(value)
       }.store(in: &cancellables)
       
       // listen to case events:
@@ -347,7 +344,19 @@ struct ViewState {
         self.serverComms.sendBatteryStatus(level: self.batteryLevel, charging: false);
         handleRequestStatus()
       }.store(in: &cancellables)
+      
+      mach1Manager!.$isHeadUp.sink { [weak self] (value: Bool) in
+        CoreCommsService.log("MACH1 glasses head up changed to: \(value)")
+        guard let self = self else { return }
+        updateHeadUp(value)
+      }.store(in: &cancellables)
     }
+  }
+  
+  func updateHeadUp(_ isHeadUp: Bool) {
+    self.isHeadUp = isHeadUp
+    self.sendCurrentState(isHeadUp)
+    ServerComms.getInstance().sendHeadPosition(isUp: isHeadUp)
   }
   
   @objc func connectServer() {
@@ -389,34 +398,6 @@ struct ViewState {
     
     let audioManager = AudioManager.getInstance()
     audioManager.stopAllAudio()
-  }
-  
-  /**
-   * Send audio play response back to React Native through ServerComms
-   */
-  func sendAudioPlayResponse(requestId: String, success: Bool, error: String? = nil, duration: Double? = nil) {
-    CoreCommsService.log("AOSManager: Sending audio play response for requestId: \(requestId), success: \(success)")
-    
-    let message: [String: Any] = [
-      "command": "audio_play_response",
-      "params": [
-        "requestId": requestId,
-        "success": success,
-        "error": error as Any,
-        "duration": duration as Any
-      ].compactMapValues { $0 }
-    ]
-    
-    do {
-      let jsonData = try JSONSerialization.data(withJSONObject: message)
-      if let jsonString = String(data: jsonData, encoding: .utf8) {
-        //        serverComms.sendMessageToServer(message: jsonString)
-        serverComms.wsManager.sendText(jsonString)
-        CoreCommsService.log("AOSManager: Sent audio play response to server")
-      }
-    } catch {
-      CoreCommsService.log("AOSManager: Failed to serialize audio play response: \(error)")
-    }
   }
   
   func onConnectionAck() {
@@ -607,9 +588,7 @@ struct ViewState {
           // Attempt to connect using saved device name
           if !self.deviceName.isEmpty {
             self.handleConnectWearable(modelName: self.defaultWearable, deviceName: self.deviceName)
-            
-            // Notify user about the auto-connection attempt
-            self.sendText("Auto-connecting to \(self.defaultWearable)")
+
           } else {
             CoreCommsService.log("No saved device name found for auto-connection")
           }
@@ -745,7 +724,8 @@ struct ViewState {
       case "double_text_wall":
         let topText = currentViewState.topText
         let bottomText = currentViewState.bottomText
-        self.g1Manager?.RN_sendDoubleTextWall(topText, bottomText);
+        self.g1Manager?.sendDoubleTextWall(topText, bottomText);
+        self.mach1Manager?.sendDoubleTextWall(topText, bottomText);
         break
       case "reference_card":
         sendText(currentViewState.topText + "\n\n" + currentViewState.title);
@@ -784,7 +764,8 @@ struct ViewState {
         break
       case "clear_view":
         CoreCommsService.log("AOS: Processing clear_view layout - clearing display")
-        self.g1Manager?.RN_clearDisplay()
+        self.g1Manager?.clearDisplay()
+        self.mach1Manager?.clearDisplay()
         break
       default:
         CoreCommsService.log("UNHANDLED LAYOUT_TYPE \(layoutType)")
@@ -907,7 +888,7 @@ struct ViewState {
     
     self.viewStates[stateIndex] = newViewState
     
-    let headUp = self.g1Manager?.isHeadUp ?? false
+    let headUp = self.isHeadUp
     // send the state we just received if the user is currently in that state:
     if (stateIndex == 0 && !headUp) {
       sendCurrentState(false)
@@ -968,44 +949,48 @@ struct ViewState {
       onMicrophoneStateChange(self.micEnabled)
     }
   }
-  
+
+  private func clearDisplay() {
+
+    self.mach1Manager?.clearDisplay()
+
+    if (self.defaultWearable.contains("G1")) {
+      self.g1Manager?.sendTextWall(" ")
+
+      // clear the screen after 3 seconds if the text is empty or a space:
+      if (self.powerSavingMode) {
+        sendStateWorkItem?.cancel()
+        CoreCommsService.log("AOS: Clearing display after 3 seconds")
+        // if we're clearing the display, after a delay, send a clear command if not cancelled with another
+        let workItem = DispatchWorkItem { [weak self] in
+          guard let self = self else { return }
+          if self.isHeadUp {
+            return
+          }
+          self.g1Manager?.clearDisplay()
+        }
+        sendStateWorkItem = workItem
+        sendStateQueue.asyncAfter(deadline: .now() + 3, execute: workItem)
+      }
+    }
+    
+
+  }
+
   private func sendText(_ text: String) {
     // CoreCommsService.log("AOS: Sending text: \(text)")
     if self.defaultWearable.contains("Simulated") || self.defaultWearable.isEmpty {
       return
     }
-    
-    // Send to appropriate manager based on device type
-    if self.defaultWearable.contains("G1") {
-      self.g1Manager?.RN_sendTextWall(text)
-    } else if self.defaultWearable.contains("Mach1") {
-      self.mach1Manager?.RN_sendTextWall(text)
+
+
+    if text == " " || text.isEmpty {
+      clearDisplay()
+      return
     }
     
-    // cancel any pending clear display work item:
-    // TODO: this doesn't seem to work:
-    sendStateWorkItem?.cancel()
-    
-    // clear the screen after 3 seconds if the text is empty or a space:
-    if (text == " " || text == "") && self.powerSavingMode {
-      sendStateWorkItem?.cancel()
-      CoreCommsService.log("AOS: Clearing display after 3 seconds")
-      // if we're clearing the display, after a delay, send a clear command if not cancelled with another
-      let workItem = DispatchWorkItem { [weak self] in
-        guard let self = self else { return }
-        CoreCommsService.log("isDashboard: \(self.isHeadUp)")
-        if self.isHeadUp {
-          return
-        }
-        if self.defaultWearable.contains("G1") {
-          self.g1Manager?.RN_clearDisplay()
-        } else if self.defaultWearable.contains("Mach1") {
-          self.mach1Manager?.RN_clearDisplay()
-        }
-      }
-      sendStateWorkItem = workItem
-      sendStateQueue.asyncAfter(deadline: .now() + 3, execute: workItem)
-    }
+    self.g1Manager?.sendTextWall(text)
+    self.mach1Manager?.sendTextWall(text)
   }
   
   
@@ -1340,11 +1325,6 @@ struct ViewState {
             break
           }
           stopApp(target)
-          break
-        case .unknown:
-          CoreCommsService.log("AOS: Unknown command type: \(commandString)")
-          handleRequestStatus()
-        case .ping:
           break
         case .updateGlassesHeadUpAngle:
           guard let params = params, let value = params["headUpAngle"] as? Int else {
@@ -1719,7 +1699,7 @@ struct ViewState {
   private func handleMach1Ready() {
     CoreCommsService.log("AOS: Mach1 device ready")
     self.isSearching = false
-    self.defaultWearable = "Mach1 Ultralite"
+    self.defaultWearable = "Mentra Mach1"
     self.handleRequestStatus()
     
     Task {

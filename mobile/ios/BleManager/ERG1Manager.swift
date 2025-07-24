@@ -549,7 +549,7 @@ enum GlassesError: Error {
     //    }
   }
   
-  @objc public func RN_sendTextWall(_ text: String) -> Void {
+  public func sendTextWall(_ text: String) -> Void {
     let chunks = textHelper.createTextWallChunks(text)
     queueChunks(chunks, sleepAfterMs: 10)
   }
@@ -562,7 +562,7 @@ enum GlassesError: Error {
     }
   }
   
-  @objc public func RN_sendDoubleTextWall(_ top: String, _ bottom: String) -> Void {
+  @objc public func sendDoubleTextWall(_ top: String, _ bottom: String) -> Void {
     let chunks = textHelper.createDoubleTextWallChunks(textTop: top, textBottom: bottom)
     queueChunks(chunks, sleepAfterMs: 10)
     
@@ -1618,7 +1618,7 @@ extension ERG1Manager {
   }
   
   /// Clear display using MentraOS's 0x18 command (exit to dashboard)
-  public func RN_clearDisplay() {
+  public func clearDisplay() {
     CoreCommsService.log("G1: RN_clearDisplay() - Using 0x18 exit command")
     Task {
       
