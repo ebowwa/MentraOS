@@ -127,7 +127,7 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: "category",
-      label: "👥 Contributing",
+      label: "Contributing",
       link: {
         type: "doc",
         id: "contributing",

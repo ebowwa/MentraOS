@@ -1,6 +1,6 @@
 ---
 id: contributing
-title: 👥 Contributing Guide
+title: Contributing Guide
 sidebar_position: 20
 ---
 

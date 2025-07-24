@@ -1,6 +1,6 @@
 ---
 id: index
-title: 👋 Intro
+title: Intro
 slug: /
 ---
 
