@@ -143,7 +143,7 @@ struct ViewState {
             g1Manager = ERG1Manager.shared
         } else if wearable.contains("Live"), liveManager == nil {
             liveManager = MentraLiveManager()
-        } else if wearable.contains("Mach1") || wearable.contains("Z100"), mach1Manager == nil {
+        } else if wearable.contains("Mach1"), mach1Manager == nil {
             mach1Manager = Mach1Manager()
         }
         initManagerCallbacks()
@@ -1010,12 +1010,8 @@ struct ViewState {
             defaultWearable = "Mentra Live"
             initManager(defaultWearable)
             liveManager?.findCompatibleDevices()
-        } else if modelName.contains("Mach1") {
+        } else if modelName.contains("Mach1") || modelName.contains("Z100") {
             defaultWearable = "Mach1"
-            initManager(defaultWearable)
-            mach1Manager?.findCompatibleDevices()
-        } else if modelName.contains("Z100") {
-            defaultWearable = "Z100"
             initManager(defaultWearable)
             mach1Manager?.findCompatibleDevices()
         }
@@ -1386,7 +1382,7 @@ struct ViewState {
         if defaultWearable.contains("Live") {
             return false
         }
-        if defaultWearable.contains("Mach1") || defaultWearable.contains("Z100") {
+        if defaultWearable.contains("Mach1") {
             return false
         }
         return false
@@ -1638,7 +1634,7 @@ struct ViewState {
             // Send startup message
             sendText("MENTRAOS CONNECTED")
             try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
-            sendText(" ") // clear screen
+            clearDisplay()
 
             self.handleRequestStatus()
         }
@@ -1696,7 +1692,7 @@ struct ViewState {
                     self.defaultWearable = ""
                     handleRequestStatus()
                 }
-            } else if self.defaultWearable.contains("Mach1") || self.defaultWearable.contains("Z100") {
+            } else if self.defaultWearable.contains("Mach1") {
                 initManager(self.defaultWearable)
                 if self.deviceName != "" {
                     CoreCommsService.log("AOS: pairing Mach1 by id: \(self.deviceName)")
