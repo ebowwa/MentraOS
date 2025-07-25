@@ -738,6 +738,7 @@ struct ViewState {
         }
         CoreCommsService.log("AOS: Processing bitmap_view with base64 data, length: \(data.count)")
         await self.g1Manager?.displayBitmap(base64ImageData: data)
+        await self.mach1Manager?.displayBitmap(base64ImageData: data)
         break
       case "bitmap_animation":
         CoreCommsService.log("AOS: Processing bitmap_animation layout")

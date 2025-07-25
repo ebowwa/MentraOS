@@ -180,44 +180,44 @@ class Mach1Manager: UltraliteBaseViewController {
   }
   
   func sendDoubleTextWall(_ topText: String, _ bottomText: String) {
-      guard let device = UltraliteManager.shared.currentDevice else {
-          CoreCommsService.log("Mach1Manager: No current device")
-          ready = false
-          return
-      }
-      
-      if !device.isConnected.value {
-          CoreCommsService.log("Mach1Manager: Device not connected")
-          ready = false
-          return
-      }
-      
-      CoreCommsService.log("MACH1: Sending double text wall - top: \(topText), bottom: \(bottomText)")
-      
-      // Clean the text (remove any special characters if needed)
-      let cleanedTopText = topText
-      let cleanedBottomText = bottomText
-      
-      // Count newlines in top text
-      let newlineCount = cleanedTopText.filter { $0 == "\n" }.count
-      
-      // Calculate rows to add between top and bottom (3 minus existing newlines)
-      let rowsTop = 3 - newlineCount
-      
-      // Build combined text
-      var combinedText = cleanedTopText
-      
-      // Add empty lines between top and bottom
-      for _ in 0..<rowsTop {
-          combinedText += "\n"
-      }
-      
-      // Add bottom text
-      combinedText += cleanedBottomText
-      
-      // Send the combined text
-      device.sendText(text: combinedText)
-      device.canvas.commit()
+    guard let device = UltraliteManager.shared.currentDevice else {
+      CoreCommsService.log("Mach1Manager: No current device")
+      ready = false
+      return
+    }
+    
+    if !device.isConnected.value {
+      CoreCommsService.log("Mach1Manager: Device not connected")
+      ready = false
+      return
+    }
+    
+    CoreCommsService.log("MACH1: Sending double text wall - top: \(topText), bottom: \(bottomText)")
+    
+    // Clean the text (remove any special characters if needed)
+    let cleanedTopText = topText
+    let cleanedBottomText = bottomText
+    
+    // Count newlines in top text
+    let newlineCount = cleanedTopText.filter { $0 == "\n" }.count
+    
+    // Calculate rows to add between top and bottom (3 minus existing newlines)
+    let rowsTop = 3 - newlineCount
+    
+    // Build combined text
+    var combinedText = cleanedTopText
+    
+    // Add empty lines between top and bottom
+    for _ in 0..<rowsTop {
+      combinedText += "\n"
+    }
+    
+    // Add bottom text
+    combinedText += cleanedBottomText
+    
+    // Send the combined text
+    device.sendText(text: combinedText)
+    device.canvas.commit()
   }
   
   
@@ -282,6 +282,53 @@ class Mach1Manager: UltraliteBaseViewController {
     UltraliteManager.shared.setBluetoothManger()
     let scanResult = UltraliteManager.shared.startScan(callback: foundDevice)
     CoreCommsService.log("Mach1: \(scanResult)")
+  }
+  
+  public func displayBitmap(base64ImageData: String) async -> Bool {
+    guard let bmpData = Data(base64Encoded: base64ImageData) else {
+      CoreCommsService.log("MACH1: Failed to decode base64 image data")
+      return false
+    }
+    
+    CoreCommsService.log("MACH1: ✅ Successfully decoded base64 image data to \(bmpData.count) bytes")
+    
+    // Convert data to UIImage
+    guard let uiImage = UIImage(data: bmpData) else {
+      CoreCommsService.log("MACH1: Failed to create UIImage from data")
+      return false
+    }
+    
+    // Resize the image to 620x460
+    let targetSize = CGSize(width: 620, height: 460)
+    UIGraphicsBeginImageContextWithOptions(targetSize, false, 0.0)
+    uiImage.draw(in: CGRect(origin: .zero, size: targetSize))
+    let resizedImage = UIGraphicsGetImageFromCurrentImageContext()
+    UIGraphicsEndImageContext()
+    
+    guard let resizedImage = resizedImage,
+          let cgImage = resizedImage.cgImage else {
+      CoreCommsService.log("MACH1: Failed to resize image or get CGImage")
+      return false
+    }
+    
+    guard let device = UltraliteManager.shared.currentDevice else {
+      CoreCommsService.log("MACH1: No current device")
+      return false
+    }
+    
+    if !device.isConnected.value {
+      CoreCommsService.log("MACH1: Device not connected")
+      return false
+    }
+    
+    CoreCommsService.log("MACH1: Sending bitmap")
+    
+    // Draw the background image at position (50, 80)
+    //      device.canvas.drawBackground(image: cgImage, x: 50, y: 80)
+    device.canvas.drawBackground(image: cgImage, x: 50, y: 80)
+    device.canvas.commit()
+    
+    return true
   }
   
   override func viewDidLoad() {
