@@ -91,7 +91,7 @@ class Mach1Manager: UltraliteBaseViewController {
     
     switch tapNumberInt {
     case 2:
-      CoreCommsService.log("MACH1: Double tap")
+    case 3:
       isHeadUp = !isHeadUp
     default:
       CoreCommsService.log("MACH1: Tap count \(tapNumberInt)")

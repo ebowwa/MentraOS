@@ -86,13 +86,17 @@ struct BufferedCommand {
   let sendRight: Bool
   let waitTime: Int
   let ignoreAck: Bool
+  let chunkTimeMs: Int
+  let lastFrameMs: Int
   
-  init(chunks: [[UInt8]], sendLeft: Bool = true, sendRight: Bool = true, waitTime: Int = -1, ignoreAck: Bool = false) {
+  init(chunks: [[UInt8]], sendLeft: Bool = true, sendRight: Bool = true, waitTime: Int = -1, ignoreAck: Bool = false, chunkTimeMs: Int = 10, lastFrameMs: Int = 0) {
     self.chunks = chunks
     self.sendLeft = sendLeft
     self.sendRight = sendRight
     self.waitTime = waitTime
     self.ignoreAck = ignoreAck
+    self.chunkTimeMs = chunkTimeMs
+    self.lastFrameMs = lastFrameMs
   }
 }
 
@@ -790,11 +794,11 @@ enum GlassesError: Error {
     semaphore.wait(timeout: .now() + 0.001)
   }
   
-  private func attemptSend(chunks: [[UInt8]], side: String) async {
+  private func attemptSend(cmd: BufferedCommand, side: String) async {
     var maxAttempts = 5
     var attempts: Int = 0
     var success: Bool = false
-    var semaphore = side == "L" ? leftSemaphore : rightSemaphore
+    let chunks = cmd.chunks
     
     while attempts < maxAttempts && !success {
       if (attempts > 0) {
@@ -810,8 +814,11 @@ enum GlassesError: Error {
       
       for i in 0..<chunks.count-1 {
         let chunk = chunks[i]
+        
+        let firstFewBytes = String(Data(chunk).hexEncodedString().prefix(16))
+        CoreCommsService.log("SEND (\(side)) \(firstFewBytes)")
         await sendCommandToSideWithoutResponse(chunk, side: side)
-        try? await Task.sleep(nanoseconds: 8 * 1_000_000)// 8ms
+        try? await Task.sleep(nanoseconds: UInt64(cmd.chunkTimeMs) * 1_000_000)// 8ms
       }
       
       let lastChunk = chunks.last!
@@ -823,7 +830,24 @@ enum GlassesError: Error {
         sequenceNumber = Int(lastChunk[1])
       }
       
-      CoreCommsService.log("G1: SENDING with sequenceNumber: \(sequenceNumber)")
+      if (lastChunk[0] == 0x16) {
+        sequenceNumber = Int(lastChunk[1])
+      }
+      
+      if cmd.lastFrameMs > 0 {
+        try? await Task.sleep(nanoseconds: UInt64(cmd.lastFrameMs) * 1_000_000)// 100ms
+      }
+      
+      let firstFewBytes = String(Data(lastChunk).hexEncodedString().prefix(16))
+      CoreCommsService.log("SEND (\(side)) \(firstFewBytes)")
+      
+//      if (lastChunk[0] == 0x4E) {
+//        sequenceNumber = Int(lastChunk[1])
+//      }
+      
+//      CoreCommsService.log("G1: SENDING with sequenceNumber: \(sequenceNumber)")
+      
+      
       
       success = await sendCommandToSide2(lastChunk, side: side, attemptNumber: attempts, sequenceNumber: sequenceNumber)
       // CoreCommsService.log("command success: \(success)")
@@ -854,13 +878,13 @@ enum GlassesError: Error {
     await withTaskGroup(of: Void.self) { group in
       if command.sendLeft {
         group.addTask {
-          await self.attemptSend(chunks: command.chunks, side: "L")
+          await self.attemptSend(cmd: command, side: "L")
         }
       }
       
       if command.sendRight {
         group.addTask {
-          await self.attemptSend(chunks: command.chunks, side: "R")
+          await self.attemptSend(cmd: command, side: "R")
         }
       }
       
@@ -873,7 +897,7 @@ enum GlassesError: Error {
       try? await Task.sleep(nanoseconds: UInt64(command.waitTime) * 1_000_000)
     } else {
       // sleep for a min amount of time unless otherwise specified
-      try? await Task.sleep(nanoseconds: 10 * 1_000_000)// Xms
+      try? await Task.sleep(nanoseconds: 8 * 1_000_000)// Xms
     }
   }
   
@@ -981,8 +1005,11 @@ enum GlassesError: Error {
       handleAck(from: peripheral, success: data[1] == 0x07 || data[1] == 0x90 || data[1] == 0x0C)
     case .HEAD_UP_ANGLE:
       handleAck(from: peripheral, success: data[1] == CommandResponse.ACK.rawValue)
-      // head up angle ack
-      // position ack
+      
+    case .CRC_CHECK:
+      handleAck(from: peripheral, success: true, sequenceNumber: Int(data[1]))
+    case .BMP_END:
+      handleAck(from: peripheral, success: data[1] == CommandResponse.ACK.rawValue)
     case .SILENT_MODE:
       handleAck(from: peripheral, success: data[1] == CommandResponse.ACK.rawValue)
     case .BLE_REQ_TRANSFER_MIC_DATA:
@@ -1396,8 +1423,8 @@ extension ERG1Manager {
     // No waiting for ACK - fire and forget for speed
   }
   
-  public func queueChunks(_ chunks: [[UInt8]], sendLeft: Bool = true, sendRight: Bool = true, sleepAfterMs: Int = 0, ignoreAck: Bool = false) {
-    let bufferedCommand = BufferedCommand(chunks: chunks, sendLeft: sendLeft, sendRight: sendRight, waitTime: sleepAfterMs, ignoreAck: ignoreAck);
+  public func queueChunks(_ chunks: [[UInt8]], sendLeft: Bool = true, sendRight: Bool = true, sleepAfterMs: Int = 0, ignoreAck: Bool = false, chunkTimeMs: Int = 8, lastFrameMs: Int = 100) {
+    let bufferedCommand = BufferedCommand(chunks: chunks, sendLeft: sendLeft, sendRight: sendRight, waitTime: sleepAfterMs, ignoreAck: ignoreAck, chunkTimeMs: chunkTimeMs, lastFrameMs: lastFrameMs);
     Task {
       await commandQueue.enqueue(bufferedCommand)
     }
@@ -1573,46 +1600,16 @@ extension ERG1Manager {
   
   // MARK: - Enhanced BMP Display Methods
   
-  /// Progress callback for BMP operations
-  public typealias BmpProgressCallback = (String, Int, Int, Int) -> Void
-  public typealias BmpSuccessCallback = (String) -> Void
-  public typealias BmpErrorCallback = (String, String) -> Void
-  
-  public func displayBitmap(base64ImageData: String,
-                            onProgress: BmpProgressCallback? = nil,
-                            onSuccess: BmpSuccessCallback? = nil,
-                            onError: BmpErrorCallback? = nil) async -> Bool {
+  public func displayBitmap(base64ImageData: String) async -> Bool {
     
     guard let bmpData = Data(base64Encoded: base64ImageData) else {
       CoreCommsService.log("G1: Failed to decode base64 image data")
-      onError?("both", "Failed to decode base64 image data")
       return false
     }
     
     CoreCommsService.log("G1: ✅ Successfully decoded base64 image data to \(bmpData.count) bytes")
-    // CoreCommsService.log("🔍 First 10 bytes from hex: \(Array(bmpData.prefix(10)).map { String(format: "0x%02X", $0) }.joined(separator: " "))")
-    
     let invertedBmpData = invertBmpPixels(bmpData)
-    // Debug: Check if we have any non-FF bytes in pixel data
-    let pixelData = bmpData.dropFirst(62)
-    let nonFFCount = pixelData.filter { $0 != 0xFF }.count
-    // CoreCommsService.log("G1: 🎨 iOS decoded: \(nonFFCount) black pixels out of \(pixelData.count) bytes")
-    
-    // Show first few non-FF bytes
-    let nonFFBytes = Array(pixelData.enumerated().filter { $0.element != 0xFF }.prefix(5))
-    let nonFFDebug = nonFFBytes.map { "pos \($0.offset)=0x\(String(format: "%02X", $0.element))" }.joined(separator: ", ")
-    // CoreCommsService.log("G1: 🔍 iOS non-FF bytes: \(nonFFDebug)")
-    
-    // Debug: show hex sample received
-    // CoreCommsService.log("G1: 🔍 iOS received hex sample (chars 100-200): \(hexString.dropFirst(100).prefix(100))")
-    
-    // CRITICAL: Check if data is still good right before calling display function
-    let pixelCheck = bmpData.dropFirst(62)
-    let blackCheck = pixelCheck.filter { $0 != 0xFF }.count
-    // CoreCommsService.log("G1: 🔍 Just before display call: \(blackCheck) black pixels - DATA IS \(blackCheck > 0 ? "GOOD" : "CORRUPTED")")
-    
-    // CoreCommsService.log("G1: 🖼️ Single frame: Using fast MentraOS transmission method")
-    let result = await displayBitmapDataMentraOS(bmpData: invertedBmpData, sendLeft: true, sendRight: true, onProgress: onProgress, onSuccess: onSuccess, onError: onError)
+    let result = await sendBmp(bmpData: invertedBmpData)
     CoreCommsService.log("G1: 🖼️ Single frame: Transmission \(result ? "SUCCESS" : "FAILED")")
     return result
   }
@@ -1655,168 +1652,6 @@ extension ERG1Manager {
     }
   }
   
-  // MARK: - Animation Batching (iOS-Controlled Timing)
-  
-  /// Display animation from batched frames with iOS-controlled timing
-  public func RN_displayBitmapAnimation(_ framesJson: String, interval: Double, shouldRepeat: Bool) {
-    CoreCommsService.log("G1: RN_displayBitmapAnimation() - Frames JSON size: \(framesJson.count), interval: \(interval)ms, repeat: \(shouldRepeat)")
-    
-    // Parse frames from JSON
-    guard let framesData = framesJson.data(using: .utf8),
-          let frames = try? JSONSerialization.jsonObject(with: framesData) as? [String] else {
-      CoreCommsService.log("G1: ❌ Failed to parse animation frames JSON")
-      return
-    }
-    
-    Task {
-      await startBitmapAnimation(frames: frames, interval: interval / 1000.0, shouldRepeat: shouldRepeat)
-    }
-  }
-  
-  /// Start bitmap animation with iOS-controlled timing
-  private func startBitmapAnimation(frames: [String], interval: TimeInterval, shouldRepeat: Bool) async {
-    // Stop any existing animation
-    stopBitmapAnimation()
-    
-    // Setup animation parameters
-    self.animationFrames = frames
-    self.animationInterval = interval
-    self.animationRepeat = shouldRepeat
-    self.currentFrameIndex = 0
-    self.isAnimationRunning = true
-    
-    CoreCommsService.log("G1: 🎬 Starting iOS-controlled animation: \(frames.count) frames at \(Int(interval * 1000))ms intervals")
-    
-    // Display first frame immediately
-    if !frames.isEmpty {
-      await displayAnimationFrame(frames[0], frameNumber: 1, totalFrames: frames.count)
-      currentFrameIndex = 1
-    }
-    
-    // Start iOS timer for subsequent frames (one-shot to prevent overlap)
-    DispatchQueue.main.async {
-      self.animationTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: false) { [weak self] _ in
-        self?.displayNextFrame()
-      }
-    }
-  }
-  
-  /// Display next frame in animation sequence
-  private func displayNextFrame() {
-    guard isAnimationRunning else { return }
-    
-    // Check if we've reached the end
-    if currentFrameIndex >= animationFrames.count {
-      if animationRepeat {
-        // Restart animation
-        currentFrameIndex = 0
-        CoreCommsService.log("G1: 🔄 Animation loop: restarting from frame 1")
-      } else {
-        // Stop animation
-        stopBitmapAnimation()
-        CoreCommsService.log("G1: 🏁 Animation completed")
-        return
-      }
-    }
-    
-    // Display current frame
-    let frameData = animationFrames[currentFrameIndex]
-    let frameNumber = currentFrameIndex + 1
-    
-    // CRITICAL FIX: Stop timer while displaying frame to prevent overlap
-    animationTimer?.invalidate()
-    CoreCommsService.log("G1: ⏰ Timer invalidated, starting frame \(frameNumber) display...")
-    
-    Task {
-      let startTime = Date()
-      await self.displayAnimationFrame(frameData, frameNumber: frameNumber, totalFrames: self.animationFrames.count)
-      let frameDisplayTime = Date().timeIntervalSince(startTime)
-      
-      CoreCommsService.log("G1: ✅ Frame \(frameNumber) completed in \(Int(frameDisplayTime * 1000))ms, scheduling next frame in \(Int(self.animationInterval * 1000))ms")
-      
-      // Schedule next frame after display completes + interval delay
-      DispatchQueue.main.async {
-        guard self.isAnimationRunning else {
-          CoreCommsService.log("G1: 🛑 Animation stopped, not scheduling next frame")
-          return
-        }
-        CoreCommsService.log("G1: ⏰ Scheduling next frame timer...")
-        self.animationTimer = Timer.scheduledTimer(withTimeInterval: self.animationInterval, repeats: false) { [weak self] _ in
-          CoreCommsService.log("G1: ⏰ Timer fired for next frame!")
-          self?.displayNextFrame()
-        }
-      }
-    }
-    
-    currentFrameIndex += 1
-  }
-  
-  /// Display single animation frame using our proven sequential method
-  private func displayAnimationFrame(_ hexData: String, frameNumber: Int, totalFrames: Int) async {
-    let intervalMs = Int(animationInterval * 1000)
-    CoreCommsService.log("G1: 🎬 Frame \(frameNumber)/\(totalFrames): iOS-controlled timing (\(intervalMs)ms interval)")
-    
-    // Use our proven sequential display method
-    await displayBitmapFromHex(hexString: hexData)
-  }
-  
-  /// Stop bitmap animation
-  public func RN_stopBitmapAnimation() {
-    stopBitmapAnimation()
-  }
-  
-  private func stopBitmapAnimation() {
-    guard isAnimationRunning else { return }
-    
-    isAnimationRunning = false
-    animationTimer?.invalidate()
-    animationTimer = nil
-    
-    CoreCommsService.log("G1: ⏹️ iOS animation stopped")
-  }
-  
-  /// Start local BMP animation (HACKY SOLUTION)
-  @objc public func RN_startLocalAnimation() {
-    CoreCommsService.log("G1: 🎬 RN_startLocalAnimation() - Starting 10-frame local animation")
-    Task {
-      await startLocalBMPAnimation()
-    }
-  }
-  
-  /// Local BMP animation (HACKY SOLUTION - eliminates network timing)
-  private func startLocalBMPAnimation() async {
-    CoreCommsService.log("G1: 🎬 Starting local BMP animation with known-working data")
-    
-    // Create a simple test BMP pattern that should display
-    let testPatternHex = createTestBMPHex()
-    
-    CoreCommsService.log("G1: 🔄 Starting animation loop with 1250ms timing (like MentraOS)")
-    
-    // Animation loop - 10 frames, 1250ms each (like MentraOS timing)
-    for frameIndex in 1...10 {
-      CoreCommsService.log("G1: 🖼️ Displaying local frame \(frameIndex)")
-      
-      // Use our working hex display method
-      let success = await displayBitmapFromHex(hexString: testPatternHex,
-                                               onProgress: nil,
-                                               onSuccess: nil,
-                                               onError: nil)
-      
-      if success {
-        CoreCommsService.log("✅ Local frame \(frameIndex) displayed successfully")
-      } else {
-        CoreCommsService.log("❌ Local frame \(frameIndex) failed")
-      }
-      
-      // MentraOS timing: 1250ms between frames
-      if frameIndex < 10 {
-        try? await Task.sleep(nanoseconds: 1_250_000_000) // 1250ms
-      }
-    }
-    
-    CoreCommsService.log("🏁 Local animation completed")
-  }
-  
   /// Create a simple test BMP pattern in hex format
   private func createTestBMPHex() -> String {
     // BMP header for 576x135 1-bit monochrome (from our working data)
@@ -1838,47 +1673,6 @@ extension ERG1Manager {
     }
     
     return header + pixelData
-  }
-  
-  /// Display bitmap from hex string using MentraOS-compatible protocol
-  public func displayBitmapFromHex(hexString: String,
-                                   onProgress: BmpProgressCallback? = nil,
-                                   onSuccess: BmpSuccessCallback? = nil,
-                                   onError: BmpErrorCallback? = nil) async -> Bool {
-    
-    guard let bmpData = Data(hexString: hexString) else {
-      CoreCommsService.log("G1: Failed to decode hex image data")
-      onError?("both", "Failed to decode hex image data")
-      return false
-    }
-    
-    CoreCommsService.log("G1: 🔍 iOS hex decoded image data: \(bmpData.map { String(format: "%02X", $0) }.joined(separator: " "))")
-    
-    CoreCommsService.log("G1: ✅ Successfully decoded hex to \(bmpData.count) bytes")
-    // CoreCommsService.log("🔍 First 10 bytes from hex: \(Array(bmpData.prefix(10)).map { String(format: "0x%02X", $0) }.joined(separator: " "))")
-    
-    // Debug: Check if we have any non-FF bytes in pixel data
-    let pixelData = bmpData.dropFirst(62)
-    let nonFFCount = pixelData.filter { $0 != 0xFF }.count
-    // CoreCommsService.log("G1: 🎨 iOS decoded: \(nonFFCount) black pixels out of \(pixelData.count) bytes")
-    
-    // Show first few non-FF bytes
-    let nonFFBytes = Array(pixelData.enumerated().filter { $0.element != 0xFF }.prefix(5))
-    let nonFFDebug = nonFFBytes.map { "pos \($0.offset)=0x\(String(format: "%02X", $0.element))" }.joined(separator: ", ")
-    // CoreCommsService.log("G1: 🔍 iOS non-FF bytes: \(nonFFDebug)")
-    
-    // Debug: show hex sample received
-    // CoreCommsService.log("G1: 🔍 iOS received hex sample (chars 100-200): \(hexString.dropFirst(100).prefix(100))")
-    
-    // CRITICAL: Check if data is still good right before calling display function
-    let pixelCheck = bmpData.dropFirst(62)
-    let blackCheck = pixelCheck.filter { $0 != 0xFF }.count
-    // CoreCommsService.log("G1: 🔍 Just before display call: \(blackCheck) black pixels - DATA IS \(blackCheck > 0 ? "GOOD" : "CORRUPTED")")
-    
-    // CoreCommsService.log("G1: 🖼️ Single frame: Using fast MentraOS transmission method")
-    let result = await displayBitmapDataMentraOS(bmpData: bmpData, sendLeft: true, sendRight: true, onProgress: onProgress, onSuccess: onSuccess, onError: onError)
-    CoreCommsService.log("G1: 🖼️ Single frame: Transmission \(result ? "SUCCESS" : "FAILED")")
-    return result
   }
   
   private func invertBmpPixels(_ bmpData: Data) -> Data {
@@ -1904,13 +1698,8 @@ extension ERG1Manager {
     return invertedData
   }
   
-  /// Core MentraOS-compatible BMP display implementation
-  private func displayBitmapDataMentraOS(bmpData: Data,
-                                         sendLeft: Bool = true,
-                                         sendRight: Bool = true,
-                                         onProgress: BmpProgressCallback? = nil,
-                                         onSuccess: BmpSuccessCallback? = nil,
-                                         onError: BmpErrorCallback? = nil) async -> Bool {
+  // Core MentraOS-compatible BMP display implementation
+  private func sendBmp(bmpData: Data) async -> Bool {
     
     // Frame timing validation for animation smoothness
     let currentTime = Date()
@@ -1922,91 +1711,18 @@ extension ERG1Manager {
     
     CoreCommsService.log("G1: 🎬 Frame \(frameSequence): \(String(format: "%.0f", timeSinceLastFrame * 1000))ms since last frame")
     
-    // Skip duplicate prevention for animation frames
-    if !isAnimationRunning {
-      // Only apply lock for single BMP displays
-      if isDisplayingBMP {
-        let timeSinceStart = currentTime.timeIntervalSince(lastBMPStartTime)
-        if timeSinceStart > 2.0 {
-          CoreCommsService.log("G1: ⚠️ Force unlocking BMP display after \(String(format: "%.1f", timeSinceStart))s timeout")
-          isDisplayingBMP = false
-        } else {
-          CoreCommsService.log("G1: ⚠️ BMP display already in progress (started \(String(format: "%.1f", timeSinceStart))s ago), ignoring duplicate request")
-          return false
-        }
-      }
-      
-      lastBMPStartTime = currentTime
-      isDisplayingBMP = true
-      defer {
-        CoreCommsService.log("G1: 🏁 BMP display completed, releasing lock")
-        isDisplayingBMP = false
-      }
-    }
-    
-    CoreCommsService.log("G1: Starting MentraOS BMP display process - Size: \(bmpData.count) bytes")
-    
-    // CRITICAL: Check if bmpData is already corrupted at function entry
-    let pixelData = bmpData.dropFirst(62)
-    let blackPixels = pixelData.filter { $0 != 0xFF }.count
-    CoreCommsService.log("G1: 🔍 At function start: \(blackPixels) black pixels out of \(pixelData.count)")
-    
-    if blackPixels == 0 {
-      CoreCommsService.log("G1: ❌ CRITICAL ERROR: bmpData is already all white at function entry!")
-      let corruptSample = Array(bmpData[62..<82])
-      let corruptHex = corruptSample.map { String(format: "%02X", $0) }.joined(separator: " ")
-      CoreCommsService.log("G1: ❌ Corrupt pixel sample (62-82): \(corruptHex)")
-      return false
-    }
-    
-    // Debug: Check BMP content
-    if bmpData.count >= 100 {
-      let headerBytes = Array(bmpData.prefix(10))
-      CoreCommsService.log("G1: BMP Header: \(headerBytes.map { String(format: "0x%02X", $0) }.joined(separator: " "))")
-      
-      // Check some data bytes to ensure it's not all white
-      let sampleBytes = Array(bmpData[100..<110])
-      CoreCommsService.log("G1: Sample data bytes (100-110): \(sampleBytes.map { String(format: "0x%02X", $0) }.joined(separator: " "))")
-    }
-    
-    // Validate BMP format
-    guard bmpData.count >= 2 && bmpData[0] == 0x42 && bmpData[1] == 0x4D else {
-      CoreCommsService.log("G1: Invalid BMP format - missing BM signature")
-      onError?("both", "Invalid BMP format")
-      return false
-    }
-    
-    // Send HeartBeat first (MentraOS does this before BMP)
-    CoreCommsService.log("G1: Sending HeartBeat (0x25) before BMP - MentraOS format")
-    
-    // MentraOS HeartBeat format appears to be just 0x25 (simple single byte)
-    let heartbeatCommand: [UInt8] = [0x25]
-    
-    // Send heartbeat fast like MentraOS (no need to wait for ACK)
-    if sendLeft {
-      await sendCommandToSideWithoutResponse(heartbeatCommand, side: "L")
-      CoreCommsService.log("G1: HeartBeat sent to L (fast)")
-    }
-    if sendRight {
-      await sendCommandToSideWithoutResponse(heartbeatCommand, side: "R")
-      CoreCommsService.log("G1: HeartBeat sent to R (fast)")
-    }
-    
-    // Wait for heartbeat response (MentraOS timing - much faster)
-    try? await Task.sleep(nanoseconds: 10_000_000) // 10ms
-    
     // MentraOS constants - exact match
     let packLen = 194  // Exact chunk size from MentraOS
     let iosDelayMs = 8  // iOS delay from MentraOS
     let addressBytes: [UInt8] = [0x00, 0x1c, 0x00, 0x00]  // Address from MentraOS
     
-    // Debug: Check bmpData integrity before chunking
-    let pixelDataStart = 62
-    if bmpData.count > pixelDataStart + 50 {
-      let beforeChunkSample = Array(bmpData[pixelDataStart..<(pixelDataStart + 20)])
-      let beforeChunkHex = beforeChunkSample.map { String(format: "%02X", $0) }.joined(separator: " ")
-      CoreCommsService.log("G1: 🔍 Before chunking - pixel data sample (bytes 62-82): \(beforeChunkHex)")
-    }
+//    // Debug: Check bmpData integrity before chunking
+//    let pixelDataStart = 62
+//    if bmpData.count > pixelDataStart + 50 {
+//      let beforeChunkSample = Array(bmpData[pixelDataStart..<(pixelDataStart + 20)])
+//      let beforeChunkHex = beforeChunkSample.map { String(format: "%02X", $0) }.joined(separator: " ")
+//      CoreCommsService.log("G1: 🔍 Before chunking - pixel data sample (bytes 62-82): \(beforeChunkHex)")
+//    }
     
     // Create chunks exactly like MentraOS
     var multiPacks: [Data] = []
@@ -2028,161 +1744,56 @@ extension ERG1Manager {
     
     CoreCommsService.log("G1: Created \(multiPacks.count) packs from BMP data (MentraOS format)")
     
-    // Function to send to specific side using MentraOS protocol
-    func sendToSide(_ lr: String) async -> Bool {
-      let sideStartTime = Date()
-      CoreCommsService.log("G1: 📡 Starting \(lr) side transmission - \(multiPacks.count) chunks")
-      
-      // Send chunks with MentraOS formatting
-      for (packIndex, pack) in multiPacks.enumerated() {
-        let packData: Data
-        if packIndex == 0 {
-          // First package includes address: [0x15, index, address...]
-          var firstPacketData = Data([0x15, UInt8(packIndex & 0xff)])
-          firstPacketData.append(Data(addressBytes))
-          firstPacketData.append(pack)
-          packData = firstPacketData
-        } else {
-          // Subsequent packages: [0x15, index, data...]
-          var packetData = Data([0x15, UInt8(packIndex & 0xff)])
-          packetData.append(pack)
-          packData = packetData
-        }
-        
-        CoreCommsService.log("G1: Sending chunk \(packIndex) to \(lr), size: \(packData.count)")
-        
-        // Debug: Check what's actually in this pack
-        // if packIndex < 5 || packIndex > 45 {  // Show first few and last few chunks
-        //   let packBytes = Array(pack.prefix(20))
-        //   let packHex = packBytes.map { String(format: "%02X", $0) }.joined(separator: " ")
-        //   CoreCommsService.log("🔍 Pack \(packIndex) data sample: \(packHex)")
-        // }
-        
-        // Send directly like Flutter MentraOS (no retries, direct transmission with .withoutResponse)
-        await sendCommandToSideWithoutResponse(Array(packData), side: lr)
-        
-        // MentraOS timing - 8ms delay between chunks (iOS optimized)
-        if packIndex < multiPacks.count - 1 {
-          try? await Task.sleep(nanoseconds: 8_000_000) // 8ms like MentraOS iOS timing
-        }
-        
-        // Progress callback
-        let offset = packIndex * packLen
-        let adjustedOffset = min(offset, bmpData.count - pack.count)
-        onProgress?(lr, adjustedOffset, packIndex, bmpData.count)
-      }
-      
-      // Send finish command like MentraOS: [0x20, 0x0d, 0x0e]
-      CoreCommsService.log("G1: Sending finish command [0x20, 0x0d, 0x0e] to \(lr)")
-      
-      let isLeft = lr == "L"
-      let isRight = lr == "R"
-      
-      // Send finish command directly to ensure it gets sent (using fast method)
-      if isLeft {
-        await sendCommandToSideWithoutResponse([0x20, 0x0d, 0x0e], side: "L")
-      }
-      if isRight {
-        await sendCommandToSideWithoutResponse([0x20, 0x0d, 0x0e], side: "R")
-      }
-      
-      CoreCommsService.log("G1: Finish command sent to \(lr)")
-      
-      // Small delay after finish command (MentraOS timing)
-      try? await Task.sleep(nanoseconds: 10_000_000) // 10ms
-      
-      // CRC validation like MentraOS - frame 1 should be 0x1914adcf
-      var imageWithAddress = Data(addressBytes)
-      imageWithAddress.append(bmpData)
-      
-      // Calculate CRC32-XZ like MentraOS (not standard CRC32)
-      let crc32Value = calculateCRC32XZ(data: imageWithAddress)
-      let crcBytes = Data([
-        UInt8((crc32Value >> 24) & 0xff),
-        UInt8((crc32Value >> 16) & 0xff),
-        UInt8((crc32Value >> 8) & 0xff),
-        UInt8(crc32Value & 0xff)
-      ])
-      
-      var crcCommand = Data([0x16])
-      crcCommand.append(crcBytes)
-      
-      CoreCommsService.log("G1: Sending CRC command to \(lr): \(String(format: "%02X %02X %02X %02X", crcBytes[0], crcBytes[1], crcBytes[2], crcBytes[3]))")
-      CoreCommsService.log("G1: Expected for frame 1: 19 14 AD CF")
-      
-      // Send CRC directly like MentraOS (using fast method)
-      if isLeft {
-        await sendCommandToSideWithoutResponse(Array(crcCommand), side: "L")
-        CoreCommsService.log("G1: CRC sent to L")
-      }
-      if isRight {
-        await sendCommandToSideWithoutResponse(Array(crcCommand), side: "R")
-        CoreCommsService.log("G1: CRC sent to R")
-      }
-      
-      // Wait for CRC response (MentraOS timing)
-      try? await Task.sleep(nanoseconds: 10_000_000) // 10ms
-      
-      let sideElapsed = Date().timeIntervalSince(sideStartTime) * 1000
-      CoreCommsService.log("G1: 🏁 \(lr) side transmission completed in \(String(format: "%.0f", sideElapsed))ms")
-      
-      return true
-    }
+    var chunks: [[UInt8]] = []
     
-    // Send to both sides SEQUENTIALLY like MentraOS for perfect sync
-    // MentraOS sends left first, then right, with precise timing
-    var results: [(String, Bool)] = []
-    
-    // send to both sides at the same time:
-    
-    await withTaskGroup(of: Void.self) { group in
-      if sendLeft {
-        group.addTask {
-          let leftResult = await sendToSide("L")
-          results.append(("L", leftResult))
-        }
-      }
-      
-      if sendRight {
-        group.addTask {
-          let rightResult = await sendToSide("R")
-          results.append(("R", rightResult))
-        }
-      }
-      
-      // Wait for all tasks to complete
-      await group.waitForAll()
-    }
-    
-    // Check results with detailed synchronization status
-    var allSuccess = true
-    var successSides: [String] = []
-    var failedSides: [String] = []
-    
-    for (side, success) in results {
-      if success {
-        successSides.append(side)
-        CoreCommsService.log("G1: ✅ BMP display success for side \(side)")
+    // add bmp data chunks:
+    for (packIndex, pack) in multiPacks.enumerated() {
+      let packData: Data
+      if packIndex == 0 {
+        // First package includes address: [0x15, index, address...]
+        var firstPacketData = Data([0x15, UInt8(packIndex & 0xff)])
+        firstPacketData.append(Data(addressBytes))
+        firstPacketData.append(pack)
+        packData = firstPacketData
       } else {
-        failedSides.append(side)
-        allSuccess = false
-        CoreCommsService.log("G1: ❌ BMP display failed for side \(side)")
+        // Subsequent packages: [0x15, index, data...]
+        var packetData = Data([0x15, UInt8(packIndex & 0xff)])
+        packetData.append(pack)
+        packData = packetData
       }
+      
+      chunks.append(Array(packData))
     }
     
-    // Report synchronization status
-    if allSuccess {
-      onSuccess?("both")
-      CoreCommsService.log("G1: ✅ BMP display successful on both sides - SYNCHRONIZED")
-    } else if successSides.count > 0 {
-      CoreCommsService.log("G1: ⚠️ PARTIAL SUCCESS: \(successSides.joined(separator: ", ")) succeeded, \(failedSides.joined(separator: ", ")) failed - DESYNCHRONIZED")
-      onError?("both", "Partial failure - desynchronized")
-    } else {
-      CoreCommsService.log("G1: ❌ COMPLETE FAILURE: Both sides failed")
-      onError?("both", "BMP display failed")
-    }
+//    queueChunks(chunks)
+//    chunks.removeAll()
     
-    return allSuccess
+    // add end command:
+    chunks.append([0x20, 0x0d, 0x0e])
+    
+    queueChunks(chunks, sleepAfterMs: 1000, lastFrameMs: 400)
+    chunks.removeAll()
+    
+    
+    // CRC validation like MentraOS - frame 1 should be 0x1914adcf
+    var imageWithAddress = Data(addressBytes)
+    imageWithAddress.append(bmpData)
+    
+    // Calculate CRC32-XZ like MentraOS (not standard CRC32)
+    let crc32Value = calculateCRC32XZ(data: imageWithAddress)
+    let crcBytes = Data([
+      UInt8((crc32Value >> 24) & 0xff),
+      UInt8((crc32Value >> 16) & 0xff),
+      UInt8((crc32Value >> 8) & 0xff),
+      UInt8(crc32Value & 0xff)
+    ])
+    
+    var crcCommand = Data([0x16])
+    crcCommand.append(crcBytes)
+    
+    chunks.append(Array(crcCommand))
+    queueChunks(chunks)
+    return true
   }
   
   // Helper function to calculate CRC32-XZ like MentraOS (matches Dart crclib)
@@ -2232,140 +1843,7 @@ extension ERG1Manager {
     
     return ~crc
   }
-  
-  /// Display BMP from file path
-  @objc public func RN_displayBmpFromFile(_ filePath: String) {
-    CoreCommsService.log("G1: RN_displayBmpFromFile() - Path: \(filePath)")
-    Task {
-      await displayBmpFromFile(filePath: filePath)
-    }
-  }
-  
-  public func displayBmpFromFile(filePath: String,
-                                 onProgress: BmpProgressCallback? = nil,
-                                 onSuccess: BmpSuccessCallback? = nil,
-                                 onError: BmpErrorCallback? = nil) async -> Bool {
     
-    guard let bmpData = NSData(contentsOfFile: filePath) as Data? else {
-      CoreCommsService.log("G1: Failed to load BMP file: \(filePath)")
-      onError?("both", "Failed to load BMP file")
-      return false
-    }
-    
-    return await displayBitmapData(bmpData: bmpData, onProgress: onProgress, onSuccess: onSuccess, onError: onError)
-  }
-  
-  /// Core BMP display implementation with enhanced error handling and retry logic
-  private func displayBitmapData(bmpData: Data,
-                                 sendLeft: Bool = true,
-                                 sendRight: Bool = true,
-                                 onProgress: BmpProgressCallback? = nil,
-                                 onSuccess: BmpSuccessCallback? = nil,
-                                 onError: BmpErrorCallback? = nil) async -> Bool {
-    
-    CoreCommsService.log("G1: Starting BMP display process - Size: \(bmpData.count) bytes")
-    
-    // Validate BMP format
-    guard bmpData.count >= 2 && bmpData[0] == 0x42 && bmpData[1] == 0x4D else {
-      CoreCommsService.log("G1: Invalid BMP format - missing BM signature")
-      onError?("both", "Invalid BMP format")
-      return false
-    }
-    
-    // Constants for MentraOS-compatible BMP handling
-    let maxRetryAttempts = 10
-    let chunkSize = 194  // MentraOS uses 194 bytes per chunk
-    let iosChunkDelayMs = 8 // Platform-specific timing
-    let endCommandTimeoutMs = 3000
-    let crcCommandTimeoutMs = 3000
-    
-    // Create chunks with proper formatting
-    let chunks = createBmpChunks(from: bmpData, chunkSize: chunkSize)
-    CoreCommsService.log("G1: Created \(chunks.count) chunks from BMP data")
-    
-    // Send chunks with progress tracking and retry logic
-    for (index, chunk) in chunks.enumerated() {
-      var success = false
-      var attempt = 0
-      
-      while !success && attempt < maxRetryAttempts {
-        // Queue the chunk
-        queueChunks([chunk], sendLeft: sendLeft, sendRight: sendRight)
-        
-        // Wait with iOS-specific timing
-        try? await Task.sleep(nanoseconds: UInt64(iosChunkDelayMs * 1_000_000))
-        
-        // For now, assume success (in a real implementation, you'd check for ACK)
-        success = true
-        
-        if !success {
-          attempt += 1
-          CoreCommsService.log("G1: Chunk \(index) failed, retry attempt \(attempt)")
-          
-          if attempt < maxRetryAttempts {
-            // Exponential backoff for retries
-            let retryDelay = min(100 * (1 << attempt), 1000) // Max 1 second
-            try? await Task.sleep(nanoseconds: UInt64(retryDelay * 1_000_000))
-          }
-        }
-      }
-      
-      if !success {
-        CoreCommsService.log("G1: Failed to send chunk \(index) after \(maxRetryAttempts) attempts")
-        onError?("both", "Failed to send chunk \(index)")
-        return false
-      }
-      
-      // Report progress
-      let offset = index * chunkSize
-      onProgress?("both", offset, index, bmpData.count)
-    }
-    
-    // Send finish command with retry logic (MentraOS protocol)
-    var endSuccess = false
-    for attempt in 0..<maxRetryAttempts {
-      let endCommand = Data([0x20, 0x0d, 0x0e]) // MentraOS finish command
-      let endArray: [UInt8] = endCommand.map { UInt8($0) }
-      
-      queueChunks([endArray], sendLeft: sendLeft, sendRight: sendRight)
-      
-      // Wait for end command to process
-      try? await Task.sleep(nanoseconds: UInt64(endCommandTimeoutMs * 1_000_000))
-      
-      // For now, assume success (in a real implementation, you'd check for ACK)
-      endSuccess = true
-      
-      if endSuccess {
-        break
-      }
-      
-      CoreCommsService.log("G1: End command failed, attempt \(attempt + 1)")
-    }
-    
-    if !endSuccess {
-      CoreCommsService.log("G1: Failed to send end command after \(maxRetryAttempts) attempts")
-      onError?("both", "Failed to send end command")
-      return false
-    }
-    
-    // Calculate and send CRC with retry logic
-    let crcSuccess = await sendBmpCrcWithRetry(bmpData: bmpData,
-                                               sendLeft: sendLeft,
-                                               sendRight: sendRight,
-                                               maxAttempts: maxRetryAttempts,
-                                               timeoutMs: crcCommandTimeoutMs)
-    
-    if !crcSuccess {
-      CoreCommsService.log("G1: Failed to send CRC after retries")
-      onError?("both", "CRC check failed")
-      return false
-    }
-    
-    CoreCommsService.log("G1: BMP display process completed successfully")
-    onSuccess?("both")
-    return true
-  }
-  
   /// Create BMP chunks with MentraOS-compatible headers
   private func createBmpChunks(from bmpData: Data, chunkSize: Int) -> [[UInt8]] {
     var chunks: [[UInt8]] = []

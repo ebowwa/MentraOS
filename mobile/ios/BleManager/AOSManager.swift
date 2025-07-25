@@ -146,8 +146,7 @@ struct ViewState {
       self.g1Manager = ERG1Manager.shared
     } else if (wearable.contains("Live") && self.liveManager == nil) {
       self.liveManager = MentraLiveManager()
-    } else if (wearable.contains("Mach1") && self.mach1Manager == nil) {
-//      self.mach1Manager = Mach1Manager.shared
+    } else if ((wearable.contains("Mach1") || wearable.contains("Z100")) && self.mach1Manager == nil) {
       self.mach1Manager = Mach1Manager()
     }
     initManagerCallbacks()
@@ -346,7 +345,6 @@ struct ViewState {
       }.store(in: &cancellables)
       
       mach1Manager!.$isHeadUp.sink { [weak self] (value: Bool) in
-        CoreCommsService.log("MACH1 glasses head up changed to: \(value)")
         guard let self = self else { return }
         updateHeadUp(value)
       }.store(in: &cancellables)
@@ -740,29 +738,6 @@ struct ViewState {
         await self.g1Manager?.displayBitmap(base64ImageData: data)
         await self.mach1Manager?.displayBitmap(base64ImageData: data)
         break
-      case "bitmap_animation":
-        CoreCommsService.log("AOS: Processing bitmap_animation layout")
-        if let animationData = currentViewState.animationData,
-           let frames = animationData["frames"] as? [String],
-           let interval = animationData["interval"] as? Double {
-          let shouldRepeat = animationData["repeat"] as? Bool ?? true
-          
-          CoreCommsService.log("AOS: 🎬 Starting iOS-controlled animation: \(frames.count) frames, \(interval)ms intervals, repeat: \(shouldRepeat)")
-          
-          // Convert frames array to JSON string
-          if let framesJsonData = try? JSONSerialization.data(withJSONObject: frames) {
-            if let framesJson = String(data: framesJsonData, encoding: .utf8) {
-              self.g1Manager?.RN_displayBitmapAnimation(framesJson, interval: interval, shouldRepeat: shouldRepeat)
-            } else {
-              CoreCommsService.log("AOS: ERROR: Failed to convert animation frames JSON data to String")
-            }
-          } else {
-            CoreCommsService.log("AOS: ERROR: Failed to serialize animation frames to JSON")
-          }
-        } else {
-          CoreCommsService.log("AOS: ERROR: bitmap_animation missing animation data")
-        }
-        break
       case "clear_view":
         CoreCommsService.log("AOS: Processing clear_view layout - clearing display")
         self.g1Manager?.clearDisplay()
@@ -1061,6 +1036,10 @@ struct ViewState {
       self.liveManager?.findCompatibleDevices()
     } else if (modelName.contains("Mach1")) {
       self.defaultWearable = "Mach1"
+      initManager(self.defaultWearable)
+      self.mach1Manager?.findCompatibleDevices()
+    } else if (modelName.contains("Z100")) {
+      self.defaultWearable = "Z100"
       initManager(self.defaultWearable)
       self.mach1Manager?.findCompatibleDevices()
     }
@@ -1454,7 +1433,7 @@ struct ViewState {
     if self.defaultWearable.contains("Live") {
       return false
     }
-    if self.defaultWearable.contains("Mach1") {
+    if self.defaultWearable.contains("Mach1") || self.defaultWearable.contains("Z100") {
       return false
     }
     return false
@@ -1507,6 +1486,7 @@ struct ViewState {
       if let wifiSsid = self.liveManager?.wifiSsid, !wifiSsid.isEmpty {
         connectedGlasses["glasses_wifi_ssid"] = wifiSsid
         connectedGlasses["glasses_wifi_connected"] = self.glassesWifiConnected
+        connectedGlasses["glasses_wifi_local_ip"] = self.liveManager?.wifiLocalIp
       }
     }
     
@@ -1705,7 +1685,7 @@ struct ViewState {
     
     Task {
       // Send startup message
-      sendText("// MACH1 CONNECTED")
+      sendText("MENTRAOS CONNECTED")
       try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
       sendText(" ")// clear screen
       
@@ -1765,7 +1745,7 @@ struct ViewState {
           self.defaultWearable = ""
           handleRequestStatus()
         }
-      } else if (self.defaultWearable.contains("Mach1")) {
+      } else if (self.defaultWearable.contains("Mach1") || self.defaultWearable.contains("Z100")) {
         initManager(self.defaultWearable)
         if self.deviceName != "" {
           CoreCommsService.log("AOS: pairing Mach1 by id: \(self.deviceName)")
