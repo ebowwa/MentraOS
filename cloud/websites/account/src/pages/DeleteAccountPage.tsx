@@ -1,11 +1,17 @@
-import React, { useState } from 'react';
-import DashboardLayout from '../components/DashboardLayout';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
+import React, { useState } from "react";
+import DashboardLayout from "../components/DashboardLayout";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Textarea } from "../components/ui/textarea";
-import { 
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -15,8 +21,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "../components/ui/alert-dialog";
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../hooks/useAuth";
 
 const DeleteAccountPage: React.FC = () => {
   const navigate = useNavigate();
@@ -25,7 +31,7 @@ const DeleteAccountPage: React.FC = () => {
   const [confirmText, setConfirmText] = useState<string>("");
   const [isConfirmationOpen, setIsConfirmationOpen] = useState<boolean>(false);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
-  
+
   const handleDeleteRequest = async () => {
     setIsConfirmationOpen(true);
   };
@@ -36,13 +42,13 @@ const DeleteAccountPage: React.FC = () => {
       // This is a placeholder - in a real implementation, you would call your API
       // await api.account.requestDeletion(reason);
       console.log("Delete account requested with reason:", reason);
-      
+
       // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+
       // Sign out after account deletion
       await signOut();
-      navigate('/login', { state: { accountDeleted: true } });
+      navigate("/login", { state: { accountDeleted: true } });
     } catch (error) {
       console.error("Failed to delete account:", error);
       setIsProcessing(false);
@@ -57,7 +63,9 @@ const DeleteAccountPage: React.FC = () => {
     <DashboardLayout>
       <div className="max-w-5xl mx-auto">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-semibold text-gray-900">Delete Your Account</h1>
+          <h1 className="text-2xl font-semibold text-gray-900">
+            Delete Your Account
+          </h1>
         </div>
 
         <div className="grid grid-cols-1 gap-6">
@@ -65,13 +73,16 @@ const DeleteAccountPage: React.FC = () => {
             <CardHeader>
               <CardTitle className="text-red-600">Delete Account</CardTitle>
               <CardDescription>
-                Permanently delete your AugmentOS account and all associated data
+                Permanently delete your AugmentOS account and all associated
+                data
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-6">
                 <div className="p-4 bg-red-50 rounded-md">
-                  <h3 className="text-sm font-medium text-red-800 mb-2">Warning: This action cannot be undone</h3>
+                  <h3 className="text-sm font-medium text-red-800 mb-2">
+                    Warning: This action cannot be undone
+                  </h3>
                   <ul className="list-disc list-inside space-y-1 text-sm text-red-700">
                     <li>Your account profile will be permanently deleted</li>
                     <li>You will lose access to all your AugmentOS apps</li>
@@ -82,7 +93,9 @@ const DeleteAccountPage: React.FC = () => {
                 </div>
 
                 <div>
-                  <Label htmlFor="reason">Why are you deleting your account?</Label>
+                  <Label htmlFor="reason">
+                    Why are you deleting your account?
+                  </Label>
                   <Textarea
                     id="reason"
                     value={reason}
@@ -119,11 +132,12 @@ const DeleteAccountPage: React.FC = () => {
             <CardContent>
               <div className="space-y-4">
                 <p className="text-sm">
-                  If you're experiencing issues with your account or have concerns about your data, 
-                  please contact our support team before deleting your account.
+                  If you're experiencing issues with your account or have
+                  concerns about your data, please contact our support team
+                  before deleting your account.
                 </p>
                 <Button variant="outline" asChild>
-                  <a href="mailto:support@augmentos.org">Contact Support</a>
+                  <a href="mailto:help@mentra.glass">Contact Support</a>
                 </Button>
               </div>
             </CardContent>
@@ -131,12 +145,16 @@ const DeleteAccountPage: React.FC = () => {
         </div>
       </div>
 
-      <AlertDialog open={isConfirmationOpen} onOpenChange={setIsConfirmationOpen}>
+      <AlertDialog
+        open={isConfirmationOpen}
+        onOpenChange={setIsConfirmationOpen}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. Your account and all associated data will be permanently deleted.
+              This action cannot be undone. Your account and all associated data
+              will be permanently deleted.
               <div className="mt-4">
                 <Label htmlFor="confirmText" className="text-sm font-medium">
                   Type <span className="font-bold">DELETE</span> to confirm
