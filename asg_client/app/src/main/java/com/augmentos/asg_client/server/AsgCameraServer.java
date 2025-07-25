@@ -8,7 +8,7 @@ import com.augmentos.asg_client.server.impl.DefaultNetworkProvider;
 import com.augmentos.asg_client.server.impl.DefaultRateLimiter;
 import com.augmentos.asg_client.server.impl.DefaultServerConfig;
 import com.augmentos.asg_client.server.interfaces.*;
-import fi.iki.elonen.NanoHTTPD;
+
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -24,7 +24,7 @@ import java.util.*;
  * Provides RESTful API for photo capture, gallery browsing, and file downloads.
  * Follows SOLID principles with dependency injection.
  */
-public class CameraWebServer extends AsgServer {
+public class AsgCameraServer extends AsgServer {
 
     private static final String TAG = "CameraWebServer";
     private static final int DEFAULT_PORT = 8089;
@@ -48,8 +48,8 @@ public class CameraWebServer extends AsgServer {
      * @param rateLimiter Rate limiter
      * @param logger Logger
      */
-    public CameraWebServer(ServerConfig config, NetworkProvider networkProvider, 
-                          CacheManager cacheManager, RateLimiter rateLimiter, Logger logger) {
+    public AsgCameraServer(ServerConfig config, NetworkProvider networkProvider,
+                           CacheManager cacheManager, RateLimiter rateLimiter, Logger logger) {
         super(config, networkProvider, cacheManager, rateLimiter, logger);
         this.photoDirectory = getPhotoDirectory();
         
@@ -62,7 +62,7 @@ public class CameraWebServer extends AsgServer {
      * @param context Android context
      * @param port Server port
      */
-    public CameraWebServer(Context context, int port) {
+    public AsgCameraServer(Context context, int port) {
         this(createDefaultConfig(context, port), 
              createDefaultNetworkProvider(), 
              createDefaultCacheManager(), 
@@ -75,7 +75,7 @@ public class CameraWebServer extends AsgServer {
      * 
      * @param context Android context
      */
-    public CameraWebServer(Context context) {
+    public AsgCameraServer(Context context) {
         this(context, DEFAULT_PORT);
     }
 

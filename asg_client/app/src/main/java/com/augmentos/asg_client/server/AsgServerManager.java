@@ -15,9 +15,9 @@ import java.util.concurrent.ConcurrentHashMap;
  * Interface Segregation: Specific interfaces for different concerns
  * Dependency Inversion: Depends on abstractions
  */
-public class ServerManager {
+public class AsgServerManager {
 
-    private static ServerManager instance;
+    private static AsgServerManager instance;
     private final Context context;
     private final Logger logger;
     private final Map<String, AsgServer> servers = new ConcurrentHashMap<>();
@@ -26,7 +26,7 @@ public class ServerManager {
     /**
      * Private constructor with dependency injection.
      */
-    private ServerManager(Context context, Logger logger) {
+    private AsgServerManager(Context context, Logger logger) {
         this.context = context.getApplicationContext();
         this.logger = logger;
         
@@ -38,10 +38,10 @@ public class ServerManager {
     /**
      * Get the singleton instance of ServerManager.
      */
-    public static synchronized ServerManager getInstance(Context context) {
+    public static synchronized AsgServerManager getInstance(Context context) {
         if (instance == null) {
             Logger logger = DefaultServerFactory.createLogger();
-            instance = new ServerManager(context, logger);
+            instance = new AsgServerManager(context, logger);
         }
         return instance;
     }

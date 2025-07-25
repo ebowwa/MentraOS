@@ -2,8 +2,7 @@ package com.augmentos.asg_client.server.impl;
 
 import android.content.Context;
 import com.augmentos.asg_client.server.interfaces.*;
-import com.augmentos.asg_client.server.AsgServer;
-import com.augmentos.asg_client.server.CameraWebServer;
+import com.augmentos.asg_client.server.AsgCameraServer;
 
 /**
  * Factory for creating server instances with default implementations.
@@ -53,25 +52,25 @@ public class DefaultServerFactory {
     /**
      * Create a camera web server with default implementations
      */
-    public static CameraWebServer createCameraWebServer(int port, String serverName, Context context, Logger logger) {
+    public static AsgCameraServer createCameraWebServer(int port, String serverName, Context context, Logger logger) {
         ServerConfig config = createServerConfig(port, serverName, context);
         NetworkProvider networkProvider = createNetworkProvider(logger);
         CacheManager cacheManager = createCacheManager(logger);
         RateLimiter rateLimiter = createRateLimiter(100, 60000, logger); // 100 requests per minute
         
-        return new CameraWebServer(config, networkProvider, cacheManager, rateLimiter, logger);
+        return new AsgCameraServer(config, networkProvider, cacheManager, rateLimiter, logger);
     }
     
     /**
      * Create a camera web server with custom rate limiting
      */
-    public static CameraWebServer createCameraWebServer(int port, String serverName, Context context,
-                                                       int maxRequests, long timeWindow, Logger logger) {
+    public static AsgCameraServer createCameraWebServer(int port, String serverName, Context context,
+                                                        int maxRequests, long timeWindow, Logger logger) {
         ServerConfig config = createServerConfig(port, serverName, context);
         NetworkProvider networkProvider = createNetworkProvider(logger);
         CacheManager cacheManager = createCacheManager(logger);
         RateLimiter rateLimiter = createRateLimiter(maxRequests, timeWindow, logger);
         
-        return new CameraWebServer(config, networkProvider, cacheManager, rateLimiter, logger);
+        return new AsgCameraServer(config, networkProvider, cacheManager, rateLimiter, logger);
     }
 } 
