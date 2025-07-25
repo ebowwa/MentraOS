@@ -38,33 +38,6 @@ class Mach1Manager: UltraliteBaseViewController {
     private var setupDone: Bool = false
     @Published var isHeadUp = false
 
-    private func verifyBonding() {
-        guard let device = UltraliteManager.shared.currentDevice else {
-            ready = false
-            return
-        }
-
-        // Try to request control - this will fail if not bonded
-        let gotControl = device.requestControl(
-            layout: UltraliteSDK.Ultralite.Layout.textBottomLeftAlign,
-            timeout: 0,
-            hideStatusBar: true,
-            showTapAnimation: true,
-            maxNumTaps: 3
-        )
-
-        CoreCommsService.log("MACH1: gotControl: \(gotControl ?? false)")
-
-        if gotControl == true {
-            ready = true
-            batteryLevel = device.batteryLevel.value ?? -1
-            CoreCommsService.log("MACH1: Device is bonded and ready")
-        } else {
-            ready = false
-            CoreCommsService.log("MACH1: Device connected but not bonded")
-        }
-    }
-
     func setup() {
         if setupDone { return }
         isConnectedListener = BondListener(listener: { [weak self] value in
@@ -72,7 +45,21 @@ class Mach1Manager: UltraliteBaseViewController {
             CoreCommsService.log("MACH1: isConnectedListener: \(value)")
 
             if value {
-                verifyBonding()
+                // Try to request control
+                let gotControl = UltraliteManager.shared.currentDevice?.requestControl(
+                    layout: UltraliteSDK.Ultralite.Layout.textBottomLeftAlign,
+                    timeout: 0,
+                    hideStatusBar: true,
+                    showTapAnimation: true,
+                    maxNumTaps: 3
+                )
+
+                CoreCommsService.log("MACH1: gotControl: \(gotControl ?? false)")
+                if batteryLevel != -1 {
+                    ready = true
+                }
+            } else {
+                ready = false
             }
         })
 
@@ -80,6 +67,7 @@ class Mach1Manager: UltraliteBaseViewController {
             guard let self = self else { return }
             CoreCommsService.log("MACH1: batteryLevelListener: \(value)")
             batteryLevel = value
+            ready = true
         })
 
         NotificationCenter.default.addObserver(
