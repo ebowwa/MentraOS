@@ -131,7 +131,7 @@ struct ViewState {
         // Initialize the transcriber
         if let transcriber = self.transcriber {
             transcriber.initialize()
-            // transcriber.transcriptDelegate = self
+            transcriber.transcriptDelegate = self
             CoreCommsService.log("SherpaOnnxTranscriber fully initialized")
         }
     }

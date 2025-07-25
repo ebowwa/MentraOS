@@ -136,8 +136,6 @@ class SherpaOnnxTranscriber {
                 self?.transcriptDelegate?.didReceivePartialTranscription(text)
             }
         }
-        
-        CoreCommsService.log("Generated \(isFinal ? "final" : "partial") transcription: \(text)")
     }
     
     /**

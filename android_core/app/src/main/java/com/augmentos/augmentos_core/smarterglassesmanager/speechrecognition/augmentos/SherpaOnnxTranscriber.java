@@ -7,6 +7,7 @@ import android.util.Log;
 
 import com.k2fsa.sherpa.onnx.*;
 
+import java.io.ByteArrayOutputStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.concurrent.*;
@@ -102,7 +103,8 @@ public class SherpaOnnxTranscriber {
      */
     public void acceptAudio(byte[] pcm16le) {
         if (!running.get()) return;
-        pcmQueue.offer(pcm16le);
+        byte[] copiedData = pcm16le.clone();
+        pcmQueue.offer(copiedData);
     }
 
     /**
@@ -119,10 +121,26 @@ public class SherpaOnnxTranscriber {
      * Pulls audio from queue, feeds into Sherpa, emits partial/final results.
      */
     private void runLoop() {
+        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
         while (running.get()) {
             try {
-                byte[] data = pcmQueue.poll(100, TimeUnit.MILLISECONDS);
-                if (data == null || recognizer == null || stream == null) continue;
+                if (recognizer == null || stream == null) continue;
+
+                int chunksCollected = 0;
+                buffer.reset();
+
+                // each chunk is 10ms of audio. so we collect 10 chunks to make 100ms of audio before processing
+                while (chunksCollected < 10) {
+                    byte[] data = pcmQueue.poll(50, TimeUnit.MILLISECONDS);
+                    if (data != null) {
+                        buffer.write(data);
+                        chunksCollected++;
+                    } else {
+                        break;
+                    }
+                }
+                byte[] fullData = buffer.toByteArray();
+                if (fullData == null) continue;
 
                 // Convert PCM to float [-1.0, 1.0]
                 float[] floatBuf = toFloatArray(data);

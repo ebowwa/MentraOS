@@ -497,7 +497,7 @@ class ServerComms {
       }
       
       // Convert string array to enum array
-      let requiredData = SpeechRequiredDataType.fromStringArray(requiredDataStrings)
+      var requiredData = SpeechRequiredDataType.fromStringArray(requiredDataStrings)
 
       // Treat empty array as PCM only
       if requiredData.isEmpty {

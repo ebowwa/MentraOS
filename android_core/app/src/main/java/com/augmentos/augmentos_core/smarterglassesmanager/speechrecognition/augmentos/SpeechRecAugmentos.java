@@ -54,8 +54,8 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
     private SherpaOnnxTranscriber sherpaTranscriber;
     
     // Backend data sending control flags
-    private volatile boolean shouldSendPcmToBackend = true;
-    private volatile boolean shouldSendTranscriptionToBackend = false;
+    private volatile boolean sendPcmToBackend = true;
+    private volatile boolean sendTranscriptionToBackend = false;
 
     private SpeechRecAugmentos(Context context) {
         this.mContext = context;
@@ -128,8 +128,11 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
             long currentTime = System.currentTimeMillis();
             long relativeTime = currentTime - sessionStartTime;
             
-            // Adjust start time based on result type
-            // Final results use longer timespan than partial results
+
+            // TODO: This is wrong
+            // Instead we should have some timer inside sherpa that is reset on every final result.
+            // Also I don't think we need speaker id as there is no diarization.
+
             int timeOffset = isFinal ? 2000 : 1000;
             transcription.put("startTime", relativeTime - timeOffset);
             transcription.put("endTime", relativeTime);
@@ -254,7 +257,6 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
                         }
                     }
                     // If poll times out, just continue the loop
-
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     break;
@@ -269,10 +271,6 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
     private void sendVadStatus(boolean isNowSpeaking) {
         ServerComms.getInstance().sendVadStatus(isNowSpeaking);
     }
-
-    public boolean sendPcmToBackend = true;
-
-    public boolean sendTranscriptionToBackend = false;
 
     /**
      * Called by external code to feed raw PCM chunks (16-bit, 16kHz).
@@ -310,8 +308,6 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
                     lc3RollingBuffer.remove(0); // Remove oldest chunks to maintain rolling window
                 }
             }
-
-
             //SENDING STUFF
             // If bypassing VAD for debugging or currently speaking, send data live
             if (bypassVadForDebugging || isSpeaking) {
@@ -356,16 +352,14 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
             }
         }
 
-        if (sendTranscriptionToBackend) {
-            if (bypassVadForDebugging || isSpeaking) {
-                if (sherpaTranscriber != null) {
-                    // TODO: Verify whether this would work properly
-                    // Invoking this because same sendAudioChunk handling in servercomms
-                    // So assuming this would also work
-                    sherpaTranscriber.acceptAudio(LC3audioChunk);
-                }
-            }
-        }
+        // TODO: Should we use this?
+        // if (sendTranscriptionToBackend) {
+        //     if (bypassVadForDebugging || isSpeaking) {
+        //         if (sherpaTranscriber != null) {
+        //             sherpaTranscriber.acceptAudio(LC3audioChunk);
+        //         }
+        //     }
+        // }
     }
 
     /**
@@ -487,22 +481,22 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
             sherpaTranscriber.microphoneStateChanged(state);
         }
 
-        // Set shouldSendPcmToBackend and shouldSendTranscriptionToBackend based on required data
+        // Set sendPcmToBackend and sendTranscriptionToBackend based on required data
         // if state is PCM_OR_TRANS then based on the bandwidth of the internet if it falls below certain threshold decide to send PCM or Transcription
-        if (requiredData.contains(SpeechRequiredDataType.PCM_OR_TRANS)) {
+        if (requiredData.contains(SpeechRequiredDataType.PCM_OR_TRANSCRIPTION)) {
             // TODO: Implement bandwidth detection logic
             // For now, default to transcription as it's more bandwidth efficient
             // In the future, check network quality and decide:
             // - If high bandwidth: send PCM for better quality
             // - If low bandwidth: send transcription for efficiency
             // For now default to pcm
-            shouldSendPcmToBackend = state;
+            sendPcmToBackend = state;
         }
-        if (requiredData.contains(SpeechRequiredDataType.PCM_AUDIO)) {
-            shouldSendPcmToBackend = state;
-            }
-            if (requiredData.contains(SpeechRequiredDataType.TRANSCRIPTION)) {
-            shouldSendTranscriptionToBackend = state;
+        if (requiredData.contains(SpeechRequiredDataType.PCM)) {
+            sendPcmToBackend = state;
+        }
+        if (requiredData.contains(SpeechRequiredDataType.TRANSCRIPTION)) {
+            sendTranscriptionToBackend = state;
         }
         
         
