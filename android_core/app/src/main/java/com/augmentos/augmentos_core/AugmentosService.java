@@ -13,6 +13,7 @@ import static com.augmentos.augmentos_core.Constants.notificationFilterKey;
 import static com.augmentos.augmentos_core.Constants.newsSummaryKey;
 
 
+import android.Manifest;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -23,6 +24,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
+import android.content.pm.ServiceInfo;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.hardware.display.VirtualDisplay;
@@ -36,6 +39,7 @@ import android.service.notification.NotificationListenerService;
 import android.util.Log;
 
 import androidx.core.app.NotificationCompat;
+import androidx.core.content.ContextCompat;
 import androidx.lifecycle.LifecycleService;
 import androidx.preference.PreferenceManager;
 
@@ -243,6 +247,9 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     // WiFi status for glasses that require WiFi (e.g., Mentra Live)
     private boolean glassesNeedWifiCredentials = false;
     private boolean glassesWifiConnected = false;
+    
+    // Track current foreground service type
+    private int currentForegroundServiceType = ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC;
     private String glassesWifiSsid = "";
     private String glassesWifiLocalIp = "";
 
@@ -330,6 +337,9 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                         playStartupSequenceOnSmartGlasses();
                         asrPlanner.updateAsrLanguages();
                         ServerComms.getInstance().requestSettingsFromServer();
+                        
+                        // Upgrade service type to avoid Android 15's 6-hour dataSync timeout
+                        upgradeForegroundServiceType();
                     } else if (connectionState == SmartGlassesConnectionState.DISCONNECTED) {
                         edgeAppSystem.stopAllThirdPartyApps();
 
@@ -665,7 +675,31 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                 // start the service in the foreground
                 Log.d("TEST", "starting foreground");
                 createNotificationChannel(); // New method to ensure one-time channel creation
-                startForeground(AUGMENTOS_NOTIFICATION_ID, this.buildSharedForegroundNotification(this));
+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    /*
+                        New in Android 15:
+                         Android 15 limits 'dataSync' Foreground service type to 6 hours per day.
+                         To get around this, we need to use 'connectedDevice' type (if we have BT permissions).
+                         If we don't have BT perms, we'll upgrade this FGS from 'dataSync'=>'connectedDevice'
+                         once we've connected a pair of glasses.
+                    */
+                    if (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT)
+                            == PackageManager.PERMISSION_GRANTED) {
+                        currentForegroundServiceType = ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC |
+                                        ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE;
+                        startForeground(AUGMENTOS_NOTIFICATION_ID,
+                                buildSharedForegroundNotification(this),
+                                currentForegroundServiceType);
+                    } else {
+                        currentForegroundServiceType = ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC;
+                        startForeground(AUGMENTOS_NOTIFICATION_ID,
+                                buildSharedForegroundNotification(this),
+                                currentForegroundServiceType);
+                    }
+                } else {
+                    startForeground(AUGMENTOS_NOTIFICATION_ID, this.buildSharedForegroundNotification(this));
+                }
 
                 // Reset restart flag to true when service starts
                 shouldRestartOnKill = true;
@@ -1940,6 +1974,44 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     public void sendStatusToAugmentOsManager() {
         JSONObject status = generateStatusJson();
         blePeripheral.sendDataToAugmentOsManager(status.toString());
+    }
+    
+    /**
+     * Upgrades the foreground service type to include connectedDevice when glasses are connected.
+     * This avoids the 6-hour dataSync timeout on Android 15.
+     */
+    private void upgradeForegroundServiceType() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            return; // Service types not required before Android Q
+        }
+        
+        // Check if we're already using connectedDevice type
+        int desiredType = ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC | 
+                         ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE;
+        
+        if (currentForegroundServiceType == desiredType) {
+            Log.d(TAG, "Already using connectedDevice service type");
+            return;
+        }
+        
+        // Check if we have Bluetooth permissions (required for connectedDevice type)
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) 
+                != PackageManager.PERMISSION_GRANTED) {
+            Log.w(TAG, "Cannot upgrade to connectedDevice type - missing BLUETOOTH_CONNECT permission");
+            return;
+        }
+        
+        try {
+            // Upgrade the service type by calling startForeground again
+            startForeground(AUGMENTOS_NOTIFICATION_ID, 
+                    buildSharedForegroundNotification(this), 
+                    desiredType);
+            
+            currentForegroundServiceType = desiredType;
+            Log.d(TAG, "Successfully upgraded foreground service type to include connectedDevice");
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to upgrade foreground service type", e);
+        }
     }
 
     @Override
