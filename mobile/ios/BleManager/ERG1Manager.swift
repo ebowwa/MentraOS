@@ -275,7 +275,7 @@ enum GlassesError: Error {
     startHeartbeatTimer()
   }
   
-  func forgetGlasses() {
+  func forget() {
     leftGlassUUID = nil
     rightGlassUUID = nil
     DEVICE_SEARCH_ID = "NOT_SET"
@@ -1372,7 +1372,7 @@ extension ERG1Manager {
       
       peripheral!.writeValue(commandData, for: characteristic!, type: .withResponse)
       
-      let waitTime = (0.1) + (0.2 * Double(attemptNumber))
+      let waitTime = (0.3) + (0.2 * Double(attemptNumber))
       
       // after 200ms, if we haven't received the ack, resume:
       DispatchQueue.main.asyncAfter(deadline: .now() + waitTime) {
@@ -1771,7 +1771,7 @@ extension ERG1Manager {
     // add end command:
     chunks.append([0x20, 0x0d, 0x0e])
     
-    queueChunks(chunks, sleepAfterMs: 1000, lastFrameMs: 400)
+    queueChunks(chunks, sleepAfterMs: 25, lastFrameMs: 100)
     chunks.removeAll()
     
     

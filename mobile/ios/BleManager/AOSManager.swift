@@ -1002,12 +1002,13 @@ struct ViewState {
     }
   }
   
-  private func forgetSmartGlasses() {
+  func forgetSmartGlasses() {
     disconnectWearable()
     self.defaultWearable = ""
     self.deviceName = ""
-    self.g1Manager?.forgetGlasses()
-    // self.liveManager?.forgetGlasses()
+    self.g1Manager?.forget()
+//    self.liveManager?.forget()
+    self.mach1Manager?.forget()
     // self.g1Manager = nil
     // self.liveManager = nil
     handleRequestStatus()

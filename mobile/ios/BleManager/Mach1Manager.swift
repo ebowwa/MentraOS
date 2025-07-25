@@ -38,8 +38,37 @@ class Mach1Manager: UltraliteBaseViewController {
   private var autoScroller: ScrollLayout.AutoScroller?
   private var currentLayout: Ultralite.Layout?
   private var isConnectedListener: BondListener<Bool>?
+  private var batteryLevelListener: BondListener<Int>?
   private var setupDone: Bool = false
   @Published public var isHeadUp = false
+  
+  
+  private func verifyBonding() {
+      guard let device = UltraliteManager.shared.currentDevice else {
+          ready = false
+          return
+      }
+      
+      // Try to request control - this will fail if not bonded
+      let gotControl = device.requestControl(
+          layout: UltraliteSDK.Ultralite.Layout.textBottomLeftAlign,
+          timeout: 0,
+          hideStatusBar: true,
+          showTapAnimation: true,
+          maxNumTaps: 3
+      )
+      
+      CoreCommsService.log("MACH1: gotControl: \(gotControl ?? false)")
+      
+      if gotControl == true {
+          ready = true
+          batteryLevel = device.batteryLevel.value ?? -1
+          CoreCommsService.log("MACH1: Device is bonded and ready")
+      } else {
+          ready = false
+          CoreCommsService.log("MACH1: Device connected but not bonded")
+      }
+  }
   
   
   func setup() {
@@ -47,14 +76,16 @@ class Mach1Manager: UltraliteBaseViewController {
     isConnectedListener = BondListener(listener: { [weak self] value in
       guard let self = self else { return }
       CoreCommsService.log("MACH1: isConnectedListener: \(value)")
-      let valueChanged = ready != value
-      ready = value
-      if ready && valueChanged {
-        CoreCommsService.log("MACH1: Requesting control!")
-        let gotControl = UltraliteManager.shared.currentDevice?.requestControl(layout: UltraliteSDK.Ultralite.Layout.textBottomLeftAlign, timeout: 0, hideStatusBar: true, showTapAnimation: true, maxNumTaps: 3)
-        CoreCommsService.log("MACH1: gotControl: \(gotControl ?? false)")
-        CoreCommsService.log("MACH1: control is nil \(gotControl == nil)")
+      
+      if value {
+        verifyBonding()
       }
+    })
+    
+    batteryLevelListener = BondListener(listener: { [weak self] value in
+      guard let self = self else { return }
+      CoreCommsService.log("MACH1: batteryLevelListener: \(value)")
+      batteryLevel = value
     })
     
     
@@ -91,6 +122,7 @@ class Mach1Manager: UltraliteBaseViewController {
     
     switch tapNumberInt {
     case 2:
+      isHeadUp = !isHeadUp
     case 3:
       isHeadUp = !isHeadUp
     default:
@@ -100,8 +132,9 @@ class Mach1Manager: UltraliteBaseViewController {
   }
   
   func linked(unk: UltraliteSDK.Ultralite?) {
-    CoreCommsService.log("Mach1Manager: Connected")
-    ready = true
+    CoreCommsService.log("Mach1Manager: Linked")
+    UltraliteManager.shared.currentDevice?.isConnected.bind(listener: isConnectedListener!)
+    UltraliteManager.shared.currentDevice?.batteryLevel.bind(listener: batteryLevelListener!)
   }
   
   public func connectById(_ id: String) {
@@ -117,8 +150,8 @@ class Mach1Manager: UltraliteBaseViewController {
     CoreCommsService.log("MACH1: gotControl: \(gotControl ?? false)")
     CoreCommsService.log("MACH1: control is nil \(gotControl == nil)")
     
-    
     UltraliteManager.shared.currentDevice?.isConnected.bind(listener: isConnectedListener!)
+    UltraliteManager.shared.currentDevice?.batteryLevel.bind(listener: batteryLevelListener!)
     
     if isConnected {
       ready = true
@@ -134,6 +167,8 @@ class Mach1Manager: UltraliteBaseViewController {
       }
       CoreCommsService.log("Mach1Manager: Connecting to peripheral with ID: \(id)")
       UltraliteManager.shared.link(device: peripheral!, callback: linked)
+      UltraliteManager.shared.currentDevice?.isConnected.bind(listener: isConnectedListener!)
+      UltraliteManager.shared.currentDevice?.batteryLevel.bind(listener: batteryLevelListener!)
       return
     }
   }
@@ -282,6 +317,12 @@ class Mach1Manager: UltraliteBaseViewController {
     UltraliteManager.shared.setBluetoothManger()
     let scanResult = UltraliteManager.shared.startScan(callback: foundDevice)
     CoreCommsService.log("Mach1: \(scanResult)")
+    if scanResult == UltraliteSDK.UltraliteManager.BluetoothScanResult.BLUETOOTH_PERMISSION_NEEDED {
+      // call this function again in 5 seconds:
+      DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
+        self.findCompatibleDevices()
+      }
+    }
   }
   
   public func displayBitmap(base64ImageData: String) async -> Bool {
@@ -313,6 +354,7 @@ class Mach1Manager: UltraliteBaseViewController {
     
     guard let device = UltraliteManager.shared.currentDevice else {
       CoreCommsService.log("MACH1: No current device")
+      AOSManager.getInstance().forgetSmartGlasses()
       return false
     }
     
@@ -329,6 +371,10 @@ class Mach1Manager: UltraliteBaseViewController {
     device.canvas.commit()
     
     return true
+  }
+  
+  func forget() {
+    UltraliteManager.shared.unlink()
   }
   
   override func viewDidLoad() {
