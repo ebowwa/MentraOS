@@ -1,4 +1,4 @@
-export type GlassesFeature = "camera" | "speakers" | "microphone" | "display" | "binocular" | "wifi" | "imu" | "powerSavingMode"
+export type GlassesFeature = "camera" | "speakers" | "microphone" | "display" | "binocular" | "wifi" | "imu" | "powerSavingMode" | "gallery"
 
 export type MicType = "none" | "sco" | "custom"
 
@@ -11,6 +11,7 @@ export interface GlassesFeatureSet {
   imu: boolean
   micTypes: MicType[]
   powerSavingMode: boolean
+  gallery: boolean
 }
 
 export const glassesFeatures: Record<string, GlassesFeatureSet> = {
@@ -23,6 +24,7 @@ export const glassesFeatures: Record<string, GlassesFeatureSet> = {
     imu: true,
     micTypes: ["custom"],
     powerSavingMode: true,
+    gallery: false
   },
   "Vuzix Z100": {
     camera: false,
@@ -33,6 +35,7 @@ export const glassesFeatures: Record<string, GlassesFeatureSet> = {
     imu: false,
     micTypes: ["none"],
     powerSavingMode: false,
+    gallery: false
   },
   "Mentra Live": {
     camera: true,
@@ -43,6 +46,7 @@ export const glassesFeatures: Record<string, GlassesFeatureSet> = {
     imu: false,
     micTypes: ["sco"],
     powerSavingMode: false,
+    gallery: true
   },
   "Mentra Mach1": {
     camera: false,
@@ -53,6 +57,7 @@ export const glassesFeatures: Record<string, GlassesFeatureSet> = {
     imu: false,
     micTypes: ["none"],
     powerSavingMode: false,
+    gallery: false
   },
   "Audio Wearable": {
     camera: false,
@@ -63,6 +68,7 @@ export const glassesFeatures: Record<string, GlassesFeatureSet> = {
     imu: false,
     micTypes: ["sco"],
     powerSavingMode: false,
+    gallery: false
   },
   "Simulated Glasses": {
     camera: true,
@@ -73,6 +79,7 @@ export const glassesFeatures: Record<string, GlassesFeatureSet> = {
     imu: false,
     micTypes: ["sco"],
     powerSavingMode: false,
+    gallery: false
   },
 }
 
@@ -85,6 +92,7 @@ export const featureLabels: Record<GlassesFeature, string> = {
   wifi: "WiFi",
   imu: "IMU",
   powerSavingMode: "Power Saving Mode",
+  gallery: "Gallery",
 }
 
 // Helper functions for mic type checking
