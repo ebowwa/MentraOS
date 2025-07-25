@@ -1054,6 +1054,7 @@ struct ViewState {
         brightness = value
         self.autoBrightness = autoBrightness
         Task {
+            self.mach1Manager?.setBrightness(value)
             self.g1Manager?.RN_setBrightness(value, autoMode: autoBrightness)
             if autoBrightnessChanged {
                 sendText(autoBrightness ? "Enabled auto brightness" : "Disabled auto brightness")

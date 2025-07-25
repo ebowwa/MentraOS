@@ -353,6 +353,16 @@ class Mach1Manager: UltraliteBaseViewController {
         UltraliteManager.shared.unlink()
     }
 
+    func setBrightness(_ brightness: Int) {
+        guard let device = UltraliteManager.shared.currentDevice else {
+            CoreCommsService.log("Mach1Manager: No current device")
+            ready = false
+            return
+        }
+
+        device.setIntProperty(Ultralite.Property.brightness, value: Int64(brightness))
+    }
+
     override func viewDidLoad() {
         super.viewDidLoad()
         //    if let device = UltraliteManager.shared.currentDevice, device.isConnected.value == true {
