@@ -8,14 +8,14 @@
 import Foundation
 
 enum SampleRate: Int, CaseIterable {
-    case rate_8k = 8_000
+    case rate_8k = 8000
     case rate_15K = 15600
-    case rate_16k = 16_000
-    case rate_32k = 32_000
-    case rate_48k = 48_000
+    case rate_16k = 16000
+    case rate_32k = 32000
+    case rate_48k = 48000
 
     var desc: String {
-        "SAMPLE_RATE_\(self.rawValue)"
+        "SAMPLE_RATE_\(rawValue)"
     }
 
     static let webrtc: [SampleRate] = [.rate_8k, .rate_16k, .rate_32k, .rate_48k]

@@ -1,17 +1,17 @@
 // src/index.ts
 
-export * from './token';
+export * from "./token";
 
 // Message type enums
-export * from './message-types';
+export * from "./message-types";
 
 // Base message type
-export * from './messages/base';
+export * from "./messages/base";
 
 // Messages by direction - export everything except the conflicting type guards
-export * from './messages/glasses-to-cloud';
-export * from './messages/cloud-to-glasses';
-export * from './messages/app-to-cloud';
+export * from "./messages/glasses-to-cloud";
+export * from "./messages/cloud-to-glasses";
+export * from "./messages/app-to-cloud";
 
 // Export cloud-to-app but exclude the conflicting type guards
 export {
@@ -19,7 +19,7 @@ export {
   AppConnectionAck,
   AppConnectionError,
   AppStopped,
-  SettingsUpdate as AppSettingsUpdate,  // Alias to avoid conflict with cloud-to-glasses SettingsUpdate
+  SettingsUpdate as AppSettingsUpdate, // Alias to avoid conflict with cloud-to-glasses SettingsUpdate
   DataStream,
   CloudToAppMessage,
   AudioPlayResponse,
@@ -48,38 +48,38 @@ export {
   // Re-export the cloud-to-app versions of these type guards since they're the ones
   // that should be used when dealing with CloudToAppMessage types
   isPhotoResponse as isPhotoResponseFromCloud,
-  isRtmpStreamStatus as isRtmpStreamStatusFromCloud
-} from './messages/cloud-to-app';
+  isRtmpStreamStatus as isRtmpStreamStatusFromCloud,
+} from "./messages/cloud-to-app";
 
 // Stream types
-export * from './streams';
+export * from "./streams";
 
 // Layout types
-export * from './layouts';
+export * from "./layouts";
 
 // Dashboard types
-export * from './dashboard';
+export * from "./dashboard";
 
 // RTMP streaming types
-export * from './rtmp-stream';
+export * from "./rtmp-stream";
 
 // Other system enums
-export * from './enums';
+export * from "./enums";
 
 // Core model interfaces
-export * from './models';
+export * from "./models";
 
 // Session-related interfaces
-export * from './user-session';
+export * from "./user-session";
 
 // Webhook interfaces
-export * from './webhooks';
+export * from "./webhooks";
 
 // Capability Discovery types
-export * from './capabilities';
+export * from "./capabilities";
 
 // Photo data types
-export * from './photo-data';
+export * from "./photo-data";
 
 // Re-export common types for convenience
 // This allows developers to import commonly used types directly from the package root
@@ -105,8 +105,8 @@ export {
   GlassesToCloudMessage,
   PhotoResponse,
   RtmpStreamStatus,
-  KeepAliveAck
-} from './messages/glasses-to-cloud';
+  KeepAliveAck,
+} from "./messages/glasses-to-cloud";
 
 // From messages/cloud-to-glasses.ts
 export {
@@ -123,8 +123,8 @@ export {
   SettingsUpdate,
   StartRtmpStream,
   StopRtmpStream,
-  KeepRtmpStreamAlive
-} from './messages/cloud-to-glasses';
+  KeepRtmpStreamAlive,
+} from "./messages/cloud-to-glasses";
 
 // From messages/app-to-cloud.ts
 export {
@@ -135,8 +135,8 @@ export {
   RtmpStreamRequest,
   RtmpStreamStopRequest,
   AppToCloudMessage,
-  PhotoRequest
-} from './messages/app-to-cloud';
+  PhotoRequest,
+} from "./messages/app-to-cloud";
 
 // From layout.ts
 export {
@@ -145,8 +145,8 @@ export {
   DashboardCard,
   ReferenceCard,
   Layout,
-  DisplayRequest
-} from './layouts';
+  DisplayRequest,
+} from "./layouts";
 
 // Type guards - re-export the most commonly used ones for convenience
 export {
@@ -157,8 +157,8 @@ export {
   isStopApp,
   isPhotoResponse as isPhotoResponseFromGlasses,
   isRtmpStreamStatus as isRtmpStreamStatusFromGlasses,
-  isKeepAliveAck
-} from './messages/glasses-to-cloud';
+  isKeepAliveAck,
+} from "./messages/glasses-to-cloud";
 
 export {
   isConnectionAck,
@@ -170,8 +170,8 @@ export {
   isSettingsUpdate as isSettingsUpdateToGlasses,
   isStartRtmpStream,
   isStopRtmpStream,
-  isKeepRtmpStreamAlive
-} from './messages/cloud-to-glasses';
+  isKeepRtmpStreamAlive,
+} from "./messages/cloud-to-glasses";
 
 export {
   isAppConnectionInit,
@@ -181,8 +181,8 @@ export {
   isAudioStopRequest,
   isRtmpStreamRequest,
   isRtmpStreamStopRequest,
-  isPhotoRequest as isPhotoRequestFromApp
-} from './messages/app-to-cloud';
+  isPhotoRequest as isPhotoRequestFromApp,
+} from "./messages/app-to-cloud";
 
 // Export setting-related types
 export {
@@ -192,15 +192,15 @@ export {
   AppConfig,
   validateAppConfig,
   ToolSchema,
-  ToolParameterSchema
-} from './models';
+  ToolParameterSchema,
+} from "./models";
 // Export RTMP streaming types
 export {
   VideoConfig,
   AudioConfig,
   StreamConfig,
-  StreamStatusHandler
-} from './rtmp-stream';
+  StreamStatusHandler,
+} from "./rtmp-stream";
 
 /**
  * WebSocket error information
@@ -211,7 +211,10 @@ export interface WebSocketError {
   details?: unknown;
 }
 
-import { Request } from 'express';
+import { Request } from "express";
+import { AppSession } from "src/app/session";
+
 export interface AuthenticatedRequest extends Request {
   authUserId?: string;
+  activeSession: AppSession;
 }

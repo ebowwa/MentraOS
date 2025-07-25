@@ -123,6 +123,8 @@ export class TranscriptionManager {
       filtered: subscriptions.filter(s => !validSubscriptions.includes(s))
     }, 'Updating transcription subscriptions');
 
+    console.log("434 validSubscriptions", validSubscriptions);
+
     // Use optimization for Soniox subscriptions to prevent resource conflicts
     const optimizedStreams = await this.optimizeSubscriptions(validSubscriptions);
 
@@ -134,6 +136,8 @@ export class TranscriptionManager {
         this.streamOwnershipMappings.delete(subscription);
       }
     }
+
+    console.log("434 optimizedStreams", optimizedStreams);
 
     // Start new optimized streams
     for (const subscription of optimizedStreams) {
@@ -170,11 +174,13 @@ export class TranscriptionManager {
         let streamSubscription: ExtendedStreamType;
         
         if (stream.type === 'transcription_only') {
-          streamSubscription = `transcription:${stream.config.language}`;
+          // For transcription-only streams, use the original subscription as the identifier
+          // This preserves any parameters like ?no-language-identification=true
+          streamSubscription = stream.handledSubscriptions[0];
         } else if (stream.type === 'two_way') {
-          // For two-way translation streams
-          const langA = stream.config.translation?.language_a || stream.config.language;
-          const langB = stream.config.translation?.language_b;
+          // For two-way translation streams, use original language codes if available
+          const langA = stream.originalLanguageCodes?.langA || stream.config.translation?.language_a || stream.config.language;
+          const langB = stream.originalLanguageCodes?.langB || stream.config.translation?.language_b;
           
           // Skip invalid same-language translations
           if (langA === langB) {
@@ -187,14 +193,25 @@ export class TranscriptionManager {
             continue;
           }
           
-          streamSubscription = `translation:${langA}-two-way-${langB}`;
-        } else if (stream.type === 'universal_english' || stream.type === 'individual' || stream.type === 'multi_source') {
-          // For one-way translation streams
-          const srcLang = stream.config.translation?.source_languages?.[0] || stream.config.language;
-          const tgtLang = stream.config.translation?.target_language;
+          // Preserve parameters from the first handled subscription, but construct the new stream type
+          const params = this.extractSubscriptionParameters(stream.handledSubscriptions[0]);
+          streamSubscription = `translation:${langA}-two-way-${langB}${params}`;
+        } else if (stream.type === 'universal_english') {
+          // Universal English streams handle multiple original subscriptions, don't create artificial ones
+          // Instead, add all the handled subscriptions directly to the optimized set
+          for (const handledSub of stream.handledSubscriptions) {
+            optimizedSubscriptions.add(handledSub as ExtendedStreamType);
+          }
+          continue; // Skip creating an artificial subscription for this stream
+        } else if (stream.type === 'individual' || stream.type === 'multi_source') {
+          // For individual and multi-source streams, use original language codes if available
+          const srcLang = stream.originalLanguageCodes?.source || stream.config.translation?.source_languages?.[0] || stream.config.language;
+          const tgtLang = stream.originalLanguageCodes?.target || stream.config.translation?.target_language;
           
           // Skip invalid same-language translations
-          if (srcLang === tgtLang) {
+          const normalizedSrc = srcLang?.split('-')[0]?.toLowerCase();
+          const normalizedTgt = tgtLang?.split('-')[0]?.toLowerCase();
+          if (normalizedSrc === normalizedTgt) {
             this.logger.warn({
               srcLang,
               tgtLang,
@@ -204,7 +221,9 @@ export class TranscriptionManager {
             continue;
           }
           
-          streamSubscription = `translation:${srcLang}-to-${tgtLang}`;
+          // Preserve parameters from the first handled subscription, but construct the new stream type
+          const params = this.extractSubscriptionParameters(stream.handledSubscriptions[0]);
+          streamSubscription = `translation:${srcLang}-to-${tgtLang}${params}`;
         } else {
           // Fallback for any unknown types
           streamSubscription = `optimized:${stream.type}:${Date.now()}`;
@@ -212,7 +231,7 @@ export class TranscriptionManager {
         
         // Final validation check before adding
         if (typeof streamSubscription === 'string' && streamSubscription.startsWith('translation:')) {
-          const match = streamSubscription.match(/translation:([^-]+)-(?:to|two-way)-([^-]+)$/);
+          const match = streamSubscription.match(/translation:([^-]+)-(?:to|two-way)-([^-]+)/);
           if (match && match[1] === match[2]) {
             this.logger.error({
               streamSubscription,
@@ -252,6 +271,18 @@ export class TranscriptionManager {
       // Fallback to original subscriptions if optimization fails
       return new Set(subscriptions);
     }
+  }
+
+  /**
+   * Extract subscription parameters from a subscription string
+   * Preserves query parameters like ?no-language-identification=true
+   */
+  private extractSubscriptionParameters(subscription: string): string {
+    const questionMarkIndex = subscription.indexOf('?');
+    if (questionMarkIndex === -1) {
+      return '';
+    }
+    return subscription.substring(questionMarkIndex);
   }
 
   /**
@@ -1544,7 +1575,15 @@ export class TranscriptionManager {
     
     if (mappedSubscriptions && mappedSubscriptions.length > 0) {
       // For optimized streams, route to all mapped subscriptions
-      return mappedSubscriptions;
+      const targetSubs = [...mappedSubscriptions];
+      
+      // If effective subscription is different (e.g., transcription from translation stream),
+      // also include apps subscribed directly to the effective subscription
+      if (effectiveSubscription !== streamSubscription && !targetSubs.includes(effectiveSubscription)) {
+        targetSubs.push(effectiveSubscription);
+      }
+      
+      return targetSubs;
     }
     
     // For non-optimized streams, use the effective subscription
@@ -1600,7 +1639,7 @@ export class TranscriptionManager {
         const dataStream: DataStream = {
           type: CloudToAppMessageType.DATA_STREAM,
           sessionId: appSessionId,
-          streamType, // Base type remains the same in the message
+          streamType: subscription as ExtendedStreamType, // Base type remains the same in the message
           data,       // The data now may contain language info
           timestamp: new Date()
         };
@@ -1642,7 +1681,8 @@ export class TranscriptionManager {
         originalText: data.originalText ? `"${data.originalText.substring(0, 50)}${data.originalText.length > 50 ? '...' : ''}"` : undefined,
         translatedTo: data.translateLanguage,
         confidence: data.confidence,
-        appsNotified: subscribedApps.length
+        appsNotified: subscribedApps.length,
+        subscribedApps
       }, `📝 TRANSCRIPTION: [${data.provider || 'unknown'}] ${data.isFinal ? 'FINAL' : 'interim'} "${data.text || 'no text'}" → ${subscribedApps.length} apps`);
 
     } catch (error) {

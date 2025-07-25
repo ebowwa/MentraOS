@@ -15,6 +15,7 @@ export type AppPermissionType =
   | "CAMERA"
   | "CALENDAR"
   | "LOCATION"
+  | "BACKGROUND_LOCATION"
   | "READ_NOTIFICATIONS"
   | "POST_NOTIFICATIONS"
 export interface AppPermission {

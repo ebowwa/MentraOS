@@ -17,7 +17,7 @@
     "android": {
       "icon": "./assets/app-icons/ic_launcher.png",
       "package": "com.mentra.mentra",
-      "versionCode": 37,
+      "versionCode": 39,
       "adaptiveIcon": {
         "foregroundImage": "./assets/app-icons/ic_launcher_foreground.png",
         "backgroundImage": "./assets/app-icons/ic_launcher.png"
@@ -88,6 +88,7 @@
             "Bluetooth",
             "LocationAccuracy",
             "LocationWhenInUse",
+            "LocationAlways",
             "Notifications",
             "PhotoLibrary"
           ]
@@ -106,6 +107,11 @@
       [
         "expo-build-properties",
         {
+          "android": {
+            "minSdkVersion": 28,
+            "targetSdkVersion": 34,
+            "compileSdkVersion": 36
+          },
           "ios": {
             "extraPods": [
               {"name": "SDWebImage", "modular_headers": true},

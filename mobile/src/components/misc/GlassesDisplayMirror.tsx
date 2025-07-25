@@ -20,6 +20,8 @@ const GlassesDisplayMirror: React.FC<GlassesDisplayMirrorProps> = ({
   const {themed} = useAppTheme()
   const [processedImageUri, setProcessedImageUri] = useState<string | null>(null)
   const canvasRef = useRef<Canvas>(null)
+  const containerRef = useRef<View | null>(null)
+  const [containerWidth, setContainerWidth] = useState<number | null>(null)
 
   const processBitmap = async () => {
     if (layout?.layoutType !== "bitmap_view" || !layout.data) {
@@ -41,31 +43,49 @@ const GlassesDisplayMirror: React.FC<GlassesDisplayMirrorProps> = ({
     img.src = uri
 
     img.addEventListener("load", async () => {
-      const WIDTH = img.width / 1.8
-      const HEIGHT = img.height / 1.8
-      const leftPadding = 25
-      const topPadding = 20
+      const WIDTH = img.width
+      const HEIGHT = img.height
+      const leftPadding = 50
+      const topPadding = 30
 
-      // Set canvas size to match image
-      canvas.width = WIDTH - leftPadding * 2
-      canvas.height = HEIGHT - topPadding * 2
+      const ratio = (WIDTH - leftPadding) / (HEIGHT - topPadding)
+
+      const targetWidth = containerWidth ? containerWidth : 200
+
+      const croppedWidth = targetWidth
+      const croppedHeight = targetWidth / ratio
+
+      canvas.width = croppedWidth
+      canvas.height = croppedHeight
+
+      const x1 = -leftPadding
+      const y1 = -topPadding
+      const x2 = croppedWidth + leftPadding
+      const y2 = croppedHeight + topPadding
+
+      // console.log("croppedWidth", croppedWidth)
+      // console.log("croppedHeight", croppedHeight)
+      // console.log("x1", x1)
+      // console.log("y1", y1)
+      // console.log("x2", x2)
+      // console.log("y2", y2)
 
       // Draw image to canvas
-      ctx.drawImage(img, -leftPadding, -topPadding, WIDTH - leftPadding, HEIGHT - topPadding)
+      ctx.drawImage(img, x1, y1, x2, y2)
 
       // Apply tint using composite operation
       ctx.globalCompositeOperation = "multiply" // or 'overlay', 'screen'
       ctx.fillStyle = "#00ff88" // Your tint color
-      ctx.fillRect(0, 0, WIDTH - leftPadding, HEIGHT - topPadding)
+      ctx.fillRect(0, 0, croppedWidth, croppedHeight)
     })
   }
 
-  // Process bitmap data when layout changes
+  // Process bitmap data when layout or container width changes
   useEffect(() => {
     processBitmap()
-  }, [layout])
+  }, [layout, containerWidth])
 
-  if (!layout || !layout.layoutType) {
+  if (!layout || !layout.layoutType || layout.text === "") {
     return (
       <View style={[themed($glassesScreen), containerStyle]}>
         <View style={themed($emptyContainer)}>
@@ -75,7 +95,7 @@ const GlassesDisplayMirror: React.FC<GlassesDisplayMirrorProps> = ({
     )
   }
 
-  const content = <>{renderLayout(layout, processedImageUri, containerStyle, themed($glassesText), canvasRef)}</>
+  const content = <>{renderLayout(layout, themed($glassesText), canvasRef, containerRef, setContainerWidth)}</>
 
   if (fullscreen) {
     return <View style={themed($glassesScreenFullscreen)}>{content}</View>
@@ -89,10 +109,10 @@ const GlassesDisplayMirror: React.FC<GlassesDisplayMirrorProps> = ({
  */
 function renderLayout(
   layout: any,
-  processedImageUri: string | null,
-  containerStyle?: any,
   textStyle?: TextStyle,
   canvasRef?: React.RefObject<Canvas>,
+  containerRef?: React.RefObject<View | null>,
+  setContainerWidth?: (width: number) => void,
 ) {
   switch (layout.layoutType) {
     case "reference_card": {
@@ -128,7 +148,15 @@ function renderLayout(
     }
     case "bitmap_view": {
       return (
-        <View style={{flex: 1, width: "100%", height: "100%", justifyContent: "center"}}>
+        <View
+          ref={containerRef}
+          style={{flex: 1, width: "100%", height: "100%", justifyContent: "center"}}
+          onLayout={event => {
+            const {width} = event.nativeEvent.layout
+            if (setContainerWidth) {
+              setContainerWidth(width)
+            }
+          }}>
           <Canvas ref={canvasRef} style={{width: "100%", alignItems: "center"}} />
         </View>
       )

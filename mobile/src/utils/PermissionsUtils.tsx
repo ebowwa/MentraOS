@@ -95,6 +95,19 @@ const PERMISSION_CONFIG: Record<string, PermissionConfig> = {
     android: [PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION],
     critical: false,
   },
+  [PermissionFeatures.BACKGROUND_LOCATION]: {
+    name: "Background Location",
+    description: "Used to track location when the app is in the background",
+    ios: [PERMISSIONS.IOS.LOCATION_WHEN_IN_USE, PERMISSIONS.IOS.LOCATION_ALWAYS],
+    // android:
+    //   typeof Platform.Version === "number" && Platform.Version >= 29
+    //     ? [PermissionsAndroid.PERMISSIONS.ACCESS_BACKGROUND_LOCATION]
+    //     : [],
+    // regular location permission is enough for background location on Android
+    android: [PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION],
+    critical: false,
+    // specialRequestNeeded: true, // This flag indicates we need special handling
+  },
   [PermissionFeatures.BLUETOOTH]: {
     name: "Bluetooth",
     description: "Used to connect to your glasses",
@@ -110,39 +123,23 @@ const PERMISSION_CONFIG: Record<string, PermissionConfig> = {
     critical: true, // Critical for glasses pairing
     specialRequestNeeded: false, // iOS Bluetooth permissions work with regular flow
   },
+  [PermissionFeatures.PHONE_STATE]: {
+    name: "Phone State",
+    description: "Used to identify your device to connect to glasses",
+    ios: [], // iOS doesn't use this permission
+    android: [PermissionsAndroid.PERMISSIONS.READ_PHONE_STATE],
+    critical: true, // Critical for pairing with glasses
+  },
+  // Battery optimization permission temporarily disabled
+  // [PermissionFeatures.BATTERY_OPTIMIZATION]: {
+  //   name: "Battery Optimization",
+  //   description: "Allow AugmentOS to run in the background without battery restrictions",
+  //   ios: [], // iOS doesn't need this
+  //   android: [], // No actual Android permission, needs special handling
+  //   critical: false,
+  //   specialRequestNeeded: true,
+  // },
 }
-
-// Add separate entry for background location
-PERMISSION_CONFIG[PermissionFeatures.BACKGROUND_LOCATION] = {
-  name: "Background Location",
-  description: "Used to track location when the app is in the background",
-  ios: [PERMISSIONS.IOS.LOCATION_ALWAYS],
-  android:
-    typeof Platform.Version === "number" && Platform.Version >= 29
-      ? [PermissionsAndroid.PERMISSIONS.ACCESS_BACKGROUND_LOCATION]
-      : [],
-  critical: false,
-  specialRequestNeeded: true, // This flag indicates we need special handling
-}
-
-// Add configuration for phone state permission
-PERMISSION_CONFIG[PermissionFeatures.PHONE_STATE] = {
-  name: "Phone State",
-  description: "Used to identify your device to connect to glasses",
-  ios: [], // iOS doesn't use this permission
-  android: [PermissionsAndroid.PERMISSIONS.READ_PHONE_STATE],
-  critical: true, // Critical for pairing with glasses
-}
-
-// Battery optimization permission temporarily disabled
-// PERMISSION_CONFIG[PermissionFeatures.BATTERY_OPTIMIZATION] = {
-//   name: 'Battery Optimization',
-//   description: 'Allow AugmentOS to run in the background without battery restrictions',
-//   ios: [], // iOS doesn't need this
-//   android: [], // No actual Android permission, needs special handling
-//   critical: false,
-//   specialRequestNeeded: true
-// };
 
 // Initialize Android basic permissions based on device version
 if (Platform.OS === "android") {
@@ -627,6 +624,7 @@ export const checkFeaturePermissions = async (featureKey: string): Promise<boole
 
   // For iOS
   if (Platform.OS === "ios" && config.ios.length > 0) {
+    let allGranted = true
     for (const permission of config.ios) {
       try {
         if (permission === "post_notifications" || permission === "notifications") {
@@ -640,9 +638,10 @@ export const checkFeaturePermissions = async (featureKey: string): Promise<boole
         }
 
         const status = await check(permission)
-        if (status === RESULTS.GRANTED || status === RESULTS.LIMITED) {
-          return true // We have at least one permission, feature can work
+        if (status != RESULTS.GRANTED && status != RESULTS.LIMITED) {
+          allGranted = false
         }
+
         if (permission === PERMISSIONS.IOS.CALENDARS) {
           // this permission is wierd and we should assume it's granted if we've been granted it before, but check for sure by requesting it:
           if (await hasPermissionBeenGranted(permission)) {
@@ -657,6 +656,7 @@ export const checkFeaturePermissions = async (featureKey: string): Promise<boole
         console.error(`Error checking iOS permission ${permission}:`, error)
       }
     }
+    return allGranted
   }
 
   // Special case for notifications on Android

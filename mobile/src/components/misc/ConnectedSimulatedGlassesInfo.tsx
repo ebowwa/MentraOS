@@ -15,13 +15,10 @@ export default function ConnectedSimulatedGlassesInfo() {
   const fadeAnim = useRef(new Animated.Value(0)).current
   const scaleAnim = useRef(new Animated.Value(0.8)).current
   const {status} = useStatus()
-  const {events} = useGlassesMirror()
+  const {lastEvent} = useGlassesMirror()
   const {theme} = useAppTheme()
   const [permission, requestPermission] = useCameraPermissions()
   const {push} = useNavigationHistory()
-
-  // Get the last event to display in the mirror
-  const lastEvent = events.length > 0 ? events[events.length - 1] : null
 
   useEffect(() => {
     // Start animations

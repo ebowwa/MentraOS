@@ -76,6 +76,7 @@ export interface CoreInfo {
   puck_charging_status: boolean
   default_wearable: string | null
   sensing_enabled: boolean
+  power_saving_mode: boolean
   force_core_onboard_mic: boolean
   preferred_mic: string
   is_mic_enabled_for_frontend: boolean
@@ -108,6 +109,7 @@ export class AugmentOSParser {
       puck_battery_life: null,
       puck_charging_status: false,
       sensing_enabled: false,
+      power_saving_mode: false,
       force_core_onboard_mic: false,
       preferred_mic: "glasses",
       is_mic_enabled_for_frontend: false,
@@ -146,6 +148,7 @@ export class AugmentOSParser {
       puck_battery_life: 88,
       puck_charging_status: true,
       sensing_enabled: true,
+      power_saving_mode: false,
       preferred_mic: "glasses",
       force_core_onboard_mic: false,
       is_mic_enabled_for_frontend: false,
@@ -212,6 +215,7 @@ export class AugmentOSParser {
           puck_battery_life: status.core_info.puck_battery_life ?? null,
           puck_charging_status: status.core_info.charging_status ?? false,
           sensing_enabled: status.core_info.sensing_enabled ?? false,
+          power_saving_mode: status.core_info.power_saving_mode ?? false,
           force_core_onboard_mic: status.core_info.force_core_onboard_mic ?? false,
           preferred_mic: status.core_info.preferred_mic ?? "glasses",
           contextual_dashboard_enabled: status.core_info.contextual_dashboard_enabled ?? true,

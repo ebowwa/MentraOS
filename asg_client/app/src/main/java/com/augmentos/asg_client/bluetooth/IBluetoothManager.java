@@ -39,6 +39,8 @@ public interface IBluetoothManager {
      * @return true if the data was sent successfully, false otherwise
      */
     boolean sendData(byte[] data);
+
+    boolean sendImageFile(String filePath);
     
     /**
      * Add a listener for Bluetooth state changes and data reception

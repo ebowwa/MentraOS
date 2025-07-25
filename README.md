@@ -18,14 +18,15 @@
 - ADHD Tools
 - Screen Mirror (Teleprompter, Karaoke/Lyrics, video captions, etc.)
 
-MentraOS is the *the* way to build apps for smart glasses. The [MentraOS SDK](https://console.mentra.glass) enables:
+MentraOS is the _the_ way to build apps for smart glasses. The [MentraOS SDK](https://console.mentra.glass) enables:
+
 - Your app to immediately runs on any pair of smart glasses.
 - Simple + fast dev - focus on building a great experience.
 - Continuously access smart glasses I/O.
 - Run always - run your app for days straight, guaranteed.
 - Get seen - get your app in front of everyone using smart glasses.
 
-MentraOS enables you to run multiple apps *at the same time* so you can truly take advantage of AI-first wearables apps. Apps that run proactively based on context. That's the power of a smart glasses operating system.
+MentraOS enables you to run multiple apps _at the same time_ so you can truly take advantage of AI-first wearables apps. Apps that run proactively based on context. That's the power of a smart glasses operating system.
 
 ## Apps
 
@@ -51,6 +52,7 @@ Screen Mirror
 </summary>
 
 Mirror anything on your screen to your smart glasses. We use a lightweight, novel approach, which makes it very fast and makes text easy to read.
+
 </details>
 
 <details>
@@ -94,6 +96,7 @@ TEDxMIT Talk on "Can Smart Glasses Revolutionize How We Learn Languages?" by Cay
 </summary>
 
 See live captions of everything that is said. 100s of languages supported with high accuracy and low latency.
+
 </details>
 
 <details>
@@ -102,6 +105,7 @@ See live captions of everything that is said. 100s of languages supported with h
 </summary>
 
 A 10 minute short term memory buffer to help get back on track during conversations after a zone-out.
+
 </details>
 
 <details>
@@ -110,6 +114,7 @@ A 10 minute short term memory buffer to help get back on track during conversati
 </summary>
 
 Live translate languages - when someone speaks a foreign language, instantly see it translated on your vision. Supports 100s of language.
+
 </details>
 
 #### More Coming
@@ -145,11 +150,11 @@ MentraOS is made by a decentralized community of contributors, and managed by [M
 - Nicolo Micheletti
 - Isaiah Ballah
 
-Contributions welcome! Our team is growing and we have a lot to do! See our [Contributing Guide](https://docs.mentra.glass/contributing) for how to get started, or join our [Discord](https://discord.gg/bAKsjh8CtE) and reach out!
+Contributions welcome! Our team is growing and we have a lot to do! See our [Contributing Guide](https://docs.mentra.glass/contributing) for how to get started, or join our [Discord](https://mentra.glass/discord) and reach out!
 
 ## MentraOS Community
 
-The MentraOS Community is a team building open-source smart glasses tech towards an open, self-empowered, intercognitive, augmented future. Our industry partners include companies like Vuzix, Activelook, TCL, and others. To get involved, check out [our website](https://augmentos.org) and join our [Discord server](https://discord.gg/bAKsjh8CtE).
+The MentraOS Community is a team building open-source smart glasses tech towards an open, self-empowered, intercognitive, augmented future. Our industry partners include companies like Vuzix, Activelook, TCL, and others. To get involved, check out [our website](https://mentra.glass) and join our [Discord server](https://mentra.glass/discord).
 
 ## Contributing
 

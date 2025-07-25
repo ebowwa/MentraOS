@@ -1,20 +1,21 @@
-import { AppType, ToolSchema, AppSetting } from '@mentra/sdk';
+import { AppType, ToolSchema, AppSetting } from "@mentra/sdk";
 
 // Define permission types
 export enum PermissionType {
-  MICROPHONE = 'MICROPHONE',
-  LOCATION = 'LOCATION',
-  CALENDAR = 'CALENDAR',
-  CAMERA = 'CAMERA',
+  MICROPHONE = "MICROPHONE",
+  LOCATION = "LOCATION",
+  BACKGROUND_LOCATION = "BACKGROUND_LOCATION",
+  CALENDAR = "CALENDAR",
+  CAMERA = "CAMERA",
 
   // Legacy permission (backward compatibility)
-  NOTIFICATIONS = 'NOTIFICATIONS',
+  NOTIFICATIONS = "NOTIFICATIONS",
 
   // New granular notification permissions
-  READ_NOTIFICATIONS = 'READ_NOTIFICATIONS',
-  POST_NOTIFICATIONS = 'POST_NOTIFICATIONS',
+  READ_NOTIFICATIONS = "READ_NOTIFICATIONS",
+  POST_NOTIFICATIONS = "POST_NOTIFICATIONS",
 
-  ALL = 'ALL'
+  ALL = "ALL",
 }
 
 export interface Permission {
@@ -26,7 +27,6 @@ export interface Permission {
 export type Tool = ToolSchema;
 export type Setting = AppSetting;
 
-
 export interface App {
   id: string;
   packageName: string;
@@ -36,7 +36,7 @@ export interface App {
   logoURL: string;
   webviewURL?: string;
   isPublic: boolean;
-  appStoreStatus?: 'DEVELOPMENT' | 'SUBMITTED' | 'REJECTED' | 'PUBLISHED';
+  appStoreStatus?: "DEVELOPMENT" | "SUBMITTED" | "REJECTED" | "PUBLISHED";
   appType: AppType;
   createdAt?: string; // For compatibility with AppResponse
   updatedAt?: string; // For compatibility with AppResponse

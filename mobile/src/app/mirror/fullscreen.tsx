@@ -24,7 +24,7 @@ const requestMicrophonePermission = async () => {
 
 export default function GlassesMirrorFullscreen() {
   const {status} = useStatus()
-  const {events} = useGlassesMirror() // From context
+  const {lastEvent} = useGlassesMirror() // From context
   const {theme} = useAppTheme()
   const insets = useSafeAreaInsets()
   const [permission, requestPermission] = useCameraPermissions()
@@ -42,9 +42,6 @@ export default function GlassesMirrorFullscreen() {
 
   // Helper to check if we have a glasses model name
   const isGlassesConnected = !!status.glasses_info?.model_name
-
-  // Get only the last event
-  const lastEvent = events.length > 0 ? events[events.length - 1] : null
 
   // Check permissions and setup on component mount
   useEffect(() => {

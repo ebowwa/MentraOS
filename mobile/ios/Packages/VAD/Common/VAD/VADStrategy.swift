@@ -8,7 +8,6 @@
 import Foundation
 
 protocol VADStrategy {
-
     /// vad setup method
     /// - Parameters:
     ///   - sampleRate: sample rate
@@ -27,5 +26,4 @@ protocol VADStrategy {
     /// current vad state
     /// - Returns: vad state
     func currentState() -> VADState
-
 }

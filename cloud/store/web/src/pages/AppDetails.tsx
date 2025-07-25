@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import Header from '../components/Header';
 import AppPermissions from '../components/AppPermissions';
+import GetMentraOSButton from '../components/GetMentraOSButton';
 
 // Extend window interface for React Native WebView
 declare global {
@@ -303,7 +304,7 @@ const AppDetails: React.FC = () => {
                     <div className="min-w-0 flex-1">
                       <h2
                         id="app-modal-title"
-                        className="text-[32px] font-medium leading-[1.2] break-words"
+                        className="text-[24px] font-medium leading-[1.2] break-words"
                         style={{
                           fontFamily: '"SF Pro Rounded", sans-serif',
                           letterSpacing: '0.02em',
@@ -371,7 +372,7 @@ const AppDetails: React.FC = () => {
                 </div>
 
                 {/* Description */}
-                <div className="mb-12">
+                <div className="mb-8">
                   <p
                     className="text-[16px] font-normal leading-[1.6] sm:max-w-[480px]"
                     style={{ fontFamily: '"SF Pro Rounded", sans-serif', color: theme === 'light' ? '#000000' : '#E4E4E7' }}
@@ -381,7 +382,7 @@ const AppDetails: React.FC = () => {
                 </div>
 
                 {/* Information Section */}
-                <div className="mb-12">
+                <div className="mb-8">
                   <h3
                     className="text-[12px] font-semibold uppercase mb-6"
                     style={{
@@ -449,7 +450,7 @@ const AppDetails: React.FC = () => {
                 </div>
 
                 {/* Required Permissions - Improved Formatting */}
-                <div className="mb-8">
+                <div className="mb-6">
                   <h3
                     className="text-[12px] font-semibold uppercase mb-6"
                     style={{ fontFamily: '"SF Pro Rounded", sans-serif', letterSpacing: '0.05em', color: theme === 'light' ? '#000000' : '#9CA3AF' }}
@@ -507,6 +508,15 @@ const AppDetails: React.FC = () => {
                     )}
                   </div>
                 </div>
+
+                {/* Get MentraOS - Hide in React Native WebView */}
+                {!isWebView && (
+                  <div className="text-center mb-8">
+                    <div className="flex justify-center">
+                      <GetMentraOSButton size="small" />
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>

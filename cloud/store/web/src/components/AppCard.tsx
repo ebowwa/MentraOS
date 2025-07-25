@@ -96,9 +96,9 @@ const AppCard: React.FC<AppCardProps> = memo(({
       </div>
 
       {/* Content Column */}
-      <div className="flex-1 flex flex-col justify-center">
+      <div className="flex-1 flex flex-col justify-center min-w-0">
         <div>
-          <h3 className="text-[15px] font-medium mb-1" style={{
+          <h3 className="text-[15px] font-medium mb-1 truncate" style={{
             fontFamily: '"SF Pro Rounded", sans-serif', 
             letterSpacing: '0.04em', 
             color: 'var(--text-primary)'
@@ -106,7 +106,7 @@ const AppCard: React.FC<AppCardProps> = memo(({
             {app.name}
           </h3>
           {app.description && (
-            <p className="text-[15px] font-normal leading-[1.3] line-clamp-3" style={{
+            <p className="text-[15px] font-normal leading-[1.3] line-clamp-3 break-words" style={{
               fontFamily: '"SF Pro Rounded", sans-serif', 
               letterSpacing: '0.04em', 
               color: theme === 'light' ? '#4a4a4a' : '#9A9CAC', 
@@ -114,7 +114,9 @@ const AppCard: React.FC<AppCardProps> = memo(({
               height: '3.9em', 
               display: '-webkit-box', 
               WebkitBoxOrient: 'vertical', 
-              overflow: 'hidden'
+              overflow: 'hidden',
+              wordBreak: 'break-word',
+              overflowWrap: 'break-word'
             }}>
               {app.description}
             </p>
