@@ -340,6 +340,29 @@ class ServerComms {
     }
   }
   
+  func sendAudioPlayResponse(requestId: String, success: Bool, error: String? = nil, duration: Double? = nil) {
+    CoreCommsService.log("ServerComms: Sending audio play response - requestId: \(requestId), success: \(success), error: \(error ?? "none")")
+    let message: [String: Any] = [
+      "command": "audio_play_response",
+      "params": [
+        "requestId": requestId,
+        "success": success,
+        "error": error as Any,
+        "duration": duration as Any
+      ].compactMapValues { $0 }
+    ]
+    
+    do {
+      let jsonData = try JSONSerialization.data(withJSONObject: message)
+      if let jsonString = String(data: jsonData, encoding: .utf8) {
+        wsManager.sendText(jsonString)
+        CoreCommsService.log("ServerComms: Sent audio play response to server")
+      }
+    } catch {
+      CoreCommsService.log("ServerComms: Failed to serialize audio play response: \(error)")
+    }
+  }
+  
   // MARK: - App Lifecycle
   
   func startApp(packageName: String) {
