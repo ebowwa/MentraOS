@@ -96,6 +96,7 @@ export default function DeviceSettings() {
   const [connectedGlasses, setConnectedGlasses] = useState("")
   const {status} = useStatus()
   const [preferredMic, setPreferredMic] = useState(status.core_info.preferred_mic)
+  const [powerSavingMode, setPowerSavingMode] = useState(status.core_info.power_saving_mode)
 
   const [isConnectButtonDisabled, setConnectButtonDisabled] = useState(false)
   const [isDisconnectButtonDisabled, setDisconnectButtonDisabled] = useState(false)
@@ -354,6 +355,29 @@ export default function DeviceSettings() {
           )}
         </View>
       )}
+
+      {/* Power Saving Mode - Only show for glasses that support it */}
+      {status.core_info.default_wearable &&
+        glassesFeatures[status.core_info.default_wearable] &&
+        glassesFeatures[status.core_info.default_wearable].powerSavingMode && (
+          <View style={themed($settingsGroup)}>
+            <ToggleSetting
+              label={translate("settings:powerSavingMode")}
+              subtitle={translate("settings:powerSavingModeSubtitle")}
+              value={powerSavingMode}
+              onValueChange={async value => {
+                setPowerSavingMode(value)
+                await coreCommunicator.sendTogglePowerSavingMode(value)
+              }}
+              containerStyle={{
+                paddingHorizontal: 0,
+                paddingTop: 0,
+                paddingBottom: 0,
+                borderWidth: 0,
+              }}
+            />
+          </View>
+        )}
 
       {/* Only show mic selector if glasses have both SCO and custom mic types */}
       {status.core_info.default_wearable &&

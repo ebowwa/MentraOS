@@ -93,3 +93,6 @@ web-build/
 expo-env.d.ts
 # Yarn
 .yarn/*
+
+# pnpm
+pnpm-lock.yaml

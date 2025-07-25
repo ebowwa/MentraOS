@@ -407,6 +407,10 @@ export default function LoginScreen() {
                   </View>
                 </View>
 
+                <TouchableOpacity onPress={() => router.push("/auth/forgot-password")} style={themed($forgotPasswordContainer)}>
+                  <Text tx="login:forgotPassword" style={themed($forgotPasswordText)} />
+                </TouchableOpacity>
+
                 <Spacer height={spacing.sm} />
 
                 <Button
@@ -763,4 +767,15 @@ const $termsText: ThemedStyle<TextStyle> = ({colors}) => ({
   color: colors.textDim,
   textAlign: "center",
   marginTop: 8,
+})
+
+const $forgotPasswordContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  alignSelf: "flex-end",
+  marginTop: spacing.xs,
+})
+
+const $forgotPasswordText: ThemedStyle<TextStyle> = ({colors}) => ({
+  fontSize: 14,
+  color: colors.tint,
+  textDecorationLine: "underline",
 })

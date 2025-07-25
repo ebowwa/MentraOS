@@ -26,6 +26,392 @@ struct MentraLiveDevice {
   let address: String
 }
 
+// MARK: - BlePhotoUploadService
+
+class BlePhotoUploadService {
+  static let TAG = "BlePhotoUploadService"
+  
+  // Callback protocol
+  protocol UploadCallback {
+    func onSuccess(requestId: String)
+    func onError(requestId: String, error: String)
+  }
+  
+  enum PhotoUploadError: LocalizedError {
+      case decodingFailed
+      case avifNotSupported
+      case uploadFailed(String)
+      case invalidData
+      
+      var errorDescription: String? {
+          switch self {
+          case .decodingFailed:
+              return "Failed to decode image data"
+          case .avifNotSupported:
+              return "AVIF format not supported on this iOS version"
+          case .uploadFailed(let message):
+              return "Upload failed: \(message)"
+          case .invalidData:
+              return "Invalid image data"
+          }
+      }
+  }
+  
+  /**
+   * Process image data and upload to webhook
+   * - Parameters:
+   *   - imageData: Raw image data (AVIF or JPEG)
+   *   - requestId: Original request ID for tracking
+   *   - webhookUrl: Destination webhook URL
+   *   - authToken: Authentication token for upload
+   *   - callback: Callback for success/error
+   */
+  static func processAndUploadPhoto(imageData: Data,
+                                    requestId: String,
+                                    webhookUrl: String,
+                                    authToken: String) {
+    
+    Task {
+      do {
+        CoreCommsService.log("\(TAG): Processing BLE photo for upload. Image size: \(imageData.count) bytes")
+        
+        // 1. Decode image (AVIF or JPEG) to UIImage
+        guard let image = decodeImage(imageData: imageData) else {
+          throw NSError(domain: "BlePhotoUpload",
+                        code: -1,
+                        userInfo: [NSLocalizedDescriptionKey: "Failed to decode image data"])
+        }
+        
+        CoreCommsService.log("\(TAG): Decoded image to bitmap: \(Int(image.size.width))x\(Int(image.size.height))")
+        
+        // 2. Convert to JPEG for upload (in case it was AVIF)
+        guard let jpegData = image.jpegData(compressionQuality: 0.9) else {
+          throw NSError(domain: "BlePhotoUpload",
+                        code: -2,
+                        userInfo: [NSLocalizedDescriptionKey: "Failed to convert image to JPEG"])
+        }
+        
+        CoreCommsService.log("\(TAG): Converted to JPEG for upload. Size: \(jpegData.count) bytes")
+        
+        // 3. Upload to webhook
+        try await uploadToWebhook(jpegData: jpegData,
+                                  requestId: requestId,
+                                  webhookUrl: webhookUrl,
+                                  authToken: authToken)
+        
+        CoreCommsService.log("\(TAG): Photo uploaded successfully for requestId: \(requestId)")
+        
+        //        DispatchQueue.main.async {
+        //          callback.onSuccess(requestId: requestId)
+        //        }
+        
+      } catch {
+        CoreCommsService.log("\(TAG): Error processing BLE photo for requestId: \(requestId), error: \(error)")
+        
+        //        DispatchQueue.main.async {
+        //          callback.onError(requestId: requestId, error: error.localizedDescription)
+        //        }
+      }
+    }
+  }
+  
+  /**
+   * Decode image data (AVIF or JPEG) to UIImage
+   */
+  private static func decodeImage(imageData: Data) -> UIImage? {
+    // First try standard UIImage decoding (works for JPEG, PNG, etc)
+    if let image = UIImage(data: imageData) {
+      return image
+    }
+    
+    // If that fails, try AVIF decoding
+    // Note: AVIF support requires iOS 16+ or a third-party library
+    if #available(iOS 16.0, *) {
+      // iOS 16+ has native AVIF support
+      return UIImage(data: imageData)
+    } else {
+      // For older iOS versions, you would need to integrate a third-party
+      // AVIF decoder library like libavif
+      CoreCommsService.log("\(TAG): AVIF decoding not supported on this iOS version")
+      return nil
+    }
+  }
+  
+  private static func uploadToWebhook(jpegData: Data,
+                                      requestId: String,
+                                      webhookUrl: String,
+                                      authToken: String?) async throws {
+    guard let url = URL(string: webhookUrl) else {
+      CoreCommsService.log("LIVE: Invalid webhook URL: \(webhookUrl)")
+      return
+    }
+    
+    var request = URLRequest(url: url)
+    request.httpMethod = "POST"
+    request.timeoutInterval = 30
+    
+    // Add auth header if provided
+    if let authToken = authToken, !authToken.isEmpty {
+      request.setValue("Bearer \(authToken)", forHTTPHeaderField: "Authorization")
+    }
+    
+    // Create multipart form data
+    let boundary = UUID().uuidString
+    request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+    
+    var body = Data()
+    
+    // Add requestId field
+    body.append("--\(boundary)\r\n".data(using: .utf8)!)
+    body.append("Content-Disposition: form-data; name=\"requestId\"\r\n\r\n".data(using: .utf8)!)
+    body.append("\(requestId)\r\n".data(using: .utf8)!)
+    
+    // Add source field
+    body.append("--\(boundary)\r\n".data(using: .utf8)!)
+    body.append("Content-Disposition: form-data; name=\"source\"\r\n\r\n".data(using: .utf8)!)
+    body.append("ble_transfer\r\n".data(using: .utf8)!)
+    
+    // Add photo field
+    body.append("--\(boundary)\r\n".data(using: .utf8)!)
+    body.append("Content-Disposition: form-data; name=\"photo\"; filename=\"\(requestId).jpg\"\r\n".data(using: .utf8)!)
+    body.append("Content-Type: image/jpeg\r\n\r\n".data(using: .utf8)!)
+    body.append(jpegData)
+    body.append("\r\n".data(using: .utf8)!)
+    
+    // Close multipart form
+    body.append("--\(boundary)--\r\n".data(using: .utf8)!)
+    
+    request.httpBody = body
+    
+    print("LIVE: Uploading photo to webhook: \(webhookUrl)")
+    
+    do {
+      let (data, response) = try await URLSession.shared.data(for: request)
+      
+      guard let httpResponse = response as? HTTPURLResponse else {
+        throw PhotoUploadError.uploadFailed("Invalid response")
+      }
+      
+      if httpResponse.statusCode < 200 || httpResponse.statusCode >= 300 {
+        let errorBody = String(data: data, encoding: .utf8) ?? "No response body"
+        throw PhotoUploadError.uploadFailed("Upload failed with code \(httpResponse.statusCode): \(errorBody)")
+      }
+      
+      print("LIVE: Upload successful. Response code: \(httpResponse.statusCode)")
+      
+    } catch {
+      if error is PhotoUploadError {
+        throw error
+      } else {
+        throw PhotoUploadError.uploadFailed(error.localizedDescription)
+      }
+    }
+  }
+}
+
+extension Data {
+  mutating func append(_ string: String) {
+    if let data = string.data(using: .utf8) {
+      append(data)
+    }
+  }
+}
+
+private struct K900ProtocolUtils {
+  
+  // Protocol constants
+  static let CMD_START_CODE: [UInt8] = [0x23, 0x23] // ##
+  static let CMD_END_CODE: [UInt8] = [0x24, 0x24]   // $$
+  static let CMD_TYPE_STRING: UInt8 = 0x30          // String/JSON type
+  
+  // JSON Field constants
+  static let FIELD_C = "C"  // Command/Content field
+  static let FIELD_V = "V"  // Version field
+  static let FIELD_B = "B"  // Body field
+  
+  // Command types
+  static let CMD_TYPE_PHOTO: UInt8 = 0x31
+  static let CMD_TYPE_VIDEO: UInt8 = 0x32
+  static let CMD_TYPE_MUSIC: UInt8 = 0x33
+  static let CMD_TYPE_AUDIO: UInt8 = 0x34
+  static let CMD_TYPE_DATA: UInt8 = 0x35
+  
+  // File transfer constants
+  static let FILE_PACK_SIZE = 400; // Max data size per packet
+  static let LENGTH_FILE_START = 2;
+  static let LENGTH_FILE_TYPE = 1;
+  static let LENGTH_FILE_PACKSIZE = 2;
+  static let LENGTH_FILE_PACKINDEX = 2;
+  static let LENGTH_FILE_SIZE = 4;
+  static let LENGTH_FILE_NAME = 16;
+  static let LENGTH_FILE_FLAG = 2;
+  static let LENGTH_FILE_VERIFY = 1;
+  static let LENGTH_FILE_END = 2;
+  
+  struct FilePacketInfo {
+    var fileType: UInt8 = 0
+    var packSize: UInt16 = 0
+    var packIndex: UInt16 = 0
+    var fileSize: UInt32 = 0
+    var fileName: String = ""
+    var flags: UInt16 = 0
+    var data: Data = Data()
+    var verifyCode: UInt8 = 0
+    var isValid: Bool = false
+  }
+  
+  static func extractFilePacket(_ protocolData: Data) -> FilePacketInfo? {
+    guard protocolData.count >= 31 else {
+      return nil
+    }
+    
+    var info = FilePacketInfo()
+    var pos = LENGTH_FILE_START // Skip start code
+    
+    // File type
+    info.fileType = protocolData[pos]
+    pos += LENGTH_FILE_TYPE
+    
+    // Pack size (big-endian)
+    info.packSize = (UInt16(protocolData[pos]) << 8) | UInt16(protocolData[pos + 1])
+    pos += LENGTH_FILE_PACKSIZE
+    
+    // Pack index (big-endian)
+    info.packIndex = (UInt16(protocolData[pos]) << 8) | UInt16(protocolData[pos + 1])
+    pos += LENGTH_FILE_PACKINDEX
+    
+    // File size (big-endian)
+    info.fileSize = (UInt32(protocolData[pos]) << 24) |
+    (UInt32(protocolData[pos + 1]) << 16) |
+    (UInt32(protocolData[pos + 2]) << 8) |
+    UInt32(protocolData[pos + 3])
+    pos += LENGTH_FILE_SIZE
+    
+    // File name
+    let nameBytes = protocolData.subdata(in: pos..<(pos + LENGTH_FILE_NAME))
+    
+    // Find null terminator
+    var nameLen = 0
+    for i in 0..<LENGTH_FILE_NAME {
+      if nameBytes[i] == 0 { break }
+      nameLen += 1
+    }
+    
+    if let fileName = String(data: nameBytes.subdata(in: 0..<nameLen), encoding: .utf8) {
+      info.fileName = fileName
+    }
+    pos += LENGTH_FILE_NAME
+    
+    // Flags (big-endian)
+    info.flags = (UInt16(protocolData[pos]) << 8) | UInt16(protocolData[pos + 1])
+    pos += LENGTH_FILE_FLAG
+    
+    // Verify packet has enough data
+    let requiredLength = pos + Int(info.packSize) + LENGTH_FILE_VERIFY + LENGTH_FILE_END
+    if protocolData.count < requiredLength {
+      print("K900ProtocolUtils: File packet too short for data. Need: \(requiredLength), Have: \(protocolData.count), packSize=\(info.packSize), pos=\(pos)")
+      return nil
+    }
+    
+    // Data
+    info.data = protocolData.subdata(in: pos..<(pos + Int(info.packSize)))
+    pos += Int(info.packSize)
+    
+    // Verify code
+    info.verifyCode = protocolData[pos]
+    pos += LENGTH_FILE_VERIFY
+    
+    // Check end code
+    if protocolData[pos] != CMD_END_CODE[0] || protocolData[pos + 1] != CMD_END_CODE[1] {
+      return nil
+    }
+    
+    // Calculate and verify checksum
+    var checkSum: Int = 0
+    for byte in info.data {
+      checkSum += Int(byte)
+    }
+    let calculatedVerify = UInt8(checkSum & 0xFF)
+    
+    info.isValid = (calculatedVerify == info.verifyCode)
+    
+    if !info.isValid {
+      print("K900ProtocolUtils: File packet checksum failed. Expected: \(String(format: "%02X", info.verifyCode)), Calculated: \(String(format: "%02X", calculatedVerify))")
+    } else {
+      print("K900ProtocolUtils: File packet extracted successfully: index=\(info.packIndex), size=\(info.packSize), fileName=\(info.fileName)")
+    }
+    
+    return info
+  }
+}
+
+
+private struct FileTransferSession {
+  let fileName: String
+  let fileSize: Int
+  let totalPackets: Int
+  var expectedNextPacket: Int = 0
+  var receivedPackets: [Int: Data] = [:]
+  let startTime: Date
+  var isComplete: Bool = false
+  
+  init(fileName: String, fileSize: Int) {
+    self.fileName = fileName
+    self.fileSize = fileSize
+    self.totalPackets = (fileSize + K900ProtocolUtils.FILE_PACK_SIZE - 1) / K900ProtocolUtils.FILE_PACK_SIZE
+    self.startTime = Date()
+  }
+  
+  mutating func addPacket(_ index: Int, data: Data) -> Bool {
+    guard index >= 0 && index < totalPackets && receivedPackets[index] == nil else {
+      return false
+    }
+    
+    receivedPackets[index] = data
+    
+    // Update expected next packet
+    while receivedPackets[expectedNextPacket] != nil {
+      expectedNextPacket += 1
+    }
+    
+    // Check if complete
+    isComplete = (receivedPackets.count == totalPackets)
+    return true
+  }
+  
+  func assembleFile() -> Data? {
+    guard isComplete else { return nil }
+    
+    var fileData = Data(capacity: fileSize)
+    
+    for i in 0..<totalPackets {
+      if let packet = receivedPackets[i] {
+        fileData.append(packet)
+      }
+    }
+    
+    // Trim to exact file size
+    return fileData.prefix(fileSize)
+  }
+}
+
+private struct BlePhotoTransfer {
+  let bleImgId: String
+  let requestId: String
+  let webhookUrl: String
+  var session: FileTransferSession?
+  let phoneStartTime: Date
+  var bleTransferStartTime: Date?
+  var glassesCompressionDurationMs: Int64 = 0
+  
+  init(bleImgId: String, requestId: String, webhookUrl: String) {
+    self.bleImgId = bleImgId
+    self.requestId = requestId
+    self.webhookUrl = webhookUrl
+    self.phoneStartTime = Date()
+  }
+}
+
 // MARK: - CBCentralManagerDelegate
 
 extension MentraLiveManager: CBCentralManagerDelegate {
@@ -155,7 +541,7 @@ extension MentraLiveManager: CBPeripheralDelegate {
     
     for service in services where service.uuid == SERVICE_UUID {
       CoreCommsService.log("Found UART service, discovering characteristics...")
-      peripheral.discoverCharacteristics([TX_CHAR_UUID, RX_CHAR_UUID], for: service)
+      peripheral.discoverCharacteristics([TX_CHAR_UUID, RX_CHAR_UUID, FILE_READ_UUID, FILE_WRITE_UUID], for: service)
     }
   }
   
@@ -175,6 +561,12 @@ extension MentraLiveManager: CBPeripheralDelegate {
       } else if characteristic.uuid == RX_CHAR_UUID {
         rxCharacteristic = characteristic
         CoreCommsService.log("✅ Found RX characteristic")
+      } else if characteristic.uuid == FILE_READ_UUID {
+        fileReadCharacteristic = characteristic
+        CoreCommsService.log("📁 Found FILE_READ characteristic (72FF)!")
+      } else if characteristic.uuid == FILE_WRITE_UUID {
+        fileWriteCharacteristic = characteristic
+        CoreCommsService.log("📁 Found FILE_WRITE characteristic (73FF)!")
       }
     }
     
@@ -193,6 +585,11 @@ extension MentraLiveManager: CBPeripheralDelegate {
       
       // Enable notifications on RX characteristic
       peripheral.setNotifyValue(true, for: rx)
+      
+      // Enable notifications on file characteristics if available
+      if let fileRead = fileReadCharacteristic {
+        peripheral.setNotifyValue(true, for: fileRead)
+      }
       
       // Start readiness check loop
       startReadinessCheckLoop()
@@ -344,6 +741,15 @@ typealias JSONObject = [String: Any]
   private let SERVICE_UUID = CBUUID(string: "00004860-0000-1000-8000-00805f9b34fb")
   private let RX_CHAR_UUID = CBUUID(string: "000070FF-0000-1000-8000-00805f9b34fb") // Central receives on peripheral's TX
   private let TX_CHAR_UUID = CBUUID(string: "000071FF-0000-1000-8000-00805f9b34fb") // Central transmits on peripheral's RX
+  private let FILE_READ_UUID = CBUUID(string: "000072FF-0000-1000-8000-00805f9b34fb")
+  private let FILE_WRITE_UUID = CBUUID(string: "000073FF-0000-1000-8000-00805f9b34fb")
+  private let FILE_SAVE_DIR = "MentraLive_Images"
+  
+  // NEW: File transfer properties
+  private var fileReadCharacteristic: CBCharacteristic?
+  private var fileWriteCharacteristic: CBCharacteristic?
+  private var activeFileTransfers = [String: FileTransferSession]()
+  private var blePhotoTransfers = [String: BlePhotoTransfer]()
   
   // Timing Constants
   private let BASE_RECONNECT_DELAY_MS: UInt64 = 1_000_000_000 // 1 second in nanoseconds
@@ -358,7 +764,6 @@ typealias JSONObject = [String: Any]
   
   // Device Settings Keys
   private let PREFS_DEVICE_NAME = "MentraLiveLastConnectedDeviceName"
-  private let KEY_CORE_TOKEN = "core_token"
   
   // MARK: - Properties
   
@@ -530,9 +935,17 @@ typealias JSONObject = [String: Any]
       "appId": appId
     ]
     
+    // Always generate BLE ID for potential fallback
+    let bleImgId = "I" + String(format: "%09d", Int(Date().timeIntervalSince1970 * 1000) % 100000000)
+    json["bleImgId"] = bleImgId
+    json["transferMethod"] = "ble"
+    
     if let webhookUrl = webhookUrl, !webhookUrl.isEmpty {
       json["webhookUrl"] = webhookUrl
+      blePhotoTransfers[bleImgId] = BlePhotoTransfer(bleImgId: bleImgId, requestId: requestId, webhookUrl: webhookUrl)
     }
+    
+    CoreCommsService.log("Using auto transfer mode with BLE fallback ID: \(bleImgId)")
     
     sendJson(json, wakeUp: true)
   }
@@ -783,6 +1196,32 @@ typealias JSONObject = [String: Any]
     let bytes = [UInt8](data)
     
     let commandType = bytes[2]
+    
+    
+    // Check if this is a file transfer packet
+    if commandType == K900ProtocolUtils.CMD_TYPE_PHOTO ||
+        commandType == K900ProtocolUtils.CMD_TYPE_VIDEO ||
+        commandType == K900ProtocolUtils.CMD_TYPE_AUDIO ||
+        commandType == K900ProtocolUtils.CMD_TYPE_DATA {
+      
+      CoreCommsService.log("📦 DETECTED FILE TRANSFER PACKET (type: 0x\(String(format: "%02X", commandType)))")
+      
+      // Debug: Log the raw data
+      let hexDump = data.prefix(64).map { String(format: "%02X ", $0) }.joined()
+      CoreCommsService.log("📦 Raw file packet data length=\(data.count), first 64 bytes: \(hexDump)")
+      
+      // The data IS the file packet - it starts with ## and contains the full file packet structure
+      if let packetInfo = K900ProtocolUtils.extractFilePacket(data) {
+        processFilePacket(packetInfo)
+      } else {
+        CoreCommsService.log("Failed to extract or validate file packet")
+        // BES chip handles ACKs automatically
+      }
+      
+      return // Exit after processing file packet
+    }
+    
+    
     let payloadLength: Int
     
     // Determine endianness based on device name
@@ -884,6 +1323,12 @@ typealias JSONObject = [String: Any]
     case "msg_ack":
       CoreCommsService.log("Received msg_ack")
       
+    case "ble_photo_ready":
+      processBlePhotoReady(json)
+      
+    case "ble_photo_complete":
+      processBlePhotoComplete(json)
+      
     default:
       // Forward unknown types to observable
       //      jsonObservable?(json)
@@ -916,6 +1361,17 @@ typealias JSONObject = [String: Any]
         CoreCommsService.log("🔋 K900 Battery Status - Voltage: \(voltageVolts)V, Level: \(percentage)%")
         updateBatteryStatus(level: percentage, charging: isCharging)
       }
+    case "sr_shut":
+      CoreCommsService.log("K900 shutdown command received - glasses shutting down")
+      // Mark as killed to prevent reconnection attempts
+      isKilled = true
+      // Clean disconnect without reconnection
+      if let peripheral = connectedPeripheral {
+        CoreCommsService.log("Disconnecting from glasses due to shutdown")
+        centralManager?.cancelPeripheralConnection(peripheral)
+      }
+      // Notify the system that glasses are intentionally disconnected
+      connectionState = .disconnected
       
     default:
       CoreCommsService.log("Unknown K900 command: \(command)")
@@ -1014,6 +1470,249 @@ typealias JSONObject = [String: Any]
     //    }
   }
   
+  // MARK: - BLE Photo Transfer Handlers
+  
+  private func processBlePhotoReady(_ json: [String: Any]) {
+    let bleImgId = json["bleImgId"] as? String ?? ""
+    let requestId = json["requestId"] as? String ?? ""
+    let compressionDurationMs = json["compressionDurationMs"] as? Int64 ?? 0
+    
+    CoreCommsService.log("📸 BLE photo ready notification: bleImgId=\(bleImgId), requestId=\(requestId)")
+    
+    // Update the transfer with glasses compression duration
+    if var transfer = blePhotoTransfers[bleImgId] {
+      transfer.glassesCompressionDurationMs = compressionDurationMs
+      transfer.bleTransferStartTime = Date()  // BLE transfer starts now
+      blePhotoTransfers[bleImgId] = transfer
+      CoreCommsService.log("⏱️ Glasses compression took: \(compressionDurationMs)ms")
+    } else {
+      CoreCommsService.log("Received ble_photo_ready for unknown transfer: \(bleImgId)")
+    }
+  }
+  
+  private func processBlePhotoComplete(_ json: [String: Any]) {
+    let bleRequestId = json["requestId"] as? String ?? ""
+    let bleBleImgId = json["bleImgId"] as? String ?? ""
+    let bleSuccess = json["success"] as? Bool ?? false
+    
+    CoreCommsService.log("BLE photo transfer complete - requestId: \(bleRequestId), bleImgId: \(bleBleImgId), success: \(bleSuccess)")
+    
+    // Send completion notification back to glasses
+    if bleSuccess {
+      sendBleTransferComplete(requestId: bleRequestId, bleImgId: bleBleImgId, success: true)
+    } else {
+      CoreCommsService.log("BLE photo transfer failed for requestId: \(bleRequestId)")
+    }
+  }
+  
+  // MARK: - File Transfer Processing
+  
+  private func processFilePacket(_ packetInfo: K900ProtocolUtils.FilePacketInfo) {
+    //    CoreCommsService.log("📦 Processing file packet: \(packetInfo.fileName) [\(packetInfo.packIndex)/\(((packetInfo.fileSize + K900ProtocolUtils.FILE_PACK_SIZE - 1) / K900ProtocolUtils.FILE_PACK_SIZE - 1))] (\(packetInfo.packSize) bytes)")
+    
+    // Check if this is a BLE photo transfer we're tracking
+    var bleImgId = packetInfo.fileName
+    if let dotIndex = bleImgId.lastIndex(of: ".") {
+      bleImgId = String(bleImgId[..<dotIndex])
+    }
+    
+    if var photoTransfer = blePhotoTransfers[bleImgId] {
+      // This is a BLE photo transfer
+      CoreCommsService.log("📦 BLE photo transfer packet for requestId: \(photoTransfer.requestId)")
+      
+      // Get or create session for this transfer
+      if photoTransfer.session == nil {
+        var session = FileTransferSession(fileName: packetInfo.fileName, fileSize: Int(packetInfo.fileSize))
+        photoTransfer.session = session
+        blePhotoTransfers[bleImgId] = photoTransfer
+        CoreCommsService.log("📦 Started BLE photo transfer: \(packetInfo.fileName) (\(packetInfo.fileSize) bytes, \(session.totalPackets) packets)")
+      }
+      
+      // Add packet to session
+      if var session = photoTransfer.session {
+        let added = session.addPacket(Int(packetInfo.packIndex), data: packetInfo.data)
+        photoTransfer.session = session
+        blePhotoTransfers[bleImgId] = photoTransfer
+        
+        if added && session.isComplete {
+          let transferEndTime = Date()
+          let totalDuration = transferEndTime.timeIntervalSince(photoTransfer.phoneStartTime) * 1000
+          let bleTransferDuration = photoTransfer.bleTransferStartTime != nil ?
+          transferEndTime.timeIntervalSince(photoTransfer.bleTransferStartTime!) * 1000 : 0
+          
+          CoreCommsService.log("✅ BLE photo transfer complete: \(packetInfo.fileName)")
+          CoreCommsService.log("⏱️ Total duration (request to complete): \(Int(totalDuration))ms")
+          CoreCommsService.log("⏱️ Glasses compression: \(photoTransfer.glassesCompressionDurationMs)ms")
+          if bleTransferDuration > 0 {
+            CoreCommsService.log("⏱️ BLE transfer duration: \(Int(bleTransferDuration))ms")
+            CoreCommsService.log("📊 Transfer rate: \(Int(packetInfo.fileSize) * 1000 / Int(bleTransferDuration)) bytes/sec")
+          }
+          
+          // Get complete image data (AVIF or JPEG)
+          if let imageData = session.assembleFile() {
+            // Process and upload the photo
+            processAndUploadBlePhoto(photoTransfer, imageData: imageData)
+          }
+          
+          // Clean up
+          blePhotoTransfers.removeValue(forKey: bleImgId)
+        }
+      }
+      
+      return
+    }
+    
+    // Regular file transfer (not a BLE photo)
+    var session = activeFileTransfers[packetInfo.fileName]
+    if session == nil {
+      // New file transfer
+      session = FileTransferSession(fileName: packetInfo.fileName, fileSize: Int(packetInfo.fileSize))
+      activeFileTransfers[packetInfo.fileName] = session
+      
+      CoreCommsService.log("📦 Started new file transfer: \(packetInfo.fileName) (\(packetInfo.fileSize) bytes, \(session!.totalPackets) packets)")
+    }
+    
+    // Add packet to session
+    if var sess = session {
+      let added = sess.addPacket(Int(packetInfo.packIndex), data: packetInfo.data)
+      activeFileTransfers[packetInfo.fileName] = sess
+      
+      if added {
+        CoreCommsService.log("📦 Packet \(packetInfo.packIndex) received successfully (BES will auto-ACK)")
+        
+        // Check if transfer is complete
+        if sess.isComplete {
+          CoreCommsService.log("📦 File transfer complete: \(packetInfo.fileName)")
+          
+          // Assemble and save the file
+          if let fileData = sess.assembleFile() {
+            saveReceivedFile(fileName: packetInfo.fileName, fileData: fileData, fileType: packetInfo.fileType)
+          }
+          
+          // Remove from active transfers
+          activeFileTransfers.removeValue(forKey: packetInfo.fileName)
+        }
+      } else {
+        CoreCommsService.log("📦 Duplicate or invalid packet: \(packetInfo.packIndex)")
+      }
+    }
+  }
+  
+  private func saveReceivedFile(fileName: String, fileData: Data, fileType: UInt8) {
+    do {
+      // Get or create the directory for saving files
+      let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+      let saveDirectory = documentsDirectory.appendingPathComponent(FILE_SAVE_DIR)
+      
+      if !FileManager.default.fileExists(atPath: saveDirectory.path) {
+        try FileManager.default.createDirectory(at: saveDirectory, withIntermediateDirectories: true)
+      }
+      
+      // Generate unique filename with timestamp
+      let dateFormatter = DateFormatter()
+      dateFormatter.dateFormat = "yyyyMMdd_HHmmss"
+      let timestamp = dateFormatter.string(from: Date())
+      
+      // Determine file extension based on type
+      var fileExtension = ""
+      switch fileType {
+      case K900ProtocolUtils.CMD_TYPE_PHOTO:
+        // For photos, try to preserve the original extension
+        if let dotIndex = fileName.lastIndex(of: ".") {
+          fileExtension = String(fileName[dotIndex...])
+        } else {
+          fileExtension = ".jpg" // Default to JPEG if no extension
+        }
+      case K900ProtocolUtils.CMD_TYPE_VIDEO:
+        fileExtension = ".mp4"
+      case K900ProtocolUtils.CMD_TYPE_AUDIO:
+        fileExtension = ".wav"
+      default:
+        // Try to get extension from original filename
+        if let dotIndex = fileName.lastIndex(of: ".") {
+          fileExtension = String(fileName[dotIndex...])
+        }
+      }
+      
+      // Create unique filename
+      var baseFileName = fileName
+      if let dotIndex = baseFileName.lastIndex(of: ".") {
+        baseFileName = String(baseFileName[..<dotIndex])
+      }
+      let uniqueFileName = "\(baseFileName)_\(timestamp)\(fileExtension)"
+      
+      // Save the file
+      let fileURL = saveDirectory.appendingPathComponent(uniqueFileName)
+      try fileData.write(to: fileURL)
+      
+      CoreCommsService.log("💾 Saved file: \(fileURL.path)")
+      
+      // Notify about the received file
+      notifyFileReceived(filePath: fileURL.path, fileType: fileType)
+      
+    } catch {
+      CoreCommsService.log("Error saving received file: \(fileName), error: \(error)")
+    }
+  }
+  
+  private func notifyFileReceived(filePath: String, fileType: UInt8) {
+    // Create event based on file type
+    let event: [String: Any] = [
+      "type": "file_received",
+      "filePath": filePath,
+      "fileType": String(format: "0x%02X", fileType),
+      "timestamp": Int64(Date().timeIntervalSince1970 * 1000)
+    ]
+    
+    // Emit event through data observable
+    jsonObservable?(event)
+  }
+  
+  private func processAndUploadBlePhoto(_ transfer: BlePhotoTransfer, imageData: Data) {
+    CoreCommsService.log("Processing BLE photo for upload. RequestId: \(transfer.requestId)")
+    let uploadStartTime = Date()
+    
+    // Save BLE photo locally for debugging/backup
+    //    do {
+    //      let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+    //      let saveDirectory = documentsDirectory.appendingPathComponent(FILE_SAVE_DIR)
+    //
+    //      if !FileManager.default.fileExists(atPath: saveDirectory.path) {
+    //        try FileManager.default.createDirectory(at: saveDirectory, withIntermediateDirectories: true)
+    //      }
+    //
+    //      // BLE photos are ALWAYS AVIF format
+    //      let fileName = "BLE_\(transfer.bleImgId)_\(Int64(Date().timeIntervalSince1970 * 1000)).avif"
+    //      let fileURL = saveDirectory.appendingPathComponent(fileName)
+    //
+    //      try imageData.write(to: fileURL)
+    //      CoreCommsService.log("💾 Saved BLE photo locally: \(fileURL.path)")
+    //    } catch {
+    //      CoreCommsService.log("Error saving BLE photo locally: \(error)")
+    //    }
+    
+    // Get core token for authentication
+    guard let coreToken = UserDefaults.standard.string(forKey: "core_token") else {
+      CoreCommsService.log("LIVE: core_token not set!")
+      return
+    }
+    
+    BlePhotoUploadService.processAndUploadPhoto(imageData: imageData, requestId: transfer.requestId, webhookUrl: transfer.webhookUrl, authToken: coreToken)
+  }
+  
+  private func sendBleTransferComplete(requestId: String, bleImgId: String, success: Bool) {
+    let json: [String: Any] = [
+      "type": "ble_photo_transfer_complete",
+      "requestId": requestId,
+      "bleImgId": bleImgId,
+      "success": success
+    ]
+    
+    sendJson(json, wakeUp: true)
+    CoreCommsService.log("Sent BLE transfer complete notification: \(json)")
+  }
+  
+  
   // MARK: - Sending Data
   
   public func queueSend(_ data: Data, id: String) {
@@ -1055,7 +1754,7 @@ typealias JSONObject = [String: Any]
     do {
       let jsonData = try JSONSerialization.data(withJSONObject: json)
       if let jsonString = String(data: jsonData, encoding: .utf8) {
-        let packedData = packDataToK900(jsonData, cmdType: CMD_TYPE_STRING) ?? Data()
+        let packedData = packDataToK900(jsonData, cmdType: K900ProtocolUtils.CMD_TYPE_STRING) ?? Data()
         queueSend(packedData, id: String(globalMessageId-1))
       }
     } catch {
@@ -1076,7 +1775,7 @@ typealias JSONObject = [String: Any]
   private func sendCoreTokenToAsgClient() {
     CoreCommsService.log("Preparing to send coreToken to ASG client")
     
-    guard let coreToken = UserDefaults.standard.string(forKey: KEY_CORE_TOKEN), !coreToken.isEmpty else {
+    guard let coreToken = UserDefaults.standard.string(forKey: "core_token"), !coreToken.isEmpty else {
       CoreCommsService.log("No coreToken available to send to ASG client")
       return
     }
@@ -1336,16 +2035,6 @@ typealias JSONObject = [String: Any]
 
 // MARK: - K900 Protocol Utilities
 
-// Protocol constants
-private let CMD_START_CODE: [UInt8] = [0x23, 0x23] // ##
-private let CMD_END_CODE: [UInt8] = [0x24, 0x24]   // $$
-private let CMD_TYPE_STRING: UInt8 = 0x30          // String/JSON type
-
-// JSON Field constants
-private let FIELD_C = "C"  // Command/Content field
-private let FIELD_V = "V"  // Version field
-private let FIELD_B = "B"  // Body field
-
 extension MentraLiveManager {
   
   /**
@@ -1361,7 +2050,7 @@ extension MentraLiveManager {
     var result = Data(capacity: dataLength + 7) // 2(start) + 1(type) + 2(length) + data + 2(end)
     
     // Start code ##
-    result.append(contentsOf: CMD_START_CODE)
+    result.append(contentsOf: K900ProtocolUtils.CMD_START_CODE)
     
     // Command type
     result.append(cmdType)
@@ -1374,7 +2063,7 @@ extension MentraLiveManager {
     result.append(data)
     
     // End code $$
-    result.append(contentsOf: CMD_END_CODE)
+    result.append(contentsOf: K900ProtocolUtils.CMD_END_CODE)
     
     return result
   }
@@ -1393,7 +2082,7 @@ extension MentraLiveManager {
     var result = Data(capacity: dataLength + 7) // 2(start) + 1(type) + 2(length) + data + 2(end)
     
     // Start code ##
-    result.append(contentsOf: CMD_START_CODE)
+    result.append(contentsOf: K900ProtocolUtils.CMD_START_CODE)
     
     // Command type
     result.append(cmdType)
@@ -1406,7 +2095,7 @@ extension MentraLiveManager {
     result.append(data)
     
     // End code $$
-    result.append(contentsOf: CMD_END_CODE)
+    result.append(contentsOf: K900ProtocolUtils.CMD_END_CODE)
     
     return result
   }
@@ -1421,7 +2110,7 @@ extension MentraLiveManager {
     
     do {
       // First wrap with C-field
-      var wrapper: [String: Any] = [FIELD_C: jsonData]
+      var wrapper: [String: Any] = [K900ProtocolUtils.FIELD_C: jsonData]
       if (wakeUp) {
         wrapper["W"] = 1 // Add W field as seen in MentraLiveSGC (optional)
       }
@@ -1432,7 +2121,7 @@ extension MentraLiveManager {
       
       // Then pack with BES2700 protocol format using little-endian
       let jsonBytes = wrappedJson.data(using: .utf8)!
-      return packDataToK900(jsonBytes, cmdType: CMD_TYPE_STRING)
+      return packDataToK900(jsonBytes, cmdType: K900ProtocolUtils.CMD_TYPE_STRING)
       
     } catch {
       CoreCommsService.log("Error creating JSON wrapper for K900: \(error)")
@@ -1446,7 +2135,7 @@ extension MentraLiveManager {
    */
   private func createCWrappedJson(_ content: String) -> String? {
     do {
-      let wrapper: [String: Any] = [FIELD_C: content]
+      let wrapper: [String: Any] = [K900ProtocolUtils.FIELD_C: content]
       let jsonData = try JSONSerialization.data(withJSONObject: wrapper)
       return String(data: jsonData, encoding: .utf8)
     } catch {
@@ -1463,7 +2152,7 @@ extension MentraLiveManager {
     guard let data = data, data.count >= 7 else { return false }
     
     let bytes = [UInt8](data)
-    return bytes[0] == CMD_START_CODE[0] && bytes[1] == CMD_START_CODE[1]
+    return bytes[0] == K900ProtocolUtils.CMD_START_CODE[0] && bytes[1] == K900ProtocolUtils.CMD_START_CODE[1]
   }
   
   /**
@@ -1475,15 +2164,15 @@ extension MentraLiveManager {
       let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
       
       // Check for simple C-wrapping {"C": "content"} - only one field
-      if let json = json, json.keys.contains(FIELD_C) && json.count == 1 {
+      if let json = json, json.keys.contains(K900ProtocolUtils.FIELD_C) && json.count == 1 {
         return true
       }
       
       // Check for full K900 format {"C": "command", "V": val, "B": body}
       if let json = json,
-         json.keys.contains(FIELD_C) &&
-          json.keys.contains(FIELD_V) &&
-          json.keys.contains(FIELD_B) {
+         json.keys.contains(K900ProtocolUtils.FIELD_C) &&
+          json.keys.contains(K900ProtocolUtils.FIELD_V) &&
+          json.keys.contains(K900ProtocolUtils.FIELD_B) {
         return true
       }
       

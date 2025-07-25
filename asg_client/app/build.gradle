@@ -51,8 +51,8 @@ android {
 
         minSdk 28
         targetSdk 33
-        versionCode 7
-        versionName "7.0"
+        versionCode 8
+        versionName "8.0"
 
         ndk {
             abiFilters "armeabi-v7a", "arm64-v8a"
@@ -170,6 +170,9 @@ dependencies {
     
     // JSON handling
     implementation 'org.json:json:20210307'
+    
+    // AVIF encoding/decoding support
+    implementation 'com.github.awxkee:avif-coder:1.7.3'
 
     // AndroidX Test dependencies
     androidTestImplementation 'androidx.test:core:1.5.0'
