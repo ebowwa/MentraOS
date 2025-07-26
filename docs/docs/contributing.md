@@ -1,6 +1,6 @@
 ---
 id: contributing
-title: 👥 Contributing Guide
+title: Contributing Guide
 sidebar_position: 20
 ---
 
@@ -22,8 +22,8 @@ graph TD
     end
 
     subgraph "Client Layer"
-        AOSManager[MentraOS Manager App]
-        AOSCore[MentraOS Core Module]
+        MobileApp[Mobile App]
+        AOSCore[Android Core Module]
         AOSiOS[MentraOS iOS Module]
     end
 
@@ -45,10 +45,10 @@ graph TD
     end
 
     SG <--> Phone
-    Phone --- AOSManager
-    AOSManager --- AOSCore
-    AOSManager --- AOSiOS
-    AOSManager <--> AOSCloud
+    Phone --- MobileApp
+    MobileApp --- AOSCore
+    MobileApp --- AOSiOS
+    MobileApp <--> AOSCloud
     AOSCloud --- WebApps
     AOSCloud <--> WebSocket
     WebSocket <--> App1
@@ -58,48 +58,52 @@ graph TD
 
 ### System Components
 
-1. **MentraOS Manager** (`mobile/`):
+1. **Mobile App** (`mobile/`):
    - React Native application for smartphones
    - User interface for managing glasses, apps, and settings
    - Interfaces with native modules on iOS/Android
 
-2. **MentraOS Core** (`mentraos_core/`):
+2. **Android Core** (`android_core/`):
    - Android native module
    - Handles Bluetooth communication with glasses
+   - Handles phone/glasses microphone management
+   - Handles websocket communications with the cloud
    - Manages glass connections and capabilities
 
 3. **iOS Native Module** (`mobile/ios`):
    - iOS native module
    - Handles Bluetooth communication with glasses
+   - Handles phone/glasses microphone management
+   - Handles websocket communications with the cloud
    - Manages glass connections and capabilities
 
-4. **ASG Client** (`mentraos_asg_client/`):
-   - Android app for Android-based smart glasses
+4. **Android Smart Glasses Client** (`asg_client/`):
+   - Android code that runs on Android-based smart glasses
    - Enables glasses to connect to the MentraOS ecosystem
-   - Provides a BLE API for android-based glasses to connect to MentraOS Manager
-   - Communicates with MentraOS Cloud directly for streaming photos/videos
+   - Provides a BLE API for Android-based glasses to connect to the MentraOS Mobile App
+   - Can communicate with MentraOS Cloud directly for streaming photos/videos, falls back to BLE for photos when internet is not available
 
-5. **MentraOS Cloud** (`mentraos_cloud/`):
+5. **MentraOS Cloud** (`cloud/`):
    - Node.js backend services
-   - Manages app sessions, transcription, and display
-   - Handles real-time communication between glasses and Apps
+   - Manages app sessions, transcription, display, audio playback
+   - Handles real-time communication between glasses and apps
    - Controls app lifecycle and display rendering
 
-6. **MentraOS Store** (`mentraos_cloud/store/`):
-   - Web application for users to discover and install apps
-   - Showcases available third-party applications
-   - Provides app ratings, descriptions, and screenshots
+6. **Mentra Store** (`cloud/store/`):
+   - React application for users to discover and install apps
+   - Showcases available apps
+   - Provides app descriptions (and in the future: screenshots + ratings)
    - Handles app installation
 
-7. **MentraOS Developer Console** (`mentraos_cloud/developer-portal/`):
-   - Web application for developers to register and manage apps
+7. **MentraOS Developer Console** (`cloud/developer-portal/`):
+   - React application for developers to register and manage apps
    - Provides tools for app submission and updates
    - Includes documentation and SDK resources
 
-8. **Third-Party Apps**:
+8. **MentraOS Apps**:
    - External web servers that connect to MentraOS cloud
    - Use webhooks and websockets for real-time communication
-   - Leverage MentraOS SDK for display and input handling
+   - Leverage Mentra SDK for display and input handling
 
 ## Data Flow
 
@@ -139,7 +143,6 @@ Third-party apps in the MentraOS ecosystem follow a specific pattern:
 ### Project Links
 
 - [GitHub Project Board for General Tasks](https://github.com/orgs/Mentra-Community/projects/2)
-- [GitHub Project Board for iOS Specific Tasks](https://github.com/orgs/Mentra-Community/projects/1)
 - [All GitHub Projects](https://github.com/Mentra-Community/MentraOS/projects?query=is%3Aopen)
 
 ### Setting Up the Manager App
@@ -167,7 +170,7 @@ npm run ios
 ### Setting Up the Cloud Backend
 
 ```bash
-cd MentraOS/mentraos_cloud
+cd MentraOS/cloud
 
 # Install dependencies
 bun install
@@ -185,6 +188,7 @@ bun run dev
 ### Build Commands
 
 #### React Native
+
 ```bash
 # Start the development server
 npm start
@@ -212,19 +216,11 @@ npm run lint
 3. **Develop and Test**: Make your changes and test thoroughly.
 4. **Submit a Pull Request**: Create a PR with a clear description of your changes.
 
-## Coding Standards and Guidelines
-
-### General Guidelines
-
-- Top-level folders follow the pattern: `mentraos_${component}`
-- User-facing names use CamelCase: "MentraOS App", "MentraOS Store", "MentraOS Manager"
-- Code follows language-specific conventions (Java, TypeScript, Swift, etc.)
-
 ### Component-Specific Guidelines
 
 Different components of MentraOS have their own coding standards:
 
-- **[MentraOS Manager Guidelines](/contributing/mentraos-manager-guidelines)** - React Native mobile app development standards
+- **[Mobile App Guidelines](/contributing/mentraos-manager-guidelines)** - React Native mobile app development standards
 - **MentraOS Cloud Guidelines** - Backend service development (coming soon)
 - **SDK Development Guidelines** - Third-party app development (coming soon)
 
@@ -248,7 +244,7 @@ Different components of MentraOS have their own coding standards:
 
 ## Communication
 
-- Join our [Discord community](https://discord.gg/5ukNvkEAqT)
+- Join our [Discord community](https://mentra.glass/discord)
 - Report issues on GitHub
 - Discuss major changes in advance
 

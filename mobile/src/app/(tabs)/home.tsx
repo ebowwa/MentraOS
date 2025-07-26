@@ -26,7 +26,7 @@ import {OnboardingSpotlight} from "@/components/misc/OnboardingSpotlight"
 import {SETTINGS_KEYS} from "@/consts"
 import {translate} from "@/i18n"
 import showAlert from "@/utils/AlertUtils"
-import { useNavigationHistory } from "@/contexts/NavigationHistoryContext"
+import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 
 interface AnimatedSectionProps extends PropsWithChildren {
   delay?: number
@@ -76,7 +76,9 @@ export default function Homepage() {
       const hasNotifications =
         Platform.OS === "android" ? await checkFeaturePermissions(PermissionFeatures.READ_NOTIFICATIONS) : true
 
-      const shouldShowBell = !hasCalendar || !hasNotifications
+      const hasLocation = await checkFeaturePermissions(PermissionFeatures.BACKGROUND_LOCATION)
+
+      const shouldShowBell = !hasCalendar || !hasNotifications || !hasLocation
       setHasMissingPermissions(shouldShowBell)
 
       // Animate bell in if needed
@@ -109,7 +111,9 @@ export default function Homepage() {
           // Check if Live Captions app exists and is not running
           const liveCaptionsApp = appStatus.find(
             app =>
-              app.packageName === "com.augmentos.livecaptions" || app.packageName === "cloud.augmentos.live-captions" || app.packageName === "com.mentra.livecaptions",
+              app.packageName === "com.augmentos.livecaptions" ||
+              app.packageName === "cloud.augmentos.live-captions" ||
+              app.packageName === "com.mentra.livecaptions",
           )
 
           if (liveCaptionsApp && !liveCaptionsApp.is_running) {
@@ -214,7 +218,9 @@ export default function Homepage() {
         }
       />
 
-      <ScrollView style={{marginRight: -theme.spacing.md, paddingRight: theme.spacing.md}} contentInsetAdjustmentBehavior="automatic">
+      <ScrollView
+        style={{marginRight: -theme.spacing.md, paddingRight: theme.spacing.md}}
+        contentInsetAdjustmentBehavior="automatic">
         <CloudConnection />
 
         <SensingDisabledWarning />

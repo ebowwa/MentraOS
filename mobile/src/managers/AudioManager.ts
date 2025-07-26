@@ -1,107 +1,104 @@
-import { NativeModules, NativeEventEmitter, Platform } from 'react-native';
-import AudioPlayService from '../services/AudioPlayService';
+import {NativeModules, NativeEventEmitter, Platform} from "react-native"
+import AudioPlayService from "../services/AudioPlayService"
 
-const { AudioManagerModule } = NativeModules;
+const {AudioManagerModule} = NativeModules
 
 export interface AudioPlayRequest {
-  requestId: string;
-  audioUrl: string;
-  volume?: number;
-  stopOtherAudio?: boolean;
+  requestId: string
+  audioUrl: string
+  volume?: number
+  stopOtherAudio?: boolean
 }
 
 class AudioManagerClass {
-  private eventEmitter: NativeEventEmitter | null = null;
-  private responseListener: any = null;
+  private eventEmitter: NativeEventEmitter | null = null
+  private responseListener: any = null
 
   constructor() {
-    this.setupEventListeners();
+    this.setupEventListeners()
   }
 
   private setupEventListeners() {
-    if (Platform.OS === 'android' && AudioManagerModule) {
+    if (Platform.OS === "android" && AudioManagerModule) {
       // Set up event listener for responses from Android
-      this.eventEmitter = new NativeEventEmitter(AudioManagerModule);
+      this.eventEmitter = new NativeEventEmitter(AudioManagerModule)
 
-      this.responseListener = this.eventEmitter.addListener(
-        'AudioPlayResponse',
-        (response) => {
-          console.log('AudioManager: Received response from native:', response);
-          AudioPlayService.handleAudioPlayResponse(response);
-        }
-      );
+      this.responseListener = this.eventEmitter.addListener("AudioPlayResponse", response => {
+        console.log("AudioManager: Received response from native:", response)
+        AudioPlayService.handleAudioPlayResponse(response)
+      })
     }
     // iOS responses are handled through ServerComms directly
   }
 
   async playAudio(request: AudioPlayRequest): Promise<void> {
-    console.log(`AudioManager: Playing audio for requestId: ${request.requestId}`);
+    console.log(`AudioManager: Playing audio for requestId: ${request.requestId}`)
 
-    if (Platform.OS === 'ios') {
+    if (Platform.OS === "ios") {
       // iOS implementation - responses are handled through ServerComms
-      const { AOSManager } = NativeModules;
+      const {AOSManager} = NativeModules
       return AOSManager.playAudio(
         request.requestId,
         request.audioUrl,
         request.volume || 1.0,
-        request.stopOtherAudio !== false
-      );
-    } else if (Platform.OS === 'android') {
+        request.stopOtherAudio !== false,
+      )
+    } else if (Platform.OS === "android") {
       // Android implementation - responses come through event emitter
       if (!AudioManagerModule) {
-        throw new Error('AudioManagerModule is not available');
+        throw new Error("AudioManagerModule is not available")
       }
 
       return AudioManagerModule.playAudio(
         request.requestId,
         request.audioUrl,
         request.volume || 1.0,
-        request.stopOtherAudio !== false
-      );
+        request.stopOtherAudio !== false,
+      )
     } else {
-      throw new Error(`Unsupported platform: ${Platform.OS}`);
+      throw new Error(`Unsupported platform: ${Platform.OS}`)
     }
   }
 
   async stopAudio(requestId: string): Promise<void> {
-    console.log(`AudioManager: Stopping audio for requestId: ${requestId}`);
+    console.log(`AudioManager: Stopping audio for requestId: ${requestId}`)
 
-    if (Platform.OS === 'ios') {
-      const { AOSManager } = NativeModules;
-      return AOSManager.stopAudio(requestId);
-    } else if (Platform.OS === 'android') {
+    if (Platform.OS === "ios") {
+      const {AOSManager} = NativeModules
+      return AOSManager.stopAudio(requestId)
+    } else if (Platform.OS === "android") {
       if (!AudioManagerModule) {
-        throw new Error('AudioManagerModule is not available');
+        throw new Error("AudioManagerModule is not available")
       }
-      return AudioManagerModule.stopAudio(requestId);
+      return AudioManagerModule.stopAudio(requestId)
     } else {
-      throw new Error(`Unsupported platform: ${Platform.OS}`);
+      throw new Error(`Unsupported platform: ${Platform.OS}`)
     }
   }
 
   async stopAllAudio(): Promise<void> {
-    console.log('AudioManager: Stopping all audio');
+    console.log("AudioManager: Stopping all audio")
 
-    if (Platform.OS === 'ios') {
-      const { AOSManager } = NativeModules;
-      return AOSManager.stopAllAudio();
-    } else if (Platform.OS === 'android') {
+    if (Platform.OS === "ios") {
+      const {AOSManager} = NativeModules
+      return AOSManager.stopAllAudio()
+    } else if (Platform.OS === "android") {
       if (!AudioManagerModule) {
-        throw new Error('AudioManagerModule is not available');
+        throw new Error("AudioManagerModule is not available")
       }
-      return AudioManagerModule.stopAllAudio();
+      return AudioManagerModule.stopAllAudio()
     } else {
-      throw new Error(`Unsupported platform: ${Platform.OS}`);
+      throw new Error(`Unsupported platform: ${Platform.OS}`)
     }
   }
 
   cleanup() {
     if (this.responseListener) {
-      this.responseListener.remove();
-      this.responseListener = null;
+      this.responseListener.remove()
+      this.responseListener = null
     }
   }
 }
 
-const AudioManager = new AudioManagerClass();
-export default AudioManager;
+const AudioManager = new AudioManagerClass()
+export default AudioManager

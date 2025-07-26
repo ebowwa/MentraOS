@@ -172,7 +172,7 @@ export default function AppsActiveList({
               <AppListItem
                 app={app}
                 // @ts-ignore
-                is_foreground={(app.appType == "standard") || (app["tpaType"] == "standard")}
+                is_foreground={app.appType == "standard" || app["tpaType"] == "standard"}
                 isActive={true}
                 onTogglePress={() => {
                   Animated.timing(itemOpacity, {

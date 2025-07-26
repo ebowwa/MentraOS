@@ -22,6 +22,23 @@ public class K900ProtocolUtils {
     public static final byte[] CMD_START_CODE = new byte[]{0x23, 0x23}; // ##
     public static final byte[] CMD_END_CODE = new byte[]{0x24, 0x24}; // $$
     public static final byte CMD_TYPE_STRING = 0x30; // String/JSON type
+    public static final byte CMD_TYPE_PHOTO = 0x31; // Photo file type
+    public static final byte CMD_TYPE_VIDEO = 0x32; // Video file type
+    public static final byte CMD_TYPE_MUSIC = 0x33; // Music file type
+    public static final byte CMD_TYPE_AUDIO = 0x34; // Audio file type
+    public static final byte CMD_TYPE_DATA = 0x35; // Generic data type
+    
+    // File transfer constants
+    public static final int FILE_PACK_SIZE = 400; // Max data size per packet
+    public static final int LENGTH_FILE_START = 2;
+    public static final int LENGTH_FILE_TYPE = 1;
+    public static final int LENGTH_FILE_PACKSIZE = 2;
+    public static final int LENGTH_FILE_PACKINDEX = 2;
+    public static final int LENGTH_FILE_SIZE = 4;
+    public static final int LENGTH_FILE_NAME = 16;
+    public static final int LENGTH_FILE_FLAG = 2;
+    public static final int LENGTH_FILE_VERIFY = 1;
+    public static final int LENGTH_FILE_END = 2;
     
     // JSON Field constants
     public static final String FIELD_C = "C";  // Command/Content field
@@ -311,13 +328,20 @@ public class K900ProtocolUtils {
      */
     public static byte[] extractPayloadFromK900(byte[] protocolData) {
         if (!isK900ProtocolFormat(protocolData) || protocolData.length < 7) {
+            Log.e("K900ProtocolUtils", "extractPayloadFromK900: Not K900 format or too short. Length=" + 
+                  (protocolData != null ? protocolData.length : 0));
             return null;
         }
 
         // Extract length (little-endian for device-to-phone)
         int length = (protocolData[3] & 0xFF) | ((protocolData[4] & 0xFF) << 8);
+        
+        Log.d("K900ProtocolUtils", "extractPayloadFromK900: Extracted length=" + length + 
+              ", message length=" + protocolData.length + ", expected total=" + (length + 7));
 
         if (length + 7 > protocolData.length) {
+            Log.e("K900ProtocolUtils", "extractPayloadFromK900: Invalid length. Need " + 
+                  (length + 7) + " bytes but have " + protocolData.length);
             return null; // Invalid length
         }
 
@@ -536,5 +560,229 @@ public class K900ProtocolUtils {
         }
         
         return false;
+    }
+    
+    /**
+     * Inner class to represent file packet information
+     */
+    public static class FilePacketInfo {
+        public byte fileType;
+        public int packSize;
+        public int packIndex;
+        public int fileSize;
+        public String fileName;
+        public int flags;
+        public byte[] data;
+        public byte verifyCode;
+        public boolean isValid;
+        
+        public FilePacketInfo() {
+            this.isValid = false;
+        }
+    }
+    
+    /**
+     * Pack a file packet according to K900 file transfer protocol
+     * Format: ## + fileType + packSize + packIndex + fileSize + fileName + flags + data + verify + $$
+     *
+     * @param fileData The file data chunk to send (max 400 bytes)
+     * @param packIndex The index of this packet (0-based)
+     * @param packSize The size of data in this packet
+     * @param fileSize The total file size
+     * @param fileName The file name (max 16 chars)
+     * @param flags Optional flags
+     * @param fileType The file type (CMD_TYPE_PHOTO, etc)
+     * @return Packed byte array ready for transmission
+     */
+    public static byte[] packFilePacket(byte[] fileData, int packIndex, int packSize, 
+                                       int fileSize, String fileName, int flags, byte fileType) {
+        if (fileData == null || packSize > FILE_PACK_SIZE) {
+            return null;
+        }
+        
+        // Calculate total packet size
+        int totalSize = LENGTH_FILE_START + LENGTH_FILE_TYPE + LENGTH_FILE_PACKSIZE + 
+                       LENGTH_FILE_PACKINDEX + LENGTH_FILE_SIZE + LENGTH_FILE_NAME + 
+                       LENGTH_FILE_FLAG + packSize + LENGTH_FILE_VERIFY + LENGTH_FILE_END;
+        
+        byte[] packet = new byte[totalSize];
+        int pos = 0;
+        
+        // Start code ##
+        System.arraycopy(CMD_START_CODE, 0, packet, pos, LENGTH_FILE_START);
+        pos += LENGTH_FILE_START;
+        
+        // File type
+        packet[pos] = fileType;
+        pos += LENGTH_FILE_TYPE;
+        
+        // Pack size (2 bytes, big-endian like reference implementation)
+        packet[pos] = (byte)((packSize >> 8) & 0xFF);
+        packet[pos + 1] = (byte)(packSize & 0xFF);
+        pos += LENGTH_FILE_PACKSIZE;
+        
+        // Pack index (2 bytes, big-endian)
+        packet[pos] = (byte)((packIndex >> 8) & 0xFF);
+        packet[pos + 1] = (byte)(packIndex & 0xFF);
+        pos += LENGTH_FILE_PACKINDEX;
+        
+        // File size (4 bytes, big-endian)
+        packet[pos] = (byte)((fileSize >> 24) & 0xFF);
+        packet[pos + 1] = (byte)((fileSize >> 16) & 0xFF);
+        packet[pos + 2] = (byte)((fileSize >> 8) & 0xFF);
+        packet[pos + 3] = (byte)(fileSize & 0xFF);
+        pos += LENGTH_FILE_SIZE;
+        
+        // File name (16 bytes, padded with zeros)
+        byte[] nameBytes = fileName.getBytes(StandardCharsets.UTF_8);
+        int nameLen = Math.min(nameBytes.length, LENGTH_FILE_NAME);
+        System.arraycopy(nameBytes, 0, packet, pos, nameLen);
+        // Pad with zeros if name is shorter than 16 bytes
+        for (int i = nameLen; i < LENGTH_FILE_NAME; i++) {
+            packet[pos + i] = 0;
+        }
+        pos += LENGTH_FILE_NAME;
+        
+        // Flags (2 bytes, big-endian)
+        packet[pos] = (byte)((flags >> 8) & 0xFF);
+        packet[pos + 1] = (byte)(flags & 0xFF);
+        pos += LENGTH_FILE_FLAG;
+        
+        // Data
+        System.arraycopy(fileData, 0, packet, pos, packSize);
+        pos += packSize;
+        
+        // Calculate verify code (checksum of data bytes)
+        int checkSum = 0;
+        for (int i = 0; i < packSize; i++) {
+            checkSum += (fileData[i] & 0xFF);
+        }
+        packet[pos] = (byte)(checkSum & 0xFF);
+        pos += LENGTH_FILE_VERIFY;
+        
+        // End code $$
+        System.arraycopy(CMD_END_CODE, 0, packet, pos, LENGTH_FILE_END);
+        
+        return packet;
+    }
+    
+    /**
+     * Extract file packet information from received protocol data
+     *
+     * @param protocolData The raw protocol data received
+     * @return FilePacketInfo object with parsed data, or null if invalid
+     */
+    public static FilePacketInfo extractFilePacket(byte[] protocolData) {
+        if (!isK900ProtocolFormat(protocolData) || protocolData.length < 31) {
+            Log.e("K900ProtocolUtils", "extractFilePacket: Invalid format or too short. Length=" + 
+                  (protocolData != null ? protocolData.length : 0) + 
+                  ", isK900Format=" + isK900ProtocolFormat(protocolData));
+            return null;
+        }
+        
+        FilePacketInfo info = new FilePacketInfo();
+        int pos = LENGTH_FILE_START; // Skip start code
+        
+        // File type
+        info.fileType = protocolData[pos];
+        pos += LENGTH_FILE_TYPE;
+        
+        // Pack size (big-endian)
+        info.packSize = ((protocolData[pos] & 0xFF) << 8) | (protocolData[pos + 1] & 0xFF);
+        pos += LENGTH_FILE_PACKSIZE;
+        
+        // Pack index (big-endian)
+        info.packIndex = ((protocolData[pos] & 0xFF) << 8) | (protocolData[pos + 1] & 0xFF);
+        pos += LENGTH_FILE_PACKINDEX;
+        
+        // File size (big-endian)
+        info.fileSize = ((protocolData[pos] & 0xFF) << 24) | 
+                       ((protocolData[pos + 1] & 0xFF) << 16) |
+                       ((protocolData[pos + 2] & 0xFF) << 8) |
+                       (protocolData[pos + 3] & 0xFF);
+        pos += LENGTH_FILE_SIZE;
+        
+        // File name
+        byte[] nameBytes = new byte[LENGTH_FILE_NAME];
+        System.arraycopy(protocolData, pos, nameBytes, 0, LENGTH_FILE_NAME);
+        // Find null terminator
+        int nameLen = 0;
+        for (int i = 0; i < LENGTH_FILE_NAME; i++) {
+            if (nameBytes[i] == 0) break;
+            nameLen++;
+        }
+        info.fileName = new String(nameBytes, 0, nameLen, StandardCharsets.UTF_8);
+        pos += LENGTH_FILE_NAME;
+        
+        // Flags (big-endian)
+        info.flags = ((protocolData[pos] & 0xFF) << 8) | (protocolData[pos + 1] & 0xFF);
+        pos += LENGTH_FILE_FLAG;
+        
+        // Verify packet has enough data
+        if (protocolData.length < pos + info.packSize + LENGTH_FILE_VERIFY + LENGTH_FILE_END) {
+            Log.e("K900ProtocolUtils", "File packet too short for data. Need: " + 
+                  (pos + info.packSize + LENGTH_FILE_VERIFY + LENGTH_FILE_END) + 
+                  ", Have: " + protocolData.length + 
+                  ", packSize=" + info.packSize + ", pos=" + pos);
+            return null;
+        }
+        
+        // Data
+        info.data = new byte[info.packSize];
+        System.arraycopy(protocolData, pos, info.data, 0, info.packSize);
+        pos += info.packSize;
+        
+        // Verify code
+        info.verifyCode = protocolData[pos];
+        pos += LENGTH_FILE_VERIFY;
+        
+        // Check end code
+        if (protocolData[pos] != CMD_END_CODE[0] || protocolData[pos + 1] != CMD_END_CODE[1]) {
+            return null;
+        }
+        
+        // Calculate and verify checksum
+        int checkSum = 0;
+        for (int i = 0; i < info.packSize; i++) {
+            checkSum += (info.data[i] & 0xFF);
+        }
+        byte calculatedVerify = (byte)(checkSum & 0xFF);
+        
+        info.isValid = (calculatedVerify == info.verifyCode);
+        
+        if (!info.isValid) {
+            Log.e("K900ProtocolUtils", "File packet checksum failed. Expected: " + 
+                  String.format("%02X", info.verifyCode) + ", Calculated: " + 
+                  String.format("%02X", calculatedVerify));
+        } else {
+            Log.d("K900ProtocolUtils", "File packet extracted successfully: index=" + info.packIndex + 
+                  ", size=" + info.packSize + ", fileName=" + info.fileName);
+        }
+        
+        return info;
+    }
+    
+    /**
+     * Create a file transfer acknowledgment message
+     *
+     * @param state 1 for success, 0 for failure
+     * @param index The packet index being acknowledged
+     * @return JSON string ready to be sent
+     */
+    public static String createFileTransferAck(int state, int index) {
+        try {
+            JSONObject body = new JSONObject();
+            body.put("state", state);
+            body.put("index", index);
+            
+            JSONObject message = new JSONObject();
+            message.put("C", "cs_flts");
+            message.put("B", body); // Send as JSON object, not string
+            
+            return message.toString();
+        } catch (JSONException e) {
+            Log.e("K900ProtocolUtils", "Error creating file transfer ack", e);
+            return null;
+        }
     }
 }

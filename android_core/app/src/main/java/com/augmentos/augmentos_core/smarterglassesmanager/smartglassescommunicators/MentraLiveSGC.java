@@ -41,6 +41,7 @@ import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.Glass
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.DownloadProgressEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.InstallationProgressEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.K900ProtocolUtils;
+import com.augmentos.augmentos_core.smarterglassesmanager.utils.BlePhotoUploadService;
 
 import org.greenrobot.eventbus.EventBus;
 import org.json.JSONException;
@@ -49,6 +50,7 @@ import org.json.JSONObject;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -60,6 +62,11 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.Random;
 import java.security.SecureRandom;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
 
 import io.reactivex.rxjava3.subjects.PublishSubject;
 
@@ -90,6 +97,10 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     private static final UUID RX_CHAR_UUID = UUID.fromString("000070FF-0000-1000-8000-00805f9b34fb"); // Central receives on peripheral's TX
     private static final UUID TX_CHAR_UUID = UUID.fromString("000071FF-0000-1000-8000-00805f9b34fb"); // Central transmits on peripheral's RX
     private static final UUID CLIENT_CHARACTERISTIC_CONFIG_UUID = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb");
+
+    // BES => PHONE
+    private static final UUID FILE_READ_UUID = UUID.fromString("000072FF-0000-1000-8000-00805f9b34fb");
+    private static final UUID FILE_WRITE_UUID = UUID.fromString("000073FF-0000-1000-8000-00805f9b34fb");
 
     // Reconnection parameters
     private static final int BASE_RECONNECT_DELAY_MS = 1000; // Start with 1 second
@@ -143,6 +154,88 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     private int batteryLevel = 50; // Default until we get actual value
     private boolean isCharging = false;
     private boolean isConnected = false;
+    
+    // File transfer management
+    private ConcurrentHashMap<String, FileTransferSession> activeFileTransfers = new ConcurrentHashMap<>();
+    private static final String FILE_SAVE_DIR = "MentraLive_Images";
+    
+    // BLE photo transfer tracking
+    private Map<String, BlePhotoTransfer> blePhotoTransfers = new HashMap<>();
+    
+    private static class BlePhotoTransfer {
+        String bleImgId;
+        String requestId;
+        String webhookUrl;
+        FileTransferSession session;
+        long phoneStartTime;  // When phone received the request
+        long bleTransferStartTime;  // When BLE transfer actually started
+        long glassesCompressionDurationMs;  // How long glasses took to compress
+        
+        BlePhotoTransfer(String bleImgId, String requestId, String webhookUrl) {
+            this.bleImgId = bleImgId;
+            this.requestId = requestId;
+            this.webhookUrl = webhookUrl;
+            this.phoneStartTime = System.currentTimeMillis();
+            this.bleTransferStartTime = 0;
+            this.glassesCompressionDurationMs = 0;
+        }
+    }
+    
+    // Inner class to track incoming file transfers
+    private static class FileTransferSession {
+        String fileName;
+        int fileSize;
+        int totalPackets;
+        int expectedNextPacket;
+        ConcurrentHashMap<Integer, byte[]> receivedPackets;
+        long startTime;
+        boolean isComplete;
+        
+        FileTransferSession(String fileName, int fileSize) {
+            this.fileName = fileName;
+            this.fileSize = fileSize;
+            this.totalPackets = (fileSize + K900ProtocolUtils.FILE_PACK_SIZE - 1) / K900ProtocolUtils.FILE_PACK_SIZE;
+            this.expectedNextPacket = 0;
+            this.receivedPackets = new ConcurrentHashMap<>();
+            this.startTime = System.currentTimeMillis();
+            this.isComplete = false;
+        }
+        
+        boolean addPacket(int index, byte[] data) {
+            if (index >= 0 && index < totalPackets && !receivedPackets.containsKey(index)) {
+                receivedPackets.put(index, data);
+                
+                // Update expected next packet if this was the one we were waiting for
+                while (receivedPackets.containsKey(expectedNextPacket)) {
+                    expectedNextPacket++;
+                }
+                
+                // Check if complete
+                isComplete = (receivedPackets.size() == totalPackets);
+                return true;
+            }
+            return false;
+        }
+        
+        byte[] assembleFile() {
+            if (!isComplete) {
+                return null;
+            }
+            
+            byte[] fileData = new byte[fileSize];
+            int offset = 0;
+            
+            for (int i = 0; i < totalPackets; i++) {
+                byte[] packet = receivedPackets.get(i);
+                if (packet != null) {
+                    System.arraycopy(packet, 0, fileData, offset, packet.length);
+                    offset += packet.length;
+                }
+            }
+            
+            return fileData;
+        }
+    }
 
     // WiFi state tracking
     private boolean isWifiConnected = false;
@@ -670,22 +763,21 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             long threadId = Thread.currentThread().getId();
             UUID uuid = characteristic.getUuid();
 
-            Log.e(TAG, "Thread-" + threadId + ": 🎉 onCharacteristicChanged CALLBACK TRIGGERED! Characteristic: " + uuid);
+            Log.d(TAG, "onCharacteristicChanged triggered for: " + uuid);
 
             boolean isRxCharacteristic = uuid.equals(RX_CHAR_UUID);
             boolean isTxCharacteristic = uuid.equals(TX_CHAR_UUID);
 
             if (isRxCharacteristic) {
-                Log.e(TAG, "Thread-" + threadId + ": 🎯 RECEIVED DATA ON RX CHARACTERISTIC (Peripheral's TX)");
+                Log.d(TAG, "Received data on RX characteristic");
             } else if (isTxCharacteristic) {
-                Log.e(TAG, "Thread-" + threadId + ": 🎯 RECEIVED DATA ON TX CHARACTERISTIC (Peripheral's RX)");
+                Log.d(TAG, "Received data on TX characteristic");
             } else {
-                Log.e(TAG, "Thread-" + threadId + ": 🎯 RECEIVED DATA ON UNKNOWN CHARACTERISTIC: " + uuid);
+                Log.w(TAG, "Received data on unknown characteristic: " + uuid);
             }
 
             // Process ALL data regardless of which characteristic it came from
             {
-                Log.e(TAG, "Thread-" + threadId + ": 🔍 Processing received data");
                 byte[] data = characteristic.getValue();
 
                 // Convert first few bytes to hex for better viewing
@@ -693,8 +785,6 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
 //                for (int i = 0; i < Math.min(data.length, 40); i++) {
 //                    hexDump.append(String.format("%02X ", data[i]));
 //                }
-       //         Log.e(TAG, "Thread-" + threadId + ": 🔍 First 40 bytes: " + hexDump);
-     //           Log.e(TAG, "Thread-" + threadId + ": 🔍 Total data length: " + data.length + " bytes");
 
                 if (data != null && data.length > 0) {
 //                    // Critical debugging for LC3 audio issue - dump ALL received data
@@ -714,10 +804,6 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                     // Combined result
        //             isLc3Command = method1 || method2 || method3;
 
-//                    Log.e(TAG, "Thread-" + threadId + ": 🎤 BLE PACKET RECEIVED - " + data.length + " bytes");
-//                    Log.e(TAG, "Thread-" + threadId + ": 🔍 LC3 Detection - Method1: " + method1 + ", Method2: " + method2 + ", Method3: " + method3);
-//                    Log.e(TAG, "Thread-" + threadId + ": 🔍 Command byte: 0x" + String.format("%02X", data[0]) + " (" + (int)(data[0] & 0xFF) + ")");
-//                    Log.e(TAG, "Thread-" + threadId + ": 🔍 First 32 bytes: " + hexDump);
 
                     // Log MTU information with packet
 //                    int mtuSize = -1;
@@ -725,14 +811,6 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
 //                        try {
 //                            // Calculate effective MTU (current MTU - 3 bytes BLE overhead)
 //                            int effectiveMtu = currentMtu - 3;
-//                            //Log.e(TAG, "Thread-" + threadId + ": 📏 Packet size: " + data.length + " bytes, MTU limit: " + effectiveMtu + " bytes");
-//
-//                            if (data.length > effectiveMtu) {
-//                                Log.e(TAG, "Thread-" + threadId + ": ⚠️ WARNING: Packet size exceeds MTU limit - may be truncated!");
-//                            }
-//                        } catch (Exception e) {
-//                            Log.e(TAG, "Thread-" + threadId + ": ❌ Error getting MTU size: " + e.getMessage());
-//                        }
 //                    }
 //
 
@@ -847,14 +925,21 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
 
         // Get all characteristics
         List<BluetoothGattCharacteristic> characteristics = service.getCharacteristics();
-        Log.e(TAG, "Thread-" + threadId + ": 🔍 Found " + characteristics.size() + " characteristics in service " + SERVICE_UUID);
+        Log.d(TAG, "Thread-" + threadId + ": Found " + characteristics.size() + " characteristics in service " + SERVICE_UUID);
 
         boolean notificationSuccess = false;
 
         // Enable notifications for each characteristic
         for (BluetoothGattCharacteristic characteristic : characteristics) {
             UUID uuid = characteristic.getUuid();
-            Log.e(TAG, "Thread-" + threadId + ": 🔍 Examining characteristic: " + uuid);
+            Log.d(TAG, "Thread-" + threadId + ": Examining characteristic: " + uuid);
+            
+            // Log if this is one of the file transfer characteristics
+            if (uuid.equals(FILE_READ_UUID)) {
+                Log.e(TAG, "Thread-" + threadId + ": 📁 Found FILE_READ characteristic (72FF)!");
+            } else if (uuid.equals(FILE_WRITE_UUID)) {
+                Log.e(TAG, "Thread-" + threadId + ": 📁 Found FILE_WRITE characteristic (73FF)!");
+            }
 
             int properties = characteristic.getProperties();
             boolean hasNotify = (properties & BluetoothGattCharacteristic.PROPERTY_NOTIFY) != 0;
@@ -863,7 +948,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             boolean hasWrite = (properties & BluetoothGattCharacteristic.PROPERTY_WRITE) != 0;
             boolean hasWriteNoResponse = (properties & BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE) != 0;
 
-            Log.e(TAG, "Thread-" + threadId + ": 🔍 Characteristic " + uuid + " properties: " +
+            Log.d(TAG, "Thread-" + threadId + ": Characteristic " + uuid + " properties: " +
                    (hasNotify ? "NOTIFY " : "") +
                    (hasIndicate ? "INDICATE " : "") +
                    (hasRead ? "READ " : "") +
@@ -919,7 +1004,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
 
         // Log notification status but AVOID any delayed operations!
         if (notificationSuccess) {
-            Log.e(TAG, "Thread-" + threadId + ": 🎯 Local notification registration SUCCESS for at least one characteristic");
+            Log.d(TAG, "Thread-" + threadId + ": Local notification registration SUCCESS for at least one characteristic");
             Log.e(TAG, "Thread-" + threadId + ": 🔔 Ready to receive data via onCharacteristicChanged()");
         } else {
             Log.e(TAG, "Thread-" + threadId + ": ❌ Failed to enable notifications on any characteristic");
@@ -1182,8 +1267,40 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         // First check if this looks like a K900 protocol formatted message (starts with ##)
         if (size >= 7 && data[0] == 0x23 && data[1] == 0x23) {
             Log.d(TAG, "Thread-" + threadId + ": 🔍 DETECTED K900 PROTOCOL FORMAT (## prefix)");
+            
+            // Check the command type byte
+            byte cmdType = data[2];
+            
+            // Check if this is a file transfer packet
+            if (cmdType == K900ProtocolUtils.CMD_TYPE_PHOTO || 
+                cmdType == K900ProtocolUtils.CMD_TYPE_VIDEO ||
+                cmdType == K900ProtocolUtils.CMD_TYPE_AUDIO ||
+                cmdType == K900ProtocolUtils.CMD_TYPE_DATA) {
+                
+                Log.d(TAG, "Thread-" + threadId + ": 📦 DETECTED FILE TRANSFER PACKET (type: 0x" + 
+                      String.format("%02X", cmdType) + ")");
+                
+                // Debug: Log the raw data
+                StringBuilder hexDump = new StringBuilder();
+                for (int i = 0; i < Math.min(data.length, 64); i++) {
+                    hexDump.append(String.format("%02X ", data[i]));
+                }
+                Log.d(TAG, "Thread-" + threadId + ": 📦 Raw file packet data length=" + data.length + 
+                      ", first 64 bytes: " + hexDump.toString());
+                
+                // The data IS the file packet - it starts with ## and contains the full file packet structure
+                K900ProtocolUtils.FilePacketInfo packetInfo = K900ProtocolUtils.extractFilePacket(data);
+                if (packetInfo != null && packetInfo.isValid) {
+                    processFilePacket(packetInfo);
+                } else {
+                    Log.e(TAG, "Thread-" + threadId + ": Failed to extract or validate file packet");
+                    // BES chip handles ACKs automatically
+                }
+                
+                return; // Exit after processing file packet
+            }
 
-            // Use K900ProtocolUtils to process the protocol data
+            // Otherwise it's a normal JSON message
             JSONObject json = K900ProtocolUtils.processReceivedBytesToJson(data);
             if (json != null) {
                 processJsonMessage(json);
@@ -1327,6 +1444,9 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         }
 
         switch (type) {
+            case "ble_photo_ready":
+                processBlePhotoReady(json);
+                break;
             case "rtmp_stream_status":
                 // Process RTMP streaming status update from ASG client
                 Log.d(TAG, "Received RTMP status update from glasses: " + json.toString());
@@ -1381,6 +1501,10 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 String ssid = json.optString("ssid", "");
                 String localIp = json.optString("local_ip", "");
 
+                // Update local tracking
+                isWifiConnected = wifiConnected;
+                wifiSsid = ssid;
+
                 Log.d(TAG, "## Received WiFi status: connected=" + wifiConnected + ", SSID=" + ssid + ", Local IP=" + localIp);
                 EventBus.getDefault().post(new GlassesWifiStatusChange(
                         smartGlassesDevice.deviceModelName,
@@ -1404,6 +1528,23 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 } else {
                     // Handle successful photo (in future implementation)
                     Log.d(TAG, "Photo request succeeded - requestId: " + requestId);
+                }
+                break;
+                
+            case "ble_photo_complete":
+                // Process BLE photo transfer completion
+                String bleRequestId = json.optString("requestId", "");
+                String bleBleImgId = json.optString("bleImgId", "");
+                boolean bleSuccess = json.optBoolean("success", false);
+                
+                Log.d(TAG, "BLE photo transfer complete - requestId: " + bleRequestId + 
+                     ", bleImgId: " + bleBleImgId + ", success: " + bleSuccess);
+                
+                // Send completion notification back to glasses
+                if (bleSuccess) {
+                    sendBleTransferComplete(bleRequestId, bleBleImgId, true);
+                } else {
+                    Log.e(TAG, "BLE photo transfer failed for requestId: " + bleRequestId);
                 }
                 break;
 
@@ -1674,6 +1815,31 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     /**
      * Process K900 command format JSON messages (messages with "C" field)
      */
+    /**
+     * Process BLE photo ready notification from glasses
+     */
+    private void processBlePhotoReady(JSONObject json) {
+        try {
+            String bleImgId = json.optString("bleImgId", "");
+            String requestId = json.optString("requestId", "");
+            long compressionDurationMs = json.optLong("compressionDurationMs", 0);
+            
+            Log.d(TAG, "📸 BLE photo ready notification: bleImgId=" + bleImgId + ", requestId=" + requestId);
+            
+            // Update the transfer with glasses compression duration
+            BlePhotoTransfer transfer = blePhotoTransfers.get(bleImgId);
+            if (transfer != null) {
+                transfer.glassesCompressionDurationMs = compressionDurationMs;
+                transfer.bleTransferStartTime = System.currentTimeMillis();  // BLE transfer starts now
+                Log.d(TAG, "⏱️ Glasses compression took: " + compressionDurationMs + "ms");
+            } else {
+                Log.w(TAG, "Received ble_photo_ready for unknown transfer: " + bleImgId);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error processing ble_photo_ready", e);
+        }
+    }
+    
     private void processK900JsonMessage(JSONObject json) {
         String command = json.optString("C", "");
         Log.d(TAG, "Processing K900 command: " + command);
@@ -1701,6 +1867,19 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 } catch (Exception e) {
                     Log.e(TAG, "Error parsing sr_batv response", e);
                 }
+                break;
+
+            case "sr_shut":
+                Log.d(TAG, "K900 shutdown command received - glasses shutting down");
+                // Mark as killed to prevent reconnection attempts
+                isKilled = true;
+                // Clean disconnect without reconnection
+                if (bluetoothGatt != null) {
+                    Log.d(TAG, "Disconnecting from glasses due to shutdown");
+                    bluetoothGatt.disconnect();
+                }
+                // Notify the system that glasses are intentionally disconnected
+                connectionEvent(SmartGlassesConnectionState.DISCONNECTED);
                 break;
 
             default:
@@ -1780,7 +1959,8 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         // This was necessary for OG beta units
         // Not required for newer beta units
         // TODO: remove this line post hackathon
-        sendBatteryStatusOverBle(level, charging);
+        // Commented out to prevent battery status echo loop between phone and glasses
+        // sendBatteryStatusOverBle(level, charging);
     }
     
     /**
@@ -2084,6 +2264,23 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             if (webhookUrl != null && !webhookUrl.isEmpty()) {
                 json.put("webhookUrl", webhookUrl);
             }
+            
+            // Always generate BLE ID for potential fallback
+            // Format: "I" + 9 digit counter/random
+            String bleImgId = "I" + String.format("%09d", System.currentTimeMillis() % 1000000000);
+            json.put("bleImgId", bleImgId);
+            
+            // Use auto mode by default - glasses will decide based on connectivity
+            json.put("transferMethod", "auto");
+            
+            // Always prepare for potential BLE transfer
+            if (webhookUrl != null && !webhookUrl.isEmpty()) {
+                // Store the transfer info for BLE route
+                blePhotoTransfers.put(bleImgId, new BlePhotoTransfer(bleImgId, requestId, webhookUrl));
+            }
+            
+            Log.d(TAG, "Using auto transfer mode with BLE fallback ID: " + bleImgId);
+            
             sendJson(json, true);
         } catch (JSONException e) {
             Log.e(TAG, "Error creating photo request JSON", e);
@@ -2138,6 +2335,15 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         } catch (Exception e) {
             Log.e(TAG, "Error sending RTMP stream keep alive", e);
         }
+    }
+
+    /**
+     * Track a BLE photo transfer request
+     */
+    private void trackBlePhotoTransfer(String bleImgId, String requestId, String webhookUrl) {
+        BlePhotoTransfer transfer = new BlePhotoTransfer(bleImgId, requestId, webhookUrl);
+        blePhotoTransfers.put(bleImgId, transfer);
+        Log.d(TAG, "Tracking BLE photo transfer - bleImgId: " + bleImgId + ", requestId: " + requestId);
     }
 
     /**
@@ -2206,7 +2412,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                         readyMsg.put("timestamp", System.currentTimeMillis());
 
                         // Send it through our data channel (no ACK needed for readiness checks)
-                        sendJsonWithoutAck(readyMsg);
+                        sendJsonWithoutAck(readyMsg, true);
                     } catch (JSONException e) {
                         Log.e(TAG, "Error creating phone_ready message", e);
                     }
@@ -2572,5 +2778,315 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         }
         
         return stats.toString();
+    }
+    
+    //---------------------------------------
+    // File Transfer Methods
+    //---------------------------------------
+    
+    /**
+     * Process a received file packet
+     */
+    private void processFilePacket(K900ProtocolUtils.FilePacketInfo packetInfo) {
+        Log.d(TAG, "📦 Processing file packet: " + packetInfo.fileName + 
+              " [" + packetInfo.packIndex + "/" + ((packetInfo.fileSize + K900ProtocolUtils.FILE_PACK_SIZE - 1) / K900ProtocolUtils.FILE_PACK_SIZE - 1) + "]" +
+              " (" + packetInfo.packSize + " bytes)");
+        
+        // Check if this is a BLE photo transfer we're tracking
+        // The filename might have an extension (.avif or .jpg), but we track by ID only
+        String bleImgId = packetInfo.fileName;
+        int dotIndex = bleImgId.lastIndexOf('.');
+        if (dotIndex > 0) {
+            bleImgId = bleImgId.substring(0, dotIndex);
+        }
+        
+        BlePhotoTransfer photoTransfer = blePhotoTransfers.get(bleImgId);
+        if (photoTransfer != null) {
+            // This is a BLE photo transfer
+            Log.d(TAG, "📦 BLE photo transfer packet for requestId: " + photoTransfer.requestId);
+            
+            // Get or create session for this transfer
+            if (photoTransfer.session == null) {
+                photoTransfer.session = new FileTransferSession(packetInfo.fileName, packetInfo.fileSize);
+                Log.d(TAG, "📦 Started BLE photo transfer: " + packetInfo.fileName + 
+                      " (" + packetInfo.fileSize + " bytes, " + photoTransfer.session.totalPackets + " packets)");
+            }
+            
+            // Add packet to session
+            boolean added = photoTransfer.session.addPacket(packetInfo.packIndex, packetInfo.data);
+            
+            if (added && photoTransfer.session.isComplete) {
+                long transferEndTime = System.currentTimeMillis();
+                long totalDuration = transferEndTime - photoTransfer.phoneStartTime;
+                long bleTransferDuration = photoTransfer.bleTransferStartTime > 0 ? 
+                    (transferEndTime - photoTransfer.bleTransferStartTime) : 0;
+                
+                Log.d(TAG, "✅ BLE photo transfer complete: " + packetInfo.fileName);
+                Log.d(TAG, "⏱️ Total duration (request to complete): " + totalDuration + "ms");
+                Log.d(TAG, "⏱️ Glasses compression: " + photoTransfer.glassesCompressionDurationMs + "ms");
+                if (bleTransferDuration > 0) {
+                    Log.d(TAG, "⏱️ BLE transfer duration: " + bleTransferDuration + "ms");
+                    Log.d(TAG, "📊 Transfer rate: " + (packetInfo.fileSize * 1000 / bleTransferDuration) + " bytes/sec");
+                }
+                
+                // Get complete image data (AVIF or JPEG)
+                byte[] imageData = photoTransfer.session.assembleFile();
+                if (imageData != null) {
+                    // Process and upload the photo
+                    processAndUploadBlePhoto(photoTransfer, imageData);
+                }
+                
+                // Clean up - use the bleImgId without extension
+                blePhotoTransfers.remove(bleImgId);
+            }
+            
+            return; // Exit after handling BLE photo
+        }
+        
+        // Regular file transfer (not a BLE photo)
+        FileTransferSession session = activeFileTransfers.get(packetInfo.fileName);
+        if (session == null) {
+            // New file transfer
+            session = new FileTransferSession(packetInfo.fileName, packetInfo.fileSize);
+            activeFileTransfers.put(packetInfo.fileName, session);
+            
+            Log.d(TAG, "📦 Started new file transfer: " + packetInfo.fileName + 
+                  " (" + packetInfo.fileSize + " bytes, " + session.totalPackets + " packets)");
+        }
+        
+        // Add packet to session
+        boolean added = session.addPacket(packetInfo.packIndex, packetInfo.data);
+        
+        if (added) {
+            // BES chip handles ACKs automatically
+            Log.d(TAG, "📦 Packet " + packetInfo.packIndex + " received successfully (BES will auto-ACK)");
+            
+            // Check if transfer is complete
+            if (session.isComplete) {
+                Log.d(TAG, "📦 File transfer complete: " + packetInfo.fileName);
+                
+                // Assemble and save the file
+                byte[] fileData = session.assembleFile();
+                if (fileData != null) {
+                    saveReceivedFile(packetInfo.fileName, fileData, packetInfo.fileType);
+                }
+                
+                // Remove from active transfers
+                activeFileTransfers.remove(packetInfo.fileName);
+            }
+        } else {
+            // Packet already received or invalid index
+            Log.w(TAG, "📦 Duplicate or invalid packet: " + packetInfo.packIndex);
+            // BES chip handles ACKs automatically
+        }
+    }
+    
+    
+    /**
+     * Save received file to storage
+     */
+    private void saveReceivedFile(String fileName, byte[] fileData, byte fileType) {
+        try {
+            // Get or create the directory for saving files
+            File dir = new File(context.getExternalFilesDir(null), FILE_SAVE_DIR);
+            if (!dir.exists()) {
+                dir.mkdirs();
+            }
+            
+            // Generate unique filename with timestamp
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US);
+            String timestamp = sdf.format(new Date());
+            
+            // Determine file extension based on type
+            String extension = "";
+            switch (fileType) {
+                case K900ProtocolUtils.CMD_TYPE_PHOTO:
+                    // For photos, try to preserve the original extension
+                    int photoExtIndex = fileName.lastIndexOf('.');
+                    if (photoExtIndex > 0) {
+                        extension = fileName.substring(photoExtIndex);
+                    } else {
+                        extension = ".jpg"; // Default to JPEG if no extension
+                    }
+                    break;
+                case K900ProtocolUtils.CMD_TYPE_VIDEO:
+                    extension = ".mp4";
+                    break;
+                case K900ProtocolUtils.CMD_TYPE_AUDIO:
+                    extension = ".wav";
+                    break;
+                default:
+                    // Try to get extension from original filename
+                    int dotIndex = fileName.lastIndexOf('.');
+                    if (dotIndex > 0) {
+                        extension = fileName.substring(dotIndex);
+                    }
+                    break;
+            }
+            
+            // Create unique filename
+            String baseFileName = fileName;
+            if (baseFileName.contains(".")) {
+                baseFileName = baseFileName.substring(0, baseFileName.lastIndexOf('.'));
+            }
+            String uniqueFileName = baseFileName + "_" + timestamp + extension;
+            
+            // Save the file
+            File file = new File(dir, uniqueFileName);
+            try (FileOutputStream fos = new FileOutputStream(file)) {
+                fos.write(fileData);
+                fos.flush();
+                
+                Log.d(TAG, "💾 Saved file: " + file.getAbsolutePath());
+                
+                // Notify about the received file
+                notifyFileReceived(file.getAbsolutePath(), fileType);
+            }
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Error saving received file: " + fileName, e);
+        }
+    }
+    
+    /**
+     * Notify listeners about received file
+     */
+    private void notifyFileReceived(String filePath, byte fileType) {
+        // Create event based on file type
+        JSONObject event = new JSONObject();
+        try {
+            event.put("type", "file_received");
+            event.put("filePath", filePath);
+            event.put("fileType", String.format("0x%02X", fileType));
+            event.put("timestamp", System.currentTimeMillis());
+            
+            // Emit event through data observable
+            if (dataObservable != null) {
+                dataObservable.onNext(event);
+            }
+            
+            // You could also post an EventBus event here if needed
+            // EventBus.getDefault().post(new FileReceivedEvent(filePath, fileType));
+            
+        } catch (JSONException e) {
+            Log.e(TAG, "Error creating file received event", e);
+        }
+    }
+    
+    /**
+     * Process and upload a BLE photo transfer
+     */
+    private void processAndUploadBlePhoto(BlePhotoTransfer transfer, byte[] imageData) {
+        Log.d(TAG, "Processing BLE photo for upload. RequestId: " + transfer.requestId);
+        long uploadStartTime = System.currentTimeMillis();
+        
+        // Save BLE photo locally for debugging/backup
+        try {
+            File dir = new File(context.getExternalFilesDir(null), FILE_SAVE_DIR);
+            if (!dir.exists()) {
+                dir.mkdirs();
+            }
+            
+            // BLE photos are ALWAYS AVIF format
+            String fileName = "BLE_" + transfer.bleImgId + "_" + System.currentTimeMillis() + ".avif";
+            File file = new File(dir, fileName);
+            
+            try (FileOutputStream fos = new FileOutputStream(file)) {
+                fos.write(imageData);
+                Log.d(TAG, "💾 Saved BLE photo locally: " + file.getAbsolutePath());
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error saving BLE photo locally", e);
+        }
+        
+        // Get core token for authentication
+        String coreToken = getCoreToken();
+        
+        // Use BlePhotoUploadService to handle decoding and upload
+        BlePhotoUploadService.processAndUploadPhoto(
+            imageData,
+            transfer.requestId,
+            transfer.webhookUrl,
+            coreToken,
+            new BlePhotoUploadService.UploadCallback() {
+                @Override
+                public void onSuccess(String requestId) {
+                    long uploadDuration = System.currentTimeMillis() - uploadStartTime;
+                    long totalDuration = System.currentTimeMillis() - transfer.phoneStartTime;
+                    
+                    Log.d(TAG, "✅ BLE photo uploaded successfully via phone relay for requestId: " + requestId);
+                    Log.d(TAG, "⏱️ Upload duration: " + uploadDuration + "ms");
+                    Log.d(TAG, "⏱️ Total end-to-end duration: " + totalDuration + "ms");
+                    //sendPhotoUploadSuccess(requestId);
+                }
+                
+                @Override
+                public void onError(String requestId, String error) {
+                    long uploadDuration = System.currentTimeMillis() - uploadStartTime;
+                    Log.e(TAG, "❌ BLE photo upload failed for requestId: " + requestId + ", error: " + error);
+                    Log.e(TAG, "⏱️ Failed after: " + uploadDuration + "ms");
+                    //sendPhotoUploadError(requestId, error);
+                }
+            }
+        );
+    }
+    
+    /**
+     * Send photo upload success notification to glasses
+     */
+    private void sendPhotoUploadSuccess(String requestId) {
+        try {
+            JSONObject json = new JSONObject();
+            json.put("type", "photo_upload_result");
+            json.put("requestId", requestId);
+            json.put("success", true);
+            
+            sendJson(json, true);
+        } catch (JSONException e) {
+            Log.e(TAG, "Error creating photo upload success message", e);
+        }
+    }
+    
+    /**
+     * Send photo upload error notification to glasses
+     */
+    private void sendPhotoUploadError(String requestId, String error) {
+        try {
+            JSONObject json = new JSONObject();
+            json.put("type", "photo_upload_result");
+            json.put("requestId", requestId);
+            json.put("success", false);
+            json.put("error", error);
+            
+            sendJson(json, true);
+        } catch (JSONException e) {
+            Log.e(TAG, "Error creating photo upload error message", e);
+        }
+    }
+    
+    /**
+     * Get the core authentication token
+     */
+    private String getCoreToken() {
+        SharedPreferences prefs = context.getSharedPreferences(AUTH_PREFS_NAME, Context.MODE_PRIVATE);
+        return prefs.getString(KEY_CORE_TOKEN, "");
+    }
+    
+    /**
+     * Send BLE transfer completion notification
+     */
+    private void sendBleTransferComplete(String requestId, String bleImgId, boolean success) {
+        try {
+            JSONObject json = new JSONObject();
+            json.put("type", "ble_photo_transfer_complete"); 
+            json.put("requestId", requestId);
+            json.put("bleImgId", bleImgId);
+            json.put("success", success);
+            
+            sendJson(json, true);
+            Log.d(TAG, "Sent BLE transfer complete notification: " + json.toString());
+        } catch (JSONException e) {
+            Log.e(TAG, "Error creating BLE transfer complete message", e);
+        }
     }
 }

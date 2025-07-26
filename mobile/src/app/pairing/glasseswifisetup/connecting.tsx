@@ -9,7 +9,7 @@ import {ThemedStyle} from "@/theme"
 import {ViewStyle, TextStyle} from "react-native"
 import ActionButton from "@/components/ui/ActionButton"
 import WifiCredentialsService from "@/utils/WifiCredentialsService"
-import { useNavigationHistory } from "@/contexts/NavigationHistoryContext"
+import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 
 export default function WifiConnectingScreen() {
   const params = useLocalSearchParams()
@@ -44,25 +44,24 @@ export default function WifiConnectingScreen() {
           clearTimeout(failureGracePeriodRef.current)
           failureGracePeriodRef.current = null
         }
-        
+
         // Save credentials on successful connection only if checkbox was checked
         if (password && rememberPassword) {
           WifiCredentialsService.saveCredentials(ssid, password, true)
           WifiCredentialsService.updateLastConnected(ssid)
         }
-        
+
         setConnectionStatus("success")
         GlobalEventEmitter.emit("SHOW_BANNER", {
           message: `Successfully connected to ${data.ssid}`,
           type: "success",
         })
-        
+
         // Navigate back to home after short delay
         setTimeout(() => {
           router.navigate("/")
         }, 1500)
       } else if (!data.connected && connectionStatus === "connecting") {
-
         // Set up 5-second grace period before showing failure
         failureGracePeriodRef.current = setTimeout(() => {
           console.log("#$%^& Failed to connect to the network. Please check your password and try again.")
@@ -92,7 +91,7 @@ export default function WifiConnectingScreen() {
     try {
       console.log("Attempting to send wifi credentials to Core", ssid, password)
       await coreCommunicator.sendWifiCredentials(ssid, password)
-      
+
       // Set timeout for connection attempt (20 seconds)
       connectionTimeoutRef.current = setTimeout(() => {
         if (connectionStatus === "connecting") {

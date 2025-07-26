@@ -31,6 +31,10 @@ import androidx.preference.PreferenceManager;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 //BMP
 import java.util.ArrayList;
@@ -222,6 +226,11 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
         shouldUseAutoBrightness = getSavedAutoBrightnessValue(context);
         this.bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
         this.shouldUseGlassesMic = SmartGlassesManager.getSensingEnabled(context) && !"phone".equals(SmartGlassesManager.getPreferredMic(context));
+        
+        // Initialize bitmap executor for parallel operations
+        if (USE_PARALLEL_BITMAP_WRITES) {
+            bitmapExecutor = Executors.newFixedThreadPool(2);
+        }
 
         //setup LC3 decoder
         if (lc3DecoderPtr == 0) {
@@ -810,12 +819,20 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
                         isRightPairing = false;
                         pendingSavedG1RightName = device.getName();
                     }
+                    
+                    // Reset both pairing flags when a device bonds successfully
+                    // This prevents the other device from being blocked when scan restarts
+                    isLeftPairing = false;
+                    isRightPairing = false;
 
                     // Restart scan for the next device
                     if (!isLeftBonded || !isRightBonded) {
                         // if (!(isLeftBonded && !isRightBonded)){// || !doPendingPairingIdsMatch()) {
                         Log.d(TAG, "Restarting scan to find remaining device...");
-                        startScan();
+                        // Add delay for vendor-specific timing issues (e.g., Motorola devices)
+                        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                            startScan();
+                        }, 500); // 500ms delay
                     } else if (isLeftBonded && isRightBonded && !doPendingPairingIdsMatch()) {
                         // We've connected to two different G1s...
                         // Let's unpair the right, try to pair to a different one
@@ -1125,13 +1142,15 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
                     connectionEvent(connectionState);
                     bondDevice(device);
                 } else if (!isLeft && !isRightPairing && !isRightBonded) {
-//                    Log.d(TAG, "Bonding with Right Glass...");
+                    Log.d(TAG, "Attempting to bond with right device. isRightPairing=" + isRightPairing + ", isRightBonded=" + isRightBonded);
                     isRightPairing = true;
                     connectionState = SmartGlassesConnectionState.BONDING;
                     connectionEvent(connectionState);
                     bondDevice(device);
                 } else {
-                    Log.d(TAG, "Not running a53dd");
+                    Log.d(TAG, "Not running bonding - isLeft=" + isLeft + ", isLeftPairing=" + isLeftPairing + 
+                              ", isLeftBonded=" + isLeftBonded + ", isRightPairing=" + isRightPairing + 
+                              ", isRightBonded=" + isRightBonded);
                 }
             } else {
                 // Already bonded
@@ -1543,6 +1562,32 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
             new Thread(this::processQueue, "EvenRealitiesG1SGCProcessQueue").start();
         }
     }
+    
+    // Fast send method for bitmap chunks - doesn't wait for write confirmation
+    private void sendBitmapChunkNoWait(byte[] data, boolean sendLeft, boolean sendRight) {
+        if (data == null || data.length == 0) return;
+        
+        // IMPORTANT: Set write type to NO_RESPONSE for fire-and-forget behavior
+        // This prevents waiting for BLE acknowledgments
+        
+        // Send to right glass without waiting
+        if (sendRight && rightGlassGatt != null && rightTxChar != null && isRightConnected) {
+            rightTxChar.setValue(data);
+            rightTxChar.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE);
+            rightGlassGatt.writeCharacteristic(rightTxChar);
+            // Restore default write type
+            rightTxChar.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
+        }
+        
+        // Send to left glass without waiting  
+        if (sendLeft && leftGlassGatt != null && leftTxChar != null && isLeftConnected) {
+            leftTxChar.setValue(data);
+            leftTxChar.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE);
+            leftGlassGatt.writeCharacteristic(leftTxChar);
+            // Restore default write type
+            leftTxChar.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
+        }
+    }
 
 
 
@@ -1607,36 +1652,38 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
                         boolean leftSuccess = true;
                         boolean rightSuccess = true;
 
-                        // Send to left glass
-                        if (!request.onlyRight && leftGlassGatt != null && leftTxChar != null && isLeftConnected) {
-                            leftWaiter.setTrue();
-                            leftTxChar.setValue(request.data);
-                            leftSuccess = leftGlassGatt.writeCharacteristic(leftTxChar);
-                            if (leftSuccess) {
-                                lastSendTimestamp = System.currentTimeMillis();
-                            }
-                        }
+                        // Start both writes without waiting
+                        boolean leftStarted = false;
+                        boolean rightStarted = false;
 
-                        if (leftSuccess) {
-                            leftWaiter.waitWhileTrue();
-                        } else {
-                            //Log.d(TAG, "PROC_QUEUE - LEFT send fail");
-                        }
-
-                        // Send to right glass
+                        // Start right glass write (non-blocking)
                         if (!request.onlyLeft && rightGlassGatt != null && rightTxChar != null && isRightConnected) {
                             rightWaiter.setTrue();
                             rightTxChar.setValue(request.data);
                             rightSuccess = rightGlassGatt.writeCharacteristic(rightTxChar);
                             if (rightSuccess) {
+                                rightStarted = true;
                                 lastSendTimestamp = System.currentTimeMillis();
                             }
                         }
 
-                        if (rightSuccess) {
+                        // Start left glass write immediately (non-blocking)
+                        if (!request.onlyRight && leftGlassGatt != null && leftTxChar != null && isLeftConnected) {
+                            leftWaiter.setTrue();
+                            leftTxChar.setValue(request.data);
+                            leftSuccess = leftGlassGatt.writeCharacteristic(leftTxChar);
+                            if (leftSuccess) {
+                                leftStarted = true;
+                                lastSendTimestamp = System.currentTimeMillis();
+                            }
+                        }
+
+                        // Now wait for both to complete
+                        if (rightStarted) {
                             rightWaiter.waitWhileTrue();
-                        } else {
-                            //Log.d(TAG, "PROC_QUEUE - RIGHT send fail");
+                        }
+                        if (leftStarted) {
+                            leftWaiter.waitWhileTrue();
                         }
 
                         Thread.sleep(DELAY_BETWEEN_CHUNKS_SEND);
@@ -1766,6 +1813,13 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
             return;
         }
 
+        if (title.trim().isEmpty() && body.trim().isEmpty()){
+            if (SmartGlassesManager.getPowerSavingMode(context)) {
+                sendExitCommand();
+                return;
+            }
+        }
+
         List<byte[]> chunks = createTextWallChunks(title + "\n\n" + body);
         for (int i = 0; i < chunks.size(); i++) {
             byte[] chunk = chunks.get(i);
@@ -1788,6 +1842,18 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
 
         //stop BLE scanning
         stopScan();
+        
+        // Shutdown bitmap executor
+        if (bitmapExecutor != null) {
+            bitmapExecutor.shutdown();
+            try {
+                if (!bitmapExecutor.awaitTermination(1, TimeUnit.SECONDS)) {
+                    bitmapExecutor.shutdownNow();
+                }
+            } catch (InterruptedException e) {
+                bitmapExecutor.shutdownNow();
+            }
+        }
 
         if (bondingReceiver != null && isBondingReceiverRegistered) {
             context.unregisterReceiver(bondingReceiver);
@@ -1926,12 +1992,24 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
 
     public void displayDoubleTextWall(String textTop, String textBottom) {
         if (updatingScreen) return;
+
+        if (textTop.trim().isEmpty() && textBottom.trim().isEmpty()){
+            if (SmartGlassesManager.getPowerSavingMode(context)) {
+                sendExitCommand();
+                return;
+            }
+        }
+
         List<byte[]> chunks = createDoubleTextWallChunks(textTop, textBottom);
         sendChunks(chunks);
     }
 
     public void showHomeScreen() {
-        displayTextWall(" ");
+        if (SmartGlassesManager.getPowerSavingMode(context)) {
+            sendExitCommand();
+        } else {
+            displayTextWall(" ");
+        }
 
         if (lastThingDisplayedWasAnImage) {
             //clearG1Screen();
@@ -1964,6 +2042,13 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
 
     public void displayTextWall(String a) {
         if (updatingScreen) return;
+        if (a.trim().isEmpty()){
+            if (SmartGlassesManager.getPowerSavingMode(context)) {
+                sendExitCommand();
+                return;
+            }
+        }
+
         List<byte[]> chunks = createTextWallChunks(a);
         sendChunks(chunks);
     }
@@ -2862,34 +2947,155 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
     private static final int BMP_CHUNK_SIZE = 194;
     private static final byte[] GLASSES_ADDRESS = new byte[]{0x00, 0x1c, 0x00, 0x00};
     private static final byte[] END_COMMAND = new byte[]{0x20, 0x0d, 0x0e};
+    private static final int MAX_BMP_RETRY_ATTEMPTS = 10;
+    private static final long BMP_RETRY_DELAY_MS = 1000;
+
+    // Platform-specific timing (matching Flutter implementation)
+    // private static final long ANDROID_CHUNK_DELAY_MS = 5;
+    private static final long ANDROID_CHUNK_DELAY_MS = 8;
+    private static final long IOS_CHUNK_DELAY_MS = 8;
+    private static final long END_COMMAND_TIMEOUT_MS = 3000;
+    private static final long CRC_COMMAND_TIMEOUT_MS = 3000;
+    private static final long CHUNK_SEND_TIMEOUT_MS = 5000;
+    
+    // Optimized bitmap display flags
+    private static final boolean USE_OPTIMIZED_BITMAP_DISPLAY = true;
+    private static final boolean USE_PARALLEL_BITMAP_WRITES = true;
+    private volatile boolean isSendingBitmap = false;
+    
+    // Executor for parallel bitmap operations
+    private ExecutorService bitmapExecutor;
+
+    // Progress callback interface
+    public interface BmpProgressCallback {
+        void onProgress(String side, int offset, int chunkIndex, int totalSize);
+        void onSuccess(String side);
+        void onError(String side, String error);
+    }
 
     public void displayBitmapImage(byte[] bmpData) {
-        Log.d(TAG, "Starting BMP display process");
+        displayBitmapImage(bmpData, null);
+    }
+
+    public void displayBitmapImage(byte[] bmpData, BmpProgressCallback callback) {
+        if (USE_OPTIMIZED_BITMAP_DISPLAY) {
+            displayBitmapImageOptimized(bmpData, callback);
+        } else {
+            displayBitmapImageLegacy(bmpData, callback);
+        }
+    }
+    
+    // Optimized bitmap display using iOS-like approach
+    private void displayBitmapImageOptimized(byte[] bmpData, BmpProgressCallback callback) {
+        Log.d(TAG, "Starting OPTIMIZED BMP display process");
+        
+        try {
+            if (bmpData == null || bmpData.length == 0) {
+                Log.e(TAG, "Invalid BMP data provided");
+                if (callback != null) callback.onError("both", "Invalid BMP data");
+                return;
+            }
+            
+            isSendingBitmap = true;
+            long startTime = System.currentTimeMillis();
+            
+            Log.d(TAG, "Processing BMP data, size: " + bmpData.length + " bytes");
+            List<byte[]> chunks = createBmpChunks(bmpData);
+            Log.d(TAG, "Created " + chunks.size() + " chunks");
+            
+            // Send chunks using optimized method
+            boolean chunksSuccess = sendBmpChunksOptimized(chunks, callback);
+            if (!chunksSuccess) {
+                Log.e(TAG, "Failed to send BMP chunks");
+                if (callback != null) callback.onError("both", "Failed to send chunks");
+                return;
+            }
+            
+            // Send end command - this needs confirmation
+            boolean endSuccess = sendBmpEndCommandOptimized();
+            if (!endSuccess) {
+                Log.e(TAG, "Failed to send BMP end command");
+                if (callback != null) callback.onError("both", "Failed to send end command");
+                return;
+            }
+            
+            // Send CRC - this needs confirmation
+            boolean crcSuccess = sendBmpCrcOptimized(bmpData);
+            if (!crcSuccess) {
+                Log.e(TAG, "Failed to send BMP CRC");
+                if (callback != null) callback.onError("both", "CRC check failed");
+                return;
+            }
+            
+            lastThingDisplayedWasAnImage = true;
+            
+            long totalTime = System.currentTimeMillis() - startTime;
+            Log.d(TAG, "BMP display completed in " + totalTime + "ms");
+            
+            if (callback != null) {
+                callback.onSuccess("both");
+            }
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Error in displayBitmapImageOptimized: " + e.getMessage());
+            if (callback != null) callback.onError("both", "Exception: " + e.getMessage());
+        } finally {
+            isSendingBitmap = false;
+        }
+    }
+    
+    // Legacy method for fallback
+    private void displayBitmapImageLegacy(byte[] bmpData, BmpProgressCallback callback) {
+        Log.d(TAG, "Starting LEGACY BMP display process");
 
         try {
             if (bmpData == null || bmpData.length == 0) {
                 Log.e(TAG, "Invalid BMP data provided");
+                if (callback != null) callback.onError("both", "Invalid BMP data");
                 return;
             }
             Log.d(TAG, "Processing BMP data, size: " + bmpData.length + " bytes");
-
             // Split into chunks and send
             List<byte[]> chunks = createBmpChunks(bmpData);
             Log.d(TAG, "Created " + chunks.size() + " chunks");
 
             // Send all chunks
             sendBmpChunks(chunks);
+            // Send all chunks with progress
+            boolean chunksSuccess = sendBmpChunksWithProgress(chunks, callback);
+            if (!chunksSuccess) {
+                Log.e(TAG, "Failed to send BMP chunks");
+                if (callback != null) callback.onError("both", "Failed to send chunks");
+                return;
+            }
 
-            // Send end command
-            sendBmpEndCommand();
+            // Send end command with retry
+            boolean endSuccess = sendBmpEndCommandWithRetry();
+            if (!endSuccess) {
+                Log.e(TAG, "Failed to send BMP end command");
+                if (callback != null) callback.onError("both", "Failed to send end command");
+                return;
+            }
 
-            // Calculate and send CRC
-            sendBmpCRC(bmpData);
+            // Calculate and send CRC with proper algorithm
+            boolean crcSuccess = sendBmpCrcWithRetry(bmpData);
+            if (!crcSuccess) {
+                Log.e(TAG, "Failed to send BMP CRC");
+                if (callback != null) callback.onError("both", "CRC check failed");
+                return;
+            }
 
             lastThingDisplayedWasAnImage = true;
 
+            if (callback != null) {
+                callback.onSuccess("both");
+            }
+
+            Log.d(TAG, "BMP display process completed successfully");
+
         } catch (Exception e) {
             Log.e(TAG, "Error in displayBitmapImage: " + e.getMessage());
+            if (callback != null) callback.onError("both", "Exception: " + e.getMessage());
         }
     }
 
@@ -2922,34 +3128,150 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
         return chunks;
     }
 
-    private void sendBmpChunks(List<byte[]> chunks) {
-        if (updatingScreen) return;
+    private boolean sendBmpChunksWithProgress(List<byte[]> chunks, BmpProgressCallback callback) {
+        if (updatingScreen) return false;
+        
         for (int i = 0; i < chunks.size(); i++) {
             byte[] chunk = chunks.get(i);
             Log.d(TAG, "Sending chunk " + i + " of " + chunks.size() + ", size: " + chunk.length);
-            sendDataSequentially(chunk);
+            
+            boolean success = sendDataSequentiallyWithTimeout(chunk, CHUNK_SEND_TIMEOUT_MS);
+            if (!success) {
+                Log.e(TAG, "Failed to send chunk " + i);
+                return false;
+            }
 
-//            try {
-//                Thread.sleep(25); // Small delay between chunks
-//            } catch (InterruptedException e) {
-//                Log.e(TAG, "Sleep interrupted: " + e.getMessage());
-//            }
+            // Report progress
+            if (callback != null) {
+                int offset = i * BMP_CHUNK_SIZE;
+                callback.onProgress("both", offset, i, chunks.size() * BMP_CHUNK_SIZE);
+            }
+
+            // Platform-specific delay between chunks (matching Flutter implementation)
+            try {
+                Thread.sleep(ANDROID_CHUNK_DELAY_MS);
+            } catch (InterruptedException e) {
+                Log.e(TAG, "Sleep interrupted: " + e.getMessage());
+                return false;
+            }
         }
+        return true;
     }
-
-    private void sendBmpEndCommand() {
-        if (updatingScreen) return;
-        Log.d(TAG, "Sending BMP end command");
-        sendDataSequentially(END_COMMAND);
-
-//        try {
-//            Thread.sleep(100); // Give it time to process
-//        } catch (InterruptedException e) {
-//            Log.e(TAG, "Sleep interrupted: " + e.getMessage());
-//        }
+    
+    // Optimized chunk sending - mimics iOS approach
+    private boolean sendBmpChunksOptimized(List<byte[]> chunks, BmpProgressCallback callback) {
+        if (updatingScreen) return false;
+        
+        Log.d(TAG, "Sending " + chunks.size() + " chunks using OPTIMIZED method");
+        
+        // Send all chunks except last without waiting for response
+        for (int i = 0; i < chunks.size() - 1; i++) {
+            byte[] chunk = chunks.get(i);
+            final int chunkIndex = i;
+            
+            if (USE_PARALLEL_BITMAP_WRITES && bitmapExecutor != null) {
+                // Send to both glasses in parallel using executor
+                CountDownLatch latch = new CountDownLatch(2);
+                
+                // Send to left glass
+                bitmapExecutor.execute(() -> {
+                    try {
+                        if (leftGlassGatt != null && leftTxChar != null && isLeftConnected) {
+                            synchronized(leftTxChar) {
+                                leftTxChar.setValue(chunk);
+                                leftTxChar.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE);
+                                leftGlassGatt.writeCharacteristic(leftTxChar);
+                                leftTxChar.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
+                            }
+                        }
+                    } finally {
+                        latch.countDown();
+                    }
+                });
+                
+                // Send to right glass
+                bitmapExecutor.execute(() -> {
+                    try {
+                        if (rightGlassGatt != null && rightTxChar != null && isRightConnected) {
+                            synchronized(rightTxChar) {
+                                rightTxChar.setValue(chunk);
+                                rightTxChar.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE);
+                                rightGlassGatt.writeCharacteristic(rightTxChar);
+                                rightTxChar.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
+                            }
+                        }
+                    } finally {
+                        latch.countDown();
+                    }
+                });
+                
+                // Wait for both to complete (but don't wait for BLE response)
+                try {
+                    latch.await(50, TimeUnit.MILLISECONDS); // Short timeout
+                } catch (InterruptedException e) {
+                    // Continue anyway
+                }
+            } else {
+                // Fall back to sequential but still no wait
+                sendBitmapChunkNoWait(chunk, true, true);
+            }
+            
+            // Report progress
+            if (callback != null) {
+                int offset = chunkIndex * BMP_CHUNK_SIZE;
+                callback.onProgress("both", offset, chunkIndex, chunks.size() * BMP_CHUNK_SIZE);
+            }
+            
+            // Small delay between chunks (iOS uses 8ms)
+            try {
+                Thread.sleep(ANDROID_CHUNK_DELAY_MS);
+            } catch (InterruptedException e) {
+                Log.e(TAG, "Sleep interrupted: " + e.getMessage());
+                return false;
+            }
+        }
+        
+        // Last chunk - wait for confirmation (like iOS)
+        if (!chunks.isEmpty()) {
+            byte[] lastChunk = chunks.get(chunks.size() - 1);
+            Log.d(TAG, "Sending last chunk with confirmation");
+            
+            boolean success = sendDataSequentiallyWithTimeout(lastChunk, 2000); // Shorter timeout for last chunk
+            if (!success) {
+                Log.e(TAG, "Failed to send last chunk");
+                return false;
+            }
+            
+            if (callback != null) {
+                int offset = (chunks.size() - 1) * BMP_CHUNK_SIZE;
+                callback.onProgress("both", offset, chunks.size() - 1, chunks.size() * BMP_CHUNK_SIZE);
+            }
+        }
+        
+        return true;
     }
-
-    private void sendBmpCRC(byte[] bmpData) {
+    
+    // Optimized end command sending
+    private boolean sendBmpEndCommandOptimized() {
+        Log.d(TAG, "Sending BMP end command (optimized)");
+        
+        // End command needs confirmation, but with shorter timeout
+        boolean success = sendDataSequentiallyWithTimeout(END_COMMAND, 1000);
+        if (success) {
+            Log.d(TAG, "BMP end command sent successfully");
+            
+            // Small delay after end command
+            try {
+                Thread.sleep(10);
+            } catch (InterruptedException e) {
+                // Ignore
+            }
+        }
+        return success;
+    }
+    
+    // Optimized CRC sending
+    private boolean sendBmpCrcOptimized(byte[] bmpData) {
         // Create data with address for CRC calculation
         byte[] dataWithAddress = new byte[GLASSES_ADDRESS.length + bmpData.length];
         System.arraycopy(GLASSES_ADDRESS, 0, dataWithAddress, 0, GLASSES_ADDRESS.length);
@@ -2968,8 +3290,174 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
         crcCommand[3] = (byte)((crcValue >> 8) & 0xFF);
         crcCommand[4] = (byte)(crcValue & 0xFF);
 
+        Log.d(TAG, "Sending CRC command (optimized), CRC value: " + Long.toHexString(crcValue));
+        
+        // CRC needs confirmation, but with shorter timeout
+        boolean success = sendDataSequentiallyWithTimeout(crcCommand, 1000);
+        if (success) {
+            Log.d(TAG, "CRC command sent successfully");
+        }
+        return success;
+    }
+
+    private boolean sendDataSequentiallyWithTimeout(byte[] data, long timeoutMs) {
+        // Create a future to track the send operation
+        final boolean[] success = {false};
+        final CountDownLatch latch = new CountDownLatch(1);
+        
+        // Send the data asynchronously
+        new Thread(() -> {
+            try {
+                sendDataSequentially(data);
+                success[0] = true;
+            } catch (Exception e) {
+                Log.e(TAG, "Error sending data: " + e.getMessage());
+                success[0] = false;
+            } finally {
+                latch.countDown();
+            }
+        }).start();
+
+        // Wait for completion or timeout
+        try {
+            boolean completed = latch.await(timeoutMs, TimeUnit.MILLISECONDS);
+            return completed && success[0];
+        } catch (InterruptedException e) {
+            Log.e(TAG, "Timeout waiting for data send");
+            return false;
+        }
+    }
+
+    private boolean sendBmpEndCommandWithRetry() {
+        if (updatingScreen) return false;
+        
+        for (int attempt = 0; attempt < MAX_BMP_RETRY_ATTEMPTS; attempt++) {
+            Log.d(TAG, "Sending BMP end command, attempt " + (attempt + 1));
+            
+            boolean success = sendDataSequentiallyWithTimeout(END_COMMAND, END_COMMAND_TIMEOUT_MS);
+            if (success) {
+                Log.d(TAG, "BMP end command sent successfully");
+                return true;
+            }
+            
+            Log.w(TAG, "BMP end command failed, attempt " + (attempt + 1));
+            
+            // Wait before retry
+            try {
+                Thread.sleep(BMP_RETRY_DELAY_MS);
+            } catch (InterruptedException e) {
+                Log.e(TAG, "Sleep interrupted during retry");
+                return false;
+            }
+        }
+        
+        Log.e(TAG, "Failed to send BMP end command after " + MAX_BMP_RETRY_ATTEMPTS + " attempts");
+        return false;
+    }
+
+    private boolean sendBmpCrcWithRetry(byte[] bmpData) {
+        // Create data with address for CRC calculation
+        byte[] dataWithAddress = new byte[GLASSES_ADDRESS.length + bmpData.length];
+        System.arraycopy(GLASSES_ADDRESS, 0, dataWithAddress, 0, GLASSES_ADDRESS.length);
+        System.arraycopy(bmpData, 0, dataWithAddress, GLASSES_ADDRESS.length, bmpData.length);
+
+        // Calculate CRC32-XZ (using standard CRC32 for now, but should be Crc32Xz)
+        CRC32 crc = new CRC32();
+        crc.update(dataWithAddress);
+        long crcValue = crc.getValue();
+
+        // Create CRC command packet
+        byte[] crcCommand = new byte[5];
+        crcCommand[0] = 0x16;  // CRC command
+        crcCommand[1] = (byte)((crcValue >> 24) & 0xFF);
+        crcCommand[2] = (byte)((crcValue >> 16) & 0xFF);
+        crcCommand[3] = (byte)((crcValue >> 8) & 0xFF);
+        crcCommand[4] = (byte)(crcValue & 0xFF);
+
         Log.d(TAG, "Sending CRC command, CRC value: " + Long.toHexString(crcValue));
-        sendDataSequentially(crcCommand);
+        
+        // Send CRC with retry
+        for (int attempt = 0; attempt < MAX_BMP_RETRY_ATTEMPTS; attempt++) {
+            boolean success = sendDataSequentiallyWithTimeout(crcCommand, CRC_COMMAND_TIMEOUT_MS);
+            if (success) {
+                Log.d(TAG, "CRC command sent successfully");
+                return true;
+            }
+            
+            Log.w(TAG, "CRC command failed, attempt " + (attempt + 1));
+            
+            try {
+                Thread.sleep(BMP_RETRY_DELAY_MS);
+            } catch (InterruptedException e) {
+                Log.e(TAG, "Sleep interrupted during CRC retry");
+                return false;
+            }
+        }
+        
+        Log.e(TAG, "Failed to send CRC command after " + MAX_BMP_RETRY_ATTEMPTS + " attempts");
+        return false;
+    }
+
+    // Legacy methods for backward compatibility
+    private void sendBmpChunks(List<byte[]> chunks) {
+        sendBmpChunksWithProgress(chunks, null);
+    }
+
+    private void sendBmpEndCommand() {
+        sendBmpEndCommandWithRetry();
+    }
+
+    private void sendBmpCRC(byte[] bmpData) {
+        sendBmpCrcWithRetry(bmpData);
+    }
+
+    private void sendBmpToSide(byte[] bmpData, String side) {
+        // For now, send to both sides but could be modified for side-specific sending
+        displayBitmapImage(bmpData, new BmpProgressCallback() {
+            @Override
+            public void onProgress(String side, int offset, int chunkIndex, int totalSize) {
+                Log.d(TAG, "BMP progress for " + side + ": " + offset + "/" + totalSize);
+            }
+
+            @Override
+            public void onSuccess(String side) {
+                Log.d(TAG, "BMP sent successfully to " + side);
+            }
+
+            @Override
+            public void onError(String side, String error) {
+                Log.e(TAG, "BMP error for " + side + ": " + error);
+            }
+        });
+    }
+
+    private byte[] loadBmpFromFile(String filePath) {
+        try {
+            java.io.File file = new java.io.File(filePath);
+            if (!file.exists()) {
+                Log.e(TAG, "BMP file does not exist: " + filePath);
+                return null;
+            }
+            
+            // Read file into byte array
+            byte[] fileData = new byte[(int) file.length()];
+            try (java.io.FileInputStream fis = new java.io.FileInputStream(file)) {
+                fis.read(fileData);
+            }
+            
+            // Convert to 1-bit BMP format if needed
+            return convertTo1BitBmp(fileData);
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Error loading BMP file: " + e.getMessage());
+            return null;
+        }
+    }
+
+    private byte[] convertTo1BitBmp(byte[] originalBmp) {
+        // This is a placeholder - in a real implementation, you'd convert the BMP to 1-bit format
+        // For now, we'll assume the input is already in the correct format
+        return originalBmp;
     }
 
     private byte[] loadEmptyBmpFromAssets() {
@@ -2990,10 +3478,182 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
         sendDataSequentially(exitCommand);
     }
 
+    public void exitBmp() {
+        clearBmpDisplay();
+    }
+
+    // Enhanced error handling and validation
+    public boolean validateBmpFormat(byte[] bmpData) {
+        if (bmpData == null || bmpData.length < 54) { // Minimum BMP header size
+            Log.e(TAG, "Invalid BMP data: null or too short");
+            return false;
+        }
+
+        // Check BMP signature
+        if (bmpData[0] != 'B' || bmpData[1] != 'M') {
+            Log.e(TAG, "Invalid BMP signature");
+            return false;
+        }
+
+        // Check if it's 1-bit format (simplified check)
+        int bitsPerPixel = bmpData[28] & 0xFF;
+        if (bitsPerPixel != 1) {
+            Log.w(TAG, "BMP is not 1-bit format (bits per pixel: " + bitsPerPixel + ")");
+        }
+
+        return true;
+    }
+
+    // Batch processing with progress
+    public void sendBmpBatch(List<String> bmpPaths, BmpProgressCallback callback) {
+        for (int i = 0; i < bmpPaths.size(); i++) {
+            String path = bmpPaths.get(i);
+
+            if (callback != null) {
+                callback.onProgress("batch", i, i, bmpPaths.size());
+            }
+
+            try {
+                byte[] bmpData = loadBmpFromFile(path);
+                if (bmpData != null && validateBmpFormat(bmpData)) {
+                    displayBitmapImage(bmpData, new BmpProgressCallback() {
+                        @Override
+                        public void onProgress(String side, int offset, int chunkIndex, int totalSize) {
+                            // Individual image progress
+                        }
+
+                        @Override
+                        public void onSuccess(String side) {
+                            Log.d(TAG, "Successfully sent BMP: " + path);
+                        }
+
+                        @Override
+                        public void onError(String side, String error) {
+                            Log.e(TAG, "Failed to send BMP " + path + ": " + error);
+                            if (callback != null) {
+                                callback.onError("batch", "Failed to send " + path + ": " + error);
+                            }
+                        }
+                    });
+
+                    // Delay between images
+                    Thread.sleep(2000);
+                } else {
+                    Log.e(TAG, "Invalid BMP format: " + path);
+                    if (callback != null) {
+                        callback.onError("batch", "Invalid BMP format: " + path);
+                    }
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Error processing BMP " + path + ": " + e.getMessage());
+                if (callback != null) {
+                    callback.onError("batch", "Error processing " + path + ": " + e.getMessage());
+                }
+            }
+        }
+
+        if (callback != null) {
+            callback.onSuccess("batch");
+        }
+    }
+
     private void sendLoremIpsum(){
         if (updatingScreen) return;
         String text = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. ";
         sendDataSequentially(createTextWallChunks(text));
+    }
+
+
+    // Enhanced clearing with state management
+    public void clearBmpDisplayWithState() {
+        if (updatingScreen) {
+            Log.d(TAG, "Screen update in progress, queuing clear command");
+            // Queue the clear command for later
+            handler.postDelayed(this::clearBmpDisplay, 1000);
+            return;
+        }
+
+        Log.d(TAG, "Clearing BMP display with EXIT command");
+        updatingScreen = true;
+
+        try {
+            byte[] exitCommand = new byte[]{0x18};
+            boolean success = sendDataSequentiallyWithTimeout(exitCommand, 2000);
+            if (success) {
+                lastThingDisplayedWasAnImage = false;
+                Log.d(TAG, "BMP display cleared successfully");
+            } else {
+                Log.e(TAG, "Failed to clear BMP display");
+            }
+        } finally {
+            updatingScreen = false;
+        }
+    }
+
+    // Optimized batch clearing
+    public void clearAndDisplayBmp(byte[] bmpData, BmpProgressCallback callback) {
+        if (updatingScreen) {
+            Log.d(TAG, "Screen update in progress, cannot clear and display");
+            if (callback != null) callback.onError("both", "Screen update in progress");
+            return;
+        }
+
+        // Clear first, then display
+        clearBmpDisplayWithState();
+
+        // Small delay to ensure clear completes
+        handler.postDelayed(() -> {
+            displayBitmapImage(bmpData, callback);
+        }, 500);
+    }
+
+    // Efficient multiple image display with clearing
+    public void displayBmpSequence(List<byte[]> bmpDataList, BmpProgressCallback callback) {
+        if (bmpDataList == null || bmpDataList.isEmpty()) {
+            Log.e(TAG, "No BMP data provided for sequence");
+            if (callback != null) callback.onError("sequence", "No BMP data provided");
+            return;
+        }
+
+        displayBmpSequenceInternal(bmpDataList, 0, callback);
+    }
+
+    private void displayBmpSequenceInternal(List<byte[]> bmpDataList, int index, BmpProgressCallback callback) {
+        if (index >= bmpDataList.size()) {
+            Log.d(TAG, "BMP sequence completed");
+            if (callback != null) callback.onSuccess("sequence");
+            return;
+        }
+
+        byte[] bmpData = bmpDataList.get(index);
+        displayBitmapImage(bmpData, new BmpProgressCallback() {
+            @Override
+            public void onProgress(String side, int offset, int chunkIndex, int totalSize) {
+                if (callback != null) {
+                    // Calculate overall progress including sequence position
+                    int overallProgress = (index * 100) / bmpDataList.size();
+                    callback.onProgress("sequence", overallProgress, index, bmpDataList.size());
+                }
+            }
+
+            @Override
+            public void onSuccess(String side) {
+                Log.d(TAG, "BMP " + (index + 1) + " of " + bmpDataList.size() + " displayed successfully");
+
+                // Schedule next image with delay
+                handler.postDelayed(() -> {
+                    displayBmpSequenceInternal(bmpDataList, index + 1, callback);
+                }, 2000); // 2 second delay between images
+            }
+
+            @Override
+            public void onError(String side, String error) {
+                Log.e(TAG, "Failed to display BMP " + (index + 1) + ": " + error);
+                if (callback != null) {
+                    callback.onError("sequence", "Failed to display BMP " + (index + 1) + ": " + error);
+                }
+            }
+        });
     }
 
     private void quickRestartG1(){

@@ -30,22 +30,22 @@ App tools are functions that your application exposes to Mira AI. When a user as
 
 This creates a seamless experience where users interact with your app through natural conversations with Mira.
 
-Tool calls don't happen in the context of a session, and your app does not need to be running to respond to a tool call.  Your app should respond with a text string that Mira's AI will use to formulate a response.
+Tool calls don't happen in the context of a session, and your app does not need to be running to respond to a tool call. Your app should respond with a text string that Mira's AI will use to formulate a response.
 
 For detailed reference on the interfaces involved, see [Tool Types](/reference/interfaces/tool-types).
 
 ## Defining Your Tools
 
-Tools are defined in the devloper console.  Go to [console.mentra.glass/apps](https://console.mentra.glass/apps) and edit your app, then look for the "AI Tools" section.
+Tools are defined in the devloper console. Go to [console.mentra.glass/apps](https://console.mentra.glass/apps) and edit your app, then look for the "AI Tools" section.
 
 ![AI Tools Section](/img/tool-editor.png)
 
 Each tool definition has:
 
-* **`id`**: Unique identifier for the tool
-* **`description`**: Human/AI-readable description of what the tool does
-* **`activationPhrases`**: Optional comma-separated list of phrases that might trigger this tool (although Mira may also trigger tools based on the context of the conversation)
-* **`parameters`**: Optional list of parameters the tool accepts
+- **`id`**: Unique identifier for the tool
+- **`description`**: Human/AI-readable description of what the tool does
+- **`activationPhrases`**: Optional comma-separated list of phrases that might trigger this tool (although Mira may also trigger tools based on the context of the conversation)
+- **`parameters`**: Optional list of parameters the tool accepts
 
 For the full interface definition, see [ToolSchema](/reference/interfaces/tool-types#toolschema).
 
@@ -53,10 +53,10 @@ For the full interface definition, see [ToolSchema](/reference/interfaces/tool-t
 
 Each parameter definition has:
 
-* **`type`**: Data type of the parameter - `"string"`, `"number"`, or `"boolean"`
-* **`description`**: Human/AI-readable description of the parameter
-* **`required`**: Whether the parameter is required
-* **`enum`**: Optional comma-separated list of allowed values for string parameters (if specified, Mira will choose one of these values)
+- **`type`**: Data type of the parameter - `"string"`, `"number"`, or `"boolean"`
+- **`description`**: Human/AI-readable description of the parameter
+- **`required`**: Whether the parameter is required
+- **`enum`**: Optional comma-separated list of allowed values for string parameters (if specified, Mira will choose one of these values)
 
 For the full interface definition, see [ToolParameterSchema](/reference/interfaces/tool-types#toolparameterschema).
 
@@ -67,36 +67,36 @@ For the full interface definition, see [ToolParameterSchema](/reference/interfac
 In your app server, override the [`onToolCall`](/reference/app-server#ontoolcall-protected) method to handle incoming [tool calls](/reference/interfaces/tool-types#toolcall):
 
 ```typescript
-import { AppServer, ToolCall } from '@mentra/sdk';
+import {AppServer, ToolCall} from "@mentra/sdk"
 
 export class MyAppServer extends AppServer {
   protected async onToolCall(toolCall: ToolCall): Promise<string | undefined> {
-    console.log(`Tool called: ${toolCall.toolId}`);
-    console.log(`User: ${toolCall.userId}`);
-    console.log(`Parameters: ${JSON.stringify(toolCall.toolParameters)}`);
+    console.log(`Tool called: ${toolCall.toolId}`)
+    console.log(`User: ${toolCall.userId}`)
+    console.log(`Parameters: ${JSON.stringify(toolCall.toolParameters)}`)
 
     // Handle specific tools based on toolId
     switch (toolCall.toolId) {
-      case 'my_tool':
-        return this.handleMyTool(toolCall);
-      case 'another_tool':
-        return this.handleAnotherTool(toolCall);
+      case "my_tool":
+        return this.handleMyTool(toolCall)
+      case "another_tool":
+        return this.handleAnotherTool(toolCall)
       default:
-        return undefined;
+        return undefined
     }
   }
 
   private async handleMyTool(toolCall: ToolCall): Promise<string> {
     // Implement your tool-specific logic here
     // ...
-    return "Tool result message";
+    return "Tool result message"
   }
 }
 ```
 
 ### 2. Return Values
 
-Your `onToolCall` method should return a string that will be passed to Mira's AI to formulate a response.
+Your `onToolCall` method should return a string that will be passed to Mira's AI to formulate a response. Alternatively, you can return the special string `GIVE_APP_CONTROL_OF_TOOL_RESPONSE` to indicate that Mira should not respond because your app will respond directly.
 
 ## Common Tool Patterns
 
@@ -221,119 +221,126 @@ Your `onToolCall` method should return a string that will be passed to Mira's AI
 Here's how to implement a complete todo list app with Mira integration:
 
 ```typescript
-import { AppServer, ToolCall } from '@mentra/sdk';
+import {AppServer, ToolCall, GIVE_APP_CONTROL_OF_TOOL_RESPONSE} from "@mentra/sdk"
 
 // Simple in-memory todo storage
-const todos = new Map<string, Map<string, Todo>>();
+const todos = new Map<string, Map<string, Todo>>()
 
 interface Todo {
-  id: string;
-  text: string;
-  completed: boolean;
-  dueDate?: string;
-  createdAt: Date;
+  id: string
+  text: string
+  completed: boolean
+  dueDate?: string
+  createdAt: Date
 }
 
 export class TodoAppServer extends AppServer {
   protected async onToolCall(toolCall: ToolCall): Promise<string | undefined> {
-    const { toolId, userId, toolParameters } = toolCall;
+    const {toolId, userId, toolParameters} = toolCall
 
     // Initialize user's todo list if it doesn't exist
     if (!todos.has(userId)) {
-      todos.set(userId, new Map<string, Todo>());
+      todos.set(userId, new Map<string, Todo>())
     }
 
     // Get user's todo list
-    const userTodos = todos.get(userId)!;
+    const userTodos = todos.get(userId)!
 
     // Handle different tool calls
     switch (toolId) {
-      case 'add_todo': {
-        const todoText = toolParameters.todo_item as string;
-        const dueDate = toolParameters.due_date as string | undefined;
+      case "add_todo": {
+        const todoText = toolParameters.todo_item as string
+        const dueDate = toolParameters.due_date as string | undefined
 
         // Create a new todo
-        const id = Date.now().toString();
+        const id = Date.now().toString()
         const newTodo: Todo = {
           id,
           text: todoText,
           completed: false,
           dueDate,
-          createdAt: new Date()
-        };
+          createdAt: new Date(),
+        }
 
         // Save it
-        userTodos.set(id, newTodo);
+        userTodos.set(id, newTodo)
 
-        return `✅ Added to your list: "${todoText}"${dueDate ? ` due ${dueDate}` : ''}`;
+        return `✅ Added to your list: "${todoText}"${dueDate ? ` due ${dueDate}` : ""}`
       }
 
-      case 'get_todos': {
-        const includeCompleted = toolParameters.include_completed as boolean || false;
+      case "get_todos": {
+        const includeCompleted = (toolParameters.include_completed as boolean) || false
 
         // Filter todos
         const filteredTodos = Array.from(userTodos.values())
           .filter(todo => includeCompleted || !todo.completed)
-          .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+          .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
 
         if (filteredTodos.length === 0) {
-          return "You don't have any todos yet.";
+          return "You don't have any todos yet."
         }
 
         // Format response
-        const todoList = filteredTodos.map(todo =>
-          `- ${todo.completed ? '✓' : '○'} ${todo.text}${todo.dueDate ? ` (due ${todo.dueDate})` : ''}`
-        ).join('\n');
+        const todoList = filteredTodos
+          .map(todo => `- ${todo.completed ? "✓" : "○"} ${todo.text}${todo.dueDate ? ` (due ${todo.dueDate})` : ""}`)
+          .join("\n")
 
-        return `Your todo list:\n${todoList}`;
+        if (toolCall.activeSession) {
+          // if the user is currently using the app, display the todo list in the app directly
+          toolCall.activeSession.layouts.showTextWall(todoList)
+          return GIVE_APP_CONTROL_OF_TOOL_RESPONSE
+        } else {
+          // if the user is not currently using the app, return the todo list to Mira for Mira to relay
+          return `Your todo list:\n${todoList}`
+        }
       }
 
-      case 'mark_todo_complete': {
-        const todoId = toolParameters.todo_id as string;
-        const todo = userTodos.get(todoId);
+      case "mark_todo_complete": {
+        const todoId = toolParameters.todo_id as string
+        const todo = userTodos.get(todoId)
 
         if (!todo) {
-          return "I couldn't find that todo item.";
+          return "I couldn't find that todo item."
         }
 
         // Update todo
-        todo.completed = true;
-        userTodos.set(todoId, todo);
+        todo.completed = true
+        userTodos.set(todoId, todo)
 
-        return `✓ Marked "${todo.text}" as complete.`;
+        return `✓ Marked "${todo.text}" as complete.`
       }
 
-      case 'mark_todo_incomplete': {
-        const todoId = toolParameters.todo_id as string;
-        const todo = userTodos.get(todoId);
+      case "mark_todo_incomplete": {
+        const todoId = toolParameters.todo_id as string
+        const todo = userTodos.get(todoId)
 
         if (!todo) {
-          return "I couldn't find that todo item.";
+          return "I couldn't find that todo item."
         }
 
         // Update todo
-        todo.completed = false;
-        userTodos.set(todoId, todo);
+        todo.completed = false
+        userTodos.set(todoId, todo)
 
-        return `○ Marked "${todo.text}" as incomplete.`;
+        return `○ Marked "${todo.text}" as incomplete.`
       }
 
-      case 'delete_todo': {
-        const todoId = toolParameters.todo_id as string;
-        const todo = userTodos.get(todoId);
+      case "delete_todo": {
+        const todoId = toolParameters.todo_id as string
+        const todo = userTodos.get(todoId)
 
         if (!todo) {
-          return "I couldn't find that todo item.";
+          return "I couldn't find that todo item."
         }
 
         // Delete todo
-        userTodos.delete(todoId);
+        userTodos.delete(todoId)
 
-        return `🗑️ Deleted "${todo.text}" from your list.`;
+        return `🗑️ Deleted "${todo.text}" from your list.`
       }
 
       default:
-        return undefined;
+        return undefined
     }
   }
 }
@@ -343,13 +350,13 @@ export class TodoAppServer extends AppServer {
 
 1. **Tool Call Detection**: Mira AI identifies a tool call based on the tool's activation phrases
 2. **Parameter Extraction**: Mira extracts parameters from the user's request
-3. **Tool Call Execution**: Mira calls the `/tool` endpoint of your app server with the extracted parameters.  You don't need to handle this manually, the SDK handles this for you.
-4. **Your App Handles the Tool Call**: Your overridden `onToolCall` method is called with the tool call details.  You can handle the tool call logic here.
-5. **Your App Responds**: Your app responds with a text string that Mira's AI will use to formulate a response.
-6. **Mira Responds to the User**: Mira uses your response to formulate a response to the user, or call other tools as needed.  Your response is not necessarily the final response to the user, it is just information the AI uses to formulate a response.
+3. **Tool Call Execution**: Mira calls the `/tool` endpoint of your app server with the extracted parameters. You don't need to handle this manually, the SDK handles this for you.
+4. **Your App Handles the Tool Call**: Your overridden `onToolCall` method is called with the tool call details. You can handle the tool call logic here.
+5. **Your App Responds**: Your app responds with a text string that Mira's AI will use to formulate a response. Or you can return `GIVE_APP_CONTROL_OF_TOOL_RESPONSE` to indicate that your app will respond directly.
+6. **Mira Responds to the User**: Mira uses your response to formulate a response to the user, or call other tools as needed. Your response is not necessarily the final response to the user, it is just information the AI uses to formulate a response. If you return `GIVE_APP_CONTROL_OF_TOOL_RESPONSE`, Mira will not respond to the user.
 
 ## Related Documentation
 
-* [Tool Types Reference](/reference/interfaces/tool-types) - Detailed type definitions for tools
-* [App Server - onToolCall](/reference/app-server#ontoolcall-protected) - API reference for the onToolCall method
-* [Getting Started with Apps](/getting-started) - Complete guide to building an app
+- [Tool Types Reference](/reference/interfaces/tool-types) - Detailed type definitions for tools
+- [App Server - onToolCall](/reference/app-server#ontoolcall-protected) - API reference for the onToolCall method
+- [Getting Started with Apps](/getting-started) - Complete guide to building an app

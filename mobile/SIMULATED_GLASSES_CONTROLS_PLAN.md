@@ -1,17 +1,20 @@
 # Simulated Glasses Test Controls Implementation Plan
 
 ## Overview
+
 This document outlines the plan to add test controls (head up/down events and button presses) to the fullscreen glasses mirror page when using Simulated Glasses. These controls will only appear for simulated glasses and will allow developers to test all glasses functionality without physical hardware.
 
 ## Current State Analysis
 
 ### Existing Components
+
 1. **Simulated Glasses Detection**: Already implemented in native modules (iOS/Android)
 2. **Glasses Mirror**: Full-screen view at `/mirror/fullscreen` with camera overlay
 3. **Event Infrastructure**: WebSocket connections and event routing already exist
 4. **Native Integration**: Both iOS and Android have structures for handling glasses events
 
 ### Key Findings
+
 - **iOS**: Head position events are detected but NOT sent to the cloud (missing implementation)
 - **Android**: Head position events are properly sent to the cloud via WebSocket
 - **Button Press**: Both platforms support button press events and send them to the cloud
@@ -22,6 +25,7 @@ This document outlines the plan to add test controls (head up/down events and bu
 #### How Dashboard Works on Real Glasses
 
 **iOS (Even Realities G1)**:
+
 - Head up detection sets `isHeadUp = true` in `ERG1Manager`
 - `AOSManager` observes this change and calls `sendCurrentState(true)`
 - Switches to dashboard view state (`viewStates[1]`)
@@ -31,6 +35,7 @@ This document outlines the plan to add test controls (head up/down events and bu
 - **NOTE**: Head position is NOT sent to server (missing implementation)
 
 **Android**:
+
 - Head up event triggers `onGlassesHeadUpEvent()` in `AugmentosService`
 - Sends head position to server: `ServerComms.sendHeadPosition("up")`
 - If `contextualDashboardEnabled`, calls `displayGlassesDashboardEvent()`
@@ -39,6 +44,7 @@ This document outlines the plan to add test controls (head up/down events and bu
 - Dashboard remains visible until head down or timeout
 
 #### Glasses Mirror Behavior
+
 - `GlassesDisplayMirror` component displays whatever it receives via `GLASSES_DISPLAY_EVENT`
 - It's passive - doesn't differentiate between normal content and dashboard
 - Display events are emitted by native modules when sending content to glasses
@@ -47,6 +53,7 @@ This document outlines the plan to add test controls (head up/down events and bu
 ## Implementation Strategy
 
 ### Architecture Overview
+
 ```
 React Native UI (Test Controls)
     ↓
@@ -64,6 +71,7 @@ Cloud Backend
 #### iOS Implementation (`mobile/ios`)
 
 1. **Add to `ServerComms.swift`** (Fix missing head position sending):
+
 ```swift
 func sendHeadPosition(isUp: Bool) {
     do {
@@ -72,7 +80,7 @@ func sendHeadPosition(isUp: Bool) {
             "position": isUp ? "up" : "down",
             "timestamp": Int(Date().timeIntervalSince1970 * 1000)
         ]
-        
+
         let jsonData = try JSONSerialization.data(withJSONObject: event)
         if let jsonString = String(data: jsonData, encoding: .utf8) {
             wsManager.sendText(jsonString)
@@ -90,7 +98,7 @@ func sendSimulatedButtonPress(buttonId: String = "camera", pressType: String = "
             "pressType": pressType,
             "timestamp": Int(Date().timeIntervalSince1970 * 1000)
         ]
-        
+
         let jsonData = try JSONSerialization.data(withJSONObject: event)
         if let jsonString = String(data: jsonData, encoding: .utf8) {
             wsManager.sendText(jsonString)
@@ -102,6 +110,7 @@ func sendSimulatedButtonPress(buttonId: String = "camera", pressType: String = "
 ```
 
 2. **Update `AOSManager.swift`** (Add server notification for real glasses):
+
 ```swift
 // In the existing head position observer
 g1Manager!.$isHeadUp.sink { [weak self] (value: Bool) in
@@ -113,16 +122,17 @@ g1Manager!.$isHeadUp.sink { [weak self] (value: Bool) in
 ```
 
 3. **Add to `CoreCommunicator.swift`** (React Native Bridge):
+
 ```swift
 @objc(simulateHeadPosition:)
 func simulateHeadPosition(_ position: String) {
     guard AOSManager.shared.connectedGlassesInfo?.modelName.contains("Simulated") == true else {
         return // Only allow for simulated glasses
     }
-    
+
     // Send to server
     ServerComms.shared.sendHeadPosition(isUp: position == "up")
-    
+
     // Trigger dashboard display locally
     AOSManager.shared.sendCurrentState(position == "up")
 }
@@ -132,7 +142,7 @@ func simulateButtonPress(_ buttonId: String, pressType: String) {
     guard AOSManager.shared.connectedGlassesInfo?.modelName.contains("Simulated") == true else {
         return // Only allow for simulated glasses
     }
-    
+
     ServerComms.shared.sendSimulatedButtonPress(buttonId: buttonId, pressType: pressType)
 }
 ```
@@ -140,6 +150,7 @@ func simulateButtonPress(_ buttonId: String, pressType: String) {
 #### Android Implementation (`augmentos_core`)
 
 1. **Add to `CoreCommunicator.java`** (React Native Module):
+
 ```java
 @ReactMethod
 public void simulateHeadPosition(String position) {
@@ -147,7 +158,7 @@ public void simulateHeadPosition(String position) {
     if (service != null && service.getConnectedGlassesModelName().contains("Simulated")) {
         // Send to server
         ServerComms.getInstance().sendHeadPosition(position);
-        
+
         // Trigger dashboard display locally
         if (position.equals("up")) {
             service.onGlassesHeadUpEvent(new GlassesHeadUpEvent());
@@ -168,7 +179,7 @@ public void simulateButtonPress(String buttonId, String pressType) {
             event.put("pressType", pressType);
             event.put("timestamp", System.currentTimeMillis());
             ServerComms.getInstance().sendButtonPress(event);
-            
+
             // Also post to EventBus for local handling
             EventBus.getDefault().post(new ButtonPressEvent(buttonId, pressType));
         } catch (JSONException e) {
@@ -181,6 +192,7 @@ public void simulateButtonPress(String buttonId, String pressType) {
 ### Phase 2: React Native UI Components
 
 1. **Create Test Controls Component** (`src/components/misc/SimulatedGlassesControls.tsx`):
+
 ```typescript
 import React from 'react';
 import { View, TouchableOpacity, Text } from 'react-native';
@@ -212,7 +224,7 @@ export const SimulatedGlassesControls: React.FC = () => {
           <Text>Head Down</Text>
         </TouchableOpacity>
       </View>
-      
+
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Button Press</Text>
         <TouchableOpacity onPress={() => handleButtonPress('short')} style={styles.button}>
@@ -228,6 +240,7 @@ export const SimulatedGlassesControls: React.FC = () => {
 ```
 
 2. **Update Fullscreen Mirror** (`src/app/mirror/fullscreen.tsx`):
+
 - Add state to track if simulated glasses are connected
 - Conditionally render `SimulatedGlassesControls` component
 - Position controls as floating overlay on camera view
@@ -257,14 +270,17 @@ export const SimulatedGlassesControls: React.FC = () => {
 ## Considerations
 
 ### Security
+
 - Controls only work when simulated glasses are connected
 - Native modules verify glasses type before sending events
 
 ### Performance
+
 - Events use existing WebSocket infrastructure
 - No additional overhead for real glasses
 
 ### Future Enhancements
+
 1. Add more button types (volume, power)
 2. Support continuous head tracking (angles)
 3. Add gesture recognition for more natural testing
@@ -283,12 +299,15 @@ export const SimulatedGlassesControls: React.FC = () => {
 ## Important Implementation Notes
 
 ### Dashboard Display Flow
+
 When implementing head up/down simulation, ensure:
+
 1. **Server notification**: Head position is sent to cloud (currently missing on iOS)
 2. **Local dashboard trigger**: Native dashboard display logic is triggered
 3. **Mirror update**: Dashboard content flows to `GlassesDisplayMirror` via display events
 
 ### Key Differences Between Platforms
+
 - **iOS**: Needs both `sendHeadPosition()` implementation and server notification in head observer
 - **Android**: Already sends to server, just need to trigger local event handlers
 - Both platforms should trigger their existing dashboard display logic for proper mirror behavior

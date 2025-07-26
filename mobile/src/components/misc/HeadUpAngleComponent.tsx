@@ -94,24 +94,31 @@ const HeadUpAngleArcModal: React.FC<HeadUpAngleArcModalProps> = ({
   const knobPos = pointOnCircle(cx, cy, radius, angle)
 
   return (
-    <Modal visible={visible} animationType="fade" transparent={true} onRequestClose={() => {
-      setAngle(initialAngleRef.current)
-      onCancel()
-    }}>
+    <Modal
+      visible={visible}
+      animationType="fade"
+      transparent={true}
+      onRequestClose={() => {
+        setAngle(initialAngleRef.current)
+        onCancel()
+      }}>
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{flex: 1}}>
-        <TouchableWithoutFeedback onPress={() => {
-          setAngle(initialAngleRef.current)
-          onCancel()
-        }}>
+        <TouchableWithoutFeedback
+          onPress={() => {
+            setAngle(initialAngleRef.current)
+            onCancel()
+          }}>
           <View style={styles.modalOverlay}>
             <View style={[styles.modalContent, {backgroundColor: theme.colors.background}]}>
               <TouchableWithoutFeedback>
                 <View style={styles.modalHeader}>
                   <Text style={[styles.modalLabel, {color: theme.colors.text}]}>Adjust Head-Up Angle</Text>
-                  <TouchableOpacity hitSlop={10} onPress={() => {
-                    setAngle(initialAngleRef.current)
-                    onCancel()
-                  }}>
+                  <TouchableOpacity
+                    hitSlop={10}
+                    onPress={() => {
+                      setAngle(initialAngleRef.current)
+                      onCancel()
+                    }}>
                     <Text style={[styles.closeButton, {color: theme.colors.text, marginRight: -8}]}>✕</Text>
                   </TouchableOpacity>
                 </View>

@@ -3,6 +3,13 @@ import {NativeModules} from "react-native"
 
 const {SettingsNavigationModule} = NativeModules
 
+interface SettingsNavigationModule {
+  openBluetoothSettings(): Promise<boolean>
+  openLocationSettings(): Promise<boolean>
+  showLocationServicesDialog(): Promise<boolean>
+  openAppSettings(): Promise<boolean>
+}
+
 /**
  * Utility functions for navigating to system settings pages
  */
@@ -127,7 +134,9 @@ export class SettingsNavigationUtils {
   /**
    * Opens the appropriate settings page based on the requirement
    */
-  static async openSettingsForRequirement(requirement: "bluetooth" | "location" | "locationServices" | "permissions"): Promise<boolean> {
+  static async openSettingsForRequirement(
+    requirement: "bluetooth" | "location" | "locationServices" | "permissions",
+  ): Promise<boolean> {
     try {
       switch (requirement) {
         case "bluetooth":
@@ -147,4 +156,4 @@ export class SettingsNavigationUtils {
       return false
     }
   }
-} 
+}

@@ -1,68 +1,85 @@
-import React from 'react';
+import React from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
 import { Shield, Plus, Trash2 } from "lucide-react";
-import { PermissionType, Permission } from '../../types/app';
+import { PermissionType, Permission } from "../../types/app";
 
 // Permission display metadata
-const PERMISSION_DISPLAY_INFO: Record<PermissionType, {
-  label: string;
-  description: string;
-  isLegacy: boolean;
-  category: string;
-  replacedBy?: PermissionType[];
-}> = {
+const PERMISSION_DISPLAY_INFO: Record<
+  PermissionType,
+  {
+    label: string;
+    description: string;
+    isLegacy: boolean;
+    category: string;
+    replacedBy?: PermissionType[];
+  }
+> = {
   [PermissionType.NOTIFICATIONS]: {
-    label: 'Notifications (Legacy)',
-    description: 'Read phone notifications (deprecated - use READ_NOTIFICATIONS)',
+    label: "Notifications (Legacy)",
+    description:
+      "Read phone notifications (deprecated - use READ_NOTIFICATIONS)",
     isLegacy: true,
     replacedBy: [PermissionType.READ_NOTIFICATIONS],
-    category: 'phone'
+    category: "phone",
   },
   [PermissionType.READ_NOTIFICATIONS]: {
-    label: 'Read Notifications',
-    description: 'Access incoming phone notifications',
+    label: "Read Notifications",
+    description: "Access incoming phone notifications",
     isLegacy: false,
-    category: 'phone'
+    category: "phone",
   },
   [PermissionType.POST_NOTIFICATIONS]: {
-    label: 'Send Notifications',
-    description: 'Send notifications to the phone',
+    label: "Send Notifications",
+    description: "Send notifications to the phone",
     isLegacy: false,
-    category: 'phone'
+    category: "phone",
   },
   [PermissionType.MICROPHONE]: {
-    label: 'Microphone',
-    description: 'Access to microphone for voice input and audio processing',
+    label: "Microphone",
+    description: "Access to microphone for voice input and audio processing",
     isLegacy: false,
-    category: 'audio'
+    category: "audio",
   },
   [PermissionType.LOCATION]: {
-    label: 'Location',
-    description: 'Access to device location information',
+    label: "Location",
+    description: "Access to device location information",
     isLegacy: false,
-    category: 'location'
+    category: "location",
+  },
+  [PermissionType.BACKGROUND_LOCATION]: {
+    label: "Background Location",
+    description:
+      "Access to device location information when the app is in the background",
+    isLegacy: false,
+    category: "location",
   },
   [PermissionType.CALENDAR]: {
-    label: 'Calendar',
-    description: 'Access to calendar events',
+    label: "Calendar",
+    description: "Access to calendar events",
     isLegacy: false,
-    category: 'calendar'
+    category: "calendar",
   },
   [PermissionType.CAMERA]: {
-    label: 'Camera',
-    description: 'Access to camera for photo capture and video streaming',
+    label: "Camera",
+    description: "Access to camera for photo capture and video streaming",
     isLegacy: false,
-    category: 'camera'
+    category: "camera",
   },
   [PermissionType.ALL]: {
-    label: 'All Permissions',
-    description: 'Access to all available permissions',
+    label: "All Permissions",
+    description: "Access to all available permissions",
     isLegacy: false,
-    category: 'system'
-  }
+    category: "system",
+  },
 };
 
 interface PermissionsFormProps {
@@ -79,7 +96,11 @@ interface PermissionItemProps {
   isEditing: boolean;
   onEditToggle: (index: number | null) => void;
   removePermission: (index: number) => void;
-  updatePermission: (index: number, field: keyof Permission, value: string) => void;
+  updatePermission: (
+    index: number,
+    field: keyof Permission,
+    value: string,
+  ) => void;
   availableTypes: PermissionType[];
 }
 
@@ -96,29 +117,29 @@ const PermissionItem: React.FC<PermissionItemProps> = ({
   const getPermissionDescription = (type: PermissionType): string => {
     const info = PERMISSION_DISPLAY_INFO[type];
     if (info) {
-      return info.isLegacy
-        ? `${info.description} ⚠️`
-        : info.description;
+      return info.isLegacy ? `${info.description} ⚠️` : info.description;
     }
 
     // Fallback for any unmapped permissions
     switch (type) {
       case PermissionType.MICROPHONE:
-        return 'Access to microphone for voice input and audio processing';
+        return "Access to microphone for voice input and audio processing";
       case PermissionType.LOCATION:
-        return 'Access to device location information';
+        return "Access to device location information";
+      case PermissionType.BACKGROUND_LOCATION:
+        return "Access to device location information even when the app is in the background";
       case PermissionType.CALENDAR:
-        return 'Access to calendar events';
+        return "Access to calendar events";
       case PermissionType.NOTIFICATIONS:
-        return 'Read phone notifications (legacy - consider READ_NOTIFICATIONS)';
+        return "Read phone notifications (legacy - consider READ_NOTIFICATIONS)";
       case PermissionType.READ_NOTIFICATIONS:
-        return 'Read incoming phone notifications';
+        return "Read incoming phone notifications";
       case PermissionType.POST_NOTIFICATIONS:
-        return 'Send notifications to the phone';
+        return "Send notifications to the phone";
       case PermissionType.ALL:
-        return 'Access to all available permissions';
+        return "Access to all available permissions";
       default:
-        return 'Permission access';
+        return "Permission access";
     }
   };
 
@@ -126,7 +147,7 @@ const PermissionItem: React.FC<PermissionItemProps> = ({
   const getDescriptionPreview = () => {
     if (permission.description && permission.description.trim()) {
       return permission.description.length > 50
-        ? permission.description.substring(0, 50) + '...'
+        ? permission.description.substring(0, 50) + "..."
         : permission.description;
     }
     return getPermissionDescription(permission.type);
@@ -159,7 +180,10 @@ const PermissionItem: React.FC<PermissionItemProps> = ({
               </div>
               {PERMISSION_DISPLAY_INFO[permission.type]?.isLegacy && (
                 <div className="text-xs text-orange-600 mt-1">
-                  💡 Consider migrating to: {PERMISSION_DISPLAY_INFO[permission.type]?.replacedBy?.join(', ')}
+                  💡 Consider migrating to:{" "}
+                  {PERMISSION_DISPLAY_INFO[permission.type]?.replacedBy?.join(
+                    ", ",
+                  )}
                 </div>
               )}
             </div>
@@ -217,7 +241,9 @@ const PermissionItem: React.FC<PermissionItemProps> = ({
               <Label className="text-sm font-medium">Permission Type</Label>
               <Select
                 value={permission.type}
-                onValueChange={(value) => updatePermission(index, 'type', value)}
+                onValueChange={(value) =>
+                  updatePermission(index, "type", value)
+                }
               >
                 <SelectTrigger className="mt-1">
                   <SelectValue placeholder="Select permission type" />
@@ -242,7 +268,11 @@ const PermissionItem: React.FC<PermissionItemProps> = ({
               {PERMISSION_DISPLAY_INFO[permission.type]?.isLegacy && (
                 <div className="mt-2 p-3 bg-orange-50 border border-orange-200 rounded-md">
                   <div className="text-sm text-orange-800">
-                    ⚠️ This is a legacy permission. Consider migrating to {PERMISSION_DISPLAY_INFO[permission.type]?.replacedBy?.join(', ')} for better clarity.
+                    ⚠️ This is a legacy permission. Consider migrating to{" "}
+                    {PERMISSION_DISPLAY_INFO[permission.type]?.replacedBy?.join(
+                      ", ",
+                    )}{" "}
+                    for better clarity.
                   </div>
                 </div>
               )}
@@ -254,16 +284,21 @@ const PermissionItem: React.FC<PermissionItemProps> = ({
 
             {/* Description */}
             <div>
-              <Label className="text-sm font-medium">Description (Optional)</Label>
+              <Label className="text-sm font-medium">
+                Description (Optional)
+              </Label>
               <Textarea
-                value={permission.description || ''}
-                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => updatePermission(index, 'description', e.target.value)}
+                value={permission.description || ""}
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                  updatePermission(index, "description", e.target.value)
+                }
                 placeholder="Explain why your app needs this permission..."
                 rows={3}
                 className="mt-1"
               />
               <p className="text-xs text-gray-500 mt-1">
-                A clear explanation helps users understand why this permission is necessary.
+                A clear explanation helps users understand why this permission
+                is necessary.
               </p>
             </div>
           </div>
@@ -276,18 +311,23 @@ const PermissionItem: React.FC<PermissionItemProps> = ({
 /**
  * Compact permissions form component with mobile-friendly design
  */
-export function PermissionsForm({ permissions, onChange }: PermissionsFormProps) {
+export function PermissionsForm({
+  permissions,
+  onChange,
+}: PermissionsFormProps) {
   const [editingIndex, setEditingIndex] = React.useState<number | null>(null);
 
   // Helper function to create a new empty permission
   const createEmptyPermission = (type: PermissionType): Permission => ({
     type,
-    description: ''
+    description: "",
   });
 
   // Get available permission types for NEW permission selection (excludes legacy)
-  const getAvailablePermissionTypes = (excludeIndex?: number): PermissionType[] => {
-    return Object.values(PermissionType).filter(type => {
+  const getAvailablePermissionTypes = (
+    excludeIndex?: number,
+  ): PermissionType[] => {
+    return Object.values(PermissionType).filter((type) => {
       // Exclude legacy permissions from new selections
       if (PERMISSION_DISPLAY_INFO[type]?.isLegacy) return false;
 
@@ -326,11 +366,15 @@ export function PermissionsForm({ permissions, onChange }: PermissionsFormProps)
   };
 
   // Update a permission
-  const updatePermission = (index: number, field: keyof Permission, value: string) => {
+  const updatePermission = (
+    index: number,
+    field: keyof Permission,
+    value: string,
+  ) => {
     const updatedPermissions = [...permissions];
     updatedPermissions[index] = {
       ...updatedPermissions[index],
-      [field]: value
+      [field]: value,
     };
     onChange(updatedPermissions);
   };
@@ -355,7 +399,9 @@ export function PermissionsForm({ permissions, onChange }: PermissionsFormProps)
           disabled={getAvailablePermissionTypes().length === 0}
         >
           <Plus className="h-4 w-4 mr-1" />
-          {getAvailablePermissionTypes().length === 0 ? "All Added" : "Add Permission"}
+          {getAvailablePermissionTypes().length === 0
+            ? "All Added"
+            : "Add Permission"}
         </Button>
       </div>
 
@@ -363,7 +409,9 @@ export function PermissionsForm({ permissions, onChange }: PermissionsFormProps)
         <div className="text-center py-8 text-gray-500">
           <Shield className="h-12 w-12 mx-auto mb-2 opacity-50" />
           <p>No permissions added yet.</p>
-          <p className="text-sm">Add your first permission to specify app requirements.</p>
+          <p className="text-sm">
+            Add your first permission to specify app requirements.
+          </p>
         </div>
       ) : (
         <div className="space-y-2">

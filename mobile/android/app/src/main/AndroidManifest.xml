@@ -64,7 +64,7 @@
       </intent-filter>
       <intent-filter android:autoVerify="true" data-generated="true">
         <action android:name="android.intent.action.VIEW"/>
-        <data android:scheme="https" android:host="apps.mentra.glass"/>
+        <data android:scheme="https" android:host="apps.mentra.glass" android:pathPrefix="/package/"/>
         <category android:name="android.intent.category.DEFAULT"/>
         <category android:name="android.intent.category.BROWSABLE"/>
       </intent-filter>

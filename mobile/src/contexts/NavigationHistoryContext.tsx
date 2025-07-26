@@ -150,7 +150,17 @@ export function NavigationHistoryProvider({children}: {children: React.ReactNode
 
   return (
     <NavigationHistoryContext.Provider
-      value={{goBack, getHistory, clearHistory, push, replace, setPendingRoute, getPendingRoute, navigate, clearHistoryAndGoHome}}>
+      value={{
+        goBack,
+        getHistory,
+        clearHistory,
+        push,
+        replace,
+        setPendingRoute,
+        getPendingRoute,
+        navigate,
+        clearHistoryAndGoHome,
+      }}>
       {children}
     </NavigationHistoryContext.Provider>
   )

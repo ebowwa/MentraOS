@@ -8,7 +8,7 @@ public class Constants {
 
     // Heartbeat actions
     public static final String ACTION_HEARTBEAT = "com.augmentos.otaupdater.ACTION_HEARTBEAT";
-    public static final String ACTION_ASG_HEARTBEAT_ACK = "com.augmentos.asg_client.ACTION_HEARTBEAT_ACK";
+    public static final String ACTION_HEARTBEAT_ACK = "com.augmentos.asg_client.ACTION_HEARTBEAT_ACK";
     public static final String ACTION_RESTART_ASG_CLIENT = "com.augmentos.asg_client.ACTION_RESTART_SERVICE";
     public static final String ACTION_ASG_RESTART_COMPLETE = "com.augmentos.asg_client.ACTION_RESTART_COMPLETE";
     public static final String ACTION_UPDATE_COMPLETED = "com.augmentos.otaupdater.ACTION_UPDATE_COMPLETED";
@@ -49,4 +49,10 @@ public class Constants {
     
     // Battery status actions
     public static final String ACTION_GLASSES_BATTERY_STATUS = "com.augmentos.otaupdater.ACTION_GLASSES_BATTERY_STATUS";
+    
+    // Package names
+    public static final String ASG_CLIENT_PACKAGE = "com.augmentos.asg_client";
+    
+    // Missing action for heartbeat ACK
+    //public static final String ACTION_HEARTBEAT_ACK = ACTION_ASG_HEARTBEAT_ACK; // Alias for consistency
 }

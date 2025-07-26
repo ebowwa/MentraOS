@@ -1,10 +1,11 @@
-# MentraOS Manager Development Guidelines
+# MentraOS Mobile App Development Guidelines
 
-This guide provides coding standards and best practices for contributing to MentraOS Manager, the React Native mobile app component of the MentraOS ecosystem.
+This guide provides coding standards and best practices for contributing to MentraOS Mobile App, the React Native mobile app component of the MentraOS ecosystem.
 
 ## Architecture Overview
 
-MentraOS Manager is a React Native app built with:
+MentraOS Mobile App is a React Native app built with:
+
 - **Expo** for development tooling and managed workflow
 - **expo-router** for file-based routing
 - **React Context API** for state management
@@ -21,8 +22,8 @@ import {useAppTheme} from "@/utils/useAppTheme"
 
 // In your component:
 function MyComponent() {
-  const {theme, themed} = useAppTheme();
-  
+  const {theme, themed} = useAppTheme()
+
   return <View style={themed($container)} />
 }
 ```
@@ -57,13 +58,13 @@ import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 
 function MyComponent() {
   const {goBack, push, replace} = useNavigationHistory()
-  
+
   // Navigate to a screen
   push("/settings/profile")
-  
+
   // Replace current screen
   replace("/home")
-  
+
   // Go back
   goBack()
 }
@@ -76,10 +77,7 @@ function MyComponent() {
 ```tsx
 <Screen safeAreaEdges={["top"]} contentContainerStyle={themed($container)}>
   <Text tx="settingsScreen:title" />
-  <Button
-    tx="common:save"
-    onPress={handleSave}
-  />
+  <Button tx="common:save" onPress={handleSave} />
 </Screen>
 ```
 
@@ -105,10 +103,7 @@ import {translate} from "@/i18n"
 
 function MyComponent() {
   const showAlert = () => {
-    Alert.alert(
-      translate("alerts:error"),
-      translate("alerts:somethingWentWrong")
-    )
+    Alert.alert(translate("alerts:error"), translate("alerts:somethingWentWrong"))
   }
 }
 ```
@@ -149,7 +144,7 @@ import {translate} from "@/i18n"
 export function MyComponent() {
   const {theme, themed} = useAppTheme()
   const {push} = useNavigationHistory()
-  
+
   return (
     <View style={themed($container)}>
       <Text tx="myComponent:title" />
@@ -200,10 +195,7 @@ try {
   // Handle success
 } catch (error) {
   console.error("Failed to perform operation:", error)
-  Alert.alert(
-    translate("errors:title"),
-    translate("errors:genericMessage")
-  )
+  Alert.alert(translate("errors:title"), translate("errors:genericMessage"))
 }
 ```
 
@@ -222,18 +214,20 @@ try {
 ## Testing
 
 Run tests with:
+
 ```bash
-pnpm test
-pnpm test:watch  # Watch mode
-pnpm test -- -t "specific test"  # Run specific test
+bun test
+bun test:watch  # Watch mode
+bun test -- -t "specific test"  # Run specific test
 ```
 
 ## Linting and Type Checking
 
 Before committing:
+
 ```bash
-pnpm lint     # Check for linting errors
-pnpm compile  # Type check
+bun lint     # Check for linting errors
+bun compile  # Type check
 ```
 
 ## Native Development
@@ -244,11 +238,11 @@ pnpm compile  # Type check
 
 ```bash
 # ✅ Correct
-pnpm expo prebuild
+bun expo prebuild
 
 # ❌ NEVER do this - it will delete custom native code
-pnpm expo prebuild --clean
-pnpm expo prebuild --clear
+bun expo prebuild --clean
+bun expo prebuild --clear
 ```
 
 This project contains custom native modules that must be preserved.

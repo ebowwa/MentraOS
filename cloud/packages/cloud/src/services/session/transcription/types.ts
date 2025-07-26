@@ -112,6 +112,8 @@ export interface StreamOptions {
   userSession: UserSession;
   subscription: ExtendedStreamType;
   callbacks: StreamCallbacks;
+  ownsTranscription?: string[];
+  skipTranscriptionFor?: string[];
 }
 
 export interface StreamCallbacks {

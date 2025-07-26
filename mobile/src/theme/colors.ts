@@ -241,7 +241,7 @@ export const colors = {
   // Tab bar gradients
   tabBarBackground1: palette.tabBarGradientStart,
   tabBarBackground2: palette.tabBarGradientEnd,
-  
+
   // Tab bar solid background (for native tabs)
   tabBarBackground: "#F8FAFF",
 
@@ -316,11 +316,11 @@ export const colors = {
   // Foreground tag colors
   foregroundTagBackground: "rgba(66, 64, 209, 0.1)", // #4240D1 at 10% opacity
   foregroundTagText: "#312FB4", // Dark purple text
-  
+
   // Status icons on home screen
   statusIcon: "#565E8C", // Purple-gray for battery, brightness, bluetooth, wifi icons
   statusText: "#030514", // Dark text for status values (battery %, brightness %, etc)
-  
+
   // Search icon color
   searchIcon: "#4240D1", // Purple for search icon in light theme
 } as const

@@ -15,6 +15,7 @@
 		A1C4A5080DE65B36D4AECB21 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = B18D5B1AA3EE1022A1FC3B30 /* PrivacyInfo.xcprivacy */; };
 		B18059E884C0ABDD17F3DC3D /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAC715A2D49A985799AEE119 /* ExpoModulesProvider.swift */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
+		C540BE3D2E31AAEE001A328F /* UltraliteSDK in Frameworks */ = {isa = PBXBuildFile; productRef = C540BE3C2E31AAEE001A328F /* UltraliteSDK */; };
 		C577E8A42E19C7CB00522AB8 /* MentraLiveManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C577E8A32E19C7CB00522AB8 /* MentraLiveManager.swift */; };
 		C5D2C75E2E1DAB50004A983D /* AudioManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5D2C75D2E1DAB50004A983D /* AudioManager.swift */; };
 		C5DE979E2DDD0EA80032FC99 /* AOSModule.m in Sources */ = {isa = PBXBuildFile; fileRef = C5DE978A2DDD0EA80032FC99 /* AOSModule.m */; };
@@ -59,6 +60,7 @@
 		C5DE985F2DDD0F420032FC99 /* sns.c in Sources */ = {isa = PBXBuildFile; fileRef = C5DE98272DDD0F420032FC99 /* sns.c */; };
 		C5DE98972DE267CD0032FC99 /* CoreCommsService.m in Sources */ = {isa = PBXBuildFile; fileRef = C5DE98952DE267CD0032FC99 /* CoreCommsService.m */; };
 		C5DE98982DE267CD0032FC99 /* CoreCommsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5DE98962DE267CD0032FC99 /* CoreCommsService.swift */; };
+		C5EDFEEF2E319866000428A3 /* Mach1Manager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5EDFEEE2E319866000428A3 /* Mach1Manager.swift */; };
 		F314884EB5724196A394670E /* noop-file.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14C4353E097941A5AC9B6A09 /* noop-file.swift */; };
 /* End PBXBuildFile section */
 
@@ -144,6 +146,7 @@
 		C5DE98672DDD1FB00032FC99 /* AOS-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "AOS-Bridging-Header.h"; sourceTree = "<group>"; };
 		C5DE98952DE267CD0032FC99 /* CoreCommsService.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = CoreCommsService.m; sourceTree = "<group>"; };
 		C5DE98962DE267CD0032FC99 /* CoreCommsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreCommsService.swift; sourceTree = "<group>"; };
+		C5EDFEEE2E319866000428A3 /* Mach1Manager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Mach1Manager.swift; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		FAC715A2D49A985799AEE119 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-AOS/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -153,6 +156,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C540BE3D2E31AAEE001A328F /* UltraliteSDK in Frameworks */,
 				96905EF65AED1B983A6B3ABC /* libPods-AOS.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -238,6 +242,7 @@
 		C5DE979D2DDD0EA80032FC99 /* BleManager */ = {
 			isa = PBXGroup;
 			children = (
+				C5EDFEEE2E319866000428A3 /* Mach1Manager.swift */,
 				C5D2C75D2E1DAB50004A983D /* AudioManager.swift */,
 				C577E8A32E19C7CB00522AB8 /* MentraLiveManager.swift */,
 				C5DE98952DE267CD0032FC99 /* CoreCommsService.m */,
@@ -437,6 +442,9 @@
 				Base,
 			);
 			mainGroup = 83CBB9F61A601CBA00E9B192;
+			packageReferences = (
+				C540BE3B2E31AAEE001A328F /* XCRemoteSwiftPackageReference "UltraliteSDK-releases-iOS" */,
+			);
 			productRefGroup = 83CBBA001A601CBA00E9B192 /* Products */;
 			projectDirPath = "";
 			projectReferences = (
@@ -597,6 +605,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C5EDFEEF2E319866000428A3 /* Mach1Manager.swift in Sources */,
 				13B07FBC1A68108700A75B9A /* AppDelegate.mm in Sources */,
 				13B07FC11A68108700A75B9A /* main.m in Sources */,
 				C5DE979E2DDD0EA80032FC99 /* AOSModule.m in Sources */,
@@ -678,7 +687,7 @@
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_DEBUG";
 				PRODUCT_BUNDLE_IDENTIFIER = com.mentra.mentra;
-				PRODUCT_NAME = MentraOS;
+				PRODUCT_NAME = "MentraOS";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
@@ -686,7 +695,7 @@
 				SWIFT_OBJC_BRIDGING_HEADER = "BleManager/AOS-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = 1;
+				TARGETED_DEVICE_FAMILY = "1";
 				VERSIONING_SYSTEM = "apple-generic";
 			};
 			name = Debug;
@@ -716,14 +725,14 @@
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_RELEASE";
 				PRODUCT_BUNDLE_IDENTIFIER = com.mentra.mentra;
-				PRODUCT_NAME = MentraOS;
+				PRODUCT_NAME = "MentraOS";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_OBJC_BRIDGING_HEADER = "BleManager/AOS-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = 1;
+				TARGETED_DEVICE_FAMILY = "1";
 				VERSIONING_SYSTEM = "apple-generic";
 			};
 			name = Release;
@@ -876,6 +885,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		C540BE3B2E31AAEE001A328F /* XCRemoteSwiftPackageReference "UltraliteSDK-releases-iOS" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/Vuzix/UltraliteSDK-releases-iOS";
+			requirement = {
+				branch = main;
+				kind = branch;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		C540BE3C2E31AAEE001A328F /* UltraliteSDK */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = C540BE3B2E31AAEE001A328F /* XCRemoteSwiftPackageReference "UltraliteSDK-releases-iOS" */;
+			productName = UltraliteSDK;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 83CBB9F71A601CBA00E9B192 /* Project object */;
 }

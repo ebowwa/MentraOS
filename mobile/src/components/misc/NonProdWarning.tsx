@@ -24,10 +24,14 @@ export default function NonProdWarning() {
     const url = await loadSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL, null)
 
     let isProd = false
-    if (url.includes("prod.augmentos.cloud") || url.includes("global.augmentos.cloud") || url.includes("api.mentra.glass")) {
+    if (
+      url.includes("prod.augmentos.cloud") ||
+      url.includes("global.augmentos.cloud") ||
+      url.includes("api.mentra.glass")
+    ) {
       isProd = true
     }
-    
+
     if (url.includes("devapi")) {
       isProd = false
     }

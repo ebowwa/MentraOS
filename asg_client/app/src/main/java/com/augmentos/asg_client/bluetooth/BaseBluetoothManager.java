@@ -96,4 +96,21 @@ public abstract class BaseBluetoothManager implements IBluetoothManager {
         Log.d(TAG, "Shutting down bluetooth manager");
         listeners.clear();
     }
+    
+    /**
+     * Send a test image from assets folder (for testing purposes)
+     * Default implementation returns false. Override in subclasses that support file transfer.
+     * 
+     * @param assetFileName Name of the image file in assets folder
+     * @return true if transfer started, false otherwise
+     */
+    public boolean sendTestImageFromAssets(String assetFileName) {
+        Log.w(TAG, "sendTestImageFromAssets not implemented in " + getClass().getSimpleName());
+        return false;
+    }
+
+    public boolean sendImageFile(String path){
+        Log.w(TAG, "sendImageFile not implemented in " + getClass().getSimpleName());
+        return false;
+    }
 }

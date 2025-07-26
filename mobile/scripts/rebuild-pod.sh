@@ -1,5 +1,5 @@
-pnpm i
-pnpm expo prebuild
+bun i
+bun expo prebuild
 cd ios
 pod install
 cd ..

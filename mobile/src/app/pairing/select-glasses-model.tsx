@@ -34,22 +34,22 @@ export default function SelectGlassesModelScreen() {
   const {goBack, push} = useNavigationHistory()
 
   // Platform-specific glasses options
-  // For iOS, conditionally include Simulated Glasses based on TestFlight status
   const glassesOptions =
     Platform.OS === "ios"
       ? [
           {modelName: "Simulated Glasses", key: "Simulated Glasses"},
           {modelName: "Even Realities G1", key: "evenrealities_g1"},
           {modelName: "Mentra Live", key: "mentra_live"},
+          {modelName: "Mentra Mach1", key: "mentra_mach1"},
+          {modelName: "Vuzix Z100", key: "vuzix-z100"},
         ]
       : [
-          // Android supports all options (unchanged)
+          // Android:
           {modelName: "Simulated Glasses", key: "Simulated Glasses"},
-          {modelName: "Vuzix Z100", key: "vuzix-z100"},
-          {modelName: "Mentra Mach1", key: "mentra_mach1"},
-          {modelName: "Mentra Live", key: "mentra_live"},
           {modelName: "Even Realities G1", key: "evenrealities_g1"},
-          {modelName: "Audio Wearable", key: "Audio Wearable"},
+          {modelName: "Mentra Live", key: "mentra_live"},
+          {modelName: "Mentra Mach1", key: "mentra_mach1"},
+          {modelName: "Vuzix Z100", key: "vuzix-z100"},
         ]
 
   // Check onboarding status when screen comes into focus
@@ -75,8 +75,6 @@ export default function SelectGlassesModelScreen() {
       return () => backHandler.remove()
     }, [isOnboarding]),
   )
-
-  useEffect(() => {}, [status])
 
   const triggerGlassesPairingGuide = async (glassesModelName: string) => {
     // No need for Bluetooth permissions anymore as we're using direct communication

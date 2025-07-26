@@ -119,7 +119,12 @@ export default function WifiScanScreen() {
                     style={themed(isConnected ? $connectedNetworkItem : isSaved ? $savedNetworkItem : $networkItem)}
                     onPress={() => handleNetworkSelect(item)}>
                     <View style={themed($networkContent)}>
-                      <Text style={themed(isConnected ? $connectedNetworkText : isSaved ? $savedNetworkText : $networkText)}>{item}</Text>
+                      <Text
+                        style={themed(
+                          isConnected ? $connectedNetworkText : isSaved ? $savedNetworkText : $networkText,
+                        )}>
+                        {item}
+                      </Text>
                       <View style={themed($badgeContainer)}>
                         {isConnected && (
                           <View style={themed($connectedBadge)}>

@@ -11,7 +11,7 @@ jobs:
   maestro-test:
     runs-on: ubuntu-latest
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -19,8 +19,8 @@ jobs:
       - name: Setup Java
         uses: actions/setup-java@v3
         with:
-          java-version: '17'
-          distribution: 'temurin'
+          java-version: "17"
+          distribution: "temurin"
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v2
@@ -70,15 +70,14 @@ jobs:
             # Wait for emulator to boot
             adb wait-for-device
             adb shell input keyevent 82
-            
+
             # Install the APK
             adb install app-debug.apk
-            
+
             # Run Maestro tests
             cd mobile
             maestro test .maestro/flows \
               --env MAESTRO_APP_ID=com.mentra.mentra \
-              --env IS_DEV=false \
               --format junit \
               --output maestro-results.xml
 

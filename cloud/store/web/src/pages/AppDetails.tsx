@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Download, X, ExternalLink, Calendar, Clock, Info, Star, Package, Building, Globe, Mail, FileText } from 'lucide-react';
+import { ArrowLeft, Download, X, ExternalLink, Calendar, Clock, Info, Star, Package, Building, Globe, Mail, FileText, Mic, Camera, MapPin, Shield } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../hooks/useTheme';
 import { useIsDesktop } from '../hooks/useMediaQuery';
@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import Header from '../components/Header';
 import AppPermissions from '../components/AppPermissions';
+import GetMentraOSButton from '../components/GetMentraOSButton';
 
 // Extend window interface for React Native WebView
 declare global {
@@ -48,6 +49,42 @@ const AppDetails: React.FC = () => {
    */
   const navigateToOrgApps = (orgId: string) => {
     navigate(`/?orgId=${orgId}`);
+  };
+
+  // Get icon for permission type
+  const getPermissionIcon = (type: string) => {
+    const normalizedType = type.toLowerCase();
+    if (normalizedType.includes('microphone') || normalizedType.includes('audio')) {
+      return <Mic className="h-5 w-4" />;
+    }
+    if (normalizedType.includes('camera') || normalizedType.includes('photo')) {
+      return <Camera className="h-4 w-4" />;
+    }
+    if (normalizedType.includes('location') || normalizedType.includes('gps')) {
+      return <MapPin className="h-4 w-4" />;
+    }
+    if (normalizedType.includes('calendar')) {
+      return <Calendar className="h-4 w-4" />;
+    }
+    return <Shield className="h-4 w-4" />;
+  };
+
+  // Get default description for permission type
+  const getPermissionDescription = (type: string) => {
+    const normalizedType = type.toLowerCase();
+    if (normalizedType.includes('microphone') || normalizedType.includes('audio')) {
+      return 'For voice import and audio processing.';
+    }
+    if (normalizedType.includes('camera') || normalizedType.includes('photo')) {
+      return 'For capturing photos and recording videos.';
+    }
+    if (normalizedType.includes('location') || normalizedType.includes('gps')) {
+      return 'For location-based features and services.';
+    }
+    if (normalizedType.includes('calendar')) {
+      return 'For accessing and managing calendar events.';
+    }
+    return 'For app functionality and features.';
   };
 
   // Fetch app details and install status
@@ -217,228 +254,271 @@ const AppDetails: React.FC = () => {
               backgroundColor: 'var(--bg-primary)',
               // Desktop styles applied based on media query hook
               ...(isDesktop ? {
-                background: theme === 'light' ? 'transparent' : 'linear-gradient(180deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%)',
-                boxShadow: theme === 'light' ? 'none' : 'inset 0 0 0 1px rgba(255, 255, 255, 0.1), inset 0 0 32px rgba(0, 0, 0, 0.25)',
-                border: theme === 'light' ? '2px solid #e5e5e5' : 'none',
+                backgroundColor: theme === 'light' ? '#ffffff' : 'var(--bg-secondary)',
+                boxShadow: theme === 'light' ? '0 0 0 1px #e5e5e5' : 'inset 0 0 0 1px rgba(255, 255, 255, 0.1)',
+                border: theme === 'light' ? '1px solid #e5e5e5' : 'none',
               } : {})
             }}
           >
-          {/* Desktop Close Button */}
-          <button
-            onClick={() => navigate(-1)}
-            className="hidden sm:block absolute top-6 right-6 transition-colors"
-            style={{
-              color: theme === 'light' ? '#000000' : '#9CA3AF'
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.color = theme === 'light' ? '#333333' : '#ffffff'}
-            onMouseLeave={(e) => e.currentTarget.style.color = theme === 'light' ? '#000000' : '#9CA3AF'}
-            aria-label="Close"
-          >
-            <X className="h-6 w-6" />
-          </button>
-
-          {/* Mobile Back Button */}
-          <div className="sm:hidden px-6 py-4 border-b" style={{ borderColor: 'var(--border-color)' }}>
+            {/* Desktop Close Button */}
             <button
               onClick={() => navigate(-1)}
-              className="flex items-center gap-2 transition-colors"
-              style={{ color: 'var(--text-primary)' }}
-            >
-              <ArrowLeft className="h-5 w-5" />
-              <span className="text-[16px]">Back</span>
-            </button>
-          </div>
-
-          {/* Content wrapper with responsive padding */}
-          <div className="px-6 py-6 pb-safe sm:p-0">
-            <div className="max-w-2xl mx-auto sm:max-w-none sm:p-12 pb-8 sm:pb-12">
-            {/* Header */}
-            <div className="flex items-center justify-between mb-8 max-[840px]:flex-col max-[840px]:gap-6">
-              <div className="flex items-center gap-4 max-[840px]:flex-col max-[840px]:items-center max-[840px]:gap-4">
-              <img
-                src={app.logoURL}
-                alt={`${app.name} logo`}
-                className="w-16 h-16 object-cover rounded-full"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).src =
-                    'https://placehold.co/64x64/gray/white?text=App';
-                }}
-              />
-              <h2
-                id="app-modal-title"
-                className="text-[32px] font-medium leading-[1.2] max-[840px]:text-center"
-                style={{
-                  fontFamily: '"SF Pro Rounded", sans-serif',
-                  letterSpacing: '0.02em',
-                  color: 'var(--text-primary)'
-                }}
-              >
-                {app.name}
-              </h2>
-            </div>
-
-            <div className="flex items-center gap-4 max-[840px]:w-full max-[840px]:justify-center">
-              {isAuthenticated ? (
-                app.isInstalled ? (
-                  isWebView ? (
-                    <Button
-                      onClick={() => handleOpen(app.packageName)}
-                      disabled={installingApp}
-                      className="w-full sm:w-[140px] h-[40px] text-[#E2E4FF] text-[16px] font-normal rounded-full"
-                      style={{
-                        fontFamily: '"SF Pro Rounded", sans-serif',
-                        backgroundColor: 'var(--button-bg)',
-                        color: 'var(--button-text)'
-                      }}
-                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--button-hover)'}
-                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--button-bg)'}
-                    >
-                      Open
-                    </Button>
-                  ) : (
-                    // Show greyed out Installed button for installed apps on desktop/mobile
-                    <Button
-                      disabled={true}
-                      className="w-full sm:w-[140px] h-[40px] text-[#E2E4FF] text-[16px] font-normal rounded-full opacity-30 cursor-not-allowed"
-                      style={{
-                        fontFamily: '"SF Pro Rounded", sans-serif',
-                        backgroundColor: 'var(--button-bg)',
-                        color: 'var(--button-text)',
-                        filter: 'grayscale(100%)'
-                      }}
-                    >
-                      Installed
-                    </Button>
-                  )
-                ) : (
-                  <Button
-                    onClick={handleInstall}
-                    disabled={installingApp}
-                    className="w-full sm:w-[140px] h-[40px] bg-[#242454] hover:bg-[#2d2f5a] text-[#E2E4FF] text-[16px] font-normal rounded-full"
-                    style={{ fontFamily: '"SF Pro Rounded", sans-serif' }}
-                  >
-                    {installingApp ? 'Installing…' : 'Get App'}
-                  </Button>
-                )
-              ) : (
-                <Button
-                  onClick={() => navigate('/login', { state: { returnTo: location.pathname } })}
-                  className="w-full sm:w-[140px] h-[40px] bg-[#242454] text-[#E2E4FF] text-[16px] font-normal rounded-full"
-                  style={{ fontFamily: '"SF Pro Rounded", sans-serif' }}
-                >
-                  Sign in
-                </Button>
-              )}
-            </div>
-          </div>
-
-          {/* Description */}
-          <div className="mb-12">
-            <p
-              className="text-[16px] font-normal leading-[1.6] sm:max-w-[480px]"
-              style={{ fontFamily: '"SF Pro Rounded", sans-serif', color: theme === 'light' ? '#000000' : '#E4E4E7' }}
-            >
-              {app.description || 'No description available.'}
-            </p>
-          </div>
-
-          {/* Information Section */}
-          <div className="mb-12">
-            <h3
-              className="text-[12px] font-semibold uppercase mb-6"
+              className="hidden sm:block absolute top-6 right-6 transition-colors"
               style={{
-                fontFamily: '"SF Pro Rounded", sans-serif',
-                letterSpacing: '0.05em',
                 color: theme === 'light' ? '#000000' : '#9CA3AF'
               }}
+              onMouseEnter={(e) => e.currentTarget.style.color = theme === 'light' ? '#333333' : '#ffffff'}
+              onMouseLeave={(e) => e.currentTarget.style.color = theme === 'light' ? '#000000' : '#9CA3AF'}
+              aria-label="Close"
             >
-              Information
-            </h3>
+              <X className="h-6 w-6" />
+            </button>
 
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <span className="text-[14px] font-medium" style={{ color: theme === 'light' ? '#000000' : '#9CA3AF' }}>Company</span>
-                <span className="text-[14px] font-normal text-right" style={{ color: theme === 'light' ? '#000000' : '#E4E4E7' }}>
-                  {app.orgName || app.developerProfile?.company || 'Mentra'}
-                </span>
-              </div>
-
-              {app.developerProfile?.website && (
-                <div className="flex justify-between items-center">
-                  <span className="text-[14px] font-medium" style={{ color: theme === 'light' ? '#000000' : '#9CA3AF' }}>Website</span>
-                  <a
-                    href={app.developerProfile.website}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-[14px] font-normal hover:underline text-right"
-                    style={{ color: theme === 'light' ? '#000000' : '#E4E4E7' }}
-                  >
-                    {app.developerProfile.website}
-                  </a>
-                </div>
-              )}
-
-              {app.developerProfile?.contactEmail && (
-                <div className="flex justify-between items-center">
-                  <span className="text-[14px] font-medium" style={{ color: theme === 'light' ? '#000000' : '#9CA3AF' }}>Contact</span>
-                  <a
-                    href={`mailto:${app.developerProfile.contactEmail}`}
-                    className="text-[14px] font-normal hover:underline text-right"
-                    style={{ color: theme === 'light' ? '#000000' : '#E4E4E7' }}
-                  >
-                    {app.developerProfile.contactEmail}
-                  </a>
-                </div>
-              )}
-
-              <div className="flex justify-between items-center">
-                <span className="text-[14px] font-medium" style={{ color: theme === 'light' ? '#000000' : '#9CA3AF' }}>App Type</span>
-                <span className="text-[14px] font-normal text-right capitalize" style={{ color: theme === 'light' ? '#000000' : '#E4E4E7' }}>
-                  {(() => {
-                    const appType = app.appType ?? app.tpaType ?? 'Foreground';
-                    return appType === 'standard' ? 'Foreground' : appType;
-                  })()}
-                </span>
-              </div>
-
-              <div className="flex justify-between items-center">
-                <span className="text-[14px] font-medium" style={{ color: theme === 'light' ? '#000000' : '#9CA3AF' }}>Package</span>
-                <span className="text-[14px] font-normal text-right" style={{ color: theme === 'light' ? '#000000' : '#E4E4E7' }}>
-                  {app.packageName.replace('.augmentos.', '.mentra.')} {/* TODO: remove this once we have migrated over */}
-                </span>
-              </div>
+            {/* Mobile Back Button */}
+            <div className="sm:hidden px-6 py-4 border-b" style={{ borderColor: 'var(--border-color)' }}>
+              <button
+                onClick={() => navigate(-1)}
+                className="flex items-center gap-2 transition-colors"
+                style={{ color: 'var(--text-primary)' }}
+              >
+                <ArrowLeft className="h-5 w-5" />
+                <span className="text-[16px]">Back</span>
+              </button>
             </div>
-          </div>
 
-          {/* Required Permissions */}
-          <div>
-            <h3
-              className="text-[12px] font-semibold uppercase mb-6"
-              style={{ fontFamily: '"SF Pro Rounded", sans-serif', letterSpacing: '0.05em', color: theme === 'light' ? '#000000' : '#9CA3AF' }}
-            >
-              Required Permissions
-            </h3>
-            <div className="space-y-3">
-              {app.permissions && app.permissions.length > 0 ? (
-                app.permissions.map((permission, index) => (
-                  <div
-                    key={index}
-                    className="text-[14px] font-normal leading-[1.5]"
-                    style={{ color: theme === 'light' ? '#000000' : '#9CA3AF' }}
-                  >
-                    <strong style={{ color: theme === 'light' ? '#000000' : '#E4E4E7' }}>
-                      {permission.type || 'Microphone'}
-                    </strong>{' '}
-                    {permission.description || 'For voice import and audio processing.'}
+            {/* Content wrapper with responsive padding */}
+            <div className="px-6 py-6 pb-safe sm:p-12 sm:pb-16">
+              <div className="max-w-2xl mx-auto sm:max-w-none">
+                {/* Header */}
+                <div className="flex items-start justify-between mb-8 sm:items-center">
+                  <div className="flex items-center gap-4">
+                    <img
+                      src={app.logoURL}
+                      alt={`${app.name} logo`}
+                      className="w-16 h-16 object-cover rounded-full flex-shrink-0"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src =
+                          'https://placehold.co/64x64/gray/white?text=App';
+                      }}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <h2
+                        id="app-modal-title"
+                        className="text-[24px] font-medium leading-[1.2] break-words"
+                        style={{
+                          fontFamily: '"SF Pro Rounded", sans-serif',
+                          letterSpacing: '0.02em',
+                          color: 'var(--text-primary)'
+                        }}
+                      >
+                        {app.name}
+                      </h2>
+                    </div>
                   </div>
-                ))
-              ) : (
-                <div className="text-[14px] font-normal" style={{ color: theme === 'light' ? '#000000' : '#9CA3AF' }}>None</div>
-              )}
+
+                  <div className="flex items-center gap-4 flex-shrink-0 ml-4">
+                    {isAuthenticated ? (
+                      app.isInstalled ? (
+                        isWebView ? (
+                          <Button
+                            onClick={() => handleOpen(app.packageName)}
+                            disabled={installingApp}
+                            className="w-[140px] h-[40px] text-[#E2E4FF] text-[16px] font-normal rounded-full"
+                            style={{
+                              fontFamily: '"SF Pro Rounded", sans-serif',
+                              backgroundColor: 'var(--button-bg)',
+                              color: 'var(--button-text)'
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--button-hover)'}
+                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--button-bg)'}
+                          >
+                            Open
+                          </Button>
+                        ) : (
+                          // Show greyed out Installed button for installed apps on desktop/mobile
+                          <Button
+                            disabled={true}
+                            className="w-[140px] h-[40px] text-[#E2E4FF] text-[16px] font-normal rounded-full opacity-30 cursor-not-allowed"
+                            style={{
+                              fontFamily: '"SF Pro Rounded", sans-serif',
+                              backgroundColor: 'var(--button-bg)',
+                              color: 'var(--button-text)',
+                              filter: 'grayscale(100%)'
+                            }}
+                          >
+                            Installed
+                          </Button>
+                        )
+                      ) : (
+                        <Button
+                          onClick={handleInstall}
+                          disabled={installingApp}
+                          className="w-[140px] h-[40px] bg-[#242454] hover:bg-[#2d2f5a] text-[#E2E4FF] text-[16px] font-normal rounded-full"
+                          style={{ fontFamily: '"SF Pro Rounded", sans-serif' }}
+                        >
+                          {installingApp ? 'Installing…' : 'Get App'}
+                        </Button>
+                      )
+                    ) : (
+                      <Button
+                        onClick={() => navigate('/login', { state: { returnTo: location.pathname } })}
+                        className="w-[140px] h-[40px] bg-[#242454] text-[#E2E4FF] text-[16px] font-normal rounded-full"
+                        style={{ fontFamily: '"SF Pro Rounded", sans-serif' }}
+                      >
+                        Sign in
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Description */}
+                <div className="mb-8">
+                  <p
+                    className="text-[16px] font-normal leading-[1.6] sm:max-w-[480px]"
+                    style={{ fontFamily: '"SF Pro Rounded", sans-serif', color: theme === 'light' ? '#000000' : '#E4E4E7' }}
+                  >
+                    {app.description || 'No description available.'}
+                  </p>
+                </div>
+
+                {/* Information Section */}
+                <div className="mb-8">
+                  <h3
+                    className="text-[12px] font-semibold uppercase mb-6"
+                    style={{
+                      fontFamily: '"SF Pro Rounded", sans-serif',
+                      letterSpacing: '0.05em',
+                      color: theme === 'light' ? '#000000' : '#9CA3AF'
+                    }}
+                  >
+                    Information
+                  </h3>
+
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[14px] font-medium" style={{ color: theme === 'light' ? '#000000' : '#9CA3AF' }}>Company</span>
+                      <span className="text-[14px] font-normal text-right" style={{ color: theme === 'light' ? '#000000' : '#E4E4E7' }}>
+                        {app.orgName || app.developerProfile?.company || 'Mentra'}
+                      </span>
+                    </div>
+
+                    {app.developerProfile?.website && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-[14px] font-medium" style={{ color: theme === 'light' ? '#000000' : '#9CA3AF' }}>Website</span>
+                        <a
+                          href={app.developerProfile.website}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[14px] font-normal hover:underline text-right"
+                          style={{ color: theme === 'light' ? '#000000' : '#E4E4E7' }}
+                        >
+                          {app.developerProfile.website}
+                        </a>
+                      </div>
+                    )}
+
+                    {app.developerProfile?.contactEmail && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-[14px] font-medium" style={{ color: theme === 'light' ? '#000000' : '#9CA3AF' }}>Contact</span>
+                        <a
+                          href={`mailto:${app.developerProfile.contactEmail}`}
+                          className="text-[14px] font-normal hover:underline text-right"
+                          style={{ color: theme === 'light' ? '#000000' : '#E4E4E7' }}
+                        >
+                          {app.developerProfile.contactEmail}
+                        </a>
+                      </div>
+                    )}
+
+                    <div className="flex justify-between items-center">
+                      <span className="text-[14px] font-medium" style={{ color: theme === 'light' ? '#000000' : '#9CA3AF' }}>App Type</span>
+                      <span className="text-[14px] font-normal text-right capitalize" style={{ color: theme === 'light' ? '#000000' : '#E4E4E7' }}>
+                        {(() => {
+                          const appType = app.appType ?? app.tpaType ?? 'Foreground';
+                          return appType === 'standard' ? 'Foreground' : appType;
+                        })()}
+                      </span>
+                    </div>
+
+                    <div className="flex justify-between items-center">
+                      <span className="text-[14px] font-medium" style={{ color: theme === 'light' ? '#000000' : '#9CA3AF' }}>Package</span>
+                      <span className="text-[14px] font-normal text-right" style={{ color: theme === 'light' ? '#000000' : '#E4E4E7' }}>
+                        {app.packageName.replace('.augmentos.', '.mentra.')} {/* TODO: remove this once we have migrated over */}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Required Permissions - Improved Formatting */}
+                <div className="mb-6">
+                  <h3
+                    className="text-[12px] font-semibold uppercase mb-6"
+                    style={{ fontFamily: '"SF Pro Rounded", sans-serif', letterSpacing: '0.05em', color: theme === 'light' ? '#000000' : '#9CA3AF' }}
+                  >
+                    Required Permissions
+                  </h3>
+                  <div className="space-y-4">
+                    {app.permissions && app.permissions.length > 0 ? (
+                      app.permissions.map((permission, index) => (
+                        <div
+                          key={index}
+                          className="flex items-start gap-3 p-3 rounded-lg"
+                          style={{ 
+                            backgroundColor: theme === 'light' ? '#f8f9fa' : 'rgba(255, 255, 255, 0.05)',
+                            border: `1px solid ${theme === 'light' ? '#e9ecef' : 'rgba(255, 255, 255, 0.1)'}`
+                          }}
+                        >
+                          <div 
+                            className="flex-shrink-0 mt-0.5"
+                            style={{ color: theme === 'light' ? '#6c757d' : '#9CA3AF' }}
+                          >
+                            {getPermissionIcon(permission.type || 'Microphone')}
+                          </div>
+                          <div className="flex-1">
+                            <div
+                              className="text-[14px] font-semibold mb-1"
+                              style={{ color: theme === 'light' ? '#000000' : '#E4E4E7' }}
+                            >
+                              {permission.type || 'Microphone'}
+                            </div>
+                            <div
+                              className="text-[13px] leading-[1.4]"
+                              style={{ color: theme === 'light' ? '#6c757d' : '#9CA3AF' }}
+                            >
+                              {permission.description || getPermissionDescription(permission.type || 'Microphone')}
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div 
+                        className="text-center py-6 rounded-lg"
+                        style={{ 
+                          backgroundColor: theme === 'light' ? '#f8f9fa' : 'rgba(255, 255, 255, 0.05)',
+                          border: `1px solid ${theme === 'light' ? '#e9ecef' : 'rgba(255, 255, 255, 0.1)'}`
+                        }}
+                      >
+                        <div className="text-[14px] font-medium" style={{ color: theme === 'light' ? '#000000' : '#9CA3AF' }}>
+                          No special permissions required
+                        </div>
+                        <div className="text-[12px] mt-1" style={{ color: theme === 'light' ? '#6c757d' : '#9CA3AF' }}>
+                          This app runs with standard system permissions only.
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Get MentraOS - Hide in React Native WebView */}
+                {!isWebView && (
+                  <div className="text-center mb-8">
+                    <div className="flex justify-center">
+                      <GetMentraOSButton size="small" />
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-          </div>
-          </div>
           </div>
         )}
       </div>

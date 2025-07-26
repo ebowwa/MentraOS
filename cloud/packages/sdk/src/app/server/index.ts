@@ -4,10 +4,10 @@
  * Creates and manages a server for Apps in the MentraOS ecosystem.
  * Handles webhook endpoints, session management, and cleanup.
  */
-import express, { type Express } from 'express';
-import path from 'path';
-import { AppSession } from '../session/index';
-import { createAuthMiddleware } from '../webview';
+import express, { type Express } from "express";
+import path from "path";
+import { AppSession } from "../session/index";
+import { createAuthMiddleware } from "../webview";
 import {
   WebhookRequest,
   WebhookRequestType,
@@ -16,11 +16,14 @@ import {
   StopWebhookRequest,
   isSessionWebhookRequest,
   isStopWebhookRequest,
-  ToolCall
-} from '../../types';
-import { Logger } from 'pino';
-import { logger as rootLogger } from '../../logging/logger';
-import axios from 'axios';
+  ToolCall,
+} from "../../types";
+import { Logger } from "pino";
+import { logger as rootLogger } from "../../logging/logger";
+import axios from "axios";
+
+export const GIVE_APP_CONTROL_OF_TOOL_RESPONSE: string =
+  "GIVE_APP_CONTROL_OF_TOOL_RESPONSE";
 
 /**
  * 🔧 Configuration options for App Server
@@ -97,6 +100,8 @@ export class AppServer {
   private app: Express;
   /** Map of active user sessions by sessionId */
   private activeSessions = new Map<string, AppSession>();
+  /** Map of active user sessions by userId */
+  private activeSessionsByUserId = new Map<string, AppSession>();
   /** Array of cleanup handlers to run on shutdown */
   private cleanupHandlers: Array<() => void> = [];
   /** App instructions string shown to the user */
@@ -108,27 +113,43 @@ export class AppServer {
     // Set defaults and merge with provided config
     this.config = {
       port: 7010,
-      webhookPath: '/webhook',
+      webhookPath: "/webhook",
       publicDir: false,
       healthCheck: true,
-      ...config
+      ...config,
     };
 
-    this.logger = rootLogger.child({ app: this.config.packageName, packageName: this.config.packageName, service: 'app-server' });
+    this.logger = rootLogger.child({
+      app: this.config.packageName,
+      packageName: this.config.packageName,
+      service: "app-server",
+    });
 
     // Initialize Express app
     this.app = express();
     this.app.use(express.json());
 
-    const cookieParser = require('cookie-parser');
-    this.app.use(cookieParser(this.config.cookieSecret || `AOS_${this.config.packageName}_${this.config.apiKey.substring(0, 8)}`));
+    const cookieParser = require("cookie-parser");
+    this.app.use(
+      cookieParser(
+        this.config.cookieSecret ||
+          `AOS_${this.config.packageName}_${this.config.apiKey.substring(0, 8)}`,
+      ),
+    );
 
     // Apply authentication middleware
-    this.app.use(createAuthMiddleware({
-      apiKey: this.config.apiKey,
-      packageName: this.config.packageName,
-      cookieSecret: this.config.cookieSecret || `AOS_${this.config.packageName}_${this.config.apiKey.substring(0, 8)}`
-    }));
+    this.app.use(
+      createAuthMiddleware({
+        apiKey: this.config.apiKey,
+        packageName: this.config.packageName,
+        getAppSessionForUser: (userId: string) => {
+          return this.activeSessionsByUserId.get(userId) || null;
+        },
+        cookieSecret:
+          this.config.cookieSecret ||
+          `AOS_${this.config.packageName}_${this.config.apiKey.substring(0, 8)}`,
+      }) as any,
+    );
 
     this.appInstructions = (config as any).appInstructions || null;
 
@@ -157,10 +178,18 @@ export class AppServer {
    * @param sessionId - Unique identifier for this session
    * @param userId - User's identifier
    */
-  protected async onSession(session: AppSession, sessionId: string, userId: string): Promise<void> {
-    this.logger.info(`🚀 Starting new session handling for session ${sessionId} and user ${userId}`);
+  protected async onSession(
+    session: AppSession,
+    sessionId: string,
+    userId: string,
+  ): Promise<void> {
+    this.logger.info(
+      `🚀 Starting new session handling for session ${sessionId} and user ${userId}`,
+    );
     // Core session handling logic (onboarding removed)
-    this.logger.info(`✅ Session handling completed for session ${sessionId} and user ${userId}`);
+    this.logger.info(
+      `✅ Session handling completed for session ${sessionId} and user ${userId}`,
+    );
   }
 
   /**
@@ -172,14 +201,21 @@ export class AppServer {
    * @param userId - User's identifier
    * @param reason - Reason for stopping
    */
-  protected async onStop(sessionId: string, userId: string, reason: string): Promise<void> {
-    this.logger.debug(`Session ${sessionId} stopped for user ${userId}. Reason: ${reason}`);
+  protected async onStop(
+    sessionId: string,
+    userId: string,
+    reason: string,
+  ): Promise<void> {
+    this.logger.debug(
+      `Session ${sessionId} stopped for user ${userId}. Reason: ${reason}`,
+    );
 
     // Default implementation: close the session if it exists
     const session = this.activeSessions.get(sessionId);
     if (session) {
       session.disconnect();
       this.activeSessions.delete(sessionId);
+      this.activeSessionsByUserId.delete(userId);
     }
   }
 
@@ -206,9 +242,13 @@ export class AppServer {
   public start(): Promise<void> {
     return new Promise((resolve) => {
       this.app.listen(this.config.port, () => {
-        this.logger.info(`🎯 App server running at http://localhost:${this.config.port}`);
+        this.logger.info(
+          `🎯 App server running at http://localhost:${this.config.port}`,
+        );
         if (this.config.publicDir) {
-          this.logger.info(`📂 Serving static files from ${this.config.publicDir}`);
+          this.logger.info(
+            `📂 Serving static files from ${this.config.publicDir}`,
+          );
         }
         resolve();
       });
@@ -220,33 +260,33 @@ export class AppServer {
    * Gracefully shuts down the server and cleans up all sessions.
    */
   public stop(): void {
-    this.logger.info('\n🛑 Shutting down...');
+    this.logger.info("\n🛑 Shutting down...");
     this.cleanup();
     process.exit(0);
   }
 
   /**
- * 🔐 Generate a App token for a user
- * This should be called when handling a session webhook request.
- *
- * @param userId - User identifier
- * @param sessionId - Session identifier
- * @param secretKey - Secret key for signing the token
- * @returns JWT token string
- */
+   * 🔐 Generate a App token for a user
+   * This should be called when handling a session webhook request.
+   *
+   * @param userId - User identifier
+   * @param sessionId - Session identifier
+   * @param secretKey - Secret key for signing the token
+   * @returns JWT token string
+   */
   protected generateToken(
     userId: string,
     sessionId: string,
-    secretKey: string
+    secretKey: string,
   ): string {
-    const { createToken } = require('../token/utils');
+    const { createToken } = require("../token/utils");
     return createToken(
       {
         userId,
         packageName: this.config.packageName,
-        sessionId
+        sessionId,
       },
-      { secretKey }
+      { secretKey },
     );
   }
 
@@ -266,8 +306,8 @@ export class AppServer {
    */
   private setupWebhook(): void {
     if (!this.config.webhookPath) {
-      this.logger.error('❌ Webhook path not set');
-      throw new Error('Webhook path not set');
+      this.logger.error("❌ Webhook path not set");
+      throw new Error("Webhook path not set");
     }
 
     this.app.post(this.config.webhookPath, async (req, res) => {
@@ -284,17 +324,20 @@ export class AppServer {
         }
         // Unknown webhook type
         else {
-          this.logger.error('❌ Unknown webhook request type');
+          this.logger.error("❌ Unknown webhook request type");
           res.status(400).json({
-            status: 'error',
-            message: 'Unknown webhook request type'
+            status: "error",
+            message: "Unknown webhook request type",
           } as WebhookResponse);
         }
       } catch (error) {
-        this.logger.error(error, '❌ Error handling webhook: ' + (error as Error).message);
+        this.logger.error(
+          error,
+          "❌ Error handling webhook: " + (error as Error).message,
+        );
         res.status(500).json({
-          status: 'error',
-          message: 'Error handling webhook: ' + (error as Error).message
+          status: "error",
+          message: "Error handling webhook: " + (error as Error).message,
         } as WebhookResponse);
       }
     });
@@ -305,38 +348,57 @@ export class AppServer {
    * Creates a /tool endpoint for handling tool calls from MentraOS Cloud.
    */
   private setupToolCallEndpoint(): void {
-    this.app.post('/tool', async (req, res) => {
+    this.app.post("/tool", async (req, res) => {
       try {
         const toolCall = req.body as ToolCall;
-        this.logger.info({ body: req.body }, `🔧 Received tool call: ${toolCall.toolId}`);
+        if (this.activeSessionsByUserId.has(toolCall.userId)) {
+          toolCall.activeSession =
+            this.activeSessionsByUserId.get(toolCall.userId) || null;
+        } else {
+          toolCall.activeSession = null;
+        }
+        this.logger.info(
+          { body: req.body },
+          `🔧 Received tool call: ${toolCall.toolId}`,
+        );
         // Call the onToolCall handler and get the response
         const response = await this.onToolCall(toolCall);
 
         // Send back the response if one was provided
         if (response !== undefined) {
-          res.json({ status: 'success', reply: response });
+          res.json({ status: "success", reply: response });
         } else {
-          res.json({ status: 'success', reply: null });
+          res.json({ status: "success", reply: null });
         }
       } catch (error) {
-        this.logger.error(error, '❌ Error handling tool call:');
+        this.logger.error(error, "❌ Error handling tool call:");
         res.status(500).json({
-          status: 'error',
-          message: error instanceof Error ? error.message : 'Unknown error occurred calling tool'
+          status: "error",
+          message:
+            error instanceof Error
+              ? error.message
+              : "Unknown error occurred calling tool",
         });
       }
     });
-    this.app.get('/tool', async (req, res) => {
-      res.json({ status: 'success', reply: 'Hello, world!' });
+    this.app.get("/tool", async (req, res) => {
+      res.json({ status: "success", reply: "Hello, world!" });
     });
   }
 
   /**
    * Handle a session request webhook
    */
-  private async handleSessionRequest(request: SessionWebhookRequest, res: express.Response): Promise<void> {
-    const { sessionId, userId, mentraOSWebsocketUrl, augmentOSWebsocketUrl } = request;
-    this.logger.info({userId}, `🗣️ Received session request for user ${userId}, session ${sessionId}\n\n`);
+  private async handleSessionRequest(
+    request: SessionWebhookRequest,
+    res: express.Response,
+  ): Promise<void> {
+    const { sessionId, userId, mentraOSWebsocketUrl, augmentOSWebsocketUrl } =
+      request;
+    this.logger.info(
+      { userId },
+      `🗣️ Received session request for user ${userId}, session ${sessionId}\n\n`,
+    );
 
     // Create new App session
     const session = new AppSession({
@@ -350,28 +412,40 @@ export class AppServer {
     // Setup session event handlers
     const cleanupDisconnect = session.events.onDisconnected((info) => {
       // Handle different disconnect info formats (string or object)
-      if (typeof info === 'string') {
+      if (typeof info === "string") {
         this.logger.info(`👋 Session ${sessionId} disconnected: ${info}`);
       } else {
         // It's an object with detailed disconnect information
-        this.logger.info(`👋 Session ${sessionId} disconnected: ${info.message} (code: ${info.code}, reason: ${info.reason})`);
+        this.logger.info(
+          `👋 Session ${sessionId} disconnected: ${info.message} (code: ${info.code}, reason: ${info.reason})`,
+        );
 
         // Check if this is a permanent disconnection after exhausted reconnection attempts
         if (info.permanent === true) {
-          this.logger.info(`🛑 Permanent disconnection detected for session ${sessionId}, calling onStop`);
+          this.logger.info(
+            `🛑 Permanent disconnection detected for session ${sessionId}, calling onStop`,
+          );
 
           // Keep track of the original session before removal
           const session = this.activeSessions.get(sessionId);
 
           // Call onStop with a reconnection failure reason
-          this.onStop(sessionId, userId, `Connection permanently lost: ${info.reason}`).catch(error => {
-            this.logger.error(error, `❌ Error in onStop handler for permanent disconnection:`);
+          this.onStop(
+            sessionId,
+            userId,
+            `Connection permanently lost: ${info.reason}`,
+          ).catch((error) => {
+            this.logger.error(
+              error,
+              `❌ Error in onStop handler for permanent disconnection:`,
+            );
           });
         }
       }
 
       // Remove the session from active sessions in all cases
       this.activeSessions.delete(sessionId);
+      this.activeSessionsByUserId.delete(userId);
     });
 
     const cleanupError = session.events.onError((error) => {
@@ -382,15 +456,16 @@ export class AppServer {
     try {
       await session.connect(sessionId);
       this.activeSessions.set(sessionId, session);
+      this.activeSessionsByUserId.set(userId, session);
       await this.onSession(session, sessionId, userId);
-      res.status(200).json({ status: 'success' } as WebhookResponse);
+      res.status(200).json({ status: "success" } as WebhookResponse);
     } catch (error) {
-      this.logger.error(error, '❌ Failed to connect:');
+      this.logger.error(error, "❌ Failed to connect:");
       cleanupDisconnect();
       cleanupError();
       res.status(500).json({
-        status: 'error',
-        message: 'Failed to connect'
+        status: "error",
+        message: "Failed to connect",
       } as WebhookResponse);
     }
   }
@@ -398,18 +473,23 @@ export class AppServer {
   /**
    * Handle a stop request webhook
    */
-  private async handleStopRequest(request: StopWebhookRequest, res: express.Response): Promise<void> {
+  private async handleStopRequest(
+    request: StopWebhookRequest,
+    res: express.Response,
+  ): Promise<void> {
     const { sessionId, userId, reason } = request;
-    this.logger.info(`\n\n🛑 Received stop request for user ${userId}, session ${sessionId}, reason: ${reason}\n\n`);
+    this.logger.info(
+      `\n\n🛑 Received stop request for user ${userId}, session ${sessionId}, reason: ${reason}\n\n`,
+    );
 
     try {
       await this.onStop(sessionId, userId, reason);
-      res.status(200).json({ status: 'success' } as WebhookResponse);
+      res.status(200).json({ status: "success" } as WebhookResponse);
     } catch (error) {
-      this.logger.error(error, '❌ Error handling stop request:');
+      this.logger.error(error, "❌ Error handling stop request:");
       res.status(500).json({
-        status: 'error',
-        message: 'Failed to process stop request'
+        status: "error",
+        message: "Failed to process stop request",
       } as WebhookResponse);
     }
   }
@@ -420,11 +500,11 @@ export class AppServer {
    */
   private setupHealthCheck(): void {
     if (this.config.healthCheck) {
-      this.app.get('/health', (req, res) => {
+      this.app.get("/health", (req, res) => {
         res.json({
-          status: 'healthy',
+          status: "healthy",
           app: this.config.packageName,
-          activeSessions: this.activeSessions.size
+          activeSessions: this.activeSessions.size,
         });
       });
     }
@@ -435,18 +515,20 @@ export class AppServer {
    * Creates a /settings endpoint that the MentraOS Cloud can use to update settings.
    */
   private setupSettingsEndpoint(): void {
-    this.app.post('/settings', async (req, res) => {
+    this.app.post("/settings", async (req, res) => {
       try {
         const { userIdForSettings, settings } = req.body;
 
         if (!userIdForSettings || !Array.isArray(settings)) {
           return res.status(400).json({
-            status: 'error',
-            message: 'Missing userId or settings array in request body'
+            status: "error",
+            message: "Missing userId or settings array in request body",
           });
         }
 
-        this.logger.info(`⚙️ Received settings update for user ${userIdForSettings}`);
+        this.logger.info(
+          `⚙️ Received settings update for user ${userIdForSettings}`,
+        );
 
         // Find all active sessions for this user
         const userSessions: AppSession[] = [];
@@ -455,15 +537,19 @@ export class AppServer {
         this.activeSessions.forEach((session, sessionId) => {
           // Check if the session has this userId (not directly accessible)
           // We're relying on the webhook handler to have already verified this
-          if (sessionId.includes(userIdForSettings)) {
+          if (session.userId === userIdForSettings) {
             userSessions.push(session);
           }
         });
 
         if (userSessions.length === 0) {
-          this.logger.warn(`⚠️ No active sessions found for user ${userIdForSettings}`);
+          this.logger.warn(
+            `⚠️ No active sessions found for user ${userIdForSettings}`,
+          );
         } else {
-          this.logger.info(`🔄 Updating settings for ${userSessions.length} active sessions`);
+          this.logger.info(
+            `🔄 Updating settings for ${userSessions.length} active sessions`,
+          );
         }
 
         // Update settings for all of the user's sessions
@@ -472,20 +558,20 @@ export class AppServer {
         }
 
         // Allow subclasses to handle settings updates if they implement the method
-        if (typeof (this as any).onSettingsUpdate === 'function') {
+        if (typeof (this as any).onSettingsUpdate === "function") {
           await (this as any).onSettingsUpdate(userIdForSettings, settings);
         }
 
         res.json({
-          status: 'success',
-          message: 'Settings updated successfully',
-          sessionsUpdated: userSessions.length
+          status: "success",
+          message: "Settings updated successfully",
+          sessionsUpdated: userSessions.length,
         });
       } catch (error) {
-        this.logger.error(error, '❌ Error handling settings update:');
+        this.logger.error(error, "❌ Error handling settings update:");
         res.status(500).json({
-          status: 'error',
-          message: 'Internal server error processing settings update'
+          status: "error",
+          message: "Internal server error processing settings update",
         });
       }
     });
@@ -508,8 +594,8 @@ export class AppServer {
    * Registers process signal handlers for graceful shutdown.
    */
   private setupShutdown(): void {
-    process.on('SIGTERM', () => this.stop());
-    process.on('SIGINT', () => this.stop());
+    process.on("SIGTERM", () => this.stop());
+    process.on("SIGINT", () => this.stop());
   }
 
   /**
@@ -523,9 +609,10 @@ export class AppServer {
       session.disconnect();
     }
     this.activeSessions.clear();
+    this.activeSessionsByUserId.clear();
 
     // Run cleanup handlers
-    this.cleanupHandlers.forEach(handler => handler());
+    this.cleanupHandlers.forEach((handler) => handler());
   }
 
   /**
@@ -533,7 +620,7 @@ export class AppServer {
    * Creates a /photo-upload endpoint for receiving photos directly from ASG glasses
    */
   private setupPhotoUploadEndpoint(): void {
-    const multer = require('multer');
+    const multer = require("multer");
 
     // Configure multer for handling multipart form data
     const upload = multer({
@@ -543,81 +630,92 @@ export class AppServer {
       },
       fileFilter: (req: any, file: any, cb: any) => {
         // Accept image files only
-        if (file.mimetype && file.mimetype.startsWith('image/')) {
+        if (file.mimetype && file.mimetype.startsWith("image/")) {
           cb(null, true);
         } else {
-          cb(new Error('Only image files are allowed'), false);
+          cb(new Error("Only image files are allowed"), false);
         }
-      }
+      },
     });
 
-    this.app.post('/photo-upload', upload.single('photo'), async (req: any, res: any) => {
-      try {
-        const { requestId, type } = req.body;
-        const photoFile = req.file;
+    this.app.post(
+      "/photo-upload",
+      upload.single("photo"),
+      async (req: any, res: any) => {
+        try {
+          const { requestId, type } = req.body;
+          const photoFile = req.file;
 
-        this.logger.info({ requestId, type }, `📸 Received photo upload: ${requestId}`);
+          this.logger.info(
+            { requestId, type },
+            `📸 Received photo upload: ${requestId}`,
+          );
 
-        if (!photoFile) {
-          this.logger.error({ requestId }, 'No photo file in upload');
-          return res.status(400).json({
+          if (!photoFile) {
+            this.logger.error({ requestId }, "No photo file in upload");
+            return res.status(400).json({
+              success: false,
+              error: "No photo file provided",
+            });
+          }
+
+          if (!requestId) {
+            this.logger.error("No requestId in photo upload");
+            return res.status(400).json({
+              success: false,
+              error: "No requestId provided",
+            });
+          }
+
+          // Find the corresponding session that made this photo request
+          const session = this.findSessionByPhotoRequestId(requestId);
+          if (!session) {
+            this.logger.warn(
+              { requestId },
+              "No active session found for photo request",
+            );
+            return res.status(404).json({
+              success: false,
+              error: "No active session found for this photo request",
+            });
+          }
+
+          // Create photo data object
+          const photoData = {
+            buffer: photoFile.buffer,
+            mimeType: photoFile.mimetype,
+            filename: photoFile.originalname || "photo.jpg",
+            requestId,
+            size: photoFile.size,
+            timestamp: new Date(),
+          };
+
+          // Deliver photo to the session
+          session.camera.handlePhotoReceived(photoData);
+
+          // Respond to ASG client
+          res.json({
+            success: true,
+            requestId,
+            message: "Photo received successfully",
+          });
+        } catch (error) {
+          this.logger.error(error, "❌ Error handling photo upload");
+          res.status(500).json({
             success: false,
-            error: 'No photo file provided'
+            error: "Internal server error processing photo upload",
           });
         }
-
-        if (!requestId) {
-          this.logger.error('No requestId in photo upload');
-          return res.status(400).json({
-            success: false,
-            error: 'No requestId provided'
-          });
-        }
-
-        // Find the corresponding session that made this photo request
-        const session = this.findSessionByPhotoRequestId(requestId);
-        if (!session) {
-          this.logger.warn({ requestId }, 'No active session found for photo request');
-          return res.status(404).json({
-            success: false,
-            error: 'No active session found for this photo request'
-          });
-        }
-
-        // Create photo data object
-        const photoData = {
-          buffer: photoFile.buffer,
-          mimeType: photoFile.mimetype,
-          filename: photoFile.originalname || 'photo.jpg',
-          requestId,
-          size: photoFile.size,
-          timestamp: new Date()
-        };
-
-        // Deliver photo to the session
-        session.camera.handlePhotoReceived(photoData);
-
-        // Respond to ASG client
-        res.json({
-          success: true,
-          requestId,
-          message: 'Photo received successfully'
-        });
-
-      } catch (error) {
-        this.logger.error(error, '❌ Error handling photo upload');
-        res.status(500).json({
-          success: false,
-          error: 'Internal server error processing photo upload'
-        });
-      }
-    });
+      },
+    );
   }
 
   /**
    * Find session that has a pending photo request for the given requestId
    */
-  private findSessionByPhotoRequestId(requestId: string): AppSession | undefined {
+  private findSessionByPhotoRequestId(
+    requestId: string,
+  ): AppSession | undefined {
     for (const [sessionId, session] of this.activeSessions) {
       if (session.camera.hasPhotoPendingRequest(requestId)) {
         return session;
@@ -660,9 +758,9 @@ export class TpaServer extends AppServer {
     super(config);
     // Emit a deprecation warning to help developers migrate
     console.warn(
-      '⚠️  DEPRECATION WARNING: TpaServer is deprecated and will be removed in a future version. ' +
-      'Please use AppServer instead. ' +
-      'Simply replace "TpaServer" with "AppServer" in your code.'
+      "⚠️  DEPRECATION WARNING: TpaServer is deprecated and will be removed in a future version. " +
+        "Please use AppServer instead. " +
+        'Simply replace "TpaServer" with "AppServer" in your code.',
     );
   }
 }

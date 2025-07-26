@@ -364,6 +364,25 @@ export function AudioWearablePairingGuide() {
   )
 }
 
+export function VuzixZ100PairingGuide() {
+  const {theme} = useAppTheme()
+  const textColor = theme.isDark ? "white" : "black"
+
+  return (
+    <View style={styles.guideContainer}>
+      <Text text="Vuzix Z100" style={[styles.guideTitle, {color: textColor}]} />
+      <Text
+        text="1. Make sure your Vuzix Z100 is fully charged and turned on."
+        style={[styles.guideStep, {color: textColor}]}
+      />
+      <Text
+        text="2. Pair your Vuzix Z100 with your device using the Vuzix Connect app."
+        style={[styles.guideStep, {color: textColor}]}
+      />
+    </View>
+  )
+}
+
 export function VirtualWearablePairingGuide() {
   const {theme} = useAppTheme()
   return (

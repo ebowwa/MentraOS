@@ -171,6 +171,7 @@ export default function InactiveAppList({
         {type: "POST_NOTIFICATIONS", required: true},
         {type: "READ_NOTIFICATIONS", required: true},
         {type: "LOCATION", required: true},
+        {type: "BACKGROUND_LOCATION", required: true},
       ] as AppPermission[]
     }
 
@@ -205,6 +206,12 @@ export default function InactiveAppList({
           const hasLocation = await checkFeaturePermissions(PermissionFeatures.LOCATION)
           if (!hasLocation) {
             neededPermissions.push(PermissionFeatures.LOCATION)
+          }
+          break
+        case "BACKGROUND_LOCATION":
+          const hasBackgroundLocation = await checkFeaturePermissions(PermissionFeatures.BACKGROUND_LOCATION)
+          if (!hasBackgroundLocation) {
+            neededPermissions.push(PermissionFeatures.BACKGROUND_LOCATION)
           }
           break
         case "POST_NOTIFICATIONS":
@@ -370,14 +377,14 @@ export default function InactiveAppList({
     if (itemOpacity) {
       Animated.timing(itemOpacity, {
         toValue: 0,
-        duration: 300,
+        duration: 150,
         easing: Easing.out(Easing.ease),
         useNativeDriver: true,
       }).start()
     }
 
     // Wait a bit for animation to complete
-    await new Promise(resolve => setTimeout(resolve, 300))
+    await new Promise(resolve => setTimeout(resolve, 150))
 
     // Only update UI optimistically after user confirms and animation completes
     optimisticallyStartApp(packageName)
@@ -446,9 +453,12 @@ export default function InactiveAppList({
   }
 
   const getRunningStandardApps = (packageName: string) => {
-    return appStatus.filter(app => app.is_running &&
-      (app.appType == "standard" || app["tpaType"] == "standard") &&
-      app.packageName !== packageName)
+    return appStatus.filter(
+      app =>
+        app.is_running &&
+        (app.appType == "standard" || app["tpaType"] == "standard") &&
+        app.packageName !== packageName,
+    )
   }
   const openAppSettings = (app: any) => {
     console.log("%%% opening app settings", app)
@@ -542,11 +552,11 @@ export default function InactiveAppList({
             <AppListItem
               app={app}
               // @ts-ignore
-              is_foreground={(app.appType == "standard") || (app["tpaType"] == "standard")}
+              is_foreground={app.appType == "standard" || app["tpaType"] == "standard"}
               isActive={false}
               onTogglePress={async () => {
-                let isForegroundApp = (app.appType == "standard") || (app["tpaType"] == "standard");
-                const res = await checkIsForegroundAppStart(app.packageName, isForegroundApp);
+                const isForegroundApp = app.appType == "standard" || app["tpaType"] == "standard"
+                const res = await checkIsForegroundAppStart(app.packageName, isForegroundApp)
                 if (res) {
                   // Don't animate here - let startApp handle all UI updates
                   startApp(app.packageName)
@@ -591,8 +601,7 @@ export default function InactiveAppList({
                   onClearSearch()
                 }}
                 activeOpacity={0.7}
-                hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}
-              >
+                hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}>
                 <Text style={themed($clearSearchButtonText)}>{translate("home:clearSearch")}</Text>
               </TouchableOpacity>
             </>

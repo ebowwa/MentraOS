@@ -119,7 +119,7 @@ public class RecoveryWorker extends Worker {
         BroadcastReceiver forwardingReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
-                if (Constants.ACTION_ASG_HEARTBEAT_ACK.equals(intent.getAction())) {
+                if (Constants.ACTION_HEARTBEAT_ACK.equals(intent.getAction())) {
                     long currentTime = System.currentTimeMillis();
 
                     // Only forward if we haven't recently forwarded an acknowledgment
@@ -144,7 +144,7 @@ public class RecoveryWorker extends Worker {
         getApplicationContext().registerReceiver(tempReceiver, recoveryFilter, Context.RECEIVER_NOT_EXPORTED);
 
         IntentFilter originalFilter = new IntentFilter();
-        originalFilter.addAction(Constants.ACTION_ASG_HEARTBEAT_ACK);
+        originalFilter.addAction(Constants.ACTION_HEARTBEAT_ACK);
         originalFilter.addAction(Constants.ACTION_ASG_RESTART_COMPLETE);
         getApplicationContext().registerReceiver(forwardingReceiver, originalFilter, Context.RECEIVER_NOT_EXPORTED);
 

@@ -30,7 +30,7 @@ The current health monitor service for WebSocket connections has several limitat
 
 1. **Manager Style Pattern**:
    - Each user session should have its own health monitor instance
-   - Follows the standard MentraOS manager pattern
+   - Follows the standard MentraOS Mobile App pattern
    - Consistent with other session-scoped services
 
 2. **Enhanced Connection Identity**:
@@ -92,7 +92,7 @@ interface ExtendedUserSession extends UserSession {
 // Usage in session creation
 const userSession = {
   // ... other properties
-  healthMonitor: new SessionHealthMonitor(userSession)
+  healthMonitor: new SessionHealthMonitor(userSession),
 };
 ```
 
@@ -181,6 +181,7 @@ To migrate from the current global health monitor to session-specific monitors:
 The new design enables much richer diagnostics:
 
 1. **Connection Lifecycle Logging**:
+
    ```
    [User: alice@example.com] App connection registered: com.example.app1
    [User: alice@example.com] Heartbeat sent to com.example.app1 [f7a2e9b1]

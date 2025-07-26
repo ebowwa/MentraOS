@@ -38,6 +38,7 @@ public interface INetworkManager {
 ```
 
 **Implementations:**
+
 - **K900NetworkManager** - For Mentra Live (K900) devices using proprietary broadcasts
 - **SystemNetworkManager** - For devices with system permissions using reflection
 - **FallbackNetworkManager** - For regular devices, prompts user for manual configuration
@@ -58,6 +59,7 @@ public interface IBluetoothManager {
 ```
 
 **Implementations:**
+
 - **K900BluetoothManager** - Uses serial port communication with BES2700 chip
 - **StandardBluetoothManager** - Full BLE GATT server implementation for standard Android devices
 
@@ -79,6 +81,7 @@ The media system handles camera button presses and media capture:
 ### RTMP Streaming
 
 Supports live video streaming with:
+
 - Direct streaming to App-provided URLs
 - Keep-alive mechanism with 60-second timeout
 - ACK-based reliability system
@@ -88,7 +91,7 @@ Supports live video streaming with:
 
 ### Code Style
 
-- **Java**: 
+- **Java**:
   - Use Java SDK 17
   - Classes: PascalCase
   - Methods: camelCase
@@ -102,11 +105,12 @@ Supports live video streaming with:
 To add support for new Android-based smart glasses:
 
 1. **Fix Device Detection** (REQUIRED):
+
    ```java
    // In NetworkManagerFactory.java and BluetoothManagerFactory.java
    // Change this:
    if (true || isK900Device()) {  // Currently forced to K900
-   
+
    // To this:
    if (isK900Device()) {  // Proper device detection
    ```
@@ -118,6 +122,7 @@ To add support for new Android-based smart glasses:
    - See `ANDROID_FIRMWARE_GUIDE.md` for detailed instructions
 
 3. **Update Device Detection**:
+
    ```java
    private boolean isYourGlassesDevice() {
        String model = Build.MODEL.toLowerCase();
@@ -133,12 +138,14 @@ To add support for new Android-based smart glasses:
 ### Important Notes on Current State
 
 **StandardBluetoothManager**: A fully implemented BLE GATT server exists with:
+
 - Complete BLE GATT server functionality
 - Auto-pairing capabilities
 - MTU negotiation
 - Serial-like data exchange over characteristics
 
 However, it's not currently used because:
+
 - The K900 (Mentra Live) uses proprietary serial communication via K900BluetoothManager
 - The MentraLiveSGC.java in augmentos_core is designed specifically for K900's serial protocol
 - To use StandardBluetoothManager, you'd need a new SmartGlassesCommunicator that acts as a BLE client
@@ -146,10 +153,11 @@ However, it's not currently used because:
 ### Building and Testing
 
 1. **Environment Setup**:
+
    ```bash
    # Copy environment file
    cp .env.example .env
-   
+
    # For local development, modify .env:
    MENTRAOS_HOST=localhost  # or your computer's IP
    MENTRAOS_PORT=8002
@@ -161,28 +169,30 @@ However, it's not currently used because:
    - Set Gradle JDK to version 17 in Android Studio settings
 
 3. **Testing on Mentra Live**:
-   
+
    To build and run on actual Mentra Live glasses:
-   
+
    a. **Connect glasses via WiFi ADB**:
+
    ```bash
    # First, pair glasses with MentraOS app and connect to WiFi
    # Find the Local IP Address shown on the "Glasses" screen in the app
    # Connect via ADB (your computer must be on same network)
    adb connect {localip}:5555
-   
+
    # Verify connection
    adb devices
    ```
-   
+
    b. **Build and install**:
+
    ```bash
    # Build the APK
    ./gradlew assembleDebug
-   
+
    # Install on glasses
    adb install app/build/outputs/apk/debug/app-debug.apk
-   
+
    # For localhost connection (if testing with local server)
    adb reverse tcp:8002 tcp:8002
    ```
@@ -198,14 +208,14 @@ switch (type) {
         String requestId = dataToProcess.optString("requestId", "");
         mMediaCaptureService.takePhotoAndUpload(photoFilePath, requestId);
         break;
-        
+
     case "start_rtmp_stream":
         String streamId = dataToProcess.optString("streamId", "");
         String rtmpUrl = dataToProcess.optString("rtmpUrl", "");
         RtmpStreamingService.startStreaming(this, rtmpUrl);
         RtmpStreamingService.startStreamTimeout(streamId);
         break;
-        
+
     case "display_text":
         // For glasses with displays
         showTextOnDisplay(text);
@@ -244,9 +254,11 @@ public void onStreamingError(StreamingEvent.Error event) {
 ## Compatible Devices
 
 Currently supported:
+
 - Mentra Live (K900)
 
 Could be supported with the changes above:
+
 - TCL Rayneo X2/X3
 - INMO Air 2/3
 - Other Android-based smart glasses
@@ -263,4 +275,4 @@ Could be supported with the changes above:
 
 - [ANDROID_FIRMWARE_GUIDE.md](../../mcu_client/ANDROID_FIRMWARE_GUIDE.md) - Guide for creating SmartGlassesCommunicators
 - [ASG_MEDIA_SYSTEM.md](../../asg_client/ASG_MEDIA_SYSTEM.md) - Detailed media system documentation
-- [MentraOS Manager Guidelines](/contributing/mentraos-manager-guidelines) - Mobile app development guide
+- [MentraOS Mobile App Guidelines](/contributing/mentraos-manager-guidelines) - Mobile app development guide

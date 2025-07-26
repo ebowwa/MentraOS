@@ -12,25 +12,15 @@
     "noImplicitThis": true,
     "sourceMap": true,
     "target": "esnext",
-    "lib": [
-      "esnext",
-      "dom"
-    ],
+    "lib": ["esnext", "dom"],
     "skipLibCheck": true,
     "resolveJsonModule": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": [
-        "./src/*"
-      ],
-      "assets/*": [
-        "./assets/*"
-      ]
+      "@/*": ["./src/*"],
+      "assets/*": ["./assets/*"]
     },
-    "typeRoots": [
-      "./node_modules/@types",
-      "./types"
-    ]
+    "typeRoots": ["./node_modules/@types", "./types", "./src/types"]
   },
   "extends": "expo/tsconfig.base",
   "ts-node": {
@@ -38,14 +28,6 @@
       "module": "commonjs"
     }
   },
-  "include": [
-    "**/*.ts",
-    "**/*.tsx",
-    ".expo/types/**/*.ts",
-    "expo-env.d.ts"
-  ],
-  "exclude": [
-    "node_modules",
-    "test/**/*"
-  ]
+  "include": ["**/*.ts", "**/*.tsx", ".expo/types/**/*.ts", "expo-env.d.ts"],
+  "exclude": ["node_modules", "test/**/*"]
 }

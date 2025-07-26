@@ -27,6 +27,7 @@ public class ComManager {
     protected OutputStream mOS;
     protected InputStream mIS;
     private Context mContext = null;
+    private boolean mbRequestFast = false;
 
     /**
      * Create a new ComManager
@@ -118,6 +119,33 @@ public class ComManager {
     }
     
     /**
+     * Send file data over the serial port (without logging the data content)
+     * @param data The file data to send
+     */
+    public void sendFile(byte[] data) {
+        if(mbStart && mOS != null) {
+            try {
+                // Don't log file data content, just write it
+                mOS.write(data);
+                mOS.flush();
+            } catch (IOException e) {
+                Log.e(TAG, "Error writing file to serial port: " + e.getMessage());
+            }
+        } else {
+            Log.d(TAG, "Cannot send file - not started or output stream is null. mbStart=" + mbStart + ", mOS=" + mOS);
+        }
+    }
+    
+    /**
+     * Set fast mode for file transfers
+     * @param bFast true to enable fast mode (5ms sleep), false for normal mode (50ms sleep)
+     */
+    public void setFastMode(boolean bFast) {
+        mbRequestFast = bFast;
+        Log.d(TAG, "Fast mode " + (bFast ? "enabled" : "disabled"));
+    }
+    
+    /**
      * Thread for receiving data from the serial port
      */
     class RecvThread extends Thread {
@@ -151,8 +179,9 @@ public class ComManager {
                 }
                 
                 try {
-                    // Keeping original 150ms sleep time to match K900_server_sdk
-                    Thread.sleep(150);
+                    // Use fast mode (5ms) for file transfers, normal mode (50ms) otherwise
+                    // Note: Original K900_server_sdk used 150ms, but K900Server_common uses 50ms/5ms
+                    Thread.sleep(mbRequestFast ? 5 : 50);
                 } catch (InterruptedException e) {
                     Log.e(TAG, "RecvThread interrupted", e);
                     break;

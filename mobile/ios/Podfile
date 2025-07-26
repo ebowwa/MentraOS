@@ -15,7 +15,7 @@ install! 'cocoapods',
   :deterministic_uuids => false
 
 prepare_react_native_project!
-# @generated begin setup - expo prebuild (DO NOT MODIFY) sync-2f51f8c57b6433dd81ce603d67769c2233efea0c
+# @generated begin setup - expo prebuild (DO NOT MODIFY) sync-bbcd4967d6b5f9b432ea0a72939cc782f63a0249
 setup_permissions([
   'Camera',
   'Microphone',
@@ -23,6 +23,7 @@ setup_permissions([
   'Bluetooth',
   'LocationAccuracy',
   'LocationWhenInUse',
+  'LocationAlways',
   'Notifications',
   'PhotoLibrary',
 ])

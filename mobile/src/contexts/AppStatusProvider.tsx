@@ -15,6 +15,7 @@ export type AppPermissionType =
   | "CAMERA"
   | "CALENDAR"
   | "LOCATION"
+  | "BACKGROUND_LOCATION"
   | "READ_NOTIFICATIONS"
   | "POST_NOTIFICATIONS"
 export interface AppPermission {
@@ -270,7 +271,11 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
       // If app comes back to foreground, hide the loading overlay
       if (nextAppState === "active") {
         if (await loadSetting(SETTINGS_KEYS.RECONNECT_ON_APP_FOREGROUND, true)) {
-          console.log("Attempt reconnect to glasses", status.core_info.default_wearable, status.glasses_info?.model_name)
+          console.log(
+            "Attempt reconnect to glasses",
+            status.core_info.default_wearable,
+            status.glasses_info?.model_name,
+          )
           if (status.core_info.default_wearable && !status.glasses_info?.model_name) {
             await coreCommunicator.sendConnectWearable(status.core_info.default_wearable)
           }

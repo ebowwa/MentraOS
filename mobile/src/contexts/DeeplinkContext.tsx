@@ -75,7 +75,7 @@ export const DeeplinkProvider: React.FC<{children: React.ReactNode}> = ({childre
    */
   const findMatchingRoute = (url: URL): DeepLinkRoute | null => {
     let pathname = url.pathname
-    let host = url.host
+    const host = url.host
     if (host === "auth") {
       pathname = `/auth${pathname}`
     }
@@ -158,7 +158,7 @@ export const DeeplinkProvider: React.FC<{children: React.ReactNode}> = ({childre
       }
 
       // Extract parameters from URL
-      let params = extractParams(parsedUrl, matchedRoute.pattern)
+      const params = extractParams(parsedUrl, matchedRoute.pattern)
       if (authed) {
         params.authed = "true"
       }

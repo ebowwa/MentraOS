@@ -16,12 +16,12 @@ echo "🧹 Deleting DerivedData, node_modules, and iOS build files..."
 rm -rf ~/Library/Developer/Xcode/DerivedData/*
 rm -rf node_modules ios/build ios/Pods ios/Podfile.lock
 
-echo "📦 Reinstalling pnpm dependencies..."
-pnpm store prune
+echo "📦 Reinstalling dependencies..."
+rm -rf node_modules
 pnpm install
 
 echo "🔧 Running Expo prebuild for iOS..."
-pnpm exec expo prebuild --platform ios
+pnpm expo prebuild --platform ios
 
 echo "📦 Installing CocoaPods..."
 cd ios

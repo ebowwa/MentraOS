@@ -2,11 +2,17 @@
 
 import { BaseMessage } from './base';
 import { CloudToAppMessageType, GlassesToCloudMessageType } from '../message-types';
-import { StreamType } from '../streams';
+import { ExtendedStreamType, StreamType } from '../streams';
 import { AppSettings, AppConfig, PermissionType } from '../models';
-import { LocationUpdate, CalendarEvent, RtmpStreamStatus, PhotoResponse } from './glasses-to-cloud';
 import { DashboardMode } from '../dashboard';
 import { Capabilities } from '../capabilities';
+import {
+  LocationUpdate,
+  CalendarEvent,
+  RtmpStreamStatus,
+  PhotoResponse,
+} from "./glasses-to-cloud";
+import { AppSession } from "../../app/session";
 
 //===========================================================
 // Responses
@@ -86,7 +92,7 @@ export interface SettingsUpdate extends BaseMessage {
  * MentraOS settings update to App
  */
 export interface MentraosSettingsUpdate extends BaseMessage {
-  type: 'augmentos_settings_update';
+  type: "augmentos_settings_update";
   sessionId: string;
   settings: Record<string, any>;
   timestamp: Date;
@@ -100,15 +106,15 @@ export interface MentraosSettingsUpdate extends BaseMessage {
  */
 export interface TranscriptionData extends BaseMessage {
   type: StreamType.TRANSCRIPTION;
-  text: string;  // The transcribed text
-  isFinal: boolean;  // Whether this is a final transcription
-  transcribeLanguage?: string;  // Detected language code
-  startTime: number;  // Start time in milliseconds
-  endTime: number;  // End time in milliseconds
-  speakerId?: string;  // ID of the speaker if available
-  duration?: number;  // Audio duration in milliseconds
-  provider?: string;  // The transcription provider (e.g., "azure", "soniox")
-  confidence?: number;  // Confidence score (0-1)
+  text: string; // The transcribed text
+  isFinal: boolean; // Whether this is a final transcription
+  transcribeLanguage?: string; // Detected language code
+  startTime: number; // Start time in milliseconds
+  endTime: number; // End time in milliseconds
+  speakerId?: string; // ID of the speaker if available
+  duration?: number; // Audio duration in milliseconds
+  provider?: string; // The transcription provider (e.g., "azure", "soniox")
+  confidence?: number; // Confidence score (0-1)
 }
 
 /**
@@ -116,18 +122,18 @@ export interface TranscriptionData extends BaseMessage {
  */
 export interface TranslationData extends BaseMessage {
   type: StreamType.TRANSLATION;
-  text: string;  // The transcribed text
+  text: string; // The transcribed text
   originalText?: string; // The original transcribed text before translation
-  isFinal: boolean;  // Whether this is a final transcription
-  startTime: number;  // Start time in milliseconds
-  endTime: number;  // End time in milliseconds
-  speakerId?: string;  // ID of the speaker if available
-  duration?: number;  // Audio duration in milliseconds
-  transcribeLanguage?: string;  // The language code of the transcribed text
-  translateLanguage?: string;  // The language code of the translated text
-  didTranslate?: boolean;  // Whether the text was translated
-  provider?: string;  // The translation provider (e.g., "azure", "google")
-  confidence?: number;  // Confidence score (0-1)
+  isFinal: boolean; // Whether this is a final transcription
+  startTime: number; // Start time in milliseconds
+  endTime: number; // End time in milliseconds
+  speakerId?: string; // ID of the speaker if available
+  duration?: number; // Audio duration in milliseconds
+  transcribeLanguage?: string; // The language code of the transcribed text
+  translateLanguage?: string; // The language code of the translated text
+  didTranslate?: boolean; // Whether the text was translated
+  provider?: string; // The translation provider (e.g., "azure", "google")
+  confidence?: number; // Confidence score (0-1)
 }
 
 /**
@@ -135,8 +141,8 @@ export interface TranslationData extends BaseMessage {
  */
 export interface AudioChunk extends BaseMessage {
   type: StreamType.AUDIO_CHUNK;
-  arrayBuffer: ArrayBufferLike;  // The audio data
-  sampleRate?: number;  // Audio sample rate (e.g., 16000 Hz)
+  arrayBuffer: ArrayBufferLike; // The audio data
+  sampleRate?: number; // Audio sample rate (e.g., 16000 Hz)
 }
 
 /**
@@ -148,6 +154,7 @@ export interface ToolCall {
   toolParameters: Record<string, string | number | boolean>; // The parameters of the tool that was called
   timestamp: Date; // Timestamp when the tool was called
   userId: string; // ID of the user who triggered the tool call
+  activeSession: AppSession | null;
 }
 
 //===========================================================
@@ -159,7 +166,7 @@ export interface ToolCall {
  */
 export interface DataStream extends BaseMessage {
   type: CloudToAppMessageType.DATA_STREAM;
-  streamType: StreamType;
+  streamType: ExtendedStreamType;
   data: unknown; // Type depends on the streamType
 }
 
@@ -187,7 +194,7 @@ export interface DashboardAlwaysOnChanged extends BaseMessage {
  * Standard connection error (for server compatibility)
  */
 export interface StandardConnectionError extends BaseMessage {
-  type: 'connection_error';
+  type: "connection_error";
   message: string;
 }
 
@@ -196,8 +203,8 @@ export interface StandardConnectionError extends BaseMessage {
  */
 export interface CustomMessage extends BaseMessage {
   type: CloudToAppMessageType.CUSTOM_MESSAGE;
-  action: string;  // Identifies the specific action/message type
-  payload: any;    // Custom data payload
+  action: string; // Identifies the specific action/message type
+  payload: any; // Custom data payload
 }
 
 /**
@@ -209,7 +216,7 @@ export interface OutputStatus {
   /** Friendly name if provided */
   name?: string;
   /** Status of this output */
-  status: 'active' | 'error' | 'stopped';
+  status: "active" | "error" | "stopped";
   /** Error message if status is error */
   error?: string;
 }
@@ -220,7 +227,13 @@ export interface OutputStatus {
  */
 export interface ManagedStreamStatus extends BaseMessage {
   type: CloudToAppMessageType.MANAGED_STREAM_STATUS;
-  status: 'initializing' | 'preparing' | 'active' | 'stopping' | 'stopped' | 'error';
+  status:
+  | "initializing"
+  | "preparing"
+  | "active"
+  | "stopping"
+  | "stopped"
+  | "error";
   hlsUrl?: string;
   dashUrl?: string;
   webrtcUrl?: string;
@@ -277,64 +290,97 @@ export type CloudToAppMessage =
 // Type guards
 //===========================================================
 
-export function isAppConnectionAck(message: CloudToAppMessage): message is AppConnectionAck {
+export function isAppConnectionAck(
+  message: CloudToAppMessage,
+): message is AppConnectionAck {
   return message.type === CloudToAppMessageType.CONNECTION_ACK;
 }
 
-export function isAppConnectionError(message: CloudToAppMessage): message is AppConnectionError {
-  return message.type === CloudToAppMessageType.CONNECTION_ERROR || (message as any).type === 'connection_error';
+export function isAppConnectionError(
+  message: CloudToAppMessage,
+): message is AppConnectionError {
+  return (
+    message.type === CloudToAppMessageType.CONNECTION_ERROR ||
+    (message as any).type === "connection_error"
+  );
 }
 
-export function isAppStopped(message: CloudToAppMessage): message is AppStopped {
+export function isAppStopped(
+  message: CloudToAppMessage,
+): message is AppStopped {
   return message.type === CloudToAppMessageType.APP_STOPPED;
 }
 
-export function isSettingsUpdate(message: CloudToAppMessage): message is SettingsUpdate {
+export function isSettingsUpdate(
+  message: CloudToAppMessage,
+): message is SettingsUpdate {
   return message.type === CloudToAppMessageType.SETTINGS_UPDATE;
 }
 
-export function isDataStream(message: CloudToAppMessage): message is DataStream {
+export function isDataStream(
+  message: CloudToAppMessage,
+): message is DataStream {
   return message.type === CloudToAppMessageType.DATA_STREAM;
 }
 
-export function isAudioChunk(message: CloudToAppMessage): message is AudioChunk {
+export function isAudioChunk(
+  message: CloudToAppMessage,
+): message is AudioChunk {
   return message.type === StreamType.AUDIO_CHUNK;
 }
 
-export function isDashboardModeChanged(message: CloudToAppMessage): message is DashboardModeChanged {
+export function isDashboardModeChanged(
+  message: CloudToAppMessage,
+): message is DashboardModeChanged {
   return message.type === CloudToAppMessageType.DASHBOARD_MODE_CHANGED;
 }
 
-export function isDashboardAlwaysOnChanged(message: CloudToAppMessage): message is DashboardAlwaysOnChanged {
+export function isDashboardAlwaysOnChanged(
+  message: CloudToAppMessage,
+): message is DashboardAlwaysOnChanged {
   return message.type === CloudToAppMessageType.DASHBOARD_ALWAYS_ON_CHANGED;
 }
 
-export function isManagedStreamStatus(message: CloudToAppMessage): message is ManagedStreamStatus {
+export function isManagedStreamStatus(
+  message: CloudToAppMessage,
+): message is ManagedStreamStatus {
   return message.type === CloudToAppMessageType.MANAGED_STREAM_STATUS;
 }
 
-export function isRtmpStreamStatus(message: CloudToAppMessage): message is RtmpStreamStatus {
+export function isRtmpStreamStatus(
+  message: CloudToAppMessage,
+): message is RtmpStreamStatus {
   return message.type === GlassesToCloudMessageType.RTMP_STREAM_STATUS;
 }
 
-export function isPhotoResponse(message: CloudToAppMessage): message is PhotoResponse {
+export function isPhotoResponse(
+  message: CloudToAppMessage,
+): message is PhotoResponse {
   return message.type === GlassesToCloudMessageType.PHOTO_RESPONSE;
 }
 
-export function isAudioPlayResponse(message: CloudToAppMessage): message is AudioPlayResponse {
+export function isAudioPlayResponse(
+  message: CloudToAppMessage,
+): message is AudioPlayResponse {
   return message.type === CloudToAppMessageType.AUDIO_PLAY_RESPONSE;
 }
 
 // New type guards for App-to-App communication
-export function isAppMessageReceived(message: CloudToAppMessage): message is AppMessageReceived {
+export function isAppMessageReceived(
+  message: CloudToAppMessage,
+): message is AppMessageReceived {
   return message.type === CloudToAppMessageType.APP_MESSAGE_RECEIVED;
 }
 
-export function isAppUserJoined(message: CloudToAppMessage): message is AppUserJoined {
+export function isAppUserJoined(
+  message: CloudToAppMessage,
+): message is AppUserJoined {
   return message.type === CloudToAppMessageType.APP_USER_JOINED;
 }
 
-export function isAppUserLeft(message: CloudToAppMessage): message is AppUserLeft {
+export function isAppUserLeft(
+  message: CloudToAppMessage,
+): message is AppUserLeft {
   return message.type === CloudToAppMessageType.APP_USER_LEFT;
 }
 
@@ -383,7 +429,7 @@ export interface AppUserLeft extends BaseMessage {
 export interface AppRoomUpdated extends BaseMessage {
   type: CloudToAppMessageType.APP_ROOM_UPDATED;
   roomId: string;
-  updateType: 'user_joined' | 'user_left' | 'config_changed' | 'room_closed';
+  updateType: "user_joined" | "user_left" | "config_changed" | "room_closed";
   roomData: {
     memberCount: number;
     maxUsers?: number;

@@ -25,39 +25,31 @@ export default function WifiCredentialsManager({onNetworkSelect}: WifiCredential
   }
 
   const handleRemoveNetwork = (ssid: string) => {
-    Alert.alert(
-      "Remove Saved Network",
-      `Are you sure you want to remove "${ssid}" from saved networks?`,
-      [
-        {text: "Cancel", style: "cancel"},
-        {
-          text: "Remove",
-          style: "destructive",
-          onPress: () => {
-            WifiCredentialsService.removeCredentials(ssid)
-            loadSavedNetworks()
-          },
+    Alert.alert("Remove Saved Network", `Are you sure you want to remove "${ssid}" from saved networks?`, [
+      {text: "Cancel", style: "cancel"},
+      {
+        text: "Remove",
+        style: "destructive",
+        onPress: () => {
+          WifiCredentialsService.removeCredentials(ssid)
+          loadSavedNetworks()
         },
-      ]
-    )
+      },
+    ])
   }
 
   const handleClearAll = () => {
-    Alert.alert(
-      "Clear All Saved Networks",
-      "Are you sure you want to remove all saved WiFi networks?",
-      [
-        {text: "Cancel", style: "cancel"},
-        {
-          text: "Clear All",
-          style: "destructive",
-          onPress: () => {
-            WifiCredentialsService.clearAllCredentials()
-            loadSavedNetworks()
-          },
+    Alert.alert("Clear All Saved Networks", "Are you sure you want to remove all saved WiFi networks?", [
+      {text: "Cancel", style: "cancel"},
+      {
+        text: "Clear All",
+        style: "destructive",
+        onPress: () => {
+          WifiCredentialsService.clearAllCredentials()
+          loadSavedNetworks()
         },
-      ]
-    )
+      },
+    ])
   }
 
   const formatLastConnected = (timestamp?: number) => {
@@ -66,7 +58,7 @@ export default function WifiCredentialsManager({onNetworkSelect}: WifiCredential
     const now = new Date()
     const diffMs = now.getTime() - date.getTime()
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
-    
+
     if (diffDays === 0) return "Today"
     if (diffDays === 1) return "Yesterday"
     if (diffDays < 7) return `${diffDays} days ago`
@@ -89,10 +81,10 @@ export default function WifiCredentialsManager({onNetworkSelect}: WifiCredential
         <Text style={themed($headerText)}>Saved Networks ({savedNetworks.length})</Text>
         <ActionButton label="Clear All" variant="secondary" onPress={handleClearAll} />
       </View>
-      
+
       <FlatList
         data={savedNetworks}
-        keyExtractor={(item) => item.ssid}
+        keyExtractor={item => item.ssid}
         renderItem={({item}) => (
           <View style={themed($networkItem)}>
             <View style={themed($networkInfo)}>
@@ -101,15 +93,11 @@ export default function WifiCredentialsManager({onNetworkSelect}: WifiCredential
             </View>
             <View style={themed($networkActions)}>
               {onNetworkSelect && (
-                <TouchableOpacity
-                  style={themed($selectButton)}
-                  onPress={() => onNetworkSelect(item.ssid)}>
+                <TouchableOpacity style={themed($selectButton)} onPress={() => onNetworkSelect(item.ssid)}>
                   <Text style={themed($selectButtonText)}>Select</Text>
                 </TouchableOpacity>
               )}
-              <TouchableOpacity
-                style={themed($removeButton)}
-                onPress={() => handleRemoveNetwork(item.ssid)}>
+              <TouchableOpacity style={themed($removeButton)} onPress={() => handleRemoveNetwork(item.ssid)}>
                 <Text style={themed($removeButtonText)}>Remove</Text>
               </TouchableOpacity>
             </View>
@@ -214,4 +202,4 @@ const $removeButtonText: ThemedStyle<TextStyle> = ({colors}) => ({
   fontSize: 12,
   fontWeight: "500",
   color: colors.background,
-}) 
+})

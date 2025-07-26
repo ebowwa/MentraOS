@@ -10,8 +10,8 @@
     "patch": "patch-package",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:maestro": "maestro test -e MAESTRO_APP_ID=com.mentra.mentra -e IS_DEV=true .maestro/flows",
-    "test:maestro:ci": "maestro test -e MAESTRO_APP_ID=com.mentra.mentra -e IS_DEV=false .maestro/flows",
+    "test:maestro": "maestro test -e MAESTRO_APP_ID=com.mentra.mentra .maestro/flows",
+    "test:maestro:ci": "maestro test -e MAESTRO_APP_ID=com.mentra.mentra .maestro/flows",
     "adb": "adb reverse tcp:9090 tcp:9090 && adb reverse tcp:3000 tcp:3000 && adb reverse tcp:9001 tcp:9001 && adb reverse tcp:8081 tcp:8081",
     "postinstall": "patch-package",
     "build:ios:sim": "eas build --profile development --platform ios --local",
@@ -71,6 +71,7 @@
     "react-native-ble-manager": "^12.1.5",
     "react-native-bluetooth-classic": "1.73.0-rc.13",
     "react-native-bottom-tabs": "^0.9.2",
+    "react-native-canvas": "^0.1.40",
     "react-native-circular-progress": "^1.4.1",
     "react-native-config": "^1.5.5",
     "react-native-create-thumbnail": "^2.1.1",
@@ -92,7 +93,6 @@
     "react-native-url-polyfill": "^2.0.0",
     "react-native-video": "^6.15.0",
     "react-native-view-shot": "^4.0.3",
-    "react-native-web": "~0.19.13",
     "react-native-webview": "13.12.5",
     "semver": "^7.7.2"
   },
@@ -102,7 +102,8 @@
     "@babel/runtime": "^7.27.6",
     "@testing-library/react-native": "^12.9.0",
     "@types/jest": "^29.5.14",
-    "@types/react": "~18.3.23",
+    "@types/react": "^19.1.8",
+    "@types/react-native": "^0.73.0",
     "@types/semver": "^7.7.0",
     "babel-jest": "^29.7.0",
     "eslint": "^8.57.1",
@@ -128,5 +129,8 @@
   "engines": {
     "node": "^18.18.0 || >=20.0.0"
   },
-  "expo": {}
+  "expo": {},
+  "patchedDependencies": {
+    "expo-localization@16.0.1": "patches/expo-localization@16.0.1.patch"
+  }
 }

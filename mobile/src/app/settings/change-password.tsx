@@ -215,7 +215,7 @@ const $pressedButton: ThemedStyle<ViewStyle> = ({colors}) => ({
 })
 
 const $buttonText: ThemedStyle<TextStyle> = ({colors}) => ({
-  color: colors.text,
+  color: colors.textAlt,
   fontSize: 16,
   fontWeight: "bold",
 })

@@ -10,17 +10,25 @@
  * - Enforcing permission checks on subscriptions
  */
 
-import { StreamType, ExtendedStreamType, isLanguageStream, parseLanguageStream, createTranscriptionStream, CalendarEvent, SubscriptionRequest } from '@mentra/sdk';
-import { logger as rootLogger } from '../logging/pino-logger';
-import { SimplePermissionChecker } from '../permissions/simple-permission-checker';
-import App from '../../models/app.model';
-import { sessionService } from './session.service';
-import UserSession from './UserSession';
-import { User, UserI } from '../../models/user.model';
-import { locationService } from '../core/location.service';
-import { MongoSanitizer } from '../../utils/mongoSanitizer';
+import {
+  StreamType,
+  ExtendedStreamType,
+  isLanguageStream,
+  parseLanguageStream,
+  createTranscriptionStream,
+  CalendarEvent,
+  SubscriptionRequest,
+} from "@mentra/sdk";
+import { logger as rootLogger } from "../logging/pino-logger";
+import { SimplePermissionChecker } from "../permissions/simple-permission-checker";
+import App from "../../models/app.model";
+import { sessionService } from "./session.service";
+import UserSession from "./UserSession";
+import { User, UserI } from "../../models/user.model";
+import { locationService } from "../core/location.service";
+import { MongoSanitizer } from "../../utils/mongoSanitizer";
 
-const logger = rootLogger.child({ service: 'subscription.service' });
+const logger = rootLogger.child({ service: "subscription.service" });
 
 /**
  * Record of a subscription change
@@ -28,7 +36,7 @@ const logger = rootLogger.child({ service: 'subscription.service' });
 interface SubscriptionHistory {
   timestamp: Date;
   subscriptions: ExtendedStreamType[];
-  action: 'add' | 'remove' | 'update';
+  action: "add" | "remove" | "update";
 }
 
 /**
@@ -84,7 +92,14 @@ export class SubscriptionService {
       this.calendarEventsCache.set(sessionId, []);
     }
     this.calendarEventsCache.get(sessionId)!.push(event);
-    logger.info({ userId: sessionId, sessionId, eventCount: this.calendarEventsCache.get(sessionId)!.length }, 'Cached calendar event');
+    logger.info(
+      {
+        userId: sessionId,
+        sessionId,
+        eventCount: this.calendarEventsCache.get(sessionId)!.length,
+      },
+      "Cached calendar event",
+    );
   }
 
   /**
@@ -102,7 +117,10 @@ export class SubscriptionService {
    */
   clearCalendarEvents(sessionId: string): void {
     this.calendarEventsCache.delete(sessionId);
-    logger.info({ sessionId, userId: sessionId }, 'Cleared all calendar events');
+    logger.info(
+      { sessionId, userId: sessionId },
+      "Cleared all calendar events",
+    );
   }
 
   /**
@@ -120,7 +138,13 @@ export class SubscriptionService {
    */
   cacheLocation(sessionId: string, location: Location): void {
     this.lastLocationCache.set(sessionId, location);
-    logger.info({ sessionId, location: { lat: location.latitude, lng: location.longitude } }, 'Cached location');
+    logger.info(
+      {
+        sessionId,
+        location: { lat: location.latitude, lng: location.longitude },
+      },
+      "Cached location",
+    );
   }
 
   /**
@@ -160,7 +184,7 @@ export class SubscriptionService {
   async updateSubscriptions(
     userSession: UserSession,
     packageName: string,
-    subscriptions: SubscriptionRequest[]
+    subscriptions: SubscriptionRequest[],
   ): Promise<UserI | null> {
     const key = this.getKey(userSession.userId, packageName);
 
@@ -171,7 +195,10 @@ export class SubscriptionService {
     // Capture the version for this call
     const thisCallVersion = currentVersion;
 
-    logger.info({ key, subscriptions, userId: userSession.userId }, 'Update subscriptions request received');
+    logger.info(
+      { key, subscriptions, userId: userSession.userId },
+      "Update subscriptions request received",
+    );
 
     // Process incoming subscriptions array - handle both strings and rich location objects
     const streamSubscriptions: ExtendedStreamType[] = [];
@@ -179,85 +206,118 @@ export class SubscriptionService {
 
     // Separate simple string subscriptions from special location object
     for (const sub of subscriptions) {
-      if (typeof sub === 'object' && sub !== null && 'stream' in sub && sub.stream === StreamType.LOCATION_STREAM) {
+      if (
+        typeof sub === "object" &&
+        sub !== null &&
+        "stream" in sub &&
+        sub.stream === StreamType.LOCATION_STREAM
+      ) {
         locationRate = sub.rate; // Save the rate for later
         streamSubscriptions.push(sub.stream);
-      } else if (typeof sub === 'string') {
+      } else if (typeof sub === "string") {
         streamSubscriptions.push(sub);
       }
     }
 
-    const processedSubscriptions = streamSubscriptions.map(sub =>
-      sub === StreamType.TRANSCRIPTION ? createTranscriptionStream('en-US') : sub
+    const processedSubscriptions = streamSubscriptions.map((sub) =>
+      sub === StreamType.TRANSCRIPTION
+        ? createTranscriptionStream("en-US")
+        : sub,
     );
 
     for (const sub of processedSubscriptions) {
       if (!this.isValidSubscription(sub)) {
-        logger.error({
-          debugKey: 'RTMP_SUB_VALIDATION_FAIL',
-          subscription: sub,
-          packageName,
-          sessionId: userSession.sessionId,
-          userId: userSession.userId,
-          availableStreamTypes: Object.values(StreamType),
-          isRtmpStreamStatus: sub === 'rtmp_stream_status',
-          isRtmpStreamStatusEnum: sub === StreamType.RTMP_STREAM_STATUS,
-          streamTypeEnumValue: StreamType.RTMP_STREAM_STATUS,
-          processedSubscriptions,
-          originalSubscriptions: subscriptions
-        }, 'RTMP_SUB_VALIDATION_FAIL: Invalid subscription type detected in session subscription service');
+        logger.error(
+          {
+            debugKey: "RTMP_SUB_VALIDATION_FAIL",
+            subscription: sub,
+            packageName,
+            sessionId: userSession.sessionId,
+            userId: userSession.userId,
+            availableStreamTypes: Object.values(StreamType),
+            isRtmpStreamStatus: sub === "rtmp_stream_status",
+            isRtmpStreamStatusEnum: sub === StreamType.RTMP_STREAM_STATUS,
+            streamTypeEnumValue: StreamType.RTMP_STREAM_STATUS,
+            processedSubscriptions,
+            originalSubscriptions: subscriptions,
+          },
+          "RTMP_SUB_VALIDATION_FAIL: Invalid subscription type detected in session subscription service",
+        );
         throw new Error(`Invalid subscription type: ${sub}`);
       }
     }
 
-    logger.info({ processedSubscriptions, userId: userSession.userId }, 'Processed and validated subscriptions');
+    logger.info(
+      { processedSubscriptions, userId: userSession.userId },
+      "Processed and validated subscriptions",
+    );
 
     try {
       // Get app details
       const app = await App.findOne({ packageName });
 
       if (!app) {
-        logger.warn({ packageName, userId: userSession.userId }, 'App not found when checking permissions');
+        logger.warn(
+          { packageName, userId: userSession.userId },
+          "App not found when checking permissions",
+        );
         throw new Error(`App ${packageName} not found`);
       }
 
       // Filter subscriptions based on permissions
-      const { allowed, rejected } = SimplePermissionChecker.filterSubscriptions(app, processedSubscriptions);
+      const { allowed, rejected } = SimplePermissionChecker.filterSubscriptions(
+        app,
+        processedSubscriptions,
+      );
 
-      logger.debug({ userId: userSession.userId, subscriptionMap: Array.from(this.subscriptions.entries()).map(([k, v]) => [k, Array.from(v)]) }, 'Current subscription map after update');
+      logger.debug(
+        {
+          userId: userSession.userId,
+          subscriptionMap: Array.from(this.subscriptions.entries()).map(
+            ([k, v]) => [k, Array.from(v)],
+          ),
+        },
+        "Current subscription map after update",
+      );
 
-      logger.info({ packageName, processedSubscriptions, userId: userSession.userId }, 'Subscriptions updated after permission check');
+      logger.info(
+        { packageName, processedSubscriptions, userId: userSession.userId },
+        "Subscriptions updated after permission check",
+      );
 
       // If some subscriptions were rejected, send an error message to the client
       if (rejected.length > 0) {
-        logger.warn({
-          packageName,
-          userId: userSession.userId,
-          rejectedCount: rejected.length,
-          rejectedStreams: rejected.map(r => ({
-            stream: r.stream,
-            requiredPermission: r.requiredPermission
-          }))
-        }, 'Rejected subscriptions due to missing permissions');
+        logger.warn(
+          {
+            packageName,
+            userId: userSession.userId,
+            rejectedCount: rejected.length,
+            rejectedStreams: rejected.map((r) => ({
+              stream: r.stream,
+              requiredPermission: r.requiredPermission,
+            })),
+          },
+          "Rejected subscriptions due to missing permissions",
+        );
 
         const appWebsocket = userSession.appWebsockets.get(packageName);
 
         if (appWebsocket && appWebsocket.readyState === 1) {
           // Send a detailed error message to the App about the rejected subscriptions
           const errorMessage = {
-            type: 'permission_error',
-            message: 'Some subscriptions were rejected due to missing permissions',
-            details: rejected.map(r => ({
+            type: "permission_error",
+            message:
+              "Some subscriptions were rejected due to missing permissions",
+            details: rejected.map((r) => ({
               stream: r.stream,
               requiredPermission: r.requiredPermission,
-              message: `To subscribe to ${r.stream}, add the ${r.requiredPermission} permission in the developer console`
+              message: `To subscribe to ${r.stream}, add the ${r.requiredPermission} permission in the developer console`,
             })),
-            timestamp: new Date()
+            timestamp: new Date(),
           };
 
           appWebsocket.send(JSON.stringify(errorMessage));
         }
-
 
         // Continue with only the allowed subscriptions
         processedSubscriptions.length = 0;
@@ -271,8 +331,13 @@ export class SubscriptionService {
       if (this.subscriptionUpdateVersion.get(key) !== thisCallVersion) {
         // A newer call has started, so abort this update
         logger.info(
-          { userId: userSession.userId, key, thisCallVersion, currentVersion: this.subscriptionUpdateVersion.get(key) },
-          'Skipping update as newer call has started'
+          {
+            userId: userSession.userId,
+            key,
+            thisCallVersion,
+            currentVersion: this.subscriptionUpdateVersion.get(key),
+          },
+          "Skipping update as newer call has started",
         );
         return null;
       }
@@ -280,20 +345,26 @@ export class SubscriptionService {
       // Only now set the subscriptions
       this.subscriptions.set(key, newSubs);
 
-      const action: SubscriptionHistory['action'] = (this.history.get(key)?.length || 0) === 0 ? 'add' : 'update';
+      const action: SubscriptionHistory["action"] =
+        (this.history.get(key)?.length || 0) === 0 ? "add" : "update";
       this.addToHistory(key, {
         timestamp: new Date(),
         subscriptions: [...processedSubscriptions],
-        action
+        action,
       });
 
-      logger.info({
-        packageName,
-        userId: userSession.userId,
-        processedSubscriptions,
-        newSubs: Array.from(newSubs),
-        serviceSubscriptions: Array.from(this.subscriptions.entries()).map(([k, v]) => [k, Array.from(v)])
-      }, 'Updated subscriptions successfully');
+      logger.info(
+        {
+          packageName,
+          userId: userSession.userId,
+          processedSubscriptions,
+          newSubs: Array.from(newSubs),
+          serviceSubscriptions: Array.from(this.subscriptions.entries()).map(
+            ([k, v]) => [k, Array.from(v)],
+          ),
+        },
+        "Updated subscriptions successfully",
+      );
 
       // Auto-update TranscriptionManager with new subscription state
       await this.syncTranscriptionManager(userSession);
@@ -303,21 +374,24 @@ export class SubscriptionService {
       if (userSession.microphoneManager) {
         userSession.microphoneManager.handleSubscriptionChange();
       }
-
     } catch (error) {
       // If there's an error getting the app or checking permissions, log it but don't block
       // This ensures backward compatibility with existing code
-      logger.error({ error, packageName, userId: userSession.userId }, 'Error checking permissions');
+      logger.error(
+        { error, packageName, userId: userSession.userId },
+        "Error checking permissions",
+      );
 
       // Continue with the subscription update
       const newSubs = new Set(processedSubscriptions);
       this.subscriptions.set(key, newSubs);
 
-      const action: SubscriptionHistory['action'] = (this.history.get(key)?.length || 0) === 0 ? 'add' : 'update';
+      const action: SubscriptionHistory["action"] =
+        (this.history.get(key)?.length || 0) === 0 ? "add" : "update";
       this.addToHistory(key, {
         timestamp: new Date(),
         subscriptions: [...processedSubscriptions],
-        action
+        action,
       });
 
       // Update microphone state AFTER subscription is set (even in error case)
@@ -332,7 +406,10 @@ export class SubscriptionService {
       try {
         const user = await User.findOne({ email: userSession.userId });
         if (!user) {
-          logger.warn({ userId: userSession.userId }, "User not found for subscription DB update.");
+          logger.warn(
+            { userId: userSession.userId },
+            "User not found for subscription DB update.",
+          );
           return null;
         }
 
@@ -344,7 +421,9 @@ export class SubscriptionService {
             user.locationSubscriptions = new Map();
           }
           // Set the rate for this specific app's package name
-          user.locationSubscriptions.set(sanitizedPackageName, { rate: locationRate });
+          user.locationSubscriptions.set(sanitizedPackageName, {
+            rate: locationRate,
+          });
         } else {
           // If there's no locationRate, the app is unsubscribing from the location stream
           if (user.locationSubscriptions?.has(sanitizedPackageName)) {
@@ -353,22 +432,33 @@ export class SubscriptionService {
         }
 
         // Tell mongoose that we've modified a mixed-type field
-        user.markModified('locationSubscriptions');
+        user.markModified("locationSubscriptions");
         await user.save();
-        logger.info({ packageName, userId: userSession.userId }, 'Persisted subscription changes successfully');
+        logger.info(
+          { packageName, userId: userSession.userId },
+          "Persisted subscription changes successfully",
+        );
         return user; // Success, return the updated user document
-
       } catch (error) {
-        if ((error as any).name === 'VersionError') {
-          logger.warn(`Version conflict saving user subscriptions for ${userSession.userId}, attempt ${attempt + 1}/${maxRetries}. Retrying...`);
+        if ((error as any).name === "VersionError") {
+          logger.warn(
+            `Version conflict saving user subscriptions for ${userSession.userId}, attempt ${attempt + 1}/${maxRetries}. Retrying...`,
+          );
           if (attempt < maxRetries - 1) {
-            await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 100));
+            await new Promise((resolve) =>
+              setTimeout(resolve, Math.pow(2, attempt) * 100),
+            );
           } else {
-            logger.error(`Failed to save user subscriptions for ${userSession.userId} after ${maxRetries} attempts due to version conflicts.`);
+            logger.error(
+              `Failed to save user subscriptions for ${userSession.userId} after ${maxRetries} attempts due to version conflicts.`,
+            );
             throw error; // Rethrow after final attempt
           }
         } else {
-          logger.error({ error, packageName, userId: userSession.userId }, 'Error persisting subscription changes.');
+          logger.error(
+            { error, packageName, userId: userSession.userId },
+            "Error persisting subscription changes.",
+          );
           throw error; // Rethrow for other errors
         }
       }
@@ -413,11 +503,11 @@ export class SubscriptionService {
    */
   hasMediaSubscriptions(sessionId: string): boolean {
     let hasMedia = false;
-    let mediaSubscriptions: Array<{ key: string, subscription: string }> = [];
+    const mediaSubscriptions: Array<{ key: string; subscription: string }> = [];
 
     for (const [key, subs] of this.subscriptions.entries()) {
       // Only consider subscriptions for the given user session.
-      if (!key.startsWith(sessionId + ':')) continue;
+      if (!key.startsWith(sessionId + ":")) continue;
 
       for (const sub of subs) {
         // Check plain stream types.
@@ -431,7 +521,11 @@ export class SubscriptionService {
         } else {
           // Check if it's a language-specific subscription.
           const langInfo = parseLanguageStream(sub as string);
-          if (langInfo && (langInfo.type === StreamType.TRANSLATION || langInfo.type === StreamType.TRANSCRIPTION)) {
+          if (
+            langInfo &&
+            (langInfo.type === StreamType.TRANSLATION ||
+              langInfo.type === StreamType.TRANSCRIPTION)
+          ) {
             mediaSubscriptions.push({ key, subscription: sub as string });
             hasMedia = true;
           }
@@ -439,13 +533,18 @@ export class SubscriptionService {
       }
     }
 
-    logger.debug({
-      sessionId,
-      userId: sessionId,
-      hasMediaSubscriptions: hasMedia,
-      subscriptionMap: Array.from(this.subscriptions.entries()).map(([k, v]) => [k, Array.from(v)]),
-      mediaSubscriptions,
-    }, 'Checked session for media subscriptions');
+    logger.debug(
+      {
+        sessionId,
+        userId: sessionId,
+        hasMediaSubscriptions: hasMedia,
+        subscriptionMap: Array.from(this.subscriptions.entries()).map(
+          ([k, v]) => [k, Array.from(v)],
+        ),
+        mediaSubscriptions,
+      },
+      "Checked session for media subscriptions",
+    );
 
     return hasMedia;
   }
@@ -456,16 +555,22 @@ export class SubscriptionService {
    * @param subscription - Subscription type to check
    * @returns Array of app IDs subscribed to the stream
    */
-  getSubscribedApps(userSession: UserSession, subscription: ExtendedStreamType): string[] {
+  getSubscribedApps(
+    userSession: UserSession,
+    subscription: ExtendedStreamType,
+  ): string[] {
     const sessionId = userSession.sessionId;
     const subscribedApps: string[] = [];
 
     // Track why apps were subscribed for logging
-    const subscriptionMatches: Array<{ packageName: string, matchedOn: string }> = [];
+    const subscriptionMatches: Array<{
+      packageName: string;
+      matchedOn: string;
+    }> = [];
 
     for (const [key, subs] of this.subscriptions.entries()) {
       if (!key.startsWith(`${sessionId}:`)) continue;
-      const [, packageName] = key.split(':');
+      const [, packageName] = key.split(":");
       for (const sub of subs) {
         // If it's a plain subscription or wildcard
         if (
@@ -476,7 +581,7 @@ export class SubscriptionService {
           subscribedApps.push(packageName);
           subscriptionMatches.push({
             packageName,
-            matchedOn: sub === subscription ? 'exact' : sub as string
+            matchedOn: sub === subscription ? "exact" : (sub as string),
           });
           break;
         }
@@ -484,11 +589,14 @@ export class SubscriptionService {
         // Special case for backwards compatibility
         // If an app is subscribed to 'location_stream', it should also
         // automatically receive the old 'location_update' events
-        if (subscription === StreamType.LOCATION_UPDATE && sub === StreamType.LOCATION_STREAM) {
+        if (
+          subscription === StreamType.LOCATION_UPDATE &&
+          sub === StreamType.LOCATION_STREAM
+        ) {
           subscribedApps.push(packageName);
           subscriptionMatches.push({
             packageName,
-            matchedOn: 'location_stream_implicit'
+            matchedOn: "location_stream_implicit",
           });
           break;
         }
@@ -517,16 +625,22 @@ export class SubscriptionService {
    * @param packageName - App identifier
    * @returns Array of active subscriptions
    */
-  getAppSubscriptions(sessionId: string, packageName: string): ExtendedStreamType[] {
+  getAppSubscriptions(
+    sessionId: string,
+    packageName: string,
+  ): ExtendedStreamType[] {
     const key = this.getKey(sessionId, packageName);
     const subs = this.subscriptions.get(key);
     const result = subs ? Array.from(subs) : [];
-    logger.debug({
-      sessionId,
-      userId: sessionId,
-      packageName,
-      subscriptions: result
-    }, 'Retrieved app subscriptions');
+    logger.debug(
+      {
+        sessionId,
+        userId: sessionId,
+        packageName,
+        subscriptions: result,
+      },
+      "Retrieved app subscriptions",
+    );
     return result;
   }
 
@@ -536,7 +650,10 @@ export class SubscriptionService {
    * @param packageName - App identifier
    * @returns Array of historical subscription changes
    */
-  getSubscriptionHistory(sessionId: string, packageName: string): SubscriptionHistory[] {
+  getSubscriptionHistory(
+    sessionId: string,
+    packageName: string,
+  ): SubscriptionHistory[] {
     const key = this.getKey(sessionId, packageName);
     return this.history.get(key) || [];
   }
@@ -546,7 +663,10 @@ export class SubscriptionService {
    * @param sessionId - User session identifier
    * @param packageName - App identifier
    */
-  async removeSubscriptions(userSession: UserSession, packageName: string): Promise<UserI | null> {
+  async removeSubscriptions(
+    userSession: UserSession,
+    packageName: string,
+  ): Promise<UserI | null> {
     const key = this.getKey(userSession.sessionId, packageName);
 
     // Perform in-memory removal immediately
@@ -556,9 +676,12 @@ export class SubscriptionService {
       this.addToHistory(key, {
         timestamp: new Date(),
         subscriptions: currentSubs,
-        action: 'remove'
+        action: "remove",
       });
-      logger.info({ packageName, sessionId: userSession.sessionId }, `Removed in-memory subscriptions for App ${packageName}`);
+      logger.info(
+        { packageName, sessionId: userSession.sessionId },
+        `Removed in-memory subscriptions for App ${packageName}`,
+      );
     }
 
     // Remove from user session's transcription manager
@@ -571,23 +694,30 @@ export class SubscriptionService {
       const sanitizedPackageName = MongoSanitizer.sanitizeKey(packageName);
       if (user && user.locationSubscriptions?.has(sanitizedPackageName)) {
         user.locationSubscriptions.delete(sanitizedPackageName);
-        user.markModified('locationSubscriptions');
+        user.markModified("locationSubscriptions");
         await user.save();
-        logger.info({ packageName, userId: userSession.userId }, `Removed location subscription from DB for App ${packageName}`);
+        logger.info(
+          { packageName, userId: userSession.userId },
+          `Removed location subscription from DB for App ${packageName}`,
+        );
         return user;
       }
       return user; // Return user even if no changes were made
     } catch (error) {
-      logger.error({ error, packageName, userId: userSession.userId }, 'Error removing location subscription from DB.');
+      logger.error(
+        { error, packageName, userId: userSession.userId },
+        "Error removing location subscription from DB.",
+      );
       throw error; // Rethrow to be handled by caller
     }
-
   }
 
   /**
    * Get all transcription-related subscriptions for a user session
    */
-  private getTranscriptionSubscriptions(userSession: UserSession): ExtendedStreamType[] {
+  private getTranscriptionSubscriptions(
+    userSession: UserSession,
+  ): ExtendedStreamType[] {
     const transcriptionSubs: ExtendedStreamType[] = [];
 
     // Get all subscriptions for this user
@@ -597,7 +727,7 @@ export class SubscriptionService {
       if (key.startsWith(userPrefix)) {
         for (const sub of subs) {
           // Include transcription and translation subscriptions
-          if (sub.includes('transcription') || sub.includes('translation')) {
+          if (sub.includes("transcription") || sub.includes("translation")) {
             transcriptionSubs.push(sub as ExtendedStreamType);
           }
         }
@@ -610,7 +740,9 @@ export class SubscriptionService {
   /**
    * Automatically sync TranscriptionManager with current subscriptions
    */
-  private async syncTranscriptionManager(userSession: UserSession): Promise<void> {
+  private async syncTranscriptionManager(
+    userSession: UserSession,
+  ): Promise<void> {
     try {
       const transcriptionSubs = this.getTranscriptionSubscriptions(userSession);
       userSession.transcriptionManager.updateSubscriptions(transcriptionSubs);
@@ -618,35 +750,41 @@ export class SubscriptionService {
       // Ensure streams are synchronized after subscription update
       await userSession.transcriptionManager.ensureStreamsExist();
 
-      logger.debug({
-        userId: userSession.userId,
-        transcriptionSubs
-      }, 'Synced TranscriptionManager with current subscriptions');
+      logger.debug(
+        {
+          userId: userSession.userId,
+          transcriptionSubs,
+        },
+        "Synced TranscriptionManager with current subscriptions",
+      );
     } catch (error) {
-      logger.error({
-        error,
-        userId: userSession.userId
-      }, 'Error syncing TranscriptionManager with subscriptions');
+      logger.error(
+        {
+          error,
+          userId: userSession.userId,
+        },
+        "Error syncing TranscriptionManager with subscriptions",
+      );
     }
   }
 
-    /**
-     * Removes all subscription history for a session
-     * Used when a session is being killed to free memory
-     * @param sessionId - User session identifier
-     */
-    removeSessionSubscriptionHistory(sessionId: string): void {
-      // Find all keys that start with this session ID
-      const keysToRemove: string[] = [];
+  /**
+   * Removes all subscription history for a session
+   * Used when a session is being killed to free memory
+   * @param sessionId - User session identifier
+   */
+  removeSessionSubscriptionHistory(sessionId: string): void {
+    // Find all keys that start with this session ID
+    const keysToRemove: string[] = [];
 
-      for(const key of this.history.keys()) {
+    for (const key of this.history.keys()) {
       if (key.startsWith(`${sessionId}:`)) {
         keysToRemove.push(key);
       }
     }
 
     // Remove all history entries for this session
-    keysToRemove.forEach(key => {
+    keysToRemove.forEach((key) => {
       this.history.delete(key);
     });
 
@@ -656,7 +794,10 @@ export class SubscriptionService {
     // Remove cached location for this session
     this.lastLocationCache.delete(sessionId);
 
-    logger.info({ userId: sessionId, sessionId, removedEntries: keysToRemove.length }, 'Removed subscription history');
+    logger.info(
+      { userId: sessionId, sessionId, removedEntries: keysToRemove.length },
+      "Removed subscription history",
+    );
   }
 
   /**
@@ -669,13 +810,17 @@ export class SubscriptionService {
   hasSubscription(
     sessionId: string,
     packageName: string,
-    subscription: StreamType
+    subscription: StreamType,
   ): boolean {
     const key = this.getKey(sessionId, packageName);
     const subs = this.subscriptions.get(key);
 
     if (!subs) return false;
-    return subs.has(subscription) || subs.has(StreamType.WILDCARD) || subs.has(StreamType.ALL);
+    return (
+      subs.has(subscription) ||
+      subs.has(StreamType.WILDCARD) ||
+      subs.has(StreamType.ALL)
+    );
   }
 
   /**
@@ -719,24 +864,46 @@ export class SubscriptionService {
    * @param settingKey - The augmentosSettings key (e.g., 'metricSystemEnabled')
    * @returns Array of app IDs subscribed to the augmentos setting
    */
-  getSubscribedAppsForAugmentosSetting(userSession: UserSession, settingKey: string): string[] {
+  getSubscribedAppsForAugmentosSetting(
+    userSession: UserSession,
+    settingKey: string,
+  ): string[] {
     const sessionId = userSession.sessionId;
     const subscribedApps: string[] = [];
     const subscription = `augmentos:${settingKey}`;
 
-    logger.debug({ sessionId, settingKey, subscriptionMap: Array.from(this.subscriptions.entries()).map(([k, v]) => [k, Array.from(v)]) }, 'Getting subscribed apps for AugmentOS setting');
+    logger.debug(
+      {
+        sessionId,
+        settingKey,
+        subscriptionMap: Array.from(this.subscriptions.entries()).map(
+          ([k, v]) => [k, Array.from(v)],
+        ),
+      },
+      "Getting subscribed apps for AugmentOS setting",
+    );
     for (const [key, subs] of this.subscriptions.entries()) {
       if (!key.startsWith(`${sessionId}:`)) continue;
-      const [, packageName] = key.split(':');
+      const [, packageName] = key.split(":");
       for (const sub of subs) {
-        if (sub === subscription || sub === 'augmentos:*' || sub === 'augmentos:all') {
-          logger.info({ packageName, subscription, sessionId }, 'App is subscribed to AugmentOS setting');
+        if (
+          sub === subscription ||
+          sub === "augmentos:*" ||
+          sub === "augmentos:all"
+        ) {
+          logger.info(
+            { packageName, subscription, sessionId },
+            "App is subscribed to AugmentOS setting",
+          );
           subscribedApps.push(packageName);
           break;
         }
       }
     }
-    logger.info({ settingKey, userId: sessionId, sessionId, subscribedApps }, 'AugmentOS setting subscription results');
+    logger.info(
+      { settingKey, userId: sessionId, sessionId, subscribedApps },
+      "AugmentOS setting subscription results",
+    );
     return subscribedApps;
   }
 
@@ -747,41 +914,77 @@ export class SubscriptionService {
    * @private
    */
   private isValidSubscription(subscription: ExtendedStreamType): boolean {
-    const validTypes = new Set(Object.values(StreamType));
-    const isValid = validTypes.has(subscription as StreamType) || isLanguageStream(subscription);
-
-    // Allow augmentos:<key> subscriptions for AugmentOS settings
-    if (typeof subscription === 'string' && subscription.startsWith('augmentos:')) {
+    // 1. Check for standard StreamType enum values
+    if (Object.values(StreamType).includes(subscription as StreamType)) {
+      logger.debug({ subscription }, "Subscription is a valid standard StreamType");
       return true;
     }
 
-    // Enhanced debugging for RTMP stream status
-    if (subscription === 'rtmp_stream_status' || subscription === StreamType.RTMP_STREAM_STATUS) {
-      logger.info({
-        debugKey: 'RTMP_SUB_VALIDATION_CHECK',
-        subscription,
-        subscriptionType: typeof subscription,
-        isValid,
-        hasInValidTypes: validTypes.has(subscription as StreamType),
-        isLanguageStream: isLanguageStream(subscription),
-        streamTypeEnum: StreamType.RTMP_STREAM_STATUS,
-        validTypesArray: Array.from(validTypes).slice(0, 10), // First 10 to avoid log spam
-        validTypesSize: validTypes.size,
-        validTypesHasRtmp: validTypes.has(StreamType.RTMP_STREAM_STATUS),
-        streamTypeImport: '@mentra/sdk'
-      }, 'RTMP_SUB_VALIDATION_CHECK: Validating RTMP stream status subscription in session service');
+    // For any other format, subscription must be a string
+    if (typeof subscription !== "string") {
+      logger.warn(
+        { subscription, type: typeof subscription },
+        "Invalid subscription: not a standard StreamType and not a string.",
+      );
+      return false;
     }
 
-    return isValid;
+    // 2. Check for language-specific streams (e.g., transcription, translation)
+    // This relies on the SDK's isLanguageStream, which correctly handles query
+    // parameters by stripping them before validating the language code.
+
+    logger.debug({ subscription }, "Checking if subscription is a language stream");
+    logger.debug({ isLanguageStream: isLanguageStream(subscription) }, "isLanguageStream result");
+
+    if (isLanguageStream(subscription)) {
+      const langInfo = parseLanguageStream(subscription);
+
+      // Check for invalid same-language translation
+      if (langInfo?.type === StreamType.TRANSLATION) {
+        if (langInfo.transcribeLanguage === langInfo.translateLanguage) {
+          logger.error(
+            {
+              subscription,
+              source: langInfo.transcribeLanguage,
+              target: langInfo.translateLanguage,
+            },
+            "Invalid translation subscription: cannot translate a language to itself",
+          );
+          return false;
+        }
+      }
+
+      logger.debug({ subscription }, "Subscription is a valid language stream");
+      return true;
+    }
+
+    // 3. Allow augmentos:<key> subscriptions for AugmentOS settings
+    if (subscription.startsWith("augmentos:")) {
+      logger.debug(
+        { subscription },
+        "Subscription is a valid Augmentos setting stream",
+      );
+      return true;
+    }
+
+    // 4. If none of the above, the subscription is invalid
+    logger.warn(
+      { subscription },
+      "Invalid subscription type: does not match any known format (Standard, Language, or Augmentos).",
+    );
+    return false;
   }
 
   public getSubscriptionEntries() {
-    return Array.from(this.subscriptions.entries()).map(([k, v]) => [k, Array.from(v)]);
+    return Array.from(this.subscriptions.entries()).map(([k, v]) => [
+      k,
+      Array.from(v),
+    ]);
   }
 }
 
 // Create singleton instance
 export const subscriptionService = new SubscriptionService();
-logger.info({}, 'Subscription Service initialized');
+logger.info({}, "Subscription Service initialized");
 
 export default subscriptionService;

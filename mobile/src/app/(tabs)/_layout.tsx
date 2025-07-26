@@ -16,7 +16,7 @@ import Toast from "react-native-toast-message"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {SETTINGS_KEYS} from "@/consts"
 import {saveSetting} from "@/utils/SettingsHelper"
-import { router, usePathname } from "expo-router"
+import {router, usePathname} from "expo-router"
 
 export default function Layout() {
   const {bottom} = useSafeAreaInsets()

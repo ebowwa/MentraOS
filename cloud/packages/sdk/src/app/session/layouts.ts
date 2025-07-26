@@ -15,6 +15,7 @@
  * layouts.showReferenceCard('Weather', 'Sunny and 75°F');
  * ```
  */
+import { BitmapUtils } from "../../utils/bitmap-utils";
 import {
   DisplayRequest,
   Layout,
@@ -315,10 +316,24 @@ export class LayoutManager {
    * );
    * ```
    */
-  showBitmapView(data: string, options?: { view?: ViewType }) {
+  async showBitmapView(
+    base64Bitmap: string,
+    options?: { view?: ViewType; padding?: { left: number; top: number } },
+  ) {
+    const padding = options?.padding ?? { left: 50, top: 35 };
+    const bitmapFrame = await BitmapUtils.padBase64Bitmap(
+      base64Bitmap,
+      padding,
+    );
+    const validation = BitmapUtils.validateBase64Bitmap(bitmapFrame);
+    if (!validation.isValid) {
+      throw new Error(
+        `❌ Frame validation failed: ${validation.errors.join(", ")}`,
+      );
+    }
     const layout: BitmapView = {
       layoutType: LayoutType.BITMAP_VIEW,
-      data: data,
+      data: bitmapFrame,
     };
     this.sendMessage(this.createDisplayEvent(layout, options?.view));
   }
