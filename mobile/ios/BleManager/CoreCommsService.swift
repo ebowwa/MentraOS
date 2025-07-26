@@ -10,27 +10,26 @@ import React
 
 @objc(CoreCommsService)
 class CoreCommsService: RCTEventEmitter {
+    static var emitter: RCTEventEmitter!
 
-  public static var emitter: RCTEventEmitter!
+    override init() {
+        super.init()
+        CoreCommsService.emitter = self
+    }
 
-  override init() {
-    super.init()
-    CoreCommsService.emitter = self
-  }
-  
-  @objc
-  override static func requiresMainQueueSetup() -> Bool {
-    return false
-  }
-  
-  static func log(_ message: String) {
-    print(message)
-    let msg = "SWIFT:\(message)"
-    self.emitter.sendEvent(withName: "CoreMessageEvent", body: msg)
-  }
+    @objc
+    override static func requiresMainQueueSetup() -> Bool {
+        return false
+    }
 
-  override func supportedEvents() -> [String] {
-    // add more as needed
-    return ["onReady", "onPending", "onFailure", "onConnectionStateChanged", "CoreMessageIntentEvent", "CoreMessageEvent", "WIFI_SCAN_RESULTS"]
-  }
+    static func log(_ message: String) {
+        print(message)
+        let msg = "SWIFT:\(message)"
+        emitter.sendEvent(withName: "CoreMessageEvent", body: msg)
+    }
+
+    override func supportedEvents() -> [String] {
+        // add more as needed
+        return ["onReady", "onPending", "onFailure", "onConnectionStateChanged", "CoreMessageIntentEvent", "CoreMessageEvent", "WIFI_SCAN_RESULTS"]
+    }
 }

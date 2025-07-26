@@ -474,13 +474,14 @@ class SonioxTranscriptionStream implements StreamInstance {
       ? [languageHint, targetLanguageHint]
       : [languageHint];
 
+    const disableLanguageIdentification = this.subscription.endsWith('?no-language-identification=true');
     const config: any = {
       api_key: this.config.apiKey,
       model: this.config.model || "stt-rt-preview",
       audio_format: "pcm_s16le",
       sample_rate: 16000,
       num_channels: 1,
-      enable_language_identification: true, // Enable auto language detection
+      enable_language_identification: !disableLanguageIdentification, // Toggle based on flag
       max_non_final_tokens_duration_ms: 2000,
       enable_endpoint_detection: true, // Automatically finalize tokens on speech pauses
       enable_speaker_diarization: true,

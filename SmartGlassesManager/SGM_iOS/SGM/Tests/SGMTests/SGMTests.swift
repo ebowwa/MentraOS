@@ -1,5 +1,5 @@
-import XCTest
 @testable import SGM
+import XCTest
 
 final class SGMTests: XCTestCase {
     func testExample() throws {
