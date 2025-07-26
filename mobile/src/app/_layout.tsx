@@ -1,5 +1,5 @@
 import {useEffect, useState} from "react"
-import {Stack, SplashScreen} from "expo-router"
+import {Stack, SplashScreen, Slot} from "expo-router"
 
 import {useFonts} from "@expo-google-fonts/space-grotesk"
 import {colors, customFontsToLoad} from "@/theme"
@@ -97,7 +97,19 @@ export default function Root() {
                 // fullScreenGestureEnabled: true,
                 animation: "none",
               }}
-            />
+            >
+              <Stack.Screen name="(tabs)" options={{headerShown: false}} />
+              <Stack.Screen name="auth" options={{headerShown: false}} />
+              <Stack.Screen name="pairing" options={{headerShown: false}} />
+              <Stack.Screen name="settings" options={{headerShown: false}} />
+              <Stack.Screen name="gallery" options={{headerShown: false}} />
+              <Stack.Screen name="mirror" options={{headerShown: false}} />
+              <Stack.Screen name="search" options={{headerShown: false}} />
+              <Stack.Screen name="permissions" options={{headerShown: false}} />
+              <Stack.Screen name="onboarding" options={{headerShown: false}} />
+              <Stack.Screen name="app" options={{headerShown: false}} />
+              <Stack.Screen name="welcome" options={{headerShown: false}} />
+            </Stack>
             <MessageBanner />
             <Toast config={toastConfig} />
           </BackgroundGradient>

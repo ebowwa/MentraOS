@@ -104,6 +104,8 @@ const en = {
   },
   glasses: {
     title: "Glasses",
+    gallery: "Gallery",
+    galleryDescription: "View your recorded videos and photos.",
   },
   store: {
     title: "Store",
