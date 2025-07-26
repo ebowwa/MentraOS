@@ -143,7 +143,7 @@ public class SherpaOnnxTranscriber {
                 if (fullData == null) continue;
 
                 // Convert PCM to float [-1.0, 1.0]
-                float[] floatBuf = toFloatArray(data);
+                float[] floatBuf = toFloatArray(fullData);
                 stream.acceptWaveform(floatBuf, SAMPLE_RATE);
 
                 // Decode continuously while model is ready
