@@ -1,5 +1,5 @@
 //
-//  VADConfiguration.swift
+//  Configuration.swift
 //  ios-vad
 //
 //  Created by baochuquan on 2024/11/9.
@@ -44,7 +44,7 @@ struct QualityConfiguration: Hashable {
             .normal,
             .low_bitrate,
             .aggressive,
-            .very_aggressive
+            .very_aggressive,
         ]
     )
 
@@ -53,7 +53,7 @@ struct QualityConfiguration: Hashable {
         options: [
             .normal,
             .aggressive,
-            .very_aggressive
+            .very_aggressive,
         ]
     )
 
@@ -62,7 +62,7 @@ struct QualityConfiguration: Hashable {
         options: [
             .normal,
             .aggressive,
-            .very_aggressive
+            .very_aggressive,
         ]
     )
 }

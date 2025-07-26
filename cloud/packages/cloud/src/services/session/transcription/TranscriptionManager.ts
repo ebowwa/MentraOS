@@ -123,6 +123,8 @@ export class TranscriptionManager {
       filtered: subscriptions.filter(s => !validSubscriptions.includes(s))
     }, 'Updating transcription subscriptions');
 
+    console.log("434 validSubscriptions", validSubscriptions);
+
     // Use optimization for Soniox subscriptions to prevent resource conflicts
     const optimizedStreams = await this.optimizeSubscriptions(validSubscriptions);
 
@@ -134,6 +136,8 @@ export class TranscriptionManager {
         this.streamOwnershipMappings.delete(subscription);
       }
     }
+
+    console.log("434 optimizedStreams", optimizedStreams);
 
     // Start new optimized streams
     for (const subscription of optimizedStreams) {
@@ -170,9 +174,9 @@ export class TranscriptionManager {
         let streamSubscription: ExtendedStreamType;
         
         if (stream.type === 'transcription_only') {
-          // Use original language code if available, fall back to normalized config language
-          const lang = stream.originalLanguageCodes?.source || stream.config.language;
-          streamSubscription = `transcription:${lang}`;
+          // For transcription-only streams, use the original subscription as the identifier
+          // This preserves any parameters like ?no-language-identification=true
+          streamSubscription = stream.handledSubscriptions[0];
         } else if (stream.type === 'two_way') {
           // For two-way translation streams, use original language codes if available
           const langA = stream.originalLanguageCodes?.langA || stream.config.translation?.language_a || stream.config.language;
@@ -189,7 +193,9 @@ export class TranscriptionManager {
             continue;
           }
           
-          streamSubscription = `translation:${langA}-two-way-${langB}`;
+          // Preserve parameters from the first handled subscription, but construct the new stream type
+          const params = this.extractSubscriptionParameters(stream.handledSubscriptions[0]);
+          streamSubscription = `translation:${langA}-two-way-${langB}${params}`;
         } else if (stream.type === 'universal_english') {
           // Universal English streams handle multiple original subscriptions, don't create artificial ones
           // Instead, add all the handled subscriptions directly to the optimized set
@@ -215,7 +221,9 @@ export class TranscriptionManager {
             continue;
           }
           
-          streamSubscription = `translation:${srcLang}-to-${tgtLang}`;
+          // Preserve parameters from the first handled subscription, but construct the new stream type
+          const params = this.extractSubscriptionParameters(stream.handledSubscriptions[0]);
+          streamSubscription = `translation:${srcLang}-to-${tgtLang}${params}`;
         } else {
           // Fallback for any unknown types
           streamSubscription = `optimized:${stream.type}:${Date.now()}`;
@@ -223,7 +231,7 @@ export class TranscriptionManager {
         
         // Final validation check before adding
         if (typeof streamSubscription === 'string' && streamSubscription.startsWith('translation:')) {
-          const match = streamSubscription.match(/translation:([^-]+)-(?:to|two-way)-([^-]+)$/);
+          const match = streamSubscription.match(/translation:([^-]+)-(?:to|two-way)-([^-]+)/);
           if (match && match[1] === match[2]) {
             this.logger.error({
               streamSubscription,
@@ -263,6 +271,18 @@ export class TranscriptionManager {
       // Fallback to original subscriptions if optimization fails
       return new Set(subscriptions);
     }
+  }
+
+  /**
+   * Extract subscription parameters from a subscription string
+   * Preserves query parameters like ?no-language-identification=true
+   */
+  private extractSubscriptionParameters(subscription: string): string {
+    const questionMarkIndex = subscription.indexOf('?');
+    if (questionMarkIndex === -1) {
+      return '';
+    }
+    return subscription.substring(questionMarkIndex);
   }
 
   /**
@@ -1619,7 +1639,7 @@ export class TranscriptionManager {
         const dataStream: DataStream = {
           type: CloudToAppMessageType.DATA_STREAM,
           sessionId: appSessionId,
-          streamType, // Base type remains the same in the message
+          streamType: subscription as ExtendedStreamType, // Base type remains the same in the message
           data,       // The data now may contain language info
           timestamp: new Date()
         };
