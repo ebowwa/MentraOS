@@ -2,7 +2,17 @@
 
 import {useAppTheme} from "@/utils/useAppTheme"
 import React, {useEffect} from "react"
-import {View, StyleSheet, Image, TouchableOpacity, Linking, ImageStyle, ViewStyle, TextStyle} from "react-native"
+import {
+  View,
+  StyleSheet,
+  Image,
+  TouchableOpacity,
+  Linking,
+  ImageStyle,
+  ViewStyle,
+  TextStyle,
+  Platform,
+} from "react-native"
 import {Text} from "@/components/ignite"
 import {translate} from "@/i18n"
 import {showAlert} from "@/utils/AlertUtils"
@@ -263,10 +273,19 @@ export function MentraMach1PairingGuide() {
         text="1. Make sure your Mach1 is fully charged and turned on."
         style={[styles.guideStep, {color: textColor}]}
       />
-      <Text
-        text="2. Pair your Mach1 with your device using the Vuzix Connect app."
-        style={[styles.guideStep, {color: textColor}]}
-      />
+      {Platform.OS === "android" && (
+        <Text
+          text="2. Pair your Mentra Mach1 with your device using the Vuzix Connect app."
+          style={[styles.guideStep, {color: textColor}]}
+        />
+      )}
+
+      {Platform.OS === "ios" && (
+        <Text
+          text="2. Put your Mentra Mach1 in pairing mode: hold the power button until you see the Bluetooth icon, then release."
+          style={[styles.guideStep, {color: textColor}]}
+        />
+      )}
     </View>
   )
 }
@@ -375,10 +394,19 @@ export function VuzixZ100PairingGuide() {
         text="1. Make sure your Vuzix Z100 is fully charged and turned on."
         style={[styles.guideStep, {color: textColor}]}
       />
-      <Text
-        text="2. Pair your Vuzix Z100 with your device using the Vuzix Connect app."
-        style={[styles.guideStep, {color: textColor}]}
-      />
+      {Platform.OS === "android" && (
+        <Text
+          text="2. Pair your Vuzix Z100 with your device using the Vuzix Connect app."
+          style={[styles.guideStep, {color: textColor}]}
+        />
+      )}
+
+      {Platform.OS === "ios" && (
+        <Text
+          text="2. Put your Z100 in pairing mode: hold the power button until you see the Bluetooth icon, then release."
+          style={[styles.guideStep, {color: textColor}]}
+        />
+      )}
     </View>
   )
 }
