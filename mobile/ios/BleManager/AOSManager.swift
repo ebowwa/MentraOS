@@ -39,6 +39,7 @@ struct ViewState {
 
     @objc var g1Manager: ERG1Manager?
     @objc var liveManager: MentraLiveManager?
+    @objc var mach1Manager: Mach1Manager?
     var micManager: OnboardMicrophoneManager!
     var serverComms: ServerComms!
 
@@ -164,187 +165,10 @@ struct ViewState {
             .store(in: &cancellables)
     }
 
-    func initManager(_ wearable: String) {
-        CoreCommsService.log("Initializing manager for wearable: \(wearable)")
-        if wearable.contains("G1"), g1Manager == nil {
-            g1Manager = ERG1Manager.shared
-        } else if wearable.contains("Live"), liveManager == nil {
-            liveManager = MentraLiveManager()
-        }
-        initManagerCallbacks()
-    }
-
-    func initManagerCallbacks() {
-        // calback to handle actions when the connectionState changes (when g1 is ready)
-
-        if g1Manager != nil {
-            g1Manager!.onConnectionStateChanged = { [weak self] in
-                guard let self = self else { return }
-                CoreCommsService.log("G1 glasses connection changed to: \(self.g1Manager!.g1Ready ? "Connected" : "Disconnected")")
-                //      self.handleRequestStatus()
-                if self.g1Manager!.g1Ready {
-                    handleDeviceReady()
-                } else {
-                    handleDeviceDisconnected()
-                    handleRequestStatus()
-                }
-            }
-
-            // listen to changes in battery level:
-            g1Manager!.$batteryLevel.sink { [weak self] (level: Int) in
-                guard let self = self else { return }
-                guard level >= 0 else { return }
-                self.batteryLevel = level
-                self.serverComms.sendBatteryStatus(level: self.batteryLevel, charging: false)
-                handleRequestStatus()
-            }.store(in: &cancellables)
-
-            // listen to headUp events:
-            g1Manager!.$isHeadUp.sink { [weak self] (value: Bool) in
-                guard let self = self else { return }
-                self.sendCurrentState(value)
-                // Send head position to server
-                ServerComms.getInstance().sendHeadPosition(isUp: value)
-            }.store(in: &cancellables)
-
-            // listen to case events:
-            g1Manager!.$caseOpen.sink { [weak self] (_: Bool) in
-                guard let self = self else { return }
-                handleRequestStatus()
-            }.store(in: &cancellables)
-
-            g1Manager!.$caseRemoved.sink { [weak self] (_: Bool) in
-                guard let self = self else { return }
-                handleRequestStatus()
-            }.store(in: &cancellables)
-
-            g1Manager!.$caseCharging.sink { [weak self] (_: Bool) in
-                guard let self = self else { return }
-                handleRequestStatus()
-            }.store(in: &cancellables)
-
-            // Set up serial number discovery callback
-            g1Manager!.onSerialNumberDiscovered = { [weak self] in
-                self?.handleRequestStatus()
-            }
-            //    g1Manager!.$caseBatteryLevel.sink { [weak self] (value: Bool) in
-            //        guard let self = self else { return }
-            //      handleRequestStatus()
-            //    }.store(in: &cancellables)
-
-            // decode the g1 audio data to PCM and feed to the VAD:
-            g1Manager!.$compressedVoiceData.sink { [weak self] rawLC3Data in
-                guard let self = self else { return }
-
-                // Ensure we have enough data to process
-                guard rawLC3Data.count > 2 else {
-                    CoreCommsService.log("Received invalid PCM data size: \(rawLC3Data.count)")
-                    return
-                }
-
-                // Skip the first 2 bytes which are command bytes
-                let lc3Data = rawLC3Data.subdata(in: 2 ..< rawLC3Data.count)
-
-                // Ensure we have valid PCM data
-                guard lc3Data.count > 0 else {
-                    CoreCommsService.log("No LC3 data after removing command bytes")
-                    return
-                }
-
-                if self.bypassVad {
-                    checkSetVadStatus(speaking: true)
-                    // first send out whatever's in the vadBuffer (if there is anything):
-                    emptyVadBuffer()
-                    let pcmConverter = PcmConverter()
-                    let pcmData = pcmConverter.decode(lc3Data) as Data
-                    //        self.serverComms.sendAudioChunk(lc3Data)
-                    self.serverComms.sendAudioChunk(pcmData)
-                    return
-                }
-
-                let pcmConverter = PcmConverter()
-                let pcmData = pcmConverter.decode(lc3Data) as Data
-
-                guard pcmData.count > 0 else {
-                    CoreCommsService.log("PCM conversion resulted in empty data")
-                    return
-                }
-
-                // feed PCM to the VAD:
-                guard let vad = self.vad else {
-                    CoreCommsService.log("VAD not initialized")
-                    return
-                }
-
-                // convert audioData to Int16 array:
-                let pcmDataArray = pcmData.withUnsafeBytes { pointer -> [Int16] in
-                    Array(UnsafeBufferPointer(
-                        start: pointer.bindMemory(to: Int16.self).baseAddress,
-                        count: pointer.count / MemoryLayout<Int16>.stride
-                    ))
-                }
-
-                vad.checkVAD(pcm: pcmDataArray) { [weak self] state in
-                    guard let self = self else { return }
-                    CoreCommsService.log("VAD State: \(state)")
-                }
-
-                let vadState = vad.currentState()
-                if vadState == .speeching {
-                    checkSetVadStatus(speaking: true)
-                    // first send out whatever's in the vadBuffer (if there is anything):
-                    emptyVadBuffer()
-                    //        self.serverComms.sendAudioChunk(lc3Data)
-                    self.serverComms.sendAudioChunk(pcmData)
-                } else {
-                    checkSetVadStatus(speaking: false)
-                    // add to the vadBuffer:
-                    //        addToVadBuffer(lc3Data)
-                    addToVadBuffer(pcmData)
-                }
-            }
-            .store(in: &cancellables)
-        }
-
-        if liveManager != nil {
-            liveManager!.onConnectionStateChanged = { [weak self] in
-                guard let self = self else { return }
-                CoreCommsService.log("Live glasses connection changed to: \(self.liveManager!.ready ? "Connected" : "Disconnected")")
-                if self.liveManager!.ready {
-                    handleDeviceReady()
-                } else {
-                    handleDeviceDisconnected()
-                    handleRequestStatus()
-                }
-            }
-
-            liveManager!.$batteryLevel.sink { [weak self] (level: Int) in
-                guard let self = self else { return }
-                guard level >= 0 else { return }
-                self.batteryLevel = level
-                self.serverComms.sendBatteryStatus(level: self.batteryLevel, charging: false)
-                handleRequestStatus()
-            }.store(in: &cancellables)
-
-            liveManager!.$isWifiConnected.sink { [weak self] (isConnected: Bool) in
-                guard let self = self else { return }
-                self.glassesWifiConnected = isConnected
-                handleRequestStatus()
-            }.store(in: &cancellables)
-
-            liveManager!.onButtonPress = { [weak self] (buttonId: String, pressType: String) in
-                guard let self = self else { return }
-                self.serverComms.sendButtonPress(buttonId: buttonId, pressType: pressType)
-            }
-            liveManager!.onPhotoRequest = { [weak self] (requestId: String, photoUrl: String) in
-                guard let self = self else { return }
-                self.serverComms.sendPhotoResponse(requestId: requestId, photoUrl: photoUrl)
-            }
-            liveManager!.onVideoStreamResponse = { [weak self] (appId: String, streamUrl: String) in
-                guard let self = self else { return }
-                self.serverComms.sendVideoStreamResponse(appId: appId, streamUrl: streamUrl)
-            }
-        }
+    func updateHeadUp(_ isHeadUp: Bool) {
+        self.isHeadUp = isHeadUp
+        sendCurrentState(isHeadUp)
+        ServerComms.getInstance().sendHeadPosition(isUp: isHeadUp)
     }
 
     @objc func connectServer() {
@@ -798,6 +622,824 @@ struct ViewState {
                 CoreCommsService.log("UNHANDLED LAYOUT_TYPE \(layoutType)")
             }
         }
+
+        // MARK: - Public Methods (for React Native)
+
+        func setup() {
+            micManager = OnboardMicrophoneManager()
+            serverComms.locationManager.setup()
+            serverComms.mediaManager.setup()
+
+            // Set up the ServerComms callback
+            serverComms.setServerCommsCallback(self)
+            micManager.setMicCallback(self)
+
+            // Set up voice data handling
+            setupVoiceDataHandling()
+
+            // configure on board mic:
+            //    setupOnboardMicrophoneIfNeeded()
+
+            // initManagerCallbacks()
+
+            // Subscribe to WebSocket status changes
+            serverComms.wsManager.status
+                .sink { [weak self] _ in
+                    guard let self = self else { return }
+                    handleRequestStatus()
+                }
+                .store(in: &cancellables)
+        }
+
+        func initManager(_ wearable: String) {
+            CoreCommsService.log("Initializing manager for wearable: \(wearable)")
+            if wearable.contains("G1"), g1Manager == nil {
+                g1Manager = ERG1Manager.shared
+            } else if wearable.contains("Live"), liveManager == nil {
+                liveManager = MentraLiveManager()
+            } else if wearable.contains("Mach1"), mach1Manager == nil {
+                mach1Manager = Mach1Manager()
+            }
+            initManagerCallbacks()
+        }
+
+        func initManagerCallbacks() {
+            // calback to handle actions when the connectionState changes (when g1 is ready)
+
+            if g1Manager != nil {
+                g1Manager!.onConnectionStateChanged = { [weak self] in
+                    guard let self = self else { return }
+                    CoreCommsService.log("G1 glasses connection changed to: \(self.g1Manager!.g1Ready ? "Connected" : "Disconnected")")
+                    //      self.handleRequestStatus()
+                    if self.g1Manager!.g1Ready {
+                        handleDeviceReady()
+                    } else {
+                        handleDeviceDisconnected()
+                        handleRequestStatus()
+                    }
+                }
+
+                // listen to changes in battery level:
+                g1Manager!.$batteryLevel.sink { [weak self] (level: Int) in
+                    guard let self = self else { return }
+                    guard level >= 0 else { return }
+                    self.batteryLevel = level
+                    self.serverComms.sendBatteryStatus(level: self.batteryLevel, charging: false)
+                    handleRequestStatus()
+                }.store(in: &cancellables)
+
+                // listen to headUp events:
+                g1Manager!.$isHeadUp.sink { [weak self] (value: Bool) in
+                    guard let self = self else { return }
+                    updateHeadUp(value)
+                }.store(in: &cancellables)
+
+                // listen to case events:
+                g1Manager!.$caseOpen.sink { [weak self] (_: Bool) in
+                    guard let self = self else { return }
+                    handleRequestStatus()
+                }.store(in: &cancellables)
+
+                g1Manager!.$caseRemoved.sink { [weak self] (_: Bool) in
+                    guard let self = self else { return }
+                    handleRequestStatus()
+                }.store(in: &cancellables)
+
+                g1Manager!.$caseCharging.sink { [weak self] (_: Bool) in
+                    guard let self = self else { return }
+                    handleRequestStatus()
+                }.store(in: &cancellables)
+
+                // Set up serial number discovery callback
+                g1Manager!.onSerialNumberDiscovered = { [weak self] in
+                    self?.handleRequestStatus()
+                }
+                //    g1Manager!.$caseBatteryLevel.sink { [weak self] (value: Bool) in
+                //        guard let self = self else { return }
+                //      handleRequestStatus()
+                //    }.store(in: &cancellables)
+
+                // decode the g1 audio data to PCM and feed to the VAD:
+                g1Manager!.$compressedVoiceData.sink { [weak self] rawLC3Data in
+                    guard let self = self else { return }
+
+                    // Ensure we have enough data to process
+                    guard rawLC3Data.count > 2 else {
+                        CoreCommsService.log("Received invalid PCM data size: \(rawLC3Data.count)")
+                        return
+                    }
+
+                    // Skip the first 2 bytes which are command bytes
+                    let lc3Data = rawLC3Data.subdata(in: 2 ..< rawLC3Data.count)
+
+                    // Ensure we have valid PCM data
+                    guard lc3Data.count > 0 else {
+                        CoreCommsService.log("No LC3 data after removing command bytes")
+                        return
+                    }
+
+                    if self.bypassVad {
+                        checkSetVadStatus(speaking: true)
+                        // first send out whatever's in the vadBuffer (if there is anything):
+                        emptyVadBuffer()
+                        let pcmConverter = PcmConverter()
+                        let pcmData = pcmConverter.decode(lc3Data) as Data
+                        //        self.serverComms.sendAudioChunk(lc3Data)
+                        self.serverComms.sendAudioChunk(pcmData)
+                        return
+                    }
+
+                    let pcmConverter = PcmConverter()
+                    let pcmData = pcmConverter.decode(lc3Data) as Data
+
+                    guard pcmData.count > 0 else {
+                        CoreCommsService.log("PCM conversion resulted in empty data")
+                        return
+                    }
+
+                    // feed PCM to the VAD:
+                    guard let vad = self.vad else {
+                        CoreCommsService.log("VAD not initialized")
+                        return
+                    }
+
+                    // convert audioData to Int16 array:
+                    let pcmDataArray = pcmData.withUnsafeBytes { pointer -> [Int16] in
+                        Array(UnsafeBufferPointer(
+                            start: pointer.bindMemory(to: Int16.self).baseAddress,
+                            count: pointer.count / MemoryLayout<Int16>.stride
+                        ))
+                    }
+
+                    vad.checkVAD(pcm: pcmDataArray) { [weak self] state in
+                        guard let self = self else { return }
+                        CoreCommsService.log("VAD State: \(state)")
+                    }
+
+                    let vadState = vad.currentState()
+                    if vadState == .speeching {
+                        checkSetVadStatus(speaking: true)
+                        // first send out whatever's in the vadBuffer (if there is anything):
+                        emptyVadBuffer()
+                        //        self.serverComms.sendAudioChunk(lc3Data)
+                        self.serverComms.sendAudioChunk(pcmData)
+                    } else {
+                        checkSetVadStatus(speaking: false)
+                        // add to the vadBuffer:
+                        //        addToVadBuffer(lc3Data)
+                        addToVadBuffer(pcmData)
+                    }
+                }
+                .store(in: &cancellables)
+            }
+
+            if liveManager != nil {
+                liveManager!.onConnectionStateChanged = { [weak self] in
+                    guard let self = self else { return }
+                    CoreCommsService.log("Live glasses connection changed to: \(self.liveManager!.ready ? "Connected" : "Disconnected")")
+                    if self.liveManager!.ready {
+                        handleDeviceReady()
+                    } else {
+                        handleDeviceDisconnected()
+                        handleRequestStatus()
+                    }
+                }
+
+                liveManager!.$batteryLevel.sink { [weak self] (level: Int) in
+                    guard let self = self else { return }
+                    guard level >= 0 else { return }
+                    self.batteryLevel = level
+                    self.serverComms.sendBatteryStatus(level: self.batteryLevel, charging: false)
+                    handleRequestStatus()
+                }.store(in: &cancellables)
+
+                liveManager!.$isWifiConnected.sink { [weak self] (isConnected: Bool) in
+                    guard let self = self else { return }
+                    self.glassesWifiConnected = isConnected
+                    handleRequestStatus()
+                }.store(in: &cancellables)
+
+                liveManager!.onButtonPress = { [weak self] (buttonId: String, pressType: String) in
+                    guard let self = self else { return }
+                    self.serverComms.sendButtonPress(buttonId: buttonId, pressType: pressType)
+                }
+                liveManager!.onPhotoRequest = { [weak self] (requestId: String, photoUrl: String) in
+                    guard let self = self else { return }
+                    self.serverComms.sendPhotoResponse(requestId: requestId, photoUrl: photoUrl)
+                }
+                liveManager!.onVideoStreamResponse = { [weak self] (appId: String, streamUrl: String) in
+                    guard let self = self else { return }
+                    self.serverComms.sendVideoStreamResponse(appId: appId, streamUrl: streamUrl)
+                }
+            }
+
+            if mach1Manager != nil {
+                mach1Manager!.onConnectionStateChanged = { [weak self] in
+                    guard let self = self else { return }
+                    CoreCommsService.log("Mach1 glasses connection changed to: \(self.mach1Manager!.ready ? "Connected" : "Disconnected")")
+                    if self.mach1Manager!.ready {
+                        handleDeviceReady()
+                    } else {
+                        handleDeviceDisconnected()
+                        handleRequestStatus()
+                    }
+                }
+
+                mach1Manager!.$batteryLevel.sink { [weak self] (level: Int) in
+                    guard let self = self else { return }
+                    guard level >= 0 else { return }
+                    self.batteryLevel = level
+                    self.serverComms.sendBatteryStatus(level: self.batteryLevel, charging: false)
+                    handleRequestStatus()
+                }.store(in: &cancellables)
+
+                mach1Manager!.$isHeadUp.sink { [weak self] (value: Bool) in
+                    guard let self = self else { return }
+                    updateHeadUp(value)
+                }.store(in: &cancellables)
+            }
+        }
+
+        func updateHeadUp(_ isHeadUp: Bool) {
+            self.isHeadUp = isHeadUp
+            sendCurrentState(isHeadUp)
+            ServerComms.getInstance().sendHeadPosition(isUp: isHeadUp)
+        }
+
+        @objc func connectServer() {
+            serverComms.connectWebSocket()
+        }
+
+        @objc func setCoreToken(_ coreToken: String) {
+            serverComms.setAuthCredentials("", coreToken)
+        }
+
+        // MARK: - Audio Bridge Methods
+
+        @objc func playAudio(
+            _ requestId: String,
+            audioUrl: String,
+            volume: Float,
+            stopOtherAudio: Bool
+        ) {
+            CoreCommsService.log("AOSManager: playAudio bridge called for requestId: \(requestId)")
+
+            let audioManager = AudioManager.getInstance()
+            audioManager.playAudio(
+                requestId: requestId,
+                audioUrl: audioUrl,
+                volume: volume,
+                stopOtherAudio: stopOtherAudio
+            )
+        }
+
+        @objc func stopAudio(_ requestId: String) {
+            CoreCommsService.log("AOSManager: stopAudio bridge called for requestId: \(requestId)")
+
+            let audioManager = AudioManager.getInstance()
+            audioManager.stopAudio(requestId: requestId)
+        }
+
+        @objc func stopAllAudio() {
+            CoreCommsService.log("AOSManager: stopAllAudio bridge called")
+
+            let audioManager = AudioManager.getInstance()
+            audioManager.stopAllAudio()
+        }
+
+        func onConnectionAck() {
+            handleRequestStatus()
+
+            let isoDatetime = ServerComms.getCurrentIsoDatetime()
+            serverComms.sendUserDatetimeToBackend(isoDatetime: isoDatetime)
+        }
+
+        func onAppStateChange(_ apps: [ThirdPartyCloudApp] /* , _ whatToStream: [String] */ ) {
+            cachedThirdPartyAppList = apps
+            handleRequestStatus()
+        }
+
+        func onConnectionError(_: String) {
+            handleRequestStatus()
+        }
+
+        func onAuthError() {}
+
+        // MARK: - Voice Data Handling
+
+        private func checkSetVadStatus(speaking: Bool) {
+            if speaking != isSpeaking {
+                isSpeaking = speaking
+                serverComms.sendVadStatus(isSpeaking)
+            }
+        }
+
+        private func emptyVadBuffer() {
+            // go through the buffer, popping from the first element in the array (FIFO):
+            while !vadBuffer.isEmpty {
+                let chunk = vadBuffer.removeFirst()
+                serverComms.sendAudioChunk(chunk)
+            }
+        }
+
+        private func addToVadBuffer(_ chunk: Data) {
+            let MAX_BUFFER_SIZE = 20
+            vadBuffer.append(chunk)
+            while vadBuffer.count > MAX_BUFFER_SIZE {
+                // pop from the front of the array:
+                vadBuffer.removeFirst()
+            }
+        }
+
+        private func setupVoiceDataHandling() {
+            // handle incoming PCM data from the microphone manager and feed to the VAD:
+            micManager.voiceData
+                .sink { [weak self] pcmData in
+                    guard let self = self else { return }
+
+                    // feed PCM to the VAD:
+                    guard let vad = self.vad else {
+                        CoreCommsService.log("VAD not initialized")
+                        return
+                    }
+
+                    if self.bypassVad {
+                        //          let pcmConverter = PcmConverter()
+                        //          let lc3Data = pcmConverter.encode(pcmData) as Data
+                        //          checkSetVadStatus(speaking: true)
+                        //          // first send out whatever's in the vadBuffer (if there is anything):
+                        //          emptyVadBuffer()
+                        //          self.serverComms.sendAudioChunk(lc3Data)
+                        self.serverComms.sendAudioChunk(pcmData)
+                        return
+                    }
+
+                    // convert audioData to Int16 array:
+                    let pcmDataArray = pcmData.withUnsafeBytes { pointer -> [Int16] in
+                        Array(UnsafeBufferPointer(
+                            start: pointer.bindMemory(to: Int16.self).baseAddress,
+                            count: pointer.count / MemoryLayout<Int16>.stride
+                        ))
+                    }
+
+                    vad.checkVAD(pcm: pcmDataArray) { [weak self] state in
+                        guard let self = self else { return }
+                        //            self.handler?(state)
+                        CoreCommsService.log("VAD State: \(state)")
+                    }
+
+                    // encode the pcmData as LC3:
+                    //        let pcmConverter = PcmConverter()
+                    //        let lc3Data = pcmConverter.encode(pcmData) as Data
+
+                    let vadState = vad.currentState()
+                    if vadState == .speeching {
+                        checkSetVadStatus(speaking: true)
+                        // first send out whatever's in the vadBuffer (if there is anything):
+                        emptyVadBuffer()
+                        //          self.serverComms.sendAudioChunk(lc3Data)
+                        self.serverComms.sendAudioChunk(pcmData)
+                    } else {
+                        checkSetVadStatus(speaking: false)
+                        // add to the vadBuffer:
+                        //          addToVadBuffer(lc3Data)
+                        addToVadBuffer(pcmData)
+                    }
+                }
+                .store(in: &cancellables)
+        }
+
+        // MARK: - ServerCommsCallback Implementation
+
+        // in any case, clear the vadBuffer:
+        vadBuffer.removeAll()
+        micEnabled = isEnabled
+
+        // Handle microphone state change if needed
+        Task {
+            // Only enable microphone if sensing is also enabled
+            var actuallyEnabled = isEnabled && self.sensingEnabled
+            if !self.somethingConnected {
+                actuallyEnabled = false
+            }
+
+            let glassesHasMic = getGlassesHasMic()
+
+            var useGlassesMic = false
+            var useOnboardMic = false
+
+            useOnboardMic = self.preferredMic == "phone"
+            useGlassesMic = self.preferredMic == "glasses"
+
+            if self.onboardMicUnavailable {
+                useOnboardMic = false
+            }
+
+            if !glassesHasMic {
+                useGlassesMic = false
+            }
+
+            if !useGlassesMic, !useOnboardMic {
+                // if we have a non-preferred mic, use it:
+                if glassesHasMic {
+                    useGlassesMic = true
+                } else if !self.onboardMicUnavailable {
+                    useOnboardMic = true
+                }
+
+                if !useGlassesMic, !useOnboardMic {
+                    CoreCommsService.log("no mic to use!!!!!!")
+                }
+            }
+
+            useGlassesMic = actuallyEnabled && useGlassesMic
+            useOnboardMic = actuallyEnabled && useOnboardMic
+
+            CoreCommsService.log("AOS: user enabled microphone: \(isEnabled) sensingEnabled: \(self.sensingEnabled) useOnboardMic: \(useOnboardMic) useGlassesMic: \(useGlassesMic) glassesHasMic: \(glassesHasMic) preferredMic: \(self.preferredMic) somethingConnected: \(self.somethingConnected) onboardMicUnavailable: \(self.onboardMicUnavailable)")
+
+            if self.somethingConnected {
+                await self.g1Manager?.setMicEnabled(enabled: useGlassesMic)
+            }
+
+            setOnboardMicEnabled(useOnboardMic)
+        }
+    }
+
+    // MARK: - App Started/Stopped Handling
+
+    func onAppStarted(_ packageName: String) {
+        // tell the server what pair of glasses we're using:
+        serverComms.sendGlassesConnectionState(modelName: defaultWearable, status: "CONNECTED")
+
+        CoreCommsService.log("App started: \(packageName) - checking for auto-reconnection")
+
+        // Check if glasses are disconnected but there is a saved pair, initiate connection
+        if !somethingConnected, !defaultWearable.isEmpty {
+            CoreCommsService.log("Found preferred wearable: \(defaultWearable)")
+
+            if !defaultWearable.isEmpty {
+                CoreCommsService.log("Auto-connecting to glasses due to app start: \(defaultWearable)")
+
+                // Always run on main thread to avoid threading issues
+                DispatchQueue.main.async { [weak self] in
+                    guard let self = self else { return }
+
+                    // Attempt to connect using saved device name
+                    if !self.deviceName.isEmpty {
+                        self.handleConnectWearable(modelName: self.defaultWearable, deviceName: self.deviceName)
+
+                    } else {
+                        CoreCommsService.log("No saved device name found for auto-connection")
+                    }
+                }
+            } else {
+                CoreCommsService.log("No preferred wearable found for auto-connection")
+            }
+        } else if defaultWearable.isEmpty {
+            CoreCommsService.log("No preferred wearable set, cannot auto-connect")
+        } else {
+            CoreCommsService.log("Glasses already connected or connecting, skipping auto-reconnection. Connected: \(somethingConnected)")
+        }
+    }
+
+    func onAppStopped(_ packageName: String) {
+        CoreCommsService.log("AOS: App stopped: \(packageName)")
+        // Handle app stopped if needed
+    }
+
+    func onJsonMessage(_ message: [String: Any]) {
+        CoreCommsService.log("AOS: onJsonMessage: \(message)")
+        liveManager?.sendJson(message)
+    }
+
+    func onPhotoRequest(_ requestId: String, _ appId: String, _ webhookUrl: String) {
+        CoreCommsService.log("AOS: onPhotoRequest: \(requestId), \(appId), \(webhookUrl)")
+        liveManager?.requestPhoto(requestId, appId: appId, webhookUrl: webhookUrl.isEmpty ? nil : webhookUrl)
+    }
+
+    func onRtmpStreamStartRequest(_ message: [String: Any]) {
+        CoreCommsService.log("AOS: onRtmpStreamStartRequest: \(message)")
+        liveManager?.startRtmpStream(message)
+    }
+
+    func onRtmpStreamStop() {
+        CoreCommsService.log("AOS: onRtmpStreamStop")
+        liveManager?.stopRtmpStream()
+    }
+
+    func onRtmpStreamKeepAlive(_ message: [String: Any]) {
+        CoreCommsService.log("AOS: onRtmpStreamKeepAlive: \(message)")
+        liveManager?.sendRtmpKeepAlive(message)
+    }
+
+    // TODO: ios this name is a bit misleading:
+    func setOnboardMicEnabled(_ isEnabled: Bool) {
+        Task {
+            if isEnabled {
+                // Just check permissions - we no longer request them directly from Swift
+                // Permissions should already be granted via React Native UI flow
+                if !(micManager?.checkPermissions() ?? false) {
+                    CoreCommsService.log("Microphone permissions not granted. Cannot enable microphone.")
+                    return
+                }
+
+                micManager?.startRecording()
+            } else {
+                micManager?.stopRecording()
+            }
+        }
+    }
+
+    //  func onDashboardDisplayEvent(_ event: [String: Any]) {
+    //    CoreCommsService.log("got dashboard display event")
+    ////    onDisplayEvent?(["event": event, "type": "dashboard"])
+    //    CoreCommsService.log(event)
+    ////    Task {
+    ////      await self.g1Manager.sendText(text: "\(event)")
+    ////    }
+    //  }
+
+    // send whatever was there before sending something else:
+    func clearState() {
+        sendCurrentState(g1Manager?.isHeadUp ?? false)
+    }
+
+    func sendCurrentState(_ isDashboard: Bool) {
+        // Cancel any pending delayed execution
+        // sendStateWorkItem?.cancel()
+
+        // don't send the screen state if we're updating the screen:
+        if isUpdatingScreen {
+            return
+        }
+
+        // Execute immediately
+        executeSendCurrentState(isDashboard)
+
+        // // Schedule a delayed execution that will fire in 1 second if not cancelled
+        // let workItem = DispatchWorkItem { [weak self] in
+        //     self?.executeSendCurrentState(isDashboard)
+        // }
+
+        // sendStateWorkItem = workItem
+        // sendStateQueue.asyncAfter(deadline: .now() + 0.5, execute: workItem)
+    }
+
+    func executeSendCurrentState(_ isDashboard: Bool) {
+        Task {
+            var currentViewState: ViewState!
+            if isDashboard {
+                currentViewState = self.viewStates[1]
+            } else {
+                currentViewState = self.viewStates[0]
+            }
+            self.isHeadUp = isDashboard
+
+            if isDashboard && !self.contextualDashboard {
+                return
+            }
+
+            let eventStr = currentViewState.eventStr
+            if eventStr != "" {
+                CoreCommsService.emitter.sendEvent(withName: "CoreMessageEvent", body: eventStr)
+            }
+
+            if self.defaultWearable.contains("Simulated") || self.defaultWearable.isEmpty {
+                // dont send the event to glasses that aren't there:
+                return
+            }
+
+            if !self.somethingConnected {
+                return
+            }
+
+            let layoutType = currentViewState.layoutType
+            switch layoutType {
+            case "text_wall":
+                let text = currentViewState.text
+                sendText(text)
+            case "double_text_wall":
+                let topText = currentViewState.topText
+                let bottomText = currentViewState.bottomText
+                self.g1Manager?.sendDoubleTextWall(topText, bottomText)
+                self.mach1Manager?.sendDoubleTextWall(topText, bottomText)
+            case "reference_card":
+                sendText(currentViewState.topText + "\n\n" + currentViewState.title)
+            case "bitmap_view":
+                CoreCommsService.log("AOS: Processing bitmap_view layout")
+                guard let data = currentViewState.data else {
+                    CoreCommsService.log("AOS: ERROR: bitmap_view missing data field")
+                    return
+                }
+                CoreCommsService.log("AOS: Processing bitmap_view with base64 data, length: \(data.count)")
+                await self.g1Manager?.displayBitmap(base64ImageData: data)
+                await self.mach1Manager?.displayBitmap(base64ImageData: data)
+            case "clear_view":
+                CoreCommsService.log("AOS: Processing clear_view layout - clearing display")
+                self.g1Manager?.clearDisplay()
+                self.mach1Manager?.clearDisplay()
+            default:
+                CoreCommsService.log("UNHANDLED LAYOUT_TYPE \(layoutType)")
+            }
+        }
+    }
+
+    func parsePlaceholders(_ text: String) -> String {
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "M/dd, h:mm"
+        let formattedDate = dateFormatter.string(from: Date())
+
+        // 12-hour time format (with leading zeros for hours)
+        let time12Format = DateFormatter()
+        time12Format.dateFormat = "hh:mm"
+        let time12 = time12Format.string(from: Date())
+
+        // 24-hour time format
+        let time24Format = DateFormatter()
+        time24Format.dateFormat = "HH:mm"
+        let time24 = time24Format.string(from: Date())
+
+        // Current date with format MM/dd
+        let dateFormat = DateFormatter()
+        dateFormat.dateFormat = "MM/dd"
+        let currentDate = dateFormat.string(from: Date())
+
+        var placeholders: [String: String] = [:]
+        placeholders["$no_datetime$"] = formattedDate
+        placeholders["$DATE$"] = currentDate
+        placeholders["$TIME12$"] = time12
+        placeholders["$TIME24$"] = time24
+
+        if batteryLevel == -1 {
+            placeholders["$GBATT$"] = ""
+        } else {
+            placeholders["$GBATT$"] = "\(batteryLevel)%"
+        }
+
+        placeholders["$CONNECTION_STATUS$"] = serverComms.isWebSocketConnected() ? "Connected" : "Disconnected"
+
+        var result = text
+        for (key, value) in placeholders {
+            result = result.replacingOccurrences(of: key, with: value)
+        }
+
+        return result
+    }
+
+    func handleDisplayEvent(_ event: [String: Any]) {
+        guard let view = event["view"] as? String else {
+            CoreCommsService.log("AOS: invalid view")
+            return
+        }
+        let isDashboard = view == "dashboard"
+
+        var stateIndex = 0
+        if isDashboard {
+            stateIndex = 1
+        } else {
+            stateIndex = 0
+        }
+
+        // save the state string to forward to the mirror:
+        // forward to the glasses mirror:
+        let wrapperObj: [String: Any] = ["glasses_display_event": event]
+        var eventStr = ""
+        do {
+            let jsonData = try JSONSerialization.data(withJSONObject: wrapperObj, options: [])
+            eventStr = String(data: jsonData, encoding: .utf8) ?? ""
+        } catch {
+            CoreCommsService.log("AOS: Error converting to JSON: \(error)")
+        }
+
+        let layout = event["layout"] as! [String: Any]
+        let layoutType = layout["layoutType"] as! String
+        var text = layout["text"] as? String ?? " "
+        var topText = layout["topText"] as? String ?? " "
+        var bottomText = layout["bottomText"] as? String ?? " "
+        var title = layout["title"] as? String ?? " "
+        var data = layout["data"] as? String ?? ""
+
+        text = parsePlaceholders(text)
+        topText = parsePlaceholders(topText)
+        bottomText = parsePlaceholders(bottomText)
+        title = parsePlaceholders(title)
+
+        var newViewState = ViewState(topText: topText, bottomText: bottomText, title: title, layoutType: layoutType, text: text, eventStr: eventStr, data: data, animationData: nil)
+
+        if layoutType == "bitmap_animation" {
+            if let frames = layout["frames"] as? [String],
+               let interval = layout["interval"] as? Double
+            {
+                let animationData: [String: Any] = [
+                    "frames": frames,
+                    "interval": interval,
+                    "repeat": layout["repeat"] as? Bool ?? true,
+                ]
+                newViewState.animationData = animationData
+                CoreCommsService.log("AOS: Parsed bitmap_animation with \(frames.count) frames, interval: \(interval)ms")
+            } else {
+                CoreCommsService.log("AOS: ERROR: bitmap_animation missing frames or interval")
+            }
+        }
+
+        let cS = viewStates[stateIndex]
+        let nS = newViewState
+        let currentState = cS.layoutType + cS.text + cS.topText + cS.bottomText + cS.title + (cS.data ?? "")
+        let newState = nS.layoutType + nS.text + nS.topText + nS.bottomText + nS.title + (nS.data ?? "")
+
+        if currentState == newState {
+            // CoreCommsService.log("AOS: View state is the same, skipping update")
+            return
+        }
+
+        CoreCommsService.log("Updating view state \(stateIndex) with \(layoutType) \(text) \(topText) \(bottomText)")
+
+        viewStates[stateIndex] = newViewState
+
+        let headUp = isHeadUp
+        // send the state we just received if the user is currently in that state:
+        if stateIndex == 0, !headUp {
+            sendCurrentState(false)
+        } else if stateIndex == 1, headUp {
+            sendCurrentState(true)
+        }
+    }
+
+    func onDisplayEvent(_ event: [String: Any]) {
+        handleDisplayEvent(event)
+    }
+
+    func onRequestSingle(_ dataType: String) {
+        // Handle single data request
+        if dataType == "battery" {
+            // Send battery status if needed
+        }
+        // TODO:
+        handleRequestStatus()
+    }
+
+    func onRouteChange(reason: AVAudioSession.RouteChangeReason, availableInputs _: [AVAudioSessionPortDescription]) {
+        CoreCommsService.log("AOS: onRouteChange: \(reason)")
+
+        // CoreCommsService.log the available inputs and see if any are an onboard mic:
+        // for input in availableInputs {
+        //   CoreCommsService.log("input: \(input.portType)")
+        // }
+
+        // if availableInputs.isEmpty {
+        //   self.onboardMicUnavailable = true
+        //   self.setOnboardMicEnabled(false)
+        //   onMicrophoneStateChange(self.micEnabled)
+        //   return
+        // } else {
+        //   self.onboardMicUnavailable = false
+        // }
+
+        switch reason {
+        case .newDeviceAvailable:
+            micManager?.stopRecording()
+            micManager?.startRecording()
+        case .oldDeviceUnavailable:
+            micManager?.stopRecording()
+            micManager?.startRecording()
+        default:
+            break
+        }
+    }
+
+    func onInterruption(began: Bool) {
+        CoreCommsService.log("AOS: Interruption: \(began)")
+        if began {
+            onboardMicUnavailable = true
+            onMicrophoneStateChange(micEnabled, currentRequiredData)
+        } else {
+            onboardMicUnavailable = false
+            onMicrophoneStateChange(micEnabled, currentRequiredData)
+        }
+    }
+
+    private func clearDisplay() {
+        mach1Manager?.clearDisplay()
+
+        if defaultWearable.contains("G1") {
+            g1Manager?.sendTextWall(" ")
+
+            // clear the screen after 3 seconds if the text is empty or a space:
+            if powerSavingMode {
+                sendStateWorkItem?.cancel()
+                CoreCommsService.log("AOS: Clearing display after 3 seconds")
+                // if we're clearing the display, after a delay, send a clear command if not cancelled with another
+                let workItem = DispatchWorkItem { [weak self] in
+                    guard let self = self else { return }
+                    if self.isHeadUp {
+                        return
+                    }
+                    self.g1Manager?.clearDisplay()
+                }
+                sendStateWorkItem = workItem
+                sendStateQueue.asyncAfter(deadline: .now() + 3, execute: workItem)
+            }
+        }
     }
 
     func parsePlaceholders(_ text: String) -> String {
@@ -981,7 +1623,6 @@ struct ViewState {
         }
         // self.g1Manager?.RN_sendText(text)
         g1Manager?.RN_sendTextWall(text)
-
         // cancel any pending clear display work item:
         // TODO: this doesn't seem to work:
         sendStateWorkItem?.cancel()
@@ -1002,6 +1643,14 @@ struct ViewState {
             sendStateWorkItem = workItem
             sendStateQueue.asyncAfter(deadline: .now() + 3, execute: workItem)
         }
+
+        if text == " " || text.isEmpty {
+            clearDisplay()
+            return
+        }
+
+        g1Manager?.sendTextWall(text)
+        mach1Manager?.sendTextWall(text)
     }
 
     // command functions:
@@ -1030,6 +1679,7 @@ struct ViewState {
             self.somethingConnected = false
             self.g1Manager?.disconnect()
             self.liveManager?.disconnect()
+            self.mach1Manager?.disconnect()
             self.isSearching = false
             handleRequestStatus()
         }
@@ -1039,8 +1689,10 @@ struct ViewState {
         disconnectWearable()
         defaultWearable = ""
         deviceName = ""
+        deviceName = ""
         g1Manager?.forgetGlasses()
         // self.liveManager?.forgetGlasses()
+        mach1Manager?.forget()
         // self.g1Manager = nil
         // self.liveManager = nil
         handleRequestStatus()
@@ -1067,6 +1719,10 @@ struct ViewState {
             defaultWearable = "Mentra Live"
             initManager(defaultWearable)
             liveManager?.findCompatibleDevices()
+        } else if modelName.contains("Mach1") || modelName.contains("Z100") {
+            defaultWearable = "Mach1"
+            initManager(defaultWearable)
+            mach1Manager?.findCompatibleDevices()
         }
     }
 
@@ -1107,6 +1763,7 @@ struct ViewState {
         brightness = value
         self.autoBrightness = autoBrightness
         Task {
+            self.mach1Manager?.setBrightness(value)
             self.g1Manager?.RN_setBrightness(value, autoMode: autoBrightness)
             if autoBrightnessChanged {
                 sendText(autoBrightness ? "Enabled auto brightness" : "Disabled auto brightness")
@@ -1440,6 +2097,9 @@ struct ViewState {
         if defaultWearable.contains("Live") {
             return false
         }
+        if defaultWearable.contains("Mach1") {
+            return false
+        }
         return false
     }
 
@@ -1448,8 +2108,9 @@ struct ViewState {
 
         let g1Connected = g1Manager?.g1Ready ?? false
         let liveConnected = liveManager?.connectionState == .connected
+        let mach1Connected = mach1Manager?.ready ?? false
         let simulatedConnected = defaultWearable == "Simulated Glasses"
-        let isGlassesConnected = g1Connected || liveConnected || simulatedConnected
+        let isGlassesConnected = g1Connected || liveConnected || mach1Connected || simulatedConnected
         somethingConnected = isGlassesConnected
 
         // also referenced as glasses_info:
@@ -1488,6 +2149,7 @@ struct ViewState {
             if let wifiSsid = liveManager?.wifiSsid, !wifiSsid.isEmpty {
                 connectedGlasses["glasses_wifi_ssid"] = wifiSsid
                 connectedGlasses["glasses_wifi_connected"] = glassesWifiConnected
+                connectedGlasses["glasses_wifi_local_ip"] = liveManager?.wifiLocalIp
             }
         }
 
@@ -1630,6 +2292,8 @@ struct ViewState {
             handleLiveReady()
         } else if defaultWearable.contains("G1") {
             handleG1Ready()
+        } else if defaultWearable.contains("Mach1") {
+            handleMach1Ready()
         }
     }
 
@@ -1673,6 +2337,22 @@ struct ViewState {
         isSearching = false
         defaultWearable = "Mentra Live"
         handleRequestStatus()
+    }
+
+    private func handleMach1Ready() {
+        CoreCommsService.log("AOS: Mach1 device ready")
+        isSearching = false
+        defaultWearable = "Mentra Mach1"
+        handleRequestStatus()
+
+        Task {
+            // Send startup message
+            sendText("MENTRAOS CONNECTED")
+            try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
+            clearDisplay()
+
+            self.handleRequestStatus()
+        }
     }
 
     private func handleDeviceDisconnected() {
@@ -1722,6 +2402,16 @@ struct ViewState {
                 if self.deviceName != "" {
                     CoreCommsService.log("AOS: pairing by id: \(self.deviceName)")
                     self.g1Manager?.connectById(self.deviceName)
+                } else {
+                    CoreCommsService.log("AOS: this shouldn't happen (we don't have a deviceName saved, connecting will fail if we aren't already paired)")
+                    self.defaultWearable = ""
+                    handleRequestStatus()
+                }
+            } else if self.defaultWearable.contains("Mach1") {
+                initManager(self.defaultWearable)
+                if self.deviceName != "" {
+                    CoreCommsService.log("AOS: pairing Mach1 by id: \(self.deviceName)")
+                    self.mach1Manager?.connectById(self.deviceName)
                 } else {
                     CoreCommsService.log("AOS: this shouldn't happen (we don't have a deviceName saved, connecting will fail if we aren't already paired)")
                     self.defaultWearable = ""
@@ -2021,5 +2711,7 @@ struct ViewState {
 
             serverComms.sendTranscriptionResult(transcription: transcription)
         }
+        cancellables.removeAll()
+        saveSettings()
     }
 }

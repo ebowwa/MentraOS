@@ -205,22 +205,6 @@ RCT_EXPORT_METHOD(
   }
 }
 
-
-RCT_EXPORT_METHOD(
-  setup:
-  resolver:(RCTPromiseResolveBlock)resolve
-  rejecter:(RCTPromiseRejectBlock)reject
-)
-{
-  @try {
-    [self.aosManager setup];
-    resolve(@[@"called setup!"]);
-  }
-  @catch(NSException *exception) {
-    reject(@"0", exception.description, nil);
-  }
-}
-
 // Required for Swift interop
 + (BOOL)requiresMainQueueSetup {
     return YES;

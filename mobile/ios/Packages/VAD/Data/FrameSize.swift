@@ -24,7 +24,7 @@ enum FrameSize: Int, CaseIterable {
     case size_15600 = 15600
 
     var desc: String {
-        "FRAME_SIZE_\(self.rawValue)" 
+        "FRAME_SIZE_\(rawValue)"
     }
 
     static let webrtc_8k: [FrameSize] = [.size_80, .size_160, .size_240]
