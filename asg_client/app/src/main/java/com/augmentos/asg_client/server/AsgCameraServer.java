@@ -220,11 +220,7 @@ public class AsgCameraServer extends AsgServer {
             if (cachedData != null) {
                 byte[] cachedBytes = (byte[]) cachedData;
                 logger.debug(getTag(), "🖼️ ✅ Serving latest photo from cache (" + cachedBytes.length + " bytes)");
-                return newFixedLengthResponse(
-                    Response.Status.OK, 
-                    "image/jpeg", 
-                    new String(cachedBytes, StandardCharsets.ISO_8859_1)
-                );
+                return newChunkedResponse(Response.Status.OK, "image/jpeg", new java.io.ByteArrayInputStream(cachedBytes));
             }
 
             // Read file and cache it
@@ -237,11 +233,7 @@ public class AsgCameraServer extends AsgServer {
                 cacheManager.put(cacheKey, fileData, 300000); // Cache for 5 minutes
                 
                 logger.debug(getTag(), "🖼️ ✅ Serving latest photo: " + photoFile.getName() + " (" + fileData.length + " bytes)");
-                return newFixedLengthResponse(
-                    Response.Status.OK, 
-                    "image/jpeg", 
-                    new String(fileData, StandardCharsets.ISO_8859_1)
-                );
+                return newChunkedResponse(Response.Status.OK, "image/jpeg", new java.io.ByteArrayInputStream(fileData));
             } else {
                 logger.warn(getTag(), "🖼️ ❌ Photo file too large: " + fileData.length + " bytes (max: " + MAX_FILE_SIZE + ")");
                 return createErrorResponse(Response.Status.PAYLOAD_TOO_LARGE, "Photo file too large");
@@ -360,11 +352,7 @@ public class AsgCameraServer extends AsgServer {
             logger.debug(getTag(), "🖼️ 📖 File read successfully: " + fileData.length + " bytes");
             
             logger.debug(getTag(), "🖼️ ✅ Serving photo: " + filename + " (" + fileData.length + " bytes)");
-            return newFixedLengthResponse(
-                Response.Status.OK, 
-                "image/jpeg", 
-                new String(fileData, StandardCharsets.ISO_8859_1)
-            );
+            return newChunkedResponse(Response.Status.OK, "image/jpeg", new java.io.ByteArrayInputStream(fileData));
         } catch (IOException e) {
             logger.error(getTag(), "🖼️ 💥 Error reading photo " + filename + ": " + e.getMessage(), e);
             return createErrorResponse(Response.Status.INTERNAL_ERROR, "Error reading photo file");

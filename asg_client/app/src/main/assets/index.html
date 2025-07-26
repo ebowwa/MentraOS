@@ -526,8 +526,8 @@
                 const data = await response.json();
 
                 if (data.status === 'success') {
-                    currentGallery = data.photos;
-                    renderGallery(data.photos);
+                    currentGallery = data.data.photos;
+                    renderGallery(data.data.photos);
                 } else {
                     throw new Error(data.message || 'Failed to load gallery');
                 }
@@ -566,7 +566,7 @@
 
             galleryGrid.innerHTML = photos.map((photo, index) => `
                 <div class="photo-card" onclick="viewPhoto('${photo.name}', ${index})">
-                    <img class="photo-image" src="/api/photo?file=${encodeURIComponent(photo.name)}" 
+                    <img class="photo-image" src="/api/photo?file=${encodeURIComponent(photo.name)}"
                          alt="${photo.name}" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjE1MCIgdmlld0JveD0iMCAwIDIwMCAxNTAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMTUwIiBmaWxsPSIjRjhGOUZBIi8+CjxwYXRoIGQ9Ik04MCA3NUgxMjBWNzVIMTIwSDgwWiIgZmlsbD0iI0Q5RENEQyIvPgo8L3N2Zz4K'">
                     <div class="photo-info">
                         <div class="photo-name">${photo.name}</div>

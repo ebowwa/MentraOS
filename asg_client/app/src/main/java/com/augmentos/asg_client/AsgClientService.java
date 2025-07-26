@@ -1983,6 +1983,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                         Log.d(TAG, "Connecting to WiFi network: " + ssid);
                         if (networkManager != null) {
                             networkManager.connectToWifi(ssid, password);
+                            initializeCameraWebServer();
                         }
                     }
                     break;
@@ -2155,10 +2156,19 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         try {
             String command = json.optString("C", "");
             JSONObject bData = json.optJSONObject("B");
-            
+            Log.d(TAG, "📦 Received command: " + command);
+
             switch (command) {
                 case "cs_pho":
+
+                    if(mMediaCaptureService == null){
+                        Log.d(TAG, "MediaCaptureService is null, initializing");
+                        initializeMediaCaptureService();
+                    }
+                    Log.d(TAG, "📸 Taking photo locally");
                     mMediaCaptureService.takePhotoLocally();
+
+
                     // TESTING: Commented out normal photo handling
 //                    handleButtonPress(false);
                     

@@ -52,6 +52,9 @@ export default function GalleryScreen() {
     setError(undefined)
 
     try {
+      // Set the server URL to the glasses WiFi IP
+      asgCameraApi.setServer(`http://${glassesWifiIp}:8089`)
+      
       // Check if server is reachable
       const isReachable = await asgCameraApi.isServerReachable()
       if (!isReachable) {
@@ -164,7 +167,7 @@ export default function GalleryScreen() {
                     onPress={() => handlePhotoPress(photo)}
                   >
                     <Image 
-                      source={{uri: `${asgCameraApi.getServerUrl()}/api/download?file=${encodeURIComponent(photo.name)}`}}
+                      source={{uri: `${asgCameraApi.getServerUrl()}/api/photo?file=${encodeURIComponent(photo.name)}`}}
                       style={{width: "100%", height: 120, borderRadius: 8}}
                       resizeMode="cover"
                     />

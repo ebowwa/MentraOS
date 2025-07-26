@@ -3,6 +3,8 @@
  * Provides methods to interact with the AsgCameraServer Java APIs
  */
 
+import { useStatus } from "@/contexts/AugmentOSStatusProvider"
+
 export interface PhotoInfo {
   name: string
   size: number
@@ -295,5 +297,5 @@ export class AsgCameraApiClient {
   }
 }
 
-// Export a default instance
+// Export a default instance - will be initialized with proper IP when used
 export const asgCameraApi = new AsgCameraApiClient() 
