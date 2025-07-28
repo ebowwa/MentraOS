@@ -9,6 +9,7 @@ import {
   Switch,
   ViewStyle,
   TextStyle,
+  Platform,
 } from "react-native"
 import {useFocusEffect} from "@react-navigation/native"
 import {Button, Icon} from "@/components/ignite"
@@ -357,7 +358,8 @@ export default function DeviceSettings() {
       )}
 
       {/* Power Saving Mode - Only show for glasses that support it */}
-      {status.core_info.default_wearable &&
+      {Platform.OS === "android" &&
+        status.core_info.default_wearable &&
         glassesFeatures[status.core_info.default_wearable] &&
         glassesFeatures[status.core_info.default_wearable].powerSavingMode && (
           <View style={themed($settingsGroup)}>
