@@ -13,9 +13,9 @@ import Foundation
  */
 enum SpeechRequiredDataType: String, CaseIterable {
     case PCM = "pcm"
-    case TRANSCRIPTION = "transcription" 
+    case TRANSCRIPTION = "transcription"
     case PCM_OR_TRANSCRIPTION = "pcm_or_transcription"
-    
+
     /**
      * Convert from string value to enum
      * @param value The string value to convert
@@ -24,15 +24,15 @@ enum SpeechRequiredDataType: String, CaseIterable {
     static func fromString(_ value: String) -> SpeechRequiredDataType? {
         return SpeechRequiredDataType(rawValue: value)
     }
-    
+
     /**
      * Convert enum to string value
      * @return The string representation of the enum
      */
     func toString() -> String {
-        return self.rawValue
+        return rawValue
     }
-    
+
     /**
      * Convert array of strings to array of enums
      * @param stringArray Array of string values
@@ -41,7 +41,7 @@ enum SpeechRequiredDataType: String, CaseIterable {
     static func fromStringArray(_ stringArray: [String]) -> [SpeechRequiredDataType] {
         return stringArray.compactMap { fromString($0) }
     }
-    
+
     /**
      * Convert array of enums to array of strings
      * @param enumArray Array of enum values

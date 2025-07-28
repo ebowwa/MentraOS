@@ -7,11 +7,9 @@
 
 import Foundation
 
-
 // MARK: - SileroVADStrategy
 
 class SileroVADStrategy: VADStrategy {
-
     private var sileroVAD: SileroVAD?
     private var state: VADState = .silence
     private var handler: ((VADState) -> Void)?
