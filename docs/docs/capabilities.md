@@ -58,7 +58,7 @@ protected async onSession(session: AppSession, sessionId: string, userId: string
     // Adapt content based on screen properties
     if (screen.isColor) {
       // Use color-rich layouts and graphics
-      session.layouts.showReferenceCard("🌈 Color Display", "Enjoying rich visuals!");
+      session.layouts.showTextWall("🌈 Color Display\nEnjoying rich visuals!");
     } else {
       // Use high-contrast, monochrome-friendly content
       session.layouts.showTextWall("Monochrome display detected");
@@ -114,7 +114,6 @@ protected async onSession(session: AppSession, sessionId: string, userId: string
 }
 ```
 
-
 ### Adaptive Feature Selection
 
 ```typescript
@@ -131,8 +130,8 @@ class AdaptiveApp extends AppServer {
 
     // Show welcome message with available features
     const featureList = features.join('\n• ');
-    session.layouts.showReferenceCard(
-      `Welcome to ${caps.modelName}`,
+    session.layouts.showTextWall(
+      `Welcome to ${caps.modelName}\n'+
       `Available features:\n• ${featureList}`
     );
 
@@ -195,7 +194,6 @@ class AdaptiveApp extends AppServer {
   }
 }
 ```
-
 
 ## Device Examples
 

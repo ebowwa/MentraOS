@@ -10,7 +10,7 @@ The `LayoutManager` is responsible for sending display requests to MentraOS Clou
 You access the LayoutManager through the `layouts` property of a [`AppSession`](/reference/app-session) instance:
 
 ```typescript
-const layoutManager = appSession.layouts;
+const layoutManager = appSession.layouts
 ```
 
 ## Layout Methods
@@ -30,23 +30,25 @@ showTextWall(
 ```
 
 **Parameters:**
+
 - `text`: The text content to display
 - `options`: Optional parameters
   - `view`: Target view ([`ViewType.MAIN`](/reference/enums#viewtype) or [`ViewType.DASHBOARD`](/reference/enums#viewtype)). Defaults to `MAIN`
   - `durationMs`: Optional duration in milliseconds to show the layout
 
 **Example:**
+
 ```typescript
-import { ViewType } from '@mentra/sdk';
+import {ViewType} from "@mentra/sdk"
 
 // Simple usage
-appSession.layouts.showTextWall('Hello, MentraOS!');
+appSession.layouts.showTextWall("Hello, MentraOS!")
 
 // With options
-appSession.layouts.showTextWall('This is an important message', {
+appSession.layouts.showTextWall("This is an important message", {
   view: ViewType.MAIN,
-  durationMs: 5000 // Show for 5 seconds
-});
+  durationMs: 5000, // Show for 5 seconds
+})
 ```
 
 ### showDoubleTextWall()
@@ -65,6 +67,7 @@ showDoubleTextWall(
 ```
 
 **Parameters:**
+
 - `topText`: Text for the top section
 - `bottomText`: Text for the bottom section
 - `options`: Optional parameters
@@ -72,46 +75,11 @@ showDoubleTextWall(
   - `durationMs`: Optional duration in milliseconds
 
 **Example:**
+
 ```typescript
 // Show a title and content
-appSession.layouts.showDoubleTextWall(
-  'Weather Forecast',
-  'Partly cloudy, 72°F, 10% chance of rain',
-  { durationMs: 3000 }
-);
+appSession.layouts.showDoubleTextWall("Weather Forecast", "Partly cloudy, 72°F, 10% chance of rain", {durationMs: 3000})
 ```
-
-### showReferenceCard()
-
-Displays a card with a title and main content text.
-
-```typescript
-showReferenceCard(
-  title: string,
-  text: string,
-  options?: {
-    view?: ViewType;
-    durationMs?: number
-  }
-): void
-```
-
-**Parameters:**
-- `title`: The title of the card
-- `text`: The main content text of the card
-- `options`: Optional parameters
-  - `view`: Target view ([`ViewType.MAIN`](/reference/enums#viewtype) or [`ViewType.DASHBOARD`](/reference/enums#viewtype)). Defaults to `MAIN`
-  - `durationMs`: Optional duration in milliseconds
-
-**Example:**
-```typescript
-// Show a reference card with a recipe
-appSession.layouts.showReferenceCard(
-  'Chocolate Chip Cookies',
-  '2 cups flour\n1 cup sugar\n1/2 cup butter\n2 eggs\n1 tsp vanilla\n2 cups chocolate chips\n\nMix ingredients. Bake at 350°F for 10-12 minutes.'
-);
-```
-
 
 ### showDashboardCard()
 
@@ -129,6 +97,7 @@ showDashboardCard(
 ```
 
 **Parameters:**
+
 - `leftText`: Text for the left side (often a label)
 - `rightText`: Text for the right side (often a value)
 - `options`: Optional parameters
@@ -136,14 +105,15 @@ showDashboardCard(
   - `durationMs`: Optional duration in milliseconds
 
 **Example:**
+
 ```typescript
 // Show current temperature in the dashboard
-appSession.layouts.showDashboardCard('Temperature', '72°F');
+appSession.layouts.showDashboardCard("Temperature", "72°F")
 
 // Show stock price in the main view
-appSession.layouts.showDashboardCard('AAPL', '$178.72', {
-  view: ViewType.MAIN
-});
+appSession.layouts.showDashboardCard("AAPL", "$178.72", {
+  view: ViewType.MAIN,
+})
 ```
 
 ## Layout Types
@@ -154,8 +124,8 @@ The LayoutManager uses several layout types internally. For reference, these are
 
 ```typescript
 interface TextWall {
-  layoutType: LayoutType.TEXT_WALL;
-  text: string;
+  layoutType: LayoutType.TEXT_WALL
+  text: string
 }
 ```
 
@@ -165,33 +135,21 @@ See the full definition in [Layout Types](/reference/interfaces/layout-types#tex
 
 ```typescript
 interface DoubleTextWall {
-  layoutType: LayoutType.DOUBLE_TEXT_WALL;
-  topText: string;
-  bottomText: string;
+  layoutType: LayoutType.DOUBLE_TEXT_WALL
+  topText: string
+  bottomText: string
 }
 ```
 
 See the full definition in [Layout Types](/reference/interfaces/layout-types#doubletextwall).
 
-### ReferenceCard
-
-```typescript
-interface ReferenceCard {
-  layoutType: LayoutType.REFERENCE_CARD;
-  title: string;
-  text: string;
-}
-```
-
-See the full definition in [Layout Types](/reference/interfaces/layout-types#referencecard).
-
 ### DashboardCard
 
 ```typescript
 interface DashboardCard {
-  layoutType: LayoutType.DASHBOARD_CARD;
-  leftText: string;
-  rightText: string;
+  layoutType: LayoutType.DASHBOARD_CARD
+  leftText: string
+  rightText: string
 }
 ```
 
@@ -203,8 +161,8 @@ The [`ViewType`](/reference/enums#viewtype) enum is used to specify where in the
 
 ```typescript
 enum ViewType {
-  DASHBOARD = 'dashboard', // The persistent dashboard area
-  MAIN = 'main'            // The main, typically temporary, display area
+  DASHBOARD = "dashboard", // The persistent dashboard area
+  MAIN = "main", // The main, typically temporary, display area
 }
 ```
 
@@ -221,4 +179,3 @@ enum ViewType {
 4. **Dashboard vs. Main View**:
    - Use the [`DASHBOARD`](/reference/enums#viewtype) view for persistent information the user may need to reference
    - Use the [`MAIN`](/reference/enums#viewtype) view for temporary information or responses to user actions
-

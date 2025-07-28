@@ -56,21 +56,7 @@ The SDK currently supports the following layout types:
   session.layouts.showDoubleTextWall("Original Text:", "Translated Text:")
   ```
 
-### 3. `ReferenceCard`
-
-- **Purpose:** Displays a card with a title and content text. This is a more structured layout, suitable for displaying important information, notifications with titles, or key data points.
-- **Type:** [`LayoutType.REFERENCE_CARD`](/reference/enums#layouttype)
-- **Properties:**
-  - `title`: The title of the card (string).
-  - `text`: The main content of the card (string).
-
-- **Example:**
-
-  ```typescript
-  session.layouts.showReferenceCard("Meeting Reminder", "Team Standup in 5 minutes")
-  ```
-
-### 4. `DashboardCard`
+### 3. `DashboardCard`
 
 - **Purpose:** Displays a card with left-aligned and right-aligned text. This layout is ideal for key-value pairs, metrics, and dashboard-style displays.
 - **Type:** [`LayoutType.DASHBOARD_CARD`](/reference/enums#layouttype)
@@ -84,7 +70,7 @@ The SDK currently supports the following layout types:
   session.layouts.showDashboardCard("Battery Level", "85%")
   ```
 
-### 5. `BitmapView`
+### 4. `BitmapView`
 
 - **Purpose:** Displays bitmap images on the AR glasses. Supports monochrome bitmaps at 526x100 (576×135 when padded) pixel resolution.
   > Only use 526x100 images unless you know what you're doing! (the file size should be ~7-10kb)
@@ -100,7 +86,7 @@ The SDK currently supports the following layout types:
   session.layouts.showBitmapView(bitmapData)
   ```
 
-### 6. `ClearView`
+### 5. `ClearView`
 
 - **Purpose:** Clears the current display, returning to a blank state. Useful for resetting the view before showing new content.
 - **Type:** [`LayoutType.CLEAR_VIEW`](/reference/enums#layouttype)
@@ -207,7 +193,7 @@ All layout methods accept an optional `options` object, which can include a `dur
 session.layouts.showTextWall("This will disappear in 5 seconds", {durationMs: 5000})
 
 // Display persistently (until replaced or cleared)
-session.layouts.showReferenceCard("Important", "This will stay on screen", {durationMs: -1})
+session.layouts.showTextWall("Important\nThis will stay on screen", {durationMs: -1})
 ```
 
 ## View Type
@@ -237,7 +223,7 @@ session.layouts.showTextWall("Dashboard Message", {view: ViewType.DASHBOARD})
 The `@mentra/sdk` provides TypeScript interfaces for each layout type. These interfaces ensure type safety and provide autocompletion in your IDE. You can import these directly:
 
 ```typescript
-import {TextWall, DoubleTextWall, ReferenceCard, LayoutType, ViewType} from "@mentra/sdk"
+import {TextWall, DoubleTextWall, LayoutType, ViewType} from "@mentra/sdk"
 
 const textWallLayout: TextWall = {
   layoutType: LayoutType.TEXT_WALL,

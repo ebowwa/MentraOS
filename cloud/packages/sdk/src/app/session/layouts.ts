@@ -12,7 +12,7 @@
  * layouts.showTextWall('Hello AR World!');
  *
  * // Show a card with title
- * layouts.showReferenceCard('Weather', 'Sunny and 75°F');
+ * layouts.showTextWall('Weather\nSunny and 75°F');
  * ```
  */
 import { BitmapUtils } from "../../utils/bitmap-utils";
@@ -264,6 +264,9 @@ export class LayoutManager {
   }
 
   /**
+   * @deprecated ReferenceCard is deprecated and will be removed in a future version.
+   * Please use alternative layout types such as TextWall.
+   *
    * 📇 Shows a card with a title and content
    *
    * Best for:

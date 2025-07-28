@@ -70,7 +70,6 @@ Layouts control what is displayed on the smart glasses' screen. The SDK provides
 
 - [`TextWall`](/reference/interfaces/layout-types#textwall): Displays a single block of text.
 - [`DoubleTextWall`](/reference/interfaces/layout-types#doubletextwall): Displays two blocks of text (top and bottom).
-- [`ReferenceCard`](/reference/interfaces/layout-types#referencecard): Displays a card with a title and content.
 
 You use the [`LayoutManager`](/reference/managers/layout-manager) (accessible through `session.layouts`) to display layouts.
 
