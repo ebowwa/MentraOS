@@ -61,7 +61,7 @@ struct ViewState {
     private var dashboardDepth: Int = 5
     private var sensingEnabled: Bool = true
     private var powerSavingMode: Bool = false
-    private var isSearching: Bool = true
+    private var isSearching: Bool = false
     private var isUpdatingScreen: Bool = false
     private var alwaysOnStatusBar: Bool = false
     private var bypassVad: Bool = false
@@ -1401,6 +1401,9 @@ struct ViewState {
         let simulatedConnected = defaultWearable == "Simulated Glasses"
         let isGlassesConnected = g1Connected || liveConnected || mach1Connected || simulatedConnected
         somethingConnected = isGlassesConnected
+        if isGlassesConnected {
+            isSearching = false
+        }
 
         // also referenced as glasses_info:
         var glassesSettings: [String: Any] = [:]
