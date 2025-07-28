@@ -820,6 +820,7 @@ typealias JSONObject = [String: Any]
     @Published var isCharging: Bool = false
     @Published var isWifiConnected: Bool = false
     @Published var wifiSsid: String = ""
+    @Published var wifiLocalIp: String = ""
 
     // Queue Management
     private let commandQueue = CommandQueue()
@@ -1291,7 +1292,8 @@ typealias JSONObject = [String: Any]
         case "wifi_status":
             let connected = json["connected"] as? Bool ?? false
             let ssid = json["ssid"] as? String ?? ""
-            updateWifiStatus(connected: connected, ssid: ssid)
+            let ip = json["local_ip"] as? String ?? ""
+            updateWifiStatus(connected: connected, ssid: ssid, ip: ip)
 
         case "wifi_scan_result":
             handleWifiScanResult(json)
@@ -1788,11 +1790,12 @@ typealias JSONObject = [String: Any]
         // emitBatteryLevelEvent(level: level, charging: charging)
     }
 
-    private func updateWifiStatus(connected: Bool, ssid: String) {
+    private func updateWifiStatus(connected: Bool, ssid: String, ip: String) {
         CoreCommsService.log("🌐 Updating WiFi status - connected: \(connected), ssid: \(ssid)")
         isWifiConnected = connected
         wifiSsid = ssid
-        emitWifiStatusChange(connected: connected, ssid: ssid)
+        wifiLocalIp = ip
+        emitWifiStatusChange()
     }
 
     // MARK: - Timers
@@ -1931,11 +1934,11 @@ typealias JSONObject = [String: Any]
     //   emitEvent("BatteryLevelEvent", body: eventBody)
     // }
 
-    private func emitWifiStatusChange(connected: Bool, ssid: String) {
+    private func emitWifiStatusChange() {
         let eventBody = ["glasses_wifi_status_change": [
-            "connected": connected,
-            "ssid": ssid,
-            "local_ip": "1234", // TODO:
+            "connected": isWifiConnected,
+            "ssid": wifiSsid,
+            "local_ip": wifiLocalIp,
         ]]
         emitEvent("CoreMessageEvent", body: eventBody)
     }

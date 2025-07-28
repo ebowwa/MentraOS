@@ -9,6 +9,7 @@ import {
   Switch,
   ViewStyle,
   TextStyle,
+  Platform,
 } from "react-native"
 import {useFocusEffect} from "@react-navigation/native"
 import {Button, Icon} from "@/components/ignite"

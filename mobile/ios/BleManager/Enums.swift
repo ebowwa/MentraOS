@@ -22,6 +22,8 @@ enum Commands: UInt8 {
     case BLE_REQ_MIC_ON = 0x0E
     case QUICK_NOTE_ADD = 0x1E
     //  case BATTERY_STATUS = 0x2C
+    case CRC_CHECK = 0x16
+    case BMP_END = 0x20
     case BRIGHTNESS = 0x01
     case WHITELIST = 0x04
     case SILENT_MODE = 0x03
