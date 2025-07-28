@@ -701,6 +701,9 @@ struct ViewState {
                 return
             }
 
+            // cancel any pending clear display work item:
+            sendStateWorkItem?.cancel()
+
             let layoutType = currentViewState.layoutType
             switch layoutType {
             case "text_wall":
