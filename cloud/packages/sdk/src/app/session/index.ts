@@ -1279,6 +1279,7 @@ export class AppSession {
           const capabilitiesMessage = message as CapabilitiesUpdate;
           this.capabilities = capabilitiesMessage.capabilities;
           this.logger.info(
+            capabilitiesMessage.capabilities,
             `[AppSession] Capabilities updated for model: ${capabilitiesMessage.modelName}`,
           );
 
