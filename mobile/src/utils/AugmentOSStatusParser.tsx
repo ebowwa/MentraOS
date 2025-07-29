@@ -36,9 +36,11 @@ export interface Glasses {
   glasses_build_number?: string
   glasses_device_model?: string
   glasses_android_version?: string
+  glasses_ota_version_url?: string
   glasses_serial_number?: string
   glasses_style?: string
   glasses_color?: string
+  bluetooth_name?: string
 }
 
 interface GlassesSettings {
@@ -246,6 +248,7 @@ export class AugmentOSParser {
               glasses_build_number: glassesInfo.glasses_build_number,
               glasses_device_model: glassesInfo.glasses_device_model,
               glasses_android_version: glassesInfo.glasses_android_version,
+              glasses_ota_version_url: glassesInfo.glasses_ota_version_url,
               glasses_serial_number: glassesInfo.glasses_serial_number,
               glasses_style: glassesInfo.glasses_style,
               glasses_color: glassesInfo.glasses_color,

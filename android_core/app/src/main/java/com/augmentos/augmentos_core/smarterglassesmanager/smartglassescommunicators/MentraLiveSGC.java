@@ -1674,6 +1674,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 String buildNumber = json.optString("build_number", "");
                 String deviceModel = json.optString("device_model", "");
                 String androidVersion = json.optString("android_version", "");
+                String otaVersionUrl = json.optString("ota_version_url", null);
                 
                 // Parse build number as integer for version checks
                 try {
@@ -1687,11 +1688,12 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 Log.d(TAG, "Glasses Version - App: " + appVersion +
                       ", Build: " + buildNumber +
                       ", Device: " + deviceModel +
-                      ", Android: " + androidVersion);
+                      ", Android: " + androidVersion +
+                      ", OTA URL: " + otaVersionUrl);
 
                 // Post event for version information
                 EventBus.getDefault().post(new GlassesVersionInfoEvent(
-                    appVersion, buildNumber, deviceModel, androidVersion));
+                    appVersion, buildNumber, deviceModel, androidVersion, otaVersionUrl));
                 break;
 
             case "ota_download_progress":

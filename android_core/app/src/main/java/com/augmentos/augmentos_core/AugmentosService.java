@@ -298,6 +298,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     private String glassesBuildNumber = null;
     private String glassesDeviceModel = null;
     private String glassesAndroidVersion = null;
+    private String glassesOtaVersionUrl = null;
     private String glassesSerialNumber = null;
     private String glassesStyle = null;
     private String glassesColor = null;
@@ -1506,6 +1507,12 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                 connectedGlasses.put("case_open", (caseOpen == null) ? false: caseOpen);
                 connectedGlasses.put("case_removed", (caseRemoved == null) ? true: caseRemoved);
 
+                // Add Bluetooth device name if available
+                String bluetoothName = smartGlassesManager.getConnectedSmartGlassesBluetoothName();
+                if (bluetoothName != null) {
+                    connectedGlasses.put("bluetooth_name", bluetoothName);
+                }
+
                 // Add WiFi status information for glasses that need WiFi
                 String deviceModel = smartGlassesManager.getConnectedSmartGlasses().deviceModelName;
 
@@ -1529,6 +1536,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                     connectedGlasses.put("glasses_build_number", glassesBuildNumber != null ? glassesBuildNumber : "");
                     connectedGlasses.put("glasses_device_model", glassesDeviceModel != null ? glassesDeviceModel : "");
                     connectedGlasses.put("glasses_android_version", glassesAndroidVersion != null ? glassesAndroidVersion : "");
+                    connectedGlasses.put("glasses_ota_version_url", glassesOtaVersionUrl != null ? glassesOtaVersionUrl : "");
                 }
 
                 // Add serial number information for Even Realities G1 glasses
@@ -2818,7 +2826,8 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         this.glassesBuildNumber = event.getBuildNumber();
         this.glassesDeviceModel = event.getDeviceModel();
         this.glassesAndroidVersion = event.getAndroidVersion();
-        Log.d("AugmentOsService", "Glasses version info: " + glassesAppVersion + " " + glassesBuildNumber + " " + glassesDeviceModel + " " + glassesAndroidVersion);
+        this.glassesOtaVersionUrl = event.getOtaVersionUrl();
+        Log.d("AugmentOsService", "Glasses version info: " + glassesAppVersion + " " + glassesBuildNumber + " " + glassesDeviceModel + " " + glassesAndroidVersion + " OTA URL: " + glassesOtaVersionUrl);
         sendStatusToAugmentOsManager();
     }
 

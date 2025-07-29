@@ -802,6 +802,7 @@ typealias JSONObject = [String: Any]
   private var lastReceivedMessageId = 0
   public var glassesAppVersion: String = ""
   public var glassesBuildNumber: String = ""
+  public var glassesOtaVersionUrl: String = ""
   public var glassesDeviceModel: String = ""
   public var glassesAndroidVersion: String = ""
   
@@ -1451,15 +1452,17 @@ typealias JSONObject = [String: Any]
     let buildNumber = json["build_number"] as? String ?? ""
     let deviceModel = json["device_model"] as? String ?? ""
     let androidVersion = json["android_version"] as? String ?? ""
+    let otaVersionUrl = json["ota_version_url"] as? String ?? ""
     
     self.glassesAppVersion = appVersion
     self.glassesBuildNumber = buildNumber
+    self.glassesOtaVersionUrl = otaVersionUrl
     self.isNewVersion = (Int(buildNumber) ?? 0) >= 5
     self.glassesDeviceModel = deviceModel
     self.glassesAndroidVersion = androidVersion
     
-    CoreCommsService.log("Glasses Version - App: \(appVersion), Build: \(buildNumber), Device: \(deviceModel), Android: \(androidVersion)")
-    emitVersionInfo(appVersion: appVersion, buildNumber: buildNumber, deviceModel: deviceModel, androidVersion: androidVersion)
+    CoreCommsService.log("Glasses Version - App: \(appVersion), Build: \(buildNumber), Device: \(deviceModel), Android: \(androidVersion), OTA URL: \(otaVersionUrl)")
+    emitVersionInfo(appVersion: appVersion, buildNumber: buildNumber, deviceModel: deviceModel, androidVersion: androidVersion, otaVersionUrl: otaVersionUrl)
   }
   
   private func handleAck(_ json: [String: Any]) {
@@ -1969,12 +1972,13 @@ typealias JSONObject = [String: Any]
     // emitEvent("CoreMessageEvent", body: eventBody)
   }
   
-  private func emitVersionInfo(appVersion: String, buildNumber: String, deviceModel: String, androidVersion: String) {
+  private func emitVersionInfo(appVersion: String, buildNumber: String, deviceModel: String, androidVersion: String, otaVersionUrl: String) {
     let eventBody: [String: Any] = [
       "app_version": appVersion,
       "build_number": buildNumber,
       "device_model": deviceModel,
-      "android_version": androidVersion
+      "android_version": androidVersion,
+      "ota_version_url": otaVersionUrl
     ]
     
     emitEvent("CoreMessageEvent", body: eventBody)

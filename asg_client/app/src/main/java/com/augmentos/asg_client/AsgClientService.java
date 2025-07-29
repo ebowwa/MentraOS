@@ -2106,6 +2106,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
             versionInfo.put("build_number", buildNumber);
             versionInfo.put("device_model", android.os.Build.MODEL);
             versionInfo.put("android_version", android.os.Build.VERSION.RELEASE);
+            versionInfo.put("ota_version_url", com.augmentos.asg_client.ota.Constants.VERSION_JSON_URL);
 
             if (bluetoothManager != null && bluetoothManager.isConnected()) {
                 bluetoothManager.sendData(versionInfo.toString().getBytes(StandardCharsets.UTF_8));

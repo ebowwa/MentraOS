@@ -906,4 +906,42 @@ public class SmartGlassesManager extends Service {
         return null;
     }
 
+    /**
+     * Get the Bluetooth device name of the currently connected smart glasses
+     * @return The Bluetooth device name, or null if not available
+     */
+    public String getConnectedSmartGlassesBluetoothName() {
+        if (getConnectedSmartGlasses() == null) {
+            return null;
+        }
+
+        String modelName = getConnectedSmartGlasses().deviceModelName;
+
+        if (modelName == null) {
+            return null;
+        }
+
+        // For Mentra Live glasses
+        if (modelName.equals(new MentraLive().deviceModelName)) {
+            SharedPreferences prefs = getSharedPreferences("MentraLivePrefs", Context.MODE_PRIVATE);
+            return prefs.getString("LastConnectedDeviceName", null);
+        }
+        
+        // For Even Realities G1 glasses
+        if (modelName.equals(new EvenRealitiesG1().deviceModelName)) {
+            SharedPreferences prefs = getSharedPreferences("EvenRealitiesPrefs", Context.MODE_PRIVATE);
+            String savedDeviceId = prefs.getString("SAVED_G1_ID_KEY", null);
+            
+            // The saved device ID is something like "G1_123", return it as is
+            // Could also get left/right names separately if needed:
+            // String leftName = prefs.getString("SAVED_G1_LEFT_NAME", null);
+            // String rightName = prefs.getString("SAVED_G1_RIGHT_NAME", null);
+            
+            return savedDeviceId;
+        }
+        
+        // For other glasses types that don't store BT names
+        return null;
+    }
+
 }
