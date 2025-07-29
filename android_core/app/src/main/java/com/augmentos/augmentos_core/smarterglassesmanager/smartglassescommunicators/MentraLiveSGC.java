@@ -1847,6 +1847,25 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         Log.d(TAG, "Processing K900 command: " + command);
 
         switch (command) {
+            case "sr_hrt":
+                try {
+                    JSONObject bodyObj = json.optJSONObject("B");
+                    if (bodyObj != null) {
+                        int ready = bodyObj.optInt("ready", 0);
+                        if (ready == 1) {
+                            Log.d(TAG, "K900 SOC ready");
+                            JSONObject readyMsg = new JSONObject();
+                            readyMsg.put("type", "phone_ready");
+                            readyMsg.put("timestamp", System.currentTimeMillis());
+
+                            // Send it through our data channel
+                            sendJson(readyMsg, true);
+                        }
+                    }
+                } catch (Exception e) {
+                    Log.e(TAG, "Error parsing sr_hrt response", e);
+                }
+                break;
             case "sr_batv":
                 // K900 battery voltage response
                 try {
@@ -2406,18 +2425,8 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                     readinessCheckCounter++;
 
                     Log.d(TAG, "🔄 Readiness check #" + readinessCheckCounter + ": waiting for glasses SOC to boot");
-                    //openhotspot();
-                    try {
-                        // Create a simple phone_ready message
-                        JSONObject readyMsg = new JSONObject();
-                        readyMsg.put("type", "phone_ready");
-                        readyMsg.put("timestamp", System.currentTimeMillis());
+                    requestReadyK900();
 
-                        // Send it through our data channel (no ACK needed for readiness checks)
-                        sendJsonWithoutAck(readyMsg, true);
-                    } catch (JSONException e) {
-                        Log.e(TAG, "Error creating phone_ready message", e);
-                    }
 
                     // Schedule next check only if glasses are still not ready
                     if (!glassesReady) {
@@ -2605,6 +2614,20 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     @Override
     public void stopScrollingTextViewMode() {
         Log.d(TAG, "[STUB] Device has no display. Scrolling text view would stop");
+    }
+
+    public void requestReadyK900(){
+        try{
+            JSONObject cmdObject = new JSONObject();
+            cmdObject.put("C", "cs_hrt"); // Video command
+            cmdObject.put("B", "");     // Add the body
+            String jsonStr = cmdObject.toString();
+            Log.d(TAG, "Sending hrt command: " + jsonStr);
+            byte[] packedData = K900ProtocolUtils.packDataToK900(jsonStr.getBytes(StandardCharsets.UTF_8), K900ProtocolUtils.CMD_TYPE_STRING);
+            queueData(packedData);
+        } catch (JSONException e) {
+            Log.e(TAG, "Error creating video command", e);
+        }
     }
 
     public void requestBatteryK900() {
