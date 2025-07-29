@@ -358,8 +358,7 @@ export default function DeviceSettings() {
       )}
 
       {/* Power Saving Mode - Only show for glasses that support it */}
-      {Platform.OS === "android" &&
-        status.core_info.default_wearable &&
+      {status.core_info.default_wearable &&
         glassesFeatures[status.core_info.default_wearable] &&
         glassesFeatures[status.core_info.default_wearable].powerSavingMode && (
           <View style={themed($settingsGroup)}>
