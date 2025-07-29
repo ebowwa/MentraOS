@@ -107,6 +107,12 @@ export class SonioxTranslationUtils {
 
     if (normalizedSource === normalizedTarget) return false;
 
+    // First check if this is a two-way translation pair
+    if (this.supportsTwoWayTranslation(normalizedSource, normalizedTarget)) {
+      return true;
+    }
+
+    // Then check one-way translation targets
     const target = this.mappings.translation_targets.find(t => t.target_language === normalizedTarget);
     if (!target) return false;
 

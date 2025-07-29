@@ -1,7 +1,7 @@
 "on":
   push:
     branches:
-      - soniox/fix-bugs
+      - translation-manager
 name: Deploy cloud-isaiah
 jobs:
   porter-deploy:

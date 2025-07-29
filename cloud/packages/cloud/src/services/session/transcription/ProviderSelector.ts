@@ -205,17 +205,7 @@ export class ProviderSelector {
       });
     }
     
-    // If it's a translation request, suggest supported pairs
-    if (languageInfo.type === 'translation') {
-      allCapabilities.forEach(cap => {
-        const targetLanguages = cap.translationPairs.get(languageInfo.transcribeLanguage);
-        if (targetLanguages) {
-          targetLanguages.forEach(target => {
-            suggestions.push(`translation:${languageInfo.transcribeLanguage}-to-${target}`);
-          });
-        }
-      });
-    }
+    // Translation is now handled by TranslationManager
     
     return suggestions.slice(0, 5); // Limit to 5 suggestions
   }
@@ -233,8 +223,7 @@ export class ProviderSelector {
         failures: health.failures,
         lastFailure: health.lastFailure,
         capabilities: {
-          transcriptionLanguages: provider.getLanguageCapabilities().transcriptionLanguages.length,
-          translationPairs: provider.getLanguageCapabilities().translationPairs.size
+          transcriptionLanguages: provider.getLanguageCapabilities().transcriptionLanguages.length
         }
       };
     }

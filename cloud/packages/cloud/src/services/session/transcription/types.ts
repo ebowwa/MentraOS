@@ -2,7 +2,7 @@
  * @fileoverview Type definitions for the new TranscriptionManager system
  */
 
-import { ExtendedStreamType, TranscriptionData, TranslationData } from '@mentra/sdk';
+import { ExtendedStreamType, TranscriptionData } from '@mentra/sdk';
 import { Logger } from 'pino';
 import UserSession from '../UserSession';
 import dotenv from 'dotenv';
@@ -102,9 +102,7 @@ export interface ProviderHealthStatus {
 
 export interface ProviderLanguageCapabilities {
   transcriptionLanguages: string[];
-  translationPairs: Map<string, string[]>;
   autoLanguageDetection: boolean;
-  realtimeTranslation: boolean;
 }
 
 export interface StreamOptions {
@@ -112,15 +110,13 @@ export interface StreamOptions {
   userSession: UserSession;
   subscription: ExtendedStreamType;
   callbacks: StreamCallbacks;
-  ownsTranscription?: string[];
-  skipTranscriptionFor?: string[];
 }
 
 export interface StreamCallbacks {
   onReady?: () => void;
   onError?: (error: Error) => void;
   onClosed?: () => void;
-  onData?: (data: TranscriptionData | TranslationData) => void;
+  onData?: (data: TranscriptionData) => void;
 }
 
 export interface TranscriptionProvider {
@@ -133,12 +129,10 @@ export interface TranscriptionProvider {
   
   // Stream Management
   createTranscriptionStream(language: string, options: StreamOptions): Promise<StreamInstance>;
-  createTranslationStream(sourceLanguage: string, targetLanguage: string, options: StreamOptions): Promise<StreamInstance>;
   
   // Capabilities
   supportsSubscription(subscription: ExtendedStreamType): boolean;
   supportsLanguage(language: string): boolean;
-  validateLanguagePair(source: string, target: string): boolean;
   getLanguageCapabilities(): ProviderLanguageCapabilities;
   
   // Health
@@ -178,7 +172,6 @@ export interface StreamInstance {
   
   // Configuration
   readonly language: string;
-  readonly targetLanguage?: string; // For translation streams
   
   // State
   state: StreamState;

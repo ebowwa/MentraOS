@@ -18,7 +18,7 @@ import {
   CancellationReason
 } from 'microsoft-cognitiveservices-speech-sdk';
 
-import { StreamType, TranscriptionData, TranslationData, getLanguageInfo } from '@mentra/sdk';
+import { StreamType, TranscriptionData, getLanguageInfo } from '@mentra/sdk';
 import { Logger } from 'pino';
 import {
   TranscriptionProvider,
@@ -42,15 +42,16 @@ const AZURE_TRANSCRIPTION_LANGUAGES = [
   'ja-JP', 'ko-KR', 'zh-CN', 'ru-RU', 'ar-SA', 'hi-IN'
 ];
 
-const AZURE_TRANSLATION_PAIRS = new Map([
-  ['en-US', ['es-ES', 'fr-FR', 'de-DE', 'it-IT', 'pt-BR', 'ja-JP', 'ko-KR', 'zh-CN']],
-  ['es-ES', ['en-US', 'fr-FR', 'de-DE', 'it-IT', 'pt-BR']],
-  ['fr-FR', ['en-US', 'es-ES', 'de-DE', 'it-IT', 'pt-BR']],
-  ['de-DE', ['en-US', 'es-ES', 'fr-FR', 'it-IT', 'pt-BR']],
-  ['zh-CN', ['en-US', 'ja-JP', 'ko-KR']],
-  ['ja-JP', ['en-US', 'zh-CN', 'ko-KR']],
-  ['ko-KR', ['en-US', 'zh-CN', 'ja-JP']]
-]);
+// Translation support has been moved to TranslationManager
+// const AZURE_TRANSLATION_PAIRS = new Map([
+//   ['en-US', ['es-ES', 'fr-FR', 'de-DE', 'it-IT', 'pt-BR', 'ja-JP', 'ko-KR', 'zh-CN']],
+//   ['es-ES', ['en-US', 'fr-FR', 'de-DE', 'it-IT', 'pt-BR']],
+//   ['fr-FR', ['en-US', 'es-ES', 'de-DE', 'it-IT', 'pt-BR']],
+//   ['de-DE', ['en-US', 'es-ES', 'fr-FR', 'it-IT', 'pt-BR']],
+//   ['zh-CN', ['en-US', 'ja-JP', 'ko-KR']],
+//   ['ja-JP', ['en-US', 'zh-CN', 'ko-KR']],
+//   ['ko-KR', ['en-US', 'zh-CN', 'ja-JP']]
+// ]);
 
 export class AzureTranscriptionProvider implements TranscriptionProvider {
   readonly name = ProviderType.AZURE;
@@ -140,7 +141,6 @@ export class AzureTranscriptionProvider implements TranscriptionProvider {
       options.subscription,
       this,
       language,
-      undefined,
       recognizer,
       pushStream,
       options.callbacks,
@@ -155,57 +155,14 @@ export class AzureTranscriptionProvider implements TranscriptionProvider {
     return stream;
   }
   
-  async createTranslationStream(
-    sourceLanguage: string,
-    targetLanguage: string,
-    options: StreamOptions
-  ): Promise<StreamInstance> {
-    this.logger.debug({
-      sourceLanguage,
-      targetLanguage,
-      streamId: options.streamId
-    }, 'Creating Azure translation stream');
-    
-    if (!this.validateLanguagePair(sourceLanguage, targetLanguage)) {
-      throw new AzureProviderError(
-        2, // Invalid argument
-        `Translation pair ${sourceLanguage} → ${targetLanguage} not supported`,
-        AzureErrorType.AUTH_ERROR
-      );
-    }
-    
-    const pushStream = azureSpeechSDK.AudioInputStream.createPushStream();
-    const audioConfig = AudioConfig.fromStreamInput(pushStream);
-    
-    const translationConfig = azureSpeechSDK.SpeechTranslationConfig.fromSubscription(
-      this.config.key,
-      this.config.region
-    );
-    translationConfig.speechRecognitionLanguage = sourceLanguage;
-    translationConfig.addTargetLanguage(targetLanguage);
-    translationConfig.setProfanity(ProfanityOption.Raw);
-    
-    const recognizer = new azureSpeechSDK.TranslationRecognizer(translationConfig, audioConfig);
-    
-    const stream = new AzureTranscriptionStream(
-      options.streamId,
-      options.subscription,
-      this,
-      sourceLanguage,
-      targetLanguage,
-      recognizer,
-      pushStream,
-      options.callbacks,
-      this.logger
-    );
-    
-    this.setupAzureEventHandlers(stream, recognizer);
-    
-    // Start translation
-    await this.startAzureRecognition(stream, recognizer);
-    
-    return stream;
-  }
+  // Translation is now handled by a separate TranslationManager
+  // async createTranslationStream(
+  //   sourceLanguage: string,
+  //   targetLanguage: string,
+  //   options: StreamOptions
+  // ): Promise<StreamInstance> {
+  //   // Translation functionality moved to TranslationManager
+  // }
   
   supportsSubscription(subscription: string): boolean {
     const languageInfo = getLanguageInfo(subscription);
@@ -213,12 +170,9 @@ export class AzureTranscriptionProvider implements TranscriptionProvider {
       return false;
     }
     
+    // Only support transcription
     if (languageInfo.type === StreamType.TRANSCRIPTION) {
       return this.supportsLanguage(languageInfo.transcribeLanguage);
-    }
-    
-    if (languageInfo.type === StreamType.TRANSLATION && languageInfo.translateLanguage) {
-      return this.validateLanguagePair(languageInfo.transcribeLanguage, languageInfo.translateLanguage);
     }
     
     return false;
@@ -228,22 +182,15 @@ export class AzureTranscriptionProvider implements TranscriptionProvider {
     return AZURE_TRANSCRIPTION_LANGUAGES.includes(language);
   }
   
-  validateLanguagePair(source: string, target: string): boolean {
-    // Cannot translate a language to itself
-    if (source === target) {
-      return false;
-    }
-    
-    const targetLanguages = AZURE_TRANSLATION_PAIRS.get(source);
-    return targetLanguages ? targetLanguages.includes(target) : false;
-  }
+  // Translation validation is now handled by TranslationManager
+  // validateLanguagePair(source: string, target: string): boolean {
+  //   // Translation functionality moved to TranslationManager
+  // }
   
   getLanguageCapabilities(): ProviderLanguageCapabilities {
     return {
       transcriptionLanguages: [...AZURE_TRANSCRIPTION_LANGUAGES],
-      translationPairs: new Map(AZURE_TRANSLATION_PAIRS),
-      autoLanguageDetection: true,
-      realtimeTranslation: true
+      autoLanguageDetection: true
     };
   }
   
@@ -347,14 +294,9 @@ export class AzureTranscriptionProvider implements TranscriptionProvider {
       this.handleAzureCanceled(stream, event);
     };
     
-    // Recognition results
-    if (stream.targetLanguage) {
-      // Translation stream
-      this.setupTranslationHandlers(stream, recognizer as TranslationRecognizer);
-    } else {
-      // Transcription stream
-      this.setupTranscriptionHandlers(stream, recognizer as ConversationTranscriber);
-    }
+    // Recognition results - only handle transcription
+    // Translation is now handled by TranslationManager
+    this.setupTranscriptionHandlers(stream, recognizer as ConversationTranscriber);
   }
   
   private setupTranscriptionHandlers(
@@ -415,7 +357,8 @@ export class AzureTranscriptionProvider implements TranscriptionProvider {
     };
   }
   
-  private setupTranslationHandlers(
+  // Translation is now handled by TranslationManager
+  /* private setupTranslationHandlers(
     stream: AzureTranscriptionStream,
     recognizer: TranslationRecognizer
   ): void {
@@ -491,7 +434,7 @@ export class AzureTranscriptionProvider implements TranscriptionProvider {
         provider: 'azure'
       }, `🌐 AZURE TRANSLATION: ${data.isFinal ? 'FINAL' : 'interim'} "${data.originalText}" → "${data.text}"`);
     };
-  }
+  } */
   
   private async startAzureRecognition(
     stream: AzureTranscriptionStream,
@@ -499,19 +442,11 @@ export class AzureTranscriptionProvider implements TranscriptionProvider {
   ): Promise<void> {
     
     return new Promise((resolve, reject) => {
-      if (stream.targetLanguage) {
-        // Translation
-        (recognizer as TranslationRecognizer).startContinuousRecognitionAsync(
-          () => resolve(),
-          (error) => reject(new AzureProviderError(999, error, AzureErrorType.UNKNOWN))
-        );
-      } else {
-        // Transcription
-        (recognizer as ConversationTranscriber).startTranscribingAsync(
-          () => resolve(),
-          (error) => reject(new AzureProviderError(999, error, AzureErrorType.UNKNOWN))
-        );
-      }
+      // Only handle transcription - translation is now handled by TranslationManager
+      (recognizer as ConversationTranscriber).startTranscribingAsync(
+        () => resolve(),
+        (error) => reject(new AzureProviderError(999, error, AzureErrorType.UNKNOWN))
+      );
     });
   }
   
@@ -566,13 +501,14 @@ export class AzureTranscriptionProvider implements TranscriptionProvider {
     return Math.round(offset / 10000);
   }
   
-  private didTranslationOccur(originalText: string, translatedText: string): boolean {
+  // Translation is now handled by TranslationManager
+  /* private didTranslationOccur(originalText: string, translatedText: string): boolean {
     // Simple comparison to detect if translation actually occurred
     const normalizedOriginal = originalText.toLowerCase().replace(/[^\p{L}\p{N}_]/gu, '').trim();
     const normalizedTranslated = translatedText.toLowerCase().replace(/[^\p{L}\p{N}_]/gu, '').trim();
     
     return normalizedOriginal !== normalizedTranslated;
-  }
+  } */
 }
 
 /**
@@ -591,7 +527,6 @@ class AzureTranscriptionStream implements StreamInstance {
     public readonly subscription: string,
     public readonly provider: AzureTranscriptionProvider,
     public readonly language: string,
-    public readonly targetLanguage: string | undefined,
     public readonly azureRecognizer: ConversationTranscriber | TranslationRecognizer,
     public readonly pushStream: AudioInputStream,
     public readonly callbacks: StreamCallbacks,
@@ -649,23 +584,13 @@ class AzureTranscriptionStream implements StreamInstance {
     this.state = StreamState.CLOSING;
     
     try {
-      if (this.targetLanguage) {
-        // Translation recognizer
-        await new Promise<void>((resolve, reject) => {
-          (this.azureRecognizer as TranslationRecognizer).stopContinuousRecognitionAsync(
-            () => resolve(),
-            (error) => reject(error)
-          );
-        });
-      } else {
-        // Transcription recognizer
-        await new Promise<void>((resolve, reject) => {
-          (this.azureRecognizer as ConversationTranscriber).stopTranscribingAsync(
-            () => resolve(),
-            (error) => reject(error)
-          );
-        });
-      }
+      // Only handle transcription - translation is now handled by TranslationManager
+      await new Promise<void>((resolve, reject) => {
+        (this.azureRecognizer as ConversationTranscriber).stopTranscribingAsync(
+          () => resolve(),
+          (error) => reject(error)
+        );
+      });
       
       this.azureRecognizer.close();
       this.pushStream.close();
