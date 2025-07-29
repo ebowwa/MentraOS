@@ -101,11 +101,11 @@ If the user isn't logged in automatically, you can redirect them to the MentraOS
 
 ```html
 <a href="/mentra-auth">
-  <img src="https://account.mentra.glass/sign-in-mentra.png" alt="Sign in with Mentra" />
+  <img src="https://account.mentra.glass/sign-in-mentra.png" alt="Sign in with Mentra" width="140" height="50" />
 </a>
 ```
 
-![Sign in with Mentra](https://account.mentra.glass/sign-in-mentra.png)
+<img src="https://account.mentra.glass/sign-in-mentra.png" alt="Sign in with Mentra" width="140" height="50" />
 
 You can use the "Sign in with Mentra" image as the login button: `https://account.mentra.glass/sign-in-mentra.png`
 
