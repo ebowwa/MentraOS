@@ -611,12 +611,8 @@ const ToolsEditor: React.FC<ToolsEditorProps> = ({
       </div>
 
       {internalTools.length === 0 ? (
-        <div className="text-center py-8 text-gray-500">
-          <Brain className="h-12 w-12 mx-auto mb-2 opacity-50" />
+        <div className="text-center py-4 text-gray-500">
           <p>No AI tools defined yet.</p>
-          <p className="text-sm">
-            Add your first tool to enable AI interactions.
-          </p>
         </div>
       ) : (
         <div className="space-y-2">

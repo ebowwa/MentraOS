@@ -7,6 +7,7 @@ import {checkFeaturePermissions, PermissionFeatures} from "@/utils/PermissionsUt
 import {showAlert} from "@/utils/AlertUtils"
 import {useRoute} from "@react-navigation/native"
 import {router} from "expo-router"
+import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 
 interface HeaderProps {
   isDarkTheme: boolean
@@ -20,6 +21,7 @@ const Header: React.FC<HeaderProps> = ({isDarkTheme, navigation}) => {
   const [hasCalendarPermission, setHasCalendarPermission] = useState(true)
   const [appState, setAppState] = useState(AppState.currentState)
   const route = useRoute()
+  const {push} = useNavigationHistory()
 
   // Check permissions when component mounts
   // and when app comes back to foreground
@@ -68,7 +70,7 @@ const Header: React.FC<HeaderProps> = ({isDarkTheme, navigation}) => {
           text: "Go to Settings",
           onPress: () => {
             // Navigate to PrivacySettingsScreen after explaining
-            router.push({pathname: "/settings/privacy"})
+            push("/settings/privacy")
           },
         },
       ],

@@ -22,9 +22,9 @@ import {
   StreamCallbacks,
   StreamMetrics,
   StreamHealth,
-  SonioxProviderError
-} from '../types';
-import { SonioxTranslationUtils } from './SonioxTranslationUtils';
+  SonioxProviderError,
+} from "../types";
+import { SonioxTranslationUtils } from "./SonioxTranslationUtils";
 
 // Soniox language support - based on their documentation
 const SONIOX_TRANSCRIPTION_LANGUAGES = [
@@ -227,7 +227,8 @@ export class SonioxTranscriptionProvider implements TranscriptionProvider {
   supportsLanguage(language: string): boolean {
     // Use SonioxTranslationUtils to check supported languages with normalization
     const supportedLanguages = SonioxTranslationUtils.getSupportedLanguages();
-    const normalizedLanguage = SonioxTranslationUtils.normalizeLanguageCode(language);
+    const normalizedLanguage =
+      SonioxTranslationUtils.normalizeLanguageCode(language);
     return supportedLanguages.includes(normalizedLanguage);
   }
 
@@ -240,12 +241,17 @@ export class SonioxTranscriptionProvider implements TranscriptionProvider {
     // Use SonioxTranslationUtils to build translation pairs dynamically
     const translationPairs = new Map<string, string[]>();
     const supportedLanguages = SonioxTranslationUtils.getSupportedLanguages();
-    
+
     // Build translation pairs map by checking all combinations
     for (const sourceLanguage of supportedLanguages) {
       const targetLanguages: string[] = [];
       for (const targetLanguage of supportedLanguages) {
-        if (SonioxTranslationUtils.supportsTranslation(sourceLanguage, targetLanguage)) {
+        if (
+          SonioxTranslationUtils.supportsTranslation(
+            sourceLanguage,
+            targetLanguage,
+          )
+        ) {
           targetLanguages.push(targetLanguage);
         }
       }
@@ -253,7 +259,7 @@ export class SonioxTranscriptionProvider implements TranscriptionProvider {
         translationPairs.set(sourceLanguage, targetLanguages);
       }
     }
-    
+
     return {
       transcriptionLanguages: [...SONIOX_TRANSCRIPTION_LANGUAGES],
       translationPairs,
@@ -474,13 +480,16 @@ class SonioxTranscriptionStream implements StreamInstance {
       ? [languageHint, targetLanguageHint]
       : [languageHint];
 
+    const disableLanguageIdentification = this.subscription.endsWith(
+      "?no-language-identification=true",
+    );
     const config: any = {
       api_key: this.config.apiKey,
       model: this.config.model || "stt-rt-preview",
       audio_format: "pcm_s16le",
       sample_rate: 16000,
       num_channels: 1,
-      enable_language_identification: true, // Enable auto language detection
+      enable_language_identification: !disableLanguageIdentification, // Toggle based on flag
       max_non_final_tokens_duration_ms: 2000,
       enable_endpoint_detection: true, // Automatically finalize tokens on speech pauses
       enable_speaker_diarization: true,

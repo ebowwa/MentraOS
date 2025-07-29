@@ -7,6 +7,7 @@ import {Text} from "@/components/ignite"
 import {router} from "expo-router"
 import StoreIcon from "assets/icons/navbar/StoreIcon"
 import {Icon} from "@/components/ignite"
+import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 
 interface AppListStoreLinkProps {
   onPress?: () => void
@@ -14,12 +15,13 @@ interface AppListStoreLinkProps {
 
 export const AppListStoreLink = ({onPress}: AppListStoreLinkProps) => {
   const {themed, theme} = useAppTheme()
+  const {push} = useNavigationHistory()
 
   const handlePress = () => {
     if (onPress) {
       onPress()
     } else {
-      router.push("/(tabs)/store")
+      push("/(tabs)/store")
     }
   }
 

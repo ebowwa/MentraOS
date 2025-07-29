@@ -35,7 +35,7 @@ export function Switch(props: SwitchToggleProps) {
     (toggleProps: SwitchInputProps) => <SwitchInput {...toggleProps} accessibilityMode={accessibilityMode} />,
     [accessibilityMode],
   )
-  return <Toggle accessibilityRole="switch" {...rest} ToggleInput={switchInput} hitSlop={16} />
+  return <Toggle accessibilityRole="switch" {...rest} ToggleInput={switchInput} hitSlop={rest.hitSlop || 16} />
 }
 
 function SwitchInput(props: SwitchInputProps) {

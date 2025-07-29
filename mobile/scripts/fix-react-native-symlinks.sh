@@ -6,6 +6,16 @@
 # Exit on any error
 set -e
 
+# Check if we're in a "scripts" directory
+current_dir=$(basename "$PWD")
+if [ "$current_dir" = "scripts" ]; then
+    echo "In scripts directory, moving to parent..."
+    cd ..
+    echo "Now in: $PWD"
+else
+    echo "Not in a scripts directory. Current directory: $current_dir"
+fi
+
 # Only run on Unix-like systems
 if [[ "$OSTYPE" != "linux-gnu"* && "$OSTYPE" != "darwin"* ]]; then
   echo "ℹ️  Skipping React Native symlink fix on $OSTYPE"

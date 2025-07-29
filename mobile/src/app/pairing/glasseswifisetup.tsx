@@ -47,7 +47,7 @@ export default function GlassesWifiSetupScreen() {
       <ScrollView
         style={{marginBottom: 20, marginTop: 10, marginRight: -theme.spacing.md, paddingRight: theme.spacing.md}}>
         <View style={themed($content)}>
-          <Text style={themed($subtitle)}>Your {deviceModel} glasses need WiFi to connect to the internet.</Text>
+          <Text style={themed($subtitle)}>Your {deviceModel} glasses needs WiFi to connect to the internet.</Text>
 
           {/* Show current WiFi status if available */}
           {isWifiConnected && currentWifi && (
@@ -59,6 +59,9 @@ export default function GlassesWifiSetupScreen() {
           {!isWifiConnected && (
             <View style={themed($statusContainer)}>
               <Text style={themed($statusText)}>Not connected to WiFi</Text>
+              <Text style={themed($statusText)}>
+                Note: Mentra Live Beta is only compatible with 2.4ghz WiFi networks.
+              </Text>
             </View>
           )}
 

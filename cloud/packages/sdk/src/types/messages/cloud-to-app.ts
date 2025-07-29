@@ -5,17 +5,17 @@ import {
   CloudToAppMessageType,
   GlassesToCloudMessageType,
 } from "../message-types";
-import { StreamType } from "../streams";
+import { ExtendedStreamType, StreamType } from "../streams";
 import { AppSettings, AppConfig, PermissionType } from "../models";
+import { DashboardMode } from "../dashboard";
+import { Capabilities } from "../capabilities";
 import {
   LocationUpdate,
   CalendarEvent,
   RtmpStreamStatus,
   PhotoResponse,
 } from "./glasses-to-cloud";
-import { DashboardMode } from "../dashboard";
-import { Capabilities } from "../capabilities";
-import { AppSession } from "src/app/session";
+import { AppSession } from "../../app/session";
 
 //===========================================================
 // Responses
@@ -89,6 +89,16 @@ export interface SettingsUpdate extends BaseMessage {
   type: CloudToAppMessageType.SETTINGS_UPDATE;
   packageName: string;
   settings: AppSettings;
+}
+
+/**
+ * Device capabilities update to App
+ * Sent when the connected glasses model changes or capabilities are updated
+ */
+export interface CapabilitiesUpdate extends BaseMessage {
+  type: CloudToAppMessageType.CAPABILITIES_UPDATE;
+  capabilities: Capabilities | null;
+  modelName: string | null;
 }
 
 /**
@@ -169,7 +179,7 @@ export interface ToolCall {
  */
 export interface DataStream extends BaseMessage {
   type: CloudToAppMessageType.DATA_STREAM;
-  streamType: StreamType;
+  streamType: ExtendedStreamType;
   data: unknown; // Type depends on the streamType
 }
 
@@ -267,6 +277,7 @@ export type CloudToAppMessage =
   | DataStream
   | AppStopped
   | SettingsUpdate
+  | CapabilitiesUpdate
   | TranscriptionData
   | TranslationData
   | AudioChunk
@@ -318,6 +329,12 @@ export function isSettingsUpdate(
   message: CloudToAppMessage,
 ): message is SettingsUpdate {
   return message.type === CloudToAppMessageType.SETTINGS_UPDATE;
+}
+
+export function isCapabilitiesUpdate(
+  message: CloudToAppMessage,
+): message is CapabilitiesUpdate {
+  return message.type === CloudToAppMessageType.CAPABILITIES_UPDATE;
 }
 
 export function isDataStream(

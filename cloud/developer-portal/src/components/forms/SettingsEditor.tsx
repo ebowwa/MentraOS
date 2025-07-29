@@ -1182,10 +1182,8 @@ const SettingsEditor: React.FC<SettingsEditorProps> = ({
       </div>
 
       {settings.length === 0 ? (
-        <div className="text-center py-8 text-gray-500">
-          <Settings className="h-12 w-12 mx-auto mb-2 opacity-50" />
+        <div className="text-center py-4 text-gray-500">
           <p>No settings defined yet.</p>
-          <p className="text-sm">Add your first setting to get started.</p>
         </div>
       ) : (
         <DndContext
