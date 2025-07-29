@@ -100,8 +100,14 @@ app.get("/webview", (req: AuthenticatedRequest, res) => {
 If the user isn't logged in automatically, you can redirect them to the MentraOS OAuth flow by redirecting them to the `/mentra-auth` endpoint.
 
 ```html
-<a href="/mentra-auth">Login with Mentra</a>
+<a href="/mentra-auth">
+  <img src="https://account.mentra.glass/sign-in-mentra.png" alt="Sign in with Mentra" />
+</a>
 ```
+
+![Sign in with Mentra](https://account.mentra.glass/sign-in-mentra.png)
+
+You can use the "Sign in with Mentra" image as the login button: `https://account.mentra.glass/sign-in-mentra.png`
 
 ## Common Use Cases
 
