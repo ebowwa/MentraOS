@@ -2147,6 +2147,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     public void setEnforceLocalTranscription(boolean enforceLocalTranscription) {
         SmartGlassesManager.saveEnforceLocalTranscription(this, enforceLocalTranscription);
         sendStatusToBackend();
+        sendStatusToAugmentOsManager();
     }
 
     @Override

@@ -27,4 +27,7 @@ public abstract class SpeechRecFramework {
 
     public void changeBypassVadForDebuggingState(boolean bypassVadForDebugging) {
     }
+
+    public void changeEnforceLocalTranscriptionState(boolean enforceLocalTranscription) {
+    }
 }
