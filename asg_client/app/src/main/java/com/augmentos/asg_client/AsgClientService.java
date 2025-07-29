@@ -22,8 +22,6 @@ import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
 import android.util.Log;
-import android.view.View;
-import android.widget.FrameLayout;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -35,8 +33,6 @@ import androidx.core.app.NotificationCompat;
 import androidx.preference.PreferenceManager;
 
 import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
 
 import com.augmentos.asg_client.streaming.RtmpStreamingService;
 import com.augmentos.augmentos_core.AugmentosService;
@@ -49,10 +45,10 @@ import com.augmentos.asg_client.camera.MediaUploadQueueManager;
 import com.augmentos.asg_client.network.INetworkManager;
 import com.augmentos.asg_client.network.NetworkManagerFactory;
 import com.augmentos.asg_client.network.NetworkStateListener; // Make sure this is the correct import path for your library
-import com.augmentos.augmentos_core.smarterglassesmanager.camera.CameraRecordingService;
-import com.augmentos.augmentos_core.smarterglassesmanager.utils.K900ProtocolUtils;
+
 import org.greenrobot.eventbus.EventBus;
 import com.augmentos.asg_client.events.BatteryStatusEvent;
+import com.augmentos.asg_client.reporting.ReportUtils;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Iterator;
@@ -220,6 +216,9 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     public void onCreate() {
         super.onCreate();
         Log.d(TAG, "AsgClientService onCreate");
+        
+            // Initialize reporting for this service
+    ReportUtils.reportServiceEvent(this, "AsgClientService", "created");
 
         // Enable WiFi when service starts
         openWifi(this, true);
