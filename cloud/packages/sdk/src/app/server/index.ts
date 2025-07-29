@@ -159,6 +159,7 @@ export class AppServer {
     this.setupHealthCheck();
     this.setupToolCallEndpoint();
     this.setupPhotoUploadEndpoint();
+    this.setupMentraAuthRedirect();
     this.setupPublicDir();
     this.setupShutdown();
   }
@@ -708,6 +709,21 @@ export class AppServer {
         }
       },
     );
+  }
+
+  /**
+   * 🔐 Setup Mentra Auth Redirect Endpoint
+   * Creates a /mentra-auth endpoint that redirects to the MentraOS OAuth flow.
+   */
+  private setupMentraAuthRedirect(): void {
+    this.app.get("/mentra-auth", (req, res) => {
+      // Redirect to the account.mentra.glass OAuth flow with the app's package name
+      const authUrl = `https://account.mentra.glass/auth?packagename=${encodeURIComponent(this.config.packageName)}`;
+
+      this.logger.info(`🔐 Redirecting to MentraOS OAuth flow: ${authUrl}`);
+
+      res.redirect(302, authUrl);
+    });
   }
 
   /**

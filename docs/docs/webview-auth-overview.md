@@ -21,18 +21,27 @@ app.get("/webview", (req: AuthenticatedRequest, res) => {
     res.send(`Welcome user ${userId}!`)
   } else {
     // User is not authenticated
-    res.send("Please open this page from the MentraOS app")
+    res.send("Please open this page from the MentraOS app, or <a href='/mentra-auth'>login with Mentra</a>")
   }
 })
 ```
 
 ## What Is Webview Authentication?
 
-Webview authentication lets your web application identify MentraOS users without requiring them to log in separately. When a user opens your webview through the MentraOS Mobile App:
+Webview authentication lets your web application identify MentraOS users without requiring them to log in separately
+
+### When a user opens your webview through the MentraOS Mobile App:
 
 1. The manager app automatically appends a temporary authentication token to your URL
 2. The MentraOS SDK middleware automatically exchanges this token for the user's ID
 3. Your webview can then provide a personalized experience based on the user's identity
+
+### When a user opens your website through their browser on their phone or computer:
+
+1. You can redirect them to the MentraOS OAuth flow by redirecting them to the `/mentra-auth` endpoint.
+2. The MentraOS OAuth flow will redirect them back to your website's main webview url, with a token in the query parameters.
+3. The MentraOS SDK will automatically exchange this token for the user's ID.
+4. Your webview can then provide a personalized experience based on the user's identity.
 
 ## How It Works
 
@@ -84,6 +93,14 @@ app.get("/webview", (req: AuthenticatedRequest, res) => {
     })
   }
 })
+```
+
+### 4. Redirect to the MentraOS OAuth flow if the user isn't logged in automatically
+
+If the user isn't logged in automatically, you can redirect them to the MentraOS OAuth flow by redirecting them to the `/mentra-auth` endpoint.
+
+```html
+<a href="/mentra-auth">Login with Mentra</a>
 ```
 
 ## Common Use Cases

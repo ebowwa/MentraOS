@@ -1,6 +1,6 @@
-import React from 'react';
-import { Link, useLocation, Navigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
+import React from "react";
+import { Link, useLocation, Navigate } from "react-router-dom";
+import { useAuth } from "../hooks/useAuth";
 
 interface AccountLayoutProps {
   children: React.ReactNode;
@@ -9,7 +9,7 @@ interface AccountLayoutProps {
 const AccountLayout: React.FC<AccountLayoutProps> = ({ children }) => {
   const location = useLocation();
   const { isAuthenticated, loading, signOut } = useAuth();
-  
+
   // If still loading, show loading state
   if (loading) {
     return (
@@ -18,12 +18,12 @@ const AccountLayout: React.FC<AccountLayoutProps> = ({ children }) => {
       </div>
     );
   }
-  
+
   // If not authenticated, redirect to login
   if (!isAuthenticated) {
     return <Navigate to="/login" state={{ from: location.pathname }} replace />;
   }
-  
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -31,10 +31,10 @@ const AccountLayout: React.FC<AccountLayoutProps> = ({ children }) => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
           <div className="flex items-center">
             <Link to="/" className="text-xl font-bold text-gray-900">
-              AugmentOS Account
+              Mentra Account
             </Link>
           </div>
-          
+
           <div>
             <button
               onClick={() => signOut()}
@@ -45,7 +45,7 @@ const AccountLayout: React.FC<AccountLayoutProps> = ({ children }) => {
           </div>
         </div>
       </header>
-      
+
       {/* Main content */}
       <main>
         <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
@@ -62,12 +62,10 @@ const AccountLayout: React.FC<AccountLayoutProps> = ({ children }) => {
                 </div>
               </div>
             </div>
-            
+
             {/* Content */}
             <div className="flex-1 bg-white shadow rounded-lg">
-              <div className="px-4 py-5 sm:p-6">
-                {children}
-              </div>
+              <div className="px-4 py-5 sm:p-6">{children}</div>
             </div>
           </div>
         </div>
@@ -77,17 +75,23 @@ const AccountLayout: React.FC<AccountLayoutProps> = ({ children }) => {
 };
 
 // NavLink component with active state handling
-const NavLink = ({ to, children }: { to: string; children: React.ReactNode }) => {
+const NavLink = ({
+  to,
+  children,
+}: {
+  to: string;
+  children: React.ReactNode;
+}) => {
   const location = useLocation();
   const isActive = location.pathname === to;
-  
+
   return (
     <Link
       to={to}
       className={`flex items-center px-3 py-2 text-sm font-medium rounded-md ${
         isActive
-          ? 'bg-blue-50 text-blue-700'
-          : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
+          ? "bg-blue-50 text-blue-700"
+          : "text-gray-700 hover:bg-gray-50 hover:text-gray-900"
       }`}
     >
       {children}

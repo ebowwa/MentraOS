@@ -155,8 +155,7 @@ const en = {
     reconnectOnAppForegroundSubtitle:
       "Automatically attempt to reconnect to glasses when the app comes back to the foreground.",
     powerSavingMode: "Power Saving Mode",
-    powerSavingModeSubtitle:
-      "Allows the display to fully turn off. May briefly show \"Even AI Listening\".",
+    powerSavingModeSubtitle: 'Allows the display to fully turn off. May briefly show "Even AI Listening".',
     powerSavingModeSubtitle2: "TODO",
   },
   profileSettings: {
@@ -182,7 +181,7 @@ const en = {
     deleteAccountMessage: "Are you sure you want to delete your account? This action cannot be undone.",
     deleteAccountWarning1Title: "⚠️ WARNING",
     deleteAccountWarning1Message:
-      "You are about to permanently delete your AugmentOS account. This action is IRREVERSIBLE.",
+      "You are about to permanently delete your Mentra account. This action is IRREVERSIBLE.",
     deleteAccountWarning2Title: "🚨 FINAL WARNING",
     deleteAccountWarning2Message:
       "This will PERMANENTLY DELETE:\n• All your data\n• All your settings\n• All your app configurations\n• Your entire account history\n\nThere is NO way to recover this data!",
