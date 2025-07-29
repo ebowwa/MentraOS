@@ -1,7 +1,13 @@
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '../hooks/useAuth';
-import DashboardLayout from '../components/DashboardLayout';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
+import React, { useState, useEffect } from "react";
+import { useAuth } from "../hooks/useAuth";
+import DashboardLayout from "../components/DashboardLayout";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
@@ -55,7 +61,11 @@ const AccountPage: React.FC = () => {
                     <Label htmlFor="displayName">Display Name</Label>
                     <Input
                       id="displayName"
-                      value={user?.user_metadata?.full_name || user?.email?.split('@')[0] || ""}
+                      value={
+                        user?.user_metadata?.full_name ||
+                        user?.email?.split("@")[0] ||
+                        ""
+                      }
                       disabled
                       className="bg-gray-100"
                     />
@@ -73,14 +83,14 @@ const AccountPage: React.FC = () => {
             <CardHeader>
               <CardTitle>Connected Services</CardTitle>
               <CardDescription>
-                Manage your connections to AugmentOS services
+                Manage your connections to Mentra services
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
                 <div className="flex items-center justify-between py-2 border-b">
                   <div>
-                    <h3 className="font-medium">AugmentOS App Store</h3>
+                    <h3 className="font-medium">Mentra App Store</h3>
                     <p className="text-sm text-gray-500">Access apps for your smart glasses</p>
                   </div>
                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
@@ -90,8 +100,8 @@ const AccountPage: React.FC = () => {
 
                 <div className="flex items-center justify-between py-2 border-b">
                   <div>
-                    <h3 className="font-medium">AugmentOS Developer Portal</h3>
-                    <p className="text-sm text-gray-500">Develop apps for AugmentOS</p>
+                    <h3 className="font-medium">Mentra Developer Portal</h3>
+                    <p className="text-sm text-gray-500">Develop apps for Mentra</p>
                   </div>
                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
                     Not Connected
@@ -100,7 +110,7 @@ const AccountPage: React.FC = () => {
 
                 <div className="flex items-center justify-between py-2">
                   <div>
-                    <h3 className="font-medium">AugmentOS Mobile App</h3>
+                    <h3 className="font-medium">Mentra Mobile App</h3>
                     <p className="text-sm text-gray-500">Manage your smart glasses</p>
                   </div>
                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
@@ -154,7 +164,7 @@ const AccountPage: React.FC = () => {
                       Account Created
                     </p>
                     <p className="text-sm text-gray-500">
-                      Welcome to AugmentOS!
+                      Welcome to Mentra!
                     </p>
                   </div>
                   <div className="ml-4 flex-shrink-0">

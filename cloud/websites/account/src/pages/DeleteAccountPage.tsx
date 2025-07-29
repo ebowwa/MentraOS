@@ -73,8 +73,7 @@ const DeleteAccountPage: React.FC = () => {
             <CardHeader>
               <CardTitle className="text-red-600">Delete Account</CardTitle>
               <CardDescription>
-                Permanently delete your AugmentOS account and all associated
-                data
+                Permanently delete your Mentra account and all associated data
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -85,7 +84,7 @@ const DeleteAccountPage: React.FC = () => {
                   </h3>
                   <ul className="list-disc list-inside space-y-1 text-sm text-red-700">
                     <li>Your account profile will be permanently deleted</li>
-                    <li>You will lose access to all your AugmentOS apps</li>
+                    <li>You will lose access to all your MentraOS apps</li>
                     <li>Your usage history and preferences will be deleted</li>
                     <li>Your device connections will be removed</li>
                     <li>This cannot be reversed</li>
