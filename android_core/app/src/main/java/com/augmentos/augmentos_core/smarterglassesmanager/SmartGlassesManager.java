@@ -911,11 +911,14 @@ public class SmartGlassesManager extends Service {
      * @return The Bluetooth device name, or null if not available
      */
     public String getConnectedSmartGlassesBluetoothName() {
-        if (getConnectedSmartGlasses() == null) {
+        SmartGlassesDevice connectedDevice = getConnectedSmartGlasses();
+        Log.d(TAG, "getConnectedSmartGlassesBluetoothName: connectedDevice = " + (connectedDevice != null ? connectedDevice.deviceModelName : "null"));
+        
+        if (connectedDevice == null) {
             return null;
         }
 
-        String modelName = getConnectedSmartGlasses().deviceModelName;
+        String modelName = connectedDevice.deviceModelName;
 
         if (modelName == null) {
             return null;
@@ -924,13 +927,16 @@ public class SmartGlassesManager extends Service {
         // For Mentra Live glasses
         if (modelName.equals(new MentraLive().deviceModelName)) {
             SharedPreferences prefs = getSharedPreferences("MentraLivePrefs", Context.MODE_PRIVATE);
-            return prefs.getString("LastConnectedDeviceName", null);
+            String btName = prefs.getString("LastConnectedDeviceName", null);
+            Log.d(TAG, "getConnectedSmartGlassesBluetoothName: Mentra Live BT name = " + btName);
+            return btName;
         }
         
         // For Even Realities G1 glasses
         if (modelName.equals(new EvenRealitiesG1().deviceModelName)) {
             SharedPreferences prefs = getSharedPreferences("EvenRealitiesPrefs", Context.MODE_PRIVATE);
             String savedDeviceId = prefs.getString("SAVED_G1_ID_KEY", null);
+            Log.d(TAG, "getConnectedSmartGlassesBluetoothName: Even Realities G1 device ID = " + savedDeviceId);
             
             // The saved device ID is something like "G1_123", return it as is
             // Could also get left/right names separately if needed:
@@ -941,6 +947,7 @@ public class SmartGlassesManager extends Service {
         }
         
         // For other glasses types that don't store BT names
+        Log.d(TAG, "getConnectedSmartGlassesBluetoothName: No BT name for device type: " + modelName);
         return null;
     }
 

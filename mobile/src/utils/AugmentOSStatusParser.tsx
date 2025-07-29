@@ -252,6 +252,7 @@ export class AugmentOSParser {
               glasses_serial_number: glassesInfo.glasses_serial_number,
               glasses_style: glassesInfo.glasses_style,
               glasses_color: glassesInfo.glasses_color,
+              bluetooth_name: glassesInfo.bluetooth_name,
             }
           : null,
         glasses_settings: {
