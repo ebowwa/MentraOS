@@ -165,6 +165,10 @@ class Mach1Manager: UltraliteBaseViewController {
         device.screenOff()
     }
 
+    func getConnectedBluetoothName() -> String? {
+        return UltraliteManager.shared.currentDevice?.peripheral?.name
+    }
+
     func disconnect() {
         UltraliteManager.shared.stopScan()
         ready = false

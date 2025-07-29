@@ -895,6 +895,10 @@ typealias JSONObject = [String: Any]
         }
     }
 
+    @objc func getConnectedBluetoothName() -> String? {
+        return connectedPeripheral?.name
+    }
+
     @objc func disconnect() {
         CoreCommsService.log("Disconnecting from Mentra Live glasses")
 

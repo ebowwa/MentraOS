@@ -1446,6 +1446,11 @@ struct ViewState {
             }
         }
 
+        // Add Bluetooth device name if available
+        if let bluetoothName = getConnectedGlassesBluetoothName() {
+            connectedGlasses["bluetooth_name"] = bluetoothName
+        }
+
         glassesSettings = [
             "brightness": brightness,
             "auto_brightness": autoBrightness,
@@ -1957,6 +1962,25 @@ struct ViewState {
 
         CoreCommsService.log("AOS: Settings loaded: Default Wearable: \(defaultWearable ?? "None"), Preferred Mic: \(preferredMic), " +
             "Contextual Dashboard: \(contextualDashboard), Head Up Angle: \(headUpAngle), Brightness: \(brightness)")
+    }
+
+    // MARK: - Helper Functions
+
+    private func getConnectedGlassesBluetoothName() -> String? {
+        // Check each connected glasses type and return the Bluetooth name
+        if let liveManager = liveManager, liveManager.glassesReady {
+            return liveManager.getConnectedBluetoothName()
+        }
+
+        if let g1Manager = g1Manager, g1Manager.g1Ready {
+            return g1Manager.getConnectedBluetoothName()
+        }
+
+        if let mach1Manager = mach1Manager, mach1Manager.ready {
+            return mach1Manager.getConnectedBluetoothName()
+        }
+
+        return nil
     }
 
     // MARK: - Cleanup
