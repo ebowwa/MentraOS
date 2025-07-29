@@ -54,12 +54,10 @@ const LoginPage: React.FC = () => {
         <div className="max-w-md w-full bg-white p-8 rounded-lg shadow-md flex flex-col items-center">
           {/* Logo and Site Name */}
           <div className="flex items-end select-none">
-            <h1 className="font-mono font-bold text-5xl">.</h1>
-            <h1 className="font-mono font-bold text-5xl">\</h1>
-            <h1 className="font-light text-2xl pb-0.5 pl-1 text-gray-800">
-              ugment
-            </h1>
-            <h1 className="font-bold text-2xl pb-0.5">OS</h1>
+            <img
+              src="https://imagedelivery.net/nrc8B2Lk8UIoyW7fY8uHVg/757b23a3-9ec0-457d-2634-29e28f03fe00/verysmall"
+              alt="Mentra Logo"
+            />
           </div>
           <span className="ml-2 font-medium text-lg text-gray-800 mb-6">
             Account
