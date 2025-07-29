@@ -1,8 +1,9 @@
 import React, {useState, useEffect, useRef} from "react"
-import {View, Modal, ActivityIndicator} from "react-native"
+import {View, Modal, ActivityIndicator, Button} from "react-native"
 import {Screen, Header, Text} from "@/components/ignite"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {translate} from "@/i18n"
+import * as Sentry from '@sentry/react-native'
 
 import {useStatus} from "@/contexts/AugmentOSStatusProvider"
 import showAlert from "@/utils/AlertUtils"
@@ -144,6 +145,13 @@ export default function SettingsPage() {
             onPress={() => push("/settings/developer")}
           />
         )}
+
+        <Button 
+          title='Try!' 
+          onPress={() => { 
+            Sentry.captureException(new Error('First error')) 
+          }}
+        />
 
         <ActionButton label={translate("settings:signOut")} variant="destructive" onPress={confirmSignOut} />
       </View>
