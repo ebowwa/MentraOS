@@ -715,6 +715,8 @@ public class AsgClientService extends Service implements NetworkStateListener, B
 
         // Initialize the bluetooth manager
         bluetoothManager.initialize();
+
+        //sendReportSwipe(true);
     }
 
     /**
@@ -1342,6 +1344,24 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         Log.d(TAG, "WiFi credentials received for network: " + ssid);
         // After receiving credentials, we'll likely connect to WiFi,
         // and onWifiStateChanged will be called, which will send status via BLE
+    }
+
+    private void sendReportSwipe(boolean report){
+        try {
+            JSONObject swipeJson = new JSONObject();
+            swipeJson.put("C", "cs_swst");
+            JSONObject bJson = new JSONObject();
+            bJson.put("type", 27);
+            bJson.put("switch", report);
+            swipeJson.put("B", bJson);
+            swipeJson.put("V", 1);
+            String jsonString = swipeJson.toString();
+            bluetoothManager.sendData(jsonString.getBytes());
+
+            Log.d(TAG, "Sent swipeJson status via BLE");
+        } catch (JSONException e) {
+            Log.e(TAG, "Error creating swipe JSON", e);
+        }
     }
 
     /**
@@ -2319,6 +2339,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
             versionInfo.put("build_number", buildNumber);
             versionInfo.put("device_model", android.os.Build.MODEL);
             versionInfo.put("android_version", android.os.Build.VERSION.RELEASE);
+            versionInfo.put("ota_version_url", com.augmentos.asg_client.ota.Constants.VERSION_JSON_URL);
 
             if (bluetoothManager != null && bluetoothManager.isConnected()) {
                 bluetoothManager.sendData(versionInfo.toString().getBytes(StandardCharsets.UTF_8));

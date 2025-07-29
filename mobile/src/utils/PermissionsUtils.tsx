@@ -376,8 +376,23 @@ export const requestFeaturePermissions = async (featureKey: string): Promise<boo
   // For Android
   if (Platform.OS === "android" && config.android.length > 0) {
     try {
+      // Filter out any null/undefined permissions before requesting
+      console.log(`${featureKey} original permissions:`, config.android)
+      console.log(
+        `${featureKey} permission values:`,
+        config.android.map(p => `${p} (${typeof p})`),
+      )
+
+      const validPermissions = config.android.filter(permission => permission != null)
+      console.log(`${featureKey} valid permissions after filtering:`, validPermissions)
+
+      if (validPermissions.length === 0) {
+        console.warn(`No valid permissions to request for feature: ${featureKey}`)
+        return false
+      }
+
       // Request all permissions for this feature
-      const results = await PermissionsAndroid.requestMultiple(config.android)
+      const results = await PermissionsAndroid.requestMultiple(validPermissions)
       console.log(`${featureKey} permissions results:`, results)
 
       // Check each permission result

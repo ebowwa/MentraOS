@@ -885,7 +885,10 @@ export class SubscriptionService {
   private isValidSubscription(subscription: ExtendedStreamType): boolean {
     // 1. Check for standard StreamType enum values
     if (Object.values(StreamType).includes(subscription as StreamType)) {
-      logger.debug({ subscription }, "Subscription is a valid standard StreamType");
+      logger.debug(
+        { subscription },
+        "Subscription is a valid standard StreamType",
+      );
       return true;
     }
 
@@ -902,8 +905,14 @@ export class SubscriptionService {
     // This relies on the SDK's isLanguageStream, which correctly handles query
     // parameters by stripping them before validating the language code.
 
-    logger.debug({ subscription }, "Checking if subscription is a language stream");
-    logger.debug({ isLanguageStream: isLanguageStream(subscription) }, "isLanguageStream result");
+    logger.debug(
+      { subscription },
+      "Checking if subscription is a language stream",
+    );
+    logger.debug(
+      { isLanguageStream: isLanguageStream(subscription) },
+      "isLanguageStream result",
+    );
 
     if (isLanguageStream(subscription)) {
       const langInfo = parseLanguageStream(subscription);
