@@ -65,9 +65,12 @@ export default function PairingPrepScreen() {
           const bluetoothPermissions: any[] = []
 
           // Bluetooth permissions based on Android version
-          if (typeof Platform.Version === "number" && Platform.Version >= 30 && Platform.Version < 31) {
-            bluetoothPermissions.push(PermissionsAndroid.PERMISSIONS.BLUETOOTH)
-            bluetoothPermissions.push(PermissionsAndroid.PERMISSIONS.BLUETOOTH_ADMIN)
+          if (typeof Platform.Version === "number" && Platform.Version < 31) {
+            // For Android 9, 10, and 11 (API 28-30), use legacy Bluetooth permissions
+            bluetoothPermissions.push(PermissionsAndroid.PERMISSIONS.BLUETOOTH || "android.permission.BLUETOOTH")
+            bluetoothPermissions.push(
+              PermissionsAndroid.PERMISSIONS.BLUETOOTH_ADMIN || "android.permission.BLUETOOTH_ADMIN",
+            )
           }
           if (typeof Platform.Version === "number" && Platform.Version >= 31) {
             bluetoothPermissions.push(PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN)
@@ -75,14 +78,31 @@ export default function PairingPrepScreen() {
             bluetoothPermissions.push(PermissionsAndroid.PERMISSIONS.BLUETOOTH_ADVERTISE)
 
             // Add NEARBY_DEVICES permission for Android 12+ (API 31+)
-            if (PermissionsAndroid.PERMISSIONS.NEARBY_DEVICES) {
+            // Only add if the permission is defined and not null
+            if (PermissionsAndroid.PERMISSIONS.NEARBY_DEVICES != null) {
               bluetoothPermissions.push(PermissionsAndroid.PERMISSIONS.NEARBY_DEVICES)
             }
           }
 
           // Request Bluetooth permissions directly
           if (bluetoothPermissions.length > 0) {
-            const results = await PermissionsAndroid.requestMultiple(bluetoothPermissions)
+            console.log("RIGHT BEFORE ASKING FOR PERMS")
+            console.log("Bluetooth permissions array:", bluetoothPermissions)
+            console.log(
+              "Bluetooth permission values:",
+              bluetoothPermissions.map(p => `${p} (${typeof p})`),
+            )
+
+            // Filter out any null/undefined permissions
+            const validBluetoothPermissions = bluetoothPermissions.filter(permission => permission != null)
+            console.log("Valid Bluetooth permissions after filtering:", validBluetoothPermissions)
+
+            if (validBluetoothPermissions.length === 0) {
+              console.warn("No valid Bluetooth permissions to request")
+              return
+            }
+
+            const results = await PermissionsAndroid.requestMultiple(validBluetoothPermissions)
             const allGranted = Object.values(results).every(value => value === PermissionsAndroid.RESULTS.GRANTED)
 
             // Since we now handle NEVER_ASK_AGAIN in requestFeaturePermissions,

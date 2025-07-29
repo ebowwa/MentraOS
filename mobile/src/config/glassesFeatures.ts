@@ -1,16 +1,29 @@
-export type GlassesFeature = "camera" | "speakers" | "microphone" | "display" | "binocular" | "wifi" | "imu" | "powerSavingMode"
+/* 
+  Use this file to describe which features a given pair of glasses supports.
+*/
+
+export type GlassesFeature =
+  | "camera"
+  | "speakers"
+  | "microphone"
+  | "display"
+  | "binocular"
+  | "wifi"
+  | "imu"
+  | "powerSavingMode"
 
 export type MicType = "none" | "sco" | "custom"
 
 export interface GlassesFeatureSet {
-  camera: boolean
-  speakers: boolean
-  display: boolean
-  binocular: boolean
-  wifi: boolean
-  imu: boolean
-  micTypes: MicType[]
-  powerSavingMode: boolean
+  camera: boolean // Do the glasses contain a camera?
+  speakers: boolean // Do the glasses have onboard speakers?
+  display: boolean // Do the glasses have a display?
+  binocular: boolean // Do the glasses have 2x displays- one for each eye?
+  wifi: boolean // Do the glasses connect to wifi?
+  wifiSelfOtaUpdate: boolean // Do the glasses update their software automatically when connected to wifi?
+  imu: boolean // Do the glasses contain an IMU?
+  micTypes: MicType[] // Which types of microphone do the glasses support?
+  powerSavingMode: boolean // Do the glasses have a power saving mode?
 }
 
 export const glassesFeatures: Record<string, GlassesFeatureSet> = {
@@ -20,6 +33,7 @@ export const glassesFeatures: Record<string, GlassesFeatureSet> = {
     display: true,
     binocular: true,
     wifi: false,
+    wifiSelfOtaUpdate: false,
     imu: true,
     micTypes: ["custom"],
     powerSavingMode: true,
@@ -30,6 +44,7 @@ export const glassesFeatures: Record<string, GlassesFeatureSet> = {
     display: true,
     binocular: false,
     wifi: false,
+    wifiSelfOtaUpdate: false,
     imu: false,
     micTypes: ["none"],
     powerSavingMode: false,
@@ -40,6 +55,7 @@ export const glassesFeatures: Record<string, GlassesFeatureSet> = {
     display: false,
     binocular: false,
     wifi: true,
+    wifiSelfOtaUpdate: true,
     imu: false,
     micTypes: ["sco"],
     powerSavingMode: false,
@@ -50,6 +66,7 @@ export const glassesFeatures: Record<string, GlassesFeatureSet> = {
     display: true,
     binocular: false,
     wifi: false,
+    wifiSelfOtaUpdate: false,
     imu: false,
     micTypes: ["none"],
     powerSavingMode: false,
@@ -60,6 +77,7 @@ export const glassesFeatures: Record<string, GlassesFeatureSet> = {
     display: false,
     binocular: false,
     wifi: false,
+    wifiSelfOtaUpdate: false,
     imu: false,
     micTypes: ["sco"],
     powerSavingMode: false,
@@ -70,6 +88,7 @@ export const glassesFeatures: Record<string, GlassesFeatureSet> = {
     display: true,
     binocular: false,
     wifi: false,
+    wifiSelfOtaUpdate: false,
     imu: false,
     micTypes: ["sco"],
     powerSavingMode: false,

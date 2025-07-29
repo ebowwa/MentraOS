@@ -38,6 +38,7 @@ import {SETTINGS_KEYS} from "@/consts"
 import {isDeveloperBuildOrTestflight} from "@/utils/buildDetection"
 import {SvgXml} from "react-native-svg"
 import OtaProgressSection from "./OtaProgressSection"
+import InfoSection from "@/components/ui/InfoSection"
 
 // Icon components defined directly in this file to avoid path resolution issues
 interface CaseIconProps {
@@ -437,43 +438,17 @@ export default function DeviceSettings() {
         />
       )}
 
-      {/* Show ASG Client version info for Mentra Live glasses */}
-      {status.glasses_info?.model_name?.toLowerCase().includes("mentra live") &&
-        (status.glasses_info.glasses_app_version || status.glasses_info.glasses_build_number) && (
-          <View style={themed($settingsGroup)}>
-            <Text style={[themed($subtitle), {marginBottom: theme.spacing.xs}]}>Glasses Software Version</Text>
-            {/* {status.glasses_info.glasses_app_version && (
-            <View style={{flexDirection: "row", justifyContent: "space-between", paddingVertical: 4}}>
-              <Text style={{color: theme.colors.text}}>App Version</Text>
-              <Text style={{color: theme.colors.textDim}}>{status.glasses_info.glasses_app_version}</Text>
-            </View>
-          )} */}
-            {status.glasses_info.glasses_build_number && (
-              <View style={{flexDirection: "row", justifyContent: "space-between", paddingVertical: 4}}>
-                <Text style={{color: theme.colors.text}}>Build Number</Text>
-                <Text style={{color: theme.colors.textDim}}>{status.glasses_info.glasses_build_number}</Text>
-              </View>
-            )}
-            {status.glasses_info.glasses_wifi_local_ip && status.glasses_info.glasses_wifi_local_ip !== "" && (
-              <View style={{flexDirection: "row", justifyContent: "space-between", paddingVertical: 4}}>
-                <Text style={{color: theme.colors.text}}>Local IP Address</Text>
-                <Text style={{color: theme.colors.textDim}}>{status.glasses_info.glasses_wifi_local_ip}</Text>
-              </View>
-            )}
-            {/* {status.glasses_info.glasses_device_model && (
-            <View style={{flexDirection: "row", justifyContent: "space-between", paddingVertical: 4}}>
-              <Text style={{color: theme.colors.text}}>Device Model</Text>
-              <Text style={{color: theme.colors.textDim}}>{status.glasses_info.glasses_device_model}</Text>
-            </View>
-          )} */}
-            {/* {status.glasses_info.glasses_android_version && (
-            <View style={{flexDirection: "row", justifyContent: "space-between", paddingVertical: 4}}>
-              <Text style={{color: theme.colors.text}}>Android Version</Text>
-              <Text style={{color: theme.colors.textDim}}>{status.glasses_info.glasses_android_version}</Text>
-            </View>
-          )} */}
-          </View>
-        )}
+      {/* Show device info for glasses */}
+      {status.glasses_info?.model_name && (
+        <InfoSection
+          title="Device Information"
+          items={[
+            {label: "Bluetooth Name", value: status.glasses_info.bluetooth_name},
+            {label: "Build Number", value: status.glasses_info.glasses_build_number},
+            {label: "Local IP Address", value: status.glasses_info.glasses_wifi_local_ip},
+          ]}
+        />
+      )}
 
       {/* OTA Progress Section - Only show for Mentra Live glasses */}
       {status.glasses_info?.model_name?.toLowerCase().includes("mentra live") && (

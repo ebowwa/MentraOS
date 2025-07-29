@@ -710,6 +710,14 @@ enum GlassesError: Error {
         ]
     }
 
+    func getConnectedBluetoothName() -> String? {
+        // Return the name of the first connected peripheral (either left or right)
+        if let leftName = leftPeripheral?.name {
+            return leftName
+        }
+        return rightPeripheral?.name
+    }
+
     func disconnect() {
         isDisconnecting = true
         leftGlassUUID = nil
