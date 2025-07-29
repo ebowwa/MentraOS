@@ -1,11 +1,14 @@
 // src/messages/cloud-to-app.ts
 
-import { BaseMessage } from './base';
-import { CloudToAppMessageType, GlassesToCloudMessageType } from '../message-types';
-import { ExtendedStreamType, StreamType } from '../streams';
-import { AppSettings, AppConfig, PermissionType } from '../models';
-import { DashboardMode } from '../dashboard';
-import { Capabilities } from '../capabilities';
+import { BaseMessage } from "./base";
+import {
+  CloudToAppMessageType,
+  GlassesToCloudMessageType,
+} from "../message-types";
+import { ExtendedStreamType, StreamType } from "../streams";
+import { AppSettings, AppConfig, PermissionType } from "../models";
+import { DashboardMode } from "../dashboard";
+import { Capabilities } from "../capabilities";
 import {
   LocationUpdate,
   CalendarEvent,
@@ -86,6 +89,16 @@ export interface SettingsUpdate extends BaseMessage {
   type: CloudToAppMessageType.SETTINGS_UPDATE;
   packageName: string;
   settings: AppSettings;
+}
+
+/**
+ * Device capabilities update to App
+ * Sent when the connected glasses model changes or capabilities are updated
+ */
+export interface CapabilitiesUpdate extends BaseMessage {
+  type: CloudToAppMessageType.CAPABILITIES_UPDATE;
+  capabilities: Capabilities | null;
+  modelName: string | null;
 }
 
 /**
@@ -228,12 +241,12 @@ export interface OutputStatus {
 export interface ManagedStreamStatus extends BaseMessage {
   type: CloudToAppMessageType.MANAGED_STREAM_STATUS;
   status:
-  | "initializing"
-  | "preparing"
-  | "active"
-  | "stopping"
-  | "stopped"
-  | "error";
+    | "initializing"
+    | "preparing"
+    | "active"
+    | "stopping"
+    | "stopped"
+    | "error";
   hlsUrl?: string;
   dashUrl?: string;
   webrtcUrl?: string;
@@ -264,6 +277,7 @@ export type CloudToAppMessage =
   | DataStream
   | AppStopped
   | SettingsUpdate
+  | CapabilitiesUpdate
   | TranscriptionData
   | TranslationData
   | AudioChunk
@@ -315,6 +329,12 @@ export function isSettingsUpdate(
   message: CloudToAppMessage,
 ): message is SettingsUpdate {
   return message.type === CloudToAppMessageType.SETTINGS_UPDATE;
+}
+
+export function isCapabilitiesUpdate(
+  message: CloudToAppMessage,
+): message is CapabilitiesUpdate {
+  return message.type === CloudToAppMessageType.CAPABILITIES_UPDATE;
 }
 
 export function isDataStream(

@@ -20,6 +20,7 @@ export {
   AppConnectionError,
   AppStopped,
   SettingsUpdate as AppSettingsUpdate, // Alias to avoid conflict with cloud-to-glasses SettingsUpdate
+  CapabilitiesUpdate,
   DataStream,
   CloudToAppMessage,
   AudioPlayResponse,
@@ -39,6 +40,7 @@ export {
   isAppConnectionError,
   isAppStopped,
   isSettingsUpdate,
+  isCapabilitiesUpdate,
   isDataStream,
   isAudioChunk,
   isAudioPlayResponse,
