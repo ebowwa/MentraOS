@@ -179,6 +179,7 @@ const UserSchema = new Schema<UserI>(
         alwaysOnStatusBar: { type: Boolean, default: false },
         bypassVad: { type: Boolean, default: false },
         bypassAudioEncoding: { type: Boolean, default: false },
+        enforceLocalTranscription: { type: Boolean, default: false },
       },
       default: function () {
         return {
@@ -194,6 +195,7 @@ const UserSchema = new Schema<UserI>(
           alwaysOnStatusBar: false,
           bypassVad: false,
           bypassAudioEncoding: false,
+          enforceLocalTranscription: false,
         };
       },
     },

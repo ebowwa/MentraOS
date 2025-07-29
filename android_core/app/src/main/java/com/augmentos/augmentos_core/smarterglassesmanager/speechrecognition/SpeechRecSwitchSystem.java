@@ -64,6 +64,12 @@ public class SpeechRecSwitchSystem implements AudioProcessingCallback {
             speechRecFramework.changeBypassVadForDebuggingState(bypass);
         }
     }
+
+    public void setEnforceLocalTranscription(boolean enforce) {
+        if (speechRecFramework != null) {
+            speechRecFramework.changeEnforceLocalTranscriptionState(enforce);
+        }
+    }
     
     @Subscribe
     public void onBypassVadForDebuggingEvent(BypassVadForDebuggingEvent receivedEvent){

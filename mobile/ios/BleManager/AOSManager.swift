@@ -65,6 +65,7 @@ struct ViewState {
     private var isUpdatingScreen: Bool = false
     private var alwaysOnStatusBar: Bool = false
     private var bypassVad: Bool = false
+    private var enforceLocalTranscription: Bool = false
     private var bypassAudioEncoding: Bool = false
     private var onboardMicUnavailable: Bool = false
     private var metricSystemEnabled: Bool = false
@@ -538,10 +539,27 @@ struct ViewState {
     func onMicrophoneStateChange(_ isEnabled: Bool, _ requiredData: [SpeechRequiredDataType]) {
         CoreCommsService.log("AOS: @@@@@@@@ changing microphone state to: \(isEnabled) with requiredData: \(requiredData) @@@@@@@@@@@@@@@@")
 
-        // Set flags based on requiredData contents
-        // TODO: Replace this with bandwidth based logic
-        shouldSendPcmData = requiredData.contains(.PCM) || requiredData.contains(.PCM_OR_TRANSCRIPTION)
-        shouldSendTranscript = requiredData.contains(.TRANSCRIPTION) || requiredData.contains(.PCM_OR_TRANSCRIPTION)
+        if requiredData.contains(.PCM) && requiredData.contains(.TRANSCRIPTION) {
+            shouldSendPcmData = true
+            shouldSendTranscript = true
+        } else if requiredData.contains(.PCM) {
+            shouldSendPcmData = true
+            shouldSendTranscript = false
+        } else if requiredData.contains(.TRANSCRIPTION) {
+            shouldSendTranscript = true
+            shouldSendPcmData = false
+        } else if requiredData.contains(.PCM_OR_TRANSCRIPTION) {
+            // TODO: Later add bandwidth based logic
+            CoreCommsService.log("AOS: enforceLocalTranscription=\(enforceLocalTranscription)")
+            if enforceLocalTranscription {
+                shouldSendTranscript = true
+                shouldSendPcmData = false
+            } else {
+                shouldSendPcmData = true
+                shouldSendTranscript = false
+            }
+        }
+
 
         currentRequiredData = requiredData
 
@@ -1165,6 +1183,24 @@ struct ViewState {
         saveSettings()
     }
 
+    private func enforceLocalTranscription(_ enabled: Bool) {
+        enforceLocalTranscription = enabled
+
+        if currentRequiredData.contains(.PCM_OR_TRANSCRIPTION) {
+            // TODO: Later add bandwidth based logic
+            if enforceLocalTranscription {
+                shouldSendTranscript = true
+                shouldSendPcmData = false
+            } else {
+                shouldSendPcmData = true
+                shouldSendTranscript = false
+            }
+        }
+        
+        handleRequestStatus() // to update the UI
+        saveSettings()
+    }
+
     private func setMetricSystemEnabled(_ enabled: Bool) {
         metricSystemEnabled = enabled
         handleRequestStatus()
@@ -1232,6 +1268,7 @@ struct ViewState {
             case enableAlwaysOnStatusBar = "enable_always_on_status_bar"
             case bypassVad = "bypass_vad_for_debugging"
             case bypassAudioEncoding = "bypass_audio_encoding_for_debugging"
+            case enforceLocalTranscription = "enforce_local_transcription"
             case setServerUrl = "set_server_url"
             case setMetricSystemEnabled = "set_metric_system_enabled"
             case toggleUpdatingScreen = "toggle_updating_screen"
@@ -1415,6 +1452,12 @@ struct ViewState {
                     }
                     // Use existing sendButtonPress method
                     ServerComms.getInstance().sendButtonPress(buttonId: buttonId, pressType: pressType)
+                case .enforceLocalTranscription:
+                    guard let params = params, let enabled = params["enabled"] as? Bool else {
+                        CoreCommsService.log("AOS: enforce_local_transcription invalid params")
+                        break
+                    }
+                    enforceLocalTranscription(enabled)
                 case .unknown:
                     CoreCommsService.log("AOS: Unknown command type: \(commandString)")
                     handleRequestStatus()
@@ -1519,6 +1562,7 @@ struct ViewState {
             "power_saving_mode": powerSavingMode,
             "always_on_status_bar": alwaysOnStatusBar,
             "bypass_vad_for_debugging": bypassVad,
+            "enforce_local_transcription": enforceLocalTranscription,
             "bypass_audio_encoding_for_debugging": bypassAudioEncoding,
             "core_token": coreToken,
             "puck_connected": true,
@@ -1800,6 +1844,7 @@ struct ViewState {
         static let bypassAudioEncoding = "bypassAudioEncoding"
         static let preferredMic = "preferredMic"
         static let metricSystemEnabled = "metricSystemEnabled"
+        static let enforceLocalTranscription = "enforceLocalTranscription"
     }
 
     func onStatusUpdate(_ status: [String: Any]) {
@@ -1892,6 +1937,10 @@ struct ViewState {
             bypassVad(newBypassVad)
         }
 
+        if let newEnforceLocalTranscription = coreInfo?["enforce_local_transcription"] as? Bool, newEnforceLocalTranscription != enforceLocalTranscription {
+            enforceLocalTranscription(newEnforceLocalTranscription)
+        }
+
         if let newMetricSystemEnabled = coreInfo?["metric_system_enabled"] as? Bool, newMetricSystemEnabled != metricSystemEnabled {
             setMetricSystemEnabled(newMetricSystemEnabled)
         }
@@ -1939,6 +1988,7 @@ struct ViewState {
         defaults.set(bypassAudioEncoding, forKey: SettingsKeys.bypassAudioEncoding)
         defaults.set(preferredMic, forKey: SettingsKeys.preferredMic)
         defaults.set(metricSystemEnabled, forKey: SettingsKeys.metricSystemEnabled)
+        defaults.set(enforceLocalTranscription, forKey: SettingsKeys.enforceLocalTranscription)
 
         // Force immediate save (optional, as UserDefaults typically saves when appropriate)
         defaults.synchronize()
@@ -1956,6 +2006,7 @@ struct ViewState {
         powerSavingMode = false
         contextualDashboard = true
         bypassVad = false
+        enforceLocalTranscription = false
         preferredMic = "glasses"
         brightness = 50
         headUpAngle = 30
@@ -1976,6 +2027,7 @@ struct ViewState {
         UserDefaults.standard.register(defaults: [SettingsKeys.headUpAngle: 30])
         UserDefaults.standard.register(defaults: [SettingsKeys.metricSystemEnabled: false])
         UserDefaults.standard.register(defaults: [SettingsKeys.autoBrightness: true])
+        UserDefaults.standard.register(defaults: [SettingsKeys.enforceLocalTranscription: false])
 
         let defaults = UserDefaults.standard
 
@@ -1995,6 +2047,7 @@ struct ViewState {
         headUpAngle = defaults.integer(forKey: SettingsKeys.headUpAngle)
         brightness = defaults.integer(forKey: SettingsKeys.brightness)
         metricSystemEnabled = defaults.bool(forKey: SettingsKeys.metricSystemEnabled)
+        enforceLocalTranscription = defaults.bool(forKey: SettingsKeys.enforceLocalTranscription)
 
         // TODO: load settings from the server
 

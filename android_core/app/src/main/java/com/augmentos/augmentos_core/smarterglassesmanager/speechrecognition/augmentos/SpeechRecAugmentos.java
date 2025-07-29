@@ -45,6 +45,7 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
     private final int vadFrameSize = 512; // 512-sample frames for VAD
     private volatile boolean vadRunning = true;
     private boolean bypassVadForDebugging = false;
+    private boolean enforceLocalTranscription = false;
 
     // LC3 audio rolling buffer
     private final ArrayList<byte[]> lc3RollingBuffer = new ArrayList<>();
@@ -56,6 +57,7 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
     // Backend data sending control flags
     private volatile boolean sendPcmToBackend = true;
     private volatile boolean sendTranscriptionToBackend = false;
+    private List<SpeechRequiredDataType> currentRequiredData = new ArrayList<>();
 
     private SpeechRecAugmentos(Context context) {
         this.mContext = context;
@@ -481,24 +483,29 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
             sherpaTranscriber.microphoneStateChanged(state);
         }
 
-        // Set sendPcmToBackend and sendTranscriptionToBackend based on required data
-        // if state is PCM_OR_TRANS then based on the bandwidth of the internet if it falls below certain threshold decide to send PCM or Transcription
-        if (requiredData.contains(SpeechRequiredDataType.PCM_OR_TRANSCRIPTION)) {
-            // TODO: Implement bandwidth detection logic
-            // For now, default to transcription as it's more bandwidth efficient
-            // In the future, check network quality and decide:
-            // - If high bandwidth: send PCM for better quality
-            // - If low bandwidth: send transcription for efficiency
-            // For now default to pcm
-            sendPcmToBackend = state;
+
+
+        this.currentRequiredData = requiredData;
+
+        if (requiredData.contains(SpeechRequiredDataType.PCM) && requiredData.contains(SpeechRequiredDataType.TRANSCRIPTION)) {
+            this.sendPcmToBackend = true;
+            this.sendTranscriptionToBackend = true;
+        } else if (requiredData.contains(SpeechRequiredDataType.PCM)) {
+            this.sendPcmToBackend = true;
+            this.sendTranscriptionToBackend = false;
+        } else if (requiredData.contains(SpeechRequiredDataType.TRANSCRIPTION)) {
+            this.sendTranscriptionToBackend = true;
+            this.sendPcmToBackend = false;
+        } else if (requiredData.contains(SpeechRequiredDataType.PCM_OR_TRANSCRIPTION)) {
+            // TODO: bandwidth of the internet if it falls below certain threshold decide to send PCM or Transcription
+            if (this.enforceLocalTranscription) {
+                this.sendTranscriptionToBackend = true;
+                this.sendPcmToBackend = false;
+            } else {
+                this.sendPcmToBackend = true;
+                this.sendTranscriptionToBackend = false;
+            }
         }
-        if (requiredData.contains(SpeechRequiredDataType.PCM)) {
-            sendPcmToBackend = state;
-        }
-        if (requiredData.contains(SpeechRequiredDataType.TRANSCRIPTION)) {
-            sendTranscriptionToBackend = state;
-        }
-        
         
         Log.d(TAG, "Microphone state changed to: " + (state ? "ON" : "OFF") + " with required data: " + requiredData);
     }
@@ -507,5 +514,20 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
         Log.d(TAG, "setBypassVadForDebugging: " + bypassVadForDebugging);
         vadPolicy.changeBypassVadForDebugging(bypassVadForDebugging);
         this.bypassVadForDebugging = bypassVadForDebugging;
+    }
+
+    public void changeEnforceLocalTranscriptionState(boolean enforceLocalTranscription) {
+        Log.d(TAG, "setEnforceLocalTranscription: " + enforceLocalTranscription);
+        this.enforceLocalTranscription = enforceLocalTranscription;
+
+        if (this.currentRequiredData.contains(SpeechRequiredDataType.PCM_OR_TRANSCRIPTION)) {
+            if (this.enforceLocalTranscription) {
+                this.sendTranscriptionToBackend = true;
+                this.sendPcmToBackend = false;
+            } else {
+                this.sendTranscriptionToBackend = false;
+                this.sendPcmToBackend = true;
+            }
+        }
     }
 }

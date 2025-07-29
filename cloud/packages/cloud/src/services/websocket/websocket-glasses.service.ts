@@ -282,6 +282,7 @@ export class GlassesWebSocketService {
               alwaysOnStatusBar: coreInfo.always_on_status_bar_enabled,
               bypassVad: coreInfo.bypass_vad_for_debugging,
               bypassAudioEncoding: coreInfo.bypass_audio_encoding_for_debugging,
+              enforceLocalTranscription: coreInfo.enforce_local_transcription,
             };
 
             logger.debug({ newSettings }, "🔥🔥🔥: newSettings:");

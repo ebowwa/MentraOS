@@ -1442,6 +1442,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             coreInfo.put("charging_status", batteryStatusHelper.isBatteryCharging());
             coreInfo.put("sensing_enabled", SmartGlassesManager.getSensingEnabled(this));
             coreInfo.put("bypass_vad_for_debugging", SmartGlassesManager.getBypassVadForDebugging(this));
+            coreInfo.put("enforce_local_transcription", SmartGlassesManager.getEnforceLocalTranscription(this));
             coreInfo.put("bypass_audio_encoding_for_debugging", SmartGlassesManager.getBypassAudioEncodingForDebugging(this));
             coreInfo.put("contextual_dashboard_enabled", this.contextualDashboardEnabled);
             coreInfo.put("always_on_status_bar_enabled", this.alwaysOnStatusBarEnabled);
@@ -2139,6 +2140,12 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     @Override
     public void setBypassAudioEncodingForDebugging(boolean bypassAudioEncodingForDebugging) {
         SmartGlassesManager.saveBypassAudioEncodingForDebugging(this, bypassAudioEncodingForDebugging);
+        sendStatusToBackend();
+    }
+
+    @Override
+    public void setEnforceLocalTranscription(boolean enforceLocalTranscription) {
+        SmartGlassesManager.saveEnforceLocalTranscription(this, enforceLocalTranscription);
         sendStatusToBackend();
     }
 

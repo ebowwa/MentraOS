@@ -556,6 +556,18 @@ public class SmartGlassesManager extends Service {
         }
     }
 
+    public static boolean getEnforceLocalTranscription(Context context) {
+        SharedPreferences sharedPreferences = context.getSharedPreferences("AugmentOSPrefs", Context.MODE_PRIVATE);
+        return sharedPreferences.getBoolean(context.getResources().getString(R.string.ENFORCE_LOCAL_TRANSCRIPTION), false);
+    }
+
+    public static void saveEnforceLocalTranscription(Context context, boolean enabled) {
+        SharedPreferences sharedPreferences = context.getSharedPreferences("AugmentOSPrefs", Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        editor.putBoolean(context.getResources().getString(R.string.ENFORCE_LOCAL_TRANSCRIPTION), enabled);
+        editor.apply();
+    }
+
     public static boolean getBypassAudioEncodingForDebugging(Context context) {
         SharedPreferences sharedPreferences = context.getSharedPreferences("AugmentOSPrefs", Context.MODE_PRIVATE);
         return sharedPreferences.getBoolean(context.getResources().getString(R.string.BYPASS_AUDIO_ENCODING_FOR_DEBUGGING), false);

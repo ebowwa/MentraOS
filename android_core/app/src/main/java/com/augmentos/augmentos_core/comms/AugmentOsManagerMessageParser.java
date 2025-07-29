@@ -92,6 +92,11 @@ public class AugmentOsManagerMessageParser {
                     callback.setBypassAudioEncodingForDebugging(bypassAudioEncodingForDebugging);
                     break;
 
+                case "enforce_local_transcription":
+                    boolean enforceLocalTranscription = commandObject.getJSONObject("params").getBoolean("enabled");
+                    callback.setEnforceLocalTranscription(enforceLocalTranscription);
+                    break;
+
                 case "enable_always_on_status_bar":
                     boolean alwaysOnEnabled = commandObject.getJSONObject("params").getBoolean("enabled");
                     callback.setAlwaysOnStatusBarEnabled(alwaysOnEnabled);
