@@ -50,12 +50,12 @@ fi
 ############################
 # 2. Download Model files  #
 ############################
-MODEL_URL="https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-streaming-zipformer-en-20M-2023-02-17-mobile.tar.bz2"
+MODEL_URL="https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-streaming-zipformer-en-2023-06-21-mobile.tar.bz2"
 if [[ ! -f "$IOS_MODEL_DIR/encoder.onnx" ]]; then
   msg "📥 Downloading Sherpa-ONNX model …"
   curl -L "$MODEL_URL" -o "$TMP_DIR/model.tar.bz2"
   tar -xjf "$TMP_DIR/model.tar.bz2" -C "$TMP_DIR"
-  SRC_DIR="$TMP_DIR/sherpa-onnx-streaming-zipformer-en-20M-2023-02-17-mobile"
+  SRC_DIR="$TMP_DIR/sherpa-onnx-streaming-zipformer-en-2023-06-21-mobile"
   mv "$SRC_DIR/decoder-epoch-99-avg-1.onnx" "$IOS_MODEL_DIR/decoder.onnx"
   mv "$SRC_DIR/encoder-epoch-99-avg-1.onnx" "$IOS_MODEL_DIR/encoder.onnx"
   mv "$SRC_DIR/joiner-epoch-99-avg-1.int8.onnx" "$IOS_MODEL_DIR/joiner.onnx"
