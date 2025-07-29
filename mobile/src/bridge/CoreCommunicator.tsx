@@ -527,6 +527,15 @@ export class CoreCommunicator extends EventEmitter {
     })
   }
 
+  async sendTogglePowerSavingMode(enabled: boolean) {
+    return await this.sendData({
+      command: "enable_power_saving_mode",
+      params: {
+        enabled: enabled,
+      },
+    })
+  }
+
   async sendToggleBypassAudioEncodingForDebugging(enabled: boolean) {
     return await this.sendData({
       command: "bypass_audio_encoding_for_debugging",

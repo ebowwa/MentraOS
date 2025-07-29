@@ -22,6 +22,14 @@ bun android
 
 ## iOS
 
+### deps
+
+```
+brew install swiftformat
+brew install bun
+brew install openjdk@17
+```
+
 ```
 bun install
 bun expo prebuild

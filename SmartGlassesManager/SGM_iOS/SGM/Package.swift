@@ -10,7 +10,8 @@ let package = Package(
         // Products define the executables and libraries a package produces, making them visible to other packages.
         .library(
             name: "SGM",
-            targets: ["SGM"]),
+            targets: ["SGM"]
+        ),
     ],
     dependencies: [
         .package(name: "UltraliteSDK", url: "https://github.com/Vuzix/UltraliteSDK-releases-iOS", branch: "main"),
@@ -21,9 +22,11 @@ let package = Package(
         .target(
             name: "SGM",
             dependencies: ["UltraliteSDK"],
-            path: "Sources"),
+            path: "Sources"
+        ),
         .testTarget(
             name: "SGMTests",
-            dependencies: ["SGM"]),
+            dependencies: ["SGM"]
+        ),
     ]
 )

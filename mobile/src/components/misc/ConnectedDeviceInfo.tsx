@@ -24,15 +24,17 @@ import {glassesFeatures} from "@/config/glassesFeatures"
 // import {} from "assets/icons/"
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons"
 import {showAlert, showBluetoothAlert, showLocationAlert, showLocationServicesAlert} from "@/utils/AlertUtils"
+import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 
 export const ConnectDeviceButton = () => {
   const {status} = useStatus()
   const {themed, theme} = useAppTheme()
   const [isCheckingConnectivity, setIsCheckingConnectivity] = useState(false)
+  const {push} = useNavigationHistory()
 
   const connectGlasses = async () => {
     if (!status.core_info.default_wearable) {
-      router.push("/pairing/select-glasses-model")
+      push("/pairing/select-glasses-model")
       return
     }
 
@@ -120,7 +122,7 @@ export const ConnectDeviceButton = () => {
         LeftAccessory={() => <SolarLineIconsSet4 color={theme.colors.textAlt} />}
         RightAccessory={() => <ChevronRight color={theme.colors.textAlt} />}
         onPress={() => {
-          router.push("/pairing/select-glasses-model")
+          push("/pairing/select-glasses-model")
         }}
         tx="home:pairGlasses"
       />
@@ -302,6 +304,7 @@ export function SplitDeviceInfo() {
 export function DeviceToolbar() {
   const {status} = useStatus()
   const {themed, theme} = useAppTheme()
+  const {push} = useNavigationHistory()
 
   if (!status.glasses_info?.model_name) {
     return null
@@ -360,10 +363,7 @@ export function DeviceToolbar() {
           <TouchableOpacity
             style={{flexDirection: "row", alignItems: "center", gap: 6}}
             onPress={() => {
-              router.push({
-                pathname: "/pairing/glasseswifisetup",
-                params: {deviceModel: status.glasses_info?.model_name || "Glasses"},
-              })
+              push("/pairing/glasseswifisetup", {deviceModel: status.glasses_info?.model_name || "Glasses"})
             }}>
             <MaterialCommunityIcons name="wifi" size={18} color={theme.colors.statusIcon} />
             <Text style={{color: theme.colors.statusText, fontSize: 16, fontFamily: "Inter-Regular"}}>

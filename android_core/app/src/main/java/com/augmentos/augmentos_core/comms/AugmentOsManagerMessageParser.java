@@ -97,6 +97,11 @@ public class AugmentOsManagerMessageParser {
                     callback.setAlwaysOnStatusBarEnabled(alwaysOnEnabled);
                     break;
 
+                case "enable_power_saving_mode":
+                    boolean powerSavingEnabled = commandObject.getJSONObject("params").getBoolean("enabled");
+                    callback.setPowerSavingMode(powerSavingEnabled);
+                    break;
+
                 case "install_app_from_repository": // TODO: Implement repository handling
 //                    String repo = commandObject.getJSONObject("params").getString("repository");
                     String packageNameToInstall = commandObject.getJSONObject("params").getString("target");

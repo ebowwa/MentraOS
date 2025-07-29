@@ -219,6 +219,55 @@ export const deepLinkRoutes: DeepLinkRoute[] = [
       }
     },
   },
+  {
+    pattern: "/auth/reset-password",
+    handler: async (url: string, params: Record<string, string>, navObject: NavObject) => {
+      console.log("[RESET PASSWORD DEBUG] Handling reset password deep link")
+      console.log("[RESET PASSWORD DEBUG] URL:", url)
+      console.log("[RESET PASSWORD DEBUG] Params:", params)
+
+      // Parse the auth parameters from the URL fragment
+      const parseAuthParams = (url: string) => {
+        const parts = url.split("#")
+        if (parts.length < 2) return null
+        const paramsString = parts[1]
+        const params = new URLSearchParams(paramsString)
+        return {
+          access_token: params.get("access_token"),
+          refresh_token: params.get("refresh_token"),
+          type: params.get("type"),
+          // Add any other parameters that might be in the reset link
+        }
+      }
+
+      const authParams = parseAuthParams(url)
+
+      if (authParams && authParams.access_token && authParams.refresh_token && authParams.type === "recovery") {
+        try {
+          // Set the recovery session
+          const {data, error} = await supabase.auth.setSession({
+            access_token: authParams.access_token,
+            refresh_token: authParams.refresh_token,
+          })
+
+          if (error) {
+            console.error("[RESET PASSWORD DEBUG] Error setting recovery session:", error)
+            navObject.replace("/auth/login")
+          } else {
+            console.log("[RESET PASSWORD DEBUG] Recovery session set successfully")
+            // Navigate to the reset password screen
+            navObject.replace("/auth/reset-password")
+          }
+        } catch (err) {
+          console.error("[RESET PASSWORD DEBUG] Exception during setSession:", err)
+          navObject.replace("/auth/login")
+        }
+      } else {
+        console.log("[RESET PASSWORD DEBUG] Missing required auth parameters for password reset")
+        navObject.replace("/auth/login")
+      }
+    },
+  },
 
   // Mirror/Gallery routes
   {

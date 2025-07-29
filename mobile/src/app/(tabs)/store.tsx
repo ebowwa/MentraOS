@@ -10,6 +10,7 @@ import {useAppStoreWebviewPrefetch} from "@/contexts/AppStoreWebviewPrefetchProv
 import {useAppTheme} from "@/utils/useAppTheme"
 import {useLocalSearchParams, router} from "expo-router"
 import {Text, Screen, Header} from "@/components/ignite"
+import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 
 // Define package name for the store webview
 const STORE_PACKAGE_NAME = "org.augmentos.store"
@@ -20,6 +21,7 @@ export default function AppStoreWeb() {
   // const packageName = route?.params?.packageName;
   const {packageName} = useLocalSearchParams()
   const [canGoBack, setCanGoBack] = useState(false)
+  const {push} = useNavigationHistory()
   const {
     appStoreUrl,
     webviewLoading: prefetchedWebviewLoading,
@@ -71,10 +73,7 @@ export default function AppStoreWeb() {
 
       if ((data.type === "OPEN_APP_SETTINGS" || data.type === "OPEN_TPA_SETTINGS") && data.packageName) {
         // Navigate to TPA settings page
-        router.push({
-          pathname: "/app/settings",
-          params: {packageName: data.packageName},
-        })
+        push("/app/settings", {packageName: data.packageName})
       }
     } catch (error) {
       console.error("Error handling WebView message:", error)

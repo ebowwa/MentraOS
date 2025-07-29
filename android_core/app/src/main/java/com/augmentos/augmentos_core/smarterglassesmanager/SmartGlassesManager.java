@@ -566,6 +566,18 @@ public class SmartGlassesManager extends Service {
         editor.apply();
     }
 
+    public static boolean getPowerSavingMode(Context context) {
+        SharedPreferences sharedPreferences = context.getSharedPreferences("AugmentOSPrefs", Context.MODE_PRIVATE);
+        return sharedPreferences.getBoolean(context.getResources().getString(R.string.POWER_SAVING_MODE), false);
+    }
+
+    public static void savePowerSavingMode(Context context, boolean enabled) {
+        SharedPreferences sharedPreferences = context.getSharedPreferences("AugmentOSPrefs", Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        editor.putBoolean(context.getResources().getString(R.string.POWER_SAVING_MODE), enabled);
+        editor.apply();
+    }
+
     public SmartGlassesConnectionState getSmartGlassesConnectState() {
         if (smartGlassesRepresentative != null) {
             return smartGlassesRepresentative.getConnectionState();

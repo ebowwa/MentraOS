@@ -27,7 +27,7 @@ import {
   checkNotificationAccessSpecialPermission,
 } from "@/utils/NotificationServiceUtils"
 import {AppListStoreLink} from "./AppListStoreLink"
-import DraggableFlatList, {RenderItemParams, ScaleDecorator} from "react-native-draggable-flatlist"
+// import DraggableFlatList, {RenderItemParams, ScaleDecorator} from "react-native-draggable-flatlist"
 import Animated, {
   EntryExitTransition,
   FadingTransition,
@@ -37,6 +37,7 @@ import Animated, {
 
 // Add a new settings key for app order
 const APP_ORDER_KEY = "APP_ORDER_PREFERENCE"
+import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 
 export default function InactiveAppList({
   isSearchPage = false,
@@ -66,6 +67,7 @@ export default function InactiveAppList({
   const [isLoading, setIsLoading] = useState(true)
   const [savedAppOrder, setSavedAppOrder] = useState<string[]>([])
   const {themed, theme} = useAppTheme()
+  const {push} = useNavigationHistory()
 
   // Static values instead of animations
   const bounceAnim = React.useRef(new RNAnimated.Value(0)).current
@@ -450,13 +452,7 @@ export default function InactiveAppList({
 
   const openAppSettings = (app: any) => {
     console.log("%%% opening app settings", app)
-    router.push({
-      pathname: "/app/settings",
-      params: {
-        packageName: app.packageName,
-        appName: app.name,
-      },
-    })
+    push("/app/settings", {packageName: app.packageName, appName: app.name})
   }
 
   // Filter out duplicate apps and running apps
