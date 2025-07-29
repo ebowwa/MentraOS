@@ -328,7 +328,7 @@ export const DEFAULT_TRANSCRIPTION_CONFIG: TranscriptionConfig = {
   },
   
   performance: {
-    maxTotalStreams: 100,
+    maxTotalStreams: 500,
     maxMemoryUsageMB: 512,
     streamTimeoutMs: 10000,
     healthCheckIntervalMs: 60000

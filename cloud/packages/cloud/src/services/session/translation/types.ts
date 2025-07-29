@@ -281,7 +281,7 @@ export const DEFAULT_TRANSLATION_CONFIG: TranslationConfig = {
   },
   
   performance: {
-    maxTotalStreams: 50,
+    maxTotalStreams: 500,
     maxMemoryUsageMB: 256,
     streamTimeoutMs: 10000,
     healthCheckIntervalMs: 60000

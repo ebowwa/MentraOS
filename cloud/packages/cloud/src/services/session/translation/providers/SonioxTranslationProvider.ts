@@ -676,7 +676,7 @@ export class SonioxTranslationProvider implements TranslationProvider {
       supportedLanguagePairs: supportedPairs,
       supportsAutoDetection: true,
       supportsRealtimeTranslation: true,
-      maxConcurrentStreams: this.config.maxConnections || 20
+      maxConcurrentStreams: this.config.maxConnections || 500, // Default to 500 if not set
     };
   }
 

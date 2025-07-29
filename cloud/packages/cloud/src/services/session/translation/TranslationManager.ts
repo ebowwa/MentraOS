@@ -295,16 +295,16 @@ export class TranslationManager {
   /**
    * Feed audio data to translation streams
    */
-  feedAudio(audioData: ArrayBuffer): void {
-    // If we're buffering audio for stream startup, add to buffer
-    if (this.isBufferingAudio) {
-      this.audioBuffer.push(audioData);
-      return;
-    }
+  // feedAudio(audioData: ArrayBuffer): void {
+  //   // If we're buffering audio for stream startup, add to buffer
+  //   if (this.isBufferingAudio) {
+  //     this.audioBuffer.push(audioData);
+  //     return;
+  //   }
 
-    // Otherwise feed directly to streams
-    this.feedAudioToStreams(audioData);
-  }
+  //   // Otherwise feed directly to streams
+  //   this.feedAudioToStreams(audioData);
+  // }
 
   /**
    * Get current stream metrics
@@ -556,13 +556,8 @@ export class TranslationManager {
         sessionId: this.userSession.sessionId
       });
     } catch (error) {
-      this.logger.error({ 
-        subscription, 
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-        sourceLanguage,
-        targetLanguage
-      }, 'Translation stream creation failed');
+      
+      this.logger.error(error, 'Translation stream creation failed');
       this.handleStreamError(subscription, null, error as Error);
     } finally {
       this.streamCreationInProgress.delete(subscription);
