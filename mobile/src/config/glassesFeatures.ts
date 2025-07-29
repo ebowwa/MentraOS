@@ -1,4 +1,12 @@
-export type GlassesFeature = "camera" | "speakers" | "microphone" | "display" | "binocular" | "wifi" | "imu" | "powerSavingMode"
+export type GlassesFeature =
+  | "camera"
+  | "speakers"
+  | "microphone"
+  | "display"
+  | "binocular"
+  | "wifi"
+  | "imu"
+  | "powerSavingMode"
 
 export type MicType = "none" | "sco" | "custom"
 
@@ -8,6 +16,7 @@ export interface GlassesFeatureSet {
   display: boolean
   binocular: boolean
   wifi: boolean
+  wifiSelfOtaUpdate: boolean
   imu: boolean
   micTypes: MicType[]
   powerSavingMode: boolean
@@ -20,6 +29,7 @@ export const glassesFeatures: Record<string, GlassesFeatureSet> = {
     display: true,
     binocular: true,
     wifi: false,
+    wifiSelfOtaUpdate: false,
     imu: true,
     micTypes: ["custom"],
     powerSavingMode: true,
@@ -30,6 +40,7 @@ export const glassesFeatures: Record<string, GlassesFeatureSet> = {
     display: true,
     binocular: false,
     wifi: false,
+    wifiSelfOtaUpdate: false,
     imu: false,
     micTypes: ["none"],
     powerSavingMode: false,
@@ -40,6 +51,7 @@ export const glassesFeatures: Record<string, GlassesFeatureSet> = {
     display: false,
     binocular: false,
     wifi: true,
+    wifiSelfOtaUpdate: true,
     imu: false,
     micTypes: ["sco"],
     powerSavingMode: false,
@@ -50,6 +62,7 @@ export const glassesFeatures: Record<string, GlassesFeatureSet> = {
     display: true,
     binocular: false,
     wifi: false,
+    wifiSelfOtaUpdate: false,
     imu: false,
     micTypes: ["none"],
     powerSavingMode: false,
@@ -60,6 +73,7 @@ export const glassesFeatures: Record<string, GlassesFeatureSet> = {
     display: false,
     binocular: false,
     wifi: false,
+    wifiSelfOtaUpdate: false,
     imu: false,
     micTypes: ["sco"],
     powerSavingMode: false,
@@ -70,6 +84,7 @@ export const glassesFeatures: Record<string, GlassesFeatureSet> = {
     display: true,
     binocular: false,
     wifi: false,
+    wifiSelfOtaUpdate: false,
     imu: false,
     micTypes: ["sco"],
     powerSavingMode: false,

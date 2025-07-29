@@ -3,6 +3,8 @@ import {Alert} from "react-native"
 import {useRouter} from "expo-router"
 import {useStatus} from "@/contexts/AugmentOSStatusProvider"
 import {fetchVersionInfo, isUpdateAvailable, getLatestVersionInfo} from "@/utils/otaVersionChecker"
+import {glassesFeatures} from "@/config/glassesFeatures"
+import showAlert from "@/utils/AlertUtils"
 
 interface OtaUpdateContextType {
   isChecking: boolean
@@ -27,20 +29,35 @@ export function OtaUpdateProvider({children}: {children: ReactNode}) {
   const [latestVersion, setLatestVersion] = useState<string | null>(null)
 
   useEffect(() => {
-    // Only check for Mentra Live glasses
-    if (!status.glasses_info || !status.glasses_info.model_name?.includes("Mentra Live") || hasChecked || isChecking) {
+    // Only check for glasses that support WiFi self OTA updates
+    if (!status.glasses_info || hasChecked || isChecking) {
+      return
+    }
+
+    const glassesModel = status.glasses_info.model_name
+    if (!glassesModel) {
+      return
+    }
+
+    const features = glassesFeatures[glassesModel]
+    if (!features || !features.wifiSelfOtaUpdate) {
+      console.log(`Skipping OTA check for ${glassesModel} - does not support WiFi self OTA updates`)
       return
     }
 
     // Skip if already connected to WiFi
     if (status.glasses_info.glasses_wifi_connected) {
+      console.log(`Skipping ASG OTA CHECK, already on wifi`)
       return
     }
 
     const otaVersionUrl = status.glasses_info.glasses_ota_version_url
     const currentBuildNumber = status.glasses_info.glasses_build_number
-
+    console.log(`OTA VERSION URL: ${otaVersionUrl}, currentBuildNumber: ${currentBuildNumber}`)
     if (!otaVersionUrl || !currentBuildNumber) {
+      console.log(
+        `Skipping wifi ota check- one is null: OTA VERSION URL: ${otaVersionUrl}, currentBuildNumber: ${currentBuildNumber}`,
+      )
       return
     }
 
@@ -53,19 +70,19 @@ export function OtaUpdateProvider({children}: {children: ReactNode}) {
           setHasUpdate(true)
           setLatestVersion(latestVersionInfo?.versionName || null)
 
-          Alert.alert(
+          showAlert(
             "Update Available",
-            `A new version of Mentra Live firmware (v${latestVersionInfo?.versionName || "Unknown"}) is available. Connect your glasses to WiFi to automatically install the update.`,
+            `An update for your glasses is available (v${latestVersionInfo?.versionCode || "Unknown"}).\n\nConnect your glasses to WiFi to automatically install the update.`,
             [
+              {
+                text: "Later",
+                style: "cancel",
+              },
               {
                 text: "Setup WiFi",
                 onPress: () => {
                   router.push("/pairing/glasseswifisetup")
                 },
-              },
-              {
-                text: "Later",
-                style: "cancel",
               },
             ],
           )
