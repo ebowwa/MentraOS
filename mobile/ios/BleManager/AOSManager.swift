@@ -535,8 +535,8 @@ struct ViewState {
 
     // MARK: - ServerCommsCallback Implementation
 
-    func onMicrophoneStateChange(_ isEnabled: Bool) {
-        CoreCommsService.log("AOS: @@@@@@@@ changing microphone state to: \(isEnabled) @@@@@@@@@@@@@@@@")
+    func onMicrophoneStateChange(_ isEnabled: Bool, _ requiredData: [SpeechRequiredDataType]) {
+        CoreCommsService.log("AOS: @@@@@@@@ changing microphone state to: \(isEnabled) with requiredData: \(requiredData) @@@@@@@@@@@@@@@@")
 
         // Set flags based on requiredData contents
         // TODO: Replace this with bandwidth based logic
@@ -950,10 +950,10 @@ struct ViewState {
         CoreCommsService.log("AOS: Interruption: \(began)")
         if began {
             onboardMicUnavailable = true
-            onMicrophoneStateChange(micEnabled)
+            onMicrophoneStateChange(micEnabled, currentRequiredData)
         } else {
             onboardMicUnavailable = false
-            onMicrophoneStateChange(micEnabled)
+            onMicrophoneStateChange(micEnabled, currentRequiredData)
         }
     }
 
