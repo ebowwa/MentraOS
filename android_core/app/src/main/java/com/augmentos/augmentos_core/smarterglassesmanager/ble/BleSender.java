@@ -15,17 +15,17 @@ public abstract class BleSender {
     private final Lock bluetoothLock = new ReentrantLock();
 
 
-    private ThreadSafeBluetoothSender(int poolSize,boolean automaticSending,int sendInterval) {
+    private BleSender(int poolSize,boolean automaticSending,int sendInterval) {
         this.executor = Executors.newFixedThreadPool(poolSize);
         this.automaticSending=automaticSending;
         this.sendInterval= sendInterval;
     }
     
-    public ThreadSafeBluetoothSender(boolean automaticSending) {
+    public BleSender(boolean automaticSending) {
         this(1,automaticSending,SEND_INTERVAL_DEFAULT);
     }
 
-    public ThreadSafeBluetoothSender(boolean automaticSending,int sendInterval) {
+    public BleSender(boolean automaticSending,int sendInterval) {
         this(1,automaticSending,sendInterval);
     }
 
