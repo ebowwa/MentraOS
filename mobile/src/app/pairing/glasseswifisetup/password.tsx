@@ -67,14 +67,11 @@ export default function WifiPasswordScreen() {
     }
 
     // Navigate to connecting screen with credentials
-    router.push({
-      pathname: "/pairing/glasseswifisetup/connecting",
-      params: {
-        deviceModel,
-        ssid,
-        password,
-        rememberPassword: rememberPassword.toString(),
-      },
+    push("/pairing/glasseswifisetup/connecting", {
+      deviceModel,
+      ssid,
+      password,
+      rememberPassword: rememberPassword.toString(),
     })
   }
 

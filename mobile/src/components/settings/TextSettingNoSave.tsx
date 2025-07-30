@@ -3,6 +3,7 @@ import {View, Text, StyleSheet, Platform, Pressable} from "react-native"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {router, useFocusEffect} from "expo-router"
 import {textEditorStore} from "@/utils/TextEditorStore"
+import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 
 type TextSettingNoSaveProps = {
   label: string
@@ -13,6 +14,7 @@ type TextSettingNoSaveProps = {
 
 const TextSettingNoSave: React.FC<TextSettingNoSaveProps> = ({label, value, onChangeText, settingKey}) => {
   const {theme} = useAppTheme()
+  const {push} = useNavigationHistory()
 
   // Check for pending value when component gets focus
   useFocusEffect(
@@ -25,14 +27,7 @@ const TextSettingNoSave: React.FC<TextSettingNoSaveProps> = ({label, value, onCh
   )
 
   const handleOpenEditor = () => {
-    router.push({
-      pathname: "/app/text-editor",
-      params: {
-        label,
-        value,
-        settingKey,
-      },
-    })
+    push("/app/text-editor", {label, value, settingKey})
   }
 
   return (

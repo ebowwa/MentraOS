@@ -70,6 +70,13 @@ export const deepLinkRoutes: DeepLinkRoute[] = [
     },
     requiresAuth: true,
   },
+  {
+    pattern: "/asg/gallery",
+    handler: (url: string, params: Record<string, string>, navObject: NavObject) => {
+      navObject.push("/asg/gallery")
+    },
+    requiresAuth: true,
+  },
 
   // Pairing routes
   {

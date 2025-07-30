@@ -22,7 +22,7 @@
     "migrate:permissions": "bun run src/scripts/migrate-permissions.ts",
     "verify:permissions": "bun run src/scripts/verify-permissions.ts"
   },
-  "author": "Isaiah Ballah",
+  "author": "Mentra",
   "devDependencies": {
     "@types/babel__core": "^7.20.5",
     "@types/bcrypt": "^5.0.0",

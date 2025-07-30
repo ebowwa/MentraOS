@@ -407,7 +407,9 @@ export default function LoginScreen() {
                   </View>
                 </View>
 
-                <TouchableOpacity onPress={() => router.push("/auth/forgot-password")} style={themed($forgotPasswordContainer)}>
+                <TouchableOpacity
+                  onPress={() => push("/auth/forgot-password")}
+                  style={themed($forgotPasswordContainer)}>
                   <Text tx="login:forgotPassword" style={themed($forgotPasswordText)} />
                 </TouchableOpacity>
 

@@ -16,6 +16,7 @@ import {translate} from "@/i18n"
 import AppsHeader from "./AppsHeader"
 import {loadSetting} from "@/utils/SettingsHelper"
 import {SETTINGS_KEYS} from "@/consts"
+import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 
 export default function AppsActiveList({
   isSearchPage = false,
@@ -29,6 +30,7 @@ export default function AppsActiveList({
   const [isLoading, setIsLoading] = useState(false)
   const {themed, theme} = useAppTheme()
   const [hasEverActivatedApp, setHasEverActivatedApp] = useState(true)
+  const {push} = useNavigationHistory()
 
   const runningApps = useMemo(() => {
     let apps = appStatus.filter(app => app.is_running)
@@ -149,13 +151,7 @@ export default function AppsActiveList({
   }
 
   const openAppSettings = (app: any) => {
-    router.push({
-      pathname: "/app/settings",
-      params: {
-        packageName: app.packageName,
-        appName: app.name,
-      },
-    })
+    push("/app/settings", {packageName: app.packageName, appName: app.name})
   }
 
   function getAppsList() {

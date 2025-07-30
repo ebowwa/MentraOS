@@ -1,3 +1,4 @@
+import {useStatus} from "@/contexts/AugmentOSStatusProvider"
 import {ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
 import React, {useState, useEffect, useRef} from "react"
@@ -45,12 +46,20 @@ const GlassesDisplayMirror: React.FC<GlassesDisplayMirrorProps> = ({
     img.addEventListener("load", async () => {
       const WIDTH = img.width
       const HEIGHT = img.height
-      const leftPadding = 50
-      const topPadding = 30
+
+      let leftPadding = 0
+      let topPadding = 0
+      // console.log("WIDTH", WIDTH)
+      // console.log("HEIGHT", HEIGHT)
+      // special case for G1 bitmaps:
+      if (WIDTH == 576 && HEIGHT == 135) {
+        leftPadding = 29
+        topPadding = 21
+      }
 
       const ratio = (WIDTH - leftPadding) / (HEIGHT - topPadding)
 
-      const targetWidth = containerWidth ? containerWidth : 200
+      const targetWidth = containerWidth ? containerWidth : 400
 
       const croppedWidth = targetWidth
       const croppedHeight = targetWidth / ratio
@@ -82,7 +91,9 @@ const GlassesDisplayMirror: React.FC<GlassesDisplayMirrorProps> = ({
 
   // Process bitmap data when layout or container width changes
   useEffect(() => {
-    processBitmap()
+    if (containerWidth) {
+      processBitmap()
+    }
   }, [layout, containerWidth])
 
   if (!layout || !layout.layoutType || layout.text === "") {
@@ -102,6 +113,18 @@ const GlassesDisplayMirror: React.FC<GlassesDisplayMirrorProps> = ({
   }
 
   return <View style={[themed($glassesScreen), containerStyle]}>{content}</View>
+}
+
+function parseText(text: string) {
+  const {status} = useStatus()
+  // if text contains $GBATT$, replace with battery level
+  if (text.includes("$GBATT$")) {
+    const batteryLevel = status.glasses_info?.battery_level
+    if (batteryLevel) {
+      return text.replace("$GBATT$", batteryLevel.toString() + "%")
+    }
+  }
+  return text
 }
 
 /**
@@ -126,15 +149,18 @@ function renderLayout(
     }
     case "text_wall":
     case "text_line": {
-      const {text} = layout
+      let {text} = layout
+      text = parseText(text)
       return <Text style={[styles.cardContent, textStyle]}>{text || text === "" ? text : ""}</Text>
     }
     case "double_text_wall": {
-      const {topText, bottomText} = layout
+      let {topText, bottomText} = layout
+      topText = parseText(topText)
+      bottomText = parseText(bottomText)
       return (
         <>
-          <Text style={[styles.cardContent, textStyle]}>{topText}</Text>
-          <Text style={[styles.cardContent, textStyle]}>{bottomText}</Text>
+          <Text style={[styles.cardContent, textStyle]}>{topText || topText === "" ? topText : ""}</Text>
+          <Text style={[styles.cardContent, textStyle]}>{bottomText || bottomText === "" ? bottomText : ""}</Text>
         </>
       )
     }
@@ -142,7 +168,7 @@ function renderLayout(
       const rows = layout.text || []
       return rows.map((row: string, index: number) => (
         <Text key={index} style={[styles.cardContent, textStyle]}>
-          {row}
+          {parseText(row)}
         </Text>
       ))
     }
@@ -185,9 +211,11 @@ const $glassesScreenFullscreen: ThemedStyle<ViewStyle> = ({colors, spacing}) => 
 })
 
 const $glassesText: ThemedStyle<TextStyle> = ({colors}) => ({
-  color: colors.text,
+  // color: colors.text,
+  color: "#00ff88aa",
   fontFamily: "Montserrat-Regular",
   fontSize: 14,
+  fontWeight: 600,
 })
 
 const $emptyContainer: ThemedStyle<ViewStyle> = () => ({

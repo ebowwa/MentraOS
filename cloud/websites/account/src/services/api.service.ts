@@ -1,7 +1,8 @@
 import axios from "axios";
 
 // Set default config
-axios.defaults.baseURL = import.meta.env.VITE_CLOUD_API_URL || "http://localhost:8002";
+axios.defaults.baseURL =
+  import.meta.env.VITE_CLOUD_API_URL || "http://localhost:8002";
 axios.defaults.withCredentials = true;
 
 // User account interface
@@ -22,11 +23,20 @@ export interface UserAccount {
 export interface ExportRequest {
   id: string;
   userId: string;
-  status: 'pending' | 'processing' | 'completed' | 'failed';
-  format: 'json' | 'csv';
+  status: "pending" | "processing" | "completed" | "failed";
+  format: "json" | "csv";
   createdAt: string;
   completedAt?: string;
   downloadUrl?: string;
+}
+
+// App interface for OAuth
+export interface AppDetails {
+  name: string;
+  packageName: string;
+  webviewURL: string;
+  description?: string;
+  icon?: string;
 }
 
 const api = {
@@ -37,7 +47,7 @@ const api = {
       const response = await axios.get("/api/account/me");
       return response.data;
     },
-    
+
     // Update user profile
     updateProfile: async (profileData: unknown): Promise<UserAccount> => {
       const response = await axios.put("/api/account/profile", profileData);
@@ -45,15 +55,22 @@ const api = {
     },
 
     // Request account deletion
-    requestDeletion: async (reason?: string): Promise<{ requestId: string }> => {
-      const response = await axios.post("/api/account/request-deletion", { reason });
+    requestDeletion: async (
+      reason?: string,
+    ): Promise<{ requestId: string }> => {
+      const response = await axios.post("/api/account/request-deletion", {
+        reason,
+      });
       return response.data;
     },
 
     // Confirm account deletion
-    confirmDeletion: async (requestId: string, confirmationCode: string): Promise<void> => {
-      await axios.delete("/api/account/confirm-deletion", { 
-        data: { requestId, confirmationCode } 
+    confirmDeletion: async (
+      requestId: string,
+      confirmationCode: string,
+    ): Promise<void> => {
+      await axios.delete("/api/account/confirm-deletion", {
+        data: { requestId, confirmationCode },
       });
     },
 
@@ -64,7 +81,9 @@ const api = {
     },
 
     // Update privacy settings
-    updatePrivacySettings: async (settings: Record<string, boolean>): Promise<Record<string, boolean>> => {
+    updatePrivacySettings: async (
+      settings: Record<string, boolean>,
+    ): Promise<Record<string, boolean>> => {
       const response = await axios.put("/api/account/privacy", settings);
       return response.data;
     },
@@ -73,23 +92,53 @@ const api = {
   // Data export endpoints
   export: {
     // Request data export
-    requestExport: async (format: 'json' | 'csv' = 'json'): Promise<ExportRequest> => {
-      const response = await axios.post("/api/account/request-export", { format });
+    requestExport: async (
+      format: "json" | "csv" = "json",
+    ): Promise<ExportRequest> => {
+      const response = await axios.post("/api/account/request-export", {
+        format,
+      });
       return response.data;
     },
 
     // Check export status
     getStatus: async (exportId: string): Promise<ExportRequest> => {
-      const response = await axios.get(`/api/account/export-status?id=${exportId}`);
+      const response = await axios.get(
+        `/api/account/export-status?id=${exportId}`,
+      );
       return response.data;
     },
 
     // Get download URL
     getDownloadUrl: async (exportId: string): Promise<string> => {
-      const response = await axios.get(`/api/account/download-export/${exportId}`);
+      const response = await axios.get(
+        `/api/account/download-export/${exportId}`,
+      );
       return response.data.downloadUrl;
-    }
-  }
+    },
+  },
+
+  // OAuth endpoints
+  oauth: {
+    // Get app details by package name
+    getAppDetails: async (packageName: string): Promise<AppDetails> => {
+      const response = await axios.get(`/api/account/oauth/app/${packageName}`);
+      return response.data.app;
+    },
+
+    // Generate signed user token for app authentication
+    generateToken: async (
+      packageName: string,
+    ): Promise<{ token: string; expiresIn: string }> => {
+      const response = await axios.post("/api/account/oauth/token", {
+        packageName,
+      });
+      return {
+        token: response.data.token,
+        expiresIn: response.data.expiresIn,
+      };
+    },
+  },
 };
 
 export default api;
