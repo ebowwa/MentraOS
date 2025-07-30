@@ -8,6 +8,7 @@ import {useAppTheme} from "@/utils/useAppTheme"
 import {translate} from "@/i18n/translate"
 import {useCameraPermissions} from "expo-camera"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
+import { reportError } from "@/utils/reporting"
 import showAlert from "@/utils/AlertUtils"
 import Icon from "react-native-vector-icons/MaterialCommunityIcons"
 
@@ -50,6 +51,7 @@ export default function ConnectedSimulatedGlassesInfo() {
       await coreCommunicator.sendForgetSmartGlasses()
     } catch (error) {
       console.error("Error disconnecting simulated wearable:", error)
+      reportError("Error disconnecting simulated wearable", 'device.simulation', 'disconnect_simulated', error instanceof Error ? error : new Error(String(error)))
     }
   }
 

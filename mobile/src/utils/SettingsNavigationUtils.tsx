@@ -1,5 +1,6 @@
 import {Linking, Platform} from "react-native"
 import {NativeModules} from "react-native"
+import { reportError } from "@/utils/reporting"
 
 const {SettingsNavigationModule} = NativeModules
 
@@ -38,6 +39,7 @@ export class SettingsNavigationUtils {
       return false
     } catch (error) {
       console.error("Error opening Bluetooth settings:", error)
+      reportError("Error opening Bluetooth settings", 'settings.navigation', 'open_bluetooth', error instanceof Error ? error : new Error(String(error)))
       return false
     }
   }
@@ -66,6 +68,7 @@ export class SettingsNavigationUtils {
       return false
     } catch (error) {
       console.error("Error showing location services dialog:", error)
+      reportError("Error showing location services dialog", 'settings.navigation', 'show_location_dialog', error instanceof Error ? error : new Error(String(error)))
       return false
     }
   }
@@ -93,6 +96,7 @@ export class SettingsNavigationUtils {
       return false
     } catch (error) {
       console.error("Error opening location settings:", error)
+      reportError("Error opening location settings", 'settings.navigation', 'open_location', error instanceof Error ? error : new Error(String(error)))
       return false
     }
   }
@@ -116,6 +120,7 @@ export class SettingsNavigationUtils {
       return false
     } catch (error) {
       console.error("Error opening app settings:", error)
+      reportError("Error opening app settings", 'settings.navigation', 'open_app_settings', error instanceof Error ? error : new Error(String(error)))
       return false
     }
   }
@@ -128,6 +133,7 @@ export class SettingsNavigationUtils {
       await Linking.openSettings()
     } catch (error) {
       console.error("Failed to open app settings:", error)
+      reportError("Failed to open app settings", 'settings.navigation', 'open_app_permissions', error instanceof Error ? error : new Error(String(error)))
     }
   }
 
@@ -153,6 +159,7 @@ export class SettingsNavigationUtils {
       }
     } catch (error) {
       console.error("Error opening settings for requirement:", requirement, error)
+      reportError("Error opening settings for requirement", 'settings.navigation', 'open_requirement_settings', error instanceof Error ? error : new Error(String(error)), { requirement })
       return false
     }
   }
