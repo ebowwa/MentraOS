@@ -132,7 +132,12 @@ const sidebars: SidebarsConfig = {
         type: "doc",
         id: "asg-client/README",
       },
-      items: ["asg-client/architecture", "asg-client/mentra-live"],
+      items: [
+        "asg-client/architecture",
+        "asg-client/mentra-live",
+        "asg-client/button-system",
+        "asg-client/rtmp-streaming",
+      ],
     },
     {
       type: "category",
