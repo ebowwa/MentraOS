@@ -1,6 +1,7 @@
 import { IReportProvider } from '../core/IReportProvider'
 import { ReportData } from '../core/ReportData'
 import { ReportLevel } from '../core/ReportLevel'
+import { isPostHogEnabled, getPostHog, initializePostHog } from '../config'
 
 /**
  * PostHog implementation of IReportProvider
@@ -19,16 +20,26 @@ export class PostHogReportProvider implements IReportProvider {
 
   async initialize(): Promise<boolean> {
     try {
-      // Dynamically import PostHog to avoid issues if not available
-      try {
-        this.posthog = require('posthog-react-native')
-        console.log('PostHogReportProvider initialized successfully')
-        return true
-      } catch (error) {
-        console.warn('PostHog not available:', error)
+      // Check if PostHog is properly configured
+      if (!isPostHogEnabled()) {
+        console.log('PostHog not enabled, skipping initialization')
         this.enabled = false
         return false
       }
+
+      // Initialize PostHog with secure configuration
+      initializePostHog()
+
+      // Get PostHog instance
+      this.posthog = getPostHog()
+      if (!this.posthog) {
+        console.warn('PostHog not available')
+        this.enabled = false
+        return false
+      }
+
+      console.log('PostHogReportProvider initialized successfully')
+      return true
     } catch (error) {
       console.error('Failed to initialize PostHog provider:', error)
       return false
@@ -103,7 +114,7 @@ export class PostHogReportProvider implements IReportProvider {
   }
 
   isEnabled(): boolean {
-    return this.enabled
+    return this.enabled && isPostHogEnabled()
   }
 
   setEnabled(enabled: boolean): void {

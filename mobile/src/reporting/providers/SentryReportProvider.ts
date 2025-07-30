@@ -2,7 +2,7 @@ import * as Sentry from '@sentry/react-native'
 import { IReportProvider } from '../core/IReportProvider'
 import { ReportData } from '../core/ReportData'
 import { ReportLevel } from '../core/ReportLevel'
-import { initializeSentry, isSentryEnabled } from '../../config/sentry'
+import { isSentryEnabled, initializeSentry } from '../config'
 
 /**
  * Sentry implementation of IReportProvider
@@ -16,15 +16,15 @@ export class SentryReportProvider implements IReportProvider {
 
   async initialize(): Promise<boolean> {
     try {
-      // Initialize Sentry with secure configuration
-      initializeSentry()
-      
-      // Check if Sentry is properly initialized
+      // Check if Sentry is properly configured
       if (!isSentryEnabled()) {
         console.log('Sentry not enabled, skipping initialization')
         this.enabled = false
         return false
       }
+
+      // Initialize Sentry with secure configuration
+      initializeSentry()
       
       console.log('SentryReportProvider initialized successfully')
       return true

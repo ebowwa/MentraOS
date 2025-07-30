@@ -106,4 +106,24 @@ export {
   setProviderEnabled,
   getReportManager,
   getProviderStatus,
-} from './system' 
+} from './system'
+
+// =====================================
+// ⚙️ CONFIGURATION
+// =====================================
+export {
+  // Sentry configuration
+  getSentryDsn,
+  getSentryOrg,
+  getSentryProject,
+  getSentryUrl,
+  isSentryEnabled,
+  initializeSentry,
+  getSentryAppConfig,
+  // PostHog configuration
+  getPostHogApiKey,
+  getPostHogHost,
+  isPostHogEnabled,
+  initializePostHog,
+  getPostHog,
+} from './config' 

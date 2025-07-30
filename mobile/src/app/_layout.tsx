@@ -1,6 +1,6 @@
 import {useEffect, useState} from "react"
 import {Stack, SplashScreen} from "expo-router"
-import { initializeReporting, reportCritical } from '@/reporting'
+import { initializeReporting, reportCritical, reportError, reportWarning, reportInfo } from '@/reporting'
 import { reportAppStartupIssue, reportAppCrash } from '@/reporting/domains'
 
 import {useFonts} from "@expo-google-fonts/space-grotesk"
@@ -46,6 +46,27 @@ function Root() {
         
         // Initialize reporting system
         await initializeReporting()
+        
+        // 🧪 TESTING: Send dummy error reports to test reporting system
+        // Set to true to enable testing, false to disable
+        const ENABLE_TEST_REPORTS = __DEV__ // Only in development
+        if (ENABLE_TEST_REPORTS) {
+          console.log('🧪 Sending test error reports...')
+          
+          // Test different report levels
+          reportInfo('Test info message', 'app.testing', 'test_initialization')
+          reportWarning('Test warning message', 'app.testing', 'test_initialization')
+          reportError('Test error message', 'app.testing', 'test_initialization')
+          reportCritical('Test critical message', 'app.testing', 'test_initialization')
+          
+          // Test with exception
+          reportError('Test error with exception', 'app.testing', 'test_exception', new Error('Test exception for error reporting'))
+          
+          // Test domain-specific reporting
+          reportAppStartupIssue('Test startup issue', new Error('Test startup error'))
+          
+          console.log('✅ Test error reports sent')
+        }
       } catch (error) {
         console.error("Error initializing app:", error)
         reportCritical("Error initializing app", 'app.lifecycle', 'app_initialization', error instanceof Error ? error : new Error(String(error)))
