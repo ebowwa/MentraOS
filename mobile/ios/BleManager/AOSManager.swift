@@ -718,7 +718,7 @@ struct ViewState {
                 self.g1Manager?.sendDoubleTextWall(topText, bottomText)
                 self.mach1Manager?.sendDoubleTextWall(topText, bottomText)
             case "reference_card":
-                sendText(currentViewState.topText + "\n\n" + currentViewState.title)
+                sendText(currentViewState.topText + "\n\n" + currentViewState.bottomText)
             case "bitmap_view":
                 CoreCommsService.log("AOS: Processing bitmap_view layout")
                 guard let data = currentViewState.data else {
