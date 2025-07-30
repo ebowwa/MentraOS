@@ -23,12 +23,12 @@ rm -rf android/build android/.gradle node_modules .expo .bundle android/app/buil
 # Step 2: Install dependencies
 echo ""
 echo "📦 Step 2: Installing dependencies..."
-bun install
+pnpm install
 
 # Step 3: Prebuild with Expo
 echo ""
 echo "🏗️  Step 3: Running Expo prebuild..."
-bun expo prebuild
+pnpm expo prebuild
 
 # Step 4: Fix React Native symlinks
 echo ""
@@ -74,7 +74,7 @@ cd android && ./gradlew clean && cd ..
 # Step 7: Build Android
 echo ""
 echo "🚀 Step 7: Building Android app..."
-bun android
+pnpm android
 
 # Check if build was successful
 if [ $? -eq 0 ]; then
@@ -83,13 +83,13 @@ if [ $? -eq 0 ]; then
     echo "✅ iOS pods have been restored too!"
     echo ""
     echo "📱 To start the development server, run:"
-    echo "   bun run start"
+    echo "   pnpm run start"
 else
     echo ""
     echo "❌ Android build failed!"
     echo ""
     echo "Try running the following commands manually:"
-    echo "1. bun expo prebuild"
+    echo "1. pnpm expo prebuild"
     echo "2. cd ios && pod install && cd .."
-    echo "3. bun android"
+    echo "3. pnpm android"
 fi

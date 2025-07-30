@@ -90,6 +90,9 @@ struct ViewState {
     private var preferredMic = "glasses"
     private var micEnabled = false
 
+    // button settings:
+    private var buttonPressMode = "photo"
+
     // VAD:
     private var vad: SileroVADStrategy?
     private var vadBuffer = [Data]()
@@ -1033,6 +1036,19 @@ struct ViewState {
         saveSettings()
     }
 
+    private func setButtonMode(_ mode: String) {
+        buttonPressMode = mode
+        UserDefaults.standard.set(mode, forKey: "button_press_mode")
+
+        // Forward to glasses if Mentra Live
+        if let mentraLiveManager = liveManager {
+            mentraLiveManager.sendButtonModeSetting(mode)
+        }
+
+        handleRequestStatus() // to update the UI
+        saveSettings()
+    }
+
     private func startApp(_ target: String) {
         CoreCommsService.log("AOS: Starting app: \(target)")
         serverComms.startApp(packageName: target)
@@ -1171,6 +1187,7 @@ struct ViewState {
             case searchForCompatibleDeviceNames = "search_for_compatible_device_names"
             case enableContextualDashboard = "enable_contextual_dashboard"
             case setPreferredMic = "set_preferred_mic"
+            case setButtonMode = "set_button_mode"
             case ping
             case forgetSmartGlasses = "forget_smart_glasses"
             case startApp = "start_app"
@@ -1260,6 +1277,12 @@ struct ViewState {
                         break
                     }
                     setPreferredMic(mic)
+                case .setButtonMode:
+                    guard let params = params, let mode = params["mode"] as? String else {
+                        CoreCommsService.log("AOS: set_button_mode invalid params")
+                        break
+                    }
+                    setButtonMode(mode)
                 case .startApp:
                     guard let params = params, let target = params["target"] as? String else {
                         CoreCommsService.log("AOS: start_app invalid params")
@@ -1457,6 +1480,7 @@ struct ViewState {
             "dashboard_height": dashboardHeight,
             "dashboard_depth": dashboardDepth,
             "head_up_angle": headUpAngle,
+            "button_mode": buttonPressMode,
         ]
 
         let cloudConnectionStatus = serverComms.isWebSocketConnected() ? "CONNECTED" : "DISCONNECTED"
@@ -1915,6 +1939,7 @@ struct ViewState {
         contextualDashboard = true
         bypassVad = false
         preferredMic = "glasses"
+        buttonPressMode = UserDefaults.standard.string(forKey: "button_press_mode") ?? "photo"
         brightness = 50
         headUpAngle = 30
         metricSystemEnabled = false

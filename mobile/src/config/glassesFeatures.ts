@@ -11,6 +11,8 @@ export type GlassesFeature =
   | "wifi"
   | "imu"
   | "powerSavingMode"
+  | "gallery"
+  | "configurableButton"
 
 export type MicType = "none" | "sco" | "custom"
 
@@ -24,6 +26,8 @@ export interface GlassesFeatureSet {
   imu: boolean // Do the glasses contain an IMU?
   micTypes: MicType[] // Which types of microphone do the glasses support?
   powerSavingMode: boolean // Do the glasses have a power saving mode?
+  gallery: boolean // Do the glasses store a photo gallery on device
+  configurableButton: boolean // Does the device support button configuration?
 }
 
 export const glassesFeatures: Record<string, GlassesFeatureSet> = {
@@ -37,6 +41,8 @@ export const glassesFeatures: Record<string, GlassesFeatureSet> = {
     imu: true,
     micTypes: ["custom"],
     powerSavingMode: true,
+    gallery: false,
+    configurableButton: false,
   },
   "Vuzix Z100": {
     camera: false,
@@ -48,6 +54,8 @@ export const glassesFeatures: Record<string, GlassesFeatureSet> = {
     imu: false,
     micTypes: ["none"],
     powerSavingMode: false,
+    gallery: false,
+    configurableButton: false,
   },
   "Mentra Live": {
     camera: true,
@@ -59,6 +67,8 @@ export const glassesFeatures: Record<string, GlassesFeatureSet> = {
     imu: false,
     micTypes: ["sco"],
     powerSavingMode: false,
+    gallery: true,
+    configurableButton: true,
   },
   "Mentra Mach1": {
     camera: false,
@@ -70,6 +80,8 @@ export const glassesFeatures: Record<string, GlassesFeatureSet> = {
     imu: false,
     micTypes: ["none"],
     powerSavingMode: false,
+    gallery: false,
+    configurableButton: false,
   },
   "Audio Wearable": {
     camera: false,
@@ -81,6 +93,8 @@ export const glassesFeatures: Record<string, GlassesFeatureSet> = {
     imu: false,
     micTypes: ["sco"],
     powerSavingMode: false,
+    gallery: false,
+    configurableButton: false,
   },
   "Simulated Glasses": {
     camera: true,
@@ -92,6 +106,8 @@ export const glassesFeatures: Record<string, GlassesFeatureSet> = {
     imu: false,
     micTypes: ["sco"],
     powerSavingMode: false,
+    gallery: false,
+    configurableButton: false,
   },
 }
 
@@ -104,6 +120,8 @@ export const featureLabels: Record<GlassesFeature, string> = {
   wifi: "WiFi",
   imu: "IMU",
   powerSavingMode: "Power Saving Mode",
+  gallery: "Gallery",
+  configurableButton: "Configurable Button",
 }
 
 // Helper functions for mic type checking
