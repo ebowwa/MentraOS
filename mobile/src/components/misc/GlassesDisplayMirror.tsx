@@ -158,10 +158,10 @@ function renderLayout(
       topText = parseText(topText)
       bottomText = parseText(bottomText)
       return (
-        <>
+        <View style={{flexDirection: "row", gap: 2}}>
           <Text style={[styles.cardContent, textStyle]}>{topText || topText === "" ? topText : ""}</Text>
           <Text style={[styles.cardContent, textStyle]}>{bottomText || bottomText === "" ? bottomText : ""}</Text>
-        </>
+        </View>
       )
     }
     case "text_rows": {
