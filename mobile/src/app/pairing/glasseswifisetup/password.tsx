@@ -128,7 +128,7 @@ export default function WifiPasswordScreen() {
           <View style={themed($buttonContainer)}>
             <ActionButton label="Connect" onPress={handleConnect} />
 
-            <ActionButton label="Cancel" variant="secondary" onPress={() => router.back()} />
+            <ActionButton label="Cancel" variant="secondary" onPress={() => goBack()} />
           </View>
         </View>
       </ScrollView>

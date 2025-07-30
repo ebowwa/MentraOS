@@ -24,7 +24,7 @@ export default function WifiConnectingScreen() {
   const [errorMessage, setErrorMessage] = useState("")
   const connectionTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const failureGracePeriodRef = useRef<NodeJS.Timeout | null>(null)
-  const {push, goBack} = useNavigationHistory()
+  const {push, goBack, navigate} = useNavigationHistory()
 
   useEffect(() => {
     // Start connection attempt
@@ -59,7 +59,7 @@ export default function WifiConnectingScreen() {
 
         // Navigate back to home after short delay
         setTimeout(() => {
-          router.navigate("/")
+          navigate("/")
         }, 1500)
       } else if (!data.connected && connectionStatus === "connecting") {
         // Set up 5-second grace period before showing failure

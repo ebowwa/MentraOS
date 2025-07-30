@@ -12,17 +12,19 @@ import Divider from "@/components/misc/Divider"
 import {ArrowLeftIcon} from "assets/icons/component/ArrowLeftIcon"
 import {CloseXIcon} from "assets/icons/component/CloseXIcon"
 import {translate} from "@/i18n"
+import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 
 export default function SearchAppsPage() {
   const {appStatus} = useAppStatus()
   const {themed, theme} = useAppTheme()
   const [searchQuery, setSearchQuery] = useState("")
   const activeApps = appStatus.filter(app => app.is_running)
+  const {goBack} = useNavigationHistory()
 
   return (
     <Screen preset="fixed" style={themed($screen)} safeAreaEdges={["top"]}>
       <View style={themed($searchContainer)}>
-        <Pressable onPress={() => router.back()}>
+        <Pressable onPress={() => goBack()}>
           <ArrowLeftIcon color={theme.colors.icon} size={24} />
         </Pressable>
 

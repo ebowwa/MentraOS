@@ -288,7 +288,7 @@ export default function PairingPrepScreen() {
       <ScrollView style={{marginRight: -theme.spacing.md, paddingRight: theme.spacing.md}}>
         <View style={styles.contentContainer}>{getPairingGuide(glassesModelName)}</View>
       </ScrollView>
-      <View style={{marginBottom: theme.spacing.md}}>
+      <View style={{marginBottom: theme.spacing.lg}}>
         <Button onPress={advanceToPairing} disabled={false}>
           <Text>{translate("common:continue")}</Text>
         </Button>
