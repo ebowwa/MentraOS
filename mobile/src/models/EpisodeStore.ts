@@ -2,6 +2,7 @@ import {Instance, SnapshotOut, types} from "mobx-state-tree"
 import {api} from "../services/api"
 import {Episode, EpisodeModel} from "./Episode"
 import {withSetPropAction} from "./helpers/withSetPropAction"
+import { reportError } from "@/utils/reporting"
 
 export const EpisodeStoreModel = types
   .model("EpisodeStore")
@@ -18,6 +19,7 @@ export const EpisodeStoreModel = types
         store.setProp("episodes", response.episodes)
       } else {
         console.error(`Error fetching episodes: ${JSON.stringify(response)}`)
+        reportError("Error fetching episodes", 'api.episodes', 'fetch_episodes', undefined, { response: JSON.stringify(response) })
       }
     },
     addFavorite(episode: Episode) {

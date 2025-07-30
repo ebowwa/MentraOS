@@ -21,7 +21,7 @@ import { Logger } from 'pino';
 import subscriptionService from './subscription.service';
 import appService from '../core/app.service';
 import * as developerService from '../core/developer.service';
-import { PosthogService } from '../logging/posthog.service';
+import { trackEvent } from '../logging/reportUtils';
 import UserSession, { LOG_PING_PONG } from './UserSession';
 import { User } from '../../models/user.model';
 import { logger as rootLogger } from '../logging/pino-logger';

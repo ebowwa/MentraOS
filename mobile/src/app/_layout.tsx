@@ -1,6 +1,7 @@
 import {useEffect, useState} from "react"
 import {Stack, SplashScreen} from "expo-router"
 import * as Sentry from '@sentry/react-native'
+import { initializeReporting } from '@/utils/reporting'
 
 import {useFonts} from "@expo-google-fonts/space-grotesk"
 import {colors, customFontsToLoad} from "@/theme"
@@ -48,14 +49,25 @@ function Root() {
   const {themeScheme, setThemeContextOverride, ThemeProvider} = useThemeProvider()
 
   useEffect(() => {
-    initI18n()
-      .then(() => setIsI18nInitialized(true))
-      .then(() => loadDateFnsLocale())
-      .catch(error => {
-        console.error("Error initializing i18n:", error)
+    const initializeApp = async () => {
+      try {
+        // Initialize i18n
+        await initI18n()
+        setIsI18nInitialized(true)
+        
+        // Load date locale
+        await loadDateFnsLocale()
+        
+        // Initialize reporting system
+        await initializeReporting()
+      } catch (error) {
+        console.error("Error initializing app:", error)
         // Still set initialized to true to prevent app from being stuck
         setIsI18nInitialized(true)
-      })
+      }
+    }
+
+    initializeApp()
   }, [])
 
   const loaded = fontsLoaded && isI18nInitialized
