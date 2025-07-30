@@ -49,6 +49,7 @@ interface GlassesSettings {
   head_up_angle: number | null // 0-60
   dashboard_height: number
   dashboard_depth: number
+  button_mode?: string
 }
 
 interface WifiConnection {
@@ -130,6 +131,7 @@ export class AugmentOSParser {
       dashboard_height: 4,
       dashboard_depth: 5,
       head_up_angle: 30,
+      button_mode: "photo",
     },
     wifi: {is_connected: false, ssid: "", signal_strength: 0},
     gsm: {is_connected: false, carrier: "", signal_strength: 0},
@@ -183,6 +185,7 @@ export class AugmentOSParser {
       dashboard_height: 4,
       dashboard_depth: 5,
       head_up_angle: 20,
+      button_mode: "photo",
     },
     wifi: {is_connected: true, ssid: "TP-LINK69", signal_strength: 100},
     gsm: {is_connected: false, carrier: "", signal_strength: 0},
@@ -261,6 +264,7 @@ export class AugmentOSParser {
           dashboard_height: status.glasses_settings.dashboard_height ?? 4,
           dashboard_depth: status.glasses_settings.dashboard_depth ?? 5,
           head_up_angle: status.glasses_settings.head_up_angle ?? 30,
+          button_mode: status.glasses_settings.button_mode ?? "photo",
         },
         wifi: status.wifi ?? AugmentOSParser.defaultStatus.wifi,
         gsm: status.gsm ?? AugmentOSParser.defaultStatus.gsm,

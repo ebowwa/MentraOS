@@ -1560,6 +1560,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                 headUpAngle = 20;
             }
             glassesSettings.put("head_up_angle", headUpAngle);
+            glassesSettings.put("button_mode", SmartGlassesManager.getButtonPressMode(this));
             status.put("glasses_settings", glassesSettings);
 
             // Adding OTA progress information
@@ -2515,6 +2516,18 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             } else {
                 Log.d("AugmentOsService", "No SmartGlassesRepresentative available - preference will take effect on next connection");
             }
+        }
+    }
+
+    @Override
+    public void setButtonMode(String mode) {
+        Log.d("AugmentOsService", "Setting button mode: " + mode);
+        // Save locally
+        SmartGlassesManager.setButtonPressMode(this, mode);
+        
+        // Send to glasses if connected
+        if (smartGlassesManager != null && smartGlassesManagerBound) {
+            smartGlassesManager.sendButtonModeSetting(mode);
         }
     }
 

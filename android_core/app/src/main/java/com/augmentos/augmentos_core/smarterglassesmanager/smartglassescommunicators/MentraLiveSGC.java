@@ -25,6 +25,7 @@ import android.os.Looper;
 import android.util.Log;
 
 import androidx.core.app.ActivityCompat;
+import androidx.preference.PreferenceManager;
 
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.BatteryLevelEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.ButtonPressEvent;
@@ -1651,6 +1652,9 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
 
                 // Start the heartbeat mechanism now that glasses are ready
                 startHeartbeat();
+                
+                // Send user settings to glasses
+                sendUserSettings();
 
                 // Finally, mark the connection as fully established
                 Log.d(TAG, "✅ Glasses connection is now fully established!");
@@ -3113,5 +3117,41 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         } catch (JSONException e) {
             Log.e(TAG, "Error creating BLE transfer complete message", e);
         }
+    }
+
+    /**
+     * Send button mode setting to the smart glasses
+     *
+     * @param mode The button mode (photo, apps, both)
+     */
+    @Override
+    public void sendButtonModeSetting(String mode) {
+        Log.d(TAG, "Sending button mode setting to glasses: " + mode);
+
+        if (!isConnected) {
+            Log.w(TAG, "Cannot send button mode - not connected");
+            return;
+        }
+
+        try {
+            JSONObject json = new JSONObject();
+            json.put("type", "button_mode_setting");
+            json.put("mode", mode);
+            sendJson(json);
+        } catch (JSONException e) {
+            Log.e(TAG, "Error creating button mode message", e);
+        }
+    }
+
+    /**
+     * Send user settings to glasses after connection is established
+     */
+    private void sendUserSettings() {
+        Log.d(TAG, "Sending user settings to glasses");
+        
+        // Send button mode setting
+        String buttonMode = PreferenceManager.getDefaultSharedPreferences(context)
+                .getString("button_press_mode", "photo");
+        sendButtonModeSetting(buttonMode);
     }
 }

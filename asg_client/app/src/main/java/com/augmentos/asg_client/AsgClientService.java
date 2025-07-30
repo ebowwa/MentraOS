@@ -50,6 +50,7 @@ import com.augmentos.asg_client.camera.MediaUploadQueueManager;
 import com.augmentos.asg_client.network.INetworkManager;
 import com.augmentos.asg_client.network.NetworkManagerFactory;
 import com.augmentos.asg_client.network.NetworkStateListener; // Make sure this is the correct import path for your library
+import com.augmentos.asg_client.settings.AsgSettings;
 
 import org.greenrobot.eventbus.EventBus;
 import com.augmentos.asg_client.events.BatteryStatusEvent;
@@ -118,6 +119,9 @@ public class AsgClientService extends Service implements NetworkStateListener, B
 
     // Media capture service
     private MediaCaptureService mMediaCaptureService;
+    
+    // Settings
+    private AsgSettings asgSettings;
     
     // Camera Web Server for local network access
     private AsgCameraServer asgCameraServer;
@@ -225,6 +229,10 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     public void onCreate() {
         super.onCreate();
         Log.d(TAG, "AsgClientService onCreate");
+        
+        // Initialize settings
+        asgSettings = new AsgSettings(this);
+        Log.d(TAG, "Button press mode on startup: " + asgSettings.getButtonPressMode().getValue());
 
         // Enable WiFi when service starts
         openWifi(this, true);
@@ -2127,6 +2135,13 @@ public class AsgClientService extends Service implements NetworkStateListener, B
 //                    Log.d(TAG, "BLE photo ready notification received (for phone only)");
 //                    break;
 
+                case "button_mode_setting":
+                    // Handle button mode setting from phone
+                    String mode = dataToProcess.optString("mode", "photo");
+                    Log.d(TAG, "📱 Received button mode setting: " + mode);
+                    asgSettings.setButtonPressMode(mode);
+                    break;
+                    
                 default:
                     Log.w(TAG, "Unknown message type: " + type);
                     break;
@@ -2180,27 +2195,8 @@ public class AsgClientService extends Service implements NetworkStateListener, B
 
             switch (command) {
                 case "cs_pho":
-
-                    if(mMediaCaptureService == null){
-                        Log.d(TAG, "MediaCaptureService is null, initializing");
-                        initializeMediaCaptureService();
-                    }
-                    Log.d(TAG, "📸 Taking photo locally");
-                    mMediaCaptureService.takePhotoLocally();
-
-
-                    // TESTING: Commented out normal photo handling
-//                    handleButtonPress(false);
-                    
-                    // TEST: Send test image from assets
-//                    Log.d(TAG, "🎾 TEST: cs_pho (JSON) pressed - sending test.jpg from assets");
-//                    if (bluetoothManager != null) {
-//                        boolean started = ((com.augmentos.asg_client.bluetooth.BaseBluetoothManager)bluetoothManager)
-//                            .sendTestImageFromAssets("test.jpg");
-//                        Log.d(TAG, "🎾 TEST: File transfer started: " + started);
-//                    } else {
-//                        Log.e(TAG, "🎾 TEST: bluetoothManager is null!");
-//                    }
+                    Log.d(TAG, "📸 Camera button short pressed - handling with configurable mode");
+                    handleConfigurableButtonPress(false); // false = short press
                     break;
 
                 case "hm_htsp":
@@ -2210,7 +2206,8 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                     break;
 
                 case "cs_vdo":
-                    handleButtonPress(true);
+                    Log.d(TAG, "📹 Camera button long pressed - handling with configurable mode");
+                    handleConfigurableButtonPress(true); // true = long press
                     break;
 
                 case "hm_batv":
@@ -2271,6 +2268,86 @@ public class AsgClientService extends Service implements NetworkStateListener, B
             } catch (JSONException e) {
                 Log.e(TAG, "Error creating button press response", e);
             }
+        }
+    }
+    
+    /**
+     * Handle button press based on configured mode
+     * @param isLongPress true if this is a long press (video), false for short press (photo)
+     */
+    private void handleConfigurableButtonPress(boolean isLongPress) {
+        AsgSettings.ButtonPressMode mode = asgSettings.getButtonPressMode();
+        String pressType = isLongPress ? "long" : "short";
+        Log.d(TAG, "Handling " + pressType + " button press with mode: " + mode.getValue());
+        
+        switch (mode) {
+            case PHOTO:
+                // Current behavior - take photo/video only
+                if (isLongPress) {
+                    Log.d(TAG, "📹 Video recording not yet implemented (PHOTO mode, long press)");
+                    // TODO: Implement video recording
+                    // if (mMediaCaptureService != null) {
+                    //     mMediaCaptureService.handleVideoButtonPress();
+                    // }
+                } else {
+                    if (mMediaCaptureService == null) {
+                        Log.d(TAG, "MediaCaptureService is null, initializing");
+                        initializeMediaCaptureService();
+                    }
+                    Log.d(TAG, "📸 Taking photo locally (PHOTO mode, short press)");
+                    mMediaCaptureService.takePhotoLocally();
+                }
+                break;
+                
+            case APPS:
+                // Send to apps only
+                Log.d(TAG, "📱 Sending " + pressType + " button press to apps (APPS mode)");
+                sendButtonPressToPhone(isLongPress);
+                break;
+                
+            case BOTH:
+                // Both actions
+                Log.d(TAG, "📸📱 Taking media AND sending to apps (BOTH mode, " + pressType + " press)");
+                
+                // Take photo/video first
+                if (isLongPress) {
+                    Log.d(TAG, "📹 Video recording not yet implemented (BOTH mode, long press)");
+                    // TODO: Implement video recording
+                } else {
+                    if (mMediaCaptureService == null) {
+                        Log.d(TAG, "MediaCaptureService is null, initializing");
+                        initializeMediaCaptureService();
+                    }
+                    mMediaCaptureService.takePhotoLocally();
+                }
+                
+                // Then send to apps
+                sendButtonPressToPhone(isLongPress);
+                break;
+        }
+    }
+    
+    /**
+     * Send button press event to connected phone
+     * @param isLongPress true if this is a long press, false for short press
+     */
+    private void sendButtonPressToPhone(boolean isLongPress) {
+        if (bluetoothManager != null && bluetoothManager.isConnected()) {
+            try {
+                JSONObject buttonObject = new JSONObject();
+                buttonObject.put("type", "button_press");
+                buttonObject.put("buttonId", "camera");
+                buttonObject.put("pressType", isLongPress ? "long" : "short");
+                buttonObject.put("timestamp", System.currentTimeMillis());
+                
+                String jsonString = buttonObject.toString();
+                Log.d(TAG, "Sending button press to phone: " + jsonString);
+                bluetoothManager.sendData(jsonString.getBytes());
+            } catch (JSONException e) {
+                Log.e(TAG, "Error creating button press message", e);
+            }
+        } else {
+            Log.w(TAG, "Cannot send button press - Bluetooth not connected");
         }
     }
 

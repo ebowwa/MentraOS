@@ -528,6 +528,18 @@ public class SmartGlassesManager extends Service {
                 .apply();
     }
 
+    public static String getButtonPressMode(Context context) {
+        return PreferenceManager.getDefaultSharedPreferences(context)
+                .getString("button_press_mode", "photo");
+    }
+
+    public static void setButtonPressMode(Context context, String mode) {
+        PreferenceManager.getDefaultSharedPreferences(context)
+                .edit()
+                .putString("button_press_mode", mode)
+                .apply();
+    }
+
     public static boolean getBypassVadForDebugging(Context context) {
         SharedPreferences sharedPreferences = context.getSharedPreferences("AugmentOSPrefs", Context.MODE_PRIVATE);
         //Log.d("AugmentOSPrefs", "Getting bypass VAD for debugging: " + sharedPreferences.getBoolean(context.getResources().getString(R.string.BYPASS_VAD_FOR_DEBUGGING), false));
@@ -728,6 +740,12 @@ public class SmartGlassesManager extends Service {
     public void sendWifiCredentials(String ssid, String password) {
         if (smartGlassesRepresentative != null && smartGlassesRepresentative.smartGlassesCommunicator != null) {
             smartGlassesRepresentative.smartGlassesCommunicator.sendWifiCredentials(ssid, password);
+        }
+    }
+
+    public void sendButtonModeSetting(String mode) {
+        if (smartGlassesRepresentative != null && smartGlassesRepresentative.smartGlassesCommunicator != null) {
+            smartGlassesRepresentative.smartGlassesCommunicator.sendButtonModeSetting(mode);
         }
     }
 
