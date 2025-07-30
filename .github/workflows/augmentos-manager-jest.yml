@@ -27,9 +27,18 @@ jobs:
           cache: "pnpm"
           cache-dependency-path: mobile/package.json
 
+      - name: Configure pnpm store
+        working-directory: ./mobile
+        run: |
+          # Use local store to avoid permission issues
+          pnpm config set store-dir .pnpm-store
+
       - name: Install dependencies
         working-directory: ./mobile
         run: pnpm install --no-frozen-lockfile
+        env:
+          PNPM_HOME: ${{ github.workspace }}/mobile/.pnpm
+          PNPM_STORE_PATH: ${{ github.workspace }}/mobile/.pnpm-store
 
       - name: Run Jest tests
         working-directory: ./mobile
