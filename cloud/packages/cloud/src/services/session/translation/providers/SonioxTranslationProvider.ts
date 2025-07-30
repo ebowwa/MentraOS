@@ -88,6 +88,12 @@ class SonioxTranslationStream implements TranslationStreamInstance {
   private lastSentTranslationText = '';
   private currentUtteranceStartTime?: number;
 
+  // Two-way translation tracking
+  private isTwoWay = false;
+  private langA?: string;
+  private langB?: string;
+  private currentSourceLang?: string;
+
   constructor(
     options: TranslationStreamOptions,
     provider: TranslationProvider,
@@ -203,6 +209,10 @@ class SonioxTranslationStream implements TranslationStreamInstance {
 
     // Check if this is a two-way translation pair
     if (this.isTwoWayPair(sourceLang, targetLang)) {
+      this.isTwoWay = true;
+      this.langA = sourceLang;
+      this.langB = targetLang;
+
       translationConfig = {
         type: 'two_way',
         language_a: sourceLang,
@@ -210,6 +220,8 @@ class SonioxTranslationStream implements TranslationStreamInstance {
       };
     } else {
       // One-way translation
+      this.isTwoWay = false;
+
       translationConfig = {
         type: 'one_way',
         target_language: targetLang
@@ -235,9 +247,8 @@ class SonioxTranslationStream implements TranslationStreamInstance {
       enable_profanity_filter: false,
       enable_automatic_punctuation: true,
       enable_speaker_diarization: true,
-
-      enable_speaker_identification: false, // Don't need this for translation
       enable_language_identification: true,
+      enable_endpoint_detection: true,
 
       // max time for final.
       max_non_final_tokens_duration_ms: 2000
@@ -324,6 +335,7 @@ class SonioxTranslationStream implements TranslationStreamInstance {
       // Process tokens to update our buffers
       let hasEndToken = false;
       let newFinalTranslationTokens: SonioxToken[] = [];
+      let detectedSourceLang: string | undefined;
 
       // Scan through all tokens
       for (const token of tokens) {
@@ -337,7 +349,38 @@ class SonioxTranslationStream implements TranslationStreamInstance {
         // Check translation_status first, then fallback to language check
         if (token.is_final && token.translation_status === 'translation') {
           newFinalTranslationTokens.push(token);
+
+          // Detect the source language from the token
+          if (!detectedSourceLang && (token.source_language || token.language)) {
+            detectedSourceLang = this.normalizeLanguageCode(token.source_language || token.language || '');
+
+            // Log language detection for debugging
+            this.logger.debug({
+              detectedSourceLang,
+              tokenSourceLanguage: token.source_language,
+              tokenLanguage: token.language,
+              isTwoWay: this.isTwoWay,
+              langA: this.langA,
+              langB: this.langB
+            }, 'Detected source language from token');
+          }
         }
+      }
+
+      // For two-way translation, check if language direction changed
+      if (this.isTwoWay && detectedSourceLang && this.currentSourceLang && this.currentSourceLang !== detectedSourceLang) {
+        // Language switched - flush current buffer as final before processing new language
+        if (this.finalTranslationTokens.length > 0) {
+          this.flushCurrentBuffer(true, this.currentSourceLang);
+        }
+      }
+
+      // Update current source language
+      if (detectedSourceLang) {
+        this.currentSourceLang = detectedSourceLang;
+      } else if (!this.currentSourceLang && !this.isTwoWay) {
+        // For one-way translation without detected language, use configured source
+        this.currentSourceLang = this.normalizeLanguageCode(this.sourceLanguage);
       }
 
       // Add new final tokens to our buffer
@@ -357,12 +400,22 @@ class SonioxTranslationStream implements TranslationStreamInstance {
         .join('');
 
       // Only send if we have translation text and it's different from last sent
-      if (translationText && translationText !== this.lastSentTranslationText) {
+      if (translationText && translationText !== this.lastSentTranslationText || hasEndToken) {
         // Calculate timing from tokens
         let endTime = this.currentUtteranceStartTime || 0;
         if (this.finalTranslationTokens.length > 0) {
           const lastToken = this.finalTranslationTokens[this.finalTranslationTokens.length - 1];
           endTime = (lastToken.start_ms || 0) + (lastToken.duration_ms || 0);
+        }
+
+        // Determine actual source and target languages
+        let actualSourceLang = this.sourceLanguage;
+        let actualTargetLang = this.targetLanguage;
+
+        if (this.isTwoWay && this.currentSourceLang) {
+          // For two-way translation, determine target based on source
+          actualSourceLang = this.currentSourceLang;
+          actualTargetLang = (this.currentSourceLang === this.langA) ? this.langB! : this.langA!;
         }
 
         // Create translation data
@@ -375,8 +428,8 @@ class SonioxTranslationStream implements TranslationStreamInstance {
           endTime: endTime,
           speakerId: undefined,
           duration: endTime - (this.currentUtteranceStartTime || 0),
-          transcribeLanguage: this.sourceLanguage,
-          translateLanguage: this.targetLanguage,
+          transcribeLanguage: actualSourceLang,
+          translateLanguage: actualTargetLang,
           didTranslate: true,
           provider: 'soniox',
           confidence: undefined
@@ -403,7 +456,7 @@ class SonioxTranslationStream implements TranslationStreamInstance {
           text: translationText.substring(0, 100),
           isFinal: hasEndToken,
           tokenCount: this.finalTranslationTokens.length,
-          languages: `${this.sourceLanguage} → ${this.targetLanguage}`
+          languages: `${actualSourceLang} → ${actualTargetLang}`
         }, 'Soniox translation sent');
       }
 
@@ -490,6 +543,15 @@ class SonioxTranslationStream implements TranslationStreamInstance {
           const lastToken = this.finalTranslationTokens[this.finalTranslationTokens.length - 1];
           const endTime = (lastToken.start_ms || 0) + (lastToken.duration_ms || 0);
 
+          // Determine actual languages for final buffer
+          let actualSourceLang = this.sourceLanguage;
+          let actualTargetLang = this.targetLanguage;
+
+          if (this.isTwoWay && this.currentSourceLang) {
+            actualSourceLang = this.currentSourceLang;
+            actualTargetLang = (this.currentSourceLang === this.langA) ? this.langB! : this.langA!;
+          }
+
           const translationData: TranslationData = {
             type: StreamType.TRANSLATION,
             text: finalText,
@@ -499,8 +561,8 @@ class SonioxTranslationStream implements TranslationStreamInstance {
             endTime: endTime,
             speakerId: undefined,
             duration: endTime - (this.currentUtteranceStartTime || 0),
-            transcribeLanguage: this.sourceLanguage,
-            translateLanguage: this.targetLanguage,
+            transcribeLanguage: actualSourceLang,
+            translateLanguage: actualTargetLang,
             didTranslate: true,
             provider: 'soniox',
             confidence: undefined
@@ -571,6 +633,54 @@ class SonioxTranslationStream implements TranslationStreamInstance {
   private isTwoWayPair(source: string, target: string): boolean {
     // Use the utility to check against actual Soniox two-way pairs
     return SonioxTranslationUtils.supportsTwoWayTranslation(source, target);
+  }
+
+  private flushCurrentBuffer(forceFinal: boolean, sourceLanguage: string): void {
+    if (this.finalTranslationTokens.length === 0) return;
+
+    const translationText = this.finalTranslationTokens.map(t => t.text).join('');
+
+    if (translationText && translationText !== this.lastSentTranslationText) {
+      // Calculate timing
+      let endTime = this.currentUtteranceStartTime || 0;
+      if (this.finalTranslationTokens.length > 0) {
+        const lastToken = this.finalTranslationTokens[this.finalTranslationTokens.length - 1];
+        endTime = (lastToken.start_ms || 0) + (lastToken.duration_ms || 0);
+      }
+
+      // Determine target language based on source
+      const actualTargetLang = (this.isTwoWay && sourceLanguage === this.langA) ? this.langB! : this.langA!;
+
+      const translationData: TranslationData = {
+        type: StreamType.TRANSLATION,
+        text: translationText,
+        originalText: undefined,
+        isFinal: forceFinal,
+        startTime: this.currentUtteranceStartTime || 0,
+        endTime: endTime,
+        speakerId: undefined,
+        duration: endTime - (this.currentUtteranceStartTime || 0),
+        transcribeLanguage: sourceLanguage,
+        translateLanguage: actualTargetLang,
+        didTranslate: true,
+        provider: 'soniox',
+        confidence: undefined
+      };
+
+      this.callbacks.onData?.(translationData);
+
+      this.logger.info({
+        text: translationText.substring(0, 50),
+        forceFinal,
+        reason: 'language_switch',
+        languages: `${sourceLanguage} → ${actualTargetLang}`
+      }, 'Flushed translation buffer due to language switch');
+    }
+
+    // Clear buffers
+    this.finalTranslationTokens = [];
+    this.lastSentTranslationText = '';
+    this.currentUtteranceStartTime = undefined;
   }
 }
 
