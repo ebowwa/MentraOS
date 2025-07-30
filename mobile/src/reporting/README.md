@@ -41,6 +41,11 @@ reporting/
 │   ├── index.ts               # System exports
 │   └── system.ts              # System management functions
 │
+├── ⚙️ config/                 # Configuration management
+│   ├── index.ts               # Config exports
+│   ├── sentry.ts              # Sentry configuration
+│   └── posthog.ts             # PostHog configuration
+│
 ├── 📋 index.ts                # Single main entry point (backward compatible)
 │
 └── 📖 README.md               # This comprehensive documentation
@@ -77,6 +82,11 @@ reporting/
 - **System Management**: Handles initialization, user context, and provider management
 - **System Operations**: Provides system-level functions for the reporting system
 - **Configuration**: Manages provider enablement and status
+
+### **Config Package** (`config/`)
+- **Secure Configuration**: Manages Sentry and PostHog credentials securely
+- **Environment Variables**: Reads configuration from environment variables
+- **Service Initialization**: Handles secure service initialization
 
 ## 🚀 Usage Patterns
 
@@ -273,6 +283,12 @@ import { reportApiRequestFailure, reportNetworkIssue } from '@/reporting'
 import { initializeReporting, setUserContext } from '@/reporting'
 ```
 
+### **For Configuration**
+```typescript
+// ✅ Use config for service configuration
+import { isSentryEnabled, isPostHogEnabled } from '@/reporting'
+```
+
 ### **For Advanced Usage**
 ```typescript
 // ✅ Use comprehensive imports for all functionality
@@ -341,7 +357,8 @@ reporting/
 ├── 📊 analytics/              # Analytics and tracking
 ├── ⚠️ errors/                 # Basic error reporting
 ├── 🌐 domains/                # Domain-specific reporting
-├── 🛠️ utils/                  # System utilities
+├── 🛠️ system/                 # System management
+├── ⚙️ config/                 # Configuration management
 ├── 📋 index.ts                # Single main entry point
 └── 📖 README.md               # This comprehensive documentation
 ```
@@ -349,8 +366,8 @@ reporting/
 ## ✅ Key Achievements
 
 ### **1. Package Organization**
-- **6 focused packages** with clear responsibilities
-- **25 TypeScript files** organized logically
+- **7 focused packages** with clear responsibilities
+- **27 TypeScript files** organized logically
 - **Single main entry point** (`index.ts`) for all exports
 - **Removed redundant** `barrel.ts` file
 
