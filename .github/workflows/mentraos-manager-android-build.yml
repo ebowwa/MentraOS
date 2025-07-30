@@ -3,8 +3,8 @@ name: Mobile App Android Build
 on:
   pull_request:
     paths:
-      - 'mobile/**'
-      - '.github/workflows/mentraos-manager-android-build.yml'
+      - "mobile/**"
+      - ".github/workflows/mentraos-manager-android-build.yml"
   push:
     branches:
       - main
@@ -13,8 +13,8 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
-    
+    runs-on: self-hosted
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -22,8 +22,8 @@ jobs:
       - name: Setup Java
         uses: actions/setup-java@v3
         with:
-          java-version: '17'
-          distribution: 'temurin'
+          java-version: "17"
+          distribution: "temurin"
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v2
@@ -36,8 +36,8 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
-          cache: 'pnpm'
+          node-version: "18"
+          cache: "pnpm"
           cache-dependency-path: mobile/package.json
 
       - name: Install dependencies

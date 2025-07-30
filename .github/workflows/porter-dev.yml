@@ -7,7 +7,7 @@ on:
 
 jobs:
   porter-deploy:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -26,7 +26,7 @@ jobs:
           PORTER_APP_NAME: cloud-dev
           PORTER_NAMESPACE: dev
           NODE_ENV: development
-          PORTER_CLUSTER: "4689"         # Adjust if needed
+          PORTER_CLUSTER: "4689" # Adjust if needed
           PORTER_PROJECT: "15081"
           PORTER_HOST: https://dashboard.porter.run
           PORTER_PR_NUMBER: ${{ github.event.number }}
