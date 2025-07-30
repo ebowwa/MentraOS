@@ -1,7 +1,7 @@
 import {useEffect, useState} from "react"
 import {Stack, SplashScreen} from "expo-router"
-import * as Sentry from '@sentry/react-native'
-import { initializeReporting, reportCritical } from '@/utils/reporting'
+import { initializeReporting, reportCritical } from '@/reporting'
+import { reportAppStartupIssue, reportAppCrash } from '@/reporting/domains'
 
 import {useFonts} from "@expo-google-fonts/space-grotesk"
 import {colors, customFontsToLoad} from "@/theme"
@@ -16,21 +16,7 @@ import {View} from "react-native"
 import {Text} from "@/components/ignite"
 import {Ionicons} from "@expo/vector-icons" // Replace with your project's icon import if different
 
-Sentry.init({
-  dsn: 'https://e39b9d206b558506ddb5051fcf612513@o4509753650249728.ingest.us.sentry.io/4509753651691520',
-
-  // Adds more context data to events (IP address, cookies, user, etc.)
-  // For more information, visit: https://docs.sentry.io/platforms/react-native/data-management/data-collected/
-  sendDefaultPii: true,
-
-  // Configure Session Replay
-  replaysSessionSampleRate: 0.1,
-  replaysOnErrorSampleRate: 1,
-  integrations: [Sentry.mobileReplayIntegration(), Sentry.feedbackIntegration()],
-
-  // uncomment the line below to enable Spotlight (https://spotlightjs.com)
-  // spotlight: __DEV__,
-});
+// Sentry will be initialized by ReportManager
 
 SplashScreen.preventAutoHideAsync()
 
@@ -100,7 +86,10 @@ function Root() {
   }
 
   useEffect(() => {
-    if (fontError) throw fontError
+    if (fontError) {
+      reportAppStartupIssue("Font loading failed", fontError)
+      throw fontError
+    }
   }, [fontError])
 
   useEffect(() => {
@@ -137,4 +126,4 @@ function Root() {
   )
 }
 
-export default Sentry.wrap(Root);
+export default Root;

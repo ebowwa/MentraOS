@@ -4,6 +4,7 @@ import {useEffect} from "react"
 import {useStatus} from "@/contexts/AugmentOSStatusProvider"
 import {useAuth} from "@/contexts/AuthContext"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
+import { reportNavigationIssue } from '@/reporting/domains'
 
 export default function IndexPage() {
   const {user, loading} = useAuth()
@@ -35,6 +36,7 @@ export default function IndexPage() {
     if (!loading) {
       initializeApp().catch(error => {
         console.error("Error initializing app:", error)
+        reportNavigationIssue("/", "App initialization failed", error instanceof Error ? error : new Error(String(error)))
       })
     }
   }, [user, loading, status, initializeCoreConnection])

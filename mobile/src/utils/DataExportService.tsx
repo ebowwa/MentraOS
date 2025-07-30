@@ -1,7 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import {SETTINGS_KEYS} from "@/consts"
 import {storage} from "@/utils/storage"
-import { reportCritical } from "@/utils/reporting"
+import { reportCritical } from "@/reporting"
 
 export interface UserDataExport {
   metadata: {
