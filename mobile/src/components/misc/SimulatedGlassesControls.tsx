@@ -2,7 +2,11 @@ import React from "react"
 import {View, StyleSheet, TouchableOpacity} from "react-native"
 import Icon from "react-native-vector-icons/MaterialIcons"
 import CoreCommunicator from "@/bridge/CoreCommunicator"
-import { reportError } from "@/utils/reporting"
+import { 
+  reportHeadUpSimulationFailure,
+  reportHeadDownSimulationFailure,
+  reportButtonPressSimulationFailure
+} from "@/reporting/domains"
 
 interface SimulatedGlassesControlsProps {
   theme: any
@@ -18,7 +22,7 @@ export const SimulatedGlassesControls: React.FC<SimulatedGlassesControlsProps> =
     } catch (error) {
       console.error("Failed to simulate head up:", error)
       console.error("Error details:", JSON.stringify(error))
-      reportError("Failed to simulate head up", 'simulation.controls', 'head_up', error instanceof Error ? error : new Error(String(error)))
+      reportHeadUpSimulationFailure(String(error), error instanceof Error ? error : new Error(String(error)))
     }
   }
 
@@ -30,7 +34,7 @@ export const SimulatedGlassesControls: React.FC<SimulatedGlassesControlsProps> =
     } catch (error) {
       console.error("Failed to simulate head down:", error)
       console.error("Error details:", JSON.stringify(error))
-      reportError("Failed to simulate head down", 'simulation.controls', 'head_down', error instanceof Error ? error : new Error(String(error)))
+      reportHeadDownSimulationFailure(String(error), error instanceof Error ? error : new Error(String(error)))
     }
   }
 
@@ -42,7 +46,7 @@ export const SimulatedGlassesControls: React.FC<SimulatedGlassesControlsProps> =
     } catch (error) {
       console.error("Failed to simulate button press:", error)
       console.error("Error details:", JSON.stringify(error))
-      reportError("Failed to simulate button press", 'simulation.controls', 'button_press', error instanceof Error ? error : new Error(String(error)), { pressType })
+      reportButtonPressSimulationFailure(pressType, String(error), error instanceof Error ? error : new Error(String(error)))
     }
   }
 

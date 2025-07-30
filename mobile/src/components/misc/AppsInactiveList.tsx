@@ -46,7 +46,11 @@ import {
 } from "@/utils/NotificationServiceUtils"
 import {AppListStoreLink} from "./AppListStoreLink"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
-import { reportError } from "@/utils/reporting"
+import { 
+  reportAppNotFound,
+  reportAppStopFailure,
+  reportAppStartFailure
+} from "@/reporting/domains"
 
 export default function InactiveAppList({
   isSearchPage = false,
@@ -299,7 +303,7 @@ export default function InactiveAppList({
     const appToStart = appStatus.find(app => app.packageName === packageName)
     if (!appToStart) {
       console.error("App not found:", packageName)
-      reportError("App not found", 'app.management', 'start_app', undefined, { packageName })
+              reportAppNotFound(packageName)
       return
     }
 
@@ -412,7 +416,7 @@ export default function InactiveAppList({
           clearPendingOperation(runningApp.packageName)
         } catch (error) {
           console.error("stop app error:", error)
-          reportError("Stop app error", 'app.management', 'stop_app', error instanceof Error ? error : new Error(String(error)), { packageName: runningApp.packageName })
+          reportAppStopFailure(runningApp.packageName, String(error), error instanceof Error ? error : new Error(String(error)))
           refreshAppStatus()
         }
       }
@@ -447,7 +451,7 @@ export default function InactiveAppList({
     } catch (error) {
       // Revert the app state when there's an error starting the app
       console.error("start app error:", error)
-      reportError("Start app error", 'app.management', 'start_app', error instanceof Error ? error : new Error(String(error)), { packageName })
+              reportAppStartFailure(packageName, String(error), error instanceof Error ? error : new Error(String(error)))
 
       // Clear the pending operation for this app
       clearPendingOperation(packageName)

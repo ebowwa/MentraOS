@@ -34,7 +34,8 @@ import {Spacer} from "@/components/misc/Spacer"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import * as WebBrowser from "expo-web-browser"
 import Toast from "react-native-toast-message"
-import { reportCritical } from "@/utils/reporting"
+import { reportCritical } from "@/reporting"
+import { reportAuthEvent } from '@/reporting/analytics'
 
 export default function LoginScreen() {
   const [isSigningUp, setIsSigningUp] = useState(false)
@@ -298,19 +299,29 @@ export default function LoginScreen() {
     Keyboard.dismiss()
     setIsFormLoading(true)
     setFormAction("signin")
-    const {data, error} = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
+    
+    try {
+      const {data, error} = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
 
-    if (error) {
-      showAlert(translate("common:error"), error.message)
-      // Handle sign-in error
-    } else {
-      console.log("Sign-in successful:", data)
-      replace("/")
+      if (error) {
+        reportAuthEvent("email_signin_failed", undefined, { error: error.message })
+        showAlert(translate("common:error"), error.message)
+        // Handle sign-in error
+      } else {
+        reportAuthEvent("email_signin_success", undefined, { email })
+        console.log("Sign-in successful:", data)
+        replace("/")
+      }
+    } catch (err) {
+      reportCritical("Email sign-in exception", 'auth.email', 'email_signin_exception', err instanceof Error ? err : new Error(String(err)))
+      showAlert(translate("common:error"), "An unexpected error occurred")
+    } finally {
+      setIsFormLoading(false)
+      setFormAction(null)
     }
-    setIsFormLoading(false)
   }
 
   useEffect(() => {

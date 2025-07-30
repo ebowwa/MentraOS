@@ -25,7 +25,7 @@ import {glassesFeatures} from "@/config/glassesFeatures"
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons"
 import {showAlert, showBluetoothAlert, showLocationAlert, showLocationServicesAlert} from "@/utils/AlertUtils"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
-import { reportError } from "@/utils/reporting"
+import { reportDeviceConnectionFailure } from "@/reporting/domains"
 
 export const ConnectDeviceButton = () => {
   const {status} = useStatus()
@@ -87,7 +87,7 @@ export const ConnectDeviceButton = () => {
       }
     } catch (error) {
       console.error("connect to glasses error:", error)
-      reportError("Connect to glasses error", 'device.connection', 'connect_glasses', error instanceof Error ? error : new Error(String(error)))
+      reportDeviceConnectionFailure('glasses', String(error), error instanceof Error ? error : new Error(String(error)))
       showAlert("Connection Error", "Failed to connect to glasses. Please try again.", [{text: "OK"}])
     } finally {
       setIsCheckingConnectivity(false)

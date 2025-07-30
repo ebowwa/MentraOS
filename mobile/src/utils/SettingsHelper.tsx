@@ -1,5 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage"
-import { reportCritical } from "@/utils/reporting"
+import { reportCritical } from "@/reporting"
 
 const saveSetting = async (key: string, value: any): Promise<void> => {
   try {

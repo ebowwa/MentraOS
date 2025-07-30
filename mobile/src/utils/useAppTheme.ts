@@ -6,7 +6,10 @@ import * as SystemUI from "expo-system-ui"
 import * as NavigationBar from "expo-navigation-bar"
 import {loadSetting} from "@/utils/SettingsHelper"
 import {SETTINGS_KEYS} from "@/consts"
-import { reportError, reportWarning } from "@/utils/reporting"
+import { 
+  reportThemeProviderIssue,
+  reportThemePreferenceLoadFailure
+} from "@/reporting/domains"
 
 type ThemeContextType = {
   themeScheme: ThemeContexts
@@ -18,7 +21,7 @@ export const ThemeContext = createContext<ThemeContextType>({
   themeScheme: undefined, // default to the system theme
   setThemeContextOverride: (_newTheme: ThemeContexts) => {
     console.error("Tried to call setThemeContextOverride before the ThemeProvider was initialized")
-    reportError("Tried to call setThemeContextOverride before the ThemeProvider was initialized", 'theme.provider', 'set_theme_override')
+    reportThemeProviderIssue('setThemeContextOverride', 'ThemeProvider not initialized')
   },
 })
 
@@ -67,7 +70,7 @@ export const useThemeProvider = (initialTheme: ThemeContexts = undefined) => {
         }
       } catch (error) {
         console.error("Error loading theme preference:", error)
-        reportError("Error loading theme preference", 'theme.preferences', 'load_theme', error instanceof Error ? error : new Error(String(error)))
+        reportThemePreferenceLoadFailure(String(error), error instanceof Error ? error : new Error(String(error)))
       } finally {
         setIsLoaded(true)
       }
