@@ -84,37 +84,44 @@ void protobuf_parse_control_message(const uint8_t *protobuf_data, uint16_t len)
 	
 	if (decode_phone_to_glasses_message(protobuf_data, len, &phone_msg)) {
 		LOG_INF("✅ Successfully decoded PhoneToGlasses message!");
+		LOG_INF("Message type (which_payload): %u", phone_msg.which_payload);
 		
-		// Process the decoded message
-		if (phone_msg.has_battery_state_request) {
+		// Process the decoded message based on payload type
+		switch (phone_msg.which_payload) {
+		case 11: // battery_state_tag
 			LOG_INF("📱 Battery state request received");
 			// TODO: Generate battery response
-		}
-		
-		if (phone_msg.has_glasses_info_request) {
+			break;
+			
+		case 12: // glasses_info_tag  
 			LOG_INF("📱 Glasses info request received");
 			// TODO: Generate device info response
-		}
-		
-		if (phone_msg.has_disconnect_request) {
+			break;
+			
+		case 10: // disconnect_tag
 			LOG_INF("📱 Disconnect request received");
 			// TODO: Handle disconnect
-		}
-		
-		if (phone_msg.has_display_text) {
-			LOG_INF("📱 Display text: \"%s\"", phone_msg.display_text.text);
+			break;
+			
+		case 30: // display_text_tag
+			LOG_INF("📱 Display text received");
+			// Access text safely - will need to check the DisplayText structure
 			// TODO: Display text on glasses
-		}
-		
-		if (phone_msg.has_display_scrolling_text) {
-			LOG_INF("📱 Display scrolling text: \"%s\"", 
-phone_msg.display_scrolling_text.text);
+			break;
+			
+		case 35: // display_scrolling_text_tag (estimated)
+			LOG_INF("📱 Display scrolling text received");
 			// TODO: Display scrolling text
-		}
-		
-		if (phone_msg.has_audio_command) {
-			LOG_INF("📱 Audio command received");
-			// TODO: Handle audio command
+			break;
+			
+		case 16: // ping_tag
+			LOG_INF("📱 Ping request received");
+			// TODO: Send pong response
+			break;
+			
+		default:
+			LOG_INF("📱 Unknown message type: %u", phone_msg.which_payload);
+			break;
 		}
 		
 	} else {
@@ -209,14 +216,12 @@ int protobuf_generate_echo_response(const uint8_t *input_data, uint16_t input_le
 	// Create a simple response message
 	mentraos_ble_GlassesToPhone response = mentraos_ble_GlassesToPhone_init_default;
 	
-	// Create a device info response as an example
-	response.has_device_info = true;
-	strncpy(response.device_info.device_name, "NexSim Enhanced", 
-sizeof(response.device_info.device_name) - 1);
-	strncpy(response.device_info.firmware_version, "v2.0.0-protobuf", 
-sizeof(response.device_info.firmware_version) - 1);
-	strncpy(response.device_info.hardware_version, "nRF5340", 
-sizeof(response.device_info.hardware_version) - 1);
+	// Set which_payload to battery_status (tag 10) - simpler than device_info
+	response.which_payload = 10;
+	
+	// Create a battery status response as an example  
+	response.payload.battery_status.level = 85;    // 85% battery
+	response.payload.battery_status.charging = false;
 	
 	// Encode the response
 	size_t bytes_written;
