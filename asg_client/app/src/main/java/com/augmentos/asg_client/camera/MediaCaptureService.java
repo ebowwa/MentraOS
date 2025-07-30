@@ -52,8 +52,11 @@ public class MediaCaptureService {
     private String currentVideoId = null;
     private String currentVideoPath = null;
     private long recordingStartTime = 0;
-    public static final int bleImageTargetWidth = 320;
-    public static final int bleImageTargetHeight = 240;
+
+    // Original very fast: 320x240, 30qual
+    public static final int bleImageTargetWidth = 480;
+    public static final int bleImageTargetHeight = 480;
+    public static final int bleImageAvifQuality = 40;
     
     // Track which photos should be saved to gallery
     private Map<String, Boolean> photoSaveFlags = new HashMap<>();
@@ -1054,8 +1057,8 @@ public class MediaCaptureService {
                     // Use avif-coder library for AVIF encoding
                     HeifCoder heifCoder = new HeifCoder();
                     compressedData = heifCoder.encodeAvif(
-                        resized, 
-                        30,  // quality (0-100)
+                        resized,
+                            bleImageAvifQuality,  // quality (0-100)
                         PreciseMode.LOSSY   // Use FAST mode for reasonable compression speed
                     );
                     Log.d(TAG, "Successfully encoded as AVIF");
