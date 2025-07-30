@@ -1,11 +1,11 @@
 /*
- * @Author       : XK
- * @Date         : 2025-07-09 12:30:39
- * @LastEditTime : 2025-07-18 11:53:09
+ * @Author       : Cole
+ * @Date         : 2025-07-25 11:26:40
+ * @LastEditTime : 2025-07-29 19:02:11
  * @FilePath     : xyzn_lvgl_display.c
- * @Description  : 
- * 
- * Copyright (c) XingYiZhiNeng 2025 , All Rights Reserved. 
+ * @Description  :
+ *
+ * Copyright (c) 2025 MentraOS Organization. All rights reserved.
  */
 
 #include <zephyr/device.h>
@@ -31,7 +31,9 @@ static struct k_thread lvgl_thread_data;
 k_tid_t lvgl_thread_handle;
 
 static K_SEM_DEFINE(lvgl_display_sem, 0, 1);
-K_MSGQ_DEFINE(display_msgq, sizeof(display_cmd_t), 8, 4);
+
+#define DISPLAY_CMD_QSZ 16
+K_MSGQ_DEFINE(display_msgq, sizeof(display_cmd_t), DISPLAY_CMD_QSZ, 4);
 
 #define LVGL_TICK_MS 5
 static struct k_timer fps_timer;
@@ -93,20 +95,25 @@ int lvgl_display_sem_take(int64_t time)
 
 void display_open(void)
 {
-    display_cmd_t cmd = {.type = LCD_CMD_OPEN, .param = NULL};
+    // display_cmd_t cmd = {.type = LCD_CMD_OPEN, .param = NULL};
+    display_cmd_t cmd = {
+        .type = LCD_CMD_OPEN,
+        .p.open = {
+            .brightness = 9,
+            .mirror = 0x08}};
     xyzn_os_msgq_send(&display_msgq, &cmd, XYZN_OS_WAIT_FOREVER);
 }
 
 void display_close(void)
 {
-    display_cmd_t cmd = {.type = LCD_CMD_CLOSE, .param = NULL};
-    xyzn_os_msgq_send(&display_msgq, &cmd, XYZN_OS_WAIT_FOREVER);
+    // display_cmd_t cmd = {.type = LCD_CMD_CLOSE, .param = NULL};
+    // xyzn_os_msgq_send(&display_msgq, &cmd, XYZN_OS_WAIT_FOREVER);
 }
 
 void display_send_frame(void *data_ptr)
 {
-    display_cmd_t cmd = {.type = LCD_CMD_DATA, .param = data_ptr};
-    xyzn_os_msgq_send(&display_msgq, &cmd, XYZN_OS_WAIT_FOREVER);
+    // display_cmd_t cmd = {.type = LCD_CMD_DATA, .param = data_ptr};
+    // xyzn_os_msgq_send(&display_msgq, &cmd, XYZN_OS_WAIT_FOREVER);
 }
 void lvgl_dispaly_text(void)
 {
@@ -242,6 +249,29 @@ void scroll_text_stop(void)
         cont = NULL;
     }
 }
+void handle_display_text(const mentraos_ble_DisplayText *txt)
+{
+    display_cmd_t cmd;
+
+    cmd.type = LCD_CMD_TEXT;
+    BSP_LOGI(TAG, "show text: %s", (char *)txt->text.arg);
+    BSP_LOG_BUFFER_HEX(TAG, (char *)txt->text.arg, MAX_TEXT_LEN);
+    /* txt->text.arg 已由 decode_string 填入 NUL 结尾字符串 */
+    // strncpy(cmd.p.text.text, (char *)txt->text.arg, MAX_TEXT_LEN);
+    memcpy(cmd.p.text.text, (char *)txt->text.arg, MAX_TEXT_LEN);
+    cmd.p.text.text[MAX_TEXT_LEN] = '\0';
+
+    cmd.p.text.x = txt->x;
+    cmd.p.text.y = txt->y;
+    cmd.p.text.font_code = txt->font_code;
+    cmd.p.text.font_color = txt->color;
+    cmd.p.text.size = txt->size;
+    /* 非阻塞入队，队满则丢弃并打印警告 */
+    if (xyzn_os_msgq_send(&display_msgq, &cmd, XYZN_OS_WAIT_ON) != 0)
+    {
+        BSP_LOGE(TAG, "UI queue full, drop text");
+    }
+}
 
 /****************************************************/
 static void show_default_ui(void)
@@ -254,7 +284,7 @@ static void show_default_ui(void)
     // 清掉旧的所有对象
     lv_obj_clean(lv_screen_active());
 
-    ui_create();
+    // ui_create();
 
     // lv_example_scroll_text();
     // lvgl_dispaly_text();
@@ -264,7 +294,7 @@ static void show_default_ui(void)
                        640, 240, // w, h
                        txt,
                        &lv_font_montserrat_30,
-                       8000); // 往返周期 4000ms
+                       12000); // 往返周期 4000ms
 
     // LV_IMG_DECLARE(my_img);   // 由 LVGL 的 img converter 工具生成 C 数组
     // lv_obj_t *img = lv_img_create(lv_scr_act());
@@ -312,25 +342,19 @@ void lvgl_dispaly_init(void *p1, void *p2, void *p3)
     while (1)
     {
         frame_count++;
-        /* 在“ON”状态，既要处理命令，也要不停刷新 */
+        /* 1) 刷新 LVGL，保证动画、定时器、输入都在走 */
         if (state_type == LCD_STATE_ON)
         {
-            /* 用短超时既不中断刷新，也能及时响应命令 */
-            if (xyzn_os_msgq_receive(&display_msgq, &cmd, LVGL_TICK_MS) == 0)
-            {
-                /* 取到命令就走下面 switch */
-            }
-            else
-            {
-                /* 超时没命令 -> 刷新一次 LVGL */
-                lv_timer_handler();
-                continue;
-            }
+            lv_timer_handler();
         }
-        else
+        /* 2) 尝试读命令——最多等 LVGL_TICK_MS */
+        int err = xyzn_os_msgq_receive(&display_msgq, &cmd, LVGL_TICK_MS);
+        if (err != 0)
         {
-            xyzn_os_msgq_receive(&display_msgq, &cmd, XYZN_OS_WAIT_FOREVER);
+            /* 超时或队列空，没有新命令，直接下一次循环 */
+            continue;
         }
+        /* 3) 有命令就处理 */
         switch (cmd.type)
         {
         case LCD_CMD_INIT:
@@ -342,6 +366,8 @@ void lvgl_dispaly_init(void *p1, void *p2, void *p3)
             set_display_onoff(true);
             hls12vga_set_brightness(9); // 设置亮度
             hls12vga_set_mirror(0x08);  // 0x10 垂直镜像 0x00 正常显示 0x08 水平镜像 0x18 水平+垂直镜像
+            // hls12vga_set_brightness(cmd.p.open.brightness);
+            // hls12vga_set_mirror(cmd.p.open.mirror);
             xyzn_os_delay_ms(2);
             hls12vga_open_display(); // 开启显示
             // hls12vga_set_shift(MOVE_DEFAULT, 0);
@@ -364,10 +390,20 @@ void lvgl_dispaly_init(void *p1, void *p2, void *p3)
             }
             state_type = LCD_STATE_OFF;
             break;
+        case LCD_CMD_TEXT:
+        {
+            // lv_obj_t *scr = lv_disp_get_scr_act(lv_disp_get_default());
+            lv_obj_t *lbl = lv_label_create(lv_screen_active());
+            lv_label_set_text(lbl, cmd.p.text.text);
+            lv_obj_set_style_text_color(lbl, lv_color_white(), LV_PART_MAIN);
+            lv_obj_set_style_text_font(lbl, &lv_font_montserrat_30, LV_PART_MAIN);
+            lv_obj_set_pos(lbl, cmd.p.text.x, cmd.p.text.y);
+        }
+        break;
         default:
             break;
         }
-        /* 最后再刷一次 LVGL，以便命令执行后的第一帧能够更新 */
+        /* 4) 处理完命令后，立即再刷一次画面，保证命令效果能马上显现 */
         if (state_type == LCD_STATE_ON)
         {
             lv_timer_handler();

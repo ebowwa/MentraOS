@@ -11,14 +11,18 @@ list(APPEND EXTRA_ZEPHYR_MODULES
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(k901_nrf5340)
 
+list(APPEND CMAKE_MODULE_PATH ${ZEPHYR_BASE}/modules/nanopb)
+include(nanopb)
+
+# zephyr_library()
+# zephyr_include_directories(${CMAKE_CURRENT_BINARY_DIR})
+# zephyr_nanopb_sources(${ZEPHYR_CURRENT_LIBRARY} mentraos_ble.proto)
+zephyr_nanopb_sources(app ${CMAKE_CURRENT_SOURCE_DIR}/mentraos_ble.proto)
+
 # set(SHIELD npm1300_ek)
 set(LVGL_DIR ${ZEPHYR_LVGL_MODULE_DIR})
 FILE(GLOB app_sources src/*.c)
 target_include_directories(app PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/.)
-
-list(APPEND CMAKE_MODULE_PATH ${ZEPHYR_BASE}/modules/nanopb)
-include(nanopb)
-
 
 target_include_directories(app PRIVATE ${LVGL_DIR}/demos/)
 
@@ -35,7 +39,7 @@ add_subdirectory(src/xyzn_components/xyzn_sysport)
 add_subdirectory(src/xyzn_components/xyzn_lvgl_display)
 add_subdirectory(src/xyzn_components/xyzn_battery)
 add_subdirectory(src/xyzn_components/xyzn_pdm)
-add_subdirectory(src/xyzn_components/xyzn_proto)
+# add_subdirectory(src/xyzn_components/xyzn_proto)
 
 target_sources_ifdef(CONFIG_LV_USE_DEMO_BENCHMARK app PRIVATE
     ${LVGL_DIR}/demos/benchmark/assets/img_benchmark_avatar.c

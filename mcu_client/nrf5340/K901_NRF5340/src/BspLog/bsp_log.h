@@ -1,12 +1,13 @@
-/***
- * @Author       : XK
- * @Date         : 2025-05-08 16:00:36
- * @LastEditTime : 2025-06-21 18:02:58
+/*** 
+ * @Author       : Cole
+ * @Date         : 2025-07-25 11:26:39
+ * @LastEditTime : 2025-07-29 09:26:11
  * @FilePath     : bsp_log.h
- * @Description  :
+ * @Description  : 
  * @
- * @Copyright (c) XingYiZhiNeng 2025 , All Rights Reserved.
+ * @Copyright (c) 2025 MentraOS Organization. All rights reserved.
  */
+
 
 #ifndef _BSP_LOG_H_
 #define _BSP_LOG_H_
