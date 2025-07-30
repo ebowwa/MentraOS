@@ -127,6 +127,15 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: "category",
+      label: "ASG Client",
+      link: {
+        type: "doc",
+        id: "asg-client/README",
+      },
+      items: ["asg-client/architecture", "asg-client/mentra-live"],
+    },
+    {
+      type: "category",
       label: "Contributing",
       link: {
         type: "doc",
