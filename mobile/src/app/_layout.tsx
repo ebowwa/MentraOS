@@ -1,7 +1,7 @@
 import {useEffect, useState} from "react"
 import {Stack, SplashScreen} from "expo-router"
 import * as Sentry from '@sentry/react-native'
-import { initializeReporting } from '@/utils/reporting'
+import { initializeReporting, reportCritical } from '@/utils/reporting'
 
 import {useFonts} from "@expo-google-fonts/space-grotesk"
 import {colors, customFontsToLoad} from "@/theme"
@@ -62,6 +62,7 @@ function Root() {
         await initializeReporting()
       } catch (error) {
         console.error("Error initializing app:", error)
+        reportCritical("Error initializing app", 'app.lifecycle', 'app_initialization', error instanceof Error ? error : new Error(String(error)))
         // Still set initialized to true to prevent app from being stuck
         setIsI18nInitialized(true)
       }
