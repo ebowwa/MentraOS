@@ -76,7 +76,7 @@ void task_lc3_codec_init(void *p1, void *p2, void *p3)
     user_sw_codec_lc3_init();
 
     pdm_init();
-    pdm_start();
+    // pdm_start();
     while (1)
     {
         if (!get_pdm_sample(pcm_req_buffer, PDM_PCM_REQ_BUFFER_SIZE))

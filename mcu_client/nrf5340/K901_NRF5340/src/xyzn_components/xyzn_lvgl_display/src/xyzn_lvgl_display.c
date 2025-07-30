@@ -1,7 +1,7 @@
 /*
  * @Author       : Cole
  * @Date         : 2025-07-25 11:26:40
- * @LastEditTime : 2025-07-29 19:02:11
+ * @LastEditTime : 2025-07-30 23:28:58
  * @FilePath     : xyzn_lvgl_display.c
  * @Description  :
  *
@@ -20,7 +20,7 @@
 #include "bsp_log.h"
 #include "xyzn_lvgl_display.h"
 #include "bspal_icm42688p.h"
-
+#include "task_ble_receive.h"
 #define TAG "XYZN_LVGL"
 #define TASK_LVGL_NAME "lvgl_task"
 
@@ -256,17 +256,17 @@ void handle_display_text(const mentraos_ble_DisplayText *txt)
     cmd.type = LCD_CMD_TEXT;
     BSP_LOGI(TAG, "show text: %s", (char *)txt->text.arg);
     BSP_LOG_BUFFER_HEX(TAG, (char *)txt->text.arg, MAX_TEXT_LEN);
-    /* txt->text.arg 已由 decode_string 填入 NUL 结尾字符串 */
-    // strncpy(cmd.p.text.text, (char *)txt->text.arg, MAX_TEXT_LEN);
+    // /* txt->text.arg 已由 decode_string 填入 NUL 结尾字符串 */
+    // // strncpy(cmd.p.text.text, (char *)txt->text.arg, MAX_TEXT_LEN);
     memcpy(cmd.p.text.text, (char *)txt->text.arg, MAX_TEXT_LEN);
     cmd.p.text.text[MAX_TEXT_LEN] = '\0';
 
     cmd.p.text.x = txt->x;
-    cmd.p.text.y = txt->y;
+    cmd.p.text.y = 260; // test  // txt->y;
     cmd.p.text.font_code = txt->font_code;
     cmd.p.text.font_color = txt->color;
     cmd.p.text.size = txt->size;
-    /* 非阻塞入队，队满则丢弃并打印警告 */
+    // 非阻塞入队，队满则丢弃并打印警告
     if (xyzn_os_msgq_send(&display_msgq, &cmd, XYZN_OS_WAIT_ON) != 0)
     {
         BSP_LOGE(TAG, "UI queue full, drop text");
@@ -395,6 +395,7 @@ void lvgl_dispaly_init(void *p1, void *p2, void *p3)
             // lv_obj_t *scr = lv_disp_get_scr_act(lv_disp_get_default());
             lv_obj_t *lbl = lv_label_create(lv_screen_active());
             lv_label_set_text(lbl, cmd.p.text.text);
+            // lv_label_set_text(lbl, "Hello, world lvgl!"); //test
             lv_obj_set_style_text_color(lbl, lv_color_white(), LV_PART_MAIN);
             lv_obj_set_style_text_font(lbl, &lv_font_montserrat_30, LV_PART_MAIN);
             lv_obj_set_pos(lbl, cmd.p.text.x, cmd.p.text.y);

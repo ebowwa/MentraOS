@@ -1,7 +1,7 @@
 /*
  * @Author       : XK
  * @Date         : 2025-05-09 11:55:16
- * @LastEditTime : 2025-07-15 16:57:08
+ * @LastEditTime : 2025-07-30 22:05:51
  * @FilePath     : bsp_board_mcu.c
  * @Description  : 板级驱动集合
  *
@@ -48,9 +48,9 @@ void bsp_board_mcu_init(void)
     err = pm1300_init();
     my_assert_mcu(err);
 
-    BSP_LOGI(TAG, "+ icm42688p...");
-    err = bsp_icm42688p_init();
-    my_assert_mcu(err);
+    // BSP_LOGI(TAG, "+ icm42688p...");
+    // err = bsp_icm42688p_init();
+    // my_assert_mcu(err);
 
     // BSP_LOGI(TAG, "+ ict_15318...");
     // err = bsp_ict_15318_iic_init();
@@ -60,9 +60,9 @@ void bsp_board_mcu_init(void)
     err = bsp_gx8002_init();
     my_assert_mcu(err);
 
-    BSP_LOGI(TAG, "+ jsa_1147...");
-    err = bsp_jsa_1147_init();
-    my_assert_mcu(err);
+    // BSP_LOGI(TAG, "+ jsa_1147...");
+    // err = bsp_jsa_1147_init();
+    // my_assert_mcu(err);
 
     BSP_LOGI(TAG, "+ KEY...");
     err = bsp_key_init();
