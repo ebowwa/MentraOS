@@ -8,9 +8,6 @@
 #define PROTOBUF_HANDLER_H_
 
 #include <zephyr/types.h>
-#include <pb_decode.h>
-#include <pb_encode.h>
-#include "mentraos_ble.pb.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -25,36 +22,12 @@ extern "C" {
 void protobuf_analyze_message(const uint8_t *data, uint16_t len);
 
 /**
- * @brief Parse protobuf control message (header 0x02) using nanopb
+ * @brief Parse protobuf control message (header 0x02)
  *
  * @param protobuf_data Pointer to protobuf data (after 0x02 header)
  * @param len Length of protobuf data
  */
 void protobuf_parse_control_message(const uint8_t *protobuf_data, uint16_t len);
-
-/**
- * @brief Decode PhoneToGlasses message using nanopb
- *
- * @param data Pointer to protobuf data
- * @param len Length of protobuf data
- * @param msg Pointer to message structure to fill
- * @return true if decoding successful, false otherwise
- */
-bool decode_phone_to_glasses_message(const uint8_t *data, uint16_t len, 
-                                    mentraos_ble_PhoneToGlasses *msg);
-
-/**
- * @brief Encode GlassesToPhone message using nanopb
- *
- * @param msg Pointer to message structure to encode
- * @param buffer Pointer to output buffer
- * @param buffer_size Size of output buffer
- * @param bytes_written Pointer to store number of bytes written
- * @return true if encoding successful, false otherwise
- */
-bool encode_glasses_to_phone_message(const mentraos_ble_GlassesToPhone *msg,
-                                    uint8_t *buffer, size_t buffer_size,
-                                    size_t *bytes_written);
 
 /**
  * @brief Parse audio chunk message (header 0xA0)
@@ -73,7 +46,7 @@ void protobuf_parse_audio_chunk(const uint8_t *data, uint16_t len);
 void protobuf_parse_image_chunk(const uint8_t *data, uint16_t len);
 
 /**
- * @brief Generate echo response message using protobuf
+ * @brief Generate echo response message
  *
  * @param input_data Pointer to input data
  * @param input_len Length of input data
@@ -82,7 +55,7 @@ void protobuf_parse_image_chunk(const uint8_t *data, uint16_t len);
  * @return Length of generated response, or negative error code
  */
 int protobuf_generate_echo_response(const uint8_t *input_data, uint16_t input_len,
-   uint8_t *output_data, uint16_t max_output_len);
+				   uint8_t *output_data, uint16_t max_output_len);
 
 #ifdef __cplusplus
 }

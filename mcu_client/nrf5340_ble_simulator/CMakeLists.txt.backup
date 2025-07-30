@@ -8,20 +8,11 @@ cmake_minimum_required(VERSION 3.20.0)
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(nrf5340_ble_simulator)
 
-# Add nanopb support for protobuf
-list(APPEND CMAKE_MODULE_PATH ${ZEPHYR_BASE}/modules/nanopb)
-include(nanopb)
-
 # NORDIC SDK APP START
 target_sources(app PRIVATE
   src/main.c
   src/mentra_ble_service.c
   src/protobuf_handler.c
 )
-
-# Add protobuf sources when available
-if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/src/mentraos_ble.pb.c)
-  target_sources(app PRIVATE src/mentraos_ble.pb.c)
-endif()
 
 # NORDIC SDK APP END
