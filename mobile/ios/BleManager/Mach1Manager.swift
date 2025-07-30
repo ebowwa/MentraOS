@@ -106,6 +106,17 @@ class Mach1Manager: UltraliteBaseViewController {
         default:
             CoreCommsService.log("MACH1: Tap count \(tapNumberInt)")
         }
+        if tapNumberInt >= 2 {
+            isHeadUp = !isHeadUp
+            // start a timer and auto turn off the dashboard after 6 seconds:
+            if isHeadUp {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 6) {
+                    if self.isHeadUp {
+                        self.isHeadUp = false
+                    }
+                }
+            }
+        }
     }
 
     func linked(unk _: UltraliteSDK.Ultralite?) {
