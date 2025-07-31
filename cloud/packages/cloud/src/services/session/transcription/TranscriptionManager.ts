@@ -1978,7 +1978,12 @@ export class TranscriptionManager {
   ): Promise<void> {
     try {
       // CONSTRUCT EFFECTIVE SUBSCRIPTION like the old system
-      const streamType = data.type;
+      let streamType = data.type;
+
+      if (data.type === 'local_transcription') {
+        streamType = StreamType.TRANSCRIPTION;
+      }
+
       let effectiveSubscription: ExtendedStreamType = streamType;
 
       // Match old broadcastToApp logic exactly
@@ -1992,7 +1997,7 @@ export class TranscriptionManager {
       } else if (streamType === StreamType.TRANSCRIPTION) {
         effectiveSubscription = `${streamType}:en-US`; // Default fallback like old system
       }
-
+ 
       // Add to transcript history before relaying to apps
       this.addToTranscriptHistory(data, streamType);
 
