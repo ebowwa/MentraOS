@@ -114,9 +114,6 @@ android {
             signingConfig asgStorePassword ? signingConfigs.release : signingConfigs.debug
         }
     }
-    kotlinOptions {
-        jvmTarget = '17'
-    }
 }
 
 
