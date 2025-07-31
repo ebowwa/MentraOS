@@ -1,5 +1,16 @@
 # Custom GATT Audio Implementation for Mentra Live
 
+## High Level Explanation
+
+**What we're asking for:** Instead of implementing standard Bluetooth audio (HFP/A2DP/LE Audio), we want the glasses to:
+
+1. **Send microphone audio as regular BLE data packets** - Just like sending sensor data or any other information
+2. **Use LC3 codec for compression** - But NOT the full LE Audio standard, just the compression algorithm
+
+**Think of it like this:** Instead of using Bluetooth's built-in phone call feature, we're sending audio data the same way you'd send temperature readings from a sensor - as regular data packets through custom GATT characteristics.
+
+**Why this unusual approach?** Standard Bluetooth audio takes over the phone's entire audio system. Our approach lets users get audio data from the glasses without conflicting with any other apps on their phone that also require audio.
+
 ## Overview
 
 This document outlines the implementation of custom LC3 GATT audio for Mentra Live smart glasses, providing an alternative to the standard HFP (Hands-Free Profile) audio system.
@@ -29,6 +40,7 @@ The existing HFP implementation has several significant drawbacks:
 **Important Distinction**: This implementation uses only the LC3 codec from the LE Audio specification, NOT the full LE Audio standard.
 
 #### Standard LE Audio (NOT what we want)
+
 - Full Bluetooth LE Audio specification implementation
 - Uses standardized audio profiles and services
 - Phone OS recognizes it as a standard Bluetooth audio device
@@ -37,6 +49,7 @@ The existing HFP implementation has several significant drawbacks:
 - Complex specification with features we don't need (audio sharing, broadcast, etc.)
 
 #### Custom LC3 over GATT (What we want)
+
 - Uses only the LC3 codec (compression algorithm) from LE Audio
 - Streams raw LC3 data through custom GATT characteristics
 - No standard Bluetooth audio profiles involved
@@ -45,15 +58,46 @@ The existing HFP implementation has several significant drawbacks:
 - Allows concurrent audio from other apps
 
 #### Technical Flow
+
 1. **App Audio** → LC3 Encode → Custom GATT Message → **Glasses**
 2. **Glasses Mic** → LC3 Encode → Custom GATT Message → **App**
 
 This approach gives us the benefits of LC3 compression without the limitations of standard Bluetooth audio profiles.
 
 #### Coexistence with Standard Audio
+
 - **Keep existing HFP/LE Audio**: Maintain current standard audio implementation
 - **Runtime toggling**: Switch between standard and custom modes as needed
 - **Use case flexibility**: Standard audio for system integration, custom GATT for concurrent audio scenarios
+
+## Implementation Checklist
+
+For the glasses BES firmware, you need to:
+
+### 1. Add LC3 Codec Library
+
+- Include LC3 encoder library
+- Configure for: 10ms frames, 32kHz sample rate, appropriate bitrate for voice
+
+### 2. Create Custom GATT Service
+
+- Add a custom service with characteristics for audio data transfer
+- One characteristic for sending microphone audio to phone (TX)
+- Enable notifications on TX characteristic
+
+### 3. Audio Pipeline
+
+- **For Microphone**: Mic → PCM → LC3 Encoder → Pack into BLE packets → Send via GATT
+
+### 4. Keep Existing HFP/Audio
+
+- Don't remove standard Bluetooth audio support
+- Add toggle commands to switch between standard and custom audio modes
+
+### 5. Packet Format
+
+- Each audio packet should include a sequence number for ordering
+- Keep packets under BLE MTU size (typically ~240 bytes)
 
 ## Implementation Requirements
 
@@ -70,7 +114,7 @@ The implementation should provide runtime toggles for different audio modes:
 
 ```json
 {
-  "C": "enable_custom_audio_tx", 
+  "C": "enable_custom_audio_tx",
   "B": true/false
 }
 ```
@@ -134,6 +178,17 @@ Microphone Control:
    - Validate sequence numbers
    - Decode LC3 to PCM for processing
 
+### Real-time Streaming Considerations
+
+For optimal responsiveness and user experience:
+
+1. **Minimal Buffering**: Keep audio buffering under 100ms to reduce latency
+2. **Immediate Processing**: Process and forward audio packets as soon as they arrive
+3. **No Batch Processing**: Avoid accumulating multiple packets before processing
+4. **Direct Streaming**: Stream audio data directly without intermediate storage when possible
+
+This approach ensures low-latency audio transmission critical for real-time voice interactions and responsive audio feedback.
+
 ## Reference Implementation: Even Realities G1 Smart Glasses
 
 ### Overview
@@ -143,12 +198,13 @@ The Even Realities G1 implementation in `EvenRealitiesG1SGC.java` provides a wor
 ### Key Implementation Details
 
 #### Audio Data Detection
+
 ```java
 // Detect audio packets by header byte
 if (data[0] == (byte) 0xF1) {
     byte sequenceNumber = data[1];
     byte[] lc3Data = Arrays.copyOfRange(data, 2, 202);
-    
+
     // Decode LC3 to PCM
     byte[] pcmData = L3cCpp.decodeLC3(lc3DecoderPtr, lc3Data);
 }

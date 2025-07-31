@@ -1,9 +1,13 @@
 // src/messages/glasses-to-cloud.ts
 
-import { BaseMessage } from './base';
-import { GlassesToCloudMessageType, ControlActionTypes, EventTypes } from '../message-types';
-import { StreamType } from '../streams';
-import { PhotoRequest } from './app-to-cloud';
+import { BaseMessage } from "./base";
+import {
+  GlassesToCloudMessageType,
+  ControlActionTypes,
+  EventTypes,
+} from "../message-types";
+import { StreamType } from "../streams";
+import { PhotoRequest } from "./app-to-cloud";
 
 //===========================================================
 // Control actions
@@ -64,7 +68,7 @@ export interface OpenDashboard extends BaseMessage {
 export interface ButtonPress extends BaseMessage {
   type: GlassesToCloudMessageType.BUTTON_PRESS;
   buttonId: string;
-  pressType: 'short' | 'long';
+  pressType: "short" | "long";
 }
 
 /**
@@ -72,7 +76,7 @@ export interface ButtonPress extends BaseMessage {
  */
 export interface HeadPosition extends BaseMessage {
   type: GlassesToCloudMessageType.HEAD_POSITION;
-  position: 'up' | 'down';
+  position: "up" | "down";
 }
 
 /**
@@ -80,9 +84,9 @@ export interface HeadPosition extends BaseMessage {
  */
 export interface GlassesBatteryUpdate extends BaseMessage {
   type: GlassesToCloudMessageType.GLASSES_BATTERY_UPDATE;
-  level: number;  // 0-100
+  level: number; // 0-100
   charging: boolean;
-  timeRemaining?: number;  // minutes
+  timeRemaining?: number; // minutes
 }
 
 /**
@@ -90,9 +94,9 @@ export interface GlassesBatteryUpdate extends BaseMessage {
  */
 export interface PhoneBatteryUpdate extends BaseMessage {
   type: GlassesToCloudMessageType.PHONE_BATTERY_UPDATE;
-  level: number;  // 0-100
+  level: number; // 0-100
   charging: boolean;
-  timeRemaining?: number;  // minutes
+  timeRemaining?: number; // minutes
 }
 
 /**
@@ -132,6 +136,17 @@ export interface VpsCoordinates extends BaseMessage {
   confidence: number;
 }
 
+export interface LocalTranscription extends BaseMessage {
+  type: GlassesToCloudMessageType.LOCAL_TRANSCRIPTION;
+  text: string;
+  isFinal: boolean;
+  startTime: number;
+  endTime: number;
+  speakerId: number;
+  transcribeLanguage: string;
+  provider: string;
+}
+
 export interface CalendarEvent extends BaseMessage {
   type: GlassesToCloudMessageType.CALENDAR_EVENT | StreamType.CALENDAR_EVENT;
   eventId: string;
@@ -159,7 +174,7 @@ export interface PhoneNotification extends BaseMessage {
   app: string;
   title: string;
   content: string;
-  priority: 'low' | 'normal' | 'high';
+  priority: "low" | "normal" | "high";
 }
 
 /**
@@ -193,15 +208,14 @@ export interface CoreStatusUpdate extends BaseMessage {
   details?: Record<string, any>;
 }
 
-
 // ===========================================================
 // Mentra Live
 // ===========================================================
 export interface PhotoResponse extends BaseMessage {
   type: GlassesToCloudMessageType.PHOTO_RESPONSE;
-  requestId: string;  // Unique ID for the photo request
-  photoUrl: string;  // URL of the uploaded photo
-  savedToGallery: boolean;  // Whether the photo was saved to gallery
+  requestId: string; // Unique ID for the photo request
+  photoUrl: string; // URL of the uploaded photo
+  savedToGallery: boolean; // Whether the photo was saved to gallery
 }
 
 /**
@@ -209,10 +223,20 @@ export interface PhotoResponse extends BaseMessage {
  */
 export interface RtmpStreamStatus extends BaseMessage {
   type: GlassesToCloudMessageType.RTMP_STREAM_STATUS;
-  streamId?: string;  // Unique identifier for the stream
-  status: "initializing" | "connecting" | "reconnecting" | "streaming" | "error" | "stopped" | "active" | "stopping" | "disconnected" | "timeout";
+  streamId?: string; // Unique identifier for the stream
+  status:
+    | "initializing"
+    | "connecting"
+    | "reconnecting"
+    | "streaming"
+    | "error"
+    | "stopped"
+    | "active"
+    | "stopping"
+    | "disconnected"
+    | "timeout";
   errorDetails?: string;
-  appId?: string;  // ID of the app that requested the stream
+  appId?: string; // ID of the app that requested the stream
   stats?: {
     bitrate: number;
     fps: number;
@@ -226,8 +250,8 @@ export interface RtmpStreamStatus extends BaseMessage {
  */
 export interface KeepAliveAck extends BaseMessage {
   type: GlassesToCloudMessageType.KEEP_ALIVE_ACK;
-  streamId: string;  // ID of the stream being kept alive
-  ackId: string;     // Acknowledgment ID that was sent by cloud
+  streamId: string; // ID of the stream being kept alive
+  ackId: string; // Acknowledgment ID that was sent by cloud
 }
 
 /**
@@ -278,7 +302,8 @@ export type GlassesToCloudMessage =
   | KeepAliveAck
   | PhotoResponse
   | PhotoTaken
-  | AudioPlayResponse;
+  | AudioPlayResponse
+  | LocalTranscription;
 
 //===========================================================
 // Type guards
@@ -293,15 +318,21 @@ export function isEvent(message: GlassesToCloudMessage): boolean {
 }
 
 // Individual type guards
-export function isConnectionInit(message: GlassesToCloudMessage): message is ConnectionInit {
+export function isConnectionInit(
+  message: GlassesToCloudMessage,
+): message is ConnectionInit {
   return message.type === GlassesToCloudMessageType.CONNECTION_INIT;
 }
 
-export function isRequestSettings(message: GlassesToCloudMessage): message is RequestSettings {
+export function isRequestSettings(
+  message: GlassesToCloudMessage,
+): message is RequestSettings {
   return message.type === GlassesToCloudMessageType.REQUEST_SETTINGS;
 }
 
-export function isStartApp(message: GlassesToCloudMessage): message is StartApp {
+export function isStartApp(
+  message: GlassesToCloudMessage,
+): message is StartApp {
   return message.type === GlassesToCloudMessageType.START_APP;
 }
 
@@ -309,31 +340,45 @@ export function isStopApp(message: GlassesToCloudMessage): message is StopApp {
   return message.type === GlassesToCloudMessageType.STOP_APP;
 }
 
-export function isButtonPress(message: GlassesToCloudMessage): message is ButtonPress {
+export function isButtonPress(
+  message: GlassesToCloudMessage,
+): message is ButtonPress {
   return message.type === GlassesToCloudMessageType.BUTTON_PRESS;
 }
 
-export function isHeadPosition(message: GlassesToCloudMessage): message is HeadPosition {
+export function isHeadPosition(
+  message: GlassesToCloudMessage,
+): message is HeadPosition {
   return message.type === GlassesToCloudMessageType.HEAD_POSITION;
 }
 
-export function isGlassesBatteryUpdate(message: GlassesToCloudMessage): message is GlassesBatteryUpdate {
+export function isGlassesBatteryUpdate(
+  message: GlassesToCloudMessage,
+): message is GlassesBatteryUpdate {
   return message.type === GlassesToCloudMessageType.GLASSES_BATTERY_UPDATE;
 }
 
-export function isPhoneBatteryUpdate(message: GlassesToCloudMessage): message is PhoneBatteryUpdate {
+export function isPhoneBatteryUpdate(
+  message: GlassesToCloudMessage,
+): message is PhoneBatteryUpdate {
   return message.type === GlassesToCloudMessageType.PHONE_BATTERY_UPDATE;
 }
 
-export function isGlassesConnectionState(message: GlassesToCloudMessage): message is GlassesConnectionState {
+export function isGlassesConnectionState(
+  message: GlassesToCloudMessage,
+): message is GlassesConnectionState {
   return message.type === GlassesToCloudMessageType.GLASSES_CONNECTION_STATE;
 }
 
-export function isLocationUpdate(message: GlassesToCloudMessage): message is LocationUpdate {
+export function isLocationUpdate(
+  message: GlassesToCloudMessage,
+): message is LocationUpdate {
   return message.type === GlassesToCloudMessageType.LOCATION_UPDATE;
 }
 
-export function isCalendarEvent(message: GlassesToCloudMessage): message is CalendarEvent {
+export function isCalendarEvent(
+  message: GlassesToCloudMessage,
+): message is CalendarEvent {
   return message.type === GlassesToCloudMessageType.CALENDAR_EVENT;
 }
 
@@ -341,30 +386,52 @@ export function isVad(message: GlassesToCloudMessage): message is Vad {
   return message.type === GlassesToCloudMessageType.VAD;
 }
 
-export function isPhoneNotification(message: GlassesToCloudMessage): message is PhoneNotification {
+export function isPhoneNotification(
+  message: GlassesToCloudMessage,
+): message is PhoneNotification {
   return message.type === GlassesToCloudMessageType.PHONE_NOTIFICATION;
 }
 
-export function isPhoneNotificationDismissed(message: GlassesToCloudMessage): message is PhoneNotificationDismissed {
-  return message.type === GlassesToCloudMessageType.PHONE_NOTIFICATION_DISMISSED;
+export function isPhoneNotificationDismissed(
+  message: GlassesToCloudMessage,
+): message is PhoneNotificationDismissed {
+  return (
+    message.type === GlassesToCloudMessageType.PHONE_NOTIFICATION_DISMISSED
+  );
 }
 
-export function isRtmpStreamStatus(message: GlassesToCloudMessage): message is RtmpStreamStatus {
+export function isRtmpStreamStatus(
+  message: GlassesToCloudMessage,
+): message is RtmpStreamStatus {
   return message.type === GlassesToCloudMessageType.RTMP_STREAM_STATUS;
 }
 
-export function isPhotoResponse(message: GlassesToCloudMessage): message is PhotoResponse {
+export function isPhotoResponse(
+  message: GlassesToCloudMessage,
+): message is PhotoResponse {
   return message.type === GlassesToCloudMessageType.PHOTO_RESPONSE;
 }
 
-export function isKeepAliveAck(message: GlassesToCloudMessage): message is KeepAliveAck {
+export function isKeepAliveAck(
+  message: GlassesToCloudMessage,
+): message is KeepAliveAck {
   return message.type === GlassesToCloudMessageType.KEEP_ALIVE_ACK;
 }
 
-export function isPhotoTaken(message: GlassesToCloudMessage): message is PhotoTaken {
+export function isPhotoTaken(
+  message: GlassesToCloudMessage,
+): message is PhotoTaken {
   return message.type === GlassesToCloudMessageType.PHOTO_TAKEN;
 }
 
-export function isAudioPlayResponse(message: GlassesToCloudMessage): message is AudioPlayResponse {
+export function isAudioPlayResponse(
+  message: GlassesToCloudMessage,
+): message is AudioPlayResponse {
   return message.type === GlassesToCloudMessageType.AUDIO_PLAY_RESPONSE;
+}
+
+export function isLocalTranscription(
+  message: GlassesToCloudMessage,
+): message is LocalTranscription {
+  return message.type === GlassesToCloudMessageType.LOCAL_TRANSCRIPTION;
 }

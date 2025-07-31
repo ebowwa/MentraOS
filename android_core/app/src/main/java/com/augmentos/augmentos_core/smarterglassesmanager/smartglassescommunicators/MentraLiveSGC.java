@@ -25,6 +25,7 @@ import android.os.Looper;
 import android.util.Log;
 
 import androidx.core.app.ActivityCompat;
+import androidx.preference.PreferenceManager;
 
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.BatteryLevelEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.ButtonPressEvent;
@@ -1651,6 +1652,9 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
 
                 // Start the heartbeat mechanism now that glasses are ready
                 startHeartbeat();
+                
+                // Send user settings to glasses
+                sendUserSettings();
 
                 // Finally, mark the connection as fully established
                 Log.d(TAG, "✅ Glasses connection is now fully established!");
@@ -1674,6 +1678,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 String buildNumber = json.optString("build_number", "");
                 String deviceModel = json.optString("device_model", "");
                 String androidVersion = json.optString("android_version", "");
+                String otaVersionUrl = json.optString("ota_version_url", null);
                 
                 // Parse build number as integer for version checks
                 try {
@@ -1687,11 +1692,12 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 Log.d(TAG, "Glasses Version - App: " + appVersion +
                       ", Build: " + buildNumber +
                       ", Device: " + deviceModel +
-                      ", Android: " + androidVersion);
+                      ", Android: " + androidVersion +
+                      ", OTA URL: " + otaVersionUrl);
 
                 // Post event for version information
                 EventBus.getDefault().post(new GlassesVersionInfoEvent(
-                    appVersion, buildNumber, deviceModel, androidVersion));
+                    appVersion, buildNumber, deviceModel, androidVersion, otaVersionUrl));
                 break;
 
             case "ota_download_progress":
@@ -1845,6 +1851,25 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         Log.d(TAG, "Processing K900 command: " + command);
 
         switch (command) {
+            case "sr_hrt":
+                try {
+                    JSONObject bodyObj = json.optJSONObject("B");
+                    if (bodyObj != null) {
+                        int ready = bodyObj.optInt("ready", 0);
+                        if (ready == 1) {
+                            Log.d(TAG, "K900 SOC ready");
+                            JSONObject readyMsg = new JSONObject();
+                            readyMsg.put("type", "phone_ready");
+                            readyMsg.put("timestamp", System.currentTimeMillis());
+
+                            // Send it through our data channel
+                            sendJson(readyMsg, true);
+                        }
+                    }
+                } catch (Exception e) {
+                    Log.e(TAG, "Error parsing sr_hrt response", e);
+                }
+                break;
             case "sr_batv":
                 // K900 battery voltage response
                 try {
@@ -2404,18 +2429,8 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                     readinessCheckCounter++;
 
                     Log.d(TAG, "🔄 Readiness check #" + readinessCheckCounter + ": waiting for glasses SOC to boot");
-                    //openhotspot();
-                    try {
-                        // Create a simple phone_ready message
-                        JSONObject readyMsg = new JSONObject();
-                        readyMsg.put("type", "phone_ready");
-                        readyMsg.put("timestamp", System.currentTimeMillis());
+                    requestReadyK900();
 
-                        // Send it through our data channel (no ACK needed for readiness checks)
-                        sendJsonWithoutAck(readyMsg, true);
-                    } catch (JSONException e) {
-                        Log.e(TAG, "Error creating phone_ready message", e);
-                    }
 
                     // Schedule next check only if glasses are still not ready
                     if (!glassesReady) {
@@ -2603,6 +2618,20 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     @Override
     public void stopScrollingTextViewMode() {
         Log.d(TAG, "[STUB] Device has no display. Scrolling text view would stop");
+    }
+
+    public void requestReadyK900(){
+        try{
+            JSONObject cmdObject = new JSONObject();
+            cmdObject.put("C", "cs_hrt"); // Video command
+            cmdObject.put("B", "");     // Add the body
+            String jsonStr = cmdObject.toString();
+            Log.d(TAG, "Sending hrt command: " + jsonStr);
+            byte[] packedData = K900ProtocolUtils.packDataToK900(jsonStr.getBytes(StandardCharsets.UTF_8), K900ProtocolUtils.CMD_TYPE_STRING);
+            queueData(packedData);
+        } catch (JSONException e) {
+            Log.e(TAG, "Error creating video command", e);
+        }
     }
 
     public void requestBatteryK900() {
@@ -3088,5 +3117,41 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         } catch (JSONException e) {
             Log.e(TAG, "Error creating BLE transfer complete message", e);
         }
+    }
+
+    /**
+     * Send button mode setting to the smart glasses
+     *
+     * @param mode The button mode (photo, apps, both)
+     */
+    @Override
+    public void sendButtonModeSetting(String mode) {
+        Log.d(TAG, "Sending button mode setting to glasses: " + mode);
+
+        if (!isConnected) {
+            Log.w(TAG, "Cannot send button mode - not connected");
+            return;
+        }
+
+        try {
+            JSONObject json = new JSONObject();
+            json.put("type", "button_mode_setting");
+            json.put("mode", mode);
+            sendJson(json);
+        } catch (JSONException e) {
+            Log.e(TAG, "Error creating button mode message", e);
+        }
+    }
+
+    /**
+     * Send user settings to glasses after connection is established
+     */
+    private void sendUserSettings() {
+        Log.d(TAG, "Sending user settings to glasses");
+        
+        // Send button mode setting
+        String buttonMode = PreferenceManager.getDefaultSharedPreferences(context)
+                .getString("button_press_mode", "photo");
+        sendButtonModeSetting(buttonMode);
     }
 }

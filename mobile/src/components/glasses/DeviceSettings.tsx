@@ -38,6 +38,7 @@ import {SETTINGS_KEYS} from "@/consts"
 import {isDeveloperBuildOrTestflight} from "@/utils/buildDetection"
 import {SvgXml} from "react-native-svg"
 import OtaProgressSection from "./OtaProgressSection"
+import InfoSection from "@/components/ui/InfoSection"
 
 // Icon components defined directly in this file to avoid path resolution issues
 interface CaseIconProps {
@@ -98,6 +99,7 @@ export default function DeviceSettings() {
   const {status} = useStatus()
   const [preferredMic, setPreferredMic] = useState(status.core_info.preferred_mic)
   const [powerSavingMode, setPowerSavingMode] = useState(status.core_info.power_saving_mode)
+  const [buttonMode, setButtonMode] = useState(status.glasses_settings?.button_mode || "photo")
 
   const [isConnectButtonDisabled, setConnectButtonDisabled] = useState(false)
   const [isDisconnectButtonDisabled, setDisconnectButtonDisabled] = useState(false)
@@ -182,6 +184,12 @@ export default function DeviceSettings() {
     setAutoBrightness(status?.glasses_settings?.auto_brightness ?? true)
   }, [status?.glasses_settings?.brightness, status?.glasses_settings?.auto_brightness])
 
+  useEffect(() => {
+    if (status.glasses_settings?.button_mode) {
+      setButtonMode(status.glasses_settings.button_mode)
+    }
+  }, [status.glasses_settings?.button_mode])
+
   const setMic = async (val: string) => {
     if (val === "phone") {
       // We're potentially about to enable the mic, so request permission
@@ -204,6 +212,11 @@ export default function DeviceSettings() {
 
     setPreferredMic(val)
     await coreCommunicator.sendSetPreferredMic(val)
+  }
+
+  const setButtonModeWithSave = async (mode: string) => {
+    setButtonMode(mode)
+    await coreCommunicator.sendSetButtonMode(mode)
   }
 
   const confirmForgetGlasses = () => {
@@ -268,7 +281,6 @@ export default function DeviceSettings() {
       {status.glasses_info?.battery_level !== undefined && status.glasses_info.battery_level !== -1 && (
         <View style={themed($settingsGroup)}>
           <Text style={[themed($subtitle), {marginBottom: theme.spacing.xs}]}>Battery Status</Text>
-
           {/* Glasses Battery */}
           {status.glasses_info.battery_level !== -1 && (
             <View
@@ -312,6 +324,14 @@ export default function DeviceSettings() {
               </View>
             )}
         </View>
+      )}
+
+      {status.glasses_info?.model_name && glassesFeatures[status.glasses_info.model_name]?.gallery && (
+        <RouteButton
+          label={translate("glasses:gallery")}
+          subtitle={translate("glasses:galleryDescription")}
+          onPress={() => push("/asg/gallery")}
+        />
       )}
 
       {hasBrightness && (
@@ -426,6 +446,72 @@ export default function DeviceSettings() {
           </View>
         )}
 
+      {/* Only show button mode selector if glasses support configurable button */}
+      {status.glasses_info?.model_name && glassesFeatures[status.glasses_info.model_name]?.configurableButton && (
+        <View style={themed($settingsGroup)}>
+          <Text style={[themed($settingLabel), {marginBottom: theme.spacing.sm}]}>
+            {translate("deviceSettings:cameraButtonAction")}
+          </Text>
+
+          <TouchableOpacity
+            style={{
+              flexDirection: "row",
+              justifyContent: "space-between",
+              paddingBottom: theme.spacing.xs,
+              paddingTop: theme.spacing.xs,
+            }}
+            onPress={() => setButtonModeWithSave("photo")}>
+            <Text style={{color: theme.colors.text}}>{translate("deviceSettings:takeGalleryPhoto")}</Text>
+            <MaterialCommunityIcons
+              name="check"
+              size={24}
+              color={buttonMode === "photo" ? theme.colors.checkmark : "transparent"}
+            />
+          </TouchableOpacity>
+
+          {/* divider */}
+          <View
+            style={{height: StyleSheet.hairlineWidth, backgroundColor: theme.colors.separator, marginVertical: 4}}
+          />
+
+          <TouchableOpacity
+            style={{
+              flexDirection: "row",
+              justifyContent: "space-between",
+              paddingTop: theme.spacing.xs,
+              paddingBottom: theme.spacing.xs,
+            }}
+            onPress={() => setButtonModeWithSave("apps")}>
+            <Text style={{color: theme.colors.text}}>{translate("deviceSettings:useInApps")}</Text>
+            <MaterialCommunityIcons
+              name="check"
+              size={24}
+              color={buttonMode === "apps" ? theme.colors.checkmark : "transparent"}
+            />
+          </TouchableOpacity>
+
+          {/* divider */}
+          <View
+            style={{height: StyleSheet.hairlineWidth, backgroundColor: theme.colors.separator, marginVertical: 4}}
+          />
+
+          <TouchableOpacity
+            style={{
+              flexDirection: "row",
+              justifyContent: "space-between",
+              paddingTop: theme.spacing.xs,
+            }}
+            onPress={() => setButtonModeWithSave("both")}>
+            <Text style={{color: theme.colors.text}}>{translate("deviceSettings:both")}</Text>
+            <MaterialCommunityIcons
+              name="check"
+              size={24}
+              color={buttonMode === "both" ? theme.colors.checkmark : "transparent"}
+            />
+          </TouchableOpacity>
+        </View>
+      )}
+
       {/* Only show WiFi settings if connected glasses support WiFi */}
       {status.glasses_info?.model_name && glassesFeatures[status.glasses_info.model_name]?.wifi && (
         <RouteButton
@@ -437,43 +523,17 @@ export default function DeviceSettings() {
         />
       )}
 
-      {/* Show ASG Client version info for Mentra Live glasses */}
-      {status.glasses_info?.model_name?.toLowerCase().includes("mentra live") &&
-        (status.glasses_info.glasses_app_version || status.glasses_info.glasses_build_number) && (
-          <View style={themed($settingsGroup)}>
-            <Text style={[themed($subtitle), {marginBottom: theme.spacing.xs}]}>Glasses Software Version</Text>
-            {/* {status.glasses_info.glasses_app_version && (
-            <View style={{flexDirection: "row", justifyContent: "space-between", paddingVertical: 4}}>
-              <Text style={{color: theme.colors.text}}>App Version</Text>
-              <Text style={{color: theme.colors.textDim}}>{status.glasses_info.glasses_app_version}</Text>
-            </View>
-          )} */}
-            {status.glasses_info.glasses_build_number && (
-              <View style={{flexDirection: "row", justifyContent: "space-between", paddingVertical: 4}}>
-                <Text style={{color: theme.colors.text}}>Build Number</Text>
-                <Text style={{color: theme.colors.textDim}}>{status.glasses_info.glasses_build_number}</Text>
-              </View>
-            )}
-            {status.glasses_info.glasses_wifi_local_ip && status.glasses_info.glasses_wifi_local_ip !== "" && (
-              <View style={{flexDirection: "row", justifyContent: "space-between", paddingVertical: 4}}>
-                <Text style={{color: theme.colors.text}}>Local IP Address</Text>
-                <Text style={{color: theme.colors.textDim}}>{status.glasses_info.glasses_wifi_local_ip}</Text>
-              </View>
-            )}
-            {/* {status.glasses_info.glasses_device_model && (
-            <View style={{flexDirection: "row", justifyContent: "space-between", paddingVertical: 4}}>
-              <Text style={{color: theme.colors.text}}>Device Model</Text>
-              <Text style={{color: theme.colors.textDim}}>{status.glasses_info.glasses_device_model}</Text>
-            </View>
-          )} */}
-            {/* {status.glasses_info.glasses_android_version && (
-            <View style={{flexDirection: "row", justifyContent: "space-between", paddingVertical: 4}}>
-              <Text style={{color: theme.colors.text}}>Android Version</Text>
-              <Text style={{color: theme.colors.textDim}}>{status.glasses_info.glasses_android_version}</Text>
-            </View>
-          )} */}
-          </View>
-        )}
+      {/* Show device info for glasses */}
+      {status.glasses_info?.model_name && (
+        <InfoSection
+          title="Device Information"
+          items={[
+            {label: "Bluetooth Name", value: status.glasses_info.bluetooth_name},
+            {label: "Build Number", value: status.glasses_info.glasses_build_number},
+            {label: "Local IP Address", value: status.glasses_info.glasses_wifi_local_ip},
+          ]}
+        />
+      )}
 
       {/* OTA Progress Section - Only show for Mentra Live glasses */}
       {status.glasses_info?.model_name?.toLowerCase().includes("mentra live") && (
@@ -537,6 +597,12 @@ const $settingsGroup: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   borderRadius: spacing.md,
   borderWidth: 2,
   borderColor: colors.border,
+})
+
+const $settingLabel: ThemedStyle<TextStyle> = ({colors}) => ({
+  color: colors.text,
+  fontSize: 16,
+  fontWeight: "600",
 })
 
 const $subtitle: ThemedStyle<TextStyle> = ({colors, spacing}) => ({

@@ -45,6 +45,7 @@ import {
   checkNotificationAccessSpecialPermission,
 } from "@/utils/NotificationServiceUtils"
 import {AppListStoreLink} from "./AppListStoreLink"
+import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 
 export default function InactiveAppList({
   isSearchPage = false,
@@ -73,6 +74,7 @@ export default function InactiveAppList({
   const [showOnboardingTip, setShowOnboardingTip] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const {themed, theme} = useAppTheme()
+  const {push} = useNavigationHistory()
 
   // Static values instead of animations
   const bounceAnim = React.useRef(new Animated.Value(0)).current
@@ -462,13 +464,7 @@ export default function InactiveAppList({
   }
   const openAppSettings = (app: any) => {
     console.log("%%% opening app settings", app)
-    router.push({
-      pathname: "/app/settings",
-      params: {
-        packageName: app.packageName,
-        appName: app.name,
-      },
-    })
+    push("/app/settings", {packageName: app.packageName, appName: app.name})
   }
 
   // Filter out duplicate apps and running apps

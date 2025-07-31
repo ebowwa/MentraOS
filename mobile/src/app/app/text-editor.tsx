@@ -17,12 +17,15 @@ import {Screen} from "@/components/ignite"
 import {router, useLocalSearchParams} from "expo-router"
 import {SafeAreaView} from "react-native-safe-area-context"
 import {textEditorStore} from "@/utils/TextEditorStore"
+import {goBack} from "expo-router/build/global-state/routing"
+import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 
 export default function TextEditorScreen() {
   const {label, value, settingKey} = useLocalSearchParams()
   const [tempValue, setTempValue] = useState((value as string) || "")
   const {theme, themed} = useAppTheme()
   const textInputRef = useRef<TextInput>(null)
+  const {goBack} = useNavigationHistory()
 
   // Auto-focus text input when screen opens
   useEffect(() => {
@@ -40,19 +43,11 @@ export default function TextEditorScreen() {
     // Store the value before navigating back
     textEditorStore.setPendingValue(settingKey as string, tempValue)
 
-    if (router.canGoBack()) {
-      router.back()
-    } else {
-      router.replace("/app/settings")
-    }
+    goBack()
   }
 
   const handleCancel = () => {
-    if (router.canGoBack()) {
-      router.back()
-    } else {
-      router.replace("/app/settings")
-    }
+    goBack()
   }
 
   return (

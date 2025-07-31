@@ -13,6 +13,7 @@ import {ModalProvider} from "./AlertUtils"
 import {GlassesMirrorProvider} from "@/contexts/GlassesMirrorContext"
 import {NavigationHistoryProvider} from "@/contexts/NavigationHistoryContext"
 import {DeeplinkProvider} from "@/contexts/DeeplinkContext"
+import {OtaUpdateProvider} from "@/contexts/OtaUpdateProvider"
 import {PostHogProvider} from "posthog-react-native"
 import Constants from "expo-constants"
 
@@ -27,6 +28,7 @@ export const AllProviders = withWrappers(
   SearchResultsProvider,
   AppStoreWebviewPrefetchProvider,
   AppStatusProvider,
+  OtaUpdateProvider,
   GlassesMirrorProvider,
   NavigationHistoryProvider,
   DeeplinkProvider,

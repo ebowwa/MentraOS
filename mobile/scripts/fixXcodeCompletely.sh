@@ -1,5 +1,15 @@
 #!/bin/bash
 
+# Check if we're in a "scripts" directory
+current_dir=$(basename "$PWD")
+if [ "$current_dir" = "scripts" ]; then
+    echo "In scripts directory, moving to parent..."
+    cd ..
+    echo "Now in: $PWD"
+else
+    echo "Not in a scripts directory. Current directory: $current_dir"
+fi
+
 set -e
 
 echo "🛑 Killing Xcode and stuck PIF processes..."
