@@ -3,9 +3,9 @@ package com.augmentos.asg_client.reporting.providers;
 import android.content.Context;
 import android.util.Log;
 
-import com.augmentos.asg_client.reporting.IReportProvider;
-import com.augmentos.asg_client.reporting.ReportData;
-import com.augmentos.asg_client.reporting.ReportLevel;
+import com.augmentos.asg_client.reporting.core.IReportProvider;
+import com.augmentos.asg_client.reporting.core.ReportData;
+import com.augmentos.asg_client.reporting.core.ReportLevel;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;

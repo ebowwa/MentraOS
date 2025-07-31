@@ -5,9 +5,10 @@ import android.os.Build;
 import android.util.Log;
 
 import com.augmentos.asg_client.BuildConfig;
-import com.augmentos.asg_client.reporting.IReportProvider;
-import com.augmentos.asg_client.reporting.ReportData;
-import com.augmentos.asg_client.reporting.ReportLevel;
+import com.augmentos.asg_client.reporting.config.SentryConfig;
+import com.augmentos.asg_client.reporting.core.IReportProvider;
+import com.augmentos.asg_client.reporting.core.ReportData;
+import com.augmentos.asg_client.reporting.core.ReportLevel;
 
 import io.sentry.Breadcrumb;
 import io.sentry.Sentry;
@@ -34,6 +35,64 @@ public class SentryReportProvider implements IReportProvider {
         }
         
         try {
+            // Check if Sentry is properly configured
+            if (!SentryConfig.isValidConfiguration()) {
+                Log.w(TAG, "Sentry configuration is invalid - skipping initialization");
+                return false;
+            }
+            
+            // Get configuration from secure sources
+            String dsn = SentryConfig.getSentryDsn();
+            String environment = SentryConfig.getEnvironment();
+            double sampleRate = SentryConfig.getSampleRate();
+            String release = SentryConfig.getRelease();
+            
+            Log.i(TAG, "Initializing Sentry with secure configuration");
+            Log.d(TAG, "Environment: " + environment);
+            Log.d(TAG, "Release: " + release);
+            Log.d(TAG, "Sample Rate: " + sampleRate);
+            
+            // Initialize Sentry with secure configuration
+            io.sentry.android.core.SentryAndroid.init(context, options -> {
+                // Set DSN from secure configuration
+                options.setDsn(dsn);
+                
+                // Set environment
+                options.setEnvironment(environment);
+                
+                // Set release version
+                options.setRelease(release);
+                
+                // Set sample rates
+                options.setTracesSampleRate(sampleRate);
+                options.setProfilesSampleRate(sampleRate);
+                
+                // Enable debug mode only in development
+                if ("development".equals(environment) || "staging".equals(environment)) {
+                    options.setDebug(true);
+                    options.setDiagnosticLevel(io.sentry.SentryLevel.DEBUG);
+                } else {
+                    options.setDebug(false);
+                    options.setDiagnosticLevel(io.sentry.SentryLevel.ERROR);
+                }
+                
+                // Configure data collection based on environment
+                if ("production".equals(environment)) {
+                    // Reduce data collection in production for privacy
+                    options.setSendDefaultPii(false);
+                    options.setAttachScreenshot(false);
+                    options.setAttachViewHierarchy(false);
+                } else {
+                    // Enable more data collection in development/staging
+                    options.setSendDefaultPii(true);
+                    options.setAttachScreenshot(true);
+                    options.setAttachViewHierarchy(true);
+                }
+                
+                // Note: Data filtering is now handled centrally by ReportManager
+                // No need for provider-specific filtering callbacks
+            });
+            
             // Set default tags for all events
             Sentry.setTag("app_version", BuildConfig.VERSION_NAME);
             Sentry.setTag("build_number", String.valueOf(BuildConfig.VERSION_CODE));
@@ -49,6 +108,10 @@ public class SentryReportProvider implements IReportProvider {
             
             isInitialized = true;
             Log.i(TAG, "Sentry initialized successfully");
+            
+            // Log configuration status
+            SentryConfig.logConfigurationStatus();
+            
             return true;
         } catch (Exception e) {
             Log.e(TAG, "Failed to initialize Sentry", e);
@@ -181,4 +244,7 @@ public class SentryReportProvider implements IReportProvider {
             default: return SentryLevel.INFO;
         }
     }
+    
+    // Note: Data filtering is now handled centrally by DataFilter utility
+    // Provider-specific filtering methods have been removed to avoid duplication
 } 
