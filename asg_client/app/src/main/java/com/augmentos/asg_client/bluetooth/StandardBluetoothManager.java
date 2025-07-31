@@ -29,7 +29,7 @@ import android.util.Log;
 
 import androidx.core.app.ActivityCompat;
 
-import com.augmentos.asg_client.reporting.ReportUtils;
+import com.augmentos.asg_client.reporting.domains.BluetoothReporting;
 
 import java.lang.reflect.Method;
 import java.util.UUID;
@@ -113,7 +113,7 @@ public class StandardBluetoothManager extends BaseBluetoothManager {
                 "Failed to start advertising, error: " + errorCode);
             
             // Report advertising failure
-            ReportUtils.reportAdvertisingFailure(context, errorCode, DEVICE_NAME);
+            BluetoothReporting.reportAdvertisingFailure(context, errorCode, DEVICE_NAME);
         }
     };
     
@@ -438,7 +438,7 @@ public class StandardBluetoothManager extends BaseBluetoothManager {
                 "Bluetooth not supported on this device");
             
             // Report Bluetooth adapter issue
-            ReportUtils.reportBluetoothAdapterIssue(context, "not_supported", 
+            BluetoothReporting.reportAdapterIssue(context, "not_supported", 
                 "Bluetooth adapter is null - device does not support Bluetooth");
         } else {
             // Register for comprehensive pairing and bond state requests
@@ -508,7 +508,7 @@ public class StandardBluetoothManager extends BaseBluetoothManager {
                         "Failed to create GATT server");
                     
                     // Report GATT server creation failure
-                    ReportUtils.reportGattServerFailure(context, "create_server", 
+                    BluetoothReporting.reportGattServerFailure(context, "create_server", 
                         "unknown", -1, new Exception("Failed to create GATT server"));
                     return;
                 }
@@ -696,7 +696,7 @@ public class StandardBluetoothManager extends BaseBluetoothManager {
                 "Cannot send data - not connected to a device");
             
             // Report data transmission failure
-            ReportUtils.reportDataTransmissionFailure(context, "standard", 
+            BluetoothReporting.reportDataTransmissionFailure(context, "standard", 
                 connectedDevice != null ? connectedDevice.getAddress() : "unknown", 
                 data.length, "not_connected", null);
             return false;
@@ -706,7 +706,7 @@ public class StandardBluetoothManager extends BaseBluetoothManager {
             Log.e(TAG, "GATT server or TX characteristic not initialized");
             
             // Report data transmission failure
-            ReportUtils.reportDataTransmissionFailure(context, "standard", 
+            BluetoothReporting.reportDataTransmissionFailure(context, "standard", 
                 connectedDevice != null ? connectedDevice.getAddress() : "unknown", 
                 data.length, "gatt_not_initialized", null);
             return false;
@@ -858,7 +858,7 @@ public class StandardBluetoothManager extends BaseBluetoothManager {
                     Log.e(TAG, "Thread-" + threadId + ": ❌ Failed to send data via BLE characteristic");
                     
                     // Report data transmission failure
-                    ReportUtils.reportDataTransmissionFailure(context, "standard", 
+                    BluetoothReporting.reportDataTransmissionFailure(context, "standard", 
                         connectedDevice != null ? connectedDevice.getAddress() : "unknown", 
                         data.length, "gatt_notify_failed", null);
                 }
@@ -866,7 +866,7 @@ public class StandardBluetoothManager extends BaseBluetoothManager {
                 Log.e(TAG, "Thread-" + threadId + ": ❌ Error sending data", e);
                 
                 // Report data transmission failure with exception
-                ReportUtils.reportDataTransmissionFailure(context, "standard", 
+                BluetoothReporting.reportDataTransmissionFailure(context, "standard", 
                     connectedDevice != null ? connectedDevice.getAddress() : "unknown", 
                     data.length, "exception_occurred", e);
             }
@@ -874,7 +874,7 @@ public class StandardBluetoothManager extends BaseBluetoothManager {
             Log.e(TAG, "Thread-" + threadId + ": ❌ Missing permission to send data");
             
             // Report permission error
-            ReportUtils.reportBluetoothPermissionError(context, "send_data", "BLUETOOTH_CONNECT");
+            BluetoothReporting.reportPermissionError(context, "send_data", "BLUETOOTH_CONNECT");
         }
         
         return success;

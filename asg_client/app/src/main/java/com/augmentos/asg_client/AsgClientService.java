@@ -55,7 +55,7 @@ import com.augmentos.asg_client.settings.AsgSettings;
 
 import org.greenrobot.eventbus.EventBus;
 import com.augmentos.asg_client.events.BatteryStatusEvent;
-import com.augmentos.asg_client.reporting.ReportUtils;
+import com.augmentos.asg_client.reporting.domains.GeneralReporting;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Iterator;
@@ -237,7 +237,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         Log.d(TAG, "Button press mode on startup: " + asgSettings.getButtonPressMode().getValue());
 
             // Initialize reporting for this service
-        ReportUtils.reportServiceEvent(this, "AsgClientService", "created");
+        GeneralReporting.reportServiceEvent(this, "AsgClientService", "created");
 
         // Enable WiFi when service starts
         openWifi(this, true);

@@ -34,7 +34,7 @@ import androidx.core.app.ActivityCompat;
 import no.nordicsemi.android.ble.BleServerManager;
 import no.nordicsemi.android.ble.observer.ServerObserver;
 
-import com.augmentos.asg_client.reporting.ReportUtils;
+import com.augmentos.asg_client.reporting.domains.BluetoothReporting;
 
 /**
  * Implementation of IBluetoothManager for standard Android devices using native Android BLE APIs.
@@ -84,7 +84,7 @@ public class NordicBluetoothManager extends BaseBluetoothManager {
                 "Failed to start advertising, error: " + errorCode);
             
             // Report advertising failure
-            ReportUtils.reportAdvertisingFailure(context, errorCode, DEVICE_NAME);
+            BluetoothReporting.reportAdvertisingFailure(context, errorCode, DEVICE_NAME);
         }
     };
     
