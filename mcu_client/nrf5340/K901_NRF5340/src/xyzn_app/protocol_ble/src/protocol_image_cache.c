@@ -72,7 +72,7 @@ bool image_cache_insert(uint16_t stream_id, const uint8_t *data, size_t len, con
     g_slots[slot_idx].stream_id = stream_id;
     if (len > IMAGE_CACHE_IMAGE_MAX_SIZE)
     {
-        BSP_LOGW(TAG, "[%s] Image size %u exceeds max size %u", (unsigned)len, IMAGE_CACHE_IMAGE_MAX_SIZE);
+        BSP_LOGW(TAG, "Image size %u exceeds max size %u", (unsigned)len, IMAGE_CACHE_IMAGE_MAX_SIZE);
         len = IMAGE_CACHE_IMAGE_MAX_SIZE;
     }
     memcpy(g_slots[slot_idx].buffer, data, len);
@@ -80,6 +80,7 @@ bool image_cache_insert(uint16_t stream_id, const uint8_t *data, size_t len, con
     g_slots[slot_idx].length = len;
     BSP_LOGI(TAG, "插入图片缓冲成功 stream_id:0x%04X in slot %d", stream_id, slot_idx);
     xyzn_os_mutex_unlock(&cache_mutex);
+    return true;
 }
 
 // 查询某张图片（返回const指针，不可修改，没找到返回NULL）

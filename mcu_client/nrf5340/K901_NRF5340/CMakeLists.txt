@@ -16,11 +16,15 @@ set(LVGL_DIR ${ZEPHYR_LVGL_MODULE_DIR})
 FILE(GLOB app_sources src/*.c)
 target_include_directories(app PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/.)
 
+target_include_directories(app PRIVATE ${LVGL_DIR}/demos/)
+
 list(APPEND CMAKE_MODULE_PATH ${ZEPHYR_BASE}/modules/nanopb)
 include(nanopb)
 
-
-target_include_directories(app PRIVATE ${LVGL_DIR}/demos/)
+# zephyr_library()
+# zephyr_include_directories(${CMAKE_CURRENT_BINARY_DIR})
+# zephyr_nanopb_sources(${ZEPHYR_CURRENT_LIBRARY} mentraos_ble.proto)
+# zephyr_nanopb_sources(app ${CMAKE_CURRENT_SOURCE_DIR}/mentraos_ble.proto)
 
 # NORDIC SDK APP START
 target_sources(app PRIVATE src/main.c)

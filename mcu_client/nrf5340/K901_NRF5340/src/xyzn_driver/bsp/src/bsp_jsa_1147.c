@@ -396,3 +396,9 @@ int bsp_jsa_1147_interrupt_init(void)
     BSP_LOGI(TAG, "JSA_1147 interrupt initialized on pin %d", jsa_1147_int1.pin);
     return 0;
 }
+
+void jsa_1147_test(void)
+{
+    // Test function implementation
+    BSP_LOGI(TAG, "JSA_1147 test function called");
+}

@@ -69,7 +69,7 @@ static void wdt_callback(const struct device *wdt_dev, int channel_id)
     handled_event = true;
 }
 #endif /* WDT_ALLOW_CALLBACK */
-int bspal_watchdog_init(void)
+bspal_watchdog_handle_t bspal_watchdog_init(const bspal_watchdog_config_t *config)
 {
     BSP_LOGI(TAG, "Initializing watchdog...");
     int err;
@@ -77,7 +77,7 @@ int bspal_watchdog_init(void)
     if (!device_is_ready(wdt_data.wdt_drv))
     {
         BSP_LOGE(TAG, "%s: device not ready", wdt_data.wdt_drv->name);
-        return XYZN_OS_ERROR;
+        return NULL;
     }
 
     struct wdt_timeout_cfg wdt_config = {
@@ -108,8 +108,8 @@ int bspal_watchdog_init(void)
     if (err < 0)
     {
         BSP_LOGE(TAG, "Watchdog setup error");
-        return XYZN_OS_ERROR;
+        return NULL;
     }
 
-    return 0;
+    return &wdt_data;
 }

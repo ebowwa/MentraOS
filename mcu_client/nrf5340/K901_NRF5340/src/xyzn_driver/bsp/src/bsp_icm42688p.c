@@ -59,24 +59,24 @@ int bsp_icm42688p_check_id(void)
     return rc;
 }
 
-int bsp_icm42688p_init(void)
+bsp_icm42688p_handle_t bsp_icm42688p_init(const bsp_icm42688p_config_t *config)
 {
     i2c_dev_icm42688p = device_get_binding(DT_NODE_FULL_NAME(DT_ALIAS(myimu6)));
     if (!i2c_dev_icm42688p)
     {
         BSP_LOGE(TAG, "I2C Device driver not found");
-        return XYZN_OS_ERROR;
+        return NULL;
     }
     uint32_t i2c_cfg = I2C_SPEED_SET(I2C_SPEED_FAST) | I2C_MODE_CONTROLLER;
     if (i2c_configure(i2c_dev_icm42688p, i2c_cfg))
     {
         BSP_LOGE(TAG, "I2C config failed");
-        return XYZN_OS_ERROR;
+        return NULL;
     }
     if (bsp_icm42688p_check_id())
     {
         BSP_LOGE(TAG, "ICM42688P check id failed");
-        return XYZN_OS_ERROR;
+        return NULL;
     }
-    return 0;
+    return (bsp_icm42688p_handle_t)&i2c_dev_icm42688p;
 }

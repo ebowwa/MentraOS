@@ -123,7 +123,7 @@ void task_process(void *p1, void *p2, void *p3)
     // test_image_json();
     test_cpu_load();
     bspal_icm42688p_parameter_config();
-    bspal_jsa_1147_init();
+    bspal_jsa_1147_init(NULL);
     while (1)
     {
         xyzn_os_delay_ms(300);

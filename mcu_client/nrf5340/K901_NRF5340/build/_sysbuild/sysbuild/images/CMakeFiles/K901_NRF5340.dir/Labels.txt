@@ -1,0 +1,13 @@
+# Target labels
+ K901_NRF5340
+# Source files and their labels
+/Users/loayyari/Documents/Github/MentraOS/mcu_client/nrf5340/K901_NRF5340/build/_sysbuild/sysbuild/images/CMakeFiles/K901_NRF5340
+/Users/loayyari/Documents/Github/MentraOS/mcu_client/nrf5340/K901_NRF5340/build/_sysbuild/sysbuild/images/CMakeFiles/K901_NRF5340.rule
+/Users/loayyari/Documents/Github/MentraOS/mcu_client/nrf5340/K901_NRF5340/build/_sysbuild/sysbuild/images/CMakeFiles/K901_NRF5340-complete.rule
+/Users/loayyari/Documents/Github/MentraOS/mcu_client/nrf5340/K901_NRF5340/build/_sysbuild/sysbuild/images/K901_NRF5340-prefix/src/K901_NRF5340-stamp/K901_NRF5340-build.rule
+/Users/loayyari/Documents/Github/MentraOS/mcu_client/nrf5340/K901_NRF5340/build/_sysbuild/sysbuild/images/K901_NRF5340-prefix/src/K901_NRF5340-stamp/K901_NRF5340-configure.rule
+/Users/loayyari/Documents/Github/MentraOS/mcu_client/nrf5340/K901_NRF5340/build/_sysbuild/sysbuild/images/K901_NRF5340-prefix/src/K901_NRF5340-stamp/K901_NRF5340-download.rule
+/Users/loayyari/Documents/Github/MentraOS/mcu_client/nrf5340/K901_NRF5340/build/_sysbuild/sysbuild/images/K901_NRF5340-prefix/src/K901_NRF5340-stamp/K901_NRF5340-install.rule
+/Users/loayyari/Documents/Github/MentraOS/mcu_client/nrf5340/K901_NRF5340/build/_sysbuild/sysbuild/images/K901_NRF5340-prefix/src/K901_NRF5340-stamp/K901_NRF5340-mkdir.rule
+/Users/loayyari/Documents/Github/MentraOS/mcu_client/nrf5340/K901_NRF5340/build/_sysbuild/sysbuild/images/K901_NRF5340-prefix/src/K901_NRF5340-stamp/K901_NRF5340-patch.rule
+/Users/loayyari/Documents/Github/MentraOS/mcu_client/nrf5340/K901_NRF5340/build/_sysbuild/sysbuild/images/K901_NRF5340-prefix/src/K901_NRF5340-stamp/K901_NRF5340-update.rule
