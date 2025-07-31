@@ -235,4 +235,15 @@ public abstract class SmartGlassesCommunicator {
         // Default implementation does nothing
         Log.d("SmartGlassesCommunicator", "WiFi credential setting not implemented for this device");
     }
+
+    /**
+     * Sends button mode setting to the smart glasses
+     * Default implementation does nothing - specific communicators should override
+     *
+     * @param mode The button mode (photo, apps, both)
+     */
+    public void sendButtonModeSetting(String mode) {
+        // Default implementation does nothing
+        Log.d("SmartGlassesCommunicator", "Button mode setting not implemented for this device");
+    }
 }

@@ -38,6 +38,7 @@ public interface AugmentOsActionsCallback {
     void setGlassesWifiCredentials(String ssid, String password);
     void requestWifiScan();
     void setPreferredMic(String mic);
+    void setButtonMode(String mode);
     void setServerUrl(String url);
     void onAudioPlayRequest(JSONObject audioRequest);
     void onAudioPlayResponse(JSONObject audioResponse);

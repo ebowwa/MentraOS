@@ -274,7 +274,7 @@ export default function GlassesMirrorFullscreen() {
               [
                 {
                   text: "View in Gallery",
-                  onPress: () => router.back(),
+                  onPress: () => goBack(),
                 },
                 {text: "Continue Recording"},
               ],
@@ -404,7 +404,7 @@ export default function GlassesMirrorFullscreen() {
                 styles.videosButton,
                 {backgroundColor: theme.colors.palette.secondary200, bottom: insets.bottom + 40},
               ]}
-              onPress={() => router.back()}>
+              onPress={() => goBack()}>
               <Icon name="photo-library" size={24} color={theme.colors.icon} />
               {recordingCount > 0 && (
                 <View

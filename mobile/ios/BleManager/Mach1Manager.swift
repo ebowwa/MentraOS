@@ -98,13 +98,16 @@ class Mach1Manager: UltraliteBaseViewController {
         let tapNumber = hack.split(separator: "(").last?.split(separator: ")").first
         let tapNumberInt = Int(tapNumber ?? "0") ?? -1
 
-        switch tapNumberInt {
-        case 2:
+        if tapNumberInt >= 2 {
             isHeadUp = !isHeadUp
-        case 3:
-            isHeadUp = !isHeadUp
-        default:
-            CoreCommsService.log("MACH1: Tap count \(tapNumberInt)")
+            // start a timer and auto turn off the dashboard after 6 seconds:
+            if isHeadUp {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 6) {
+                    if self.isHeadUp {
+                        self.isHeadUp = false
+                    }
+                }
+            }
         }
     }
 
@@ -163,6 +166,10 @@ class Mach1Manager: UltraliteBaseViewController {
         }
 
         device.screenOff()
+    }
+
+    func getConnectedBluetoothName() -> String? {
+        return UltraliteManager.shared.currentDevice?.peripheral?.name
     }
 
     func disconnect() {

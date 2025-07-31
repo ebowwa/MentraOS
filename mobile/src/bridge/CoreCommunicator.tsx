@@ -509,6 +509,15 @@ export class CoreCommunicator extends EventEmitter {
     })
   }
 
+  async sendSetButtonMode(mode: string) {
+    return await this.sendData({
+      command: "set_button_mode",
+      params: {
+        mode: mode,
+      },
+    })
+  }
+
   async sendToggleContextualDashboard(enabled: boolean) {
     return await this.sendData({
       command: "enable_contextual_dashboard",

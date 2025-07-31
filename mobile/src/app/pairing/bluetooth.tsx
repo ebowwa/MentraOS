@@ -136,7 +136,7 @@ export default function SelectGlassesBluetoothScreen() {
           [
             {
               text: "No",
-              onPress: () => router.back(), // Navigate back if user chooses "No"
+              onPress: () => goBack(), // Navigate back if user chooses "No"
               style: "cancel",
             },
             {

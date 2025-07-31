@@ -92,6 +92,16 @@ export interface SettingsUpdate extends BaseMessage {
 }
 
 /**
+ * Device capabilities update to App
+ * Sent when the connected glasses model changes or capabilities are updated
+ */
+export interface CapabilitiesUpdate extends BaseMessage {
+  type: CloudToAppMessageType.CAPABILITIES_UPDATE;
+  capabilities: Capabilities | null;
+  modelName: string | null;
+}
+
+/**
  * MentraOS settings update to App
  */
 export interface MentraosSettingsUpdate extends BaseMessage {
@@ -267,6 +277,7 @@ export type CloudToAppMessage =
   | DataStream
   | AppStopped
   | SettingsUpdate
+  | CapabilitiesUpdate
   | TranscriptionData
   | TranslationData
   | AudioChunk
@@ -318,6 +329,12 @@ export function isSettingsUpdate(
   message: CloudToAppMessage,
 ): message is SettingsUpdate {
   return message.type === CloudToAppMessageType.SETTINGS_UPDATE;
+}
+
+export function isCapabilitiesUpdate(
+  message: CloudToAppMessage,
+): message is CapabilitiesUpdate {
+  return message.type === CloudToAppMessageType.CAPABILITIES_UPDATE;
 }
 
 export function isDataStream(

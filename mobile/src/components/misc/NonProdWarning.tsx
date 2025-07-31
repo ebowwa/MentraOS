@@ -59,7 +59,7 @@ export default function NonProdWarning() {
   //     <TouchableOpacity
   //       style={styles.settingsButton}
   //       onPress={() => {
-  //         router.push("/settings/developer")
+  //         push("/settings/developer")
   //       }}>
   //       <Text style={styles.settingsButtonTextBlue}>Settings</Text>
   //     </TouchableOpacity>

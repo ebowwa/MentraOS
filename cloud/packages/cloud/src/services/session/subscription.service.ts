@@ -466,6 +466,48 @@ export class SubscriptionService {
     return null; // This line should be unreachable
   }
 
+  hasPCMTranscriptionSubscriptions(sessionId: string): {
+    hasMedia: boolean;
+    hasPCM: boolean;
+    hasTranscription: boolean;
+  } {
+    let hasMedia = false;
+    let hasPCM = false;
+    let hasTranscription = false;
+
+    for (const [key, subs] of this.subscriptions.entries()) {
+      if (!key.startsWith(sessionId + ":")) continue;
+      for (const sub of subs) {
+        if (sub === StreamType.AUDIO_CHUNK) {
+          hasPCM = true;
+          hasMedia = true;
+        } else if (
+          sub === StreamType.TRANSLATION ||
+          sub === StreamType.TRANSCRIPTION
+        ) {
+          hasTranscription = true;
+          hasMedia = true;
+        } else {
+          const langInfo = parseLanguageStream(sub as string);
+          if (
+            langInfo &&
+            (langInfo.type === StreamType.TRANSLATION ||
+              langInfo.type === StreamType.TRANSCRIPTION)
+          ) {
+            hasTranscription = true;
+            hasMedia = true;
+          }
+        }
+      }
+    }
+
+    return {
+      hasMedia,
+      hasPCM,
+      hasTranscription,
+    };
+  }
+
   /**
    * Returns an object listing which Apps (by package name) for a specific user (session)
    * are subscribed to "audio_chunk", "translation", and "transcription".

@@ -52,8 +52,11 @@ public class MediaCaptureService {
     private String currentVideoId = null;
     private String currentVideoPath = null;
     private long recordingStartTime = 0;
-    public static final int bleImageTargetWidth = 320;
-    public static final int bleImageTargetHeight = 240;
+
+    // Original very fast: 320x240, 30qual
+    public static final int bleImageTargetWidth = 480;
+    public static final int bleImageTargetHeight = 480;
+    public static final int bleImageAvifQuality = 40;
     
     // Track which photos should be saved to gallery
     private Map<String, Boolean> photoSaveFlags = new HashMap<>();
@@ -374,9 +377,6 @@ public class MediaCaptureService {
                     Log.d(TAG, "Video recording stopped: " + videoId + ", file: " + filePath);
                     isRecordingVideo = false;
 
-                    // Queue the video for upload
-                    mMediaQueueManager.queueMedia(filePath, requestId, MediaUploadQueueManager.MEDIA_TYPE_VIDEO);
-
                     // Notify listener
                     if (mMediaCaptureListener != null) {
                         mMediaCaptureListener.onVideoRecordingStopped(requestId, filePath);
@@ -490,8 +490,6 @@ public class MediaCaptureService {
         // Generate a temporary requestId
         String requestId = "local_" + timeStamp;
 
-        // Log.d(TAG, "Taking photo locally in offline mode");
-
         // For offline mode, take photo and queue it for later upload
         CameraNeo.takePictureWithCallback(
                 mContext,
@@ -500,13 +498,6 @@ public class MediaCaptureService {
                     @Override
                     public void onPhotoCaptured(String filePath) {
                         Log.d(TAG, "Offline photo captured successfully at: " + filePath);
-
-                        // Queue the photo for later upload
-                        mMediaQueueManager.queueMedia(filePath, requestId, MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
-
-                        // Notify the user about offline mode
-                        Log.d(TAG, "Photo queued for later upload (offline mode)");
-
                         // Notify through standard capture listener if set up
                         if (mMediaCaptureListener != null) {
                             mMediaCaptureListener.onPhotoCaptured(requestId, filePath);
@@ -1066,8 +1057,8 @@ public class MediaCaptureService {
                     // Use avif-coder library for AVIF encoding
                     HeifCoder heifCoder = new HeifCoder();
                     compressedData = heifCoder.encodeAvif(
-                        resized, 
-                        30,  // quality (0-100)
+                        resized,
+                            bleImageAvifQuality,  // quality (0-100)
                         PreciseMode.LOSSY   // Use FAST mode for reasonable compression speed
                     );
                     Log.d(TAG, "Successfully encoded as AVIF");

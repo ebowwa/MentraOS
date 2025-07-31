@@ -3,8 +3,8 @@ name: Mobile App Android Build
 on:
   pull_request:
     paths:
-      - 'mobile/**'
-      - '.github/workflows/mentraos-manager-android-build.yml'
+      - "mobile/**"
+      - ".github/workflows/mentraos-manager-android-build.yml"
   push:
     branches:
       - main
@@ -13,36 +13,52 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
-    
+    runs-on: self-hosted
+
     steps:
+      - name: Clean workspace
+        run: |
+          # Clean previous build artifacts
+          rm -rf mobile/node_modules mobile/.pnpm-store mobile/.pnpm
+          rm -rf mobile/android/build mobile/android/.gradle
+          rm -rf ~/.pnpm-store 2>/dev/null || true
+
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Setup Java
         uses: actions/setup-java@v3
         with:
-          java-version: '17'
-          distribution: 'temurin'
+          java-version: "17"
+          distribution: "temurin"
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v2
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v2
-        with:
-          version: 8
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
-          cache: 'pnpm'
-          cache-dependency-path: mobile/package.json
+          node-version: "18"
+
+      - name: Install pnpm
+        run: |
+          npm install -g pnpm@8
+          # Verify pnpm is in PATH
+          which pnpm
+          pnpm --version
+
+      - name: Configure pnpm store
+        working-directory: ./mobile
+        run: |
+          # Use local store to avoid permission issues
+          pnpm config set store-dir .pnpm-store
 
       - name: Install dependencies
         working-directory: ./mobile
         run: pnpm install --no-frozen-lockfile
+        env:
+          PNPM_HOME: ${{ github.workspace }}/mobile/.pnpm
+          PNPM_STORE_PATH: ${{ github.workspace }}/mobile/.pnpm-store
 
       - name: Setup environment
         working-directory: ./mobile

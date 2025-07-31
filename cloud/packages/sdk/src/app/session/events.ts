@@ -30,6 +30,7 @@ import {
   PhotoTaken,
   ManagedStreamStatus,
   PhoneNotificationDismissed,
+  Capabilities,
 } from "../../types";
 import { DashboardMode } from "../../types/dashboard";
 import {
@@ -54,6 +55,10 @@ interface SystemEvents {
       };
   error: WebSocketError | Error;
   settings_update: AppSettings;
+  capabilities_update: {
+    capabilities: Capabilities | null;
+    modelName: string | null;
+    timestamp?: Date;
   dashboard_mode_change: { mode: DashboardMode | "none" };
   dashboard_always_on_change: { enabled: boolean };
   custom_message: CustomMessage;
@@ -258,6 +263,15 @@ export class EventManager {
   onSettingsUpdate(handler: Handler<SystemEvents["settings_update"]>) {
     this.emitter.on("settings_update", handler);
     return () => this.emitter.off("settings_update", handler);
+
+  /**
+   * 🔧 Listen for device capabilities updates
+   * @param handler - Function to handle capabilities updates
+   * @returns Cleanup function to remove the handler
+   */
+  onCapabilitiesUpdate(handler: Handler<SystemEvents["capabilities_update"]>) {
+    this.emitter.on("capabilities_update", handler);
+    return () => this.emitter.off("capabilities_update", handler);
   }
 
   /**

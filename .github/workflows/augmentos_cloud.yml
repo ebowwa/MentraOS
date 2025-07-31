@@ -5,18 +5,18 @@ name: Test AugmentOS Cloud ☁️
 on:
   push:
     paths:
-      - 'cloud/**'
-      - '.github/workflows/cloud.yml'
+      - "cloud/**"
+      - ".github/workflows/cloud.yml"
 
 jobs:
   build_and_test:
     name: Build & Test
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     env:
       # (Optional) Specify Node environment, could also set BUN_ENV if needed.
       NODE_ENV: development
       # If Bun version is to be pinned, we can specify it here.
-      BUN_VERSION:  # e.g. "1.2.0" or leave blank for latest
+      BUN_VERSION: # e.g. "1.2.0" or leave blank for latest
     steps:
       # 1. Checkout the repository
       - name: Checkout code
@@ -44,7 +44,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-bun-
       # ^ Uses GitHub cache to store Bun's package cache for faster installs
-
       - name: Install Dependencies
         working-directory: cloud
         run: bun run setup-deps

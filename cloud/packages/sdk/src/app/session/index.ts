@@ -48,6 +48,7 @@ import {
   isDashboardModeChanged,
   isDashboardAlwaysOnChanged,
   isAudioPlayResponse,
+  isCapabilitiesUpdate,
 
   // Other types
   AppSettings,
@@ -65,6 +66,7 @@ import {
   SubscriptionRequest,
   Capabilities,
   PhotoData,
+  CapabilitiesUpdate,
 } from "../../types";
 import { DashboardAPI } from "../../types/dashboard";
 import { MentraosSettingsUpdate } from "../../types/messages/cloud-to-app";
@@ -1272,6 +1274,21 @@ export class AppSession {
               this.updateSubscriptionsFromSettings();
             }
           }
+        } else if (isCapabilitiesUpdate(message)) {
+          // Update device capabilities
+          const capabilitiesMessage = message as CapabilitiesUpdate;
+          this.capabilities = capabilitiesMessage.capabilities;
+          this.logger.info(
+            capabilitiesMessage.capabilities,
+            `[AppSession] Capabilities updated for model: ${capabilitiesMessage.modelName}`,
+          );
+
+          // Emit capabilities update event for applications to handle
+          this.events.emit("capabilities_update", {
+            capabilities: capabilitiesMessage.capabilities,
+            modelName: capabilitiesMessage.modelName,
+            timestamp: capabilitiesMessage.timestamp,
+          });
         } else if (isAppStopped(message)) {
           const reason = message.reason || "unknown";
           const displayReason = `App stopped: ${reason}`;

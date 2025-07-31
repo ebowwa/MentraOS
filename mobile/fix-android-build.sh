@@ -1,5 +1,15 @@
 #!/bin/bash
 
+# Check if we're in a "scripts" directory
+current_dir=$(basename "$PWD")
+if [ "$current_dir" = "scripts" ]; then
+    echo "In scripts directory, moving to parent..."
+    cd ..
+    echo "Now in: $PWD"
+else
+    echo "Not in a scripts directory. Current directory: $current_dir"
+fi
+
 # Fix Android build issues script
 # This script cleans all caches and rebuilds the Android project
 
@@ -60,20 +70,6 @@ fi
 echo ""
 echo "🧹 Step 5: Cleaning Gradle cache..."
 cd android && ./gradlew clean && cd ..
-
-# Step 6: Restore iOS pods (since expo prebuild affects iOS too)
-echo ""
-echo "🍎 Step 6: Restoring iOS pods..."
-if [ -d "ios" ]; then
-    cd ios && pod install && cd ..
-    if [ $? -eq 0 ]; then
-        echo "✅ iOS pods restored successfully"
-    else
-        echo "⚠️  Warning: iOS pod install failed"
-    fi
-else
-    echo "⚠️  Warning: iOS directory not found, skipping pod install"
-fi
 
 # Step 7: Build Android
 echo ""

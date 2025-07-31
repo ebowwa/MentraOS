@@ -10,6 +10,7 @@ import {
   CloudToAppMessageType,
   DataStream,
   TranscriptSegment,
+  LocalTranscription,
 } from "@mentra/sdk";
 import UserSession from "../UserSession";
 import { PosthogService } from "../../logging/posthog.service";
@@ -106,6 +107,11 @@ export class TranscriptionManager {
     );
   }
 
+  async handleLocalTranscription(message: LocalTranscription): Promise<void> {
+    this.logger.debug({ message }, "Local transcription received");
+
+    this.relayDataToApps(StreamType.TRANSCRIPTION, message);
+  }
   /**
    * Update active subscriptions (main entry point)
    */
@@ -650,6 +656,17 @@ export class TranscriptionManager {
     }
 
     return true;
+  }
+
+  isCloudSTTDown(): boolean {
+    const stats = this.providerSelector?.getProviderStats();
+    if (!stats) {
+      // Defaulting to true as we don't have any stats
+      return true;
+    }
+    return Object.values(stats).every(
+      (provider) => provider.isHealthy === false,
+    );
   }
 
   /**
