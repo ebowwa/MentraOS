@@ -83,16 +83,10 @@ class SonioxTranslationStream implements TranslationStreamInstance {
   private pendingAudioChunks: ArrayBuffer[] = [];
   private latencyMeasurements: number[] = [];
 
-  // Translation token buffers - OLD APPROACH (keeping for backward compatibility during migration)
-  private finalTranslationTokens: SonioxToken[] = [];
-  private lastSentTranslationText = "";
-  private currentUtteranceStartTime?: number;
-
   // Two-way translation tracking
   private isTwoWay = false;
   private langA?: string;
   private langB?: string;
-  private currentSourceLang?: string;
 
   // Language-aware utterance tracking - NEW APPROACH
   // Map of sourceLanguage -> utterance data
@@ -519,124 +513,6 @@ class SonioxTranslationStream implements TranslationStreamInstance {
           this.clearLanguageUtterance(sourceLang);
         }
       }
-
-      // Also update current source language for backward compatibility
-      if (tokensByLanguage.size > 0) {
-        const firstLang = Array.from(tokensByLanguage.keys())[0];
-        this.currentSourceLang = firstLang;
-      }
-
-      // OLD APPROACH - Keep for backward compatibility
-      // Check if any language had an end token
-      let hasEndToken = false;
-
-      // Process tokens for OLD approach (collect all translation tokens)
-      for (const token of tokens) {
-        if (token.text === "<end>") {
-          hasEndToken = true;
-          continue;
-        }
-
-        if (token.is_final && token.translation_status === "translation") {
-          this.finalTranslationTokens.push(token);
-
-          // Set start time if not set
-          if (
-            !this.currentUtteranceStartTime &&
-            this.finalTranslationTokens.length > 0
-          ) {
-            this.currentUtteranceStartTime =
-              this.finalTranslationTokens[0].start_ms || 0;
-          }
-        }
-      }
-
-      const translationText = this.finalTranslationTokens
-        .map((t) => t.text)
-        .join("");
-
-      // Only send if we have translation text and it's different from last sent
-      if (translationText && translationText !== this.lastSentTranslationText) {
-        // Calculate timing from tokens
-        let endTime = this.currentUtteranceStartTime || 0;
-        if (this.finalTranslationTokens.length > 0) {
-          const lastToken =
-            this.finalTranslationTokens[this.finalTranslationTokens.length - 1];
-          endTime = (lastToken.start_ms || 0) + (lastToken.duration_ms || 0);
-        }
-
-        // Determine actual source and target languages
-        let actualSourceLang = this.sourceLanguage;
-        let actualTargetLang = this.targetLanguage;
-
-        if (this.isTwoWay && this.currentSourceLang) {
-          // For two-way translation, determine target based on source
-          actualSourceLang = this.currentSourceLang;
-          actualTargetLang =
-            this.currentSourceLang === this.langA ? this.langB! : this.langA!;
-        }
-
-        // Create translation data
-        const translationData: TranslationData = {
-          type: StreamType.TRANSLATION,
-          text: translationText,
-          originalText: undefined, // We're not tracking original text in this approach
-          isFinal: hasEndToken, // Mark as final only when we see <end>
-          startTime: this.currentUtteranceStartTime || 0,
-          endTime: endTime,
-          speakerId: undefined,
-          duration: endTime - (this.currentUtteranceStartTime || 0),
-          transcribeLanguage: actualSourceLang,
-          translateLanguage: actualTargetLang,
-          didTranslate: true,
-          provider: "soniox",
-          confidence: undefined,
-        };
-
-        // Update metrics
-        this.metrics.translationsGenerated++;
-
-        // Calculate latency
-        const latency = Date.now() - this.startTime - endTime;
-        this.latencyMeasurements.push(latency);
-        if (this.latencyMeasurements.length > 100) {
-          this.latencyMeasurements.shift();
-        }
-        this.metrics.averageLatency =
-          this.latencyMeasurements.reduce((a, b) => a + b, 0) /
-          this.latencyMeasurements.length;
-
-        // Send to callback
-        this.callbacks.onData?.(translationData);
-
-        // Update last sent text
-        this.lastSentTranslationText = translationText;
-
-        this.logger.info(
-          {
-            text: translationText.substring(0, 100),
-            isFinal: hasEndToken,
-            tokenCount: this.finalTranslationTokens.length,
-            languages: `${actualSourceLang} → ${actualTargetLang}`,
-          },
-          "Soniox translation sent",
-        );
-      }
-
-      // Clear buffers if we hit an utterance boundary
-      if (hasEndToken && this.finalTranslationTokens.length > 0) {
-        this.logger.debug(
-          {
-            clearedTokens: this.finalTranslationTokens.length,
-            utteranceText: translationText,
-          },
-          "Clearing translation buffer at utterance boundary",
-        );
-
-        this.finalTranslationTokens = [];
-        this.lastSentTranslationText = "";
-        this.currentUtteranceStartTime = undefined;
-      }
     } catch (error) {
       this.logger.error({ error }, "Error handling Soniox translation result");
       this.metrics.errorCount++;
@@ -734,52 +610,6 @@ class SonioxTranslationStream implements TranslationStreamInstance {
         this.clearLanguageUtterance(sourceLang);
       }
 
-      // OLD APPROACH COMPATIBILITY - Send any remaining translation if we have buffered tokens
-      if (this.finalTranslationTokens.length > 0) {
-        const finalText = this.finalTranslationTokens
-          .map((t) => t.text)
-          .join("");
-        if (finalText && finalText !== this.lastSentTranslationText) {
-          // Send one last update marked as final
-          const lastToken =
-            this.finalTranslationTokens[this.finalTranslationTokens.length - 1];
-          const endTime =
-            (lastToken.start_ms || 0) + (lastToken.duration_ms || 0);
-
-          // Determine actual languages for final buffer
-          let actualSourceLang = this.sourceLanguage;
-          let actualTargetLang = this.targetLanguage;
-
-          if (this.isTwoWay && this.currentSourceLang) {
-            actualSourceLang = this.currentSourceLang;
-            actualTargetLang =
-              this.currentSourceLang === this.langA ? this.langB! : this.langA!;
-          }
-
-          const translationData: TranslationData = {
-            type: StreamType.TRANSLATION,
-            text: finalText,
-            originalText: undefined,
-            isFinal: true, // Force final on close
-            startTime: this.currentUtteranceStartTime || 0,
-            endTime: endTime,
-            speakerId: undefined,
-            duration: endTime - (this.currentUtteranceStartTime || 0),
-            transcribeLanguage: actualSourceLang,
-            translateLanguage: actualTargetLang,
-            didTranslate: true,
-            provider: "soniox",
-            confidence: undefined,
-          };
-
-          this.callbacks.onData?.(translationData);
-          this.logger.info(
-            { text: finalText },
-            "Sent final translation on stream close (OLD approach)",
-          );
-        }
-      }
-
       // Clear all buffers
       this.utterancesByLanguage.clear();
       for (const timeout of this.utteranceTimeouts.values()) {
@@ -787,11 +617,6 @@ class SonioxTranslationStream implements TranslationStreamInstance {
       }
       this.utteranceTimeouts.clear();
       this.lastTokenTimeByLanguage.clear();
-
-      // OLD approach cleanup
-      this.finalTranslationTokens = [];
-      this.lastSentTranslationText = "";
-      this.currentUtteranceStartTime = undefined;
 
       // Send final message
       if (this.ws && this.ws.readyState === WebSocket.OPEN) {
@@ -1026,77 +851,6 @@ class SonioxTranslationStream implements TranslationStreamInstance {
       clearTimeout(timeout);
       this.utteranceTimeouts.delete(sourceLang);
     }
-  }
-
-  // Keep old methods for backward compatibility (deprecated)
-  private sendUtterance(_isFinal: boolean, _reason: string): void {
-    // This method is no longer used in the new approach
-    this.logger.warn("sendUtterance called - this is the old approach");
-  }
-
-  private resetUtterance(): void {
-    // This method is no longer used in the new approach
-    this.logger.warn("resetUtterance called - this is the old approach");
-  }
-
-  private flushCurrentBuffer(
-    forceFinal: boolean,
-    sourceLanguage: string,
-  ): void {
-    if (this.finalTranslationTokens.length === 0) return;
-
-    const translationText = this.finalTranslationTokens
-      .map((t) => t.text)
-      .join("");
-
-    if (translationText && translationText !== this.lastSentTranslationText) {
-      // Calculate timing
-      let endTime = this.currentUtteranceStartTime || 0;
-      if (this.finalTranslationTokens.length > 0) {
-        const lastToken =
-          this.finalTranslationTokens[this.finalTranslationTokens.length - 1];
-        endTime = (lastToken.start_ms || 0) + (lastToken.duration_ms || 0);
-      }
-
-      // Determine target language based on source
-      const actualTargetLang =
-        this.isTwoWay && sourceLanguage === this.langA
-          ? this.langB!
-          : this.langA!;
-
-      const translationData: TranslationData = {
-        type: StreamType.TRANSLATION,
-        text: translationText,
-        originalText: undefined,
-        isFinal: forceFinal,
-        startTime: this.currentUtteranceStartTime || 0,
-        endTime: endTime,
-        speakerId: undefined,
-        duration: endTime - (this.currentUtteranceStartTime || 0),
-        transcribeLanguage: sourceLanguage,
-        translateLanguage: actualTargetLang,
-        didTranslate: true,
-        provider: "soniox",
-        confidence: undefined,
-      };
-
-      this.callbacks.onData?.(translationData);
-
-      this.logger.info(
-        {
-          text: translationText.substring(0, 50),
-          forceFinal,
-          reason: "language_switch",
-          languages: `${sourceLanguage} → ${actualTargetLang}`,
-        },
-        "Flushed translation buffer due to language switch",
-      );
-    }
-
-    // Clear buffers
-    this.finalTranslationTokens = [];
-    this.lastSentTranslationText = "";
-    this.currentUtteranceStartTime = undefined;
   }
 }
 
