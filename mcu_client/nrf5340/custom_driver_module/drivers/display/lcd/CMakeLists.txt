@@ -6,7 +6,7 @@ zephyr_library_sources(hls12vga.c)
 #     ${CMAKE_CURRENT_SOURCE_DIR}/../../../../K901_NRF5340/src/BspLog
 # )
 
-set(BSP_LOG_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../../../K901_NRF5340/src/BspLog)
+set(BSP_LOG_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../../../mentraos_nrf5340/src/BspLog)
 message(STATUS "BspLog directory: ${BSP_LOG_DIR}")
 
 if(EXISTS ${BSP_LOG_DIR}/bsp_log.h)
