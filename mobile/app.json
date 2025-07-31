@@ -114,12 +114,19 @@
           },
           "ios": {
             "extraPods": [
-              {"name": "SDWebImage", "modular_headers": true},
-              {"name": "SDWebImageSVGCoder", "modular_headers": true}
+              {
+                "name": "SDWebImage",
+                "modular_headers": true
+              },
+              {
+                "name": "SDWebImageSVGCoder",
+                "modular_headers": true
+              }
             ]
           }
         }
-      ]
+      ],
+      "./plugins/sentry-config.js"
     ],
     "experiments": {
       "tsconfigPaths": true,
