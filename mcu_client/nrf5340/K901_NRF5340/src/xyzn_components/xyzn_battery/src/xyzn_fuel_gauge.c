@@ -1,7 +1,7 @@
 /*
  * @Author       : XK
  * @Date         : 2025-07-02 14:06:59
- * @LastEditTime : 2025-07-03 18:06:55
+ * @LastEditTime : 2025-07-28 16:05:09
  * @FilePath     : xyzn_fuel_gauge.c
  * @Description  :
  *
@@ -311,8 +311,8 @@ int pm1300_init(void)
 	static struct gpio_callback event_cb;
 
 	gpio_init_callback(&event_cb, event_callback,
-						BIT(NPM1300_EVENT_VBUS_DETECTED) |
-						BIT(NPM1300_EVENT_VBUS_REMOVED));
+					   BIT(NPM1300_EVENT_VBUS_DETECTED) |
+						   BIT(NPM1300_EVENT_VBUS_REMOVED));
 
 	// 添加pmic回调函数
 	err = mfd_npm1300_add_callback(pmic, &event_cb);

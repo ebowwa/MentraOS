@@ -36,10 +36,10 @@ void gpio_key1_int_isr_enable(void)
     {
         BSP_LOGE(TAG, "Error %d: failed to configure interrupt on pin %d",
                  ret, gpio_key1.pin);
-        return;
+        return XYZN_OS_ERROR;
     }
 }
-int bsp_key_init(const bsp_key_config_t *config)
+int bsp_key_init(void)
 {
     BSP_LOGI(TAG, "BSP Key Init");
     int ret;

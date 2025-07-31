@@ -1,7 +1,7 @@
 /*
  * @Author       : XK
  * @Date         : 2025-06-20 19:54:07
- * @LastEditTime : 2025-07-01 14:44:46
+ * @LastEditTime : 2025-07-26 15:49:07
  * @FilePath     : protocol_image_stream.c
  * @Description  :
  *
@@ -13,7 +13,7 @@
 #include <cJSON.h>
 #include "bal_os.h"
 #include "bsp_log.h"
-#include "xyzn_ble.h"
+#include "task_ble_receive.h"
 #include "protocol_ble_process.h"
 #include "protocol_ble_send.h"
 #include "protocol_image_stream.h"
@@ -518,6 +518,7 @@ static inline int get_stream_total_length(const image_stream *stream)
         return 0;
     }
 }
+#if 0
 void image_chunk_handler(const ble_image_block *block)
 {
     if (!block)
@@ -594,7 +595,7 @@ void image_chunk_handler(const ble_image_block *block)
         // free_image_stream(stream);
     }
 }
-
+#endif
 void test_image_json(void)
 {
     /**

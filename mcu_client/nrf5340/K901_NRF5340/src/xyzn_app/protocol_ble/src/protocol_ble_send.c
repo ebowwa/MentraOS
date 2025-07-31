@@ -11,7 +11,7 @@
 #include <zephyr/kernel.h>
 #include "cJSON.h"
 #include "bsp_log.h"
-#include "xyzn_ble.h"
+#include "task_ble_receive.h"
 #include "protocol_ble_send.h"
 
 #define TAG "PROTOCOL_BLE_SEND"

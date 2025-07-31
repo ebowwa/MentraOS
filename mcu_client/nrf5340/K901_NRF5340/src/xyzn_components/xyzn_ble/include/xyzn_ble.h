@@ -1,122 +1,76 @@
-#ifndef XYZN_BLE_H
-#define XYZN_BLE_H
-
-#include <stdint.h>
-#include <stdbool.h>
-#include "bal_os.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-/**
- * @brief BLE packet opcodes
+/***
+ * @Author       : XK
+ * @Date         : 2025-06-18 16:51:22
+ * @LastEditTime : 2025-06-23 10:47:53
+ * @FilePath     : xyzn_ble.h
+ * @Description  :
+ * @
+ * @Copyright (c) XingYiZhiNeng 2025 , All Rights Reserved.
  */
-#define BLE_OPCODE_PING          0x01
-#define BLE_OPCODE_AUDIO_DATA    0x02
-#define BLE_OPCODE_IMAGE_BLOCK   0x03
-#define BLE_OPCODE_STATUS        0x04
 
-/**
- * @brief Maximum payload size for BLE packets
- */
-#define BLE_MAX_PAYLOAD_SIZE     512
+#ifndef __XYZN_BLE_H__
+#define __XYZN_BLE_H__
+#include "bsp_log.h"
 
-/**
- * @brief BLE image block structure for image transfer
- */
-typedef struct {
-    uint32_t block_id;           // Block identifier
-    uint32_t total_blocks;       // Total number of blocks
-    uint16_t block_size;         // Size of this block
-    uint8_t data[BLE_MAX_PAYLOAD_SIZE]; // Block data
-} ble_image_block;
 
-/**
- * @brief BLE ping packet structure
- */
-typedef struct {
-    uint32_t sequence;
-    uint32_t timestamp;
-} ble_ping_packet;
+#define BLE_OPCODE_PING         0x01 // JSON message
+#define BLE_OPCODE_AUDIO_BLOCK  0xA0 // Audio chunk
+#define BLE_OPCODE_IMAGE_BLOCK  0xB0 // Image chunk
 
-/**
- * @brief BLE audio data packet structure
- */
-typedef struct {
-    uint16_t sample_rate;
-    uint16_t channels;
-    uint16_t data_size;
-    uint8_t audio_data[BLE_MAX_PAYLOAD_SIZE - 6]; // Remaining space for audio
-} ble_audio_packet;
+#define MAX_LC3_FRAME_SIZE      120
+#define MAX_IMAGE_CHUNK_SIZE    512 // MTU MAX:517-6=511
+#define BLE_MAX_TYPE_SIZE       32
+#define BLE_MAX_MSG_ID_SIZE     32
+#define BLE_MAX_RAW_JSON_SIZE   256
 
-/**
- * @brief Main BLE packet structure with union payload
- */
-typedef struct {
-    uint8_t opcode;              // Operation code
-    uint16_t payload_size;       // Size of payload
-    union {
-        ble_ping_packet ping;
-        ble_audio_packet audio;
-        ble_image_block image;
-        uint8_t raw_data[BLE_MAX_PAYLOAD_SIZE];
+#define CMD_START       '{'
+#define CMD_END         '}'
+
+// Parsed structures
+struct ble_ping_msg_t
+{
+    char type[BLE_MAX_TYPE_SIZE];
+    char msg_id[BLE_MAX_MSG_ID_SIZE];
+    char raw_json[BLE_MAX_RAW_JSON_SIZE];
+};
+
+struct ble_audio_block_t
+{
+    uint8_t stream_id;
+    uint8_t lc3_data[MAX_LC3_FRAME_SIZE];
+    uint16_t lc3_len;
+};
+
+struct ble_image_block_t
+{
+    uint16_t stream_id;
+    uint16_t crc16;
+    uint8_t chunk_index;
+    uint8_t chunk_data[MAX_IMAGE_CHUNK_SIZE];
+    uint16_t chunk_len; // 每块图像数据包长度
+};
+
+struct ble_packet_t
+{
+    uint8_t opcode;   // Opcode of the packet
+    uint16_t raw_len; // Length of the raw packet
+    union
+    {
+        struct ble_ping_msg_t ping;
+        struct ble_audio_block_t audio;
+        struct ble_image_block_t image;
     } payload;
-} ble_packet;
+};
 
-/**
- * @brief BLE service configuration structure
- */
-typedef struct {
-    uint16_t service_uuid;
-    uint16_t char_uuid;
-    uint32_t max_packet_size;
-} xyzn_ble_service_config_t;
+typedef struct ble_packet_t ble_packet;
+typedef struct ble_image_block_t ble_image_block;
+typedef struct ble_audio_block_t ble_audio_block;
+typedef struct ble_ping_msg_t ble_ping_msg;
 
-/**
- * @brief BLE service handle type
- */
-typedef void* xyzn_ble_service_handle_t;
+void ble_protocol_receive_thread(void);
 
-/**
- * @brief Initialize BLE service
- * @param config Service configuration
- * @return Handle to service instance or NULL on error
- */
-xyzn_ble_service_handle_t xyzn_ble_service_init(const xyzn_ble_service_config_t *config);
+int ble_send_data(const uint8_t *data, uint16_t len);
 
-/**
- * @brief Send BLE packet
- * @param handle Service handle
- * @param packet Packet to send
- * @return 0 on success, negative on error
- */
-int xyzn_ble_send_packet(xyzn_ble_service_handle_t handle, const ble_packet *packet);
+void ble_receive_fragment(const uint8_t *data, size_t len);
 
-/**
- * @brief Receive BLE packet
- * @param handle Service handle
- * @param packet Buffer for received packet
- * @param timeout_ms Timeout in milliseconds
- * @return 0 on success, negative on error
- */
-int xyzn_ble_receive_packet(xyzn_ble_service_handle_t handle, ble_packet *packet, uint32_t timeout_ms);
-
-/**
- * @brief Check if BLE service is connected
- * @param handle Service handle
- * @return true if connected, false otherwise
- */
-bool xyzn_ble_is_connected(xyzn_ble_service_handle_t handle);
-
-/**
- * @brief Deinitialize BLE service
- * @param handle Service handle
- */
-void xyzn_ble_service_deinit(xyzn_ble_service_handle_t handle);
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif // XYZN_BLE_H
+#endif // __XYZN_BLE_H__

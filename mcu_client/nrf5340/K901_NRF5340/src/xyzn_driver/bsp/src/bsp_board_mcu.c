@@ -1,7 +1,7 @@
 /*
  * @Author       : XK
  * @Date         : 2025-05-09 11:55:16
- * @LastEditTime : 2025-07-15 16:57:08
+ * @LastEditTime : 2025-07-30 22:05:51
  * @FilePath     : bsp_board_mcu.c
  * @Description  : 板级驱动集合
  *
@@ -15,6 +15,7 @@
 #include "bsp_gx8002.h"
 #include "bsp_key.h"
 #include "bspal_watchdog.h"
+#include "bsp_jsa_1147.h"
 
 #define TAG "BSP_BOARD_MCU"
 void my_assert_mcu(int err)

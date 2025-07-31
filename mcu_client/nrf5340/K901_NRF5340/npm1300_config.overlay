@@ -79,8 +79,8 @@
             current-microamp = <800000>;// 限制充电电流(uA)
             // current-microamp = <150000>;// 限制充电电流(uA)
             // trickle-microvolt = <2900000>;
-            // dischg-limit-microamp = <200000>; // 限制放电电流(uA)
-            dischg-limit-microamp = <1000000>; // 限制放电电流(uA)
+            dischg-limit-microamp = <200000>; // 限制放电电流(uA)
+            // dischg-limit-microamp = <1000000>; // 限制放电电流(uA)
             vbus-limit-microamp = <500000>;
             thermistor-ohms = <10000>;
             thermistor-beta = <3380>;

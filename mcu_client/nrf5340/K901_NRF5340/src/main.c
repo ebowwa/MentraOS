@@ -1,12 +1,13 @@
 /*
- * @Author       : XK
- * @Date         : 2025-07-09 12:30:39
- * @LastEditTime : 2025-07-23 12:44:36
+ * @Author       : Cole
+ * @Date         : 2025-07-25 11:26:39
+ * @LastEditTime : 2025-07-30 16:45:53
  * @FilePath     : main.c
- * @Description  :
- *
- * Copyright (c) XingYiZhiNeng 2025 , All Rights Reserved.
+ * @Description  : 
+ * 
+ * Copyright (c) 2025 MentraOS Organization. All rights reserved.
  */
+
 
 #include <uart_async_adapter.h>
 
@@ -36,7 +37,7 @@
 #include "bsp_log.h"
 #include "xyzn_config.h"
 #include "main.h"
-#include "xyzn_ble.h"
+#include "task_ble_receive.h"
 #include "xyzn_ble_service.h"
 #include "bsp_board_mcu.h"
 #include "protocol_ble_send.h"

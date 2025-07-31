@@ -1,7 +1,7 @@
 /*
  * @Author       : XK
  * @Date         : 2025-07-18 09:46:01
- * @LastEditTime : 2025-07-18 11:17:41
+ * @LastEditTime : 2025-07-29 11:51:30
  * @FilePath     : task_lc3_codec.c
  * @Description  :
  *
@@ -76,7 +76,7 @@ void task_lc3_codec_init(void *p1, void *p2, void *p3)
     user_sw_codec_lc3_init();
 
     pdm_init();
-    pdm_start();
+    // pdm_start();
     while (1)
     {
         if (!get_pdm_sample(pcm_req_buffer, PDM_PCM_REQ_BUFFER_SIZE))
