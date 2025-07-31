@@ -35,6 +35,7 @@ export interface UserI extends Document {
     bypassVad: boolean;
     bypassAudioEncoding: boolean;
     metricSystemEnabled: boolean;
+    enforceLocalTranscription: boolean;
   };
   location?: Location;
   locationSubscriptions?: Map<string, { rate: string }>;
@@ -712,7 +713,7 @@ UserSchema.methods.getGlassesModels = function (): string[] {
 };
 
 // --- Middleware ---
-UserSchema.pre("save", function (next) {
+UserSchema.pre("save", function (this: UserI, next) {
   if (this.email) {
     this.email = this.email.toLowerCase();
   }
