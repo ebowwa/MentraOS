@@ -57,6 +57,7 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
     // Backend data sending control flags
     private volatile boolean sendPcmToBackend = true;
     private volatile boolean sendTranscriptionToBackend = false;
+    public boolean sendRawPCMToBackend = true;
     private List<SpeechRequiredDataType> currentRequiredData = new ArrayList<>();
 
     private SpeechRecAugmentos(Context context) {
@@ -297,7 +298,7 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
             vadBuffer.offer(sample);
         }
 
-        if (sendPcmToBackend) {
+        if (sendRawPCMToBackend) {
             //BUFFER STUFF
             // Add to rolling buffer regardless of VAD state
             synchronized (lc3RollingBuffer) {
@@ -312,16 +313,14 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
             }
             //SENDING STUFF
             // If bypassing VAD for debugging or currently speaking, send data live
-            if (bypassVadForDebugging || isSpeaking) {
+            if (sendPcmToBackend && (bypassVadForDebugging || isSpeaking)) {
                 ServerComms.getInstance().sendAudioChunk(audioChunk);
             }
         }
 
-        if (sendTranscriptionToBackend) {
-            if (bypassVadForDebugging || isSpeaking) {
-                if (sherpaTranscriber != null) {
-                    sherpaTranscriber.acceptAudio(audioChunk);
-                }
+        if (sendTranscriptionToBackend && (bypassVadForDebugging || isSpeaking)) {
+            if (sherpaTranscriber != null) {
+                sherpaTranscriber.acceptAudio(audioChunk);
             }
         }
     }
@@ -331,8 +330,7 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
      */
     @Override
     public void ingestLC3AudioChunk(byte[] LC3audioChunk) {
-        // NOTE (yash) why is it negative?
-        if (!sendPcmToBackend) {
+        if (!sendRawPCMToBackend) {
             //BUFFER STUFF
             // Add to rolling buffer regardless of VAD state
             synchronized (lc3RollingBuffer) {
@@ -352,16 +350,9 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
             if (bypassVadForDebugging || isSpeaking) {
                 ServerComms.getInstance().sendAudioChunk(LC3audioChunk);
             }
-        }
 
-        // TODO: Should we use this?
-        // if (sendTranscriptionToBackend) {
-        //     if (bypassVadForDebugging || isSpeaking) {
-        //         if (sherpaTranscriber != null) {
-        //             sherpaTranscriber.acceptAudio(LC3audioChunk);
-        //         }
-        //     }
-        // }
+            // NOTE (yash): Not adding transcription code here because this is legacy code. 
+        }
     }
 
     /**
