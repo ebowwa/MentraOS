@@ -6,6 +6,10 @@ This is the Android code that runs on Android-based smart glasses (ex: Mentra Li
 
 - [ASG_MEDIA_SYSTEM.md](./ASG_MEDIA_SYSTEM.md) - Detailed documentation about the camera button press system, photo/video capture workflow, and how Apps (Third Party Applications) can interact with the media system.
 
+- [SENTRY_CONFIGURATION.md](./SENTRY_CONFIGURATION.md) - Guide for configuring Sentry error reporting securely in this open-source project.
+
+- [Reporting System](./app/src/main/java/com/augmentos/asg_client/reporting/README.md) - Comprehensive guide to the modern, secure reporting and analytics system with enterprise-level data filtering, SOLID architecture, and dependency injection.
+
 ## Compatible Devices
 
 - Mentra Live
