@@ -4,7 +4,17 @@
 # Downloads Sherpa-ONNX XCFramework + model once and installs:
 #   • iOS:  mobile/ios/Packages/SherpaOnnx/{sherpa-onnx.xcframework,Model/*}
 #   • Android: android_core/app/src/main/assets/sherpa_onnx/{model files}
-# Run this from the mobile directory:  AugmentOS/mobile/setup-sherpa-onnx.sh
+# Run this from the mobile directory: ./scripts/setup-sherpa-onnx.sh
+
+# Check if we're in a "scripts" directory
+current_dir=$(basename "$PWD")
+if [ "$current_dir" = "scripts" ]; then
+    echo "In scripts directory, moving to parent..."
+    cd ..
+    echo "Now in: $PWD"
+else
+    echo "Not in a scripts directory. Current directory: $current_dir"
+fi
 
 set -euo pipefail
 
@@ -18,7 +28,7 @@ ok()  { echo -e "${GREEN}$1${NC}"; }
 err() { echo -e "${RED}$1${NC}"; }
 
 # Ensure we are inside the mobile directory (script location)
-SCRIPT_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+SCRIPT_DIR="$( pwd )"
 cd "$SCRIPT_DIR"
 
 if [[ ! -d "ios" || ! -d "../android_core" ]]; then
