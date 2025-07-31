@@ -49,6 +49,7 @@ import com.augmentos.augmentos_core.augmentos_backend.ServerCommsCallback;
 import com.augmentos.augmentos_core.augmentos_backend.ThirdPartyCloudApp;
 import com.augmentos.augmentos_core.augmentos_backend.WebSocketLifecycleManager;
 import com.augmentos.augmentos_core.augmentos_backend.WebSocketManager;
+import com.augmentos.augmentos_core.enums.SpeechRequiredDataType;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.BatteryLevelEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.ButtonPressEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.CaseEvent;
@@ -1476,6 +1477,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             coreInfo.put("charging_status", batteryStatusHelper.isBatteryCharging());
             coreInfo.put("sensing_enabled", SmartGlassesManager.getSensingEnabled(this));
             coreInfo.put("bypass_vad_for_debugging", SmartGlassesManager.getBypassVadForDebugging(this));
+            coreInfo.put("enforce_local_transcription", SmartGlassesManager.getEnforceLocalTranscription(this));
             coreInfo.put("bypass_audio_encoding_for_debugging", SmartGlassesManager.getBypassAudioEncodingForDebugging(this));
             coreInfo.put("contextual_dashboard_enabled", this.contextualDashboardEnabled);
             coreInfo.put("always_on_status_bar_enabled", this.alwaysOnStatusBarEnabled);
@@ -1723,9 +1725,9 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             }
 
             @Override
-            public void onMicrophoneStateChange(boolean microphoneEnabled) {
+            public void onMicrophoneStateChange(boolean microphoneEnabled, List<SpeechRequiredDataType> requiredData) {
                 if (smartGlassesManager != null && SmartGlassesManager.getSensingEnabled(getApplicationContext())) {
-                    smartGlassesManager.changeMicrophoneState(microphoneEnabled);
+                    smartGlassesManager.changeMicrophoneState(microphoneEnabled, requiredData);
                 }
             }
 
@@ -2220,6 +2222,13 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     public void setBypassAudioEncodingForDebugging(boolean bypassAudioEncodingForDebugging) {
         SmartGlassesManager.saveBypassAudioEncodingForDebugging(this, bypassAudioEncodingForDebugging);
         sendStatusToBackend();
+    }
+
+    @Override
+    public void setEnforceLocalTranscription(boolean enforceLocalTranscription) {
+        SmartGlassesManager.saveEnforceLocalTranscription(this, enforceLocalTranscription);
+        sendStatusToBackend();
+        sendStatusToAugmentOsManager();
     }
 
     @Override

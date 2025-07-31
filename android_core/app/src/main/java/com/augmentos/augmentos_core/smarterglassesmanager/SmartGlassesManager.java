@@ -23,7 +23,9 @@ import com.augmentos.augmentos_core.LocationSystem;
 import com.augmentos.augmentos_core.MainActivity;
 import com.augmentos.augmentos_core.R;
 import com.augmentos.augmentos_core.WindowManagerWithTimeouts;
+import com.augmentos.augmentos_core.enums.SpeechRequiredDataType;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.BypassVadForDebuggingEvent;
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.EnforceLocalTranscriptionEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.NewAsrLanguagesEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.SmartGlassesConnectionEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.smartglassescommunicators.AndroidSGC;
@@ -53,6 +55,7 @@ import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 import androidx.preference.PreferenceManager;
 
@@ -566,6 +569,27 @@ public class SmartGlassesManager extends Service {
         }
     }
 
+    public static boolean getEnforceLocalTranscription(Context context) {
+        SharedPreferences sharedPreferences = context.getSharedPreferences("AugmentOSPrefs", Context.MODE_PRIVATE);
+        return sharedPreferences.getBoolean(context.getResources().getString(R.string.ENFORCE_LOCAL_TRANSCRIPTION), false);
+    }
+
+    public static void saveEnforceLocalTranscription(Context context, boolean enabled) {
+        SharedPreferences sharedPreferences = context.getSharedPreferences("AugmentOSPrefs", Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        if (context instanceof AugmentosService) {
+            AugmentosService service = (AugmentosService) context;
+            if (service.smartGlassesManager != null &&
+                service.smartGlassesManager.speechRecSwitchSystem != null) {
+                service.smartGlassesManager.speechRecSwitchSystem.setEnforceLocalTranscription(enabled);
+            }
+        } else {
+            EventBus.getDefault().post(new EnforceLocalTranscriptionEvent(enabled));
+        }
+        editor.putBoolean(context.getResources().getString(R.string.ENFORCE_LOCAL_TRANSCRIPTION), enabled);
+        editor.apply();
+    }
+
     public static boolean getBypassAudioEncodingForDebugging(Context context) {
         SharedPreferences sharedPreferences = context.getSharedPreferences("AugmentOSPrefs", Context.MODE_PRIVATE);
         return sharedPreferences.getBoolean(context.getResources().getString(R.string.BYPASS_AUDIO_ENCODING_FOR_DEBUGGING), false);
@@ -750,7 +774,7 @@ public class SmartGlassesManager extends Service {
     }
 
 
-    public void changeMicrophoneState(boolean isMicrophoneEnabled) {
+    public void changeMicrophoneState(boolean isMicrophoneEnabled, List<SpeechRequiredDataType> requiredData) {
         Log.d(TAG, "Changing microphone state to " + isMicrophoneEnabled);
 
         if (smartGlassesRepresentative == null) {
@@ -758,12 +782,19 @@ public class SmartGlassesManager extends Service {
             return;
         }
 
+        // Also change required Data field in phone microphone manager.
+        if (smartGlassesRepresentative.getPhoneMicrophoneManager() != null) {
+            smartGlassesRepresentative.getPhoneMicrophoneManager().setRequiredData(requiredData);
+        } else {
+            Log.w(TAG, "PhoneMicrophoneManager is null, skipping setRequiredData call");
+        }
+
         // Simply delegate to the representative which will use PhoneMicrophoneManager
         // PhoneMicrophoneManager handles all the complexity of choosing the right mic
         smartGlassesRepresentative.changeBluetoothMicState(isMicrophoneEnabled);
 
         // Tell speech rec system about the state change
-        speechRecSwitchSystem.microphoneStateChanged(isMicrophoneEnabled);
+        speechRecSwitchSystem.microphoneStateChanged(isMicrophoneEnabled, requiredData);
     }
 
     // applyMicrophoneState method removed - all mic logic now handled by PhoneMicrophoneManager

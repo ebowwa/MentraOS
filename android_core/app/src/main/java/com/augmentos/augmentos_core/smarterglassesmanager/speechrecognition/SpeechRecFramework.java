@@ -2,6 +2,8 @@ package com.augmentos.augmentos_core.smarterglassesmanager.speechrecognition;
 
 import android.content.Context;
 
+import com.augmentos.augmentos_core.enums.SpeechRequiredDataType;
+
 import java.util.List;
 
 public abstract class SpeechRecFramework {
@@ -21,8 +23,11 @@ public abstract class SpeechRecFramework {
 
     public abstract void updateConfig(List<AsrStreamKey> languages);
 
-    public abstract void microphoneStateChanged(boolean state);
+    public abstract void microphoneStateChanged(boolean state, List<SpeechRequiredDataType> requiredData);
 
     public void changeBypassVadForDebuggingState(boolean bypassVadForDebugging) {
+    }
+
+    public void changeEnforceLocalTranscriptionState(boolean enforceLocalTranscription) {
     }
 }

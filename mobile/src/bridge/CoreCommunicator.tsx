@@ -554,6 +554,15 @@ export class CoreCommunicator extends EventEmitter {
     })
   }
 
+  async sendToggleEnforceLocalTranscription(enabled: boolean) {
+    return await this.sendData({
+      command: "enforce_local_transcription",
+      params: {
+        enabled: enabled,
+      },
+    })
+  }
+
   async sendToggleAlwaysOnStatusBar(enabled: boolean) {
     console.log("sendToggleAlwaysOnStatusBar")
     return await this.sendData({

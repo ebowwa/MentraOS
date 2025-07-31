@@ -1,5 +1,6 @@
 package com.augmentos.augmentos_core.augmentos_backend;
 
+import com.augmentos.augmentos_core.enums.SpeechRequiredDataType;
 import org.json.JSONObject;
 
 import java.util.List;
@@ -13,7 +14,7 @@ public interface ServerCommsCallback {
     void onAuthError();
     void onConnectionStatusChange(WebSocketManager.IncomingMessageHandler.WebSocketStatus status);
     void onRequestSingle(String dataType);
-    void onMicrophoneStateChange(boolean isEnabled);
+    void onMicrophoneStateChange(boolean isEnabled, List<SpeechRequiredDataType> requiredData);
 
     /**
      * Called when the server requests a photo to be taken
