@@ -158,9 +158,9 @@ class AudioManager: NSObject {
     private func sendAudioPlayResponse(requestId: String, success: Bool, error: String? = nil, duration: Double? = nil) {
         CoreCommsService.log("AudioManager: Sending audio play response - requestId: \(requestId), success: \(success), error: \(error ?? "none")")
 
-        // Send response back through AOSManager which will forward to React Native
-        let aosManager = AOSManager.getInstance()
-        aosManager.sendAudioPlayResponse(requestId: requestId, success: success, error: error, duration: duration)
+        // Send response back through ServerComms which will forward to React Native
+        let serverComms = ServerComms.getInstance()
+        serverComms.sendAudioPlayResponse(requestId: requestId, success: success, error: error, duration: duration)
     }
 
     // Clean up method to remove observers when stopping audio
