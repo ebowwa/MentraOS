@@ -29,18 +29,11 @@ import android.content.res.Configuration;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatDelegate;
 
-import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
 import android.util.Log;
-import android.view.Surface;
-import android.view.SurfaceHolder;
-import android.view.SurfaceView;
 import android.view.View;
-import android.view.ViewGroup;
-import android.widget.FrameLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -49,13 +42,10 @@ import androidx.core.content.ContextCompat;
 import androidx.preference.PreferenceManager;
 
 // import com.firebase.ui.auth.AuthUI;
-import com.augmentos.asg_client.AsgClientService;
-import com.augmentos.asg_client.AsgClientService;
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.PermissionsUtils;
 
-import android.media.projection.MediaProjectionManager;
-
-import org.greenrobot.eventbus.Subscribe;
+import com.augmentos.asg_client.reporting.ReportUtils;
+import io.sentry.Sentry;
 
 public class MainActivity extends AppCompatActivity {
   public final String TAG = "Augmentos_MainActivity";
@@ -79,6 +69,10 @@ public class MainActivity extends AppCompatActivity {
   @Override
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
+
+    // Initialize generic reporting system
+    ReportUtils.initialize(this);
+    ReportUtils.reportAppStartup(this);
     
     // Stop factory test app before starting our services to avoid serial port conflicts
     stopFactoryTest();
@@ -336,10 +330,13 @@ public class MainActivity extends AppCompatActivity {
   public void startAsgClientService() {
     if (isMyServiceRunning(AsgClientService.class)){
       Log.d(TAG, "Not starting Augmentos service because it's already started.");
+      ReportUtils.reportServiceEvent(this, "AsgClientService", "already_running");
       return;
     }
 
     Log.d(TAG, "Starting Augmentos service.");
+    ReportUtils.reportServiceEvent(this, "AsgClientService", "start_requested");
+    
     Intent startIntent = new Intent(this, AsgClientService.class);
     startIntent.setAction(AsgClientService.ACTION_START_FOREGROUND_SERVICE);
     
