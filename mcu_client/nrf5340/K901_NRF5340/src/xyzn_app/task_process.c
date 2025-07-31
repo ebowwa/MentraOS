@@ -1,7 +1,7 @@
 /*
  * @Author       : XK
  * @Date         : 2025-07-09 12:30:39
- * @LastEditTime : 2025-07-17 10:23:33
+ * @LastEditTime : 2025-07-31 13:49:42
  * @FilePath     : task_process.c
  * @Description  :
  *
@@ -122,15 +122,15 @@ void task_process(void *p1, void *p2, void *p3)
     // littlefs_test();
     // test_image_json();
     test_cpu_load();
-    // bspal_icm42688p_parameter_config();
-    // bspal_jsa_1147_init();
+    bspal_icm42688p_parameter_config();
+    bspal_jsa_1147_init();
     while (1)
     {
         xyzn_os_delay_ms(300);
 
-        // jsa_1147_test();
+        jsa_1147_test();
         batter_monitor();
-        // test_icm42688p();
+        test_icm42688p();
         // test_ict_15318();
         load = cpu_load_get();
         BSP_LOGI(TAG, "cpu_load_get:%d.%03d", load / 1000, load % 1000);

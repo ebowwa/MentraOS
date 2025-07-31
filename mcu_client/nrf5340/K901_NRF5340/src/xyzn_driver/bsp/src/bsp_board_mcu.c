@@ -15,6 +15,7 @@
 #include "bsp_gx8002.h"
 #include "bsp_key.h"
 #include "bspal_watchdog.h"
+#include "bsp_jsa_1147.h"
 
 #define TAG "BSP_BOARD_MCU"
 void my_assert_mcu(int err)
@@ -48,9 +49,9 @@ void bsp_board_mcu_init(void)
     err = pm1300_init();
     my_assert_mcu(err);
 
-    // BSP_LOGI(TAG, "+ icm42688p...");
-    // err = bsp_icm42688p_init();
-    // my_assert_mcu(err);
+    BSP_LOGI(TAG, "+ icm42688p...");
+    err = bsp_icm42688p_init();
+    my_assert_mcu(err);
 
     // BSP_LOGI(TAG, "+ ict_15318...");
     // err = bsp_ict_15318_iic_init();
@@ -60,9 +61,9 @@ void bsp_board_mcu_init(void)
     err = bsp_gx8002_init();
     my_assert_mcu(err);
 
-    // BSP_LOGI(TAG, "+ jsa_1147...");
-    // err = bsp_jsa_1147_init();
-    // my_assert_mcu(err);
+    BSP_LOGI(TAG, "+ jsa_1147...");
+    err = bsp_jsa_1147_init();
+    my_assert_mcu(err);
 
     BSP_LOGI(TAG, "+ KEY...");
     err = bsp_key_init();
