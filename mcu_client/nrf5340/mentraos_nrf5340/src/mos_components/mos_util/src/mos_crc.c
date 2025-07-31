@@ -3,12 +3,11 @@
  * @Date         : 2025-07-31 10:40:40
  * @LastEditTime : 2025-07-31 16:57:06
  * @FilePath     : mos_crc.c
- * @Description  : 
- * 
- *  Copyright (c) MentraOS Contributors 2025 
+ * @Description  :
+ *
+ *  Copyright (c) MentraOS Contributors 2025
  *  SPDX-License-Identifier: Apache-2.0
  */
-
 
 #include "bsp_log.h"
 #include "mos_crc.h"
@@ -27,7 +26,7 @@
  * @param iLen  输入数据的字节长度
  * @return uint16_t 计算出的 16 位 CRC 校验值
  */
-uint16_t xyzn_crc16_ccitt(uint8_t *ucbuf, uint16_t iLen)
+uint16_t mos_crc16_ccitt(uint8_t *ucbuf, uint16_t iLen)
 {
     uint32_t i, j;
     uint16_t temp_crc = 0xFFFF;        // 初始值为 0xFFFF
@@ -76,7 +75,7 @@ uint8_t zyzn_crc8(const uint8_t *data, uint16_t len)
         crc ^= data[i];
         for (uint8_t j = 0; j < 8; j++)
         {
-            if (crc & 0x80) 
+            if (crc & 0x80)
                 crc = (crc << 1) ^ poly;
             else
                 crc <<= 1;

@@ -1,14 +1,13 @@
 /*
  * @Author       : Cole
  * @Date         : 2025-07-31 10:40:40
- * @LastEditTime : 2025-07-31 16:42:05
+ * @LastEditTime : 2025-07-31 19:00:51
  * @FilePath     : mos_lvgl_display.c
- * @Description  : 
- * 
- *  Copyright (c) MentraOS Contributors 2025 
+ * @Description  :
+ *
+ *  Copyright (c) MentraOS Contributors 2025
  *  SPDX-License-Identifier: Apache-2.0
  */
-
 
 #include <zephyr/device.h>
 #include <zephyr/devicetree.h>
@@ -23,7 +22,6 @@
 #include "mos_lvgl_display.h"
 #include "bspal_icm42688p.h"
 #include "task_ble_receive.h"
-
 
 #define TAG "MOS_LVGL"
 #define TASK_LVGL_NAME "MOS_LVGL"
@@ -89,12 +87,12 @@ bool get_display_onoff(void)
 }
 void lvgl_display_sem_give(void)
 {
-    xyzn_os_sem_give(&lvgl_display_sem);
+    mos_sem_give(&lvgl_display_sem);
 }
 
 int lvgl_display_sem_take(int64_t time)
 {
-    xyzn_os_sem_take(&lvgl_display_sem, time);
+    mos_sem_take(&lvgl_display_sem, time);
 }
 
 void display_open(void)
@@ -105,19 +103,19 @@ void display_open(void)
         .p.open = {
             .brightness = 9,
             .mirror = 0x08}};
-    xyzn_os_msgq_send(&display_msgq, &cmd, XYZN_OS_WAIT_FOREVER);
+    mos_msgq_send(&display_msgq, &cmd, XYZN_OS_WAIT_FOREVER);
 }
 
 void display_close(void)
 {
     // display_cmd_t cmd = {.type = LCD_CMD_CLOSE, .param = NULL};
-    // xyzn_os_msgq_send(&display_msgq, &cmd, XYZN_OS_WAIT_FOREVER);
+    // mos_msgq_sendsplay_msgq, &cmd, XYZN_OS_WAIT_FOREVER);
 }
 
 void display_send_frame(void *data_ptr)
 {
     // display_cmd_t cmd = {.type = LCD_CMD_DATA, .param = data_ptr};
-    // xyzn_os_msgq_send(&display_msgq, &cmd, XYZN_OS_WAIT_FOREVER);
+    // mos_msgq_send(&display_msgq, &cmd, XYZN_OS_WAIT_FOREVER);
 }
 void lvgl_dispaly_text(void)
 {
@@ -271,7 +269,7 @@ void handle_display_text(const mentraos_ble_DisplayText *txt)
     cmd.p.text.font_color = txt->color;
     cmd.p.text.size = txt->size;
     // 非阻塞入队，队满则丢弃并打印警告
-    if (xyzn_os_msgq_send(&display_msgq, &cmd, XYZN_OS_WAIT_ON) != 0)
+    if (mos_msgq_send(&display_msgq, &cmd, XYZN_OS_WAIT_ON) != 0)
     {
         BSP_LOGE(TAG, "UI queue full, drop text");
     }
@@ -320,7 +318,7 @@ void lvgl_dispaly_init(void *p1, void *p2, void *p3)
     // {
     //     BSP_LOGI(TAG, "字符 'A' 宽度 = %d px", glyph_dsc.adv_w);
     // }
-    // xyzn_os_delay_ms(1000);
+    // mos_delay_ms(1000);
     // BSP_LOGI(TAG, "Font pointer: %p", font);
     // BSP_LOGI(TAG, "字体高度：%d px", font->line_height);
     // BSP_LOGI(TAG, "基线位置：%d px", font->base_line);
@@ -337,8 +335,8 @@ void lvgl_dispaly_init(void *p1, void *p2, void *p3)
         return;
     }
     // 初始化 FPS 统计定时器：每 1000ms 输出一次
-    xyzn_os_timer_create(&fps_timer, fps_timer_cb);
-    xyzn_os_timer_start(&fps_timer, true, 1000);
+    mos_timer_create(&fps_timer, fps_timer_cb);
+    mos_timer_start(&fps_timer, true, 1000);
 
     display_state_t state_type = LCD_STATE_INIT;
     display_cmd_t cmd;
@@ -352,7 +350,7 @@ void lvgl_dispaly_init(void *p1, void *p2, void *p3)
             lv_timer_handler();
         }
         /* 2) 尝试读命令——最多等 LVGL_TICK_MS */
-        int err = xyzn_os_msgq_receive(&display_msgq, &cmd, LVGL_TICK_MS);
+        int err = mos_msgq_receive(&display_msgq, &cmd, LVGL_TICK_MS);
         if (err != 0)
         {
             /* 超时或队列空，没有新命令，直接下一次循环 */
@@ -372,7 +370,7 @@ void lvgl_dispaly_init(void *p1, void *p2, void *p3)
             hls12vga_set_mirror(0x08);  // 0x10 垂直镜像 0x00 正常显示 0x08 水平镜像 0x18 水平+垂直镜像
             // hls12vga_set_brightness(cmd.p.open.brightness);
             // hls12vga_set_mirror(cmd.p.open.mirror);
-            xyzn_os_delay_ms(2);
+            mos_delay_ms(2);
             hls12vga_open_display(); // 开启显示
             // hls12vga_set_shift(MOVE_DEFAULT, 0);
             hls12vga_clear_screen(false); // 清屏

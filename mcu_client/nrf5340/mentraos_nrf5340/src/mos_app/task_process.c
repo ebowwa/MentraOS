@@ -3,12 +3,11 @@
  * @Date         : 2025-07-31 10:40:40
  * @LastEditTime : 2025-07-31 17:20:56
  * @FilePath     : task_process.c
- * @Description  : 
- * 
- *  Copyright (c) MentraOS Contributors 2025 
+ * @Description  :
+ *
+ *  Copyright (c) MentraOS Contributors 2025
  *  SPDX-License-Identifier: Apache-2.0
  */
-
 
 #include <debug/cpu_load.h>
 #include <helpers/nrfx_gppi.h>
@@ -128,7 +127,7 @@ void task_process(void *p1, void *p2, void *p3)
     bspal_jsa_1147_init();
     while (1)
     {
-        xyzn_os_delay_ms(300);
+        mos_delay_ms(300);
 
         jsa_1147_test();
         batter_monitor();

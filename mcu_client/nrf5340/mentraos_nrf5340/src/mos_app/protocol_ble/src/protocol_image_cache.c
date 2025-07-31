@@ -21,7 +21,7 @@ static image_cache_slot_t g_slots[IMAGE_CACHE_SLOTS];
 
 void image_cache_mutex_init(void)
 {
-    xyzn_os_mutex_create_init(&cache_mutex);
+    mos_mutex_create_init(&cache_mutex);
 }
 
 // 初始化缓存池
@@ -38,7 +38,7 @@ bool image_cache_insert(uint16_t stream_id, const uint8_t *data, uint32_t len, c
         BSP_LOGW(TAG, "Invalid data or meta error");
         return false;
     }
-    xyzn_os_mutex_lock(&cache_mutex, XYZN_OS_WAIT_FOREVER);
+    mos_mutex_lock(&cache_mutex, XYZN_OS_WAIT_FOREVER);
     int slot_idx = -1;
 
     // 查找是否已有该stream_id，优先覆盖旧图
@@ -80,24 +80,24 @@ bool image_cache_insert(uint16_t stream_id, const uint8_t *data, uint32_t len, c
     memcpy(&g_slots[slot_idx].meta, meta, sizeof(*meta));
     g_slots[slot_idx].length = len;
     BSP_LOGI(TAG, "插入图片缓冲成功 stream_id:0x%04X in slot %d", stream_id, slot_idx);
-    xyzn_os_mutex_unlock(&cache_mutex);
+    mos_mutex_unlock(&cache_mutex);
 }
 
 // 查询某张图片（返回const指针，不可修改，没找到返回NULL）
 const image_cache_slot_t *image_cache_get(uint16_t stream_id)
 {
-    xyzn_os_mutex_lock(&cache_mutex, XYZN_OS_WAIT_FOREVER);
+    mos_mutex_lock(&cache_mutex, XYZN_OS_WAIT_FOREVER);
     for (int i = 0; i < IMAGE_CACHE_SLOTS; ++i)
     {
         if (g_slots[i].used && g_slots[i].stream_id == stream_id)
         {
             BSP_LOGI(TAG, "找到图片缓冲 stream_id:0x%04X in slot %d", stream_id, i);
-            xyzn_os_mutex_unlock(&cache_mutex);
+            mos_mutex_unlock(&cache_mutex);
             return &g_slots[i];
         }
     }
     BSP_LOGI(TAG, "没有找到 stream_id:0x%04X 图片", stream_id);
-    xyzn_os_mutex_unlock(&cache_mutex);
+    mos_mutex_unlock(&cache_mutex);
     return NULL;
 }
 

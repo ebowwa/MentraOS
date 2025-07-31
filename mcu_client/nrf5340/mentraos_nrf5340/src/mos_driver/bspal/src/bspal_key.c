@@ -3,9 +3,9 @@
  * @Date         : 2025-07-31 10:40:40
  * @LastEditTime : 2025-07-31 17:14:05
  * @FilePath     : bspal_key.c
- * @Description  : 
- * 
- *  Copyright (c) MentraOS Contributors 2025 
+ * @Description  :
+ *
+ *  Copyright (c) MentraOS Contributors 2025
  *  SPDX-License-Identifier: Apache-2.0
  */
 
@@ -16,9 +16,8 @@
 #define TAG "BSPAL_KEY"
 
 #define DEBOUNCE_MS 50       /* 去抖时间 */
-#define LONG_PRESS_MS 2000    /* 长按判定阈值 */
+#define LONG_PRESS_MS 2000   /* 长按判定阈值 */
 #define CLICK_TIMEOUT_MS 400 /* 多击间隔超时 */
-
 
 static struct k_timer debounce_timer;
 static struct k_timer click_timer;
@@ -33,15 +32,15 @@ static uint8_t click_cnt;
 extern volatile bool debouncing;
 void bspal_debounce_timer_start(void)
 {
-    xyzn_os_timer_start(&debounce_timer, false, DEBOUNCE_MS);
+    mos_timer_start(&debounce_timer, false, DEBOUNCE_MS);
 }
 void bspal_click_timer_start(void)
 {
-    xyzn_os_timer_start(&click_timer, false, CLICK_TIMEOUT_MS);
+    mos_timer_start(&click_timer, false, CLICK_TIMEOUT_MS);
 }
 void bspal_click_timer_stop(void)
 {
-    xyzn_os_timer_stop(&click_timer);
+    mos_timer_stop(&click_timer);
 }
 /*—— 多击超时处理 ——*/
 static void click_timeout(struct k_timer *t)
@@ -77,7 +76,7 @@ static void debounce_timeout(struct k_timer *t)
     }
     last_level = level;
 
-    int64_t now = xyzn_os_uptime_get();
+    int64_t now = mos_uptime_get();
     if (level)
     {
         /* 按下稳定：记录时刻 */
@@ -110,6 +109,6 @@ void bspal_key_init(void)
 {
     BSP_LOGI(TAG, "BSPAL Key Init");
     last_level = gpio_key1_read();
-    xyzn_os_timer_create(&debounce_timer, debounce_timeout);
-    xyzn_os_timer_create(&click_timer, click_timeout);
+    mos_timer_create(&debounce_timer, debounce_timeout);
+    mos_timer_create(&click_timer, click_timeout);
 }

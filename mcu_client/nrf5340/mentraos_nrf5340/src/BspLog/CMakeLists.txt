@@ -1,11 +1,12 @@
+#   @Author       : Cole
+#   @Date         : 2025-07-31 10:40:40
+#   @LastEditTime : 2025-07-31 16:21:29
+#   @FilePath     : CMakeLists.txt
+#   @Description  : 
+#   Copyright (c) MentraOS Contributors 2025 
+#   SPDX-License-Identifier: Apache-2.0
+ 
 
-#  @Author       : Cole
-#  @Date         : 2025-07-25 11:26:39
-#  @LastEditTime : 2025-07-29 09:27:32
-#  @FilePath     : CMakeLists.txt
-#  @Description  : 
-#  
-#  Copyright (c) 2025 MentraOS Organization. All rights reserved.
 
 
 target_include_directories(app PRIVATE .)

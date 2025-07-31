@@ -13,7 +13,7 @@
 #define _MOS_CONFIG_H_
 
 /*-------------------------------------------------------------------------------------------------------------*/
-#define MOS_PROJECT_NAME "MENTRAOS_NRF5340"
+#define MOS_PROJECT_NAME "MentraOS_NRF5340"
 #define MOS_HARDWARE_VERSION "V_001"
 /*
  *   第一个版本号：大版本（正式发布）
@@ -26,7 +26,7 @@
  *The third version number: After each modification, submit the code, +1 is required here (for R&D and debugging)
  *Note: After each release of the version, the third version number needs to be set to 0.
  */
-#define MOS_FIRMWARE_VERSION "MENTRAOS_NRF5340-V0_0_3-250731"
+#define MOS_FIRMWARE_VERSION "MentraOS-NRF5340-V1_0_0"
 
 // #define MOS_FIRMWARE_BUILD   "1"//每次修改提交代码，这里都需要+1; set to 0 after each release
 #define MOS_COMPILE_DATE __DATE__

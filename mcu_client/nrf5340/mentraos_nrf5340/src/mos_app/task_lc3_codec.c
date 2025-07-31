@@ -3,12 +3,11 @@
  * @Date         : 2025-07-31 10:40:40
  * @LastEditTime : 2025-07-31 17:22:57
  * @FilePath     : task_lc3_codec.c
- * @Description  : 
- * 
- *  Copyright (c) MentraOS Contributors 2025 
+ * @Description  :
+ *
+ *  Copyright (c) MentraOS Contributors 2025
  *  SPDX-License-Identifier: Apache-2.0
  */
-
 
 #include "bal_os.h"
 #include "mos_pdm.h"
@@ -103,7 +102,7 @@ void task_lc3_codec_init(void *p1, void *p2, void *p3)
                 // Here you can send the encoded data over BLE or store it
             }
         }
-        xyzn_os_delay_ms(10); // Adjust delay as needed
+        mos_delay_ms(10); // Adjust delay as needed
     }
 }
 

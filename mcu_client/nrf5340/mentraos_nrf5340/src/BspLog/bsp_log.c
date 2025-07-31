@@ -1,11 +1,12 @@
 /*
  * @Author       : Cole
- * @Date         : 2025-07-25 11:26:39
- * @LastEditTime : 2025-07-29 09:26:53
+ * @Date         : 2025-07-31 10:40:40
+ * @LastEditTime : 2025-07-31 16:54:29
  * @FilePath     : bsp_log.c
  * @Description  : 
  * 
- * Copyright (c) 2025 MentraOS Organization. All rights reserved.
+ *  Copyright (c) MentraOS Contributors 2025 
+ *  SPDX-License-Identifier: Apache-2.0
  */
 
 #include "bsp_log.h"

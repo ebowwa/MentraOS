@@ -3,9 +3,9 @@
  * @Date         : 2025-07-31 10:40:40
  * @LastEditTime : 2025-07-31 17:23:48
  * @FilePath     : task_interrupt.c
- * @Description  : 
- * 
- *  Copyright (c) MentraOS Contributors 2025 
+ * @Description  :
+ *
+ *  Copyright (c) MentraOS Contributors 2025
  *  SPDX-License-Identifier: Apache-2.0
  */
 
@@ -42,9 +42,9 @@ void gx8002_int_isr(const struct device *dev,
 #if 1
     gpio_pin_interrupt_configure_dt(&gx8002_int4, GPIO_INT_DISABLE);
 #endif
-    event.event = BSP_TYPE_GX8002_INT4;                               // 中断类型
-    event.tick = xyzn_os_get_tick();                                  // 获取当前 tick
-    xyzn_os_msgq_send(&bsp_interrupt_queue, &event, XYZN_OS_WAIT_ON); // 发送到中断队列
+    event.event = BSP_TYPE_GX8002_INT4;                           // 中断类型
+    event.tick = mos_get_tick();                                  // 获取当前 tick
+    mos_msgq_send(&bsp_interrupt_queue, &event, XYZN_OS_WAIT_ON); // 发送到中断队列
     BSP_LOGI(TAG, "gx8002_int_isr event: %d, tick: %lld", event.event, event.tick);
 }
 void jsa_1147_int_isr(const struct device *dev,
@@ -56,9 +56,9 @@ void jsa_1147_int_isr(const struct device *dev,
 #if 1
     gpio_pin_interrupt_configure_dt(&jsa_1147_int1, GPIO_INT_DISABLE);
 #endif
-    event.event = BSP_TYPE_JSA_1147_INT1;                             // 中断类型
-    event.tick = xyzn_os_get_tick();                                  // 获取当前 tick
-    xyzn_os_msgq_send(&bsp_interrupt_queue, &event, XYZN_OS_WAIT_ON); // 发送到中断队列
+    event.event = BSP_TYPE_JSA_1147_INT1;                         // 中断类型
+    event.tick = mos_get_tick();                                  // 获取当前 tick
+    mos_msgq_send(&bsp_interrupt_queue, &event, XYZN_OS_WAIT_ON); // 发送到中断队列
     BSP_LOGI(TAG, "jsa_1147_int event: %d, tick: %lld", event.event, event.tick);
 }
 
@@ -77,9 +77,9 @@ void gpio_key1_int_isr(const struct device *dev,
 #if 0
     gpio_pin_interrupt_configure_dt(&gpio_key1, GPIO_INT_DISABLE);
 #endif
-    event.event = BSP_TYPE_KEY1;                                      // 中断类型
-    event.tick = xyzn_os_get_tick();                                  // 获取当前 tick
-    xyzn_os_msgq_send(&bsp_interrupt_queue, &event, XYZN_OS_WAIT_ON); // 发送到中断队列
+    event.event = BSP_TYPE_KEY1;                                  // 中断类型
+    event.tick = mos_get_tick();                                  // 获取当前 tick
+    mos_msgq_send(&bsp_interrupt_queue, &event, XYZN_OS_WAIT_ON); // 发送到中断队列
     BSP_LOGI(TAG, "gpio_key1_int_isr event: %d, tick: %lld", event.event, event.tick);
 }
 
@@ -91,10 +91,10 @@ void task_interrupt(void *p1, void *p2, void *p3)
     BSP_LOGI(TAG, "task_interrupt start");
     while (1)
     {
-        if (xyzn_os_msgq_receive(&bsp_interrupt_queue, &event, XYZN_OS_WAIT_FOREVER) == XYZN_OS_EOK)
+        if (mos_msgq_receive(&bsp_interrupt_queue, &event, XYZN_OS_WAIT_FOREVER) == XYZN_OS_EOK)
         {
             // BSP_LOGI(TAG, "event: %d, tick: %llu", event.event, event.tick);
-            tick = xyzn_os_get_tick(); // 获取当前 tick
+            tick = mos_get_tick(); // 获取当前 tick
 
             switch (event.event)
             {

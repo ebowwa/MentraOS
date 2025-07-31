@@ -1,16 +1,18 @@
 /*** 
- * @Author       : XK
- * @Date         : 2025-06-18 17:06:12
- * @LastEditTime : 2025-06-18 17:06:15
+ * @Author       : Cole
+ * @Date         : 2025-07-31 10:40:40
+ * @LastEditTime : 2025-07-31 17:16:06
  * @FilePath     : main.h
  * @Description  : 
  * @
- * @Copyright (c) XingYiZhiNeng 2025 , All Rights Reserved. 
+ * @ Copyright (c) MentraOS Contributors 2025 
+ * @ SPDX-License-Identifier: Apache-2.0
  */
 
 
- #ifndef __MAIN_H   
- #define __MAIN_H
+#ifndef __MAIN_H_
+#define __MAIN_H_
+
 #include <stdint.h>
 
 int ble_init_sem_take(void);
@@ -24,4 +26,4 @@ uint16_t get_ble_payload_mtu(void);
 void ble_interval_set(uint16_t min, uint16_t max);
 
 void ble_name_update_data(const char *name);
-#endif // __MAIN_H
+#endif // __MAIN_H_

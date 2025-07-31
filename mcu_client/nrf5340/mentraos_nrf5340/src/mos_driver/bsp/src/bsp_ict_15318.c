@@ -3,9 +3,9 @@
  * @Date         : 2025-07-31 10:40:40
  * @LastEditTime : 2025-07-31 17:06:19
  * @FilePath     : bsp_ict_15318.c
- * @Description  : 
- * 
- *  Copyright (c) MentraOS Contributors 2025 
+ * @Description  :
+ *
+ *  Copyright (c) MentraOS Contributors 2025
  *  SPDX-License-Identifier: Apache-2.0
  */
 
@@ -70,28 +70,28 @@ void ict_15318_i2c_start(void)
 {
     ict_15318_sda_high();
     ict_15318_scl_high();
-    xyzn_os_busy_wait(ict_15318_SW_I2C_DELAY_US);
+    mos_busy_wait(ict_15318_SW_I2C_DELAY_US);
     ict_15318_sda_low();
-    xyzn_os_busy_wait(ict_15318_SW_I2C_DELAY_US);
+    mos_busy_wait(ict_15318_SW_I2C_DELAY_US);
     ict_15318_scl_low();
-    xyzn_os_busy_wait(ict_15318_SW_I2C_DELAY_US);
+    mos_busy_wait(ict_15318_SW_I2C_DELAY_US);
 }
 
 void ict_15318_i2c_stop(void)
 {
     ict_15318_sda_low();
-    xyzn_os_busy_wait(ict_15318_SW_I2C_DELAY_US);
+    mos_busy_wait(ict_15318_SW_I2C_DELAY_US);
     ict_15318_scl_high();
-    xyzn_os_busy_wait(ict_15318_SW_I2C_DELAY_US);
+    mos_busy_wait(ict_15318_SW_I2C_DELAY_US);
     ict_15318_sda_high();
-    xyzn_os_busy_wait(ict_15318_SW_I2C_DELAY_US);
+    mos_busy_wait(ict_15318_SW_I2C_DELAY_US);
 }
 
 /* 发送一字节并等待 ACK */
 int ict_15318_write_byte(uint8_t b)
 {
     ict_15318_sda_out();
-    xyzn_os_busy_wait(ict_15318_SW_I2C_DELAY_US);
+    mos_busy_wait(ict_15318_SW_I2C_DELAY_US);
     /* 发送 8 bit */
     for (int i = 7; i >= 0; i--)
     {
@@ -100,27 +100,27 @@ int ict_15318_write_byte(uint8_t b)
             ict_15318_sda_high();
         else
             ict_15318_sda_low();
-        xyzn_os_busy_wait(ict_15318_SW_I2C_DELAY_US);
+        mos_busy_wait(ict_15318_SW_I2C_DELAY_US);
 
         ict_15318_scl_high();
-        xyzn_os_busy_wait(ict_15318_SW_I2C_DELAY_US);
+        mos_busy_wait(ict_15318_SW_I2C_DELAY_US);
     }
 
     /* 第 9 个时钟，用于 ACK */
     ict_15318_scl_low();
     ict_15318_sda_in(); /* 切输入，等从机拉 ACK */
-    xyzn_os_busy_wait(ict_15318_SW_I2C_DELAY_US);
+    mos_busy_wait(ict_15318_SW_I2C_DELAY_US);
 
     ict_15318_scl_high();
-    xyzn_os_busy_wait(ict_15318_SW_I2C_DELAY_US / 2);
+    mos_busy_wait(ict_15318_SW_I2C_DELAY_US / 2);
 
     uint32_t t = 0;
     while (ict_15318_sda_read() && t++ < ict_15318_SW_I2C_TIMEOUT)
     {
-        xyzn_os_busy_wait(1);
+        mos_busy_wait(1);
     }
 
-    xyzn_os_busy_wait(ict_15318_SW_I2C_DELAY_US / 2);
+    mos_busy_wait(ict_15318_SW_I2C_DELAY_US / 2);
     ict_15318_scl_low();
     ict_15318_sda_out();
 
@@ -137,18 +137,18 @@ int ict_15318_read_byte(uint8_t *p, bool ack)
 {
     uint8_t val = 0;
     ict_15318_sda_in();
-    xyzn_os_busy_wait(ict_15318_SW_I2C_DELAY_US);
+    mos_busy_wait(ict_15318_SW_I2C_DELAY_US);
 
     for (int i = 7; i >= 0; i--)
     {
         ict_15318_scl_low();
-        xyzn_os_busy_wait(ict_15318_SW_I2C_DELAY_US);
+        mos_busy_wait(ict_15318_SW_I2C_DELAY_US);
 
         ict_15318_scl_high();
-        xyzn_os_busy_wait(ict_15318_SW_I2C_DELAY_US / 2);
+        mos_busy_wait(ict_15318_SW_I2C_DELAY_US / 2);
         if (ict_15318_sda_read())
             val |= (1 << i);
-        xyzn_os_busy_wait(ict_15318_SW_I2C_DELAY_US / 2);
+        mos_busy_wait(ict_15318_SW_I2C_DELAY_US / 2);
     }
 
     /* 第 9 个时钟，主机 ACK/NACK */
@@ -158,15 +158,15 @@ int ict_15318_read_byte(uint8_t *p, bool ack)
         ict_15318_sda_low();
     else
         ict_15318_sda_high();
-    xyzn_os_busy_wait(ict_15318_SW_I2C_DELAY_US);
+    mos_busy_wait(ict_15318_SW_I2C_DELAY_US);
 
     ict_15318_scl_high();
-    xyzn_os_busy_wait(ict_15318_SW_I2C_DELAY_US);
+    mos_busy_wait(ict_15318_SW_I2C_DELAY_US);
 
     ict_15318_scl_low();
-    xyzn_os_busy_wait(ict_15318_SW_I2C_DELAY_US);
+    mos_busy_wait(ict_15318_SW_I2C_DELAY_US);
     ict_15318_sda_high();
-    xyzn_os_busy_wait(ict_15318_SW_I2C_DELAY_US);
+    mos_busy_wait(ict_15318_SW_I2C_DELAY_US);
 
     *p = val;
     return 0;
@@ -278,7 +278,7 @@ int bsp_ict_15318_iic_init(void)
         BSP_LOGE(TAG, "ict_15318_i2c_scl set error: %d", err);
         return err;
     }
-    xyzn_os_delay_ms(10);
+    mos_delay_ms(10);
 
     err = ict_15318_read_id();
     if (err != 0)

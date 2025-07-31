@@ -1,45 +1,44 @@
 /*
  * @Author       : Cole
  * @Date         : 2025-07-31 10:40:40
- * @LastEditTime : 2025-07-31 16:52:32
+ * @LastEditTime : 2025-07-31 18:58:37
  * @FilePath     : bal_os.c
- * @Description  : 
- * 
- *  Copyright (c) MentraOS Contributors 2025 
+ * @Description  :
+ *
+ *  Copyright (c) MentraOS Contributors 2025
  *  SPDX-License-Identifier: Apache-2.0
  */
-
 
 #include "bal_os.h"
 
 #define TAG "BAL_OS"
 
-void xyzn_os_busy_wait(uint32_t us)
+void mos_busy_wait(uint32_t us)
 {
     k_busy_wait(us);
 }
-void xyzn_os_delay_ms(uint32_t ms)
+void mos_delay_ms(uint32_t ms)
 {
     k_sleep(K_MSEC(ms));
 }
-void xyzn_os_delay_us(uint32_t us)
+void mos_delay_us(uint32_t us)
 {
     k_sleep(K_USEC(us));
 }
-xyzn_os_tick_t xyzn_os_get_tick(void)
+xyzn_os_tick_t mos_get_tick(void)
 {
     // return k_uptime_get_32();
     return k_uptime_ticks();
 }
-int64_t xyzn_os_uptime_get(void)
+int64_t mos_uptime_get(void)
 {
     return k_uptime_get();
 }
-void xuzn_os_reset(void)
+void mos_reset(void)
 {
     sys_reboot(0);
 }
-void *xyzn_malloc(size_t size)
+void *mos_malloc(size_t size)
 {
     void *p = NULL;
     p = k_malloc(size);
@@ -50,12 +49,12 @@ void *xyzn_malloc(size_t size)
     }
     return p;
 }
-void xyzn_free(void *ptr)
+void mos_free(void *ptr)
 {
     k_free(ptr);
 }
 
-int xyzn_os_timer_start(struct k_timer *timer_handle, bool auto_reload, int64_t period)
+int mos_timer_start(struct k_timer *timer_handle, bool auto_reload, int64_t period)
 {
     if (timer_handle == NULL)
     {
@@ -72,7 +71,7 @@ int xyzn_os_timer_start(struct k_timer *timer_handle, bool auto_reload, int64_t 
     }
     return XYZN_OS_EOK;
 }
-int xyzn_os_timer_stop(struct k_timer *timer_handle)
+int mos_timer_stop(struct k_timer *timer_handle)
 {
     if (timer_handle == NULL)
     {
@@ -82,7 +81,7 @@ int xyzn_os_timer_stop(struct k_timer *timer_handle)
     k_timer_stop(timer_handle);
     return XYZN_OS_EOK;
 }
-int xyzn_os_timer_create(struct k_timer *timer_handle, void (*callback)(struct k_timer *timer))
+int mos_timer_create(struct k_timer *timer_handle, void (*callback)(struct k_timer *timer))
 {
     if (timer_handle == NULL)
     {
@@ -92,7 +91,7 @@ int xyzn_os_timer_create(struct k_timer *timer_handle, void (*callback)(struct k
     k_timer_init(timer_handle, callback, NULL);
     return XYZN_OS_EOK;
 }
-int xyzn_os_mutex_create_init(struct k_mutex *mutex)
+int mos_mutex_create_init(struct k_mutex *mutex)
 {
     if (mutex == NULL)
     {
@@ -101,7 +100,7 @@ int xyzn_os_mutex_create_init(struct k_mutex *mutex)
     }
     return k_mutex_init(mutex);
 }
-int xyzn_os_mutex_lock(struct k_mutex *mutex, int64_t time)
+int mos_mutex_lock(struct k_mutex *mutex, int64_t time)
 {
     k_mutex_lock(mutex, K_FOREVER);
 
@@ -125,7 +124,7 @@ int xyzn_os_mutex_lock(struct k_mutex *mutex, int64_t time)
     }
     return ret;
 }
-int xyzn_os_mutex_unlock(struct k_mutex *mutex)
+int mos_mutex_unlock(struct k_mutex *mutex)
 {
     if (mutex == NULL)
     {
@@ -135,7 +134,7 @@ int xyzn_os_mutex_unlock(struct k_mutex *mutex)
     return k_mutex_unlock(mutex);
 }
 
-int xyzn_os_sem_give(struct k_sem *sem)
+int mos_sem_give(struct k_sem *sem)
 {
     if (sem == NULL)
     {
@@ -146,7 +145,7 @@ int xyzn_os_sem_give(struct k_sem *sem)
     return XYZN_OS_EOK;
 }
 
-int xyzn_os_sem_take(struct k_sem *sem, int64_t time)
+int mos_sem_take(struct k_sem *sem, int64_t time)
 {
     if (sem == NULL)
     {
@@ -168,7 +167,7 @@ int xyzn_os_sem_take(struct k_sem *sem, int64_t time)
     }
     return ret;
 }
-int xyzn_os_msgq_receive(struct k_msgq *msgq, void *msg, int64_t timeout)
+int mos_msgq_receive(struct k_msgq *msgq, void *msg, int64_t timeout)
 {
     if (msgq == NULL)
     {
@@ -190,7 +189,7 @@ int xyzn_os_msgq_receive(struct k_msgq *msgq, void *msg, int64_t timeout)
     }
     return k_msgq_get(msgq, msg, time_v);
 }
-int xyzn_os_msgq_send(struct k_msgq *msgq, void *msg, int64_t timeout)
+int mos_msgq_send(struct k_msgq *msgq, void *msg, int64_t timeout)
 {
     if (msgq == NULL)
     {

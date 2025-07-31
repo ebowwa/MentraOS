@@ -3,9 +3,9 @@
  * @Date         : 2025-07-31 10:40:40
  * @LastEditTime : 2025-07-31 17:12:20
  * @FilePath     : bspal_gx8002.c
- * @Description  : 
- * 
- *  Copyright (c) MentraOS Contributors 2025 
+ * @Description  :
+ *
+ *  Copyright (c) MentraOS Contributors 2025
  *  SPDX-License-Identifier: Apache-2.0
  */
 
@@ -30,7 +30,7 @@ int gx8002_get_mic_state(void)
     }
 
     /* 等待芯片内部更新 */
-    xyzn_os_delay_ms(400);
+    mos_delay_ms(400);
     /* 再读寄存器 0xA0 */
     gx8002_i2c_start();
     gx8002_write_byte((GX8002_I2C_ADDR << 1) | 0);
@@ -67,7 +67,7 @@ int gx8002_test_link(void)
     /* 轮询等待 1 (最多 100 次 * 10ms) */
     for (int i = 0; i < 100; i++)
     {
-        xyzn_os_delay_ms(10);
+        mos_delay_ms(10);
         ret = gx8002_i2c_read_reg(0xAC, &val);
         if (ret < 0)
         {
@@ -112,7 +112,7 @@ int gx8002_open_dmic(void)
 
     for (int i = 0; i < 100; i++)
     {
-        xyzn_os_delay_ms(10);
+        mos_delay_ms(10);
         ret = gx8002_i2c_read_reg(0xA0, &val);
         if (ret < 0)
         {
@@ -150,7 +150,7 @@ int gx8002_close_dmic(void)
 
     for (int i = 0; i < 100; i++)
     {
-        xyzn_os_delay_ms(10);
+        mos_delay_ms(10);
         ret = gx8002_i2c_read_reg(0xA0, &val);
         if (ret < 0)
         {
@@ -176,7 +176,7 @@ int gx8002_reset(void)
         BSP_LOGE(TAG, "reset step1 (9C=A5) failed: %d", ret);
         return ret;
     }
-    xyzn_os_delay_ms(1);
+    mos_delay_ms(1);
 
     ret = gx8002_i2c_write_reg(0xD0, 0x5A);
     if (ret < 0)
@@ -184,7 +184,7 @@ int gx8002_reset(void)
         BSP_LOGE(TAG, "reset step2 (D0=5A) failed: %d", ret);
         return ret;
     }
-    xyzn_os_delay_ms(1);
+    mos_delay_ms(1);
 
     ret = gx8002_i2c_write_reg(0xCC, 0x04);
     if (ret < 0)
@@ -192,7 +192,7 @@ int gx8002_reset(void)
         BSP_LOGE(TAG, "reset step3 (CC=04) failed: %d", ret);
         return ret;
     }
-    xyzn_os_delay_ms(1);
+    mos_delay_ms(1);
 
     ret = gx8002_i2c_write_reg(0xB0, 0x01);
     if (ret < 0)

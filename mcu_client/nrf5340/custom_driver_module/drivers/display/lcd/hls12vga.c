@@ -1,12 +1,14 @@
 /*
- * @Author       : XK
- * @Date         : 2025-05-27 19:29:29
- * @LastEditTime : 2025-07-15 18:08:56
+ * @Author       : Cole
+ * @Date         : 2025-07-31 10:40:40
+ * @LastEditTime : 2025-07-31 17:33:58
  * @FilePath     : hls12vga.c
- * @Description  :
- *
- * Copyright (c) XingYiZhiNeng 2025 , All Rights Reserved.
+ * @Description  : 
+ * 
+ *  Copyright (c) MentraOS Contributors 2025 
+ *  SPDX-License-Identifier: Apache-2.0
  */
+
 
 #include <stdio.h>
 #include <zephyr/types.h>

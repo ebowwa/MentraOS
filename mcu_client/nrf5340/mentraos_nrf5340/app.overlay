@@ -1,12 +1,11 @@
 
-//   @Author: XK
-//   @Date: 2025-07-02 09: 48: 47
-//   @LastEditTime: 2025-07-15 17: 49: 51
-//   @FilePath: app.overlay
-//   @Description:
-
-//   Copyright (c) XingYiZhiNeng 2025 , All Rights Reserved.
-
+//   @Author       : Cole
+//   @Date         : 2025-07-31 10:40:40
+//   @LastEditTime : 2025-07-31 17:17:53
+//   @FilePath     : app.overlay
+//   @Description  : 
+//   Copyright (c) MentraOS Contributors 2025 
+//   SPDX-License-Identifier: Apache-2.0
 
 / {
 	chosen {
@@ -15,9 +14,6 @@
 		// nordic,pm-ext-flash = &mx25r64;
 	};
 	zephyr,user {
-		// ict_15318_sda-gpios = <&gpio1 14 GPIO_ACTIVE_HIGH>;
-		// ict_15318_scl-gpios = <&gpio1 15 GPIO_ACTIVE_HIGH>;
-
 		gx8002_sda-gpios = <&gpio1 04 GPIO_ACTIVE_HIGH>;
 		gx8002_scl-gpios = <&gpio1 05 GPIO_ACTIVE_HIGH>;
 		gx8002_int4-gpios = <&gpio0 22 GPIO_ACTIVE_HIGH>;

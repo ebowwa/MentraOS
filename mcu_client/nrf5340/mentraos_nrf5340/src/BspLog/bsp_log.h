@@ -1,13 +1,13 @@
-/*** 
+/***
  * @Author       : Cole
- * @Date         : 2025-07-25 11:26:39
- * @LastEditTime : 2025-07-29 09:26:11
+ * @Date         : 2025-07-31 10:40:40
+ * @LastEditTime : 2025-07-31 16:14:38
  * @FilePath     : bsp_log.h
- * @Description  : 
+ * @Description  :
  * @
- * @Copyright (c) 2025 MentraOS Organization. All rights reserved.
+ * @ Copyright (c) MentraOS Contributors 2025
+ * @ SPDX-License-Identifier: Apache-2.0
  */
-
 
 #ifndef _BSP_LOG_H_
 #define _BSP_LOG_H_
@@ -33,9 +33,9 @@ void bsp_log_buffer_hex_internal(const char *tag, const void *buffer, uint16_t b
 void bsp_log_buffer_char_internal(const char *tag, const void *buffer, uint16_t buff_len, BSP_LOG_LEVEL_t log_level);
 void bsp_log_buffer_hexdump_internal(const char *tag, const void *buffer, uint16_t buff_len, BSP_LOG_LEVEL_t log_level);
 
-#define BSP_LOG_FORMAT(level, format)   #level "[%s]: " format "\n"
-#define BSP_PRINTF(tag, format, ...)    printk(format, tag, ##__VA_ARGS__);
-#define DUG                             BSP_LOGE("DUG", "== %s ==,[%d]", __func__, __LINE__)
+#define BSP_LOG_FORMAT(level, format) #level "[%s]: " format "\n"
+#define BSP_PRINTF(tag, format, ...) printk(format, tag, ##__VA_ARGS__);
+#define DUG BSP_LOGE("DUG", "== %s ==,[%d]", __func__, __LINE__)
 // #define DUG                             BSP_LOGE("DUG", "[%s][%d][%s] \n", __FILE__, __LINE__, __func__)
 #define BSP_LOG_LEVEL(level, tag, format, ...)                        \
     do                                                                \

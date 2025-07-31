@@ -1,13 +1,13 @@
 /*
  * @Author       : Cole
- * @Date         : 2025-07-25 11:26:39
- * @LastEditTime : 2025-07-30 16:45:53
+ * @Date         : 2025-07-31 10:40:40
+ * @LastEditTime : 2025-07-31 16:26:23
  * @FilePath     : main.c
- * @Description  : 
- * 
- * Copyright (c) 2025 MentraOS Organization. All rights reserved.
+ * @Description  :
+ *
+ *  Copyright (c) MentraOS Contributors 2025
+ *  SPDX-License-Identifier: Apache-2.0
  */
-
 
 #include <uart_async_adapter.h>
 
@@ -35,15 +35,15 @@
 /******************************************* */
 #include "nrfx_clock.h"
 #include "bsp_log.h"
-#include "xyzn_config.h"
+#include "mos_config.h"
 #include "main.h"
 #include "task_ble_receive.h"
-#include "xyzn_ble_service.h"
+#include "mos_ble_service.h"
 #include "bsp_board_mcu.h"
 #include "protocol_ble_send.h"
 #include "protocol_ble_process.h"
 #include "protocol_image_cache.h"
-#include "xyzn_lvgl_display.h"
+#include "mos_lvgl_display.h"
 #include "task_process.h"
 #include "task_interrupt.h"
 #include "bspal_watchdog.h"
@@ -52,8 +52,8 @@
 
 static struct bt_conn *my_current_conn;
 
-static uint16_t payload_mtu = 20;  // 默认MTU长度
-static bool ble_connected = false; // 默认未连接
+static uint16_t payload_mtu = 20;  // 默认MTU长度; Default MTU length
+static bool ble_connected = false; // 默认未连接; Default not connected
 #define BLE_NAME_MAX_LEN 20
 static uint8_t device_name[BLE_NAME_MAX_LEN] = "1234567890";
 
@@ -94,11 +94,11 @@ UART_ASYNC_ADAPTER_INST_DEFINE(async_adapter);
 #endif
 void ble_init_sem_give(void)
 {
-	k_sem_give(&ble_init_ok); // 通知蓝牙初始化完成
+	k_sem_give(&ble_init_ok); // 通知蓝牙初始化完成; Notify that Bluetooth initialization is complete
 }
 /**
- * @description: 等待蓝牙初始化完成
- * @return int 0:成功，其他:失败
+ * @description: 等待蓝牙初始化完成; Wait for Bluetooth initialization to complete
+ * @return int 0:成功，其他:失败; 0: success, other: failure
  */
 int ble_init_sem_take(void)
 {
@@ -167,7 +167,7 @@ static void adv_work_handler(struct k_work *work)
 {
 	int err;
 	int retry;
-	for (retry = 0; retry < 5; retry++) // 累计尝试5次
+	for (retry = 0; retry < 5; retry++) // 累计尝试5次; Accumulate 5 attempts
 	{
 		err = bt_le_adv_start(&g_adv_param, ad, ARRAY_SIZE(ad), sd, ARRAY_SIZE(sd));
 		if (err == 0)
@@ -176,7 +176,7 @@ static void adv_work_handler(struct k_work *work)
 			return;
 		}
 		LOG_ERR("Advertising failed to start (err %d), try %d", err, retry + 1);
-		// 如果不是第一次，尝试 stop 再 start
+		// 如果不是第一次，尝试 stop 再 start; If it's not the first time, try to stop and start again
 		if (retry > 0)
 		{
 			int stop_err = bt_le_adv_stop();
@@ -185,14 +185,14 @@ static void adv_work_handler(struct k_work *work)
 				LOG_ERR("Advertising failed to stop (err %d)", stop_err);
 			}
 		}
-		xyzn_os_delay_ms(20); // 短暂等待后再重试
+		mos_delay_ms(20); // 短暂等待后再重试 ; Short wait before retrying
 	}
 	LOG_ERR("Advertising failed to start after %d retries", retry);
 }
 
 void advertising_start(void)
 {
-	k_work_submit(&adv_work); // 向系统队列提交工作项目
+	k_work_submit(&adv_work); // 提交工作到工作队列;  Submit a work item to the system queue.
 }
 
 static void recycled_cb(void)
@@ -335,8 +335,8 @@ void set_ble_connected_status(bool connected)
 	ble_connected = connected;
 }
 /**
- * @retval 获取当前 BLE 连接状态
- * @return false 未连接，true 已连接
+ * @retval 获取当前 BLE 连接状态 get the current BLE connection status
+ * @return false 未连接，true 已连接 returns false if not connected, true if connected
  */
 bool get_ble_connected_status(void)
 {
@@ -436,7 +436,8 @@ BT_CONN_CB_DEFINE(conn_callbacks) = {
 #endif
 };
 /**
- * @brief 获取当前MTU
+ * @brief 获取当前 BLE 负载 MTU, get the current BLE payload MTU
+ * @return uint16_t 当前 BLE 负载 MTU, returns the current BLE payload MTU
  */
 uint16_t get_ble_payload_mtu(void)
 {
@@ -451,7 +452,7 @@ void mtu_updated(struct bt_conn *conn, uint16_t tx, uint16_t rx)
 static struct bt_gatt_cb gatt_callbacks = {
 	.att_mtu_updated = mtu_updated};
 /**
- * @brief 蓝牙广播间隔设置
+ * @brief 蓝牙广播间隔设置 ble set advertising interval
  * @param time_ms
  */
 void ble_interval_set(uint16_t min, uint16_t max)
@@ -476,10 +477,10 @@ static void app_info(void)
 			 "|	Build Time: %s %s\n"
 			 "|	IDF Version: %s\n|\n"
 			 "-------------------------------------------\n",
-			 XYZN_PROJECT_NAME,
-			 XYZN_FIRMWARE_VERSION,
-			 XYZN_COMPILE_DATE, XYZN_COMPILE_TIME,
-			 XYZN_SDK_VERSION);
+			 MOS_PROJECT_NAME,
+			 MOS_FIRMWARE_VERSION,
+			 MOS_COMPILE_DATE, MOS_COMPILE_TIME,
+			 MOS_SDK_VERSION);
 }
 
 static int hfclock_config_and_start(void)
@@ -499,6 +500,7 @@ static int hfclock_config_and_start(void)
 	return 0;
 }
 // 初始化高频时钟128Mhz运行模式
+// Initialize the high frequency clock 128 mhz operation mode
 SYS_INIT(hfclock_config_and_start, POST_KERNEL, 0);
 
 int main(void)
@@ -546,7 +548,7 @@ int main(void)
 
 	bt_gatt_cb_register(&gatt_callbacks);
 
-	xyzn_os_delay_ms(1000);
+	mos_delay_ms(1000);
 	image_cache_init();
 	bsp_board_mcu_init();
 
@@ -569,7 +571,7 @@ int main(void)
 	{
 		BSP_LOGI(TAG, "Starting main thread %d", count++);
 		primary_feed_worker();
-		xyzn_os_delay_ms(10000);
+		mos_delay_ms(10000);
 		if (clk_128_flag == 0)
 		{
 			uint32_t clk = NRF_CLOCK->HFCLKCTRL;

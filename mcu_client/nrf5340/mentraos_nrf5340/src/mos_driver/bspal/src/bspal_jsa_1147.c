@@ -3,9 +3,9 @@
  * @Date         : 2025-07-31 10:40:40
  * @LastEditTime : 2025-07-31 17:13:47
  * @FilePath     : bspal_jsa_1147.c
- * @Description  : 
- * 
- *  Copyright (c) MentraOS Contributors 2025 
+ * @Description  :
+ *
+ *  Copyright (c) MentraOS Contributors 2025
  *  SPDX-License-Identifier: Apache-2.0
  */
 
@@ -119,7 +119,7 @@ int bspal_jsa_1147_init(void)
         BSP_LOGE(TAG, "JSA-1147 reset failed");
         return XYZN_OS_ERROR;
     }
-    xyzn_os_delay_ms(200); /* 等待完成 */
+    mos_delay_ms(200); /* 等待完成 */
 #if 0
     uint32_t als; /* 读取 ALS 数据 */
     jsa_1147_read_als(&als);

@@ -1,16 +1,21 @@
-#
-# Copyright (c) 2018 Nordic Semiconductor
-#
-# SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
-#
+
+# @Author       : Cole
+# @Date         : 2025-07-31 10:40:40
+# @LastEditTime : 2025-07-31 15:55:35
+# @FilePath     : CMakeLists.txt
+# @Description  : 
+
+#  Copyright (c) MentraOS Contributors 2025 
+#  SPDX-License-Identifier: Apache-2.0
+ 
+
 cmake_minimum_required(VERSION 3.20.0)
 
 list(APPEND EXTRA_ZEPHYR_MODULES
   ${CMAKE_CURRENT_SOURCE_DIR}/../custom_driver_module)
 
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
-project(k901_nrf5340)
-
+project(mentraos_nrf5340)
 
 # set(SHIELD npm1300_ek)
 set(LVGL_DIR ${ZEPHYR_LVGL_MODULE_DIR})
@@ -30,17 +35,17 @@ zephyr_nanopb_sources(app ${CMAKE_CURRENT_SOURCE_DIR}/mentraos_ble.proto)
 # NORDIC SDK APP START
 target_sources(app PRIVATE src/main.c)
 add_subdirectory(src/BspLog)
-add_subdirectory(src/xyzn_driver/bsp)
-add_subdirectory(src/xyzn_driver/bspal)
-add_subdirectory(src/xyzn_app)
-add_subdirectory(src/xyzn_app/protocol_ble)
-add_subdirectory(src/xyzn_components/xyzn_ble)
-add_subdirectory(src/xyzn_components/xyzn_util)
-add_subdirectory(src/xyzn_components/xyzn_sysport)
-add_subdirectory(src/xyzn_components/xyzn_lvgl_display)
-add_subdirectory(src/xyzn_components/xyzn_battery)
-add_subdirectory(src/xyzn_components/xyzn_pdm)
-# add_subdirectory(src/xyzn_components/xyzn_proto)
+add_subdirectory(src/mos_driver/bsp)
+add_subdirectory(src/mos_driver/bspal)
+add_subdirectory(src/mos_app)
+add_subdirectory(src/mos_app/protocol_ble)
+add_subdirectory(src/mos_components/mos_ble)
+add_subdirectory(src/mos_components/mos_util)
+add_subdirectory(src/mos_components/mos_sysport)
+add_subdirectory(src/mos_components/mos_lvgl_display)
+add_subdirectory(src/mos_components/mos_battery)
+add_subdirectory(src/mos_components/mos_pdm)
+# add_subdirectory(src/mos_components/mos_proto)
 
 target_sources_ifdef(CONFIG_LV_USE_DEMO_BENCHMARK app PRIVATE
     ${LVGL_DIR}/demos/benchmark/assets/img_benchmark_avatar.c

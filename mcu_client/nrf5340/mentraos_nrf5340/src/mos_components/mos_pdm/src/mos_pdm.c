@@ -3,9 +3,9 @@
  * @Date         : 2025-07-31 10:40:40
  * @LastEditTime : 2025-07-31 16:45:15
  * @FilePath     : mos_pdm.c
- * @Description  : 
- * 
- *  Copyright (c) MentraOS Contributors 2025 
+ * @Description  :
+ *
+ *  Copyright (c) MentraOS Contributors 2025
  *  SPDX-License-Identifier: Apache-2.0
  */
 
@@ -44,8 +44,8 @@ static void pcm_buffer_req_evt_handle(const nrfx_pdm_evt_t *evt)
 
         // 设置采样到一组数据标志
 #if 1
-  
-        xyzn_os_sem_give(&pcmsem);
+
+        mos_sem_give(&pcmsem);
 #else
         pdm_req_flag = 1;
 #endif
@@ -113,7 +113,7 @@ uint32_t get_pdm_sample(int16_t *pdm_pcm_data, uint32_t pdm_pcm_szie)
 {
     uint32_t err_code = 0;
 #if 1
-    xyzn_os_sem_take(&pcmsem, XYZN_OS_WAIT_FOREVER);
+    mos_sem_take(&pcmsem, XYZN_OS_WAIT_FOREVER);
     for (uint32_t i = 0; i < pdm_pcm_szie; i++)
     {
         pdm_pcm_data[i] = pcm_req_buffer[pcm_req_id][i];

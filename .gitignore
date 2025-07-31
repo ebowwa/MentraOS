@@ -1,5 +1,5 @@
 # MCU Client exceptions - allow build directories for embedded projects
-!mcu_client/**/build/
+mcu_client/**/build/
 !mcu_client/**/include/
 !mcu_client/**/lib/
 !mcu_client/**/*.so

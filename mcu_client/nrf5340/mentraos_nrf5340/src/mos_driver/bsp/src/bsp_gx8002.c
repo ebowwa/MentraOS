@@ -3,9 +3,9 @@
  * @Date         : 2025-07-31 10:40:40
  * @LastEditTime : 2025-07-31 17:05:38
  * @FilePath     : bsp_gx8002.c
- * @Description  : 
- * 
- *  Copyright (c) MentraOS Contributors 2025 
+ * @Description  :
+ *
+ *  Copyright (c) MentraOS Contributors 2025
  *  SPDX-License-Identifier: Apache-2.0
  */
 
@@ -78,28 +78,28 @@ void gx8002_i2c_start(void)
 {
     gx8002_sda_high();
     gx8002_scl_high();
-    xyzn_os_busy_wait(GX8002_SW_I2C_DELAY_US);
+    mos_busy_wait(GX8002_SW_I2C_DELAY_US);
     gx8002_sda_low();
-    xyzn_os_busy_wait(GX8002_SW_I2C_DELAY_US);
+    mos_busy_wait(GX8002_SW_I2C_DELAY_US);
     gx8002_scl_low();
-    xyzn_os_busy_wait(GX8002_SW_I2C_DELAY_US);
+    mos_busy_wait(GX8002_SW_I2C_DELAY_US);
 }
 
 void gx8002_i2c_stop(void)
 {
     gx8002_sda_low();
-    xyzn_os_busy_wait(GX8002_SW_I2C_DELAY_US);
+    mos_busy_wait(GX8002_SW_I2C_DELAY_US);
     gx8002_scl_high();
-    xyzn_os_busy_wait(GX8002_SW_I2C_DELAY_US);
+    mos_busy_wait(GX8002_SW_I2C_DELAY_US);
     gx8002_sda_high();
-    xyzn_os_busy_wait(GX8002_SW_I2C_DELAY_US);
+    mos_busy_wait(GX8002_SW_I2C_DELAY_US);
 }
 
 /* 发送一字节并等待 ACK */
 int gx8002_write_byte(uint8_t b)
 {
     gx8002_sda_out();
-    xyzn_os_busy_wait(GX8002_SW_I2C_DELAY_US);
+    mos_busy_wait(GX8002_SW_I2C_DELAY_US);
     /* 发送 8 bit */
     for (int i = 7; i >= 0; i--)
     {
@@ -108,27 +108,27 @@ int gx8002_write_byte(uint8_t b)
             gx8002_sda_high();
         else
             gx8002_sda_low();
-        xyzn_os_busy_wait(GX8002_SW_I2C_DELAY_US);
+        mos_busy_wait(GX8002_SW_I2C_DELAY_US);
 
         gx8002_scl_high();
-        xyzn_os_busy_wait(GX8002_SW_I2C_DELAY_US);
+        mos_busy_wait(GX8002_SW_I2C_DELAY_US);
     }
 
     /* 第 9 个时钟，用于 ACK */
     gx8002_scl_low();
     gx8002_sda_in(); /* 切输入，等从机拉 ACK */
-    xyzn_os_busy_wait(GX8002_SW_I2C_DELAY_US);
+    mos_busy_wait(GX8002_SW_I2C_DELAY_US);
 
     gx8002_scl_high();
-    xyzn_os_busy_wait(GX8002_SW_I2C_DELAY_US / 2);
+    mos_busy_wait(GX8002_SW_I2C_DELAY_US / 2);
 
     uint32_t t = 0;
     while (gx8002_sda_read() && t++ < GX8002_SW_I2C_TIMEOUT)
     {
-        xyzn_os_busy_wait(1);
+        mos_busy_wait(1);
     }
 
-    xyzn_os_busy_wait(GX8002_SW_I2C_DELAY_US / 2);
+    mos_busy_wait(GX8002_SW_I2C_DELAY_US / 2);
     gx8002_scl_low();
     gx8002_sda_out();
 
@@ -145,18 +145,18 @@ int gx8002_read_byte(uint8_t *p, bool ack)
 {
     uint8_t val = 0;
     gx8002_sda_in();
-    xyzn_os_busy_wait(GX8002_SW_I2C_DELAY_US);
+    mos_busy_wait(GX8002_SW_I2C_DELAY_US);
 
     for (int i = 7; i >= 0; i--)
     {
         gx8002_scl_low();
-        xyzn_os_busy_wait(GX8002_SW_I2C_DELAY_US);
+        mos_busy_wait(GX8002_SW_I2C_DELAY_US);
 
         gx8002_scl_high();
-        xyzn_os_busy_wait(GX8002_SW_I2C_DELAY_US / 2);
+        mos_busy_wait(GX8002_SW_I2C_DELAY_US / 2);
         if (gx8002_sda_read())
             val |= (1 << i);
-        xyzn_os_busy_wait(GX8002_SW_I2C_DELAY_US / 2);
+        mos_busy_wait(GX8002_SW_I2C_DELAY_US / 2);
     }
 
     /* 第 9 个时钟，主机 ACK/NACK */
@@ -166,15 +166,15 @@ int gx8002_read_byte(uint8_t *p, bool ack)
         gx8002_sda_low();
     else
         gx8002_sda_high();
-    xyzn_os_busy_wait(GX8002_SW_I2C_DELAY_US);
+    mos_busy_wait(GX8002_SW_I2C_DELAY_US);
 
     gx8002_scl_high();
-    xyzn_os_busy_wait(GX8002_SW_I2C_DELAY_US);
+    mos_busy_wait(GX8002_SW_I2C_DELAY_US);
 
     gx8002_scl_low();
-    xyzn_os_busy_wait(GX8002_SW_I2C_DELAY_US);
+    mos_busy_wait(GX8002_SW_I2C_DELAY_US);
     gx8002_sda_high();
-    xyzn_os_busy_wait(GX8002_SW_I2C_DELAY_US);
+    mos_busy_wait(GX8002_SW_I2C_DELAY_US);
 
     *p = val;
     return 0;
@@ -234,7 +234,7 @@ int gx8002_get_version(void)
     gx8002_i2c_write_reg(0xC4, 0x68);
 
     /* 等待处理 */
-    xyzn_os_delay_ms(200);
+    mos_delay_ms(200);
 
     /* 2 依次读取 4 字节版本号 */
     for (int i = 0; i < 4; i++)
@@ -243,13 +243,13 @@ int gx8002_get_version(void)
         gx8002_write_byte((GX8002_I2C_ADDR << 1) | 0);
         gx8002_write_byte(reg);
         gx8002_i2c_stop();
-        // xyzn_os_delay_ms(1);
+        // mos_delay_ms(1);
 
         gx8002_i2c_start();
         gx8002_write_byte((GX8002_I2C_ADDR << 1) | 1);
         gx8002_read_byte(&version[i], false);
         gx8002_i2c_stop();
-        // xyzn_os_delay_ms(1);
+        // mos_delay_ms(1);
         reg += 4;
     }
     if ((version[0] == 0x00) && (version[1] == 0x00) &&
@@ -293,14 +293,14 @@ int bsp_gx8002_init(void)
         BSP_LOGE(TAG, "es_power_en config error: %d", err);
         return err;
     }
-    xyzn_os_delay_ms(10);
+    mos_delay_ms(10);
     err = gpio_pin_configure_dt(&mic_pwr_en, GPIO_OUTPUT_HIGH | GPIO_PULL_UP);
     if (err != 0)
     {
         BSP_LOGE(TAG, "mic_pwr_en config error: %d", err);
         return err;
     }
-    xyzn_os_delay_ms(2000);
+    mos_delay_ms(2000);
     err = gpio_pin_configure_dt(&gx8002_i2c_sda, GPIO_OUTPUT);
     if (err != 0)
     {
@@ -325,7 +325,7 @@ int bsp_gx8002_init(void)
         BSP_LOGE(TAG, "gx8002_i2c_scl set error: %d", err);
         return err;
     }
-    xyzn_os_delay_ms(10);
+    mos_delay_ms(10);
     err = bsp_gx8002_interrupt_init(); // 中断初始化
     if (err != 0)
     {
@@ -355,7 +355,7 @@ void gx8002_get_version(void)
         BSP_LOGE(TAG, "I2C write reg 0x%02X failed: %d", GX8002_I2C_ADDR, rc);
     }
     /* 等待处理 */
-    xyzn_os_delay_ms(200);
+    mos_delay_ms(200);
 
     /* 2) 依次读取 4 字节版本号 */
     for (int i = 0; i < 4; i++)
@@ -402,7 +402,7 @@ int bsp_gx8002_init(void)
         BSP_LOGE(TAG, "es_power_en set error: %d", rc);
         return rc;
     }
-    xyzn_os_delay_ms(10);
+    mos_delay_ms(10);
     rc = gpio_pin_configure_dt(&mic_pwr_en, GPIO_OUTPUT);
     if (rc != 0)
     {
@@ -415,7 +415,7 @@ int bsp_gx8002_init(void)
         BSP_LOGE(TAG, "mic_pwr_en set error: %d", rc);
         return rc;
     }
-    xyzn_os_delay_ms(1000);
+    mos_delay_ms(1000);
     i2c_dev_gx8002 = device_get_binding(DT_NODE_FULL_NAME(DT_ALIAS(myvda)));
     if (!i2c_dev_gx8002)
     {
@@ -428,7 +428,7 @@ int bsp_gx8002_init(void)
         BSP_LOGE(TAG, "I2C config failed");
         return XYZN_OS_ERROR;
     }
-    xyzn_os_delay_ms(50);
+    mos_delay_ms(50);
     gx8002_get_version();
 
     return rc;

@@ -1,11 +1,11 @@
 /*
  * @Author       : Cole
  * @Date         : 2025-07-31 10:40:40
- * @LastEditTime : 2025-07-31 17:06:35
+ * @LastEditTime : 2025-07-31 18:41:40
  * @FilePath     : bsp_jsa_1147.c
- * @Description  : 
- * 
- *  Copyright (c) MentraOS Contributors 2025 
+ * @Description  :
+ *
+ *  Copyright (c) MentraOS Contributors 2025
  *  SPDX-License-Identifier: Apache-2.0
  */
 
@@ -16,8 +16,6 @@
 #include "bsp_log.h"
 #include "bsp_jsa_1147.h"
 #include "task_interrupt.h"
-
-
 
 #define TAG "BSP_JSA_1147"
 
@@ -78,28 +76,28 @@ void jsa_1147_i2c_start(void)
 {
     jsa_1147_sda_high();
     jsa_1147_scl_high();
-    xyzn_os_busy_wait(JSA_1147_SW_I2C_DELAY_US);
+    mos_busy_wait(JSA_1147_SW_I2C_DELAY_US);
     jsa_1147_sda_low();
-    xyzn_os_busy_wait(JSA_1147_SW_I2C_DELAY_US);
+    mos_busy_wait(JSA_1147_SW_I2C_DELAY_US);
     jsa_1147_scl_low();
-    xyzn_os_busy_wait(JSA_1147_SW_I2C_DELAY_US);
+    mos_busy_wait(JSA_1147_SW_I2C_DELAY_US);
 }
 
 void jsa_1147_i2c_stop(void)
 {
     jsa_1147_sda_low();
-    xyzn_os_busy_wait(JSA_1147_SW_I2C_DELAY_US);
+    mos_busy_wait(JSA_1147_SW_I2C_DELAY_US);
     jsa_1147_scl_high();
-    xyzn_os_busy_wait(JSA_1147_SW_I2C_DELAY_US);
+    mos_busy_wait(JSA_1147_SW_I2C_DELAY_US);
     jsa_1147_sda_high();
-    xyzn_os_busy_wait(JSA_1147_SW_I2C_DELAY_US);
+    mos_busy_wait(JSA_1147_SW_I2C_DELAY_US);
 }
 
 /* 发送一字节并等待 ACK */
 int jsa_1147_write_byte(uint8_t b)
 {
     jsa_1147_sda_out();
-    xyzn_os_busy_wait(JSA_1147_SW_I2C_DELAY_US);
+    mos_busy_wait(JSA_1147_SW_I2C_DELAY_US);
     /* 发送 8 bit */
     for (int i = 7; i >= 0; i--)
     {
@@ -108,27 +106,27 @@ int jsa_1147_write_byte(uint8_t b)
             jsa_1147_sda_high();
         else
             jsa_1147_sda_low();
-        xyzn_os_busy_wait(JSA_1147_SW_I2C_DELAY_US);
+        mos_busy_wait(JSA_1147_SW_I2C_DELAY_US);
 
         jsa_1147_scl_high();
-        xyzn_os_busy_wait(JSA_1147_SW_I2C_DELAY_US);
+        mos_busy_wait(JSA_1147_SW_I2C_DELAY_US);
     }
 
     /* 第 9 个时钟，用于 ACK */
     jsa_1147_scl_low();
     jsa_1147_sda_in(); /* 切输入，等从机拉 ACK */
-    xyzn_os_busy_wait(JSA_1147_SW_I2C_DELAY_US);
+    mos_busy_wait(JSA_1147_SW_I2C_DELAY_US);
 
     jsa_1147_scl_high();
-    xyzn_os_busy_wait(JSA_1147_SW_I2C_DELAY_US / 2);
+    mos_busy_wait(JSA_1147_SW_I2C_DELAY_US / 2);
 
     uint32_t t = 0;
     while (jsa_1147_sda_read() && t++ < JSA_1147_SW_I2C_TIMEOUT)
     {
-        xyzn_os_busy_wait(1);
+        mos_busy_wait(1);
     }
 
-    xyzn_os_busy_wait(JSA_1147_SW_I2C_DELAY_US / 2);
+    mos_busy_wait(JSA_1147_SW_I2C_DELAY_US / 2);
     jsa_1147_scl_low();
     jsa_1147_sda_out();
 
@@ -145,18 +143,18 @@ int jsa_1147_read_byte(uint8_t *p, bool ack)
 {
     uint8_t val = 0;
     jsa_1147_sda_in();
-    xyzn_os_busy_wait(JSA_1147_SW_I2C_DELAY_US);
+    mos_busy_wait(JSA_1147_SW_I2C_DELAY_US);
 
     for (int i = 7; i >= 0; i--)
     {
         jsa_1147_scl_low();
-        xyzn_os_busy_wait(JSA_1147_SW_I2C_DELAY_US);
+        mos_busy_wait(JSA_1147_SW_I2C_DELAY_US);
 
         jsa_1147_scl_high();
-        xyzn_os_busy_wait(JSA_1147_SW_I2C_DELAY_US / 2);
+        mos_busy_wait(JSA_1147_SW_I2C_DELAY_US / 2);
         if (jsa_1147_sda_read())
             val |= (1 << i);
-        xyzn_os_busy_wait(JSA_1147_SW_I2C_DELAY_US / 2);
+        mos_busy_wait(JSA_1147_SW_I2C_DELAY_US / 2);
     }
 
     /* 第 9 个时钟，主机 ACK/NACK */
@@ -166,15 +164,15 @@ int jsa_1147_read_byte(uint8_t *p, bool ack)
         jsa_1147_sda_low();
     else
         jsa_1147_sda_high();
-    xyzn_os_busy_wait(JSA_1147_SW_I2C_DELAY_US);
+    mos_busy_wait(JSA_1147_SW_I2C_DELAY_US);
 
     jsa_1147_scl_high();
-    xyzn_os_busy_wait(JSA_1147_SW_I2C_DELAY_US);
+    mos_busy_wait(JSA_1147_SW_I2C_DELAY_US);
 
     jsa_1147_scl_low();
-    xyzn_os_busy_wait(JSA_1147_SW_I2C_DELAY_US);
+    mos_busy_wait(JSA_1147_SW_I2C_DELAY_US);
     jsa_1147_sda_high();
-    xyzn_os_busy_wait(JSA_1147_SW_I2C_DELAY_US);
+    mos_busy_wait(JSA_1147_SW_I2C_DELAY_US);
 
     *p = val;
     return 0;
@@ -290,7 +288,7 @@ int bsp_jsa_1147_init(void)
         BSP_LOGE(TAG, "jsa_1147_i2c_scl set error: %d", err);
         return err;
     }
-    // xyzn_os_delay_ms(10);
+    // mos_delay_ms(10);
     err = bsp_jsa_1147_interrupt_init(); // 中断初始化
     if (err != 0)
     {
@@ -320,7 +318,7 @@ void jsa_1147_get_version(void)
     //     BSP_LOGE(TAG, "I2C write reg 0x%02X failed: %d", JSA_1147_I2C_ADDR, rc);
     // }
     // /* 等待处理 */
-    // xyzn_os_delay_ms(200);
+    // mos_delay_ms(200);
 
     // /* 2) 依次读取 4 字节版本号 */
     // for (int i = 0; i < 4; i++)
@@ -345,7 +343,7 @@ int bsp_jsa_1147_sensor_init(void)
 {
     // BSP_LOGI(TAG, "bsp_jsa_1147_sensor_init");
     // int rc;
-    // xyzn_os_delay_ms(1000);
+    // mos_delay_ms(1000);
     // i2c_dev_jsa_1147 = device_get_binding(DT_NODE_FULL_NAME(DT_ALIAS(myvda)));
     // if (!i2c_dev_jsa_1147)
     // {
@@ -358,7 +356,7 @@ int bsp_jsa_1147_sensor_init(void)
     //     BSP_LOGE(TAG, "I2C config failed");
     //     return XYZN_OS_ERROR;
     // }
-    // xyzn_os_delay_ms(50);
+    // mos_delay_ms(50);
     // jsa_1147_get_version();
 
     return rc;

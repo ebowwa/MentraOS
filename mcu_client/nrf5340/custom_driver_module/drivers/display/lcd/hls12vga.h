@@ -1,11 +1,12 @@
-/***
- * @Author       : XK
- * @Date         : 2025-06-07 17:17:09
- * @LastEditTime : 2025-07-03 09:41:42
+/*** 
+ * @Author       : Cole
+ * @Date         : 2025-07-31 10:40:40
+ * @LastEditTime : 2025-07-31 17:34:24
  * @FilePath     : hls12vga.h
- * @Description  :
+ * @Description  : 
  * @
- * @Copyright (c) XingYiZhiNeng 2025 , All Rights Reserved.
+ * @ Copyright (c) MentraOS Contributors 2025 
+ * @ SPDX-License-Identifier: Apache-2.0
  */
 
 #ifndef _HLS12VGA_H_

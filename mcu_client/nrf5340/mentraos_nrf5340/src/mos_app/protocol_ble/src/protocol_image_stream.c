@@ -1,11 +1,11 @@
 /*
  * @Author       : Cole
  * @Date         : 2025-07-31 10:40:40
- * @LastEditTime : 2025-07-31 17:31:46
+ * @LastEditTime : 2025-07-31 19:01:57
  * @FilePath     : protocol_image_stream.c
- * @Description  : 
- * 
- *  Copyright (c) MentraOS Contributors 2025 
+ * @Description  :
+ *
+ *  Copyright (c) MentraOS Contributors 2025
  *  SPDX-License-Identifier: Apache-2.0
  */
 
@@ -31,13 +31,13 @@ void image_stream_cleanup_timeout(struct k_timer *timer_id);
 
 void image_stream_timer_init(void)
 {
-    xyzn_os_timer_create(&image_timeout_timer, image_stream_cleanup_timeout);
+    mos_timer_create(&image_timeout_timer, image_stream_cleanup_timeout);
 }
 void image_stream_timer_start(bool auto_reload, int64_t period)
 {
     // if (!image_timer_started)
     {
-        xyzn_os_timer_start(&image_timeout_timer, auto_reload, period);
+        mos_timer_start(&image_timeout_timer, auto_reload, period);
         image_timer_started = true;
         BSP_LOGI(TAG, "Image stream timeout timer started");
     }
@@ -47,7 +47,7 @@ void image_stream_timer_stop(void)
 {
     if (image_timer_started)
     {
-        xyzn_os_timer_stop(&image_timeout_timer);
+        mos_timer_stop(&image_timeout_timer);
         image_timer_started = false;
         BSP_LOGI(TAG, "Image stream timeout timer stopped");
     }
@@ -62,12 +62,12 @@ void free_image_stream(image_stream *stream)
     }
     if (stream->chunk_received)
     {
-        xyzn_free(stream->chunk_received);
+        mos_free(stream->chunk_received);
         stream->chunk_received = NULL;
     }
     if (stream->image_buffer)
     {
-        xyzn_free(stream->image_buffer);
+        mos_free(stream->image_buffer);
         stream->image_buffer = NULL;
     }
     memset(stream, 0, sizeof(image_stream));
@@ -102,7 +102,7 @@ static image_stream *find_or_create_stream(uint16_t stream_id)
             memset(&stream_cache[i], 0, sizeof(image_stream));
             stream_cache[i].stream_state = STREAM_RESERVED;
             stream_cache[i].stream_id = stream_id;
-            stream_cache[i].last_update_time = xyzn_os_uptime_get();
+            stream_cache[i].last_update_time = mos_uptime_get();
             BSP_LOGI(TAG, "create image stream: %p", &stream_cache[i]);
             return &stream_cache[i];
         }
@@ -135,14 +135,14 @@ bool alloc_image_stream(image_stream *stream, int total_chunks, int total_length
         DUG;
         return false;
     }
-    stream->chunk_received = (uint8_t *)xyzn_malloc(total_chunks);
-    stream->image_buffer = (uint8_t *)xyzn_malloc(total_length);
+    stream->chunk_received = (uint8_t *)mos_malloc(total_chunks);
+    stream->image_buffer = (uint8_t *)mos_malloc(total_length);
     if (!stream->chunk_received || !stream->image_buffer)
     {
         if (stream->chunk_received)
-            xyzn_free(stream->chunk_received);
+            mos_free(stream->chunk_received);
         if (stream->image_buffer)
-            xyzn_free(stream->image_buffer);
+            mos_free(stream->image_buffer);
         stream->chunk_received = NULL;
         stream->image_buffer = NULL;
         return false;
@@ -319,7 +319,7 @@ void image_register_stream_from_json(const char *json_str)
         return;
     }
     BSP_LOGI(TAG, "stream->last_update_time: %lld", stream->last_update_time);
-    stream->last_update_time = xyzn_os_uptime_get();
+    stream->last_update_time = mos_uptime_get();
     stream->retry_count = 0;
     stream->transfer_failed_reported = false;
     stream->stream_state = STREAM_RECEIVING; // 标记数据流准备接收
@@ -419,7 +419,7 @@ void send_image_transfer_complete_blemsg(const image_stream *stream, bool ok, ui
 void image_stream_cleanup_timeout(struct k_timer *timer_id)
 {
     BSP_LOGI(TAG, "image_stream_cleanup_timeout!!!");
-    int64_t now = xyzn_os_uptime_get();
+    int64_t now = mos_uptime_get();
     for (int i = 0; i < MAX_STREAMS; i++)
     {
         image_stream *stream = &stream_cache[i];
@@ -580,7 +580,7 @@ void image_chunk_handler(const ble_image_block *block)
 
     memcpy(&stream->image_buffer[offset], block->chunk_data, block->chunk_len);
     stream->chunk_received[block->chunk_index] = 1;
-    stream->last_update_time = xyzn_os_uptime_get();
+    stream->last_update_time = mos_uptime_get();
 
     // 检查是否全部接收完毕
     if (check_image_stream_complete(stream))

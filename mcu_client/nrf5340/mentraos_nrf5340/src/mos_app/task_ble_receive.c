@@ -3,12 +3,11 @@
  * @Date         : 2025-07-31 10:40:40
  * @LastEditTime : 2025-07-31 17:25:08
  * @FilePath     : task_ble_receive.c
- * @Description  : 
- * 
- *  Copyright (c) MentraOS Contributors 2025 
+ * @Description  :
+ *
+ *  Copyright (c) MentraOS Contributors 2025
  *  SPDX-License-Identifier: Apache-2.0
  */
-
 
 #include <pb_encode.h>
 #include <pb_decode.h>
@@ -194,7 +193,7 @@ uint32_t parse_single_packet(const uint8_t *data, uint32_t len, ble_packet *out)
         }
         // 先校验 CRC
         uint16_t crc16 = (data[3] << 8) | data[4];
-        uint16_t crc_host = xyzn_crc16_ccitt(data + 5, chunk_len);
+        uint16_t crc_host = mos_crc16_ccitt(data + 5, chunk_len);
         if (crc_host != crc16)
         {
             BSP_LOGW(TAG, "CRC error: got 0x%04X, expect 0x%04X", crc16, crc_host);
