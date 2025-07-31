@@ -44,7 +44,7 @@ import androidx.preference.PreferenceManager;
 // import com.firebase.ui.auth.AuthUI;
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.PermissionsUtils;
 
-import com.augmentos.asg_client.reporting.ReportUtils;
+import com.augmentos.asg_client.reporting.domains.GeneralReporting;
 import io.sentry.Sentry;
 
 public class MainActivity extends AppCompatActivity {
@@ -70,9 +70,8 @@ public class MainActivity extends AppCompatActivity {
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
 
-    // Initialize generic reporting system
-    ReportUtils.initialize(this);
-    ReportUtils.reportAppStartup(this);
+    // Report app startup (reporting system already initialized in Application class)
+    GeneralReporting.reportAppStartup(this);
     
     // Stop factory test app before starting our services to avoid serial port conflicts
     stopFactoryTest();
@@ -330,12 +329,12 @@ public class MainActivity extends AppCompatActivity {
   public void startAsgClientService() {
     if (isMyServiceRunning(AsgClientService.class)){
       Log.d(TAG, "Not starting Augmentos service because it's already started.");
-      ReportUtils.reportServiceEvent(this, "AsgClientService", "already_running");
+      GeneralReporting.reportServiceEvent(this, "AsgClientService", "already_running");
       return;
     }
 
     Log.d(TAG, "Starting Augmentos service.");
-    ReportUtils.reportServiceEvent(this, "AsgClientService", "start_requested");
+    GeneralReporting.reportServiceEvent(this, "AsgClientService", "start_requested");
     
     Intent startIntent = new Intent(this, AsgClientService.class);
     startIntent.setAction(AsgClientService.ACTION_START_FOREGROUND_SERVICE);
