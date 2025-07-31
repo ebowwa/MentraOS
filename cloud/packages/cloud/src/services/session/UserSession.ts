@@ -7,10 +7,10 @@ import { Logger } from "pino";
 import WebSocket from "ws";
 import {
   AppI,
+  CloudToAppMessageType,
   CloudToGlassesMessageType,
   ConnectionError,
   TranscriptSegment,
-  CloudToAppMessageType,
 } from "@mentra/sdk";
 import { logger as rootLogger } from "../logging/pino-logger";
 import { Capabilities } from "@mentra/sdk";
@@ -25,6 +25,7 @@ import { GlassesErrorCode } from "../websocket/websocket-glasses.service";
 import SessionStorage from "./SessionStorage";
 import { PosthogService } from "../logging/posthog.service";
 import { TranscriptionManager } from "./transcription/TranscriptionManager";
+import { TranslationManager } from "./translation/TranslationManager";
 import { ManagedStreamingExtension } from "../streaming/ManagedStreamingExtension";
 import { getCapabilitiesForModel } from "../../config/hardware-capabilities";
 
@@ -71,6 +72,7 @@ export class UserSession {
   public appManager: AppManager;
   public audioManager: AudioManager;
   public transcriptionManager: TranscriptionManager;
+  public translationManager: TranslationManager;
 
   public videoManager: VideoManager;
   public photoManager: PhotoManager;
@@ -106,6 +108,7 @@ export class UserSession {
     this.displayManager = new DisplayManager(this);
     this.microphoneManager = new MicrophoneManager(this);
     this.transcriptionManager = new TranscriptionManager(this);
+    this.translationManager = new TranslationManager(this);
     this.photoManager = new PhotoManager(this);
     this.videoManager = new VideoManager(this);
     this.managedStreamingExtension = new ManagedStreamingExtension(this.logger);
@@ -408,6 +411,7 @@ export class UserSession {
     if (this.displayManager) this.displayManager.dispose();
     if (this.dashboardManager) this.dashboardManager.dispose();
     if (this.transcriptionManager) this.transcriptionManager.dispose();
+    if (this.translationManager) this.translationManager.dispose();
     // if (this.heartbeatManager) this.heartbeatManager.dispose();
     if (this.videoManager) this.videoManager.dispose();
     if (this.photoManager) this.photoManager.dispose();

@@ -131,10 +131,13 @@ export class AudioManager {
       // let processedAudioData = await this.processAudioInternal(audioData, isLC3);
       const processedAudioData = audioData;
 
-      // Send to transcription services
+      // Send to transcription and translation services
       if (processedAudioData) {
         // Feed to TranscriptionManager
         this.userSession.transcriptionManager.feedAudio(processedAudioData);
+
+        // Feed to TranslationManager (separate from transcription)
+        this.userSession.translationManager.feedAudio(processedAudioData);
 
         // Relay to Apps if there are subscribers
         // Note: Using subscriptionService instead of subscriptionManager
