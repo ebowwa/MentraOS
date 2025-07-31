@@ -16,5 +16,8 @@ local.properties
 
 # Explicitly add mentra live libs
 !app/src/main/jniLibs/**/*.so
-# Sentry Config File
+# Sentry Config Files
 sentry.properties
+sentry.properties.*
+app/src/main/assets/sentry.properties
+app/src/main/assets/sentry.properties.*
