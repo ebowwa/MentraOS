@@ -3,11 +3,17 @@
  * Handles translation streams independently from transcription
  */
 
-import { Logger } from 'pino';
-import { ExtendedStreamType, CloudToAppMessageType, DataStream, TranslationData, parseLanguageStream } from '@mentra/sdk';
-import UserSession from '../UserSession';
-import { PosthogService } from '../../logging/posthog.service';
-import subscriptionService from '../subscription.service';
+import { Logger } from "pino";
+import {
+  ExtendedStreamType,
+  CloudToAppMessageType,
+  DataStream,
+  TranslationData,
+  parseLanguageStream,
+} from "@mentra/sdk";
+import UserSession from "../UserSession";
+import { PosthogService } from "../../logging/posthog.service";
+import subscriptionService from "../subscription.service";
 import {
   TranslationConfig,
   TranslationProvider,
@@ -19,71 +25,79 @@ import {
   TranslationStreamCreationError,
   DEFAULT_TRANSLATION_CONFIG,
   TranslationProviderSelectionOptions,
-  TranslationStreamOptions
-} from './types';
+  TranslationStreamOptions,
+} from "./types";
 
 export class TranslationManager {
   public readonly logger: Logger;
 
   // Provider Management
   private providers = new Map<TranslationProviderType, TranslationProvider>();
-  
+
   // Initialization State
   private isInitialized = false;
   private initializationPromise: Promise<void>;
-  
+
   // Stream Management
   private streams = new Map<string, TranslationStreamInstance>();
   private activeSubscriptions = new Set<ExtendedStreamType>();
-  
+
   // Retry Logic
   private streamRetryAttempts = new Map<string, number>();
   private streamCreationInProgress = new Set<string>();
-  
+
   // Audio Buffering
   private audioBuffer: ArrayBuffer[] = [];
   private audioBufferMaxSize = 50; // ~2.5 seconds at 50ms chunks
   private isBufferingAudio = false;
   private audioBufferTimeout?: NodeJS.Timeout;
   private audioBufferTimeoutMs = 10000; // 10 second timeout
-  
+
   // Health Monitoring
   private healthCheckInterval?: NodeJS.Timeout;
 
   constructor(
     private userSession: UserSession,
-    private config: TranslationConfig = DEFAULT_TRANSLATION_CONFIG
+    private config: TranslationConfig = DEFAULT_TRANSLATION_CONFIG,
   ) {
-    this.logger = userSession.logger.child({ service: 'TranslationManager' });
+    this.logger = userSession.logger.child({ service: "TranslationManager" });
 
     // Start initialization but don't block constructor
     this.initializationPromise = this.initializeProviders();
     this.startHealthMonitoring();
 
-    this.logger.info({
-      defaultProvider: this.config.providers.defaultProvider,
-      fallbackProvider: this.config.providers.fallbackProvider
-    }, 'TranslationManager created - initializing providers...');
+    this.logger.info(
+      {
+        defaultProvider: this.config.providers.defaultProvider,
+        fallbackProvider: this.config.providers.fallbackProvider,
+      },
+      "TranslationManager created - initializing providers...",
+    );
   }
 
   /**
    * Update active subscriptions
    */
-  async updateSubscriptions(subscriptions: ExtendedStreamType[]): Promise<void> {
+  async updateSubscriptions(
+    subscriptions: ExtendedStreamType[],
+  ): Promise<void> {
     // Ensure we're initialized before processing subscriptions
     await this.ensureInitialized();
 
     // Filter to only translation subscriptions
-    const translationSubscriptions = subscriptions.filter(sub => {
-      if (typeof sub === 'string' && sub.startsWith('translation:')) {
+    const translationSubscriptions = subscriptions.filter((sub) => {
+      if (typeof sub === "string" && sub.startsWith("translation:")) {
         // Validate it's not same-language translation
         const match = sub.match(/translation:([^-]+)-to-([^-]+)$/);
         if (match && match[1] === match[2]) {
-          this.logger.warn({
-            subscription: sub,
-            source: match[1],
-            target: match[2]
-          }, 'Filtering out invalid same-language translation subscription');
+          this.logger.warn(
+            {
+              subscription: sub,
+              source: match[1],
+              target: match[2],
+            },
+            "Filtering out invalid same-language translation subscription",
+          );
           return false;
         }
         return true;
@@ -94,10 +108,13 @@ export class TranslationManager {
     const desired = new Set(translationSubscriptions);
     const current = new Set(this.streams.keys());
 
-    this.logger.debug({
-      desired: Array.from(desired),
-      current: Array.from(current)
-    }, 'Updating translation subscriptions');
+    this.logger.debug(
+      {
+        desired: Array.from(desired),
+        current: Array.from(current),
+      },
+      "Updating translation subscriptions",
+    );
 
     // Stop removed streams
     for (const subscription of current) {
@@ -123,16 +140,19 @@ export class TranslationManager {
     // If we're buffering, add to buffer
     if (this.isBufferingAudio) {
       this.audioBuffer.push(audioData);
-      
+
       // Prevent buffer from growing too large
       if (this.audioBuffer.length > this.audioBufferMaxSize) {
         this.audioBuffer.shift();
       }
-      
-      this.logger.debug({
-        bufferSize: this.audioBuffer.length,
-        maxSize: this.audioBufferMaxSize
-      }, 'Buffering audio for translation startup');
+
+      this.logger.debug(
+        {
+          bufferSize: this.audioBuffer.length,
+          maxSize: this.audioBufferMaxSize,
+        },
+        "Buffering audio for translation startup",
+      );
       return;
     }
 
@@ -146,11 +166,14 @@ export class TranslationManager {
   async ensureStreamsExist(): Promise<void> {
     const currentSubscriptions = Array.from(this.activeSubscriptions);
 
-    this.logger.info({
-      subscriptions: currentSubscriptions,
-      existingStreams: this.streams.size,
-      bufferSize: this.audioBuffer.length
-    }, 'Ensuring translation streams match active subscriptions');
+    this.logger.info(
+      {
+        subscriptions: currentSubscriptions,
+        existingStreams: this.streams.size,
+        bufferSize: this.audioBuffer.length,
+      },
+      "Ensuring translation streams match active subscriptions",
+    );
 
     // Clean up streams without subscriptions
     const streamsToCleanup: string[] = [];
@@ -161,19 +184,24 @@ export class TranslationManager {
     }
 
     if (streamsToCleanup.length > 0) {
-      this.logger.info({
-        streamsToCleanup,
-        count: streamsToCleanup.length
-      }, 'Cleaning up translation streams with no active subscriptions');
+      this.logger.info(
+        {
+          streamsToCleanup,
+          count: streamsToCleanup.length,
+        },
+        "Cleaning up translation streams with no active subscriptions",
+      );
 
       for (const subscription of streamsToCleanup) {
-        await this.cleanupStream(subscription, 'subscription_removed');
+        await this.cleanupStream(subscription, "subscription_removed");
       }
     }
 
     // If no subscriptions, we're done
     if (currentSubscriptions.length === 0) {
-      this.logger.info('No active translation subscriptions - all streams cleaned up');
+      this.logger.info(
+        "No active translation subscriptions - all streams cleaned up",
+      );
       return;
     }
 
@@ -182,27 +210,35 @@ export class TranslationManager {
 
     // Create missing streams
     const createPromises: Promise<void>[] = [];
-    
+
     for (const subscription of currentSubscriptions) {
       const existingStream = this.streams.get(subscription);
-      
+
       if (existingStream && this.isStreamHealthy(existingStream)) {
-        this.logger.debug({ subscription }, 'Translation stream already exists and is healthy');
+        this.logger.debug(
+          { subscription },
+          "Translation stream already exists and is healthy",
+        );
         continue;
       }
-      
+
       if (existingStream) {
-        this.logger.info({ subscription }, 'Translation stream exists but is unhealthy - will create new stream');
-        await this.cleanupStream(subscription, 'unhealthy_stream_replacement');
+        this.logger.info(
+          { subscription },
+          "Translation stream exists but is unhealthy - will create new stream",
+        );
+        await this.cleanupStream(subscription, "unhealthy_stream_replacement");
       }
-      
+
       // Create new stream
-      this.logger.info({ subscription }, 'Creating new translation stream');
+      this.logger.info({ subscription }, "Creating new translation stream");
       createPromises.push(this.startStream(subscription));
     }
 
     if (createPromises.length === 0) {
-      this.logger.info('All required translation streams already exist and are healthy');
+      this.logger.info(
+        "All required translation streams already exist and are healthy",
+      );
       this.flushAudioBuffer();
       return;
     }
@@ -215,24 +251,30 @@ export class TranslationManager {
     let failureCount = 0;
 
     results.forEach((result) => {
-      if (result.status === 'rejected') {
+      if (result.status === "rejected") {
         failureCount++;
-        this.logger.error({
-          error: result.reason
-        }, 'Failed to create translation stream');
+        this.logger.error(
+          {
+            error: result.reason,
+          },
+          "Failed to create translation stream",
+        );
       } else {
         successCount++;
       }
     });
 
-    this.logger.info({
-      totalSubscriptions: currentSubscriptions.length,
-      streamsRemoved: streamsToCleanup.length,
-      streamsCreated: createPromises.length,
-      successCount,
-      failureCount,
-      activeStreams: this.streams.size
-    }, 'Translation stream synchronization completed');
+    this.logger.info(
+      {
+        totalSubscriptions: currentSubscriptions.length,
+        streamsRemoved: streamsToCleanup.length,
+        streamsCreated: createPromises.length,
+        successCount,
+        failureCount,
+        activeStreams: this.streams.size,
+      },
+      "Translation stream synchronization completed",
+    );
 
     // Flush buffered audio to streams
     this.flushAudioBuffer();
@@ -243,35 +285,47 @@ export class TranslationManager {
    */
   async stopAllStreams(): Promise<void> {
     try {
-      this.logger.info('Stopping all translation streams (preserving subscriptions)');
-      
+      this.logger.info(
+        "Stopping all translation streams (preserving subscriptions)",
+      );
+
       // Clear audio buffer
       this.clearAudioBuffer();
-      
+
       // Close all streams without clearing subscriptions
       const closePromises: Promise<void>[] = [];
-      
+
       for (const [subscription, stream] of this.streams) {
-        this.logger.debug({ subscription, streamId: stream.id }, 'Closing translation stream');
+        this.logger.debug(
+          { subscription, streamId: stream.id },
+          "Closing translation stream",
+        );
         closePromises.push(
-          stream.close().catch(error => 
-            this.logger.warn({ error, subscription }, 'Error closing translation stream')
-          )
+          stream
+            .close()
+            .catch((error) =>
+              this.logger.warn(
+                { error, subscription },
+                "Error closing translation stream",
+              ),
+            ),
         );
       }
-      
+
       await Promise.allSettled(closePromises);
-      
+
       // Clear the streams map but NOT the activeSubscriptions set
       this.streams.clear();
-      
-      this.logger.info({
-        closedStreams: closePromises.length,
-        preservedSubscriptions: this.activeSubscriptions.size
-      }, 'All translation streams stopped, subscriptions preserved for VAD resume');
-      
+
+      this.logger.info(
+        {
+          closedStreams: closePromises.length,
+          preservedSubscriptions: this.activeSubscriptions.size,
+        },
+        "All translation streams stopped, subscriptions preserved for VAD resume",
+      );
     } catch (error) {
-      this.logger.error(error, 'Error stopping all translation streams');
+      this.logger.error(error, "Error stopping all translation streams");
     }
   }
 
@@ -280,15 +334,17 @@ export class TranslationManager {
    */
   async stopAll(): Promise<void> {
     try {
-      this.logger.info('Stopping all translation streams and clearing subscriptions');
-      
+      this.logger.info(
+        "Stopping all translation streams and clearing subscriptions",
+      );
+
       // Clear audio buffer
       this.clearAudioBuffer();
-      
+
       // Stop all streams and clear subscriptions
       await this.updateSubscriptions([]);
     } catch (error) {
-      this.logger.error(error, 'Error stopping all translation streams');
+      this.logger.error(error, "Error stopping all translation streams");
     }
   }
 
@@ -315,7 +371,7 @@ export class TranslationManager {
       activeStreams: 0,
       byProvider: {} as Record<string, any>,
       byState: {} as Record<string, number>,
-      byLanguagePair: {} as Record<string, number>
+      byLanguagePair: {} as Record<string, number>,
     };
 
     // Count by various dimensions
@@ -341,7 +397,10 @@ export class TranslationManager {
       metrics.byLanguagePair[pair]++;
 
       // Active count
-      if (stream.state === TranslationStreamState.READY || stream.state === TranslationStreamState.ACTIVE) {
+      if (
+        stream.state === TranslationStreamState.READY ||
+        stream.state === TranslationStreamState.ACTIVE
+      ) {
         metrics.activeStreams++;
       }
     }
@@ -353,7 +412,7 @@ export class TranslationManager {
    * Dispose of the manager and cleanup resources
    */
   async dispose(): Promise<void> {
-    this.logger.info('Disposing TranslationManager');
+    this.logger.info("Disposing TranslationManager");
 
     // Stop health monitoring
     if (this.healthCheckInterval) {
@@ -364,26 +423,37 @@ export class TranslationManager {
     this.clearAudioBuffer();
 
     // Close all streams
-    const closePromises = Array.from(this.streams.values()).map(stream =>
-      stream.close().catch(error =>
-        this.logger.warn({ error, streamId: stream.id }, 'Error closing translation stream during disposal')
-      )
+    const closePromises = Array.from(this.streams.values()).map((stream) =>
+      stream
+        .close()
+        .catch((error) =>
+          this.logger.warn(
+            { error, streamId: stream.id },
+            "Error closing translation stream during disposal",
+          ),
+        ),
     );
 
     await Promise.allSettled(closePromises);
     this.streams.clear();
 
     // Dispose providers
-    const providerDisposePromises = Array.from(this.providers.values()).map(provider =>
-      provider.dispose().catch(error =>
-        this.logger.warn({ error, provider: provider.name }, 'Error disposing translation provider')
-      )
+    const providerDisposePromises = Array.from(this.providers.values()).map(
+      (provider) =>
+        provider
+          .dispose()
+          .catch((error) =>
+            this.logger.warn(
+              { error, provider: provider.name },
+              "Error disposing translation provider",
+            ),
+          ),
     );
 
     await Promise.allSettled(providerDisposePromises);
     this.providers.clear();
 
-    this.logger.info('TranslationManager disposed');
+    this.logger.info("TranslationManager disposed");
   }
 
   // ===== PRIVATE METHODS =====
@@ -393,79 +463,111 @@ export class TranslationManager {
       return;
     }
 
-    this.logger.debug('Waiting for TranslationManager initialization...');
+    this.logger.debug("Waiting for TranslationManager initialization...");
     await this.initializationPromise;
 
     if (!this.isInitialized) {
-      throw new Error('TranslationManager initialization failed');
+      throw new Error("TranslationManager initialization failed");
     }
   }
 
   private async initializeProviders(): Promise<void> {
     try {
-      this.logger.info('Starting translation provider initialization...');
+      this.logger.info("Starting translation provider initialization...");
 
       const availableProviders: TranslationProviderType[] = [];
-      const providerErrors: Array<{ provider: string, error: Error }> = [];
+      const providerErrors: Array<{ provider: string; error: Error }> = [];
 
       // Try to initialize Azure provider
       try {
-        const { AzureTranslationProvider } = await import('./providers/AzureTranslationProvider');
-        const azureProvider = new AzureTranslationProvider(this.config.azure, this.logger);
+        const { AzureTranslationProvider } = await import(
+          "./providers/AzureTranslationProvider"
+        );
+        const azureProvider = new AzureTranslationProvider(
+          this.config.azure,
+          this.logger,
+        );
         await azureProvider.initialize();
         this.providers.set(TranslationProviderType.AZURE, azureProvider);
         availableProviders.push(TranslationProviderType.AZURE);
-        this.logger.info('Azure translation provider initialized successfully');
+        this.logger.info("Azure translation provider initialized successfully");
       } catch (error) {
-        this.logger.error(error, 'Failed to initialize Azure translation provider');
-        providerErrors.push({ provider: 'Azure', error: error as Error });
+        this.logger.error(
+          error,
+          "Failed to initialize Azure translation provider",
+        );
+        providerErrors.push({ provider: "Azure", error: error as Error });
       }
 
       // Try to initialize Soniox provider
       try {
-        const { SonioxTranslationProvider } = await import('./providers/SonioxTranslationProvider');
-        const sonioxProvider = new SonioxTranslationProvider(this.config.soniox, this.logger);
+        const { SonioxTranslationProvider } = await import(
+          "./providers/SonioxTranslationProvider"
+        );
+        const sonioxProvider = new SonioxTranslationProvider(
+          this.config.soniox,
+          this.logger,
+        );
         await sonioxProvider.initialize();
         this.providers.set(TranslationProviderType.SONIOX, sonioxProvider);
         availableProviders.push(TranslationProviderType.SONIOX);
-        this.logger.info('Soniox translation provider initialized successfully');
+        this.logger.info(
+          "Soniox translation provider initialized successfully",
+        );
       } catch (error) {
-        this.logger.error(error, 'Failed to initialize Soniox translation provider');
-        providerErrors.push({ provider: 'Soniox', error: error as Error });
+        this.logger.error(
+          error,
+          "Failed to initialize Soniox translation provider",
+        );
+        providerErrors.push({ provider: "Soniox", error: error as Error });
       }
 
       // Check if we have at least one provider
       if (this.providers.size === 0) {
-        const errorMsg = `No translation providers available. Errors: ${providerErrors.map(e => `${e.provider}: ${e.error.message}`).join(', ')}`;
-        this.logger.error({
-          providerErrors,
-          config: {
-            azureHasKey: !!this.config.azure.key,
-            azureRegion: this.config.azure.region,
-            sonioxHasKey: !!this.config.soniox.apiKey,
-            sonioxEndpoint: this.config.soniox.endpoint
-          }
-        }, errorMsg);
+        const errorMsg = `No translation providers available. Errors: ${providerErrors.map((e) => `${e.provider}: ${e.error.message}`).join(", ")}`;
+        this.logger.error(
+          {
+            providerErrors,
+            config: {
+              azureHasKey: !!this.config.azure.key,
+              azureRegion: this.config.azure.region,
+              sonioxHasKey: !!this.config.soniox.apiKey,
+              sonioxEndpoint: this.config.soniox.endpoint,
+            },
+          },
+          errorMsg,
+        );
         throw new Error(errorMsg);
       }
 
       // Mark as initialized
       this.isInitialized = true;
 
-      this.logger.info({
-        availableProviders,
-        totalProviders: this.providers.size,
-        skippedProviders: providerErrors.length
-      }, 'Translation provider initialization completed');
+      this.logger.info(
+        {
+          availableProviders,
+          totalProviders: this.providers.size,
+          skippedProviders: providerErrors.length,
+        },
+        "Translation provider initialization completed",
+      );
 
       if (providerErrors.length > 0) {
-        this.logger.warn({
-          providerErrors: providerErrors.map(e => ({ provider: e.provider, error: e.error.message }))
-        }, 'Some translation providers failed to initialize but system will continue with available providers');
+        this.logger.warn(
+          {
+            providerErrors: providerErrors.map((e) => ({
+              provider: e.provider,
+              error: e.error.message,
+            })),
+          },
+          "Some translation providers failed to initialize but system will continue with available providers",
+        );
       }
-
     } catch (error) {
-      this.logger.error({ error }, 'Critical failure in translation provider initialization');
+      this.logger.error(
+        { error },
+        "Critical failure in translation provider initialization",
+      );
       throw error;
     }
   }
@@ -475,20 +577,26 @@ export class TranslationManager {
 
     // Prevent duplicate creation
     if (this.streamCreationInProgress.has(subscription)) {
-      this.logger.debug({ subscription }, 'Translation stream creation already in progress');
+      this.logger.debug(
+        { subscription },
+        "Translation stream creation already in progress",
+      );
       return;
     }
 
     // Check existing stream
     const existingStream = this.streams.get(subscription);
     if (existingStream && this.isStreamHealthy(existingStream)) {
-      this.logger.debug({ subscription }, 'Translation stream already exists and healthy');
+      this.logger.debug(
+        { subscription },
+        "Translation stream already exists and healthy",
+      );
       return;
     }
 
     // Clean up any existing stream
     if (existingStream) {
-      await this.cleanupStream(subscription, 'replacing_stream');
+      await this.cleanupStream(subscription, "replacing_stream");
     }
 
     this.streamCreationInProgress.add(subscription);
@@ -496,22 +604,30 @@ export class TranslationManager {
     try {
       // Parse the language pair from subscription
       const langInfo = parseLanguageStream(subscription);
-      if (!langInfo || langInfo.type !== 'translation') {
-        throw new TranslationError(`Invalid translation subscription: ${subscription}`);
+      if (!langInfo || langInfo.type !== "translation") {
+        throw new TranslationError(
+          `Invalid translation subscription: ${subscription}`,
+        );
       }
 
       const sourceLanguage = langInfo.transcribeLanguage;
       const targetLanguage = langInfo.translateLanguage!;
 
       // Select provider
-      const provider = await this.selectProvider(sourceLanguage, targetLanguage);
-      
-      this.logger.debug({
-        subscription,
-        provider: provider.name,
+      const provider = await this.selectProvider(
         sourceLanguage,
-        targetLanguage
-      }, 'Selected translation provider');
+        targetLanguage,
+      );
+
+      this.logger.debug(
+        {
+          subscription,
+          provider: provider.name,
+          sourceLanguage,
+          targetLanguage,
+        },
+        "Selected translation provider",
+      );
 
       // Create stream options
       const streamOptions: TranslationStreamOptions = {
@@ -520,44 +636,59 @@ export class TranslationManager {
         subscription,
         sourceLanguage,
         targetLanguage,
-        callbacks: this.createStreamCallbacks(subscription)
+        callbacks: this.createStreamCallbacks(subscription),
       };
 
       // Create stream
-      this.logger.debug({ subscription, streamId: streamOptions.streamId }, 'Creating translation stream with provider');
+      this.logger.debug(
+        { subscription, streamId: streamOptions.streamId },
+        "Creating translation stream with provider",
+      );
       const stream = await provider.createTranslationStream(streamOptions);
-      
-      this.logger.debug({ 
-        subscription, 
-        streamId: stream.id,
-        streamState: stream.state 
-      }, 'Translation stream created, waiting for ready state');
+
+      this.logger.debug(
+        {
+          subscription,
+          streamId: stream.id,
+          streamState: stream.state,
+        },
+        "Translation stream created, waiting for ready state",
+      );
 
       // Wait for ready
-      await this.waitForStreamReady(stream, this.config.performance.streamTimeoutMs);
+      await this.waitForStreamReady(
+        stream,
+        this.config.performance.streamTimeoutMs,
+      );
 
       // Success!
       this.streams.set(subscription, stream);
 
-      this.logger.info({
-        subscription,
-        provider: provider.name,
-        streamId: stream.id,
-        sourceLanguage,
-        targetLanguage
-      }, `🚀 TRANSLATION STREAM CREATED: [${provider.name.toUpperCase()}] for "${subscription}"`);
+      this.logger.info(
+        {
+          subscription,
+          provider: provider.name,
+          streamId: stream.id,
+          sourceLanguage,
+          targetLanguage,
+        },
+        `🚀 TRANSLATION STREAM CREATED: [${provider.name.toUpperCase()}] for "${subscription}"`,
+      );
 
       // Track success
-      PosthogService.trackEvent('translation_stream_created', this.userSession.userId, {
-        subscription,
-        provider: provider.name,
-        sourceLanguage,
-        targetLanguage,
-        sessionId: this.userSession.sessionId
-      });
+      PosthogService.trackEvent(
+        "translation_stream_created",
+        this.userSession.userId,
+        {
+          subscription,
+          provider: provider.name,
+          sourceLanguage,
+          targetLanguage,
+          sessionId: this.userSession.sessionId,
+        },
+      );
     } catch (error) {
-      
-      this.logger.error(error, 'Translation stream creation failed');
+      this.logger.error(error, "Translation stream creation failed");
       this.handleStreamError(subscription, null, error as Error);
     } finally {
       this.streamCreationInProgress.delete(subscription);
@@ -567,12 +698,18 @@ export class TranslationManager {
   private async stopStream(subscription: ExtendedStreamType): Promise<void> {
     const stream = this.streams.get(subscription);
     if (stream) {
-      this.logger.info({ subscription, streamId: stream.id }, 'Stopping translation stream');
+      this.logger.info(
+        { subscription, streamId: stream.id },
+        "Stopping translation stream",
+      );
 
       try {
         await stream.close();
       } catch (error) {
-        this.logger.warn({ error, subscription }, 'Error stopping translation stream');
+        this.logger.warn(
+          { error, subscription },
+          "Error stopping translation stream",
+        );
       }
 
       this.streams.delete(subscription);
@@ -583,7 +720,7 @@ export class TranslationManager {
   private createStreamCallbacks(subscription: ExtendedStreamType) {
     return {
       onReady: () => {
-        this.logger.debug({ subscription }, 'Translation stream ready');
+        this.logger.debug({ subscription }, "Translation stream ready");
       },
 
       onError: (error: Error) => {
@@ -594,32 +731,49 @@ export class TranslationManager {
       },
 
       onClosed: () => {
-        this.logger.info({ subscription }, 'Translation stream closed by provider');
+        this.logger.info(
+          { subscription },
+          "Translation stream closed by provider",
+        );
         this.streams.delete(subscription);
       },
 
       onData: (data: TranslationData) => {
         // Relay to apps that are subscribed
-        this.relayDataToApps(subscription, data).catch(error => {
-          this.logger.error({ error, subscription, data }, 'Error relaying translation data');
+        this.relayDataToApps(subscription, data).catch((error) => {
+          this.logger.error(
+            { error, subscription, data },
+            "Error relaying translation data",
+          );
         });
-      }
+      },
     };
   }
 
-  private async relayDataToApps(subscription: ExtendedStreamType, data: TranslationData): Promise<void> {
+  private async relayDataToApps(
+    subscription: ExtendedStreamType,
+    data: TranslationData,
+  ): Promise<void> {
     try {
       // Get subscribed apps
-      const subscribedApps = subscriptionService.getSubscribedApps(this.userSession, subscription);
-
-      this.logger.debug({
+      const subscribedApps = subscriptionService.getSubscribedApps(
+        this.userSession,
         subscription,
-        subscribedApps,
-        sourceLanguage: data.transcribeLanguage,
-        targetLanguage: data.translateLanguage,
-        didTranslate: data.didTranslate,
-        textPreview: data.text ? `"${data.text.substring(0, 100)}${data.text.length > 100 ? '...' : ''}"` : 'no text'
-      }, 'Broadcasting translation data to apps');
+      );
+
+      this.logger.debug(
+        {
+          subscription,
+          subscribedApps,
+          sourceLanguage: data.transcribeLanguage,
+          targetLanguage: data.translateLanguage,
+          didTranslate: data.didTranslate,
+          textPreview: data.text
+            ? `"${data.text.substring(0, 100)}${data.text.length > 100 ? "..." : ""}"`
+            : "no text",
+        },
+        "Broadcasting translation data to apps",
+      );
 
       // Send to each app using AppManager
       for (const packageName of subscribedApps) {
@@ -630,76 +784,103 @@ export class TranslationManager {
           sessionId: appSessionId,
           streamType: subscription,
           data,
-          timestamp: new Date()
+          timestamp: new Date(),
         };
 
         try {
-          const result = await this.userSession.appManager.sendMessageToApp(packageName, dataStream);
+          const result = await this.userSession.appManager.sendMessageToApp(
+            packageName,
+            dataStream,
+          );
 
           if (!result.sent) {
-            this.logger.warn({
-              packageName,
-              resurrectionTriggered: result.resurrectionTriggered,
-              error: result.error
-            }, `Failed to send translation data to App ${packageName}`);
+            this.logger.warn(
+              {
+                packageName,
+                resurrectionTriggered: result.resurrectionTriggered,
+                error: result.error,
+              },
+              `Failed to send translation data to App ${packageName}`,
+            );
           }
         } catch (error) {
-          this.logger.error({
-            packageName,
-            error: error instanceof Error ? error.message : String(error)
-          }, `Error sending translation data to App ${packageName}`);
+          this.logger.error(
+            {
+              packageName,
+              error: error instanceof Error ? error.message : String(error),
+            },
+            `Error sending translation data to App ${packageName}`,
+          );
         }
       }
 
       // Log translation activity
-      this.logger.info({
-        subscription,
-        provider: data.provider || 'unknown',
-        sourceText: data.originalText ? `"${data.originalText.substring(0, 50)}..."` : undefined,
-        translatedText: data.text ? `"${data.text.substring(0, 50)}..."` : 'no text',
-        isFinal: data.isFinal,
-        languages: `${data.transcribeLanguage} → ${data.translateLanguage}`,
-        appsNotified: subscribedApps.length
-      }, `🌐 TRANSLATION: [${data.provider || 'unknown'}] ${data.isFinal ? 'FINAL' : 'interim'} → ${subscribedApps.length} apps`);
-
+      this.logger.info(
+        {
+          subscription,
+          provider: data.provider || "unknown",
+          sourceText: data.originalText
+            ? `"${data.originalText.substring(0, 50)}..."`
+            : undefined,
+          translatedText: data.text
+            ? `"${data.text.substring(0, 50)}..."`
+            : "no text",
+          isFinal: data.isFinal,
+          languages: `${data.transcribeLanguage} → ${data.translateLanguage}`,
+          appsNotified: subscribedApps.length,
+        },
+        `🌐 TRANSLATION: [${data.provider || "unknown"}] ${data.isFinal ? "FINAL" : "interim"} → ${subscribedApps.length} apps`,
+      );
     } catch (error) {
-      this.logger.error({
-        error,
-        subscription,
-        data
-      }, 'Failed to relay translation data to apps');
+      this.logger.error(
+        {
+          error,
+          subscription,
+          data,
+        },
+        "Failed to relay translation data to apps",
+      );
     }
   }
 
   private async selectProvider(
     sourceLanguage: string,
     targetLanguage: string,
-    options?: TranslationProviderSelectionOptions
+    options?: TranslationProviderSelectionOptions,
   ): Promise<TranslationProvider> {
     const excludedProviders = new Set(options?.excludeProviders || []);
     const preferredProvider = options?.preferProvider;
 
-    this.logger.debug({
-      sourceLanguage,
-      targetLanguage,
-      excludedProviders: Array.from(excludedProviders),
-      preferredProvider,
-      defaultProvider: this.config.providers.defaultProvider,
-      fallbackProvider: this.config.providers.fallbackProvider,
-      availableProviders: Array.from(this.providers.keys())
-    }, 'Selecting translation provider');
+    this.logger.debug(
+      {
+        sourceLanguage,
+        targetLanguage,
+        excludedProviders: Array.from(excludedProviders),
+        preferredProvider,
+        defaultProvider: this.config.providers.defaultProvider,
+        fallbackProvider: this.config.providers.fallbackProvider,
+        availableProviders: Array.from(this.providers.keys()),
+      },
+      "Selecting translation provider",
+    );
 
     // Try preferred provider first
     if (preferredProvider && !excludedProviders.has(preferredProvider)) {
       const provider = this.providers.get(preferredProvider);
       if (provider) {
-        const supports = provider.supportsLanguagePair(sourceLanguage, targetLanguage);
-        this.logger.debug({
-          provider: preferredProvider,
-          supports,
+        const supports = provider.supportsLanguagePair(
           sourceLanguage,
-          targetLanguage
-        }, 'Checking preferred provider');
+          targetLanguage,
+        );
+        this.logger.debug(
+          {
+            provider: preferredProvider,
+            supports,
+            sourceLanguage,
+            targetLanguage,
+          },
+          "Checking preferred provider",
+        );
         if (supports) {
           return provider;
         }
@@ -707,30 +888,52 @@ export class TranslationManager {
     }
 
     // Try default provider
-    const defaultProvider = this.providers.get(this.config.providers.defaultProvider);
-    if (defaultProvider && !excludedProviders.has(this.config.providers.defaultProvider)) {
-      const supports = defaultProvider.supportsLanguagePair(sourceLanguage, targetLanguage);
-      this.logger.debug({
-        provider: this.config.providers.defaultProvider,
-        supports,
+    const defaultProvider = this.providers.get(
+      this.config.providers.defaultProvider,
+    );
+    if (
+      defaultProvider &&
+      !excludedProviders.has(this.config.providers.defaultProvider)
+    ) {
+      const supports = defaultProvider.supportsLanguagePair(
         sourceLanguage,
-        targetLanguage
-      }, 'Checking default provider');
+        targetLanguage,
+      );
+      this.logger.debug(
+        {
+          provider: this.config.providers.defaultProvider,
+          supports,
+          sourceLanguage,
+          targetLanguage,
+        },
+        "Checking default provider",
+      );
       if (supports) {
         return defaultProvider;
       }
     }
 
     // Try fallback provider
-    const fallbackProvider = this.providers.get(this.config.providers.fallbackProvider);
-    if (fallbackProvider && !excludedProviders.has(this.config.providers.fallbackProvider)) {
-      const supports = fallbackProvider.supportsLanguagePair(sourceLanguage, targetLanguage);
-      this.logger.debug({
-        provider: this.config.providers.fallbackProvider,
-        supports,
+    const fallbackProvider = this.providers.get(
+      this.config.providers.fallbackProvider,
+    );
+    if (
+      fallbackProvider &&
+      !excludedProviders.has(this.config.providers.fallbackProvider)
+    ) {
+      const supports = fallbackProvider.supportsLanguagePair(
         sourceLanguage,
-        targetLanguage
-      }, 'Checking fallback provider');
+        targetLanguage,
+      );
+      this.logger.debug(
+        {
+          provider: this.config.providers.fallbackProvider,
+          supports,
+          sourceLanguage,
+          targetLanguage,
+        },
+        "Checking fallback provider",
+      );
       if (supports) {
         return fallbackProvider;
       }
@@ -739,13 +942,19 @@ export class TranslationManager {
     // Try any available provider
     for (const [type, provider] of this.providers) {
       if (!excludedProviders.has(type)) {
-        const supports = provider.supportsLanguagePair(sourceLanguage, targetLanguage);
-        this.logger.debug({
-          provider: type,
-          supports,
+        const supports = provider.supportsLanguagePair(
           sourceLanguage,
-          targetLanguage
-        }, 'Checking provider');
+          targetLanguage,
+        );
+        this.logger.debug(
+          {
+            provider: type,
+            supports,
+            sourceLanguage,
+            targetLanguage,
+          },
+          "Checking provider",
+        );
         if (supports) {
           return provider;
         }
@@ -755,22 +964,25 @@ export class TranslationManager {
     throw new InvalidLanguagePairError(
       `No provider supports translation from ${sourceLanguage} to ${targetLanguage}`,
       sourceLanguage,
-      targetLanguage
+      targetLanguage,
     );
   }
 
   private async handleStreamError(
     subscription: ExtendedStreamType,
     stream: TranslationStreamInstance | null,
-    error: Error
+    error: Error,
   ): Promise<void> {
     const currentProvider = stream?.provider.name;
 
-    this.logger.warn({
-      subscription,
-      error: error.message,
-      provider: currentProvider
-    }, 'Translation stream error occurred');
+    this.logger.warn(
+      {
+        subscription,
+        error: error.message,
+        provider: currentProvider,
+      },
+      "Translation stream error occurred",
+    );
 
     // Record provider failure
     if (stream) {
@@ -778,22 +990,29 @@ export class TranslationManager {
     }
 
     // Clean up failed stream
-    await this.cleanupStream(subscription, 'provider_error');
+    await this.cleanupStream(subscription, "provider_error");
 
     // Implement retry logic
     const attempts = this.streamRetryAttempts.get(subscription) || 0;
-    
+
     if (attempts >= this.config.retries.maxStreamRetries) {
-      this.logger.error({ subscription, attempts }, 'Maximum retry attempts reached for translation stream');
+      this.logger.error(
+        { subscription, attempts },
+        "Maximum retry attempts reached for translation stream",
+      );
       this.streamRetryAttempts.delete(subscription);
 
       // Track final failure
-      PosthogService.trackEvent('translation_stream_permanent_failure', this.userSession.userId, {
-        subscription,
-        totalAttempts: attempts,
-        finalError: error.message,
-        sessionId: this.userSession.sessionId
-      });
+      PosthogService.trackEvent(
+        "translation_stream_permanent_failure",
+        this.userSession.userId,
+        {
+          subscription,
+          totalAttempts: attempts,
+          finalError: error.message,
+          sessionId: this.userSession.sessionId,
+        },
+      );
       return;
     }
 
@@ -801,59 +1020,90 @@ export class TranslationManager {
     this.scheduleStreamRetry(subscription, attempts + 1);
   }
 
-  private scheduleStreamRetry(subscription: ExtendedStreamType, attempt: number): void {
+  private scheduleStreamRetry(
+    subscription: ExtendedStreamType,
+    attempt: number,
+  ): void {
     this.streamRetryAttempts.set(subscription, attempt);
 
     const delay = this.config.retries.retryDelayMs * attempt;
 
-    this.logger.info({
-      subscription,
-      attempt,
-      delay
-    }, 'Scheduling translation stream retry');
+    this.logger.info(
+      {
+        subscription,
+        attempt,
+        delay,
+      },
+      "Scheduling translation stream retry",
+    );
 
     setTimeout(async () => {
       try {
         await this.startStream(subscription);
         this.streamRetryAttempts.delete(subscription); // Success
       } catch (error) {
-        this.logger.warn({ subscription, attempt, error }, 'Translation stream retry failed');
+        this.logger.warn(
+          { subscription, attempt, error },
+          "Translation stream retry failed",
+        );
       }
     }, delay);
   }
 
-  private async waitForStreamReady(stream: TranslationStreamInstance, timeoutMs: number): Promise<void> {
+  private async waitForStreamReady(
+    stream: TranslationStreamInstance,
+    timeoutMs: number,
+  ): Promise<void> {
     const startTime = Date.now();
 
-    while (stream.state === TranslationStreamState.INITIALIZING && (Date.now() - startTime) < timeoutMs) {
-      await new Promise(resolve => setTimeout(resolve, 100));
+    while (
+      stream.state === TranslationStreamState.INITIALIZING &&
+      Date.now() - startTime < timeoutMs
+    ) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
     }
 
     if (stream.state === TranslationStreamState.INITIALIZING) {
-      throw new TranslationStreamCreationError('Translation stream initialization timeout');
+      throw new TranslationStreamCreationError(
+        "Translation stream initialization timeout",
+      );
     }
 
     if (stream.state === TranslationStreamState.ERROR) {
-      throw new TranslationStreamCreationError('Translation stream initialization failed', {
-        error: stream.lastError,
-        streamId: stream.id
-      });
+      throw new TranslationStreamCreationError(
+        "Translation stream initialization failed",
+        {
+          error: stream.lastError,
+          streamId: stream.id,
+        },
+      );
     }
 
     if (stream.state !== TranslationStreamState.READY) {
-      throw new TranslationStreamCreationError(`Translation stream in unexpected state: ${stream.state}`);
+      throw new TranslationStreamCreationError(
+        `Translation stream in unexpected state: ${stream.state}`,
+      );
     }
   }
 
-  private async cleanupStream(subscription: ExtendedStreamType, reason: string): Promise<void> {
+  private async cleanupStream(
+    subscription: ExtendedStreamType,
+    reason: string,
+  ): Promise<void> {
     const stream = this.streams.get(subscription);
     if (stream) {
-      this.logger.debug({ subscription, reason }, 'Cleaning up translation stream');
+      this.logger.debug(
+        { subscription, reason },
+        "Cleaning up translation stream",
+      );
 
       try {
         await stream.close();
       } catch (error) {
-        this.logger.warn({ error, subscription }, 'Error closing translation stream during cleanup');
+        this.logger.warn(
+          { error, subscription },
+          "Error closing translation stream during cleanup",
+        );
       }
 
       this.streams.delete(subscription);
@@ -886,20 +1136,25 @@ export class TranslationManager {
 
     // Clean up dead streams
     for (const [subscription, stream] of deadStreams) {
-      this.logger.info({
-        subscription,
-        streamId: stream.id,
-        reason: 'dead_stream_cleanup'
-      }, 'Cleaning up dead translation stream');
+      this.logger.info(
+        {
+          subscription,
+          streamId: stream.id,
+          reason: "dead_stream_cleanup",
+        },
+        "Cleaning up dead translation stream",
+      );
 
-      await this.cleanupStream(subscription, 'dead_stream_cleanup');
+      await this.cleanupStream(subscription, "dead_stream_cleanup");
     }
   }
 
   private isStreamHealthy(stream: TranslationStreamInstance): boolean {
-    return stream.state === TranslationStreamState.READY ||
+    return (
+      stream.state === TranslationStreamState.READY ||
       stream.state === TranslationStreamState.ACTIVE ||
-      stream.state === TranslationStreamState.INITIALIZING;
+      stream.state === TranslationStreamState.INITIALIZING
+    );
   }
 
   private generateStreamId(subscription: ExtendedStreamType): string {
@@ -912,17 +1167,23 @@ export class TranslationManager {
 
     // Set timeout to automatically flush buffer
     this.audioBufferTimeout = setTimeout(() => {
-      this.logger.warn({
-        bufferSize: this.audioBuffer.length,
-        timeoutMs: this.audioBufferTimeoutMs
-      }, 'Translation audio buffer timeout reached - force flushing');
+      this.logger.warn(
+        {
+          bufferSize: this.audioBuffer.length,
+          timeoutMs: this.audioBufferTimeoutMs,
+        },
+        "Translation audio buffer timeout reached - force flushing",
+      );
 
       this.flushAudioBuffer();
     }, this.audioBufferTimeoutMs);
 
-    this.logger.debug({
-      timeoutMs: this.audioBufferTimeoutMs
-    }, 'Started audio buffering for translation stream startup');
+    this.logger.debug(
+      {
+        timeoutMs: this.audioBufferTimeoutMs,
+      },
+      "Started audio buffering for translation stream startup",
+    );
   }
 
   private flushAudioBuffer(): void {
@@ -937,10 +1198,13 @@ export class TranslationManager {
       return;
     }
 
-    this.logger.debug({
-      bufferSize: this.audioBuffer.length,
-      activeStreams: this.streams.size
-    }, 'Flushing audio buffer to translation streams');
+    this.logger.debug(
+      {
+        bufferSize: this.audioBuffer.length,
+        activeStreams: this.streams.size,
+      },
+      "Flushing audio buffer to translation streams",
+    );
 
     // Send all buffered audio chunks to active streams
     for (const audioData of this.audioBuffer) {
@@ -961,7 +1225,7 @@ export class TranslationManager {
 
     this.audioBuffer = [];
     this.isBufferingAudio = false;
-    this.logger.debug('Cleared translation audio buffer');
+    this.logger.debug("Cleared translation audio buffer");
   }
 
   private feedAudioToStreams(audioData: ArrayBuffer): void {
@@ -970,28 +1234,37 @@ export class TranslationManager {
     }
 
     // Log audio feeding periodically
-    if (Math.random() < 0.01) { // 1% of the time to avoid log spam
-      this.logger.debug({
-        audioSize: audioData.byteLength,
-        activeStreams: this.streams.size,
-        streamStates: Array.from(this.streams.entries()).map(([sub, stream]) => ({
-          subscription: sub,
-          state: stream.state,
-          consecutiveFailures: stream.metrics.consecutiveFailures
-        }))
-      }, 'Feeding audio to translation streams');
+    if (Math.random() < 0.01) {
+      // 1% of the time to avoid log spam
+      this.logger.debug(
+        {
+          audioSize: audioData.byteLength,
+          activeStreams: this.streams.size,
+          streamStates: Array.from(this.streams.entries()).map(
+            ([sub, stream]) => ({
+              subscription: sub,
+              state: stream.state,
+              consecutiveFailures: stream.metrics.consecutiveFailures,
+            }),
+          ),
+        },
+        "Feeding audio to translation streams",
+      );
     }
 
     for (const [subscription, stream] of this.streams) {
       try {
         stream.writeAudio(audioData);
       } catch (error) {
-        this.logger.warn({
-          subscription,
-          error,
-          streamId: stream.id,
-          streamState: stream.state
-        }, 'Error feeding audio to translation stream');
+        this.logger.warn(
+          {
+            subscription,
+            error,
+            streamId: stream.id,
+            streamState: stream.state,
+          },
+          "Error feeding audio to translation stream",
+        );
       }
     }
   }

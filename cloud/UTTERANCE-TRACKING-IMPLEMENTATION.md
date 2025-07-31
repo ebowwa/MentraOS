@@ -7,6 +7,7 @@ This implementation adds utterance-based tracking to the Soniox translation prov
 ## Key Changes
 
 ### 1. Added Utterance Tracking Structure
+
 ```typescript
 private currentUtterance: {
   startTime?: number;
@@ -22,11 +23,13 @@ private currentUtterance: {
 ```
 
 ### 2. Token Processing Updates
+
 - Separates incoming tokens into `originalTokens` and `translationTokens` arrays
 - Tracks the source language from token metadata
 - Handles language switches in bidirectional translation
 
 ### 3. New sendUtterance() Method
+
 ```typescript
 private sendUtterance(isFinal: boolean, reason: string): void {
   // Builds TranslationData with both original and translated text
@@ -45,17 +48,19 @@ private sendUtterance(isFinal: boolean, reason: string): void {
     provider: 'soniox',
     confidence: undefined
   };
-  
+
   this.callbacks.onData?.(translationData);
 }
 ```
 
 ### 4. Utterance Boundary Detection
+
 - Detects `<end>` tokens to mark utterance boundaries
 - Sends complete utterances with both original and translated text
 - Resets buffers after each utterance
 
 ### 5. Stream Close Handling
+
 - Updated `close()` method to send any remaining utterance data
 - Ensures no data is lost when the stream closes
 
@@ -69,6 +74,7 @@ private sendUtterance(isFinal: boolean, reason: string): void {
 ## Example Output
 
 For a French to English translation:
+
 ```json
 {
   "type": "translation",
@@ -82,9 +88,10 @@ For a French to English translation:
 ```
 
 For bidirectional translation (English response):
+
 ```json
 {
-  "type": "translation", 
+  "type": "translation",
   "originalText": "I'm fine thank you",
   "text": "Je vais bien merci",
   "transcribeLanguage": "en",

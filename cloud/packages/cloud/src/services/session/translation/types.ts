@@ -2,24 +2,29 @@
  * @fileoverview Type definitions for the TranslationManager system
  */
 
-import { ExtendedStreamType, TranslationData } from '@mentra/sdk';
-import { Logger } from 'pino';
-import UserSession from '../UserSession';
-import dotenv from 'dotenv';
+import { ExtendedStreamType, TranslationData } from "@mentra/sdk";
+import { Logger } from "pino";
+import UserSession from "../UserSession";
+import dotenv from "dotenv";
 dotenv.config();
 
 // Environment variables for provider configuration
-export const AZURE_SPEECH_KEY = process.env.AZURE_SPEECH_KEY || '';
-export const AZURE_SPEECH_REGION = process.env.AZURE_SPEECH_REGION || '';
-export const SONIOX_API_KEY = process.env.SONIOX_API_KEY || '';
-export const SONIOX_ENDPOINT = process.env.SONIOX_ENDPOINT || 'wss://stt-rt.soniox.com/transcribe-websocket';
+export const AZURE_SPEECH_KEY = process.env.AZURE_SPEECH_KEY || "";
+export const AZURE_SPEECH_REGION = process.env.AZURE_SPEECH_REGION || "";
+export const SONIOX_API_KEY = process.env.SONIOX_API_KEY || "";
+export const SONIOX_ENDPOINT =
+  process.env.SONIOX_ENDPOINT || "wss://stt-rt.soniox.com/transcribe-websocket";
 
 // Log warning if environment variables are not set
 if (!AZURE_SPEECH_KEY || !AZURE_SPEECH_REGION) {
-  console.warn('[TranslationManager] Warning: Azure Speech environment variables not set (AZURE_SPEECH_KEY, AZURE_SPEECH_REGION)');
+  console.warn(
+    "[TranslationManager] Warning: Azure Speech environment variables not set (AZURE_SPEECH_KEY, AZURE_SPEECH_REGION)",
+  );
 }
 if (!SONIOX_API_KEY) {
-  console.warn('[TranslationManager] Warning: Soniox environment variable not set (SONIOX_API_KEY)');
+  console.warn(
+    "[TranslationManager] Warning: Soniox environment variable not set (SONIOX_API_KEY)",
+  );
 }
 
 //===========================================================
@@ -27,17 +32,17 @@ if (!SONIOX_API_KEY) {
 //===========================================================
 
 export enum TranslationStreamState {
-  INITIALIZING = 'initializing',
-  READY = 'ready',
-  ACTIVE = 'active',
-  ERROR = 'error',
-  CLOSING = 'closing',
-  CLOSED = 'closed'
+  INITIALIZING = "initializing",
+  READY = "ready",
+  ACTIVE = "active",
+  ERROR = "error",
+  CLOSING = "closing",
+  CLOSED = "closed",
 }
 
 export enum TranslationProviderType {
-  AZURE = 'azure',
-  SONIOX = 'soniox'
+  AZURE = "azure",
+  SONIOX = "soniox",
 }
 
 //===========================================================
@@ -49,17 +54,17 @@ export interface TranslationConfig {
     defaultProvider: TranslationProviderType;
     fallbackProvider: TranslationProviderType;
   };
-  
+
   azure: AzureTranslationConfig;
   soniox: SonioxTranslationConfig;
-  
+
   performance: {
     maxTotalStreams: number;
     maxMemoryUsageMB: number;
     streamTimeoutMs: number;
     healthCheckIntervalMs: number;
   };
-  
+
   retries: {
     maxStreamRetries: number;
     retryDelayMs: number;
@@ -119,19 +124,21 @@ export interface TranslationStreamCallbacks {
 export interface TranslationProvider {
   readonly name: TranslationProviderType;
   readonly logger: Logger;
-  
+
   // Lifecycle
   initialize(): Promise<void>;
   dispose(): Promise<void>;
-  
+
   // Stream Management
-  createTranslationStream(options: TranslationStreamOptions): Promise<TranslationStreamInstance>;
-  
+  createTranslationStream(
+    options: TranslationStreamOptions,
+  ): Promise<TranslationStreamInstance>;
+
   // Capabilities
   supportsLanguagePair(source: string, target: string): boolean;
   supportsAutoDetection(): boolean;
   getCapabilities(): TranslationProviderCapabilities;
-  
+
   // Health
   getHealthStatus(): TranslationProviderHealthStatus;
   recordFailure(error: Error): void;
@@ -146,7 +153,7 @@ export interface TranslationStreamMetrics {
   // Lifecycle
   initializationTime?: number;
   totalDuration: number;
-  
+
   // Audio Processing
   audioChunksReceived: number;
   audioChunksWritten: number;
@@ -154,11 +161,11 @@ export interface TranslationStreamMetrics {
   audioWriteFailures: number;
   consecutiveFailures: number;
   lastSuccessfulWrite?: number;
-  
+
   // Translation Metrics
   translationsGenerated: number;
   averageLatency?: number;
-  
+
   // Error Tracking
   errorCount: number;
   lastError?: Error;
@@ -170,24 +177,24 @@ export interface TranslationStreamInstance {
   readonly subscription: ExtendedStreamType;
   readonly provider: TranslationProvider;
   readonly logger: Logger;
-  
+
   // Configuration
   readonly sourceLanguage: string;
   readonly targetLanguage: string;
-  
+
   // State
   state: TranslationStreamState;
   startTime: number;
   readyTime?: number;
   lastActivity: number;
   lastError?: Error;
-  
+
   // Metrics
   metrics: TranslationStreamMetrics;
-  
+
   // Callbacks
   callbacks: TranslationStreamCallbacks;
-  
+
   // Methods
   writeAudio(data: ArrayBuffer): Promise<boolean>;
   close(): Promise<void>;
@@ -207,9 +214,12 @@ export interface TranslationStreamHealth {
 //===========================================================
 
 export class TranslationError extends Error {
-  constructor(message: string, public readonly context?: Record<string, any>) {
+  constructor(
+    message: string,
+    public readonly context?: Record<string, any>,
+  ) {
     super(message);
-    this.name = 'TranslationError';
+    this.name = "TranslationError";
   }
 }
 
@@ -218,10 +228,10 @@ export class TranslationProviderError extends TranslationError {
     message: string,
     public readonly providerName: TranslationProviderType,
     public readonly originalError?: Error,
-    context?: Record<string, any>
+    context?: Record<string, any>,
   ) {
     super(message, context);
-    this.name = 'TranslationProviderError';
+    this.name = "TranslationProviderError";
   }
 }
 
@@ -230,17 +240,17 @@ export class InvalidLanguagePairError extends TranslationError {
     message: string,
     public readonly sourceLanguage: string,
     public readonly targetLanguage: string,
-    public readonly supportedPairs?: string[]
+    public readonly supportedPairs?: string[],
   ) {
     super(message, { sourceLanguage, targetLanguage, supportedPairs });
-    this.name = 'InvalidLanguagePairError';
+    this.name = "InvalidLanguagePairError";
   }
 }
 
 export class TranslationStreamCreationError extends TranslationError {
   constructor(message: string, context?: Record<string, any>) {
     super(message, context);
-    this.name = 'TranslationStreamCreationError';
+    this.name = "TranslationStreamCreationError";
   }
 }
 
@@ -265,30 +275,30 @@ export interface TranslationProviderSelectionOptions {
 export const DEFAULT_TRANSLATION_CONFIG: TranslationConfig = {
   providers: {
     defaultProvider: TranslationProviderType.SONIOX,
-    fallbackProvider: TranslationProviderType.AZURE
+    fallbackProvider: TranslationProviderType.AZURE,
   },
-  
+
   azure: {
     key: AZURE_SPEECH_KEY,
     region: AZURE_SPEECH_REGION,
-    endpoint: process.env.AZURE_TRANSLATION_ENDPOINT
+    endpoint: process.env.AZURE_TRANSLATION_ENDPOINT,
   },
-  
+
   soniox: {
     apiKey: SONIOX_API_KEY,
     endpoint: SONIOX_ENDPOINT,
-    model: 'stt-rt-preview'
+    model: "stt-rt-preview",
   },
-  
+
   performance: {
     maxTotalStreams: 500,
     maxMemoryUsageMB: 256,
     streamTimeoutMs: 10000,
-    healthCheckIntervalMs: 60000
+    healthCheckIntervalMs: 60000,
   },
-  
+
   retries: {
     maxStreamRetries: 3,
-    retryDelayMs: 5000
-  }
+    retryDelayMs: 5000,
+  },
 };

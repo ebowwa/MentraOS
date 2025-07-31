@@ -3,11 +3,7 @@
  */
 
 import WebSocket from "ws";
-import {
-  StreamType,
-  getLanguageInfo,
-  TranscriptionData,
-} from "@mentra/sdk";
+import { StreamType, getLanguageInfo, TranscriptionData } from "@mentra/sdk";
 import { Logger } from "pino";
 import {
   TranscriptionProvider,
@@ -21,8 +17,8 @@ import {
   StreamCallbacks,
   StreamMetrics,
   StreamHealth,
-  SonioxProviderError
-} from '../types';
+  SonioxProviderError,
+} from "../types";
 
 // Soniox language support - based on their documentation
 const SONIOX_TRANSCRIPTION_LANGUAGES = [
@@ -176,13 +172,15 @@ export class SonioxTranscriptionProvider implements TranscriptionProvider {
     // Check if the language is in our supported transcription languages list
     const langInfo = getLanguageInfo(language);
     if (!langInfo) return false;
-    
+
     // Check against SONIOX_TRANSCRIPTION_LANGUAGES
     // Match on the base language code (e.g., 'en' for 'en-US')
-    const baseLanguage = langInfo.transcribeLanguage.split('-')[0].toLowerCase();
-    
-    return SONIOX_TRANSCRIPTION_LANGUAGES.some(supported => {
-      const supportedBase = supported.split('-')[0].toLowerCase();
+    const baseLanguage = langInfo.transcribeLanguage
+      .split("-")[0]
+      .toLowerCase();
+
+    return SONIOX_TRANSCRIPTION_LANGUAGES.some((supported) => {
+      const supportedBase = supported.split("-")[0].toLowerCase();
       return supportedBase === baseLanguage;
     });
   }

@@ -3,8 +3,8 @@ name: Mobile App iOS Build
 on:
   pull_request:
     paths:
-      - 'mobile/**'
-      - '.github/workflows/mentraos-manager-ios-build.yml'
+      - "mobile/**"
+      - ".github/workflows/mentraos-manager-ios-build.yml"
   push:
     branches:
       - main
@@ -14,7 +14,7 @@ on:
 jobs:
   build:
     runs-on: macos-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -32,8 +32,8 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
-          cache: 'pnpm'
+          node-version: "18"
+          cache: "pnpm"
           cache-dependency-path: mobile/package.json
 
       - name: Install dependencies
@@ -45,6 +45,11 @@ jobs:
         run: |
           # Create .env from example
           cp .env.example .env
+
+      - name: Setup Sherpa Onnx
+        run: |
+          cd mobile
+          ./setup-sherpa-onnx.sh
 
       - name: Run Expo prebuild
         working-directory: ./mobile

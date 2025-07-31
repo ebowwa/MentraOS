@@ -112,11 +112,14 @@ export class TranscriptionManager {
     await this.ensureInitialized();
 
     // Filter out translation subscriptions - they're handled by TranslationManager now
-    const validSubscriptions = subscriptions.filter(sub => {
-      if (typeof sub === 'string' && sub.startsWith('translation:')) {
-        this.logger.debug({
-          subscription: sub
-        }, 'Filtering out translation subscription - handled by TranslationManager');
+    const validSubscriptions = subscriptions.filter((sub) => {
+      if (typeof sub === "string" && sub.startsWith("translation:")) {
+        this.logger.debug(
+          {
+            subscription: sub,
+          },
+          "Filtering out translation subscription - handled by TranslationManager",
+        );
         return false;
       }
       return true;
@@ -151,7 +154,6 @@ export class TranscriptionManager {
     this.activeSubscriptions = desired;
   }
 
-
   /**
    * Finalize pending tokens in all active streams (called when VAD stops)
    * This forces all providers to send final transcriptions for any buffered content
@@ -167,16 +169,19 @@ export class TranscriptionManager {
     for (const [subscription, stream] of this.streams) {
       try {
         // Check if this is a Soniox stream with buffered tokens
-        if (stream.provider.name === 'soniox') {
+        if (stream.provider.name === "soniox") {
           // Force finalize transcription tokens
-          if ('forceFinalizePendingTokens' in stream) {
+          if ("forceFinalizePendingTokens" in stream) {
             (stream as any).forceFinalizePendingTokens();
           }
-          this.logger.debug({
-            subscription,
-            streamId: stream.id,
-            provider: 'soniox'
-          }, 'Forced finalization of Soniox transcription tokens');
+          this.logger.debug(
+            {
+              subscription,
+              streamId: stream.id,
+              provider: "soniox",
+            },
+            "Forced finalization of Soniox transcription tokens",
+          );
         }
         // Azure doesn't need forced finalization as it sends final results immediately
         // Other providers can be added here as needed
@@ -1067,18 +1072,18 @@ export class TranscriptionManager {
     const streamId = this.generateStreamId(subscription);
 
     const callbacks = this.createStreamCallbacks(subscription);
-    
+
     const options = {
       streamId,
       userSession: this.userSession,
       subscription,
-      callbacks
+      callbacks,
     };
 
     // Only create transcription streams
     return await provider.createTranscriptionStream(
       languageInfo.transcribeLanguage,
-      options
+      options,
     );
   }
 
@@ -1690,7 +1695,10 @@ export class TranscriptionManager {
    * Get the target subscriptions for routing data
    * Now simplified since there's no optimization mapping
    */
-  private getTargetSubscriptions(streamSubscription: ExtendedStreamType, effectiveSubscription: ExtendedStreamType): ExtendedStreamType[] {
+  private getTargetSubscriptions(
+    streamSubscription: ExtendedStreamType,
+    effectiveSubscription: ExtendedStreamType,
+  ): ExtendedStreamType[] {
     // Simply return the effective subscription
     return [effectiveSubscription];
   }
@@ -1700,8 +1708,13 @@ export class TranscriptionManager {
     data: any,
   ): Promise<void> {
     try {
-      // CONSTRUCT EFFECTIVE SUBSCRIPTION for transcription only
-      const streamType = data.type;
+      // CONSTRUCT EFFECTIVE SUBSCRIPTION like the old system
+      let streamType = data.type;
+
+      if (data.type === "local_transcription") {
+        streamType = StreamType.TRANSCRIPTION;
+      }
+
       let effectiveSubscription: ExtendedStreamType = streamType;
 
       // Handle transcription subscription construction
@@ -1732,15 +1745,18 @@ export class TranscriptionManager {
 
       const subscribedApps = Array.from(allSubscribedApps);
 
-      this.logger.debug({
-        subscription,
-        effectiveSubscription,
-        targetSubscriptions,
-        subscribedApps,
-        streamType,
-        dataType: data.type,
-        transcribeLanguage: data.transcribeLanguage
-      }, 'Broadcasting transcription data');
+      this.logger.debug(
+        {
+          subscription,
+          effectiveSubscription,
+          targetSubscriptions,
+          subscribedApps,
+          streamType,
+          dataType: data.type,
+          transcribeLanguage: data.transcribeLanguage,
+        },
+        "Broadcasting transcription data",
+      );
 
       // Send to each app using APP MANAGER (with resurrection) instead of direct WebSocket
       for (const packageName of subscribedApps) {
@@ -1793,18 +1809,22 @@ export class TranscriptionManager {
       }
 
       // Enhanced debug logging to show transcription content and provider
-      this.logger.debug({
-        subscription,
-        effectiveSubscription,
-        provider: data.provider || 'unknown',
-        dataType: data.type,
-        text: data.text ? `"${data.text.substring(0, 100)}${data.text.length > 100 ? '...' : ''}"` : 'no text',
-        isFinal: data.isFinal,
-        confidence: data.confidence,
-        appsNotified: subscribedApps.length,
-        subscribedApps
-      }, `📝 TRANSCRIPTION: [${data.provider || 'unknown'}] ${data.isFinal ? 'FINAL' : 'interim'} "${data.text || 'no text'}" → ${subscribedApps.length} apps`);
-
+      this.logger.debug(
+        {
+          subscription,
+          effectiveSubscription,
+          provider: data.provider || "unknown",
+          dataType: data.type,
+          text: data.text
+            ? `"${data.text.substring(0, 100)}${data.text.length > 100 ? "..." : ""}"`
+            : "no text",
+          isFinal: data.isFinal,
+          confidence: data.confidence,
+          appsNotified: subscribedApps.length,
+          subscribedApps,
+        },
+        `📝 TRANSCRIPTION: [${data.provider || "unknown"}] ${data.isFinal ? "FINAL" : "interim"} "${data.text || "no text"}" → ${subscribedApps.length} apps`,
+      );
     } catch (error) {
       this.logger.error(
         {
@@ -1912,7 +1932,11 @@ export class TranscriptionManager {
    */
   private addToTranscriptHistory(data: any, streamType: StreamType): void {
     // Only process transcription data
-    if (streamType !== StreamType.TRANSCRIPTION || !data.text || !data.transcribeLanguage) {
+    if (
+      streamType !== StreamType.TRANSCRIPTION ||
+      !data.text ||
+      !data.transcribeLanguage
+    ) {
       return;
     }
 

@@ -3,6 +3,7 @@
 ## Problem Solved
 
 The previous implementation had a critical flaw in bidirectional translation: it used a single buffer for all languages, causing:
+
 - Mixed language output (e.g., "Hello, my name is Isaiah Test, test, un deux trois")
 - Language detection conflicts
 - Translation app receiving data for the wrong language direction
@@ -10,6 +11,7 @@ The previous implementation had a critical flaw in bidirectional translation: it
 ## Solution
 
 Implemented language-aware utterance tracking that:
+
 1. **Maintains separate utterance buffers per language**
 2. **Properly matches original tokens with their translations**
 3. **Handles timing delays between original and translation tokens**
@@ -18,6 +20,7 @@ Implemented language-aware utterance tracking that:
 ## Key Components
 
 ### 1. Language-Specific Utterance Storage
+
 ```typescript
 private utterancesByLanguage = new Map<string, {
   startTime?: number;
@@ -30,17 +33,21 @@ private utterancesByLanguage = new Map<string, {
 ```
 
 ### 2. Token Processing by Language
+
 - First pass: Organize incoming tokens by source language
 - Second pass: Update appropriate language utterance buffer
 - Handles `<end>` tokens to mark utterance boundaries
 
 ### 3. Translation Timeout Handling
+
 - Sets a 3-second timeout when original tokens arrive
 - Ensures translations are sent even if translation tokens are delayed
 - Prevents indefinite waiting for translations
 
 ### 4. Clean Language Separation
+
 When sending translation data:
+
 - Only sends data for a specific language direction
 - Properly labels source and target languages
 - Includes both original and translated text

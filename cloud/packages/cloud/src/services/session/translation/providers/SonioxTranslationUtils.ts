@@ -127,7 +127,9 @@ export class SonioxTranslationUtils {
     }
 
     // Then check one-way translation targets
-    const target = this.mappings.translation_targets.find(t => t.target_language === normalizedTarget);
+    const target = this.mappings.translation_targets.find(
+      (t) => t.target_language === normalizedTarget,
+    );
     if (!target) return false;
 
     // Check if source is explicitly excluded

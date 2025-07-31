@@ -783,7 +783,9 @@ export class SubscriptionService {
     try {
       // Sync transcription subscriptions
       const transcriptionSubs = this.getTranscriptionSubscriptions(userSession);
-      await userSession.transcriptionManager.updateSubscriptions(transcriptionSubs);
+      await userSession.transcriptionManager.updateSubscriptions(
+        transcriptionSubs,
+      );
 
       // Sync translation subscriptions
       const translationSubs = this.getTranslationSubscriptions(userSession);
@@ -792,7 +794,7 @@ export class SubscriptionService {
       // Ensure streams are synchronized after subscription update
       await Promise.all([
         userSession.transcriptionManager.ensureStreamsExist(),
-        userSession.translationManager.ensureStreamsExist()
+        userSession.translationManager.ensureStreamsExist(),
       ]);
 
       logger.debug(

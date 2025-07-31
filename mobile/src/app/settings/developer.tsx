@@ -33,6 +33,7 @@ export default function DeveloperSettingsScreen() {
   const [savedCustomUrl, setSavedCustomUrl] = useState<string | null>(null)
   const [isSavingUrl, setIsSavingUrl] = useState(false) // Add loading state
   const [reconnectOnAppForeground, setReconnectOnAppForeground] = useState(true)
+  const [isEnforceLocalTranscriptionEnabled, setIsEnforceLocalTranscriptionEnabled] = useState(status.core_info.enforce_local_transcription)
   const {replace} = useNavigationHistory()
 
   // Triple-tap detection for Asia East button
@@ -54,7 +55,8 @@ export default function DeveloperSettingsScreen() {
 
   useEffect(() => {
     setIsBypassVADForDebuggingEnabled(status.core_info.bypass_vad_for_debugging)
-  }, [status.core_info.bypass_vad_for_debugging])
+    setIsEnforceLocalTranscriptionEnabled(status.core_info.enforce_local_transcription)
+  }, [status.core_info.bypass_vad_for_debugging, status.core_info.enforce_local_transcription])
 
   const toggleBypassVadForDebugging = async () => {
     const newSetting = !isBypassVADForDebuggingEnabled
@@ -72,6 +74,12 @@ export default function DeveloperSettingsScreen() {
     const newSetting = !isBypassAudioEncodingForDebuggingEnabled
     await coreCommunicator.sendToggleBypassAudioEncodingForDebugging(newSetting)
     setIsBypassAudioEncodingForDebuggingEnabled(newSetting)
+  }
+
+  const toggleEnforceLocalTranscription = async () => {
+    const newSetting = !isEnforceLocalTranscriptionEnabled
+    await coreCommunicator.sendToggleEnforceLocalTranscription(newSetting)
+    setIsEnforceLocalTranscriptionEnabled(newSetting)
   }
 
   // Modified handler for Custom URL
@@ -230,6 +238,15 @@ export default function DeveloperSettingsScreen() {
           subtitle={translate("settings:reconnectOnAppForegroundSubtitle")}
           value={reconnectOnAppForeground}
           onValueChange={toggleReconnectOnAppForeground}
+        />
+
+        <Spacer height={theme.spacing.md} />
+
+        <ToggleSetting
+          label={translate("settings:enforceLocalTranscription")}
+          subtitle={translate("settings:enforceLocalTranscriptionSubtitle")}
+          value={isEnforceLocalTranscriptionEnabled}
+          onValueChange={toggleEnforceLocalTranscription}
         />
 
         <Spacer height={theme.spacing.md} />

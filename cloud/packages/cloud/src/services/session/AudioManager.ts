@@ -135,7 +135,7 @@ export class AudioManager {
       if (processedAudioData) {
         // Feed to TranscriptionManager
         this.userSession.transcriptionManager.feedAudio(processedAudioData);
-        
+
         // Feed to TranslationManager (separate from transcription)
         this.userSession.translationManager.feedAudio(processedAudioData);
 

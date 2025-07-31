@@ -3,25 +3,31 @@
  * functionality and state for the server.
  */
 
-import { Logger } from 'pino';
-import WebSocket from 'ws';
-import { AppI, CloudToAppMessageType, CloudToGlassesMessageType, ConnectionError, TranscriptSegment } from '@mentra/sdk';
-import { logger as rootLogger } from '../logging/pino-logger';
-import { Capabilities } from '@mentra/sdk';
-import AppManager from './AppManager';
-import AudioManager from './AudioManager';
-import MicrophoneManager from './MicrophoneManager';
-import DisplayManager from '../layout/DisplayManager6.1';
-import { DashboardManager } from '../dashboard';
-import VideoManager from './VideoManager';
-import PhotoManager from './PhotoManager';
-import { GlassesErrorCode } from '../websocket/websocket-glasses.service';
-import SessionStorage from './SessionStorage';
-import { PosthogService } from '../logging/posthog.service';
-import { TranscriptionManager } from './transcription/TranscriptionManager';
-import { TranslationManager } from './translation/TranslationManager';
-import { ManagedStreamingExtension } from '../streaming/ManagedStreamingExtension';
-import { getCapabilitiesForModel } from '../../config/hardware-capabilities';
+import { Logger } from "pino";
+import WebSocket from "ws";
+import {
+  AppI,
+  CloudToAppMessageType,
+  CloudToGlassesMessageType,
+  ConnectionError,
+  TranscriptSegment,
+} from "@mentra/sdk";
+import { logger as rootLogger } from "../logging/pino-logger";
+import { Capabilities } from "@mentra/sdk";
+import AppManager from "./AppManager";
+import AudioManager from "./AudioManager";
+import MicrophoneManager from "./MicrophoneManager";
+import DisplayManager from "../layout/DisplayManager6.1";
+import { DashboardManager } from "../dashboard";
+import VideoManager from "./VideoManager";
+import PhotoManager from "./PhotoManager";
+import { GlassesErrorCode } from "../websocket/websocket-glasses.service";
+import SessionStorage from "./SessionStorage";
+import { PosthogService } from "../logging/posthog.service";
+import { TranscriptionManager } from "./transcription/TranscriptionManager";
+import { TranslationManager } from "./translation/TranslationManager";
+import { ManagedStreamingExtension } from "../streaming/ManagedStreamingExtension";
+import { getCapabilitiesForModel } from "../../config/hardware-capabilities";
 
 export const LOG_PING_PONG = false; // Set to true to enable detailed ping/pong logging
 /**

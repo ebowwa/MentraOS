@@ -13,6 +13,7 @@ import android.util.Log;
 //custom, our code
 import androidx.lifecycle.LifecycleOwner;
 
+import com.augmentos.augmentos_core.enums.SpeechRequiredDataType;
 import com.augmentos.augmentos_core.smarterglassesmanager.SmartGlassesManager;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.DisableBleScoAudioEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.SmartGlassesConnectionEvent;
@@ -54,6 +55,7 @@ import com.augmentos.smartglassesmanager.cpp.L3cCpp;
 import java.io.ByteArrayOutputStream;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.List;
 
 import io.reactivex.rxjava3.subjects.PublishSubject;
 
@@ -525,7 +527,7 @@ public class SmartGlassesRepresentative implements PhoneMicListener {
         }
     }
 
-    public void changeMicrophoneState(boolean isMicrophoneEnabled) {}
+    public void changeMicrophoneState(boolean isMicrophoneEnabled, List<SpeechRequiredDataType> requiredData) {}
     
     /**
      * Sends WiFi credentials to the smart glasses
