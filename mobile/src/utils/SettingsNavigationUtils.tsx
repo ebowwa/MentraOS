@@ -1,5 +1,13 @@
 import {Linking, Platform} from "react-native"
 import {NativeModules} from "react-native"
+import { 
+  reportBluetoothSettingsNavigationFailure,
+  reportLocationServicesDialogFailure,
+  reportLocationSettingsNavigationFailure,
+  reportAppSettingsNavigationFailure,
+  reportAppPermissionsNavigationFailure,
+  reportRequirementSettingsNavigationFailure
+} from "@/reporting/domains"
 
 const {SettingsNavigationModule} = NativeModules
 
@@ -38,6 +46,7 @@ export class SettingsNavigationUtils {
       return false
     } catch (error) {
       console.error("Error opening Bluetooth settings:", error)
+      reportBluetoothSettingsNavigationFailure(String(error), error instanceof Error ? error : new Error(String(error)))
       return false
     }
   }
@@ -66,6 +75,7 @@ export class SettingsNavigationUtils {
       return false
     } catch (error) {
       console.error("Error showing location services dialog:", error)
+      reportLocationServicesDialogFailure(String(error), error instanceof Error ? error : new Error(String(error)))
       return false
     }
   }
@@ -93,6 +103,7 @@ export class SettingsNavigationUtils {
       return false
     } catch (error) {
       console.error("Error opening location settings:", error)
+      reportLocationSettingsNavigationFailure(String(error), error instanceof Error ? error : new Error(String(error)))
       return false
     }
   }
@@ -116,6 +127,7 @@ export class SettingsNavigationUtils {
       return false
     } catch (error) {
       console.error("Error opening app settings:", error)
+      reportAppSettingsNavigationFailure(String(error), error instanceof Error ? error : new Error(String(error)))
       return false
     }
   }
@@ -128,6 +140,7 @@ export class SettingsNavigationUtils {
       await Linking.openSettings()
     } catch (error) {
       console.error("Failed to open app settings:", error)
+      reportAppPermissionsNavigationFailure(String(error), error instanceof Error ? error : new Error(String(error)))
     }
   }
 
@@ -153,6 +166,7 @@ export class SettingsNavigationUtils {
       }
     } catch (error) {
       console.error("Error opening settings for requirement:", requirement, error)
+      reportRequirementSettingsNavigationFailure(requirement, String(error), error instanceof Error ? error : new Error(String(error)))
       return false
     }
   }

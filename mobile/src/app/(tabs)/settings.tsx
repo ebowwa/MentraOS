@@ -1,8 +1,10 @@
 import React, {useState, useEffect, useRef} from "react"
-import {View, Modal, ActivityIndicator} from "react-native"
+import {View, Modal, ActivityIndicator, Button} from "react-native"
 import {Screen, Header, Text} from "@/components/ignite"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {translate} from "@/i18n"
+import * as Sentry from '@sentry/react-native'
+import { reportComponentError, reportUIInteractionFailure } from '@/reporting/domains'
 
 import {useStatus} from "@/contexts/AugmentOSStatusProvider"
 import showAlert from "@/utils/AlertUtils"
@@ -27,8 +29,13 @@ export default function SettingsPage() {
 
   useEffect(() => {
     const checkDevMode = async () => {
-      const devModeSetting = await loadSetting(SETTINGS_KEYS.DEV_MODE, false)
-      setDevMode(isDeveloperBuildOrTestflight() || isMentraUser(user?.email) || devModeSetting)
+      try {
+        const devModeSetting = await loadSetting(SETTINGS_KEYS.DEV_MODE, false)
+        setDevMode(isDeveloperBuildOrTestflight() || isMentraUser(user?.email) || devModeSetting)
+      } catch (error) {
+        console.error("Error checking dev mode:", error)
+        reportComponentError("SettingsScreen", "Dev mode check failed", error instanceof Error ? error : new Error(String(error)))
+      }
     }
     checkDevMode()
   }, [])
@@ -101,6 +108,8 @@ export default function SettingsPage() {
     } catch (err) {
       console.error("Settings: Error during sign-out:", err)
       setIsSigningOut(false)
+      
+      reportUIInteractionFailure("sign_out", "Sign out process failed", err instanceof Error ? err : new Error(String(err)))
 
       // Show user-friendly error but still navigate to login to prevent stuck state
       showAlert(translate("common:error"), translate("settings:signOutError"), [
@@ -144,6 +153,13 @@ export default function SettingsPage() {
             onPress={() => push("/settings/developer")}
           />
         )}
+
+        <Button 
+          title='Try!' 
+          onPress={() => { 
+            Sentry.captureException(new Error('First error')) 
+          }}
+        />
 
         <ActionButton label={translate("settings:signOut")} variant="destructive" onPress={confirmSignOut} />
       </View>
