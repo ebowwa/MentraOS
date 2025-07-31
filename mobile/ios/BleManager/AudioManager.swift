@@ -9,11 +9,11 @@ import AVFoundation
 import Combine
 import Foundation
 
-class AudioManager {
+class AudioManager: NSObject {
     private static var instance: AudioManager?
 
     private var players: [String: AVPlayer] = [:] // requestId -> player
-
+    private var playerObservers: [String: [NSObjectProtocol]] = [:] // requestId -> observer tokens
     private var streamingPlayers: [String: AVAudioPlayer] = [:] // requestId -> streaming player
     private var cancellables = Set<AnyCancellable>()
 
@@ -24,7 +24,8 @@ class AudioManager {
         return instance!
     }
 
-    private init() {
+    override private init() {
+        super.init()
         setupAudioSession()
     }
 
@@ -47,6 +48,9 @@ class AudioManager {
     ) {
         CoreCommsService.log("AudioManager: playAudio called with requestId: \(requestId)")
 
+        // Clean up any existing player with the same requestId first
+        cleanupPlayer(requestId: requestId)
+
         if stopOtherAudio {
             stopAllAudio()
         }
@@ -57,7 +61,7 @@ class AudioManager {
     private func playAudioFromUrl(requestId: String, url: String, volume: Float) {
         guard let audioUrl = URL(string: url) else {
             CoreCommsService.log("AudioManager: Invalid URL: \(url)")
-            ServerComms.getInstance().sendAudioPlayResponse(requestId: requestId, success: false, error: "Invalid URL")
+            sendAudioPlayResponse(requestId: requestId, success: false, error: "Invalid URL")
             return
         }
 
@@ -67,14 +71,57 @@ class AudioManager {
         player.volume = volume
         players[requestId] = player
 
+        var observers: [NSObjectProtocol] = []
+
         // Add observer for when playback ends
-        NotificationCenter.default.addObserver(
+        let endObserver = NotificationCenter.default.addObserver(
             forName: .AVPlayerItemDidPlayToEndTime,
             object: player.currentItem,
             queue: .main
         ) { [weak self] _ in
-            self?.players.removeValue(forKey: requestId)
-            ServerComms.getInstance().sendAudioPlayResponse(requestId: requestId, success: true, duration: nil)
+            // Get the actual duration from the player
+            let durationSeconds = player.currentItem?.asset.duration.seconds
+            let durationMs = durationSeconds.flatMap { $0.isFinite ? $0 * 1000 : nil }
+
+            self?.cleanupPlayer(requestId: requestId)
+            self?.sendAudioPlayResponse(requestId: requestId, success: true, duration: durationMs)
+            CoreCommsService.log("AudioManager: Audio playback completed successfully for requestId: \(requestId), duration: \(durationMs ?? 0)ms")
+        }
+        observers.append(endObserver)
+
+        // Add observer for playback failures
+        let failObserver = NotificationCenter.default.addObserver(
+            forName: .AVPlayerItemFailedToPlayToEndTime,
+            object: player.currentItem,
+            queue: .main
+        ) { [weak self] notification in
+            var errorMessage = "Playback failed"
+            if let error = notification.userInfo?[AVPlayerItemFailedToPlayToEndTimeErrorKey] as? NSError {
+                errorMessage = "Playback failed: \(error.localizedDescription)"
+            }
+
+            self?.cleanupPlayer(requestId: requestId)
+            self?.sendAudioPlayResponse(requestId: requestId, success: false, error: errorMessage)
+            CoreCommsService.log("AudioManager: Audio playback failed for requestId: \(requestId), error: \(errorMessage)")
+        }
+        observers.append(failObserver)
+
+        playerObservers[requestId] = observers
+
+        // Check for loading errors after a short delay
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+            // Only check if the player still exists (hasn't been cleaned up)
+            guard let currentPlayer = self?.players[requestId],
+                  let currentItem = currentPlayer.currentItem,
+                  currentItem.status == .failed
+            else {
+                return
+            }
+
+            let errorMessage = currentItem.error?.localizedDescription ?? "Failed to load audio"
+            self?.cleanupPlayer(requestId: requestId)
+            self?.sendAudioPlayResponse(requestId: requestId, success: false, error: errorMessage)
+            CoreCommsService.log("AudioManager: Audio loading failed for requestId: \(requestId), error: \(errorMessage)")
         }
 
         player.play()
@@ -82,10 +129,7 @@ class AudioManager {
     }
 
     func stopAudio(requestId: String) {
-        if let player = players[requestId] {
-            player.pause()
-            players.removeValue(forKey: requestId)
-        }
+        cleanupPlayer(requestId: requestId)
 
         if let streamingPlayer = streamingPlayers[requestId] {
             streamingPlayer.stop()
@@ -96,16 +140,43 @@ class AudioManager {
     }
 
     func stopAllAudio() {
-        for (_, player) in players {
-            player.pause()
+        // Clean up all players
+        let allRequestIds = Array(players.keys)
+        for requestId in allRequestIds {
+            cleanupPlayer(requestId: requestId)
         }
-        players.removeAll()
 
+        // Clean up streaming players
         for (_, streamingPlayer) in streamingPlayers {
             streamingPlayer.stop()
         }
         streamingPlayers.removeAll()
 
         CoreCommsService.log("AudioManager: Stopped all audio")
+    }
+
+    private func sendAudioPlayResponse(requestId: String, success: Bool, error: String? = nil, duration: Double? = nil) {
+        CoreCommsService.log("AudioManager: Sending audio play response - requestId: \(requestId), success: \(success), error: \(error ?? "none")")
+
+        // Send response back through AOSManager which will forward to React Native
+        let aosManager = AOSManager.getInstance()
+        aosManager.sendAudioPlayResponse(requestId: requestId, success: success, error: error, duration: duration)
+    }
+
+    // Clean up method to remove observers when stopping audio
+    private func cleanupPlayer(requestId: String) {
+        // Remove and clean up notification observers
+        if let observers = playerObservers[requestId] {
+            for observer in observers {
+                NotificationCenter.default.removeObserver(observer)
+            }
+            playerObservers.removeValue(forKey: requestId)
+        }
+
+        // Clean up player
+        if let player = players[requestId] {
+            player.pause()
+            players.removeValue(forKey: requestId)
+        }
     }
 }
