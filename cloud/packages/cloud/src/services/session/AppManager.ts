@@ -320,7 +320,7 @@ export class AppManager {
             });
           }
         } catch (error) {
-          this.logger.error({ error }, `Error finding user ${this.userSession.userId} to remove running app ${packageName}`);
+          this.logger.error(error , `Error finding user ${this.userSession.userId} to remove running app ${packageName}`);
         }
 
         resolve({

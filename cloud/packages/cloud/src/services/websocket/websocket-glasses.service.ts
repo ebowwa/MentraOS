@@ -487,27 +487,36 @@ export class GlassesWebSocketService {
         userSession.logger.info('🎙️ VAD detected speech - ensuring streams exist');
         userSession.isTranscribing = true;
         
-        // Simply ensure streams exist - creates new ones if needed, uses existing healthy ones
-        await userSession.transcriptionManager.ensureStreamsExist();
+        // Ensure both transcription and translation streams exist
+        await Promise.all([
+          userSession.transcriptionManager.ensureStreamsExist(),
+          userSession.translationManager.ensureStreamsExist()
+        ]);
       } else {
         userSession.logger.info('🤫 VAD detected silence - finalizing and cleaning up streams');
         userSession.isTranscribing = false;
         
-        // Finalize pending tokens first, then cleanup idle streams
+        // For transcription: finalize pending tokens first, then cleanup
         userSession.transcriptionManager.finalizePendingTokens();
         await userSession.transcriptionManager.cleanupIdleStreams();
+        
+        // For translation: stop streams but preserve subscriptions for VAD resume
+        await userSession.translationManager.stopAllStreams();
       }
     } catch (error) {
       userSession.logger.error({ error }, '❌ Error handling VAD state change');
       userSession.isTranscribing = false;
       
-      // On error, finalize tokens and cleanup streams
-      // Next VAD speech will try to ensure streams exist again
+      // On error, cleanup both managers
       try {
+        // Transcription cleanup
         userSession.transcriptionManager.finalizePendingTokens();
         await userSession.transcriptionManager.cleanupIdleStreams();
+        
+        // Translation cleanup
+        await userSession.translationManager.stopAllStreams();
       } catch (finalizeError) {
-        userSession.logger.error({ error: finalizeError }, '❌ Error finalizing tokens and cleaning up streams on VAD error');
+        userSession.logger.error({ error: finalizeError }, '❌ Error cleaning up streams on VAD error');
       }
     }
   }
