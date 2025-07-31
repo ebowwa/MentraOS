@@ -146,7 +146,7 @@ class MockWebSocketService {
 }
 
 // Local constant for dashboard package name
-const DASHBOARD_PACKAGE_NAME = 'system.augmentos.dashboard';
+const DASHBOARD_PACKAGE_NAME = process.env.SYSTEM_DASHBOARD_PACKAGE_NAME || 'system.augmentos.dashboard';
 
 /**
  * Dashboard test harness
