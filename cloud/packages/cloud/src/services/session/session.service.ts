@@ -143,8 +143,11 @@ export class SessionService {
       }
 
       // Calculate streams that need to be active
-      const requiresAudio = subscriptionService.hasMediaSubscriptions(userId);
-      userSession.microphoneManager.updateState(requiresAudio); // TODO(isaiah): Feels like an odd place to put it, but it works for now.
+      // const requiresAudio = subscriptionService.hasMediaSubscriptions(userId);
+      const hasPCMTranscriptionSubscriptions = subscriptionService.hasPCMTranscriptionSubscriptions(userId);
+      const requiresAudio = hasPCMTranscriptionSubscriptions.hasMedia;
+      const requiredData = userSession.microphoneManager.calculateRequiredData(hasPCMTranscriptionSubscriptions.hasPCM, hasPCMTranscriptionSubscriptions.hasTranscription);
+      userSession.microphoneManager.updateState(requiresAudio, requiredData); // TODO(isaiah): Feels like an odd place to put it, but it works for now.
 
       const minimumTranscriptionLanguages = subscriptionService.getMinimalLanguageSubscriptions(userId);
 

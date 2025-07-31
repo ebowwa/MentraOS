@@ -1,12 +1,18 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
-import { Toaster } from 'sonner'
-import { AuthProvider } from './context/AuthContext'
-import LoginPage from './pages/LoginPage'
-import AccountPage from './pages/AccountPage'
-import DeleteAccountPage from './pages/DeleteAccountPage'
-import ExportDataPage from './pages/ExportDataPage'
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+} from "react-router-dom";
+import { Toaster } from "sonner";
+import { AuthProvider } from "./context/AuthContext";
+import LoginPage from "./pages/LoginPage";
+import AccountPage from "./pages/AccountPage";
+import DeleteAccountPage from "./pages/DeleteAccountPage";
+import ExportDataPage from "./pages/ExportDataPage";
+import AuthFlowPage from "./pages/AuthFlowPage";
 // import DashboardLayout from './components/DashboardLayout'
-import { useAuth } from './hooks/useAuth'
+import { useAuth } from "./hooks/useAuth";
 
 // Protected route component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -22,17 +28,16 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   }
 
   // Check for the core token as an additional authentication check
-  const hasCoreToken = !!localStorage.getItem('core_token');
+  const hasCoreToken = !!localStorage.getItem("core_token");
 
   // Only redirect when we're confident the user isn't authenticated
   if (!isAuthenticated && !loading && !user && !session && !hasCoreToken) {
-    console.log('User not authenticated, redirecting to login');
+    console.log("User not authenticated, redirecting to login");
     return <Navigate to="/login" replace />;
   }
 
   return <>{children}</>;
 };
-
 
 function App() {
   return (
@@ -41,37 +46,52 @@ function App() {
         <Toaster position="top-right" richColors />
         <Routes>
           <Route path="/login" element={<LoginPage />} />
-          
-          <Route path="/account" element={
-            <ProtectedRoute>
-              <AccountPage />
-            </ProtectedRoute>
-          } />
-          
-          <Route path="/account/delete" element={
-            <ProtectedRoute>
-              <DeleteAccountPage />
-            </ProtectedRoute>
-          } />
-          
-          <Route path="/account/export" element={
-            <ProtectedRoute>
-              <ExportDataPage />
-            </ProtectedRoute>
-          } />
-          
+
+          {/* OAuth flow route - doesn't require ProtectedRoute wrapper as it handles auth internally */}
+          <Route path="/auth" element={<AuthFlowPage />} />
+
+          <Route
+            path="/account"
+            element={
+              <ProtectedRoute>
+                <AccountPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/account/delete"
+            element={
+              <ProtectedRoute>
+                <DeleteAccountPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/account/export"
+            element={
+              <ProtectedRoute>
+                <ExportDataPage />
+              </ProtectedRoute>
+            }
+          />
+
           <Route path="/" element={<Navigate to="/account" replace />} />
-          
+
           {/* Catch-all route */}
-          <Route path="*" element={
-            <ProtectedRoute>
-              <Navigate to="/account" replace />
-            </ProtectedRoute>
-          } />
+          <Route
+            path="*"
+            element={
+              <ProtectedRoute>
+                <Navigate to="/account" replace />
+              </ProtectedRoute>
+            }
+          />
         </Routes>
       </Router>
     </AuthProvider>
-  )
+  );
 }
 
-export default App
+export default App;

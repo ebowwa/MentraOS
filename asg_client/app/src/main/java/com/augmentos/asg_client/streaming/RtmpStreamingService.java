@@ -522,14 +522,14 @@ public class RtmpStreamingService extends Service {
 
             // Configure audio settings using proper constructor
             AudioConfig audioConfig = new AudioConfig(
-                    MediaFormat.MIMETYPE_AUDIO_AAC,  // Use actual mime type instead of null
-                    128000,              // 128 kbps
-                    44100,               // 44.1 kHz
-                    AudioFormat.CHANNEL_IN_STEREO,
-                    audioProfile,    // Default profile
-                    0,                   // Default byte format
-                    true,                // Enable echo cancellation
-                    true                 // Enable noise suppression
+                    MediaFormat.MIMETYPE_AUDIO_AAC, // Use actual mime type instead of null
+                    128000, // 128 kbps
+                    44100, // 44.1 kHz
+                    AudioFormat.CHANNEL_IN_MONO, // Switch to mono for better compatibility
+                    audioProfile, // Default profile
+                    0, // Default byte format
+                    true, // Enable echo cancellation
+                    true // Enable noise suppression
             );
 
             // For MIME type, use the actual mime type instead of null
@@ -539,13 +539,13 @@ public class RtmpStreamingService extends Service {
 
             // Configure video settings using proper constructor
             VideoConfig videoConfig = new VideoConfig(
-                    MediaFormat.MIMETYPE_VIDEO_AVC,  // Use actual mime type instead of null
-                    1000000,             // 1 Mbps
-                    new Size(SURFACE_WIDTH, SURFACE_HEIGHT),  // Match surface size
-                    14,                  // 14 frames per second
-                    profile,             // Default profile
-                    level,               // Default level
-                    0.0f                 // Default bitrate factor
+                    MediaFormat.MIMETYPE_VIDEO_AVC,
+                    1000000, // 1 Mbps
+                    new Size(SURFACE_WIDTH, SURFACE_HEIGHT),
+                    15, // Increase to 15 FPS minimum
+                    profile,
+                    level,
+                    2.0f // Force keyframe every 2 seconds
             );
 
             // Apply configurations
@@ -703,6 +703,13 @@ public class RtmpStreamingService extends Service {
                 // Start fresh preview
                 mStreamer.startPreview(mSurface, "0");
                 Log.d(TAG, "Started camera preview for streaming");
+
+                // ADD THIS DELAY:
+                try {
+                    Thread.sleep(200); // Give encoder time to stabilize
+                } catch (InterruptedException e) {
+                    Log.w(TAG, "Interrupted during encoder stabilization");
+                }
             } else {
                 throw new Exception("Failed to create valid surface for streaming");
             }

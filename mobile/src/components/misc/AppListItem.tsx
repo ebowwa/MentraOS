@@ -77,12 +77,7 @@ export const AppListItem = ({
       </TouchableOpacity>
 
       <View style={[themed($toggleParent), themed($everythingFlexBox)]}>
-        <View pointerEvents={isDisabled ? "none" : "auto"}>
-          <Switch value={isActive} hitSlop={12} onValueChange={onTogglePress} />
-        </View>
-        <TouchableOpacity onPress={onSettingsPress} hitSlop={12} style={themed($chevronHitbox)}>
-          <ChevronRight color={theme.colors.chevron} />
-        </TouchableOpacity>
+        <Switch value={isActive} onValueChange={onTogglePress} hitSlop={{left: 48, right: 16, top: 24, bottom: 24}} />
       </View>
     </Animated.View>
   )

@@ -22,8 +22,6 @@ import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
 import android.util.Log;
-import android.view.View;
-import android.widget.FrameLayout;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -35,9 +33,12 @@ import androidx.core.app.NotificationCompat;
 import androidx.preference.PreferenceManager;
 
 import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
 
+
+import com.augmentos.asg_client.server.AsgCameraServer;
+import com.augmentos.asg_client.server.AsgServerManager;
+import com.augmentos.asg_client.server.impl.DefaultServerFactory;
+import com.augmentos.asg_client.server.interfaces.Logger;
 import com.augmentos.asg_client.streaming.RtmpStreamingService;
 import com.augmentos.augmentos_core.AugmentosService;
 import com.augmentos.asg_client.bluetooth.BluetoothManagerFactory;
@@ -49,8 +50,8 @@ import com.augmentos.asg_client.camera.MediaUploadQueueManager;
 import com.augmentos.asg_client.network.INetworkManager;
 import com.augmentos.asg_client.network.NetworkManagerFactory;
 import com.augmentos.asg_client.network.NetworkStateListener; // Make sure this is the correct import path for your library
-import com.augmentos.augmentos_core.smarterglassesmanager.camera.CameraRecordingService;
-import com.augmentos.augmentos_core.smarterglassesmanager.utils.K900ProtocolUtils;
+import com.augmentos.asg_client.settings.AsgSettings;
+
 import org.greenrobot.eventbus.EventBus;
 import com.augmentos.asg_client.events.BatteryStatusEvent;
 
@@ -118,6 +119,14 @@ public class AsgClientService extends Service implements NetworkStateListener, B
 
     // Media capture service
     private MediaCaptureService mMediaCaptureService;
+    
+    // Settings
+    private AsgSettings asgSettings;
+    
+    // Camera Web Server for local network access
+    private AsgCameraServer asgCameraServer;
+    private AsgServerManager asgServerManager;
+    private boolean isWebServerEnabled = true;
 
     // 1. Add enum for photo capture mode at the top of the class
     private enum PhotoCaptureMode {
@@ -220,6 +229,10 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     public void onCreate() {
         super.onCreate();
         Log.d(TAG, "AsgClientService onCreate");
+        
+        // Initialize settings
+        asgSettings = new AsgSettings(this);
+        Log.d(TAG, "Button press mode on startup: " + asgSettings.getButtonPressMode().getValue());
 
         // Enable WiFi when service starts
         openWifi(this, true);
@@ -263,10 +276,13 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         initializeBluetoothManager();
 
         // Initialize the photo queue manager
-        initializeMediaQueueManager();
+        //initializeMediaQueueManager();
 
         // Initialize the photo capture service
         initializeMediaCaptureService();
+
+        // Initialize the camera web server
+        initializeCameraWebServer();
 
         // Initialize streaming callbacks
         initializeStreamingCallbacks();
@@ -458,6 +474,184 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     }
 
     /**
+     * Initialize the camera web server for local network access
+     */
+    private void initializeCameraWebServer() {
+        if (asgServerManager == null) {
+            asgServerManager = AsgServerManager.getInstance(getApplicationContext());
+        }
+        
+        if (asgCameraServer == null && isWebServerEnabled) {
+            try {
+                // Create logger for the server
+                Logger logger = DefaultServerFactory.createLogger();
+                
+                // Create camera web server using the new factory pattern
+                asgCameraServer = DefaultServerFactory.createCameraWebServer(
+                    8089, 
+                    "CameraWebServer", 
+                    getApplicationContext(), 
+                    logger
+                );
+                
+                // Set up the picture request listener
+                asgCameraServer.setOnPictureRequestListener(() -> {
+                    Log.d(TAG, "📸 Camera web server requested photo capture");
+
+                    // Use the media capture service to take a photo
+                    if (mMediaCaptureService != null) {
+                        // Generate a unique request ID
+                        String requestId = "web_" + System.currentTimeMillis();
+
+                        // Take photo and save locally
+                        mMediaCaptureService.takePhotoLocally();
+                    } else {
+                        Log.e(TAG, "Media capture service not available for web server photo request");
+                    }
+                });
+                
+                // Register the server with the server manager
+                asgServerManager.registerServer("camera", asgCameraServer);
+                
+                // Start the web server
+                asgCameraServer.startServer();
+                
+                Log.d(TAG, "✅ Camera web server initialized and started via new SOLID architecture");
+                Log.d(TAG, "🌐 Web server URL: " + asgCameraServer.getServerUrl());
+                Log.d(TAG, "🏗️ Architecture benefits:");
+                Log.d(TAG, "   - Dependency injection for better testability");
+                Log.d(TAG, "   - Interface segregation for modularity");
+                Log.d(TAG, "   - Single responsibility for maintainability");
+                Log.d(TAG, "   - Open/closed principle for extensibility");
+                Log.d(TAG, "   - Mediated access for controlled server management");
+                
+            } catch (Exception e) {
+                Log.e(TAG, "❌ Failed to initialize camera web server: " + e.getMessage(), e);
+                asgCameraServer = null;
+            }
+        }
+    }
+
+    /**
+     * Get the camera web server instance
+     *
+     * @return CameraWebServer instance, or null if not available
+     */
+    public AsgCameraServer getCameraWebServer() {
+        return asgCameraServer;
+    }
+
+    /**
+     * Get the camera web server URL using mediated access
+     *
+     * @return Server URL, or null if not available
+     */
+    public String getCameraWebServerUrl() {
+        if (asgServerManager != null) {
+            return asgServerManager.getServerUrl("camera");
+        }
+        return null;
+    }
+
+    /**
+     * Get all server URLs using mediated access
+     *
+     * @return Map of server names to URLs
+     */
+    public java.util.Map<String, String> getAllServerUrls() {
+        if (asgServerManager != null) {
+            return asgServerManager.getAllServerUrls();
+        }
+        return new java.util.HashMap<>();
+    }
+
+    /**
+     * Get the primary server URL using mediated access
+     *
+     * @return Primary server URL, or null if not available
+     */
+    public String getPrimaryServerUrl() {
+        if (asgServerManager != null) {
+            return asgServerManager.getPrimaryServerUrl();
+        }
+        return null;
+    }
+
+    /**
+     * Check if the camera web server is running
+     *
+     * @return true if running, false otherwise
+     */
+    public boolean isCameraWebServerRunning() {
+        if (asgServerManager != null) {
+            return asgServerManager.isServerRunning("camera");
+        }
+        return asgCameraServer != null && asgCameraServer.isAlive();
+    }
+
+    /**
+     * Get server count and names for debugging
+     *
+     * @return Array of server names
+     */
+    public String[] getServerNames() {
+        if (asgServerManager != null) {
+            return asgServerManager.getServerNames();
+        }
+        return new String[0];
+    }
+
+    /**
+     * Restart the camera web server
+     *
+     * @return true if restart was successful, false otherwise
+     */
+    public boolean restartCameraWebServer() {
+        if (asgServerManager != null) {
+            // Stop the server first
+            asgServerManager.stopServer("camera");
+            
+            // Wait a moment for cleanup
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            
+            // Reinitialize the web server
+            asgCameraServer = null;
+            initializeCameraWebServer();
+            
+            return asgCameraServer != null;
+        }
+        return false;
+    }
+
+    /**
+     * Enable or disable the camera web server
+     *
+     * @param enabled true to enable, false to disable
+     */
+    public void setWebServerEnabled(boolean enabled) {
+        if (isWebServerEnabled != enabled) {
+            isWebServerEnabled = enabled;
+            
+            if (enabled && asgCameraServer == null) {
+                // Start the web server if it was disabled
+                initializeCameraWebServer();
+            } else if (!enabled && asgCameraServer != null) {
+                // Stop the web server if it was enabled
+                if (asgServerManager != null) {
+                    asgServerManager.stopServer("camera");
+                } else {
+                    asgCameraServer.stopServer();
+                }
+                asgCameraServer = null;
+            }
+        }
+    }
+
+    /**
      * Get the media queue manager instance
      *
      * @return MediaUploadQueueManager instance
@@ -529,6 +723,8 @@ public class AsgClientService extends Service implements NetworkStateListener, B
 
         // Initialize the bluetooth manager
         bluetoothManager.initialize();
+
+        //sendReportSwipe(true);
     }
 
     /**
@@ -833,6 +1029,22 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         if (glassesMicrophoneManager != null) {
             glassesMicrophoneManager.destroy();
             glassesMicrophoneManager = null;
+        }
+
+        // Stop the camera web server if it's running
+        if (asgCameraServer != null) {
+            if (asgServerManager != null) {
+                asgServerManager.stopServer("camera");
+            } else {
+                asgCameraServer.stopServer();
+            }
+            asgCameraServer = null;
+        }
+
+        // Clean up server manager (this will stop all servers and clean up resources)
+        if (asgServerManager != null) {
+            asgServerManager.cleanup();
+            asgServerManager = null;
         }
 
         // No need to clean up MediaQueueManager as it's stateless and file-based
@@ -1140,6 +1352,24 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         Log.d(TAG, "WiFi credentials received for network: " + ssid);
         // After receiving credentials, we'll likely connect to WiFi,
         // and onWifiStateChanged will be called, which will send status via BLE
+    }
+
+    private void sendReportSwipe(boolean report){
+        try {
+            JSONObject swipeJson = new JSONObject();
+            swipeJson.put("C", "cs_swst");
+            JSONObject bJson = new JSONObject();
+            bJson.put("type", 27);
+            bJson.put("switch", report);
+            swipeJson.put("B", bJson);
+            swipeJson.put("V", 1);
+            String jsonString = swipeJson.toString();
+            bluetoothManager.sendData(jsonString.getBytes());
+
+            Log.d(TAG, "Sent swipeJson status via BLE");
+        } catch (JSONException e) {
+            Log.e(TAG, "Error creating swipe JSON", e);
+        }
     }
 
     /**
@@ -1781,6 +2011,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                         Log.d(TAG, "Connecting to WiFi network: " + ssid);
                         if (networkManager != null) {
                             networkManager.connectToWifi(ssid, password);
+                            initializeCameraWebServer();
                         }
                     }
                     break;
@@ -1904,6 +2135,13 @@ public class AsgClientService extends Service implements NetworkStateListener, B
 //                    Log.d(TAG, "BLE photo ready notification received (for phone only)");
 //                    break;
 
+                case "button_mode_setting":
+                    // Handle button mode setting from phone
+                    String mode = dataToProcess.optString("mode", "photo");
+                    Log.d(TAG, "📱 Received button mode setting: " + mode);
+                    asgSettings.setButtonPressMode(mode);
+                    break;
+                    
                 default:
                     Log.w(TAG, "Unknown message type: " + type);
                     break;
@@ -1953,21 +2191,12 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         try {
             String command = json.optString("C", "");
             JSONObject bData = json.optJSONObject("B");
-            
+            Log.d(TAG, "📦 Received command: " + command);
+
             switch (command) {
                 case "cs_pho":
-                    // TESTING: Commented out normal photo handling
-                    handleButtonPress(false);
-                    
-                    // TEST: Send test image from assets
-//                    Log.d(TAG, "🎾 TEST: cs_pho (JSON) pressed - sending test.jpg from assets");
-//                    if (bluetoothManager != null) {
-//                        boolean started = ((com.augmentos.asg_client.bluetooth.BaseBluetoothManager)bluetoothManager)
-//                            .sendTestImageFromAssets("test.jpg");
-//                        Log.d(TAG, "🎾 TEST: File transfer started: " + started);
-//                    } else {
-//                        Log.e(TAG, "🎾 TEST: bluetoothManager is null!");
-//                    }
+                    Log.d(TAG, "📸 Camera button short pressed - handling with configurable mode");
+                    handleConfigurableButtonPress(false); // false = short press
                     break;
 
                 case "hm_htsp":
@@ -1977,7 +2206,8 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                     break;
 
                 case "cs_vdo":
-                    handleButtonPress(true);
+                    Log.d(TAG, "📹 Camera button long pressed - handling with configurable mode");
+                    handleConfigurableButtonPress(true); // true = long press
                     break;
 
                 case "hm_batv":
@@ -2038,6 +2268,86 @@ public class AsgClientService extends Service implements NetworkStateListener, B
             } catch (JSONException e) {
                 Log.e(TAG, "Error creating button press response", e);
             }
+        }
+    }
+    
+    /**
+     * Handle button press based on configured mode
+     * @param isLongPress true if this is a long press (video), false for short press (photo)
+     */
+    private void handleConfigurableButtonPress(boolean isLongPress) {
+        AsgSettings.ButtonPressMode mode = asgSettings.getButtonPressMode();
+        String pressType = isLongPress ? "long" : "short";
+        Log.d(TAG, "Handling " + pressType + " button press with mode: " + mode.getValue());
+        
+        switch (mode) {
+            case PHOTO:
+                // Current behavior - take photo/video only
+                if (isLongPress) {
+                    Log.d(TAG, "📹 Video recording not yet implemented (PHOTO mode, long press)");
+                    // TODO: Implement video recording
+                    // if (mMediaCaptureService != null) {
+                    //     mMediaCaptureService.handleVideoButtonPress();
+                    // }
+                } else {
+                    if (mMediaCaptureService == null) {
+                        Log.d(TAG, "MediaCaptureService is null, initializing");
+                        initializeMediaCaptureService();
+                    }
+                    Log.d(TAG, "📸 Taking photo locally (PHOTO mode, short press)");
+                    mMediaCaptureService.takePhotoLocally();
+                }
+                break;
+                
+            case APPS:
+                // Send to apps only
+                Log.d(TAG, "📱 Sending " + pressType + " button press to apps (APPS mode)");
+                sendButtonPressToPhone(isLongPress);
+                break;
+                
+            case BOTH:
+                // Both actions
+                Log.d(TAG, "📸📱 Taking media AND sending to apps (BOTH mode, " + pressType + " press)");
+                
+                // Take photo/video first
+                if (isLongPress) {
+                    Log.d(TAG, "📹 Video recording not yet implemented (BOTH mode, long press)");
+                    // TODO: Implement video recording
+                } else {
+                    if (mMediaCaptureService == null) {
+                        Log.d(TAG, "MediaCaptureService is null, initializing");
+                        initializeMediaCaptureService();
+                    }
+                    mMediaCaptureService.takePhotoLocally();
+                }
+                
+                // Then send to apps
+                sendButtonPressToPhone(isLongPress);
+                break;
+        }
+    }
+    
+    /**
+     * Send button press event to connected phone
+     * @param isLongPress true if this is a long press, false for short press
+     */
+    private void sendButtonPressToPhone(boolean isLongPress) {
+        if (bluetoothManager != null && bluetoothManager.isConnected()) {
+            try {
+                JSONObject buttonObject = new JSONObject();
+                buttonObject.put("type", "button_press");
+                buttonObject.put("buttonId", "camera");
+                buttonObject.put("pressType", isLongPress ? "long" : "short");
+                buttonObject.put("timestamp", System.currentTimeMillis());
+                
+                String jsonString = buttonObject.toString();
+                Log.d(TAG, "Sending button press to phone: " + jsonString);
+                bluetoothManager.sendData(jsonString.getBytes());
+            } catch (JSONException e) {
+                Log.e(TAG, "Error creating button press message", e);
+            }
+        } else {
+            Log.w(TAG, "Cannot send button press - Bluetooth not connected");
         }
     }
 
@@ -2106,6 +2416,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
             versionInfo.put("build_number", buildNumber);
             versionInfo.put("device_model", android.os.Build.MODEL);
             versionInfo.put("android_version", android.os.Build.VERSION.RELEASE);
+            versionInfo.put("ota_version_url", com.augmentos.asg_client.ota.Constants.VERSION_JSON_URL);
 
             if (bluetoothManager != null && bluetoothManager.isConnected()) {
                 bluetoothManager.sendData(versionInfo.toString().getBytes(StandardCharsets.UTF_8));

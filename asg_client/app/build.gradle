@@ -1,6 +1,7 @@
 plugins {
     id 'com.android.application'
     id 'androidx.navigation.safeargs'
+    id 'org.jetbrains.kotlin.android'
 }
 
 // 1. Import classes for file/stream and properties
@@ -27,7 +28,29 @@ android {
     namespace 'com.augmentos.asg_client'
     compileSdk 34
 
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17 // Or VERSION_1_8, VERSION_11, etc.
+        targetCompatibility JavaVersion.VERSION_17 // Should generally match sourceCompatibility
+    }
+
     signingConfigs {
+        debug {
+            def debugKeystoreFile = file("../credentials/debug.keystore")
+            if (debugKeystoreFile.exists()) {
+                storeFile debugKeystoreFile
+                storePassword "android"
+                keyAlias "androiddebugkey"
+                keyPassword "android"
+            } else {
+                // Fall back to Android's default debug keystore
+                def userHome = System.getProperty("user.home")
+                storeFile file("${userHome}/.android/debug.keystore")
+                storePassword "android"
+                keyAlias "androiddebugkey"
+                keyPassword "android"
+            }
+        }
         release {
             storeFile file("../credentials/asg-keystore.jks")
             storePassword = asgStorePassword
@@ -51,7 +74,7 @@ android {
 
         minSdk 28
         targetSdk 33
-        versionCode 8
+        versionCode 10
         versionName "8.0"
 
         ndk {
@@ -81,11 +104,17 @@ android {
     }
 
     buildTypes {
+        debug {
+            signingConfig signingConfigs.debug
+        }
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             signingConfig asgStorePassword ? signingConfigs.release : signingConfigs.debug
         }
+    }
+    kotlinOptions {
+        jvmTarget = '17'
     }
 }
 

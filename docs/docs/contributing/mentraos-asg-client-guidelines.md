@@ -11,11 +11,11 @@ The MentraOS ASG Client is an Android application that runs directly on Android-
 ### Core Components
 
 1. **AsgClientService** - The main service that coordinates all functionality:
-   - Manages WebSocket connection to MentraOS Cloud
-   - Handles command processing from the cloud
-   - Integrates with augmentos_core via AIDL binding
-   - Coordinates camera capture and media upload
-   - Manages RTMP streaming
+   - Parses Bluetooth messages from the MentraOS mobile app
+   - Handles command processing from those messages
+   - Parses messages from Mentra Live's microcontroller (button presses, swipes)
+   - Triggers actions like taking pictures, videos, and starting RTMP streams
+   - Manages network state and battery status reporting
 
 2. **Manager Systems** - Interface-based factory pattern for device abstraction:
    - **NetworkManager** - WiFi and hotspot control
@@ -67,25 +67,26 @@ public interface IBluetoothManager {
 
 The media system handles camera button presses and media capture:
 
-1. **Button Press Flow**:
-   - Physical button press detected
-   - Event sent to MentraOS Cloud
-   - Cloud checks if any Apps want to handle it
-   - If not, default action (take photo/video)
+**Button Press Flow**:
 
-2. **Media Upload Queue**:
-   - Reliable upload with retry logic
-   - Persists across app restarts
-   - Handles offline scenarios
+- Physical button press detected by microcontroller
+- MCU sends command to ASG Client (`cs_pho` for short press, `cs_vdo` for long press)
+- ASG Client checks button press mode configuration:
+  - **PHOTO mode**: Takes photo/video locally
+  - **APPS mode**: Sends button event to phone/apps
+  - **BOTH mode**: Does both actions
+- Photos are captured and queued for upload when connected
 
 ### RTMP Streaming
 
-Supports live video streaming with:
+Supports live video streaming with four main commands:
 
-- Direct streaming to App-provided URLs
-- Keep-alive mechanism with 60-second timeout
-- ACK-based reliability system
-- Automatic cleanup on connection loss
+1. **start_rtmp_stream** - Initiates streaming to specified RTMP URL
+2. **stop_rtmp_stream** - Terminates active stream
+3. **keep_rtmp_stream_alive** - Must be sent every 15 seconds to prevent 60-second timeout
+4. **get_rtmp_status** - Queries current streaming status
+
+The stream automatically stops if no keep-alive is received for 60 seconds. The system uses ACK-based reliability where each keep-alive must be acknowledged by the glasses.
 
 ## Development Guidelines
 
@@ -168,23 +169,28 @@ However, it's not currently used because:
    - Android Studio with Java SDK 17
    - Set Gradle JDK to version 17 in Android Studio settings
 
-3. **Testing on Mentra Live**:
+3. **Testing on Mentra Live Glasses**:
 
-   To build and run on actual Mentra Live glasses:
+   Mentra Live only supports ADB over WiFi (no USB ADB). To connect:
 
-   a. **Connect glasses via WiFi ADB**:
+   a. **Setup WiFi ADB Connection**:
 
    ```bash
-   # First, pair glasses with MentraOS app and connect to WiFi
-   # Find the Local IP Address shown on the "Glasses" screen in the app
-   # Connect via ADB (your computer must be on same network)
-   adb connect {localip}:5555
+   # 1. Pair Mentra Live with the MentraOS mobile app
+   # 2. In the app, connect glasses to your WiFi network
+   # 3. Note the IP address shown on the "Glasses" screen
+   # 4. Connect via ADB (computer must be on same WiFi network):
+   adb connect [IP_ADDRESS]:5555
 
-   # Verify connection
+   # Example:
+   adb connect 192.168.1.123:5555
+
+   # Verify connection:
    adb devices
+   # Should show: 192.168.1.123:5555    device
    ```
 
-   b. **Build and install**:
+   b. **Build and Install**:
 
    ```bash
    # Build the APK
@@ -193,7 +199,7 @@ However, it's not currently used because:
    # Install on glasses
    adb install app/build/outputs/apk/debug/app-debug.apk
 
-   # For localhost connection (if testing with local server)
+   # For local development server, forward ports:
    adb reverse tcp:8002 tcp:8002
    ```
 
@@ -223,45 +229,13 @@ switch (type) {
 }
 ```
 
-### EventBus Communication
-
-The client uses EventBus for internal communication:
-
-```java
-// Send events
-EventBus.getDefault().post(new StreamingEvent.Started());
-EventBus.getDefault().post(new PhotoCapturedEvent(filePath));
-
-// Subscribe to events
-@Subscribe(threadMode = ThreadMode.MAIN)
-public void onStreamingError(StreamingEvent.Error event) {
-    Log.e(TAG, "Streaming error: " + event.getMessage());
-}
-```
-
-### Debugging
-
-1. **Enable Debug Mode**:
-   - The client includes debug notification support
-   - Network operations show user-friendly notifications
-   - Check logcat for detailed logs
-
-2. **Common Issues**:
-   - **K900 Mode Forced**: Remember to fix the factory detection
-   - **Bluetooth Pairing**: StandardBluetoothManager advertises as "Xy_A"
-   - **Network Permissions**: Some devices need system permissions for WiFi control
-
 ## Compatible Devices
 
 Currently supported:
 
-- Mentra Live (K900)
+- **Mentra Live** (K900)
 
-Could be supported with the changes above:
-
-- TCL Rayneo X2/X3
-- INMO Air 2/3
-- Other Android-based smart glasses
+The ASG Client could potentially be adapted to work on other Android-based smart glasses with sufficient modifications, such as TCL Rayneo X2/X3, INMO Air 2/3, and others.
 
 ## Next Steps for Contributors
 
@@ -273,6 +247,4 @@ Could be supported with the changes above:
 
 ## Resources
 
-- [ANDROID_FIRMWARE_GUIDE.md](../../mcu_client/ANDROID_FIRMWARE_GUIDE.md) - Guide for creating SmartGlassesCommunicators
-- [ASG_MEDIA_SYSTEM.md](../../asg_client/ASG_MEDIA_SYSTEM.md) - Detailed media system documentation
 - [MentraOS Mobile App Guidelines](/contributing/mentraos-manager-guidelines) - Mobile app development guide

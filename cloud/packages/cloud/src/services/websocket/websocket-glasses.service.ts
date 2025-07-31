@@ -23,6 +23,7 @@ import {
   PhotoResponse,
   RequestSettings,
   RtmpStreamStatus,
+  LocalTranscription,
   SettingsUpdate,
   Vad
 } from '@mentra/sdk';
@@ -219,6 +220,11 @@ export class GlassesWebSocketService {
           await this.handleVad(userSession, message as Vad);
           sessionService.relayMessageToApps(userSession, message);
           // TODO(isaiah): relay to Apps
+          break;
+        
+        case GlassesToCloudMessageType.LOCAL_TRANSCRIPTION:
+          await this.handleLocalTranscription(userSession, message as LocalTranscription);
+          sessionService.relayMessageToApps(userSession, message);
           break;
 
         case GlassesToCloudMessageType.LOCATION_UPDATE:
@@ -455,6 +461,15 @@ export class GlassesWebSocketService {
       key => before[key] !== after[key] ||
         (typeof before[key] !== typeof after[key] && before[key] != after[key])
     );
+  }
+
+  private async handleLocalTranscription(userSession: UserSession, message: LocalTranscription): Promise<void> {
+    userSession.logger.debug({ message, service: SERVICE_NAME }, 'Local transcription received from glasses');
+    try {
+      await userSession.transcriptionManager.handleLocalTranscription(message);
+    } catch (error) {
+      userSession.logger.error({ error, service: SERVICE_NAME }, `Error handling local transcription:`, error);
+    }
   }
 
 

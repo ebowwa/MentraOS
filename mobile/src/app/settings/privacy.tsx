@@ -59,7 +59,7 @@ export default function PrivacySettingsScreen() {
       setCalendarEnabled(hasCalendar)
 
       // Check location permissions
-      const hasLocation = await checkFeaturePermissions(PermissionFeatures.LOCATION)
+      const hasLocation = await checkFeaturePermissions(PermissionFeatures.BACKGROUND_LOCATION)
       setLocationEnabled(hasLocation)
     }
 
@@ -200,8 +200,12 @@ export default function PrivacySettingsScreen() {
       // Immediately set pending state to prevent toggle flicker
       setLocationPermissionPending(true)
       try {
-        const granted = await requestFeaturePermissions(PermissionFeatures.LOCATION)
+        let granted = await requestFeaturePermissions(PermissionFeatures.LOCATION)
         console.log(`Location permission request result:`, granted)
+        if (Platform.OS === "ios" && granted) {
+          granted = await requestFeaturePermissions(PermissionFeatures.BACKGROUND_LOCATION)
+          console.log(`Background location permission request result:`, granted)
+        }
         if (granted) {
           setLocationEnabled(true)
         } else {
