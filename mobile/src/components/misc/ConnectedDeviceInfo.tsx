@@ -110,11 +110,14 @@ export const ConnectDeviceButton = () => {
   }
 
   // if we have simulated glasses, show nothing:
-  if (status.glasses_info?.model_name && status.glasses_info.model_name.toLowerCase().includes("simulated")) {
-    return null
-  }
+  // if (status.glasses_info?.model_name && status.glasses_info.model_name.toLowerCase().includes("simulated")) {
+  //   return null
+  // }
 
-  if (!status.core_info.default_wearable) {
+  const isSimulated =
+    status.glasses_info?.model_name && status.glasses_info.model_name.toLowerCase().includes("simulated")
+
+  if (!status.core_info.default_wearable || isSimulated) {
     return (
       <Button
         textStyle={[{marginLeft: spacing.xxl}]}

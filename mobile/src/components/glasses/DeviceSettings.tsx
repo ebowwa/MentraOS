@@ -266,10 +266,18 @@ export default function DeviceSettings() {
     )
   }
 
+  const modelName = status.glasses_info?.model_name
+  const isSimulated = modelName && modelName.toLowerCase().includes("simulated")
+  const defaultWearable = status.core_info.default_wearable
+  let features = null
+  if (modelName) {
+    features = glassesFeatures[modelName]
+  }
+
   return (
     <View style={themed($container)}>
       {/* Show helper text if glasses are paired but not connected */}
-      {!status.glasses_info?.model_name && status.core_info.default_wearable && (
+      {!modelName && defaultWearable && (
         <View style={themed($infoContainer)}>
           <Text style={themed($infoText)}>
             Changes to glasses settings will take effect when glasses are connected.
@@ -326,7 +334,7 @@ export default function DeviceSettings() {
         </View>
       )}
 
-      {status.glasses_info?.model_name && glassesFeatures[status.glasses_info.model_name]?.gallery && (
+      {modelName && features?.gallery && (
         <RouteButton
           label={translate("glasses:gallery")}
           subtitle={translate("glasses:galleryDescription")}
@@ -378,76 +386,72 @@ export default function DeviceSettings() {
       )}
 
       {/* Power Saving Mode - Only show for glasses that support it */}
-      {status.core_info.default_wearable &&
-        glassesFeatures[status.core_info.default_wearable] &&
-        glassesFeatures[status.core_info.default_wearable].powerSavingMode && (
-          <View style={themed($settingsGroup)}>
-            <ToggleSetting
-              label={translate("settings:powerSavingMode")}
-              subtitle={translate("settings:powerSavingModeSubtitle")}
-              value={powerSavingMode}
-              onValueChange={async value => {
-                setPowerSavingMode(value)
-                await coreCommunicator.sendTogglePowerSavingMode(value)
-              }}
-              containerStyle={{
-                paddingHorizontal: 0,
-                paddingTop: 0,
-                paddingBottom: 0,
-                borderWidth: 0,
-              }}
-            />
-          </View>
-        )}
+      {defaultWearable && features?.powerSavingMode && (
+        <View style={themed($settingsGroup)}>
+          <ToggleSetting
+            label={translate("settings:powerSavingMode")}
+            subtitle={translate("settings:powerSavingModeSubtitle")}
+            value={powerSavingMode}
+            onValueChange={async value => {
+              setPowerSavingMode(value)
+              await coreCommunicator.sendTogglePowerSavingMode(value)
+            }}
+            containerStyle={{
+              paddingHorizontal: 0,
+              paddingTop: 0,
+              paddingBottom: 0,
+              borderWidth: 0,
+            }}
+          />
+        </View>
+      )}
 
       {/* Only show mic selector if glasses have both SCO and custom mic types */}
-      {status.core_info.default_wearable &&
-        glassesFeatures[status.core_info.default_wearable] &&
-        hasCustomMic(glassesFeatures[status.core_info.default_wearable]) && (
-          <View style={themed($settingsGroup)}>
-            <TouchableOpacity
-              style={{
-                flexDirection: "row",
-                justifyContent: "space-between",
-                paddingBottom: theme.spacing.xs,
-                paddingTop: theme.spacing.xs,
-              }}
-              onPress={() => setMic("phone")}>
-              <Text style={{color: theme.colors.text}}>{translate("deviceSettings:phoneMic")}</Text>
-              <MaterialCommunityIcons
-                name="check"
-                size={24}
-                color={preferredMic === "phone" ? theme.colors.checkmark : "transparent"}
-              />
-            </TouchableOpacity>
-            {/* divider */}
-            <View
-              style={{height: StyleSheet.hairlineWidth, backgroundColor: theme.colors.separator, marginVertical: 4}}
+      {defaultWearable && features && hasCustomMic(features) && (
+        <View style={themed($settingsGroup)}>
+          <TouchableOpacity
+            style={{
+              flexDirection: "row",
+              justifyContent: "space-between",
+              paddingBottom: theme.spacing.xs,
+              paddingTop: theme.spacing.xs,
+            }}
+            onPress={() => setMic("phone")}>
+            <Text style={{color: theme.colors.text}}>{translate("deviceSettings:phoneMic")}</Text>
+            <MaterialCommunityIcons
+              name="check"
+              size={24}
+              color={preferredMic === "phone" ? theme.colors.checkmark : "transparent"}
             />
-            <TouchableOpacity
-              style={{
-                flexDirection: "row",
-                justifyContent: "space-between",
-                paddingTop: theme.spacing.xs,
-              }}
-              onPress={() => setMic("glasses")}>
-              <View style={{flexDirection: "column", gap: 4}}>
-                <Text style={{color: theme.colors.text}}>{translate("deviceSettings:glassesMic")}</Text>
-                {/* {!status.glasses_info?.model_name && (
+          </TouchableOpacity>
+          {/* divider */}
+          <View
+            style={{height: StyleSheet.hairlineWidth, backgroundColor: theme.colors.separator, marginVertical: 4}}
+          />
+          <TouchableOpacity
+            style={{
+              flexDirection: "row",
+              justifyContent: "space-between",
+              paddingTop: theme.spacing.xs,
+            }}
+            onPress={() => setMic("glasses")}>
+            <View style={{flexDirection: "column", gap: 4}}>
+              <Text style={{color: theme.colors.text}}>{translate("deviceSettings:glassesMic")}</Text>
+              {/* {!status.glasses_info?.model_name && (
                 <Text style={themed($subtitle)}>{translate("deviceSettings:glassesNeededForGlassesMic")}</Text>
               )} */}
-              </View>
-              <MaterialCommunityIcons
-                name="check"
-                size={24}
-                color={preferredMic === "glasses" ? theme.colors.checkmark : "transparent"}
-              />
-            </TouchableOpacity>
-          </View>
-        )}
+            </View>
+            <MaterialCommunityIcons
+              name="check"
+              size={24}
+              color={preferredMic === "glasses" ? theme.colors.checkmark : "transparent"}
+            />
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Only show button mode selector if glasses support configurable button */}
-      {status.glasses_info?.model_name && glassesFeatures[status.glasses_info.model_name]?.configurableButton && (
+      {modelName && features?.configurableButton && (
         <View style={themed($settingsGroup)}>
           <Text style={[themed($settingLabel), {marginBottom: theme.spacing.sm}]}>
             {translate("deviceSettings:cameraButtonAction")}
@@ -513,7 +517,7 @@ export default function DeviceSettings() {
       )}
 
       {/* Only show WiFi settings if connected glasses support WiFi */}
-      {status.glasses_info?.model_name && glassesFeatures[status.glasses_info.model_name]?.wifi && (
+      {modelName && features?.wifi && (
         <RouteButton
           label={translate("settings:glassesWifiSettings")}
           subtitle={translate("settings:glassesWifiDescription")}
@@ -546,17 +550,15 @@ export default function DeviceSettings() {
         onPress={() => push("/settings/dashboard")}
       />
 
-      {devMode &&
-        status.core_info.default_wearable &&
-        glassesFeatures[status.core_info.default_wearable]?.binocular && (
-          <RouteButton
-            label={translate("settings:screenSettings")}
-            subtitle={translate("settings:screenDescription")}
-            onPress={() => push("/settings/screen")}
-          />
-        )}
+      {devMode && defaultWearable && features?.binocular && (
+        <RouteButton
+          label={translate("settings:screenSettings")}
+          subtitle={translate("settings:screenDescription")}
+          onPress={() => push("/settings/screen")}
+        />
+      )}
 
-      {status.glasses_info?.model_name && status.glasses_info.model_name !== "Simulated Glasses" && (
+      {modelName && !isSimulated && (
         <ActionButton
           label={translate("settings:disconnectGlasses")}
           variant="destructive"
@@ -566,7 +568,7 @@ export default function DeviceSettings() {
         />
       )}
 
-      {status.core_info.default_wearable && (
+      {defaultWearable && !modelName && !isSimulated && (
         <ActionButton
           label={translate("settings:forgetGlasses")}
           variant="destructive"
