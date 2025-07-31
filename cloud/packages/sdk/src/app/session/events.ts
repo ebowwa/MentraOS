@@ -59,6 +59,7 @@ interface SystemEvents {
     capabilities: Capabilities | null;
     modelName: string | null;
     timestamp?: Date;
+  };
   dashboard_mode_change: { mode: DashboardMode | "none" };
   dashboard_always_on_change: { enabled: boolean };
   custom_message: CustomMessage;
@@ -263,6 +264,7 @@ export class EventManager {
   onSettingsUpdate(handler: Handler<SystemEvents["settings_update"]>) {
     this.emitter.on("settings_update", handler);
     return () => this.emitter.off("settings_update", handler);
+  }
 
   /**
    * 🔧 Listen for device capabilities updates

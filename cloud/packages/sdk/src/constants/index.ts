@@ -8,7 +8,7 @@
 export const systemApps = {
   dashboard: {
     name: 'Dashboard',
-    packageName: 'system.augmentos.dashboard',
+    packageName: 'test.mentraos.dashboard',
     isSystemApp: true
   },
 };
