@@ -28,6 +28,7 @@ import mentraos.ble.MentraosBle.BrightnessConfig;
 import mentraos.ble.MentraosBle.AutoBrightnessConfig;
 import mentraos.ble.MentraosBle.AutoBrightnessConfig;
 import mentraos.ble.MentraosBle.HeadUpAngleConfig;
+import mentraos.ble.MentraosBle.DisplayHeightConfig;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 
@@ -314,6 +315,7 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
         // setup LC3 decoder
         if (lc3DecoderPtr == 0) {
             lc3DecoderPtr = L3cCpp.initDecoder();
+            Log.d(TAG, "initDecoder lc3DecoderPtr：" + lc3DecoderPtr);
         }
         // setup fonts
         fontLoader = new G1FontLoader(context);
@@ -460,7 +462,7 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
                         switch (packetType) {
                             case PACKET_TYPE_PROTOBUF:
                                 // just for test
-                                // decodeProtobufs(protobufData);
+                                decodeProtobufsByWrite(protobufData);
                                 break;
                         }
                     }
@@ -772,8 +774,7 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
             Log.d(TAG, "Bond State: " + device.getBondState());
 
             // If we already have saved device names for main...
-            if (name != null
-                    && savedNexMainName != null) {
+            if (name != null && savedNexMainName != null) {
                 if (!(name.contains(savedNexMainName))) {
                     return; // Not a matching device
                 }
@@ -782,7 +783,9 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
             // Identify which side (main)
             stopScan();
             mainDevice = device;
-            mainTaskHandler.sendEmptyMessageDelayed(MAIN_TASK_HANDLER_CODE_RECONNECT_DEVICE, 0); // 1 second delay
+            mainTaskHandler.sendEmptyMessageDelayed(MAIN_TASK_HANDLER_CODE_RECONNECT_DEVICE, 0); // 1
+            // second
+            // delay
         }
 
         @Override
@@ -1001,31 +1004,17 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
         return buffer.array();
     }
 
-    private void sendDataSequentially(byte[] data) {
-        sendDataSequentially(data, false);
-    }
-
-    private void sendDataSequentially(List<byte[]> data) {
-        sendDataSequentially(data, false);
-    }
-
     // Data class to represent a send request
     private class SendRequest {
         final byte[] data;
-        final boolean onlyLeft;
-        final boolean onlyRight;
         public int waitTime = -1;
 
-        SendRequest(byte[] data, boolean onlyLeft, boolean onlyRight) {
+        SendRequest(byte[] data) {
             this.data = data;
-            this.onlyLeft = onlyLeft;
-            this.onlyRight = onlyRight;
         }
 
-        SendRequest(byte[] data, boolean onlyLeft, boolean onlyRight, int waitTime) {
+        SendRequest(byte[] data, int waitTime) {
             this.data = data;
-            this.onlyLeft = onlyLeft;
-            this.onlyRight = onlyRight;
             this.waitTime = waitTime;
         }
     }
@@ -1036,40 +1025,23 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
     private volatile boolean isWorkerRunning = false;
 
     // Non-blocking function to add new send request
-    private void sendDataSequentially(byte[] data, boolean onlyLeft) {
-        SendRequest[] chunks = {new SendRequest(data, onlyLeft, false)};
+    private void sendDataSequentially(byte[] data) {
+        SendRequest[] chunks = {new SendRequest(data)};
         sendQueue.offer(chunks);
         startWorkerIfNeeded();
     }
 
     // Non-blocking function to add new send request
-    private void sendDataSequentially(byte[] data, boolean onlyLeft, int waitTime) {
-        SendRequest[] chunks = {new SendRequest(data, onlyLeft, false, waitTime)};
+    private void sendDataSequentially(byte[] data, int waitTime) {
+        SendRequest[] chunks = {new SendRequest(data, waitTime)};
         sendQueue.offer(chunks);
         startWorkerIfNeeded();
     }
 
-    // Overloaded function to handle multiple chunks (List<byte[]>)
-    private void sendDataSequentially(List<byte[]> data, boolean onlyLeft) {
-        sendDataSequentially(data, onlyLeft, false);
-    }
-
-    private void sendDataSequentially(byte[] data, boolean onlyLeft, boolean onlyRight) {
-        SendRequest[] chunks = {new SendRequest(data, onlyLeft, onlyRight)};
-        sendQueue.offer(chunks);
-        startWorkerIfNeeded();
-    }
-
-    private void sendDataSequentially(byte[] data, boolean onlyLeft, boolean onlyRight, int waitTime) {
-        SendRequest[] chunks = {new SendRequest(data, onlyLeft, onlyRight, waitTime)};
-        sendQueue.offer(chunks);
-        startWorkerIfNeeded();
-    }
-
-    private void sendDataSequentially(List<byte[]> data, boolean onlyLeft, boolean onlyRight) {
+    private void sendDataSequentially(List<byte[]> data) {
         SendRequest[] chunks = new SendRequest[data.size()];
         for (int i = 0; i < data.size(); i++) {
-            chunks[i] = new SendRequest(data.get(i), onlyLeft, onlyRight);
+            chunks[i] = new SendRequest(data.get(i));
         }
         sendQueue.offer(chunks);
         startWorkerIfNeeded();
@@ -1138,7 +1110,7 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
                         }
 
                         // Send to main glass
-                        if (!request.onlyRight && mainGlassGatt != null && mainWriteChar != null && isMainConnected) {
+                        if (mainGlassGatt != null && mainWriteChar != null && isMainConnected) {
                             mainWaiter.setTrue();
                             mainWriteChar.setValue(request.data);
                             mainGlassGatt.writeCharacteristic(mainWriteChar);
@@ -1269,6 +1241,7 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
 
     @Override
     public void displayReferenceCardSimple(String title, String body) {
+        Log.d(TAG, "displayReferenceCardSimple title: " + title + " body:" + body);
         if (!isConnected()) {
             Log.d(TAG, "Not connected to glasses");
             return;
@@ -1280,9 +1253,9 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
             boolean isLastChunk = (i == chunks.size() - 1);
 
             if (isLastChunk) {
-                sendDataSequentially(chunk, false);
+                sendDataSequentially(chunk);
             } else {
-                sendDataSequentially(chunk, false, 300);
+                sendDataSequentially(chunk, 300);
             }
         }
         Log.d(TAG, "Send simple reference card");
@@ -1364,22 +1337,31 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
     // Remaining methods
     @Override
     public void showNaturalLanguageCommandScreen(String prompt, String naturalLanguageInput) {
+        Log.d(TAG,
+                "showNaturalLanguageCommandScreen prompt: " + prompt + " naturalLanguageInput:" + naturalLanguageInput);
+
     }
 
     @Override
     public void updateNaturalLanguageCommandScreen(String naturalLanguageArgs) {
+        Log.d(TAG, "updateNaturalLanguageCommandScreen naturalLanguageArgs: " + naturalLanguageArgs);
+
     }
 
     @Override
     public void scrollingTextViewIntermediateText(String text) {
+        Log.d(TAG, "scrollingTextViewIntermediateText text: " + text);
+
     }
 
     @Override
     public void scrollingTextViewFinalText(String text) {
+        Log.d(TAG, "scrollingTextViewFinalText text: " + text);
     }
 
     @Override
     public void stopScrollingTextViewMode() {
+        Log.d(TAG, "stopScrollingTextViewMode ");
     }
 
     @Override
@@ -1394,6 +1376,7 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
 
     @Override
     public void displayBitmap(Bitmap bmp) {
+        Log.d(TAG, "displayBitmap ");
         try {
             byte[] bmpBytes = BitmapJavaUtils.convertBitmapTo1BitBmpBytes(bmp, false);
             displayBitmapImage(bmpBytes);
@@ -1404,6 +1387,7 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
 
     @Override
     public void blankScreen() {
+        Log.d(TAG, "blankScreen ");
     }
 
     @Override
@@ -1444,18 +1428,22 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
 
     @Override
     public void setFontSize(SmartGlassesFontSize fontSize) {
+        Log.d(TAG, "setFontSize ");
     }
 
     @Override
     public void displayRowsCard(String[] rowStrings) {
+        Log.d(TAG, "displayRowsCard rowStrings:" + rowStrings.toString());
     }
 
     @Override
     public void displayBulletList(String title, String[] bullets) {
+        Log.d(TAG, "displayBulletList title:" + title + " bullets:" + bullets.toString());
     }
 
     @Override
     public void displayReferenceCardImage(String title, String body, String imgUrl) {
+        Log.d(TAG, "displayReferenceCardImage title:" + title + " body:" + body);
     }
 
     @Override
@@ -1465,21 +1453,23 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
         if (updatingScreen) {
             return;
         }
-        // List<byte[]> chunks = createTextWallChunks(text);
-        // sendChunks(chunks);
+//        List<byte[]> chunks = createTextWallChunks(text);
+//        sendChunks(chunks);
     }
 
     @Override
     public void setUpdatingScreen(boolean updatingScreen) {
+        Log.d(TAG, "setUpdatingScreen updatingScreen:" + updatingScreen);
         this.updatingScreen = updatingScreen;
     }
 
     @Override
     public void setFontSizes() {
+        Log.d(TAG, "setFontSizes ");
     }
 
     // get the final full binary packet
-    private byte[] generateJsonCommandBytes(PhoneToGlasses phoneToGlasses) {
+    private byte[] generateProtobufCommandBytes(PhoneToGlasses phoneToGlasses) {
         final byte[] contentBytes = phoneToGlasses.toByteArray();
         final ByteBuffer chunk = ByteBuffer.allocate(contentBytes.length + 1);
 
@@ -1498,7 +1488,7 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
                 .setPing(pingNewBuilder)
                 .build();
 
-        return generateJsonCommandBytes(phoneToGlasses);
+        return generateProtobufCommandBytes(phoneToGlasses);
     }
 
     private byte[] constructBatteryLevelQuery() {
@@ -1510,7 +1500,7 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
                 .setBatteryState(batteryStateRequest)
                 .build();
 
-        return generateJsonCommandBytes(phoneToGlasses);
+        return generateProtobufCommandBytes(phoneToGlasses);
 
     }
 
@@ -1640,7 +1630,7 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
             @Override
             public void run() {
                 List<byte[]> chunks = getWhitelistChunks();
-                sendDataSequentially(chunks, false);
+                sendDataSequentially(chunks);
                 // for (byte[] chunk : chunks) {
                 // Log.d(TAG, "Sending this chunk for white list:" + bytesToUtf8(chunk));
                 // sendDataSequentially(chunk, false);
@@ -1674,7 +1664,7 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
         // for Mentra Nex Glasses
         byte[] heartbeatPacket = constructHeartbeatForNexGlasses();
 
-        sendDataSequentially(heartbeatPacket, false, 100);
+        sendDataSequentially(heartbeatPacket, 100);
 
         if (batteryMain == -1 || heartbeatCount % 10 == 0) {
             mainTaskHandler.sendEmptyMessageDelayed(MAIN_TASK_HANDLER_CODE_BATTERY_QUERY, 500);
@@ -1688,7 +1678,7 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
         // Log.d(TAG, "Sending battery status query: " +
         // bytesToHex(batteryQueryPacket));
 
-        sendDataSequentially(batteryQueryPacket, false, 250);
+        sendDataSequentially(batteryQueryPacket, 250);
     }
 
     public void sendBrightnessCommand(int brightness) {
@@ -1709,9 +1699,9 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
                 .setBrightness(brightnessConfig)
                 .build();
 
-        byte[] cmdBytes = generateJsonCommandBytes(phoneToGlasses);
+        byte[] cmdBytes = generateProtobufCommandBytes(phoneToGlasses);
 
-        sendDataSequentially(cmdBytes, false, 100);
+        sendDataSequentially(cmdBytes, 100);
 
         Log.d(TAG, "Sent auto light brightness command => Brightness: " + brightness);
         EventBus.getDefault().post(new BrightnessLevelEvent(brightness));
@@ -1725,9 +1715,9 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
                 .setAutoBrightness(autoBrightnessConfig)
                 .build();
 
-        final byte[] cmdBytes = generateJsonCommandBytes(phoneToGlasses);
+        final byte[] cmdBytes = generateProtobufCommandBytes(phoneToGlasses);
 
-        sendDataSequentially(cmdBytes, false, 100);
+        sendDataSequentially(cmdBytes, 100);
 
         Log.d(TAG, "Sent auto light sendAutoBrightnessCommand=> " + autoLight);
 
@@ -1748,9 +1738,9 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
                 .setHeadUpAngle(headUpAngleConfig)
                 .build();
 
-        final byte[] cmdBytes = generateJsonCommandBytes(phoneToGlasses);
+        final byte[] cmdBytes = generateProtobufCommandBytes(phoneToGlasses);
 
-        sendDataSequentially(cmdBytes, false, 100);
+        sendDataSequentially(cmdBytes, 10);
 
         Log.d(TAG, "Sent headUp angle command => Angle: " + headUpAngle);
         EventBus.getDefault().post(new HeadUpAngleEvent(headUpAngle));
@@ -1761,19 +1751,16 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
         height = Math.max(0, Math.min(height, 8));
         depth = Math.max(1, Math.min(depth, 9));
 
-        int globalCounter = 0;// TODO: must be incremented each time this command is sent!
+        DisplayHeightConfig displayHeightConfig = DisplayHeightConfig.newBuilder()
+                .setHeight(height)
+                .build();
+        PhoneToGlasses phoneToGlasses = PhoneToGlasses.newBuilder()
+                .setDisplayHeight(displayHeightConfig)
+                .build();
 
-        ByteBuffer buffer = ByteBuffer.allocate(8);
-        buffer.put((byte) 0x26); // Command for dashboard height
-        buffer.put((byte) 0x08); // Length
-        buffer.put((byte) 0x00); // Sequence
-        buffer.put((byte) (globalCounter & 0xFF));// counter
-        buffer.put((byte) 0x02); // Fixed value
-        buffer.put((byte) 0x01); // State ON
-        buffer.put((byte) height); // Height value (0-8)
-        buffer.put((byte) depth); // Depth value (0-9)
+        final byte[] cmdBytes = generateProtobufCommandBytes(phoneToGlasses);
 
-        sendDataSequentially(buffer.array(), false, 100);
+        sendDataSequentially(cmdBytes, 10);
 
         Log.d(TAG, "Sent dashboard height/depth command => Height: " + height + ", Depth: " + depth);
         // EventBus.getDefault().post(new DashboardPositionEvent(height, depth));
@@ -1797,17 +1784,22 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
 
     @Override
     public void updateGlassesHeadUpAngle(int headUpAngle) {
+        Log.d(TAG, "updateGlassesHeadUpAngle headUpAngle: " + headUpAngle);
+
         sendHeadUpAngleCommand(headUpAngle);
     }
 
     @Override
     public void updateGlassesDepthHeight(int depth, int height) {
+        Log.d(TAG, "updateGlassesDepthHeight depth: " + depth + " height:" + height);
+
         sendDashboardPositionCommand(height, depth);
     }
 
     @Override
     public void sendExitCommand() {
-        sendDataSequentially(new byte[]{(byte) 0x18}, false, 100);
+        Log.d(TAG, "sendExitCommand ");
+        sendDataSequentially(new byte[]{(byte) 0x18}, 100);
     }
 
     private String bytesToHex(byte[] bytes) {
@@ -1841,9 +1833,9 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
                         .setMicState(micStateConfig)
                         .build();
 
-                byte[] micConfigBytes = generateJsonCommandBytes(phoneToGlasses);
+                byte[] micConfigBytes = generateProtobufCommandBytes(phoneToGlasses);
 
-                sendDataSequentially(micConfigBytes, false, true, 300); // wait some time to setup the mic
+                sendDataSequentially(micConfigBytes, 300); // wait some time to setup the mic
                 Log.d(TAG, "Sent MIC command: " + bytesToHex(micConfigBytes));
             }
         }, delay);
@@ -1892,7 +1884,7 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
         }
 
         // Send each chunk with a short sleep between each send
-        sendDataSequentially(chunks, false);
+        sendDataSequentially(chunks);
 
         Log.d(TAG, "Sent periodic notification");
     }
@@ -2028,7 +2020,7 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
                 .setDisplayText(textNewBuilder)
                 .build();
 
-        return generateJsonCommandBytes(phoneToGlasses);
+        return generateProtobufCommandBytes(phoneToGlasses);
     }
 
     // TextWallChunks for text
@@ -2077,7 +2069,7 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
                 .setDisplayScrollingText(textNewBuilder)
                 .build();
 
-        return generateJsonCommandBytes(phoneToGlasses);
+        return generateProtobufCommandBytes(phoneToGlasses);
     }
 
     // send a tast image and display
@@ -2113,7 +2105,7 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
                 .setDisplayImage(displayImage)
                 .build();
 
-        return generateJsonCommandBytes(phoneToGlasses);
+        return generateProtobufCommandBytes(phoneToGlasses);
     }
 
     private int calculateTextWidth(String text) {
@@ -2485,7 +2477,7 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
 
     @Override
     public void displayCustomContent(String content) {
-        Log.d(TAG, "DISPLAY CUSTOM CONTENT");
+        Log.d(TAG, "displayCustomContent content: " + content);
     }
 
     private void sendChunks(List<byte[]> chunks) {
@@ -2801,7 +2793,7 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
                 return;
             }
             byte packetType = data[0];
-            Log.d(TAG, "onCharacteristicChangedHandler packetType: " + packetType);
+            Log.d(TAG, "onCharacteristicChangedHandler packetType: " + String.format("%02X ", packetType));
             switch (packetType) {
                 case PACKET_TYPE_JSON: {
                     byte[] jsonData = Arrays.copyOfRange(data, 1, dataLen);
@@ -2814,22 +2806,19 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
                 }
                 break;
                 case PACKET_TYPE_AUDIO: {
-                    final int streamId = data[1] & 0xFF; // Sequence number
-                    // eg. LC3 to PCM
-                    final byte[] lc3 = Arrays.copyOfRange(data, 2, dataLen);
-                    Log.d(TAG, "Lc3 Audio data received. lc3 Data: " + bytesToHex(lc3));
-                    // byte[] pcmData = L3cCpp.decodeLC3(lc3);
-                    // if (pcmData == null) {
-                    // throw new IllegalStateException("Failed to decode LC3 data");
-                    // }
-
-                    // decode the LC3 audio
-                    if (lc3DecoderPtr != 0) {
-                        final byte[] pcmData = L3cCpp.decodeLC3(lc3DecoderPtr, lc3);
-                        // send the PCM out
-                        if (shouldUseGlassesMic) {
+                    if (shouldUseGlassesMic) {
+                        final int streamId = data[1] & 0xFF; // Sequence number
+                        // eg. LC3 to PCM
+                        final byte[] lc3 = Arrays.copyOfRange(data, 2, dataLen);
+                        Log.d(TAG, "Lc3 Audio data received. lc3 Data: " + bytesToHex(lc3));
+                        // decode the LC3 audio
+                        if (lc3DecoderPtr != 0) {
+                            final byte[] pcmData = L3cCpp.decodeLC3(lc3DecoderPtr, lc3);
+                            // send the PCM out
+                            Log.d(TAG, "set onAudioDataAvailable pcmData size:" + pcmData.length);
                             if (audioProcessingCallback != null) {
                                 if (pcmData != null && pcmData.length > 0) {
+                                    Log.d(TAG, "set onAudioDataAvailable pcmData");
                                     audioProcessingCallback.onAudioDataAvailable(pcmData);
                                 }
                             } else {
@@ -2838,16 +2827,10 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
                                         "Audio processing callback is null - callback registration failed!");
                             }
                         }
-
-                        // if (shouldUseGlassesMic) { TODO: add this back if needed
-                        // EventBus.getDefault().post(new AudioChunkNewEvent(pcmData));
-                        // } else {
-                        // Log.e(TAG, "Failed to decode LC3 frame, got null or empty result");
-                        // }
+                        // send through the LC3
+                        Log.d(TAG, "set onAudioDataAvailable Lc3 data");
+                        audioProcessingCallback.onLC3AudioDataAvailable(lc3);
                     }
-
-                    // send through the LC3
-                    audioProcessingCallback.onLC3AudioDataAvailable(lc3);
                 }
                 break;
                 case PACKET_TYPE_IMAGE:
@@ -2892,6 +2875,15 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
                 default:
                     break;
             }
+        } catch (Exception e) {
+        }
+    }
+
+    private void decodeProtobufsByWrite(byte[] protobufBytes) {
+        try {
+            final PhoneToGlasses phoneToGlasses = PhoneToGlasses.parseFrom(protobufBytes);
+            Log.d(TAG, "decodeProtobufsByWrite phoneToGlasses: " + phoneToGlasses.toString());
+            Log.d(TAG, "decodeProtobufsByWrite phoneToGlasses payloadCase: " + phoneToGlasses.getPayloadCase());
         } catch (Exception e) {
         }
     }
