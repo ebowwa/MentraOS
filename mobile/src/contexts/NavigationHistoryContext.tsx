@@ -56,7 +56,7 @@ export function NavigationHistoryProvider({children}: {children: React.ReactNode
     useCallback(() => {
       const onBackPress = () => {
         // Skip for app settings and webview - they handle their own back navigation
-        if (pathname === "/app/settings" || pathname === "/app/webview") {
+        if (pathname === "/applet/settings" || pathname === "/applet/webview") {
           return false // Let the screen's handler execute
         }
 

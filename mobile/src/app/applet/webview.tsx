@@ -27,7 +27,7 @@ export default function AppWebView() {
   const [finalUrl, setFinalUrl] = useState<string | null>(null)
   const [isLoadingToken, setIsLoadingToken] = useState(true)
   const [tokenError, setTokenError] = useState<string | null>(null)
-  const {replace, goBack, push, navigate} = useNavigationHistory()
+  const {replace, goBack, push, navigate, clearHistoryAndGoHome} = useNavigationHistory()
 
   if (typeof webviewURL !== "string" || typeof appName !== "string" || typeof packageName !== "string") {
     return <Text>Missing required parameters</Text>
@@ -222,11 +222,11 @@ export default function AppWebView() {
         title={appName}
         titleMode="center"
         leftIcon="caretLeft"
-        onLeftPress={() => replace("/(tabs)/home")}
+        onLeftPress={() => clearHistoryAndGoHome()}
         rightIcon="settings"
         rightIconColor={theme.colors.icon}
         onRightPress={() => {
-          push("/app/settings", {
+          push("/applet/settings", {
             packageName: packageName as string,
             appName: appName as string,
             fromWebView: "true",

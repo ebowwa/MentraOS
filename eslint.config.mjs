@@ -32,6 +32,7 @@ export default defineConfig([
       "@typescript-eslint/ban-ts-comment": "warn",
       "@typescript-eslint/no-empty-object-type": "warn",
       "@typescript-eslint/no-require-imports": "warn",
+      "prefer-const": "warn",
     },
   },
 ])
