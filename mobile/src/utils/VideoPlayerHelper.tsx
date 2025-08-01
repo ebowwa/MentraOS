@@ -1,10 +1,6 @@
 import {Platform, Share} from "react-native"
 import RNFS from "react-native-fs"
 import {showAlert} from "./AlertUtils"
-import { 
-  reportVideoPlaybackFailure,
-  reportVideoSharingFailure
-} from "@/reporting/domains"
 
 /**
  * Helper class for video playback and sharing that handles Android & iOS differences
@@ -46,7 +42,6 @@ export default class VideoPlayerHelper {
       }
     } catch (error) {
       console.error("Error playing video:", error)
-      reportVideoPlaybackFailure(filePath, String(error), error instanceof Error ? error : new Error(String(error)))
       showAlert(
         "Playback Error",
         "Unable to play the video. The file may be corrupted or your device may not have a compatible video player installed.",
@@ -80,7 +75,6 @@ export default class VideoPlayerHelper {
       })
     } catch (error) {
       console.error("Error sharing video:", error)
-      reportVideoSharingFailure(filePath, String(error), error instanceof Error ? error : new Error(String(error)))
       showAlert("Sharing Error", "Failed to share the video. Please try again.", undefined, {
         iconName: "error",
         iconColor: "#FF3B30",

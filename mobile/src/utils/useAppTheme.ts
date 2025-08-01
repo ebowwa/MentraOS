@@ -6,10 +6,6 @@ import * as SystemUI from "expo-system-ui"
 import * as NavigationBar from "expo-navigation-bar"
 import {loadSetting} from "@/utils/SettingsHelper"
 import {SETTINGS_KEYS} from "@/consts"
-import { 
-  reportThemeProviderIssue,
-  reportThemePreferenceLoadFailure
-} from "@/reporting/domains"
 
 type ThemeContextType = {
   themeScheme: ThemeContexts
@@ -21,7 +17,6 @@ export const ThemeContext = createContext<ThemeContextType>({
   themeScheme: undefined, // default to the system theme
   setThemeContextOverride: (_newTheme: ThemeContexts) => {
     console.error("Tried to call setThemeContextOverride before the ThemeProvider was initialized")
-    reportThemeProviderIssue('setThemeContextOverride', 'ThemeProvider not initialized')
   },
 })
 
@@ -42,7 +37,6 @@ const setImperativeTheming = async (theme: Theme) => {
       await NavigationBar.setButtonStyleAsync(theme.isDark ? "light" : "dark")
     } catch (error) {
       console.warn("Failed to set navigation bar color:", error)
-      reportWarning("Failed to set navigation bar color", 'theme.navigation', 'set_nav_bar_color', { error: error instanceof Error ? error.message : String(error) })
     }
   }
 }
@@ -70,7 +64,6 @@ export const useThemeProvider = (initialTheme: ThemeContexts = undefined) => {
         }
       } catch (error) {
         console.error("Error loading theme preference:", error)
-        reportThemePreferenceLoadFailure(String(error), error instanceof Error ? error : new Error(String(error)))
       } finally {
         setIsLoaded(true)
       }

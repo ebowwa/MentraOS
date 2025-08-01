@@ -1,7 +1,5 @@
 import {useEffect, useState} from "react"
-import {Stack, SplashScreen} from "expo-router"
-import { initializeReporting, reportCritical, reportError, reportWarning, reportInfo } from '@/reporting'
-import { reportAppStartupIssue, reportAppCrash } from '@/reporting/domains'
+import {Stack, SplashScreen, Slot} from "expo-router"
 
 import {useFonts} from "@expo-google-fonts/space-grotesk"
 import {colors, customFontsToLoad} from "@/theme"
@@ -16,8 +14,6 @@ import {View} from "react-native"
 import {Text} from "@/components/ignite"
 import {Ionicons} from "@expo/vector-icons" // Replace with your project's icon import if different
 
-// Sentry will be initialized by ReportManager
-
 SplashScreen.preventAutoHideAsync()
 
 if (__DEV__) {
@@ -29,53 +25,20 @@ if (__DEV__) {
 
 export {ErrorBoundary} from "@/components/ErrorBoundary/ErrorBoundary"
 
-function Root() {
+export default function Root() {
   const [fontsLoaded, fontError] = useFonts(customFontsToLoad)
   const [isI18nInitialized, setIsI18nInitialized] = useState(false)
   const {themeScheme, setThemeContextOverride, ThemeProvider} = useThemeProvider()
 
   useEffect(() => {
-    const initializeApp = async () => {
-      try {
-        // Initialize i18n
-        await initI18n()
-        setIsI18nInitialized(true)
-        
-        // Load date locale
-        await loadDateFnsLocale()
-        
-        // Initialize reporting system
-        await initializeReporting()
-        
-        // 🧪 TESTING: Send dummy error reports to test reporting system
-        // Set to true to enable testing, false to disable
-        const ENABLE_TEST_REPORTS = __DEV__ // Only in development
-        if (ENABLE_TEST_REPORTS) {
-          console.log('🧪 Sending test error reports...')
-          
-          // Test different report levels
-          reportInfo('Test info message', 'app.testing', 'test_initialization')
-          reportWarning('Test warning message', 'app.testing', 'test_initialization')
-          reportError('Test error message', 'app.testing', 'test_initialization')
-          reportCritical('Test critical message', 'app.testing', 'test_initialization')
-          
-          // Test with exception
-          reportError('Test error with exception', 'app.testing', 'test_exception', new Error('Test exception for error reporting'))
-          
-          // Test domain-specific reporting
-          reportAppStartupIssue('Test startup issue', new Error('Test startup error'))
-          
-          console.log('✅ Test error reports sent')
-        }
-      } catch (error) {
-        console.error("Error initializing app:", error)
-        reportCritical("Error initializing app", 'app.lifecycle', 'app_initialization', error instanceof Error ? error : new Error(String(error)))
+    initI18n()
+      .then(() => setIsI18nInitialized(true))
+      .then(() => loadDateFnsLocale())
+      .catch(error => {
+        console.error("Error initializing i18n:", error)
         // Still set initialized to true to prevent app from being stuck
         setIsI18nInitialized(true)
-      }
-    }
-
-    initializeApp()
+      })
   }, [])
 
   const loaded = fontsLoaded && isI18nInitialized
@@ -107,10 +70,7 @@ function Root() {
   }
 
   useEffect(() => {
-    if (fontError) {
-      reportAppStartupIssue("Font loading failed", fontError)
-      throw fontError
-    }
+    if (fontError) throw fontError
   }, [fontError])
 
   useEffect(() => {
@@ -157,5 +117,3 @@ function Root() {
     </ThemeProvider>
   )
 }
-
-export default Root;

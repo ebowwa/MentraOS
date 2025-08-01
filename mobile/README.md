@@ -1,18 +1,3 @@
-## 🔐 Security Setup
-
-Before running the app, you need to configure your environment variables for Sentry and PostHog:
-
-```bash
-# Run the setup script
-./scripts/setup-env.sh
-
-# Or manually copy and configure
-cp env.example .env
-# Edit .env with your actual credentials
-```
-
-For detailed security instructions, see [SECURITY.md](./SECURITY.md).
-
 ### Quickstart
 
 ### Windows Setup

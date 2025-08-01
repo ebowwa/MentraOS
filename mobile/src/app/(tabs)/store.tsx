@@ -11,7 +11,6 @@ import {useAppTheme} from "@/utils/useAppTheme"
 import {useLocalSearchParams, router} from "expo-router"
 import {Text, Screen, Header} from "@/components/ignite"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
-import { reportComponentError, reportUIInteractionFailure } from '@/reporting/domains'
 
 // Define package name for the store webview
 const STORE_PACKAGE_NAME = "org.augmentos.store"
@@ -65,7 +64,6 @@ export default function AppStoreWeb() {
   const handleError = () => {
     setWebviewLoading(false)
     setHasError(true)
-    reportComponentError("StoreWebView", "WebView failed to load", new Error("WebView loading error"))
   }
 
   // Handle messages from WebView
@@ -79,7 +77,6 @@ export default function AppStoreWeb() {
       }
     } catch (error) {
       console.error("Error handling WebView message:", error)
-      reportComponentError("StoreWebView", "WebView message parsing failed", error instanceof Error ? error : new Error(String(error)))
     }
   }
 
