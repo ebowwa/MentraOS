@@ -237,11 +237,25 @@ RCT_EXPORT_METHOD(
       return;
     }
     
-    // Check if required files exist
     NSFileManager *fileManager = [NSFileManager defaultManager];
-    NSArray *requiredFiles = @[@"encoder.onnx", @"decoder.onnx", @"joiner.onnx", @"tokens.txt"];
     
-    for (NSString *file in requiredFiles) {
+    // Check for tokens.txt (required for all models)
+    NSString *tokensPath = [modelPath stringByAppendingPathComponent:@"tokens.txt"];
+    if (![fileManager fileExistsAtPath:tokensPath]) {
+      resolve(@(NO));
+      return;
+    }
+    
+    // Check for CTC model
+    NSString *ctcModelPath = [modelPath stringByAppendingPathComponent:@"model.int8.onnx"];
+    if ([fileManager fileExistsAtPath:ctcModelPath]) {
+      resolve(@(YES));
+      return;
+    }
+    
+    // Check for transducer model
+    NSArray *transducerFiles = @[@"encoder.onnx", @"decoder.onnx", @"joiner.onnx"];
+    for (NSString *file in transducerFiles) {
       NSString *filePath = [modelPath stringByAppendingPathComponent:file];
       if (![fileManager fileExistsAtPath:filePath]) {
         resolve(@(NO));
@@ -264,20 +278,35 @@ RCT_EXPORT_METHOD(
 )
 {
   @try {
-    // TODO: Implement actual validation by trying to initialize SherpaOnnxTranscriber
-    // For now, just check if files exist
     NSFileManager *fileManager = [NSFileManager defaultManager];
-    NSArray *requiredFiles = @[@"encoder.onnx", @"decoder.onnx", @"joiner.onnx", @"tokens.txt"];
     
-    for (NSString *file in requiredFiles) {
+    // Check for tokens.txt (required for all models)
+    NSString *tokensPath = [path stringByAppendingPathComponent:@"tokens.txt"];
+    if (![fileManager fileExistsAtPath:tokensPath]) {
+      resolve(@(NO));
+      return;
+    }
+    
+    // Check for CTC model
+    NSString *ctcModelPath = [path stringByAppendingPathComponent:@"model.int8.onnx"];
+    if ([fileManager fileExistsAtPath:ctcModelPath]) {
+      resolve(@(YES));
+      return;
+    }
+    
+    // Check for transducer model
+    NSArray *transducerFiles = @[@"encoder.onnx", @"decoder.onnx", @"joiner.onnx"];
+    BOOL allTransducerFilesPresent = YES;
+    
+    for (NSString *file in transducerFiles) {
       NSString *filePath = [path stringByAppendingPathComponent:file];
       if (![fileManager fileExistsAtPath:filePath]) {
-        resolve(@(NO));
-        return;
+        allTransducerFilesPresent = NO;
+        break;
       }
     }
     
-    resolve(@(YES));
+    resolve(@(allTransducerFilesPresent));
   }
   @catch(NSException *exception) {
     reject(@"STT_ERROR", exception.description, nil);

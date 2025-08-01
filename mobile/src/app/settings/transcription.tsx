@@ -5,6 +5,7 @@ import coreCommunicator from "@/bridge/CoreCommunicator"
 import {Header, Screen, Text, Button} from "@/components/ignite"
 import {useAppTheme} from "@/utils/useAppTheme"
 import ToggleSetting from "@/components/settings/ToggleSetting"
+import SelectSetting from "@/components/settings/SelectSetting"
 import {translate} from "@/i18n"
 import {Spacer} from "@/components/misc/Spacer"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
@@ -19,7 +20,9 @@ export default function TranscriptionSettingsScreen() {
   const [isEnforceLocalTranscriptionEnabled, setIsEnforceLocalTranscriptionEnabled] = useState(
     status.core_info.enforce_local_transcription,
   )
+  const [selectedModelId, setSelectedModelId] = useState(STTModelManager.getCurrentModelId())
   const [modelInfo, setModelInfo] = useState<any>(null)
+  const [allModels, setAllModels] = useState<any[]>([])
   const [isDownloading, setIsDownloading] = useState(false)
   const [downloadProgress, setDownloadProgress] = useState(0)
   const [extractionProgress, setExtractionProgress] = useState(0)
@@ -39,8 +42,10 @@ export default function TranscriptionSettingsScreen() {
   const checkModelStatus = async () => {
     setIsCheckingModel(true)
     try {
-      const info = await STTModelManager.getModelInfo()
+      const info = await STTModelManager.getModelInfo(selectedModelId)
       setModelInfo(info)
+      const models = await STTModelManager.getAllModelsInfo()
+      setAllModels(models)
     } catch (error) {
       console.error("Error checking model status:", error)
     } finally {
@@ -59,6 +64,31 @@ export default function TranscriptionSettingsScreen() {
     setIsEnforceLocalTranscriptionEnabled(newSetting)
   }
 
+  const handleModelChange = async (modelId: string) => {
+    setSelectedModelId(modelId)
+    STTModelManager.setCurrentModelId(modelId)
+
+    // Check if the new model is downloaded and activate it
+    const info = await STTModelManager.getModelInfo(modelId)
+    setModelInfo(info)
+
+    if (info.downloaded) {
+      try {
+        await STTModelManager.activateModel(modelId)
+
+        // Auto-restart transcription if mic is active
+        if (status.core_info.is_mic_enabled_for_frontend) {
+          showAlert("Restarting Transcription", "Switching to new model...", [{text: "OK"}])
+          await coreCommunicator.restartTranscription()
+        } else {
+          showAlert("Model Activated", `Switched to ${info.name}`, [{text: "OK"}])
+        }
+      } catch (error: any) {
+        showAlert("Error", error.message || "Failed to activate model", [{text: "OK"}])
+      }
+    }
+  }
+
   const handleDownloadModel = async () => {
     try {
       setIsDownloading(true)
@@ -66,6 +96,7 @@ export default function TranscriptionSettingsScreen() {
       setExtractionProgress(0)
 
       await STTModelManager.downloadModel(
+        selectedModelId,
         progress => {
           setDownloadProgress(progress.percentage)
         },
@@ -109,7 +140,7 @@ export default function TranscriptionSettingsScreen() {
           style: "destructive",
           onPress: async () => {
             try {
-              await STTModelManager.deleteModel()
+              await STTModelManager.deleteModel(selectedModelId)
               await checkModelStatus()
 
               // If local transcription is enabled, disable it
@@ -151,6 +182,21 @@ export default function TranscriptionSettingsScreen() {
           </View>
         ) : (
           <>
+            {/* Model Selection */}
+            <SelectSetting
+              label="Speech Recognition Model"
+              value={selectedModelId}
+              options={allModels.map(model => ({
+                label: model.name,
+                value: model.modelId,
+              }))}
+              onValueChange={handleModelChange}
+              description="Select the speech recognition model to use"
+              layout="vertical"
+            />
+
+            <Spacer height={theme.spacing.md} />
+
             {/* Model Download Section */}
             <View
               style={{
@@ -160,13 +206,13 @@ export default function TranscriptionSettingsScreen() {
                 marginBottom: theme.spacing.md,
               }}>
               <Text weight="semiBold" size="lg" style={{marginBottom: theme.spacing.xs}}>
-                Speech Recognition Model
+                Model Status
               </Text>
 
               {modelInfo && (
                 <>
                   <Text size="sm" style={{color: theme.colors.textDim, marginBottom: theme.spacing.xs}}>
-                    {modelInfo.name} • {modelInfo.language} • {STTModelManager.formatBytes(modelInfo.size)}
+                    {modelInfo.name} • {STTModelManager.formatBytes(modelInfo.size)}
                   </Text>
 
                   {!modelInfo.downloaded && !isDownloading && (

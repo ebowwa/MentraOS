@@ -160,11 +160,25 @@ public class FileProviderModule extends ReactContextBaseJavaModule {
                 return;
             }
             
-            // Check if required files exist
-            String[] requiredFiles = {"encoder.onnx", "decoder.onnx", "joiner.onnx", "tokens.txt"};
             File modelDir = new File(modelPath);
             
-            for (String fileName : requiredFiles) {
+            // Check for tokens.txt (required for all models)
+            File tokensFile = new File(modelDir, "tokens.txt");
+            if (!tokensFile.exists()) {
+                promise.resolve(false);
+                return;
+            }
+            
+            // Check for CTC model
+            File ctcModelFile = new File(modelDir, "model.int8.onnx");
+            if (ctcModelFile.exists()) {
+                promise.resolve(true);
+                return;
+            }
+            
+            // Check for transducer model
+            String[] transducerFiles = {"encoder.onnx", "decoder.onnx", "joiner.onnx"};
+            for (String fileName : transducerFiles) {
                 File file = new File(modelDir, fileName);
                 if (!file.exists()) {
                     promise.resolve(false);
@@ -181,11 +195,25 @@ public class FileProviderModule extends ReactContextBaseJavaModule {
     @ReactMethod
     public void validateSTTModel(String path, Promise promise) {
         try {
-            // Check if all required files exist
-            String[] requiredFiles = {"encoder.onnx", "decoder.onnx", "joiner.onnx", "tokens.txt"};
             File modelDir = new File(path);
             
-            for (String fileName : requiredFiles) {
+            // Check for tokens.txt (required for all models)
+            File tokensFile = new File(modelDir, "tokens.txt");
+            if (!tokensFile.exists()) {
+                promise.resolve(false);
+                return;
+            }
+            
+            // Check for CTC model
+            File ctcModelFile = new File(modelDir, "model.int8.onnx");
+            if (ctcModelFile.exists()) {
+                promise.resolve(true);
+                return;
+            }
+            
+            // Check for transducer model
+            String[] transducerFiles = {"encoder.onnx", "decoder.onnx", "joiner.onnx"};
+            for (String fileName : transducerFiles) {
                 File file = new File(modelDir, fileName);
                 if (!file.exists()) {
                     promise.resolve(false);
