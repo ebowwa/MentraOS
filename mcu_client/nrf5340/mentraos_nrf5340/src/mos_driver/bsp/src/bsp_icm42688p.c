@@ -55,7 +55,7 @@ int bsp_icm42688p_check_id(void)
         {
             /* 0x47 是 ICM-42688P 的默认 ID */
             BSP_LOGE(TAG, "Unexpected WHO_AM_I err");
-            return XYZN_OS_ERROR;
+            return MOS_OS_ERROR;
         }
     }
     return rc;
@@ -67,18 +67,18 @@ int bsp_icm42688p_init(void)
     if (!i2c_dev_icm42688p)
     {
         BSP_LOGE(TAG, "I2C Device driver not found");
-        return XYZN_OS_ERROR;
+        return MOS_OS_ERROR;
     }
     uint32_t i2c_cfg = I2C_SPEED_SET(I2C_SPEED_FAST) | I2C_MODE_CONTROLLER;
     if (i2c_configure(i2c_dev_icm42688p, i2c_cfg))
     {
         BSP_LOGE(TAG, "I2C config failed");
-        return XYZN_OS_ERROR;
+        return MOS_OS_ERROR;
     }
     if (bsp_icm42688p_check_id())
     {
         BSP_LOGE(TAG, "ICM42688P check id failed");
-        return XYZN_OS_ERROR;
+        return MOS_OS_ERROR;
     }
     return 0;
 }

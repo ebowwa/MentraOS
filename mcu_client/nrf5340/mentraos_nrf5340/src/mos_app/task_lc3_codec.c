@@ -48,7 +48,7 @@ int user_sw_codec_lc3_init(void)
     if (ret < 0)
     {
         BSP_LOGE(TAG, "LC3 encoder initialization failed with error: %d", ret);
-        return XYZN_OS_ERROR;
+        return MOS_OS_ERROR;
     }
 
     // // 初始化LC3解码器
@@ -59,7 +59,7 @@ int user_sw_codec_lc3_init(void)
     // if (ret < 0)
     // {
     //     BSP_LOGE(TAG, "LC3 decoder initialization failed with error: %d", ret);
-    //     return XYZN_OS_ERROR;
+    //     return MOS_OS_ERROR;
     // }
 
     return 0;
@@ -117,6 +117,6 @@ void task_lc3_codec_thread(void)
                                                    NULL,
                                                    TASK_LC3_CODEC_THREAD_PRIORITY,
                                                    0,
-                                                   XYZN_OS_NO_WAIT);
+                                                   MOS_OS_NO_WAIT);
     k_thread_name_set(task_lc3_codec_thread_handle, TASK_NAME);
 }

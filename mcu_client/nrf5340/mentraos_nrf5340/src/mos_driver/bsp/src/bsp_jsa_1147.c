@@ -133,7 +133,7 @@ int jsa_1147_write_byte(uint8_t b)
     if (t >= JSA_1147_SW_I2C_TIMEOUT)
     {
         BSP_LOGE(TAG, "I2C ACK timeout");
-        return XYZN_OS_ERROR;
+        return MOS_OS_ERROR;
     }
     return 0;
 }
@@ -231,7 +231,7 @@ int jsa_1147_get_manufacturer_id(void)
     if ((err < 0) || (manuf_id != 0x11))
     {
         BSP_LOGE(TAG, "Failed to read manufacturer ID: %d", err);
-        return XYZN_OS_ERROR;
+        return MOS_OS_ERROR;
     }
     else
     {
@@ -242,7 +242,7 @@ int jsa_1147_get_manufacturer_id(void)
     if ((err < 0) || (manuf_id != 0x11))
     {
         BSP_LOGE(TAG, "Failed to read manufacturer ID: %d", err);
-        return XYZN_OS_ERROR;
+        return MOS_OS_ERROR;
     }
     else
     {
@@ -257,12 +257,12 @@ int bsp_jsa_1147_init(void)
     if (!gpio_is_ready_dt(&jsa_1147_i2c_sda))
     {
         BSP_LOGE(TAG, "GPIO jsa_1147_i2c_sda not ready");
-        return XYZN_OS_ERROR;
+        return MOS_OS_ERROR;
     }
     if (!gpio_is_ready_dt(&jsa_1147_i2c_scl))
     {
         BSP_LOGE(TAG, "GPIO jsa_1147_i2c_scl not ready");
-        return XYZN_OS_ERROR;
+        return MOS_OS_ERROR;
     }
     err = gpio_pin_configure_dt(&jsa_1147_i2c_sda, GPIO_OUTPUT);
     if (err != 0)
@@ -348,13 +348,13 @@ int bsp_jsa_1147_sensor_init(void)
     // if (!i2c_dev_jsa_1147)
     // {
     //     BSP_LOGE(TAG, "I2C Device driver not found");
-    //     return XYZN_OS_ERROR;
+    //     return MOS_OS_ERROR;
     // }
     // uint32_t i2c_cfg = I2C_SPEED_SET(I2C_SPEED_STANDARD) | I2C_MODE_CONTROLLER;
     // if (i2c_configure(i2c_dev_jsa_1147, i2c_cfg))
     // {
     //     BSP_LOGE(TAG, "I2C config failed");
-    //     return XYZN_OS_ERROR;
+    //     return MOS_OS_ERROR;
     // }
     // mos_delay_ms(50);
     // jsa_1147_get_version();

@@ -113,7 +113,7 @@ uint32_t get_pdm_sample(int16_t *pdm_pcm_data, uint32_t pdm_pcm_szie)
 {
     uint32_t err_code = 0;
 #if 1
-    mos_sem_take(&pcmsem, XYZN_OS_WAIT_FOREVER);
+    mos_sem_take(&pcmsem, MOS_OS_WAIT_FOREVER);
     for (uint32_t i = 0; i < pdm_pcm_szie; i++)
     {
         pdm_pcm_data[i] = pcm_req_buffer[pcm_req_id][i];

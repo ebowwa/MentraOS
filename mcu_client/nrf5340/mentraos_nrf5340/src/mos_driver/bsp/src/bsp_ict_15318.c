@@ -127,7 +127,7 @@ int ict_15318_write_byte(uint8_t b)
     if (t >= ict_15318_SW_I2C_TIMEOUT)
     {
         BSP_LOGE(TAG, "I2C ACK timeout");
-        return XYZN_OS_ERROR;
+        return MOS_OS_ERROR;
     }
     return 0;
 }
@@ -225,17 +225,17 @@ int ict_15318_read_id(void)
     if (!ict_15318_i2c_read_reg(ICT_15318_REG_MANU_ID, &manu))
     {
         BSP_LOGI(TAG, "ict_15318_read_id manu failed");
-        return XYZN_OS_ERROR;
+        return MOS_OS_ERROR;
     }
     if (!ict_15318_i2c_read_reg(ICT_15318_REG_CHIP_ID, &chip))
     {
         BSP_LOGI(TAG, "ict_15318_read_id chip failed");
-        return XYZN_OS_ERROR;
+        return MOS_OS_ERROR;
     }
     if (manu == 0 || chip == 0 || manu == 0xFF || chip == 0xFF)
     {
         BSP_LOGE(TAG, "ict_15318 ID mismatch: manu=0x%02X chip=0x%02X", manu, chip);
-        return XYZN_OS_ERROR;
+        return MOS_OS_ERROR;
     }
     BSP_LOGI(TAG, "ict_15318 detected:  manu[0XE7]=0x%02X chip[0X45]=0x%02X", manu, chip); // Manufacturer=0xE7, Chip=0x45
     return 0;
@@ -247,12 +247,12 @@ int bsp_ict_15318_iic_init(void)
     if (!gpio_is_ready_dt(&ict_15318_i2c_sda))
     {
         BSP_LOGE(TAG, "GPIO ict_15318_i2c_sda not ready");
-        return XYZN_OS_ERROR;
+        return MOS_OS_ERROR;
     }
     if (!gpio_is_ready_dt(&ict_15318_i2c_scl))
     {
         BSP_LOGE(TAG, "GPIO ict_15318_i2c_scl not ready");
-        return XYZN_OS_ERROR;
+        return MOS_OS_ERROR;
     }
     err = gpio_pin_configure_dt(&ict_15318_i2c_sda, GPIO_OUTPUT);
     if (err != 0)
@@ -301,13 +301,13 @@ int bsp_ict_15318_iic_init(void)
     if (!i2c_dev_ict_15318)
     {
         BSP_LOGE(TAG, "I2C Device driver not found");
-        return XYZN_OS_ERROR;
+        return MOS_OS_ERROR;
     }
     uint32_t i2c_cfg = I2C_SPEED_SET(I2C_SPEED_STANDARD) | I2C_MODE_CONTROLLER;
     if (i2c_configure(i2c_dev_ict_15318, i2c_cfg))
     {
         BSP_LOGE(TAG, "I2C config failed");
-        return XYZN_OS_ERROR;
+        return MOS_OS_ERROR;
     }
     // rc = i2c_reg_read_byte(i2c_dev_ict_15318, ICT_15318_I2C_ADDR, ICT_15318_REG_MANU_ID, &manu);
     // if (rc != 0)

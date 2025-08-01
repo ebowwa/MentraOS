@@ -15,8 +15,7 @@
 #include <math.h>
 #include <zephyr/kernel.h>
 #include "lvgl_display.h"
-// #include <lvgl.h>
-#include "hls12vga.h"
+#include <display/lcd/hls12vga.h>
 #include "bal_os.h"
 #include "bsp_log.h"
 #include "mos_lvgl_display.h"
@@ -103,19 +102,19 @@ void display_open(void)
         .p.open = {
             .brightness = 9,
             .mirror = 0x08}};
-    mos_msgq_send(&display_msgq, &cmd, XYZN_OS_WAIT_FOREVER);
+    mos_msgq_send(&display_msgq, &cmd, MOS_OS_WAIT_FOREVER);
 }
 
 void display_close(void)
 {
     // display_cmd_t cmd = {.type = LCD_CMD_CLOSE, .param = NULL};
-    // mos_msgq_sendsplay_msgq, &cmd, XYZN_OS_WAIT_FOREVER);
+    // mos_msgq_sendsplay_msgq, &cmd, MOS_OS_WAIT_FOREVER);
 }
 
 void display_send_frame(void *data_ptr)
 {
     // display_cmd_t cmd = {.type = LCD_CMD_DATA, .param = data_ptr};
-    // mos_msgq_send(&display_msgq, &cmd, XYZN_OS_WAIT_FOREVER);
+    // mos_msgq_send(&display_msgq, &cmd, MOS_OS_WAIT_FOREVER);
 }
 void lvgl_dispaly_text(void)
 {
@@ -269,7 +268,7 @@ void handle_display_text(const mentraos_ble_DisplayText *txt)
     cmd.p.text.font_color = txt->color;
     cmd.p.text.size = txt->size;
     // 非阻塞入队，队满则丢弃并打印警告
-    if (mos_msgq_send(&display_msgq, &cmd, XYZN_OS_WAIT_ON) != 0)
+    if (mos_msgq_send(&display_msgq, &cmd, MOS_OS_WAIT_ON) != 0)
     {
         BSP_LOGE(TAG, "UI queue full, drop text");
     }

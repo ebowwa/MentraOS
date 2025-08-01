@@ -558,7 +558,7 @@ void ble_thread_entry(void *p1, void *p2, void *p3)
         // {
         //     restart_adv_with_new_interval(500, 500);
 
-        //     ble_name_update_data("xyzn_test_01");
+        //     ble_name_update_data("mos_test_01");
         // }
         k_sem_take(&my_ble_data_sem, K_FOREVER);
 

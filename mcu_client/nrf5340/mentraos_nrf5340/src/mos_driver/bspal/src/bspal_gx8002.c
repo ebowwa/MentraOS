@@ -127,7 +127,7 @@ int gx8002_open_dmic(void)
     }
 
     BSP_LOGE(TAG, "open dmic timeout");
-    return XYZN_OS_ERROR;
+    return MOS_OS_ERROR;
 }
 
 /**
@@ -165,7 +165,7 @@ int gx8002_close_dmic(void)
     }
 
     BSP_LOGE(TAG, "close dmic timeout");
-    return XYZN_OS_ERROR;
+    return MOS_OS_ERROR;
 }
 int gx8002_reset(void)
 {

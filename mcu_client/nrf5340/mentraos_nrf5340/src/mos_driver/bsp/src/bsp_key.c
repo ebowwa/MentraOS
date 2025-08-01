@@ -3,12 +3,11 @@
  * @Date         : 2025-07-31 10:40:40
  * @LastEditTime : 2025-07-31 17:07:18
  * @FilePath     : bsp_key.c
- * @Description  : 
- * 
- *  Copyright (c) MentraOS Contributors 2025 
+ * @Description  :
+ *
+ *  Copyright (c) MentraOS Contributors 2025
  *  SPDX-License-Identifier: Apache-2.0
  */
-
 
 #include <zephyr/devicetree.h>
 #include <zephyr/drivers/gpio.h>
@@ -27,7 +26,7 @@ static struct gpio_callback gpio_key1_int_cb_data; // 中断回调函数
 bool gpio_key1_read(void)
 {
     int value = gpio_pin_get_raw(gpio_key1.port, gpio_key1.pin);
-    return value == 0 ? true : false; 
+    return value == 0 ? true : false;
 }
 
 void gpio_key1_int_isr_enable(void)
@@ -38,7 +37,7 @@ void gpio_key1_int_isr_enable(void)
     {
         BSP_LOGE(TAG, "Error %d: failed to configure interrupt on pin %d",
                  ret, gpio_key1.pin);
-        return XYZN_OS_ERROR;
+        return MOS_OS_ERROR;
     }
 }
 int bsp_key_init(void)
@@ -48,7 +47,7 @@ int bsp_key_init(void)
     if (!gpio_is_ready_dt(&gpio_key1))
     {
         BSP_LOGE(TAG, "GPIO gpio_key1 not ready");
-        return XYZN_OS_ERROR;
+        return MOS_OS_ERROR;
     }
 
     ret = gpio_pin_configure_dt(&gpio_key1, (GPIO_INPUT | GPIO_PULL_UP));
@@ -56,7 +55,7 @@ int bsp_key_init(void)
     {
         BSP_LOGE(TAG, "Error %d: failed to configure pin %d",
                  ret, gpio_key1.pin);
-        return XYZN_OS_ERROR;
+        return MOS_OS_ERROR;
     }
 
     ret = gpio_pin_interrupt_configure_dt(&gpio_key1, GPIO_INT_EDGE_BOTH);
@@ -64,14 +63,14 @@ int bsp_key_init(void)
     {
         BSP_LOGE(TAG, "Error %d: failed to configure interrupt on pin %d",
                  ret, gpio_key1.pin);
-        return XYZN_OS_ERROR;
+        return MOS_OS_ERROR;
     }
     gpio_init_callback(&gpio_key1_int_cb_data, gpio_key1_int_isr, BIT(gpio_key1.pin));
     ret = gpio_add_callback(gpio_key1.port, &gpio_key1_int_cb_data);
     if (ret != 0)
     {
         BSP_LOGE(TAG, "Error %d: failed to add callback", ret);
-        return XYZN_OS_ERROR;
+        return MOS_OS_ERROR;
     }
     BSP_LOGI(TAG, "gpio_key1 interrupt initialized on pin %d", gpio_key1.pin);
     return 0;

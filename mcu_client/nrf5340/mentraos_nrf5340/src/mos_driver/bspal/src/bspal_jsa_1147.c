@@ -22,17 +22,17 @@ static int jsa_1147_read_als(uint32_t *pcount)
     if (jsa_1147_i2c_read_reg(REG_ALS_DATA_L, &lo) < 0)
     {
         BSP_LOGE(TAG, "read ALS low byte failed");
-        return XYZN_OS_ERROR;
+        return MOS_OS_ERROR;
     }
     if (jsa_1147_i2c_read_reg(REG_ALS_DATA_M, &mid) < 0)
     {
         BSP_LOGE(TAG, "read ALS mid byte failed");
-        return XYZN_OS_ERROR;
+        return MOS_OS_ERROR;
     }
     if (jsa_1147_i2c_read_reg(REG_ALS_DATA_H, &hi) < 0)
     {
         BSP_LOGE(TAG, "read ALS high byte failed");
-        return XYZN_OS_ERROR;
+        return MOS_OS_ERROR;
     }
     *pcount = ((uint32_t)hi << 16) | ((uint32_t)mid << 8) | lo;
     return 0;
@@ -43,7 +43,7 @@ int read_jsa_1147_int_flag(void)
     if (jsa_1147_i2c_read_reg(REG_INT_FLAG, &flag) < 0)
     {
         BSP_LOGE(TAG, "read INT_FLAG failed");
-        return XYZN_OS_ERROR;
+        return MOS_OS_ERROR;
     }
     return flag; // 返回中断标志位
 }
@@ -52,7 +52,7 @@ int write_jsa_1147_int_flag(uint8_t flag)
     if (jsa_1147_i2c_write_reg(REG_INT_FLAG, flag) < 0)
     {
         BSP_LOGE(TAG, "write INT_FLAG failed");
-        return XYZN_OS_ERROR;
+        return MOS_OS_ERROR;
     }
     return 0;
 }
@@ -79,45 +79,45 @@ int bspal_jsa_1147_init(void)
     // if (jsa_1147_i2c_write_reg(REG_SUB_GAIN, 1) < 0)
     // {
     //     BSP_LOGE(TAG, "JSA-1147 set gain failed");
-    //     return XYZN_OS_ERROR;
+    //     return MOS_OS_ERROR;
     // }
 
     uint8_t itime = 0x18;
     if (jsa_1147_i2c_write_reg(REG_INTE_TIME, itime) < 0) // 积分时间只影响灵敏度，不进换算
     {
         BSP_LOGE(TAG, "JSA-1147 set integration time failed");
-        return XYZN_OS_ERROR;
+        return MOS_OS_ERROR;
     }
     uint8_t als_gain = ALS_GAIN_X16; // 只设ALS增益，CLEAR位全0
     if (jsa_1147_i2c_write_reg(REG_ALS_CLR_GAIN, als_gain & 0x07) < 0)
     {
         BSP_LOGE(TAG, "JSA-1147 set als gain failed");
-        return XYZN_OS_ERROR;
+        return MOS_OS_ERROR;
     }
     uint8_t als_coef = 0x80; // 暗电流补偿
     if (jsa_1147_i2c_write_reg(REG_ALS_COEF, als_coef) < 0)
     {
         BSP_LOGE(TAG, "JSA-1147 set als gain failed");
-        return XYZN_OS_ERROR;
+        return MOS_OS_ERROR;
     }
     uint8_t win_loss = 0x40; // 窗口损耗补偿
     if (jsa_1147_i2c_write_reg(REG_ALS_WIN_LOSS, win_loss) < 0)
     {
         BSP_LOGE(TAG, "JSA-1147 set als gain failed");
-        return XYZN_OS_ERROR;
+        return MOS_OS_ERROR;
     }
     /* 启动连续 ALS 模式：写 0x01 ( ALS_CONT=1) */
     uint8_t sysm_ctrl;
     if (jsa_1147_i2c_read_reg(REG_SYSM_CTRL, &sysm_ctrl) < 0)
     {
         BSP_LOGE(TAG, "read SYSM_CTRL failed ");
-        return XYZN_OS_ERROR;
+        return MOS_OS_ERROR;
     }
     sysm_ctrl |= 0x01;
     if (jsa_1147_i2c_write_reg(REG_SYSM_CTRL, sysm_ctrl) < 0)
     {
         BSP_LOGE(TAG, "JSA-1147 reset failed");
-        return XYZN_OS_ERROR;
+        return MOS_OS_ERROR;
     }
     mos_delay_ms(200); /* 等待完成 */
 #if 0

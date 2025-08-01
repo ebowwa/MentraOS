@@ -14,12 +14,12 @@
 
 #include "bsp_log.h"
 
-typedef struct xyzn_interrupt
+typedef struct mos_interrupt
 {
     uint32_t event;
     uint64_t tick;
     /* data */
-} xyzn_interrupt_queue;
+} mos_interrupt_queue;
 
 typedef enum
 {
@@ -28,7 +28,7 @@ typedef enum
     BSP_TYPE_JSA_1147_INT1 = 2,
     BSP_TYPE_KEY1 = 3,
     BSP_TYPE_MAX_COUNT
-} xyzn_interrupt_type_t;
+} mos_interrupt_type_t;
 
 void task_interrupt_thread(void);
 

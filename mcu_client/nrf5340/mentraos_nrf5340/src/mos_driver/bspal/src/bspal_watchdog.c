@@ -3,9 +3,9 @@
  * @Date         : 2025-07-31 10:40:40
  * @LastEditTime : 2025-07-31 17:14:21
  * @FilePath     : bspal_watchdog.c
- * @Description  : 
- * 
- *  Copyright (c) MentraOS Contributors 2025 
+ * @Description  :
+ *
+ *  Copyright (c) MentraOS Contributors 2025
  *  SPDX-License-Identifier: Apache-2.0
  */
 
@@ -78,7 +78,7 @@ int bspal_watchdog_init(void)
     if (!device_is_ready(wdt_data.wdt_drv))
     {
         BSP_LOGE(TAG, "%s: device not ready", wdt_data.wdt_drv->name);
-        return XYZN_OS_ERROR;
+        return MOS_OS_ERROR;
     }
 
     struct wdt_timeout_cfg wdt_config = {
@@ -102,14 +102,14 @@ int bspal_watchdog_init(void)
     if (wdt_data.wdt_channel_id < 0)
     {
         BSP_LOGE(TAG, "Watchdog install error");
-        return XYZN_OS_ERROR;
+        return MOS_OS_ERROR;
     }
 
     err = wdt_setup(wdt_data.wdt_drv, WDT_OPT);
     if (err < 0)
     {
         BSP_LOGE(TAG, "Watchdog setup error");
-        return XYZN_OS_ERROR;
+        return MOS_OS_ERROR;
     }
 
     return 0;

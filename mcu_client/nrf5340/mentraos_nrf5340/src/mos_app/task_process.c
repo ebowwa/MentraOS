@@ -1,7 +1,7 @@
 /*
  * @Author       : Cole
  * @Date         : 2025-07-31 10:40:40
- * @LastEditTime : 2025-07-31 17:20:56
+ * @LastEditTime : 2025-07-31 20:48:03
  * @FilePath     : task_process.c
  * @Description  :
  *
@@ -175,6 +175,6 @@ void task_process_thread(void)
                                                  NULL,
                                                  TASK_PROCESS_THREAD_PRIORITY,
                                                  0,
-                                                 XYZN_OS_NO_WAIT);
+                                                 MOS_OS_NO_WAIT);
     k_thread_name_set(task_process_thread_handle, TASK_NAME);
 }

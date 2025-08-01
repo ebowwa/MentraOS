@@ -1,7 +1,7 @@
 /*
  * @Author       : Cole
  * @Date         : 2025-07-31 10:40:40
- * @LastEditTime : 2025-07-31 16:26:23
+ * @LastEditTime : 2025-08-01 09:45:26
  * @FilePath     : main.c
  * @Description  :
  *
@@ -64,8 +64,8 @@ static struct bt_le_adv_param g_adv_param;
 #define BLE_AD_IDX_FLAGS 0
 #define BLE_AD_IDX_NAME 1
 #define BLE_AD_IDX_XY_TEST 2
-static uint8_t xyzn_test_ad_data[11] = {0x4B, 0X39, 0X30, 0X30, 0X30, 0X30, 0X30, 0X30, 0X30, 0X30, 0X30};
-static uint8_t xyzn_test_sd_data[11] = {0x22, 0XB8, 0X00, 0X08, 0XFF, 0X01, 0X30, 0X30, 0X30, 0X30, 0X30};
+static uint8_t mos_test_ad_data[11] = {0x4B, 0X39, 0X30, 0X30, 0X30, 0X30, 0X30, 0X30, 0X30, 0X30, 0X30};
+static uint8_t mos_test_sd_data[11] = {0x22, 0XB8, 0X00, 0X08, 0XFF, 0X01, 0X30, 0X30, 0X30, 0X30, 0X30};
 /******************************************* */
 
 #define LOG_MODULE_NAME main
@@ -79,12 +79,12 @@ static struct k_work adv_work;
 static struct bt_data ad[] = {
 	[BLE_AD_IDX_FLAGS] = BT_DATA_BYTES(BT_DATA_FLAGS, (BT_LE_AD_GENERAL | BT_LE_AD_NO_BREDR)),
 	[BLE_AD_IDX_NAME] = BT_DATA(BT_DATA_NAME_COMPLETE, device_name, (sizeof(device_name) - 1)),
-	// [BLE_AD_IDX_XY_TEST] = BT_DATA(BT_DATA_GAP_APPEARANCE, xyzn_test_ad_data, (sizeof(xyzn_test_ad_data) - 1)), // test
+	// [BLE_AD_IDX_XY_TEST] = BT_DATA(BT_DATA_GAP_APPEARANCE, mos_test_ad_data, (sizeof(mos_test_ad_data) - 1)), // test
 };
 
 static const struct bt_data sd[] = {
 	// BT_DATA_BYTES(BT_DATA_UUID128_ALL, BT_UUID_MY_SERVICE_VAL),
-	BT_DATA(BT_DATA_MANUFACTURER_DATA, xyzn_test_sd_data, (sizeof(xyzn_test_sd_data) - 1)), // test
+	BT_DATA(BT_DATA_MANUFACTURER_DATA, mos_test_sd_data, (sizeof(mos_test_sd_data) - 1)), // test
 };
 
 #ifdef CONFIG_UART_ASYNC_ADAPTER

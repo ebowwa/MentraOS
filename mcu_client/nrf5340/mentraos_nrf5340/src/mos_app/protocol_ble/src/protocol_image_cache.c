@@ -38,7 +38,7 @@ bool image_cache_insert(uint16_t stream_id, const uint8_t *data, uint32_t len, c
         BSP_LOGW(TAG, "Invalid data or meta error");
         return false;
     }
-    mos_mutex_lock(&cache_mutex, XYZN_OS_WAIT_FOREVER);
+    mos_mutex_lock(&cache_mutex, MOS_OS_WAIT_FOREVER);
     int slot_idx = -1;
 
     // 查找是否已有该stream_id，优先覆盖旧图
@@ -86,7 +86,7 @@ bool image_cache_insert(uint16_t stream_id, const uint8_t *data, uint32_t len, c
 // 查询某张图片（返回const指针，不可修改，没找到返回NULL）
 const image_cache_slot_t *image_cache_get(uint16_t stream_id)
 {
-    mos_mutex_lock(&cache_mutex, XYZN_OS_WAIT_FOREVER);
+    mos_mutex_lock(&cache_mutex, MOS_OS_WAIT_FOREVER);
     for (int i = 0; i < IMAGE_CACHE_SLOTS; ++i)
     {
         if (g_slots[i].used && g_slots[i].stream_id == stream_id)
