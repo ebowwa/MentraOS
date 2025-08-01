@@ -2,17 +2,17 @@ import {ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
 import React from "react"
 import {View, StyleSheet, Platform, ViewStyle, TextStyle} from "react-native"
-import {Switch, Text} from "@/components/ignite"
+import {Button, Switch, Text} from "@/components/ignite"
 
 type ToggleSettingProps = {
   label: string
   subtitle?: string
   value: boolean
-  onValueChange: (newValue: boolean) => void
+  onPress: () => void
   containerStyle?: ViewStyle
 }
 
-const ToggleSetting: React.FC<ToggleSettingProps> = ({label, subtitle, value, onValueChange, containerStyle}) => {
+const PermissionButton: React.FC<ToggleSettingProps> = ({label, subtitle, value, onPress, containerStyle}) => {
   const {theme, themed} = useAppTheme()
 
   return (
@@ -21,10 +21,17 @@ const ToggleSetting: React.FC<ToggleSettingProps> = ({label, subtitle, value, on
         <Text text={label} style={themed($label)} />
         {subtitle && <Text text={subtitle} style={themed($subtitle)} />}
       </View>
-      <Switch value={value} onValueChange={onValueChange} />
+      <Button style={themed($button)} tx="common:request" onPress={onPress} />
     </View>
   )
 }
+
+const $button: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
+  fontSize: spacing.xs,
+  width: 90,
+  padding: spacing.xs,
+  margin: 0,
+})
 
 const $container: ThemedStyle<ViewStyle> = ({colors, spacing, borderRadius}) => ({
   flexDirection: "row",
@@ -58,4 +65,4 @@ const $subtitle: ThemedStyle<TextStyle> = ({colors}) => ({
   color: colors.textDim,
 })
 
-export default ToggleSetting
+export default PermissionButton

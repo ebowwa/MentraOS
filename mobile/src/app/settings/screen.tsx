@@ -43,8 +43,8 @@ export default function ScreenSettingsScreen() {
   // -- States --
   const [brightness, setBrightness] = useState<number | null>(null)
   const [isAutoBrightnessEnabled, setIsAutoBrightnessEnabled] = useState(status.glasses_settings.auto_brightness)
-  const [depth, setDepth] = useState<number | null>(null)
-  const [height, setHeight] = useState<number | null>(null)
+  const [depth, setDepth] = useState<number | null>(status.glasses_settings.dashboard_depth)
+  const [height, setHeight] = useState<number | null>(status.glasses_settings.dashboard_height)
 
   // -- Effects --
   useEffect(() => {

@@ -28,6 +28,7 @@ import ToggleSetting from "@/components/settings/ToggleSetting"
 import {translate} from "@/i18n"
 import {Spacer} from "@/components/misc/Spacer"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
+import PermissionButton from "@/components/settings/PermButton"
 
 export default function PrivacySettingsScreen() {
   const {status} = useStatus()
@@ -243,11 +244,11 @@ export default function PrivacySettingsScreen() {
         {/* Calendar Permission - only show if not granted */}
         {!calendarEnabled && (
           <>
-            <ToggleSetting
+            <PermissionButton
               label={translate("settings:calendarLabel")}
               subtitle={translate("settings:calendarSubtitle")}
               value={calendarEnabled}
-              onValueChange={handleToggleCalendar}
+              onPress={handleToggleCalendar}
             />
             <Spacer height={theme.spacing.md} />
           </>
@@ -256,11 +257,11 @@ export default function PrivacySettingsScreen() {
         {/* Location Permission - only show if not granted */}
         {!locationEnabled && (
           <>
-            <ToggleSetting
+            <PermissionButton
               label={translate("settings:locationLabel")}
               subtitle={translate("settings:locationSubtitle")}
               value={locationEnabled}
-              onValueChange={handleToggleLocation}
+              onPress={handleToggleLocation}
             />
             <Spacer height={theme.spacing.md} />
           </>
