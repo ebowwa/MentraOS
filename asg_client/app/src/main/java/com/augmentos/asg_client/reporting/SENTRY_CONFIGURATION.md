@@ -13,51 +13,13 @@ This is an **open-source project**, so we follow strict security practices:
 - ✅ All sensitive files are already in `.gitignore`
 - ✅ DSN is set programmatically via `SentryInitializer`
 
-## 🚀 Quick Setup
-
-### For Development
-
-The project is already configured with your Sentry DSN. You can use the provided scripts:
-
-1. **Use the setup script (recommended):**
-   ```bash
-   ./setup-sentry.sh
-   ```
-
-2. **Or use the environment switcher:**
-   ```bash
-   ./switch-sentry-env.sh development
-   ```
-
-3. **Build and run** - Sentry will automatically load your configuration
-
-### Project Configuration Details
-
-- **Organization:** ahmad-wv
-- **Project:** asg
-- **DSN:** https://b9741072e209679b5afe7d613ce4966b@o4509753650249728.ingest.us.sentry.io/4509753949028352
-
-### Environment Switching
-
-The project includes pre-configured environment files:
-
-```bash
-# Switch to development (default)
-./switch-sentry-env.sh development
-
-# Switch to staging
-./switch-sentry-env.sh staging
-
-# Switch to production
-./switch-sentry-env.sh production
-```
 
 ### For Production
 
 Use environment variables (recommended for CI/CD):
 
 ```bash
-export SENTRY_DSN="https://b9741072e209679b5afe7d613ce4966b@o4509753650249728.ingest.us.sentry.io/4509753949028352"
+export SENTRY_DSN="https://key@sentry.io/project" 
 export SENTRY_ENABLED="true"
 export SENTRY_ENVIRONMENT="production"
 export SENTRY_SAMPLE_RATE="0.05"
@@ -128,47 +90,6 @@ android {
 }
 ```
 
-## 🔧 Usage in Code
-
-### Secure Initialization (Recommended)
-
-The `ReportManager` handles all reporting initialization directly. Each provider (including Sentry) handles its own secure initialization:
-
-```java
-import com.augmentos.asg_client.reporting.core.ReportManager;
-import com.augmentos.asg_client.reporting.providers.SentryReportProvider;
-
-// Initialize all reporting systems
-// SentryReportProvider will handle its own secure initialization
-ReportManager manager = ReportManager.getInstance(this);
-manager.addProvider(new SentryReportProvider());
-```
-
-### Manual Provider Configuration (Advanced)
-
-The `SentryConfig` class provides static methods for accessing configuration:
-
-```java
-import com.augmentos.asg_client.reporting.config.SentryConfig;
-
-// Check if Sentry is properly configured
-if (SentryConfig.isValidConfiguration()) {
-    // Initialize Sentry with configuration
-    String dsn = SentryConfig.getSentryDsn();
-    String environment = SentryConfig.getEnvironment();
-    double sampleRate = SentryConfig.getSampleRate();
-    
-    // Configure Sentry SDK
-    SentryAndroid.init(this, options -> {
-        options.setDsn(dsn);
-        options.setEnvironment(environment);
-        options.setTracesSampleRate(sampleRate);
-    });
-}
-
-// Log configuration status
-SentryConfig.logConfigurationStatus();
-```
 
 ## 🧪 Testing
 
