@@ -85,7 +85,7 @@ class AudioManager: NSObject {
 
             self?.cleanupPlayer(requestId: requestId)
             self?.sendAudioPlayResponse(requestId: requestId, success: true, duration: durationMs)
-            CoreCommsService.log("AudioManager: Audio playback completed successfully for requestId: \(requestId), duration: \(durationMs ?? 0)ms")
+            CoreCommsService.log("AudioManager: Audio playback completed successfully for requestId: \(requestId), duration: \(durationSeconds ?? 0)s")
         }
         observers.append(endObserver)
 
