@@ -18,17 +18,15 @@
 #include "bsp_log.h"
 
 #define TAG "BSP_ICT_15318"
-#define ICT_15318_I2C_SOFT_MODE 1 // 0:硬件I2C 1:软件I2C
+#define ICT_15318_I2C_SOFT_MODE 1 // 0:Hardware I2C 1:Software I2C
 
 #if ICT_15318_I2C_SOFT_MODE
 const struct gpio_dt_spec ict_15318_i2c_sda = GPIO_DT_SPEC_GET(DT_PATH(zephyr_user), ict_15318_sda_gpios);
 const struct gpio_dt_spec ict_15318_i2c_scl = GPIO_DT_SPEC_GET(DT_PATH(zephyr_user), ict_15318_scl_gpios);
 
-/* I2C bit-bang 时序延时 (µs) */
-#define ict_15318_SW_I2C_DELAY_US 6    /* 根据总线速率微调 */
-#define ict_15318_SW_I2C_TIMEOUT 1000U /* ACK 等待最大循环 */
+#define ict_15318_SW_I2C_DELAY_US 6    
+#define ict_15318_SW_I2C_TIMEOUT 1000U 
 
-/* --- GPIO 配置 & 操作 --- */
 static int ict_15318_sda_out(void)
 {
     return gpio_pin_configure_dt(&ict_15318_i2c_sda, GPIO_OUTPUT);
@@ -87,12 +85,10 @@ void ict_15318_i2c_stop(void)
     mos_busy_wait(ict_15318_SW_I2C_DELAY_US);
 }
 
-/* 发送一字节并等待 ACK */
 int ict_15318_write_byte(uint8_t b)
 {
     ict_15318_sda_out();
     mos_busy_wait(ict_15318_SW_I2C_DELAY_US);
-    /* 发送 8 bit */
     for (int i = 7; i >= 0; i--)
     {
         ict_15318_scl_low();
@@ -106,9 +102,8 @@ int ict_15318_write_byte(uint8_t b)
         mos_busy_wait(ict_15318_SW_I2C_DELAY_US);
     }
 
-    /* 第 9 个时钟，用于 ACK */
     ict_15318_scl_low();
-    ict_15318_sda_in(); /* 切输入，等从机拉 ACK */
+    ict_15318_sda_in(); 
     mos_busy_wait(ict_15318_SW_I2C_DELAY_US);
 
     ict_15318_scl_high();
@@ -132,7 +127,6 @@ int ict_15318_write_byte(uint8_t b)
     return 0;
 }
 
-/* 读一字节，并在最后阶段发 ACK/NACK */
 int ict_15318_read_byte(uint8_t *p, bool ack)
 {
     uint8_t val = 0;
@@ -151,7 +145,6 @@ int ict_15318_read_byte(uint8_t *p, bool ack)
         mos_busy_wait(ict_15318_SW_I2C_DELAY_US / 2);
     }
 
-    /* 第 9 个时钟，主机 ACK/NACK */
     ict_15318_scl_low();
     ict_15318_sda_out();
     if (ack)
@@ -172,15 +165,12 @@ int ict_15318_read_byte(uint8_t *p, bool ack)
     return 0;
 }
 
-/**
- * @brief   单字节写寄存器
- * @return  0: OK, <0: 错误
- */
+
 int ict_15318_i2c_write_reg(uint8_t reg, uint8_t val)
 {
     int ret;
     ict_15318_i2c_start();
-    ret = ict_15318_write_byte((ICT_15318_I2C_ADDR << 1) | 0x00); /* 写模式 */
+    ret = ict_15318_write_byte((ICT_15318_I2C_ADDR << 1) | 0x00); 
     if (ret)
         goto out;
     ret = ict_15318_write_byte(reg);
@@ -192,14 +182,10 @@ out:
     return ret;
 }
 
-/**
- * @brief   单字节读寄存器
- * @return  0: OK, <0: 错误
- */
 int ict_15318_i2c_read_reg(uint8_t reg, uint8_t *pval)
 {
     int ret;
-    /* 1 发寄存器地址 */
+
     ict_15318_i2c_start();
     ret = ict_15318_write_byte((ICT_15318_I2C_ADDR << 1) | 0x00);
     if (ret)
@@ -207,12 +193,12 @@ int ict_15318_i2c_read_reg(uint8_t reg, uint8_t *pval)
     ret = ict_15318_write_byte(reg);
     if (ret)
         goto out;
-    /* 2 Re-START + 读 */
+   
     ict_15318_i2c_start();
     ret = ict_15318_write_byte((ICT_15318_I2C_ADDR << 1) | 0x01);
     if (ret)
         goto out;
-    ret = ict_15318_read_byte(pval, false); /* 最后一个字节发 NACK */
+    ret = ict_15318_read_byte(pval, false); 
 out:
     BSP_LOGI(TAG, "ict_15318_i2c_read_reg reg:0x%02x, val:0x%02x, ret:%d", reg, *pval, ret);
     ict_15318_i2c_stop();

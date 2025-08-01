@@ -25,26 +25,26 @@
 
 typedef enum
 {
-    BLE_MSG_IMAGE_TRANSFER_COMPLETE = 0,     // 图片传输完成 image_transfer_complete
-    BLE_MSG_BATTERY_STATUS,                  // 电池状态
-    BLE_MSG_CHARGING_STATE,                  // 充电状态
-    BLE_MSG_DEVICE_INFO,                     // 设备信息
-    BLE_MSG_PONG,                            // 心跳回应
-    BLE_MSG_HEAD_POSITION,                   // 头部位置
-    BLE_MSG_HEAD_UP_ANGLE_SET,               // 头部角度设置
-    BLE_MSG_VAD_EVENT,                       // 语音识别事件
-    BLE_MSG_IMU_DATA,                        // IMU数据
-    BLE_MSG_BUTTON_EVENT,                    // 按钮事件
-    BLE_MSG_FACTORY_RESET,                   // 工厂重置
-    BLE_MSG_RESTART_DEVICE,                  // 重启设备
-    BLE_MSG_TEXT_DISPLAY,                    // 文本显示
-    BLE_MSG_DRAW_LINE,                       // 绘制线条
-    BLE_MSG_DRAW_RECT,                       // 绘制矩形
-    BLE_MSG_DRAW_CIRCLE,                     // 绘制圆形
-    BLE_MSG_COMMIT,                          // 提交
-    BLE_MSG_DISPLAY_VERTICAL_SCROLLING_TEXT, // 垂直滚动文本
-    BLE_MSG_DISPLAY_CACHED_IMAGE,            // 显示缓存图像
-    BLE_MSG_CLEAR_CACHED_IMAGE,              //
+    BLE_MSG_IMAGE_TRANSFER_COMPLETE = 0,   
+    BLE_MSG_BATTERY_STATUS,                
+    BLE_MSG_CHARGING_STATE,                
+    BLE_MSG_DEVICE_INFO,                     
+    BLE_MSG_PONG,                         
+    BLE_MSG_HEAD_POSITION,               
+    BLE_MSG_HEAD_UP_ANGLE_SET,               
+    BLE_MSG_VAD_EVENT,                      
+    BLE_MSG_IMU_DATA,                       
+    BLE_MSG_BUTTON_EVENT,                 
+    BLE_MSG_FACTORY_RESET,                  
+    BLE_MSG_RESTART_DEVICE,               
+    BLE_MSG_TEXT_DISPLAY,                    
+    BLE_MSG_DRAW_LINE,                       
+    BLE_MSG_DRAW_RECT,                     
+    BLE_MSG_DRAW_CIRCLE,                    
+    BLE_MSG_COMMIT,                          
+    BLE_MSG_DISPLAY_VERTICAL_SCROLLING_TEXT, 
+    BLE_MSG_DISPLAY_CACHED_IMAGE,            
+    BLE_MSG_CLEAR_CACHED_IMAGE,              
     BLE_MSG_SET_BRIGHTNESS,
     BLE_MSG_SET_AUTO_BRIGHTNESS,
     BLE_MSG_SET_AUTO_BRIGHTNESS_MULTIPLIER,
@@ -70,8 +70,7 @@ typedef enum
     BLE_MSG_TYPE_MAX
 } ble_msg_type_t;
 
-// ==== 协议结构体 ====
-// 只需维护这部分
+
 typedef struct
 {
     char stream_id[8];
@@ -243,7 +242,7 @@ typedef struct
         msg_request_enable_imu_t request_enable_imu;
         msg_request_imu_single_t request_imu_single;
         msg_request_imu_stream_t request_imu_stream;
-        // ...补齐所有协议体
+
     } data;
 } ble_protocol_msg_t;
 
@@ -255,7 +254,7 @@ typedef struct
     ble_msg_handler_t handler;
 } ble_msg_dispatch_entry_t;
 
-// 导出接口
+
 void ble_protocol_init(void);
 void ble_msg_dispatch(const ble_protocol_msg_t *msg);
 bool ble_send_msg_enqueue(ble_msg_type_t type, const void *msg, size_t msg_len);

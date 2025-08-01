@@ -9,8 +9,5 @@
  
 
 target_include_directories(app PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include/.)
-target_sources(app PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/protocol_image_stream.c)
-target_sources(app PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/protocol_image_cache.c)
-target_sources(app PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/protocol_image_flash.c)
 target_sources(app PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/protocol_ble_process.c)
 target_sources(app PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/protocol_ble_send.c)

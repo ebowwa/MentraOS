@@ -17,7 +17,6 @@
 
 struct device *i2c_dev_icm42688p; // I2C device
 
-/* 向单个寄存器写入一个字节 */
 int icm42688p_write_reg(uint8_t reg, uint8_t val)
 {
     uint8_t buf[2] = {reg, val};
@@ -29,7 +28,7 @@ int icm42688p_write_reg(uint8_t reg, uint8_t val)
     return rc;
 }
 
-/* 从单个寄存器读出一个字节 */
+
 int icm42688p_read_reg(uint8_t reg, uint8_t *val)
 {
     int rc = i2c_write_read(i2c_dev_icm42688p,
@@ -43,17 +42,16 @@ int icm42688p_read_reg(uint8_t reg, uint8_t *val)
     return rc;
 }
 
-/* 读取 WHO_AM_I 寄存器示例 */
+
 int bsp_icm42688p_check_id(void)
 {
     uint8_t who = 0;
-    int rc = icm42688p_read_reg(REG_WHO_AM_I, &who); /* WHO_AM_I 寄存器地址 */
+    int rc = icm42688p_read_reg(REG_WHO_AM_I, &who); 
     if (rc == 0)
     {
         BSP_LOGI(TAG, "ICM42688P WHO_AM_I = 0x%02X", who);
         if (who != ICM42688P_WHO_AM_I_ID)
         {
-            /* 0x47 是 ICM-42688P 的默认 ID */
             BSP_LOGE(TAG, "Unexpected WHO_AM_I err");
             return MOS_OS_ERROR;
         }

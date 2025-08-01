@@ -42,9 +42,9 @@ void gx8002_int_isr(const struct device *dev,
 #if 1
     gpio_pin_interrupt_configure_dt(&gx8002_int4, GPIO_INT_DISABLE);
 #endif
-    event.event = BSP_TYPE_GX8002_INT4;                           // 中断类型
-    event.tick = mos_get_tick();                                  // 获取当前 tick
-    mos_msgq_send(&bsp_interrupt_queue, &event, MOS_OS_WAIT_ON); // 发送到中断队列
+    event.event = BSP_TYPE_GX8002_INT4;                           
+    event.tick = mos_get_tick();                                  
+    mos_msgq_send(&bsp_interrupt_queue, &event, MOS_OS_WAIT_ON); 
     BSP_LOGI(TAG, "gx8002_int_isr event: %d, tick: %lld", event.event, event.tick);
 }
 void jsa_1147_int_isr(const struct device *dev,
@@ -56,9 +56,9 @@ void jsa_1147_int_isr(const struct device *dev,
 #if 1
     gpio_pin_interrupt_configure_dt(&jsa_1147_int1, GPIO_INT_DISABLE);
 #endif
-    event.event = BSP_TYPE_JSA_1147_INT1;                         // 中断类型
-    event.tick = mos_get_tick();                                  // 获取当前 tick
-    mos_msgq_send(&bsp_interrupt_queue, &event, MOS_OS_WAIT_ON); // 发送到中断队列
+    event.event = BSP_TYPE_JSA_1147_INT1;                         
+    event.tick = mos_get_tick();                                  
+    mos_msgq_send(&bsp_interrupt_queue, &event, MOS_OS_WAIT_ON); 
     BSP_LOGI(TAG, "jsa_1147_int event: %d, tick: %lld", event.event, event.tick);
 }
 
@@ -70,22 +70,22 @@ void gpio_key1_int_isr(const struct device *dev,
     if (debouncing)
     {
         BSP_LOGI(TAG, "Debouncing in progress, ignoring interrupt");
-        return; // 忽略中断
+        return; 
     }
-    debouncing = true; // 设置防抖动标志
+    debouncing = true; 
     mos_interrupt_queue event;
 #if 0
     gpio_pin_interrupt_configure_dt(&gpio_key1, GPIO_INT_DISABLE);
 #endif
-    event.event = BSP_TYPE_KEY1;                                  // 中断类型
-    event.tick = mos_get_tick();                                  // 获取当前 tick
-    mos_msgq_send(&bsp_interrupt_queue, &event, MOS_OS_WAIT_ON); // 发送到中断队列
+    event.event = BSP_TYPE_KEY1;                                 
+    event.tick = mos_get_tick();                                  
+    mos_msgq_send(&bsp_interrupt_queue, &event, MOS_OS_WAIT_ON); 
     BSP_LOGI(TAG, "gpio_key1_int_isr event: %d, tick: %lld", event.event, event.tick);
 }
 
 void task_interrupt(void *p1, void *p2, void *p3)
 {
-    mos_interrupt_queue event; // 事件
+    mos_interrupt_queue event; 
     uint64_t tick;
     bspal_key_init();
     BSP_LOGI(TAG, "task_interrupt start");
@@ -94,7 +94,7 @@ void task_interrupt(void *p1, void *p2, void *p3)
         if (mos_msgq_receive(&bsp_interrupt_queue, &event, MOS_OS_WAIT_FOREVER) == MOS_OS_EOK)
         {
             // BSP_LOGI(TAG, "event: %d, tick: %llu", event.event, event.tick);
-            tick = mos_get_tick(); // 获取当前 tick
+            tick = mos_get_tick(); 
 
             switch (event.event)
             {

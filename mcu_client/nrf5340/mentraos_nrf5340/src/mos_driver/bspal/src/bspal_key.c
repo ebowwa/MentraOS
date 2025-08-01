@@ -1,7 +1,7 @@
 /*
  * @Author       : Cole
  * @Date         : 2025-07-31 10:40:40
- * @LastEditTime : 2025-07-31 17:14:05
+ * @LastEditTime : 2025-08-01 16:42:24
  * @FilePath     : bspal_key.c
  * @Description  :
  *
@@ -15,18 +15,18 @@
 
 #define TAG "BSPAL_KEY"
 
-#define DEBOUNCE_MS 50       /* 去抖时间 */
-#define LONG_PRESS_MS 2000   /* 长按判定阈值 */
-#define CLICK_TIMEOUT_MS 400 /* 多击间隔超时 */
+#define DEBOUNCE_MS 50       /* 去抖延时 debounce delay */
+#define LONG_PRESS_MS 2000   /* 长按判定阈值; Long press threshold */
+#define CLICK_TIMEOUT_MS 400 /* 多击间隔超时; Multi-click interval timeout */
 
 static struct k_timer debounce_timer;
 static struct k_timer click_timer;
 
-/* 稳定电平（去抖后） */
+/* 稳定电平（去抖后）; Stable level (after debouncing) */
 static bool last_level;
-/* 记录按下时刻 */
+/* 记录按下时刻 ; Record the press timestamp */
 static int64_t press_ts;
-/* 短按计数（多击） */
+/* 短按计数（多击） ; Short press count (multi-click) */
 static uint8_t click_cnt;
 
 extern volatile bool debouncing;
@@ -42,13 +42,13 @@ void bspal_click_timer_stop(void)
 {
     mos_timer_stop(&click_timer);
 }
-/*—— 多击超时处理 ——*/
+
 static void click_timeout(struct k_timer *t)
 {
     switch (click_cnt)
     {
     case 1:
-        BSP_LOGI(TAG, "Single click"); // 短按
+        BSP_LOGI(TAG, "Single click"); // 单击
         break;
     case 2:
         BSP_LOGI(TAG, "Double click"); // 双击
@@ -60,8 +60,8 @@ static void click_timeout(struct k_timer *t)
         BSP_LOGI(TAG, "%d-click", click_cnt);
         break;
     }
-    /* 清零，多击周期结束 */
-    click_cnt = 0;
+
+    click_cnt = 0; // 重置多击计数; Reset multi-click count
 }
 
 /*—— 去抖定时到期 ——*/
@@ -70,6 +70,7 @@ static void debounce_timeout(struct k_timer *t)
     bool level = gpio_key1_read();
     debouncing = false;
     /* 如果电平与上次稳定值相同，无需处理 */
+    // If the level is the same as the last stable value, no processing is needed
     if (level == last_level)
     {
         return;
@@ -80,25 +81,31 @@ static void debounce_timeout(struct k_timer *t)
     if (level)
     {
         /* 按下稳定：记录时刻 */
+        // If the level is stable, record the timestamp
         press_ts = now;
     }
     else
     {
         /* 抬起稳定：计算持续时间 */
+        // If the level is stable, calculate the duration
         int64_t dt = now - press_ts;
         if (dt >= LONG_PRESS_MS)
         {
             /* 长按事件 */
+            // Long press event
             BSP_LOGI(TAG, " Long press (%.0lld ms)", dt);
             /* 长按取消多击统计 */
+            // Cancel multi-click statistics for long press
             click_cnt = 0;
             bspal_click_timer_stop();
         }
         else if (dt >= DEBOUNCE_MS)
         {
             /* 短按事件 */
+            // Short press event
             BSP_LOGI(TAG, " Short press (%.0lld ms)", dt);
             /* 累加多击，并重启多击定时 */
+            // Accumulate multi-click and restart multi-click timer
             click_cnt++;
             bspal_click_timer_start();
         }

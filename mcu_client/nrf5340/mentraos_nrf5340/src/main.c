@@ -1,7 +1,7 @@
 /*
  * @Author       : Cole
  * @Date         : 2025-07-31 10:40:40
- * @LastEditTime : 2025-08-01 09:45:26
+ * @LastEditTime : 2025-08-01 17:19:15
  * @FilePath     : main.c
  * @Description  :
  *
@@ -42,7 +42,6 @@
 #include "bsp_board_mcu.h"
 #include "protocol_ble_send.h"
 #include "protocol_ble_process.h"
-#include "protocol_image_cache.h"
 #include "mos_lvgl_display.h"
 #include "task_process.h"
 #include "task_interrupt.h"
@@ -508,7 +507,7 @@ int main(void)
 	int err = 0;
 	app_info();
 	g_adv_param = *(BT_LE_ADV_CONN_FAST_2);
-	ble_interval_set(100, 100); // 设置广播间隔
+	ble_interval_set(100, 100);
 	if (IS_ENABLED(CONFIG_BT_NUS_SECURITY_ENABLED))
 	{
 		err = bt_conn_auth_cb_register(&conn_auth_callbacks);
@@ -549,7 +548,7 @@ int main(void)
 	bt_gatt_cb_register(&gatt_callbacks);
 
 	mos_delay_ms(1000);
-	image_cache_init();
+
 	bsp_board_mcu_init();
 
 	lvgl_dispaly_thread();

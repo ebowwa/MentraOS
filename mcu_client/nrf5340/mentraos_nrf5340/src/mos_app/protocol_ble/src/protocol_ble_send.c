@@ -3,12 +3,11 @@
  * @Date         : 2025-07-31 10:40:40
  * @LastEditTime : 2025-07-31 17:30:17
  * @FilePath     : protocol_ble_send.c
- * @Description  : 
- * 
- *  Copyright (c) MentraOS Contributors 2025 
+ * @Description  :
+ *
+ *  Copyright (c) MentraOS Contributors 2025
  *  SPDX-License-Identifier: Apache-2.0
  */
-
 
 #include <zephyr/kernel.h>
 #include "cJSON.h"
@@ -245,7 +244,7 @@ bool ble_send_msg_enqueue(ble_msg_type_t type, const void *msg, size_t msg_len)
     }
     ble_protocol_msg_t m = {0};
     m.type = type;
-    memcpy(&m.data, msg, msg_len); // 只拷贝实际协议体长度
+    memcpy(&m.data, msg, msg_len); // copy the message data
     int err = k_msgq_put(&ble_protocol_msgq, &m, K_NO_WAIT);
     if (err != 0)
     {

@@ -21,7 +21,7 @@
 
 // const struct gpio_dt_spec gpio_key1 = GPIO_DT_SPEC_GET(DT_PATH(zephyr_user), key1_gpios);
 struct gpio_dt_spec gpio_key1 = GPIO_DT_SPEC_GET(DT_PATH(zephyr_user), key1_gpios);
-static struct gpio_callback gpio_key1_int_cb_data; // 中断回调函数
+static struct gpio_callback gpio_key1_int_cb_data; // GPIO回调数据; GPIO callback data
 
 bool gpio_key1_read(void)
 {

@@ -1,7 +1,7 @@
 /*
  * @Author       : Cole
  * @Date         : 2025-07-31 10:40:40
- * @LastEditTime : 2025-07-31 18:41:40
+ * @LastEditTime : 2025-08-01 16:12:29
  * @FilePath     : bsp_jsa_1147.c
  * @Description  :
  *
@@ -19,20 +19,20 @@
 
 #define TAG "BSP_JSA_1147"
 
-#define JSA_1147_I2C_SOFT_MODE 1 // 0:硬件I2C 1:软件I2C
+#define JSA_1147_I2C_SOFT_MODE 1 // 0:Hardware I2C 1:Software I2C
 
 struct gpio_dt_spec jsa_1147_int1 = GPIO_DT_SPEC_GET(DT_PATH(zephyr_user), jsa_1147_int1_gpios);
 
 static struct gpio_callback jsa_1147_int1_cb_data;
-int bsp_jsa_1147_interrupt_init(void); // 中断初始化
+int bsp_jsa_1147_interrupt_init(void);
 
 #if JSA_1147_I2C_SOFT_MODE
 
 const struct gpio_dt_spec jsa_1147_i2c_sda = GPIO_DT_SPEC_GET(DT_PATH(zephyr_user), jsa_1147_sda_gpios);
 const struct gpio_dt_spec jsa_1147_i2c_scl = GPIO_DT_SPEC_GET(DT_PATH(zephyr_user), jsa_1147_scl_gpios);
 
-#define JSA_1147_SW_I2C_DELAY_US 6    /* 根据总线速率微调 */
-#define JSA_1147_SW_I2C_TIMEOUT 1000U /* ACK 等待最大循环 */
+#define JSA_1147_SW_I2C_DELAY_US 6
+#define JSA_1147_SW_I2C_TIMEOUT 1000U
 
 /* --- GPIO 配置 & 操作 --- */
 static int jsa_1147_sda_out(void)
@@ -93,12 +93,11 @@ void jsa_1147_i2c_stop(void)
     mos_busy_wait(JSA_1147_SW_I2C_DELAY_US);
 }
 
-/* 发送一字节并等待 ACK */
 int jsa_1147_write_byte(uint8_t b)
 {
     jsa_1147_sda_out();
     mos_busy_wait(JSA_1147_SW_I2C_DELAY_US);
-    /* 发送 8 bit */
+
     for (int i = 7; i >= 0; i--)
     {
         jsa_1147_scl_low();
@@ -112,9 +111,9 @@ int jsa_1147_write_byte(uint8_t b)
         mos_busy_wait(JSA_1147_SW_I2C_DELAY_US);
     }
 
-    /* 第 9 个时钟，用于 ACK */
+    // 9th clock for ACK
     jsa_1147_scl_low();
-    jsa_1147_sda_in(); /* 切输入，等从机拉 ACK */
+    jsa_1147_sda_in();
     mos_busy_wait(JSA_1147_SW_I2C_DELAY_US);
 
     jsa_1147_scl_high();
@@ -138,7 +137,6 @@ int jsa_1147_write_byte(uint8_t b)
     return 0;
 }
 
-/* 读一字节，并在最后阶段发 ACK/NACK */
 int jsa_1147_read_byte(uint8_t *p, bool ack)
 {
     uint8_t val = 0;
@@ -157,7 +155,6 @@ int jsa_1147_read_byte(uint8_t *p, bool ack)
         mos_busy_wait(JSA_1147_SW_I2C_DELAY_US / 2);
     }
 
-    /* 第 9 个时钟，主机 ACK/NACK */
     jsa_1147_scl_low();
     jsa_1147_sda_out();
     if (ack)
@@ -178,15 +175,11 @@ int jsa_1147_read_byte(uint8_t *p, bool ack)
     return 0;
 }
 
-/**
- * @brief   单字节写寄存器
- * @return  0: OK, <0: 错误
- */
 int jsa_1147_i2c_write_reg(uint8_t reg, uint8_t val)
 {
     int ret;
     jsa_1147_i2c_start();
-    ret = jsa_1147_write_byte((JSA_1147_I2C_ADDR << 1) | 0x00); /* 写模式 */
+    ret = jsa_1147_write_byte((JSA_1147_I2C_ADDR << 1) | 0x00);
     if (ret)
         goto out;
     ret = jsa_1147_write_byte(reg);
@@ -198,14 +191,10 @@ out:
     return ret;
 }
 
-/**
- * @brief   单字节读寄存器
- * @return  0: OK, <0: 错误
- */
 int jsa_1147_i2c_read_reg(uint8_t reg, uint8_t *pval)
 {
     int ret;
-    /* 1) 发寄存器地址 */
+
     jsa_1147_i2c_start();
     ret = jsa_1147_write_byte((JSA_1147_I2C_ADDR << 1) | 0x00);
     if (ret)
@@ -213,12 +202,12 @@ int jsa_1147_i2c_read_reg(uint8_t reg, uint8_t *pval)
     ret = jsa_1147_write_byte(reg);
     if (ret)
         goto out;
-    /* 2) Re-START + 读 */
+
     jsa_1147_i2c_start();
     ret = jsa_1147_write_byte((JSA_1147_I2C_ADDR << 1) | 0x01);
     if (ret)
         goto out;
-    ret = jsa_1147_read_byte(pval, false); /* 最后一个字节发 NACK */
+    ret = jsa_1147_read_byte(pval, false);
 out:
     jsa_1147_i2c_stop();
     return ret;
@@ -289,7 +278,7 @@ int bsp_jsa_1147_init(void)
         return err;
     }
     // mos_delay_ms(10);
-    err = bsp_jsa_1147_interrupt_init(); // 中断初始化
+    err = bsp_jsa_1147_interrupt_init();
     if (err != 0)
     {
         BSP_LOGE(TAG, "bsp_jsa_1147_interrupt_init error: %d", err);
@@ -367,7 +356,7 @@ int bsp_jsa_1147_sensor_init(void)
 void jsa_1147_int1_isr_enable(void)
 {
     int ret;
-    ret = gpio_pin_interrupt_configure_dt(&jsa_1147_int1, GPIO_INT_EDGE_FALLING); // 下边缘触发
+    ret = gpio_pin_interrupt_configure_dt(&jsa_1147_int1, GPIO_INT_EDGE_FALLING); // Falling edge trigger
     if (ret != 0)
     {
         BSP_LOGE(TAG, "Error %d: failed to configure interrupt on pin %d",
@@ -382,7 +371,7 @@ int bsp_jsa_1147_interrupt_init(void)
     {
         BSP_LOGE(TAG, "Error %d: failed to configure pin %d", ret, jsa_1147_int1.pin);
     }
-    ret = gpio_pin_interrupt_configure_dt(&jsa_1147_int1, GPIO_INT_EDGE_FALLING); // 下边缘触发
+    ret = gpio_pin_interrupt_configure_dt(&jsa_1147_int1, GPIO_INT_EDGE_FALLING); // Falling edge trigger
     if (ret != 0)
     {
         BSP_LOGE(TAG, "Error %d: failed to configure interrupt on pin %d", ret, jsa_1147_int1.pin);

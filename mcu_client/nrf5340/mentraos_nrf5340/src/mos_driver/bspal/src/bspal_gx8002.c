@@ -20,18 +20,13 @@ int gx8002_get_mic_state(void)
 {
     int ret;
     uint8_t state = 0;
-
-    /* 先写触发命令 0x70 */
     ret = gx8002_i2c_write_reg(0xC4, 0x70);
     if (ret < 0)
     {
         BSP_LOGE(TAG, "write mic-cmd failed: %d", ret);
         return ret;
     }
-
-    /* 等待芯片内部更新 */
-    mos_delay_ms(400);
-    /* 再读寄存器 0xA0 */
+    mos_delay_ms(400);//wait for mic state ready
     gx8002_i2c_start();
     gx8002_write_byte((GX8002_I2C_ADDR << 1) | 0);
     gx8002_write_byte(0xA0);
@@ -45,7 +40,7 @@ int gx8002_get_mic_state(void)
         BSP_LOGE(TAG, "read mic-state failed: %d", ret);
         return ret;
     }
-    BSP_LOGI(TAG, "mic state[0:异常 1:正常] = %d", state);
+    BSP_LOGI(TAG, "mic state[0: err 1: ok] = %d", state);
     return state;
 }
 
@@ -56,7 +51,7 @@ int gx8002_test_link(void)
     const uint8_t irq_cmd = 0x80;
     const uint8_t ack_cmd = 0x11;
 
-    /* 发链路测试中断 */
+   
     ret = gx8002_i2c_write_reg(0xC4, irq_cmd);
     if (ret < 0)
     {
@@ -64,7 +59,7 @@ int gx8002_test_link(void)
         return ret;
     }
 
-    /* 轮询等待 1 (最多 100 次 * 10ms) */
+
     for (int i = 0; i < 100; i++)
     {
         mos_delay_ms(10);
@@ -76,7 +71,7 @@ int gx8002_test_link(void)
         }
         if (val == 1)
         {
-            /* 回写确认 */
+            
             ret = gx8002_i2c_write_reg(0xC4, ack_cmd);
             if (ret < 0)
             {
@@ -92,11 +87,7 @@ int gx8002_test_link(void)
     return 0;
 }
 
-/**
- * @brief  打开 Dmic
- *         写 0x72 到 0xC4，轮询读 0xA0 等待返回 0x72
- * @return 0 成功；<0 I2C 错误
- */
+
 int gx8002_open_dmic(void)
 {
     int ret;
@@ -130,11 +121,7 @@ int gx8002_open_dmic(void)
     return MOS_OS_ERROR;
 }
 
-/**
- * @brief  关闭 Dmic
- *         写 0x73 到 0xC4，轮询读 0xA0 等待返回 0x73
- * @return 0 成功；<0 I2C 错误
- */
+
 int gx8002_close_dmic(void)
 {
     int ret;
@@ -221,7 +208,7 @@ int gx8002_read_voice_event(void)
     int ret;
     uint8_t event_id = 0;
 
-    /* 1 从寄存器 0xA0 读事件 ID */
+
     ret = gx8002_i2c_read_reg(0xA0, &event_id);
     if (ret < 0)
     {
@@ -229,7 +216,7 @@ int gx8002_read_voice_event(void)
         return ret;
     }
 
-    /* 2 如果有事件，写确认码清除它 */
+  
     if (event_id > 0)
     {
         const uint8_t confirm_code = 0x10;

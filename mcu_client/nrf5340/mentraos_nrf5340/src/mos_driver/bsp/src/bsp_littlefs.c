@@ -48,6 +48,7 @@ struct fs_mount_t *mountpoint =
     ;
 
 // 从stream_id生成图像文件名（例如，“ img_002a.webp”）
+// Generate image filename from stream_id (e.g., "img_002a.webp")
 static void image_build_filename1(uint16_t stream_id, char *out, size_t out_size)
 {
     if (!out || out_size < sizeof(IMAGE_MOUNT_POINT) + 12)
@@ -55,7 +56,7 @@ static void image_build_filename1(uint16_t stream_id, char *out, size_t out_size
         BSP_LOGE(TAG, "Invalid buffer or size too small: out=%p, size=%zu err!", out, out_size);
         if (out && out_size > 0)
         {
-            out[0] = 0; // 保守输出空字符串
+            out[0] = 0; // 保守输出空字符串; Conservatively output empty string
         }
         return;
     }
@@ -74,10 +75,12 @@ int image_save_to_file(uint16_t stream_id, const uint8_t *data, size_t len)
     char path[IMAGE_MAX_PATH_LEN];
     fs_file_t_init(&file);
 
-    // 构建文件名
+    // 构建文件名 
+    // Build filename
     image_build_filename(stream_id, path, sizeof(path));
 
     // 打开文件，以创建和写入模式
+    // Open file in create and write mode
     int ret = fs_open(&file, path, FS_O_CREATE | FS_O_WRITE);
     if (ret < 0)
     {
@@ -105,6 +108,7 @@ int image_read_from_file(uint16_t stream_id, uint8_t *buffer, size_t buffer_size
     fs_file_t_init(&file);
 
     // 构建文件路径
+    // Build file path
     image_build_filename(stream_id, path, sizeof(path));
 
     int ret = fs_open(&file, path, FS_O_READ);
@@ -116,6 +120,7 @@ int image_read_from_file(uint16_t stream_id, uint8_t *buffer, size_t buffer_size
     }
 
     // 从文件中读取数据
+    // Read data from file
     ssize_t read = fs_read(&file, buffer, buffer_size);
     fs_close(&file);
 
@@ -132,11 +137,14 @@ int image_read_from_file(uint16_t stream_id, uint8_t *buffer, size_t buffer_size
 int image_delete_file(uint16_t stream_id)
 {
     // 定义一个字符数组，用于存储路径
+    // Define a character array to store the path
     char path[IMAGE_MAX_PATH_LEN] = {0};
     // 调用image_build_filename函数，将stream_id转换为路径，并存储在path中
+    // Call image_build_filename to convert stream_id to path and store in path
     image_build_filename(stream_id, path, sizeof(path));
 
     // 调用fs_unlink函数，删除path中的文件
+    // Call fs_unlink to delete the file at path
     int ret = fs_unlink(path);
     if (ret < 0)
     {
@@ -153,9 +161,11 @@ int image_delete_file(uint16_t stream_id)
 void image_list_files(void)
 {
     // 定义目录结构体和目录项结构体
+    // Define directory structure and directory entry structure
     struct fs_dir_t dir;
     struct fs_dirent entry;
     // 初始化目录结构体
+    // Initialize directory structure
     fs_dir_t_init(&dir);
 
     if (fs_opendir(&dir, IMAGE_MOUNT_POINT) != 0)
@@ -165,12 +175,15 @@ void image_list_files(void)
     }
 
     // 读取目录中的文件
+    // Read files in the directory
     while (fs_readdir(&dir, &entry) == 0 && entry.name[0] != 0)
     {
         // 如果文件名以"img_"开头
+        // If the file name starts with "img_"
         if (strstr(entry.name, "img_") == entry.name)
         {
             // 打印文件名和文件大小
+            // Print file name and size
             BSP_LOGI(TAG, "[image_list] Found image: %s (%u bytes)", entry.name, entry.size);
         }
     }
@@ -182,6 +195,7 @@ void image_list_files(void)
 void image_delete_all(void)
 {
     // 定义目录结构体和目录项结构体
+    // Define directory structure and directory entry structure
     struct fs_dir_t dir;
     struct fs_dirent entry;
     fs_dir_t_init(&dir);
@@ -193,15 +207,19 @@ void image_delete_all(void)
     }
 
     // 遍历目录中的所有文件
+    // Iterate through all files in the directory
     while (fs_readdir(&dir, &entry) == 0 && entry.name[0] != 0)
     {
         // 如果文件名以"img_"开头
+        // If the file name starts with "img_"
         if (strstr(entry.name, "img_") == entry.name)
         {
             // 构造文件路径
+            //  Construct file path
             char path[IMAGE_MAX_PATH_LEN];
             snprintf(path, sizeof(path), IMAGE_MOUNT_POINT "/%s", entry.name);
             // 删除文件
+            // Delete file
             fs_unlink(path);
             BSP_LOGI(TAG, "[image_delete_all] Deleted: %s", entry.name);
         }
@@ -212,9 +230,11 @@ void image_delete_all(void)
 static int littlefs_flash_erase(unsigned int id)
 {
     // 定义一个指向flash_area结构体的指针
+    // Define a pointer to flash_area structure
     const struct flash_area *pfa;
     int rc;
     // 打开指定的flash区域
+    // Open the specified flash area
     rc = flash_area_open(id, &pfa);
     if (rc < 0)
     {
@@ -223,6 +243,7 @@ static int littlefs_flash_erase(unsigned int id)
     }
 
     // 打印flash区域的详细信息
+    // Print details of the flash area
     BSP_LOGI(TAG, "Area %u at 0x%x on %s for %u bytes",
              id,
              (unsigned int)pfa->fa_off,
@@ -278,39 +299,35 @@ int bsp_littlefs_init(void)
 #define TEST_FILE_SIZE 547
 static uint8_t file_test_pattern[TEST_FILE_SIZE];
 // 静态函数，用于列出指定路径下的文件和目录
+// Static function to list files and directories under the specified path
 static int lsdir(const char *path)
 {
-    // 定义返回值
     int res;
-    // 定义目录结构体
     struct fs_dir_t dirp;
-    // 定义目录项结构体
     static struct fs_dirent entry;
-
-    // 初始化目录结构体
     fs_dir_t_init(&dirp);
 
-    // 打开指定路径的目录
     res = fs_opendir(&dirp, path);
     if (res)
     {
-        // 打开目录失败，打印错误信息
         BSP_LOGE(TAG, "Error opening dir %s [%d]", path, res);
         return res;
     }
 
-    // 打印开始列出目录的信息
     BSP_LOGI(TAG, "Listing dir [%s] ...", path);
-    // 循环读取目录项
+
     for (;;)
     {
         // 读取目录项
+        // Read directory entry
         res = fs_readdir(&dirp, &entry);
 
         // 如果读取目录项失败或者目录项为空，则退出循环
+        // if reading directory entry fails or entry is empty, exit loop
         if (res || entry.name[0] == 0)
         {
             // 如果读取目录项失败，打印错误信息
+            // If reading directory entry fails, print error message
             if (res < 0)
             {
                 BSP_LOGE(TAG, "Error reading dir [%d]", res);
@@ -319,126 +336,94 @@ static int lsdir(const char *path)
         }
 
         // 如果目录项是目录，则打印目录信息
+        // If the entry is a directory, print directory information
         if (entry.type == FS_DIR_ENTRY_DIR)
         {
             BSP_LOGI(TAG, "[DIR ] %s", entry.name);
         }
         // 如果目录项是文件，则打印文件信息
+        // If the entry is a file, print file information
         else
         {
             BSP_LOGI(TAG, "[FILE] %s (size = %zu)",
                      entry.name, entry.size);
         }
     }
-
-    // 关闭目录
     fs_closedir(&dirp);
 
-    // 返回结果
     return res;
 }
 
-// 函数：littlefs_increase_infile_value
-// 功能：增加文件中的值
-// 参数：fname - 文件名
-// 返回值：0 - 成功，其他 - 失败
+
 static int littlefs_increase_infile_value(char *fname)
 {
-    // 定义一个uint8_t类型的变量boot_count，用于存储文件中的值
     uint8_t boot_count = 0;
-    // 定义一个fs_file_t类型的变量file，用于操作文件
     struct fs_file_t file;
-    // 定义两个int类型的变量rc和ret，用于存储返回值
     int rc, ret;
-
-    // 初始化file变量
     fs_file_t_init(&file);
-    // 打开文件，以创建和读写模式
     rc = fs_open(&file, fname, FS_O_CREATE | FS_O_RDWR);
-    // 如果打开文件失败，打印错误信息并返回错误码
     if (rc < 0)
     {
         BSP_LOGE(TAG, "FAIL: open %s: %d", fname, rc);
         return rc;
     }
 
-    // 从文件中读取boot_count的值
     rc = fs_read(&file, &boot_count, sizeof(boot_count));
-    // 如果读取失败，打印错误信息并跳转到out标签
     if (rc < 0)
     {
         BSP_LOGE(TAG, "FAIL: read %s: [rd:%d]", fname, rc);
         goto out;
     }
-    // 打印读取到的boot_count的值
     BSP_LOGI(TAG, "%s read count:%u (bytes: %d)", fname, boot_count, rc);
 
-    // 将文件指针移动到文件开头
     rc = fs_seek(&file, 0, FS_SEEK_SET);
-    // 如果移动失败，打印错误信息并跳转到out标签
     if (rc < 0)
     {
         BSP_LOGE(TAG, "FAIL: seek %s: %d", fname, rc);
         goto out;
     }
 
-    // 将boot_count的值加1
     boot_count += 1;
-    // 将新的boot_count的值写入文件
     rc = fs_write(&file, &boot_count, sizeof(boot_count));
-    // 如果写入失败，打印错误信息并跳转到out标签
     if (rc < 0)
     {
         BSP_LOGE(TAG, "FAIL: write %s: %d", fname, rc);
         goto out;
     }
 
-    // 打印写入的新boot_count的值
     BSP_LOGI(TAG, "%s write new boot count %u: [wr:%d]", fname,
              boot_count, rc);
 
 out:
-    // 关闭文件
     ret = fs_close(&file);
-    // 如果关闭文件失败，打印错误信息并返回错误码
     if (ret < 0)
     {
         BSP_LOGE(TAG, "FAIL: close %s: %d", fname, ret);
         return ret;
     }
 
-    // 返回rc的值，如果rc小于0，则返回rc，否则返回0
     return (rc < 0 ? rc : 0);
 }
 
-// 静态函数，用于增加模式
 static void incr_pattern(uint8_t *p, uint16_t size, uint8_t inc)
 {
-    // 填充值，默认为0x55
     uint8_t fill = 0x55;
-
-    // 如果第一个字节为偶数，则填充值为0xAA
     if (p[0] % 2 == 0)
     {
         fill = 0xAA;
     }
-
-    // 遍历模式数组，从第一个字节开始
     for (int i = 0; i < (size - 1); i++)
     {
-        // 如果当前字节为8的倍数，则增加inc
         if (i % 8 == 0)
         {
             p[i] += inc;
         }
-        // 否则，填充为fill
         else
         {
             p[i] = fill;
         }
     }
 
-    // 最后一个字节增加inc
     p[size - 1] += inc;
 }
 
@@ -456,20 +441,14 @@ static void init_pattern(uint8_t *p, uint16_t size)
     p[size - 1] = 0xAA;
 }
 
-// 静态函数，用于调整LittleFS二进制文件
 static int littlefs_binary_file_adj(char *fname)
 {
-    // 定义目录项结构体
     struct fs_dirent dirent;
-    // 定义文件结构体
     struct fs_file_t file;
-    // 定义返回值和错误码
     int rc, ret;
 
-    // 初始化文件结构体
     fs_file_t_init(&file);
 
-    // 打开文件，如果失败，则返回错误码
     rc = fs_open(&file, fname, FS_O_CREATE | FS_O_RDWR);
     if (rc < 0)
     {
@@ -477,7 +456,6 @@ static int littlefs_binary_file_adj(char *fname)
         return rc;
     }
 
-    // 获取文件状态，如果失败，则返回错误码
     rc = fs_stat(fname, &dirent);
     if (rc < 0)
     {
@@ -485,14 +463,12 @@ static int littlefs_binary_file_adj(char *fname)
         goto out;
     }
 
-    // 如果文件不存在，则创建一个新文件
     if (rc == 0 && dirent.type == FS_DIR_ENTRY_FILE && dirent.size == 0)
     {
         BSP_LOGI(TAG, "Test file: %s not found, create one!", fname);
 
         init_pattern(file_test_pattern, sizeof(file_test_pattern)); // 默认
     }
-    // 如果文件存在，则读取文件内容
     else
     {
         rc = fs_read(&file, file_test_pattern, sizeof(file_test_pattern));
@@ -501,22 +477,17 @@ static int littlefs_binary_file_adj(char *fname)
             BSP_LOGE(TAG, "FAIL: read %s: [rd:%d]", fname, rc);
             goto out;
         }
-        // 增加文件内容
         incr_pattern(file_test_pattern, sizeof(file_test_pattern), 0x1);
     }
 
-    // 打印文件内容
     BSP_LOGI(TAG, "------ FILE: %s ------", fname);
     BSP_LOG_BUFFER_HEXDUMP(TAG, file_test_pattern, sizeof(file_test_pattern), 0);
-    // 将文件指针移动到文件开头
     rc = fs_seek(&file, 0, FS_SEEK_SET);
     if (rc < 0)
     {
         BSP_LOGE(TAG, "FAIL: seek %s: %d", fname, rc);
         goto out;
     }
-
-    // 将文件内容写回文件
     rc = fs_write(&file, file_test_pattern, sizeof(file_test_pattern));
     if (rc < 0)
     {
@@ -524,7 +495,6 @@ static int littlefs_binary_file_adj(char *fname)
     }
 
 out:
-    // 关闭文件
     ret = fs_close(&file);
     if (ret < 0)
     {
@@ -532,7 +502,6 @@ out:
         return ret;
     }
 
-    // 返回错误码
     return (rc < 0 ? rc : 0);
 }
 
@@ -554,25 +523,25 @@ void littlefs_test(void)
 
     BSP_LOGI(TAG, "%s: bsize = %lu ; frsize = %lu ; blocks = %lu ; bfree = %lu",
              mountpoint->mnt_point,
-             sbuf.f_bsize,  // 最佳传输块大小
-             sbuf.f_frsize, // 每块的大小
-             sbuf.f_blocks, // 总块数
-             sbuf.f_bfree); // 空闲块的数量
+             sbuf.f_bsize,  // 最佳传输块大小 Optimal transfer block size
+             sbuf.f_frsize, // 每块的大小 // Allocation unit size
+             sbuf.f_blocks, // 总块数// Size of FS in f_frsize units
+             sbuf.f_bfree); // 空闲块的数量// Number of free blocks
 
-    rc = lsdir(mountpoint->mnt_point); // 列出指定路径下的文件和目录
+    rc = lsdir(mountpoint->mnt_point); 
     if (rc < 0)
     {
         BSP_LOGI(TAG, "FAIL: lsdir %s: %d", mountpoint->mnt_point, rc);
         goto out;
     }
 
-    rc = littlefs_increase_infile_value(fname1); // 增加文件中的值
+    rc = littlefs_increase_infile_value(fname1); // 增加文件中的值// Increase value in file
     if (rc)
     {
         goto out;
     }
 
-    rc = littlefs_binary_file_adj(fname2); // 调整二进制文件
+    rc = littlefs_binary_file_adj(fname2); // 调整二进制文件// Adjust binary file
     if (rc)
     {
         goto out;

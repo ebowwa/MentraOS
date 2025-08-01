@@ -32,13 +32,13 @@ k_tid_t task_lc3_codec_thread_handle;
 #define AUDIO_CH_L 0            // 左声道
 #define AUDIO_CH_R 1            // 右声道
 static uint16_t pcm_bytes_req_enc;
-// 初始化LC3编解码器
+
 int user_sw_codec_lc3_init(void)
 {
     int ret;
-    // 初始化LC3编解码器
+
     sw_codec_lc3_init(NULL, NULL, LC3_FRAME_SIZE_US);
-    // 初始化LC3编码器
+
     ret = sw_codec_lc3_enc_init(PCM_SAMPLE_RATE,
                                 PCM_BIT_DEPTH,
                                 LC3_FRAME_SIZE_US,
