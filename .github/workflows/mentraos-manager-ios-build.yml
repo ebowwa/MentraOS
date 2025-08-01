@@ -49,7 +49,7 @@ jobs:
       - name: Setup Sherpa Onnx
         run: |
           cd mobile
-          ./setup-sherpa-onnx.sh
+          ./scripts/setup-sherpa-onnx.sh
 
       - name: Run Expo prebuild
         working-directory: ./mobile
