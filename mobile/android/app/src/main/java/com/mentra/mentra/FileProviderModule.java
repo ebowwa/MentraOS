@@ -223,14 +223,40 @@ public class FileProviderModule extends ReactContextBaseJavaModule {
                  TarArchiveInputStream tarIn = new TarArchiveInputStream(bzIn)) {
                 
                 TarArchiveEntry entry;
+                String rootDirName = null;
+                
                 while ((entry = tarIn.getNextTarEntry()) != null) {
-                    File outputFile = new File(destDir, entry.getName());
+                    String entryName = entry.getName();
+                    
+                    // Extract the root directory name if we haven't yet
+                    if (rootDirName == null && entryName.contains("/")) {
+                        rootDirName = entryName.substring(0, entryName.indexOf("/"));
+                    }
+                    
+                    // Remove the root directory from the path to extract files directly to destDir
+                    if (rootDirName != null && entryName.startsWith(rootDirName + "/")) {
+                        entryName = entryName.substring(rootDirName.length() + 1);
+                    }
+                    
+                    // Skip empty entries
+                    if (entryName.isEmpty()) continue;
+                    
+                    File outputFile = new File(destDir, entryName);
                     
                     if (entry.isDirectory()) {
                         outputFile.mkdirs();
                     } else {
                         // Create parent directories if needed
                         outputFile.getParentFile().mkdirs();
+                        
+                        // Handle file renaming for the specific model files
+                        if (entryName.equals("encoder-epoch-99-avg-1.onnx")) {
+                            outputFile = new File(destDir, "encoder.onnx");
+                        } else if (entryName.equals("decoder-epoch-99-avg-1.onnx")) {
+                            outputFile = new File(destDir, "decoder.onnx");
+                        } else if (entryName.equals("joiner-epoch-99-avg-1.int8.onnx")) {
+                            outputFile = new File(destDir, "joiner.onnx");
+                        }
                         
                         // Write file
                         try (FileOutputStream fos = new FileOutputStream(outputFile);

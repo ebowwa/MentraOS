@@ -307,15 +307,40 @@ RCT_EXPORT_METHOD(
       return;
     }
     
-    // Use system tar command to extract
+    // Use system tar command to extract with strip components to remove root directory
     NSTask *task = [[NSTask alloc] init];
     task.launchPath = @"/usr/bin/tar";
-    task.arguments = @[@"-xjf", sourcePath, @"-C", destinationPath];
+    task.arguments = @[@"-xjf", sourcePath, @"-C", destinationPath, @"--strip-components=1"];
     
     [task launch];
     [task waitUntilExit];
     
     if (task.terminationStatus == 0) {
+      // Rename the model files to expected names
+      NSFileManager *fileManager = [NSFileManager defaultManager];
+      NSError *renameError = nil;
+      
+      // Rename encoder
+      NSString *oldEncoderPath = [destinationPath stringByAppendingPathComponent:@"encoder-epoch-99-avg-1.onnx"];
+      NSString *newEncoderPath = [destinationPath stringByAppendingPathComponent:@"encoder.onnx"];
+      if ([fileManager fileExistsAtPath:oldEncoderPath]) {
+        [fileManager moveItemAtPath:oldEncoderPath toPath:newEncoderPath error:&renameError];
+      }
+      
+      // Rename decoder
+      NSString *oldDecoderPath = [destinationPath stringByAppendingPathComponent:@"decoder-epoch-99-avg-1.onnx"];
+      NSString *newDecoderPath = [destinationPath stringByAppendingPathComponent:@"decoder.onnx"];
+      if ([fileManager fileExistsAtPath:oldDecoderPath]) {
+        [fileManager moveItemAtPath:oldDecoderPath toPath:newDecoderPath error:&renameError];
+      }
+      
+      // Rename joiner
+      NSString *oldJoinerPath = [destinationPath stringByAppendingPathComponent:@"joiner-epoch-99-avg-1.int8.onnx"];
+      NSString *newJoinerPath = [destinationPath stringByAppendingPathComponent:@"joiner.onnx"];
+      if ([fileManager fileExistsAtPath:oldJoinerPath]) {
+        [fileManager moveItemAtPath:oldJoinerPath toPath:newJoinerPath error:&renameError];
+      }
+      
       resolve(@(YES));
     } else {
       reject(@"EXTRACTION_ERROR", @"Failed to extract tar.bz2 file", nil);

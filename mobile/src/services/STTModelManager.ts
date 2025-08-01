@@ -28,7 +28,7 @@ export interface ExtractionProgress {
 class STTModelManager {
   private static instance: STTModelManager
   private downloadJobId?: number
-  private currentModel = "sherpa-onnx-nemo-streaming-fast-conformer-ctc-en-80ms-int8"
+  private currentModel = "sherpa-onnx-streaming-zipformer-en-2023-06-21-mobile"
   private modelBaseUrl = "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/"
 
   private constructor() {}
@@ -80,9 +80,9 @@ class STTModelManager {
     const path = downloaded ? this.getModelPath() : undefined
 
     return {
-      name: "NVIDIA NeMo Conformer CTC",
-      version: "80ms-int8",
-      size: 45 * 1024 * 1024, // 45MB
+      name: "Streaming Zipformer",
+      version: "2023-06-21-mobile",
+      size: 349 * 1024 * 1024, // 349MB
       language: "English",
       downloaded,
       path,

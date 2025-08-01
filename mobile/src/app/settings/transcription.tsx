@@ -10,6 +10,7 @@ import {Spacer} from "@/components/misc/Spacer"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import STTModelManager from "@/services/STTModelManager"
 import {NativeModules} from "react-native"
+import showAlert from "@/utils/AlertUtils"
 
 const {AOSModule, FileProviderModule} = NativeModules
 
@@ -49,7 +50,7 @@ export default function TranscriptionSettingsScreen() {
 
   const toggleEnforceLocalTranscription = async () => {
     if (!modelInfo?.downloaded) {
-      Alert.alert("Model Required", "You need to download the speech recognition model first.", [{text: "OK"}])
+      showAlert("Model Required", "You need to download the speech recognition model first.", [{text: "OK"}])
       return
     }
 
@@ -76,9 +77,9 @@ export default function TranscriptionSettingsScreen() {
       // Re-check model status after download
       await checkModelStatus()
 
-      Alert.alert("Success", "Speech recognition model downloaded successfully!", [{text: "OK"}])
+      showAlert("Success", "Speech recognition model downloaded successfully!", [{text: "OK"}])
     } catch (error: any) {
-      Alert.alert("Download Failed", error.message || "Failed to download the model. Please try again.", [{text: "OK"}])
+      showAlert("Download Failed", error.message || "Failed to download the model. Please try again.", [{text: "OK"}])
     } finally {
       setIsDownloading(false)
       setDownloadProgress(0)
@@ -98,7 +99,7 @@ export default function TranscriptionSettingsScreen() {
   }
 
   const handleDeleteModel = async () => {
-    Alert.alert(
+    showAlert(
       "Delete Model",
       "Are you sure you want to delete the speech recognition model? You'll need to download it again to use local transcription.",
       [
@@ -117,7 +118,7 @@ export default function TranscriptionSettingsScreen() {
                 setIsEnforceLocalTranscriptionEnabled(false)
               }
             } catch (error: any) {
-              Alert.alert("Error", error.message || "Failed to delete model")
+              showAlert("Error", error.message || "Failed to delete model", [{text: "OK"}])
             }
           },
         },
@@ -155,7 +156,7 @@ export default function TranscriptionSettingsScreen() {
               style={{
                 backgroundColor: theme.colors.surface,
                 padding: theme.spacing.md,
-                borderRadius: theme.borderRadii.md,
+                borderRadius: theme.borderRadius.md,
                 marginBottom: theme.spacing.md,
               }}>
               <Text weight="semiBold" size="lg" style={{marginBottom: theme.spacing.xs}}>
