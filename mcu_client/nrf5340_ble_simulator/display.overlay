@@ -1,0 +1,26 @@
+/*
+ * HLS12VGA Display Configuration for nRF5340 BLE Simulator
+ * Allows testing display functionality on nRF5340DK
+ */
+
+/ {
+	chosen {
+		zephyr,display = &hls12vga_display;
+	};
+};
+
+&spi1 {
+	status = "okay";
+	cs-gpios = <&gpio1 8 GPIO_ACTIVE_LOW>;
+	
+	hls12vga_display: hls12vga@0 {
+		compatible = "zephyr,custom-hls12vga";
+		reg = <0>;
+		spi-max-frequency = <8000000>;
+		reset-gpios = <&gpio0 26 GPIO_ACTIVE_LOW>;
+		dc-gpios = <&gpio0 27 GPIO_ACTIVE_HIGH>;
+		busy-gpios = <&gpio1 9 GPIO_ACTIVE_HIGH>;
+		width = <640>;
+		height = <480>;
+	};
+};

@@ -25,6 +25,8 @@
 
 #include "mentra_ble_service.h"
 #include "protobuf_handler.h"
+#include "bsp_log.h"
+#include "mos_lvgl_display.h"
 
 #include <dk_buttons_and_leds.h>
 
@@ -721,6 +723,10 @@ int main(void)
 		LOG_ERR("Failed to initialize Mentra BLE service (err: %d)", err);
 		return 0;
 	}
+
+	// Initialize LVGL display system
+	LOG_INF("Initializing LVGL display system...");
+	lvgl_dispaly_thread();
 
 	k_work_init(&adv_work, adv_work_handler);
 	advertising_start();
