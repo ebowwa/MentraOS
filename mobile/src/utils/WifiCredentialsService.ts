@@ -1,13 +1,4 @@
 import {save, load} from "@/utils/storage/storage"
-import { 
-  reportWifiCredentialSaveFailure,
-  reportWifiPasswordGetFailure,
-  reportWifiCredentialsGetFailure,
-  reportWifiCredentialRemoveFailure,
-  reportWifiCredentialsClearFailure,
-  reportWifiLastConnectedUpdateFailure,
-  reportWifiRecentNetworksGetFailure
-} from "@/reporting/domains"
 
 export interface WifiCredential {
   ssid: string
@@ -58,7 +49,6 @@ class WifiCredentialsService {
       return save(this.STORAGE_KEY, existingData)
     } catch (error) {
       console.error("Error saving WiFi credentials:", error)
-      reportWifiCredentialSaveFailure(ssid, String(error), error instanceof Error ? error : new Error(String(error)))
       return false
     }
   }
@@ -73,7 +63,6 @@ class WifiCredentialsService {
       return credential?.password || null
     } catch (error) {
       console.error("Error getting WiFi password:", error)
-      reportWifiPasswordGetFailure(ssid, String(error), error instanceof Error ? error : new Error(String(error)))
       return null
     }
   }
@@ -87,7 +76,6 @@ class WifiCredentialsService {
       return data.credentials
     } catch (error) {
       console.error("Error getting all WiFi credentials:", error)
-      reportWifiCredentialsGetFailure(String(error), error instanceof Error ? error : new Error(String(error)))
       return []
     }
   }
@@ -111,7 +99,6 @@ class WifiCredentialsService {
       return save(this.STORAGE_KEY, data)
     } catch (error) {
       console.error("Error removing WiFi credentials:", error)
-      reportWifiCredentialRemoveFailure(ssid, String(error), error instanceof Error ? error : new Error(String(error)))
       return false
     }
   }
@@ -124,7 +111,6 @@ class WifiCredentialsService {
       return save(this.STORAGE_KEY, this.getDefaultData())
     } catch (error) {
       console.error("Error clearing WiFi credentials:", error)
-      reportWifiCredentialsClearFailure(String(error), error instanceof Error ? error : new Error(String(error)))
       return false
     }
   }
@@ -145,7 +131,6 @@ class WifiCredentialsService {
       return false
     } catch (error) {
       console.error("Error updating last connected time:", error)
-      reportWifiLastConnectedUpdateFailure(ssid, String(error), error instanceof Error ? error : new Error(String(error)))
       return false
     }
   }
@@ -160,7 +145,6 @@ class WifiCredentialsService {
       return data.credentials.filter(cred => (cred.lastConnected || 0) > thirtyDaysAgo)
     } catch (error) {
       console.error("Error getting recent networks:", error)
-      reportWifiRecentNetworksGetFailure(String(error), error instanceof Error ? error : new Error(String(error)))
       return []
     }
   }

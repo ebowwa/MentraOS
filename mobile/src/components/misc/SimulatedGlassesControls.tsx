@@ -2,11 +2,6 @@ import React from "react"
 import {View, StyleSheet, TouchableOpacity} from "react-native"
 import Icon from "react-native-vector-icons/MaterialIcons"
 import CoreCommunicator from "@/bridge/CoreCommunicator"
-import { 
-  reportHeadUpSimulationFailure,
-  reportHeadDownSimulationFailure,
-  reportButtonPressSimulationFailure
-} from "@/reporting/domains"
 
 interface SimulatedGlassesControlsProps {
   theme: any
@@ -22,7 +17,6 @@ export const SimulatedGlassesControls: React.FC<SimulatedGlassesControlsProps> =
     } catch (error) {
       console.error("Failed to simulate head up:", error)
       console.error("Error details:", JSON.stringify(error))
-      reportHeadUpSimulationFailure(String(error), error instanceof Error ? error : new Error(String(error)))
     }
   }
 
@@ -34,7 +28,6 @@ export const SimulatedGlassesControls: React.FC<SimulatedGlassesControlsProps> =
     } catch (error) {
       console.error("Failed to simulate head down:", error)
       console.error("Error details:", JSON.stringify(error))
-      reportHeadDownSimulationFailure(String(error), error instanceof Error ? error : new Error(String(error)))
     }
   }
 
@@ -46,7 +39,6 @@ export const SimulatedGlassesControls: React.FC<SimulatedGlassesControlsProps> =
     } catch (error) {
       console.error("Failed to simulate button press:", error)
       console.error("Error details:", JSON.stringify(error))
-      reportButtonPressSimulationFailure(pressType, String(error), error instanceof Error ? error : new Error(String(error)))
     }
   }
 

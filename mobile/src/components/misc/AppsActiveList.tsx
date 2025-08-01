@@ -17,7 +17,6 @@ import AppsHeader from "./AppsHeader"
 import {loadSetting} from "@/utils/SettingsHelper"
 import {SETTINGS_KEYS} from "@/consts"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
-import { reportAppStopFailure } from "@/reporting/domains"
 
 export default function AppsActiveList({
   isSearchPage = false,
@@ -146,7 +145,6 @@ export default function AppsActiveList({
       // On error, refresh from the server to get the accurate state
       refreshAppStatus()
       console.error("Stop app error:", error)
-              reportAppStopFailure(packageName, String(error), error instanceof Error ? error : new Error(String(error)))
     } finally {
       setIsLoading(false)
     }

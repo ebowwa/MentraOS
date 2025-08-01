@@ -27,7 +27,6 @@ import {SETTINGS_KEYS} from "@/consts"
 import {translate} from "@/i18n"
 import showAlert from "@/utils/AlertUtils"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
-import { reportUIInteractionFailure, reportComponentError } from '@/reporting/domains'
 
 interface AnimatedSectionProps extends PropsWithChildren {
   delay?: number
@@ -94,7 +93,6 @@ export default function Homepage() {
 
     checkPermissions().catch(error => {
       console.error("Error checking permissions:", error)
-      reportComponentError("HomeScreen", "Permission check failed", error instanceof Error ? error : new Error(String(error)))
     })
   }, [])
 
@@ -168,7 +166,6 @@ export default function Homepage() {
         }, 500)
       } catch (error) {
         console.error("Error starting Live Captions:", error)
-        reportUIInteractionFailure("start_live_captions", "Failed to start Live Captions app", error instanceof Error ? error : new Error(String(error)))
       }
     }
   }
