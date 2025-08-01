@@ -33,6 +33,11 @@ class SherpaOnnxTranscriber {
     // Session start time for relative timestamps
     private var transcriptionSessionStart: Date
 
+    // Dynamic model path support
+    private static var customModelPath: String? {
+        return UserDefaults.standard.string(forKey: "STTModelPath")
+    }
+
     /**
      * Protocol to receive transcription results from Sherpa-ONNX.
      */
@@ -62,22 +67,52 @@ class SherpaOnnxTranscriber {
      */
     func initialize() {
         do {
-            // Verify model files are present
-            guard SherpaOnnxTranscriber.areModelFilesPresent() else {
-                throw NSError(domain: "SherpaOnnxTranscriber", code: 1, userInfo: [
-                    NSLocalizedDescriptionKey: "Model files not found in bundle. Please add encoder.onnx, decoder.onnx, joiner.onnx, and tokens.txt to the Xcode project.",
-                ])
-            }
+            var encoderPath: String
+            var decoderPath: String
+            var joinerPath: String
+            var tokensPath: String
 
-            // Setup resource paths - models should be added to bundle via Xcode
-            guard let encoderPath = Bundle.main.path(forResource: "encoder", ofType: "onnx"),
-                  let decoderPath = Bundle.main.path(forResource: "decoder", ofType: "onnx"),
-                  let joinerPath = Bundle.main.path(forResource: "joiner", ofType: "onnx"),
-                  let tokensPath = Bundle.main.path(forResource: "tokens", ofType: "txt")
-            else {
-                throw NSError(domain: "SherpaOnnxTranscriber", code: 1, userInfo: [
-                    NSLocalizedDescriptionKey: "Model files not found in bundle. Please add encoder.onnx, decoder.onnx, joiner.onnx, and tokens.txt to the Xcode project.",
-                ])
+            // Check if we have a custom model path set
+            if let customPath = SherpaOnnxTranscriber.customModelPath {
+                // Use dynamic model path
+                encoderPath = (customPath as NSString).appendingPathComponent("encoder.onnx")
+                decoderPath = (customPath as NSString).appendingPathComponent("decoder.onnx")
+                joinerPath = (customPath as NSString).appendingPathComponent("joiner.onnx")
+                tokensPath = (customPath as NSString).appendingPathComponent("tokens.txt")
+
+                // Verify files exist at custom path
+                let fileManager = FileManager.default
+                guard fileManager.fileExists(atPath: encoderPath),
+                      fileManager.fileExists(atPath: decoderPath),
+                      fileManager.fileExists(atPath: joinerPath),
+                      fileManager.fileExists(atPath: tokensPath)
+                else {
+                    throw NSError(domain: "SherpaOnnxTranscriber", code: 1, userInfo: [
+                        NSLocalizedDescriptionKey: "Model files not found at path: \(customPath)",
+                    ])
+                }
+            } else {
+                // Fall back to bundle resources (for backwards compatibility)
+                guard SherpaOnnxTranscriber.areModelFilesPresent() else {
+                    throw NSError(domain: "SherpaOnnxTranscriber", code: 1, userInfo: [
+                        NSLocalizedDescriptionKey: "No STT model available. Please download a model first.",
+                    ])
+                }
+
+                guard let bundleEncoderPath = Bundle.main.path(forResource: "encoder", ofType: "onnx"),
+                      let bundleDecoderPath = Bundle.main.path(forResource: "decoder", ofType: "onnx"),
+                      let bundleJoinerPath = Bundle.main.path(forResource: "joiner", ofType: "onnx"),
+                      let bundleTokensPath = Bundle.main.path(forResource: "tokens", ofType: "txt")
+                else {
+                    throw NSError(domain: "SherpaOnnxTranscriber", code: 1, userInfo: [
+                        NSLocalizedDescriptionKey: "Model files not found in bundle.",
+                    ])
+                }
+
+                encoderPath = bundleEncoderPath
+                decoderPath = bundleDecoderPath
+                joinerPath = bundleJoinerPath
+                tokensPath = bundleTokensPath
             }
 
             CoreCommsService.log("Model paths found - encoder: \(encoderPath), decoder: \(decoderPath), joiner: \(joinerPath), tokens: \(tokensPath)")
@@ -328,6 +363,24 @@ class SherpaOnnxTranscriber {
     static func areModelFilesPresent() -> Bool {
         let requiredFiles = ["encoder.onnx", "decoder.onnx", "joiner.onnx", "tokens.txt"]
 
+        // First check if we have a custom model path
+        if let customPath = customModelPath {
+            CoreCommsService.log("Checking for Sherpa-ONNX model files at custom path: \(customPath)")
+            let fileManager = FileManager.default
+
+            for fileName in requiredFiles {
+                let filePath = (customPath as NSString).appendingPathComponent(fileName)
+                if !fileManager.fileExists(atPath: filePath) {
+                    CoreCommsService.log("❌ Missing model file at custom path: \(fileName)")
+                    return false
+                }
+            }
+
+            CoreCommsService.log("✅ All model files found at custom path")
+            return true
+        }
+
+        // Fall back to checking bundle
         CoreCommsService.log("Checking for Sherpa-ONNX model files in bundle...")
 
         for fileName in requiredFiles {
@@ -335,7 +388,7 @@ class SherpaOnnxTranscriber {
             guard components.count == 2,
                   Bundle.main.path(forResource: components[0], ofType: components[1]) != nil
             else {
-                CoreCommsService.log("❌ Missing model file: \(fileName)")
+                CoreCommsService.log("❌ Missing model file in bundle: \(fileName)")
                 return false
             }
         }

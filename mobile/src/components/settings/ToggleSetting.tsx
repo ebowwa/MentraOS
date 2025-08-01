@@ -10,18 +10,26 @@ type ToggleSettingProps = {
   value: boolean
   onValueChange: (newValue: boolean) => void
   containerStyle?: ViewStyle
+  disabled?: boolean
 }
 
-const ToggleSetting: React.FC<ToggleSettingProps> = ({label, subtitle, value, onValueChange, containerStyle}) => {
+const ToggleSetting: React.FC<ToggleSettingProps> = ({
+  label,
+  subtitle,
+  value,
+  onValueChange,
+  containerStyle,
+  disabled = false,
+}) => {
   const {theme, themed} = useAppTheme()
 
   return (
-    <View style={[themed($container), containerStyle]}>
+    <View style={[themed($container), containerStyle, disabled && {opacity: 0.5}]}>
       <View style={themed($textContainer)}>
         <Text text={label} style={themed($label)} />
         {subtitle && <Text text={subtitle} style={themed($subtitle)} />}
       </View>
-      <Switch value={value} onValueChange={onValueChange} />
+      <Switch value={value} onValueChange={onValueChange} disabled={disabled} />
     </View>
   )
 }

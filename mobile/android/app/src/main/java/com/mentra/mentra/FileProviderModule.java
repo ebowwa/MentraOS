@@ -1,6 +1,7 @@
 package com.mentra.mentra;
 
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.net.Uri;
 
 import androidx.annotation.NonNull;
@@ -11,11 +12,24 @@ import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+
+import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
+import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
+import org.apache.commons.compress.compressors.bzip2.BZip2CompressorInputStream;
 
 public class FileProviderModule extends ReactContextBaseJavaModule {
     private final ReactApplicationContext reactContext;
     private static final String AUTHORITY = "com.mentra.mentra.fileprovider";
+    private static final String STT_MODEL_PATH_KEY = "stt_model_path";
+    private static final String PREFS_NAME = "AugmentosPrefs";
 
     public FileProviderModule(ReactApplicationContext reactContext) {
         super(reactContext);
@@ -116,6 +130,125 @@ public class FileProviderModule extends ReactContextBaseJavaModule {
             System.out.println("FileProviderModule: Error sharing: " + e.getMessage());
             e.printStackTrace();
             promise.reject("SHARE_ERROR", e.getMessage(), e);
+        }
+    }
+
+    // STT Model Management Methods
+    @ReactMethod
+    public void setSTTModelPath(String path, Promise promise) {
+        try {
+            SharedPreferences prefs = reactContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+            prefs.edit().putString(STT_MODEL_PATH_KEY, path).apply();
+            
+            // Also set it as a system property for SherpaOnnxTranscriber to access
+            System.setProperty("stt.model.path", path);
+            
+            promise.resolve(true);
+        } catch (Exception e) {
+            promise.reject("STT_ERROR", e.getMessage(), e);
+        }
+    }
+
+    @ReactMethod
+    public void isSTTModelAvailable(Promise promise) {
+        try {
+            SharedPreferences prefs = reactContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+            String modelPath = prefs.getString(STT_MODEL_PATH_KEY, null);
+            
+            if (modelPath == null) {
+                promise.resolve(false);
+                return;
+            }
+            
+            // Check if required files exist
+            String[] requiredFiles = {"encoder.onnx", "decoder.onnx", "joiner.onnx", "tokens.txt"};
+            File modelDir = new File(modelPath);
+            
+            for (String fileName : requiredFiles) {
+                File file = new File(modelDir, fileName);
+                if (!file.exists()) {
+                    promise.resolve(false);
+                    return;
+                }
+            }
+            
+            promise.resolve(true);
+        } catch (Exception e) {
+            promise.reject("STT_ERROR", e.getMessage(), e);
+        }
+    }
+
+    @ReactMethod
+    public void validateSTTModel(String path, Promise promise) {
+        try {
+            // Check if all required files exist
+            String[] requiredFiles = {"encoder.onnx", "decoder.onnx", "joiner.onnx", "tokens.txt"};
+            File modelDir = new File(path);
+            
+            for (String fileName : requiredFiles) {
+                File file = new File(modelDir, fileName);
+                if (!file.exists()) {
+                    promise.resolve(false);
+                    return;
+                }
+            }
+            
+            // TODO: Actually try to initialize SherpaOnnxTranscriber to validate
+            promise.resolve(true);
+        } catch (Exception e) {
+            promise.reject("STT_ERROR", e.getMessage(), e);
+        }
+    }
+
+    @ReactMethod
+    public void extractTarBz2(String sourcePath, String destinationPath, Promise promise) {
+        try {
+            File sourceFile = new File(sourcePath);
+            File destDir = new File(destinationPath);
+            
+            if (!sourceFile.exists()) {
+                promise.reject("EXTRACTION_ERROR", "Source file does not exist");
+                return;
+            }
+            
+            // Create destination directory
+            if (!destDir.exists()) {
+                destDir.mkdirs();
+            }
+            
+            // Extract tar.bz2
+            try (FileInputStream fis = new FileInputStream(sourceFile);
+                 BufferedInputStream bis = new BufferedInputStream(fis);
+                 BZip2CompressorInputStream bzIn = new BZip2CompressorInputStream(bis);
+                 TarArchiveInputStream tarIn = new TarArchiveInputStream(bzIn)) {
+                
+                TarArchiveEntry entry;
+                while ((entry = tarIn.getNextTarEntry()) != null) {
+                    File outputFile = new File(destDir, entry.getName());
+                    
+                    if (entry.isDirectory()) {
+                        outputFile.mkdirs();
+                    } else {
+                        // Create parent directories if needed
+                        outputFile.getParentFile().mkdirs();
+                        
+                        // Write file
+                        try (FileOutputStream fos = new FileOutputStream(outputFile);
+                             BufferedOutputStream bos = new BufferedOutputStream(fos)) {
+                            
+                            byte[] buffer = new byte[4096];
+                            int count;
+                            while ((count = tarIn.read(buffer)) != -1) {
+                                bos.write(buffer, 0, count);
+                            }
+                        }
+                    }
+                }
+            }
+            
+            promise.resolve(true);
+        } catch (Exception e) {
+            promise.reject("EXTRACTION_ERROR", e.getMessage(), e);
         }
     }
 }

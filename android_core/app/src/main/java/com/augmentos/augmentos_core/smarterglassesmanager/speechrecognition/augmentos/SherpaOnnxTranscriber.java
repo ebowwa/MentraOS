@@ -8,6 +8,7 @@ import android.util.Log;
 import com.k2fsa.sherpa.onnx.*;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.concurrent.*;
@@ -38,6 +39,9 @@ public class SherpaOnnxTranscriber {
     private String lastPartialResult = "";
 
     private volatile TranscriptListener transcriptListener;
+    
+    // Dynamic model path support
+    private static String customModelPath = null;
 
     /**
      * Interface to receive transcription results from Sherpa-ONNX.
@@ -63,28 +67,53 @@ public class SherpaOnnxTranscriber {
      */
     public void init() {
         try {
+            // Check for dynamic model path first
+            String modelPath = getModelPath();
+            
             // Load model file paths
             OnlineTransducerModelConfig transducer = new OnlineTransducerModelConfig();
-            transducer.setEncoder("sherpa_onnx/encoder.onnx");
-            transducer.setDecoder("sherpa_onnx/decoder.onnx");
-            transducer.setJoiner("sherpa_onnx/joiner.onnx");
-
             OnlineModelConfig modelConfig = new OnlineModelConfig();
-            modelConfig.setTransducer(transducer);
-            modelConfig.setTokens("sherpa_onnx/tokens.txt");
-            modelConfig.setNumThreads(1);
-
-            // Configure decoder and endpoint detection
             OnlineRecognizerConfig config = new OnlineRecognizerConfig();
-            config.setModelConfig(modelConfig);
-            config.setDecodingMethod("greedy_search"); // Fast decoding
-            config.setEnableEndpoint(true);
-            // .setRule1MinTrailingSilence(1.2f)
-            // .setRule2MinTrailingSilence(0.8f)
-            // .setRule3MinUtteranceLength(10.0f)
+            
+            if (modelPath != null && isModelAvailable(modelPath)) {
+                // Use dynamic model path - but we still need to provide AssetManager
+                Log.i(TAG, "Using dynamic model path: " + modelPath);
+                
+                // For dynamic models, we need to copy the model path to the config
+                // but still use AssetManager constructor
+                transducer.setEncoder(new File(modelPath, "encoder.onnx").getAbsolutePath());
+                transducer.setDecoder(new File(modelPath, "decoder.onnx").getAbsolutePath());
+                transducer.setJoiner(new File(modelPath, "joiner.onnx").getAbsolutePath());
+                modelConfig.setTokens(new File(modelPath, "tokens.txt").getAbsolutePath());
+                
+                modelConfig.setTransducer(transducer);
+                modelConfig.setNumThreads(1);
+                
+                config.setModelConfig(modelConfig);
+                config.setDecodingMethod("greedy_search");
+                config.setEnableEndpoint(true);
+                
+                // Still need to pass AssetManager, even though we're using file paths
+                recognizer = new OnlineRecognizer(context.getAssets(), config);
+            } else {
+                // Fall back to assets (for backwards compatibility)
+                Log.i(TAG, "Using bundled models from assets");
+                transducer.setEncoder("sherpa_onnx/encoder.onnx");
+                transducer.setDecoder("sherpa_onnx/decoder.onnx");
+                transducer.setJoiner("sherpa_onnx/joiner.onnx");
+                modelConfig.setTokens("sherpa_onnx/tokens.txt");
+                
+                modelConfig.setTransducer(transducer);
+                modelConfig.setNumThreads(1);
+                
+                config.setModelConfig(modelConfig);
+                config.setDecodingMethod("greedy_search");
+                config.setEnableEndpoint(true);
+                
+                // Create recognizer with assets
+                recognizer = new OnlineRecognizer(context.getAssets(), config);
+            }
 
-            // Create recognizer and stream
-            recognizer = new OnlineRecognizer(context.getAssets(), config);
             stream = recognizer.createStream("");
 
             startProcessingThread();
@@ -271,5 +300,46 @@ public class SherpaOnnxTranscriber {
      */
     public boolean isInitialized() {
         return recognizer != null && stream != null;
+    }
+    
+    /**
+     * Get the current model path, checking system property first, then SharedPreferences
+     */
+    private String getModelPath() {
+        // First check system property (set by FileProviderModule)
+        String systemPath = System.getProperty("stt.model.path");
+        if (systemPath != null && !systemPath.isEmpty()) {
+            customModelPath = systemPath;
+            return systemPath;
+        }
+        
+        // Fall back to stored custom path
+        return customModelPath;
+    }
+    
+    /**
+     * Set a custom model path for dynamic model loading
+     */
+    public static void setModelPath(String path) {
+        customModelPath = path;
+        System.setProperty("stt.model.path", path);
+    }
+    
+    /**
+     * Check if a model is available at the given path
+     */
+    public static boolean isModelAvailable(String path) {
+        if (path == null) return false;
+        
+        String[] requiredFiles = {"encoder.onnx", "decoder.onnx", "joiner.onnx", "tokens.txt"};
+        for (String fileName : requiredFiles) {
+            File file = new File(path, fileName);
+            if (!file.exists()) {
+                Log.w(TAG, "Missing model file: " + file.getAbsolutePath());
+                return false;
+            }
+        }
+        
+        return true;
     }
 }

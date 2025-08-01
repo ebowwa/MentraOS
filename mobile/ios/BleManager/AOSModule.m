@@ -205,6 +205,127 @@ RCT_EXPORT_METHOD(
   }
 }
 
+// STT Model Management Methods
+RCT_EXPORT_METHOD(
+  setSTTModelPath:
+  (NSString *)path
+  resolver:(RCTPromiseResolveBlock)resolve
+  rejecter:(RCTPromiseRejectBlock)reject
+)
+{
+  @try {
+    // Store the model path for SherpaOnnxTranscriber to use
+    [[NSUserDefaults standardUserDefaults] setObject:path forKey:@"STTModelPath"];
+    [[NSUserDefaults standardUserDefaults] synchronize];
+    resolve(@(YES));
+  }
+  @catch(NSException *exception) {
+    reject(@"STT_ERROR", exception.description, nil);
+  }
+}
+
+RCT_EXPORT_METHOD(
+  isSTTModelAvailable:
+  (RCTPromiseResolveBlock)resolve
+  rejecter:(RCTPromiseRejectBlock)reject
+)
+{
+  @try {
+    NSString *modelPath = [[NSUserDefaults standardUserDefaults] stringForKey:@"STTModelPath"];
+    if (!modelPath) {
+      resolve(@(NO));
+      return;
+    }
+    
+    // Check if required files exist
+    NSFileManager *fileManager = [NSFileManager defaultManager];
+    NSArray *requiredFiles = @[@"encoder.onnx", @"decoder.onnx", @"joiner.onnx", @"tokens.txt"];
+    
+    for (NSString *file in requiredFiles) {
+      NSString *filePath = [modelPath stringByAppendingPathComponent:file];
+      if (![fileManager fileExistsAtPath:filePath]) {
+        resolve(@(NO));
+        return;
+      }
+    }
+    
+    resolve(@(YES));
+  }
+  @catch(NSException *exception) {
+    reject(@"STT_ERROR", exception.description, nil);
+  }
+}
+
+RCT_EXPORT_METHOD(
+  validateSTTModel:
+  (NSString *)path
+  resolver:(RCTPromiseResolveBlock)resolve
+  rejecter:(RCTPromiseRejectBlock)reject
+)
+{
+  @try {
+    // TODO: Implement actual validation by trying to initialize SherpaOnnxTranscriber
+    // For now, just check if files exist
+    NSFileManager *fileManager = [NSFileManager defaultManager];
+    NSArray *requiredFiles = @[@"encoder.onnx", @"decoder.onnx", @"joiner.onnx", @"tokens.txt"];
+    
+    for (NSString *file in requiredFiles) {
+      NSString *filePath = [path stringByAppendingPathComponent:file];
+      if (![fileManager fileExistsAtPath:filePath]) {
+        resolve(@(NO));
+        return;
+      }
+    }
+    
+    resolve(@(YES));
+  }
+  @catch(NSException *exception) {
+    reject(@"STT_ERROR", exception.description, nil);
+  }
+}
+
+RCT_EXPORT_METHOD(
+  extractTarBz2:
+  (NSString *)sourcePath
+  destination:(NSString *)destinationPath
+  resolver:(RCTPromiseResolveBlock)resolve
+  rejecter:(RCTPromiseRejectBlock)reject
+)
+{
+  @try {
+    NSFileManager *fileManager = [NSFileManager defaultManager];
+    
+    // Create destination directory if it doesn't exist
+    NSError *error = nil;
+    [fileManager createDirectoryAtPath:destinationPath
+           withIntermediateDirectories:YES
+                            attributes:nil
+                                 error:&error];
+    
+    if (error) {
+      reject(@"EXTRACTION_ERROR", error.localizedDescription, error);
+      return;
+    }
+    
+    // Use system tar command to extract
+    NSTask *task = [[NSTask alloc] init];
+    task.launchPath = @"/usr/bin/tar";
+    task.arguments = @[@"-xjf", sourcePath, @"-C", destinationPath];
+    
+    [task launch];
+    [task waitUntilExit];
+    
+    if (task.terminationStatus == 0) {
+      resolve(@(YES));
+    } else {
+      reject(@"EXTRACTION_ERROR", @"Failed to extract tar.bz2 file", nil);
+    }
+  }
+  @catch(NSException *exception) {
+    reject(@"EXTRACTION_ERROR", exception.description, nil);
+  }
+}
+
 // Required for Swift interop
 + (BOOL)requiresMainQueueSetup {
     return YES;
