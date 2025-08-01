@@ -52,6 +52,10 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 #define KEY_PASSKEY_ACCEPT DK_BTN1_MSK
 #define KEY_PASSKEY_REJECT DK_BTN2_MSK
 
+// Battery level control buttons
+#define KEY_BATTERY_INCREASE DK_BTN1_MSK  // Button 1: Increase battery
+#define KEY_BATTERY_DECREASE DK_BTN2_MSK  // Button 2: Decrease battery
+
 #define UART_BUF_SIZE 240
 #define UART_WAIT_FOR_BUF_DELAY K_MSEC(50)
 #define UART_WAIT_FOR_RX 50
@@ -619,12 +623,15 @@ static void num_comp_reply(bool accept)
 	bt_conn_unref(auth_conn);
 	auth_conn = NULL;
 }
+#endif /* CONFIG_BT_NUS_SECURITY_ENABLED */
 
 void button_changed(uint32_t button_state, uint32_t has_changed)
 {
 	uint32_t buttons = button_state & has_changed;
 
+#ifdef CONFIG_BT_NUS_SECURITY_ENABLED
 	if (auth_conn) {
+		// Handle authentication buttons when in authentication mode
 		if (buttons & KEY_PASSKEY_ACCEPT) {
 			num_comp_reply(true);
 		}
@@ -632,20 +639,31 @@ void button_changed(uint32_t button_state, uint32_t has_changed)
 		if (buttons & KEY_PASSKEY_REJECT) {
 			num_comp_reply(false);
 		}
+		return; // Don't handle battery buttons during authentication
+	}
+#endif /* CONFIG_BT_NUS_SECURITY_ENABLED */
+
+	// Handle battery level control when not in authentication mode
+	if (buttons & KEY_BATTERY_INCREASE) {
+		LOG_INF("🔋⬆️  Button 1 pressed: Increasing battery level");
+		protobuf_increase_battery_level();
+	}
+
+	if (buttons & KEY_BATTERY_DECREASE) {
+		LOG_INF("🔋⬇️  Button 2 pressed: Decreasing battery level");
+		protobuf_decrease_battery_level();
 	}
 }
-#endif /* CONFIG_BT_NUS_SECURITY_ENABLED */
 
 static void configure_gpio(void)
 {
 	int err;
 
-#ifdef CONFIG_BT_NUS_SECURITY_ENABLED
+	// Always initialize buttons for battery level control
 	err = dk_buttons_init(button_changed);
 	if (err) {
 		LOG_ERR("Cannot init buttons (err: %d)", err);
 	}
-#endif /* CONFIG_BT_NUS_SECURITY_ENABLED */
 
 	err = dk_leds_init();
 	if (err) {
@@ -659,6 +677,12 @@ int main(void)
 	int err = 0;
 
 	configure_gpio();
+
+	// Log button functionality and initial battery level
+	LOG_INF("🔋 Battery level control enabled:");
+	LOG_INF("   📌 Button 1: Increase battery level (+5%%)");
+	LOG_INF("   📌 Button 2: Decrease battery level (-5%%)");
+	LOG_INF("   📊 Current battery level: %u%%", protobuf_get_battery_level());
 
 	err = uart_init();
 	if (err) {

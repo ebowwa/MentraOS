@@ -2,6 +2,39 @@
 
 All notable changes to the nRF5340 DK BLE Glasses Protobuf Simulator will be documented in this file.
 
+## [1.1.0] - 2025-08-01
+
+### Added
+- **Dynamic battery level control** using nRF5340 DK buttons
+  - Button 1: Increase battery level by 5% (up to 100%)
+  - Button 2: Decrease battery level by 5% (down to 0%)
+- **Real-time battery state management** with range validation
+- **Proactive battery notifications** automatically sent to mobile app on level changes
+- **Interactive protobuf responses** with current battery level
+- **Startup battery information** logging with button instructions
+- **nanopb protobuf library integration** for reliable message encoding/decoding
+
+### Features
+- **Button-controlled battery simulation** for mobile app testing
+- **Automatic range clamping** (0-100%) prevents invalid battery levels
+- **Smart button handling** with authentication mode awareness
+- **Enhanced logging** with emoji indicators for battery operations
+- **Dynamic protobuf generation** using actual battery state
+- **Push notifications** via BLE when battery level changes (no polling required)
+
+### Technical Improvements
+- **Global battery state variable** with thread-safe access
+- **Modular battery control functions** in protobuf_handler.c
+- **Enhanced button callback system** supporting multiple use cases
+- **Improved protobuf message parsing** with union-based field access
+- **Memory-efficient implementation** (+584 bytes FLASH, +8 bytes RAM)
+- **Proactive BLE notifications** using GlassesToPhone::BatteryStatus messages
+
+### Bug Fixes
+- **Fixed nanopb struct field access errors** using correct union patterns
+- **Corrected protobuf message structure usage** with which_payload discriminator
+- **Resolved compilation issues** with protobuf generated code
+
 ## [1.0.0] - 2025-07-31
 
 ### Added

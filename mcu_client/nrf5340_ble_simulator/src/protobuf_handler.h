@@ -84,6 +84,35 @@ void protobuf_parse_image_chunk(const uint8_t *data, uint16_t len);
 int protobuf_generate_echo_response(const uint8_t *input_data, uint16_t input_len,
    uint8_t *output_data, uint16_t max_output_len);
 
+/**
+ * @brief Get current battery level
+ *
+ * @return Current battery level (0-100%)
+ */
+uint32_t protobuf_get_battery_level(void);
+
+/**
+ * @brief Set battery level
+ *
+ * @param level Battery level (0-100%, will be clamped)
+ */
+void protobuf_set_battery_level(uint32_t level);
+
+/**
+ * @brief Increase battery level by 5%
+ */
+void protobuf_increase_battery_level(void);
+
+/**
+ * @brief Decrease battery level by 5%
+ */
+void protobuf_decrease_battery_level(void);
+
+/**
+ * @brief Send proactive battery level notification via BLE
+ */
+void protobuf_send_battery_notification(void);
+
 #ifdef __cplusplus
 }
 #endif

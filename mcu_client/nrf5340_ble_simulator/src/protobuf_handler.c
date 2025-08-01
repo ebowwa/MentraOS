@@ -11,10 +11,14 @@
 
 #include "protobuf_handler.h"
 #include "mentraos_ble.pb.h"
+#include "mentra_ble_service.h"
 #include <pb_decode.h>
 #include <pb_encode.h>
 
 LOG_MODULE_REGISTER(protobuf_handler, LOG_LEVEL_DBG);
+
+// Global battery level state (0-100%)
+static uint32_t current_battery_level = 85;
 
 void protobuf_analyze_message(const uint8_t *data, uint16_t len)
 {
@@ -90,6 +94,7 @@ void protobuf_parse_control_message(const uint8_t *protobuf_data, uint16_t len)
 		switch (phone_msg.which_payload) {
 		case 11: // battery_state_tag
 			LOG_INF("📱 Battery state request received");
+			LOG_INF("📊 Current battery level: %u%%", current_battery_level);
 			// TODO: Generate battery response
 			break;
 			
@@ -210,6 +215,81 @@ void protobuf_parse_image_chunk(const uint8_t *data, uint16_t len)
 stream_id, chunk_index, image_data_len);
 }
 
+uint32_t protobuf_get_battery_level(void)
+{
+	return current_battery_level;
+}
+
+void protobuf_set_battery_level(uint32_t level)
+{
+	// Clamp battery level to valid range (0-100%)
+	if (level > 100) {
+		level = 100;
+	}
+	
+	uint32_t old_level = current_battery_level;
+	current_battery_level = level;
+	LOG_INF("🔋 Battery level set to %u%%", current_battery_level);
+	
+	// Send proactive notification if level changed
+	if (old_level != current_battery_level) {
+		protobuf_send_battery_notification();
+	}
+}
+
+void protobuf_increase_battery_level(void)
+{
+	uint32_t new_level = current_battery_level + 5;
+	if (new_level > 100) {
+		new_level = 100;
+	}
+	protobuf_set_battery_level(new_level);
+}
+
+void protobuf_decrease_battery_level(void)
+{
+	uint32_t new_level;
+	if (current_battery_level >= 5) {
+		new_level = current_battery_level - 5;
+	} else {
+		new_level = 0;
+	}
+	protobuf_set_battery_level(new_level);
+}
+
+void protobuf_send_battery_notification(void)
+{
+	// Create a battery status notification message
+	mentraos_ble_GlassesToPhone notification = mentraos_ble_GlassesToPhone_init_default;
+	
+	// Set which_payload to battery_status (tag 10)
+	notification.which_payload = 10;
+	
+	// Fill battery status with current level
+	notification.payload.battery_status.level = current_battery_level;
+	notification.payload.battery_status.charging = false;
+	
+	// Encode the notification
+	uint8_t buffer[64]; // Small buffer for battery notification
+	size_t bytes_written;
+	
+	if (encode_glasses_to_phone_message(&notification, buffer + 1, 
+					   sizeof(buffer) - 1, &bytes_written)) {
+		// Add the 0x02 header for protobuf messages
+		buffer[0] = 0x02;
+		
+		// Send via BLE (to all connected clients)
+		int ret = mentra_ble_send(NULL, buffer, bytes_written + 1);
+		if (ret == 0) {
+			LOG_INF("📱✅ Sent battery level notification: %u%%", current_battery_level);
+		} else {
+			LOG_WRN("📱❌ Failed to send battery notification (ret: %d)", ret);
+		}
+	} else {
+		LOG_ERR("❌ Failed to encode battery notification");
+	}
+}
+
 int protobuf_generate_echo_response(const uint8_t *input_data, uint16_t input_len,
    uint8_t *output_data, uint16_t max_output_len)
 {
@@ -219,8 +299,8 @@ int protobuf_generate_echo_response(const uint8_t *input_data, uint16_t input_le
 	// Set which_payload to battery_status (tag 10) - simpler than device_info
 	response.which_payload = 10;
 	
-	// Create a battery status response as an example  
-	response.payload.battery_status.level = 85;    // 85% battery
+	// Create a battery status response using current battery level
+	response.payload.battery_status.level = current_battery_level;
 	response.payload.battery_status.charging = false;
 	
 	// Encode the response
@@ -230,7 +310,8 @@ int protobuf_generate_echo_response(const uint8_t *input_data, uint16_t input_le
 		// Add the 0x02 header for protobuf messages
 		output_data[0] = 0x02;
 		
-		LOG_INF("✅ Generated protobuf echo response: %zu + 1 bytes", bytes_written);
+		LOG_INF("✅ Generated protobuf echo response: %zu + 1 bytes (Battery: %u%%)", 
+			bytes_written, current_battery_level);
 		return bytes_written + 1;
 	} else {
 		LOG_ERR("❌ Failed to generate protobuf response");
