@@ -95,7 +95,8 @@ void protobuf_parse_control_message(const uint8_t *protobuf_data, uint16_t len)
 		case 11: // battery_state_tag
 			LOG_INF("📱 Battery state request received");
 			LOG_INF("📊 Current battery level: %u%%", current_battery_level);
-			// TODO: Generate battery response
+			// Send battery response
+			protobuf_send_battery_notification();
 			break;
 			
 		case 12: // glasses_info_tag  
