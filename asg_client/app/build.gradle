@@ -1,7 +1,8 @@
 plugins {
     id 'com.android.application'
     id 'androidx.navigation.safeargs'
-    id 'org.jetbrains.kotlin.android'
+
+    id 'io.sentry.android.gradle' version '5.8.0'
 }
 
 // 1. Import classes for file/stream and properties
@@ -113,9 +114,6 @@ android {
             signingConfig asgStorePassword ? signingConfigs.release : signingConfigs.debug
         }
     }
-    kotlinOptions {
-        jvmTarget = '17'
-    }
 }
 
 
@@ -208,4 +206,13 @@ dependencies {
     androidTestImplementation 'androidx.test:runner:1.5.2'
     androidTestImplementation 'androidx.test:rules:1.5.0'
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
+}
+
+sentry {
+    org = "ahmad-wv"
+    projectName = "asg"
+
+    // this will upload your source code to Sentry to show it as part of the stack traces
+    // disable if you don't want to expose your sources
+    includeSourceContext = true
 }

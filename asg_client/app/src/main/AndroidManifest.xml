@@ -63,6 +63,7 @@
 
     <!-- Application node is not neccessary for libraries -->
   <application
+      android:name=".AsgClientApplication"
       android:usesCleartextTraffic="true"
       >
 <!--      android:usesCleartextTraffic="true"-->
@@ -166,7 +167,21 @@
 
     <!-- Service health monitoring is handled by AsgClientService -->
 
-  </application>
+  
+    <!-- Sentry configuration - DSN will be set programmatically for security -->
+    <!-- Add data like request headers, user ip address and device name, see https://docs.sentry.io/platforms/android/data-management/data-collected/ for more info -->
+    <meta-data android:name="io.sentry.send-default-pii" android:value="true" />
+
+    <!-- enable automatic breadcrumbs for user interactions (clicks, swipes, scrolls) -->
+    <meta-data android:name="io.sentry.traces.user-interaction.enable" android:value="true" />
+    <!-- enable screenshot for crashes (could contain sensitive/PII data) -->
+    <meta-data android:name="io.sentry.attach-screenshot" android:value="true" />
+    <!-- enable view hierarchy for crashes -->
+    <meta-data android:name="io.sentry.attach-view-hierarchy" android:value="true" />
+
+    <!-- enable the performance API by setting a sample-rate, adjust in production env -->
+    <meta-data android:name="io.sentry.traces.sample-rate" android:value="1.0" />
+</application>
 
   <queries>
     <intent>
