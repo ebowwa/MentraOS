@@ -938,7 +938,7 @@ typealias JSONObject = [String: Any]
         // Always generate BLE ID for potential fallback
         let bleImgId = "I" + String(format: "%09d", Int(Date().timeIntervalSince1970 * 1000) % 100_000_000)
         json["bleImgId"] = bleImgId
-        json["transferMethod"] = "ble"
+        json["transferMethod"] = "auto"
 
         if let webhookUrl = webhookUrl, !webhookUrl.isEmpty {
             json["webhookUrl"] = webhookUrl
