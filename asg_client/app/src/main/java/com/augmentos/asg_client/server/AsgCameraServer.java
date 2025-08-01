@@ -18,6 +18,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 /**
  * Camera web server for ASG (AugmentOS Smart Glasses) applications.
@@ -146,6 +148,9 @@ public class AsgCameraServer extends AsgServer {
             case "/api/download":
                 logger.debug(getTag(), "⬇️ Serving photo download");
                 return serveDownload(session);
+            case "/api/download-multiple":
+                logger.debug(getTag(), "📦 Serving multiple photo download");
+                return serveMultipleDownload(session);
             case "/api/status":
                 logger.debug(getTag(), "📊 Serving server status");
                 return serveStatus();
@@ -408,6 +413,222 @@ public class AsgCameraServer extends AsgServer {
             logger.error(getTag(), "⬇️ 💥 Error downloading photo " + filename + ": " + e.getMessage(), e);
             return createErrorResponse(Response.Status.INTERNAL_ERROR, "Error downloading photo file");
         }
+    }
+
+    /**
+     * Serve multiple photo downloads as ZIP archive.
+     */
+    private Response serveMultipleDownload(IHTTPSession session) {
+        logger.debug(getTag(), "📦 =========================================");
+        logger.debug(getTag(), "📦 MULTIPLE DOWNLOAD REQUEST HANDLER");
+        logger.debug(getTag(), "📦 =========================================");
+        
+        Map<String, String> params = session.getParms();
+        String filesParam = params.get("files");
+        String dateRange = params.get("date_range"); // e.g., "today", "week", "month"
+        String count = params.get("count"); // e.g., "10" for latest 10 photos
+        
+        logger.debug(getTag(), "📦 📝 Files parameter: " + filesParam);
+        logger.debug(getTag(), "📦 📝 Date range: " + dateRange);
+        logger.debug(getTag(), "📦 📝 Count: " + count);
+        
+        List<File> filesToDownload = new ArrayList<>();
+        
+        try {
+            // Method 1: Specific files list
+            if (filesParam != null && !filesParam.isEmpty()) {
+                String[] filenames = filesParam.split(",");
+                for (String filename : filenames) {
+                    filename = filename.trim();
+                    if (!filename.isEmpty()) {
+                        // Security: prevent directory traversal
+                        if (filename.contains("..") || filename.contains("/") || filename.contains("\\")) {
+                            logger.warn(getTag(), "📦 ❌ Invalid filename (directory traversal attempt): " + filename);
+                            continue;
+                        }
+                        
+                        File photoFile = new File(photoDirectory, filename);
+                        if (photoFile.exists() && photoFile.isFile()) {
+                            filesToDownload.add(photoFile);
+                            logger.debug(getTag(), "📦 ✅ Added file: " + filename);
+                        } else {
+                            logger.warn(getTag(), "📦 ❌ File not found: " + filename);
+                        }
+                    }
+                }
+            }
+            // Method 2: Date range
+            else if (dateRange != null && !dateRange.isEmpty()) {
+                filesToDownload = getFilesByDateRange(dateRange);
+            }
+            // Method 3: Latest N photos
+            else if (count != null && !count.isEmpty()) {
+                try {
+                    int photoCount = Integer.parseInt(count);
+                    filesToDownload = getLatestFiles(photoCount);
+                } catch (NumberFormatException e) {
+                    logger.warn(getTag(), "📦 ❌ Invalid count parameter: " + count);
+                }
+            }
+            // Method 4: All photos (default)
+            else {
+                filesToDownload = getAllPhotoFiles();
+            }
+            
+            if (filesToDownload.isEmpty()) {
+                logger.warn(getTag(), "📦 ❌ No files to download");
+                return createErrorResponse(Response.Status.NOT_FOUND, "No files found for download");
+            }
+            
+            logger.debug(getTag(), "📦 📊 Files to download: " + filesToDownload.size());
+            
+            // Create ZIP archive
+            ByteArrayOutputStream zipStream = new ByteArrayOutputStream();
+            ZipOutputStream zipOut = new ZipOutputStream(zipStream);
+            
+            for (File photoFile : filesToDownload) {
+                try {
+                    ZipEntry zipEntry = new ZipEntry(photoFile.getName());
+                    zipOut.putNextEntry(zipEntry);
+                    
+                    byte[] fileData = Files.readAllBytes(photoFile.toPath());
+                    zipOut.write(fileData);
+                    zipOut.closeEntry();
+                    
+                    logger.debug(getTag(), "📦 📁 Added to ZIP: " + photoFile.getName() + " (" + fileData.length + " bytes)");
+                } catch (IOException e) {
+                    logger.error(getTag(), "📦 💥 Error adding file to ZIP: " + photoFile.getName(), e);
+                }
+            }
+            
+            zipOut.close();
+            byte[] zipData = zipStream.toByteArray();
+            
+            // Generate filename
+            String timestamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
+            String zipFilename = "photos_" + timestamp + ".zip";
+            
+            Map<String, String> headers = new HashMap<>();
+            headers.put("Content-Disposition", "attachment; filename=\"" + zipFilename + "\"");
+            headers.put("Content-Type", "application/zip");
+            headers.put("Content-Length", String.valueOf(zipData.length));
+            
+            logger.debug(getTag(), "📦 📋 Response headers: " + headers);
+            logger.debug(getTag(), "📦 ✅ ZIP created successfully: " + zipFilename + " (" + zipData.length + " bytes)");
+            
+            return newChunkedResponse(Response.Status.OK, "application/zip", new java.io.ByteArrayInputStream(zipData));
+            
+        } catch (IOException e) {
+            logger.error(getTag(), "📦 💥 Error creating ZIP archive: " + e.getMessage(), e);
+            return createErrorResponse(Response.Status.INTERNAL_ERROR, "Error creating download archive");
+        }
+    }
+
+    /**
+     * Get files by date range.
+     */
+    private List<File> getFilesByDateRange(String dateRange) {
+        logger.debug(getTag(), "📦 📅 Getting files by date range: " + dateRange);
+        
+        List<File> files = new ArrayList<>();
+        File photoDir = new File(photoDirectory);
+        
+        if (!photoDir.exists() || !photoDir.isDirectory()) {
+            return files;
+        }
+        
+        File[] photoFiles = photoDir.listFiles((dir, name) -> 
+            name.toLowerCase().endsWith(".jpg") || name.toLowerCase().endsWith(".jpeg"));
+        
+        if (photoFiles == null) {
+            return files;
+        }
+        
+        long currentTime = System.currentTimeMillis();
+        long timeRange = 0;
+        
+        switch (dateRange.toLowerCase()) {
+            case "today":
+                timeRange = 24 * 60 * 60 * 1000L; // 24 hours
+                break;
+            case "week":
+                timeRange = 7 * 24 * 60 * 60 * 1000L; // 7 days
+                break;
+            case "month":
+                timeRange = 30 * 24 * 60 * 60 * 1000L; // 30 days
+                break;
+            default:
+                logger.warn(getTag(), "📦 ❌ Unknown date range: " + dateRange);
+                return files;
+        }
+        
+        for (File photo : photoFiles) {
+            if (currentTime - photo.lastModified() <= timeRange) {
+                files.add(photo);
+                logger.debug(getTag(), "📦 📅 Added file by date: " + photo.getName());
+            }
+        }
+        
+        logger.debug(getTag(), "📦 📅 Found " + files.size() + " files in date range: " + dateRange);
+        return files;
+    }
+
+    /**
+     * Get latest N files.
+     */
+    private List<File> getLatestFiles(int count) {
+        logger.debug(getTag(), "📦 🔢 Getting latest " + count + " files");
+        
+        List<File> files = new ArrayList<>();
+        File photoDir = new File(photoDirectory);
+        
+        if (!photoDir.exists() || !photoDir.isDirectory()) {
+            return files;
+        }
+        
+        File[] photoFiles = photoDir.listFiles((dir, name) -> 
+            name.toLowerCase().endsWith(".jpg") || name.toLowerCase().endsWith(".jpeg"));
+        
+        if (photoFiles == null) {
+            return files;
+        }
+        
+        // Sort by modification time (newest first)
+        Arrays.sort(photoFiles, (a, b) -> Long.compare(b.lastModified(), a.lastModified()));
+        
+        // Take the latest N files
+        int filesToTake = Math.min(count, photoFiles.length);
+        for (int i = 0; i < filesToTake; i++) {
+            files.add(photoFiles[i]);
+            logger.debug(getTag(), "📦 🔢 Added latest file: " + photoFiles[i].getName());
+        }
+        
+        logger.debug(getTag(), "📦 🔢 Found " + files.size() + " latest files");
+        return files;
+    }
+
+    /**
+     * Get all photo files.
+     */
+    private List<File> getAllPhotoFiles() {
+        logger.debug(getTag(), "📦 📚 Getting all photo files");
+        
+        List<File> files = new ArrayList<>();
+        File photoDir = new File(photoDirectory);
+        
+        if (!photoDir.exists() || !photoDir.isDirectory()) {
+            return files;
+        }
+        
+        File[] photoFiles = photoDir.listFiles((dir, name) -> 
+            name.toLowerCase().endsWith(".jpg") || name.toLowerCase().endsWith(".jpeg"));
+        
+        if (photoFiles != null) {
+            files.addAll(Arrays.asList(photoFiles));
+            logger.debug(getTag(), "📦 📚 Found " + files.size() + " total photo files");
+        }
+        
+        return files;
     }
 
     /**
