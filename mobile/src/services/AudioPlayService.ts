@@ -1,4 +1,9 @@
 import AudioManager, {AudioPlayRequest} from "../managers/AudioManager"
+import { 
+  reportAudioStartFailure,
+  reportAudioStopFailure,
+  reportAudioStopAllFailure
+} from "../reporting/domains"
 
 export interface AudioPlayRequestMessage {
   type: "audio_play_request"
@@ -70,6 +75,7 @@ export class AudioPlayService {
       console.log(`AudioPlayService: Started audio play for requestId: ${message.requestId}`)
     } catch (error) {
       console.error(`AudioPlayService: Failed to start audio play for requestId ${message.requestId}:`, error)
+      reportAudioStartFailure(message.requestId, String(error), error instanceof Error ? error : new Error(String(error)))
 
       // Send error response immediately
       this.handleAudioPlayResponse({
@@ -91,6 +97,7 @@ export class AudioPlayService {
       console.log(`AudioPlayService: Stopped audio for requestId: ${requestId}`)
     } catch (error) {
       console.error(`AudioPlayService: Failed to stop audio for requestId ${requestId}:`, error)
+      reportAudioStopFailure(requestId, String(error), error instanceof Error ? error : new Error(String(error)))
       throw error
     }
   }
@@ -104,6 +111,7 @@ export class AudioPlayService {
       console.log("AudioPlayService: Stopped all audio")
     } catch (error) {
       console.error("AudioPlayService: Failed to stop all audio:", error)
+      reportAudioStopAllFailure(String(error), error instanceof Error ? error : new Error(String(error)))
       throw error
     }
   }

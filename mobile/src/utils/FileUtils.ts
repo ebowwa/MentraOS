@@ -1,5 +1,10 @@
 import {Platform, Share, NativeModules} from "react-native"
 import RNFS from "react-native-fs"
+import { 
+  reportDirectFileSharingFailure,
+  reportContentUriRetrievalFailure,
+  reportFileSharingFailure
+} from "@/reporting/domains"
 
 const {FileProviderModule} = NativeModules
 
@@ -94,6 +99,7 @@ export const shareFile = async (
             return
           } catch (directShareError) {
             console.error("Error with direct sharing:", directShareError)
+            reportDirectFileSharingFailure(filePath, String(directShareError), directShareError instanceof Error ? directShareError : new Error(String(directShareError)))
             // Continue to fallback methods
           }
         }
@@ -121,6 +127,7 @@ export const shareFile = async (
           })
         } catch (uriError) {
           console.error("Error getting content URI:", uriError)
+          reportContentUriRetrievalFailure(filePath, String(uriError), uriError instanceof Error ? uriError : new Error(String(uriError)))
           // Try last resort sharing method if content URI fails
           console.log("Trying last resort sharing method with direct file path")
           const shareOptions = {
@@ -187,6 +194,7 @@ export const shareFile = async (
       console.error("Error message:", error.message)
       console.error("Error stack:", error.stack)
     }
+          reportFileSharingFailure(filePath, mimeType, String(error), error instanceof Error ? error : new Error(String(error)))
     throw error
   }
 }

@@ -1,6 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import {SETTINGS_KEYS} from "@/consts"
 import {storage} from "@/utils/storage"
+import { reportCritical } from "@/reporting"
 
 export interface UserDataExport {
   metadata: {
@@ -175,6 +176,7 @@ export class DataExportService {
       console.log(`DataExportService: Collected ${Object.keys(settings).length} settings`)
     } catch (error) {
       console.error("DataExportService: Error collecting settings:", error)
+      reportCritical("DataExportService: Error collecting settings", 'data.export', 'collect_settings', error instanceof Error ? error : new Error(String(error)))
     }
 
     return settings
@@ -212,6 +214,7 @@ export class DataExportService {
       console.log(`DataExportService: Collected ${Object.keys(localStorage).length} local storage items`)
     } catch (error) {
       console.error("DataExportService: Error collecting local storage:", error)
+      reportCritical("DataExportService: Error collecting local storage", 'data.export', 'collect_local_storage', error instanceof Error ? error : new Error(String(error)))
     }
 
     return localStorage

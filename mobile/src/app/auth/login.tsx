@@ -34,6 +34,8 @@ import {Spacer} from "@/components/misc/Spacer"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import * as WebBrowser from "expo-web-browser"
 import Toast from "react-native-toast-message"
+import { reportCritical } from "@/reporting"
+import { reportAuthEvent } from '@/reporting/analytics'
 
 export default function LoginScreen() {
   const [isSigningUp, setIsSigningUp] = useState(false)
@@ -144,6 +146,7 @@ export default function LoginScreen() {
       // 2) If there's an error, handle it
       if (error) {
         console.error("Supabase Google sign-in error:", error)
+        reportCritical("Supabase Google sign-in error", 'auth.google', 'google_signin', error instanceof Error ? error : new Error(String(error)))
         // showAlert(translate('loginScreen.errors.authError'), error.message);
         setIsAuthLoading(false)
         authOverlayOpacity.setValue(0)
@@ -164,6 +167,7 @@ export default function LoginScreen() {
       }
     } catch (err) {
       console.error("Google sign in failed:", err)
+      reportCritical("Google sign in failed", 'auth.google', 'google_signin_exception', err instanceof Error ? err : new Error(String(err)))
       // showAlert(
       //   translate('loginScreen.errors.authError'),
       //   translate('loginScreen.errors.googleSignInFailed'),
@@ -204,6 +208,7 @@ export default function LoginScreen() {
       // If there's an error, handle it
       if (error) {
         console.error("Supabase Apple sign-in error:", error)
+        reportCritical("Supabase Apple sign-in error", 'auth.apple', 'apple_signin', error instanceof Error ? error : new Error(String(error)))
         // showAlert(translate('loginScreen.errors.authError'), error.message);
         setIsAuthLoading(false)
         authOverlayOpacity.setValue(0)
@@ -225,6 +230,7 @@ export default function LoginScreen() {
       // the onAuthStateChange listener you already have in place
     } catch (err) {
       console.error("Apple sign in failed:", err)
+      reportCritical("Apple sign in failed", 'auth.apple', 'apple_signin_exception', err instanceof Error ? err : new Error(String(err)))
       // showAlert(
       //   translate('loginScreen.errors.authError'),
       //   translate('loginScreen.errors.appleSignInFailed'),
@@ -281,6 +287,7 @@ export default function LoginScreen() {
       }
     } catch (err) {
       console.error("Error during sign-up:", err)
+      reportCritical("Error during sign-up", 'auth.email', 'email_signup', err instanceof Error ? err : new Error(String(err)))
       showAlert(translate("common:error"), err.toString())
     } finally {
       setIsFormLoading(false)
@@ -292,19 +299,29 @@ export default function LoginScreen() {
     Keyboard.dismiss()
     setIsFormLoading(true)
     setFormAction("signin")
-    const {data, error} = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
+    
+    try {
+      const {data, error} = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
 
-    if (error) {
-      showAlert(translate("common:error"), error.message)
-      // Handle sign-in error
-    } else {
-      console.log("Sign-in successful:", data)
-      replace("/")
+      if (error) {
+        reportAuthEvent("email_signin_failed", undefined, { error: error.message })
+        showAlert(translate("common:error"), error.message)
+        // Handle sign-in error
+      } else {
+        reportAuthEvent("email_signin_success", undefined, { email })
+        console.log("Sign-in successful:", data)
+        replace("/")
+      }
+    } catch (err) {
+      reportCritical("Email sign-in exception", 'auth.email', 'email_signin_exception', err instanceof Error ? err : new Error(String(err)))
+      showAlert(translate("common:error"), "An unexpected error occurred")
+    } finally {
+      setIsFormLoading(false)
+      setFormAction(null)
     }
-    setIsFormLoading(false)
   }
 
   useEffect(() => {

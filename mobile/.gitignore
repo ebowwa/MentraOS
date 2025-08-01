@@ -96,3 +96,9 @@ expo-env.d.ts
 
 # pnpm
 pnpm-lock.yaml
+
+# Environment files
+.env.local
+.env
+.env.production
+.env.staging
