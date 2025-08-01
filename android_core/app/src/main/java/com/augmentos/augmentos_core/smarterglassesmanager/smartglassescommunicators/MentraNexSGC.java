@@ -145,6 +145,9 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
     private final int MTU_256 = 256;
     private int currentMTU = 0;
 
+    private volatile boolean isImageSendProgressing = false;
+    private List<byte[]> currentImageChunks = new ArrayList<>();
+
     private SmartGlassesConnectionState connectionState = SmartGlassesConnectionState.DISCONNECTED;
     // gatt callbacks
     private final int MAIN_TASK_HANDLER_CODE_GATT_STATUS_CHANGED = 110;
@@ -1317,6 +1320,9 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
             lc3DecoderPtr = 0;
         }
 
+        currentImageChunks.clear();
+        isImageSendProgressing = false;
+
         sendQueue.clear();
 
         // Add a dummy element to unblock the take() call if needed
@@ -1453,8 +1459,8 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
         if (updatingScreen) {
             return;
         }
-//        List<byte[]> chunks = createTextWallChunks(text);
-//        sendChunks(chunks);
+        // List<byte[]> chunks = createTextWallChunks(text);
+        // sendChunks(chunks);
     }
 
     @Override
@@ -1753,6 +1759,7 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
 
         DisplayHeightConfig displayHeightConfig = DisplayHeightConfig.newBuilder()
                 .setHeight(height)
+                .setDepth(depth)
                 .build();
         PhoneToGlasses phoneToGlasses = PhoneToGlasses.newBuilder()
                 .setDisplayHeight(displayHeightConfig)
@@ -2074,7 +2081,10 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
 
     // send a tast image and display
     private void startSendingDisplayImageTest() {
-
+        if (isImageSendProgressing) {
+            return;
+        }
+        isImageSendProgressing = true;
         // byte[] exitCommand = new byte[] { (byte) 0x18 };
         // sendDataSequentially(exitCommand, false);
         Log.d(TAG, "startSendingDisplayImageTest");
@@ -2359,7 +2369,8 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
                 byte[] singleChunks = createVerticalScrollingTextWallChunksForNex(sampleText);
                 sendDataSequentially(singleChunks);
             } else {
-                sampleText = "Hello world " + random.nextInt();
+                // sampleText = "Hello world " + random.nextInt();
+                sampleText = sampleText + " " + random.nextInt();
                 Log.d(TAG, "Sent text wall " + sampleText + " to NexGlasses ");
 
                 byte[] singleChunks = createTextWallChunksForNex(sampleText);
@@ -2539,7 +2550,7 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
             }
             Log.d(TAG, "Processing BMP data, size: " + bmpData.length + " bytes");
 
-            // Split into chunks and send
+            // send the image start command first with the stream id
             final int totalChunks = (int) Math.ceil((double) bmpData.length / BMP_CHUNK_SIZE);
             final char streamId = (char) random.nextInt();
             final String streamIdText = "streamId" + streamId;
@@ -2549,7 +2560,9 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
             // Split into chunks and send
             List<byte[]> chunks = createBmpChunksForNexGlasses(streamId, bmpData, totalChunks);
 
-            sendBmpChunks(chunks);
+            // sendBmpChunks(chunks);
+            currentImageChunks = chunks;
+            sendDataSequentially(chunks);
 
             // Send end command
             // sendBmpEndCommand();
@@ -2562,6 +2575,25 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
         } catch (Exception e) {
             Log.e(TAG, "Error in displayBitmapImage: " + e.getMessage());
         }
+    }
+
+    // re send the image chunks that are missing
+    private void reSendImageMissingChunks(List<Integer> missingChunksIndexList) {
+        if (!isImageSendProgressing) {
+            return;
+        }
+        if (currentImageChunks.isEmpty()) {
+            return;
+        }
+        if (missingChunksIndexList.isEmpty()) {
+            return;
+        }
+        List<byte[]> missingChunks = new ArrayList<>();
+        for (int i = 0; i < missingChunksIndexList.size(); i++) {
+            missingChunks.add(currentImageChunks.get(i));
+        }
+
+        sendDataSequentially(missingChunks);
     }
 
     // for g1
@@ -2806,31 +2838,32 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
                 }
                 break;
                 case PACKET_TYPE_AUDIO: {
-                    if (shouldUseGlassesMic) {
-                        final int streamId = data[1] & 0xFF; // Sequence number
-                        // eg. LC3 to PCM
-                        final byte[] lc3 = Arrays.copyOfRange(data, 2, dataLen);
-                        Log.d(TAG, "Lc3 Audio data received. lc3 Data: " + bytesToHex(lc3));
-                        // decode the LC3 audio
-                        if (lc3DecoderPtr != 0) {
-                            final byte[] pcmData = L3cCpp.decodeLC3(lc3DecoderPtr, lc3);
-                            // send the PCM out
-                            Log.d(TAG, "set onAudioDataAvailable pcmData size:" + pcmData.length);
-                            if (audioProcessingCallback != null) {
-                                if (pcmData != null && pcmData.length > 0) {
-                                    Log.d(TAG, "set onAudioDataAvailable pcmData");
-                                    audioProcessingCallback.onAudioDataAvailable(pcmData);
-                                }
-                            } else {
-                                // If we get here, it means the callback wasn't properly registered
-                                Log.e(TAG,
-                                        "Audio processing callback is null - callback registration failed!");
+                    //if (shouldUseGlassesMic) {
+                    final int streamId = data[1] & 0xFF; // Sequence number
+                    // eg. LC3 to PCM
+                    final byte[] lc3 = Arrays.copyOfRange(data, 2, dataLen);
+                    Log.d(TAG, "Lc3 Audio data received. audioProcessingCallback: " + audioProcessingCallback);
+                    Log.d(TAG, "Lc3 Audio data received. lc3 Data: " + bytesToHex(lc3));
+                    // decode the LC3 audio
+                    if (lc3DecoderPtr != 0) {
+                        final byte[] pcmData = L3cCpp.decodeLC3(lc3DecoderPtr, lc3);
+                        // send the PCM out
+                        Log.d(TAG, "set onAudioDataAvailable pcmData size:" + pcmData.length);
+                        if (audioProcessingCallback != null) {
+                            if (pcmData != null && pcmData.length > 0) {
+                                Log.d(TAG, "set onAudioDataAvailable pcmData");
+                                audioProcessingCallback.onAudioDataAvailable(pcmData);
                             }
+                        } else {
+                            // If we get here, it means the callback wasn't properly registered
+                            Log.e(TAG,
+                                    "Audio processing callback is null - callback registration failed!");
                         }
-                        // send through the LC3
-                        Log.d(TAG, "set onAudioDataAvailable Lc3 data");
-                        audioProcessingCallback.onLC3AudioDataAvailable(lc3);
                     }
+                    // send through the LC3
+                    Log.d(TAG, "set onAudioDataAvailable Lc3 data");
+                    audioProcessingCallback.onLC3AudioDataAvailable(lc3);
+                    // }
                 }
                 break;
                 case PACKET_TYPE_IMAGE:
@@ -2947,9 +2980,12 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
                     final ImageTransferComplete.Status status = transferComplete.getStatus();
                     switch (status) {
                         case OK:
+                            currentImageChunks.clear();
+                            isImageSendProgressing = false;
                             break;
                         case INCOMPLETE:
                             List<Integer> missingChunksList = transferComplete.getMissingChunksList();
+                            reSendImageMissingChunks(missingChunksList);
                             break;
                     }
                 }

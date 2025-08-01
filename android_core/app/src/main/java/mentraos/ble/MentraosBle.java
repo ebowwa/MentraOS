@@ -18380,6 +18380,12 @@ public final class MentraosBle {
      * @return The height.
      */
     int getHeight();
+
+    /**
+     * <code>uint32 depth = 2;</code>
+     * @return The depth.
+     */
+    int getDepth();
   }
   /**
    * Protobuf type {@code mentraos.ble.DisplayHeightConfig}
@@ -18415,6 +18421,32 @@ public final class MentraosBle {
     private void clearHeight() {
 
       height_ = 0;
+    }
+
+    public static final int DEPTH_FIELD_NUMBER = 2;
+    private int depth_;
+    /**
+     * <code>uint32 depth = 2;</code>
+     * @return The depth.
+     */
+    @java.lang.Override
+    public int getDepth() {
+      return depth_;
+    }
+    /**
+     * <code>uint32 depth = 2;</code>
+     * @param value The depth to set.
+     */
+    private void setDepth(int value) {
+      
+      depth_ = value;
+    }
+    /**
+     * <code>uint32 depth = 2;</code>
+     */
+    private void clearDepth() {
+
+      depth_ = 0;
     }
 
     public static mentraos.ble.MentraosBle.DisplayHeightConfig parseFrom(
@@ -18542,6 +18574,34 @@ public final class MentraosBle {
         return this;
       }
 
+      /**
+       * <code>uint32 depth = 2;</code>
+       * @return The depth.
+       */
+      @java.lang.Override
+      public int getDepth() {
+        return instance.getDepth();
+      }
+      /**
+       * <code>uint32 depth = 2;</code>
+       * @param value The depth to set.
+       * @return This builder for chaining.
+       */
+      public Builder setDepth(int value) {
+        copyOnWrite();
+        instance.setDepth(value);
+        return this;
+      }
+      /**
+       * <code>uint32 depth = 2;</code>
+       * @return This builder for chaining.
+       */
+      public Builder clearDepth() {
+        copyOnWrite();
+        instance.clearDepth();
+        return this;
+      }
+
       // @@protoc_insertion_point(builder_scope:mentraos.ble.DisplayHeightConfig)
     }
     @java.lang.Override
@@ -18559,9 +18619,11 @@ public final class MentraosBle {
         case BUILD_MESSAGE_INFO: {
             java.lang.Object[] objects = new java.lang.Object[] {
               "height_",
+              "depth_",
             };
             java.lang.String info =
-                "\u0000\u0001\u0000\u0000\u0001\u0001\u0001\u0000\u0000\u0000\u0001\u000b";
+                "\u0000\u0002\u0000\u0000\u0001\u0002\u0002\u0000\u0000\u0000\u0001\u000b\u0002\u000b" +
+                "";
             return newMessageInfo(DEFAULT_INSTANCE, info, objects);
         }
         // fall through
