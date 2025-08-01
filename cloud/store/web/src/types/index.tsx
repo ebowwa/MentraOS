@@ -1,11 +1,20 @@
 // src/types/app.types.ts
 
+import {
+  HardwareType,
+  HardwareRequirementLevel,
+  HardwareRequirement,
+} from "@mentra/sdk";
+
 // Define App type enum
 export enum AppType {
-  STANDARD = 'standard',
-  SYSTEM = 'system',
-  BACKGROUND = 'background'
+  STANDARD = "standard",
+  SYSTEM = "system",
+  BACKGROUND = "background",
 }
+
+// Re-export SDK types for convenience
+export { HardwareType, HardwareRequirementLevel, type HardwareRequirement };
 
 // App settings interface
 export interface AppSettings {
@@ -33,6 +42,9 @@ export interface AppI {
     type: string;
     description?: string;
   }[];
+
+  // Hardware requirements
+  hardwareRequirements?: HardwareRequirement[];
 
   // Frontend-specific properties
   developerId?: string; // Developer's email address

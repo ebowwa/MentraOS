@@ -1,37 +1,66 @@
 // pages/EditApp.tsx
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeftIcon, CheckCircle2, AlertCircle, Loader2, KeyRound, Copy, RefreshCw, Share2, LinkIcon, Upload, MoveIcon, Download, Files } from "lucide-react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import {
+  ArrowLeftIcon,
+  CheckCircle2,
+  AlertCircle,
+  Loader2,
+  KeyRound,
+  Copy,
+  RefreshCw,
+  Share2,
+  LinkIcon,
+  Upload,
+  MoveIcon,
+  Download,
+  Files,
+} from "lucide-react";
 import DashboardLayout from "../components/DashboardLayout";
-import api, { Organization } from '@/services/api.service';
-import { App, Permission, Setting, Tool } from '@/types/app';
-import { toast } from 'sonner';
-import ApiKeyDialog from '../components/dialogs/ApiKeyDialog';
-import SharingDialog from '../components/dialogs/SharingDialog';
-import PublishDialog from '../components/dialogs/PublishDialog';
-import ImportConfigDialog from '../components/dialogs/ImportConfigDialog';
-import { normalizeUrl } from '@/libs/utils';
-import PermissionsForm from '../components/forms/PermissionsForm';
-import SettingsEditor from '../components/forms/SettingsEditor';
-import ToolsEditor from '../components/forms/ToolsEditor';
-import { useAuth } from '../hooks/useAuth';
-import { useOrganization } from '@/context/OrganizationContext';
+import api, { Organization } from "@/services/api.service";
+import { App, Permission, Setting, Tool } from "@/types/app";
+import { HardwareRequirement } from "@mentra/sdk";
+import { toast } from "sonner";
+import ApiKeyDialog from "../components/dialogs/ApiKeyDialog";
+import SharingDialog from "../components/dialogs/SharingDialog";
+import PublishDialog from "../components/dialogs/PublishDialog";
+import ImportConfigDialog from "../components/dialogs/ImportConfigDialog";
+import { normalizeUrl } from "@/libs/utils";
+import PermissionsForm from "../components/forms/PermissionsForm";
+import SettingsEditor from "../components/forms/SettingsEditor";
+import ToolsEditor from "../components/forms/ToolsEditor";
+import HardwareRequirementsForm from "../components/forms/HardwareRequirementsForm";
+import { useAuth } from "../hooks/useAuth";
+import { useOrganization } from "@/context/OrganizationContext";
 // import publicEmailDomains from 'email-providers/all.json';
-import MoveOrgDialog from '../components/dialogs/MoveOrgDialog';
-import ImageUpload from '../components/forms/ImageUpload';
-import AppTypeTooltip from '../components/forms/AppTypeTooltip';
+import MoveOrgDialog from "../components/dialogs/MoveOrgDialog";
+import ImageUpload from "../components/forms/ImageUpload";
+import AppTypeTooltip from "../components/forms/AppTypeTooltip";
 // import { AppType } from '@mentra/sdk';
 
 enum AppType {
-  STANDARD = 'standard',
-  BACKGROUND = 'background'
+  STANDARD = "standard",
+  BACKGROUND = "background",
 }
 // Extend App type locally to include sharedWithOrganization
 interface EditableApp extends App {
@@ -46,19 +75,20 @@ const EditApp: React.FC = () => {
 
   // Form state
   const [formData, setFormData] = useState<EditableApp>({
-    id: '',
-    packageName: '',
-    name: '',
-    description: '',
-    onboardingInstructions: '',
-    publicUrl: '',
-    logoURL: '',
+    id: "",
+    packageName: "",
+    name: "",
+    description: "",
+    onboardingInstructions: "",
+    publicUrl: "",
+    logoURL: "",
     isPublic: false,
-    appStoreStatus: 'DEVELOPMENT',
-    appType: 'standard' as AppType, // Default value for AppType with cast
+    appStoreStatus: "DEVELOPMENT",
+    appType: "standard" as AppType, // Default value for AppType with cast
     createdAt: new Date().toISOString(), // Default value for AppResponse compatibility
     updatedAt: new Date().toISOString(), // Default value for AppResponse compatibility
     permissions: [], // Initialize permissions as empty array
+    hardwareRequirements: [], // Initialize hardware requirements as empty array
   });
 
   // Permissions state
@@ -71,15 +101,15 @@ const EditApp: React.FC = () => {
   const [isApiKeyDialogOpen, setIsApiKeyDialogOpen] = useState(false);
   const [isSharingDialogOpen, setIsSharingDialogOpen] = useState(false);
   const [isPublishDialogOpen, setIsPublishDialogOpen] = useState(false);
-  const [apiKey, setApiKey] = useState('');
-  const [shareLink, setShareLink] = useState('');
+  const [apiKey, setApiKey] = useState("");
+  const [shareLink, setShareLink] = useState("");
   const [isRegeneratingKey, setIsRegeneratingKey] = useState(false);
   const [isLoadingShareLink, setIsLoadingShareLink] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
 
   // Add sharedWithEmails state
   const [sharedWithEmails, setSharedWithEmails] = useState<string[]>([]);
-  const [newShareEmail, setNewShareEmail] = useState('');
+  const [newShareEmail, setNewShareEmail] = useState("");
   const [isUpdatingEmails, setIsUpdatingEmails] = useState(false);
   const [emailError, setEmailError] = useState<string | null>(null);
 
@@ -98,7 +128,7 @@ const EditApp: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Helper to get org domain from user email
-  const orgDomain = user?.email?.split('@')[1] || '';
+  const orgDomain = user?.email?.split("@")[1] || "";
   // Check if orgDomain is a public email provider
   // const isPublicEmailDomain = publicEmailDomains.includes(orgDomain);
 
@@ -111,7 +141,8 @@ const EditApp: React.FC = () => {
       if (!packageName || !currentOrg) return;
 
       // If organization changed from a previous one, we're switching orgs
-      const isOrgSwitch = prevOrgRef.current && prevOrgRef.current !== currentOrg.id;
+      const isOrgSwitch =
+        prevOrgRef.current && prevOrgRef.current !== currentOrg.id;
       prevOrgRef.current = currentOrg.id;
 
       try {
@@ -120,21 +151,24 @@ const EditApp: React.FC = () => {
         setError(null);
 
         // Fetch App data using organization ID
-        const appData = await api.apps.getByPackageName(packageName, currentOrg.id);
+        const appData = await api.apps.getByPackageName(
+          packageName,
+          currentOrg.id,
+        );
 
         // Convert API response to App type
         const app: EditableApp = {
           id: appData.packageName, // Using packageName as id since API doesn't return id
           packageName: appData.packageName,
           name: appData.name,
-          description: appData.description || '',
-          onboardingInstructions: appData.onboardingInstructions || '',
-          publicUrl: appData.publicUrl || '',
+          description: appData.description || "",
+          onboardingInstructions: appData.onboardingInstructions || "",
+          publicUrl: appData.publicUrl || "",
           logoURL: appData.logoURL,
           webviewURL: appData.webviewURL,
           isPublic: appData.isPublic || false,
-          appStoreStatus: appData.appStoreStatus || 'DEVELOPMENT',
-          appType: appData.appType || ('standard' as AppType),
+          appStoreStatus: appData.appStoreStatus || "DEVELOPMENT",
+          appType: appData.appType || ("standard" as AppType),
           createdAt: appData.createdAt,
           updatedAt: appData.updatedAt,
           reviewNotes: appData.reviewNotes,
@@ -142,6 +176,7 @@ const EditApp: React.FC = () => {
           reviewedAt: appData.reviewedAt,
           tools: appData.tools || [],
           settings: appData.settings || [],
+          hardwareRequirements: appData.hardwareRequirements || [],
         };
 
         setFormData(app);
@@ -150,10 +185,13 @@ const EditApp: React.FC = () => {
         try {
           const permissionsData = await api.apps.permissions.get(packageName);
           if (permissionsData.permissions) {
-            setFormData(prev => ({ ...prev, permissions: permissionsData.permissions }));
+            setFormData((prev) => ({
+              ...prev,
+              permissions: permissionsData.permissions,
+            }));
           }
         } catch (permError) {
-          console.error('Error fetching permissions:', permError);
+          console.error("Error fetching permissions:", permError);
           // Don't fail the whole form load if permissions fail
         } finally {
           setIsLoadingPermissions(false);
@@ -169,7 +207,7 @@ const EditApp: React.FC = () => {
           const allOrgs = await api.orgs.list();
 
           // Get the user's full profile to access ID
-          let userId = '';
+          let userId = "";
           try {
             const userProfile = await api.auth.me();
             userId = userProfile.id;
@@ -179,21 +217,28 @@ const EditApp: React.FC = () => {
           }
 
           // Filter to only include orgs where the user has admin/owner access
-          const adminOrgs = allOrgs.filter(org => {
-
+          const adminOrgs = allOrgs.filter((org) => {
             // Handle member structure
             if (Array.isArray(org.members)) {
               for (const member of org.members) {
                 const role = member.role;
 
                 // Case 1: Direct string comparison with user ID
-                if (userId && typeof member.user === 'string' && member.user === userId) {
-                  return role === 'admin' || role === 'member';
+                if (
+                  userId &&
+                  typeof member.user === "string" &&
+                  member.user === userId
+                ) {
+                  return role === "admin" || role === "member";
                 }
 
                 // Case 2: Compare with user object with email
-                if (typeof member.user === 'object' && member.user && member.user.email === user?.email) {
-                  return role === 'admin' || role === 'member';
+                if (
+                  typeof member.user === "object" &&
+                  member.user &&
+                  member.user.email === user?.email
+                ) {
+                  return role === "admin" || role === "member";
                 }
               }
             }
@@ -201,32 +246,37 @@ const EditApp: React.FC = () => {
           });
           setEligibleOrgs(adminOrgs);
         } catch (orgError) {
-          console.error('Error fetching organizations:', orgError);
+          console.error("Error fetching organizations:", orgError);
         }
       } catch (err: any) {
-        console.error('Error fetching App:', err);
+        console.error("Error fetching App:", err);
 
         // Check if the error indicates the app doesn't exist in this organization
         // This can happen when user switches orgs while editing an app
-        const isNotFoundError = err?.response?.status === 404 ||
-                               err?.response?.data?.error?.includes('not found') ||
-                               err?.response?.data?.error?.includes('does not exist') ||
-                               err?.message?.includes('not found');
+        const isNotFoundError =
+          err?.response?.status === 404 ||
+          err?.response?.data?.error?.includes("not found") ||
+          err?.response?.data?.error?.includes("does not exist") ||
+          err?.message?.includes("not found");
 
         if (isNotFoundError) {
-          console.log('App not found in current organization, redirecting to app list...');
+          console.log(
+            "App not found in current organization, redirecting to app list...",
+          );
 
           // Only display toast on org switch
           if (!isOrgSwitch) {
-            toast.error(`App "${packageName}" not found. Redirecting to app list...`);
+            toast.error(
+              `App "${packageName}" not found. Redirecting to app list...`,
+            );
           }
 
           // Redirect to app list
-          navigate('/apps');
+          navigate("/apps");
           return;
         }
 
-        setError('Failed to load App data. Please try again.');
+        setError("Failed to load App data. Please try again.");
       } finally {
         setIsLoading(false);
       }
@@ -236,13 +286,15 @@ const EditApp: React.FC = () => {
   }, [packageName, currentOrg?.id, user?.email]);
 
   // Handle form changes
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+  ) => {
     const { name, value } = e.target as HTMLInputElement | HTMLTextAreaElement;
 
     // For URL fields, normalize on blur instead of on every keystroke
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
   };
 
@@ -251,14 +303,14 @@ const EditApp: React.FC = () => {
     const { name, value } = e.currentTarget;
 
     // Only normalize URL fields
-    if (name === 'publicUrl' || name === 'logoURL' || name === 'webviewURL') {
+    if (name === "publicUrl" || name === "logoURL" || name === "webviewURL") {
       if (value) {
         try {
           // Normalize the URL and update the form field
           const normalizedUrl = normalizeUrl(value);
-          setFormData(prev => ({
+          setFormData((prev) => ({
             ...prev,
-            [name]: normalizedUrl
+            [name]: normalizedUrl,
           }));
         } catch (error) {
           console.error(`Error normalizing ${name}:`, error);
@@ -269,33 +321,43 @@ const EditApp: React.FC = () => {
 
   // Handle permissions changes
   const handlePermissionsChange = (permissions: Permission[]) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      permissions
+      permissions,
     }));
   };
 
   // Handle settings changes
   const handleSettingsChange = (settings: Setting[]) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      settings
+      settings,
     }));
   };
 
   // Handle tools changes
   const handleToolsChange = (tools: Tool[]) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      tools
+      tools,
+    }));
+  };
+
+  // Handle hardware requirements changes
+  const handleHardwareRequirementsChange = (
+    hardwareRequirements: HardwareRequirement[],
+  ) => {
+    setFormData((prev) => ({
+      ...prev,
+      hardwareRequirements,
     }));
   };
 
   // Handle AppType changes
   const handleAppTypeChange = (value: string) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      appType: value as AppType
+      appType: value as AppType,
     }));
   };
 
@@ -308,23 +370,27 @@ const EditApp: React.FC = () => {
    */
   const removeIdFields = (obj: any, isSettingsArray: boolean = false): any => {
     if (Array.isArray(obj)) {
-      return obj.map(item => removeIdFields(item, isSettingsArray));
-    } else if (obj !== null && typeof obj === 'object') {
+      return obj.map((item) => removeIdFields(item, isSettingsArray));
+    } else if (obj !== null && typeof obj === "object") {
       const cleaned: any = {};
       for (const [key, value] of Object.entries(obj)) {
         // Always skip _id fields
         // Skip id fields only if we're in a settings array
-        if (key === '_id' || (key === 'id' && isSettingsArray)) {
+        if (key === "_id" || (key === "id" && isSettingsArray)) {
           continue;
         }
 
         // Skip empty options or enum arrays
-        if ((key === 'options' || key === 'enum') && Array.isArray(value) && value.length === 0) {
+        if (
+          (key === "options" || key === "enum") &&
+          Array.isArray(value) &&
+          value.length === 0
+        ) {
           continue;
         }
 
         // When we encounter the settings key, mark that we're processing settings
-        if (key === 'settings' && Array.isArray(value)) {
+        if (key === "settings" && Array.isArray(value)) {
           cleaned[key] = removeIdFields(value, true);
         } else {
           cleaned[key] = removeIdFields(value, isSettingsArray);
@@ -341,28 +407,30 @@ const EditApp: React.FC = () => {
       name: formData.name,
       description: formData.description,
       onboardingInstructions: formData.onboardingInstructions,
-      publicUrl: formData.publicUrl || '',
-      logoURL: formData.logoURL || '', // Cloudflare Images URL
+      publicUrl: formData.publicUrl || "",
+      logoURL: formData.logoURL || "", // Cloudflare Images URL
       appType: formData.appType,
       permissions: removeIdFields(formData.permissions || []),
       settings: removeIdFields(formData.settings || [], true),
-      tools: removeIdFields(formData.tools || [])
+      tools: removeIdFields(formData.tools || []),
     };
 
     // Only include webviewURL if it exists and is not empty
-    if (formData.webviewURL && formData.webviewURL.trim() !== '') {
+    if (formData.webviewURL && formData.webviewURL.trim() !== "") {
       config.webviewURL = formData.webviewURL;
     }
 
-    const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
+    const blob = new Blob([JSON.stringify(config, null, 2)], {
+      type: "application/json",
+    });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
-    a.download = `${formData.packageName || 'app'}_config.json`;
+    a.download = `${formData.packageName || "app"}_config.json`;
     a.click();
     URL.revokeObjectURL(url);
 
-    toast.success('Configuration exported successfully!');
+    toast.success("Configuration exported successfully!");
   };
 
   // Handle form submission
@@ -373,20 +441,22 @@ const EditApp: React.FC = () => {
     setIsSaved(false);
 
     try {
-      if (!packageName) throw new Error('Package name is missing');
-      if (!currentOrg) throw new Error('No organization selected');
+      if (!packageName) throw new Error("Package name is missing");
+      if (!currentOrg) throw new Error("No organization selected");
 
       // Normalize URLs before submission
       const normalizedData = {
         name: formData.name,
         description: formData.description,
         onboardingInstructions: formData.onboardingInstructions,
-        publicUrl: formData.publicUrl ? normalizeUrl(formData.publicUrl) : '',
-        logoURL: formData.logoURL ? normalizeUrl(formData.logoURL) : '',
-        webviewURL: formData.webviewURL ? normalizeUrl(formData.webviewURL) : '',
+        publicUrl: formData.publicUrl ? normalizeUrl(formData.publicUrl) : "",
+        logoURL: formData.logoURL ? normalizeUrl(formData.logoURL) : "",
+        webviewURL: formData.webviewURL
+          ? normalizeUrl(formData.webviewURL)
+          : "",
         appType: formData.appType,
         settings: formData.settings || [],
-        tools: formData.tools || []
+        tools: formData.tools || [],
       };
 
       // Update App data
@@ -399,17 +469,17 @@ const EditApp: React.FC = () => {
 
       // Show success message
       setIsSaved(true);
-      toast.success('App updated successfully');
+      toast.success("App updated successfully");
 
       // Reset saved status after 3 seconds
       setTimeout(() => {
         setIsSaved(false);
       }, 3000);
     } catch (err: any) {
-      console.error('Error updating App:', err);
+      console.error("Error updating App:", err);
 
       // Extract the specific error message from the API response
-      let errorMessage = 'Failed to update app. Please try again.';
+      let errorMessage = "Failed to update app. Please try again.";
 
       if (err?.response?.data?.error) {
         // API returned a specific error message
@@ -429,22 +499,25 @@ const EditApp: React.FC = () => {
   // Handle API key regeneration
   const handleRegenerateApiKey = async () => {
     try {
-      if (!packageName) throw new Error('Package name is missing');
-      if (!currentOrg) throw new Error('No organization selected');
+      if (!packageName) throw new Error("Package name is missing");
+      if (!currentOrg) throw new Error("No organization selected");
 
       setIsRegeneratingKey(true);
       setError(null);
 
       // Regenerate API key via API
-      const response = await api.apps.apiKey.regenerate(packageName, currentOrg.id);
+      const response = await api.apps.apiKey.regenerate(
+        packageName,
+        currentOrg.id,
+      );
 
       // Update local state with new API key
       setApiKey(response.apiKey);
 
-      toast.success('API key regenerated successfully');
+      toast.success("API key regenerated successfully");
     } catch (err) {
-      console.error('Error regenerating API key:', err);
-      toast.error('Failed to regenerate API key');
+      console.error("Error regenerating API key:", err);
+      toast.error("Failed to regenerate API key");
     } finally {
       setIsRegeneratingKey(false);
     }
@@ -461,7 +534,7 @@ const EditApp: React.FC = () => {
 
     // Dismiss ALL existing toasts
     // Check if document is available (browser environment)
-    if (typeof document !== 'undefined') {
+    if (typeof document !== "undefined") {
       const allToasts = document.querySelectorAll('[role="status"]');
       allToasts.forEach((toast) => {
         if (toast.parentElement) {
@@ -478,14 +551,17 @@ const EditApp: React.FC = () => {
   // Handle getting and copying share link
   const handleGetShareLink = async () => {
     try {
-      if (!packageName) throw new Error('Package name is missing');
-      if (!currentOrg) throw new Error('No organization selected');
+      if (!packageName) throw new Error("Package name is missing");
+      if (!currentOrg) throw new Error("No organization selected");
 
       setIsLoadingShareLink(true);
       setError(null);
 
       // Get share link via API
-      const shareUrl = await api.sharing.getInstallLink(packageName, currentOrg.id);
+      const shareUrl = await api.sharing.getInstallLink(
+        packageName,
+        currentOrg.id,
+      );
 
       // Update local state with share link
       setShareLink(shareUrl);
@@ -493,8 +569,8 @@ const EditApp: React.FC = () => {
       // Open sharing dialog
       setIsSharingDialogOpen(true);
     } catch (err) {
-      console.error('Error generating share link:', err);
-      toast.error('Failed to generate sharing link');
+      console.error("Error generating share link:", err);
+      toast.error("Failed to generate sharing link");
     } finally {
       setIsLoadingShareLink(false);
     }
@@ -511,25 +587,28 @@ const EditApp: React.FC = () => {
 
     try {
       // Refresh App data to get updated app status
-      const updatedApp = await api.apps.getByPackageName(packageName, currentOrg.id);
+      const updatedApp = await api.apps.getByPackageName(
+        packageName,
+        currentOrg.id,
+      );
 
       // Update form data with new app status
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
-        appStoreStatus: updatedApp.appStoreStatus || prev.appStoreStatus
+        appStoreStatus: updatedApp.appStoreStatus || prev.appStoreStatus,
       }));
 
-      toast.success('Publication status updated');
+      toast.success("Publication status updated");
     } catch (err) {
-      console.error('Error refreshing App status:', err);
+      console.error("Error refreshing App status:", err);
     }
   };
 
   // Handler to add a new email to the share list
   const handleAddShareEmail = async () => {
     try {
-      if (!packageName) throw new Error('Package name is missing');
-      if (!currentOrg) throw new Error('No organization selected');
+      if (!packageName) throw new Error("Package name is missing");
+      if (!currentOrg) throw new Error("No organization selected");
       if (!newShareEmail.trim()) return;
 
       setIsUpdatingEmails(true);
@@ -538,14 +617,14 @@ const EditApp: React.FC = () => {
       // Validate email
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(newShareEmail)) {
-        setEmailError('Please enter a valid email address');
+        setEmailError("Please enter a valid email address");
         setIsUpdatingEmails(false);
         return;
       }
 
       // Check if email already in list
       if (sharedWithEmails.includes(newShareEmail)) {
-        setEmailError('This email is already in the list');
+        setEmailError("This email is already in the list");
         setIsUpdatingEmails(false);
         return;
       }
@@ -556,15 +635,19 @@ const EditApp: React.FC = () => {
 
       // Update local state
       setSharedWithEmails(updatedEmails);
-      setNewShareEmail('');
+      setNewShareEmail("");
 
       toast.success(`Shared with ${newShareEmail}`);
 
       // Also track via the sharing API
-      await api.sharing.trackSharing(packageName, [newShareEmail], currentOrg.id);
+      await api.sharing.trackSharing(
+        packageName,
+        [newShareEmail],
+        currentOrg.id,
+      );
     } catch (err) {
-      console.error('Error adding share email:', err);
-      toast.error('Failed to add email');
+      console.error("Error adding share email:", err);
+      toast.error("Failed to add email");
     } finally {
       setIsUpdatingEmails(false);
     }
@@ -573,13 +656,13 @@ const EditApp: React.FC = () => {
   // Handler to remove an email from the share list
   const handleRemoveShareEmail = async (email: string) => {
     try {
-      if (!packageName) throw new Error('Package name is missing');
-      if (!currentOrg) throw new Error('No organization selected');
+      if (!packageName) throw new Error("Package name is missing");
+      if (!currentOrg) throw new Error("No organization selected");
 
       setIsUpdatingEmails(true);
 
       // Filter out the email to remove
-      const updatedEmails = sharedWithEmails.filter(e => e !== email);
+      const updatedEmails = sharedWithEmails.filter((e) => e !== email);
 
       // Update emails via API
       await api.apps.updateSharedEmails(packageName, updatedEmails);
@@ -589,8 +672,8 @@ const EditApp: React.FC = () => {
 
       toast.success(`Removed ${email} from shared list`);
     } catch (err) {
-      console.error('Error removing share email:', err);
-      toast.error('Failed to remove email');
+      console.error("Error removing share email:", err);
+      toast.error("Failed to remove email");
     } finally {
       setIsUpdatingEmails(false);
     }
@@ -611,11 +694,13 @@ const EditApp: React.FC = () => {
 
       // Redirect to the Apps list after a short delay
       setTimeout(() => {
-        navigate('/apps');
+        navigate("/apps");
       }, 1500);
     } catch (err) {
-      console.error('Error moving App to new organization:', err);
-      throw new Error('Failed to move app to the new organization. Please try again.');
+      console.error("Error moving App to new organization:", err);
+      throw new Error(
+        "Failed to move app to the new organization. Please try again.",
+      );
     } finally {
       setIsMovingOrg(false);
     }
@@ -626,73 +711,131 @@ const EditApp: React.FC = () => {
    * @param config - Object to validate
    * @returns Object with validation result and specific error message
    */
-  const validateAppConfig = (config: any): { isValid: boolean; error?: string } => {
-    console.log('Validating config:', config);
+  const validateAppConfig = (
+    config: any,
+  ): { isValid: boolean; error?: string } => {
+    console.log("Validating config:", config);
 
-    if (!config || typeof config !== 'object') {
-      console.log('Validation failed: config is not an object');
-      return { isValid: false, error: 'Configuration file must contain a valid JSON object.' };
+    if (!config || typeof config !== "object") {
+      console.log("Validation failed: config is not an object");
+      return {
+        isValid: false,
+        error: "Configuration file must contain a valid JSON object.",
+      };
     }
 
     // All fields are now optional - validate types only if they are provided
 
     // Name is optional but if present, must be a non-empty string
-    if (config.name !== undefined && (typeof config.name !== 'string' || config.name.trim() === '')) {
-      console.log('Validation failed: name is present but invalid');
-      return { isValid: false, error: 'Optional field "name" must be a non-empty string if provided.' };
+    if (
+      config.name !== undefined &&
+      (typeof config.name !== "string" || config.name.trim() === "")
+    ) {
+      console.log("Validation failed: name is present but invalid");
+      return {
+        isValid: false,
+        error: 'Optional field "name" must be a non-empty string if provided.',
+      };
     }
 
     // Description is optional but if present, must be a non-empty string
-    if (config.description !== undefined && (typeof config.description !== 'string' || config.description.trim() === '')) {
-      console.log('Validation failed: description is present but invalid');
-      return { isValid: false, error: 'Optional field "description" must be a non-empty string if provided.' };
+    if (
+      config.description !== undefined &&
+      (typeof config.description !== "string" ||
+        config.description.trim() === "")
+    ) {
+      console.log("Validation failed: description is present but invalid");
+      return {
+        isValid: false,
+        error:
+          'Optional field "description" must be a non-empty string if provided.',
+      };
     }
 
     // Version is optional but if present, must be a string
-    if (config.version !== undefined && typeof config.version !== 'string') {
-      console.log('Validation failed: version is present but not a string');
-      return { isValid: false, error: 'Optional field "version" must be a string if provided.' };
+    if (config.version !== undefined && typeof config.version !== "string") {
+      console.log("Validation failed: version is present but not a string");
+      return {
+        isValid: false,
+        error: 'Optional field "version" must be a string if provided.',
+      };
     }
 
     // Settings array is optional but if present, must be an array
     if (config.settings !== undefined && !Array.isArray(config.settings)) {
-      console.log('Validation failed: settings is present but not an array');
-      return { isValid: false, error: 'Optional field "settings" must be an array if provided.' };
+      console.log("Validation failed: settings is present but not an array");
+      return {
+        isValid: false,
+        error: 'Optional field "settings" must be an array if provided.',
+      };
     }
 
     // Optional fields validation - if present, must be correct type
     if (config.tools !== undefined && !Array.isArray(config.tools)) {
-      console.log('Validation failed: tools is present but not an array');
-      return { isValid: false, error: 'Optional field "tools" must be an array if provided.' };
+      console.log("Validation failed: tools is present but not an array");
+      return {
+        isValid: false,
+        error: 'Optional field "tools" must be an array if provided.',
+      };
     }
 
-    if (config.permissions !== undefined && !Array.isArray(config.permissions)) {
-      console.log('Validation failed: permissions is present but not an array');
-      return { isValid: false, error: 'Optional field "permissions" must be an array if provided.' };
+    if (
+      config.permissions !== undefined &&
+      !Array.isArray(config.permissions)
+    ) {
+      console.log("Validation failed: permissions is present but not an array");
+      return {
+        isValid: false,
+        error: 'Optional field "permissions" must be an array if provided.',
+      };
     }
 
-    if (config.publicUrl !== undefined && (typeof config.publicUrl !== 'string' || config.publicUrl.trim() === '')) {
-      console.log('Validation failed: publicUrl is present but invalid');
-      return { isValid: false, error: 'Optional field "publicUrl" must be a non-empty string if provided.' };
+    if (
+      config.publicUrl !== undefined &&
+      (typeof config.publicUrl !== "string" || config.publicUrl.trim() === "")
+    ) {
+      console.log("Validation failed: publicUrl is present but invalid");
+      return {
+        isValid: false,
+        error:
+          'Optional field "publicUrl" must be a non-empty string if provided.',
+      };
     }
 
-    if (config.logoURL !== undefined && (typeof config.logoURL !== 'string' || config.logoURL.trim() === '')) {
-      console.log('Validation failed: logoURL is present but invalid');
-      return { isValid: false, error: 'Optional field "logoURL" must be a non-empty string if provided.' };
+    if (
+      config.logoURL !== undefined &&
+      (typeof config.logoURL !== "string" || config.logoURL.trim() === "")
+    ) {
+      console.log("Validation failed: logoURL is present but invalid");
+      return {
+        isValid: false,
+        error:
+          'Optional field "logoURL" must be a non-empty string if provided.',
+      };
     }
 
     // webviewURL can be empty string (treated as "not there"), but if present must be a string
-    if (config.webviewURL !== undefined && typeof config.webviewURL !== 'string') {
-      console.log('Validation failed: webviewURL is present but not a string');
-      return { isValid: false, error: 'Optional field "webviewURL" must be a string if provided.' };
+    if (
+      config.webviewURL !== undefined &&
+      typeof config.webviewURL !== "string"
+    ) {
+      console.log("Validation failed: webviewURL is present but not a string");
+      return {
+        isValid: false,
+        error: 'Optional field "webviewURL" must be a string if provided.',
+      };
     }
 
     // appType is optional but if present, must be a valid AppType value (excluding SYSTEM_DASHBOARD)
     if (config.appType !== undefined) {
       const validAppTypes = [AppType.BACKGROUND, AppType.STANDARD];
       if (!validAppTypes.includes(config.appType)) {
-        console.log('Validation failed: appType is present but invalid');
-        return { isValid: false, error: 'Optional field "appType" must be either "background" or "standard" if provided.' };
+        console.log("Validation failed: appType is present but invalid");
+        return {
+          isValid: false,
+          error:
+            'Optional field "appType" must be either "background" or "standard" if provided.',
+        };
       }
     }
 
@@ -702,101 +845,189 @@ const EditApp: React.FC = () => {
         const setting = config.settings[index];
 
         // Group settings just need a title
-        if (setting.type === 'group') {
-          if (typeof setting.title !== 'string') {
-            console.log(`Validation failed: setting ${index} is a group but has invalid title`);
-            return { isValid: false, error: `Setting ${index + 1}: Group type requires a "title" field with a string value.` };
+        if (setting.type === "group") {
+          if (typeof setting.title !== "string") {
+            console.log(
+              `Validation failed: setting ${index} is a group but has invalid title`,
+            );
+            return {
+              isValid: false,
+              error: `Setting ${index + 1}: Group type requires a "title" field with a string value.`,
+            };
           }
           continue;
         }
 
         // TITLE_VALUE settings just need label and value
-        if (setting.type === 'titleValue') {
-          if (typeof setting.label !== 'string') {
-            console.log(`Validation failed: setting ${index} is titleValue but has invalid label`);
-            return { isValid: false, error: `Setting ${index + 1}: TitleValue type requires a "label" field with a string value.` };
+        if (setting.type === "titleValue") {
+          if (typeof setting.label !== "string") {
+            console.log(
+              `Validation failed: setting ${index} is titleValue but has invalid label`,
+            );
+            return {
+              isValid: false,
+              error: `Setting ${index + 1}: TitleValue type requires a "label" field with a string value.`,
+            };
           }
-          if (!('value' in setting)) {
-            console.log(`Validation failed: setting ${index} is titleValue but has no value`);
-            return { isValid: false, error: `Setting ${index + 1}: TitleValue type requires a "value" field.` };
+          if (!("value" in setting)) {
+            console.log(
+              `Validation failed: setting ${index} is titleValue but has no value`,
+            );
+            return {
+              isValid: false,
+              error: `Setting ${index + 1}: TitleValue type requires a "value" field.`,
+            };
           }
           continue;
         }
 
         // Regular settings need key and label and type
-        if (typeof setting.key !== 'string' || typeof setting.label !== 'string' || typeof setting.type !== 'string') {
-          console.log(`Validation failed: setting ${index} is missing key, label, or type`);
-          return { isValid: false, error: `Setting ${index + 1}: Missing required fields "key", "label", or "type" (all must be strings).` };
+        if (
+          typeof setting.key !== "string" ||
+          typeof setting.label !== "string" ||
+          typeof setting.type !== "string"
+        ) {
+          console.log(
+            `Validation failed: setting ${index} is missing key, label, or type`,
+          );
+          return {
+            isValid: false,
+            error: `Setting ${index + 1}: Missing required fields "key", "label", or "type" (all must be strings).`,
+          };
         }
 
         // Type-specific validation
         switch (setting.type) {
-          case 'toggle':
-            if (setting.defaultValue !== undefined && typeof setting.defaultValue !== 'boolean') {
-              console.log(`Validation failed: setting ${index} is toggle but defaultValue is not boolean`);
-              return { isValid: false, error: `Setting ${index + 1}: Toggle type requires "defaultValue" to be a boolean if provided.` };
+          case "toggle":
+            if (
+              setting.defaultValue !== undefined &&
+              typeof setting.defaultValue !== "boolean"
+            ) {
+              console.log(
+                `Validation failed: setting ${index} is toggle but defaultValue is not boolean`,
+              );
+              return {
+                isValid: false,
+                error: `Setting ${index + 1}: Toggle type requires "defaultValue" to be a boolean if provided.`,
+              };
             }
             break;
 
-          case 'text':
-          case 'text_no_save_button':
-            if (setting.defaultValue !== undefined && typeof setting.defaultValue !== 'string') {
-              console.log(`Validation failed: setting ${index} is text but defaultValue is not string`);
-              return { isValid: false, error: `Setting ${index + 1}: Text type requires "defaultValue" to be a string if provided.` };
+          case "text":
+          case "text_no_save_button":
+            if (
+              setting.defaultValue !== undefined &&
+              typeof setting.defaultValue !== "string"
+            ) {
+              console.log(
+                `Validation failed: setting ${index} is text but defaultValue is not string`,
+              );
+              return {
+                isValid: false,
+                error: `Setting ${index + 1}: Text type requires "defaultValue" to be a string if provided.`,
+              };
             }
             break;
 
-          case 'select':
-          case 'select_with_search':
+          case "select":
+          case "select_with_search":
             if (!Array.isArray(setting.options)) {
-              console.log(`Validation failed: setting ${index} is select but options is not an array`);
-              return { isValid: false, error: `Setting ${index + 1}: Select type requires an "options" array.` };
+              console.log(
+                `Validation failed: setting ${index} is select but options is not an array`,
+              );
+              return {
+                isValid: false,
+                error: `Setting ${index + 1}: Select type requires an "options" array.`,
+              };
             }
-            for (let optIndex = 0; optIndex < setting.options.length; optIndex++) {
+            for (
+              let optIndex = 0;
+              optIndex < setting.options.length;
+              optIndex++
+            ) {
               const opt = setting.options[optIndex];
-              if (typeof opt.label !== 'string' || !('value' in opt)) {
-                console.log(`Validation failed: setting ${index} option ${optIndex} is invalid`);
-                return { isValid: false, error: `Setting ${index + 1}, Option ${optIndex + 1}: Each option must have "label" (string) and "value" fields.` };
+              if (typeof opt.label !== "string" || !("value" in opt)) {
+                console.log(
+                  `Validation failed: setting ${index} option ${optIndex} is invalid`,
+                );
+                return {
+                  isValid: false,
+                  error: `Setting ${index + 1}, Option ${optIndex + 1}: Each option must have "label" (string) and "value" fields.`,
+                };
               }
             }
             break;
 
-          case 'multiselect':
+          case "multiselect":
             if (!Array.isArray(setting.options)) {
-              console.log(`Validation failed: setting ${index} is multiselect but options is not an array`);
-              return { isValid: false, error: `Setting ${index + 1}: Multiselect type requires an "options" array.` };
+              console.log(
+                `Validation failed: setting ${index} is multiselect but options is not an array`,
+              );
+              return {
+                isValid: false,
+                error: `Setting ${index + 1}: Multiselect type requires an "options" array.`,
+              };
             }
-            for (let optIndex = 0; optIndex < setting.options.length; optIndex++) {
+            for (
+              let optIndex = 0;
+              optIndex < setting.options.length;
+              optIndex++
+            ) {
               const opt = setting.options[optIndex];
-              if (typeof opt.label !== 'string' || !('value' in opt)) {
-                console.log(`Validation failed: setting ${index} option ${optIndex} is invalid`);
-                return { isValid: false, error: `Setting ${index + 1}, Option ${optIndex + 1}: Each option must have "label" (string) and "value" fields.` };
+              if (typeof opt.label !== "string" || !("value" in opt)) {
+                console.log(
+                  `Validation failed: setting ${index} option ${optIndex} is invalid`,
+                );
+                return {
+                  isValid: false,
+                  error: `Setting ${index + 1}, Option ${optIndex + 1}: Each option must have "label" (string) and "value" fields.`,
+                };
               }
             }
-            if (setting.defaultValue !== undefined && !Array.isArray(setting.defaultValue)) {
-              console.log(`Validation failed: setting ${index} is multiselect but defaultValue is not array`);
-              return { isValid: false, error: `Setting ${index + 1}: Multiselect type requires "defaultValue" to be an array if provided.` };
+            if (
+              setting.defaultValue !== undefined &&
+              !Array.isArray(setting.defaultValue)
+            ) {
+              console.log(
+                `Validation failed: setting ${index} is multiselect but defaultValue is not array`,
+              );
+              return {
+                isValid: false,
+                error: `Setting ${index + 1}: Multiselect type requires "defaultValue" to be an array if provided.`,
+              };
             }
             break;
 
-          case 'slider':
-            if (typeof setting.defaultValue !== 'number' ||
-                typeof setting.min !== 'number' ||
-                typeof setting.max !== 'number' ||
-                setting.min > setting.max) {
-              console.log(`Validation failed: setting ${index} is slider but has invalid numeric properties`);
-              return { isValid: false, error: `Setting ${index + 1}: Slider type requires "defaultValue", "min", and "max" to be numbers, with min ≤ max.` };
+          case "slider":
+            if (
+              typeof setting.defaultValue !== "number" ||
+              typeof setting.min !== "number" ||
+              typeof setting.max !== "number" ||
+              setting.min > setting.max
+            ) {
+              console.log(
+                `Validation failed: setting ${index} is slider but has invalid numeric properties`,
+              );
+              return {
+                isValid: false,
+                error: `Setting ${index + 1}: Slider type requires "defaultValue", "min", and "max" to be numbers, with min ≤ max.`,
+              };
             }
             break;
 
           default:
-            console.log(`Validation failed: setting ${index} has unknown type: ${setting.type}`);
-            return { isValid: false, error: `Setting ${index + 1}: Unknown setting type "${setting.type}". Supported types: toggle, text, text_no_save_button, select, select_with_search, multiselect, slider, group, titleValue.` };
+            console.log(
+              `Validation failed: setting ${index} has unknown type: ${setting.type}`,
+            );
+            return {
+              isValid: false,
+              error: `Setting ${index + 1}: Unknown setting type "${setting.type}". Supported types: toggle, text, text_no_save_button, select, select_with_search, multiselect, slider, group, titleValue.`,
+            };
         }
       }
     }
 
-    console.log('Validation passed');
+    console.log("Validation passed");
     return { isValid: true };
   };
 
@@ -828,8 +1059,8 @@ const EditApp: React.FC = () => {
     setImportError(null);
 
     // Validate file type
-    if (!file.name.toLowerCase().endsWith('.json')) {
-      setImportError('Please select a JSON file.');
+    if (!file.name.toLowerCase().endsWith(".json")) {
+      setImportError("Please select a JSON file.");
       return;
     }
 
@@ -840,8 +1071,8 @@ const EditApp: React.FC = () => {
       try {
         const content = e.target.result as string;
 
-        if (!content || content.trim() === '') {
-          setImportError('The selected file is empty.');
+        if (!content || content.trim() === "") {
+          setImportError("The selected file is empty.");
           return;
         }
 
@@ -849,19 +1080,19 @@ const EditApp: React.FC = () => {
         try {
           config = JSON.parse(content);
         } catch (parseError) {
-          console.error('JSON parse error:', parseError);
-          setImportError('Invalid JSON format. Please check the file content.');
+          console.error("JSON parse error:", parseError);
+          setImportError("Invalid JSON format. Please check the file content.");
           return;
         }
 
         // Log the parsed config for debugging
-        console.log('Parsed config:', config);
+        console.log("Parsed config:", config);
 
         // Validate configuration structure
         const validation = validateAppConfig(config);
         if (!validation.isValid) {
-          console.error('Validation failed for config:', config);
-          setImportError(validation.error || 'Invalid app_config.json format.');
+          console.error("Validation failed for config:", config);
+          setImportError(validation.error || "Invalid app_config.json format.");
           return;
         }
 
@@ -870,20 +1101,20 @@ const EditApp: React.FC = () => {
         setImportError(null);
         setIsImportDialogOpen(true);
       } catch (error) {
-        console.error('Error processing file:', error);
-        setImportError('Failed to process the file. Please try again.');
+        console.error("Error processing file:", error);
+        setImportError("Failed to process the file. Please try again.");
       }
     };
 
     reader.onerror = (error: any) => {
-      console.error('FileReader error:', error);
-      setImportError('Failed to read the file. Please try again.');
+      console.error("FileReader error:", error);
+      setImportError("Failed to read the file. Please try again.");
     };
 
     reader.readAsText(file);
 
     // Reset file input
-    target.value = '';
+    target.value = "";
   };
 
   /**
@@ -891,63 +1122,76 @@ const EditApp: React.FC = () => {
    */
   const handleImportConfirm = () => {
     if (!importConfigData) {
-      console.error('No import config data available');
+      console.error("No import config data available");
       return;
     }
 
     setIsImporting(true);
 
     try {
-      console.log('Importing configuration:', importConfigData);
+      console.log("Importing configuration:", importConfigData);
 
       // Update form data with imported configuration
-      setFormData(prev => {
+      setFormData((prev) => {
         const newData = {
           ...prev,
           // Always update name and description if provided
           name: importConfigData.name || prev.name,
           description: importConfigData.description || prev.description,
-          onboardingInstructions: importConfigData.onboardingInstructions || prev.onboardingInstructions,
+          onboardingInstructions:
+            importConfigData.onboardingInstructions ||
+            prev.onboardingInstructions,
 
           // Update URLs only if they are provided and not empty
-          publicUrl: (importConfigData.publicUrl !== undefined && importConfigData.publicUrl.trim() !== '')
-            ? importConfigData.publicUrl.trim()
-            : prev.publicUrl,
+          publicUrl:
+            importConfigData.publicUrl !== undefined &&
+            importConfigData.publicUrl.trim() !== ""
+              ? importConfigData.publicUrl.trim()
+              : prev.publicUrl,
           // Note: logoURL from import will be a Cloudflare Images URL or other hosted URL
-          logoURL: (importConfigData.logoURL !== undefined && importConfigData.logoURL.trim() !== '')
-            ? importConfigData.logoURL.trim()
-            : prev.logoURL,
+          logoURL:
+            importConfigData.logoURL !== undefined &&
+            importConfigData.logoURL.trim() !== ""
+              ? importConfigData.logoURL.trim()
+              : prev.logoURL,
           // For webviewURL, treat empty strings as "not there at all" - only update if it has actual content
-          webviewURL: (importConfigData.webviewURL !== undefined && typeof importConfigData.webviewURL === 'string' && importConfigData.webviewURL.trim() !== '')
-            ? importConfigData.webviewURL.trim()
-            : prev.webviewURL,
+          webviewURL:
+            importConfigData.webviewURL !== undefined &&
+            typeof importConfigData.webviewURL === "string" &&
+            importConfigData.webviewURL.trim() !== ""
+              ? importConfigData.webviewURL.trim()
+              : prev.webviewURL,
 
           // Update appType if provided, otherwise keep existing (defaults to BACKGROUND in form)
-          appType: importConfigData.appType !== undefined
-            ? importConfigData.appType
-            : prev.appType,
+          appType:
+            importConfigData.appType !== undefined
+              ? importConfigData.appType
+              : prev.appType,
 
           // Replace permissions if provided, otherwise keep existing
-          permissions: importConfigData.permissions !== undefined
-            ? importConfigData.permissions
-            : prev.permissions || [],
+          permissions:
+            importConfigData.permissions !== undefined
+              ? importConfigData.permissions
+              : prev.permissions || [],
 
           // Always replace settings and tools with imported data (can be empty arrays)
           settings: importConfigData.settings || [],
-          tools: importConfigData.tools || []
+          tools: importConfigData.tools || [],
         };
 
-        console.log('Updated form data:', newData);
+        console.log("Updated form data:", newData);
         return newData;
       });
 
       // Close dialog and show success message
       setIsImportDialogOpen(false);
       setImportConfigData(null);
-      toast.success('Configuration imported successfully! Remember to save changes.');
+      toast.success(
+        "Configuration imported successfully! Remember to save changes.",
+      );
     } catch (error) {
-      console.error('Error importing configuration:', error);
-      toast.error('Failed to import configuration. Please try again.');
+      console.error("Error importing configuration:", error);
+      toast.error("Failed to import configuration. Please try again.");
     } finally {
       setIsImporting(false);
     }
@@ -957,7 +1201,10 @@ const EditApp: React.FC = () => {
     <DashboardLayout>
       <div className="max-w-3xl mx-auto">
         <div className="flex items-center mb-6">
-          <Link to="/apps" className="flex items-center text-sm text-gray-500 hover:text-gray-700">
+          <Link
+            to="/apps"
+            className="flex items-center text-sm text-gray-500 hover:text-gray-700"
+          >
             <ArrowLeftIcon className="mr-1 h-4 w-4" />
             Back to apps
           </Link>
@@ -1010,7 +1257,9 @@ const EditApp: React.FC = () => {
                 {isSaved && (
                   <Alert className="bg-green-50 text-green-800 border-green-200">
                     <CheckCircle2 className="h-4 w-4 text-green-600" />
-                    <AlertDescription className="text-green-700">App updated successfully!</AlertDescription>
+                    <AlertDescription className="text-green-700">
+                      App updated successfully!
+                    </AlertDescription>
                   </Alert>
                 )}
 
@@ -1038,7 +1287,8 @@ const EditApp: React.FC = () => {
                     placeholder="e.g., My Awesome App"
                   />
                   <p className="text-xs text-gray-500">
-                    The name that will be displayed to users in the MentraOS app store.
+                    The name that will be displayed to users in the MentraOS app
+                    store.
                   </p>
                 </div>
 
@@ -1053,25 +1303,29 @@ const EditApp: React.FC = () => {
                     rows={3}
                   />
                   <p className="text-xs text-gray-500">
-                    Provide a clear, concise description of your application's functionality.
+                    Provide a clear, concise description of your application's
+                    functionality.
                   </p>
                 </div>
 
                 {/* Onboarding Instructions Section */}
                 <div className="space-y-2">
-                  <Label htmlFor="onboardingInstructions">Onboarding Instructions (Optional)</Label>
+                  <Label htmlFor="onboardingInstructions">
+                    Onboarding Instructions (Optional)
+                  </Label>
                   <Textarea
                     id="onboardingInstructions"
                     name="onboardingInstructions"
-                    value={formData.onboardingInstructions || ''}
+                    value={formData.onboardingInstructions || ""}
                     onChange={handleChange}
                     placeholder="Describe the onboarding steps for your app"
                     rows={3}
                     maxLength={2000}
-                    style={{ maxHeight: '8em', overflowY: 'auto' }}
+                    style={{ maxHeight: "8em", overflowY: "auto" }}
                   />
                   <p className="text-xs text-gray-500">
-                    Provide onboarding instructions that will be shown to users the first time they launch your app. Maximum 5 lines.
+                    Provide onboarding instructions that will be shown to users
+                    the first time they launch your app. Maximum 5 lines.
                   </p>
                 </div>
 
@@ -1086,10 +1340,11 @@ const EditApp: React.FC = () => {
                     placeholder="yourserver.com"
                   />
                   <p className="text-xs text-gray-500">
-                    The base URL of your server where MentraOS will communicate with your app.
-                    We'll automatically append "/webhook" to handle events when your app is activated.
-                    HTTPS is required and will be added automatically if not specified.
-                    Do not include a trailing slash - it will be automatically removed.
+                    The base URL of your server where MentraOS will communicate
+                    with your app. We'll automatically append "/webhook" to
+                    handle events when your app is activated. HTTPS is required
+                    and will be added automatically if not specified. Do not
+                    include a trailing slash - it will be automatically removed.
                   </p>
                 </div>
 
@@ -1098,9 +1353,9 @@ const EditApp: React.FC = () => {
                   <ImageUpload
                     currentImageUrl={formData.logoURL}
                     onImageUploaded={(url) => {
-                      setFormData(prev => ({
+                      setFormData((prev) => ({
                         ...prev,
-                        logoURL: url
+                        logoURL: url,
                       }));
                     }}
                     packageName={formData.packageName}
@@ -1108,7 +1363,8 @@ const EditApp: React.FC = () => {
                   />
                   {/* Note: The actual Cloudflare URL is stored in logoURL but not displayed to the user */}
                   <p className="text-xs text-gray-500">
-                    Upload an image that will be used as your app's icon (recommended: 512x512 PNG).
+                    Upload an image that will be used as your app's icon
+                    (recommended: 512x512 PNG).
                   </p>
                 </div>
 
@@ -1117,14 +1373,15 @@ const EditApp: React.FC = () => {
                   <Input
                     id="webviewURL"
                     name="webviewURL"
-                    value={formData.webviewURL || ''}
+                    value={formData.webviewURL || ""}
                     onChange={handleChange}
                     onBlur={handleUrlBlur}
                     placeholder="yourserver.com/webview"
                   />
                   <p className="text-xs text-gray-500">
-                    If your app has a companion mobile interface, provide the URL here.
-                    HTTPS is required and will be added automatically if not specified.
+                    If your app has a companion mobile interface, provide the
+                    URL here. HTTPS is required and will be added automatically
+                    if not specified.
                   </p>
                 </div>
 
@@ -1134,12 +1391,19 @@ const EditApp: React.FC = () => {
                     <Label htmlFor="appType">App Type</Label>
                     <AppTypeTooltip />
                   </div>
-                <p className="text-xs text-gray-500">
-                  <br/>Background apps can run alongside other apps,
-                  <br/>Only 1 foreground app can run at a time.
-                  <br/>foreground apps yield the display to background apps when displaying content.
-                </p>
-                  <Select value={formData.appType} onValueChange={handleAppTypeChange}>
+                  <p className="text-xs text-gray-500">
+                    <br />
+                    Background apps can run alongside other apps,
+                    <br />
+                    Only 1 foreground app can run at a time.
+                    <br />
+                    foreground apps yield the display to background apps when
+                    displaying content.
+                  </p>
+                  <Select
+                    value={formData.appType}
+                    onValueChange={handleAppTypeChange}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Select app type" />
                     </SelectTrigger>
@@ -1158,16 +1422,23 @@ const EditApp: React.FC = () => {
                       </SelectItem>
                     </SelectContent>
                   </Select>
-
                 </div>
 
-                  {/* Permissions Section */}
-                  <div className="border rounded-md p-4 mt-6">
-                    <PermissionsForm
-                      permissions={formData.permissions || []}
-                      onChange={handlePermissionsChange}
-                    />
-                  </div>
+                {/* Permissions Section */}
+                <div className="border rounded-md p-4 mt-6">
+                  <PermissionsForm
+                    permissions={formData.permissions || []}
+                    onChange={handlePermissionsChange}
+                  />
+                </div>
+
+                {/* Hardware Requirements Section */}
+                <div className="border rounded-md p-4 mt-6">
+                  <HardwareRequirementsForm
+                    requirements={formData.hardwareRequirements || []}
+                    onChange={handleHardwareRequirementsChange}
+                  />
+                </div>
 
                 {/* Settings Section */}
                 <div className="border rounded-md p-4 mt-6">
@@ -1192,7 +1463,8 @@ const EditApp: React.FC = () => {
                     Share with Testers
                   </h3>
                   <p className="text-sm text-gray-600 mb-4">
-                    Anyone with this link can access and test the app (read-only access).
+                    Anyone with this link can access and test the app (read-only
+                    access).
                   </p>
                   <div className="flex items-center justify-end">
                     <Button
@@ -1218,7 +1490,9 @@ const EditApp: React.FC = () => {
                   {shareLink && (
                     <div className="mt-3 p-2 bg-gray-50 rounded border">
                       <p className="text-xs text-gray-500 mb-1">Share Link:</p>
-                      <span className="text-xs text-blue-600 break-all">{shareLink}</span>
+                      <span className="text-xs text-blue-600 break-all">
+                        {shareLink}
+                      </span>
                     </div>
                   )}
                 </div>
@@ -1231,8 +1505,8 @@ const EditApp: React.FC = () => {
                   </h3>
 
                   <p className="text-sm text-gray-600 mb-4">
-                    Your API key is used to authenticate your app with MentraOS cloud services.
-                    Keep it secure and never share it publicly.
+                    Your API key is used to authenticate your app with MentraOS
+                    cloud services. Keep it secure and never share it publicly.
                   </p>
 
                   <div className="flex items-center justify-end">
@@ -1269,36 +1543,49 @@ const EditApp: React.FC = () => {
                 <div className="border rounded-md p-4 mt-6">
                   <h3 className="text-lg font-medium mb-2 flex items-center">
                     <Upload className="h-5 w-5 mr-2" />
-                    App Status: {
-                    formData.appStoreStatus === 'DEVELOPMENT' ? 'Development' :
-                    formData.appStoreStatus === 'SUBMITTED' ? 'Submitted for Review' :
-                    formData.appStoreStatus === 'REJECTED' ? 'Rejected' :
-                    formData.appStoreStatus === 'PUBLISHED' ? 'Published' : 'Development'
-                  }</h3>
+                    App Status:{" "}
+                    {formData.appStoreStatus === "DEVELOPMENT"
+                      ? "Development"
+                      : formData.appStoreStatus === "SUBMITTED"
+                        ? "Submitted for Review"
+                        : formData.appStoreStatus === "REJECTED"
+                          ? "Rejected"
+                          : formData.appStoreStatus === "PUBLISHED"
+                            ? "Published"
+                            : "Development"}
+                  </h3>
 
                   <p className="text-sm text-gray-600 mb-4">
-                    {formData.appStoreStatus === 'DEVELOPMENT'
-                      ? 'Your app is currently in development. Publish it when ready to submit for review.'
-                      : formData.appStoreStatus === 'SUBMITTED'
-                      ? 'Your app has been submitted for review. Once approved, it will be published to the App Store.'
-                      : formData.appStoreStatus === 'REJECTED'
-                      ? 'Your app has been rejected. Please review the feedback and make the necessary changes before resubmitting.'
-                      : 'Your app is published and available to all MentraOS users in the App Store.'}
+                    {formData.appStoreStatus === "DEVELOPMENT"
+                      ? "Your app is currently in development. Publish it when ready to submit for review."
+                      : formData.appStoreStatus === "SUBMITTED"
+                        ? "Your app has been submitted for review. Once approved, it will be published to the App Store."
+                        : formData.appStoreStatus === "REJECTED"
+                          ? "Your app has been rejected. Please review the feedback and make the necessary changes before resubmitting."
+                          : "Your app is published and available to all MentraOS users in the App Store."}
                   </p>
 
-                  {formData.appStoreStatus === 'REJECTED' && formData.reviewNotes && (
-                    <div className="bg-red-50 border border-red-200 rounded-md p-3 mt-2 mb-4">
-                      <h4 className="text-sm font-medium text-red-800 mb-1">Rejection Reason:</h4>
-                      <p className="text-sm text-red-700">{formData.reviewNotes}</p>
-                      {formData.reviewedAt && (
-                        <p className="text-xs text-red-500 mt-2">
-                          Reviewed on {new Date(formData.reviewedAt).toLocaleDateString()} by {formData.reviewedBy?.split('@')[0] || 'Admin'}
+                  {formData.appStoreStatus === "REJECTED" &&
+                    formData.reviewNotes && (
+                      <div className="bg-red-50 border border-red-200 rounded-md p-3 mt-2 mb-4">
+                        <h4 className="text-sm font-medium text-red-800 mb-1">
+                          Rejection Reason:
+                        </h4>
+                        <p className="text-sm text-red-700">
+                          {formData.reviewNotes}
                         </p>
-                      )}
-                    </div>
-                  )}
+                        {formData.reviewedAt && (
+                          <p className="text-xs text-red-500 mt-2">
+                            Reviewed on{" "}
+                            {new Date(formData.reviewedAt).toLocaleDateString()}{" "}
+                            by {formData.reviewedBy?.split("@")[0] || "Admin"}
+                          </p>
+                        )}
+                      </div>
+                    )}
 
-                  {(formData.appStoreStatus === 'DEVELOPMENT' || formData.appStoreStatus === 'REJECTED') && (
+                  {(formData.appStoreStatus === "DEVELOPMENT" ||
+                    formData.appStoreStatus === "REJECTED") && (
                     <div className="flex items-center justify-end">
                       <Button
                         onClick={handleOpenPublishDialog}
@@ -1306,13 +1593,13 @@ const EditApp: React.FC = () => {
                         type="button"
                       >
                         <Upload className="h-4 w-4" />
-                        {formData.appStoreStatus === 'REJECTED' ? 'Resubmit to App Store' : 'Publish to App Store'}
+                        {formData.appStoreStatus === "REJECTED"
+                          ? "Resubmit to App Store"
+                          : "Publish to App Store"}
                       </Button>
                     </div>
                   )}
                 </div>
-
-
 
                 {/* Import/Export Configuration Section */}
                 <div className="border rounded-md p-4 mt-6">
@@ -1321,7 +1608,9 @@ const EditApp: React.FC = () => {
                     Configuration Management
                   </h3>
                   <p className="text-sm text-gray-600 mb-4">
-                    Import or export your app configuration (name, description, URLs, permissions, settings, and tools) as a app_config.json file
+                    Import or export your app configuration (name, description,
+                    URLs, permissions, settings, and tools) as a app_config.json
+                    file
                   </p>
 
                   {/* Show import error if there is one and no dialog is open */}
@@ -1358,12 +1647,16 @@ const EditApp: React.FC = () => {
                     type="file"
                     accept=".json"
                     onChange={handleFileSelect}
-                    style={{ display: 'none' }}
+                    style={{ display: "none" }}
                   />
                 </div>
               </CardContent>
               <CardFooter className="flex justify-between border-t p-6">
-                <Button variant="outline" type="button" onClick={() => navigate('/apps')}>
+                <Button
+                  variant="outline"
+                  type="button"
+                  onClick={() => navigate("/apps")}
+                >
                   Back
                 </Button>
                 <Button type="submit" disabled={isSaving}>
@@ -1372,7 +1665,9 @@ const EditApp: React.FC = () => {
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       Saving...
                     </>
-                  ) : "Save Changes"}
+                  ) : (
+                    "Save Changes"
+                  )}
                 </Button>
               </CardFooter>
             </form>

@@ -345,6 +345,7 @@ export default function InactiveAppList({
           iconColor: theme.colors.textDim,
         },
       )
+      return
     }
 
     // Check if glasses are connected and this is the first app being activated
@@ -441,9 +442,29 @@ export default function InactiveAppList({
           )
         }, 500)
       }
-    } catch (error) {
+    } catch (error: any) {
       // Revert the app state when there's an error starting the app
       console.error("start app error:", error)
+
+      // Check if this is a hardware compatibility error
+      if (error?.response?.data?.error?.stage === "HARDWARE_CHECK") {
+        showAlert(
+          translate("home:hardwareIncompatible"),
+          error.response.data.error.message ||
+            translate("home:hardwareIncompatibleMessage", {
+              app: appToStart.name,
+              missing: "required hardware",
+            }),
+          [{text: translate("common:ok")}],
+          {
+            iconName: "alert-circle-outline",
+            iconColor: theme.colors.error,
+          },
+        )
+      } else {
+        // Handle other types of errors with generic error handling
+        console.error("Generic app start error:", error)
+      }
 
       // Clear the pending operation for this app
       clearPendingOperation(packageName)
