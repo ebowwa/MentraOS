@@ -38,6 +38,7 @@
 #include "nrfx_clock.h"
 #include "bsp_log.h"
 #include "mos_lvgl_display.h"
+#include "protobuf_handler.h"
 
 
 #define LOG_MODULE_NAME peripheral_uart
@@ -516,6 +517,9 @@ static void bt_receive_cb(struct bt_conn *conn, const uint8_t *const data,
 
 	LOG_INF("Received data from: %s", addr);
 	BSP_LOGI(TAG, "len:[%d] data:%s", len, data);
+
+	// Add protobuf message analysis
+	protobuf_analyze_message(data, len);
 
 	#if 0
 	for (uint16_t pos = 0; pos != len;)

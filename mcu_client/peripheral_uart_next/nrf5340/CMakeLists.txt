@@ -7,9 +7,12 @@ cmake_minimum_required(VERSION 3.20.0)
 list(APPEND EXTRA_ZEPHYR_MODULES
   ${CMAKE_CURRENT_SOURCE_DIR}/../custom_driver_module)
 
-
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(nrf5340)
+
+# Add nanopb support for protobuf
+list(APPEND CMAKE_MODULE_PATH ${ZEPHYR_BASE}/modules/nanopb)
+include(nanopb)
 
 set(LVGL_DIR ${ZEPHYR_LVGL_MODULE_DIR})
 FILE(GLOB app_sources src/*.c)
@@ -19,7 +22,14 @@ target_include_directories(app PRIVATE ${LVGL_DIR}/demos/)
 # NORDIC SDK APP START
 target_sources(app PRIVATE
   src/main.c
+  src/protobuf_handler.c
 )
+
+# Add protobuf sources when available
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/src/mentraos_ble.pb.c)
+  target_sources(app PRIVATE src/mentraos_ble.pb.c)
+endif()
+
 add_subdirectory(src/BspLog)
 add_subdirectory(src/mos_components/mos_sysport)
 add_subdirectory(src/mos_components/mos_lvgl_display)
