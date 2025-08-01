@@ -283,7 +283,7 @@ export default function LoginScreen() {
       }
     } catch (err) {
       console.error("Error during sign-up:", err)
-      showAlert(translate("common:error"), err.toString())
+      showAlert(translate("common:error"), err.toString(), [{text: translate("common:ok")}])
     } finally {
       setIsFormLoading(false)
       setFormAction(null)
