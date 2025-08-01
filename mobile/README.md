@@ -12,6 +12,8 @@ git checkout dev
 choco install -y nodejs-lts microsoft-openjdk17
 ```
 
+Install swiftformat from https://github.com/nicklockwood/SwiftFormat/releases
+
 ## Android
 
 ```
