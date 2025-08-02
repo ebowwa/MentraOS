@@ -5,7 +5,7 @@ import coreCommunicator from "@/bridge/CoreCommunicator"
 import {Header, Screen, Text, Button} from "@/components/ignite"
 import {useAppTheme} from "@/utils/useAppTheme"
 import ToggleSetting from "@/components/settings/ToggleSetting"
-import SelectSetting from "@/components/settings/SelectSetting"
+import ModelSelector from "@/components/settings/ModelSelector"
 import {translate} from "@/i18n"
 import {Spacer} from "@/components/misc/Spacer"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
@@ -89,14 +89,15 @@ export default function TranscriptionSettingsScreen() {
     }
   }
 
-  const handleDownloadModel = async () => {
+  const handleDownloadModel = async (modelId?: string) => {
+    const targetModelId = modelId || selectedModelId
     try {
       setIsDownloading(true)
       setDownloadProgress(0)
       setExtractionProgress(0)
 
       await STTModelManager.downloadModel(
-        selectedModelId,
+        targetModelId,
         progress => {
           setDownloadProgress(progress.percentage)
         },
@@ -129,7 +130,8 @@ export default function TranscriptionSettingsScreen() {
     }
   }
 
-  const handleDeleteModel = async () => {
+  const handleDeleteModel = async (modelId?: string) => {
+    const targetModelId = modelId || selectedModelId
     showAlert(
       "Delete Model",
       "Are you sure you want to delete the speech recognition model? You'll need to download it again to use local transcription.",
@@ -140,7 +142,7 @@ export default function TranscriptionSettingsScreen() {
           style: "destructive",
           onPress: async () => {
             try {
-              await STTModelManager.deleteModel(selectedModelId)
+              await STTModelManager.deleteModel(targetModelId)
               await checkModelStatus()
 
               // If local transcription is enabled, disable it
@@ -182,99 +184,20 @@ export default function TranscriptionSettingsScreen() {
           </View>
         ) : (
           <>
-            {/* Model Selection */}
-            <SelectSetting
-              label="Speech Recognition Model"
-              value={selectedModelId}
-              options={allModels.map(model => ({
-                label: model.name,
-                value: model.modelId,
-              }))}
-              onValueChange={handleModelChange}
-              description="Select the speech recognition model to use"
-              layout="vertical"
+            {/* Integrated Model Selector */}
+            <ModelSelector
+              selectedModelId={selectedModelId}
+              models={allModels}
+              onModelChange={handleModelChange}
+              onDownload={() => handleDownloadModel()}
+              onDelete={() => handleDeleteModel()}
+              isDownloading={isDownloading}
+              downloadProgress={downloadProgress}
+              extractionProgress={extractionProgress}
+              currentModelInfo={modelInfo}
             />
 
-            <Spacer height={theme.spacing.md} />
-
-            {/* Model Download Section */}
-            <View
-              style={{
-                backgroundColor: theme.colors.surface,
-                padding: theme.spacing.md,
-                borderRadius: theme.borderRadius.md,
-                marginBottom: theme.spacing.md,
-              }}>
-              <Text weight="semiBold" size="lg" style={{marginBottom: theme.spacing.xs}}>
-                Model Status
-              </Text>
-
-              {modelInfo && (
-                <>
-                  <Text size="sm" style={{color: theme.colors.textDim, marginBottom: theme.spacing.xs}}>
-                    {modelInfo.name} • {STTModelManager.formatBytes(modelInfo.size)}
-                  </Text>
-
-                  {!modelInfo.downloaded && !isDownloading && (
-                    <>
-                      <Text size="sm" style={{color: theme.colors.warning, marginBottom: theme.spacing.sm}}>
-                        Model not downloaded. Download required for local transcription.
-                      </Text>
-                      <Button
-                        text="Download Model"
-                        onPress={handleDownloadModel}
-                        style={{marginTop: theme.spacing.sm}}
-                      />
-                    </>
-                  )}
-
-                  {isDownloading && (
-                    <View style={{marginTop: theme.spacing.sm}}>
-                      <Text size="sm" style={{marginBottom: theme.spacing.xs}}>
-                        {getProgressText()}
-                      </Text>
-                      <View
-                        style={{
-                          height: 4,
-                          backgroundColor: theme.colors.separator,
-                          borderRadius: 2,
-                          overflow: "hidden",
-                        }}>
-                        <View
-                          style={{
-                            height: "100%",
-                            backgroundColor: theme.colors.primary,
-                            width: `${downloadProgress || extractionProgress}%`,
-                          }}
-                        />
-                      </View>
-                      <Button
-                        text="Cancel"
-                        preset="secondary"
-                        onPress={handleCancelDownload}
-                        style={{marginTop: theme.spacing.sm}}
-                      />
-                    </View>
-                  )}
-
-                  {modelInfo.downloaded && !isDownloading && (
-                    <View style={{flexDirection: "row", alignItems: "center", marginTop: theme.spacing.sm}}>
-                      <Text size="sm" style={{color: theme.colors.success, flex: 1}}>
-                        ✓ Model downloaded
-                      </Text>
-                      <Button
-                        text="Delete"
-                        preset="secondary"
-                        onPress={handleDeleteModel}
-                        textStyle={{color: theme.colors.error}}
-                      />
-                    </View>
-                  )}
-                </>
-              )}
-            </View>
-
-            <Spacer height={theme.spacing.md} />
+            <Spacer height={theme.spacing.lg} />
 
             {/* Local Transcription Toggle */}
             <ToggleSetting
@@ -293,7 +216,7 @@ export default function TranscriptionSettingsScreen() {
                   marginTop: theme.spacing.xs,
                   paddingHorizontal: theme.spacing.sm,
                 }}>
-                Download the model to enable local transcription
+                Download a model to enable local transcription
               </Text>
             )}
           </>

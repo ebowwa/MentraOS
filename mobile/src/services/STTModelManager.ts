@@ -45,7 +45,7 @@ class STTModelManager {
   private models: Record<string, ModelConfig> = {
     "sherpa-onnx-streaming-zipformer-en-2023-06-21-mobile": {
       id: "sherpa-onnx-streaming-zipformer-en-2023-06-21-mobile",
-      displayName: "English 1",
+      displayName: "English (Accurate)",
       fileName: "sherpa-onnx-streaming-zipformer-en-2023-06-21-mobile",
       size: 349 * 1024 * 1024, // 349MB
       type: "transducer",
@@ -53,7 +53,7 @@ class STTModelManager {
     },
     "sherpa-onnx-nemo-streaming-fast-conformer-ctc-en-80ms-int8": {
       id: "sherpa-onnx-nemo-streaming-fast-conformer-ctc-en-80ms-int8",
-      displayName: "English 2",
+      displayName: "English (Faster)",
       fileName: "sherpa-onnx-nemo-streaming-fast-conformer-ctc-en-80ms-int8",
       size: 95 * 1024 * 1024, // 95MB
       type: "ctc",
@@ -75,22 +75,22 @@ class STTModelManager {
       type: "transducer",
       requiredFiles: ["encoder.onnx", "decoder.onnx", "joiner.onnx", "tokens.txt"],
     },
-    "sherpa-onnx-nemo-fast-conformer-ctc-en-de-es-fr-14288": {
-      id: "sherpa-onnx-nemo-fast-conformer-ctc-en-de-es-fr-14288",
-      displayName: "European (EN/DE/ES/FR)",
-      fileName: "sherpa-onnx-nemo-fast-conformer-ctc-en-de-es-fr-14288",
+    "sherpa-onnx-nemo-fast-conformer-ctc-be-de-en-es-fr-hr-it-pl-ru-uk-20k-int8": {
+      id: "sherpa-onnx-nemo-fast-conformer-ctc-be-de-en-es-fr-hr-it-pl-ru-uk-20k-int8",
+      displayName: "Multilingual (EN/DE/ES/FR/RU)",
+      fileName: "sherpa-onnx-nemo-fast-conformer-ctc-be-de-en-es-fr-hr-it-pl-ru-uk-20k-int8",
       size: 120 * 1024 * 1024, // Estimated
       type: "ctc",
       requiredFiles: ["model.int8.onnx", "tokens.txt"],
     },
-    "sherpa-onnx-streaming-zipformer-ar-en-id-ja-ru-th-vi-zh-2025-10-17": {
-      id: "sherpa-onnx-streaming-zipformer-ar-en-id-ja-ru-th-vi-zh-2025-10-17",
-      displayName: "Multilingual",
-      fileName: "sherpa-onnx-streaming-zipformer-ar-en-id-ja-ru-th-vi-zh-2025-10-17",
-      size: 500 * 1024 * 1024, // Estimated larger size for multilingual
-      type: "transducer",
-      requiredFiles: ["encoder.onnx", "decoder.onnx", "joiner.onnx", "tokens.txt"],
-    },
+    // "sherpa-onnx-streaming-zipformer-ar-en-id-ja-ru-th-vi-zh-2025-10-17": {
+    //   id: "sherpa-onnx-streaming-zipformer-ar-en-id-ja-ru-th-vi-zh-2025-10-17",
+    //   displayName: "Multilingual",
+    //   fileName: "sherpa-onnx-streaming-zipformer-ar-en-id-ja-ru-th-vi-zh-2025-10-17",
+    //   size: 500 * 1024 * 1024, // Estimated larger size for multilingual
+    //   type: "transducer",
+    //   requiredFiles: ["encoder.onnx", "decoder.onnx", "joiner.onnx", "tokens.txt"],
+    // },
   }
 
   private constructor() {}
