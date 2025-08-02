@@ -14,8 +14,7 @@ import {
 import {useAppTheme} from "@/utils/useAppTheme"
 import {Icon, Text, Button} from "@/components/ignite"
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons"
-import {ModelInfo} from "@/services/STTModelManager"
-import STTModelManager from "@/services/STTModelManager"
+import {ModelInfo, STTModelManager} from "@/services/STTModelManager"
 
 type ModelSelectorProps = {
   selectedModelId: string

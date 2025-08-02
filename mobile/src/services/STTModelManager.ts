@@ -79,7 +79,7 @@ class STTModelManager {
       id: "sherpa-onnx-nemo-fast-conformer-ctc-be-de-en-es-fr-hr-it-pl-ru-uk-20k-int8",
       displayName: "Multilingual (EN/DE/ES/FR/RU)",
       fileName: "sherpa-onnx-nemo-fast-conformer-ctc-be-de-en-es-fr-hr-it-pl-ru-uk-20k-int8",
-      size: 120 * 1024 * 1024, // Estimated
+      size: 102261698, // Actual size: 102MB
       type: "ctc",
       requiredFiles: ["model.int8.onnx", "tokens.txt"],
     },
@@ -135,10 +135,26 @@ class STTModelManager {
       const modelPath = this.getModelPath(id)
       const requiredFiles = model.requiredFiles
 
+      // Debug logging for multilingual model
+      if (id.includes("be-de-en-es-fr")) {
+        console.log(`Checking model at path: ${modelPath}`)
+        const dirExists = await RNFS.exists(modelPath)
+        console.log(`Directory exists: ${dirExists}`)
+
+        if (dirExists) {
+          const files = await RNFS.readDir(modelPath)
+          console.log(
+            `Files in directory:`,
+            files.map(f => f.name),
+          )
+        }
+      }
+
       for (const file of requiredFiles) {
         const filePath = `${modelPath}/${file}`
         const exists = await RNFS.exists(filePath)
         if (!exists) {
+          console.log(`Missing required file: ${file} at ${filePath}`)
           return false
         }
       }
@@ -146,7 +162,11 @@ class STTModelManager {
       // Validate model with native module
       const nativeModule = Platform.OS === "ios" ? AOSModule : FileProviderModule
       if (nativeModule.validateSTTModel) {
-        return await nativeModule.validateSTTModel(modelPath)
+        const isValid = await nativeModule.validateSTTModel(modelPath)
+        if (!isValid && id.includes("be-de-en-es-fr")) {
+          console.log(`Native validation failed for multilingual model`)
+        }
+        return isValid
       }
 
       return true
@@ -327,6 +347,16 @@ class STTModelManager {
     const i = Math.floor(Math.log(bytes) / Math.log(k))
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i]
   }
+
+  static formatBytes(bytes: number): string {
+    if (bytes === 0) return "0 Bytes"
+    const k = 1024
+    const sizes = ["Bytes", "KB", "MB", "GB"]
+    const i = Math.floor(Math.log(bytes) / Math.log(k))
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i]
+  }
 }
 
-export default STTModelManager.getInstance()
+const instance = STTModelManager.getInstance()
+export {STTModelManager}
+export default instance

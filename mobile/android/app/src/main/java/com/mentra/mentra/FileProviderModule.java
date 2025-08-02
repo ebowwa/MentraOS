@@ -256,6 +256,11 @@ public class FileProviderModule extends ReactContextBaseJavaModule {
                 while ((entry = tarIn.getNextTarEntry()) != null) {
                     String entryName = entry.getName();
                     
+                    // Remove leading ./ if present
+                    if (entryName.startsWith("./")) {
+                        entryName = entryName.substring(2);
+                    }
+                    
                     // Extract the root directory name if we haven't yet
                     if (rootDirName == null && entryName.contains("/")) {
                         rootDirName = entryName.substring(0, entryName.indexOf("/"));
@@ -297,6 +302,22 @@ public class FileProviderModule extends ReactContextBaseJavaModule {
                             }
                         }
                     }
+                }
+            }
+            
+            // Check if files were extracted into a nested directory with the same name
+            // This can happen with some tar archives that have ./ prefix
+            File nestedDir = new File(destDir, destDir.getName());
+            if (nestedDir.exists() && nestedDir.isDirectory()) {
+                // Move all files from nested directory to parent
+                File[] nestedFiles = nestedDir.listFiles();
+                if (nestedFiles != null) {
+                    for (File file : nestedFiles) {
+                        File destFile = new File(destDir, file.getName());
+                        file.renameTo(destFile);
+                    }
+                    // Delete the now-empty nested directory
+                    nestedDir.delete();
                 }
             }
             
