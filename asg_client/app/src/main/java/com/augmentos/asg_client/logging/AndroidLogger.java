@@ -1,6 +1,5 @@
-package com.augmentos.asg_client.server.impl;
+package com.augmentos.asg_client.logging;
 
-import com.augmentos.asg_client.server.interfaces.Logger;
 import android.util.Log;
 
 /**

@@ -1,7 +1,7 @@
 package com.augmentos.asg_client.server.impl;
 
 import com.augmentos.asg_client.server.interfaces.RateLimiter;
-import com.augmentos.asg_client.server.interfaces.Logger;
+import com.augmentos.asg_client.logging.Logger;
 
 import java.util.Locale;
 import java.util.concurrent.ConcurrentHashMap;

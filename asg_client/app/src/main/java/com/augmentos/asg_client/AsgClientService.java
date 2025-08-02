@@ -38,7 +38,7 @@ import org.json.JSONArray;
 import com.augmentos.asg_client.server.AsgCameraServer;
 import com.augmentos.asg_client.server.AsgServerManager;
 import com.augmentos.asg_client.server.impl.DefaultServerFactory;
-import com.augmentos.asg_client.server.interfaces.Logger;
+import com.augmentos.asg_client.logging.Logger;
 import com.augmentos.asg_client.streaming.RtmpStreamingService;
 import com.augmentos.augmentos_core.AugmentosService;
 import com.augmentos.asg_client.bluetooth.BluetoothManagerFactory;

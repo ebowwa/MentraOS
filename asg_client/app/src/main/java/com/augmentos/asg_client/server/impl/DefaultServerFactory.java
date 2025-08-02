@@ -3,6 +3,8 @@ package com.augmentos.asg_client.server.impl;
 import android.content.Context;
 import com.augmentos.asg_client.server.interfaces.*;
 import com.augmentos.asg_client.server.AsgCameraServer;
+import com.augmentos.asg_client.logging.Logger;
+import com.augmentos.asg_client.logging.LoggerFactory;
 
 /**
  * Factory for creating server instances with default implementations.
@@ -14,7 +16,7 @@ public class DefaultServerFactory {
      * Create a default logger instance
      */
     public static Logger createLogger() {
-        return new AndroidLogger();
+        return LoggerFactory.createLogger();
     }
     
     /**

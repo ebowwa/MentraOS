@@ -1,4 +1,4 @@
-package com.augmentos.asg_client.server.interfaces;
+package com.augmentos.asg_client.logging;
 
 /**
  * Logging interface for server operations.
