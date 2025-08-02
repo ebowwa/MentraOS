@@ -91,7 +91,7 @@ export default function BufferDebugPage() {
 
   return (
     <Screen preset="scroll" style={{paddingHorizontal: theme.spacing.lg}}>
-      <Header leftIcon="back" onLeftPress={goBack} leftText="Camera Debug" />
+      <Header title="Camera Debug" leftIcon="caretLeft" onLeftPress={goBack} />
 
       <Spacer height={theme.spacing.xl} />
 
