@@ -1,4 +1,4 @@
-package com.augmentos.asg_client.network;
+package com.augmentos.asg_client.io.network.interfaces;
 
 /**
  * Interface for receiving notifications about network state changes.
@@ -23,4 +23,4 @@ public interface NetworkStateListener {
      * @param authToken Optional authentication token
      */
     void onWifiCredentialsReceived(String ssid, String password, String authToken);
-}
+} 

@@ -45,11 +45,11 @@ import com.augmentos.asg_client.bluetooth.BluetoothManagerFactory;
 import com.augmentos.asg_client.bluetooth.BluetoothStateListener;
 import com.augmentos.asg_client.bluetooth.IBluetoothManager;
 import com.augmentos.asg_client.bluetooth.K900BluetoothManager;
-import com.augmentos.asg_client.camera.MediaCaptureService;
-import com.augmentos.asg_client.camera.MediaUploadQueueManager;
-import com.augmentos.asg_client.network.INetworkManager;
-import com.augmentos.asg_client.network.NetworkManagerFactory;
-import com.augmentos.asg_client.network.NetworkStateListener; // Make sure this is the correct import path for your library
+import com.augmentos.asg_client.io.media.core.MediaCaptureService;
+import com.augmentos.asg_client.io.media.managers.MediaUploadQueueManager;
+import com.augmentos.asg_client.io.network.interfaces.INetworkManager;
+import com.augmentos.asg_client.io.network.core.NetworkManagerFactory;
+import com.augmentos.asg_client.io.network.interfaces.NetworkStateListener;
 import com.augmentos.asg_client.settings.AsgSettings;
 
 

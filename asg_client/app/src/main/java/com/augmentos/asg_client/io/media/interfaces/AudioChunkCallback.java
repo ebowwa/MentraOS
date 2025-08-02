@@ -1,4 +1,4 @@
-package com.augmentos.asg_client.audio;
+package com.augmentos.asg_client.io.media.interfaces;
 
 import java.nio.ByteBuffer;
 
@@ -11,4 +11,4 @@ public interface AudioChunkCallback {
      * @param chunk The audio chunk as a ByteBuffer
      */
     void onSuccess(ByteBuffer chunk);
-}
+} 

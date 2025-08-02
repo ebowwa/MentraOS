@@ -1,4 +1,4 @@
-package com.augmentos.asg_client.network;
+package com.augmentos.asg_client.io.network.utils;
 
 import android.app.Notification;
 import android.app.NotificationChannel;
@@ -106,7 +106,7 @@ public class DebugNotificationManager {
                 .setContentIntent(contentIntent)
                 .setAutoCancel(true);
         
-        // Always use the same notification ID for WiFi state updates
+        // Use the fixed notification ID for WiFi state
         notificationManager.notify(NOTIFICATION_ID_WIFI, builder.build());
     }
     
@@ -117,8 +117,10 @@ public class DebugNotificationManager {
     public void showHotspotStateNotification(boolean isEnabled) {
         String title = "AugmentOS Hotspot State";
         String message = isEnabled ?
-                "Hotspot is enabled and running" :
-                "Hotspot is disabled";
+                "Hotspot ENABLED" :
+                "Hotspot DISABLED";
+        
+        Log.d("DebugNotificationManager", "Showing hotspot state notification: " + message);
         
         PendingIntent contentIntent = PendingIntent.getActivity(
                 context, 
@@ -135,21 +137,21 @@ public class DebugNotificationManager {
                 .setContentIntent(contentIntent)
                 .setAutoCancel(true);
         
-        // Always use the same notification ID for hotspot state updates
+        // Use the fixed notification ID for hotspot state
         notificationManager.notify(NOTIFICATION_ID_HOTSPOT, builder.build());
     }
     
     /**
-     * Create the notification channel for Android 8.0+
+     * Create the notification channel for Android O and above
      */
     private void createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(
                     CHANNEL_ID,
-                    "AugmentOS Debug",
+                    "ASG Debug Notifications",
                     NotificationManager.IMPORTANCE_DEFAULT);
-            channel.setDescription("Debug notifications for AugmentOS");
+            channel.setDescription("Debug notifications for ASG network operations");
             notificationManager.createNotificationChannel(channel);
         }
     }
-}
+} 

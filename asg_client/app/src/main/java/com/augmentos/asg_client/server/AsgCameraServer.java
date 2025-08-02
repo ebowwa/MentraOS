@@ -1,7 +1,7 @@
 package com.augmentos.asg_client.server;
 
 import android.content.Context;
-import com.augmentos.asg_client.camera.CameraNeo;
+import com.augmentos.asg_client.io.media.core.CameraNeo;
 import com.augmentos.asg_client.server.impl.AndroidLogger;
 import com.augmentos.asg_client.server.impl.DefaultCacheManager;
 import com.augmentos.asg_client.server.impl.DefaultNetworkProvider;

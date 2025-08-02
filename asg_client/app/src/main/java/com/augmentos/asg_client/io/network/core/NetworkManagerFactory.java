@@ -1,10 +1,16 @@
-package com.augmentos.asg_client.network;
+package com.augmentos.asg_client.io.network.core;
 
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.util.Log;
+
+import com.augmentos.asg_client.io.network.interfaces.INetworkManager;
+import com.augmentos.asg_client.io.network.managers.FallbackNetworkManager;
+import com.augmentos.asg_client.io.network.managers.K900NetworkManager;
+import com.augmentos.asg_client.io.network.managers.SystemNetworkManager;
+import com.augmentos.asg_client.io.network.utils.DebugNotificationManager;
 
 /**
  * Factory class that creates the appropriate network manager based on device type.
@@ -96,4 +102,4 @@ public class NetworkManagerFactory {
 //            return false;
 //        }
     }
-}
+} 

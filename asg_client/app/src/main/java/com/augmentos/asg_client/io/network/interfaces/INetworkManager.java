@@ -1,4 +1,4 @@
-package com.augmentos.asg_client.network;
+package com.augmentos.asg_client.io.network.interfaces;
 
 import java.util.List;
 
@@ -88,4 +88,4 @@ public interface INetworkManager {
      * Cleanup resources when the manager is no longer needed
      */
     void shutdown();
-}
+} 

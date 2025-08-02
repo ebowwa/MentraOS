@@ -1,4 +1,4 @@
-package com.augmentos.asg_client.camera;
+package com.augmentos.asg_client.io.media.interfaces;
 
 /**
  * Interface for communication between MediaCaptureService and AsgClientService
@@ -16,4 +16,4 @@ public interface ServiceCallbackInterface {
      * @return true if file transfer started successfully, false otherwise
      */
     boolean sendFileViaBluetooth(String filePath);
-}
+} 
