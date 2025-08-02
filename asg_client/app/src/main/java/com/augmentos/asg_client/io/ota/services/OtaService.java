@@ -1,4 +1,4 @@
-package com.augmentos.asg_client.ota;
+package com.augmentos.asg_client.io.ota.services;
 
 import android.app.Notification;
 import android.app.NotificationChannel;
@@ -12,18 +12,18 @@ import android.util.Log;
 import androidx.core.app.NotificationCompat;
 
 import com.augmentos.asg_client.R;
+import com.augmentos.asg_client.io.ota.events.DownloadProgressEvent;
+import com.augmentos.asg_client.io.ota.events.InstallationProgressEvent;
+import com.augmentos.asg_client.io.ota.utils.OtaConstants;
+import com.augmentos.asg_client.events.BatteryStatusEvent;
+import com.augmentos.asg_client.SysControl;
 
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
 
-import com.augmentos.asg_client.ota.events.DownloadProgressEvent;
-import com.augmentos.asg_client.ota.events.InstallationProgressEvent;
-import com.augmentos.asg_client.events.BatteryStatusEvent;
-import com.augmentos.asg_client.SysControl;
-
 public class OtaService extends Service {
-    private static final String TAG = Constants.TAG;
+    private static final String TAG = OtaConstants.TAG;
     private static final String CHANNEL_ID = "ota_service_channel";
     private static final int NOTIFICATION_ID = 2001;
     

@@ -1,4 +1,4 @@
-package com.augmentos.asg_client.ota.events;
+package com.augmentos.asg_client.io.ota.events;
 
 /**
  * EventBus event for installation progress updates

@@ -1,6 +1,6 @@
-package com.augmentos.asg_client.ota;
+package com.augmentos.asg_client.io.ota.utils;
 
-public class Constants {
+public class OtaConstants {
     public static final String TAG = "ASGClientOTA";
 
     // URLs

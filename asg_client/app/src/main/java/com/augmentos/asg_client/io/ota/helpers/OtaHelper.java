@@ -1,8 +1,8 @@
-package com.augmentos.asg_client.ota;
+package com.augmentos.asg_client.io.ota.helpers;
 
-import static com.augmentos.asg_client.ota.Constants.APK_FILENAME;
-import static com.augmentos.asg_client.ota.Constants.BASE_DIR;
-import static com.augmentos.asg_client.ota.Constants.METADATA_JSON;
+import static com.augmentos.asg_client.io.ota.utils.OtaConstants.APK_FILENAME;
+import static com.augmentos.asg_client.io.ota.utils.OtaConstants.BASE_DIR;
+import static com.augmentos.asg_client.io.ota.utils.OtaConstants.METADATA_JSON;
 
 import android.content.Context;
 import android.content.pm.PackageInfo;
@@ -24,8 +24,8 @@ import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
 import com.augmentos.asg_client.events.BatteryStatusEvent;
-import com.augmentos.asg_client.ota.events.DownloadProgressEvent;
-import com.augmentos.asg_client.ota.events.InstallationProgressEvent;
+import com.augmentos.asg_client.io.ota.events.DownloadProgressEvent;
+import com.augmentos.asg_client.io.ota.events.InstallationProgressEvent;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -42,7 +42,7 @@ import java.security.MessageDigest;
 import java.util.stream.Collectors;
 
 public class OtaHelper {
-    private static final String TAG = Constants.TAG;
+    private static final String TAG = OtaConstants.TAG;
     private static ConnectivityManager.NetworkCallback networkCallback;
     private static ConnectivityManager connectivityManager;
     private static volatile boolean isCheckingVersion = false;
