@@ -772,7 +772,67 @@ public class SmartGlassesManager extends Service {
             smartGlassesRepresentative.smartGlassesCommunicator.sendButtonModeSetting(mode);
         }
     }
+    
+    /**
+     * Start buffer recording on smart glasses
+     * Continuously records last 30 seconds in a circular buffer
+     */
+    public void startBufferRecording() {
+        if (smartGlassesRepresentative != null && smartGlassesRepresentative.smartGlassesCommunicator != null) {
+            smartGlassesRepresentative.smartGlassesCommunicator.startBufferRecording();
+        } else {
+            Log.w(TAG, "Cannot start buffer recording - glasses not connected");
+        }
+    }
+    
+    /**
+     * Stop buffer recording on smart glasses
+     */
+    public void stopBufferRecording() {
+        if (smartGlassesRepresentative != null && smartGlassesRepresentative.smartGlassesCommunicator != null) {
+            smartGlassesRepresentative.smartGlassesCommunicator.stopBufferRecording();
+        } else {
+            Log.w(TAG, "Cannot stop buffer recording - glasses not connected");
+        }
+    }
+    
+    /**
+     * Save buffer video from smart glasses
+     * @param requestId Unique ID for this save request
+     * @param durationSeconds Number of seconds to save (1-30)
+     */
+    public void saveBufferVideo(String requestId, int durationSeconds) {
+        if (smartGlassesRepresentative != null && smartGlassesRepresentative.smartGlassesCommunicator != null) {
+            smartGlassesRepresentative.smartGlassesCommunicator.saveBufferVideo(requestId, durationSeconds);
+        } else {
+            Log.w(TAG, "Cannot save buffer video - glasses not connected");
+        }
+    }
 
+    /**
+     * Start video recording on smart glasses
+     * @param requestId Unique ID for this recording request
+     * @param save Whether to save the video to storage
+     */
+    public void startVideoRecording(String requestId, boolean save) {
+        if (smartGlassesRepresentative != null && smartGlassesRepresentative.smartGlassesCommunicator != null) {
+            smartGlassesRepresentative.smartGlassesCommunicator.startVideoRecording(requestId, save);
+        } else {
+            Log.w(TAG, "Cannot start video recording - glasses not connected");
+        }
+    }
+
+    /**
+     * Stop video recording on smart glasses
+     * @param requestId The request ID of the recording to stop
+     */
+    public void stopVideoRecording(String requestId) {
+        if (smartGlassesRepresentative != null && smartGlassesRepresentative.smartGlassesCommunicator != null) {
+            smartGlassesRepresentative.smartGlassesCommunicator.stopVideoRecording(requestId);
+        } else {
+            Log.w(TAG, "Cannot stop video recording - glasses not connected");
+        }
+    }
 
     public void changeMicrophoneState(boolean isMicrophoneEnabled, List<SpeechRequiredDataType> requiredData) {
         Log.d(TAG, "Changing microphone state to " + isMicrophoneEnabled);

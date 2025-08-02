@@ -46,4 +46,9 @@ public interface AugmentOsActionsCallback {
     void simulateHeadPosition(String position);
     void simulateButtonPress(String buttonId, String pressType);
     void handleNotificationDismissal(JSONObject dismissalData);
+    void startBufferRecording();
+    void stopBufferRecording();
+    void saveBufferVideo(String requestId, int durationSeconds);
+    void startVideoRecording(String requestId, boolean save);
+    void stopVideoRecording(String requestId);
 }

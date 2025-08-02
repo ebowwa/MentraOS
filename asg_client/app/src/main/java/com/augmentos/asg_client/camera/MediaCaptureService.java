@@ -46,6 +46,7 @@ public class MediaCaptureService {
     private final MediaUploadQueueManager mMediaQueueManager;
     private MediaCaptureListener mMediaCaptureListener;
     private ServiceCallbackInterface mServiceCallback;
+    private CircularVideoBuffer mVideoBuffer;
 
     // Track current video recording
     private boolean isRecordingVideo = false;
@@ -102,6 +103,43 @@ public class MediaCaptureService {
     public MediaCaptureService(@NonNull Context context, @NonNull MediaUploadQueueManager mediaQueueManager) {
         mContext = context.getApplicationContext();
         mMediaQueueManager = mediaQueueManager;
+        
+        // Initialize video buffer
+        mVideoBuffer = new CircularVideoBuffer(context);
+        mVideoBuffer.setCallback(new CircularVideoBuffer.BufferCallback() {
+            @Override
+            public void onBufferingStarted() {
+                Log.d(TAG, "Video buffering started");
+            }
+            
+            @Override
+            public void onBufferingStopped() {
+                Log.d(TAG, "Video buffering stopped");
+            }
+            
+            @Override
+            public void onSegmentRecorded(int segmentIndex, String filePath) {
+                Log.d(TAG, "Buffer segment " + segmentIndex + " recorded: " + filePath);
+            }
+            
+            @Override
+            public void onBufferSaved(String outputPath, int durationSeconds) {
+                Log.d(TAG, "Buffer saved: " + outputPath + " (" + durationSeconds + " seconds)");
+                // Notify listener if needed
+                if (mMediaCaptureListener != null) {
+                    // Use a special ID for buffer saves
+                    mMediaCaptureListener.onVideoUploaded("buffer_save", outputPath);
+                }
+            }
+            
+            @Override
+            public void onBufferError(String error) {
+                Log.e(TAG, "Buffer error: " + error);
+                if (mMediaCaptureListener != null) {
+                    mMediaCaptureListener.onMediaError("buffer", error, MediaUploadQueueManager.MEDIA_TYPE_VIDEO);
+                }
+            }
+        });
     }
 
     /**
@@ -223,112 +261,65 @@ public class MediaCaptureService {
 
     /**
      * Handles the video button press by toggling video recording
+     * Simple toggle logic - no cloud communication
      */
     public void handleVideoButtonPress() {
-        // Get core token for authentication
-        String coreToken = PreferenceManager.getDefaultSharedPreferences(mContext)
-                .getString("core_token", "");
-
-        // Get device ID for hardware identification
-        String deviceId = android.os.Build.MODEL + "_" + android.os.Build.SERIAL;
-
-        // If already recording, always stop regardless of server response
         if (isRecordingVideo) {
-            Log.d(TAG, "Already recording, stopping video recording");
+            Log.d(TAG, "Stopping video recording");
             stopVideoRecording();
+        } else {
+            Log.d(TAG, "Starting video recording");
+            startVideoRecording();
+        }
+    }
+
+    /**
+     * Handle start video recording command from phone
+     * Similar to takePhotoAndUpload but for video
+     * @param requestId Unique request ID for tracking
+     * @param save Whether to keep the video on device after upload
+     */
+    public void handleStartVideoCommand(String requestId, boolean save) {
+        // Check if already recording
+        if (isRecordingVideo) {
+            Log.w(TAG, "Already recording video, ignoring start command");
+            if (mMediaCaptureListener != null) {
+                mMediaCaptureListener.onMediaError(requestId, "Already recording", MediaUploadQueueManager.MEDIA_TYPE_VIDEO);
+            }
             return;
         }
 
-        // If no token, fall back to local recording
-        if (coreToken == null || coreToken.isEmpty()) {
-            Log.e(TAG, "No core token available, starting video locally");
-            startVideoRecording();
+        // Generate filename with requestId
+        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
+        String videoFilePath = mContext.getExternalFilesDir(null) + File.separator + "VID_" + timeStamp + "_" + requestId + ".mp4";
+
+        // Start video recording with the provided requestId
+        startVideoRecording(videoFilePath, requestId);
+    }
+
+    /**
+     * Handle stop video recording command from phone
+     * @param requestId Request ID of the video to stop (must match current recording)
+     */
+    public void handleStopVideoCommand(String requestId) {
+        if (!isRecordingVideo) {
+            Log.w(TAG, "No video recording to stop");
+            if (mMediaCaptureListener != null) {
+                mMediaCaptureListener.onMediaError(requestId, "Not recording", MediaUploadQueueManager.MEDIA_TYPE_VIDEO);
+            }
             return;
         }
 
-        // Prepare REST API call
-        try {
-            // Get the button press URL from the central config utility
-            String buttonPressUrl = ServerConfigUtil.getButtonPressUrl(mContext);
-
-            // Create payload for button press event
-            JSONObject buttonPressPayload = new JSONObject();
-            buttonPressPayload.put("buttonId", "video");
-            buttonPressPayload.put("pressType", "long");
-            buttonPressPayload.put("deviceId", deviceId);
-
-            Log.d(TAG, "Sending video button press event to server: " + buttonPressUrl);
-
-            // Make REST API call with timeout
-            OkHttpClient client = new OkHttpClient.Builder()
-                    .connectTimeout(5, java.util.concurrent.TimeUnit.SECONDS)
-                    .writeTimeout(5, java.util.concurrent.TimeUnit.SECONDS)
-                    .readTimeout(5, java.util.concurrent.TimeUnit.SECONDS)
-                    .build();
-
-            RequestBody requestBody = RequestBody.create(
-                    MediaType.parse("application/json"),
-                    buttonPressPayload.toString()
-            );
-
-            Request request = new Request.Builder()
-                    .url(buttonPressUrl)
-                    .header("Authorization", "Bearer " + coreToken)
-                    .post(requestBody)
-                    .build();
-
-            // Execute request asynchronously
-            client.newCall(request).enqueue(new Callback() {
-                @Override
-                public void onFailure(Call call, IOException e) {
-                    Log.e(TAG, "Failed to send video button press event", e);
-                    // Connection failed, start video locally
-                    startVideoRecording();
-                }
-
-                @Override
-                public void onResponse(Call call, Response response) {
-                    try {
-                        if (!response.isSuccessful()) {
-                            Log.e(TAG, "Server returned error: " + response.code());
-                            // Server error, start video locally
-                            startVideoRecording();
-                            return;
-                        }
-
-                        // Parse response
-                        String responseBody = response.body().string();
-                        Log.d(TAG, "Server response: " + responseBody);
-                        JSONObject jsonResponse = new JSONObject(responseBody);
-
-                        // Check if we need to start video recording
-                        if ("start_video".equals(jsonResponse.optString("action"))) {
-                            String requestId = jsonResponse.optString("requestId");
-
-                            Log.d(TAG, "Server requesting video with requestId: " + requestId);
-
-                            // Generate filename with requestId
-                            String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
-                            String videoFilePath = mContext.getExternalFilesDir(null) + File.separator + "VID_" + timeStamp + "_" + requestId + ".mp4";
-
-                            // Start video recording with server-provided requestId
-                            startVideoRecording(videoFilePath, requestId);
-                        } else {
-                            Log.d(TAG, "Button press handled by server, no video recording needed");
-                        }
-                    } catch (Exception e) {
-                        Log.e(TAG, "Error processing server response", e);
-                        startVideoRecording();
-                    } finally {
-                        response.close();
-                    }
-                }
-            });
-        } catch (Exception e) {
-            Log.e(TAG, "Error preparing button press request", e);
-            // Something went wrong, start video locally
-            startVideoRecording();
+        // Verify the requestId matches current recording
+        if (!requestId.equals(currentVideoId)) {
+            Log.w(TAG, "Stop command requestId doesn't match current recording");
+            if (mMediaCaptureListener != null) {
+                mMediaCaptureListener.onMediaError(requestId, "Request ID mismatch", MediaUploadQueueManager.MEDIA_TYPE_VIDEO);
+            }
+            return;
         }
+
+        stopVideoRecording();
     }
 
     /**
@@ -380,12 +371,10 @@ public class MediaCaptureService {
                     // Notify listener
                     if (mMediaCaptureListener != null) {
                         mMediaCaptureListener.onVideoRecordingStopped(requestId, filePath);
-                        mMediaCaptureListener.onVideoUploading(requestId);
                     }
 
-                    // TODO: Server upload would happen here, for now just log
-                    Log.d(TAG, "Video captured and ready for upload, path: " + filePath +
-                            ", requestId: " + requestId);
+                    // Call upload stub (which just logs for now)
+                    uploadVideo(filePath, requestId);
 
                     // Reset state
                     currentVideoId = null;
@@ -472,6 +461,93 @@ public class MediaCaptureService {
         }
 
         return System.currentTimeMillis() - recordingStartTime;
+    }
+    
+    /**
+     * Start buffer recording - continuously records last 30 seconds
+     */
+    public void startBufferRecording() {
+        // Check if camera is already in use
+        if (CameraNeo.isCameraInUse()) {
+            Log.w(TAG, "Cannot start buffer recording - camera is in use");
+            if (mMediaCaptureListener != null) {
+                mMediaCaptureListener.onMediaError("buffer", "Camera is busy", MediaUploadQueueManager.MEDIA_TYPE_VIDEO);
+            }
+            return;
+        }
+        
+        Log.d(TAG, "Starting buffer recording via CameraNeo");
+        
+        // Use CameraNeo's buffer mode instead of local CircularVideoBuffer
+        CameraNeo.startBufferRecording(mContext, new CameraNeo.BufferCallback() {
+            @Override
+            public void onBufferStarted() {
+                Log.d(TAG, "Buffer recording started");
+            }
+            
+            @Override
+            public void onBufferStopped() {
+                Log.d(TAG, "Buffer recording stopped");
+            }
+            
+            @Override
+            public void onBufferSaved(String filePath, int durationSeconds) {
+                Log.d(TAG, "Buffer saved: " + filePath + " (" + durationSeconds + " seconds)");
+                if (mMediaCaptureListener != null) {
+                    mMediaCaptureListener.onVideoUploaded("buffer_save", filePath);
+                }
+            }
+            
+            @Override
+            public void onBufferError(String error) {
+                Log.e(TAG, "Buffer error: " + error);
+                if (mMediaCaptureListener != null) {
+                    mMediaCaptureListener.onMediaError("buffer", error, MediaUploadQueueManager.MEDIA_TYPE_VIDEO);
+                }
+            }
+        });
+    }
+    
+    /**
+     * Stop buffer recording
+     */
+    public void stopBufferRecording() {
+        Log.d(TAG, "Stopping buffer recording via CameraNeo");
+        CameraNeo.stopBufferRecording(mContext);
+    }
+    
+    /**
+     * Save the last N seconds from buffer
+     * @param secondsToSave Number of seconds to save (max 30)
+     * @param requestId Request ID for tracking
+     */
+    public void saveBufferVideo(int secondsToSave, String requestId) {
+        Log.d(TAG, "Saving last " + secondsToSave + " seconds of buffer, requestId: " + requestId);
+        CameraNeo.saveBufferVideo(mContext, secondsToSave, requestId);
+    }
+    
+    /**
+     * Get buffer recording status
+     * Note: This would need to be implemented via a callback or service binding
+     * For now, returning a basic status
+     */
+    public JSONObject getBufferStatus() {
+        JSONObject status = new JSONObject();
+        try {
+            // Basic status - would need proper implementation with CameraNeo
+            status.put("isBuffering", false); // Would need to track this
+            status.put("availableDuration", 0);
+        } catch (JSONException e) {
+            Log.e(TAG, "Error creating buffer status", e);
+        }
+        return status;
+    }
+    
+    /**
+     * Check if buffer is currently recording
+     */
+    public boolean isBuffering() {
+        return CameraNeo.isInBufferMode();
     }
 
     /**
@@ -743,13 +819,17 @@ public class MediaCaptureService {
 
     /**
      * Upload a video file to AugmentOS Cloud
+     * Currently a stub - videos are kept on device
      */
     public void uploadVideo(String videoFilePath, String requestId) {
+        Log.d(TAG, "Video upload not implemented yet. Video saved locally: " + videoFilePath);
+        // TODO: Implement WiFi upload when needed
+        // For now, videos remain on device
+        
         if (mMediaCaptureListener != null) {
-            mMediaCaptureListener.onVideoUploading(requestId);
+            // Notify that video is "uploaded" (actually just saved locally)
+            mMediaCaptureListener.onVideoUploaded(requestId, videoFilePath);
         }
-
-        uploadMediaToCloud(videoFilePath, requestId, MediaUploadQueueManager.MEDIA_TYPE_VIDEO);
     }
 
     /**
