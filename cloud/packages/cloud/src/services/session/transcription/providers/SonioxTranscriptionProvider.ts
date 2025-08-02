@@ -3,7 +3,7 @@
  */
 
 import WebSocket from "ws";
-import { StreamType, getLanguageInfo, TranscriptionData } from "@mentra/sdk";
+import { StreamType, getLanguageInfo, TranscriptionData, SonioxToken } from "@mentra/sdk";
 import { Logger } from "pino";
 import {
   TranscriptionProvider,
@@ -20,39 +20,26 @@ import {
   SonioxProviderError,
 } from "../types";
 
-// Soniox language support - based on their documentation
-const SONIOX_TRANSCRIPTION_LANGUAGES = [
-  "en-US",
-  "en-GB",
-  "en-AU",
-  "en-IN",
-  "es-ES",
-  "es-MX",
-  "es-US",
-  "fr-FR",
-  "fr-CA",
-  "de-DE",
-  "it-IT",
-  "pt-BR",
-  "pt-PT",
-  "nl-NL",
-  "sv-SE",
-  "da-DK",
-  "no-NO",
-  "ru-RU",
-  "pl-PL",
-  "cs-CZ",
-  "ja-JP",
-  "ko-KR",
-  "zh-CN",
-  "zh-TW",
-];
+// Import Soniox language configuration from JSON
+import sonioxLanguageData from "./SonioxLanguages.json";
+
+// Extract supported language codes for the real-time model
+const SONIOX_SUPPORTED_LANGUAGES: string[] = [];
+const rtModel = sonioxLanguageData.models.find(m => m.id === "stt-rt-preview");
+if (rtModel) {
+  // Extract just the language codes (e.g., "en", "es", "fr")
+  rtModel.languages.forEach(lang => {
+    if (!SONIOX_SUPPORTED_LANGUAGES.includes(lang.code)) {
+      SONIOX_SUPPORTED_LANGUAGES.push(lang.code);
+    }
+  });
+}
 
 // Soniox WebSocket endpoint
 const SONIOX_WEBSOCKET_URL = "wss://stt-rt.soniox.com/transcribe-websocket";
 
-// Soniox token response interface
-interface SonioxToken {
+// Soniox API token response interface (renamed to avoid conflict with SDK type)
+interface SonioxApiToken {
   text: string;
   start_ms: number;
   end_ms: number;
@@ -63,7 +50,7 @@ interface SonioxToken {
 }
 
 interface SonioxResponse {
-  tokens?: SonioxToken[];
+  tokens?: SonioxApiToken[];
   final_audio_proc_ms?: number;
   total_audio_proc_ms?: number;
   error_code?: number;
@@ -90,6 +77,14 @@ export class SonioxTranscriptionProvider implements TranscriptionProvider {
       lastCheck: Date.now(),
       failures: 0,
     };
+    
+    this.logger.info(
+      {
+        supportedLanguages: SONIOX_SUPPORTED_LANGUAGES.length,
+        languages: SONIOX_SUPPORTED_LANGUAGES
+      },
+      `Soniox provider initialized with ${SONIOX_SUPPORTED_LANGUAGES.length} supported languages`
+    );
   }
 
   async initialize(): Promise<void> {
@@ -170,26 +165,32 @@ export class SonioxTranscriptionProvider implements TranscriptionProvider {
 
   supportsLanguage(language: string): boolean {
     // Check if the language is in our supported transcription languages list
-    const langInfo = getLanguageInfo(language);
-    if (!langInfo) return false;
+    // Language parameter is already a language code like "en-US", not a subscription string
+    
+    // Extract base language code (e.g., 'en' for 'en-US')
+    const baseLanguage = language.split("-")[0].toLowerCase();
 
-    // Check against SONIOX_TRANSCRIPTION_LANGUAGES
-    // Match on the base language code (e.g., 'en' for 'en-US')
-    const baseLanguage = langInfo.transcribeLanguage
-      .split("-")[0]
-      .toLowerCase();
-
-    return SONIOX_TRANSCRIPTION_LANGUAGES.some((supported) => {
-      const supportedBase = supported.split("-")[0].toLowerCase();
-      return supportedBase === baseLanguage;
-    });
+    // Check if this base language is supported by Soniox
+    return SONIOX_SUPPORTED_LANGUAGES.includes(baseLanguage);
   }
 
   // Translation validation is now handled by TranslationManager
 
   getLanguageCapabilities(): ProviderLanguageCapabilities {
+    // Build a list of language codes in the format expected (e.g., "en-US")
+    // For now, we'll just return the base language codes since Soniox 
+    // supports multiple variants for most languages
+    const transcriptionLanguages: string[] = [];
+    
+    if (rtModel) {
+      rtModel.languages.forEach(lang => {
+        // Add the base language code (Soniox accepts base codes)
+        transcriptionLanguages.push(lang.code);
+      });
+    }
+    
     return {
-      transcriptionLanguages: [...SONIOX_TRANSCRIPTION_LANGUAGES],
+      transcriptionLanguages,
       autoLanguageDetection: true, // Soniox supports auto language detection
     };
   }
@@ -277,6 +278,18 @@ class SonioxTranscriptionStream implements StreamInstance {
   > = new Map();
   private fallbackPosition = 0; // Fallback position when timing info is missing
   private lastSentInterim = ""; // Track last sent interim to avoid duplicates
+  
+  // Helper to convert internal tokens to SDK format
+  private convertToSdkTokens(tokens: Array<{ text: string; isFinal: boolean; confidence: number; start_ms: number; end_ms: number; speaker?: string }>): SonioxToken[] {
+    return tokens.map(token => ({
+      text: token.text,
+      startMs: token.start_ms,
+      endMs: token.end_ms,
+      confidence: token.confidence,
+      isFinal: token.isFinal,
+      speaker: token.speaker
+    }));
+  }
 
   // Translation-specific token buffers (one per language)
   private translationTokenBuffers: Map<
@@ -417,8 +430,8 @@ class SonioxTranscriptionStream implements StreamInstance {
       max_non_final_tokens_duration_ms: 2000,
       enable_endpoint_detection: true, // Automatically finalize tokens on speech pauses
       enable_speaker_diarization: true,
-      context: "Mentra, MentraOS, Mira, Hey Mira",
       language_hints: languageHints, // Default hints, can be overridden
+      // context: "Mentra, MentraOS, Mira, Hey Mira",
     };
 
     // Configure translation if target language is specified
@@ -505,7 +518,7 @@ class SonioxTranscriptionStream implements StreamInstance {
     }
   }
 
-  private processSonioxTokens(tokens: SonioxToken[]): void {
+  private processSonioxTokens(tokens: SonioxApiToken[]): void {
     if (this.targetLanguage) {
       // Should never receive translation tokens in transcription provider
       this.logger.error(
@@ -519,7 +532,7 @@ class SonioxTranscriptionStream implements StreamInstance {
     }
   }
 
-  private processTranscriptionTokens(tokens: SonioxToken[]): void {
+  private processTranscriptionTokens(tokens: SonioxApiToken[]): void {
     // Soniox streams tokens cumulatively - each response contains tokens that should
     // update our running buffer. Tokens can change from interim to final and can be corrected.
     // Key insight: Use audio segment position (start_ms) as primary key to allow corrections.
@@ -584,6 +597,12 @@ class SonioxTranscriptionStream implements StreamInstance {
         endTime: Date.now() + 1000,
         transcribeLanguage: this.language,
         provider: "soniox",
+        metadata: {
+          provider: 'soniox',
+          soniox: {
+            tokens: this.convertToSdkTokens(sortedTokens)
+          }
+        }
       };
 
       if (this.callbacks.onData) {
@@ -604,6 +623,26 @@ class SonioxTranscriptionStream implements StreamInstance {
           provider: "soniox",
         },
         `🎙️ SONIOX: interim transcription - "${currentInterim}"`,
+      );
+      
+      // Log metadata details
+      this.logger.info(
+        {
+          streamId: this.id,
+          metadataType: "interim",
+          tokenCount: sortedTokens.length,
+          tokens: sortedTokens.map(t => ({
+            text: t.text,
+            confidence: t.confidence,
+            timeRange: `${t.start_ms}-${t.end_ms}ms`,
+            isFinal: t.isFinal
+          })),
+          lowConfidenceTokens: sortedTokens.filter(t => t.confidence < 0.8).map(t => ({
+            text: t.text,
+            confidence: t.confidence
+          }))
+        },
+        `🔍 METADATA: Interim transcription with ${sortedTokens.length} tokens`
       );
     }
 
@@ -629,6 +668,12 @@ class SonioxTranscriptionStream implements StreamInstance {
           endTime: Date.now() + 1000,
           transcribeLanguage: this.language,
           provider: "soniox",
+          metadata: {
+            provider: 'soniox',
+            soniox: {
+              tokens: this.convertToSdkTokens(finalTokens)
+            }
+          }
         };
 
         if (this.callbacks.onData) {
@@ -645,6 +690,29 @@ class SonioxTranscriptionStream implements StreamInstance {
             provider: "soniox",
           },
           `🎙️ SONIOX: FINAL transcription - "${finalTranscript}"`,
+        );
+        
+        // Log final metadata details
+        this.logger.info(
+          {
+            streamId: this.id,
+            metadataType: "final",
+            tokenCount: finalTokens.length,
+            averageConfidence: finalTokens.reduce((acc, t) => acc + t.confidence, 0) / finalTokens.length,
+            tokens: finalTokens.map(t => ({
+              text: t.text,
+              confidence: t.confidence,
+              timeRange: `${t.start_ms}-${t.end_ms}ms`,
+              isFinal: t.isFinal
+            })),
+            lowConfidenceTokens: finalTokens.filter(t => t.confidence < 0.8).map(t => ({
+              text: t.text,
+              confidence: t.confidence
+            })),
+            totalDurationMs: finalTokens.length > 0 ? 
+              finalTokens[finalTokens.length - 1].end_ms - finalTokens[0].start_ms : 0
+          },
+          `🔍 METADATA: Final transcription with ${finalTokens.length} tokens`
         );
       }
 
@@ -690,6 +758,12 @@ class SonioxTranscriptionStream implements StreamInstance {
         endTime: Date.now() + 1000,
         transcribeLanguage: this.language,
         provider: "soniox",
+        metadata: {
+          provider: 'soniox',
+          soniox: {
+            tokens: this.convertToSdkTokens(allTokens)
+          }
+        }
       };
 
       if (this.callbacks.onData) {
@@ -706,6 +780,33 @@ class SonioxTranscriptionStream implements StreamInstance {
           trigger: "VAD_STOP",
         },
         `🎙️ SONIOX: VAD-triggered FINAL transcription - "${finalTranscript}"`,
+      );
+      
+      // Log VAD-triggered metadata
+      this.logger.info(
+        {
+          streamId: this.id,
+          metadataType: "vad-final",
+          tokenCount: allTokens.length,
+          mixedTokenTypes: {
+            final: allTokens.filter(t => t.isFinal).length,
+            interim: allTokens.filter(t => !t.isFinal).length
+          },
+          averageConfidence: allTokens.reduce((acc, t) => acc + t.confidence, 0) / allTokens.length,
+          tokens: allTokens.slice(0, 10).map(t => ({ // Show first 10 tokens to avoid huge logs
+            text: t.text,
+            confidence: t.confidence,
+            timeRange: `${t.start_ms}-${t.end_ms}ms`,
+            isFinal: t.isFinal
+          })),
+          lowConfidenceTokens: allTokens.filter(t => t.confidence < 0.8).map(t => ({
+            text: t.text,
+            confidence: t.confidence
+          })),
+          totalDurationMs: allTokens.length > 0 ? 
+            allTokens[allTokens.length - 1].end_ms - allTokens[0].start_ms : 0
+        },
+        `🔍 METADATA: VAD-triggered final with ${allTokens.length} tokens (showing first 10)`
       );
     }
 
