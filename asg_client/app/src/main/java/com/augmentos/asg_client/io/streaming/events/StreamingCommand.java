@@ -1,4 +1,4 @@
-package com.augmentos.asg_client.streaming;
+package com.augmentos.asg_client.io.streaming.events;
 
 /**
  * Commands that can be sent to the RtmpStreamingService

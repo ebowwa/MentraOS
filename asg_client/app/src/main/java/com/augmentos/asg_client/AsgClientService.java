@@ -39,7 +39,7 @@ import com.augmentos.asg_client.server.AsgCameraServer;
 import com.augmentos.asg_client.server.AsgServerManager;
 import com.augmentos.asg_client.server.impl.DefaultServerFactory;
 import com.augmentos.asg_client.logging.Logger;
-import com.augmentos.asg_client.streaming.RtmpStreamingService;
+import com.augmentos.asg_client.io.streaming.services.RtmpStreamingService;
 import com.augmentos.augmentos_core.AugmentosService;
 import com.augmentos.asg_client.io.bluetooth.core.BluetoothManagerFactory;
 import com.augmentos.asg_client.io.bluetooth.interfaces.BluetoothStateListener;

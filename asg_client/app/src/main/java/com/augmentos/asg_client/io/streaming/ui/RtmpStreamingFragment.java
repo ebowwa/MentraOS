@@ -1,4 +1,4 @@
-package com.augmentos.asg_client.streaming;
+package com.augmentos.asg_client.io.streaming.ui;
 
 import android.content.ComponentName;
 import android.content.Context;
@@ -20,6 +20,8 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
 import com.augmentos.asg_client.R;
+import com.augmentos.asg_client.io.streaming.events.StreamingEvent;
+import com.augmentos.asg_client.io.streaming.services.RtmpStreamingService;
 
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;

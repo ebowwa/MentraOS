@@ -1,4 +1,4 @@
-package com.augmentos.asg_client.streaming;
+package com.augmentos.asg_client.io.streaming.services;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
@@ -31,6 +31,9 @@ import androidx.core.app.NotificationCompat;
 import com.augmentos.asg_client.io.media.core.CameraNeo;
 import com.augmentos.asg_client.utils.WakeLockManager;
 import com.augmentos.asg_client.reporting.domains.StreamingReporting;
+import com.augmentos.asg_client.io.streaming.events.StreamingCommand;
+import com.augmentos.asg_client.io.streaming.events.StreamingEvent;
+import com.augmentos.asg_client.io.streaming.interfaces.StreamingStatusCallback;
 
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
@@ -1029,57 +1032,7 @@ public class RtmpStreamingService extends Service {
     /**
      * Interface for monitoring streaming status changes
      */
-    public interface StreamingStatusCallback {
-        /**
-         * Called when streaming is starting (connecting)
-         *
-         * @param rtmpUrl The URL being connected to
-         */
-        void onStreamStarting(String rtmpUrl);
-
-        /**
-         * Called when streaming has started successfully
-         *
-         * @param rtmpUrl The URL connected to
-         */
-        void onStreamStarted(String rtmpUrl);
-
-        /**
-         * Called when streaming has stopped
-         */
-        void onStreamStopped();
-
-        /**
-         * Called when a connection is lost and reconnection is being attempted
-         *
-         * @param attempt     Current reconnection attempt number
-         * @param maxAttempts Maximum number of attempts that will be made
-         * @param reason      Reason for reconnection
-         */
-        void onReconnecting(int attempt, int maxAttempts, String reason);
-
-        /**
-         * Called when reconnection was successful
-         *
-         * @param rtmpUrl The URL reconnected to
-         * @param attempt The attempt number that succeeded
-         */
-        void onReconnected(String rtmpUrl, int attempt);
-
-        /**
-         * Called when all reconnection attempts have failed
-         *
-         * @param maxAttempts The maximum number of attempts that were made
-         */
-        void onReconnectFailed(int maxAttempts);
-
-        /**
-         * Called when a streaming error occurs
-         *
-         * @param error Error message
-         */
-        void onStreamError(String error);
-    }
+    // StreamingStatusCallback interface moved to io.streaming.interfaces package
 
     /**
      * Register a callback to receive streaming status updates
