@@ -1,17 +1,26 @@
 // pages/AdminPanel.tsx
 import React, { useState, useEffect } from 'react';
 import DashboardLayout from '../components/DashboardLayout';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle,  } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Search } from "@/components/ui/search";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useNavigate } from 'react-router-dom';
 import { Loader2, CheckCircle, XCircle, Clock, Package } from 'lucide-react';
 import api from '../services/api.service';
-
+import {StatusBadge, UptimeStatus} from '@/components/ui/upTime';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+  } from "@/components/ui/select"
+import { DatePicker } from '@/components/ui/date-picker';
 interface AdminStat {
   counts: {
     development: number;
@@ -73,7 +82,17 @@ const AdminPanel: React.FC = () => {
 
   // Active tab state to replace the shadcn Tabs component
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [curUpTimeStatus, setCurUpTimeStatus] = useState('offline'); // Track current uptime status
 
+
+  // Get todays date: 
+  const today = new Date();
+  const monthNumber = today.getMonth(); // Months are 0-indexed in JavaScript
+  console.log("Current month number:", monthNumber);
+  const year = today.getFullYear();
+
+  const [monthNumberDynamic, setMonthNumberDynamic] = useState(monthNumber);
+  const [yearNumber, setYearNumber] = useState(year);
   // Admin panel component
 
   // Load admin data when component mounts
@@ -314,6 +333,13 @@ const AdminPanel: React.FC = () => {
               >
                 App Submissions
               </Button>
+              <Button
+                variant={activeTab === "app_status" ? "default" : "ghost"}
+                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary mr-2"
+                onClick={() => setActiveTab("app_status")}
+              >
+                App Status
+              </Button>
             </div>
 
             {activeTab === "dashboard" && stats && (
@@ -383,9 +409,12 @@ const AdminPanel: React.FC = () => {
                           <div className="text-sm text-gray-500">{app.packageName}</div>
                           <div className="text-xs text-gray-400">Submitted: {formatDate(app.updatedAt)}</div>
                         </div>
-                        <Button size="sm" onClick={() => openAppReview(app.packageName)}>
-                          Review
-                        </Button>
+                        <div className="flex gap-2">
+                          <StatusBadge status={curUpTimeStatus} />
+                          <Button size="sm" onClick={() => openAppReview(app.packageName)}>
+                            Review
+                          </Button>
+                        </div>
                       </div>
                     ))}
 
@@ -429,15 +458,86 @@ const AdminPanel: React.FC = () => {
                               <div className="text-xs text-gray-400">Submitted: {formatDate(app.updatedAt)}</div>
                             </div>
                           </div>
+                          <div className="flex gap-2"> 
+                            <div>
+                            <Badge variant="outline" className="text-xs">
+                              <div className={`w-2 h-2 rounded-full
+                                ${curUpTimeStatus === 'pending' ? 'bg-yellow-400' : ''}
+                                ${curUpTimeStatus === 'offline' ? 'bg-red-600' : ''}
+                                ${curUpTimeStatus === 'online' ? 'bg-green-500' : ''}
+                              `}></div>
+                              
+                              {curUpTimeStatus === 'pending' && <span>Pending</span>}
+                              {curUpTimeStatus === 'offline' && <span>Offline</span>}
+                              {curUpTimeStatus === 'online' && <span>Online</span>}
+                            </Badge>
+                          </div>
                           <Button size="sm" onClick={() => openAppReview(app.packageName)}>
                             Review
                           </Button>
+                          </div>
+                          
                         </div>
                       ))}
                     </div>
                   )}
                 </CardContent>
               </Card>
+            )}
+
+            {activeTab === "app_status" && (
+              <div className='space-y-4'>
+                <div className="flex flex-row gap-[10px]">
+                  <Search inputHint="Search app" />
+                  <Select onValueChange={(value) => console.log(value)}>
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder="Select environment" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="production">Production</SelectItem>
+                      <SelectItem value="developer">Developer</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <DatePicker initialYear={year} initialMonth={monthNumber} setMonthNumberDynamic={setMonthNumberDynamic} setYearNumber={setYearNumber} />
+                </div>
+                
+                <Card>
+                  <CardHeader>
+                    <CardTitle>App Status</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {submittedApps.length === 0 ? (
+                      <div className="py-6 text-center text-gray-500">
+                        No pending submissions
+                      </div>
+                    ) : (
+                      <div className="divide-y">
+                        {submittedApps.map((app) => (
+                          <div key={app._id} className="py-4 flex justify-between items-center">
+                            <div className="flex items-center">
+                              <img
+                                src={app.logoURL || 'https://placehold.co/100x100?text=App'}
+                                alt={app.name}
+                                className="w-10 h-10 rounded-md mr-3"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).src = 'https://placehold.co/100x100?text=App';
+                                }}
+                            />
+                              <div>
+                                <div className="font-medium">{app.name}</div>
+                                <div className="text-sm text-gray-500">{app.packageName}</div>
+                                <div className="text-xs text-gray-400">Submitted: {formatDate(app.updatedAt)}</div>
+                              </div>
+                            </div>
+                            <UptimeStatus title="Chat" uptimePercentage={100} month={monthNumberDynamic} year={yearNumber} />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+              
             )}
 
             {/* Admin management tab removed */}
