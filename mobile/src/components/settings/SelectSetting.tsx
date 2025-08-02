@@ -31,9 +31,17 @@ type SelectSettingProps = {
   options: Option[]
   onValueChange: (value: string) => void
   description?: string
+  layout?: "horizontal" | "vertical"
 }
 
-const SelectSetting: React.FC<SelectSettingProps> = ({label, value, options, onValueChange, description}) => {
+const SelectSetting: React.FC<SelectSettingProps> = ({
+  label,
+  value,
+  options,
+  onValueChange,
+  description,
+  layout = "horizontal",
+}) => {
   const {theme, themed} = useAppTheme()
   const [modalVisible, setModalVisible] = useState(false)
 
@@ -43,7 +51,7 @@ const SelectSetting: React.FC<SelectSettingProps> = ({label, value, options, onV
     <View style={styles.container}>
       <TouchableOpacity
         style={[
-          styles.selectRow,
+          layout === "horizontal" ? styles.selectRow : styles.selectColumn,
           {
             backgroundColor: theme.colors.background,
             borderRadius: theme.borderRadius.md,
@@ -55,8 +63,11 @@ const SelectSetting: React.FC<SelectSettingProps> = ({label, value, options, onV
         ]}
         onPress={() => setModalVisible(true)}
         activeOpacity={0.7}>
-        <Text text={label} style={[styles.label, {color: theme.colors.text}]} />
-        <View style={styles.valueContainer}>
+        <Text
+          text={label}
+          style={[layout === "horizontal" ? styles.label : styles.labelVertical, {color: theme.colors.text}]}
+        />
+        <View style={[styles.valueContainer, layout === "vertical" && styles.valueContainerVertical]}>
           <Text text={selectedLabel} style={[styles.selectText, {color: theme.colors.textDim}]} />
           <Icon icon="caretRight" size={16} color={theme.colors.textDim} style={styles.chevron} />
         </View>
@@ -154,6 +165,10 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 15,
   },
+  labelVertical: {
+    fontSize: 15,
+    marginBottom: 8,
+  },
   modalContent: {
     elevation: 5,
     maxHeight: "70%",
@@ -189,6 +204,10 @@ const styles = StyleSheet.create({
     flexGrow: 0,
     maxHeight: 250,
   },
+  selectColumn: {
+    flexDirection: "column",
+    alignItems: "stretch",
+  },
   selectRow: {
     alignItems: "center",
     flexDirection: "row",
@@ -201,6 +220,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     flexDirection: "row",
     gap: 4,
+  },
+  valueContainerVertical: {
+    justifyContent: "space-between",
+    width: "100%",
   },
 })
 
