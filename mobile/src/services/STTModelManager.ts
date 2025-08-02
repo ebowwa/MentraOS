@@ -1,6 +1,7 @@
 import RNFS from "react-native-fs"
 import {Platform} from "react-native"
 import {NativeModules} from "react-native"
+import {TarBz2Extractor} from "./TarBz2Extractor"
 
 const {AOSModule, FileProviderModule} = NativeModules
 
@@ -258,15 +259,24 @@ class STTModelManager {
       }
 
       console.log("Download completed, extracting...")
+      console.log(`Temp file path: ${tempPath}`)
+      console.log(`Final path: ${finalPath}`)
 
       // Extract the tar.bz2 file
       onExtractionProgress?.({percentage: 0})
 
-      // Use the appropriate native module for extraction
+      // Use native extraction on both platforms
       const nativeModule = Platform.OS === "ios" ? AOSModule : FileProviderModule
 
       if (nativeModule.extractTarBz2) {
-        await nativeModule.extractTarBz2(tempPath, finalPath)
+        console.log(`Calling native extractTarBz2 for ${Platform.OS}...`)
+        try {
+          await nativeModule.extractTarBz2(tempPath, finalPath)
+          console.log("Native extraction completed")
+        } catch (extractError) {
+          console.error("Native extraction failed:", extractError)
+          throw extractError
+        }
       } else {
         throw new Error("Model extraction not available on this platform.")
       }

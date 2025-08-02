@@ -336,44 +336,65 @@ RCT_EXPORT_METHOD(
       return;
     }
     
-    // Use system tar command to extract with strip components to remove root directory
-    NSTask *task = [[NSTask alloc] init];
-    task.launchPath = @"/usr/bin/tar";
-    task.arguments = @[@"-xjf", sourcePath, @"-C", destinationPath, @"--strip-components=1"];
+    // For iOS, we need to use a different approach since NSTask is not available
+    // and posix_spawn may not have access to system binaries
+    // We'll use NSFileManager with NSData and compression libraries
     
-    [task launch];
-    [task waitUntilExit];
-    
-    if (task.terminationStatus == 0) {
-      // Rename the model files to expected names
-      NSFileManager *fileManager = [NSFileManager defaultManager];
-      NSError *renameError = nil;
-      
-      // Rename encoder
-      NSString *oldEncoderPath = [destinationPath stringByAppendingPathComponent:@"encoder-epoch-99-avg-1.onnx"];
-      NSString *newEncoderPath = [destinationPath stringByAppendingPathComponent:@"encoder.onnx"];
-      if ([fileManager fileExistsAtPath:oldEncoderPath]) {
-        [fileManager moveItemAtPath:oldEncoderPath toPath:newEncoderPath error:&renameError];
-      }
-      
-      // Rename decoder
-      NSString *oldDecoderPath = [destinationPath stringByAppendingPathComponent:@"decoder-epoch-99-avg-1.onnx"];
-      NSString *newDecoderPath = [destinationPath stringByAppendingPathComponent:@"decoder.onnx"];
-      if ([fileManager fileExistsAtPath:oldDecoderPath]) {
-        [fileManager moveItemAtPath:oldDecoderPath toPath:newDecoderPath error:&renameError];
-      }
-      
-      // Rename joiner
-      NSString *oldJoinerPath = [destinationPath stringByAppendingPathComponent:@"joiner-epoch-99-avg-1.int8.onnx"];
-      NSString *newJoinerPath = [destinationPath stringByAppendingPathComponent:@"joiner.onnx"];
-      if ([fileManager fileExistsAtPath:oldJoinerPath]) {
-        [fileManager moveItemAtPath:oldJoinerPath toPath:newJoinerPath error:&renameError];
-      }
-      
-      resolve(@(YES));
-    } else {
-      reject(@"EXTRACTION_ERROR", @"Failed to extract tar.bz2 file", nil);
+    // Try to decompress using NSData (this is a simplified approach)
+    // For production, you might want to use a library like libarchive
+    NSData *compressedData = [NSData dataWithContentsOfFile:sourcePath];
+    if (!compressedData) {
+      reject(@"EXTRACTION_ERROR", @"Failed to read compressed file", nil);
+      return;
     }
+    
+    // Create a temporary directory for extraction
+    NSString *tempExtractPath = [NSTemporaryDirectory() stringByAppendingPathComponent:[[NSUUID UUID] UUIDString]];
+    [fileManager createDirectoryAtPath:tempExtractPath
+           withIntermediateDirectories:YES
+                            attributes:nil
+                                 error:&error];
+    
+    // Use NSTask alternative for iOS - NSProcess doesn't exist, so we'll use a workaround
+    // Extract using gunzip and tar programmatically
+    // First, decompress bz2 to tar
+    NSString *tarPath = [tempExtractPath stringByAppendingPathComponent:@"temp.tar"];
+    
+    // Use the Swift TarBz2Extractor with SWCompression
+    NSError *extractionError = nil;
+    BOOL success = [TarBz2Extractor extractTarBz2From:sourcePath to:destinationPath error:&extractionError];
+    
+    if (!success || extractionError) {
+      reject(@"EXTRACTION_ERROR", extractionError.localizedDescription ?: @"Failed to extract tar.bz2", extractionError);
+      return;
+    }
+    
+    // Files should now be extracted, but we might still need to rename some
+    // (The Swift extractor already handles the common renames, but let's check)
+    NSError *renameError = nil;
+    
+    // Rename encoder
+    NSString *oldEncoderPath = [destinationPath stringByAppendingPathComponent:@"encoder-epoch-99-avg-1.onnx"];
+    NSString *newEncoderPath = [destinationPath stringByAppendingPathComponent:@"encoder.onnx"];
+    if ([fileManager fileExistsAtPath:oldEncoderPath]) {
+      [fileManager moveItemAtPath:oldEncoderPath toPath:newEncoderPath error:&renameError];
+    }
+    
+    // Rename decoder
+    NSString *oldDecoderPath = [destinationPath stringByAppendingPathComponent:@"decoder-epoch-99-avg-1.onnx"];
+    NSString *newDecoderPath = [destinationPath stringByAppendingPathComponent:@"decoder.onnx"];
+    if ([fileManager fileExistsAtPath:oldDecoderPath]) {
+      [fileManager moveItemAtPath:oldDecoderPath toPath:newDecoderPath error:&renameError];
+    }
+    
+    // Rename joiner
+    NSString *oldJoinerPath = [destinationPath stringByAppendingPathComponent:@"joiner-epoch-99-avg-1.int8.onnx"];
+    NSString *newJoinerPath = [destinationPath stringByAppendingPathComponent:@"joiner.onnx"];
+    if ([fileManager fileExistsAtPath:oldJoinerPath]) {
+      [fileManager moveItemAtPath:oldJoinerPath toPath:newJoinerPath error:&renameError];
+    }
+    
+    resolve(@(YES));
   }
   @catch(NSException *exception) {
     reject(@"EXTRACTION_ERROR", exception.description, nil);

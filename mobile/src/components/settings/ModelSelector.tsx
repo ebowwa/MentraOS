@@ -102,7 +102,7 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
             />
           </View>
           <View style={styles.optionIcons}>
-            {isSelected && <MaterialCommunityIcons name="check" size={24} color={theme.colors.primary} />}
+            {isSelected && <MaterialCommunityIcons name="check" size={24} color={theme.colors.text} />}
           </View>
         </View>
       </Pressable>
@@ -203,7 +203,15 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
                       shadowRadius: theme.spacing.xs,
                     },
                   ]}>
-                  <View style={[styles.modalHeader, {marginBottom: theme.spacing.sm, padding: theme.spacing.md}]}>
+                  <View
+                    style={[
+                      styles.modalHeader,
+                      {
+                        marginBottom: theme.spacing.sm,
+                        padding: theme.spacing.md,
+                        borderBottomColor: theme.colors.separator,
+                      },
+                    ]}>
                     <Text text="Select Model" style={[styles.modalLabel, {color: theme.colors.text}]} />
                   </View>
                   <FlatList
@@ -270,7 +278,6 @@ const styles = StyleSheet.create({
   },
   modalHeader: {
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#E5E5EA",
   },
   modalLabel: {
     fontSize: 18,
