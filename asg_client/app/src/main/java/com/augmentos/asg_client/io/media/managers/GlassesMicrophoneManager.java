@@ -12,8 +12,8 @@ import android.util.Log;
 
 import androidx.core.app.ActivityCompat;
 
-import com.augmentos.asg_client.bluetooth.BluetoothManagerFactory;
-import com.augmentos.asg_client.bluetooth.IBluetoothManager;
+import com.augmentos.asg_client.io.bluetooth.core.BluetoothManagerFactory;
+import com.augmentos.asg_client.io.bluetooth.interfaces.IBluetoothManager;
 import com.augmentos.smartglassesmanager.cpp.L3cCpp;
 
 import java.nio.ByteBuffer;
