@@ -27,7 +27,7 @@ const TextSettingNoSave: React.FC<TextSettingNoSaveProps> = ({label, value, onCh
   )
 
   const handleOpenEditor = () => {
-    push("/app/text-editor", {label, value, settingKey})
+    push("/applet/text-editor", {label, value, settingKey})
   }
 
   return (

@@ -1,40 +1,14 @@
 import React, {useState, useEffect, useCallback} from "react"
-import {
-  View,
-  Text,
-  StyleSheet,
-  Switch,
-  ScrollView,
-  Alert,
-  Platform,
-  Button,
-  ViewStyle,
-  TextStyle,
-  Dimensions,
-} from "react-native"
+import {StyleSheet, ScrollView, Platform, ViewStyle, TextStyle} from "react-native"
 import {useStatus} from "@/contexts/AugmentOSStatusProvider"
 import coreCommunicator from "@/bridge/CoreCommunicator"
-import {Slider} from "react-native-elements"
 import {Header, Screen} from "@/components/ignite"
-import {spacing, ThemedStyle} from "@/theme"
+import {ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
-import {router, useFocusEffect} from "expo-router"
+import {useFocusEffect} from "expo-router"
 import {Spacer} from "@/components/misc/Spacer"
-import ToggleSetting from "@/components/settings/ToggleSetting"
 import SliderSetting from "@/components/settings/SliderSetting"
-import {translate} from "@/i18n"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
-
-const parseBrightness = (brightnessStr: string | null | undefined): number => {
-  if (typeof brightnessStr === "number") {
-    return brightnessStr
-  }
-  if (!brightnessStr || brightnessStr.includes("-")) {
-    return 50
-  }
-  const parsed = parseInt(brightnessStr.replace("%", ""), 10)
-  return isNaN(parsed) ? 50 : parsed
-}
 
 export default function ScreenSettingsScreen() {
   const {status} = useStatus()
@@ -43,8 +17,8 @@ export default function ScreenSettingsScreen() {
   // -- States --
   const [brightness, setBrightness] = useState<number | null>(null)
   const [isAutoBrightnessEnabled, setIsAutoBrightnessEnabled] = useState(status.glasses_settings.auto_brightness)
-  const [depth, setDepth] = useState<number | null>(null)
-  const [height, setHeight] = useState<number | null>(null)
+  const [depth, setDepth] = useState<number | null>(status.glasses_settings.dashboard_depth)
+  const [height, setHeight] = useState<number | null>(status.glasses_settings.dashboard_height)
 
   // -- Effects --
   useEffect(() => {

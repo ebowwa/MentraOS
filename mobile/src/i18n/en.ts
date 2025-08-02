@@ -285,6 +285,7 @@ const en = {
     delete: "Delete",
     continue: "Continue",
     next: "Next",
+    request: "Request",
   },
   welcomeScreen: {
     postscript:
