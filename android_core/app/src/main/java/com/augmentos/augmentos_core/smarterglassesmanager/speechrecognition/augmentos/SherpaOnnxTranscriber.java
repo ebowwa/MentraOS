@@ -118,24 +118,14 @@ public class SherpaOnnxTranscriber {
                 recognizer = new OnlineRecognizer(context.getAssets(), config);
                 
             } else {
-                // Fall back to assets (for backwards compatibility)
-                Log.i(TAG, "Using bundled models from assets");
+                // No model available - transcription disabled
+                Log.w(TAG, "No Sherpa ONNX model available. Transcription will be disabled.");
+                Log.w(TAG, "Please download a model using the model downloader in settings.");
                 
-                OnlineTransducerModelConfig transducer = new OnlineTransducerModelConfig();
-                transducer.setEncoder("sherpa_onnx/encoder.onnx");
-                transducer.setDecoder("sherpa_onnx/decoder.onnx");
-                transducer.setJoiner("sherpa_onnx/joiner.onnx");
-                modelConfig.setTokens("sherpa_onnx/tokens.txt");
-                
-                modelConfig.setTransducer(transducer);
-                modelConfig.setNumThreads(1);
-                
-                config.setModelConfig(modelConfig);
-                config.setDecodingMethod("greedy_search");
-                config.setEnableEndpoint(true);
-                
-                // Create recognizer with assets
-                recognizer = new OnlineRecognizer(context.getAssets(), config);
+                // Set recognizer to null to indicate no model is available
+                recognizer = null;
+                stream = null;
+                return; // Exit early - don't start processing thread
             }
 
             stream = recognizer.createStream("");
