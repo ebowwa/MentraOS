@@ -241,6 +241,18 @@ public class CircularVideoBufferInternal {
         // Update current index
         mCurrentSegmentIndex = nextIndex;
         
+        // Start recording on the new segment
+        try {
+            MediaRecorder nextRecorder = mRecorders[mCurrentSegmentIndex];
+            if (nextRecorder != null) {
+                nextRecorder.start();
+                mSegmentStartTimes[mCurrentSegmentIndex] = System.currentTimeMillis();
+                Log.d(TAG, "Started recording on segment " + mCurrentSegmentIndex);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error starting recording on segment " + mCurrentSegmentIndex, e);
+        }
+        
         // Notify CameraNeo to switch camera session to new surface
         if (mCallback != null) {
             Surface newSurface = mSurfaces[mCurrentSegmentIndex];

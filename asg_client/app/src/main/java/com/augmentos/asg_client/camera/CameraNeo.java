@@ -520,6 +520,10 @@ public class CameraNeo extends LifecycleService {
         
         Log.d(TAG, "Stopping buffer recording");
         
+        // Clear buffer mode flag
+        isInBufferMode = false;
+        currentMode = RecordingMode.SINGLE_VIDEO;
+        
         // Stop segment timer
         stopSegmentSwitchTimer();
         
@@ -528,10 +532,6 @@ public class CameraNeo extends LifecycleService {
             bufferManager.stopBuffering();
             bufferManager = null;
         }
-        
-        // Reset mode
-        isInBufferMode = false;
-        currentMode = RecordingMode.SINGLE_VIDEO;
         
         // Close camera
         closeCamera();
