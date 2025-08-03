@@ -11,6 +11,7 @@ cmake:
   devicetree:
     bindings-dirs:
      - /opt/nordic/ncs/v3.0.0/nrf/dts/bindings
+     - /Users/loayyari/Documents/Github/MentraOS/mcu_client/nrf5340_ble_simulator/custom_driver_module/dts/bindings
      - /opt/nordic/ncs/v3.0.0/zephyr/dts/bindings
     files:
      - /opt/nordic/ncs/v3.0.0/zephyr/boards/nordic/nrf5340dk/nrf5340dk_nrf5340_cpuapp_ns.dts
@@ -21,6 +22,7 @@ cmake:
      - /opt/nordic/ncs/v3.0.0/nrf/dts/riscv
      - /opt/nordic/ncs/v3.0.0/nrf/dts/arm
      - /opt/nordic/ncs/v3.0.0/nrf/dts
+     - /Users/loayyari/Documents/Github/MentraOS/mcu_client/nrf5340_ble_simulator/custom_driver_module/dts
      - /opt/nordic/ncs/v3.0.0/zephyr/include
      - /opt/nordic/ncs/v3.0.0/zephyr/include/zephyr
      - /opt/nordic/ncs/v3.0.0/zephyr/dts/common

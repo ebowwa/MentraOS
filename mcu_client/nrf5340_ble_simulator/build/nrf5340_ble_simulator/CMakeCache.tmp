@@ -581,7 +581,7 @@ pb_encode.h__nano_pb_file:FILEPATH=/opt/nordic/ncs/v3.0.0/modules/lib/nanopb/pb_
 //List of board directories for board (nrf5340dk)
 BOARD_DIRECTORIES:INTERNAL=/opt/nordic/ncs/v3.0.0/zephyr/boards/nordic/nrf5340dk
 //DT bindings root directories
-CACHED_DTS_ROOT_BINDINGS:INTERNAL=/opt/nordic/ncs/v3.0.0/nrf/dts/bindings;/opt/nordic/ncs/v3.0.0/zephyr/dts/bindings
+CACHED_DTS_ROOT_BINDINGS:INTERNAL=/opt/nordic/ncs/v3.0.0/nrf/dts/bindings;/Users/loayyari/Documents/Github/MentraOS/mcu_client/nrf5340_ble_simulator/custom_driver_module/dts/bindings;/opt/nordic/ncs/v3.0.0/zephyr/dts/bindings
 //ADVANCED property for variable: CMAKE_ADDR2LINE
 CMAKE_ADDR2LINE-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: CMAKE_AR
@@ -691,7 +691,7 @@ CMAKE_MODULE_LINKER_FLAGS_RELWITHDEBINFO-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: CMAKE_NM
 CMAKE_NM-ADVANCED:INTERNAL=1
 //number of local generators
-CMAKE_NUMBER_OF_MAKEFILES:INTERNAL=209
+CMAKE_NUMBER_OF_MAKEFILES:INTERNAL=214
 //ADVANCED property for variable: CMAKE_OBJCOPY
 CMAKE_OBJCOPY-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: CMAKE_OBJDUMP

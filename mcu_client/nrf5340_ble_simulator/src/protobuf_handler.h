@@ -134,6 +134,27 @@ void protobuf_set_brightness_level(uint32_t level);
  */
 void protobuf_process_brightness_config(const mentraos_ble_BrightnessConfig *brightness_config);
 
+/**
+ * @brief Process display text message
+ *
+ * @param display_text Pointer to display text message
+ */
+void protobuf_process_display_text(const mentraos_ble_DisplayText *display_text);
+
+/**
+ * @brief Process display scrolling text message
+ *
+ * @param scrolling_text Pointer to display scrolling text message
+ */
+void protobuf_process_display_scrolling_text(const mentraos_ble_DisplayScrollingText *scrolling_text);
+
+/**
+ * @brief Parse brightness value from text message
+ *
+ * @param text Pointer to text string containing brightness information
+ */
+void protobuf_parse_text_brightness(const char *text);
+
 #ifdef __cplusplus
 }
 #endif

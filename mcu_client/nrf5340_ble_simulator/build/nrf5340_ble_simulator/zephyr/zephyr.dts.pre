@@ -1347,6 +1347,42 @@ zephyr_udc0: &usbd {
  chosen {
   nordic,nus-uart = &uart0;
  };
+
+ pwmleds {
+  compatible = "pwm-leds";
+
+
+  pwm_led3: pwm_led_3 {
+   pwms = <&pwm1 0 (((20) * 1000UL) * 1000UL) (1 << 0)>;
+   label = "PWM LED 3";
+  };
+ };
+
+ aliases {
+  pwm-led3 = &pwm_led3;
+ };
+};
+
+&pinctrl {
+ pwm1_default: pwm1_default {
+  group1 {
+   psels = <((((((0) * 32U) + (31)) & 0x1FFU) << 0U) | ((22U & 0xFFU) << 24U))>;
+  };
+ };
+
+ pwm1_sleep: pwm1_sleep {
+  group1 {
+   psels = <((((((0) * 32U) + (31)) & 0x1FFU) << 0U) | ((22U & 0xFFU) << 24U))>;
+   low-power-enable;
+  };
+ };
+};
+
+&pwm1 {
+ status = "okay";
+ pinctrl-0 = <&pwm1_default>;
+ pinctrl-1 = <&pwm1_sleep>;
+ pinctrl-names = "default", "sleep";
 };
 # 0 "<command-line>" 2
 # 1 "/opt/nordic/ncs/v3.0.0/zephyr/misc/empty_file.c"

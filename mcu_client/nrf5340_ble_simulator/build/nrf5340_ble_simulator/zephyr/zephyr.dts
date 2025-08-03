@@ -36,6 +36,7 @@
 		mcuboot-led0 = &led0;
 		pwm-led0 = &pwm_led0;
 		watchdog0 = &wdt0;
+		pwm-led3 = &pwm_led3;
 	};
 	soc {
 		#address-cells = < 0x1 >;
@@ -290,7 +291,7 @@
 				status = "okay";
 				#io-channel-cells = < 0x1 >;
 				zephyr,pm-device-runtime-auto;
-				phandle = < 0x16 >;
+				phandle = < 0x19 >;
 			};
 			timer0: timer@f000 {
 				compatible = "nordic,nrf-timer";
@@ -309,7 +310,7 @@
 				max-bit-width = < 0x20 >;
 				interrupts = < 0x10 0x1 >;
 				prescaler = < 0x0 >;
-				phandle = < 0x10 >;
+				phandle = < 0x12 >;
 			};
 			timer2: timer@11000 {
 				compatible = "nordic,nrf-timer";
@@ -406,14 +407,18 @@
 				pinctrl-0 = < &pwm0_default >;
 				pinctrl-1 = < &pwm0_sleep >;
 				pinctrl-names = "default", "sleep";
-				phandle = < 0x15 >;
+				phandle = < 0x17 >;
 			};
 			pwm1: pwm@22000 {
 				compatible = "nordic,nrf-pwm";
 				reg = < 0x22000 0x1000 >;
 				interrupts = < 0x22 0x1 >;
-				status = "disabled";
+				status = "okay";
 				#pwm-cells = < 0x3 >;
+				pinctrl-0 = < &pwm1_default >;
+				pinctrl-1 = < &pwm1_sleep >;
+				pinctrl-names = "default", "sleep";
+				phandle = < 0x18 >;
 			};
 			pwm2: pwm@23000 {
 				compatible = "nordic,nrf-pwm";
@@ -451,7 +456,7 @@
 				interrupts = < 0x2a 0x1 >;
 				#mbox-cells = < 0x1 >;
 				status = "okay";
-				phandle = < 0x12 >;
+				phandle = < 0x14 >;
 			};
 			qspi: qspi@2b000 {
 				compatible = "nordic,nrf-qspi";
@@ -591,7 +596,7 @@
 				status = "okay";
 				port = < 0x0 >;
 				gpiote-instance = < &gpiote >;
-				phandle = < 0x13 >;
+				phandle = < 0x15 >;
 			};
 			gpio1: gpio@842800 {
 				compatible = "nordic,nrf-gpio";
@@ -602,7 +607,7 @@
 				status = "okay";
 				port = < 0x1 >;
 				gpiote-instance = < &gpiote >;
-				phandle = < 0x14 >;
+				phandle = < 0x16 >;
 			};
 			ieee802154: ieee802154 {
 				compatible = "nordic,nrf-ieee802154";
@@ -615,7 +620,7 @@
 			interrupts = < 0x2f 0x5 >;
 			status = "okay";
 			instance = < 0x1 >;
-			phandle = < 0xf >;
+			phandle = < 0x11 >;
 		};
 	};
 	pinctrl: pin-controller {
@@ -664,14 +669,14 @@
 			};
 		};
 		qspi_default: qspi_default {
-			phandle = < 0xd >;
+			phandle = < 0xf >;
 			group1 {
 				psels = < 0x1d000011 >, < 0x1f00000d >, < 0x2000000e >, < 0x2100000f >, < 0x22000010 >, < 0x1e000012 >;
 				nordic,drive-mode = < 0x3 >;
 			};
 		};
 		qspi_sleep: qspi_sleep {
-			phandle = < 0xe >;
+			phandle = < 0x10 >;
 			group1 {
 				psels = < 0x1d000011 >, < 0x1f00000d >, < 0x2000000e >, < 0x2100000f >, < 0x22000010 >;
 				low-power-enable;
@@ -709,6 +714,19 @@
 			phandle = < 0xa >;
 			group1 {
 				psels = < 0x400002f >, < 0x600002e >, < 0x500002d >;
+				low-power-enable;
+			};
+		};
+		pwm1_default: pwm1_default {
+			phandle = < 0xd >;
+			group1 {
+				psels = < 0x1600001f >;
+			};
+		};
+		pwm1_sleep: pwm1_sleep {
+			phandle = < 0xe >;
+			group1 {
+				psels = < 0x1600001f >;
 				low-power-enable;
 			};
 		};
@@ -812,6 +830,10 @@
 		pwm_led0: pwm_led_0 {
 			pwms = < &pwm0 0x0 0x1312d00 0x1 >;
 		};
+		pwm_led3: pwm_led_3 {
+			pwms = < &pwm1 0x0 0x1312d00 0x1 >;
+			label = "PWM LED 3";
+		};
 	};
 	arduino_adc: analog-connector {
 		compatible = "arduino,uno-adc";
@@ -843,7 +865,7 @@
 		};
 		sram0_shared: memory@20070000 {
 			reg = < 0x20070000 0x10000 >;
-			phandle = < 0x11 >;
+			phandle = < 0x13 >;
 		};
 	};
 };

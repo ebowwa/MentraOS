@@ -29,7 +29,10 @@ target_sources(app PRIVATE
 )
 
 # Add protobuf sources when available
-if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/src/mentraos_ble.pb.c)
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/src/proto/mentraos_ble.pb.c)
+  target_sources(app PRIVATE src/proto/mentraos_ble.pb.c)
+  target_include_directories(app PRIVATE src/proto)
+elseif(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/src/mentraos_ble.pb.c)
   target_sources(app PRIVATE src/mentraos_ble.pb.c)
 endif()
 

@@ -241,6 +241,12 @@ config ZEPHYR_ZCBOR_MODULE
 	bool
 	default y
 endmenu
+menu "custom_driver_module (/Users/loayyari/Documents/Github/MentraOS/mcu_client/nrf5340_ble_simulator/custom_driver_module)"
+osource "/Users/loayyari/Documents/Github/MentraOS/mcu_client/nrf5340_ble_simulator/custom_driver_module/Kconfig"
+config ZEPHYR_CUSTOM_DRIVER_MODULE_MODULE
+	bool
+	default y
+endmenu
 menu "nrfxlib (/opt/nordic/ncs/v3.0.0/nrfxlib)"
 osource "/opt/nordic/ncs/v3.0.0/nrfxlib/Kconfig.nrfxlib"
 config ZEPHYR_NRFXLIB_MODULE

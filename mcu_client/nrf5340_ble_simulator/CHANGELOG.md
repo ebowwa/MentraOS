@@ -2,6 +2,44 @@
 
 All notable changes to the nRF5340 DK BLE Glasses Protobuf Simulator will be documented in this file.
 
+## [1.3.0] - 2025-08-04
+
+### Added
+- **Full protobuf text message parsing** using nanopb with direct string support
+  - Successfully parsing DisplayText (tag 30) and DisplayScrollingText (tag 35) messages
+  - Extracted text content with length calculation and full message details
+  - Added nanopb options file for direct char arrays instead of callbacks
+  - Regenerated protobuf files with proper string handling configuration
+- **Protocol compliance verification** for text messaging functionality
+  - Confirmed Hello World messages parse correctly from mobile app
+  - Comprehensive text field extraction including color, position, font details
+  - UART output showing parsed text content and message length
+- **Debug infrastructure improvements** for protocol analysis
+  - Enhanced hex dump output for message inspection
+  - ASCII string representation for non-protobuf message debugging
+  - Protocol header detection (0x02 for protobuf, 0xA0 for audio, 0xB0 for image)
+
+### Protocol Standards
+- **Official protobuf message support** for BrightnessConfig (tag 37)
+- **Text brightness parsing disabled** pending mobile app team discussion
+  - Mobile app currently sends debug text instead of official protobuf
+  - Text parsing code preserved but commented for future protocol alignment
+  - Clear documentation for mobile app team regarding protocol compliance
+
+### Technical Improvements
+- **nanopb configuration optimized** for embedded string handling
+  - Created proto/mentraos_ble.options for direct string field configuration
+  - Updated CMakeLists.txt to use new protobuf generation path
+  - Resolved protobuf file conflicts between callback and direct string versions
+- **Memory efficient text processing** with 128-character string limits
+- **Build system cleanup** removing duplicate protobuf definitions
+
+### Testing Status
+- ✅ **DisplayText messages working**: Hello World messages successfully parsed
+- ✅ **Brightness control working**: Official protobuf brightness messages functional
+- ⚠️ **Live captions not available**: Cannot test longer text messages currently
+- 📝 **Protocol discussion needed**: Text brightness vs official BrightnessConfig
+
 ## [1.2.0] - 2025-08-04
 
 ### Added

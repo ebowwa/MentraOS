@@ -10,9 +10,10 @@
 #include <zephyr/device.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "protobuf_handler.h"
-#include "mentraos_ble.pb.h"
+#include "proto/mentraos_ble.pb.h"
 #include "mentra_ble_service.h"
 #include <pb_decode.h>
 #include <pb_encode.h>
@@ -69,16 +70,32 @@ void protobuf_analyze_message(const uint8_t *data, uint16_t len)
 		break;
 	}
 
-	// Show raw ASCII if printable
+	// Show raw ASCII if printable and check for brightness text
 	LOG_INF("[ASCII] Raw string: \"");
-	for (int i = 0; i < len; i++) {
+	char ascii_buffer[256] = {0};
+	int ascii_idx = 0;
+	
+	for (int i = 0; i < len && ascii_idx < 255; i++) {
 		if (data[i] >= 32 && data[i] <= 126) {
 			printk("%c", data[i]);
+			ascii_buffer[ascii_idx++] = data[i];
 		} else {
 			printk(".");
 		}
 	}
 	printk("\"\n");
+	
+	// TODO: Discuss with mobile app team - brightness text messages are not part of official protocol
+	// The official protocol uses BrightnessConfig protobuf (tag 37), but mobile app sends debug text
+	// Commenting out for now to focus on official protocol compliance
+	/*
+	// Check if this is a brightness adjustment message in text format
+	if (strstr(ascii_buffer, "Brightness Adjustment") || 
+	    strstr(ascii_buffer, "brightness to")) {
+		protobuf_parse_text_brightness(ascii_buffer);
+	}
+	*/
+	
 	LOG_INF("=== END BLE DATA ===");
 }
 
@@ -119,13 +136,16 @@ void protobuf_parse_control_message(const uint8_t *protobuf_data, uint16_t len)
 			
 		case 30: // display_text_tag
 			LOG_INF("📱 Display text received");
-			// Access text safely - will need to check the DisplayText structure
-			// TODO: Display text on glasses
+			if (phone_msg.which_payload == mentraos_ble_PhoneToGlasses_display_text_tag) {
+				protobuf_process_display_text(&phone_msg.payload.display_text);
+			}
 			break;
 			
-		case 35: // display_scrolling_text_tag (estimated)
+		case 35: // display_scrolling_text_tag
 			LOG_INF("📱 Display scrolling text received");
-			// TODO: Display scrolling text
+			if (phone_msg.which_payload == mentraos_ble_PhoneToGlasses_display_scrolling_text_tag) {
+				protobuf_process_display_scrolling_text(&phone_msg.payload.display_scrolling_text);
+			}
 			break;
 			
 		case 16: // ping_tag
@@ -387,4 +407,98 @@ void protobuf_process_brightness_config(const mentraos_ble_BrightnessConfig *bri
 	protobuf_set_brightness_level(new_level);
 	
 	LOG_INF("💡 Brightness updated to %u%%", current_brightness_level);
+}
+
+void protobuf_process_display_text(const mentraos_ble_DisplayText *display_text)
+{
+	if (!display_text) {
+		LOG_ERR("Invalid display text pointer");
+		return;
+	}
+	
+	LOG_INF("=== DISPLAY TEXT MESSAGE ===");
+	LOG_INF("Text: \"%s\" (length: %zu)", display_text->text, strlen(display_text->text));
+	LOG_INF("Color: 0x%06X (RGB565: 0x%04X)", display_text->color, (uint16_t)display_text->color);
+	LOG_INF("Font code: %u", display_text->font_code);
+	LOG_INF("Position: (%u, %u)", display_text->x, display_text->y);
+	LOG_INF("Size: %u", display_text->size);
+	
+	// Print to UART with text content and length
+	printk("\n[UART TEXT] Display Text: \"%s\" (length: %zu)\n", 
+	       display_text->text, strlen(display_text->text));
+	
+	LOG_INF("=== END DISPLAY TEXT ===");
+}
+
+void protobuf_process_display_scrolling_text(const mentraos_ble_DisplayScrollingText *scrolling_text)
+{
+	if (!scrolling_text) {
+		LOG_ERR("Invalid scrolling text pointer");
+		return;
+	}
+	
+	LOG_INF("=== SCROLLING TEXT MESSAGE ===");
+	LOG_INF("Text: \"%s\" (length: %zu)", scrolling_text->text, strlen(scrolling_text->text));
+	LOG_INF("Color: 0x%06X (RGB565: 0x%04X)", scrolling_text->color, (uint16_t)scrolling_text->color);
+	LOG_INF("Font code: %u", scrolling_text->font_code);
+	LOG_INF("Position: (%u, %u)", scrolling_text->x, scrolling_text->y);
+	LOG_INF("Area: %ux%u", scrolling_text->width, scrolling_text->height);
+	LOG_INF("Alignment: %u", scrolling_text->align);
+	LOG_INF("Speed: %u px/sec", scrolling_text->speed);
+	LOG_INF("Line spacing: %u px", scrolling_text->line_spacing);
+	LOG_INF("Loop: %s", scrolling_text->loop ? "true" : "false");
+	LOG_INF("Pause: %u ms", scrolling_text->pause_ms);
+	
+	// Print to UART with text content and length
+	printk("\n[UART TEXT] Scrolling Text: \"%s\" (length: %zu)\n", 
+	       scrolling_text->text, strlen(scrolling_text->text));
+	
+	LOG_INF("=== END SCROLLING TEXT ===");
+}
+
+void protobuf_parse_text_brightness(const char *text)
+{
+	if (!text) {
+		return;
+	}
+	
+	LOG_INF("📝 TEXT BRIGHTNESS PARSER ACTIVATED");
+	LOG_INF("📝 Parsing text: \"%s\"", text);
+	
+	// Look for patterns like "brightness to 61%" or "61%"
+	const char *brightness_keyword = "brightness to ";
+	const char *percent_sign = "%";
+	
+	char *brightness_pos = strstr(text, brightness_keyword);
+	if (brightness_pos) {
+		// Found "brightness to" pattern
+		brightness_pos += strlen(brightness_keyword);
+		
+		// Extract the number before the % sign
+		int brightness_value = 0;
+		char *percent_pos = strstr(brightness_pos, percent_sign);
+		
+		if (percent_pos) {
+			// Create a temporary string to extract the number
+			int num_chars = percent_pos - brightness_pos;
+			if (num_chars > 0 && num_chars < 10) {
+				char num_str[10];
+				strncpy(num_str, brightness_pos, num_chars);
+				num_str[num_chars] = '\0';
+				
+				brightness_value = atoi(num_str);
+				
+				LOG_INF("💡 TEXT BRIGHTNESS: Extracted value %d%%", brightness_value);
+				
+				if (brightness_value >= 0 && brightness_value <= 100) {
+					protobuf_set_brightness_level((uint32_t)brightness_value);
+					printk("\n[UART BRIGHTNESS] Text brightness set to %d%%\n", brightness_value);
+				} else {
+					LOG_WRN("⚠️ TEXT BRIGHTNESS: Invalid value %d (must be 0-100)", brightness_value);
+				}
+			}
+		}
+	} else {
+		LOG_DBG("📝 TEXT BRIGHTNESS: No brightness pattern found in text");
+	}
 }

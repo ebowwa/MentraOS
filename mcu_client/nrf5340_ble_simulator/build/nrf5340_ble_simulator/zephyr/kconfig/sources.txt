@@ -11,6 +11,10 @@
 /Users/loayyari/Documents/Github/MentraOS/mcu_client/nrf5340_ble_simulator/build/nrf5340_ble_simulator/Kconfig/soc/Kconfig
 /Users/loayyari/Documents/Github/MentraOS/mcu_client/nrf5340_ble_simulator/build/nrf5340_ble_simulator/Kconfig/soc/Kconfig.defconfig
 /Users/loayyari/Documents/Github/MentraOS/mcu_client/nrf5340_ble_simulator/build/nrf5340_ble_simulator/Kconfig/soc/Kconfig.soc
+/Users/loayyari/Documents/Github/MentraOS/mcu_client/nrf5340_ble_simulator/custom_driver_module/Kconfig
+/Users/loayyari/Documents/Github/MentraOS/mcu_client/nrf5340_ble_simulator/custom_driver_module/drivers/Kconfig
+/Users/loayyari/Documents/Github/MentraOS/mcu_client/nrf5340_ble_simulator/custom_driver_module/drivers/display/Kconfig
+/Users/loayyari/Documents/Github/MentraOS/mcu_client/nrf5340_ble_simulator/custom_driver_module/drivers/display/lcd/Kconfig
 /opt/nordic/ncs/toolchains/ef4fc6722e/opt/zephyr-sdk/cmake/zephyr/Kconfig
 /opt/nordic/ncs/v3.0.0/modules/crypto/oberon-psa-crypto/Kconfig.oberon_psa_crypto
 /opt/nordic/ncs/v3.0.0/modules/debug/percepio/DFM/kernelports/Zephyr/Kconfig
