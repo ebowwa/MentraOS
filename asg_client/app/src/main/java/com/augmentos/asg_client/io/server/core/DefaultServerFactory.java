@@ -1,8 +1,8 @@
-package com.augmentos.asg_client.server.impl;
+package com.augmentos.asg_client.io.server.core;
 
 import android.content.Context;
-import com.augmentos.asg_client.server.interfaces.*;
-import com.augmentos.asg_client.server.AsgCameraServer;
+import com.augmentos.asg_client.io.server.interfaces.*;
+import com.augmentos.asg_client.io.server.services.AsgCameraServer;
 import com.augmentos.asg_client.logging.Logger;
 import com.augmentos.asg_client.logging.LoggerFactory;
 

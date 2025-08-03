@@ -1,13 +1,17 @@
-package com.augmentos.asg_client.server;
+package com.augmentos.asg_client.io.server.services;
 
 import android.content.Context;
 import com.augmentos.asg_client.io.media.core.CameraNeo;
-import com.augmentos.asg_client.server.impl.AndroidLogger;
-import com.augmentos.asg_client.server.impl.DefaultCacheManager;
-import com.augmentos.asg_client.server.impl.DefaultNetworkProvider;
-import com.augmentos.asg_client.server.impl.DefaultRateLimiter;
-import com.augmentos.asg_client.server.impl.DefaultServerConfig;
-import com.augmentos.asg_client.server.interfaces.*;
+import com.augmentos.asg_client.io.server.core.AsgServer;
+import com.augmentos.asg_client.io.server.core.DefaultCacheManager;
+import com.augmentos.asg_client.io.server.core.DefaultNetworkProvider;
+import com.augmentos.asg_client.io.server.core.DefaultRateLimiter;
+import com.augmentos.asg_client.io.server.core.DefaultServerConfig;
+import com.augmentos.asg_client.io.server.interfaces.*;
+import com.augmentos.asg_client.logging.Logger;
+import com.augmentos.asg_client.logging.LoggerFactory;
+import fi.iki.elonen.NanoHTTPD.IHTTPSession;
+import fi.iki.elonen.NanoHTTPD.Response;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -109,7 +113,7 @@ public class AsgCameraServer extends AsgServer {
     }
 
     private static Logger createDefaultLogger() {
-        return new AndroidLogger();
+        return LoggerFactory.createLogger();
     }
 
     /**

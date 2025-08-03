@@ -1,7 +1,11 @@
-package com.augmentos.asg_client.server;
+package com.augmentos.asg_client.io.server.core;
 
-import com.augmentos.asg_client.server.interfaces.*;
+import com.augmentos.asg_client.io.server.interfaces.*;
+import com.augmentos.asg_client.logging.Logger;
 import fi.iki.elonen.NanoHTTPD;
+import fi.iki.elonen.NanoHTTPD.IHTTPSession;
+import fi.iki.elonen.NanoHTTPD.Response;
+import fi.iki.elonen.NanoHTTPD.Method;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.HashMap;

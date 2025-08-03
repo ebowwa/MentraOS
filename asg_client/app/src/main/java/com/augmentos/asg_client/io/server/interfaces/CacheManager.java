@@ -1,4 +1,4 @@
-package com.augmentos.asg_client.server.interfaces;
+package com.augmentos.asg_client.io.server.interfaces;
 
 /**
  * Cache management interface for storing and retrieving data.

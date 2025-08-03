@@ -1,7 +1,9 @@
-package com.augmentos.asg_client.server;
+package com.augmentos.asg_client.io.server.managers;
 
-import com.augmentos.asg_client.server.interfaces.*;
-import com.augmentos.asg_client.server.impl.DefaultServerFactory;
+import com.augmentos.asg_client.io.server.core.AsgServer;
+import com.augmentos.asg_client.io.server.core.DefaultServerFactory;
+import com.augmentos.asg_client.io.server.interfaces.*;
+import com.augmentos.asg_client.logging.Logger;
 import android.content.Context;
 import java.util.HashMap;
 import java.util.Map;

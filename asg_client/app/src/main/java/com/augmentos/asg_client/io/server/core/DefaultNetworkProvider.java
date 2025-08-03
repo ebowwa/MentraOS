@@ -1,6 +1,6 @@
-package com.augmentos.asg_client.server.impl;
+package com.augmentos.asg_client.io.server.core;
 
-import com.augmentos.asg_client.server.interfaces.NetworkProvider;
+import com.augmentos.asg_client.io.server.interfaces.NetworkProvider;
 import com.augmentos.asg_client.logging.Logger;
 
 import java.net.InetAddress;

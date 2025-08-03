@@ -1,7 +1,7 @@
-package com.augmentos.asg_client.server.impl;
+package com.augmentos.asg_client.io.server.core;
 
 import android.content.Context;
-import com.augmentos.asg_client.server.interfaces.ServerConfig;
+import com.augmentos.asg_client.io.server.interfaces.ServerConfig;
 
 /**
  * Default implementation of ServerConfig.

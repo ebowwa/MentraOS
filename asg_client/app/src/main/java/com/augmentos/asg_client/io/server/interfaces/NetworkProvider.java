@@ -1,4 +1,4 @@
-package com.augmentos.asg_client.server.interfaces;
+package com.augmentos.asg_client.io.server.interfaces;
 
 /**
  * Network information provider interface.
