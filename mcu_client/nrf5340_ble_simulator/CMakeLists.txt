@@ -16,10 +16,10 @@ project(nrf5340_ble_simulator)
 list(APPEND CMAKE_MODULE_PATH ${ZEPHYR_BASE}/modules/nanopb)
 include(nanopb)
 
-# Add LVGL directories
-set(LVGL_DIR ${ZEPHYR_LVGL_MODULE_DIR})
+# Add LVGL directories (disabled for brightness testing)
+# set(LVGL_DIR ${ZEPHYR_LVGL_MODULE_DIR})
 target_include_directories(app PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/.)
-target_include_directories(app PRIVATE ${LVGL_DIR}/demos/)
+# target_include_directories(app PRIVATE ${LVGL_DIR}/demos/)
 
 # NORDIC SDK APP START
 target_sources(app PRIVATE
@@ -36,7 +36,7 @@ endif()
 # Add MOS components
 add_subdirectory(src/BspLog)
 add_subdirectory(src/mos_components/mos_sysport)
-add_subdirectory(src/mos_components/mos_lvgl_display)
+# add_subdirectory(src/mos_components/mos_lvgl_display) # Disabled for brightness testing
 
 # Add LVGL demos
 target_sources_ifdef(CONFIG_LV_USE_DEMO_BENCHMARK app PRIVATE

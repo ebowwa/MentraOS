@@ -26,7 +26,7 @@
 #include "mentra_ble_service.h"
 #include "protobuf_handler.h"
 #include "bsp_log.h"
-#include "mos_lvgl_display.h"
+// #include "mos_lvgl_display.h"  // Disabled for brightness testing
 
 #include <dk_buttons_and_leds.h>
 
@@ -686,6 +686,14 @@ int main(void)
 	LOG_INF("   📌 Button 2: Decrease battery level (-5%%)");
 	LOG_INF("   📊 Current battery level: %u%%", protobuf_get_battery_level());
 
+	// Initialize brightness control
+	LOG_INF("💡 LED 3 brightness control enabled:");
+	LOG_INF("   📱 Mobile app can set brightness level (0-100%%)");
+	LOG_INF("   📊 Current brightness level: %u%%", protobuf_get_brightness_level());
+	
+	// Set initial brightness to 50%
+	protobuf_set_brightness_level(50);
+
 	err = uart_init();
 	if (err) {
 		error();
@@ -724,9 +732,9 @@ int main(void)
 		return 0;
 	}
 
-	// Initialize LVGL display system
-	LOG_INF("Initializing LVGL display system...");
-	lvgl_dispaly_thread();
+	// Initialize LVGL display system (disabled for brightness testing)
+	// LOG_INF("Initializing LVGL display system...");
+	// lvgl_dispaly_thread();
 
 	k_work_init(&adv_work, adv_work_handler);
 	advertising_start();

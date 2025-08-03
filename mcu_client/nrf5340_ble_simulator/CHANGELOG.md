@@ -2,6 +2,40 @@
 
 All notable changes to the nRF5340 DK BLE Glasses Protobuf Simulator will be documented in this file.
 
+## [1.2.0] - 2025-08-04
+
+### Added
+- **PWM-based LED brightness control** for LED3 on nRF5340DK
+  - Supports 0-100% brightness levels via BLE protobuf messages
+  - Uses PWM1 controller on GPIO P0.31 with 50Hz frequency (20ms period)
+  - Implements BrightnessConfig message handling with tag 37
+- **Enhanced protobuf message processing** for brightness commands
+  - Added `protobuf_set_brightness_level()` function for PWM control
+  - Added `protobuf_process_brightness_config()` for message parsing
+  - Current brightness level tracking and validation (0-100% range)
+- **Device tree PWM configuration** for LED brightness control
+  - PWM inverted polarity support for active-low LED behavior
+  - Proper pinctrl configuration for PWM1 controller
+
+### Features
+- **Intuitive brightness mapping**: 0% = LED off, 100% = full brightness
+- **Real-time brightness control** via mobile app BLE commands
+- **PWM hardware acceleration** for smooth dimming transitions
+- **Brightness level persistence** with current state tracking
+- **Debug logging** for PWM operations and brightness changes
+
+### Technical Improvements
+- **PWM subsystem integration** with CONFIG_PWM=y configuration
+- **Direct duty cycle mapping** removing double inversion logic
+- **Hardware polarity inversion** handling active-low LED behavior
+- **Memory efficient implementation** maintaining current build size
+- **Robust error handling** for PWM device initialization and control
+
+### Bug Fixes
+- **Fixed brightness polarity inversion** where 100% was turning LED off
+- **Corrected PWM duty cycle calculation** for proper brightness mapping
+- **Resolved double inversion issue** between software and hardware polarity
+
 ## [1.1.0] - 2025-08-01
 
 ### Added

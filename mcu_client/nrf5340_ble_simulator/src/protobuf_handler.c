@@ -6,6 +6,8 @@
 
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/drivers/pwm.h>
+#include <zephyr/device.h>
 #include <string.h>
 #include <stdio.h>
 
@@ -19,6 +21,12 @@ LOG_MODULE_REGISTER(protobuf_handler, LOG_LEVEL_DBG);
 
 // Global battery level state (0-100%)
 static uint32_t current_battery_level = 85;
+
+// Global brightness level state (0-100%)
+static uint32_t current_brightness_level = 50;
+
+// PWM device for LED 3 brightness control
+static const struct device *pwm_dev = DEVICE_DT_GET(DT_NODELABEL(pwm1));
 
 void protobuf_analyze_message(const uint8_t *data, uint16_t len)
 {
@@ -123,6 +131,13 @@ void protobuf_parse_control_message(const uint8_t *protobuf_data, uint16_t len)
 		case 16: // ping_tag
 			LOG_INF("📱 Ping request received");
 			// TODO: Send pong response
+			break;
+			
+		case 37: // brightness_tag
+			LOG_INF("💡 Brightness config received");
+			if (phone_msg.which_payload == mentraos_ble_PhoneToGlasses_brightness_tag) {
+				protobuf_process_brightness_config(&phone_msg.payload.brightness);
+			}
 			break;
 			
 		default:
@@ -318,4 +333,58 @@ int protobuf_generate_echo_response(const uint8_t *input_data, uint16_t input_le
 		LOG_ERR("❌ Failed to generate protobuf response");
 		return -ENOMEM;
 	}
+}
+
+// ============== BRIGHTNESS CONTROL FUNCTIONS ==============
+
+uint32_t protobuf_get_brightness_level(void)
+{
+	return current_brightness_level;
+}
+
+void protobuf_set_brightness_level(uint32_t level)
+{
+	// Clamp level to 0-100
+	if (level > 100) {
+		level = 100;
+	}
+	
+	current_brightness_level = level;
+	
+	// Update LED 3 brightness via PWM
+	if (device_is_ready(pwm_dev)) {
+		// Convert percentage to PWM duty cycle (0-100% -> 0-100% duty cycle)
+		// Since we use PWM_POLARITY_INVERTED, higher duty cycle = brighter LED
+		uint32_t duty_cycle_percent = level;  // Direct mapping: 0% = off, 100% = full bright
+		
+		// PWM period is 20ms (50Hz), calculate duty cycle in nanoseconds
+		uint32_t period_ns = 20 * 1000 * 1000;  // 20ms in nanoseconds
+		uint32_t duty_ns = (period_ns * duty_cycle_percent) / 100;
+		
+		int ret = pwm_set(pwm_dev, 0, period_ns, duty_ns, PWM_POLARITY_INVERTED);
+		
+		if (ret == 0) {
+			LOG_INF("💡 LED 3 brightness set to %u%% (duty: %u%%)", level, duty_cycle_percent);
+		} else {
+			LOG_ERR("❌ Failed to set LED 3 PWM: %d", ret);
+		}
+	} else {
+		LOG_WRN("⚠️  PWM LED 3 device not ready");
+	}
+}
+
+void protobuf_process_brightness_config(const mentraos_ble_BrightnessConfig *brightness_config)
+{
+	if (!brightness_config) {
+		LOG_ERR("❌ Invalid brightness config pointer");
+		return;
+	}
+	
+	uint32_t new_level = brightness_config->value;
+	LOG_INF("💡 Received brightness config: %u%%", new_level);
+	
+	// Clamp and set the new brightness level
+	protobuf_set_brightness_level(new_level);
+	
+	LOG_INF("💡 Brightness updated to %u%%", current_brightness_level);
 }

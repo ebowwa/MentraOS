@@ -113,6 +113,27 @@ void protobuf_decrease_battery_level(void);
  */
 void protobuf_send_battery_notification(void);
 
+/**
+ * @brief Get current brightness level
+ *
+ * @return Current brightness level (0-100%)
+ */
+uint32_t protobuf_get_brightness_level(void);
+
+/**
+ * @brief Set brightness level and update LED 3
+ *
+ * @param level Brightness level (0-100%, will be clamped)
+ */
+void protobuf_set_brightness_level(uint32_t level);
+
+/**
+ * @brief Process brightness configuration message
+ *
+ * @param brightness_config Pointer to brightness configuration message
+ */
+void protobuf_process_brightness_config(const mentraos_ble_BrightnessConfig *brightness_config);
+
 #ifdef __cplusplus
 }
 #endif
