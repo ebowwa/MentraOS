@@ -18,9 +18,9 @@ export const simulatedGlasses: Capabilities = {
   hasCamera: false,
   camera: null,
 
-  // Screen capabilities - has a green monochrome display
-  hasScreen: true,
-  screen: {
+  // Display capabilities - has a green monochrome display
+  hasDisplay: true,
+  display: {
     count: 1,
     isColor: false,
     color: "green",
@@ -43,9 +43,18 @@ export const simulatedGlasses: Capabilities = {
   hasIMU: false,
   imu: null,
 
-  // Button capabilities - does not have buttons
-  hasButton: false,
-  button: null,
+  // Button capabilities - Has one simulated button
+  hasButton: true,
+  button: {
+    count: 1,
+    buttons: [
+      {
+        type: "press",
+        events: ["press"],
+        isCapacitive: false,
+      },
+    ],
+  },
 
   // Light capabilities - does not have lights
   hasLight: false,

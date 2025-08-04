@@ -86,7 +86,7 @@ export class HardwareCompatibilityService {
         return capabilities.hasCamera;
 
       case HardwareType.DISPLAY:
-        return capabilities.hasScreen;
+        return capabilities.hasDisplay;
 
       case HardwareType.MICROPHONE:
         return capabilities.hasMicrophone;
