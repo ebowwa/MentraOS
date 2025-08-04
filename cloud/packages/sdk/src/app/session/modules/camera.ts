@@ -191,7 +191,30 @@ export class CameraModule {
           `📸 Photo request sent`,
         );
 
-        // Set timeout to avoid hanging promises
+        // If using custom webhook URL, resolve immediately since photo will be uploaded directly to custom endpoint
+        if (options?.customWebhookUrl) {
+          this.logger.info(
+            { requestId, customWebhookUrl: options.customWebhookUrl },
+            `📸 Using custom webhook URL - resolving promise immediately since photo will be uploaded directly to custom endpoint`
+          );
+          
+          // Create a mock PhotoData object for custom webhook URLs
+          const mockPhotoData: PhotoData = {
+            buffer: Buffer.from([]), // Empty buffer since we don't have the actual photo
+            mimeType: 'image/jpeg',
+            filename: 'photo.jpg',
+            requestId,
+            size: 0,
+            timestamp: new Date(),
+          };
+          
+          // Resolve immediately and clean up
+          this.pendingPhotoRequests.delete(requestId);
+          resolve(mockPhotoData);
+          return;
+        }
+
+        // Set timeout to avoid hanging promises (only for non-custom webhook requests)
         const timeoutMs = 30000; // 30 seconds
         if (this.session && this.session.resources) {
           // Use session's resource tracker for automatic cleanup
