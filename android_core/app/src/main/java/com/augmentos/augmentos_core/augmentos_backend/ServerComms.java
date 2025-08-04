@@ -770,6 +770,46 @@ public class ServerComms {
                 }
                 break;
 
+            case "start_buffer_recording":
+                Log.d(TAG, "Received START_BUFFER_RECORDING");
+                if (serverCommsCallback != null) {
+                    serverCommsCallback.onStartBufferRecording();
+                }
+                break;
+
+            case "stop_buffer_recording":
+                Log.d(TAG, "Received STOP_BUFFER_RECORDING");
+                if (serverCommsCallback != null) {
+                    serverCommsCallback.onStopBufferRecording();
+                }
+                break;
+
+            case "save_buffer_video":
+                Log.d(TAG, "Received SAVE_BUFFER_VIDEO: " + msg.toString());
+                String bufferRequestId = msg.optString("requestId", "buffer_" + System.currentTimeMillis());
+                int durationSeconds = msg.optInt("durationSeconds", 30);
+                if (serverCommsCallback != null) {
+                    serverCommsCallback.onSaveBufferVideo(bufferRequestId, durationSeconds);
+                }
+                break;
+
+            case "start_video_recording":
+                Log.d(TAG, "Received START_VIDEO_RECORDING: " + msg.toString());
+                String videoRequestId = msg.optString("requestId", "video_" + System.currentTimeMillis());
+                boolean save = msg.optBoolean("save", true);
+                if (serverCommsCallback != null) {
+                    serverCommsCallback.onStartVideoRecording(videoRequestId, save);
+                }
+                break;
+
+            case "stop_video_recording":
+                Log.d(TAG, "Received STOP_VIDEO_RECORDING: " + msg.toString());
+                String stopRequestId = msg.optString("requestId", "");
+                if (serverCommsCallback != null) {
+                    serverCommsCallback.onStopVideoRecording(stopRequestId);
+                }
+                break;
+
             case "display_event":
                 //Log.d(TAG, "Received display_event: " + msg.toString());
                 String view = msg.optString("view");

@@ -1865,6 +1865,10 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                             // Send it through our data channel
                             sendJson(readyMsg, true);
                         }
+                        int batteryPercentage = bodyObj.optInt("pt", -1);
+                        int charg = bodyObj.optInt("charg", -1);
+                        if (batteryPercentage != -1 && charg != -1)
+                            updateBatteryStatus(batteryPercentage, charg == 1);
                     }
                 } catch (Exception e) {
                     Log.e(TAG, "Error parsing sr_hrt response", e);
@@ -2677,27 +2681,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             Log.e(TAG, "Error creating data JSON", e);
         }
     }
-
-    public void sendStartRecordVideo(){
-        try {
-            JSONObject command = new JSONObject();
-            command.put("type", "start_record_video");
-            sendJson(command, true);
-        } catch (JSONException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    public void sendStopRecordVideo(){
-        try {
-            JSONObject command = new JSONObject();
-            command.put("type", "stop_record_video");
-            sendJson(command, true);
-        } catch (JSONException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
+    
     public void sendStartVideoStream(){
         try {
             JSONObject command = new JSONObject();
@@ -3144,6 +3128,77 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     }
 
     /**
+     * Start buffer recording on glasses
+     */
+    @Override
+    public void startBufferRecording() {
+        Log.d(TAG, "Starting buffer recording on glasses");
+        
+        if (!isConnected) {
+            Log.w(TAG, "Cannot start buffer recording - not connected");
+            return;
+        }
+        
+        try {
+            JSONObject json = new JSONObject();
+            json.put("type", "start_buffer_recording");
+            sendJson(json, true); // Wake up glasses for this command
+        } catch (JSONException e) {
+            Log.e(TAG, "Error creating start buffer recording message", e);
+        }
+    }
+    
+    /**
+     * Stop buffer recording on glasses
+     */
+    @Override
+    public void stopBufferRecording() {
+        Log.d(TAG, "Stopping buffer recording on glasses");
+        
+        if (!isConnected) {
+            Log.w(TAG, "Cannot stop buffer recording - not connected");
+            return;
+        }
+        
+        try {
+            JSONObject json = new JSONObject();
+            json.put("type", "stop_buffer_recording");
+            sendJson(json, true); // Wake up glasses for this command
+        } catch (JSONException e) {
+            Log.e(TAG, "Error creating stop buffer recording message", e);
+        }
+    }
+    
+    /**
+     * Save buffer video from glasses
+     */
+    @Override
+    public void saveBufferVideo(String requestId, int durationSeconds) {
+        Log.d(TAG, "Saving buffer video: requestId=" + requestId + ", duration=" + durationSeconds + " seconds");
+        
+        if (!isConnected) {
+            Log.w(TAG, "Cannot save buffer video - not connected");
+            return;
+        }
+        
+        // Validate duration
+        if (durationSeconds < 1 || durationSeconds > 30) {
+            Log.e(TAG, "Invalid duration: " + durationSeconds + " (must be 1-30 seconds)");
+            return;
+        }
+        
+        try {
+            JSONObject json = new JSONObject();
+            json.put("type", "save_buffer_video");
+            json.put("requestId", requestId);
+            json.put("duration", durationSeconds);
+            sendJson(json, true); // Wake up glasses for this command
+        } catch (JSONException e) {
+            Log.e(TAG, "Error creating save buffer video message", e);
+        }
+    }
+
+    /**
      * Send user settings to glasses after connection is established
      */
     private void sendUserSettings() {
@@ -3153,5 +3208,44 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         String buttonMode = PreferenceManager.getDefaultSharedPreferences(context)
                 .getString("button_press_mode", "photo");
         sendButtonModeSetting(buttonMode);
+    }
+
+    @Override
+    public void startVideoRecording(String requestId, boolean save) {
+        Log.d(TAG, "Starting video recording: requestId=" + requestId + ", save=" + save);
+        
+        if (!isConnected) {
+            Log.w(TAG, "Cannot start video recording - not connected");
+            return;
+        }
+        
+        try {
+            JSONObject json = new JSONObject();
+            json.put("type", "start_video_recording");
+            json.put("requestId", requestId);
+            json.put("save", save);
+            sendJson(json, true); // Wake up glasses for this command
+        } catch (JSONException e) {
+            Log.e(TAG, "Failed to create start video recording command", e);
+        }
+    }
+
+    @Override
+    public void stopVideoRecording(String requestId) {
+        Log.d(TAG, "Stopping video recording: requestId=" + requestId);
+        
+        if (!isConnected) {
+            Log.w(TAG, "Cannot stop video recording - not connected");
+            return;
+        }
+        
+        try {
+            JSONObject json = new JSONObject();
+            json.put("type", "stop_video_recording");
+            json.put("requestId", requestId);
+            sendJson(json, true); // Wake up glasses for this command
+        } catch (JSONException e) {
+            Log.e(TAG, "Failed to create stop video recording command", e);
+        }
     }
 }

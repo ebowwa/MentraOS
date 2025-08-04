@@ -47,9 +47,10 @@ jobs:
           cp .env.example .env
 
       - name: Setup Sherpa Onnx
+        working-directory: ./mobile
         run: |
-          cd mobile
-          ./scripts/setup-sherpa-onnx.sh
+          chmod +x scripts/setup-sherpa-onnx-optional.sh
+          ./scripts/setup-sherpa-onnx-optional.sh
 
       - name: Run Expo prebuild
         working-directory: ./mobile
