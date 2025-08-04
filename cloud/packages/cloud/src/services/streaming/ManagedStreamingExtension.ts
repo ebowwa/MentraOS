@@ -60,6 +60,9 @@ export class ManagedStreamingExtension {
   // Polling intervals for URL discovery
   private pollingIntervals: Map<string, NodeJS.Timeout> = new Map(); // userId -> interval
 
+  // Track last sent status per stream+app to prevent duplicates
+  private lastSentStatus: Map<string, ManagedStreamStatus> = new Map(); // key: `${streamId}:${packageName}`
+
   constructor(logger: Logger) {
     this.logger = logger.child({ service: "ManagedStreamingExtension" });
     this.cloudflareService = new CloudflareStreamService(logger);
@@ -90,6 +93,7 @@ export class ManagedStreamingExtension {
       video,
       audio,
       stream: streamOptions,
+      restreamDestinations,
     } = request;
     const userId = userSession.userId;
 
@@ -101,6 +105,7 @@ export class ManagedStreamingExtension {
         enableWebRTC,
         hasVideo: !!video,
         hasAudio: !!audio,
+        restreamCount: restreamDestinations?.length || 0,
       },
       "Starting managed stream request",
     );
@@ -165,6 +170,7 @@ export class ManagedStreamingExtension {
         enableWebRTC,
         enableRecording: false, // Live-only for now
         requireSignedURLs: false, // Public streams
+        restreamDestinations, // Pass through restream destinations
       });
 
       this.logger.info(
@@ -418,6 +424,279 @@ export class ManagedStreamingExtension {
   }
 
   /**
+   * Get stream state by stream ID
+   */
+  getStreamByStreamId(streamId: string) {
+    return this.stateManager.getStreamByStreamId(streamId);
+  }
+
+  /**
+   * Add a restream output to a managed stream
+   */
+  async addRestreamOutput(
+    streamId: string,
+    packageName: string,
+    destination: { url: string; name?: string },
+  ): Promise<{
+    success: boolean;
+    outputId?: string;
+    error?: string;
+    message?: string;
+  }> {
+    try {
+      const stream = this.stateManager.getStreamByStreamId(streamId);
+      if (!stream || stream.type !== "managed") {
+        return {
+          success: false,
+          error: "STREAM_NOT_FOUND",
+          message: "Managed stream not found",
+        };
+      }
+
+      // Initialize outputs array if needed
+      if (!stream.outputs) {
+        stream.outputs = [];
+      }
+
+      // Import limits from routes file
+      const MAX_OUTPUTS_PER_STREAM = 10;
+      const MAX_OUTPUTS_PER_APP = 10;
+
+      // Check total outputs limit
+      if (stream.outputs.length >= MAX_OUTPUTS_PER_STREAM) {
+        return {
+          success: false,
+          error: "MAX_OUTPUTS_REACHED",
+          message: `Stream has reached maximum of ${MAX_OUTPUTS_PER_STREAM} outputs`,
+        };
+      }
+
+      // Check per-app limit
+      const appOutputCount = stream.outputs.filter(
+        (o) => o.addedBy === packageName,
+      ).length;
+      if (appOutputCount >= MAX_OUTPUTS_PER_APP) {
+        return {
+          success: false,
+          error: "MAX_APP_OUTPUTS_REACHED",
+          message: `Your app has reached maximum of ${MAX_OUTPUTS_PER_APP} outputs for this stream`,
+        };
+      }
+
+      // Check for duplicate URL
+      if (stream.outputs.some((o) => o.url === destination.url)) {
+        return {
+          success: false,
+          error: "DUPLICATE_URL",
+          message: "This RTMP URL is already configured as an output",
+        };
+      }
+
+      // Create output via Cloudflare
+      try {
+        const cfOutputs = await this.cloudflareService.createOutputs(
+          stream.cfLiveInputId,
+          [destination],
+        );
+
+        if (cfOutputs.length === 0) {
+          throw new Error("No output created");
+        }
+
+        const cfOutput = cfOutputs[0];
+
+        // Add to stream state with ownership
+        stream.outputs.push({
+          cfOutputId: cfOutput.uid,
+          url: destination.url,
+          name: destination.name,
+          addedBy: packageName,
+          status: cfOutput,
+        });
+
+        // Send status update to all viewers
+        await this.notifyOutputsChanged(stream);
+
+        this.logger.info(
+          {
+            streamId,
+            outputId: cfOutput.uid,
+            url: destination.url,
+            addedBy: packageName,
+          },
+          "Successfully added restream output",
+        );
+
+        return {
+          success: true,
+          outputId: cfOutput.uid,
+        };
+      } catch (cfError) {
+        this.logger.error(
+          {
+            streamId,
+            error: cfError,
+            destination,
+          },
+          "Failed to create Cloudflare output",
+        );
+
+        return {
+          success: false,
+          error: "CLOUDFLARE_ERROR",
+          message:
+            cfError instanceof Error
+              ? cfError.message
+              : "Failed to create output",
+        };
+      }
+    } catch (error) {
+      this.logger.error(
+        {
+          streamId,
+          packageName,
+          error,
+        },
+        "Error adding restream output",
+      );
+
+      return {
+        success: false,
+        error: "INTERNAL_ERROR",
+        message: "An unexpected error occurred",
+      };
+    }
+  }
+
+  /**
+   * Remove a restream output from a managed stream
+   */
+  async removeRestreamOutput(
+    streamId: string,
+    outputId: string,
+    packageName: string,
+  ): Promise<{
+    success: boolean;
+    error?: string;
+    message?: string;
+  }> {
+    try {
+      const stream = this.stateManager.getStreamByStreamId(streamId);
+      if (!stream || stream.type !== "managed") {
+        return {
+          success: false,
+          error: "STREAM_NOT_FOUND",
+          message: "Managed stream not found",
+        };
+      }
+
+      if (!stream.outputs || stream.outputs.length === 0) {
+        return {
+          success: false,
+          error: "OUTPUT_NOT_FOUND",
+          message: "Output not found",
+        };
+      }
+
+      // Find the output
+      const outputIndex = stream.outputs.findIndex(
+        (o) => o.cfOutputId === outputId,
+      );
+      if (outputIndex === -1) {
+        return {
+          success: false,
+          error: "OUTPUT_NOT_FOUND",
+          message: "Output not found",
+        };
+      }
+
+      const output = stream.outputs[outputIndex];
+
+      // Check ownership
+      if (output.addedBy !== packageName) {
+        return {
+          success: false,
+          error: "NOT_AUTHORIZED",
+          message: "You can only remove outputs that you added",
+        };
+      }
+
+      // Remove from Cloudflare
+      try {
+        await this.cloudflareService.deleteOutput(
+          stream.cfLiveInputId,
+          outputId,
+        );
+      } catch (cfError) {
+        this.logger.error(
+          {
+            streamId,
+            outputId,
+            error: cfError,
+          },
+          "Failed to delete Cloudflare output",
+        );
+
+        // Continue with local removal even if Cloudflare fails
+      }
+
+      // Remove from stream state
+      stream.outputs.splice(outputIndex, 1);
+
+      // Send status update to all viewers
+      await this.notifyOutputsChanged(stream);
+
+      this.logger.info(
+        {
+          streamId,
+          outputId,
+          removedBy: packageName,
+        },
+        "Successfully removed restream output",
+      );
+
+      return { success: true };
+    } catch (error) {
+      this.logger.error(
+        {
+          streamId,
+          outputId,
+          packageName,
+          error,
+        },
+        "Error removing restream output",
+      );
+
+      return {
+        success: false,
+        error: "INTERNAL_ERROR",
+        message: "An unexpected error occurred",
+      };
+    }
+  }
+
+  /**
+   * Notify all viewers when outputs change
+   */
+  private async notifyOutputsChanged(
+    stream: ManagedStreamState,
+  ): Promise<void> {
+    const userSession = this.getUserSession(stream.userId);
+    if (!userSession) return;
+
+    // Send updated status to all viewers
+    for (const appId of stream.activeViewers) {
+      await this.sendManagedStreamStatus(
+        userSession,
+        appId,
+        stream.streamId,
+        "active",
+        "Outputs updated",
+      );
+    }
+  }
+
+  /**
    * Start polling for playback URLs after stream creation
    */
   private startPlaybackUrlPolling(
@@ -550,6 +829,9 @@ export class ManagedStreamingExtension {
         { packageName },
         "App WebSocket not available for status update",
       );
+      // Clear last sent status for this app since connection is gone
+      const statusKey = `${streamId}:${packageName}`;
+      this.lastSentStatus.delete(statusKey);
       return;
     }
 
@@ -558,14 +840,14 @@ export class ManagedStreamingExtension {
     if (stream.outputs && stream.outputs.length > 0) {
       outputs = stream.outputs.map((output) => ({
         url: output.url,
-        name: undefined, // Cloudflare doesn't store names, would need to track separately
+        name: output.name,
         status:
-          output.status?.current?.state === "connected"
+          output.status?.status?.current?.state === "connected"
             ? ("active" as const)
-            : output.status?.current?.state === "error"
+            : output.status?.status?.current?.state === "error"
               ? ("error" as const)
               : ("stopped" as const),
-        error: output.status?.current?.lastError,
+        error: output.status?.status?.current?.lastError,
       }));
     }
 
@@ -580,7 +862,39 @@ export class ManagedStreamingExtension {
       outputs,
     };
 
+    // Check if this is a duplicate status
+    const statusKey = `${streamId}:${packageName}`;
+    const lastStatus = this.lastSentStatus.get(statusKey);
+
+    if (lastStatus) {
+      // Compare all relevant fields
+      const isDuplicate =
+        lastStatus.status === statusMessage.status &&
+        lastStatus.hlsUrl === statusMessage.hlsUrl &&
+        lastStatus.dashUrl === statusMessage.dashUrl &&
+        lastStatus.webrtcUrl === statusMessage.webrtcUrl &&
+        lastStatus.message === statusMessage.message &&
+        JSON.stringify(lastStatus.outputs) ===
+          JSON.stringify(statusMessage.outputs);
+
+      if (isDuplicate) {
+        this.logger.debug(
+          {
+            packageName,
+            status,
+            streamId,
+          },
+          "Skipping duplicate managed stream status",
+        );
+        return;
+      }
+    }
+
+    // Send the status update
     appWs.send(JSON.stringify(statusMessage));
+
+    // Track this as the last sent status
+    this.lastSentStatus.set(statusKey, statusMessage);
 
     this.logger.debug(
       {
@@ -750,6 +1064,13 @@ export class ManagedStreamingExtension {
     // Remove from state manager
     this.stateManager.removeStream(userId);
 
+    // Clear last sent status for this stream
+    for (const [key] of this.lastSentStatus) {
+      if (key.startsWith(`${stream.streamId}:`)) {
+        this.lastSentStatus.delete(key);
+      }
+    }
+
     // No Cloudflare cleanup needed
   }
 
@@ -795,6 +1116,9 @@ export class ManagedStreamingExtension {
       clearInterval(interval);
     }
     this.pollingIntervals.clear();
+
+    // Clear last sent status tracking
+    this.lastSentStatus.clear();
 
     this.logger.info("ManagedStreamingExtension disposed");
   }
