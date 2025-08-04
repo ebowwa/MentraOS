@@ -198,6 +198,7 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
      */
     @Override
     public void ingestAudioChunk(byte[] audioChunk) {
+        Log.d(TAG, "ingestAudioChunk audioChunk size :" + audioChunk.length);
         //VAD STUFF
         if (vadPolicy == null) {
             Log.e(TAG, "VAD not initialized yet. Skipping audio.");
@@ -214,7 +215,7 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
             }
             vadBuffer.offer(sample);
         }
-
+        Log.d(TAG, "sendPcmToBackend: " + sendPcmToBackend);
         if (sendPcmToBackend) {
             //BUFFER STUFF
             // Add to rolling buffer regardless of VAD state
@@ -232,6 +233,7 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
 
             //SENDING STUFF
             // If bypassing VAD for debugging or currently speaking, send data live
+            Log.d(TAG, "bypassVadForDebugging:" + bypassVadForDebugging + " isSpeaking:" + isSpeaking);
             if (bypassVadForDebugging || isSpeaking) {
                 ServerComms.getInstance().sendAudioChunk(audioChunk);
             }
@@ -243,6 +245,7 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
      */
     @Override
     public void ingestLC3AudioChunk(byte[] LC3audioChunk) {
+        Log.d(TAG, "sendPcmToBackend: " + sendPcmToBackend);
         if (!sendPcmToBackend) {
             //BUFFER STUFF
             // Add to rolling buffer regardless of VAD state
@@ -260,6 +263,7 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
 
             //SENDING STUFF
             // If bypassing VAD for debugging or currently speaking, send data live
+            Log.d(TAG, "bypassVadForDebugging:" + bypassVadForDebugging + " isSpeaking:" + isSpeaking);
             if (bypassVadForDebugging || isSpeaking) {
                 ServerComms.getInstance().sendAudioChunk(LC3audioChunk);
             }
@@ -368,8 +372,8 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
         }
     }
 
-    public void microphoneStateChanged(boolean state){
-        if (vadPolicy != null){
+    public void microphoneStateChanged(boolean state) {
+        if (vadPolicy != null) {
             vadPolicy.microphoneStateChanged(state);
         }
     }

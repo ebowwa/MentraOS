@@ -12,8 +12,8 @@ public class WindowManagerWithTimeouts {
     private static final int DEFAULT_LINGER_TIME = 0; // or any default you want
     private final int globalTimeoutSeconds;
     private long lastGlobalUpdate; // track when *any* layer was last updated
-
-    private final List<Layer> layers = new LinkedList<>();
+    // LinkedList may java.util.ConcurrentModificationException
+    private final List<Layer> layers = new CopyOnWriteArrayList<>();
     private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
 
     private final Runnable globalTimeoutAction;

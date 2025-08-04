@@ -39,7 +39,7 @@ import okhttp3.Call;
  * ServerComms is the single facade for all WebSocket interactions in AugmentOS_Core.
  * It delegates the low-level socket to WebSocketManager, handles handshake, routing messages,
  * and provides methods to send audio, VAD, phone notifications, hardware events, etc.
- *
+ * <p>
  * This class also calls back into SpeechRecAugmentos for "interim"/"final" messages.
  */
 public class ServerComms {
@@ -145,7 +145,7 @@ public class ServerComms {
 
             @Override
             public void onConnectionStatusChange(WebSocketStatus status) {
-                if(serverCommsCallback != null)
+                if (serverCommsCallback != null)
                     serverCommsCallback.onConnectionStatusChange(status);
             }
         });
@@ -242,7 +242,7 @@ public class ServerComms {
             if (wsManager.isConnected()) {
                 wsManager.sendBinary(chunk);
                 // Debug - Write to PCM file as we send
-                 writeToPcmFile(chunk);
+                writeToPcmFile(chunk);
             } else {
                 // If connection drops during playback, stop sending
                 break;
@@ -431,10 +431,10 @@ public class ServerComms {
     /**
      * Sends a phone notification dismissal event to the server
      *
-     * @param notificationId The unique ID for this dismissal event
-     * @param app The app name that sent the notification
-     * @param title The notification title
-     * @param content The notification content
+     * @param notificationId  The unique ID for this dismissal event
+     * @param app             The app name that sent the notification
+     * @param title           The notification title
+     * @param content         The notification content
      * @param notificationKey The original notification key for tracking
      */
     public void sendPhoneNotificationDismissal(String notificationId, String app, String title, String content, String notificationKey) {
@@ -602,7 +602,7 @@ public class ServerComms {
      * Sends a photo response message to the server
      *
      * @param requestId The unique ID of the photo request
-     * @param photoUrl URL of the uploaded photo
+     * @param photoUrl  URL of the uploaded photo
      */
     public void sendPhotoResponse(String requestId, String photoUrl) {
         try {
@@ -621,7 +621,7 @@ public class ServerComms {
     /**
      * Sends a video stream response message to the server
      *
-     * @param appId The ID of the app requesting the stream
+     * @param appId     The ID of the app requesting the stream
      * @param streamUrl URL of the video stream
      */
     public void sendVideoStreamResponse(String appId, String streamUrl) {
@@ -668,7 +668,7 @@ public class ServerComms {
         // Log.d(TAG, "Received message of type: " + type);
         // Log.d(TAG, "Full message: " + msg.toString());
 
-       Log.d(TAG, "Received message of type: " + msg);
+        Log.d(TAG, "Received message of type: " + msg);
 
         switch (type) {
             case "connection_ack":
@@ -756,7 +756,7 @@ public class ServerComms {
 
                 if (serverCommsCallback == null) return;
 
-                if(isDashboard)
+                if (isDashboard)
                     serverCommsCallback.onDashboardDisplayEvent(msg);
                 else
                     serverCommsCallback.onDisplayEvent(msg);
@@ -834,8 +834,8 @@ public class ServerComms {
             case "request_single_location":
                 if (serverCommsCallback != null) {
                     serverCommsCallback.onRequestSingleLocation(
-                        msg.optString("accuracy"),
-                        msg.optString("correlationId")
+                            msg.optString("accuracy"),
+                            msg.optString("correlationId")
                     );
                 }
                 break;
@@ -948,6 +948,7 @@ public class ServerComms {
                             wsManager.sendBinary(chunk);
                             // Write to PCM file whenever we send binary data over websocket
 //                            writeToPcmFile(chunk);
+                            Log.d(TAG, " 🎤: Sent audio chunk to cloud: " + chunk.length + " bytes");
                         }
                         // If poll times out (1 second with no data), we'll loop back and check conditions again
                     } else {
@@ -994,12 +995,12 @@ public class ServerComms {
             body.put("datetime", isoDatetime);
 
             RequestBody requestBody = RequestBody.create(
-                body.toString(), okhttp3.MediaType.get("application/json; charset=utf-8")
+                    body.toString(), okhttp3.MediaType.get("application/json; charset=utf-8")
             );
             Request request = new Request.Builder()
-                .url(url)
-                .post(requestBody)
-                .build();
+                    .url(url)
+                    .post(requestBody)
+                    .build();
 
             Log.d(TAG, "Sending datetime to backend: " + url);
             OkHttpClient client = new OkHttpClient();
@@ -1008,6 +1009,7 @@ public class ServerComms {
                 public void onFailure(Call call, IOException e) {
                     Log.e(TAG, "Failed to send datetime to backend: " + e.getMessage());
                 }
+
                 @Override
                 public void onResponse(Call call, Response response) throws IOException {
                     if (response.isSuccessful()) {
