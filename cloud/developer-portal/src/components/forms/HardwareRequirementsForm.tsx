@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Plus,
-  X,
+  Trash2,
   Cpu,
   Camera,
   Mic,
@@ -22,11 +22,8 @@ import {
   CircleDot,
   Lightbulb,
 } from "lucide-react";
-import {
-  HardwareType,
-  HardwareRequirementLevel,
-  HardwareRequirement,
-} from "@mentra/sdk";
+import { HardwareType, HardwareRequirementLevel } from "../../types/enums";
+import { HardwareRequirement } from "@mentra/sdk";
 
 interface HardwareRequirementsFormProps {
   requirements: HardwareRequirement[];
@@ -55,253 +52,328 @@ const hardwareTypeLabels: Record<HardwareType, string> = {
   [HardwareType.WIFI]: "WiFi",
 };
 
+/**
+ * Individual hardware requirement item component with collapsed/expanded views
+ */
+interface HardwareRequirementItemProps {
+  requirement: HardwareRequirement;
+  index: number;
+  isEditing: boolean;
+  onEditToggle: (index: number | null) => void;
+  removeRequirement: (index: number) => void;
+  updateRequirement: (
+    index: number,
+    field: keyof HardwareRequirement,
+    value: string,
+  ) => void;
+  availableTypes: HardwareType[];
+}
+
+const HardwareRequirementItem: React.FC<HardwareRequirementItemProps> = ({
+  requirement,
+  index,
+  isEditing,
+  onEditToggle,
+  removeRequirement,
+  updateRequirement,
+  availableTypes,
+}) => {
+  // Helper function to get description preview
+  const getDescriptionPreview = () => {
+    if (requirement.description && requirement.description.trim()) {
+      return requirement.description.length > 50
+        ? requirement.description.substring(0, 50) + "..."
+        : requirement.description;
+    }
+    return "No description";
+  };
+
+  return (
+    <div className="border rounded-lg bg-white shadow-sm">
+      {!isEditing ? (
+        // Collapsed view - just show the essential info
+        <div
+          className="p-4 cursor-pointer hover:bg-gray-50 transition-colors"
+          onClick={() => onEditToggle(index)}
+        >
+          <div className="flex items-center gap-3">
+            {/* Content preview */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                {hardwareTypeIcons[requirement.type]}
+                <span className="font-medium text-sm text-gray-900">
+                  {hardwareTypeLabels[requirement.type]}
+                </span>
+                <span
+                  className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                    requirement.level === HardwareRequirementLevel.REQUIRED
+                      ? "bg-gray-100 text-gray-800"
+                      : "bg-gray-100 text-gray-800"
+                  }`}
+                >
+                  {requirement.level === HardwareRequirementLevel.REQUIRED
+                    ? "Required"
+                    : "Optional"}
+                </span>
+              </div>
+              <div className="text-xs text-gray-500 truncate">
+                {getDescriptionPreview()}
+              </div>
+            </div>
+
+            {/* Delete button */}
+            <Button
+              onClick={(e) => {
+                e.stopPropagation();
+                removeRequirement(index);
+              }}
+              variant="ghost"
+              size="sm"
+              type="button"
+              className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      ) : (
+        // Expanded editing view
+        <div className="p-4">
+          {/* Header with close button */}
+          <div className="flex items-center justify-between mb-4">
+            <h4 className="font-medium text-sm flex items-center gap-2">
+              {hardwareTypeIcons[requirement.type]}
+              Edit Hardware Requirement
+            </h4>
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={() => onEditToggle(null)}
+                variant="outline"
+                size="sm"
+                type="button"
+                className="h-8 px-3 text-xs"
+              >
+                Done
+              </Button>
+              <Button
+                onClick={() => removeRequirement(index)}
+                variant="ghost"
+                size="sm"
+                type="button"
+                className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+
+          {/* Form fields */}
+          <div className="space-y-4">
+            {/* Hardware Type */}
+            <div>
+              <Label className="text-sm font-medium">Hardware Type</Label>
+              <Select
+                value={requirement.type}
+                onValueChange={(value) =>
+                  updateRequirement(index, "type", value)
+                }
+              >
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Select hardware type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {/* Available types for new/existing requirements */}
+                  {availableTypes.map((type) => (
+                    <SelectItem key={type} value={type}>
+                      <div className="flex items-center gap-2">
+                        {hardwareTypeIcons[type]}
+                        <span>{hardwareTypeLabels[type]}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+
+                  {/* Current type (if not in available types) */}
+                  {!availableTypes.includes(requirement.type) && (
+                    <SelectItem value={requirement.type}>
+                      <div className="flex items-center gap-2">
+                        {hardwareTypeIcons[requirement.type]}
+                        <span>{hardwareTypeLabels[requirement.type]}</span>
+                      </div>
+                    </SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Requirement Level */}
+            <div>
+              <Label className="text-sm font-medium">Requirement Level</Label>
+              <Select
+                value={requirement.level}
+                onValueChange={(value) =>
+                  updateRequirement(index, "level", value)
+                }
+              >
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Select requirement level" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={HardwareRequirementLevel.REQUIRED}>
+                    <span className="text-gray-900">Required</span>
+                  </SelectItem>
+                  <SelectItem value={HardwareRequirementLevel.OPTIONAL}>
+                    <span className="text-gray-900">Optional</span>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-gray-500 mt-1">
+                Required hardware will prevent app installation if not available
+              </p>
+            </div>
+
+            {/* Description */}
+            <div>
+              <Label className="text-sm font-medium">
+                Description (Optional)
+              </Label>
+              <Textarea
+                value={requirement.description || ""}
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                  updateRequirement(index, "description", e.target.value)
+                }
+                placeholder="Explain why this hardware is needed (e.g., 'Camera is required for QR code scanning')"
+                rows={3}
+                className="mt-1"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                A clear explanation helps users understand why this hardware is
+                necessary.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+/**
+ * Hardware requirements form component with mobile-friendly design
+ */
 const HardwareRequirementsForm: React.FC<HardwareRequirementsFormProps> = ({
   requirements,
   onChange,
 }) => {
-  const [editingIndex, setEditingIndex] = useState<number | null>(null);
-  const [newRequirement, setNewRequirement] = useState<
-    Partial<HardwareRequirement>
-  >({
-    type: HardwareType.CAMERA,
+  const [editingIndex, setEditingIndex] = React.useState<number | null>(null);
+
+  // Helper function to create a new empty requirement
+  const createEmptyRequirement = (type: HardwareType): HardwareRequirement => ({
+    type,
     level: HardwareRequirementLevel.REQUIRED,
     description: "",
   });
 
-  const handleAddRequirement = () => {
-    if (newRequirement.type && newRequirement.level) {
-      // Check if this hardware type is already added
-      const existingIndex = requirements.findIndex(
-        (req) => req.type === newRequirement.type,
+  // Get available hardware types for NEW requirement selection
+  const getAvailableHardwareTypes = (excludeIndex?: number): HardwareType[] => {
+    return Object.values(HardwareType).filter((type) => {
+      // Exclude already used hardware types
+      return !requirements.some(
+        (req, i) => req.type === type && i !== excludeIndex,
       );
+    });
+  };
 
-      if (existingIndex >= 0) {
-        // Update existing requirement
-        const updated = [...requirements];
-        updated[existingIndex] = newRequirement as HardwareRequirement;
-        onChange(updated);
-      } else {
-        // Add new requirement
-        onChange([...requirements, newRequirement as HardwareRequirement]);
-      }
+  // Add a new requirement
+  const addRequirement = () => {
+    const availableTypes = getAvailableHardwareTypes();
 
-      // Reset form
-      setNewRequirement({
-        type: HardwareType.CAMERA,
-        level: HardwareRequirementLevel.REQUIRED,
-        description: "",
-      });
+    // If all hardware types are used, don't add a new one
+    if (availableTypes.length === 0) {
+      return;
+    }
+
+    const newRequirement = createEmptyRequirement(availableTypes[0]);
+    const newRequirements = [...requirements, newRequirement];
+    onChange(newRequirements);
+    // Auto-expand the newly added requirement for editing
+    setEditingIndex(newRequirements.length - 1);
+  };
+
+  // Remove a requirement
+  const removeRequirement = (index: number) => {
+    const newRequirements = requirements.filter((_, i) => i !== index);
+    onChange(newRequirements);
+    // If we're removing the currently editing item, clear the editing state
+    if (editingIndex === index) {
       setEditingIndex(null);
+    } else if (editingIndex !== null && editingIndex > index) {
+      // If we're removing an item before the currently editing one, adjust the index
+      setEditingIndex(editingIndex - 1);
     }
   };
 
-  const handleRemoveRequirement = (index: number) => {
-    const updated = requirements.filter((_, i) => i !== index);
-    onChange(updated);
+  // Update a requirement
+  const updateRequirement = (
+    index: number,
+    field: keyof HardwareRequirement,
+    value: string,
+  ) => {
+    const updatedRequirements = [...requirements];
+    updatedRequirements[index] = {
+      ...updatedRequirements[index],
+      [field]: value,
+    };
+    onChange(updatedRequirements);
   };
-
-  const handleEditRequirement = (index: number) => {
-    const req = requirements[index];
-    setNewRequirement({
-      type: req.type,
-      level: req.level,
-      description: req.description || "",
-    });
-    setEditingIndex(index);
-  };
-
-  // Get available hardware types (not already added unless editing)
-  const availableTypes = Object.values(HardwareType).filter((type) => {
-    const isAlreadyAdded = requirements.some((req) => req.type === type);
-    return (
-      !isAlreadyAdded ||
-      (editingIndex !== null && requirements[editingIndex].type === type)
-    );
-  });
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h3 className="text-lg font-medium mb-2">Hardware Requirements</h3>
-        <p className="text-sm text-gray-600 mb-4">
-          Specify the hardware components your app needs to function properly.
-          Users will be warned if their glasses don't meet these requirements.
-        </p>
+    <div>
+      <div className="flex items-center justify-between mb-3">
+        <div>
+          <h3 className="text-lg font-medium flex items-center gap-2">
+            <Cpu className="h-5 w-5" />
+            Hardware Requirements
+          </h3>
+          <p className="text-sm text-gray-600">
+            Specify hardware components your app needs to function properly.
+          </p>
+        </div>
+        <Button
+          onClick={addRequirement}
+          size="sm"
+          type="button"
+          className="h-8 px-3"
+          disabled={getAvailableHardwareTypes().length === 0}
+        >
+          <Plus className="h-4 w-4 mr-1" />
+          {getAvailableHardwareTypes().length === 0
+            ? "All Added"
+            : "Add Hardware"}
+        </Button>
       </div>
 
-      {/* List of existing requirements */}
-      {requirements.length > 0 && (
-        <div className="space-y-2 mb-4">
-          {requirements.map((req, index) => (
-            <div
+      {requirements.length === 0 ? (
+        <div className="text-center py-4 text-gray-500">
+          <p>No hardware requirements specified.</p>
+          <p className="text-xs mt-1">
+            The app will be assumed to work with any hardware.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {requirements.map((requirement, index) => (
+            <HardwareRequirementItem
               key={index}
-              className="flex items-center justify-between p-3 bg-gray-50 rounded-md"
-            >
-              <div className="flex items-center gap-3 flex-1">
-                <div className="flex items-center gap-2">
-                  {hardwareTypeIcons[req.type]}
-                  <span className="font-medium">
-                    {hardwareTypeLabels[req.type]}
-                  </span>
-                </div>
-                <span
-                  className={`text-sm px-2 py-1 rounded ${
-                    req.level === HardwareRequirementLevel.REQUIRED
-                      ? "bg-red-100 text-red-700"
-                      : "bg-yellow-100 text-yellow-700"
-                  }`}
-                >
-                  {req.level === HardwareRequirementLevel.REQUIRED
-                    ? "Required"
-                    : "Optional"}
-                </span>
-                {req.description && (
-                  <span className="text-sm text-gray-600 italic">
-                    {req.description}
-                  </span>
-                )}
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleEditRequirement(index)}
-                >
-                  Edit
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleRemoveRequirement(index)}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
+              requirement={requirement}
+              index={index}
+              isEditing={editingIndex === index}
+              onEditToggle={setEditingIndex}
+              removeRequirement={removeRequirement}
+              updateRequirement={updateRequirement}
+              availableTypes={getAvailableHardwareTypes(index)}
+            />
           ))}
         </div>
-      )}
-
-      {/* Add/Edit requirement form */}
-      <div className="border rounded-md p-4 bg-gray-50">
-        <h4 className="font-medium mb-3">
-          {editingIndex !== null
-            ? "Edit Hardware Requirement"
-            : "Add Hardware Requirement"}
-        </h4>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <Label htmlFor="hardware-type">Hardware Type</Label>
-            <Select
-              value={newRequirement.type}
-              onValueChange={(value) =>
-                setNewRequirement((prev) => ({
-                  ...prev,
-                  type: value as HardwareType,
-                }))
-              }
-            >
-              <SelectTrigger id="hardware-type">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {availableTypes.map((type) => (
-                  <SelectItem key={type} value={type}>
-                    <div className="flex items-center gap-2">
-                      {hardwareTypeIcons[type]}
-                      <span>{hardwareTypeLabels[type]}</span>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div>
-            <Label htmlFor="requirement-level">Requirement Level</Label>
-            <Select
-              value={newRequirement.level}
-              onValueChange={(value) =>
-                setNewRequirement((prev) => ({
-                  ...prev,
-                  level: value as HardwareRequirementLevel,
-                }))
-              }
-            >
-              <SelectTrigger id="requirement-level">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={HardwareRequirementLevel.REQUIRED}>
-                  <span className="text-red-600">Required</span>
-                </SelectItem>
-                <SelectItem value={HardwareRequirementLevel.OPTIONAL}>
-                  <span className="text-yellow-600">Optional</span>
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="flex items-end">
-            <Button
-              type="button"
-              onClick={handleAddRequirement}
-              disabled={!newRequirement.type || !newRequirement.level}
-              className="w-full"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              {editingIndex !== null ? "Update" : "Add"}
-            </Button>
-          </div>
-        </div>
-
-        <div className="mt-3">
-          <Label htmlFor="requirement-description">
-            Description (Optional)
-          </Label>
-          <Textarea
-            id="requirement-description"
-            placeholder="Explain why this hardware is needed (e.g., 'Camera is required for QR code scanning')"
-            value={newRequirement.description || ""}
-            onChange={(e) =>
-              setNewRequirement((prev) => ({
-                ...prev,
-                description: e.target.value,
-              }))
-            }
-            className="mt-1"
-            rows={2}
-          />
-        </div>
-
-        {editingIndex !== null && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              setEditingIndex(null);
-              setNewRequirement({
-                type: HardwareType.CAMERA,
-                level: HardwareRequirementLevel.REQUIRED,
-                description: "",
-              });
-            }}
-            className="mt-2"
-          >
-            Cancel Edit
-          </Button>
-        )}
-      </div>
-
-      {requirements.length === 0 && (
-        <p className="text-sm text-gray-500 italic">
-          No hardware requirements specified. The app will be assumed to work
-          with any hardware.
-        </p>
       )}
     </div>
   );

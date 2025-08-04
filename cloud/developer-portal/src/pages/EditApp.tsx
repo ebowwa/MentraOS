@@ -457,6 +457,7 @@ const EditApp: React.FC = () => {
         appType: formData.appType,
         settings: formData.settings || [],
         tools: formData.tools || [],
+        hardwareRequirements: formData.hardwareRequirements || [],
       };
 
       // Update App data

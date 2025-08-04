@@ -69,7 +69,16 @@ export * from "./types/dashboard";
 export * from "./types/rtmp-stream";
 
 // Other system enums
-export * from "./types/enums";
+export {
+  AppType,
+  AppState,
+  Language,
+  LayoutType,
+  ViewType,
+  AppSettingType,
+  HardwareType,
+  HardwareRequirementLevel,
+} from "./types/enums";
 
 // Core model interfaces
 export * from "./types/models";
@@ -196,6 +205,7 @@ export {
   validateAppConfig,
   ToolSchema,
   ToolParameterSchema,
+  HardwareRequirement,
 } from "./types/models";
 
 // Export RTMP streaming types

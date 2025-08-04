@@ -32,6 +32,7 @@ import { usePlatform } from "../hooks/usePlatform";
 import api from "../api";
 import { AppI, HardwareType, HardwareRequirementLevel } from "../types";
 import { toast } from "sonner";
+import { formatCompatibilityError } from "../utils/errorHandling";
 import { Button } from "@/components/ui/button";
 import Header from "../components/Header";
 import AppPermissions from "../components/AppPermissions";
@@ -213,7 +214,19 @@ const AppDetails: React.FC = () => {
       }
     } catch (err) {
       console.error("Error installing app:", err);
-      toast.error("Failed to install app");
+
+      // Try to get a more informative error message for compatibility issues
+      const compatibilityError = formatCompatibilityError(err);
+      if (compatibilityError) {
+        toast.error(compatibilityError, {
+          duration: 6000, // Show longer for detailed messages
+        });
+      } else {
+        // Fallback to generic error message
+        const errorMessage =
+          (err as any)?.response?.data?.message || "Failed to install app";
+        toast.error(errorMessage);
+      }
     } finally {
       setInstallingApp(false);
     }
@@ -715,7 +728,7 @@ const AppDetails: React.FC = () => {
                               className="text-[13px] font-medium mb-2"
                               style={{
                                 color:
-                                  theme === "light" ? "#dc3545" : "#ef4444",
+                                  theme === "light" ? "#000000" : "#E4E4E7",
                               }}
                             >
                               Required Hardware
@@ -733,9 +746,9 @@ const AppDetails: React.FC = () => {
                                   style={{
                                     backgroundColor:
                                       theme === "light"
-                                        ? "#fee"
-                                        : "rgba(239, 68, 68, 0.1)",
-                                    border: `1px solid ${theme === "light" ? "#fcc" : "rgba(239, 68, 68, 0.2)"}`,
+                                        ? "#f8f9fa"
+                                        : "rgba(255, 255, 255, 0.05)",
+                                    border: `1px solid ${theme === "light" ? "#e9ecef" : "rgba(255, 255, 255, 0.1)"}`,
                                   }}
                                 >
                                   <div
@@ -743,8 +756,8 @@ const AppDetails: React.FC = () => {
                                     style={{
                                       color:
                                         theme === "light"
-                                          ? "#dc3545"
-                                          : "#ef4444",
+                                          ? "#6c757d"
+                                          : "#9CA3AF",
                                     }}
                                   >
                                     {hardwareIcons[req.type]}
@@ -791,7 +804,7 @@ const AppDetails: React.FC = () => {
                               className="text-[13px] font-medium mb-2"
                               style={{
                                 color:
-                                  theme === "light" ? "#ffc107" : "#f59e0b",
+                                  theme === "light" ? "#000000" : "#E4E4E7",
                               }}
                             >
                               Optional Hardware
@@ -809,9 +822,9 @@ const AppDetails: React.FC = () => {
                                   style={{
                                     backgroundColor:
                                       theme === "light"
-                                        ? "#fff8e1"
-                                        : "rgba(245, 158, 11, 0.1)",
-                                    border: `1px solid ${theme === "light" ? "#ffe8a1" : "rgba(245, 158, 11, 0.2)"}`,
+                                        ? "#f8f9fa"
+                                        : "rgba(255, 255, 255, 0.05)",
+                                    border: `1px solid ${theme === "light" ? "#e9ecef" : "rgba(255, 255, 255, 0.1)"}`,
                                   }}
                                 >
                                   <div
@@ -819,8 +832,8 @@ const AppDetails: React.FC = () => {
                                     style={{
                                       color:
                                         theme === "light"
-                                          ? "#ffc107"
-                                          : "#f59e0b",
+                                          ? "#6c757d"
+                                          : "#9CA3AF",
                                     }}
                                   >
                                     {hardwareIcons[req.type]}

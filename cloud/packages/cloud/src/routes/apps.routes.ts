@@ -343,13 +343,22 @@ async function getAllApps(req: Request, res: Response) {
 
     if (apiKey && packageName && userId) {
       // Already authenticated via middleware
-      const apps = await appService.getAllApps(userId);
+      let apps = await appService.getAllApps(userId);
       const userSession = UserSession.getById(userId);
       if (!userSession) {
         return res.status(401).json({
           success: false,
           message: "No active session found for user.",
         });
+      }
+
+      // Filter apps by hardware compatibility if user has connected glasses
+      if (userSession.capabilities) {
+        apps = HardwareCompatibilityService.filterCompatibleApps(
+          apps,
+          userSession.capabilities,
+          true, // Include apps with missing optional hardware
+        );
       }
 
       // Get user data for last active timestamps
@@ -383,9 +392,19 @@ async function getAllApps(req: Request, res: Response) {
       });
     }
 
-    const apps = await appService.getAllApps(tokenUserId);
+    let apps = await appService.getAllApps(tokenUserId);
     // const userSessions = sessionService.getSessionsForUser(tokenUserId);
     const userSession: UserSession = (req as any).userSession;
+
+    // Filter apps by hardware compatibility if user has connected glasses
+    if (userSession && userSession.capabilities) {
+      apps = HardwareCompatibilityService.filterCompatibleApps(
+        apps,
+        userSession.capabilities,
+        true, // Include apps with missing optional hardware
+      );
+    }
+
     // Get user data for last active timestamps
     const user = await User.findByEmail(tokenUserId);
     const enhancedApps = enhanceAppsWithSessionState(apps, userSession, user);
@@ -406,8 +425,20 @@ async function getAllApps(req: Request, res: Response) {
  * Get public apps
  */
 async function getPublicApps(req: Request, res: Response) {
+  const request = req as OptionalUserSessionRequest;
+
   try {
-    const apps = await appService.getAllApps();
+    let apps = await appService.getAllApps();
+
+    // Filter apps by hardware compatibility if user has connected glasses
+    if (request.userSession && request.userSession.capabilities) {
+      apps = HardwareCompatibilityService.filterCompatibleApps(
+        apps,
+        request.userSession.capabilities,
+        true, // Include apps with missing optional hardware
+      );
+    }
+
     res.json({
       success: true,
       data: apps,
@@ -425,6 +456,8 @@ async function getPublicApps(req: Request, res: Response) {
  * Search apps by query
  */
 async function searchApps(req: Request, res: Response) {
+  const request = req as OptionalUserSessionRequest;
+
   try {
     const query = req.query.q as string;
     const organizationId = req.query.organizationId as string;
@@ -456,6 +489,15 @@ async function searchApps(req: Request, res: Response) {
 
       logger.debug(
         `Filtered search results by organizationId: ${organizationId}, found ${searchResults.length} results`,
+      );
+    }
+
+    // Filter apps by hardware compatibility if user has connected glasses
+    if (request.userSession && request.userSession.capabilities) {
+      searchResults = HardwareCompatibilityService.filterCompatibleApps(
+        searchResults,
+        request.userSession.capabilities,
+        true, // Include apps with missing optional hardware
       );
     }
 
@@ -1316,6 +1358,8 @@ async function getAppDetails(req: Request, res: Response) {
 }
 
 async function getAvailableApps(req: Request, res: Response) {
+  const request = req as OptionalUserSessionRequest;
+
   try {
     const organizationId = req.query.organizationId as string;
     let apps = await appService.getAvailableApps();
@@ -1330,6 +1374,15 @@ async function getAvailableApps(req: Request, res: Response) {
 
       logger.debug(
         `Filtered available apps by organizationId: ${organizationId}, found ${apps.length} apps`,
+      );
+    }
+
+    // Filter apps by hardware compatibility if user has connected glasses
+    if (request.userSession && request.userSession.capabilities) {
+      apps = HardwareCompatibilityService.filterCompatibleApps(
+        apps,
+        request.userSession.capabilities,
+        true, // Include apps with missing optional hardware
       );
     }
 
@@ -1387,8 +1440,8 @@ async function getAvailableApps(req: Request, res: Response) {
 
 // Route Definitions
 router.get("/", unifiedAuthMiddleware, getAllApps);
-router.get("/public", getPublicApps);
-router.get("/search", searchApps);
+router.get("/public", authWithOptionalSession, getPublicApps);
+router.get("/search", authWithOptionalSession, searchApps);
 
 // [DEPRECATED] dualModeAuthMiddleware no longer exists.
 //  Use authWithEmail, authWithUser, authWithSession or authWithOptionalSession instead. from middleware/client/client-auth-middleware.ts
@@ -1408,7 +1461,7 @@ router.get("/version", async (req, res) => {
   res.json({ version: CLOUD_VERSION });
 });
 
-router.get("/available", getAvailableApps);
+router.get("/available", authWithOptionalSession, getAvailableApps);
 router.get("/:packageName", getAppByPackage);
 
 // Device-specific operations - use unified auth

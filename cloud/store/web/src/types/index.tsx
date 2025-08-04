@@ -1,10 +1,7 @@
 // src/types/app.types.ts
 
-import {
-  HardwareType,
-  HardwareRequirementLevel,
-  HardwareRequirement,
-} from "@mentra/sdk";
+import { HardwareRequirement } from "@mentra/sdk";
+import { HardwareRequirementLevel, HardwareType } from "../types/enums";
 
 // Define App type enum
 export enum AppType {
