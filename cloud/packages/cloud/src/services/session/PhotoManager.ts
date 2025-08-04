@@ -62,13 +62,20 @@ export class PhotoManager {
    * Adapts logic from photoRequestService.createAppPhotoRequest.
    */
   async requestPhoto(appRequest: PhotoRequest): Promise<string> {
-    const { packageName, requestId, saveToGallery = false } = appRequest; // Use requestId from App request
+    const { packageName, requestId, saveToGallery = false, customWebhookUrl } = appRequest;
 
-    this.logger.info({ packageName, requestId, saveToGallery }, 'Processing App photo request.');
+    this.logger.info({ packageName, requestId, saveToGallery, hasCustomWebhook: !!customWebhookUrl }, 'Processing App photo request.');
 
-    // Get the app's webhook URL for direct photo upload
-    const app = this.userSession.installedApps.get(packageName);
-    const webhookUrl = app?.publicUrl ? `${app.publicUrl}/photo-upload` : undefined;
+    // Get the webhook URL - use custom if provided, otherwise fall back to app's default
+    let webhookUrl: string | undefined;
+    if (customWebhookUrl) {
+      webhookUrl = customWebhookUrl;
+      this.logger.info({ requestId, customWebhookUrl }, 'Using custom webhook URL for photo request.');
+    } else {
+      const app = this.userSession.installedApps.get(packageName);
+      webhookUrl = app?.publicUrl ? `${app.publicUrl}/photo-upload` : undefined;
+      this.logger.info({ requestId, defaultWebhookUrl: webhookUrl }, 'Using default webhook URL for photo request.');
+    }
 
     if (!this.userSession.websocket || this.userSession.websocket.readyState !== WebSocket.OPEN) {
       this.logger.error('Glasses WebSocket not connected, cannot send photo request to glasses.');
@@ -101,7 +108,7 @@ export class PhotoManager {
 
     try {
       this.userSession.websocket.send(JSON.stringify(messageToGlasses));
-      this.logger.info({ requestId, packageName, webhookUrl }, 'PHOTO_REQUEST command sent to glasses with webhook URL.');
+      this.logger.info({ requestId, packageName, webhookUrl, isCustom: !!customWebhookUrl }, 'PHOTO_REQUEST command sent to glasses with webhook URL.');
     } catch (error) {
       this.logger.error({ error, requestId }, 'Failed to send PHOTO_REQUEST to glasses.');
       clearTimeout(requestInfo.timeoutId);

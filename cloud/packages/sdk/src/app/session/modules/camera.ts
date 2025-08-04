@@ -36,6 +36,8 @@ import {
 export interface PhotoRequestOptions {
   /** Whether to save the photo to the device gallery */
   saveToGallery?: boolean;
+  /** Custom webhook URL to override the TPA's default webhookUrl */
+  customWebhookUrl?: string;
 }
 
 /**
@@ -150,6 +152,11 @@ export class CameraModule {
    * ```typescript
    * // Request a photo
    * const photo = await session.camera.requestPhoto();
+   * 
+   * // Request a photo with custom webhook URL
+   * const photo = await session.camera.requestPhoto({ 
+   *   customWebhookUrl: 'https://my-custom-endpoint.com/photo-upload' 
+   * });
    * ```
    */
   async requestPhoto(options?: PhotoRequestOptions): Promise<PhotoData> {
@@ -169,13 +176,18 @@ export class CameraModule {
           requestId,
           timestamp: new Date(),
           saveToGallery: options?.saveToGallery || false,
+          customWebhookUrl: options?.customWebhookUrl,
         };
 
         // Send request to cloud
         this.send(message);
 
         this.logger.info(
-          { requestId, saveToGallery: options?.saveToGallery },
+          { 
+            requestId, 
+            saveToGallery: options?.saveToGallery,
+            hasCustomWebhook: !!options?.customWebhookUrl 
+          },
           `📸 Photo request sent`,
         );
 
