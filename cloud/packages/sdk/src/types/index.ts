@@ -32,6 +32,8 @@ export {
   OutputStatus,
   MentraosSettingsUpdate,
   TranscriptionData,
+  TranscriptionMetadata,
+  SonioxToken,
   AudioChunk,
   PermissionError,
   PermissionErrorDetail,

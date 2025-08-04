@@ -8,6 +8,7 @@ import android.util.Log;
 import com.k2fsa.sherpa.onnx.*;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.concurrent.*;
@@ -38,6 +39,9 @@ public class SherpaOnnxTranscriber {
     private String lastPartialResult = "";
 
     private volatile TranscriptListener transcriptListener;
+    
+    // Dynamic model path support
+    private static String customModelPath = null;
 
     /**
      * Interface to receive transcription results from Sherpa-ONNX.
@@ -63,28 +67,67 @@ public class SherpaOnnxTranscriber {
      */
     public void init() {
         try {
+            // Check for dynamic model path first
+            String modelPath = getModelPath();
+            
             // Load model file paths
-            OnlineTransducerModelConfig transducer = new OnlineTransducerModelConfig();
-            transducer.setEncoder("sherpa_onnx/encoder.onnx");
-            transducer.setDecoder("sherpa_onnx/decoder.onnx");
-            transducer.setJoiner("sherpa_onnx/joiner.onnx");
-
             OnlineModelConfig modelConfig = new OnlineModelConfig();
-            modelConfig.setTransducer(transducer);
-            modelConfig.setTokens("sherpa_onnx/tokens.txt");
-            modelConfig.setNumThreads(1);
-
-            // Configure decoder and endpoint detection
             OnlineRecognizerConfig config = new OnlineRecognizerConfig();
-            config.setModelConfig(modelConfig);
-            config.setDecodingMethod("greedy_search"); // Fast decoding
-            config.setEnableEndpoint(true);
-            // .setRule1MinTrailingSilence(1.2f)
-            // .setRule2MinTrailingSilence(0.8f)
-            // .setRule3MinUtteranceLength(10.0f)
+            
+            if (modelPath != null && isModelAvailable(modelPath)) {
+                // Use dynamic model path - but we still need to provide AssetManager
+                Log.i(TAG, "Using dynamic model path: " + modelPath);
+                
+                // Detect model type based on available files
+                File ctcModelFile = new File(modelPath, "model.int8.onnx");
+                File transducerEncoderFile = new File(modelPath, "encoder.onnx");
+                
+                if (ctcModelFile.exists()) {
+                    // NeMo CTC model detected
+                    Log.i(TAG, "Detected NeMo CTC model at " + modelPath);
+                    
+                    OnlineNeMoCtcModelConfig ctc = new OnlineNeMoCtcModelConfig();
+                    ctc.setModel(ctcModelFile.getAbsolutePath());
+                    
+                    modelConfig.setNeMoCtc(ctc);
+                    modelConfig.setTokens(new File(modelPath, "tokens.txt").getAbsolutePath());
+                    modelConfig.setNumThreads(1);
+                    
+                } else if (transducerEncoderFile.exists()) {
+                    // Transducer model detected
+                    Log.i(TAG, "Detected transducer model at " + modelPath);
+                    
+                    OnlineTransducerModelConfig transducer = new OnlineTransducerModelConfig();
+                    transducer.setEncoder(new File(modelPath, "encoder.onnx").getAbsolutePath());
+                    transducer.setDecoder(new File(modelPath, "decoder.onnx").getAbsolutePath());
+                    transducer.setJoiner(new File(modelPath, "joiner.onnx").getAbsolutePath());
+                    
+                    modelConfig.setTransducer(transducer);
+                    modelConfig.setTokens(new File(modelPath, "tokens.txt").getAbsolutePath());
+                    modelConfig.setNumThreads(1);
+                    
+                } else {
+                    throw new RuntimeException("No valid model files found at path: " + modelPath);
+                }
+                
+                config.setModelConfig(modelConfig);
+                config.setDecodingMethod("greedy_search");
+                config.setEnableEndpoint(true);
+                
+                // Still need to pass AssetManager, even though we're using file paths
+                recognizer = new OnlineRecognizer(context.getAssets(), config);
+                
+            } else {
+                // No model available - transcription disabled
+                Log.w(TAG, "No Sherpa ONNX model available. Transcription will be disabled.");
+                Log.w(TAG, "Please download a model using the model downloader in settings.");
+                
+                // Set recognizer to null to indicate no model is available
+                recognizer = null;
+                stream = null;
+                return; // Exit early - don't start processing thread
+            }
 
-            // Create recognizer and stream
-            recognizer = new OnlineRecognizer(context.getAssets(), config);
             stream = recognizer.createStream("");
 
             startProcessingThread();
@@ -271,5 +314,68 @@ public class SherpaOnnxTranscriber {
      */
     public boolean isInitialized() {
         return recognizer != null && stream != null;
+    }
+    
+    /**
+     * Get the current model path, checking system property first, then SharedPreferences
+     */
+    private String getModelPath() {
+        // First check system property (set by FileProviderModule)
+        String systemPath = System.getProperty("stt.model.path");
+        if (systemPath != null && !systemPath.isEmpty()) {
+            customModelPath = systemPath;
+            return systemPath;
+        }
+        
+        // Fall back to stored custom path
+        return customModelPath;
+    }
+    
+    /**
+     * Set a custom model path for dynamic model loading
+     */
+    public static void setModelPath(String path) {
+        customModelPath = path;
+        System.setProperty("stt.model.path", path);
+    }
+    
+    /**
+     * Check if a model is available at the given path
+     */
+    public static boolean isModelAvailable(String path) {
+        if (path == null) return false;
+        
+        // Check for tokens.txt (required for all models)
+        File tokensFile = new File(path, "tokens.txt");
+        if (!tokensFile.exists()) {
+            Log.w(TAG, "Missing tokens.txt file at: " + path);
+            return false;
+        }
+        
+        // Check for CTC model
+        File ctcModelFile = new File(path, "model.int8.onnx");
+        if (ctcModelFile.exists()) {
+            Log.i(TAG, "CTC model found at: " + path);
+            return true;
+        }
+        
+        // Check for transducer model
+        String[] transducerFiles = {"encoder.onnx", "decoder.onnx", "joiner.onnx"};
+        boolean allTransducerFilesPresent = true;
+        for (String fileName : transducerFiles) {
+            File file = new File(path, fileName);
+            if (!file.exists()) {
+                allTransducerFilesPresent = false;
+                break;
+            }
+        }
+        
+        if (allTransducerFilesPresent) {
+            Log.i(TAG, "Transducer model found at: " + path);
+            return true;
+        }
+        
+        Log.w(TAG, "No complete model found at: " + path);
+        return false;
     }
 }

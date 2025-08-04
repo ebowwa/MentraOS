@@ -345,6 +345,7 @@ export default function InactiveAppList({
           iconColor: theme.colors.textDim,
         },
       )
+      return
     }
 
     // Check if glasses are connected and this is the first app being activated
