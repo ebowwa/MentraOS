@@ -7,6 +7,7 @@ import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
+import android.util.Log;
 
 import androidx.core.app.NotificationCompat;
 
@@ -37,5 +38,75 @@ public class DebugNotificationManager {
                 (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
         createNotificationChannel();
     }
-    // ... rest of the class remains unchanged ...
+    
+    /**
+     * Create the notification channel for Android O and above
+     */
+    private void createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel channel = new NotificationChannel(
+                    CHANNEL_ID,
+                    "ASG Bluetooth Debug",
+                    NotificationManager.IMPORTANCE_LOW
+            );
+            channel.setDescription("Debug notifications for Bluetooth operations");
+            notificationManager.createNotificationChannel(channel);
+        }
+    }
+    
+    /**
+     * Show a device type notification
+     */
+    public void showDeviceTypeNotification(boolean isConnected) {
+        String title = "Device Type";
+        String message = isConnected ? "Device connected" : "Device disconnected";
+        showNotification(title, message);
+    }
+    
+    /**
+     * Show a general notification
+     */
+    public void showNotification(String title, String message) {
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
+                .setSmallIcon(android.R.drawable.ic_dialog_info)
+                .setContentTitle(title)
+                .setContentText(message)
+                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .setAutoCancel(true);
+        
+        notificationManager.notify(NOTIFICATION_ID_BASE + notificationCount++, builder.build());
+    }
+    
+    /**
+     * Show an advertising notification
+     */
+    public void showAdvertisingNotification(String deviceName) {
+        String title = "Bluetooth Advertising";
+        String message = "Advertising as: " + deviceName;
+        showNotification(title, message);
+    }
+    
+    /**
+     * Show a debug notification
+     */
+    public void showDebugNotification(String title, String message) {
+        showNotification(title, message);
+    }
+    
+    /**
+     * Show a bluetooth state notification
+     */
+    public void showBluetoothStateNotification(boolean isConnected) {
+        String title = "Bluetooth State";
+        String message = isConnected ? "Bluetooth connected" : "Bluetooth disconnected";
+        showNotification(title, message);
+    }
+    
+    /**
+     * Cancel advertising notification
+     */
+    public void cancelAdvertisingNotification() {
+        // Implementation would go here to cancel specific notification
+        Log.d("DebugNotificationManager", "Canceling advertising notification");
+    }
 }

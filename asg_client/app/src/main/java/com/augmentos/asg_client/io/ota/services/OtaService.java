@@ -15,6 +15,7 @@ import com.augmentos.asg_client.R;
 import com.augmentos.asg_client.io.ota.events.DownloadProgressEvent;
 import com.augmentos.asg_client.io.ota.events.InstallationProgressEvent;
 import com.augmentos.asg_client.io.ota.utils.OtaConstants;
+import com.augmentos.asg_client.io.ota.helpers.OtaHelper;
 import com.augmentos.asg_client.events.BatteryStatusEvent;
 import com.augmentos.asg_client.SysControl;
 

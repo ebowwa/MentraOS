@@ -25,6 +25,31 @@ public class CircleBuffer {
     }
     
     /**
+     * Check if the buffer can accommodate the specified number of bytes
+     * @param len Number of bytes to check
+     * @return true if the buffer can accommodate the bytes, false otherwise
+     */
+    public boolean canAdd(int len) {
+        if (len > mLen) {
+            return false;
+        }
+        
+        if (begin == end) {
+            return true; // Empty buffer
+        }
+        
+        if (end > begin) {
+            // Data is contiguous, check if there's enough space
+            int availableSpace = mLen - end + begin - 1;
+            return availableSpace >= len;
+        } else {
+            // Data wraps around, check if there's enough space
+            int availableSpace = begin - end - 1;
+            return availableSpace >= len;
+        }
+    }
+    
+    /**
      * Add data to the buffer
      * @param buf Source buffer
      * @param offset Offset in source buffer
@@ -98,12 +123,44 @@ public class CircleBuffer {
             return fetchSize;
         } else {
             int laterSize = mLen - begin;
-
-            // ... rest of the implementation would continue here
-            // For brevity, I'm showing the key parts that need import updates
+            if (laterSize >= len) {
+                fetchSize = len;
+                ByteUtil.copyBytes(mBuf, begin, fetchSize, buf, offset);
+            } else {
+                fetchSize = laterSize;
+                ByteUtil.copyBytes(mBuf, begin, fetchSize, buf, offset);
+                int remainingLen = len - laterSize;
+                if (remainingLen > 0 && end > 0) {
+                    int frontFetchSize = Math.min(remainingLen, end);
+                    ByteUtil.copyBytes(mBuf, 0, frontFetchSize, buf, offset + laterSize);
+                    fetchSize += frontFetchSize;
+                }
+            }
+            return fetchSize;
         }
     }
-
-    // ... rest of the implementation would continue here
-    // For brevity, I'm showing the key parts that need import updates
+    
+    /**
+     * Get the current data length in the buffer
+     * @return Number of bytes currently in the buffer
+     */
+    public int getDataLen() {
+        if (begin == end) {
+            return 0;
+        }
+        
+        if (end > begin) {
+            return end - begin;
+        } else {
+            return mLen - begin + end;
+        }
+    }
+    
+    /**
+     * Clear the buffer
+     */
+    public void clear() {
+        begin = 0;
+        end = 0;
+    }
 } 

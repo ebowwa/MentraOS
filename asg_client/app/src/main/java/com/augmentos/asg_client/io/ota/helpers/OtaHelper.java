@@ -41,8 +41,11 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.stream.Collectors;
 
+import com.augmentos.asg_client.io.ota.constants.OtaConstants;
+import com.augmentos.asg_client.io.ota.constants.Constants;
+
 public class OtaHelper {
-    private static final String TAG = OtaConstants.TAG;
+    private static final String TAG = Constants.TAG;
     private static ConnectivityManager.NetworkCallback networkCallback;
     private static ConnectivityManager connectivityManager;
     private static volatile boolean isCheckingVersion = false;

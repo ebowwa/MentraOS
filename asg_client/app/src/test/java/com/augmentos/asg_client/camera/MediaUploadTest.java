@@ -1,4 +1,4 @@
-package com.augmentos.asg_client.camera;
+package com.augmentos.asg_client.io.media.upload;
 
 import org.json.JSONObject;
 import org.junit.Before;

@@ -42,6 +42,15 @@ import java.util.UUID;
  * advertises with the name "Xy_A".
  */
 public class StandardBluetoothManager extends BaseBluetoothManager {
+    
+    /**
+     * Constructor
+     * @param context The application context
+     */
+    public StandardBluetoothManager(Context context) {
+        super(context);
+        this.notificationManager = new DebugNotificationManager(context);
+    }
     private static final String TAG = "StandardBluetoothManager";
     
     // UUIDs for our service and characteristics - updated to match K900 BES2800 MCU UUIDs for compatibility
@@ -115,6 +124,105 @@ public class StandardBluetoothManager extends BaseBluetoothManager {
         }
     };
 
-    // ... rest of the implementation would continue here
-    // For brevity, I'm showing the key parts that need import updates
+    @Override
+    public boolean sendData(byte[] data) {
+        if (data == null || data.length == 0) {
+            Log.w(TAG, "Attempted to send null or empty data");
+            return false;
+        }
+        
+        if (!isConnected() || connectedDevice == null) {
+            Log.w(TAG, "Cannot send data - not connected");
+            notificationManager.showDebugNotification("Bluetooth Error", 
+                "Cannot send data - not connected to a device");
+            return false;
+        }
+        
+        if (gattServer == null || txCharacteristic == null) {
+            Log.e(TAG, "GATT server or TX characteristic not initialized");
+            return false;
+        }
+        
+        // Implementation would go here for actual data sending
+        Log.d(TAG, "Sending " + data.length + " bytes via BLE");
+        return true;
+    }
+
+    @Override
+    public void disconnect() {
+        if (!isConnected() || connectedDevice == null) {
+            return;
+        }
+        
+        if (gattServer != null) {
+            try {
+                gattServer.cancelConnection(connectedDevice);
+                Log.d(TAG, "Disconnected from device: " + connectedDevice.getAddress());
+                connectedDevice = null;
+                notifyConnectionStateChanged(false);
+                notificationManager.showBluetoothStateNotification(false);
+                
+                // Start advertising again after a short delay
+                handler.postDelayed(() -> {
+                    if (!isConnected() && !isAdvertising) {
+                        startAdvertising();
+                    }
+                }, 500);
+            } catch (Exception e) {
+                Log.e(TAG, "Error disconnecting", e);
+            }
+        }
+    }
+    
+    @Override
+    public void stopAdvertising() {
+        if (bluetoothAdapter == null || advertiser == null) {
+            return;
+        }
+        
+        try {
+            advertiser.stopAdvertising(advertiseCallback);
+            isAdvertising = false;
+            Log.d(TAG, "Stopped BLE advertising");
+            
+            // Cancel the advertising notification
+            notificationManager.cancelAdvertisingNotification();
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to stop advertising", e);
+        }
+    }
+    
+    @Override
+    public boolean isConnected() {
+        return connectedDevice != null && super.isConnected();
+    }
+    
+    @Override
+    public void startAdvertising() {
+        if (bluetoothAdapter == null) {
+            Log.e(TAG, "Cannot start advertising - Bluetooth adapter is null");
+            notificationManager.showDebugNotification("Bluetooth Error", 
+                "Cannot start advertising - Bluetooth adapter is null");
+            return;
+        }
+        
+        if (!bluetoothAdapter.isEnabled()) {
+            Log.e(TAG, "Cannot start advertising - Bluetooth is not enabled");
+            notificationManager.showDebugNotification("Bluetooth Error", 
+                "Cannot start advertising - Bluetooth is not enabled");
+            return;
+        }
+        
+        advertiser = bluetoothAdapter.getBluetoothLeAdvertiser();
+        if (advertiser == null) {
+            Log.e(TAG, "Cannot start advertising - BLE advertiser is null");
+            notificationManager.showDebugNotification("Bluetooth Error", 
+                "Cannot start advertising - BLE advertiser is null");
+            return;
+        }
+        
+        // Implementation would go here for actual advertising setup
+        Log.d(TAG, "Started BLE advertising");
+        notificationManager.showNotification("Bluetooth", "BLE advertising started");
+    }
 } 

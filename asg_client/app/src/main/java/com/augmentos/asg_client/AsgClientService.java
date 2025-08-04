@@ -35,9 +35,9 @@ import androidx.preference.PreferenceManager;
 import org.json.JSONArray;
 
 
-import com.augmentos.asg_client.server.AsgCameraServer;
-import com.augmentos.asg_client.server.AsgServerManager;
-import com.augmentos.asg_client.server.impl.DefaultServerFactory;
+import com.augmentos.asg_client.io.server.services.AsgCameraServer;
+import com.augmentos.asg_client.io.server.managers.AsgServerManager;
+import com.augmentos.asg_client.io.server.core.DefaultServerFactory;
 import com.augmentos.asg_client.logging.Logger;
 import com.augmentos.asg_client.io.streaming.services.RtmpStreamingService;
 import com.augmentos.augmentos_core.AugmentosService;
@@ -113,14 +113,14 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     private IBluetoothManager bluetoothManager;
 
     // Microphone management for non-K900 devices
-    private com.augmentos.asg_client.audio.GlassesMicrophoneManager glassesMicrophoneManager;
+    private com.augmentos.asg_client.io.media.managers.GlassesMicrophoneManager glassesMicrophoneManager;
     private boolean isK900Device = false;
 
     // Photo queue manager for handling offline media uploads
-    private MediaUploadQueueManager mMediaQueueManager;
+    private com.augmentos.asg_client.io.media.managers.MediaUploadQueueManager mMediaQueueManager;
 
     // Media capture service
-    private MediaCaptureService mMediaCaptureService;
+    private com.augmentos.asg_client.io.media.core.MediaCaptureService mMediaCaptureService;
 
     // Settings
     private AsgSettings asgSettings;
@@ -246,7 +246,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         new Handler(Looper.getMainLooper()).postDelayed(() -> {
             // TEMPORARY: Using internal OTA service instead of separate app
             Log.d(TAG, "Starting internal OTA service after delay");
-            Intent otaIntent = new Intent(this, com.augmentos.asg_client.ota.OtaService.class);
+            Intent otaIntent = new Intent(this, com.augmentos.asg_client.io.ota.services.OtaService.class);
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 startForegroundService(otaIntent);
             } else {
@@ -345,7 +345,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
      */
     private void initializeStreamingCallbacks() {
         // Register for streaming status callbacks
-        com.augmentos.asg_client.streaming.RtmpStreamingService.setStreamingStatusCallback(streamingStatusCallback);
+        com.augmentos.asg_client.io.streaming.services.RtmpStreamingService.setStreamingStatusCallback(streamingStatusCallback);
         Log.d(TAG, "Registered RTMP streaming callbacks");
     }
 
@@ -372,17 +372,17 @@ public class AsgClientService extends Service implements NetworkStateListener, B
      * Handle streaming events from the RtmpStreamingService
      */
     @org.greenrobot.eventbus.Subscribe(threadMode = org.greenrobot.eventbus.ThreadMode.MAIN)
-    public void onStreamingEvent(com.augmentos.asg_client.streaming.StreamingEvent event) {
-        if (event instanceof com.augmentos.asg_client.streaming.StreamingEvent.Started) {
+    public void onStreamingEvent(com.augmentos.asg_client.io.streaming.events.StreamingEvent event) {
+        if (event instanceof com.augmentos.asg_client.io.streaming.events.StreamingEvent.Started) {
             Log.d(TAG, "RTMP streaming started successfully");
-        } else if (event instanceof com.augmentos.asg_client.streaming.StreamingEvent.Stopped) {
+        } else if (event instanceof com.augmentos.asg_client.io.streaming.events.StreamingEvent.Stopped) {
             Log.d(TAG, "RTMP streaming stopped");
-        } else if (event instanceof com.augmentos.asg_client.streaming.StreamingEvent.Error) {
-            Log.e(TAG, "RTMP streaming error: " + ((com.augmentos.asg_client.streaming.StreamingEvent.Error) event).getMessage());
-        } else if (event instanceof com.augmentos.asg_client.streaming.StreamingEvent.Connected) {
+        } else if (event instanceof com.augmentos.asg_client.io.streaming.events.StreamingEvent.Error) {
+            Log.e(TAG, "RTMP streaming error: " + ((com.augmentos.asg_client.io.streaming.events.StreamingEvent.Error) event).getMessage());
+        } else if (event instanceof com.augmentos.asg_client.io.streaming.events.StreamingEvent.Connected) {
             Log.d(TAG, "RTMP connection established");
-        } else if (event instanceof com.augmentos.asg_client.streaming.StreamingEvent.ConnectionFailed) {
-            Log.e(TAG, "RTMP connection failed: " + ((com.augmentos.asg_client.streaming.StreamingEvent.ConnectionFailed) event).getMessage());
+        } else if (event instanceof com.augmentos.asg_client.io.streaming.events.StreamingEvent.ConnectionFailed) {
+            Log.e(TAG, "RTMP connection failed: " + ((com.augmentos.asg_client.io.streaming.events.StreamingEvent.ConnectionFailed) event).getMessage());
         }
     }
 
@@ -391,19 +391,19 @@ public class AsgClientService extends Service implements NetworkStateListener, B
      */
     private void initializeMediaQueueManager() {
         if (mMediaQueueManager == null) {
-            mMediaQueueManager = new MediaUploadQueueManager(getApplicationContext());
+            mMediaQueueManager = new com.augmentos.asg_client.io.media.managers.MediaUploadQueueManager(getApplicationContext());
 
             // Set up queue callback
-            mMediaQueueManager.setMediaQueueCallback(new MediaUploadQueueManager.MediaQueueCallback() {
+            mMediaQueueManager.setMediaQueueCallback(new com.augmentos.asg_client.io.media.managers.MediaUploadQueueManager.MediaQueueCallback() {
                 @Override
                 public void onMediaQueued(String requestId, String filePath, int mediaType) {
                     Log.d(TAG, "Media queued: " + requestId + ", path: " + filePath + ", type: " +
-                            (mediaType == MediaUploadQueueManager.MEDIA_TYPE_PHOTO ? "photo" : "video"));
+                            (mediaType == com.augmentos.asg_client.io.media.managers.MediaUploadQueueManager.MEDIA_TYPE_PHOTO ? "photo" : "video"));
                 }
 
                 @Override
                 public void onMediaUploaded(String requestId, String url, int mediaType) {
-                    String mediaTypeName = mediaType == MediaUploadQueueManager.MEDIA_TYPE_PHOTO ? "Photo" : "Video";
+                    String mediaTypeName = mediaType == com.augmentos.asg_client.io.media.managers.MediaUploadQueueManager.MEDIA_TYPE_PHOTO ? "Photo" : "Video";
                     Log.d(TAG, mediaTypeName + " uploaded from queue: " + requestId + ", URL: " + url);
                     // Send notification to phone if connected
                     sendMediaSuccessResponse(requestId, url, mediaType);
@@ -411,7 +411,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
 
                 @Override
                 public void onMediaUploadFailed(String requestId, String error, int mediaType) {
-                    String mediaTypeName = mediaType == MediaUploadQueueManager.MEDIA_TYPE_PHOTO ? "Photo" : "Video";
+                    String mediaTypeName = mediaType == com.augmentos.asg_client.io.media.managers.MediaUploadQueueManager.MEDIA_TYPE_PHOTO ? "Photo" : "Video";
                     Log.d(TAG, mediaTypeName + " upload failed from queue: " + requestId + ", error: " + error);
                     // We don't send error notifications to avoid spamming the phone
                 }
@@ -432,7 +432,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                 initializeMediaQueueManager();
             }
 
-            mMediaCaptureService = new MediaCaptureService(getApplicationContext(), mMediaQueueManager) {
+            mMediaCaptureService = new com.augmentos.asg_client.io.media.core.MediaCaptureService(getApplicationContext(), mMediaQueueManager) {
                 @Override
                 protected void sendMediaSuccessResponse(String requestId, String mediaUrl, int mediaType) {
                     // Override to delegate to parent class
@@ -450,7 +450,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
             mMediaCaptureService.setMediaCaptureListener(mediaCaptureListener);
             
             // Set the service callback for BLE communication
-            mMediaCaptureService.setServiceCallback(new com.augmentos.asg_client.camera.ServiceCallbackInterface() {
+            mMediaCaptureService.setServiceCallback(new com.augmentos.asg_client.io.media.interfaces.ServiceCallbackInterface() {
                 @Override
                 public void sendThroughBluetooth(byte[] data) {
                     if (bluetoothManager != null) {
@@ -661,7 +661,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
      *
      * @return MediaUploadQueueManager instance
      */
-    public MediaUploadQueueManager getMediaQueueManager() {
+    public com.augmentos.asg_client.io.media.managers.MediaUploadQueueManager getMediaQueueManager() {
         if (mMediaQueueManager == null) {
             initializeMediaQueueManager();
         }
@@ -673,7 +673,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
      *
      * @return MediaCaptureService instance
      */
-    public MediaCaptureService getMediaCaptureService() {
+    public com.augmentos.asg_client.io.media.core.MediaCaptureService getMediaCaptureService() {
         if (mMediaCaptureService == null) {
             initializeMediaCaptureService();
         }
@@ -747,7 +747,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
             Log.d(TAG, "Thread ID: " + Thread.currentThread().getId() + ", Thread name: " + Thread.currentThread().getName());
 
             // Pass the existing bluetoothManager instance instead of creating a new one
-            glassesMicrophoneManager = new com.augmentos.asg_client.audio.GlassesMicrophoneManager(
+            glassesMicrophoneManager = new com.augmentos.asg_client.io.media.managers.GlassesMicrophoneManager(
                     getApplicationContext(), bluetoothManager);
 
             // Set up a callback for LC3 encoded audio data if needed
@@ -991,16 +991,16 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         }
 
         // Unregister streaming callback
-        com.augmentos.asg_client.streaming.RtmpStreamingService.setStreamingStatusCallback(null);
+        com.augmentos.asg_client.io.streaming.services.RtmpStreamingService.setStreamingStatusCallback(null);
 
         // Stop RTMP streaming if active
         try {
             org.greenrobot.eventbus.EventBus.getDefault().post(
-                    new com.augmentos.asg_client.streaming.StreamingCommand.Stop()
+                    new com.augmentos.asg_client.io.streaming.events.StreamingCommand.Stop()
             );
 
             // Also use the static method as a backup
-            com.augmentos.asg_client.streaming.RtmpStreamingService.stopStreaming(this);
+            com.augmentos.asg_client.io.streaming.services.RtmpStreamingService.stopStreaming(this);
         } catch (Exception e) {
             Log.e(TAG, "Error stopping RTMP streaming", e);
         }
@@ -1874,9 +1874,9 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                     }
 
                     // Check if already streaming
-                    if (com.augmentos.asg_client.streaming.RtmpStreamingService.isStreaming()) {
+                    if (com.augmentos.asg_client.io.streaming.services.RtmpStreamingService.isStreaming()) {
                         Log.d(TAG, "RTMP stream already active - stopping current stream first");
-                        com.augmentos.asg_client.streaming.RtmpStreamingService.stopStreaming(this);
+                        com.augmentos.asg_client.io.streaming.services.RtmpStreamingService.stopStreaming(this);
                         // Short delay to ensure resources are released
                         try {
                             Thread.sleep(500);
@@ -1925,7 +1925,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                         String streamId = dataToProcess.optString("streamId", "");
 
                         // Pass streamId to the service
-                        com.augmentos.asg_client.streaming.RtmpStreamingService.startStreaming(this, rtmpUrl, streamId);
+                        com.augmentos.asg_client.io.streaming.services.RtmpStreamingService.startStreaming(this, rtmpUrl, streamId);
 
                         Log.d(TAG, "RTMP streaming started with URL: " + rtmpUrl +
                                 (streamId.isEmpty() ? "" : " and streamId: " + streamId));
@@ -1938,8 +1938,8 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                 case "stop_rtmp_stream":
                     Log.d(TAG, "RTMP streaming stop requested via BLE command");
 
-                    if (com.augmentos.asg_client.streaming.RtmpStreamingService.isStreaming()) {
-                        com.augmentos.asg_client.streaming.RtmpStreamingService.stopStreaming(this);
+                    if (com.augmentos.asg_client.io.streaming.services.RtmpStreamingService.isStreaming()) {
+                        com.augmentos.asg_client.io.streaming.services.RtmpStreamingService.stopStreaming(this);
                         sendRtmpStatusResponse(true, "stopping", null);
                     } else {
                         sendRtmpStatusResponse(false, "not_streaming", null);
@@ -1949,8 +1949,8 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                 case "get_rtmp_status":
                     Log.d(TAG, "RTMP status requested via BLE command");
 
-                    boolean isStreaming = com.augmentos.asg_client.streaming.RtmpStreamingService.isStreaming();
-                    boolean isReconnecting = com.augmentos.asg_client.streaming.RtmpStreamingService.isReconnecting();
+                    boolean isStreaming = com.augmentos.asg_client.io.streaming.services.RtmpStreamingService.isStreaming();
+                    boolean isReconnecting = com.augmentos.asg_client.io.streaming.services.RtmpStreamingService.isReconnecting();
 
                     try {
                         JSONObject status = new JSONObject();
@@ -1958,7 +1958,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
 
                         if (isReconnecting) {
                             status.put("reconnecting", true);
-                            status.put("attempt", com.augmentos.asg_client.streaming.RtmpStreamingService.getReconnectAttempt());
+                            status.put("attempt", com.augmentos.asg_client.io.streaming.services.RtmpStreamingService.getReconnectAttempt());
                         }
 
                         // Send the status response
@@ -1977,7 +1977,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
 
                     if (!streamId.isEmpty() && !ackId.isEmpty()) {
                         // Try to reset the timeout for this stream
-                        boolean streamIdValid = com.augmentos.asg_client.streaming.RtmpStreamingService.resetStreamTimeout(streamId);
+                        boolean streamIdValid = com.augmentos.asg_client.io.streaming.services.RtmpStreamingService.resetStreamTimeout(streamId);
 
                         if (streamIdValid) {
                             // Send ACK response back to cloud
@@ -1986,7 +1986,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                         } else {
                             // Unknown stream ID - kill current stream and request restart
                             Log.e(TAG, "Received keep-alive for unknown stream ID: " + streamId + " - terminating current stream");
-                            com.augmentos.asg_client.streaming.RtmpStreamingService.stopStreaming(this);
+                            com.augmentos.asg_client.io.streaming.services.RtmpStreamingService.stopStreaming(this);
 
                             // Send error status to cloud to request proper restart
                             try {
@@ -2421,7 +2421,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
             versionInfo.put("build_number", buildNumber);
             versionInfo.put("device_model", android.os.Build.MODEL);
             versionInfo.put("android_version", android.os.Build.VERSION.RELEASE);
-            versionInfo.put("ota_version_url", com.augmentos.asg_client.ota.Constants.VERSION_JSON_URL);
+            versionInfo.put("ota_version_url", com.augmentos.asg_client.io.ota.utils.OtaConstants.VERSION_JSON_URL);
 
             if (bluetoothManager != null && bluetoothManager.isConnected()) {
                 bluetoothManager.sendData(versionInfo.toString().getBytes(StandardCharsets.UTF_8));
@@ -2443,7 +2443,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
             Log.d(TAG, "Starting RTMP streaming service for testing");
 
             // Use the static convenience method to start streaming (callback already registered)
-            com.augmentos.asg_client.streaming.RtmpStreamingService.startStreaming(
+            com.augmentos.asg_client.io.streaming.services.RtmpStreamingService.startStreaming(
                     this,
                     "rtmp://10.0.0.22/s/streamKey"
             );
@@ -2457,8 +2457,8 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     /**
      * Stream status callback implementation
      */
-    private final RtmpStreamingService.StreamingStatusCallback streamingStatusCallback =
-            new RtmpStreamingService.StreamingStatusCallback() {
+    private final com.augmentos.asg_client.io.streaming.interfaces.StreamingStatusCallback streamingStatusCallback =
+            new com.augmentos.asg_client.io.streaming.interfaces.StreamingStatusCallback() {
                 @Override
                 public void onStreamStarting(String rtmpUrl) {
                     Log.d(TAG, "RTMP Stream starting to: " + rtmpUrl);
@@ -2469,7 +2469,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                         status.put("type", "rtmp_stream_status");
                         status.put("status", "initializing");
                         // Add streamId if available
-                        String streamId = com.augmentos.asg_client.streaming.RtmpStreamingService.getCurrentStreamId();
+                        String streamId = com.augmentos.asg_client.io.streaming.services.RtmpStreamingService.getCurrentStreamId();
                         if (streamId != null && !streamId.isEmpty()) {
                             status.put("streamId", streamId);
                         }
@@ -2490,7 +2490,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                         status.put("status", "streaming");
                         status.put("rtmpUrl", rtmpUrl);
                         // Add streamId if available
-                        String streamId = com.augmentos.asg_client.streaming.RtmpStreamingService.getCurrentStreamId();
+                        String streamId = com.augmentos.asg_client.io.streaming.services.RtmpStreamingService.getCurrentStreamId();
                         if (streamId != null && !streamId.isEmpty()) {
                             status.put("streamId", streamId);
                         }
@@ -2519,7 +2519,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                         status.put("type", "rtmp_stream_status");
                         status.put("status", "stopped");
                         // Add streamId if available
-                        String streamId = com.augmentos.asg_client.streaming.RtmpStreamingService.getCurrentStreamId();
+                        String streamId = com.augmentos.asg_client.io.streaming.services.RtmpStreamingService.getCurrentStreamId();
                         if (streamId != null && !streamId.isEmpty()) {
                             status.put("streamId", streamId);
                         }
@@ -2542,7 +2542,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                         status.put("maxAttempts", maxAttempts);
                         status.put("reason", reason);
                         // Add streamId if available
-                        String streamId = com.augmentos.asg_client.streaming.RtmpStreamingService.getCurrentStreamId();
+                        String streamId = com.augmentos.asg_client.io.streaming.services.RtmpStreamingService.getCurrentStreamId();
                         if (streamId != null && !streamId.isEmpty()) {
                             status.put("streamId", streamId);
                         }
@@ -2565,7 +2565,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                         status.put("reconnected", true);
                         status.put("attempts", attempt);
                         // Add streamId if available
-                        String streamId = com.augmentos.asg_client.streaming.RtmpStreamingService.getCurrentStreamId();
+                        String streamId = com.augmentos.asg_client.io.streaming.services.RtmpStreamingService.getCurrentStreamId();
                         if (streamId != null && !streamId.isEmpty()) {
                             status.put("streamId", streamId);
                         }
@@ -2586,7 +2586,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                         status.put("status", "error");
                         status.put("errorDetails", "Failed to reconnect after " + maxAttempts + " attempts");
                         // Add streamId if available
-                        String streamId = com.augmentos.asg_client.streaming.RtmpStreamingService.getCurrentStreamId();
+                        String streamId = com.augmentos.asg_client.io.streaming.services.RtmpStreamingService.getCurrentStreamId();
                         if (streamId != null && !streamId.isEmpty()) {
                             status.put("streamId", streamId);
                         }
@@ -2607,7 +2607,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                         status.put("status", "error");
                         status.put("errorDetails", error);
                         // Add streamId if available
-                        String streamId = com.augmentos.asg_client.streaming.RtmpStreamingService.getCurrentStreamId();
+                        String streamId = com.augmentos.asg_client.io.streaming.services.RtmpStreamingService.getCurrentStreamId();
                         if (streamId != null && !streamId.isEmpty()) {
                             status.put("streamId", streamId);
                         }
@@ -2619,8 +2619,8 @@ public class AsgClientService extends Service implements NetworkStateListener, B
             };
 
     // Media capture listener (delegated to MediaCaptureService)
-    private final MediaCaptureService.MediaCaptureListener mediaCaptureListener =
-            new MediaCaptureService.MediaCaptureListener() {
+    private final com.augmentos.asg_client.io.media.core.MediaCaptureService.MediaCaptureListener mediaCaptureListener =
+            new com.augmentos.asg_client.io.media.core.MediaCaptureService.MediaCaptureListener() {
                 @Override
                 public void onPhotoCapturing(String requestId) {
                     Log.d(TAG, "Photo capturing started: " + requestId);

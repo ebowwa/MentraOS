@@ -102,6 +102,61 @@ public class GlassesMicrophoneManager {
         // For brevity, I'm showing the key parts that need import updates
     }
 
-    // ... rest of the implementation would continue here
-    // For brevity, I'm showing the key parts that need import updates
+    /**
+     * Set callback for LC3 data
+     */
+    public void setLC3DataCallback(LC3DataCallback callback) {
+        this.lc3DataCallback = callback;
+    }
+    
+    /**
+     * Clean up resources and stop recording
+     */
+    public void destroy() {
+        Log.d(TAG, "Destroying GlassesMicrophoneManager");
+        
+        // Set destroyed flag first to prevent new operations
+        isDestroyed.set(true);
+        
+        // Stop recording
+        stopRecording();
+        
+        // Clear references
+        lc3DataCallback = null;
+    }
+    
+    /**
+     * Stop audio recording
+     */
+    public void stopRecording() {
+        // Always execute on main thread to prevent threading issues
+        if (Looper.myLooper() != Looper.getMainLooper()) {
+            mainHandler.post(this::stopRecording);
+            return;
+        }
+        
+        Log.d(TAG, "Stopping audio recording...");
+        
+        // Set flag to stop the recording thread
+        recordingInProgress.set(false);
+        
+        // Clean up the AudioRecord
+        if (recorder != null) {
+            try {
+                // Only call stop if the recorder is actually recording
+                if (recorder.getRecordingState() == AudioRecord.RECORDSTATE_RECORDING) {
+                    recorder.stop();
+                }
+            } catch (IllegalStateException e) {
+                Log.e(TAG, "Error stopping AudioRecord", e);
+            } finally {
+                try {
+                    recorder.release();
+                } catch (Exception e) {
+                    Log.e(TAG, "Error releasing AudioRecord", e);
+                }
+                recorder = null;
+            }
+        }
+    }
 } 

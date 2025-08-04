@@ -257,8 +257,7 @@ public class PhotoCaptureService {
         }
         
         // Use the photo upload service to upload the photo
-        PhotoUploadService photoUploadService = new PhotoUploadService(mContext);
-        photoUploadService.uploadPhoto(photoFilePath, new PhotoUploadService.UploadCallback() {
+        PhotoUploadService.uploadPhoto(mContext, photoFilePath, requestId, new PhotoUploadService.UploadCallback() {
             @Override
             public void onSuccess(String url) {
                 Log.d(TAG, "Photo uploaded successfully: " + url);

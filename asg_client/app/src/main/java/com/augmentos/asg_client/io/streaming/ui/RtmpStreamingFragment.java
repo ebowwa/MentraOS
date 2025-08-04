@@ -21,6 +21,7 @@ import androidx.fragment.app.Fragment;
 
 import com.augmentos.asg_client.R;
 import com.augmentos.asg_client.io.streaming.events.StreamingEvent;
+import com.augmentos.asg_client.io.streaming.events.StreamingCommand;
 import com.augmentos.asg_client.io.streaming.services.RtmpStreamingService;
 
 import org.greenrobot.eventbus.EventBus;

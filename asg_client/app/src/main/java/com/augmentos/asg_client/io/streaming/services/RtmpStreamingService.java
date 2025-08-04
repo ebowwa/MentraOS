@@ -28,7 +28,7 @@ import androidx.annotation.Nullable;
 import androidx.annotation.RequiresPermission;
 import androidx.core.app.NotificationCompat;
 
-import com.augmentos.asg_client.io.media.core.CameraNeo;
+import com.augmentos.asg_client.camera.CameraNeo;
 import com.augmentos.asg_client.utils.WakeLockManager;
 import com.augmentos.asg_client.reporting.domains.StreamingReporting;
 import com.augmentos.asg_client.io.streaming.events.StreamingCommand;

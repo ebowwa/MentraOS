@@ -7,6 +7,7 @@ import android.content.IntentFilter;
 import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.NetworkCapabilities;
+import android.net.LinkProperties;
 import android.net.wifi.WifiManager;
 import android.util.Log;
 
@@ -346,7 +347,7 @@ public abstract class BaseNetworkManager implements INetworkManager {
             return "";
         }
         
-        java.net.LinkProperties linkProperties = connectivityManager.getLinkProperties(activeNetwork);
+        LinkProperties linkProperties = connectivityManager.getLinkProperties(activeNetwork);
         if (linkProperties == null) {
             Log.d(TAG, "No link properties");
             return "";

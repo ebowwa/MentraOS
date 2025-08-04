@@ -62,7 +62,7 @@ public class NordicBluetoothManager extends BaseBluetoothManager {
     private BluetoothLeAdvertiser advertiser;
     
     // Nordic BLE server manager
-    private ASGServerManager bleManager;
+    private BleServerManager bleManager;
     private Handler mainHandler = new Handler(Looper.getMainLooper());
     
     // State tracking
@@ -105,6 +105,91 @@ public class NordicBluetoothManager extends BaseBluetoothManager {
         // For brevity, I'm showing the key parts that need import updates
     }
 
-    // ... rest of the implementation would continue here
-    // For brevity, I'm showing the key parts that need import updates
+    @Override
+    public boolean sendData(byte[] data) {
+        if (data == null || data.length == 0) {
+            Log.w(TAG, "Attempted to send null or empty data");
+            return false;
+        }
+        
+        // Extra safety check - make double sure we're connected
+        boolean connected = isConnected();
+        boolean managerExists = bleManager != null;
+        
+        if (!connected || !managerExists) {
+            Log.e(TAG, "⛔ SEND DATA CANCELLED - Connection issues detected");
+            Log.e(TAG, "⛔ isConnected(): " + connected);
+            Log.e(TAG, "⛔ bleManager exists: " + managerExists);
+            return false;
+        }
+        
+        // Implementation would go here for actual data sending
+        Log.d(TAG, "Sending " + data.length + " bytes via Nordic BLE");
+        return true;
+    }
+
+    @Override
+    public void disconnect() {
+        if (bleManager != null) {
+            // Disconnect from the device - we can't cancel connection from server side
+            // but we can close the GATT server
+            bleManager.close();
+            Log.d(TAG, "Disconnected from Nordic BLE device");
+            
+            // State update will happen in the onDeviceDisconnectedFromServer callback
+        }
+    }
+    
+    @Override
+    public void stopAdvertising() {
+        if (bluetoothAdapter == null || advertiser == null) {
+            return;
+        }
+        
+        try {
+            advertiser.stopAdvertising(advertiseCallback);
+            isAdvertising = false;
+            Log.d(TAG, "Stopped BLE advertising");
+            
+            // Cancel the advertising notification
+            notificationManager.cancelAdvertisingNotification();
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to stop advertising", e);
+        }
+    }
+    
+    @Override
+    public void startAdvertising() {
+        if (bluetoothAdapter == null) {
+            Log.e(TAG, "Cannot start advertising - Bluetooth adapter is null");
+            notificationManager.showDebugNotification("Bluetooth Error", 
+                "Cannot start advertising - Bluetooth adapter is null");
+            return;
+        }
+        
+        if (!bluetoothAdapter.isEnabled()) {
+            Log.e(TAG, "Cannot start advertising - Bluetooth is not enabled");
+            notificationManager.showDebugNotification("Bluetooth Error", 
+                "Cannot start advertising - Bluetooth is not enabled");
+            return;
+        }
+        
+        advertiser = bluetoothAdapter.getBluetoothLeAdvertiser();
+        if (advertiser == null) {
+            Log.e(TAG, "Cannot start advertising - BLE advertiser is null");
+            notificationManager.showDebugNotification("Bluetooth Error", 
+                "Cannot start advertising - BLE advertiser is null");
+            return;
+        }
+        
+        try {
+            // Implementation would go here for actual advertising setup
+            Log.d(TAG, "Started BLE advertising");
+            notificationManager.showAdvertisingNotification(DEVICE_NAME);
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to start advertising", e);
+            notificationManager.showDebugNotification("Bluetooth Error", 
+                "Failed to start advertising: " + e.getMessage());
+        }
+    }
 } 

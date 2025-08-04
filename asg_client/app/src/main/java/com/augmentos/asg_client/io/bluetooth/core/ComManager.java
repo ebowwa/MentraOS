@@ -103,4 +103,51 @@ public class ComManager {
 
     // ... rest of the implementation would continue here
     // For brevity, I'm showing the key parts that need import updates
+    
+    /**
+     * Thread for receiving data from the serial port
+     */
+    class RecvThread extends Thread {
+        private boolean mbStop = false;
+        
+        public RecvThread() {
+        }
+        
+        public void setStop() {
+            mbStop = true;
+        }
+
+        @Override
+        public void run() {
+            int readSize;
+            
+            while(!mbStop) {
+                if(mIS != null) {
+                    try {
+                        readSize = mIS.read(mReadBuf);
+                        if(readSize > 0) {
+                            // Simple log with byte count only
+                            Log.d(TAG, "UART read: " + readSize + " bytes");
+                            
+                            if(mListener != null)
+                                mListener.onSerialRead(COM_PATH, mReadBuf, readSize);
+                        }
+                    } catch (IOException e) {
+                        Log.e(TAG, "Error reading from serial port", e);
+                    }
+                }
+                
+                try {
+                    // Use fast mode (5ms) for file transfers, normal mode (50ms) otherwise
+                    // Note: Original K900_server_sdk used 150ms, but K900Server_common uses 50ms/5ms
+                    Thread.sleep(mbRequestFast ? 5 : 50);
+                } catch (InterruptedException e) {
+                    Log.e(TAG, "RecvThread interrupted", e);
+                    break;
+                }
+            }
+            
+            Log.d(TAG, "RecvThread exiting");
+        }
+    }
 } 

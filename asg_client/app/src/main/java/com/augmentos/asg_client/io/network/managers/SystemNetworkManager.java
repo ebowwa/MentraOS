@@ -563,11 +563,14 @@ public class SystemNetworkManager extends BaseNetworkManager {
                         
                         if (ssid != null && password != null) {
                             // Connect to the specified network
+                            final String finalSsid = ssid;
+                            final String finalPassword = password;
+                            final String finalToken = token;
                             new Handler(Looper.getMainLooper()).post(new Runnable() {
                                 @Override
                                 public void run() {
-                                    connectToWifi(ssid, password);
-                                    notifyWifiCredentialsReceived(ssid, password, token);
+                                    connectToWifi(finalSsid, finalPassword);
+                                    notifyWifiCredentialsReceived(finalSsid, finalPassword, finalToken);
                                 }
                             });
                         }
