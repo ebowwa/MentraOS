@@ -193,9 +193,9 @@ export default function InactiveAppList({
           }
           break
         case "CAMERA":
-          const hasCamera = await checkFeaturePermissions(PermissionFeatures.CAMERA)
+          const hasCamera = await checkFeaturePermissions(PermissionFeatures.GLASSES_CAMERA)
           if (!hasCamera) {
-            neededPermissions.push(PermissionFeatures.CAMERA)
+            neededPermissions.push(PermissionFeatures.GLASSES_CAMERA)
           }
           break
         case "CALENDAR":
