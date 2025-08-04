@@ -21,6 +21,7 @@ import {
     SelectValue,
   } from "@/components/ui/select"
 import { DatePicker } from '@/components/ui/date-picker';
+import axios from 'axios';
 interface AdminStat {
   counts: {
     development: number;
@@ -88,7 +89,6 @@ const AdminPanel: React.FC = () => {
   // Get todays date: 
   const today = new Date();
   const monthNumber = today.getMonth(); // Months are 0-indexed in JavaScript
-  console.log("Current month number:", monthNumber);
   const year = today.getFullYear();
 
   const [monthNumberDynamic, setMonthNumberDynamic] = useState(monthNumber);
@@ -144,7 +144,7 @@ const AdminPanel: React.FC = () => {
       try {
         // Submitted apps request
         appsData = await api.admin.getSubmittedApps();
-        console.log('Submitted apps loaded:', appsData.length);
+        console.log('Submitted apps loaded:', appsData);
       } catch (err) {
         console.error('Error fetching submitted apps:', err);
       }
@@ -182,13 +182,69 @@ const AdminPanel: React.FC = () => {
       // Always update submitted apps with real data
       console.log('Setting real submitted apps data, count:', appsData?.length || 0);
       setSubmittedApps(appsData || []);
+      
+      // Add health status and update state
+      const appsWithHealth = await addAppHealthStatus(appsData || []);
+      setSubmittedApps(appsWithHealth);
 
     } catch (error) {
       console.error('Error loading admin data:', error);
     } finally {
       setIsLoading(false);
     }
+    
   };
+
+   // Get app status every 1 min: 
+  async function addAppHealthStatus(submittedApps: any[]) {
+    if (!submittedApps || submittedApps.length === 0) return submittedApps;
+
+    const updatedApps = [...submittedApps];
+
+    for (let i = 0; i < updatedApps.length; i++) {
+      const cloudApp = updatedApps[i];
+      const publicUrl = cloudApp.publicUrl;
+
+      try {
+        const res = await axios.get(`/api/app-uptime/ping?url=${encodeURIComponent(publicUrl + '/health')}`, {
+          timeout: 10000
+        });
+
+        if (res.data.success && res.data.status === 200) {
+          const healthData = res.data.data;
+          
+          if (healthData && healthData.status === "healthy") {
+            console.log(`✅ ${healthData.app || cloudApp.name} is healthy`);
+            updatedApps[i] = { ...cloudApp, appHealthStatus: "healthy" };
+          } else {
+            console.log(`❌ ${cloudApp.name} responded but not healthy`);
+            updatedApps[i] = { ...cloudApp, appHealthStatus: "unhealthy" };
+          }
+        } else {
+          console.warn(`Skipping ${publicUrl} - Not reachable`);
+          updatedApps[i] = { ...cloudApp, appHealthStatus: "unreachable" };
+        }
+
+      } catch (error) {
+        if (axios.isAxiosError(error)) {
+          if (error.code === 'ECONNABORTED') {
+            console.warn(`Skipping ${publicUrl} - Request timeout`);
+            updatedApps[i] = { ...cloudApp, appHealthStatus: "timeout" };
+          } else {
+            console.warn(`Skipping ${publicUrl} - Network error:`, error.message);
+            updatedApps[i] = { ...cloudApp, appHealthStatus: "error" };
+          }
+        } else {
+          console.warn(`Skipping ${publicUrl} - Unknown error:`, error);
+          updatedApps[i] = { ...cloudApp, appHealthStatus: "error" };
+        }
+        continue;
+      }
+    }
+    
+    return updatedApps;
+  }
+
 
 
   const openAppReview = async (packageName: string) => {
@@ -408,6 +464,9 @@ const AdminPanel: React.FC = () => {
                           <div className="font-medium">{app.name}</div>
                           <div className="text-sm text-gray-500">{app.packageName}</div>
                           <div className="text-xs text-gray-400">Submitted: {formatDate(app.updatedAt)}</div>
+                          <div className="text-xs">
+                            Status: {app.appHealthStatus || 'checking...'}
+                          </div>
                         </div>
                         <div className="flex gap-2">
                           <StatusBadge status={curUpTimeStatus} />
