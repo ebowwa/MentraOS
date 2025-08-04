@@ -73,7 +73,7 @@ export default function AppStoreWeb() {
 
       if ((data.type === "OPEN_APP_SETTINGS" || data.type === "OPEN_TPA_SETTINGS") && data.packageName) {
         // Navigate to TPA settings page
-        push("/app/settings", {packageName: data.packageName})
+        push("/applet/settings", {packageName: data.packageName})
       }
     } catch (error) {
       console.error("Error handling WebView message:", error)

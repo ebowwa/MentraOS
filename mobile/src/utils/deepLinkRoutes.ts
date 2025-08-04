@@ -340,7 +340,7 @@ export const deepLinkRoutes: DeepLinkRoute[] = [
     pattern: "/apps/:packageName",
     handler: async (url: string, params: Record<string, string>, navObject: NavObject) => {
       const {packageName} = params
-      navObject.push(`/app/webview?packageName=${packageName}`)
+      navObject.push(`/applet/webview?packageName=${packageName}`)
     },
     requiresAuth: true,
   },
@@ -348,7 +348,7 @@ export const deepLinkRoutes: DeepLinkRoute[] = [
     pattern: "/apps/:packageName/settings",
     handler: async (url: string, params: Record<string, string>, navObject: NavObject) => {
       const {packageName} = params
-      navObject.push(`/app/settings?packageName=${packageName}`)
+      navObject.push(`/applet/settings?packageName=${packageName}`)
     },
     requiresAuth: true,
   },

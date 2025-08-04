@@ -21,6 +21,8 @@ import java.util.concurrent.TimeUnit;
 import org.json.JSONObject;
 import org.json.JSONException;
 
+import com.augmentos.asg_client.reporting.domains.BluetoothReporting;
+
 /**
  * Implementation of IBluetoothManager for K900 devices.
  * Uses the K900's serial port to communicate with the BES2700 Bluetooth module.
@@ -109,6 +111,10 @@ public class K900BluetoothManager extends BaseBluetoothManager implements Serial
             Log.e(TAG, "Failed to start serial communication");
             notificationManager.showDebugNotification("Bluetooth Error", 
                 "Failed to start serial communication");
+            
+            // Report serial communication failure
+            BluetoothReporting.reportSerialCommunicationFailure(context, "start_serial", 
+                "unknown", -1, new Exception("Failed to start serial communication"));
         } else {
             Log.d(TAG, "Serial communication started successfully");
         }
@@ -159,6 +165,10 @@ public class K900BluetoothManager extends BaseBluetoothManager implements Serial
             Log.w(TAG, "Cannot send data - serial port not open");
             notificationManager.showDebugNotification("Bluetooth Error", 
                 "Cannot send data - serial port not open");
+            
+            // Report data transmission failure
+            BluetoothReporting.reportDataTransmissionFailure(context, "k900", 
+                "unknown", data.length, "serial_port_not_open", null);
             return false;
         }
         
@@ -331,17 +341,29 @@ public class K900BluetoothManager extends BaseBluetoothManager implements Serial
     public boolean sendImageFile(String filePath) {
         if (!isSerialOpen) {
             Log.e(TAG, "Cannot send file - serial port not open");
+            
+            // Report file transfer failure
+            BluetoothReporting.reportFileTransferFailure(context, filePath, "send_file", 
+                "serial_port_not_open", null);
             return false;
         }
         
         if (currentFileTransfer != null && currentFileTransfer.isActive) {
             Log.e(TAG, "File transfer already in progress");
+            
+            // Report file transfer failure
+            BluetoothReporting.reportFileTransferFailure(context, filePath, "send_file", 
+                "transfer_already_in_progress", null);
             return false;
         }
         
         File file = new File(filePath);
         if (!file.exists() || !file.isFile()) {
             Log.e(TAG, "File not found: " + filePath);
+            
+            // Report file transfer failure
+            BluetoothReporting.reportFileTransferFailure(context, filePath, "send_file", 
+                "file_not_found", null);
             return false;
         }
         
@@ -352,10 +374,18 @@ public class K900BluetoothManager extends BaseBluetoothManager implements Serial
             int bytesRead = fis.read(fileData);
             if (bytesRead != fileData.length) {
                 Log.e(TAG, "Failed to read complete file");
+                
+                // Report file transfer failure
+                BluetoothReporting.reportFileTransferFailure(context, filePath, "send_file", 
+                    "incomplete_file_read", null);
                 return false;
             }
         } catch (IOException e) {
             Log.e(TAG, "Error reading file: " + filePath, e);
+            
+            // Report file transfer failure with exception
+            BluetoothReporting.reportFileTransferFailure(context, filePath, "send_file", 
+                "io_exception", e);
             return false;
         }
         
@@ -478,6 +508,12 @@ public class K900BluetoothManager extends BaseBluetoothManager implements Serial
             Log.e(TAG, "File packet " + packetIndex + " failed after " + FILE_TRANSFER_MAX_RETRIES + " retries");
             notificationManager.showDebugNotification("File Transfer Error", 
                 "Failed to send packet " + packetIndex);
+            
+            // Report file transfer retry exhaustion
+            if (currentFileTransfer != null) {
+                BluetoothReporting.reportFileTransferRetryExhaustion(context, currentFileTransfer.filePath, 
+                    packetIndex, FILE_TRANSFER_MAX_RETRIES);
+            }
             
             // Disable fast mode on failure
             comManager.setFastMode(false);
