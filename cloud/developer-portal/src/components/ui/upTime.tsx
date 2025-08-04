@@ -20,7 +20,8 @@ interface UptimeStatusProps {
   uptimePercentage: number;
   barCount?: number;
   month: number;
-  year: number
+  year: number;
+  appHealthStatus: string;
 }
 
 // Props for the StatusBadge component  
@@ -65,34 +66,26 @@ const CheckIcon: React.FC<CheckIconProps> = ({ className = 'w-6 h-6 text-green-5
 // A reusable status badge component with colored indicators
 export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, className }) => {
   const getStatusColor = () => {
-    switch (status) {
-      case 'pending':
-        return 'bg-yellow-400';
-      case 'offline':
-        return 'bg-red-600';
+    switch (status.toLocaleLowerCase()) {
       case 'online':
         return 'bg-green-500';
       default:
-        return 'bg-gray-400';
+        return 'bg-red-600';
     }
   };
 
   const getStatusText = () => {
-    switch (status) {
-      case 'pending':
-        return 'Pending';
-      case 'offline':
-        return 'Offline';
+    switch (status.toLocaleLowerCase()) {
       case 'online':
         return 'Online';
       default:
-        return 'Unknown';
+        return 'Offline';
     }
   };
 
   return (
     <div>
-      <Badge variant="outline" className={`text-xs ${className}`}>
+      <Badge variant="outline" className={`text-xs ${className} w-17`}>
         <div className={`w-2 h-2 rounded-full ${getStatusColor()}`}></div>
         <span>{getStatusText()}</span>
       </Badge>
@@ -111,7 +104,7 @@ const StatusBar: React.FC<StatusBarProps> = ({ color }) => (
 
 // --- MAIN UPTIME STATUS COMPONENT ---
 // This component combines the header and the status bars.
-export const UptimeStatus: React.FC<UptimeStatusProps> = ({ title, uptimePercentage, month }) => {
+export const UptimeStatus: React.FC<UptimeStatusProps> = ({ title, uptimePercentage, month, appHealthStatus }) => {
     const normalizedMonth = MONTH_NAMES[month].toLowerCase();
 
     const isLeapYear = false; // Or add a parameter/logic for leap year
@@ -129,7 +122,7 @@ export const UptimeStatus: React.FC<UptimeStatusProps> = ({ title, uptimePercent
     <div className="flex flex-col gap-1.5">
         <div className="flex flex-row items-center">
             <div className="text-xs flex-1">Uptime: {uptimePercentage}%</div>
-            <StatusBadge status={"offline"} />
+            <StatusBadge status={appHealthStatus} />
         </div>
         <div className="flex items-center gap-0.5 overflow-x-auto">
             {bars.map((_, index) => (

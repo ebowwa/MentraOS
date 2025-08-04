@@ -1,5 +1,5 @@
 // pages/AdminPanel.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, use } from 'react';
 import DashboardLayout from '../components/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle,  } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -74,6 +74,8 @@ const AdminPanel: React.FC = () => {
     recentSubmissions: []
   });
   const [submittedApps, setSubmittedApps] = useState<any[]>([]);
+  const [submittedAppsStatus, setSubmittedAppsStatus] = useState<any[]>([]);
+
   /* Admin management removed */
   const [selectedApp, setSelectedApp] = useState<AppDetail | null>(null);
   const [reviewNotes, setReviewNotes] = useState('');
@@ -94,6 +96,102 @@ const AdminPanel: React.FC = () => {
   const [monthNumberDynamic, setMonthNumberDynamic] = useState(monthNumber);
   const [yearNumber, setYearNumber] = useState(year);
   // Admin panel component
+
+  // WebSocket connection for real-time updates
+  useEffect(() => {
+    const setupWebSocket = () => {
+      const token = localStorage.getItem('core_token');
+      if (!token) {
+        console.log('No token available for WebSocket connection');
+        return;
+      }
+
+      // Try connecting with token as query parameter since browser WebSocket doesn't support custom headers
+      const wsUrl = `ws://localhost:8002/glasses-ws?token=${encodeURIComponent(token)}`;
+      console.log('🔌 Attempting WebSocket connection to:', wsUrl);
+      
+      const ws = new WebSocket(wsUrl);
+
+      ws.onopen = () => {
+        console.log('🔌 WebSocket connected for admin panel');
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const message = JSON.parse(event.data);
+          console.log('📨 WebSocket message received:', message);
+          
+          if (message.type === 'SUBMITTED_APP_HEALTH_STATUS') {
+            console.log('SUBMITTED_APP_HEALTH_STATUS message received!');
+            console.log("apps data from server:", message.data.apps);
+            console.log("apps count:", message.data.count);
+            setSubmittedAppsStatus(message.data.apps);
+          }
+        } catch (error) {
+          console.error('Error parsing WebSocket message:', error);
+        }
+      };
+
+      ws.onerror = (error) => {
+        console.error('WebSocket error:', error);
+      };
+
+      ws.onclose = (event) => {
+        console.log('🔌 WebSocket disconnected', event.code, event.reason);
+      };
+
+      return ws;
+    };
+
+    // Setup WebSocket after a delay to ensure token is ready
+    const timer = setTimeout(() => {
+      const ws = setupWebSocket();
+      return () => {
+        if (ws) {
+          ws.close();
+        }
+      };
+    }, 1000);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, []);
+
+
+
+
+  // start fetch immediately to get current uptime status before the interval current interval send updates...
+  useEffect(() => {
+  const fetchSubmittedAppHealthStatus = async () => {
+    console.log('Starting fetchSubmittedAppHealthStatus...');
+    try {
+      console.log('📡 Making request to /api/app-uptime/get-submitted-app-health-status');
+      const res = await axios.get('/api/app-uptime/get-submitted-app-health-status', {
+        // timeout: 10000,
+        headers: { 'Content-Type': 'application/json' }
+      });
+      console.log('Request successful! Status:', res.status);
+      console.log('App uptime ping response:', res.data);
+    } catch (error) {
+      console.error('Error fetching app uptime ping:', error);
+      if (axios.isAxiosError(error)) {
+        console.error('Error details:', {
+          status: error.response?.status,
+          statusText: error.response?.statusText,
+          data: error.response?.data,
+          message: error.message
+        });
+      }
+    }
+  };
+
+  // Add a small delay to ensure everything is loaded
+  setTimeout(() => {
+    fetchSubmittedAppHealthStatus();
+  }, 2000);
+}, []);
+
 
   // Load admin data when component mounts
   useEffect(() => {
@@ -121,6 +219,16 @@ const AdminPanel: React.FC = () => {
     fetchData();
   }, []);
 
+  // Log when submittedApps state actually updates
+  useEffect(() => {
+    console.log('Updated apps with health status:', submittedApps);
+  }, [submittedApps]);
+
+  // Log when submittedAppsStatus state updates
+  useEffect(() => {
+    console.log('🔄 submittedAppsStatus state updated:', submittedAppsStatus);
+  }, [submittedAppsStatus]);
+
   // Check if user is admin and load data
   const loadAdminData = async () => {
     setIsLoading(true);
@@ -144,7 +252,7 @@ const AdminPanel: React.FC = () => {
       try {
         // Submitted apps request
         appsData = await api.admin.getSubmittedApps();
-        console.log('Submitted apps loaded:', appsData);
+        console.log('Submitted apps loaded:', appsData.length);
       } catch (err) {
         console.error('Error fetching submitted apps:', err);
       }
@@ -160,12 +268,22 @@ const AdminPanel: React.FC = () => {
       // Always update with real data, even if empty
       if (statsData) {
         console.log('Setting real stats data:', statsData);
-        setStats(statsData);
+        // Add health status to recent submissions if they exist
+        if (statsData.recentSubmissions && statsData.recentSubmissions.length > 0) {
+          const recentWithHealth = await addAppHealthStatus(statsData.recentSubmissions);
+          setStats({
+            ...statsData,
+            recentSubmissions: recentWithHealth
+          });
+        } else {
+          setStats(statsData);
+        }
       } else {
         // If stats failed but we have app data, create a minimal stats object
         if (appsData) {
           const submittedCount = appsData.length;
           console.log('Creating minimal stats from app data, submitted count:', submittedCount);
+          const recentWithHealth = await addAppHealthStatus(appsData.slice(0, 3));
           setStats({
             counts: {
               development: 0,
@@ -174,18 +292,18 @@ const AdminPanel: React.FC = () => {
               rejected: 0,
               admins: 0 // Admin count not needed
             },
-            recentSubmissions: appsData.slice(0, 3) // Use up to 3 most recent submissions
+            recentSubmissions: recentWithHealth
           });
         }
       }
 
-      // Always update submitted apps with real data
+      // Add health status and update state with real data
       console.log('Setting real submitted apps data, count:', appsData?.length || 0);
       setSubmittedApps(appsData || []);
       
       // Add health status and update state
-      const appsWithHealth = await addAppHealthStatus(appsData || []);
-      setSubmittedApps(appsWithHealth);
+      // const appsWithHealth = await addAppHealthStatus(appsData || []);
+      // setSubmittedApps(appsWithHealth);
 
     } catch (error) {
       console.error('Error loading admin data:', error);
@@ -465,11 +583,11 @@ const AdminPanel: React.FC = () => {
                           <div className="text-sm text-gray-500">{app.packageName}</div>
                           <div className="text-xs text-gray-400">Submitted: {formatDate(app.updatedAt)}</div>
                           <div className="text-xs">
-                            Status: {app.appHealthStatus || 'checking...'}
+                            Status: {submittedAppsStatus.find(statusApp => statusApp.packageName === app.packageName)?.healthStatus || 'unknown'}
                           </div>
                         </div>
                         <div className="flex gap-2">
-                          <StatusBadge status={curUpTimeStatus} />
+                          <StatusBadge status={submittedAppsStatus.find(statusApp => statusApp.packageName === app.packageName)?.healthStatus || "unknown"} />
                           <Button size="sm" onClick={() => openAppReview(app.packageName)}>
                             Review
                           </Button>
@@ -517,25 +635,12 @@ const AdminPanel: React.FC = () => {
                               <div className="text-xs text-gray-400">Submitted: {formatDate(app.updatedAt)}</div>
                             </div>
                           </div>
-                          <div className="flex gap-2"> 
-                            <div>
-                            <Badge variant="outline" className="text-xs">
-                              <div className={`w-2 h-2 rounded-full
-                                ${curUpTimeStatus === 'pending' ? 'bg-yellow-400' : ''}
-                                ${curUpTimeStatus === 'offline' ? 'bg-red-600' : ''}
-                                ${curUpTimeStatus === 'online' ? 'bg-green-500' : ''}
-                              `}></div>
-                              
-                              {curUpTimeStatus === 'pending' && <span>Pending</span>}
-                              {curUpTimeStatus === 'offline' && <span>Offline</span>}
-                              {curUpTimeStatus === 'online' && <span>Online</span>}
-                            </Badge>
+                          <div className="flex gap-2">
+                            <StatusBadge status={submittedAppsStatus.find(statusApp => statusApp.packageName === app.packageName)?.healthStatus || app.appHealthStatus || "unknown"} />
+                            <Button size="sm" onClick={() => openAppReview(app.packageName)}>
+                              Review
+                            </Button>
                           </div>
-                          <Button size="sm" onClick={() => openAppReview(app.packageName)}>
-                            Review
-                          </Button>
-                          </div>
-                          
                         </div>
                       ))}
                     </div>
@@ -588,7 +693,8 @@ const AdminPanel: React.FC = () => {
                                 <div className="text-xs text-gray-400">Submitted: {formatDate(app.updatedAt)}</div>
                               </div>
                             </div>
-                            <UptimeStatus title="Chat" uptimePercentage={100} month={monthNumberDynamic} year={yearNumber} />
+                            <UptimeStatus title="Chat" uptimePercentage={100} month={monthNumberDynamic} year={yearNumber} appHealthStatus={submittedAppsStatus.find(statusApp => statusApp.packageName === app.packageName)?.healthStatus || app.appHealthStatus || "unknown"} />
+
                           </div>
                         ))}
                       </div>
