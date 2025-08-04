@@ -128,6 +128,33 @@ export interface TranscriptionData extends BaseMessage {
   duration?: number; // Audio duration in milliseconds
   provider?: string; // The transcription provider (e.g., "azure", "soniox")
   confidence?: number; // Confidence score (0-1)
+  metadata: TranscriptionMetadata; // Token-level metadata (always included)
+}
+
+/**
+ * Metadata for transcription containing token-level details
+ */
+export interface TranscriptionMetadata {
+  provider: 'soniox' | 'azure' | string;
+  soniox?: {
+    tokens: SonioxToken[];
+  };
+  azure?: {
+    // Azure-specific metadata can be added later
+    tokens?: any[];
+  };
+}
+
+/**
+ * Soniox token with word-level details
+ */
+export interface SonioxToken {
+  text: string;
+  startMs?: number;
+  endMs?: number;
+  confidence: number;
+  isFinal: boolean;
+  speaker?: string;
 }
 
 /**
