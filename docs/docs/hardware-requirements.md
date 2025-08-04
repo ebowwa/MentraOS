@@ -46,12 +46,17 @@ Each hardware requirement has a level that determines how the app behaves:
 
 ### In the Developer Portal
 
-1. Navigate to your app in the developer portal
-2. Go to the "App Details" section
-3. Find the "Hardware Requirements" section
-4. Click "Add Hardware Requirement"
-5. Select the hardware type, requirement level, and add a description
-6. Save your changes
+1. Navigate to your app in the developer portal.
+2. Open your **App Details** page.
+3. Scroll to the **Hardware Requirements** panel.
+4. Click the **+ Add Hardware** button in the upper-right corner of the panel.
+5. In the editor that appears:
+   1. **Hardware Type** – choose the component (e.g., Camera, Display, Button) from the dropdown.
+   2. **Requirement Level** – pick **Required** or **Optional**.
+   3. **Description (optional)** – explain why your app needs this hardware (shown to users during install).
+6. Click **Done** to add the requirement to the list.
+7. Repeat steps 4–6 for any additional hardware your app needs.
+8. Finally, click **Save** at the bottom of the page to persist your changes.
 
 ### Example Requirements
 
@@ -161,12 +166,3 @@ The system automatically checks compatibility:
 1. **Installation**: Before allowing app installation
 2. **Launch**: Before starting an app
 3. **Display**: When showing apps in the store
-
-## Supported Glasses Models
-
-Hardware capabilities are defined for:
-
-- **Even Realities G1**
-- **Vuzix Z100**
-- **Mentra Live**
-- **Simulated Glasses**
