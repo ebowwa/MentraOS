@@ -227,18 +227,28 @@ class ServerComms {
   }
   
   public func sendCalendarEvents() {
-    guard self.wsManager.isConnected() else { return }
+    guard self.wsManager.isConnected() else { 
+      CoreCommsService.log("❌ Cannot send calendar events: WebSocket not connected")
+      return 
+    }
+    CoreCommsService.log("📅 Starting to fetch calendar events for 30 days...")
     let calendarManager = CalendarManager()
     Task {
-      if let events = await calendarManager.fetchUpcomingEvents(days: 2) {
-        guard events.count > 0 else { return }
-        // Send up to 5 events
-        let eventsToSend = events.prefix(5)
-        for event in eventsToSend {
+      if let events = await calendarManager.fetchUpcomingEvents(days: 30) {
+        CoreCommsService.log("📅 Found \(events.count) calendar events for next 30 days")
+        guard events.count > 0 else { 
+          CoreCommsService.log("📅 No calendar events to send")
+          return 
+        }
+        // Send all events
+        for (index, event) in events.enumerated() {
           let calendarItem = convertEKEventToCalendarItem(event)
-          CoreCommsService.log("CALENDAR EVENT \(calendarItem)")
+          CoreCommsService.log("📅 Sending event \(index + 1)/\(events.count): \(calendarItem.title)")
           self.sendCalendarEvent(calendarItem)
         }
+        CoreCommsService.log("📅 Finished sending \(events.count) calendar events")
+      } else {
+        CoreCommsService.log("❌ Failed to fetch calendar events - likely permission issue")
       }
     }
   }
