@@ -38,7 +38,6 @@ import permissionsRoutes from "./routes/permissions.routes";
 import accountRoutes from "./routes/account.routes";
 import organizationRoutes from "./routes/organization.routes";
 import onboardingRoutes from "./routes/onboarding.routes";
-import rtmpRelayRoutes from "./routes/rtmp-relay.routes";
 // import appCommunicationRoutes from './routes/app-communication.routes';
 
 import path from "path";
@@ -234,7 +233,6 @@ app.use(audioRoutes);
 app.use("/api/user-data", userDataRoutes);
 app.use("/api/account", accountRoutes);
 app.use("/api/onboarding", onboardingRoutes);
-app.use("/api/rtmp-relay", rtmpRelayRoutes);
 // app.use('/api/app-communication', appCommunicationRoutes);
 // app.use('/api/tpa-communication', appCommunicationRoutes); // TODO: Remove this once the old apps are fully updated in the wild (the old mobile clients will hit the old urls)
 
