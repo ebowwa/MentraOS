@@ -22,6 +22,7 @@ public class VadGateSpeechPolicy implements SpeechDetectionPolicy {
     private VadSilero vad;
     private boolean isCurrentlySpeech;
     private boolean bypassVadForDebugging;
+    private boolean bypassVadForPCM; // NEW: PCM subscription bypass
 
     // Total required silence duration of 12 seconds.
     private static final long REQUIRED_SILENCE_DURATION_MS = 8000;
@@ -60,7 +61,11 @@ public class VadGateSpeechPolicy implements SpeechDetectionPolicy {
 
     @Override
     public boolean shouldPassAudioToRecognizer() {
-        return bypassVadForDebugging || isCurrentlySpeech;
+        // CRITICAL: Handle VAD null case
+        if (vad == null) {
+            return bypassVadForDebugging || bypassVadForPCM || true;
+        }
+        return bypassVadForDebugging || bypassVadForPCM || isCurrentlySpeech;
     }
 
     @Override
@@ -148,6 +153,10 @@ public class VadGateSpeechPolicy implements SpeechDetectionPolicy {
 
     public void changeBypassVadForDebugging(boolean bypassVadForDebugging) {
         this.bypassVadForDebugging = bypassVadForDebugging;
+    }
+
+    public void changeBypassVadForPCM(boolean bypassVadForPCM) {
+        this.bypassVadForPCM = bypassVadForPCM;
     }
 
     public void microphoneStateChanged(boolean state) {

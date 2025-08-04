@@ -774,8 +774,8 @@ public class SmartGlassesManager extends Service {
     }
 
 
-    public void changeMicrophoneState(boolean isMicrophoneEnabled, List<SpeechRequiredDataType> requiredData) {
-        Log.d(TAG, "Changing microphone state to " + isMicrophoneEnabled);
+    public void changeMicrophoneState(boolean isMicrophoneEnabled, List<SpeechRequiredDataType> requiredData, boolean bypassVad) {
+        Log.d(TAG, "Changing microphone state to " + isMicrophoneEnabled + " bypassVad=" + bypassVad);
 
         if (smartGlassesRepresentative == null) {
             Log.d(TAG, "Cannot change microphone state: smartGlassesRepresentative is null");
@@ -793,8 +793,9 @@ public class SmartGlassesManager extends Service {
         // PhoneMicrophoneManager handles all the complexity of choosing the right mic
         smartGlassesRepresentative.changeBluetoothMicState(isMicrophoneEnabled);
 
-        // Tell speech rec system about the state change
+        // Tell speech rec system about the state change and bypass setting
         speechRecSwitchSystem.microphoneStateChanged(isMicrophoneEnabled, requiredData);
+        speechRecSwitchSystem.setBypassVadForPCM(bypassVad); // NEW: Set PCM bypass
     }
 
     // applyMicrophoneState method removed - all mic logic now handled by PhoneMicrophoneManager
