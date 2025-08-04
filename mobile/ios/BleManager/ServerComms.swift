@@ -24,6 +24,11 @@ protocol ServerCommsCallback {
     func onRtmpStreamStartRequest(_ message: [String: Any])
     func onRtmpStreamStop()
     func onRtmpStreamKeepAlive(_ message: [String: Any])
+    func onStartBufferRecording()
+    func onStopBufferRecording()
+    func onSaveBufferVideo(_ requestId: String, _ durationSeconds: Int)
+    func onStartVideoRecording(_ requestId: String, _ save: Bool)
+    func onStopVideoRecording(_ requestId: String)
 }
 
 class ServerComms {
@@ -621,6 +626,31 @@ class ServerComms {
         case "keep_rtmp_stream_alive":
             CoreCommsService.log("ServerComms: Received KEEP_RTMP_STREAM_ALIVE: \(msg)")
             serverCommsCallback?.onRtmpStreamKeepAlive(msg)
+
+        case "start_buffer_recording":
+            CoreCommsService.log("ServerComms: Received START_BUFFER_RECORDING")
+            serverCommsCallback?.onStartBufferRecording()
+
+        case "stop_buffer_recording":
+            CoreCommsService.log("ServerComms: Received STOP_BUFFER_RECORDING")
+            serverCommsCallback?.onStopBufferRecording()
+
+        case "save_buffer_video":
+            CoreCommsService.log("ServerComms: Received SAVE_BUFFER_VIDEO: \(msg)")
+            let requestId = msg["requestId"] as? String ?? "buffer_\(Int(Date().timeIntervalSince1970 * 1000))"
+            let durationSeconds = msg["durationSeconds"] as? Int ?? 30
+            serverCommsCallback?.onSaveBufferVideo(requestId, durationSeconds)
+
+        case "start_video_recording":
+            CoreCommsService.log("ServerComms: Received START_VIDEO_RECORDING: \(msg)")
+            let requestId = msg["requestId"] as? String ?? "video_\(Int(Date().timeIntervalSince1970 * 1000))"
+            let save = msg["save"] as? Bool ?? true
+            serverCommsCallback?.onStartVideoRecording(requestId, save)
+
+        case "stop_video_recording":
+            CoreCommsService.log("ServerComms: Received STOP_VIDEO_RECORDING: \(msg)")
+            let requestId = msg["requestId"] as? String ?? ""
+            serverCommsCallback?.onStopVideoRecording(requestId)
 
         default:
             CoreCommsService.log("ServerComms: Unknown message type: \(type) / full: \(msg)")

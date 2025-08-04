@@ -688,6 +688,31 @@ struct ViewState {
         liveManager?.sendRtmpKeepAlive(message)
     }
 
+    func onStartBufferRecording() {
+        CoreCommsService.log("AOS: onStartBufferRecording")
+        liveManager?.startBufferRecording()
+    }
+
+    func onStopBufferRecording() {
+        CoreCommsService.log("AOS: onStopBufferRecording")
+        liveManager?.stopBufferRecording()
+    }
+
+    func onSaveBufferVideo(_ requestId: String, _ durationSeconds: Int) {
+        CoreCommsService.log("AOS: onSaveBufferVideo: requestId=\(requestId), duration=\(durationSeconds)s")
+        liveManager?.saveBufferVideo(requestId: requestId, durationSeconds: durationSeconds)
+    }
+
+    func onStartVideoRecording(_ requestId: String, _ save: Bool) {
+        CoreCommsService.log("AOS: onStartVideoRecording: requestId=\(requestId), save=\(save)")
+        liveManager?.startVideoRecording(requestId: requestId, save: save)
+    }
+
+    func onStopVideoRecording(_ requestId: String) {
+        CoreCommsService.log("AOS: onStopVideoRecording: requestId=\(requestId)")
+        liveManager?.stopVideoRecording(requestId: requestId)
+    }
+
     // TODO: ios this name is a bit misleading:
     func setOnboardMicEnabled(_ isEnabled: Bool) {
         Task {

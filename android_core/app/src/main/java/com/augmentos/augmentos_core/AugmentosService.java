@@ -1972,6 +1972,36 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                     Log.e("LOCATION_DEBUG", "AugmentosService: locationSystem is null, cannot request single location.");
                 }
             }
+
+            @Override
+            public void onStartBufferRecording() {
+                Log.d(TAG, "onStartBufferRecording from server");
+                startBufferRecording();
+            }
+
+            @Override
+            public void onStopBufferRecording() {
+                Log.d(TAG, "onStopBufferRecording from server");
+                stopBufferRecording();
+            }
+
+            @Override
+            public void onSaveBufferVideo(String requestId, int durationSeconds) {
+                Log.d(TAG, "onSaveBufferVideo from server: requestId=" + requestId + ", duration=" + durationSeconds);
+                saveBufferVideo(requestId, durationSeconds);
+            }
+
+            @Override
+            public void onStartVideoRecording(String requestId, boolean save) {
+                Log.d(TAG, "onStartVideoRecording from server: requestId=" + requestId + ", save=" + save);
+                startVideoRecording(requestId, save);
+            }
+
+            @Override
+            public void onStopVideoRecording(String requestId) {
+                Log.d(TAG, "onStopVideoRecording from server: requestId=" + requestId);
+                stopVideoRecording(requestId);
+            }
         });
     }
 
