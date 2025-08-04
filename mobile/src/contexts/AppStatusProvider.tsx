@@ -239,7 +239,10 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
 
         // Only refresh if we have a user and the change is meaningful
         if (user && (previousGlassesModel.current !== null || currentGlassesModel !== null)) {
-          refreshAppStatus()
+          // Add error handling for refresh
+          refreshAppStatus().catch(error => {
+            console.error("AppStatusProvider: Error refreshing apps after glasses change:", error)
+          })
         }
       }
     }

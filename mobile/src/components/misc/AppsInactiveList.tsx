@@ -533,9 +533,14 @@ export default function InactiveAppList({
     Object.fromEntries(appStatus.map(app => [app.packageName, new Animated.Value(0)])),
   ).current
 
-  // Animate all availableApps' opacities to 1 on mount or change
+  // Ensure every available app has an Animated.Value and animate to 1 on mount/change
   useEffect(() => {
     availableApps.forEach(app => {
+      // Lazily create Animated.Value if it doesn't exist yet (e.g. newly fetched app)
+      if (!(app.packageName in opacities)) {
+        opacities[app.packageName] = new Animated.Value(0)
+      }
+
       Animated.timing(opacities[app.packageName], {
         toValue: 1,
         duration: 300,
