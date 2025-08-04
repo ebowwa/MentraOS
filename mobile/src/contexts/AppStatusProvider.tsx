@@ -81,6 +81,9 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
   // Track when the last refresh was performed
   const lastRefreshTime = useRef<number>(0)
 
+  // Track previous glasses connection to detect changes
+  const previousGlassesModel = useRef<string | null>(null)
+
   const refreshAppStatus = useCallback(async () => {
     console.log("AppStatusProvider: refreshAppStatus called - user exists:", !!user, "user email:", user?.email)
     if (!user) {
@@ -217,6 +220,33 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
   useEffect(() => {
     refreshAppStatus()
   }, [user, status.core_info.cloud_connection_status])
+
+  // Monitor glasses connection changes and refresh apps when glasses change
+  useEffect(() => {
+    const currentGlassesModel = status.glasses_info?.model_name || null
+
+    // Only check for changes after initial load (previousGlassesModel has been set at least once)
+    if (previousGlassesModel.current !== undefined) {
+      // Check if glasses connection changed
+      if (previousGlassesModel.current !== currentGlassesModel) {
+        console.log(
+          "AppStatusProvider: Glasses connection changed from",
+          previousGlassesModel.current || "none",
+          "to",
+          currentGlassesModel || "none",
+          "- refreshing app list",
+        )
+
+        // Only refresh if we have a user and the change is meaningful
+        if (user && (previousGlassesModel.current !== null || currentGlassesModel !== null)) {
+          refreshAppStatus()
+        }
+      }
+    }
+
+    // Update the previous glasses model for next comparison
+    previousGlassesModel.current = currentGlassesModel
+  }, [status.glasses_info?.model_name, user, refreshAppStatus])
 
   // Listen for app started/stopped events from CoreCommunicator
   useEffect(() => {
