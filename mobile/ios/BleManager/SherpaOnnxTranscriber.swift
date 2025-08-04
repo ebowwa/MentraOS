@@ -33,6 +33,11 @@ class SherpaOnnxTranscriber {
     // Session start time for relative timestamps
     private var transcriptionSessionStart: Date
 
+    // Dynamic model path support
+    private static var customModelPath: String? {
+        return UserDefaults.standard.string(forKey: "STTModelPath")
+    }
+
     /**
      * Protocol to receive transcription results from Sherpa-ONNX.
      */
@@ -62,54 +67,158 @@ class SherpaOnnxTranscriber {
      */
     func initialize() {
         do {
-            // Verify model files are present
-            guard SherpaOnnxTranscriber.areModelFilesPresent() else {
-                throw NSError(domain: "SherpaOnnxTranscriber", code: 1, userInfo: [
-                    NSLocalizedDescriptionKey: "Model files not found in bundle. Please add encoder.onnx, decoder.onnx, joiner.onnx, and tokens.txt to the Xcode project.",
-                ])
+            var tokensPath: String
+            var modelType = "unknown"
+            let fileManager = FileManager.default
+
+            // Check if we have a custom model path set
+            if let customPath = SherpaOnnxTranscriber.customModelPath {
+                // Detect model type based on available files
+                let ctcModelPath = (customPath as NSString).appendingPathComponent("model.int8.onnx")
+                let transducerEncoderPath = (customPath as NSString).appendingPathComponent("encoder.onnx")
+
+                tokensPath = (customPath as NSString).appendingPathComponent("tokens.txt")
+
+                // Verify tokens file exists
+                guard fileManager.fileExists(atPath: tokensPath) else {
+                    throw NSError(domain: "SherpaOnnxTranscriber", code: 1, userInfo: [
+                        NSLocalizedDescriptionKey: "tokens.txt not found at path: \(customPath)",
+                    ])
+                }
+
+                if fileManager.fileExists(atPath: ctcModelPath) {
+                    // CTC model detected
+                    modelType = "ctc"
+                    CoreCommsService.log("Detected CTC model at \(customPath)")
+
+                    // Create CTC model config using Zipformer2Ctc
+                    var zipformer2Ctc = sherpaOnnxOnlineZipformer2CtcModelConfig(
+                        model: ctcModelPath
+                    )
+
+                    // Create model config with CTC
+                    var modelConfig = sherpaOnnxOnlineModelConfig(
+                        tokens: tokensPath,
+                        zipformer2Ctc: zipformer2Ctc,
+                        numThreads: 1
+                    )
+
+                    // Configure recognizer
+                    var featureConfig = sherpaOnnxFeatureConfig()
+
+                    var config = sherpaOnnxOnlineRecognizerConfig(
+                        featConfig: featureConfig,
+                        modelConfig: modelConfig,
+                        enableEndpoint: true,
+                        rule1MinTrailingSilence: 1.2,
+                        rule2MinTrailingSilence: 0.8,
+                        rule3MinUtteranceLength: 10.0
+                    )
+
+                    // Create recognizer with the wrapper
+                    recognizer = SherpaOnnxRecognizer(config: &config)
+
+                } else if fileManager.fileExists(atPath: transducerEncoderPath) {
+                    // Transducer model detected
+                    modelType = "transducer"
+                    CoreCommsService.log("Detected transducer model at \(customPath)")
+
+                    let decoderPath = (customPath as NSString).appendingPathComponent("decoder.onnx")
+                    let joinerPath = (customPath as NSString).appendingPathComponent("joiner.onnx")
+
+                    // Verify all transducer files exist
+                    guard fileManager.fileExists(atPath: decoderPath),
+                          fileManager.fileExists(atPath: joinerPath)
+                    else {
+                        throw NSError(domain: "SherpaOnnxTranscriber", code: 1, userInfo: [
+                            NSLocalizedDescriptionKey: "Transducer model files incomplete at path: \(customPath)",
+                        ])
+                    }
+
+                    // Create Sherpa-ONNX transducer model config
+                    var transducer = sherpaOnnxOnlineTransducerModelConfig(
+                        encoder: transducerEncoderPath,
+                        decoder: decoderPath,
+                        joiner: joinerPath
+                    )
+
+                    // Create model config
+                    var modelConfig = sherpaOnnxOnlineModelConfig(
+                        tokens: tokensPath,
+                        transducer: transducer,
+                        numThreads: 1
+                    )
+
+                    // Configure recognizer
+                    var featureConfig = sherpaOnnxFeatureConfig()
+
+                    var config = sherpaOnnxOnlineRecognizerConfig(
+                        featConfig: featureConfig,
+                        modelConfig: modelConfig,
+                        enableEndpoint: true,
+                        rule1MinTrailingSilence: 1.2,
+                        rule2MinTrailingSilence: 0.8,
+                        rule3MinUtteranceLength: 10.0
+                    )
+
+                    // Create recognizer with the wrapper
+                    recognizer = SherpaOnnxRecognizer(config: &config)
+
+                } else {
+                    throw NSError(domain: "SherpaOnnxTranscriber", code: 1, userInfo: [
+                        NSLocalizedDescriptionKey: "No valid model files found at path: \(customPath)",
+                    ])
+                }
+
+            } else {
+                // Fall back to bundle resources (for backwards compatibility)
+                guard SherpaOnnxTranscriber.areModelFilesPresent() else {
+                    throw NSError(domain: "SherpaOnnxTranscriber", code: 1, userInfo: [
+                        NSLocalizedDescriptionKey: "No STT model available. Please download a model first.",
+                    ])
+                }
+
+                guard let bundleEncoderPath = Bundle.main.path(forResource: "encoder", ofType: "onnx"),
+                      let bundleDecoderPath = Bundle.main.path(forResource: "decoder", ofType: "onnx"),
+                      let bundleJoinerPath = Bundle.main.path(forResource: "joiner", ofType: "onnx"),
+                      let bundleTokensPath = Bundle.main.path(forResource: "tokens", ofType: "txt")
+                else {
+                    throw NSError(domain: "SherpaOnnxTranscriber", code: 1, userInfo: [
+                        NSLocalizedDescriptionKey: "Model files not found in bundle.",
+                    ])
+                }
+
+                modelType = "transducer"
+
+                // Create Sherpa-ONNX transducer model config
+                var transducer = sherpaOnnxOnlineTransducerModelConfig(
+                    encoder: bundleEncoderPath,
+                    decoder: bundleDecoderPath,
+                    joiner: bundleJoinerPath
+                )
+
+                // Create model config
+                var modelConfig = sherpaOnnxOnlineModelConfig(
+                    tokens: bundleTokensPath,
+                    transducer: transducer,
+                    numThreads: 1
+                )
+
+                // Configure recognizer
+                var featureConfig = sherpaOnnxFeatureConfig()
+
+                var config = sherpaOnnxOnlineRecognizerConfig(
+                    featConfig: featureConfig,
+                    modelConfig: modelConfig,
+                    enableEndpoint: true,
+                    rule1MinTrailingSilence: 1.2,
+                    rule2MinTrailingSilence: 0.8,
+                    rule3MinUtteranceLength: 10.0
+                )
+
+                // Create recognizer with the wrapper
+                recognizer = SherpaOnnxRecognizer(config: &config)
             }
-
-            // Setup resource paths - models should be added to bundle via Xcode
-            guard let encoderPath = Bundle.main.path(forResource: "encoder", ofType: "onnx"),
-                  let decoderPath = Bundle.main.path(forResource: "decoder", ofType: "onnx"),
-                  let joinerPath = Bundle.main.path(forResource: "joiner", ofType: "onnx"),
-                  let tokensPath = Bundle.main.path(forResource: "tokens", ofType: "txt")
-            else {
-                throw NSError(domain: "SherpaOnnxTranscriber", code: 1, userInfo: [
-                    NSLocalizedDescriptionKey: "Model files not found in bundle. Please add encoder.onnx, decoder.onnx, joiner.onnx, and tokens.txt to the Xcode project.",
-                ])
-            }
-
-            CoreCommsService.log("Model paths found - encoder: \(encoderPath), decoder: \(decoderPath), joiner: \(joinerPath), tokens: \(tokensPath)")
-
-            // Create Sherpa-ONNX transducer model config
-            var transducer = sherpaOnnxOnlineTransducerModelConfig(
-                encoder: encoderPath,
-                decoder: decoderPath,
-                joiner: joinerPath
-            )
-
-            // Create model config
-            var modelConfig = sherpaOnnxOnlineModelConfig(
-                tokens: tokensPath,
-                transducer: transducer,
-                numThreads: 1 // TODO: Make configurable
-            )
-
-            // Configure recognizer
-            var featureConfig = sherpaOnnxFeatureConfig()
-
-            var config = sherpaOnnxOnlineRecognizerConfig(
-                featConfig: featureConfig,
-                modelConfig: modelConfig,
-                enableEndpoint: true,
-                rule1MinTrailingSilence: 1.2,
-                rule2MinTrailingSilence: 0.8,
-                rule3MinUtteranceLength: 10.0
-            )
-
-            // Create recognizer with the wrapper - pass config by reference
-            recognizer = SherpaOnnxRecognizer(config: &config)
 
             if recognizer == nil {
                 throw NSError(domain: "SherpaOnnxTranscriber", code: 2, userInfo: [NSLocalizedDescriptionKey: "Failed to create recognizer"])
@@ -118,7 +227,7 @@ class SherpaOnnxTranscriber {
             startProcessingTask()
             isRunning = true
 
-            CoreCommsService.log("Sherpa-ONNX ASR initialized successfully")
+            CoreCommsService.log("Sherpa-ONNX ASR initialized successfully with \(modelType) model")
 
         } catch {
             CoreCommsService.log("Failed to initialize Sherpa-ONNX: \(error.localizedDescription)")
@@ -326,16 +435,56 @@ class SherpaOnnxTranscriber {
      * @return true if all model files are found, false otherwise
      */
     static func areModelFilesPresent() -> Bool {
-        let requiredFiles = ["encoder.onnx", "decoder.onnx", "joiner.onnx", "tokens.txt"]
+        let fileManager = FileManager.default
 
+        // First check if we have a custom model path
+        if let customPath = customModelPath {
+            CoreCommsService.log("Checking for Sherpa-ONNX model files at custom path: \(customPath)")
+
+            // Check for tokens.txt (required for all models)
+            let tokensPath = (customPath as NSString).appendingPathComponent("tokens.txt")
+            guard fileManager.fileExists(atPath: tokensPath) else {
+                CoreCommsService.log("❌ Missing tokens.txt at custom path")
+                return false
+            }
+
+            // Check for CTC model
+            let ctcModelPath = (customPath as NSString).appendingPathComponent("model.int8.onnx")
+            if fileManager.fileExists(atPath: ctcModelPath) {
+                CoreCommsService.log("✅ CTC model files found at custom path")
+                return true
+            }
+
+            // Check for transducer model
+            let transducerFiles = ["encoder.onnx", "decoder.onnx", "joiner.onnx"]
+            var allTransducerFilesPresent = true
+            for fileName in transducerFiles {
+                let filePath = (customPath as NSString).appendingPathComponent(fileName)
+                if !fileManager.fileExists(atPath: filePath) {
+                    allTransducerFilesPresent = false
+                    break
+                }
+            }
+
+            if allTransducerFilesPresent {
+                CoreCommsService.log("✅ Transducer model files found at custom path")
+                return true
+            }
+
+            CoreCommsService.log("❌ No complete model found at custom path")
+            return false
+        }
+
+        // Fall back to checking bundle (transducer only for backwards compatibility)
         CoreCommsService.log("Checking for Sherpa-ONNX model files in bundle...")
 
+        let requiredFiles = ["encoder.onnx", "decoder.onnx", "joiner.onnx", "tokens.txt"]
         for fileName in requiredFiles {
             let components = fileName.components(separatedBy: ".")
             guard components.count == 2,
                   Bundle.main.path(forResource: components[0], ofType: components[1]) != nil
             else {
-                CoreCommsService.log("❌ Missing model file: \(fileName)")
+                CoreCommsService.log("❌ Missing model file in bundle: \(fileName)")
                 return false
             }
         }
