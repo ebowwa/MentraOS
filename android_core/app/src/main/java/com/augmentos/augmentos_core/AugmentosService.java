@@ -3048,4 +3048,54 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
 
         EventBus.getDefault().post(new ButtonPressEvent(deviceModel, buttonId, pressType));
     }
+
+    @Override
+    public void startBufferRecording() {
+        Log.d(TAG, "Starting buffer recording on smart glasses");
+        if (smartGlassesManager != null) {
+            smartGlassesManager.startBufferRecording();
+        } else {
+            Log.e(TAG, "SmartGlassesManager is null, cannot start buffer recording");
+        }
+    }
+
+    @Override
+    public void stopBufferRecording() {
+        Log.d(TAG, "Stopping buffer recording on smart glasses");
+        if (smartGlassesManager != null) {
+            smartGlassesManager.stopBufferRecording();
+        } else {
+            Log.e(TAG, "SmartGlassesManager is null, cannot stop buffer recording");
+        }
+    }
+
+    @Override
+    public void saveBufferVideo(String requestId, int durationSeconds) {
+        Log.d(TAG, "Saving buffer video: requestId=" + requestId + ", duration=" + durationSeconds + "s");
+        if (smartGlassesManager != null) {
+            smartGlassesManager.saveBufferVideo(requestId, durationSeconds);
+        } else {
+            Log.e(TAG, "SmartGlassesManager is null, cannot save buffer video");
+        }
+    }
+
+    @Override
+    public void startVideoRecording(String requestId, boolean save) {
+        Log.d(TAG, "Starting video recording: requestId=" + requestId + ", save=" + save);
+        if (smartGlassesManager != null) {
+            smartGlassesManager.startVideoRecording(requestId, save);
+        } else {
+            Log.e(TAG, "SmartGlassesManager is null, cannot start video recording");
+        }
+    }
+
+    @Override
+    public void stopVideoRecording(String requestId) {
+        Log.d(TAG, "Stopping video recording: requestId=" + requestId);
+        if (smartGlassesManager != null) {
+            smartGlassesManager.stopVideoRecording(requestId);
+        } else {
+            Log.e(TAG, "SmartGlassesManager is null, cannot stop video recording");
+        }
+    }
 }
