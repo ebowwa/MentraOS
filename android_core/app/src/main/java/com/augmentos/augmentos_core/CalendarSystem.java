@@ -129,8 +129,8 @@ public class CalendarSystem {
      * Handle calendar changes by sending updated events
      */
     private void handleCalendarChanged() {
-        // Send next 5 calendar events to server
-        sendNextFiveCalendarEventsToServer();
+        // Send calendar events for next 30 days to server
+        sendNext30DaysCalendarEventsToServer();
     }
 
     /**
@@ -274,6 +274,65 @@ public class CalendarSystem {
     }
 
     /**
+     * Retrieves calendar events for the next 30 days
+     *
+     * @return a List of CalendarItem representing events in the next 30 days
+     */
+    private List<CalendarItem> getNext30DaysCalendarEvents() {
+        List<CalendarItem> events = new ArrayList<>();
+        if (!hasCalendarPermissions()) {
+            Log.w(TAG, "Calendar permissions are not granted.");
+            return events;
+        }
+
+        ContentResolver contentResolver = context.getContentResolver();
+        
+        // Calculate 30 days from now
+        long now = System.currentTimeMillis();
+        long thirtyDaysFromNow = now + (30L * 24L * 60L * 60L * 1000L); // 30 days in milliseconds
+        
+        String selection = CalendarContract.Events.DTSTART + " >= ? AND " + CalendarContract.Events.DTSTART + " <= ?";
+        String[] selectionArgs = new String[]{ String.valueOf(now), String.valueOf(thirtyDaysFromNow) };
+        String sortOrder = CalendarContract.Events.DTSTART + " ASC";
+        Uri eventsUri = CalendarContract.Events.CONTENT_URI;
+
+        Log.d(TAG, "Fetching calendar events for next 30 days...");
+        
+        Cursor cursor = contentResolver.query(eventsUri, null, selection, selectionArgs, sortOrder);
+        if (cursor != null) {
+            Log.d(TAG, "Found " + cursor.getCount() + " calendar events for next 30 days");
+            while (cursor.moveToNext()) {
+                long eventId = cursor.getLong(cursor.getColumnIndexOrThrow(CalendarContract.Events._ID));
+                String title = cursor.getString(cursor.getColumnIndexOrThrow(CalendarContract.Events.TITLE));
+                long dtStart = cursor.getLong(cursor.getColumnIndexOrThrow(CalendarContract.Events.DTSTART));
+                long dtEnd = cursor.getLong(cursor.getColumnIndexOrThrow(CalendarContract.Events.DTEND));
+                String timeZone = cursor.getString(cursor.getColumnIndexOrThrow(CalendarContract.Events.EVENT_TIMEZONE));
+                events.add(new CalendarItem(eventId, title, dtStart, dtEnd, timeZone));
+                Log.d(TAG, "Adding event: " + title + " on " + new java.util.Date(dtStart));
+            }
+            cursor.close();
+        } else {
+            Log.e(TAG, "Query to calendar content provider failed.");
+        }
+        
+        Log.d(TAG, "Returning " + events.size() + " calendar events");
+        return events;
+    }
+
+    /**
+     * Send calendar events for the next 30 days to the server
+     */
+    public void sendNext30DaysCalendarEventsToServer() {
+        List<CalendarItem> events = getNext30DaysCalendarEvents();
+        Log.d(TAG, "Sending " + events.size() + " calendar events to server");
+        for (CalendarItem event : events) {
+            ServerComms.getInstance().sendCalendarEvent(event);
+        }
+        Log.d(TAG, "Finished sending calendar events");
+    }
+
+    /**
+     * @deprecated Use sendNext30DaysCalendarEventsToServer instead
      * Send the next 5 calendar events to the server
      */
     public void sendNextFiveCalendarEventsToServer() {
@@ -290,7 +349,7 @@ public class CalendarSystem {
         calendarSendingRunnableCode = new Runnable() {
             @Override
             public void run() {
-                sendNextFiveCalendarEventsToServer(); // Send next 5 events
+                sendNext30DaysCalendarEventsToServer(); // Send next 30 days of events
                 calendarSendingLoopHandler.postDelayed(this, calendarSendTime);
             }
         };
