@@ -9,7 +9,7 @@ package mentraos.ble;
 // All messages from phone to glasses
 message PhoneToGlasses {
   string msg_id = 1;  // Optional message ID for request/response correlation
-  
+
   oneof payload {
     // Connection Management
     DisconnectRequest disconnect = 10;
@@ -19,12 +19,12 @@ message PhoneToGlasses {
     HeadPositionRequest head_position = 14;
     HeadUpAngleConfig head_up_angle = 15;
     PingRequest ping = 16;
-    
+
     // Audio System
     MicStateConfig mic_state = 20;
     VadEnabledConfig vad_enabled = 21;
     VadConfig vad_config = 22;
-    
+
     // Display System
     DisplayText display_text = 30;
     DisplayImage display_image = 31;
@@ -42,13 +42,13 @@ message PhoneToGlasses {
     CommitDisplay commit = 43;
     DisplayDistanceConfig display_distance = 44;
     DisplayHeightConfig display_height = 45;
-    
+
     // User Input
     ImuEnabledConfig imu_enabled = 50;
     ImuSingleRequest imu_single = 51;
     ImuStreamConfig imu_stream = 52;
     HeadGestureConfig head_gesture = 53;
-    
+
     // System Control
     RestartRequest restart = 60;
     FactoryResetRequest factory_reset = 61;
@@ -65,13 +65,13 @@ message GlassesToPhone {
     HeadPosition head_position = 13;
     HeadUpAngleResponse head_up_angle_set = 14;
     PongResponse pong = 15;
-    
+
     // Audio System
     VadEvent vad_event = 20;
-    
+
     // Display System  
     ImageTransferComplete image_transfer_complete = 30;
-    
+
     // User Input
     ImuData imu_data = 40;
     ButtonEvent button_event = 41;
@@ -216,14 +216,14 @@ message DisplayScrollingText {
   uint32 y = 5;
   uint32 width = 6;
   uint32 height = 7;
-  
+
   enum Alignment {
     LEFT = 0;
     CENTER = 1;
     RIGHT = 2;
   }
   Alignment align = 8;
-  
+
   uint32 line_spacing = 9;   // pixels between lines
   uint32 speed = 10;         // pixels/sec scrolling up
   uint32 size = 11;          // font size multiplier
@@ -281,17 +281,18 @@ message DisplayDistanceConfig {
 
 message DisplayHeightConfig {
   uint32 height = 1;
+  uint32 depth = 2;
 }
 
 message ImageTransferComplete {
   string stream_id = 1;
-  
+
   enum Status {
     OK = 0;
     INCOMPLETE = 1;
   }
   Status status = 2;
-  
+
   repeated uint32 missing_chunks = 3;  // List of missing chunk indices
 }
 
@@ -328,7 +329,7 @@ message ButtonEvent {
     RIGHT = 2;
   }
   Button button = 1;
-  
+
   enum State {
     UP = 0;
     DOWN = 1;
