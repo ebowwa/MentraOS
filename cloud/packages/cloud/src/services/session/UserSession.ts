@@ -28,6 +28,7 @@ import { TranscriptionManager } from "./transcription/TranscriptionManager";
 import { TranslationManager } from "./translation/TranslationManager";
 import { ManagedStreamingExtension } from "../streaming/ManagedStreamingExtension";
 import { getCapabilitiesForModel } from "../../config/hardware-capabilities";
+import { navigationService } from "../core/navigation.service";
 
 export const LOG_PING_PONG = false; // Set to true to enable detailed ping/pong logging
 /**
@@ -443,6 +444,9 @@ export class UserSession {
 
     // Clear audio play request mappings
     this.audioPlayRequestMapping.clear();
+
+    // Clean up navigation state
+    navigationService.cleanupNavigationState(this.userId);
 
     // Remove from session storage
     SessionStorage.getInstance().delete(this.userId);

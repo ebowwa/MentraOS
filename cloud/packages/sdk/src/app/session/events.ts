@@ -21,6 +21,8 @@ import {
   AudioChunk,
   CalendarEvent,
   VpsCoordinates,
+  NavigationUpdate,
+  NavigationStatus,
   // Language stream helpers
   createTranscriptionStream,
   isValidLanguageCode,
@@ -98,6 +100,8 @@ export interface StreamDataTypes {
   [StreamType.MANAGED_STREAM_STATUS]: ManagedStreamStatus;
   [StreamType.VPS_COORDINATES]: VpsCoordinates;
   [StreamType.PHOTO_TAKEN]: PhotoTaken;
+  [StreamType.NAVIGATION_UPDATE]: NavigationUpdate;
+  [StreamType.NAVIGATION_STATUS]: NavigationStatus;
   [StreamType.OPEN_DASHBOARD]: never;
   [StreamType.START_APP]: never;
   [StreamType.STOP_APP]: never;
@@ -509,5 +513,23 @@ export class EventManager {
    */
   onPhotoTaken(handler: Handler<PhotoTaken>) {
     return this.addHandler(StreamType.PHOTO_TAKEN, handler);
+  }
+
+  /**
+   * 🧭 Listen for navigation instruction updates
+   * @param handler - Function to handle navigation updates
+   * @returns Cleanup function to remove the handler
+   */
+  onNavigationUpdate(handler: Handler<NavigationUpdate>) {
+    return this.addHandler(StreamType.NAVIGATION_UPDATE, handler);
+  }
+
+  /**
+   * 🧭 Listen for navigation status changes
+   * @param handler - Function to handle navigation status changes
+   * @returns Cleanup function to remove the handler
+   */
+  onNavigationStatus(handler: Handler<NavigationStatus>) {
+    return this.addHandler(StreamType.NAVIGATION_STATUS, handler);
   }
 }

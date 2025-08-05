@@ -126,6 +126,37 @@ export interface AudioStopRequest extends BaseMessage {
 }
 
 /**
+ * Navigation start request from App
+ */
+export interface AppNavigationStartRequest extends BaseMessage {
+  type: AppToCloudMessageType.NAVIGATION_START_REQUEST;
+  packageName: string;
+  destination: string; // Destination address or location name
+  mode?: string; // "driving", "walking", "cycling", "transit"
+  requestId?: string; // Optional request ID for tracking
+}
+
+/**
+ * Navigation stop request from App
+ */
+export interface AppNavigationStopRequest extends BaseMessage {
+  type: AppToCloudMessageType.NAVIGATION_STOP_REQUEST;
+  packageName: string;
+  requestId?: string; // Optional: specific navigation to stop
+}
+
+/**
+ * Navigation route update request from App
+ */
+export interface AppNavigationRouteUpdateRequest extends BaseMessage {
+  type: AppToCloudMessageType.NAVIGATION_ROUTE_UPDATE_REQUEST;
+  packageName: string;
+  avoidTolls?: boolean;
+  avoidHighways?: boolean;
+  requestId?: string; // Optional: specific navigation to update
+}
+
+/**
  * Union type for all messages from Apps to cloud
  */
 export type AppToCloudMessage =
@@ -136,6 +167,9 @@ export type AppToCloudMessage =
   | PhotoRequest
   | AudioPlayRequest
   | AudioStopRequest
+  | AppNavigationStartRequest
+  | AppNavigationStopRequest
+  | AppNavigationRouteUpdateRequest
   | RtmpStreamRequest
   | RtmpStreamStopRequest
   | ManagedStreamRequest
@@ -303,4 +337,25 @@ export function isRtmpStreamRequest(message: AppToCloudMessage): message is Rtmp
  */
 export function isRtmpStreamStopRequest(message: AppToCloudMessage): message is RtmpStreamStopRequest {
   return message.type === AppToCloudMessageType.RTMP_STREAM_STOP;
+}
+
+/**
+ * Type guard to check if a message is a navigation start request
+ */
+export function isNavigationStartRequest(message: AppToCloudMessage): message is AppNavigationStartRequest {
+  return message.type === AppToCloudMessageType.NAVIGATION_START_REQUEST;
+}
+
+/**
+ * Type guard to check if a message is a navigation stop request
+ */
+export function isNavigationStopRequest(message: AppToCloudMessage): message is AppNavigationStopRequest {
+  return message.type === AppToCloudMessageType.NAVIGATION_STOP_REQUEST;
+}
+
+/**
+ * Type guard to check if a message is a navigation route update request
+ */
+export function isNavigationRouteUpdateRequest(message: AppToCloudMessage): message is AppNavigationRouteUpdateRequest {
+  return message.type === AppToCloudMessageType.NAVIGATION_ROUTE_UPDATE_REQUEST;
 }

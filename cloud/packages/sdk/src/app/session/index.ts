@@ -15,6 +15,7 @@ import {
   RtmpStreamOptions,
 } from "./modules/camera";
 import { AudioManager } from "./modules/audio";
+import { NavigationManager } from "./modules/navigation";
 import { ResourceTracker } from "../../utils/resource-tracker";
 import {
   // Message types
@@ -205,6 +206,8 @@ export class AppSession {
   public readonly camera: CameraModule;
   /** 🔊 Audio interface for audio playback */
   public readonly audio: AudioManager;
+  /** 🧭 Navigation interface for route guidance */
+  public readonly navigation: NavigationManager;
 
   public readonly appServer: AppServer;
   public readonly logger: Logger;
@@ -350,6 +353,15 @@ export class AppSession {
       this.send.bind(this),
       this, // Pass session reference
       this.logger.child({ module: "audio" }),
+    );
+
+    // Initialize navigation module with session reference
+    this.navigation = new NavigationManager(
+      this.config.packageName,
+      this.sessionId || "unknown-session-id",
+      this.send.bind(this),
+      this, // Pass session reference
+      this.logger.child({ module: "navigation" }),
     );
 
     this.location = new LocationManager(this, this.send.bind(this));
@@ -589,6 +601,11 @@ export class AppSession {
     // Update the sessionId in the audio module
     if (this.audio) {
       this.audio.updateSessionId(sessionId);
+    }
+
+    // Update the sessionId in the navigation module
+    if (this.navigation) {
+      this.navigation.updateSessionId(sessionId);
     }
 
     return new Promise((resolve, reject) => {
@@ -2089,3 +2106,9 @@ export {
   AudioPlayResult,
   SpeakOptions,
 } from "./modules/audio";
+export {
+  NavigationManager,
+  NavigationStartOptions,
+  NavigationRouteUpdateOptions,
+  NavigationStopOptions,
+} from "./modules/navigation";

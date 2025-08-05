@@ -21,6 +21,10 @@ export class SimplePermissionChecker {
     // Location stream
     [StreamType.LOCATION_UPDATE, PermissionType.LOCATION],
 
+    // Navigation streams
+    [StreamType.NAVIGATION_UPDATE, PermissionType.NAVIGATION],
+    [StreamType.NAVIGATION_STATUS, PermissionType.NAVIGATION],
+
     // Calendar stream
     [StreamType.CALENDAR_EVENT, PermissionType.CALENDAR],
 

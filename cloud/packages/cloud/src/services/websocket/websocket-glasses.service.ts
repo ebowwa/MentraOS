@@ -20,6 +20,8 @@ import {
   HeadPosition,
   KeepAliveAck,
   LocationUpdate,
+  NavigationUpdate,
+  NavigationStatus,
   PhotoResponse,
   RequestSettings,
   RtmpStreamStatus,
@@ -35,6 +37,7 @@ import { sessionService } from "../session/session.service";
 import { User } from "../../models/user.model";
 import { SYSTEM_DASHBOARD_PACKAGE_NAME } from "../core/app.service";
 import { locationService } from "../core/location.service";
+import { navigationService } from "../core/navigation.service";
 
 const SERVICE_NAME = "websocket-glasses.service";
 const logger = rootLogger.child({ service: SERVICE_NAME });
@@ -285,6 +288,20 @@ export class GlassesWebSocketService {
             message as CalendarEvent,
           );
           sessionService.relayMessageToApps(userSession, message);
+          break;
+
+        case GlassesToCloudMessageType.NAVIGATION_UPDATE:
+          await navigationService.handleDeviceNavigationUpdate(
+            userSession,
+            message as NavigationUpdate,
+          );
+          break;
+
+        case GlassesToCloudMessageType.NAVIGATION_STATUS:
+          await navigationService.handleDeviceNavigationStatus(
+            userSession,
+            message as NavigationStatus,
+          );
           break;
 
         // TODO(isaiah): verify logic

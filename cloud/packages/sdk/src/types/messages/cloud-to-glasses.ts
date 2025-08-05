@@ -156,6 +156,34 @@ export interface RequestSingleLocation extends BaseMessage {
 }
 
 /**
+ * Start navigation to a destination
+ */
+export interface StartNavigation extends BaseMessage {
+  type: CloudToGlassesMessageType.START_NAVIGATION;
+  destination: string; // Destination address or location name
+  mode?: string; // "driving", "walking", "cycling", "transit"
+  requestId: string; // To track the navigation request
+}
+
+/**
+ * Stop current navigation
+ */
+export interface StopNavigation extends BaseMessage {
+  type: CloudToGlassesMessageType.STOP_NAVIGATION;
+  requestId?: string; // Optional: specific navigation to stop
+}
+
+/**
+ * Update navigation route preferences
+ */
+export interface UpdateNavigationRoute extends BaseMessage {
+  type: CloudToGlassesMessageType.UPDATE_NAVIGATION_ROUTE;
+  avoidTolls?: boolean;
+  avoidHighways?: boolean;
+  requestId?: string; // Optional: specific navigation to update
+}
+
+/**
  * Audio play request to glasses
  */
 export interface AudioPlayRequestToGlasses extends BaseMessage {
@@ -195,7 +223,10 @@ export type CloudToGlassesMessage =
   | StopRtmpStream
   | KeepRtmpStreamAlive
   | SetLocationTier
-  | RequestSingleLocation;
+  | RequestSingleLocation
+  | StartNavigation
+  | StopNavigation
+  | UpdateNavigationRoute;
 
 //===========================================================
 // Type guards
@@ -260,4 +291,16 @@ export function isAudioPlayRequestToGlasses(message: CloudToGlassesMessage): mes
 
 export function isAudioStopRequestToGlasses(message: CloudToGlassesMessage): message is AudioStopRequestToGlasses {
   return message.type === CloudToGlassesMessageType.AUDIO_STOP_REQUEST;
+}
+
+export function isStartNavigation(message: CloudToGlassesMessage): message is StartNavigation {
+  return message.type === CloudToGlassesMessageType.START_NAVIGATION;
+}
+
+export function isStopNavigation(message: CloudToGlassesMessage): message is StopNavigation {
+  return message.type === CloudToGlassesMessageType.STOP_NAVIGATION;
+}
+
+export function isUpdateNavigationRoute(message: CloudToGlassesMessage): message is UpdateNavigationRoute {
+  return message.type === CloudToGlassesMessageType.UPDATE_NAVIGATION_ROUTE;
 }

@@ -154,6 +154,28 @@ export interface CalendarEvent extends BaseMessage {
 }
 
 /**
+ * Navigation update from glasses
+ */
+export interface NavigationUpdate extends BaseMessage {
+  type: GlassesToCloudMessageType.NAVIGATION_UPDATE | StreamType.NAVIGATION_UPDATE;
+  instruction: string;
+  distanceRemaining: number; // meters
+  timeRemaining: number; // seconds
+  streetName?: string;
+  maneuver: string; // "turn_left", "turn_right", "continue", etc.
+}
+
+/**
+ * Navigation status from glasses
+ */
+export interface NavigationStatus extends BaseMessage {
+  type: GlassesToCloudMessageType.NAVIGATION_STATUS | StreamType.NAVIGATION_STATUS;
+  status: "idle" | "planning" | "navigating" | "rerouting" | "finished" | "error";
+  errorMessage?: string; // if status is "error"
+  destination?: string;
+}
+
+/**
  * Voice activity detection from glasses
  */
 export interface Vad extends BaseMessage {
@@ -279,6 +301,8 @@ export type GlassesToCloudMessage =
   | GlassesConnectionState
   | LocationUpdate
   | VpsCoordinates
+  | NavigationUpdate
+  | NavigationStatus
   | CalendarEvent
   | Vad
   | PhoneNotification
@@ -343,6 +367,14 @@ export function isGlassesConnectionState(message: GlassesToCloudMessage): messag
 
 export function isLocationUpdate(message: GlassesToCloudMessage): message is LocationUpdate {
   return message.type === GlassesToCloudMessageType.LOCATION_UPDATE;
+}
+
+export function isNavigationUpdate(message: GlassesToCloudMessage): message is NavigationUpdate {
+  return message.type === GlassesToCloudMessageType.NAVIGATION_UPDATE;
+}
+
+export function isNavigationStatus(message: GlassesToCloudMessage): message is NavigationStatus {
+  return message.type === GlassesToCloudMessageType.NAVIGATION_STATUS;
 }
 
 export function isCalendarEvent(message: GlassesToCloudMessage): message is CalendarEvent {

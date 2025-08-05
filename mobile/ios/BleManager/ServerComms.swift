@@ -8,6 +8,21 @@
 import Combine
 import Foundation
 
+// navigation data structures for sending to cloud
+struct NavigationUpdateData {
+    let instruction: String
+    let distanceRemaining: Int // meters
+    let timeRemaining: Int // seconds
+    let streetName: String?
+    let maneuver: String // "turn_left", "turn_right", "continue", etc.
+}
+
+struct NavigationStatusData {
+    let status: String // "idle", "planning", "navigating", "rerouting", "finished", "error"
+    let errorMessage: String? // if status is "error"
+    let destination: String?
+}
+
 protocol ServerCommsCallback {
     func onConnectionAck()
     func onAppStateChange(_ apps: [ThirdPartyCloudApp] /* , _ whatToStream: [String] */ )
@@ -283,6 +298,66 @@ class ServerComms {
             sendLocationUpdate(lat: locationData.latitude, lng: locationData.longitude, accuracy: nil, correlationId: nil)
         } else {
             CoreCommsService.log("Cannot send location update: No location data available")
+        }
+    }
+
+    // MARK: - Navigation Events
+
+    func sendNavigationUpdate(_ navigationUpdate: NavigationUpdateData) {
+        guard wsManager.isConnected() else {
+            CoreCommsService.log("Cannot send navigation update: WebSocket not connected")
+            return
+        }
+
+        do {
+            let event: [String: Any] = [
+                "type": "navigation_update",
+                "instruction": navigationUpdate.instruction,
+                "distanceRemaining": navigationUpdate.distanceRemaining,
+                "timeRemaining": navigationUpdate.timeRemaining,
+                "streetName": navigationUpdate.streetName ?? NSNull(),
+                "maneuver": navigationUpdate.maneuver,
+                "timestamp": Int(Date().timeIntervalSince1970 * 1000),
+            ]
+
+            let jsonData = try JSONSerialization.data(withJSONObject: event)
+            if let jsonString = String(data: jsonData, encoding: .utf8) {
+                wsManager.sendText(jsonString)
+                CoreCommsService.log("🧭 Sent navigation update: \(navigationUpdate.instruction)")
+            }
+        } catch {
+            CoreCommsService.log("ServerComms: Error building navigation_update JSON: \(error)")
+        }
+    }
+
+    func sendNavigationStatus(_ navigationStatus: NavigationStatusData) {
+        guard wsManager.isConnected() else {
+            CoreCommsService.log("Cannot send navigation status: WebSocket not connected")
+            return
+        }
+
+        do {
+            var event: [String: Any] = [
+                "type": "navigation_status",
+                "status": navigationStatus.status,
+                "timestamp": Int(Date().timeIntervalSince1970 * 1000),
+            ]
+
+            if let errorMessage = navigationStatus.errorMessage {
+                event["errorMessage"] = errorMessage
+            }
+
+            if let destination = navigationStatus.destination {
+                event["destination"] = destination
+            }
+
+            let jsonData = try JSONSerialization.data(withJSONObject: event)
+            if let jsonString = String(data: jsonData, encoding: .utf8) {
+                wsManager.sendText(jsonString)
+                CoreCommsService.log("🧭 Sent navigation status: \(navigationStatus.status)")
+            }
+        } catch {
+            CoreCommsService.log("ServerComms: Error building navigation_status JSON: \(error)")
         }
     }
 

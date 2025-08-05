@@ -24,6 +24,9 @@ import {
   PhotoRequest,
   AudioPlayRequest,
   AudioStopRequest,
+  AppNavigationStartRequest,
+  AppNavigationStopRequest,
+  AppNavigationRouteUpdateRequest,
   RtmpStreamRequest,
   RtmpStreamStopRequest,
   ManagedStreamRequest,
@@ -38,6 +41,7 @@ import { logger as rootLogger } from '../logging/pino-logger';
 import photoRequestService from '../core/photo-request.service';
 import e from 'express';
 import { locationService } from '../core/location.service';
+import { navigationService } from '../core/navigation.service';
 import { SimplePermissionChecker } from '../permissions/simple-permission-checker';
 import App from '../../models/app.model';
 
@@ -349,6 +353,86 @@ export class AppWebSocketService {
           }
           break;
 
+        // Navigation request handling
+        case AppToCloudMessageType.NAVIGATION_START_REQUEST:
+          try {
+            const navStartMsg = message as AppNavigationStartRequest;
+
+            // Check if app has navigation permission
+            const hasNavigationPermission = await this.checkNavigationPermission(navStartMsg.packageName, userSession);
+            if (!hasNavigationPermission) {
+              this.logger.warn({ packageName: navStartMsg.packageName, userId: userSession.userId }, 'Navigation start request denied: app does not have NAVIGATION permission');
+              this.sendError(appWebsocket, AppErrorCode.PERMISSION_DENIED, 'Navigation permission required to start navigation. Please add the NAVIGATION permission in the developer console.');
+              break;
+            }
+
+            // Delegate to NavigationService
+            await navigationService.handleStartNavigationRequest(
+              userSession,
+              navStartMsg.packageName,
+              navStartMsg.destination,
+              navStartMsg.mode,
+              navStartMsg.requestId
+            );
+            this.logger.info({ requestId: navStartMsg.requestId, packageName: navStartMsg.packageName, destination: navStartMsg.destination }, "Navigation start request processed by NavigationService.");
+          } catch (e) {
+            this.logger.error({ e, packageName: message.packageName }, "Error starting navigation via NavigationService");
+            this.sendError(appWebsocket, AppErrorCode.INTERNAL_ERROR, (e as Error).message || "Failed to start navigation.");
+          }
+          break;
+
+        case AppToCloudMessageType.NAVIGATION_STOP_REQUEST:
+          try {
+            const navStopMsg = message as AppNavigationStopRequest;
+
+            // Check if app has navigation permission
+            const hasNavigationPermission = await this.checkNavigationPermission(navStopMsg.packageName, userSession);
+            if (!hasNavigationPermission) {
+              this.logger.warn({ packageName: navStopMsg.packageName, userId: userSession.userId }, 'Navigation stop request denied: app does not have NAVIGATION permission');
+              this.sendError(appWebsocket, AppErrorCode.PERMISSION_DENIED, 'Navigation permission required to stop navigation. Please add the NAVIGATION permission in the developer console.');
+              break;
+            }
+
+            // Delegate to NavigationService
+            await navigationService.handleStopNavigationRequest(
+              userSession,
+              navStopMsg.packageName,
+              navStopMsg.requestId
+            );
+            this.logger.info({ requestId: navStopMsg.requestId, packageName: navStopMsg.packageName }, "Navigation stop request processed by NavigationService.");
+          } catch (e) {
+            this.logger.error({ e, packageName: message.packageName }, "Error stopping navigation via NavigationService");
+            this.sendError(appWebsocket, AppErrorCode.INTERNAL_ERROR, (e as Error).message || "Failed to stop navigation.");
+          }
+          break;
+
+        case AppToCloudMessageType.NAVIGATION_ROUTE_UPDATE_REQUEST:
+          try {
+            const navUpdateMsg = message as AppNavigationRouteUpdateRequest;
+
+            // Check if app has navigation permission
+            const hasNavigationPermission = await this.checkNavigationPermission(navUpdateMsg.packageName, userSession);
+            if (!hasNavigationPermission) {
+              this.logger.warn({ packageName: navUpdateMsg.packageName, userId: userSession.userId }, 'Navigation route update request denied: app does not have NAVIGATION permission');
+              this.sendError(appWebsocket, AppErrorCode.PERMISSION_DENIED, 'Navigation permission required to update route preferences. Please add the NAVIGATION permission in the developer console.');
+              break;
+            }
+
+            // Delegate to NavigationService
+            await navigationService.handleUpdateNavigationRoute(
+              userSession,
+              navUpdateMsg.packageName,
+              navUpdateMsg.avoidTolls,
+              navUpdateMsg.avoidHighways,
+              navUpdateMsg.requestId
+            );
+            this.logger.info({ requestId: navUpdateMsg.requestId, packageName: navUpdateMsg.packageName }, "Navigation route update request processed by NavigationService.");
+          } catch (e) {
+            this.logger.error({ e, packageName: message.packageName }, "Error updating navigation route via NavigationService");
+            this.sendError(appWebsocket, AppErrorCode.INTERNAL_ERROR, (e as Error).message || "Failed to update navigation route.");
+          }
+          break;
+
         case AppToCloudMessageType.MANAGED_STREAM_REQUEST:
           try {
             const managedReq = message as ManagedStreamRequest;
@@ -627,6 +711,31 @@ export class AppWebSocketService {
       return SimplePermissionChecker.hasPermission(app, PermissionType.CAMERA);
     } catch (error) {
       logger.error({ error, packageName, userId: userSession.userId }, 'Error checking camera permission');
+      return false;
+    }
+  }
+
+  /**
+   * Check if an app has navigation permission
+   *
+   * @param packageName App package name
+   * @param userSession User session
+   * @returns Promise<boolean> true if app has navigation permission, false otherwise
+   */
+  private async checkNavigationPermission(packageName: string, userSession: UserSession): Promise<boolean> {
+    try {
+      // Get app details
+      const app = await App.findOne({ packageName });
+
+      if (!app) {
+        logger.warn({ packageName, userId: userSession.userId }, 'App not found when checking navigation permissions');
+        return false;
+      }
+
+      // Check if app has navigation permission
+      return SimplePermissionChecker.hasPermission(app, PermissionType.NAVIGATION);
+    } catch (error) {
+      logger.error({ error, packageName, userId: userSession.userId }, 'Error checking navigation permission');
       return false;
     }
   }

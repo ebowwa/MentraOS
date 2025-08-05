@@ -46,6 +46,8 @@ export enum GlassesToCloudMessageType {
   GLASSES_CONNECTION_STATE = StreamType.GLASSES_CONNECTION_STATE,
   LOCATION_UPDATE = StreamType.LOCATION_UPDATE,
   VPS_COORDINATES = StreamType.VPS_COORDINATES,
+  NAVIGATION_UPDATE = StreamType.NAVIGATION_UPDATE,
+  NAVIGATION_STATUS = StreamType.NAVIGATION_STATUS,
   VAD = StreamType.VAD,
   PHONE_NOTIFICATION = StreamType.PHONE_NOTIFICATION,
   PHONE_NOTIFICATION_DISMISSED = StreamType.PHONE_NOTIFICATION_DISMISSED,
@@ -87,6 +89,11 @@ export enum CloudToGlassesMessageType {
   SET_LOCATION_TIER = "set_location_tier",
   REQUEST_SINGLE_LOCATION = "request_single_location",
 
+  // Navigation Service  
+  START_NAVIGATION = "start_navigation",
+  STOP_NAVIGATION = "stop_navigation",
+  UPDATE_NAVIGATION_ROUTE = "update_navigation_route",
+
   WEBSOCKET_ERROR = "websocket_error",
 }
 
@@ -104,6 +111,11 @@ export enum AppToCloudMessageType {
   PHOTO_REQUEST = "photo_request",
   AUDIO_PLAY_REQUEST = "audio_play_request",
   AUDIO_STOP_REQUEST = "audio_stop_request",
+
+  // Navigation requests  
+  NAVIGATION_START_REQUEST = "navigation_start_request",
+  NAVIGATION_STOP_REQUEST = "navigation_stop_request",
+  NAVIGATION_ROUTE_UPDATE_REQUEST = "navigation_route_update_request",
 
   // RTMP streaming
   RTMP_STREAM_REQUEST = "rtmp_stream_request",

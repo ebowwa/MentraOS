@@ -17,6 +17,10 @@ export enum StreamType {
   LOCATION_STREAM = "location_stream",
   VPS_COORDINATES = "vps_coordinates",
 
+  // Navigation streams
+  NAVIGATION_UPDATE = "navigation_update",
+  NAVIGATION_STATUS = "navigation_status",
+
   // Audio streams
   TRANSCRIPTION = "transcription",
   TRANSLATION = "translation",
@@ -86,6 +90,8 @@ export const STREAM_CATEGORIES: Record<StreamType, StreamCategory> = {
   [StreamType.LOCATION_UPDATE]: StreamCategory.HARDWARE,
   [StreamType.LOCATION_STREAM]: StreamCategory.HARDWARE,
   [StreamType.VPS_COORDINATES]: StreamCategory.HARDWARE,
+  [StreamType.NAVIGATION_UPDATE]: StreamCategory.HARDWARE,
+  [StreamType.NAVIGATION_STATUS]: StreamCategory.HARDWARE,
 
   [StreamType.TRANSCRIPTION]: StreamCategory.AUDIO,
   [StreamType.TRANSLATION]: StreamCategory.AUDIO,
