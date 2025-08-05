@@ -106,7 +106,7 @@
     </receiver>
 
     <service
-        android:name=".AsgClientService"
+        android:name=".service.AsgClientService"
         android:enabled="true"
         android:exported="true"
         android:foregroundServiceType="camera|microphone">

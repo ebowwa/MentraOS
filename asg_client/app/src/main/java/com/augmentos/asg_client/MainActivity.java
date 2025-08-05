@@ -42,10 +42,10 @@ import androidx.core.content.ContextCompat;
 import androidx.preference.PreferenceManager;
 
 // import com.firebase.ui.auth.AuthUI;
+import com.augmentos.asg_client.service.core.AsgClientService;
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.PermissionsUtils;
 
 import com.augmentos.asg_client.reporting.domains.GeneralReporting;
-import io.sentry.Sentry;
 
 public class MainActivity extends AppCompatActivity {
   public final String TAG = "Augmentos_MainActivity";
@@ -385,8 +385,8 @@ public class MainActivity extends AppCompatActivity {
     public void onServiceConnected(ComponentName className,
                                    IBinder service) {
       // We've bound to LocalService, cast the IBinder and get LocalService instance
-      AsgClientService.LocalBinder augmentOsServiceBinder = (AsgClientService.LocalBinder) service;
-      mService = (AsgClientService) augmentOsServiceBinder.getService();
+          AsgClientService.LocalBinder augmentOsServiceBinder = (AsgClientService.LocalBinder) service;
+    mService = (AsgClientService) augmentOsServiceBinder.getService();
       mBound = true;
 
       //get update for UI
