@@ -62,6 +62,39 @@ public interface ServerCommsCallback {
     void onAudioPlayRequest(JSONObject audioRequest);
 
     /**
+     * Called when the server requests to start buffer recording
+     */
+    void onStartBufferRecording();
+
+    /**
+     * Called when the server requests to stop buffer recording
+     */
+    void onStopBufferRecording();
+
+    /**
+     * Called when the server requests to save buffer video
+     *
+     * @param requestId Unique ID for this save request
+     * @param durationSeconds Number of seconds to save from buffer (1-30)
+     */
+    void onSaveBufferVideo(String requestId, int durationSeconds);
+
+    /**
+     * Called when the server requests to start video recording
+     *
+     * @param requestId Unique ID for this recording
+     * @param save Whether to save the video to storage
+     */
+    void onStartVideoRecording(String requestId, boolean save);
+
+    /**
+     * Called when the server requests to stop video recording
+     *
+     * @param requestId The request ID of the recording to stop
+     */
+    void onStopVideoRecording(String requestId);
+
+    /**
      * Called when the server requests audio playback to be stopped
      *
      * @param audioStopRequest The audio stop request message with parameters

@@ -208,11 +208,38 @@ dependencies {
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
 }
 
+// Check if Sentry auth token is available
+def sentryAuthToken = System.getenv("SENTRY_AUTH_TOKEN") ?: 
+                     project.hasProperty("sentryAuthToken") ? project.property("sentryAuthToken") : null
+
 sentry {
     org = "ahmad-wv"
     projectName = "asg"
 
-    // this will upload your source code to Sentry to show it as part of the stack traces
-    // disable if you don't want to expose your sources
-    includeSourceContext = true
+    // Only enable Sentry features if auth token is present
+    if (sentryAuthToken) {
+        // this will upload your source code to Sentry to show it as part of the stack traces
+        includeSourceContext = true
+        uploadNativeSymbols = true
+        autoUploadNativeSymbols = true
+        autoUploadSourceContext = true
+    } else {
+        // Disable all Sentry upload tasks when no auth token
+        includeSourceContext = false
+        uploadNativeSymbols = false
+        autoUploadNativeSymbols = false
+        autoUploadSourceContext = false
+        
+        // Don't fail the build if Sentry operations fail
+        ignoredBuildTypes = ["release", "debug"]
+    }
+}
+
+// Disable Sentry tasks when auth token is not present
+afterEvaluate {
+    if (!sentryAuthToken) {
+        tasks.matching { it.name.contains("sentry") || it.name.contains("Sentry") }.configureEach {
+            enabled = false
+        }
+    }
 }
