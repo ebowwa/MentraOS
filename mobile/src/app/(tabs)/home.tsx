@@ -69,32 +69,38 @@ export default function Homepage() {
     }
   }, [appStatus.length])
 
+  const checkPermissions = async () => {
+    const hasCalendar = await checkFeaturePermissions(PermissionFeatures.CALENDAR)
+    const hasNotifications =
+      Platform.OS === "android" ? await checkFeaturePermissions(PermissionFeatures.READ_NOTIFICATIONS) : true
+
+    const hasLocation = await checkFeaturePermissions(PermissionFeatures.BACKGROUND_LOCATION)
+
+    const shouldShowBell = !hasCalendar || !hasNotifications || !hasLocation
+    setHasMissingPermissions(shouldShowBell)
+
+    // Animate bell in if needed
+    if (shouldShowBell) {
+      Animated.timing(bellFadeAnim, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }).start()
+    }
+  }
+
   // Check for missing permissions
   useEffect(() => {
-    const checkPermissions = async () => {
-      const hasCalendar = await checkFeaturePermissions(PermissionFeatures.CALENDAR)
-      const hasNotifications =
-        Platform.OS === "android" ? await checkFeaturePermissions(PermissionFeatures.READ_NOTIFICATIONS) : true
-
-      const hasLocation = await checkFeaturePermissions(PermissionFeatures.BACKGROUND_LOCATION)
-
-      const shouldShowBell = !hasCalendar || !hasNotifications || !hasLocation
-      setHasMissingPermissions(shouldShowBell)
-
-      // Animate bell in if needed
-      if (shouldShowBell) {
-        Animated.timing(bellFadeAnim, {
-          toValue: 1,
-          duration: 300,
-          useNativeDriver: true,
-        }).start()
-      }
-    }
-
     checkPermissions().catch(error => {
       console.error("Error checking permissions:", error)
     })
   }, [])
+
+  useFocusEffect(
+    useCallback(() => {
+      checkPermissions()
+    }, []),
+  )
 
   // Check onboarding status
   useEffect(() => {
