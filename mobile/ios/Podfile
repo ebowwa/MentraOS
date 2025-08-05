@@ -62,6 +62,10 @@ target 'AOS' do
 
   pod 'onnxruntime-objc', '1.18.0', :modular_headers => true
   pod 'SWCompression', '~> 4.8'
+  
+  # Google Navigation SDK for navigation functionality
+  pod 'GoogleMaps'
+  pod 'GoogleNavigation'
 
   post_install do |installer|
     react_native_post_install(
