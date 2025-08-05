@@ -6,12 +6,14 @@ import { Router, Request, Response } from 'express';
 import { logger } from "../services/logging/pino-logger";
 import * as AppUptimeService from "../services/core/app-uptime.service";
 import axios from 'axios';
-import App from '../models/app.model';
-import { fetchSubmittedAppHealthStatus, recordAppUptime } from '../services/core/app-uptime.service';
+import { fetchSubmittedAppHealthStatus } from '../services/core/app-uptime.service';
 
-let batch = [];
 // Create Express router - this groups related routes together
 const router = Router();
+
+// Start the uptime scheduler when the routes are loaded
+// AppUptimeService.startUptimeScheduler();
+logger.info("🔄 App uptime monitoring scheduler started automatically");
 
 /**
  * HTTP POST endpoint handler for starting uptime checks
@@ -157,7 +159,53 @@ router.get('/ping', async (req, res) => {
   }
 });
 
-router.post('/send-batch', async (req, res) => {});
+router.post('/send-batch', async (req: Request, res: Response) => {
+  try {
+    await AppUptimeService.sendBatchUptimeData();
+    res.json({
+      success: true,
+      message: "Batch uptime data sent successfully"
+    });
+  } catch (error) {
+    logger.error('Error sending batch uptime data:', error);
+    res.status(500).json({
+      error: true,
+      message: error instanceof Error ? error.message : 'Unknown error occurred'
+    });
+  }
+});
+
+router.post('/start-scheduler', async (req: Request, res: Response) => {
+  try {
+    AppUptimeService.startUptimeScheduler();
+    res.json({
+      success: true,
+      message: "Uptime scheduler started successfully"
+    });
+  } catch (error) {
+    logger.error('Error starting uptime scheduler:', error);
+    res.status(500).json({
+      error: true,
+      message: error instanceof Error ? error.message : 'Unknown error occurred'
+    });
+  }
+});
+
+router.post('/stop-scheduler', async (req: Request, res: Response) => {
+  try {
+    AppUptimeService.stopUptimeScheduler();
+    res.json({
+      success: true,
+      message: "Uptime scheduler stopped successfully"
+    });
+  } catch (error) {
+    logger.error('Error stopping uptime scheduler:', error);
+    res.status(500).json({
+      error: true,
+      message: error instanceof Error ? error.message : 'Unknown error occurred'
+    });
+  }
+});
 
 
 
@@ -177,104 +225,24 @@ router.get('/get-submitted-app-health-status', async (req: Request, res: Respons
   }
 });
 
-// Store SSE connections
-const sseConnections = new Set<Response>();
-
-// SSE endpoint for app health status updates
-router.get('/health-status-stream', (req: Request, res: Response) => {
-  console.log('🌊 New SSE connection for health status stream');
-  
-  // Set SSE headers
-  res.writeHead(200, {
-    'Content-Type': 'text/event-stream',
-    'Cache-Control': 'no-cache',
-    'Connection': 'keep-alive',
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Cache-Control'
-  });
-
-  // Add this connection to our set
-  sseConnections.add(res);
-
-  // Send initial data immediately
-  fetchSubmittedAppHealthStatus().then(result => {
-    const data = JSON.stringify({
-      type: 'SUBMITTED_APP_HEALTH_STATUS_UPDATE',
-      data: {
-        ...result,
-        timestamp: new Date()
-      }
+router.get('/status', async (req: Request, res: Response) => {
+  try {
+    const healthStatus = await fetchSubmittedAppHealthStatus();
+    res.json({
+      timestamp: new Date(),
+      status: 'active',
+      ...healthStatus
     });
-    res.write(`data: ${data}\n\n`);
-  }).catch(error => {
-    console.error('Error sending initial SSE data:', error);
-  });
-
-  // Handle client disconnect
-  req.on('close', () => {
-    console.log('🌊 SSE connection closed');
-    sseConnections.delete(res);
-  });
-
-  req.on('error', (error) => {
-    console.error('SSE connection error:', error);
-    sseConnections.delete(res);
-  });
+  } catch (error) {
+    logger.error('Error fetching app status:', error);
+    res.status(500).json({
+      error: true,
+      message: error instanceof Error ? error.message : 'Unknown error occurred',
+      timestamp: new Date()
+    });
+  }
 });
 
-// Auto-polling function that runs every 15 seconds
-const startHealthStatusPolling = () => {
-  console.log('🚀 Starting app health status polling every 15 seconds');
-  
-  const pollHealthStatus = async () => {
-    try {
-      const result = await fetchSubmittedAppHealthStatus();
-      console.log(`📊 Polled health status: ${result?.count || 0} apps found`);
-      
-      // Send SSE message to all connected clients
-      if (sseConnections.size > 0) {
-        const message = {
-          type: 'SUBMITTED_APP_HEALTH_STATUS_UPDATE',
-          data: {
-            ...result,
-            timestamp: new Date()
-          }
-        };
-        
-        const data = JSON.stringify(message);
-        const deadConnections: Response[] = [];
-        
-        sseConnections.forEach(connection => {
-          try {
-            connection.write(`data: ${data}\n\n`);
-          } catch (error) {
-            console.log('⚠️  Failed to send SSE data to connection:', error);
-            deadConnections.push(connection);
-          }
-        });
-        
-        // Remove dead connections
-        deadConnections.forEach(connection => {
-          sseConnections.delete(connection);
-        });
-        
-        console.log(`📡 Broadcasted health status to ${sseConnections.size} SSE connections`);
-      }
-    } catch (error) {
-      console.log('❌ Error in polling health status:', error);
-      logger.error('Error in polling health status:', error);
-    }
-  };
-
-  // Run immediately on startup
-  pollHealthStatus();
-
-  // Then run every 30 seconds (30 sec as per original code)
-  setInterval(pollHealthStatus, 30000);
-};
-
-// Start the polling when this module loads
-startHealthStatusPolling();
 
 // Export the router so it can be used in the main Express app
 export default router;

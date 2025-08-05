@@ -68,7 +68,7 @@ export async function recordAppUptime(packageName: string): Promise<void> {
  * Currently just logs a message, but could be expanded to start timers, etc.
  */
 export async function startAppUptimeCheck() {
-    logger.info("Starting app uptime check...");
+    logger.debug("Starting app uptime check...");
 }
 
 export async function createAppUptimeData(packageName: string): Promise<void> {
@@ -85,55 +85,7 @@ export async function getAppHealth(packageName: string) {
 }
 
 
-// export async function getSubmittedAppHealthStatus(submittedApps: any[], req: Request, res: Response) {
-//      console.log('🔍 GET /get-submitted-app-health-status called');
-//       try {
-//         const appsData = await App.find({ appStoreStatus: 'SUBMITTED' }).lean();
-//         console.log(`📊 Found ${appsData.length} submitted apps`);
-        
-//         // Send WebSocket message to all connected frontend clients
-//         try {
-//           const sessionService = new SessionService();
-//           const allSessions = sessionService.getAllSessions();
-          
-//           console.log(`🌐 Broadcasting to ${allSessions.length} connected sessions`);
-          
-//           const message = {
-//             type: 'SUBMITTED_APP_HEALTH_STATUS',
-//             data: {
-//               success: true,
-//               count: appsData.length,
-//               apps: appsData,
-//               timestamp: new Date()
-//             }
-//           };
-          
-//           allSessions.forEach(session => {
-//             if (session.websocket && session.websocket.readyState === 1) {
-//               session.websocket.send(JSON.stringify(message));
-//               console.log(`✅ Sent WebSocket message to session ${session.userId}`);
-//             }
-//           });
-//         } catch (wsError) {
-//           console.log('⚠️  WebSocket broadcast failed:', wsError);
-//         }
-        
-//         res.json({
-//           success: true,
-//           count: appsData.length,
-//           apps: appsData
-//         });
-//       } catch (error) {
-//         console.log('❌ Error in get-submitted-app-health-status:', error);
-//         logger.error('Error fetching submitted app health status:', error);
-//         res.status(500).json({
-//           error: true,
-//           message: error instanceof Error ? error.message : 'Unknown error occurred'
-//         });
-//       }
-    
-//     return updatedApps;
-//   }
+
 
 export async function fetchSubmittedAppHealthStatus() {
     console.log('🔍 Fetching submitted apps with health status...');
@@ -214,5 +166,111 @@ export async function fetchSubmittedAppHealthStatus() {
     };
 }
 
-// TODO: Add interval-based uptime checking functionality
-// This could use setInterval() to periodically check if apps are still running
+
+
+
+
+// Store interval reference for cleanup
+let uptimeScheduler: NodeJS.Timeout | null = null;
+
+/**
+ * Batch function to send uptime data to database
+ * Fetches all submitted apps and records their health status
+ */
+export async function sendBatchUptimeData(): Promise<void> {
+    logger.debug("Starting batch uptime data collection...");
+
+    try {
+        // Get all submitted apps with their health status
+        const healthResult = await fetchSubmittedAppHealthStatus();
+        
+        if (!healthResult.success || !healthResult.apps) {
+            logger.warn("No apps found or failed to fetch app health status");
+            return;
+        }
+
+        const batchData: any[] = [];
+        const timestamp = new Date();
+
+        // Process each app and prepare batch data
+        for (const app of healthResult.apps) {
+            let health: 'healthy' | 'degraded' | 'offline' = 'offline';
+            let responseTimeMs: number | null = null;
+            let onlineStatus = false;
+
+            // Determine health status based on healthStatus field
+            if (app.healthStatus === 'online') {
+                health = 'healthy';
+                onlineStatus = true;
+                
+                // Extract response time if available in healthData
+                if (app.healthData && typeof app.healthData === 'object') {
+                    responseTimeMs = app.healthData.responseTime || null;
+                }
+            } else {
+                health = 'offline';
+                onlineStatus = false;
+            }
+
+            const uptimeRecord = {
+                packageName: app.packageName,
+                timestamp,
+                health,
+                onlineStatus,
+                responseTimeMs
+            };
+
+            batchData.push(uptimeRecord);
+        }
+
+        // Batch insert all uptime records
+        if (batchData.length > 0) {
+            await AppUptime.insertMany(batchData);
+            logger.debug(`Successfully saved ${batchData.length} uptime records to database`);
+        } else {
+            logger.warn("No uptime data to save");
+        }
+
+    } catch (error) {
+        logger.error("Error in batch uptime data collection:", error);
+        throw error;
+    }
+}
+
+/**
+ * Start the uptime monitoring scheduler
+ * Runs the batch function every minute
+ */
+export function startUptimeScheduler(): void {
+    // Clear existing scheduler if running
+    if (uptimeScheduler) {
+        clearInterval(uptimeScheduler);
+    }
+
+    logger.debug("Starting uptime scheduler - will run every minute");
+
+    // Run immediately on start
+    sendBatchUptimeData().catch(error => {
+        logger.error("Initial batch uptime collection failed:", error);
+    });
+
+    // Schedule to run every minute (60000 ms)
+    uptimeScheduler = setInterval(async () => {
+        try {
+            await sendBatchUptimeData();
+        } catch (error) {
+            logger.error("Scheduled batch uptime collection failed:", error);
+        }
+    }, 60000);
+}
+
+/**
+ * Stop the uptime monitoring scheduler
+ */
+export function stopUptimeScheduler(): void {
+    if (uptimeScheduler) {
+        clearInterval(uptimeScheduler);
+        uptimeScheduler = null;
+        logger.debug("Uptime scheduler stopped");
+    }
+}

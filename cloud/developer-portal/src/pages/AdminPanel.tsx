@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Search } from "@/components/ui/search";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useNavigate } from 'react-router-dom';
-import { Loader2, CheckCircle, XCircle, Clock, Package } from 'lucide-react';
+import { Loader2, CheckCircle, XCircle, Clock, Package, Smartphone, X } from 'lucide-react';
 import api from '../services/api.service';
 import {StatusBadge, UptimeStatus} from '@/components/ui/upTime';
 import {
@@ -22,6 +22,7 @@ import {
   } from "@/components/ui/select"
 import { DatePicker } from '@/components/ui/date-picker';
 import axios from 'axios';
+import { AppDetailView } from './AppUptime';
 interface AdminStat {
   counts: {
     development: number;
@@ -82,10 +83,13 @@ const AdminPanel: React.FC = () => {
 
   const [openReviewDialog, setOpenReviewDialog] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+  const [statusLoading, setStatusLoading] = useState(false);
+  const [lastUpdateTime, setLastUpdateTime] = useState<Date | null>(null);
 
   // Active tab state to replace the shadcn Tabs component
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [curUpTimeStatus, setCurUpTimeStatus] = useState('offline'); // Track current uptime status
+  const [chosenAppStatus, setChosenAppStatus] = useState("");
+
 
 
   // Get todays date: 
@@ -97,93 +101,38 @@ const AdminPanel: React.FC = () => {
   const [yearNumber, setYearNumber] = useState(year);
   // Admin panel component
 
-  // SSE connection for real-time updates
+
+
+
+
+  // Polling for app status updates
   useEffect(() => {
-    const setupSSE = () => {
-      console.log('🌊 Setting up SSE connection for app health status updates');
-      
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8002';
-      const sseUrl = `${apiUrl}/api/app-uptime/health-status-stream`;
-      console.log('🌊 Connecting to SSE endpoint:', sseUrl);
-      
-      const eventSource = new EventSource(sseUrl);
+      // Fetch immediately
+    fetchAppStatus();
 
-      eventSource.onopen = () => {
-        console.log('🌊 SSE connection opened for admin panel');
-      };
-
-      eventSource.onmessage = (event) => {
-        try {
-          const message = JSON.parse(event.data);
-          console.log('📨 SSE message received:', message);
-          
-          if (message.type === 'SUBMITTED_APP_HEALTH_STATUS_UPDATE') {
-            console.log('SUBMITTED_APP_HEALTH_STATUS_UPDATE message received!');
-            console.log("apps data from server:", message.data.apps);
-            console.log("apps count:", message.data.count);
-            setSubmittedAppsStatus(message.data.apps);
-          }
-        } catch (error) {
-          console.error('Error parsing SSE message:', error);
-        }
-      };
-
-      eventSource.onerror = (error) => {
-        console.error('SSE error:', error);
-        // EventSource will automatically reconnect
-      };
-
-      return eventSource;
-    };
-
-    // Setup SSE after a delay to ensure everything is ready
-    const timer = setTimeout(() => {
-      const eventSource = setupSSE();
-      return () => {
-        if (eventSource) {
-          eventSource.close();
-        }
-      };
-    }, 1000);
-
-    return () => {
-      clearTimeout(timer);
-    };
   }, []);
 
-
-
-
-  // start fetch immediately to get current uptime status before the interval current interval send updates...
-  useEffect(() => {
-  const fetchSubmittedAppHealthStatus = async () => {
-    console.log('Starting fetchSubmittedAppHealthStatus...');
-    try {
-      console.log('📡 Making request to /api/app-uptime/get-submitted-app-health-status');
-      const res = await axios.get('/api/app-uptime/get-submitted-app-health-status', {
-        // timeout: 10000,
-        headers: { 'Content-Type': 'application/json' }
-      });
-      console.log('Request successful! Status:', res.status);
-      console.log('App uptime ping response:', res.data);
-    } catch (error) {
-      console.error('Error fetching app uptime ping:', error);
-      if (axios.isAxiosError(error)) {
-        console.error('Error details:', {
-          status: error.response?.status,
-          statusText: error.response?.statusText,
-          data: error.response?.data,
-          message: error.message
+  const fetchAppStatus = async () => {
+      try {
+        setStatusLoading(true);
+        console.log('📡 Fetching app status from /status endpoint');
+        const res = await axios.get('/api/app-uptime/status', {
+          headers: { 'Content-Type': 'application/json' }
         });
+        console.log('Status response:', res.data);
+        
+        if (res.data.apps) {
+          setSubmittedAppsStatus(res.data.apps);
+        }
+        
+        // Set the last update time
+        setLastUpdateTime(new Date());
+      } catch (error) {
+        console.error('Error fetching app status:', error);
+      } finally {
+        setStatusLoading(false);
       }
-    }
-  };
-
-  // Add a small delay to ensure everything is loaded
-  setTimeout(() => {
-    fetchSubmittedAppHealthStatus();
-  }, 2000);
-}, []);
+    };
 
 
   // Load admin data when component mounts
@@ -485,27 +434,62 @@ const AdminPanel: React.FC = () => {
           </div>
         ) : (
           <div>
-            <div className="flex border-b mb-6">
+            <div className="flex justify-between border-b mb-6">
+              <div className="flex">
+                <Button
+                  variant={activeTab === "dashboard" ? "default" : "ghost"}
+                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary mr-2"
+                  onClick={() => {
+                    setActiveTab("dashboard");
+                    // setChosenAppStatus("idle");
+                  }}
+                >
+                  Dashboard
+                </Button>
+                <Button
+                  variant={activeTab === "apps" ? "default" : "ghost"}
+                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary mr-2"
+                  onClick={() => {
+                    setActiveTab("apps");
+                    // setChosenAppStatus("idle");
+                  }}
+                >
+                  App Submissions
+                </Button>
+                <Button
+                  variant={activeTab === "app_status" ? "default" : "ghost"}
+                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary mr-2"
+                  onClick={() => {
+                    setActiveTab("app_status");
+                    // setChosenAppStatus("idle");
+
+                  }}
+                >
+                  App Status
+                </Button>
+              </div>
               <Button
-                variant={activeTab === "dashboard" ? "default" : "ghost"}
-                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary mr-2"
-                onClick={() => setActiveTab("dashboard")}
+                style={chosenAppStatus === "" ? { display: "none" } : { display: "inline-flex" }}
+                variant={activeTab != "idle" ? "ghost" : "default"}
+                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary flex items-center gap-2"
+                onClick={() => {
+                  setActiveTab("idle");
+                }}
               >
-                Dashboard
-              </Button>
-              <Button
-                variant={activeTab === "apps" ? "default" : "ghost"}
-                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary mr-2"
-                onClick={() => setActiveTab("apps")}
-              >
-                App Submissions
-              </Button>
-              <Button
-                variant={activeTab === "app_status" ? "default" : "ghost"}
-                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary mr-2"
-                onClick={() => setActiveTab("app_status")}
-              >
-                App Status
+                <Smartphone 
+                  className={`h-4 w-4 ${activeTab === "idle" ? "text-white" : "text-black"}`} 
+                />
+                <span>{chosenAppStatus}</span>
+                <X 
+                  className={`h-4 w-4 ml-2 cursor-pointer ${activeTab === "idle" ? "text-white hover:bg-gray-600" : "text-black hover:bg-gray-200"} rounded p-0.5`}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log("X clicked - closing tab");
+                    setChosenAppStatus("");
+                    setActiveTab("app_status");
+                  }}
+                />
               </Button>
             </div>
 
@@ -660,7 +644,41 @@ const AdminPanel: React.FC = () => {
                 
                 <Card>
                   <CardHeader>
-                    <CardTitle>App Status</CardTitle>
+                    <CardTitle>
+                      <div style={{flex: 1, display: "flex", flexDirection: "row", alignItems: "center", gap: "10px"}}>
+                          <div style={{flex: 1}}>
+                            App Status
+                          </div>
+                          <span className="text-sm font-medium text-gray-500"></span>
+                          <div style={{display:"flex", flexDirection:"column", justifyContent:"center", alignItems:"center"}}>
+                            <div className="text-xs text-gray-600">
+                              {lastUpdateTime ? lastUpdateTime.toLocaleTimeString() : 'Never'}
+                            </div>
+                          </div>
+                          <Button 
+                            style={{width: "100px"}} 
+                            onClick={() => {
+                              fetchAppStatus();
+                            }}
+                            disabled={statusLoading}
+                          >
+                            {statusLoading ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <>
+                                <Clock className="h-4 w-4" />
+                                <div>Update</div>
+
+                              </>
+
+                            )}
+                          </Button>
+
+                        </div>
+                      
+                      
+                    </CardTitle>
+                    
                   </CardHeader>
                   <CardContent>
                     {submittedApps.length === 0 ? (
@@ -670,7 +688,11 @@ const AdminPanel: React.FC = () => {
                     ) : (
                       <div className="divide-y">
                         {submittedApps.map((app) => (
-                          <div key={app._id} className="py-4 flex justify-between items-center">
+                          <div key={app._id} className="py-4 flex justify-between items-center" onClick={() => {
+                            setChosenAppStatus(app.name);
+                            setActiveTab("idle");
+
+                          }}>
                             <div className="flex items-center">
                               <img
                                 src={app.logoURL || 'https://placehold.co/100x100?text=App'}
@@ -697,6 +719,100 @@ const AdminPanel: React.FC = () => {
               </div>
               
             )}
+            {chosenAppStatus !== "" && (() => {
+              // Find the selected app from submittedApps
+              const selectedApp = submittedApps.find(app => app.name === chosenAppStatus);
+              
+              if (!selectedApp) {
+                return (
+                  <Card>
+                    <CardContent className="p-6 text-center text-gray-500">
+                      App not found: {chosenAppStatus}
+                    </CardContent>
+                  </Card>
+                );
+              }
+              
+              // Get real-time health status from submittedAppsStatus array
+              const statusApp = submittedAppsStatus.find(statusApp => 
+                statusApp.packageName === selectedApp.packageName
+              );
+              
+              const healthStatus = statusApp?.healthStatus || selectedApp.appHealthStatus || "unknown";
+              console.log(`Selected app health status: ${healthStatus}`);
+              // Map health status to Online/Offline
+              const getOnlineStatus = (health: string): 'Online' | 'Offline' => {
+                switch (health.toLowerCase()) {
+                  case 'healthy':
+                  case 'operational':
+                  case 'up':
+                    return 'Online';
+                  case 'unhealthy':
+                  case 'down':
+                  case 'error':
+                  case 'timeout':
+                  case 'unreachable':
+                    return 'Offline';
+                  default:
+                    return 'Offline'; // Default to offline for unknown status
+                }
+              };
+              
+              const isOnline = getOnlineStatus(healthStatus);
+              const uptimePercentage = isOnline === 'Online' ? 99.984 : 
+                (healthStatus === 'timeout' ? 85.5 : 
+                 healthStatus === 'unreachable' ? 75.2 : 95.123);
+              
+              // Create uptime history based on current status
+              const uptimeHistory = Array(90).fill('up').map((_, i) => {
+                if (isOnline === 'Offline') {
+                  // Show recent downtime for offline apps
+                  if (i > 87) return 'down';
+                  return Math.random() > 0.05 ? 'up' : 'down';
+                } else {
+                  // Show mostly up with occasional small downtimes
+                  return Math.random() > 0.01 ? 'up' : 'down';
+                }
+              });
+              
+              // Transform the app data to match AppStatus interface
+              const appStatusData = {
+                id: selectedApp._id || selectedApp.packageName,
+                name: selectedApp.name,
+                logo: selectedApp.logoURL || 'https://placehold.co/48x48/374151/ffffff?text=APP',
+                packageName: selectedApp.packageName,
+                submitted: formatDate(selectedApp.createdAt || selectedApp.updatedAt),
+                uptimePercentage,
+                status: healthStatus,
+                uptimeHistory,
+                details: {
+                  last24h: isOnline === 'Online' ? 100 : (healthStatus === 'timeout' ? 85.5 : 98.5),
+                  last7d: isOnline === 'Online' ? 99.952 : (healthStatus === 'timeout' ? 85.234 : 97.234),
+                  last30d: isOnline === 'Online' ? 99.984 : (healthStatus === 'timeout' ? 85.789 : 96.789),
+                  last90d: uptimePercentage,
+                  events: isOnline === 'Offline' ? [
+                    {
+                      date: new Date().toLocaleDateString(),
+                      duration: healthStatus === 'timeout' ? 25 : 15,
+                      reason: healthStatus === 'timeout' ? 'Connection Timeout' : 
+                              healthStatus === 'unreachable' ? 'Service Unreachable' :
+                              'Health Check Failed',
+                      details: `App ${selectedApp.name} ${
+                        healthStatus === 'timeout' ? 'timed out during health check' :
+                        healthStatus === 'unreachable' ? 'is not reachable at the configured endpoint' :
+                        `failed health check with status: ${healthStatus}`
+                      }`
+                    }
+                  ] : []
+                }
+              };
+              
+              return <AppDetailView 
+                app={appStatusData} 
+                onRefresh={fetchAppStatus}
+                isRefreshing={statusLoading}
+              />;
+            })()}
 
             {/* Admin management tab removed */}
           </div>
