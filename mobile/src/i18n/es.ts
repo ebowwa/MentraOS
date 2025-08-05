@@ -1,7 +1,7 @@
-import demoEs from "./demo-es"
-import {Translations} from "./en"
+import en, {Translations} from "./en"
 
 const es: Translations = {
+  ...en,
   common: {
     ok: "OK",
     cancel: "Cancelar",
@@ -123,8 +123,6 @@ const es: Translations = {
         "No se han agregado episodios favoritos todavía. ¡Presiona el corazón dentro de un episodio para agregarlo a tus favoritos!",
     },
   },
-
-  ...demoEs,
 }
 
 export default es
