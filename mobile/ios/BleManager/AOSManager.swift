@@ -271,6 +271,10 @@ struct ViewState {
                     return
                 }
 
+//              CoreCommsService.log("ATTEMPTING TO PLAY PCM")
+
+                AudioManager.getInstance().addPCMDataToBuffer(requestId: "audio", pcmData: pcmData)
+
                 // feed PCM to the VAD:
                 guard let vad = self.vad else {
                     CoreCommsService.log("VAD not initialized")
@@ -386,39 +390,6 @@ struct ViewState {
 
     @objc func setCoreToken(_ coreToken: String) {
         serverComms.setAuthCredentials("", coreToken)
-    }
-
-    // MARK: - Audio Bridge Methods
-
-    @objc func playAudio(
-        _ requestId: String,
-        audioUrl: String,
-        volume: Float,
-        stopOtherAudio: Bool
-    ) {
-        CoreCommsService.log("AOSManager: playAudio bridge called for requestId: \(requestId)")
-
-        let audioManager = AudioManager.getInstance()
-        audioManager.playAudio(
-            requestId: requestId,
-            audioUrl: audioUrl,
-            volume: volume,
-            stopOtherAudio: stopOtherAudio
-        )
-    }
-
-    @objc func stopAudio(_ requestId: String) {
-        CoreCommsService.log("AOSManager: stopAudio bridge called for requestId: \(requestId)")
-
-        let audioManager = AudioManager.getInstance()
-        audioManager.stopAudio(requestId: requestId)
-    }
-
-    @objc func stopAllAudio() {
-        CoreCommsService.log("AOSManager: stopAllAudio bridge called")
-
-        let audioManager = AudioManager.getInstance()
-        audioManager.stopAllAudio()
     }
 
     func onConnectionAck() {
