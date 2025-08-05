@@ -32,8 +32,10 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 // only be registered once.
 AppState.addEventListener("change", state => {
   if (state === "active") {
+    console.log("SUPABASE: START AUTO REFRESH")
     supabase.auth.startAutoRefresh()
   } else {
+    console.log("SUPABASE: STOP AUTO REFRESH")
     supabase.auth.stopAutoRefresh()
   }
 })

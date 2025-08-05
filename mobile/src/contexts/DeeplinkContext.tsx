@@ -34,7 +34,7 @@ export const useDeeplink = () => useContext(DeeplinkContext)
 export const DeeplinkProvider: React.FC<{children: React.ReactNode}> = ({children}) => {
   const router = useRouter()
   const {user} = useAuth()
-  const {push, replace, goBack, setPendingRoute, getPendingRoute} = useNavigationHistory()
+  const {push, replace, goBack, setPendingRoute, getPendingRoute, navigate} = useNavigationHistory()
   const config = {
     scheme: "com.mentra",
     host: "apps.mentra.glass",
@@ -139,7 +139,6 @@ export const DeeplinkProvider: React.FC<{children: React.ReactNode}> = ({childre
       if (url.startsWith("/")) {
         url = "https://apps.mentra.glass" + url
       }
-      console.log("@@@@@@@@@@@@@ URL @@@@@@@@@@@@@@@", url)
 
       const parsedUrl = new URL(url)
       const matchedRoute = findMatchingRoute(parsedUrl)
@@ -176,7 +175,10 @@ export const DeeplinkProvider: React.FC<{children: React.ReactNode}> = ({childre
       }
 
       try {
-        matchedRoute.handler(url, params, {push, replace, goBack, setPendingRoute, getPendingRoute})
+        console.log("@@@@@@@@@@@@@ MATCHED ROUTE @@@@@@@@@@@@@@@", matchedRoute)
+        console.log("@@@@@@@@@@@@@ PARAMS @@@@@@@@@@@@@@@", params)
+        console.log("@@@@@@@@@@@@@ URL @@@@@@@@@@@@@@@", url)
+        await matchedRoute.handler(url, params, {push, replace, goBack, setPendingRoute, getPendingRoute, navigate})
       } catch (error) {
         console.warn("Route handler failed, router may not be ready:", error)
       }
