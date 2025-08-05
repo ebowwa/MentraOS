@@ -37,7 +37,7 @@ export default function SelectGlassesModelScreen() {
   const glassesOptions =
     Platform.OS === "ios"
       ? [
-          {modelName: "Simulated Glasses", key: "Simulated Glasses"},
+          // {modelName: "Simulated Glasses", key: "Simulated Glasses"},
           {modelName: "Even Realities G1", key: "evenrealities_g1"},
           {modelName: "Mentra Live", key: "mentra_live"},
           {modelName: "Mentra Mach1", key: "mentra_mach1"},
@@ -45,7 +45,7 @@ export default function SelectGlassesModelScreen() {
         ]
       : [
           // Android:
-          {modelName: "Simulated Glasses", key: "Simulated Glasses"},
+          // {modelName: "Simulated Glasses", key: "Simulated Glasses"},
           {modelName: "Even Realities G1", key: "evenrealities_g1"},
           {modelName: "Mentra Live", key: "mentra_live"},
           {modelName: "Mentra Mach1", key: "mentra_mach1"},

@@ -187,8 +187,10 @@ export default function SelectGlassesBluetoothScreen() {
       replace("/(tabs)/home")
     }
 
+    const modelName = status.glasses_info?.model_name
+
     // If pairing successful, return to home
-    if (status.core_info.puck_connected && status.glasses_info?.model_name) {
+    if (status.core_info.puck_connected && modelName && !modelName.startsWith("Simulated")) {
       router.dismissAll()
       replace("/(tabs)/home")
     }

@@ -49,6 +49,7 @@ struct ViewState {
     private var cachedThirdPartyAppList: [ThirdPartyCloudApp] = []
     //  private var cachedWhatToStream = [String]()
     private var defaultWearable: String = ""
+    private var pendingWearable: String = ""
     private var deviceName: String = ""
     private var somethingConnected: Bool = false
     private var shouldEnableMic: Bool = false
@@ -1089,25 +1090,25 @@ struct ViewState {
     func handleSearchForCompatibleDeviceNames(_ modelName: String) {
         CoreCommsService.log("AOS: Searching for compatible device names for: \(modelName)")
         if modelName.contains("Simulated") {
-            defaultWearable = "Simulated Glasses"
+            defaultWearable = "Simulated Glasses" // there is no pairing process for simulated glasses
             preferredMic = "phone"
             handleRequestStatus()
             saveSettings()
         } else if modelName.contains("Audio") {
-            defaultWearable = "Audio Wearable"
+            defaultWearable = "Audio Wearable" // there is no pairing process for audio wearable
             preferredMic = "phone"
             handleRequestStatus()
             saveSettings()
         } else if modelName.contains("G1") {
-            defaultWearable = "Even Realities G1"
+            pendingWearable = "Even Realities G1"
             initManager(defaultWearable)
             g1Manager?.findCompatibleDevices()
         } else if modelName.contains("Live") {
-            defaultWearable = "Mentra Live"
+            pendingWearable = "Mentra Live"
             initManager(defaultWearable)
             liveManager?.findCompatibleDevices()
         } else if modelName.contains("Mach1") || modelName.contains("Z100") {
-            defaultWearable = "Mach1"
+            pendingWearable = "Mach1"
             initManager(defaultWearable)
             mach1Manager?.findCompatibleDevices()
         }
@@ -1766,11 +1767,11 @@ struct ViewState {
         serverComms.sendBatteryStatus(level: batteryLevel, charging: false)
         serverComms.sendGlassesConnectionState(modelName: defaultWearable, status: "CONNECTED")
 
-        if defaultWearable.contains("Live") {
+        if pendingWearable.contains("Live") {
             handleLiveReady()
-        } else if defaultWearable.contains("G1") {
+        } else if pendingWearable.contains("G1") {
             handleG1Ready()
-        } else if defaultWearable.contains("Mach1") {
+        } else if pendingWearable.contains("Mach1") {
             handleMach1Ready()
         }
     }
