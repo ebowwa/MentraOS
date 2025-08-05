@@ -18,6 +18,7 @@ const STORE_PACKAGE_NAME = "org.augmentos.store"
 export default function AppStoreWeb() {
   const [webviewLoading, setWebviewLoading] = useState(true)
   const [hasError, setHasError] = useState(false)
+  const [errorMessage, setErrorMessage] = useState("")
   // const packageName = route?.params?.packageName;
   const {packageName} = useLocalSearchParams()
   const [canGoBack, setCanGoBack] = useState(false)
@@ -60,10 +61,48 @@ export default function AppStoreWeb() {
 
   // Handle WebView loading events
   const handleLoadStart = () => setWebviewLoading(true)
-  const handleLoadEnd = () => setWebviewLoading(false)
-  const handleError = () => {
+  const handleLoadEnd = () => {
+    setWebviewLoading(false)
+    setHasError(false)
+  }
+
+  const handleError = (syntheticEvent: any) => {
+    const {nativeEvent} = syntheticEvent
+    console.error("WebView error:", nativeEvent)
     setWebviewLoading(false)
     setHasError(true)
+
+    // Parse error message to show user-friendly text
+    const errorDesc = nativeEvent.description || ""
+    let friendlyMessage = "Unable to load the App Store"
+
+    if (
+      errorDesc.includes("ERR_INTERNET_DISCONNECTED") ||
+      errorDesc.includes("ERR_NETWORK_CHANGED") ||
+      errorDesc.includes("ERR_CONNECTION_FAILED") ||
+      errorDesc.includes("ERR_NAME_NOT_RESOLVED")
+    ) {
+      friendlyMessage = "No internet connection. Please check your network settings and try again."
+    } else if (errorDesc.includes("ERR_CONNECTION_TIMED_OUT") || errorDesc.includes("ERR_TIMED_OUT")) {
+      friendlyMessage = "Connection timed out. Please check your internet connection and try again."
+    } else if (errorDesc.includes("ERR_CONNECTION_REFUSED")) {
+      friendlyMessage = "Unable to connect to the App Store server. Please try again later."
+    } else if (errorDesc.includes("ERR_SSL") || errorDesc.includes("ERR_CERT")) {
+      friendlyMessage = "Security error. Please check your device's date and time settings."
+    } else if (errorDesc) {
+      // For any other errors, just show a generic message without the technical error
+      friendlyMessage = "Unable to load the App Store. Please try again."
+    }
+
+    setErrorMessage(friendlyMessage)
+  }
+
+  const handleRetry = () => {
+    setHasError(false)
+    setErrorMessage("")
+    if (prefetchedWebviewRef.current) {
+      prefetchedWebviewRef.current.reload()
+    }
   }
 
   // Handle messages from WebView
@@ -124,7 +163,10 @@ export default function AppStoreWeb() {
     <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.lg}}>
       <Header leftTx="store:title" />
       {hasError ? (
-        <InternetConnectionFallbackComponent retry={() => setHasError(false)} />
+        <InternetConnectionFallbackComponent
+          retry={handleRetry}
+          message={errorMessage || "Unable to load the App Store. Please check your connection and try again."}
+        />
       ) : (
         <View
           style={[
