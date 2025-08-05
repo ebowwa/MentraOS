@@ -1143,7 +1143,7 @@ async function installApp(req: Request, res: Response) {
       });
     }
 
-    // Check hardware compatibility if user has active session with connected glasses
+    // Log hardware compatibility information if user has active session with connected glasses
     if (userSession && userSession.capabilities) {
       const compatibilityResult =
         HardwareCompatibilityService.checkCompatibility(
@@ -1152,40 +1152,14 @@ async function installApp(req: Request, res: Response) {
         );
 
       if (!compatibilityResult.isCompatible) {
-        logger.warn(
+        logger.info(
           {
             packageName,
             email,
             missingHardware: compatibilityResult.missingRequired,
             capabilities: userSession.capabilities,
           },
-          "Attempt to install incompatible app",
-        );
-
-        return res.status(400).json({
-          success: false,
-          message: "App is incompatible with your connected glasses",
-          compatibility: {
-            isCompatible: false,
-            message:
-              HardwareCompatibilityService.getCompatibilityMessage(
-                compatibilityResult,
-              ),
-            missingRequired: compatibilityResult.missingRequired,
-            missingOptional: compatibilityResult.missingOptional,
-          },
-        });
-      }
-
-      // Log optional hardware warnings
-      if (compatibilityResult.missingOptional.length > 0) {
-        logger.info(
-          {
-            packageName,
-            email,
-            missingOptional: compatibilityResult.missingOptional,
-          },
-          "Installing app with missing optional hardware",
+          "Installing app with missing required hardware",
         );
       }
     }
