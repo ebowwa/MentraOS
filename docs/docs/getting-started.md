@@ -10,9 +10,9 @@ This guide will walk you through creating a simple "Hello, World" MentraOS app t
 
 Make sure you have the following installed:
 
-*   **Node.js:** (v18.0.0 or later)
-*   **Bun:** [Install bun](https://bun.sh/docs/installation)
-*   **A code editor:** (VS Code recommended)
+- **Node.js:** (v18.0.0 or later)
+- **Bun:** [Install bun](https://bun.sh/docs/installation)
+- **A code editor:** (VS Code recommended)
 
 ## Part 1: Set Up Your Project
 
@@ -73,16 +73,16 @@ Edit the `.env` file with your app details (you'll get these values when you reg
 Add the following code to `src/index.ts`:
 
 ```typescript
-import { AppServer, AppSession } from '@mentra/sdk';
+import {AppServer, AppSession} from "@mentra/sdk"
 
 // Load configuration from environment variables
-const PACKAGE_NAME = process.env.PACKAGE_NAME || "com.example.myfirstmentraosapp";
-const PORT = parseInt(process.env.PORT || "3000");
-const MENTRAOS_API_KEY = process.env.MENTRAOS_API_KEY;
+const PACKAGE_NAME = process.env.PACKAGE_NAME || "com.example.myfirstmentraosapp"
+const PORT = parseInt(process.env.PORT || "3000")
+const MENTRAOS_API_KEY = process.env.MENTRAOS_API_KEY
 
 if (!MENTRAOS_API_KEY) {
-    console.error("MENTRAOS_API_KEY environment variable is required");
-    process.exit(1);
+  console.error("MENTRAOS_API_KEY environment variable is required")
+  process.exit(1)
 }
 
 /**
@@ -90,35 +90,35 @@ if (!MENTRAOS_API_KEY) {
  * Extends AppServer to handle sessions and user interactions
  */
 class MyMentraOSApp extends AppServer {
-    /**
-     * Handle new session connections
-     * @param session - The app session instance
-     * @param sessionId - Unique identifier for this session
-     * @param userId - The user ID for this session
-     */
-    protected async onSession(session: AppSession, sessionId: string, userId: string): Promise<void> {
-        session.logger.info(`New session: ${sessionId} for user ${userId}`);
+  /**
+   * Handle new session connections
+   * @param session - The app session instance
+   * @param sessionId - Unique identifier for this session
+   * @param userId - The user ID for this session
+   */
+  protected async onSession(session: AppSession, sessionId: string, userId: string): Promise<void> {
+    session.logger.info(`New session: ${sessionId} for user ${userId}`)
 
-        // Display "Hello, World!" on the glasses
-        session.layouts.showTextWall("Hello, World!");
+    // Display "Hello, World!" on the glasses
+    session.layouts.showTextWall("Hello, World!")
 
-        // Log when the session is disconnected
-        session.events.onDisconnected(() => {
-            session.logger.info(`Session ${sessionId} disconnected.`);
-        });
-    }
+    // Log when the session is disconnected
+    session.events.onDisconnected(() => {
+      session.logger.info(`Session ${sessionId} disconnected.`)
+    })
+  }
 }
 
 // Create and start the app server
 const server = new MyMentraOSApp({
-    packageName: PACKAGE_NAME,
-    apiKey: MENTRAOS_API_KEY,
-    port: PORT
-});
+  packageName: PACKAGE_NAME,
+  apiKey: MENTRAOS_API_KEY,
+  port: PORT,
+})
 
 server.start().catch(err => {
-    console.error("Failed to start server:", err);
-});
+  console.error("Failed to start server:", err)
+})
 ```
 
 ### 7. Configure TypeScript
@@ -161,7 +161,7 @@ Update your `package.json` with the following scripts:
     "dev": "bun --watch src/index.ts"
   },
   "dependencies": {
-    "@mentra/sdk": "^2.1.2"
+    "@mentra/sdk": "latest"
   },
   "devDependencies": {
     "typescript": "^5.0.0",
@@ -178,7 +178,7 @@ Download and install the MentraOS app from [mentra.glass/os](https://mentra.glas
 
 ### 10. Set Up ngrok
 
-We are going to use ngrok to expose your local app to the internet.  This is useful for development, but when you're ready to go live, you'll want to deploy to a cloud service like [Railway](railway-deployment) or [an Ubuntu server](ubuntu-deployment).
+We are going to use ngrok to expose your local app to the internet. This is useful for development, but when you're ready to go live, you'll want to deploy to a cloud service like [Railway](railway-deployment) or [an Ubuntu server](ubuntu-deployment).
 
 To make your locally running app accessible from the internet:
 
@@ -186,8 +186,8 @@ To make your locally running app accessible from the internet:
 2. Create an ngrok account
 3. [Set up a static address/URL in the ngrok dashboard](https://dashboard.ngrok.com/)
 
-* Make sure you run the `ngrok config add-authtoken <your_authtoken>` line
-* Make sure you select `Static Domain`, then generate a static domain
+- Make sure you run the `ngrok config add-authtoken <your_authtoken>` line
+- Make sure you select `Static Domain`, then generate a static domain
 
 <center>
   <img width="75%" src="/img/ngrok_guide_1.png"></img>
@@ -202,14 +202,14 @@ To make your locally running app accessible from the internet:
 3. Click "Create App"
 4. Set a unique package name (e.g., `com.yourname.myfirstapp`)
 5. For "Public URL", enter your ngrok static URL
-6. Add the microphone permission.  See the [Permissions](permissions) guide for details.
+6. Add the microphone permission. See the [Permissions](permissions) guide for details.
 7. After the app is created, you will be given an API key. Copy this key.
 
-> This automatically installs the app for your user.  For other people to test the app (including others in your organization), they need to install the app.  Get the app install link from the App edit page under the `Share with Testers` section.
+> This automatically installs the app for your user. For other people to test the app (including others in your organization), they need to install the app. Get the app install link from the App edit page under the `Share with Testers` section.
 
 ### 12. Set up App Permissions
 
-Your app must declare which permissions it needs to access device capabilities.  To add permissions to your app:
+Your app must declare which permissions it needs to access device capabilities. To add permissions to your app:
 
 1. Go to [console.mentra.glass](https://console.mentra.glass/)
 2. Click on your app to open its settings
@@ -220,6 +220,7 @@ Your app must declare which permissions it needs to access device capabilities. 
 7. Save your changes
 
 For example, if your app will use voice commands, add:
+
 - **Permission Type**: MICROPHONE
 - **Description**: "Used for voice commands and speech recognition"
 
@@ -334,36 +335,38 @@ Use the session logger to improve your app:
 
 ```typescript
 // Track user behavior
-session.logger.info('User completed tutorial', {
+session.logger.info("User completed tutorial", {
   stepCount: 5,
-  duration: 120000
-});
+  duration: 120000,
+})
 
 // Debug performance issues
-const startTime = Date.now();
-await processUserInput(input);
-session.logger.debug('Input processing completed', {
-  processingTime: Date.now() - startTime
-});
+const startTime = Date.now()
+await processUserInput(input)
+session.logger.debug("Input processing completed", {
+  processingTime: Date.now() - startTime,
+})
 
 // Monitor errors
 try {
-  await riskyOperation();
+  await riskyOperation()
 } catch (error) {
-  session.logger.error(error, 'Risk operation failed', {
-    context: 'user-action',
-    retryable: true
-  });
+  session.logger.error(error, "Risk operation failed", {
+    context: "user-action",
+    retryable: true,
+  })
 }
 ```
 
 ### Learn More
+
 - Explore [Core Concepts](/core-concepts) to understand sessions, events, and the app lifecycle
 - Dive into [Events](/events) to handle user interactions and sensor data
 - Master [Layouts](/layouts) to create rich visual experiences on smart glasses
 - Learn about [Permissions](/permissions) to understand how to access device data securely
 
 ### Get Help
+
 - Join our [Discord community](https://discord.gg/5ukNvkEAqT) for support
 - Visit [Mentra.glass](https://mentra.glass) for the latest updates
 - Check out the [GitHub Organization](https://github.com/Mentra-Community) for examples

@@ -34,15 +34,10 @@ public class AugmentOsManagerMessageParser {
 
             case "connect_wearable":
                 Log.d(TAG, "GOT A COMMAND TO CONNECT TO WEARABLE");
-                JSONObject params = commandObject.getJSONObject("params");
-                String modelName = params.getString("model_name");
-                String deviceName = params.getString("device_name");
-                String deviceAddress = null;
-                if (params.has("device_address")) {
-                    deviceAddress = params.getString("device_address");
-                }
-                Log.d(TAG, "Connect to model: " + modelName + ", device address: " + deviceName + ",address " + deviceAddress);
-                callback.connectToWearable(modelName, deviceName, deviceAddress);
+                String modelName = commandObject.getJSONObject("params").getString("model_name");
+                String deviceName = commandObject.getJSONObject("params").getString("device_name");
+                Log.d(TAG, "Connect to model: " + modelName + ", device address: " + deviceName);
+                callback.connectToWearable(modelName, deviceName);
                 break;
 
             case "forget_smart_glasses":
@@ -95,6 +90,11 @@ public class AugmentOsManagerMessageParser {
             case "bypass_audio_encoding_for_debugging":
                 boolean bypassAudioEncodingForDebugging = commandObject.getJSONObject("params").getBoolean("enabled");
                 callback.setBypassAudioEncodingForDebugging(bypassAudioEncodingForDebugging);
+                break;
+
+            case "enforce_local_transcription":
+                boolean enforceLocalTranscription = commandObject.getJSONObject("params").getBoolean("enabled");
+                callback.setEnforceLocalTranscription(enforceLocalTranscription);
                 break;
 
             case "enable_always_on_status_bar":
@@ -230,6 +230,31 @@ public class AugmentOsManagerMessageParser {
                 String buttonId = commandObject.getJSONObject("params").getString("buttonId");
                 String pressType = commandObject.getJSONObject("params").getString("pressType");
                 callback.simulateButtonPress(buttonId, pressType);
+                break;
+
+            case "start_buffer_recording":
+                callback.startBufferRecording();
+                break;
+
+            case "stop_buffer_recording":
+                callback.stopBufferRecording();
+                break;
+
+            case "save_buffer_video":
+                String bufferRequestId = commandObject.getJSONObject("params").getString("request_id");
+                int durationSeconds = commandObject.getJSONObject("params").getInt("duration_seconds");
+                callback.saveBufferVideo(bufferRequestId, durationSeconds);
+                break;
+
+            case "start_video_recording":
+                String videoRequestId = commandObject.getJSONObject("params").getString("request_id");
+                boolean save = commandObject.getJSONObject("params").optBoolean("save", true);
+                callback.startVideoRecording(videoRequestId, save);
+                break;
+
+            case "stop_video_recording":
+                String stopRequestId = commandObject.getJSONObject("params").getString("request_id");
+                callback.stopVideoRecording(stopRequestId);
                 break;
             case "display_text": {
                 final JSONObject paramsObject = commandObject.getJSONObject("params");

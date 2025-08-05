@@ -193,9 +193,9 @@ export default function InactiveAppList({
           }
           break
         case "CAMERA":
-          const hasCamera = await checkFeaturePermissions(PermissionFeatures.CAMERA)
+          const hasCamera = await checkFeaturePermissions(PermissionFeatures.GLASSES_CAMERA)
           if (!hasCamera) {
-            neededPermissions.push(PermissionFeatures.CAMERA)
+            neededPermissions.push(PermissionFeatures.GLASSES_CAMERA)
           }
           break
         case "CALENDAR":
@@ -345,6 +345,7 @@ export default function InactiveAppList({
           iconColor: theme.colors.textDim,
         },
       )
+      return
     }
 
     // Check if glasses are connected and this is the first app being activated

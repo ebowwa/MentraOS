@@ -593,6 +593,15 @@ export class CoreCommunicator extends EventEmitter {
     })
   }
 
+  async sendToggleEnforceLocalTranscription(enabled: boolean) {
+    return await this.sendData({
+      command: "enforce_local_transcription",
+      params: {
+        enabled: enabled,
+      },
+    })
+  }
+
   async sendToggleAlwaysOnStatusBar(enabled: boolean) {
     console.log("sendToggleAlwaysOnStatusBar")
     return await this.sendData({
@@ -843,6 +852,49 @@ export class CoreCommunicator extends EventEmitter {
       command: "display_image",
       params: {
         localImageName: localImageName,
+      },
+    })
+  }
+
+  // Buffer recording commands
+  async sendStartBufferRecording() {
+    return await this.sendData({
+      command: "start_buffer_recording",
+    })
+  }
+
+  async sendStopBufferRecording() {
+    return await this.sendData({
+      command: "stop_buffer_recording",
+    })
+  }
+
+  async sendSaveBufferVideo(requestId: string, durationSeconds: number = 30) {
+    return await this.sendData({
+      command: "save_buffer_video",
+      params: {
+        request_id: requestId,
+        duration_seconds: durationSeconds,
+      },
+    })
+  }
+
+  // Video recording commands
+  async sendStartVideoRecording(requestId: string, save: boolean = true) {
+    return await this.sendData({
+      command: "start_video_recording",
+      params: {
+        request_id: requestId,
+        save: save,
+      },
+    })
+  }
+
+  async sendStopVideoRecording(requestId: string) {
+    return await this.sendData({
+      command: "stop_video_recording",
+      params: {
+        request_id: requestId,
       },
     })
   }

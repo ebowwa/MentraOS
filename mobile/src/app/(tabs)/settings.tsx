@@ -146,11 +146,19 @@ export default function SettingsPage() {
         <RouteButton label="Theme Settings" onPress={() => push("/settings/theme")} />
 
         {devMode && (
-          <RouteButton
-            label={translate("settings:developerSettings")}
-            // subtitle={translate("settings:developerSettingsSubtitle")}
-            onPress={() => push("/settings/developer")}
-          />
+          <>
+            <RouteButton
+              label={translate("settings:developerSettings")}
+              // subtitle={translate("settings:developerSettingsSubtitle")}
+              onPress={() => push("/settings/developer")}
+            />
+
+            <RouteButton
+              label="🎥 Buffer Recording Debug"
+              subtitle="Control 30-second video buffer on glasses"
+              onPress={() => push("/settings/buffer-debug")}
+            />
+          </>
         )}
 
         <ActionButton label={translate("settings:signOut")} variant="destructive" onPress={confirmSignOut} />
