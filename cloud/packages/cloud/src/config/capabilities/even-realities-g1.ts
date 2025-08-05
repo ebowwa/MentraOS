@@ -5,7 +5,7 @@
  * Defines the hardware and software features available on this device.
  */
 
-import type { Capabilities } from '@mentra/sdk';
+import type { Capabilities } from "@mentra/sdk";
 
 /**
  * Even Realities G1 capability profile
@@ -17,17 +17,17 @@ export const evenRealitiesG1: Capabilities = {
   hasCamera: false,
   camera: null,
 
-  // Screen capabilities - G1 has a green monochrome display
-  hasScreen: true,
-  screen: {
+  // Display capabilities - G1 has a green monochrome display
+  hasDisplay: true,
+  display: {
     count: 2,
     isColor: false,
-    color: 'green',
+    color: "green",
     canDisplayBitmap: true,
     resolution: { width: 640, height: 200 },
     fieldOfView: { horizontal: 25 },
     maxTextLines: 5,
-    adjustBrightness: true
+    adjustBrightness: true,
   },
 
   // Microphone capabilities - G1 has one microphone without VAD
@@ -55,7 +55,7 @@ export const evenRealitiesG1: Capabilities = {
 
   // Power capabilities - G1 does not have external battery
   power: {
-    hasExternalBattery: false
+    hasExternalBattery: false,
   },
 
   // WiFi capabilities - G1 does not support WiFi

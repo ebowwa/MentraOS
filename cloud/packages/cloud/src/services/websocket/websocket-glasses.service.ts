@@ -337,7 +337,7 @@ export class GlassesWebSocketService {
 
             // Update glasses model if available in status
             if (connectedGlasses.model_name) {
-              userSession.updateGlassesModel(connectedGlasses.model_name);
+              await userSession.updateGlassesModel(connectedGlasses.model_name);
             }
 
             // Map core status fields to augmentos settings
@@ -765,7 +765,7 @@ export class GlassesWebSocketService {
 
     // Update glasses model in session when connected and model name is available
     if (isConnected && modelName) {
-      userSession.updateGlassesModel(modelName);
+      await userSession.updateGlassesModel(modelName);
     }
 
     try {

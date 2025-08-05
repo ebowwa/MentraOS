@@ -37,8 +37,8 @@ protected async onSession(session: AppSession, sessionId: string, userId: string
   session.logger.info(`Connected to: ${caps?.modelName}`);
 
   // Now you can check specific capabilities
-  if (caps.hasScreen) {
-    session.logger.info(`Screen resolution: ${caps?.screen?.resolution?.width}x${caps?.screen?.resolution?.height}`);
+  if (caps.hasDisplay) {
+    session.logger.info(`Display resolution: ${caps?.display?.resolution?.width}x${caps?.display?.resolution?.height}`);
   }
 }
 ```
@@ -52,11 +52,11 @@ protected async onSession(session: AppSession, sessionId: string, userId: string
   const caps = session.capabilities;
   if (!caps) return;
 
-  if (caps.hasScreen) {
-    const screen = caps.screen!;
+  if (caps.hasDisplay) {
+    const display = caps.display!;
 
-    // Adapt content based on screen properties
-    if (screen.isColor) {
+    // Adapt content based on display properties
+    if (display.isColor) {
       // Use color-rich layouts and graphics
       session.layouts.showReferenceCard("🌈 Color Display", "Enjoying rich visuals!");
     } else {
@@ -64,8 +64,8 @@ protected async onSession(session: AppSession, sessionId: string, userId: string
       session.layouts.showTextWall("Monochrome display detected");
     }
 
-    // Adapt text length based on screen size
-    const maxLines = screen.maxTextLines || 3;
+    // Adapt text length based on display size
+    const maxLines = display.maxTextLines || 3;
     if (maxLines < 5) {
       // Use shorter messages for smaller displays
       session.layouts.showTextWall("Short message");
@@ -74,7 +74,7 @@ protected async onSession(session: AppSession, sessionId: string, userId: string
       session.layouts.showTextWall("This is a longer message that takes advantage of larger displays with more text lines available.");
     }
   } else {
-    // No screen - use audio-only interactions
+    // No display - use audio-only interactions
     session.logger.info("No display available - using audio-only mode");
   }
 }
@@ -114,88 +114,83 @@ protected async onSession(session: AppSession, sessionId: string, userId: string
 }
 ```
 
-
 ### Adaptive Feature Selection
 
 ```typescript
 class AdaptiveApp extends AppServer {
   protected async onSession(session: AppSession, sessionId: string, userId: string): Promise<void> {
-    const caps = session.capabilities;
+    const caps = session.capabilities
     if (!caps) {
-      session.layouts.showTextWall("Loading device information...");
-      return;
+      session.layouts.showTextWall("Loading device information...")
+      return
     }
 
     // Create a feature matrix based on available capabilities
-    const features = this.getAvailableFeatures(caps);
+    const features = this.getAvailableFeatures(caps)
 
     // Show welcome message with available features
-    const featureList = features.join('\n• ');
-    session.layouts.showReferenceCard(
-      `Welcome to ${caps.modelName}`,
-      `Available features:\n• ${featureList}`
-    );
+    const featureList = features.join("\n• ")
+    session.layouts.showReferenceCard(`Welcome to ${caps.modelName}`, `Available features:\n• ${featureList}`)
 
     // Set up event subscriptions based on capabilities
-    this.setupEventSubscriptions(session, caps);
+    this.setupEventSubscriptions(session, caps)
   }
 
   private getAvailableFeatures(caps: Capabilities): string[] {
-    const features: string[] = [];
+    const features: string[] = []
 
     if (caps.hasCamera) {
-      features.push("📷 Photo capture");
+      features.push("📷 Photo capture")
       if (caps.camera?.video.canStream) {
-        features.push("📡 Live streaming");
+        features.push("📡 Live streaming")
       }
     }
 
     if (caps.hasMicrophone) {
-      features.push("🎤 Voice commands");
-      features.push("📝 Speech transcription");
+      features.push("🎤 Voice commands")
+      features.push("📝 Speech transcription")
     }
 
-    if (caps.hasScreen) {
-      features.push("📱 Visual interface");
-      if (caps.screen?.canDisplayBitmap) {
-        features.push("🖼️ Image display");
+    if (caps.hasDisplay) {
+      features.push("📱 Visual interface")
+      if (caps.display?.canDisplayBitmap) {
+        features.push("🖼️ Image display")
       }
     }
 
     if (caps.hasButton) {
-      features.push("🔘 Hardware controls");
+      features.push("🔘 Hardware controls")
     }
 
     if (caps.hasWifi) {
-      features.push("🌐 Internet connectivity");
+      features.push("🌐 Internet connectivity")
     }
 
-    return features;
+    return features
   }
 
   private setupEventSubscriptions(session: AppSession, caps: Capabilities): void {
     // Only subscribe to events for available hardware
     if (caps.hasMicrophone) {
-      session.events.onTranscription((data) => {
+      session.events.onTranscription(data => {
         // Handle voice input
-      });
+      })
     }
 
     if (caps.hasButton) {
-      session.events.onButtonPress((data) => {
+      session.events.onButtonPress(data => {
         // Handle button input
-      });
+      })
     }
 
     if (caps.hasIMU) {
-      session.events.onHeadPosition((data) => {
+      session.events.onHeadPosition(data => {
         // Handle head movement
-      });
+      })
     }
   }
 }
 ```
-
 
 ## Device Examples
 
