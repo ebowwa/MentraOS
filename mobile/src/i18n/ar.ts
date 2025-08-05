@@ -1,7 +1,7 @@
-import demoAr from "./demo-ar"
-import {Translations} from "./en"
+import en, {Translations} from "./en"
 
 const ar: Translations = {
+  ...en,
   common: {
     ok: "نعم",
     cancel: "حذف",
@@ -119,8 +119,6 @@ const ar: Translations = {
       content: "لم تتم اضافة اي مفضلات حتى الان. اضغط على القلب في إحدى الحلقات لإضافته الى المفضلة.",
     },
   },
-
-  ...demoAr,
 }
 
 export default ar
