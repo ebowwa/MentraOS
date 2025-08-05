@@ -1,7 +1,7 @@
-import demoJa from "./demo-ja"
-import {Translations} from "./en"
+import en, {Translations} from "./en"
 
 const ja: Translations = {
+  ...en,
   common: {
     ok: "OK",
     cancel: "キャンセル",
@@ -121,8 +121,6 @@ const ja: Translations = {
         "お気に入りのエピソードがまだありません。エピソードにあるハートマークにタップして、お気に入りに追加しましょう！",
     },
   },
-
-  ...demoJa,
 }
 
 export default ja
