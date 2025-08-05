@@ -22,10 +22,10 @@ export default function MentraNexDeveloperSettingsScreen() {
   const {theme} = useAppTheme()
   const {goBack, push} = useNavigationHistory()
   // State for custom URL management
-  const [text, setText] = useState("")
-  const [positionX, setPositionX] = useState(null)
-  const [positionY, setPositionY] = useState(null)
-  const [size, setSize] = useState(null)
+  const [text, setText] = useState("Hello World")
+  const [positionX, setPositionX] = useState("0")
+  const [positionY, setPositionY] = useState("0")
+  const [size, setSize] = useState("20")
   // Modified handler for Custom URL
   const onSendTextClick = async () => {
     if (status.core_info.puck_connected && status.glasses_info?.model_name) {
@@ -82,7 +82,7 @@ export default function MentraNexDeveloperSettingsScreen() {
 
   return (
     <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}}>
-      <Header title="Developer Settings for Mentra Nex" leftIcon="caretLeft" onLeftPress={() => goBack()} />
+      <Header title="BLE Test for Mentra Nex" leftIcon="caretLeft" onLeftPress={() => goBack()} />
       <ScrollView>
         <View
           style={[

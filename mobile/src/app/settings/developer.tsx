@@ -342,11 +342,11 @@ export default function DeveloperSettingsScreen() {
             },
           ]}>
           <View style={styles.settingTextContainer}>
-            <Text style={[styles.label, {color: theme.colors.text}]}>Mentra Nex Settings </Text>
-            <Text style={[styles.value, {color: theme.colors.textDim}]}>Go to Mentra Nex Settings Page</Text>
+            <Text style={[styles.label, {color: theme.colors.text}]}>Mentra Nex BLE Test </Text>
+            <Text style={[styles.value, {color: theme.colors.textDim}]}>Go to Mentra Nex BLE Test Page</Text>
             <Spacer height={theme.spacing.md} />
             <PillButton
-              text="Mentra Nex Settings"
+              text="Mentra Nex BLE Test"
               variant="icon"
               onPress={handleMentraNexSettingsPagePress}
               buttonStyle={styles.button}

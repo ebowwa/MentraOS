@@ -948,7 +948,7 @@ public class ServerComms {
                             wsManager.sendBinary(chunk);
                             // Write to PCM file whenever we send binary data over websocket
 //                            writeToPcmFile(chunk);
-                            Log.d(TAG, " 🎤: Sent audio chunk to cloud: " + chunk.length + " bytes");
+                            //  Log.d(TAG, " 🎤: Sent audio chunk to cloud: " + chunk.length + " bytes");
                         }
                         // If poll times out (1 second with no data), we'll loop back and check conditions again
                     } else {

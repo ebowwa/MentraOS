@@ -26,7 +26,6 @@ import mentraos.ble.MentraosBle.BatteryStateRequest;
 import mentraos.ble.MentraosBle.MicStateConfig;
 import mentraos.ble.MentraosBle.BrightnessConfig;
 import mentraos.ble.MentraosBle.AutoBrightnessConfig;
-import mentraos.ble.MentraosBle.AutoBrightnessConfig;
 import mentraos.ble.MentraosBle.HeadUpAngleConfig;
 import mentraos.ble.MentraosBle.DisplayHeightConfig;
 
@@ -579,7 +578,8 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
                 // start sending debug notifications
                 // startPeriodicNotifications(302);
                 // start sending debug notifications
-                startPeriodicTextWall(302);
+                //just for test
+                //startPeriodicTextWall(302);
             }
         } else {
             Log.e(TAG, " glass UART service not found");
@@ -1236,18 +1236,19 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
             Log.d(TAG, "Not connected to glasses");
             return;
         }
-
-        List<byte[]> chunks = createTextWallChunks(title + "\n\n" + body);
-        for (int i = 0; i < chunks.size(); i++) {
-            byte[] chunk = chunks.get(i);
-            boolean isLastChunk = (i == chunks.size() - 1);
-
-            if (isLastChunk) {
-                sendDataSequentially(chunk);
-            } else {
-                sendDataSequentially(chunk, 300);
-            }
-        }
+        byte[] textChunks = createTextWallChunksForNex(title + "\n\n" + body);
+        sendDataSequentially(textChunks);
+//        List<byte[]> chunks = createTextWallChunks(title + "\n\n" + body);
+//        for (int i = 0; i < chunks.size(); i++) {
+//            byte[] chunk = chunks.get(i);
+//            boolean isLastChunk = (i == chunks.size() - 1);
+//
+//            if (isLastChunk) {
+//                sendDataSequentially(chunk);
+//            } else {
+//                sendDataSequentially(chunk, 300);
+//            }
+//        }
         Log.d(TAG, "Send simple reference card");
     }
 
@@ -1368,6 +1369,10 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
     @Override
     public void displayTextLine(String text) {
         Log.d(TAG, "displayTextLine text:" + text);
+        if (!isConnected()) {
+            Log.d(TAG, "Not connected to glasses");
+            return;
+        }
         if (updatingScreen) {
             return;
         }
@@ -1377,6 +1382,10 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
 
     @Override
     public void displayBitmap(Bitmap bmp) {
+        if (!isConnected()) {
+            Log.d(TAG, "Not connected to glasses");
+            return;
+        }
         Log.d(TAG, "displayBitmap ");
         try {
             byte[] bmpBytes = BitmapJavaUtils.convertBitmapTo1BitBmpBytes(bmp, false);
@@ -1393,6 +1402,10 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
 
     @Override
     public void displayDoubleTextWall(String textTop, String textBottom) {
+        if (!isConnected()) {
+            Log.d(TAG, "Not connected to glasses");
+            return;
+        }
         Log.d(TAG, "displayDoubleTextWall textTop:" + textTop + " textBottom:" + textBottom);
         if (updatingScreen) {
             return;
@@ -1444,6 +1457,10 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
 
     @Override
     public void displayRowsCard(String[] rowStrings) {
+        if (!isConnected()) {
+            Log.d(TAG, "Not connected to glasses");
+            return;
+        }
         Log.d(TAG, "displayRowsCard rowStrings:" + rowStrings.toString());
         if (updatingScreen) {
             return;
@@ -1462,6 +1479,10 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
 
     @Override
     public void displayBulletList(String title, String[] bullets) {
+        if (!isConnected()) {
+            Log.d(TAG, "Not connected to glasses");
+            return;
+        }
         Log.d(TAG, "displayBulletList title:" + title + " bullets:" + bullets.toString());
         if (updatingScreen) {
             return;
@@ -1480,13 +1501,20 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
 
     @Override
     public void displayReferenceCardImage(String title, String body, String imgUrl) {
+        if (!isConnected()) {
+            Log.d(TAG, "Not connected to glasses");
+            return;
+        }
         Log.d(TAG, "displayReferenceCardImage title:" + title + " body:" + body);
     }
 
     @Override
     public void displayTextWall(String text) {
         Log.d(TAG, "displayTextWall updatingScreen: " + updatingScreen + " text:" + text);
-
+        if (!isConnected()) {
+            Log.d(TAG, "Not connected to glasses");
+            return;
+        }
         if (updatingScreen) {
             return;
         }
@@ -1777,12 +1805,20 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
 
     @Override
     public void updateGlassesBrightness(int brightness) {
+        if (!isConnected()) {
+            Log.d(TAG, "Not connected to glasses");
+            return;
+        }
         Log.d(TAG, "Updating glasses brightness: " + brightness);
         sendBrightnessCommand(brightness);
     }
 
     @Override
     public void updateGlassesAutoBrightness(boolean autoBrightness) {
+        if (!isConnected()) {
+            Log.d(TAG, "Not connected to glasses");
+            return;
+        }
         Log.d(TAG, "Updating glasses auto brightness: " + autoBrightness);
         // sendBrightnessCommand(-1, autoBrightness);
         // sendAutoBrightnessCommand(autoBrightness);
@@ -1794,6 +1830,10 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
 
     @Override
     public void updateGlassesHeadUpAngle(int headUpAngle) {
+        if (!isConnected()) {
+            Log.d(TAG, "Not connected to glasses");
+            return;
+        }
         Log.d(TAG, "updateGlassesHeadUpAngle headUpAngle: " + headUpAngle);
 
         sendHeadUpAngleCommand(headUpAngle);
@@ -1801,6 +1841,10 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
 
     @Override
     public void updateGlassesDepthHeight(int depth, int height) {
+        if (!isConnected()) {
+            Log.d(TAG, "Not connected to glasses");
+            return;
+        }
         Log.d(TAG, "updateGlassesDepthHeight depth: " + depth + " height:" + height);
 
         sendDashboardPositionCommand(height, depth);
@@ -2371,7 +2415,6 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
                 // byte[] singleChunks = createTextWallChunksForNexForJson(sampleText);
                 sendDataSequentially(singleChunks);
             }
-
         }
     }
 
@@ -2481,17 +2524,29 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
 
     @Override
     public void onDisplayTextNotified(DisplayTextEvent displayTextEvent) {
+        if (!isConnected()) {
+            Log.d(TAG, "Not connected to glasses");
+            return;
+        }
         byte[] textChunks = createTextWallChunksForNex(displayTextEvent);
         sendDataSequentially(textChunks);
     }
 
     @Override
     public void onDisplayImageNotified(DisplayImageEvent displayImageEvent) {
+        if (!isConnected()) {
+            Log.d(TAG, "Not connected to glasses");
+            return;
+        }
         startSendingDisplayImageTest();
     }
 
     @Override
     public void displayCustomContent(String content) {
+        if (!isConnected()) {
+            Log.d(TAG, "Not connected to glasses");
+            return;
+        }
         Log.d(TAG, "displayCustomContent content: " + content);
     }
 
