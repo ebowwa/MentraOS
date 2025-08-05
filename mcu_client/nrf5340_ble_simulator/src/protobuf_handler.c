@@ -67,6 +67,11 @@ void protobuf_analyze_message(const uint8_t *data, uint16_t len)
 		break;
 	default:
 		LOG_WRN("[UNKNOWN] Unknown control header: 0x%02X", firstByte);
+		// Still try to parse as protobuf in case the header is part of the message
+		if (len > 1) {
+			LOG_INF("[FALLBACK] Attempting protobuf parse without header...");
+			protobuf_parse_control_message(data, len);
+		}
 		break;
 	}
 
@@ -108,73 +113,120 @@ void protobuf_parse_control_message(const uint8_t *protobuf_data, uint16_t len)
 		return;
 	}
 
+	// Print first few bytes for debugging
+	LOG_INF("First 10 bytes of protobuf data:");
+	for (int i = 0; i < len && i < 10; i++) {
+		printk("0x%02X ", protobuf_data[i]);
+	}
+	printk("\n");
+
 	// Try to decode as PhoneToGlasses message
 	mentraos_ble_PhoneToGlasses phone_msg = mentraos_ble_PhoneToGlasses_init_default;
 	
-	if (decode_phone_to_glasses_message(protobuf_data, len, &phone_msg)) {
-		LOG_INF("✅ Successfully decoded PhoneToGlasses message!");
+	LOG_INF("Attempting to decode PhoneToGlasses message...");
+	bool decode_result = decode_phone_to_glasses_message(protobuf_data, len, &phone_msg);
+	
+	if (decode_result) {
+		LOG_INF("Successfully decoded PhoneToGlasses message!");
 		LOG_INF("Message type (which_payload): %u", phone_msg.which_payload);
 		
 		// Process the decoded message based on payload type
 		switch (phone_msg.which_payload) {
 		case 11: // battery_state_tag
-			LOG_INF("📱 Battery state request received");
-			LOG_INF("📊 Current battery level: %u%%", current_battery_level);
+			LOG_INF("Battery state request received");
+			LOG_INF("Current battery level: %u%%", current_battery_level);
 			// Send battery response
 			protobuf_send_battery_notification();
 			break;
 			
 		case 12: // glasses_info_tag  
-			LOG_INF("📱 Glasses info request received");
+			LOG_INF("Glasses info request received");
 			// TODO: Generate device info response
 			break;
 			
 		case 10: // disconnect_tag
-			LOG_INF("📱 Disconnect request received");
+			LOG_INF("Disconnect request received");
 			// TODO: Handle disconnect
 			break;
 			
 		case 30: // display_text_tag
-			LOG_INF("📱 Display text received");
+			LOG_INF("Display text received");
 			if (phone_msg.which_payload == mentraos_ble_PhoneToGlasses_display_text_tag) {
 				protobuf_process_display_text(&phone_msg.payload.display_text);
 			}
 			break;
 			
 		case 35: // display_scrolling_text_tag
-			LOG_INF("📱 Display scrolling text received");
+			LOG_INF("Display scrolling text received");
 			if (phone_msg.which_payload == mentraos_ble_PhoneToGlasses_display_scrolling_text_tag) {
 				protobuf_process_display_scrolling_text(&phone_msg.payload.display_scrolling_text);
 			}
 			break;
 			
 		case 16: // ping_tag
-			LOG_INF("📱 Ping request received");
+			LOG_INF("Ping request received");
 			// TODO: Send pong response
 			break;
 			
 		case 37: // brightness_tag
-			LOG_INF("💡 Brightness config received");
+			LOG_INF("Brightness config received");
 			if (phone_msg.which_payload == mentraos_ble_PhoneToGlasses_brightness_tag) {
 				protobuf_process_brightness_config(&phone_msg.payload.brightness);
 			}
 			break;
 			
 		default:
-			LOG_INF("📱 Unknown message type: %u", phone_msg.which_payload);
+			LOG_INF("Unknown message type: %u", phone_msg.which_payload);
 			break;
 		}
 		
 	} else {
-		LOG_ERR("❌ Failed to decode protobuf message - falling back to basic parsing");
+		LOG_ERR("Failed to decode protobuf message - falling back to detailed analysis");
 		
-		// Fallback to basic parsing for debugging
-		for (int i = 0; i < len && i < 10; i++) {
+		// Enhanced protobuf wire format analysis
+		LOG_INF("=== PROTOBUF DECODE FAILURE ANALYSIS ===");
+		LOG_INF("Message length: %u bytes", len);
+		
+		// Analyze first 20 bytes for protobuf structure
+		LOG_INF("Wire format analysis (first 20 bytes):");
+		for (int i = 0; i < len && i < 20; i++) {
 			uint8_t field_tag = protobuf_data[i] >> 3;
 			uint8_t wire_type = protobuf_data[i] & 0x07;
 			
-			LOG_DBG("Protobuf field: tag=%u, wire_type=%u", field_tag, wire_type);
+			const char *wire_type_name;
+			switch (wire_type) {
+			case 0: wire_type_name = "VARINT"; break;
+			case 1: wire_type_name = "FIXED64"; break;
+			case 2: wire_type_name = "LENGTH_DELIMITED"; break;
+			case 3: wire_type_name = "START_GROUP"; break;
+			case 4: wire_type_name = "END_GROUP"; break;
+			case 5: wire_type_name = "FIXED32"; break;
+			default: wire_type_name = "UNKNOWN"; break;
+			}
+			
+			LOG_INF("  [%02d] 0x%02X -> tag=%u, wire=%u (%s)", 
+				i, protobuf_data[i], field_tag, wire_type, wire_type_name);
 		}
+		
+		// Check if this might be a different message type
+		if (len > 10) {
+			// Look for common protobuf patterns
+			bool has_text_field = false;
+			for (int i = 0; i < len - 4; i++) {
+				// Look for text field patterns (length-delimited strings)
+				if ((protobuf_data[i] & 0x07) == 2) { // LENGTH_DELIMITED
+					uint8_t tag = protobuf_data[i] >> 3;
+					LOG_INF("  Found LENGTH_DELIMITED field at offset %d, tag=%u", i, tag);
+					has_text_field = true;
+				}
+			}
+			
+			if (!has_text_field) {
+				LOG_WRN("No LENGTH_DELIMITED fields found - might not be protobuf");
+			}
+		}
+		
+		LOG_INF("=== END ANALYSIS ===");
 	}
 }
 
@@ -182,8 +234,11 @@ bool decode_phone_to_glasses_message(const uint8_t *data, uint16_t len,
                                     mentraos_ble_PhoneToGlasses *msg)
 {
 	if (!data || !msg || len == 0) {
+		LOG_ERR("Invalid parameters for protobuf decode");
 		return false;
 	}
+
+	LOG_DBG("Decoding %u bytes of protobuf data", len);
 
 	// Create input stream
 	pb_istream_t stream = pb_istream_from_buffer(data, len);
@@ -193,6 +248,18 @@ bool decode_phone_to_glasses_message(const uint8_t *data, uint16_t len,
 	
 	if (!status) {
 		LOG_ERR("Protobuf decode error: %s", PB_GET_ERROR(&stream));
+		LOG_ERR("Stream bytes left: %zu", stream.bytes_left);
+		LOG_ERR("Stream state: %p", stream.state);
+		
+		// Try basic field analysis for debugging
+		LOG_INF("Raw protobuf analysis:");
+		for (int i = 0; i < len && i < 20; i++) {
+			uint8_t field_tag = data[i] >> 3;
+			uint8_t wire_type = data[i] & 0x07;
+			LOG_DBG("   Byte %d: tag=%u, wire_type=%u, raw=0x%02X", i, field_tag, wire_type, data[i]);
+		}
+	} else {
+		LOG_INF("Protobuf decode successful, %zu bytes consumed", len - stream.bytes_left);
 	}
 	
 	return status;
@@ -233,7 +300,7 @@ void protobuf_parse_audio_chunk(const uint8_t *data, uint16_t len)
 	uint8_t stream_id = data[1];
 	uint16_t audio_data_len = len - 2;
 	
-	LOG_INF("🎵 Audio chunk: stream_id=0x%02X, data_len=%u", stream_id, audio_data_len);
+	LOG_INF("Audio chunk: stream_id=0x%02X, data_len=%u", stream_id, audio_data_len);
 }
 
 void protobuf_parse_image_chunk(const uint8_t *data, uint16_t len)
@@ -247,7 +314,7 @@ void protobuf_parse_image_chunk(const uint8_t *data, uint16_t len)
 	uint8_t chunk_index = data[3];
 	uint16_t image_data_len = len - 4;
 	
-	LOG_INF("🖼️  Image chunk: stream_id=0x%04X, chunk_index=%u, data_len=%u", 
+	LOG_INF("Image chunk: stream_id=0x%04X, chunk_index=%u, data_len=%u", 
 stream_id, chunk_index, image_data_len);
 }
 
@@ -265,7 +332,7 @@ void protobuf_set_battery_level(uint32_t level)
 	
 	uint32_t old_level = current_battery_level;
 	current_battery_level = level;
-	LOG_INF("🔋 Battery level set to %u%%", current_battery_level);
+	LOG_INF("Battery level set to %u%%", current_battery_level);
 	
 	// Send proactive notification if level changed
 	if (old_level != current_battery_level) {
@@ -317,12 +384,12 @@ void protobuf_send_battery_notification(void)
 		// Send via BLE (to all connected clients)
 		int ret = mentra_ble_send(NULL, buffer, bytes_written + 1);
 		if (ret == 0) {
-			LOG_INF("📱✅ Sent battery level notification: %u%%", current_battery_level);
+			LOG_INF("Sent battery level notification: %u%%", current_battery_level);
 		} else {
-			LOG_WRN("📱❌ Failed to send battery notification (ret: %d)", ret);
+			LOG_WRN("Failed to send battery notification (ret: %d)", ret);
 		}
 	} else {
-		LOG_ERR("❌ Failed to encode battery notification");
+		LOG_ERR("Failed to encode battery notification");
 	}
 }
 
@@ -346,11 +413,11 @@ int protobuf_generate_echo_response(const uint8_t *input_data, uint16_t input_le
 		// Add the 0x02 header for protobuf messages
 		output_data[0] = 0x02;
 		
-		LOG_INF("✅ Generated protobuf echo response: %zu + 1 bytes (Battery: %u%%)", 
+		LOG_INF("Generated protobuf echo response: %zu + 1 bytes (Battery: %u%%)", 
 			bytes_written, current_battery_level);
 		return bytes_written + 1;
 	} else {
-		LOG_ERR("❌ Failed to generate protobuf response");
+		LOG_ERR("Failed to generate protobuf response");
 		return -ENOMEM;
 	}
 }
@@ -384,29 +451,29 @@ void protobuf_set_brightness_level(uint32_t level)
 		int ret = pwm_set(pwm_dev, 0, period_ns, duty_ns, PWM_POLARITY_INVERTED);
 		
 		if (ret == 0) {
-			LOG_INF("💡 LED 3 brightness set to %u%% (duty: %u%%)", level, duty_cycle_percent);
+			LOG_INF("LED 3 brightness set to %u%% (duty: %u%%)", level, duty_cycle_percent);
 		} else {
-			LOG_ERR("❌ Failed to set LED 3 PWM: %d", ret);
+			LOG_ERR("Failed to set LED 3 PWM: %d", ret);
 		}
 	} else {
-		LOG_WRN("⚠️  PWM LED 3 device not ready");
+		LOG_WRN("PWM LED 3 device not ready");
 	}
 }
 
 void protobuf_process_brightness_config(const mentraos_ble_BrightnessConfig *brightness_config)
 {
 	if (!brightness_config) {
-		LOG_ERR("❌ Invalid brightness config pointer");
+		LOG_ERR("Invalid brightness config pointer");
 		return;
 	}
 	
 	uint32_t new_level = brightness_config->value;
-	LOG_INF("💡 Received brightness config: %u%%", new_level);
+	LOG_INF("Received brightness config: %u%%", new_level);
 	
 	// Clamp and set the new brightness level
 	protobuf_set_brightness_level(new_level);
 	
-	LOG_INF("💡 Brightness updated to %u%%", current_brightness_level);
+	LOG_INF("Brightness updated to %u%%", current_brightness_level);
 }
 
 void protobuf_process_display_text(const mentraos_ble_DisplayText *display_text)
@@ -462,8 +529,8 @@ void protobuf_parse_text_brightness(const char *text)
 		return;
 	}
 	
-	LOG_INF("📝 TEXT BRIGHTNESS PARSER ACTIVATED");
-	LOG_INF("📝 Parsing text: \"%s\"", text);
+	LOG_INF("TEXT BRIGHTNESS PARSER ACTIVATED");
+	LOG_INF("Parsing text: \"%s\"", text);
 	
 	// Look for patterns like "brightness to 61%" or "61%"
 	const char *brightness_keyword = "brightness to ";
@@ -488,17 +555,17 @@ void protobuf_parse_text_brightness(const char *text)
 				
 				brightness_value = atoi(num_str);
 				
-				LOG_INF("💡 TEXT BRIGHTNESS: Extracted value %d%%", brightness_value);
+				LOG_INF("TEXT BRIGHTNESS: Extracted value %d%%", brightness_value);
 				
 				if (brightness_value >= 0 && brightness_value <= 100) {
 					protobuf_set_brightness_level((uint32_t)brightness_value);
 					printk("\n[UART BRIGHTNESS] Text brightness set to %d%%\n", brightness_value);
 				} else {
-					LOG_WRN("⚠️ TEXT BRIGHTNESS: Invalid value %d (must be 0-100)", brightness_value);
+					LOG_WRN("TEXT BRIGHTNESS: Invalid value %d (must be 0-100)", brightness_value);
 				}
 			}
 		}
 	} else {
-		LOG_DBG("📝 TEXT BRIGHTNESS: No brightness pattern found in text");
+		LOG_DBG("TEXT BRIGHTNESS: No brightness pattern found in text");
 	}
 }
