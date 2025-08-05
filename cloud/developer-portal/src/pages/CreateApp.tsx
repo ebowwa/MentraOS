@@ -31,7 +31,9 @@ import api, { AppResponse } from "@/services/api.service";
 import { AppI } from "@mentra/sdk";
 import { normalizeUrl } from "@/libs/utils";
 import PermissionsForm from "../components/forms/PermissionsForm";
+import HardwareRequirementsForm from "../components/forms/HardwareRequirementsForm";
 import { Permission } from "@/types/app";
+import { HardwareRequirement } from "@mentra/sdk";
 import { useAuth } from "../hooks/useAuth";
 import { useOrganization } from "@/context/OrganizationContext";
 import { App } from "@/types/app";
@@ -66,6 +68,7 @@ const CreateApp: React.FC = () => {
     webviewURL: "",
     appType: AppType.BACKGROUND, // Default to BACKGROUND
     permissions: [], // Initialize permissions as empty array
+    hardwareRequirements: [], // Initialize hardware requirements as empty array
     // isPublic: false,
   });
 
@@ -141,6 +144,16 @@ const CreateApp: React.FC = () => {
     setFormData((prev) => ({
       ...prev,
       permissions,
+    }));
+  };
+
+  // Handle hardware requirements changes
+  const handleHardwareRequirementsChange = (
+    hardwareRequirements: HardwareRequirement[],
+  ) => {
+    setFormData((prev) => ({
+      ...prev,
+      hardwareRequirements,
     }));
   };
 
@@ -258,6 +271,7 @@ const CreateApp: React.FC = () => {
         webviewURL: formData.webviewURL,
         appType: formData.appType,
         permissions: formData.permissions,
+        hardwareRequirements: formData.hardwareRequirements,
       };
 
       // Create App via API
@@ -583,6 +597,14 @@ const CreateApp: React.FC = () => {
                 <PermissionsForm
                   permissions={formData.permissions || []}
                   onChange={handlePermissionsChange}
+                />
+              </div>
+
+              {/* Hardware Requirements Section */}
+              <div className="mt-6 border rounded-md p-4">
+                <HardwareRequirementsForm
+                  requirements={formData.hardwareRequirements || []}
+                  onChange={handleHardwareRequirementsChange}
                 />
               </div>
             </CardContent>

@@ -1,4 +1,9 @@
-import { AppType, ToolSchema, AppSetting } from "@mentra/sdk";
+import {
+  AppType,
+  ToolSchema,
+  AppSetting,
+  HardwareRequirement,
+} from "@mentra/sdk";
 
 // Define permission types
 export enum PermissionType {
@@ -47,4 +52,5 @@ export interface App {
   settings?: Setting[]; // App configuration settings
   tools?: Tool[]; // AI tools provided by the app
   onboardingInstructions?: string;
+  hardwareRequirements?: HardwareRequirement[]; // Hardware requirements for the app
 }

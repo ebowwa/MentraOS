@@ -304,15 +304,6 @@ export const deepLinkRoutes: DeepLinkRoute[] = [
     requiresAuth: true,
   },
 
-  // Permissions routes
-  {
-    pattern: "/permissions/grant",
-    handler: async (url: string, params: Record<string, string>, navObject: NavObject) => {
-      navObject.push("/permissions/grant")
-    },
-    requiresAuth: true,
-  },
-
   // Onboarding routes
   {
     pattern: "/welcome",

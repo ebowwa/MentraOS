@@ -1141,8 +1141,8 @@ export class AppSession {
               this.settingsData = this.getDefaultSettings();
             } catch (error) {
               this.logger.warn(
-                "Failed to load default settings from config:",
                 error,
+                "Failed to load default settings from config:",
               );
             }
           }
@@ -1384,12 +1384,12 @@ export class AppSession {
           this.events.emit("error", new Error(errorMessage));
         } else if (message.type === "permission_error") {
           // Handle permission errors from cloud
-          this.logger.warn("Permission error received:", {
+          this.logger.warn({
             message: message.message,
             details: message.details,
             detailsCount: message.details?.length || 0,
             rejectedStreams: message.details?.map((d) => d.stream) || [],
-          });
+          }, "Permission error received:");
 
           // Emit permission error event for application handling
           this.events.emit("permission_error", {

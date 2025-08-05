@@ -1,7 +1,7 @@
-import demoKo from "./demo-ko"
-import {Translations} from "./en"
+import en, {Translations} from "./en"
 
 const ko: Translations = {
+  ...en,
   common: {
     ok: "확인!",
     cancel: "취소",
@@ -43,6 +43,13 @@ const ko: Translations = {
     passwordFieldPlaceholder: "엄청 비밀스러운 암호를 입력하세요",
     tapToLogIn: "눌러서 로그인 하기!",
     hint: "힌트: 가장 좋아하는 암호와 아무런 아무 이메일 주소나 사용할 수 있어요 :)",
+  },
+  home: {
+    hardwareIncompatible: "하드웨어 비호환",
+    hardwareIncompatibleMessage: "{{app}}은(는) 연결된 안경에서 사용할 수 없는 하드웨어가 필요합니다: {{missing}}",
+    incompatibleApps: "비호환 앱",
+    incompatibleAppsDescription: "이러한 앱들은 연결된 안경에서 사용할 수 없는 하드웨어 기능이 필요합니다",
+    incompatible: "비호환",
   },
   demoNavigator: {
     componentsTab: "컴포넌트",
@@ -117,8 +124,6 @@ const ko: Translations = {
       content: "즐겨찾기가 없습니다. 에피소드에 있는 하트를 눌러서 즐겨찾기에 추가하세요.",
     },
   },
-
-  ...demoKo,
 }
 
 export default ko

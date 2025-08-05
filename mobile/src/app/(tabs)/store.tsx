@@ -33,7 +33,7 @@ export default function AppStoreWeb() {
 
   // Construct the final URL with packageName if provided
   const finalUrl = useMemo(() => {
-    if (!appStoreUrl) return appStoreUrl
+    if (!appStoreUrl) return null
 
     const url = new URL(appStoreUrl)
     console.log("AppStoreWeb: appStoreUrl", appStoreUrl)
@@ -146,14 +146,30 @@ export default function AppStoreWeb() {
   )
 
   // Show loading state while getting the URL
-  if (!appStoreUrl) {
+  if (!finalUrl) {
     return (
       <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.lg}}>
         <Header leftTx="store:title" />
-        <View style={[styles.loadingContainer, {backgroundColor: theme.colors.background}]}>
+        <View
+          style={[
+            styles.loadingContainer,
+            {backgroundColor: theme.colors.background, marginHorizontal: -theme.spacing.lg},
+          ]}>
           <ActivityIndicator size="large" color={theme2.primaryColor} />
           <Text text="Preparing App Store..." style={[styles.loadingText, {color: theme2.textColor}]} />
         </View>
+      </Screen>
+    )
+  }
+
+  if (hasError) {
+    return (
+      <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.lg}}>
+        <Header leftTx="store:title" />
+        <InternetConnectionFallbackComponent
+          retry={handleRetry}
+          message={errorMessage || "Unable to load the App Store. Please check your connection and try again."}
+        />
       </Screen>
     )
   }
@@ -162,49 +178,42 @@ export default function AppStoreWeb() {
   return (
     <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.lg}}>
       <Header leftTx="store:title" />
-      {hasError ? (
-        <InternetConnectionFallbackComponent
-          retry={handleRetry}
-          message={errorMessage || "Unable to load the App Store. Please check your connection and try again."}
-        />
-      ) : (
-        <View
-          style={[
-            styles.webViewContainer,
-            {backgroundColor: theme.colors.background, marginHorizontal: -theme.spacing.lg},
-          ]}>
-          {/* Show the prefetched WebView, but now visible and full size */}
-          <WebView
-            ref={prefetchedWebviewRef}
-            source={{uri: finalUrl || appStoreUrl}}
-            style={[styles.webView, {backgroundColor: theme.colors.background}]}
-            onLoadStart={() => setWebviewLoading(true)}
-            onLoadEnd={() => setWebviewLoading(false)}
-            onError={handleError}
-            onNavigationStateChange={navState => setCanGoBack(navState.canGoBack)}
-            onMessage={handleWebViewMessage}
-            javaScriptEnabled={true}
-            domStorageEnabled={true}
-            startInLoadingState={true}
-            scalesPageToFit={false}
-            bounces={false}
-            scrollEnabled={true}
-            injectedJavaScript={`
+      <View
+        style={[
+          styles.webViewContainer,
+          {backgroundColor: theme.colors.background, marginHorizontal: -theme.spacing.lg},
+        ]}>
+        {/* Show the prefetched WebView, but now visible and full size */}
+        <WebView
+          ref={prefetchedWebviewRef}
+          source={{uri: finalUrl}}
+          style={[styles.webView, {backgroundColor: theme.colors.background}]}
+          onLoadStart={() => setWebviewLoading(true)}
+          onLoadEnd={() => setWebviewLoading(false)}
+          onError={handleError}
+          onNavigationStateChange={navState => setCanGoBack(navState.canGoBack)}
+          onMessage={handleWebViewMessage}
+          javaScriptEnabled={true}
+          domStorageEnabled={true}
+          startInLoadingState={true}
+          scalesPageToFit={false}
+          bounces={false}
+          scrollEnabled={true}
+          injectedJavaScript={`
               const meta = document.createElement('meta');
               meta.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
               meta.setAttribute('name', 'viewport');
               document.getElementsByTagName('head')[0].appendChild(meta);
               true;
             `}
-            renderLoading={() => (
-              <View style={[styles.loadingOverlay, {backgroundColor: theme.colors.background}]}>
-                <ActivityIndicator size="large" color={theme2.primaryColor} />
-                <Text text="Loading App Store..." style={[styles.loadingText, {color: theme2.textColor}]} />
-              </View>
-            )}
-          />
-        </View>
-      )}
+          renderLoading={() => (
+            <View style={[styles.loadingOverlay, {backgroundColor: theme.colors.background}]}>
+              <ActivityIndicator size="large" color={theme2.primaryColor} />
+              <Text text="Loading App Store..." style={[styles.loadingText, {color: theme2.textColor}]} />
+            </View>
+          )}
+        />
+      </View>
     </Screen>
   )
 }

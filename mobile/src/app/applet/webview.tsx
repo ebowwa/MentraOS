@@ -107,6 +107,7 @@ export default function AppWebView() {
   // Fetch temporary token on mount
   useEffect(() => {
     const generateTokenAndSetUrl = async () => {
+      console.log("WEBVIEW: generateTokenAndSetUrl()")
       setIsLoadingToken(true)
       setTokenError(null)
 
