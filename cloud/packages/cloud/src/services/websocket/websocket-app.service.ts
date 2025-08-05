@@ -723,21 +723,9 @@ export class AppWebSocketService {
    * @returns Promise<boolean> true if app has navigation permission, false otherwise
    */
   private async checkNavigationPermission(packageName: string, userSession: UserSession): Promise<boolean> {
-    try {
-      // Get app details
-      const app = await App.findOne({ packageName });
-
-      if (!app) {
-        logger.warn({ packageName, userId: userSession.userId }, 'App not found when checking navigation permissions');
-        return false;
-      }
-
-      // Check if app has navigation permission
-      return SimplePermissionChecker.hasPermission(app, PermissionType.NAVIGATION);
-    } catch (error) {
-      logger.error({ error, packageName, userId: userSession.userId }, 'Error checking navigation permission');
-      return false;
-    }
+    // navigation is auto-granted for all apps - no permission check needed
+    logger.debug({ packageName, userId: userSession.userId }, 'Navigation permission auto-granted');
+    return true;
   }
 
   /**
