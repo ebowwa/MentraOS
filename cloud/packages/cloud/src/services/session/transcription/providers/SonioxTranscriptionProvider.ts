@@ -422,7 +422,7 @@ class SonioxTranscriptionStream implements StreamInstance {
     );
     const config: any = {
       api_key: this.config.apiKey,
-      model: this.config.model || "stt-rt-preview",
+      model: this.config.model || "stt-rt-preview-v2",
       audio_format: "pcm_s16le",
       sample_rate: 16000,
       num_channels: 1,
