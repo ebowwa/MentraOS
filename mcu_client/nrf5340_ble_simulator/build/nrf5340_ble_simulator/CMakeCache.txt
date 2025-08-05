@@ -27,7 +27,7 @@ APPLICATION_SOURCE_DIR:PATH=/Users/loayyari/Documents/Github/MentraOS/mcu_client
 ARM_MBEDTLS_PATH:STRING=/opt/nordic/ncs/v3.0.0/modules/crypto/mbedtls
 
 //Selected board
-BOARD:STRING=nrf5340dk/nrf5340/cpuapp/ns
+BOARD:STRING=nrf5340dk/nrf5340/cpuapp
 
 //Main board directory for board (nrf5340dk)
 BOARD_DIR:PATH=/opt/nordic/ncs/v3.0.0/zephyr/boards/nordic/nrf5340dk
@@ -47,11 +47,8 @@ BYPRODUCT_KERNEL_ELF_NAME:FILEPATH=/Users/loayyari/Documents/Github/MentraOS/mcu
 //Kernel hex file
 BYPRODUCT_KERNEL_HEX_NAME:FILEPATH=/Users/loayyari/Documents/Github/MentraOS/mcu_client/nrf5340_ble_simulator/build/nrf5340_ble_simulator/zephyr/zephyr.hex
 
-//Kernel hex file
-BYPRODUCT_KERNEL_SIGNED_HEX_NAME:FILEPATH=/Users/loayyari/Documents/Github/MentraOS/mcu_client/nrf5340_ble_simulator/build/nrf5340_ble_simulator/zephyr/tfm_merged.hex
-
 //Selected board
-CACHED_BOARD:STRING=nrf5340dk/nrf5340/cpuapp/ns
+CACHED_BOARD:STRING=nrf5340dk/nrf5340/cpuapp
 
 //Selected shield
 CACHED_SHIELD:STRING=
@@ -316,7 +313,7 @@ CMAKE_VERBOSE_MAKEFILE:BOOL=FALSE
 // listed, e.g. CONF_FILE="prj1.conf;prj2.conf" The CACHED_CONF_FILE
 // is internal Zephyr variable used between CMake runs. To change
 // CONF_FILE, use the CONF_FILE variable.
-CONF_FILE:STRING=/Users/loayyari/Documents/Github/MentraOS/mcu_client/nrf5340_ble_simulator/prj.conf
+CONF_FILE:STRING=/Users/loayyari/Documents/Github/MentraOS/mcu_client/nrf5340_ble_simulator/prj.conf;/Users/loayyari/Documents/Github/MentraOS/mcu_client/nrf5340_ble_simulator/boards/nrf5340dk_nrf5340_cpuapp.conf
 
 //Path to a program.
 DTC:FILEPATH=/opt/nordic/ncs/toolchains/ef4fc6722e/bin/dtc
@@ -691,7 +688,7 @@ CMAKE_MODULE_LINKER_FLAGS_RELWITHDEBINFO-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: CMAKE_NM
 CMAKE_NM-ADVANCED:INTERNAL=1
 //number of local generators
-CMAKE_NUMBER_OF_MAKEFILES:INTERNAL=214
+CMAKE_NUMBER_OF_MAKEFILES:INTERNAL=217
 //ADVANCED property for variable: CMAKE_OBJCOPY
 CMAKE_OBJCOPY-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: CMAKE_OBJDUMP
@@ -760,9 +757,9 @@ NANOPB_GENERATOR_SOURCE_DIR-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: NANOPB_INCLUDE_DIRS
 NANOPB_INCLUDE_DIRS-ADVANCED:INTERNAL=1
 //shared var
-PM_YML_DEP_FILES:INTERNAL=/opt/nordic/ncs/v3.0.0/nrf/subsys/partition_manager/pm.yml.settings;/opt/nordic/ncs/v3.0.0/nrf/subsys/partition_manager/pm.yml.rpmsg_nrf53;/opt/nordic/ncs/v3.0.0/nrf/subsys/partition_manager/pm.yml.tfm;/opt/nordic/ncs/v3.0.0/nrf/subsys/partition_manager/pm.yml.trustzone
+PM_YML_DEP_FILES:INTERNAL=/opt/nordic/ncs/v3.0.0/nrf/subsys/partition_manager/pm.yml.settings;/opt/nordic/ncs/v3.0.0/nrf/subsys/partition_manager/pm.yml.rpmsg_nrf53
 //shared var
-PM_YML_FILES:INTERNAL=/Users/loayyari/Documents/Github/MentraOS/mcu_client/nrf5340_ble_simulator/build/nrf5340_ble_simulator/modules/nrf/subsys/partition_manager/pm.yml.settings;/Users/loayyari/Documents/Github/MentraOS/mcu_client/nrf5340_ble_simulator/build/nrf5340_ble_simulator/modules/nrf/subsys/partition_manager/pm.yml.rpmsg_nrf53;/Users/loayyari/Documents/Github/MentraOS/mcu_client/nrf5340_ble_simulator/build/nrf5340_ble_simulator/modules/nrf/subsys/partition_manager/pm.yml.tfm;/Users/loayyari/Documents/Github/MentraOS/mcu_client/nrf5340_ble_simulator/build/nrf5340_ble_simulator/modules/nrf/subsys/partition_manager/pm.yml.trustzone
+PM_YML_FILES:INTERNAL=/Users/loayyari/Documents/Github/MentraOS/mcu_client/nrf5340_ble_simulator/build/nrf5340_ble_simulator/modules/nrf/subsys/partition_manager/pm.yml.settings;/Users/loayyari/Documents/Github/MentraOS/mcu_client/nrf5340_ble_simulator/build/nrf5340_ble_simulator/modules/nrf/subsys/partition_manager/pm.yml.rpmsg_nrf53
 //ADVANCED property for variable: PROTOBUF_PROTOC_EXECUTABLE
 PROTOBUF_PROTOC_EXECUTABLE-ADVANCED:INTERNAL=1
 //List of SoC directories for SoC (nrf5340)

@@ -20,6 +20,10 @@
  * 
  * === GlassesToPhone (Outgoing) Messages ===
  * Tag 10: BatteryStatus            - Battery level notification (85% default, 0-100% range)
+ *                                    ⚠️  MOBILE APP TEAM: Please verify charging field parsing
+ *                                    Firmware sends: { level: 0-100, charging: true/false }
+ *                                    Current observation: Mobile app shows charging logo in all states
+ *                                    Action: Confirm mobile app handles BatteryStatus.charging field correctly
  * Tag ??: DeviceInfo               - Device information response (TODO - not implemented)
  * Tag ??: PongResponse             - Ping response (TODO - not implemented)
  * 
@@ -52,6 +56,9 @@ LOG_MODULE_REGISTER(protobuf_handler, LOG_LEVEL_DBG);
 
 // Global battery level state (0-100%)
 static uint32_t current_battery_level = 85;
+
+// Global battery charging state
+static bool current_charging_state = false;
 
 // Global brightness level state (0-100%)
 static uint32_t current_brightness_level = 50;
@@ -435,6 +442,28 @@ uint32_t protobuf_get_battery_level(void)
 	return current_battery_level;
 }
 
+bool protobuf_get_charging_state(void)
+{
+	return current_charging_state;
+}
+
+void protobuf_set_charging_state(bool charging)
+{
+	bool old_state = current_charging_state;
+	current_charging_state = charging;
+	LOG_INF("Charging state set to %s", current_charging_state ? "CHARGING" : "NOT_CHARGING");
+	
+	// Send proactive notification if charging state changed
+	if (old_state != current_charging_state) {
+		protobuf_send_battery_notification();
+	}
+}
+
+void protobuf_toggle_charging_state(void)
+{
+	protobuf_set_charging_state(!current_charging_state);
+}
+
 void protobuf_set_battery_level(uint32_t level)
 {
 	// Clamp battery level to valid range (0-100%)
@@ -472,6 +501,30 @@ void protobuf_decrease_battery_level(void)
 	protobuf_set_battery_level(new_level);
 }
 
+// ⚠️  MOBILE APP TEAM INQUIRY - BATTERY CHARGING STATUS PARSING
+// 
+// ISSUE: Mobile app appears to show charging logo in all battery states
+// FIRMWARE: Correctly sends both level and charging fields in BatteryStatus message
+// 
+// MESSAGE FORMAT: 
+//   BatteryStatus {
+//     uint32 level = 1;     // Battery percentage (0-100%)
+//     bool charging = 2;    // Charging state (true/false)
+//   }
+// 
+// TEST SCENARIO:
+//   1. Press Button 1/2 to change battery level
+//   2. Press Button 3 to toggle charging status  
+//   3. Observe mobile app battery indicator behavior
+// 
+// EXPECTED: Mobile app should show/hide charging icon based on charging field
+// OBSERVED: Mobile app shows charging icon regardless of charging field value
+// 
+// ACTION REQUIRED:
+//   - Verify mobile app parses BatteryStatus.charging field correctly
+//   - Confirm UI updates charging indicator based on charging boolean
+//   - Test with Button 3 toggle (charging: false ↔ true)
+//
 void protobuf_send_battery_notification(void)
 {
 	LOG_INF("=== BLE DATA TRANSMISSION ===");
@@ -486,7 +539,7 @@ void protobuf_send_battery_notification(void)
 	
 	// Fill battery status with current level
 	notification.payload.battery_status.level = current_battery_level;
-	notification.payload.battery_status.charging = false;
+	notification.payload.battery_status.charging = current_charging_state;
 	
 	LOG_INF("Pre-Encoding Message Analysis:");
 	LOG_INF("  - Message Type: GlassesToPhone::BatteryStatus");
@@ -584,7 +637,7 @@ int protobuf_generate_echo_response(const uint8_t *input_data, uint16_t input_le
 	
 	// Create a battery status response using current battery level
 	response.payload.battery_status.level = current_battery_level;
-	response.payload.battery_status.charging = false;
+	response.payload.battery_status.charging = current_charging_state;
 	
 	LOG_INF("� Pre-Encoding Message Analysis:");
 	LOG_INF("  - Message Type: GlassesToPhone::BatteryStatus");

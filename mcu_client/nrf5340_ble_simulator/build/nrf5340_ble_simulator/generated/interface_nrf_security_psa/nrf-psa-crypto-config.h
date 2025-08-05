@@ -21,7 +21,7 @@
 /* #undef PSA_WANT_ALG_CHACHA20_POLY1305 */
 #define PSA_WANT_ALG_CMAC                                  1
 /* #undef PSA_WANT_ALG_CTR */
-/* #undef PSA_WANT_ALG_CTR_DRBG */
+#define PSA_WANT_ALG_CTR_DRBG                              1
 /* #undef PSA_WANT_ALG_DETERMINISTIC_ECDSA */
 #define PSA_WANT_ALG_ECB_NO_PADDING                        1
 #define PSA_WANT_ALG_ECDH                                  1
@@ -34,7 +34,7 @@
 /* #undef PSA_WANT_ALG_HKDF_EXPAND */
 /* #undef PSA_WANT_ALG_HKDF_EXTRACT */
 #define PSA_WANT_ALG_HMAC                                  1
-#define PSA_WANT_ALG_HMAC_DRBG                             1
+/* #undef PSA_WANT_ALG_HMAC_DRBG */
 /* #undef PSA_WANT_ALG_JPAKE */
 /* #undef PSA_WANT_ALG_MD5 */
 /* #undef PSA_WANT_ALG_PBKDF2_AES_CMAC_PRF_128 */
@@ -51,7 +51,7 @@
 /* #undef PSA_WANT_ALG_SHA3_384 */
 /* #undef PSA_WANT_ALG_SHA3_512 */
 /* #undef PSA_WANT_ALG_SHA_1 */
-/* #undef PSA_WANT_ALG_SHA_224 */
+#define PSA_WANT_ALG_SHA_224                               1
 #define PSA_WANT_ALG_SHA_256                               1
 /* #undef PSA_WANT_ALG_SHA_384 */
 /* #undef PSA_WANT_ALG_SHA_512 */

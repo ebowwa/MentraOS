@@ -2,6 +2,38 @@
 
 All notable changes to the nRF5340 DK BLE Glasses Protobuf Simulator will be documented in this file.
 
+## [1.6.0] - 2025-08-05
+
+### Added
+- **Battery charging status toggle with Button 3** 
+  - DK_BTN3_MSK button mapping for charging state control
+  - protobuf_toggle_charging_state() function to switch between charging/not charging
+  - protobuf_get_charging_state() and protobuf_set_charging_state() for state management
+  - Automatic BLE notification transmission when charging state changes
+  - Professional logging with 🔋⚡ emoji for visual identification
+  - Integration with existing battery notification system (BatteryStatus protobuf message)
+- **Dynamic charging state in protobuf messages**
+  - Replaced hard-coded charging=false with dynamic current_charging_state variable
+  - Updated all BatteryStatus message responses to reflect actual charging state
+  - Enhanced battery notification logging with charging status details
+
+### Enhanced
+- **Button control system expansion**
+  - Button 1: Increase battery level (+5%)
+  - Button 2: Decrease battery level (-5%) 
+  - Button 3: Toggle charging status (charging ↔ not charging)
+- **Comprehensive battery state management**
+  - Global charging state persistence across all battery operations
+  - Proactive notifications on both level and charging state changes
+  - Professional directional logging for all battery-related operations
+
+### Notes for Mobile App Team
+- **Battery Charging Status Implementation**: Need to verify mobile app parsing of `BatteryStatus.charging` field
+  - Current firmware correctly sends charging state in protobuf messages (Tag 10)
+  - Mobile app may only show charging logo regardless of actual charging state
+  - **Action Required**: Please confirm mobile app implementation handles both `level` and `charging` fields
+  - **Test Message**: `BatteryStatus { level: 85, charging: true/false }` via Button 3 toggle
+
 ## [1.5.0] - 2025-08-05
 
 ### Added

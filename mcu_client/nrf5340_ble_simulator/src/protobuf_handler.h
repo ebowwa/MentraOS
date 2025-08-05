@@ -114,6 +114,25 @@ void protobuf_decrease_battery_level(void);
 void protobuf_send_battery_notification(void);
 
 /**
+ * @brief Get current battery charging state
+ *
+ * @return true if charging, false if not charging
+ */
+bool protobuf_get_charging_state(void);
+
+/**
+ * @brief Set battery charging state
+ *
+ * @param charging true for charging, false for not charging
+ */
+void protobuf_set_charging_state(bool charging);
+
+/**
+ * @brief Toggle battery charging state (charging <-> not charging)
+ */
+void protobuf_toggle_charging_state(void);
+
+/**
  * @brief Get current brightness level
  *
  * @return Current brightness level (0-100%)

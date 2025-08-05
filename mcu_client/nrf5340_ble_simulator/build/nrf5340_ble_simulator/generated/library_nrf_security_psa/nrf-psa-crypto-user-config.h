@@ -16,8 +16,8 @@
 /*
  * nrf_cc3xx_platform driver configurations
  */
-/* #undef PSA_NEED_CC3XX_CTR_DRBG_DRIVER */
-#define PSA_NEED_CC3XX_HMAC_DRBG_DRIVER                    1
+#define PSA_NEED_CC3XX_CTR_DRBG_DRIVER                     1
+/* #undef PSA_NEED_CC3XX_HMAC_DRBG_DRIVER */
 
 /*
  * nrf_cc3xx driver configurations
@@ -187,7 +187,7 @@
 /* #undef PSA_NEED_OBERON_SHAKE */
 /* #undef PSA_NEED_OBERON_SHAKE256_512 */
 /* #undef PSA_NEED_OBERON_SHA_1 */
-/* #undef PSA_NEED_OBERON_SHA_224 */
+#define PSA_NEED_OBERON_SHA_224                                                1
 #define PSA_NEED_OBERON_SHA_256                                                1
 /* #undef PSA_NEED_OBERON_SHA_384 */
 /* #undef PSA_NEED_OBERON_SHA_512 */
