@@ -1,0 +1,31 @@
+# Local development scripts - don't push to GitHub
+quick_*.sh
+
+# Build artifacts
+build/
+*.hex
+*.bin
+*.elf
+
+# IDE and editor files
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+*~
+
+# macOS
+.DS_Store
+
+# Temporary files
+*.tmp
+*.bak
+*.log
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Local configuration
+local_config.h
