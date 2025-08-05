@@ -45,6 +45,25 @@ All notable changes to the nRF5340 DK BLE Glasses Protobuf Simulator will be doc
 - **Protocol compliance validation** for AutoBrightnessConfig messages
 - **Memory efficient implementation** with minimal RAM overhead
 
+### Memory Usage & Performance
+- **Firmware Size**: 220,620 bytes (21.37% of 1008KB available FLASH)
+  - .text (code): 171,708 bytes (77.8% of used FLASH)
+  - .rodata (constants): 44,252 bytes (20.1% of used FLASH)
+  - .data (initialized): 3,055 bytes (1.4% of used FLASH)
+- **RAM Usage**: 38,478 bytes (8.92% of 448KB available RAM)
+- **Application Code Breakdown**:
+  - protobuf_handler.c: 19,767 bytes (largest application component)
+  - main.c: 5,058 bytes
+  - mentraos_ble.pb.c: 2,492 bytes (generated protobuf definitions)
+  - mentra_ble_service.c: 614 bytes
+- **Major System Components**:
+  - Bluetooth Host Stack: ~70KB (libsubsys__bluetooth__host.a: 3.2MB archived)
+  - Security & Crypto: ~40KB (PSA crypto, mbedTLS, Oberon drivers)
+  - Zephyr RTOS Core: ~50KB (kernel, drivers, logging)
+  - Nordic HAL: ~30KB (nrfx peripheral drivers)
+- **Remaining Capacity**: 792KB FLASH (78.6%) available for future features
+- **Memory Efficiency**: Excellent headroom for display drivers, light sensors, OTA updates
+
 ### Bug Fixes
 - **Corrected battery notification direction** in UART logging tags
 - **Fixed directional message flow indicators** for accurate debugging
