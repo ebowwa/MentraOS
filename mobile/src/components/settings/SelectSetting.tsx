@@ -32,6 +32,7 @@ type SelectSettingProps = {
   onValueChange: (value: string) => void
   description?: string
   layout?: "horizontal" | "vertical"
+  defaultValue?: string
 }
 
 const SelectSetting: React.FC<SelectSettingProps> = ({
@@ -41,9 +42,21 @@ const SelectSetting: React.FC<SelectSettingProps> = ({
   onValueChange,
   description,
   layout = "horizontal",
+  defaultValue,
 }) => {
   const {theme, themed} = useAppTheme()
   const [modalVisible, setModalVisible] = useState(false)
+
+  // If the current value doesn't match any option, use the defaultValue
+  React.useEffect(() => {
+    if (options.length > 0 && !options.find(option => option.value === value)) {
+      // Value doesn't match any option
+      if (defaultValue !== undefined && options.find(option => option.value === defaultValue)) {
+        // Default value exists and is valid, use it
+        onValueChange(defaultValue)
+      }
+    }
+  }, [value, options, defaultValue, onValueChange])
 
   const selectedLabel = options.find(option => option.value === value)?.label || "Select..."
 
