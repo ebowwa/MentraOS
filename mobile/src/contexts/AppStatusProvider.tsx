@@ -53,6 +53,18 @@ export interface AppInterface {
   permissions: AppPermission[]
   is_running?: boolean
   is_foreground?: boolean
+  compatibility?: {
+    isCompatible: boolean
+    missingRequired: Array<{
+      type: string
+      description?: string
+    }>
+    missingOptional: Array<{
+      type: string
+      description?: string
+    }>
+    message: string
+  }
 }
 
 interface AppStatusContextType {

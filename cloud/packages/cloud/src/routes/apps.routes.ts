@@ -343,7 +343,7 @@ async function getAllApps(req: Request, res: Response) {
 
     if (apiKey && packageName && userId) {
       // Already authenticated via middleware
-      let apps = await appService.getAllApps(userId);
+      const apps = await appService.getAllApps(userId);
       const userSession = UserSession.getById(userId);
       if (!userSession) {
         return res.status(401).json({
@@ -352,18 +352,46 @@ async function getAllApps(req: Request, res: Response) {
         });
       }
 
-      // Filter apps by hardware compatibility if user has connected glasses
-      if (userSession.capabilities) {
-        apps = HardwareCompatibilityService.filterCompatibleApps(
-          apps,
-          userSession.capabilities,
-          true, // Include apps with missing optional hardware
-        );
-      }
+      // Add hardware compatibility information to each app
+      const appsWithCompatibility = apps.map((app) => {
+        let compatibilityInfo = null;
+        if (userSession.capabilities) {
+          const compatibilityResult =
+            HardwareCompatibilityService.checkCompatibility(
+              app,
+              userSession.capabilities,
+            );
+
+          compatibilityInfo = {
+            isCompatible: compatibilityResult.isCompatible,
+            missingRequired: compatibilityResult.missingRequired.map((req) => ({
+              type: req.type,
+              description: req.description,
+            })),
+            missingOptional: compatibilityResult.missingOptional.map((req) => ({
+              type: req.type,
+              description: req.description,
+            })),
+            message:
+              HardwareCompatibilityService.getCompatibilityMessage(
+                compatibilityResult,
+              ),
+          };
+        }
+
+        return {
+          ...((app as any).toObject?.() || app),
+          compatibility: compatibilityInfo,
+        };
+      });
 
       // Get user data for last active timestamps
       const user = await User.findByEmail(userId);
-      const enhancedApps = enhanceAppsWithSessionState(apps, userSession, user);
+      const enhancedApps = enhanceAppsWithSessionState(
+        appsWithCompatibility,
+        userSession,
+        user,
+      );
       return res.json({
         success: true,
         data: enhancedApps,
@@ -392,22 +420,50 @@ async function getAllApps(req: Request, res: Response) {
       });
     }
 
-    let apps = await appService.getAllApps(tokenUserId);
+    const apps = await appService.getAllApps(tokenUserId);
     // const userSessions = sessionService.getSessionsForUser(tokenUserId);
     const userSession: UserSession = (req as any).userSession;
 
-    // Filter apps by hardware compatibility if user has connected glasses
-    if (userSession && userSession.capabilities) {
-      apps = HardwareCompatibilityService.filterCompatibleApps(
-        apps,
-        userSession.capabilities,
-        true, // Include apps with missing optional hardware
-      );
-    }
+    // Add hardware compatibility information to each app
+    const appsWithCompatibility = apps.map((app) => {
+      let compatibilityInfo = null;
+      if (userSession && userSession.capabilities) {
+        const compatibilityResult =
+          HardwareCompatibilityService.checkCompatibility(
+            app,
+            userSession.capabilities,
+          );
+
+        compatibilityInfo = {
+          isCompatible: compatibilityResult.isCompatible,
+          missingRequired: compatibilityResult.missingRequired.map((req) => ({
+            type: req.type,
+            description: req.description,
+          })),
+          missingOptional: compatibilityResult.missingOptional.map((req) => ({
+            type: req.type,
+            description: req.description,
+          })),
+          message:
+            HardwareCompatibilityService.getCompatibilityMessage(
+              compatibilityResult,
+            ),
+        };
+      }
+
+      return {
+        ...((app as any).toObject?.() || app),
+        compatibility: compatibilityInfo,
+      };
+    });
 
     // Get user data for last active timestamps
     const user = await User.findByEmail(tokenUserId);
-    const enhancedApps = enhanceAppsWithSessionState(apps, userSession, user);
+    const enhancedApps = enhanceAppsWithSessionState(
+      appsWithCompatibility,
+      userSession,
+      user,
+    );
     res.json({
       success: true,
       data: enhancedApps,
@@ -1258,9 +1314,37 @@ async function getInstalledApps(req: Request, res: Response) {
       (user.installedApps || []).map(async (installedApp) => {
         const appDetails = await appService.getApp(installedApp.packageName);
         if (!appDetails) return null;
+
+        // Check hardware compatibility for each app
+        let compatibilityInfo = null;
+        if (request.userSession && request.userSession.capabilities) {
+          const compatibilityResult =
+            HardwareCompatibilityService.checkCompatibility(
+              appDetails,
+              request.userSession.capabilities,
+            );
+
+          compatibilityInfo = {
+            isCompatible: compatibilityResult.isCompatible,
+            missingRequired: compatibilityResult.missingRequired.map((req) => ({
+              type: req.type,
+              description: req.description,
+            })),
+            missingOptional: compatibilityResult.missingOptional.map((req) => ({
+              type: req.type,
+              description: req.description,
+            })),
+            message:
+              HardwareCompatibilityService.getCompatibilityMessage(
+                compatibilityResult,
+              ),
+          };
+        }
+
         return {
           ...appDetails,
           installedDate: installedApp.installedDate,
+          compatibility: compatibilityInfo,
         };
       }),
     );

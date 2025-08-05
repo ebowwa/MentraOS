@@ -488,9 +488,13 @@ export default function InactiveAppList({
     push("/applet/settings", {packageName: app.packageName, appName: app.name})
   }
 
-  // Filter out duplicate apps and running apps
+  // Filter out duplicate apps, running apps, and incompatible apps
   let availableApps = appStatus.filter(app => {
     if (app.is_running) {
+      return false
+    }
+    // Filter out incompatible apps (they will be shown in a separate section)
+    if (app.compatibility && !app.compatibility.isCompatible) {
       return false
     }
     // Check if this is the first occurrence of this package name

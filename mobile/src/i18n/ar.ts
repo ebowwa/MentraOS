@@ -43,6 +43,13 @@ const ar: Translations = {
     tapToLogIn: "انقر لتسجيل الدخول!",
     hint: "(: تلميح: يمكنك استخدام اي عنوان بريد الكتروني وكلمة السر المفضلة لديك",
   },
+  home: {
+    hardwareIncompatible: "الأجهزة غير متوافقة",
+    hardwareIncompatibleMessage: "{{app}} يتطلب أجهزة غير متوفرة في النظارات المتصلة: {{missing}}",
+    incompatibleApps: "التطبيقات غير المتوافقة",
+    incompatibleAppsDescription: "تتطلب هذه التطبيقات ميزات أجهزة غير متوفرة في النظارات المتصلة",
+    incompatible: "غير متوافق",
+  },
   demoNavigator: {
     componentsTab: "عناصر",
     debugTab: "تصحيح",

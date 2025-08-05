@@ -45,6 +45,15 @@ const es: Translations = {
     tapToLogIn: "¡Presiona acá para iniciar sesión!",
     hint: "Consejo: puedes usar cualquier email y tu contraseña preferida :)",
   },
+  home: {
+    hardwareIncompatible: "Hardware Incompatible",
+    hardwareIncompatibleMessage:
+      "{{app}} requiere hardware que no está disponible en tus lentes conectados: {{missing}}",
+    incompatibleApps: "Apps Incompatibles",
+    incompatibleAppsDescription:
+      "Estas apps requieren características de hardware no disponibles en tus lentes conectados",
+    incompatible: "Incompatible",
+  },
   demoNavigator: {
     componentsTab: "Componentes",
     debugTab: "Debug",

@@ -4,6 +4,7 @@ import {useFocusEffect} from "@react-navigation/native"
 import {Header, Screen} from "@/components/ignite"
 import AppsActiveList from "@/components/misc/AppsActiveList"
 import AppsInactiveList from "@/components/misc/AppsInactiveList"
+import AppsIncompatibleList from "@/components/misc/AppsIncompatibleList"
 import {useStatus} from "@/contexts/AugmentOSStatusProvider"
 import {useAppStatus} from "@/contexts/AppStatusProvider"
 import BackendServerComms from "@/backend_comms/BackendServerComms"
@@ -238,6 +239,8 @@ export default function Homepage() {
         <AppsActiveList />
         <Spacer height={spacing.xl} />
         <AppsInactiveList key={`apps-list-${appStatus.length}`} liveCaptionsRef={liveCaptionsRef} />
+        <Spacer height={spacing.xl} />
+        <AppsIncompatibleList />
       </ScrollView>
 
       <OnboardingSpotlight

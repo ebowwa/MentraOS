@@ -44,6 +44,15 @@ const hi: Translations = {
     tapToLogIn: "लॉग इन करने के लिए टैप करें!",
     hint: "संकेत: आप किसी भी ईमेल पते और अपने पसंदीदा पासवर्ड का उपयोग कर सकते हैं :)",
   },
+  home: {
+    hardwareIncompatible: "हार्डवेयर असंगत",
+    hardwareIncompatibleMessage:
+      "{{app}} को ऐसे हार्डवेयर की आवश्यकता है जो आपके कनेक्टेड चश्मे में उपलब्ध नहीं है: {{missing}}",
+    incompatibleApps: "असंगत ऐप्स",
+    incompatibleAppsDescription:
+      "इन ऐप्स को ऐसी हार्डवेयर सुविधाओं की आवश्यकता है जो आपके कनेक्टेड चश्मे में उपलब्ध नहीं हैं",
+    incompatible: "असंगत",
+  },
   demoNavigator: {
     componentsTab: "कंपोनेंट्स",
     debugTab: "डीबग",

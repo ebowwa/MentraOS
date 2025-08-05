@@ -45,6 +45,15 @@ const fr: Translations = {
     tapToLogIn: "Appuyez pour vous connecter!",
     hint: "Astuce : vous pouvez utiliser n'importe quelle adresse e-mail et votre mot de passe préféré :)",
   },
+  home: {
+    hardwareIncompatible: "Matériel Incompatible",
+    hardwareIncompatibleMessage:
+      "{{app}} nécessite du matériel qui n'est pas disponible sur vos lunettes connectées : {{missing}}",
+    incompatibleApps: "Applications Incompatibles",
+    incompatibleAppsDescription:
+      "Ces applications nécessitent des fonctionnalités matérielles non disponibles sur vos lunettes connectées",
+    incompatible: "Incompatible",
+  },
   demoNavigator: {
     componentsTab: "Composants",
     debugTab: "Débogage",

@@ -44,6 +44,13 @@ const ja: Translations = {
     tapToLogIn: "タップしてログインしよう！",
     hint: "ヒント: お好みのメールアドレスとパスワードを使ってください :)",
   },
+  home: {
+    hardwareIncompatible: "ハードウェア非対応",
+    hardwareIncompatibleMessage: "{{app}}は接続されたグラスで利用できないハードウェアが必要です: {{missing}}",
+    incompatibleApps: "非対応アプリ",
+    incompatibleAppsDescription: "これらのアプリは接続されたグラスで利用できないハードウェア機能が必要です",
+    incompatible: "非対応",
+  },
   demoNavigator: {
     componentsTab: "コンポーネント",
     debugTab: "デバッグ",
