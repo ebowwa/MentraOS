@@ -26,6 +26,8 @@ import com.augmentos.augmentoslib.events.DoubleTextWallViewRequestEvent;
 import com.augmentos.augmentoslib.events.HomeScreenEvent;
 import com.augmentos.augmentoslib.events.SendBitmapViewRequestEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.SetFontSizeEvent;
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.DisplayTextEvent;
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.DisplayImageEvent;
 import com.augmentos.augmentoslib.events.TextWallViewRequestEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.smartglassescommunicators.AudioWearableSGC;
 import com.augmentos.augmentos_core.smarterglassesmanager.smartglassescommunicators.EvenRealitiesG1SGC;
@@ -68,10 +70,10 @@ public class SmartGlassesRepresentative implements PhoneMicListener {
 
     public SmartGlassesDevice smartGlassesDevice;
     public SmartGlassesCommunicator smartGlassesCommunicator;
-    
+
     // Enhanced microphone management
     private PhoneMicrophoneManager phoneMicManager;
-    
+
     //timing settings
     long referenceCardDelayTime = 10000;
 
@@ -79,18 +81,18 @@ public class SmartGlassesRepresentative implements PhoneMicListener {
 
     //consolidated handler for UI events
     private Handler handler;
-    
+
     // Direct callback for audio processing (replaces EventBus)
     private AudioProcessingCallback audioProcessingCallback;
 
-    public SmartGlassesRepresentative(Context context, SmartGlassesDevice smartGlassesDevice, LifecycleOwner lifecycleOwner, PublishSubject<JSONObject> dataObservable, AudioProcessingCallback audioProcessingCallback){
+    public SmartGlassesRepresentative(Context context, SmartGlassesDevice smartGlassesDevice, LifecycleOwner lifecycleOwner, PublishSubject<JSONObject> dataObservable, AudioProcessingCallback audioProcessingCallback) {
         this.context = context;
         this.smartGlassesDevice = smartGlassesDevice;
         this.lifecycleOwner = lifecycleOwner;
 
         //receive/send data
         this.dataObservable = dataObservable;
-        
+
         // Store the audio processing callback
         this.audioProcessingCallback = audioProcessingCallback;
 
@@ -106,7 +108,7 @@ public class SmartGlassesRepresentative implements PhoneMicListener {
         EventBus.getDefault().register(this);
     }
 
-    public void findCompatibleDeviceNames(){
+    public void findCompatibleDeviceNames() {
         // Always create a fresh communicator for findCompatibleDeviceNames
         // Previous implementation had smartGlassesCommunicator.destroy() nulling out fields
         // but not updating our reference, leading to NPEs on subsequent calls
@@ -114,7 +116,7 @@ public class SmartGlassesRepresentative implements PhoneMicListener {
             Log.d(TAG, "Destroying existing communicator before creating new one");
             smartGlassesCommunicator.destroy();
         }
-        
+
         // Always create a fresh communicator for findCompatibleDeviceNames
         smartGlassesCommunicator = createCommunicator();
 
@@ -126,14 +128,14 @@ public class SmartGlassesRepresentative implements PhoneMicListener {
         }
     }
 
-    public void connectToSmartGlasses(SmartGlassesDevice device){
+    public void connectToSmartGlasses(SmartGlassesDevice device) {
         // Similar to findCompatibleDeviceNames, always create a fresh communicator
         // This ensures we don't reuse a communicator with null fields after destroy()
         if (smartGlassesCommunicator != null) {
             Log.d(TAG, "Destroying existing communicator before connecting to glasses");
             smartGlassesCommunicator.destroy();
         }
-        
+
         // Create a fresh communicator for connecting
         smartGlassesCommunicator = createCommunicator();
 
@@ -166,20 +168,20 @@ public class SmartGlassesRepresentative implements PhoneMicListener {
      */
     private SmartGlassesCommunicator createCommunicator() {
         SmartGlassesCommunicator communicator;
-        
+
         switch (smartGlassesDevice.getGlassesOs()) {
             case AUDIO_WEARABLE_GLASSES:
                 communicator = new AudioWearableSGC(context, smartGlassesDevice);
                 break;
-                
+
             case VIRTUAL_WEARABLE:
                 communicator = new VirtualSGC(context, smartGlassesDevice);
                 break;
-                
+
             case ULTRALITE_MCU_OS_GLASSES:
                 communicator = new UltraliteSGC(context, smartGlassesDevice, lifecycleOwner);
                 break;
-                
+
             case EVEN_REALITIES_G1_MCU_OS_GLASSES:
                 communicator = new EvenRealitiesG1SGC(context, smartGlassesDevice);
                 break;
@@ -187,7 +189,7 @@ public class SmartGlassesRepresentative implements PhoneMicListener {
             case MENTRA_NEX_GLASSES:
                 communicator = new MentraNexSGC(context, smartGlassesDevice);
                 break;
-                
+
             case SELF_OS_GLASSES:
                 communicator = new SelfSGC(context, smartGlassesDevice);
                 break;
@@ -196,35 +198,35 @@ public class SmartGlassesRepresentative implements PhoneMicListener {
             case MENTRA_LIVE_OS:
                 communicator = new MentraLiveSGC(context, smartGlassesDevice, dataObservable);
                 break;
-                
+
             default:
                 return null;  // or throw an exception
         }
-        
+
         // BATTERY OPTIMIZATION: Register audio processing callback with the base communicator
         if (communicator != null && audioProcessingCallback != null) {
             // Standard registration for all communicators via base class
             communicator.registerAudioProcessingCallback(audioProcessingCallback);
-            Log.d(TAG, "BATTERY OPTIMIZATION: Registered audio processing callback for " + 
-                  smartGlassesDevice.getGlassesOs().name());
-                
+            Log.d(TAG, "BATTERY OPTIMIZATION: Registered audio processing callback for " +
+                    smartGlassesDevice.getGlassesOs().name());
+
             // Special case for AndroidSGC which has additional AudioSystem registration
             if (communicator instanceof AndroidSGC) {
                 ((AndroidSGC) communicator).registerSpeechRecSystem(audioProcessingCallback);
                 Log.d(TAG, "BATTERY OPTIMIZATION: Registered additional AudioSystem callback for AndroidSGC");
             }
-            
+
             // Special case for VirtualSGC to ensure phone microphone is used
             // if (communicator instanceof VirtualSGC) {
             //     Log.d(TAG, "Enabling phone microphone for simulated glasses - this is required");
             //     // Force use of phone's microphone with VirtualSGC/Simulated Glasses
             //     SmartGlassesManager.setForceCoreOnboardMic(context, true);
-                
+
             //     // Add extra debug logging to help diagnose audio issues
             //     Log.d(TAG, "✅ Phone mic will be used for Simulated Glasses");
             // }
         }
-        
+
         return communicator;
     }
 
@@ -236,7 +238,6 @@ public class SmartGlassesRepresentative implements PhoneMicListener {
     //    return comm != null && comm. != null
     //            && comm.getDevice().equals(device);
     //}
-
     public void updateGlassesBrightness(int brightness) {
         if (smartGlassesCommunicator != null) {
             smartGlassesCommunicator.updateGlassesBrightness(brightness);
@@ -283,7 +284,7 @@ public class SmartGlassesRepresentative implements PhoneMicListener {
         if (phoneMicManager != null) {
             // Use the phone mic manager to switch to normal mode
             Log.d(TAG, "Switching to normal phone mic mode via PhoneMicrophoneManager");
-            
+
             // Check if phone mic is explicitly forced by the user
             if ("phone".equals(SmartGlassesManager.getPreferredMic(context))) {
                 // If user explicitly wants phone mic, switch to normal (non-SCO) mode
@@ -332,7 +333,7 @@ public class SmartGlassesRepresentative implements PhoneMicListener {
         // Method kept for API compatibility but bypass functionality removed
         Log.d(TAG, "Audio encoding bypass setting ignored - feature disabled");
     }
-    
+
     //data from the local microphone, convert to LC3, send
     private long lc3EncoderPointer = 0;
     private final ByteArrayOutputStream remainderBuffer = new ByteArrayOutputStream();
@@ -373,7 +374,7 @@ public class SmartGlassesRepresentative implements PhoneMicListener {
         }
     }
 
-    public void destroy(){
+    public void destroy() {
         Log.d(TAG, "SG rep destroying");
 
         // BATTERY OPTIMIZATION: Safe EventBus unregistration
@@ -394,7 +395,7 @@ public class SmartGlassesRepresentative implements PhoneMicListener {
             }
         }
 
-        if (smartGlassesCommunicator != null){
+        if (smartGlassesCommunicator != null) {
             smartGlassesCommunicator.destroy();
             smartGlassesCommunicator = null;
         }
@@ -408,13 +409,13 @@ public class SmartGlassesRepresentative implements PhoneMicListener {
             handler.removeCallbacksAndMessages(null);
             handler = null;
         }
-        
+
         // BATTERY OPTIMIZATION: Clear references to prevent memory leaks
         context = null;
         lifecycleOwner = null;
         audioProcessingCallback = null;
         dataObservable = null;
-        
+
         // Clear the callback reference
         audioProcessingCallback = null;
 
@@ -423,31 +424,31 @@ public class SmartGlassesRepresentative implements PhoneMicListener {
 
     //are our smart glasses currently connected?
     public SmartGlassesConnectionState getConnectionState() {
-        if (smartGlassesCommunicator == null){
+        if (smartGlassesCommunicator == null) {
             return SmartGlassesConnectionState.DISCONNECTED;
         } else {
             return smartGlassesCommunicator.getConnectionState();
         }
     }
-    
+
     //get the PhoneMicrophoneManager for preference changes
     public PhoneMicrophoneManager getPhoneMicrophoneManager() {
         return phoneMicManager;
     }
 
-    public void showReferenceCard(String title, String body){
+    public void showReferenceCard(String title, String body) {
         if (smartGlassesCommunicator != null) {
             smartGlassesCommunicator.displayReferenceCardSimple(title, body);
         }
     }
 
-    public void showRowsCard(String[] rowStrings){
+    public void showRowsCard(String[] rowStrings) {
         if (smartGlassesCommunicator != null) {
             smartGlassesCommunicator.displayRowsCard(rowStrings);
         }
     }
 
-    public void startScrollingTextViewModeTest(){
+    public void startScrollingTextViewModeTest() {
         //pass for now
         if (smartGlassesCommunicator != null) {
             smartGlassesCommunicator.startScrollingTextViewMode("ScrollingTextView");
@@ -461,7 +462,7 @@ public class SmartGlassesRepresentative implements PhoneMicListener {
         }
     }
 
-    private void homeUiAfterDelay(long delayTime){
+    private void homeUiAfterDelay(long delayTime) {
         getHandler().postDelayed(this::homeScreen, delayTime);
     }
 
@@ -472,28 +473,28 @@ public class SmartGlassesRepresentative implements PhoneMicListener {
     }
 
     // Keep only the subscribe methods for static methods that still use EventBus or from other components
-    
+
     @Subscribe
     public void onHomeScreenEvent(HomeScreenEvent receivedEvent) {
         homeScreen();
     }
 
     @Subscribe
-    public void onTextWallViewEvent(TextWallViewRequestEvent receivedEvent){
+    public void onTextWallViewEvent(TextWallViewRequestEvent receivedEvent) {
         if (smartGlassesCommunicator != null) {
             smartGlassesCommunicator.displayTextWall(receivedEvent.text);
         }
     }
 
     @Subscribe
-    public void onDoubleTextWallViewEvent(DoubleTextWallViewRequestEvent receivedEvent){
+    public void onDoubleTextWallViewEvent(DoubleTextWallViewRequestEvent receivedEvent) {
         if (smartGlassesCommunicator != null) {
             smartGlassesCommunicator.displayDoubleTextWall(receivedEvent.textTop, receivedEvent.textBottom);
         }
     }
 
     @Subscribe
-    public void onReferenceCardSimpleViewEvent(ReferenceCardSimpleViewRequestEvent receivedEvent){
+    public void onReferenceCardSimpleViewEvent(ReferenceCardSimpleViewRequestEvent receivedEvent) {
         Log.d(TAG, "SHOWING REFERENCE CARD");
         if (smartGlassesCommunicator != null) {
             smartGlassesCommunicator.displayReferenceCardSimple(receivedEvent.title, receivedEvent.body);
@@ -501,20 +502,20 @@ public class SmartGlassesRepresentative implements PhoneMicListener {
     }
 
     @Subscribe
-    public void onRowsCardViewEvent(RowsCardViewRequestEvent receivedEvent){
+    public void onRowsCardViewEvent(RowsCardViewRequestEvent receivedEvent) {
         if (smartGlassesCommunicator != null) {
             smartGlassesCommunicator.displayRowsCard(receivedEvent.rowStrings);
         }
     }
-    
+
     @Subscribe
-    public void onDisplayCustomContentRequestEvent(DisplayCustomContentRequestEvent receivedEvent){
+    public void onDisplayCustomContentRequestEvent(DisplayCustomContentRequestEvent receivedEvent) {
         Log.d(TAG, "Got display custom content event: " + receivedEvent.json);
         if (smartGlassesCommunicator != null) {
             smartGlassesCommunicator.displayCustomContent(receivedEvent.json);
         }
     }
-    
+
     @Subscribe
     public void onIntermediateScrollingTextEvent(IntermediateScrollingTextRequestEvent receivedEvent) {
         if (smartGlassesCommunicator != null) {
@@ -530,12 +531,30 @@ public class SmartGlassesRepresentative implements PhoneMicListener {
         }
     }
 
-    public void changeMicrophoneState(boolean isMicrophoneEnabled) {}
-    
+
+    @Subscribe
+    public void onDisplayTextNotified(DisplayTextEvent displayTextEvent) {
+        Log.d(TAG, "onDisplayTextNotified called");
+        if (smartGlassesCommunicator != null) {
+            smartGlassesCommunicator.onDisplayTextNotified(displayTextEvent);
+        }
+    }
+
+    @Subscribe
+    public void onDisplayImageNotified(DisplayImageEvent displayImageEvent) {
+        Log.d(TAG, "onDisplayImageNotified called");
+        if (smartGlassesCommunicator != null) {
+            smartGlassesCommunicator.onDisplayImageNotified(displayImageEvent);
+        }
+    }
+
+    public void changeMicrophoneState(boolean isMicrophoneEnabled) {
+    }
+
     /**
      * Sends WiFi credentials to the smart glasses
-     * 
-     * @param ssid The WiFi network name
+     *
+     * @param ssid     The WiFi network name
      * @param password The WiFi password
      */
     public void sendWifiCredentials(String ssid, String password) {
@@ -543,7 +562,7 @@ public class SmartGlassesRepresentative implements PhoneMicListener {
             smartGlassesCommunicator.sendWifiCredentials(ssid, password);
         }
     }
-    
+
     /**
      * Implementation of PhoneMicListener interface
      * Called when a permission error occurs in PhoneMicrophoneManager
@@ -557,12 +576,12 @@ public class SmartGlassesRepresentative implements PhoneMicListener {
                 phoneMicManager.destroy();
                 phoneMicManager = null;
             }
-            
+
             // Notify via EventBus about the permission issue
             EventBus.getDefault().post(new SmartGlassesConnectionEvent(SmartGlassesConnectionState.DISCONNECTED));
         } catch (Exception e) {
             Log.e(TAG, "Error handling permission error", e);
         }
     }
-    
+
 }

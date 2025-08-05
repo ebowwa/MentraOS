@@ -1,18 +1,18 @@
-import {NativeEventEmitter, NativeModules, Platform} from "react-native"
-import {EventEmitter} from "events"
+import { NativeEventEmitter, NativeModules, Platform } from "react-native"
+import { EventEmitter } from "events"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
-import {INTENSE_LOGGING} from "@/consts"
+import { INTENSE_LOGGING } from "@/consts"
 import {
   isAugmentOsCoreInstalled,
   isLocationServicesEnabled as checkLocationServices,
   startExternalService,
 } from "./CoreServiceStarter"
-import {check, PERMISSIONS, RESULTS} from "react-native-permissions"
+import { check, PERMISSIONS, RESULTS } from "react-native-permissions"
 import BleManager from "react-native-ble-manager"
 import BackendServerComms from "@/backend_comms/BackendServerComms"
-import AudioPlayService, {AudioPlayResponse} from "@/services/AudioPlayService"
+import AudioPlayService, { AudioPlayResponse } from "@/services/AudioPlayService"
 
-const {CoreCommsService, AOSModule} = NativeModules
+const { CoreCommsService, AOSModule } = NativeModules
 const eventEmitter = new NativeEventEmitter(CoreCommsService)
 
 export class CoreCommunicator extends EventEmitter {
@@ -26,7 +26,7 @@ export class CoreCommunicator extends EventEmitter {
   async isBluetoothEnabled(): Promise<boolean> {
     try {
       console.log("Checking Bluetooth state...")
-      await BleManager.start({showAlert: false})
+      await BleManager.start({ showAlert: false })
 
       // Poll for Bluetooth state every 50ms, up to 10 times (max 500ms)
       for (let attempt = 0; attempt < 10; attempt++) {
@@ -106,7 +106,7 @@ export class CoreCommunicator extends EventEmitter {
 
     // iOS doesn't require location permission for BLE scanning since iOS 13
     if (Platform.OS === "ios") {
-      return {isReady: true}
+      return { isReady: true }
     }
 
     // Only check location on Android
@@ -139,7 +139,7 @@ export class CoreCommunicator extends EventEmitter {
     }
 
     console.log("All requirements met")
-    return {isReady: true}
+    return { isReady: true }
   }
 
   // Private constructor to enforce singleton pattern
@@ -164,7 +164,7 @@ export class CoreCommunicator extends EventEmitter {
     if (Platform.OS === "ios") {
       setTimeout(async () => {
         // will fail silently if we don't have bt permissions (which is the intended behavior)
-        AOSModule.sendCommand(JSON.stringify({command: "connect_wearable"}))
+        AOSModule.sendCommand(JSON.stringify({ command: "connect_wearable" }))
       }, 3000)
     }
 
@@ -420,12 +420,12 @@ export class CoreCommunicator extends EventEmitter {
   /* Command methods to interact with Core */
 
   async sendRequestStatus() {
-    await this.sendData({command: "request_status"})
+    await this.sendData({ command: "request_status" })
     return this.validateResponseFromCore()
   }
 
   async sendHeartbeat() {
-    await this.sendData({command: "ping"})
+    await this.sendData({ command: "ping" })
     return this.validateResponseFromCore()
   }
 
@@ -476,11 +476,11 @@ export class CoreCommunicator extends EventEmitter {
   }
 
   async sendDisconnectWearable() {
-    return await this.sendData({command: "disconnect_wearable"})
+    return await this.sendData({ command: "disconnect_wearable" })
   }
 
   async sendForgetSmartGlasses() {
-    return await this.sendData({command: "forget_smart_glasses"})
+    return await this.sendData({ command: "forget_smart_glasses" })
   }
 
   async sendToggleVirtualWearable(enabled: boolean) {
@@ -625,14 +625,14 @@ export class CoreCommunicator extends EventEmitter {
   async setGlassesHeight(height: number) {
     return await this.sendData({
       command: "update_glasses_height",
-      params: {height: height},
+      params: { height: height },
     })
   }
 
   async setGlassesDepth(depth: number) {
     return await this.sendData({
       command: "update_glasses_depth",
-      params: {depth: depth},
+      params: { depth: depth },
     })
   }
 
@@ -822,6 +822,27 @@ export class CoreCommunicator extends EventEmitter {
         success: response.success,
         error: response.error,
         duration: response.duration,
+      },
+    })
+  }
+
+  async sendDisplayText(text: string, x: number, y: number, size: number) {
+    return await this.sendData({
+      command: "display_text",
+      params: {
+        text: text,
+        x: x,
+        y: y,
+        size: size
+      },
+    })
+  }
+
+  async sendDisplayImage(localImageName: string) {
+    return await this.sendData({
+      command: "display_image",
+      params: {
+        localImageName: localImageName,
       },
     })
   }

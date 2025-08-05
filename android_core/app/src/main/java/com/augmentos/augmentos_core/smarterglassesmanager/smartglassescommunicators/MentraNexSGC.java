@@ -81,6 +81,8 @@ import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.isMic
 import com.augmentos.augmentos_core.smarterglassesmanager.smartglassescommunicators.SmartGlassesCommunicator;
 import com.augmentos.augmentos_core.smarterglassesmanager.smartglassescommunicators.SmartGlassesFontSize;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.HeadUpAngleEvent;
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.DisplayTextEvent;
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.DisplayImageEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.BitmapJavaUtils;
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.G1FontLoader;
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.SmartGlassesConnectionState;
@@ -2027,6 +2029,26 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
         return generateProtobufCommandBytes(phoneToGlasses);
     }
 
+    private byte[] createTextWallChunksForNex(DisplayTextEvent displayTextEvent) {
+        DisplayText textNewBuilder = DisplayText
+                .newBuilder()
+                .setText(displayTextEvent.text)
+                .setSize(displayTextEvent.size)
+                .setX(displayTextEvent.x)
+                .setY(displayTextEvent.y)
+                .setFontCode(20)
+                .setColor(10000).build();
+
+        Log.d(TAG, "createTextWallChunksForNex textNewBuilder:" + textNewBuilder.toString());
+        // Create the PhoneToGlasses using its builder and set the DisplayText
+        PhoneToGlasses phoneToGlasses = PhoneToGlasses
+                .newBuilder()
+                .setDisplayText(textNewBuilder)
+                .build();
+
+        return generateProtobufCommandBytes(phoneToGlasses);
+    }
+
     // TextWallChunks for text
     private byte[] createTextWallChunksForNexForJson(String text) {
 
@@ -2455,6 +2477,17 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
         }
 
         return chunks;
+    }
+
+    @Override
+    public void onDisplayTextNotified(DisplayTextEvent displayTextEvent) {
+        byte[] textChunks = createTextWallChunksForNex(displayTextEvent);
+        sendDataSequentially(textChunks);
+    }
+
+    @Override
+    public void onDisplayImageNotified(DisplayImageEvent displayImageEvent) {
+        startSendingDisplayImageTest();
     }
 
     @Override

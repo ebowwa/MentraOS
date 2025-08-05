@@ -1,61 +1,82 @@
-import React, {useState, useEffect} from "react"
-import {View, Text, StyleSheet, Switch, TouchableOpacity, Platform, ScrollView, TextInput} from "react-native"
+import React, { useState, useEffect } from "react"
+import { View, Text, StyleSheet, Switch, TouchableOpacity, Platform, ScrollView, TextInput } from "react-native"
 import Icon from "react-native-vector-icons/MaterialCommunityIcons"
-import {useStatus} from "@/contexts/AugmentOSStatusProvider"
+import { useStatus } from "@/contexts/AugmentOSStatusProvider"
 import coreCommunicator from "@/bridge/CoreCommunicator"
-import {saveSetting, loadSetting} from "@/utils/SettingsHelper"
-import {SETTINGS_KEYS} from "@/consts"
+import { saveSetting, loadSetting } from "@/utils/SettingsHelper"
+import { SETTINGS_KEYS } from "@/consts"
 import axios from "axios"
 import showAlert from "@/utils/AlertUtils"
-import {useAppTheme} from "@/utils/useAppTheme"
-import {Header, Screen, PillButton} from "@/components/ignite"
-import {router} from "expo-router"
-import {Spacer} from "@/components/misc/Spacer"
+import { useAppTheme } from "@/utils/useAppTheme"
+import { Header, Screen, PillButton } from "@/components/ignite"
+import { router } from "expo-router"
+import { Spacer } from "@/components/misc/Spacer"
 import ToggleSetting from "@/components/settings/ToggleSetting"
-import {translate} from "@/i18n"
-import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
-import {spacing} from "@/theme"
+import { translate } from "@/i18n"
+import { useNavigationHistory } from "@/contexts/NavigationHistoryContext"
+import { spacing } from "@/theme"
 
 export default function MentraNexDeveloperSettingsScreen() {
-  const {status} = useStatus()
-  const [isBypassVADForDebuggingEnabled, setIsBypassVADForDebuggingEnabled] = useState(
-    status.core_info.bypass_vad_for_debugging,
-  )
+  const { status } = useStatus()
 
-  const {theme} = useAppTheme()
-  const {goBack, push} = useNavigationHistory()
+  const { theme } = useAppTheme()
+  const { goBack, push } = useNavigationHistory()
   // State for custom URL management
-  const [customUrlInput, setCustomUrlInput] = useState("")
-  const [positionX, setPositionX] = useState(0)
-  const [positionY, setPositionY] = useState(0)
-  const [savedCustomUrl, setSavedCustomUrl] = useState<string | null>(null)
-  const [isSavingUrl, setIsSavingUrl] = useState(false) // Add loading state
-  const [reconnectOnAppForeground, setReconnectOnAppForeground] = useState(true)
-  const {replace} = useNavigationHistory()
+  const [text, setText] = useState("")
+  const [positionX, setPositionX] = useState(null)
+  const [positionY, setPositionY] = useState(null)
+  const [size, setSize] = useState(null)
+  // Modified handler for Custom URL 
+  const onSendTextClick = async () => {
+    if (status.core_info.puck_connected && status.glasses_info?.model_name) {
+      if (text === "" || positionX === null || positionY === null || size === null) {
+        showAlert("Please fill all the fields", "Please fill all the fields", [
+          {
+            text: "OK",
+            onPress: () => {
 
-  // Load saved URL on mount
-  useEffect(() => {
-    const loadSettings = async () => {
-      const url = await loadSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL, null)
-      setSavedCustomUrl(url)
-      setCustomUrlInput(url || "")
+            },
+          },
+        ])
+        return
+      }
+      await coreCommunicator.sendDisplayText(text, parseInt(positionX, 0), parseInt(positionY, 0), parseInt(size, 10))
+    } else {
+      showAlert("Please connect to the device", "Please connect to the device", [
+        {
+          text: "OK",
+          onPress: () => {
 
-      const reconnectOnAppForeground = await loadSetting(SETTINGS_KEYS.RECONNECT_ON_APP_FOREGROUND, true)
-      setReconnectOnAppForeground(reconnectOnAppForeground)
+          },
+        },
+      ])
+      return
     }
-    loadSettings()
-  }, [])
+  }
 
-  useEffect(() => {
-    setIsBypassVADForDebuggingEnabled(status.core_info.bypass_vad_for_debugging)
-  }, [status.core_info.bypass_vad_for_debugging])
+  const onRestTextClick = async () => {
+    setText("")
+    setPositionX(null)
+    setPositionY(null)
+    setSize(null)
+  }
 
-  // Modified handler for Custom URL
-  const onSendTextClick = async () => {}
+  const onSendImageClick = async () => {
 
-  const onRestTextClick = async () => {}
+    if (status.core_info.puck_connected && status.glasses_info?.model_name) {
+      await coreCommunicator.sendDisplayImage("test_image.png")
+    } else {
+      showAlert("Please connect to the device", "Please connect to the device", [
+        {
+          text: "OK",
+          onPress: () => {
 
-  const onSendImageClick = async () => {}
+          },
+        },
+      ])
+      return
+    }
+  }
 
   const switchColors = {
     trackColor: {
@@ -67,7 +88,7 @@ export default function MentraNexDeveloperSettingsScreen() {
   }
 
   return (
-    <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}}>
+    <Screen preset="fixed" style={{ paddingHorizontal: theme.spacing.md }}>
       <Header title="Developer Settings for Mentra Nex" leftIcon="caretLeft" onLeftPress={() => goBack()} />
       <ScrollView>
         <View
@@ -80,8 +101,8 @@ export default function MentraNexDeveloperSettingsScreen() {
             },
           ]}>
           <View style={styles.settingTextContainer}>
-            <Text style={[styles.label, {color: theme.colors.text}]}>Custom Display Text Settings</Text>
-            <Text style={[styles.value, {color: theme.colors.textDim}]}>
+            <Text style={[styles.label, { color: theme.colors.text }]}>Custom Display Text Settings</Text>
+            <Text style={[styles.value, { color: theme.colors.textDim }]}>
               Set the display text for the Mentra Nex with text,x,y and size
             </Text>
 
@@ -96,12 +117,13 @@ export default function MentraNexDeveloperSettingsScreen() {
               ]}
               placeholder="text"
               placeholderTextColor={theme.colors.textDim}
-              value={customUrlInput}
-              onChangeText={setCustomUrlInput}
+              value={text}
+              onChangeText={setText}
+              maxLength={100}
               autoCapitalize="none"
               autoCorrect={false}
               keyboardType="url"
-              editable={!isSavingUrl}
+              editable={true}
             />
             <View style={styles.rowContainer}>
               <TextInput
@@ -116,12 +138,13 @@ export default function MentraNexDeveloperSettingsScreen() {
                 ]}
                 placeholder="x"
                 placeholderTextColor={theme.colors.textDim}
-                value={customUrlInput}
-                onChangeText={setCustomUrlInput}
+                value={positionX}
+                onChangeText={setPositionX}
                 autoCapitalize="none"
+                maxLength={3}
                 autoCorrect={false}
-                keyboardType="numeric"
-                editable={!isSavingUrl}
+                keyboardType="phone-pad"
+                editable={true}
               />
               <TextInput
                 style={[
@@ -135,12 +158,13 @@ export default function MentraNexDeveloperSettingsScreen() {
                 ]}
                 placeholder="y"
                 placeholderTextColor={theme.colors.textDim}
-                value={customUrlInput}
-                onChangeText={setCustomUrlInput}
+                value={positionY}
+                maxLength={3}
+                onChangeText={setPositionY}
                 autoCapitalize="none"
                 autoCorrect={false}
-                keyboardType="numeric"
-                editable={!isSavingUrl}
+                keyboardType="phone-pad"
+                editable={true}
               />
               <TextInput
                 style={[
@@ -154,12 +178,13 @@ export default function MentraNexDeveloperSettingsScreen() {
                 ]}
                 placeholder="size"
                 placeholderTextColor={theme.colors.textDim}
-                value={customUrlInput}
-                onChangeText={setCustomUrlInput}
+                value={size}
+                onChangeText={setSize}
                 autoCapitalize="none"
                 autoCorrect={false}
-                keyboardType="numeric"
-                editable={!isSavingUrl}
+                maxLength={2}
+                keyboardType="phone-pad"
+                editable={true}
               />
             </View>
             <View style={styles.buttonRow}>
@@ -167,14 +192,14 @@ export default function MentraNexDeveloperSettingsScreen() {
                 text="Send Text"
                 variant="primary"
                 onPress={onSendTextClick}
-                disabled={isSavingUrl}
+                disabled={false}
                 buttonStyle={styles.saveButton}
               />
               <PillButton
                 text="Reset Settings"
                 variant="icon"
                 onPress={onRestTextClick}
-                disabled={isSavingUrl}
+                disabled={false}
                 buttonStyle={styles.resetButton}
               />
             </View>
@@ -192,14 +217,14 @@ export default function MentraNexDeveloperSettingsScreen() {
             },
           ]}>
           <View style={styles.settingTextContainer}>
-            <Text style={[styles.label, {color: theme.colors.text}]}>Send the testing image to Firmware</Text>
+            <Text style={[styles.label, { color: theme.colors.text }]}>Send the testing image to Firmware</Text>
 
             <View style={styles.buttonRow}>
               <PillButton
                 text="Send Image"
                 variant="primary"
                 onPress={onSendImageClick}
-                disabled={isSavingUrl}
+                disabled={false}
                 buttonStyle={styles.saveButton}
               />
             </View>
