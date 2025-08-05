@@ -334,7 +334,7 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
     return () => {
       appStateSubscription.remove()
     }
-  }, [])
+  }, []) // subscribe only once
 
   return (
     <AppStatusContext.Provider

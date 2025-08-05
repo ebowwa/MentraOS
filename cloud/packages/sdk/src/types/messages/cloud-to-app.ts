@@ -128,7 +128,7 @@ export interface TranscriptionData extends BaseMessage {
   duration?: number; // Audio duration in milliseconds
   provider?: string; // The transcription provider (e.g., "azure", "soniox")
   confidence?: number; // Confidence score (0-1)
-  metadata: TranscriptionMetadata; // Token-level metadata (always included)
+  metadata?: TranscriptionMetadata; // Token-level metadata (always included)
 }
 
 /**

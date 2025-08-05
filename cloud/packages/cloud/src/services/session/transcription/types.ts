@@ -89,7 +89,7 @@ export interface AzureProviderConfig {
 export interface SonioxProviderConfig {
   apiKey: string;
   endpoint: string;
-  model?: string; // Default: 'stt-rt-preview'
+  model?: string; // Default: 'stt-rt-preview-v2'
   maxConnections?: number;
 }
 
