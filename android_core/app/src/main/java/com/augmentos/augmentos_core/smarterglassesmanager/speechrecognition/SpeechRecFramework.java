@@ -28,6 +28,9 @@ public abstract class SpeechRecFramework {
     public void changeBypassVadForDebuggingState(boolean bypassVadForDebugging) {
     }
 
+    public void changeBypassVadForPCMState(boolean bypassVadForPCM) {
+    }
+
     public void changeEnforceLocalTranscriptionState(boolean enforceLocalTranscription) {
     }
 }

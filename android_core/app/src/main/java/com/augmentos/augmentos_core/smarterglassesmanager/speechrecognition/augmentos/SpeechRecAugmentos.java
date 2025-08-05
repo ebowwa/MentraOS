@@ -315,6 +315,10 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
             //SENDING STUFF
             // If bypassing VAD for debugging, PCM subscription, or currently speaking, send data live
             if (sendPcmToBackend && (bypassVadForDebugging || bypassVadForPCM || isSpeaking)) {
+                // if (bypassVadForDebugging || bypassVadForPCM) {
+                //     Log.d(TAG, "Sending audio due to VAD bypass - bypassVadForDebugging=" + bypassVadForDebugging + 
+                //               ", bypassVadForPCM=" + bypassVadForPCM + ", isSpeaking=" + isSpeaking);
+                // }
                 ServerComms.getInstance().sendAudioChunk(audioChunk);
             }
         }
@@ -349,6 +353,10 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
             //SENDING STUFF
             // If bypassing VAD for debugging, PCM subscription, or currently speaking, send data live
             if (bypassVadForDebugging || bypassVadForPCM || isSpeaking) {
+                if (bypassVadForDebugging || bypassVadForPCM) {
+                    Log.d(TAG, "Sending LC3 audio due to VAD bypass - bypassVadForDebugging=" + bypassVadForDebugging + 
+                              ", bypassVadForPCM=" + bypassVadForPCM + ", isSpeaking=" + isSpeaking);
+                }
                 ServerComms.getInstance().sendAudioChunk(LC3audioChunk);
             }
 

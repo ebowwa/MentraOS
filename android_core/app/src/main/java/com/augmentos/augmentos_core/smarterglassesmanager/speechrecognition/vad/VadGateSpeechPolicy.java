@@ -63,9 +63,17 @@ public class VadGateSpeechPolicy implements SpeechDetectionPolicy {
     public boolean shouldPassAudioToRecognizer() {
         // CRITICAL: Handle VAD null case
         if (vad == null) {
+            // Log.d(TAG, "VAD is null - bypassVadForDebugging=" + bypassVadForDebugging + 
+            //           ", bypassVadForPCM=" + bypassVadForPCM + " -> ALLOWING AUDIO");
             return bypassVadForDebugging || bypassVadForPCM || true;
         }
-        return bypassVadForDebugging || bypassVadForPCM || isCurrentlySpeech;
+        
+        boolean shouldPass = bypassVadForDebugging || bypassVadForPCM || isCurrentlySpeech;
+        // Log.d(TAG, "VAD Decision - bypassVadForDebugging=" + bypassVadForDebugging + 
+        //           ", bypassVadForPCM=" + bypassVadForPCM + 
+        //           ", isCurrentlySpeech=" + isCurrentlySpeech + 
+        //           " -> shouldPass=" + shouldPass);
+        return shouldPass;
     }
 
     @Override
@@ -156,6 +164,7 @@ public class VadGateSpeechPolicy implements SpeechDetectionPolicy {
     }
 
     public void changeBypassVadForPCM(boolean bypassVadForPCM) {
+        Log.d(TAG, "VAD PCM Bypass State Change: " + this.bypassVadForPCM + " -> " + bypassVadForPCM);
         this.bypassVadForPCM = bypassVadForPCM;
     }
 
