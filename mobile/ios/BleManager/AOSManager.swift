@@ -1101,15 +1101,15 @@ struct ViewState {
             saveSettings()
         } else if modelName.contains("G1") {
             pendingWearable = "Even Realities G1"
-            initManager(defaultWearable)
+            initManager(pendingWearable)
             g1Manager?.findCompatibleDevices()
         } else if modelName.contains("Live") {
             pendingWearable = "Mentra Live"
-            initManager(defaultWearable)
+            initManager(pendingWearable)
             liveManager?.findCompatibleDevices()
         } else if modelName.contains("Mach1") || modelName.contains("Z100") {
             pendingWearable = "Mach1"
-            initManager(defaultWearable)
+            initManager(pendingWearable)
             mach1Manager?.findCompatibleDevices()
         }
     }
