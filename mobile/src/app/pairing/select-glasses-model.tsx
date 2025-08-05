@@ -123,6 +123,14 @@ export default function SelectGlassesModelScreen() {
     )
   }
 
+  function mulberry32(seed: number) {
+    seed |= 0
+    seed = (seed + 0x6d2b79f5) | 0
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed)
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+
   return (
     <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}} safeAreaEdges={["bottom"]}>
       <Header
@@ -158,7 +166,7 @@ export default function SelectGlassesModelScreen() {
           </View>
         )}
         {/** RENDER EACH GLASSES OPTION */}
-        {glassesOptions.map(glasses => (
+        {glassesOptions.map((glasses, index) => (
           <TouchableOpacity
             key={glasses.key}
             style={themed($settingItem)}
@@ -172,7 +180,7 @@ export default function SelectGlassesModelScreen() {
                 marginTop: -theme.spacing.xxxs,
                 marginBottom: -theme.spacing.xxxs,
               }}>
-              {radialGradient(100 + theme.spacing.xxxs * 2, Math.round(Math.random() * 360))}
+              {radialGradient(100 + theme.spacing.xxxs * 2, Math.round(mulberry32(index + 1) * 360))}
               <Image source={getGlassesImage(glasses.modelName)} style={themed($glassesImage)} />
             </View>
             <View style={styles.settingTextContainer}>
