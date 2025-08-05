@@ -1,41 +1,39 @@
-import React, { useState, useEffect } from "react"
-import { View, Text, StyleSheet, Switch, TouchableOpacity, Platform, ScrollView, TextInput } from "react-native"
+import React, {useState, useEffect} from "react"
+import {View, Text, StyleSheet, Switch, TouchableOpacity, Platform, ScrollView, TextInput} from "react-native"
 import Icon from "react-native-vector-icons/MaterialCommunityIcons"
-import { useStatus } from "@/contexts/AugmentOSStatusProvider"
+import {useStatus} from "@/contexts/AugmentOSStatusProvider"
 import coreCommunicator from "@/bridge/CoreCommunicator"
-import { saveSetting, loadSetting } from "@/utils/SettingsHelper"
-import { SETTINGS_KEYS } from "@/consts"
+import {saveSetting, loadSetting} from "@/utils/SettingsHelper"
+import {SETTINGS_KEYS} from "@/consts"
 import axios from "axios"
 import showAlert from "@/utils/AlertUtils"
-import { useAppTheme } from "@/utils/useAppTheme"
-import { Header, Screen, PillButton } from "@/components/ignite"
-import { router } from "expo-router"
-import { Spacer } from "@/components/misc/Spacer"
+import {useAppTheme} from "@/utils/useAppTheme"
+import {Header, Screen, PillButton} from "@/components/ignite"
+import {router} from "expo-router"
+import {Spacer} from "@/components/misc/Spacer"
 import ToggleSetting from "@/components/settings/ToggleSetting"
-import { translate } from "@/i18n"
-import { useNavigationHistory } from "@/contexts/NavigationHistoryContext"
-import { spacing } from "@/theme"
+import {translate} from "@/i18n"
+import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
+import {spacing} from "@/theme"
 
 export default function MentraNexDeveloperSettingsScreen() {
-  const { status } = useStatus()
+  const {status} = useStatus()
 
-  const { theme } = useAppTheme()
-  const { goBack, push } = useNavigationHistory()
+  const {theme} = useAppTheme()
+  const {goBack, push} = useNavigationHistory()
   // State for custom URL management
   const [text, setText] = useState("")
   const [positionX, setPositionX] = useState(null)
   const [positionY, setPositionY] = useState(null)
   const [size, setSize] = useState(null)
-  // Modified handler for Custom URL 
+  // Modified handler for Custom URL
   const onSendTextClick = async () => {
     if (status.core_info.puck_connected && status.glasses_info?.model_name) {
       if (text === "" || positionX === null || positionY === null || size === null) {
         showAlert("Please fill all the fields", "Please fill all the fields", [
           {
             text: "OK",
-            onPress: () => {
-
-            },
+            onPress: () => {},
           },
         ])
         return
@@ -45,9 +43,7 @@ export default function MentraNexDeveloperSettingsScreen() {
       showAlert("Please connect to the device", "Please connect to the device", [
         {
           text: "OK",
-          onPress: () => {
-
-          },
+          onPress: () => {},
         },
       ])
       return
@@ -62,16 +58,13 @@ export default function MentraNexDeveloperSettingsScreen() {
   }
 
   const onSendImageClick = async () => {
-
     if (status.core_info.puck_connected && status.glasses_info?.model_name) {
       await coreCommunicator.sendDisplayImage("test_image.png")
     } else {
       showAlert("Please connect to the device", "Please connect to the device", [
         {
           text: "OK",
-          onPress: () => {
-
-          },
+          onPress: () => {},
         },
       ])
       return
@@ -88,7 +81,7 @@ export default function MentraNexDeveloperSettingsScreen() {
   }
 
   return (
-    <Screen preset="fixed" style={{ paddingHorizontal: theme.spacing.md }}>
+    <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}}>
       <Header title="Developer Settings for Mentra Nex" leftIcon="caretLeft" onLeftPress={() => goBack()} />
       <ScrollView>
         <View
@@ -101,8 +94,8 @@ export default function MentraNexDeveloperSettingsScreen() {
             },
           ]}>
           <View style={styles.settingTextContainer}>
-            <Text style={[styles.label, { color: theme.colors.text }]}>Custom Display Text Settings</Text>
-            <Text style={[styles.value, { color: theme.colors.textDim }]}>
+            <Text style={[styles.label, {color: theme.colors.text}]}>Custom Display Text Settings</Text>
+            <Text style={[styles.value, {color: theme.colors.textDim}]}>
               Set the display text for the Mentra Nex with text,x,y and size
             </Text>
 
@@ -217,7 +210,7 @@ export default function MentraNexDeveloperSettingsScreen() {
             },
           ]}>
           <View style={styles.settingTextContainer}>
-            <Text style={[styles.label, { color: theme.colors.text }]}>Send the testing image to Firmware</Text>
+            <Text style={[styles.label, {color: theme.colors.text}]}>Send the testing image to Firmware</Text>
 
             <View style={styles.buttonRow}>
               <PillButton
