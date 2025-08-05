@@ -105,6 +105,12 @@ const en = {
     appWillRunWhenConnected: "This app will start running once your glasses are connected.",
     connectGlassesToStart: "Connect your glasses to get started",
     tapToStartLiveCaptions: "Tap to start the Live Captions app",
+    hardwareIncompatible: "Hardware Incompatible",
+    hardwareIncompatibleMessage:
+      "{{app}} requires hardware that is not available on your connected glasses: {{missing}}",
+    incompatibleApps: "Incompatible Apps",
+    incompatibleAppsDescription: "These apps require hardware features not available on your connected glasses",
+    incompatible: "Incompatible",
   },
   glasses: {
     title: "Glasses",
@@ -141,6 +147,8 @@ const en = {
     glasses: "Glasses",
     bypassVAD: "Bypass VAD for Debugging",
     bypassVADSubtitle: "Bypass the VAD (Voice Activity Detection).",
+    enforceLocalTranscription: "Enforce Local Transcription",
+    enforceLocalTranscriptionSubtitle: "Enforce the use of edge transcription.",
     sensingLabel: "Enable Sensors",
     sensingSubtitle: "Enable the usage of sensors including camera, microphone, etc.",
     calendarLabel: "Calendar Access",
@@ -155,6 +163,7 @@ const en = {
     simulatedGlassesNote: "This setting has no effect when using Simulated Glasses",
     profileSettings: "Profile Settings",
     privacySettings: "Permissions and Privacy",
+    transcriptionSettings: "Transcription Settings",
     dashboardSettings: "Dashboard Settings",
     dashboardDescription: "Configure the contextual dashboard and HeadUp settings",
     screenSettings: "Display Position Settings",
@@ -282,6 +291,7 @@ const en = {
     delete: "Delete",
     continue: "Continue",
     next: "Next",
+    request: "Request",
   },
   welcomeScreen: {
     postscript:

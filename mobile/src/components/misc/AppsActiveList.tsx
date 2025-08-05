@@ -151,7 +151,7 @@ export default function AppsActiveList({
   }
 
   const openAppSettings = (app: any) => {
-    push("/app/settings", {packageName: app.packageName, appName: app.name})
+    push("/applet/settings", {packageName: app.packageName, appName: app.name})
   }
 
   function getAppsList() {

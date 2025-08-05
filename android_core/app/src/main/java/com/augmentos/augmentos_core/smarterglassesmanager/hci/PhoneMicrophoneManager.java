@@ -21,6 +21,7 @@ import android.telephony.PhoneStateListener;
 import android.telephony.TelephonyManager;
 import android.util.Log;
 
+import com.augmentos.augmentos_core.enums.SpeechRequiredDataType;
 import com.augmentos.augmentos_core.microphone.MicrophoneService;
 import com.augmentos.augmentos_core.smarterglassesmanager.speechrecognition.SpeechRecSwitchSystem;
 
@@ -67,6 +68,7 @@ public class PhoneMicrophoneManager {
     }
     
     private MicStatus currentStatus = MicStatus.PAUSED;
+    private List<SpeechRequiredDataType> requiredData = new ArrayList<>();
     
     private final Context context;
     private final AudioChunkCallback audioChunkCallback;
@@ -482,7 +484,7 @@ public class PhoneMicrophoneManager {
                 // Notify speech recognition system that mic is active
                 // This is important because glasses mic audio comes through a different path
                 if (audioProcessingCallback instanceof SpeechRecSwitchSystem) {
-                    ((SpeechRecSwitchSystem) audioProcessingCallback).microphoneStateChanged(true);
+                    ((SpeechRecSwitchSystem) audioProcessingCallback).microphoneStateChanged(true, requiredData);
                 }
             } else {
                 Log.e(TAG, "SmartGlassesRepresentative or communicator is null, cannot enable glasses mic");
@@ -1388,5 +1390,9 @@ public class PhoneMicrophoneManager {
         } else {
             Log.d(TAG, "Already using the preferred microphone");
         }
+    }
+
+    public void setRequiredData(List<SpeechRequiredDataType> requiredData) {
+        this.requiredData = requiredData;
     }
 }

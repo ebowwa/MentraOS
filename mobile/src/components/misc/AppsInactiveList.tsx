@@ -193,9 +193,9 @@ export default function InactiveAppList({
           }
           break
         case "CAMERA":
-          const hasCamera = await checkFeaturePermissions(PermissionFeatures.CAMERA)
+          const hasCamera = await checkFeaturePermissions(PermissionFeatures.GLASSES_CAMERA)
           if (!hasCamera) {
-            neededPermissions.push(PermissionFeatures.CAMERA)
+            neededPermissions.push(PermissionFeatures.GLASSES_CAMERA)
           }
           break
         case "CALENDAR":
@@ -345,6 +345,7 @@ export default function InactiveAppList({
           iconColor: theme.colors.textDim,
         },
       )
+      return
     }
 
     // Check if glasses are connected and this is the first app being activated
@@ -441,9 +442,29 @@ export default function InactiveAppList({
           )
         }, 500)
       }
-    } catch (error) {
+    } catch (error: any) {
       // Revert the app state when there's an error starting the app
       console.error("start app error:", error)
+
+      // Check if this is a hardware compatibility error
+      if (error?.response?.data?.error?.stage === "HARDWARE_CHECK") {
+        showAlert(
+          translate("home:hardwareIncompatible"),
+          error.response.data.error.message ||
+            translate("home:hardwareIncompatibleMessage", {
+              app: appToStart.name,
+              missing: "required hardware",
+            }),
+          [{text: translate("common:ok")}],
+          {
+            iconName: "alert-circle-outline",
+            iconColor: theme.colors.error,
+          },
+        )
+      } else {
+        // Handle other types of errors with generic error handling
+        console.error("Generic app start error:", error)
+      }
 
       // Clear the pending operation for this app
       clearPendingOperation(packageName)
@@ -464,12 +485,16 @@ export default function InactiveAppList({
   }
   const openAppSettings = (app: any) => {
     console.log("%%% opening app settings", app)
-    push("/app/settings", {packageName: app.packageName, appName: app.name})
+    push("/applet/settings", {packageName: app.packageName, appName: app.name})
   }
 
-  // Filter out duplicate apps and running apps
+  // Filter out duplicate apps, running apps, and incompatible apps
   let availableApps = appStatus.filter(app => {
     if (app.is_running) {
+      return false
+    }
+    // Filter out incompatible apps (they will be shown in a separate section)
+    if (app.compatibility && !app.compatibility.isCompatible) {
       return false
     }
     // Check if this is the first occurrence of this package name
@@ -512,9 +537,14 @@ export default function InactiveAppList({
     Object.fromEntries(appStatus.map(app => [app.packageName, new Animated.Value(0)])),
   ).current
 
-  // Animate all availableApps' opacities to 1 on mount or change
+  // Ensure every available app has an Animated.Value and animate to 1 on mount/change
   useEffect(() => {
     availableApps.forEach(app => {
+      // Lazily create Animated.Value if it doesn't exist yet (e.g. newly fetched app)
+      if (!(app.packageName in opacities)) {
+        opacities[app.packageName] = new Animated.Value(0)
+      }
+
       Animated.timing(opacities[app.packageName], {
         toValue: 1,
         duration: 300,

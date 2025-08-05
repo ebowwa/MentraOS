@@ -107,7 +107,7 @@ export default function LoginScreen() {
     return () => {
       appStateSubscription.remove()
     }
-  }, [isAuthLoading, authOverlayOpacity])
+  }, [])
 
   const handleGoogleSignIn = async () => {
     try {
@@ -266,22 +266,24 @@ export default function LoginScreen() {
         ) {
           // Try to detect if it's a Google or Apple account
           // Note: Supabase doesn't always tell us which provider, so we show a generic message
-          showAlert(translate("login:emailAlreadyRegistered"), translate("login:useGoogleSignIn"))
+          showAlert(translate("login:emailAlreadyRegistered"), translate("login:useGoogleSignIn"), [
+            {text: translate("common:ok")},
+          ])
         } else {
-          showAlert(translate("common:error"), error.message)
+          showAlert(translate("common:error"), error.message, [{text: translate("common:ok")}])
         }
       } else if (!data.session) {
         // Ensure translations are resolved before passing to showAlert
         const successTitle = translate("login:success")
         const verificationMessage = translate("login:checkEmailVerification")
-        showAlert(successTitle, verificationMessage)
+        showAlert(successTitle, verificationMessage, [{text: translate("common:ok")}])
       } else {
         console.log("Sign-up successful:", data)
         replace("/")
       }
     } catch (err) {
       console.error("Error during sign-up:", err)
-      showAlert(translate("common:error"), err.toString())
+      showAlert(translate("common:error"), err.toString(), [{text: translate("common:ok")}])
     } finally {
       setIsFormLoading(false)
       setFormAction(null)

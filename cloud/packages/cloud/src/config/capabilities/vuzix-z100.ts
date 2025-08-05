@@ -5,7 +5,7 @@
  * Defines the hardware and software features available on this device.
  */
 
-import type { Capabilities } from '@mentra/sdk';
+import type { Capabilities } from "@mentra/sdk";
 
 /**
  * Vuzix Z100 capability profile
@@ -17,17 +17,17 @@ export const vuzixZ100: Capabilities = {
   hasCamera: false,
   camera: null,
 
-  // Screen capabilities - has a green monochrome display
-  hasScreen: true,
-  screen: {
+  // Display capabilities - has a green monochrome display
+  hasDisplay: true,
+  display: {
     count: 1,
     isColor: false,
-    color: 'green',
+    color: "green",
     canDisplayBitmap: false,
     resolution: { width: 640, height: 480 },
     fieldOfView: { horizontal: 30 },
     maxTextLines: 7,
-    adjustBrightness: true
+    adjustBrightness: true,
   },
 
   // Microphone capabilities - does not have a microphone
@@ -52,9 +52,9 @@ export const vuzixZ100: Capabilities = {
 
   // Power capabilities - does not have external battery
   power: {
-    hasExternalBattery: false
+    hasExternalBattery: false,
   },
 
   // WiFi capabilities - does not support WiFi
-  hasWifi: false
+  hasWifi: false,
 };

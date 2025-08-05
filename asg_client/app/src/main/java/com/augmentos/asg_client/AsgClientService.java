@@ -35,6 +35,7 @@ import androidx.preference.PreferenceManager;
 import org.json.JSONArray;
 
 
+import com.augmentos.asg_client.camera.CameraNeo;
 import com.augmentos.asg_client.server.AsgCameraServer;
 import com.augmentos.asg_client.server.AsgServerManager;
 import com.augmentos.asg_client.server.impl.DefaultServerFactory;
@@ -52,8 +53,10 @@ import com.augmentos.asg_client.network.NetworkManagerFactory;
 import com.augmentos.asg_client.network.NetworkStateListener; // Make sure this is the correct import path for your library
 import com.augmentos.asg_client.settings.AsgSettings;
 
+
 import org.greenrobot.eventbus.EventBus;
 import com.augmentos.asg_client.events.BatteryStatusEvent;
+import com.augmentos.asg_client.reporting.domains.GeneralReporting;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Iterator;
@@ -119,10 +122,10 @@ public class AsgClientService extends Service implements NetworkStateListener, B
 
     // Media capture service
     private MediaCaptureService mMediaCaptureService;
-    
+
     // Settings
     private AsgSettings asgSettings;
-    
+
     // Camera Web Server for local network access
     private AsgCameraServer asgCameraServer;
     private AsgServerManager asgServerManager;
@@ -229,10 +232,13 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     public void onCreate() {
         super.onCreate();
         Log.d(TAG, "AsgClientService onCreate");
-        
+
         // Initialize settings
         asgSettings = new AsgSettings(this);
         Log.d(TAG, "Button press mode on startup: " + asgSettings.getButtonPressMode().getValue());
+
+            // Initialize reporting for this service
+        //GeneralReporting.reportServiceEvent(this, "AsgClientService", "created");
 
         // Enable WiFi when service starts
         openWifi(this, true);
@@ -480,20 +486,20 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         if (asgServerManager == null) {
             asgServerManager = AsgServerManager.getInstance(getApplicationContext());
         }
-        
+
         if (asgCameraServer == null && isWebServerEnabled) {
             try {
                 // Create logger for the server
                 Logger logger = DefaultServerFactory.createLogger();
-                
+
                 // Create camera web server using the new factory pattern
                 asgCameraServer = DefaultServerFactory.createCameraWebServer(
-                    8089, 
-                    "CameraWebServer", 
-                    getApplicationContext(), 
+                    8089,
+                    "CameraWebServer",
+                    getApplicationContext(),
                     logger
                 );
-                
+
                 // Set up the picture request listener
                 asgCameraServer.setOnPictureRequestListener(() -> {
                     Log.d(TAG, "📸 Camera web server requested photo capture");
@@ -509,13 +515,13 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                         Log.e(TAG, "Media capture service not available for web server photo request");
                     }
                 });
-                
+
                 // Register the server with the server manager
                 asgServerManager.registerServer("camera", asgCameraServer);
-                
+
                 // Start the web server
                 asgCameraServer.startServer();
-                
+
                 Log.d(TAG, "✅ Camera web server initialized and started via new SOLID architecture");
                 Log.d(TAG, "🌐 Web server URL: " + asgCameraServer.getServerUrl());
                 Log.d(TAG, "🏗️ Architecture benefits:");
@@ -524,7 +530,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                 Log.d(TAG, "   - Single responsibility for maintainability");
                 Log.d(TAG, "   - Open/closed principle for extensibility");
                 Log.d(TAG, "   - Mediated access for controlled server management");
-                
+
             } catch (Exception e) {
                 Log.e(TAG, "❌ Failed to initialize camera web server: " + e.getMessage(), e);
                 asgCameraServer = null;
@@ -610,18 +616,18 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         if (asgServerManager != null) {
             // Stop the server first
             asgServerManager.stopServer("camera");
-            
+
             // Wait a moment for cleanup
             try {
                 Thread.sleep(1000);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
-            
+
             // Reinitialize the web server
             asgCameraServer = null;
             initializeCameraWebServer();
-            
+
             return asgCameraServer != null;
         }
         return false;
@@ -635,7 +641,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     public void setWebServerEnabled(boolean enabled) {
         if (isWebServerEnabled != enabled) {
             isWebServerEnabled = enabled;
-            
+
             if (enabled && asgCameraServer == null) {
                 // Start the web server if it was disabled
                 initializeCameraWebServer();
@@ -1763,6 +1769,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
 
                 case "start_video_recording":
                     String videoRequestId = dataToProcess.optString("requestId", "");
+                    boolean videoSave = dataToProcess.optBoolean("save", true); // Default to saving video
 
                     if (videoRequestId.isEmpty()) {
                         Log.e(TAG, "Cannot start video recording - missing requestId");
@@ -1777,23 +1784,31 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                         return;
                     }
 
-                    // Check if already recording
-                    if (captureService.isRecordingVideo()) {
-                        Log.d(TAG, "Already recording video, ignoring start command");
-                        sendVideoRecordingStatusResponse(true, "already_recording", null);
+                    // Check if camera is already in use (for any operation)
+                    if (CameraNeo.isCameraInUse()) {
+                        Log.d(TAG, "Camera already in use, cannot start video recording");
+                        sendVideoRecordingStatusResponse(false, "camera_busy", null);
                         return;
                     }
 
-                    Log.d(TAG, "Starting video recording with requestId: " + videoRequestId);
+                    Log.d(TAG, "Starting video recording with requestId: " + videoRequestId + ", save: " + videoSave);
 
-                    // Start video recording
-                    captureService.handleVideoButtonPress();
+                    // Start video recording with the new command method
+                    captureService.handleStartVideoCommand(videoRequestId, videoSave);
 
                     // Send success response
                     sendVideoRecordingStatusResponse(true, "recording_started", null);
                     break;
 
                 case "stop_video_recording":
+                    String stopRequestId = dataToProcess.optString("requestId", "");
+                    
+                    if (stopRequestId.isEmpty()) {
+                        Log.e(TAG, "Cannot stop video recording - missing requestId");
+                        sendVideoRecordingStatusResponse(false, "missing_request_id", null);
+                        return;
+                    }
+                    
                     captureService = getMediaCaptureService();
                     if (captureService == null) {
                         Log.e(TAG, "Media capture service is not initialized");
@@ -1801,20 +1816,86 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                         return;
                     }
 
-                    // Check if actually recording
-                    if (!captureService.isRecordingVideo()) {
-                        Log.d(TAG, "Not currently recording, ignoring stop command");
-                        sendVideoRecordingStatusResponse(false, "not_recording", null);
-                        return;
-                    }
+                    Log.d(TAG, "Stopping video recording with requestId: " + stopRequestId);
 
-                    Log.d(TAG, "Stopping video recording");
-
-                    // Stop the recording
-                    captureService.stopVideoRecording();
+                    // Stop the recording with requestId verification
+                    captureService.handleStopVideoCommand(stopRequestId);
 
                     // Send success response
                     sendVideoRecordingStatusResponse(true, "recording_stopped", null);
+                    break;
+
+                case "start_buffer_recording":
+                    captureService = getMediaCaptureService();
+                    if (captureService == null) {
+                        Log.e(TAG, "Media capture service is not initialized");
+                        sendBufferStatusResponse(false, "service_unavailable", null);
+                        return;
+                    }
+                    
+                    // Check if camera is already in use
+                    if (CameraNeo.isCameraInUse()) {
+                        Log.d(TAG, "Camera already in use, cannot start buffer recording");
+                        sendBufferStatusResponse(false, "camera_busy", null);
+                        return;
+                    }
+                    
+                    Log.d(TAG, "Starting buffer recording");
+                    captureService.startBufferRecording();
+                    sendBufferStatusResponse(true, "buffer_started", null);
+                    break;
+                    
+                case "stop_buffer_recording":
+                    captureService = getMediaCaptureService();
+                    if (captureService == null) {
+                        Log.e(TAG, "Media capture service is not initialized");
+                        sendBufferStatusResponse(false, "service_unavailable", null);
+                        return;
+                    }
+                    
+                    Log.d(TAG, "Stopping buffer recording");
+                    captureService.stopBufferRecording();
+                    sendBufferStatusResponse(true, "buffer_stopped", null);
+                    break;
+                    
+                case "save_buffer_video":
+                    String bufferRequestId = dataToProcess.optString("requestId", "");
+                    int secondsToSave = dataToProcess.optInt("duration", 30); // Default to 30 seconds
+                    
+                    if (bufferRequestId.isEmpty()) {
+                        Log.e(TAG, "Cannot save buffer - missing requestId");
+                        sendBufferStatusResponse(false, "missing_request_id", null);
+                        return;
+                    }
+                    
+                    captureService = getMediaCaptureService();
+                    if (captureService == null) {
+                        Log.e(TAG, "Media capture service is not initialized");
+                        sendBufferStatusResponse(false, "service_unavailable", null);
+                        return;
+                    }
+                    
+                    if (!captureService.isBuffering()) {
+                        Log.e(TAG, "Cannot save buffer - not currently buffering");
+                        sendBufferStatusResponse(false, "not_buffering", null);
+                        return;
+                    }
+                    
+                    Log.d(TAG, "Saving last " + secondsToSave + " seconds of buffer, requestId: " + bufferRequestId);
+                    captureService.saveBufferVideo(secondsToSave, bufferRequestId);
+                    sendBufferStatusResponse(true, "buffer_saving", null);
+                    break;
+                    
+                case "get_buffer_status":
+                    captureService = getMediaCaptureService();
+                    if (captureService == null) {
+                        Log.e(TAG, "Media capture service is not initialized");
+                        sendBufferStatusResponse(false, "service_unavailable", null);
+                        return;
+                    }
+                    
+                    JSONObject bufferStatus = captureService.getBufferStatus();
+                    sendBufferStatusResponse(true, "status", bufferStatus);
                     break;
 
                 case "get_video_recording_status":
@@ -2141,7 +2222,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                     Log.d(TAG, "📱 Received button mode setting: " + mode);
                     asgSettings.setButtonPressMode(mode);
                     break;
-                    
+
                 default:
                     Log.w(TAG, "Unknown message type: " + type);
                     break;
@@ -2227,7 +2308,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                         
                         // Send battery status over BLE if we have valid data
                         if (batteryPercentage != -1 || batteryVoltage != -1) {
-                            sendBatteryStatusOverBle();
+                            //sendBatteryStatusOverBle();
                         }
                     } else {
                         Log.w(TAG, "hm_batv received but no B field data");
@@ -2270,7 +2351,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
             }
         }
     }
-    
+
     /**
      * Handle button press based on configured mode
      * @param isLongPress true if this is a long press (video), false for short press (photo)
@@ -2279,7 +2360,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         AsgSettings.ButtonPressMode mode = asgSettings.getButtonPressMode();
         String pressType = isLongPress ? "long" : "short";
         Log.d(TAG, "Handling " + pressType + " button press with mode: " + mode.getValue());
-        
+
         switch (mode) {
             case PHOTO:
                 // Current behavior - take photo/video only
@@ -2298,17 +2379,17 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                     mMediaCaptureService.takePhotoLocally();
                 }
                 break;
-                
+
             case APPS:
                 // Send to apps only
                 Log.d(TAG, "📱 Sending " + pressType + " button press to apps (APPS mode)");
                 sendButtonPressToPhone(isLongPress);
                 break;
-                
+
             case BOTH:
                 // Both actions
                 Log.d(TAG, "📸📱 Taking media AND sending to apps (BOTH mode, " + pressType + " press)");
-                
+
                 // Take photo/video first
                 if (isLongPress) {
                     Log.d(TAG, "📹 Video recording not yet implemented (BOTH mode, long press)");
@@ -2320,13 +2401,13 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                     }
                     mMediaCaptureService.takePhotoLocally();
                 }
-                
+
                 // Then send to apps
                 sendButtonPressToPhone(isLongPress);
                 break;
         }
     }
-    
+
     /**
      * Send button press event to connected phone
      * @param isLongPress true if this is a long press, false for short press
@@ -2339,7 +2420,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                 buttonObject.put("buttonId", "camera");
                 buttonObject.put("pressType", isLongPress ? "long" : "short");
                 buttonObject.put("timestamp", System.currentTimeMillis());
-                
+
                 String jsonString = buttonObject.toString();
                 Log.d(TAG, "Sending button press to phone: " + jsonString);
                 bluetoothManager.sendData(jsonString.getBytes());
@@ -2890,6 +2971,42 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                 bluetoothManager.sendData(jsonString.getBytes(StandardCharsets.UTF_8));
             } catch (JSONException e) {
                 Log.e(TAG, "Error creating video recording status response", e);
+            }
+        }
+    }
+    
+    /**
+     * Send a buffer status response
+     * 
+     * @param success Whether the operation was successful
+     * @param status Status message
+     * @param details Additional details (can be null)
+     */
+    private void sendBufferStatusResponse(boolean success, String status, JSONObject details) {
+        if (bluetoothManager != null && bluetoothManager.isConnected()) {
+            try {
+                JSONObject response = new JSONObject();
+                response.put("type", "buffer_status");
+                response.put("success", success);
+                response.put("status", status);
+                
+                if (details != null) {
+                    // Merge the details object fields into the response
+                    Iterator<String> keys = details.keys();
+                    while (keys.hasNext()) {
+                        String key = keys.next();
+                        response.put(key, details.get(key));
+                    }
+                }
+                
+                // Convert to string
+                String jsonString = response.toString();
+                Log.d(TAG, "Sending buffer status: " + jsonString);
+                
+                // Send the JSON response
+                bluetoothManager.sendData(jsonString.getBytes(StandardCharsets.UTF_8));
+            } catch (JSONException e) {
+                Log.e(TAG, "Error creating buffer status response", e);
             }
         }
     }

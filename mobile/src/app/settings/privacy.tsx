@@ -28,6 +28,7 @@ import ToggleSetting from "@/components/settings/ToggleSetting"
 import {translate} from "@/i18n"
 import {Spacer} from "@/components/misc/Spacer"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
+import PermissionButton from "@/components/settings/PermButton"
 
 export default function PrivacySettingsScreen() {
   const {status} = useStatus()
@@ -66,9 +67,64 @@ export default function PrivacySettingsScreen() {
     checkPermissions()
   }, [])
 
-  useEffect(() => {
-    console.log("Calendar enabled:", calendarEnabled)
-  }, [calendarEnabled])
+  const checkPermissions = async () => {
+    if (Platform.OS === "android") {
+      const hasNotificationAccess = await checkNotificationAccessSpecialPermission()
+
+      // If permission was granted while away, enable notifications and start service
+      if (hasNotificationAccess && !notificationsEnabled) {
+        console.log("Notification permission was granted while away, enabling notifications")
+        setNotificationsEnabled(true)
+
+        // Start notification listener service
+        try {
+          // await NotificationService.startNotificationListenerService();
+        } catch (error) {
+          console.error("Error starting notification service:", error)
+        }
+      }
+    } else {
+      const hasNotifications = await checkFeaturePermissions(PermissionFeatures.READ_NOTIFICATIONS)
+      if (hasNotifications && !notificationsEnabled) {
+        setNotificationsEnabled(true)
+      }
+    }
+
+    if (Platform.OS === "ios") {
+      console.log("Adding delay before checking iOS calendar permissions")
+      await new Promise(resolve => setTimeout(resolve, 1500)) // 1.5 second delay
+    }
+
+    // Also recheck calendar permissions
+    const hasCalendar = await checkFeaturePermissions(PermissionFeatures.CALENDAR)
+    if (Platform.OS === "ios" && calendarPermissionPending) {
+      // If we're in the middle of requesting permissions, don't flip back to false
+      if (hasCalendar) {
+        setCalendarEnabled(true)
+      }
+      // Don't set to false even if hasCalendar is false temporarily
+    } else {
+      // Normal case - update if different
+      if (hasCalendar !== calendarEnabled) {
+        setCalendarEnabled(hasCalendar)
+      }
+    }
+
+    // Also recheck location permissions
+    const hasLocation = await checkFeaturePermissions(PermissionFeatures.LOCATION)
+    if (Platform.OS === "ios" && locationPermissionPending) {
+      // If we're in the middle of requesting permissions, don't flip back to false
+      if (hasLocation) {
+        setLocationEnabled(true)
+      }
+      // Don't set to false even if hasLocation is false temporarily
+    } else {
+      // Normal case - update if different
+      if (hasLocation !== locationEnabled) {
+        setLocationEnabled(hasLocation)
+      }
+    }
+  }
 
   // Monitor app state to detect when user returns from settings
   useEffect(() => {
@@ -76,64 +132,7 @@ export default function PrivacySettingsScreen() {
       if (appState.match(/inactive|background/) && nextAppState === "active") {
         // App has come to the foreground - recheck permissions
         console.log("App returned to foreground, rechecking notification permissions")
-        ;(async () => {
-          if (Platform.OS === "android") {
-            const hasNotificationAccess = await checkNotificationAccessSpecialPermission()
-
-            // If permission was granted while away, enable notifications and start service
-            if (hasNotificationAccess && !notificationsEnabled) {
-              console.log("Notification permission was granted while away, enabling notifications")
-              setNotificationsEnabled(true)
-
-              // Start notification listener service
-              try {
-                // await NotificationService.startNotificationListenerService();
-              } catch (error) {
-                console.error("Error starting notification service:", error)
-              }
-            }
-          } else {
-            const hasNotifications = await checkFeaturePermissions(PermissionFeatures.READ_NOTIFICATIONS)
-            if (hasNotifications && !notificationsEnabled) {
-              setNotificationsEnabled(true)
-            }
-          }
-
-          if (Platform.OS === "ios") {
-            console.log("Adding delay before checking iOS calendar permissions")
-            await new Promise(resolve => setTimeout(resolve, 1500)) // 1.5 second delay
-          }
-
-          // Also recheck calendar permissions
-          const hasCalendar = await checkFeaturePermissions(PermissionFeatures.CALENDAR)
-          if (Platform.OS === "ios" && calendarPermissionPending) {
-            // If we're in the middle of requesting permissions, don't flip back to false
-            if (hasCalendar) {
-              setCalendarEnabled(true)
-            }
-            // Don't set to false even if hasCalendar is false temporarily
-          } else {
-            // Normal case - update if different
-            if (hasCalendar !== calendarEnabled) {
-              setCalendarEnabled(hasCalendar)
-            }
-          }
-
-          // Also recheck location permissions
-          const hasLocation = await checkFeaturePermissions(PermissionFeatures.LOCATION)
-          if (Platform.OS === "ios" && locationPermissionPending) {
-            // If we're in the middle of requesting permissions, don't flip back to false
-            if (hasLocation) {
-              setLocationEnabled(true)
-            }
-            // Don't set to false even if hasLocation is false temporarily
-          } else {
-            // Normal case - update if different
-            if (hasLocation !== locationEnabled) {
-              setLocationEnabled(hasLocation)
-            }
-          }
-        })()
+        checkPermissions()
       }
       setAppState(nextAppState)
     })
@@ -141,7 +140,7 @@ export default function PrivacySettingsScreen() {
     return () => {
       subscription.remove()
     }
-  }, [appState, notificationsEnabled, calendarEnabled, locationEnabled])
+  }, []) // subscribe only once
 
   const toggleSensing = async () => {
     const newSensing = !isSensingEnabled
@@ -243,11 +242,11 @@ export default function PrivacySettingsScreen() {
         {/* Calendar Permission - only show if not granted */}
         {!calendarEnabled && (
           <>
-            <ToggleSetting
+            <PermissionButton
               label={translate("settings:calendarLabel")}
               subtitle={translate("settings:calendarSubtitle")}
               value={calendarEnabled}
-              onValueChange={handleToggleCalendar}
+              onPress={handleToggleCalendar}
             />
             <Spacer height={theme.spacing.md} />
           </>
@@ -256,11 +255,11 @@ export default function PrivacySettingsScreen() {
         {/* Location Permission - only show if not granted */}
         {!locationEnabled && (
           <>
-            <ToggleSetting
+            <PermissionButton
               label={translate("settings:locationLabel")}
               subtitle={translate("settings:locationSubtitle")}
               value={locationEnabled}
-              onValueChange={handleToggleLocation}
+              onPress={handleToggleLocation}
             />
             <Spacer height={theme.spacing.md} />
           </>

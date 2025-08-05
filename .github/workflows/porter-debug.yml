@@ -1,7 +1,7 @@
 "on":
   push:
     branches:
-      - tiers
+      - translation-manager
 name: 🚀 [debug] Porter.run Deploy
 jobs:
   porter-deploy:

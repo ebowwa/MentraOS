@@ -49,6 +49,7 @@ import com.augmentos.augmentos_core.augmentos_backend.ServerCommsCallback;
 import com.augmentos.augmentos_core.augmentos_backend.ThirdPartyCloudApp;
 import com.augmentos.augmentos_core.augmentos_backend.WebSocketLifecycleManager;
 import com.augmentos.augmentos_core.augmentos_backend.WebSocketManager;
+import com.augmentos.augmentos_core.enums.SpeechRequiredDataType;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.BatteryLevelEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.ButtonPressEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.CaseEvent;
@@ -1476,6 +1477,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             coreInfo.put("charging_status", batteryStatusHelper.isBatteryCharging());
             coreInfo.put("sensing_enabled", SmartGlassesManager.getSensingEnabled(this));
             coreInfo.put("bypass_vad_for_debugging", SmartGlassesManager.getBypassVadForDebugging(this));
+            coreInfo.put("enforce_local_transcription", SmartGlassesManager.getEnforceLocalTranscription(this));
             coreInfo.put("bypass_audio_encoding_for_debugging", SmartGlassesManager.getBypassAudioEncodingForDebugging(this));
             coreInfo.put("contextual_dashboard_enabled", this.contextualDashboardEnabled);
             coreInfo.put("always_on_status_bar_enabled", this.alwaysOnStatusBarEnabled);
@@ -1723,9 +1725,9 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             }
 
             @Override
-            public void onMicrophoneStateChange(boolean microphoneEnabled) {
+            public void onMicrophoneStateChange(boolean microphoneEnabled, List<SpeechRequiredDataType> requiredData) {
                 if (smartGlassesManager != null && SmartGlassesManager.getSensingEnabled(getApplicationContext())) {
-                    smartGlassesManager.changeMicrophoneState(microphoneEnabled);
+                    smartGlassesManager.changeMicrophoneState(microphoneEnabled, requiredData);
                 }
             }
 
@@ -1969,6 +1971,36 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                 } else {
                     Log.e("LOCATION_DEBUG", "AugmentosService: locationSystem is null, cannot request single location.");
                 }
+            }
+
+            @Override
+            public void onStartBufferRecording() {
+                Log.d(TAG, "onStartBufferRecording from server");
+                startBufferRecording();
+            }
+
+            @Override
+            public void onStopBufferRecording() {
+                Log.d(TAG, "onStopBufferRecording from server");
+                stopBufferRecording();
+            }
+
+            @Override
+            public void onSaveBufferVideo(String requestId, int durationSeconds) {
+                Log.d(TAG, "onSaveBufferVideo from server: requestId=" + requestId + ", duration=" + durationSeconds);
+                saveBufferVideo(requestId, durationSeconds);
+            }
+
+            @Override
+            public void onStartVideoRecording(String requestId, boolean save) {
+                Log.d(TAG, "onStartVideoRecording from server: requestId=" + requestId + ", save=" + save);
+                startVideoRecording(requestId, save);
+            }
+
+            @Override
+            public void onStopVideoRecording(String requestId) {
+                Log.d(TAG, "onStopVideoRecording from server: requestId=" + requestId);
+                stopVideoRecording(requestId);
             }
         });
     }
@@ -2220,6 +2252,13 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     public void setBypassAudioEncodingForDebugging(boolean bypassAudioEncodingForDebugging) {
         SmartGlassesManager.saveBypassAudioEncodingForDebugging(this, bypassAudioEncodingForDebugging);
         sendStatusToBackend();
+    }
+
+    @Override
+    public void setEnforceLocalTranscription(boolean enforceLocalTranscription) {
+        SmartGlassesManager.saveEnforceLocalTranscription(this, enforceLocalTranscription);
+        sendStatusToBackend();
+        sendStatusToAugmentOsManager();
     }
 
     @Override
@@ -3038,5 +3077,55 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             deviceModel = smartGlassesManager.getConnectedSmartGlasses().deviceModelName;
 
         EventBus.getDefault().post(new ButtonPressEvent(deviceModel, buttonId, pressType));
+    }
+
+    @Override
+    public void startBufferRecording() {
+        Log.d(TAG, "Starting buffer recording on smart glasses");
+        if (smartGlassesManager != null) {
+            smartGlassesManager.startBufferRecording();
+        } else {
+            Log.e(TAG, "SmartGlassesManager is null, cannot start buffer recording");
+        }
+    }
+
+    @Override
+    public void stopBufferRecording() {
+        Log.d(TAG, "Stopping buffer recording on smart glasses");
+        if (smartGlassesManager != null) {
+            smartGlassesManager.stopBufferRecording();
+        } else {
+            Log.e(TAG, "SmartGlassesManager is null, cannot stop buffer recording");
+        }
+    }
+
+    @Override
+    public void saveBufferVideo(String requestId, int durationSeconds) {
+        Log.d(TAG, "Saving buffer video: requestId=" + requestId + ", duration=" + durationSeconds + "s");
+        if (smartGlassesManager != null) {
+            smartGlassesManager.saveBufferVideo(requestId, durationSeconds);
+        } else {
+            Log.e(TAG, "SmartGlassesManager is null, cannot save buffer video");
+        }
+    }
+
+    @Override
+    public void startVideoRecording(String requestId, boolean save) {
+        Log.d(TAG, "Starting video recording: requestId=" + requestId + ", save=" + save);
+        if (smartGlassesManager != null) {
+            smartGlassesManager.startVideoRecording(requestId, save);
+        } else {
+            Log.e(TAG, "SmartGlassesManager is null, cannot start video recording");
+        }
+    }
+
+    @Override
+    public void stopVideoRecording(String requestId) {
+        Log.d(TAG, "Stopping video recording: requestId=" + requestId);
+        if (smartGlassesManager != null) {
+            smartGlassesManager.stopVideoRecording(requestId);
+        } else {
+            Log.e(TAG, "SmartGlassesManager is null, cannot stop video recording");
+        }
     }
 }
