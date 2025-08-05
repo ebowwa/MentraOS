@@ -46,6 +46,9 @@ import com.augmentos.asg_client.service.core.AsgClientService;
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.PermissionsUtils;
 
 import com.augmentos.asg_client.reporting.domains.GeneralReporting;
+import com.augmentos.asg_client.reporting.core.ReportManager;
+import com.augmentos.asg_client.reporting.core.ReportData;
+import com.augmentos.asg_client.reporting.core.ReportLevel;
 
 public class MainActivity extends AppCompatActivity {
   public final String TAG = "Augmentos_MainActivity";
@@ -72,6 +75,9 @@ public class MainActivity extends AppCompatActivity {
 
     // Report app startup (reporting system already initialized in Application class)
     GeneralReporting.reportAppStartup(this);
+    
+    // Test Sentry configuration
+    testSentryConfiguration();
     
     // Stop factory test app before starting our services to avoid serial port conflicts
     stopFactoryTest();
@@ -473,6 +479,49 @@ public class MainActivity extends AppCompatActivity {
       Log.i(TAG, "Sent restart complete notification to OTA updater");
     } catch (Exception e) {
       Log.e(TAG, "Error sending restart complete notification", e);
+    }
+  }
+  
+  /**
+   * Test Sentry configuration and report a test message
+   */
+  private void testSentryConfiguration() {
+    try {
+      Log.i(TAG, "Testing Sentry configuration...");
+      
+      // Get the report manager
+      ReportManager reportManager = AsgClientApplication.getInstance().getReportManager();
+      
+      // Log configuration status
+      Log.i(TAG, "Report manager providers: " + reportManager.getProviderNames());
+      Log.i(TAG, "Enabled providers: " + reportManager.getEnabledProviderNames());
+      
+      // Send a test message
+      reportManager.report(new ReportData.Builder()
+          .message("Sentry configuration test - App startup")
+          .level(ReportLevel.INFO)
+          .category("test")
+          .operation("startup")
+          .tag("test_type", "configuration_verification")
+          .tag("app_version", getPackageInfo().versionName)
+          .build());
+      
+      Log.i(TAG, "Sentry test message sent successfully");
+      
+    } catch (Exception e) {
+      Log.e(TAG, "Error testing Sentry configuration", e);
+    }
+  }
+  
+  /**
+   * Get package info for version information
+   */
+  private PackageInfo getPackageInfo() {
+    try {
+      return getPackageManager().getPackageInfo(getPackageName(), 0);
+    } catch (PackageManager.NameNotFoundException e) {
+      Log.e(TAG, "Error getting package info", e);
+      return null;
     }
   }
 }

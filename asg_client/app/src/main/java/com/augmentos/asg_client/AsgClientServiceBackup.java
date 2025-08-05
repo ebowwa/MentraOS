@@ -73,7 +73,7 @@ import android.content.IntentFilter;
  *
  * "NOTHING LEFT OUT" – all functionality is shown below.
  */
-public class AsgClientService extends Service implements NetworkStateListener, BluetoothStateListener {
+public class AsgClientServiceBackup extends Service implements NetworkStateListener, BluetoothStateListener {
 
     // ---------------------------------------------
     // Constants & Class Fields
@@ -215,8 +215,8 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     // LocalBinder: allows this service to be bound
     // ---------------------------------------------
     public class LocalBinder extends Binder {
-        public AsgClientService getService() {
-            return AsgClientService.this;
+        public AsgClientServiceBackup getService() {
+            return AsgClientServiceBackup.this;
         }
     }
 
@@ -225,7 +225,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     // ---------------------------------------------
     private OtaUpdaterManager otaUpdaterManager;
     
-    public AsgClientService() {
+    public AsgClientServiceBackup() {
         // Empty constructor
     }
 
@@ -438,13 +438,13 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                 @Override
                 protected void sendMediaSuccessResponse(String requestId, String mediaUrl, int mediaType) {
                     // Override to delegate to parent class
-                    AsgClientService.this.sendMediaSuccessResponse(requestId, mediaUrl, mediaType);
+                    AsgClientServiceBackup.this.sendMediaSuccessResponse(requestId, mediaUrl, mediaType);
                 }
 
                 @Override
                 protected void sendMediaErrorResponse(String requestId, String errorMessage, int mediaType) {
                     // Override to delegate to parent class
-                    AsgClientService.this.sendMediaErrorResponse(requestId, errorMessage, mediaType);
+                    AsgClientServiceBackup.this.sendMediaErrorResponse(requestId, errorMessage, mediaType);
                 }
             };
 

@@ -34,6 +34,7 @@ import com.augmentos.asg_client.service.media.interfaces.IStreamingManager;
 import com.augmentos.asg_client.service.system.managers.StateManager;
 import com.augmentos.augmentos_core.AugmentosService;
 
+import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
 import org.json.JSONException;
@@ -154,6 +155,9 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         super.onCreate();
         Log.d(TAG, "AsgClientServiceV2 onCreate");
 
+        // Register for EventBus events
+        EventBus.getDefault().register(this);
+
         // Initialize dependency injection container
         initializeServiceContainer();
 
@@ -192,6 +196,11 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     public void onDestroy() {
         super.onDestroy();
         Log.d(TAG, "AsgClientServiceV2 onDestroy");
+
+        // Unregister from EventBus
+        if (EventBus.getDefault().isRegistered(this)) {
+            EventBus.getDefault().unregister(this);
+        }
 
         // Clean up service container
         if (serviceContainer != null) {

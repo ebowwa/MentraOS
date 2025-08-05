@@ -13,8 +13,6 @@ import com.augmentos.asg_client.service.core.CommandProcessor;
 import com.augmentos.asg_client.service.legacy.managers.AsgClientServiceManager;
 import com.augmentos.asg_client.service.system.interfaces.IServiceLifecycle;
 
-import org.greenrobot.eventbus.EventBus;
-
 /**
  * Manages service lifecycle operations.
  * Follows Single Responsibility Principle by handling only lifecycle concerns.
@@ -51,11 +49,6 @@ public class ServiceLifecycleManager implements IServiceLifecycle {
         
         // Initialize managers
         serviceManager.initialize();
-        
-        // Register for EventBus events
-        if (!EventBus.getDefault().isRegistered(this)) {
-            EventBus.getDefault().register(this);
-        }
         
         // Schedule OTA service start
         scheduleOtaServiceStart();
@@ -108,11 +101,6 @@ public class ServiceLifecycleManager implements IServiceLifecycle {
         // Clean up managers
         if (serviceManager != null) {
             serviceManager.cleanup();
-        }
-        
-        // Unregister from EventBus
-        if (EventBus.getDefault().isRegistered(this)) {
-            EventBus.getDefault().unregister(this);
         }
         
         isInitialized = false;
