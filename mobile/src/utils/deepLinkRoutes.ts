@@ -46,6 +46,7 @@ export const deepLinkRoutes: DeepLinkRoute[] = [
         "profile": "/settings/profile",
         "privacy": "/settings/privacy",
         "developer": "/settings/developer",
+        "mentra-nex-developer": "/settings/mentra-nex-developer",
         "theme": "/settings/theme",
         "change-password": "/settings/change-password",
         "data-export": "/settings/data-export",
