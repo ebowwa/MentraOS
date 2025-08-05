@@ -48,7 +48,7 @@ struct ViewState {
     private var cancellables = Set<AnyCancellable>()
     private var cachedThirdPartyAppList: [ThirdPartyCloudApp] = []
     //  private var cachedWhatToStream = [String]()
-    private var defaultWearable: String = ""
+    private var defaultWearable: String = "Simulated Glasses"
     private var pendingWearable: String = ""
     private var deviceName: String = ""
     private var somethingConnected: Bool = false
