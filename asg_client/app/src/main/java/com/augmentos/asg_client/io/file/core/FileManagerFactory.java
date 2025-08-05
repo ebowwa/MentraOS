@@ -55,24 +55,13 @@ public class FileManagerFactory {
             strategy.createLogger(),
             strategy.getPlatformName()
         );
-        
-        initialize(config);
-    }
-    
-    /**
-     * Initialize with custom platform configuration
-     * @param config The platform configuration
-     */
-    public static void initialize(PlatformConfig config) {
-        if (config == null) {
-            throw new IllegalArgumentException("PlatformConfig cannot be null");
-        }
-        
+
         platformConfig = config;
-        platformConfig.getLogger().info(TAG, 
-            "FileManagerFactory initialized for platform: " + config.getPlatformName() + 
-            " with base directory: " + config.getBaseDirectory().getAbsolutePath());
+        platformConfig.getLogger().info(TAG,
+                "FileManagerFactory initialized for platform: " + config.getPlatformName() +
+                        " with base directory: " + config.getBaseDirectory().getAbsolutePath());
     }
+
     
     /**
      * Auto-detect platform and initialize
@@ -84,8 +73,11 @@ public class FileManagerFactory {
             strategy.createLogger(),
             strategy.getPlatformName()
         );
-        
-        initialize(config);
+
+        platformConfig = config;
+        platformConfig.getLogger().info(TAG,
+                "FileManagerFactory initialized for platform: " + config.getPlatformName() +
+                        " with base directory: " + config.getBaseDirectory().getAbsolutePath());
     }
     
     /**
@@ -122,19 +114,19 @@ public class FileManagerFactory {
         return new FileManagerImpl(platformConfig.getBaseDirectory(), platformConfig.getLogger());
     }
     
-    /**
-     * Create a new FileManager instance with custom configuration
-     * @param config The platform configuration
-     * @return New FileManager instance
-     */
-    public static FileManager createInstance(PlatformConfig config) {
-        if (config == null) {
-            throw new IllegalArgumentException("PlatformConfig cannot be null");
-        }
-        
-        return new FileManagerImpl(config.getBaseDirectory(), config.getLogger());
-    }
-    
+//    /**
+//     * Create a new FileManager instance with custom configuration
+//     * @param config The platform configuration
+//     * @return New FileManager instance
+//     */
+//    public static FileManager createInstance(PlatformConfig config) {
+//        if (config == null) {
+//            throw new IllegalArgumentException("PlatformConfig cannot be null");
+//        }
+//
+//        return new FileManagerImpl(config.getBaseDirectory(), config.getLogger());
+//    }
+//
     /**
      * Create a new FileManager instance for Android
      * @param context The Android context
@@ -144,11 +136,11 @@ public class FileManagerFactory {
         if (context == null) {
             throw new IllegalArgumentException("Context cannot be null");
         }
-        
+
         AndroidPlatformStrategy strategy = new AndroidPlatformStrategy(context);
         return new FileManagerImpl(strategy.getBaseDirectory(), strategy.createLogger());
     }
-    
+
     /**
      * Create a new FileManager instance with custom settings
      * @param baseDirectory The base directory for files
@@ -162,10 +154,10 @@ public class FileManagerFactory {
         if (logger == null) {
             throw new IllegalArgumentException("Logger cannot be null");
         }
-        
+
         return new FileManagerImpl(baseDirectory, logger);
     }
-    
+
     /**
      * Reset the singleton instance (useful for testing)
      */

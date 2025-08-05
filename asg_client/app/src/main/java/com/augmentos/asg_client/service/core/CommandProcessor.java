@@ -1,14 +1,10 @@
 package com.augmentos.asg_client.service.core;
 
 import android.content.Context;
-import android.os.Handler;
-import android.os.Looper;
 import android.util.Log;
 
-import com.augmentos.asg_client.io.bluetooth.interfaces.IBluetoothManager;
+import com.augmentos.asg_client.io.file.core.FileManager;
 import com.augmentos.asg_client.io.media.core.MediaCaptureService;
-import com.augmentos.asg_client.io.network.interfaces.INetworkManager;
-import com.augmentos.asg_client.io.streaming.services.RtmpStreamingService;
 import com.augmentos.asg_client.service.legacy.handlers.LegacyCommandHandler;
 import com.augmentos.asg_client.service.legacy.managers.AsgClientServiceManager;
 import com.augmentos.asg_client.service.system.handlers.OtaCommandHandler;
@@ -30,23 +26,17 @@ import com.augmentos.asg_client.service.media.handlers.RtmpCommandHandler;
 import com.augmentos.asg_client.service.system.handlers.WifiCommandHandler;
 import com.augmentos.asg_client.service.system.handlers.BatteryCommandHandler;
 
-import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.nio.charset.StandardCharsets;
-import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Date;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
 /**
  * Processes JSON commands received via Bluetooth.
  * This class follows SOLID principles by using the Command Handler pattern.
- * 
+ * <p>
  * Single Responsibility: Command routing and delegation only
  * Open/Closed: Easy to extend with new command handlers
  * Liskov Substitution: Uses interface-based handlers
@@ -57,30 +47,33 @@ public class CommandProcessor {
     private static final String TAG = "CommandProcessor";
 
     private final Context context;
-    
+
     // Interface-based managers (Dependency Inversion Principle)
     private final ICommunicationManager communicationManager;
     private final IStateManager stateManager;
     private final IStreamingManager streamingManager;
     private final IResponseBuilder responseBuilder;
     private final IConfigurationManager configurationManager;
-    
+
+    private final FileManager fileManager;
+
     // Command handlers (Open/Closed Principle)
     private final Map<String, ICommandHandler> commandHandlers;
-    
+
     // Legacy command handler for backward compatibility
     private final LegacyCommandHandler legacyCommandHandler;
-    
+
     // Legacy components (for backward compatibility)
     private final AsgClientServiceManager serviceManager;
 
     public CommandProcessor(Context context,
-                          ICommunicationManager communicationManager,
-                          IStateManager stateManager,
-                          IStreamingManager streamingManager,
-                          IResponseBuilder responseBuilder,
-                          IConfigurationManager configurationManager,
-                          AsgClientServiceManager serviceManager) {
+                            ICommunicationManager communicationManager,
+                            IStateManager stateManager,
+                            IStreamingManager streamingManager,
+                            IResponseBuilder responseBuilder,
+                            IConfigurationManager configurationManager,
+                            AsgClientServiceManager serviceManager,
+                            FileManager fileManager) {
         this.context = context;
         this.communicationManager = communicationManager;
         this.stateManager = stateManager;
@@ -88,13 +81,14 @@ public class CommandProcessor {
         this.responseBuilder = responseBuilder;
         this.configurationManager = configurationManager;
         this.serviceManager = serviceManager; // Legacy support
-        
+        this.fileManager = fileManager;
+
         // Initialize command handlers (Open/Closed Principle)
         this.commandHandlers = new HashMap<>();
         this.legacyCommandHandler = new LegacyCommandHandler(serviceManager, streamingManager);
         initializeCommandHandlers();
     }
-    
+
     /**
      * Initialize all command handlers
      * Easy to extend by adding new handlers here
@@ -103,8 +97,8 @@ public class CommandProcessor {
         // Register command handlers
         registerHandler(new PhoneReadyCommandHandler(communicationManager, stateManager, responseBuilder));
         registerHandler(new AuthTokenCommandHandler(communicationManager, configurationManager));
-        registerHandler(new PhotoCommandHandler(context, serviceManager));
-        registerHandler(new VideoCommandHandler(serviceManager, streamingManager));
+        registerHandler(new PhotoCommandHandler(context, serviceManager, fileManager));
+        registerHandler(new VideoCommandHandler(context, serviceManager, streamingManager));
         registerHandler(new PingCommandHandler(communicationManager, responseBuilder));
         registerHandler(new RtmpCommandHandler(context, stateManager, streamingManager));
         registerHandler(new WifiCommandHandler(serviceManager, communicationManager, stateManager));
@@ -112,10 +106,10 @@ public class CommandProcessor {
         registerHandler(new VersionCommandHandler(context, serviceManager));
         registerHandler(new SettingsCommandHandler(serviceManager, communicationManager, responseBuilder));
         registerHandler(new OtaCommandHandler());
-        
+
         Log.d(TAG, "✅ Registered " + commandHandlers.size() + " command handlers");
     }
-    
+
     /**
      * Register a command handler
      */
@@ -132,7 +126,7 @@ public class CommandProcessor {
         try {
             // Handle direct data format (C field)
             JSONObject dataToProcess = extractDataFromCommand(json);
-            
+
             // Send ACK if message ID is present
             long messageId = dataToProcess.optLong("mId", -1);
             if (messageId != -1) {
@@ -159,7 +153,7 @@ public class CommandProcessor {
             Log.e(TAG, "Error processing JSON command", e);
         }
     }
-    
+
     /**
      * Handle legacy commands that don't have dedicated handlers yet
      * This maintains backward compatibility while transitioning to the new architecture
@@ -248,7 +242,7 @@ public class CommandProcessor {
                 return new JSONObject(dataPayload);
             } catch (JSONException e) {
                 Log.d(TAG, "📦 Payload is not valid JSON, treating as ODM format");
-                parseK900Command(json);
+                processK900Command(json);
                 throw new JSONException("ODM format - handled separately");
             }
         }
@@ -279,8 +273,8 @@ public class CommandProcessor {
      * Send download progress to connected phone via BLE
      */
     public void sendDownloadProgressOverBle(String status, int progress, long bytesDownloaded, long totalBytes, String errorMessage, long timestamp) {
-        if (serviceManager != null && serviceManager.getBluetoothManager() != null && 
-            serviceManager.getBluetoothManager().isConnected()) {
+        if (serviceManager != null && serviceManager.getBluetoothManager() != null &&
+                serviceManager.getBluetoothManager().isConnected()) {
             try {
                 JSONObject downloadProgress = new JSONObject();
                 downloadProgress.put("type", "ota_download_progress");
@@ -292,11 +286,11 @@ public class CommandProcessor {
                     downloadProgress.put("error_message", errorMessage);
                 }
                 downloadProgress.put("timestamp", timestamp);
-                
+
                 String jsonString = downloadProgress.toString();
                 Log.d(TAG, "📥 Sending download progress via BLE: " + status + " - " + progress + "%");
                 serviceManager.getBluetoothManager().sendData(jsonString.getBytes());
-                
+
             } catch (JSONException e) {
                 Log.e(TAG, "Error creating download progress JSON", e);
             }
@@ -309,8 +303,8 @@ public class CommandProcessor {
      * Send installation progress to connected phone via BLE
      */
     public void sendInstallationProgressOverBle(String status, String apkPath, String errorMessage, long timestamp) {
-        if (serviceManager != null && serviceManager.getBluetoothManager() != null && 
-            serviceManager.getBluetoothManager().isConnected()) {
+        if (serviceManager != null && serviceManager.getBluetoothManager() != null &&
+                serviceManager.getBluetoothManager().isConnected()) {
             try {
                 JSONObject installationProgress = new JSONObject();
                 installationProgress.put("type", "ota_installation_progress");
@@ -320,11 +314,11 @@ public class CommandProcessor {
                     installationProgress.put("error_message", errorMessage);
                 }
                 installationProgress.put("timestamp", timestamp);
-                
+
                 String jsonString = installationProgress.toString();
                 Log.d(TAG, "🔧 Sending installation progress via BLE: " + status + " - " + apkPath);
                 serviceManager.getBluetoothManager().sendData(jsonString.getBytes());
-                
+
             } catch (JSONException e) {
                 Log.e(TAG, "Error creating installation progress JSON", e);
             }
@@ -337,8 +331,8 @@ public class CommandProcessor {
      * Send report swipe status
      */
     public void sendReportSwipe(boolean report) {
-        if (serviceManager != null && serviceManager.getBluetoothManager() != null && 
-            serviceManager.getBluetoothManager().isConnected()) {
+        if (serviceManager != null && serviceManager.getBluetoothManager() != null &&
+                serviceManager.getBluetoothManager().isConnected()) {
             try {
                 JSONObject swipeJson = new JSONObject();
                 swipeJson.put("C", "cs_swst");
@@ -360,7 +354,7 @@ public class CommandProcessor {
     /**
      * Process K900 protocol commands
      */
-    public void parseK900Command(JSONObject json) {
+    public void processK900Command(JSONObject json) {
         try {
             String command = json.optString("C", "");
             JSONObject bData = json.optJSONObject("B");
@@ -390,14 +384,14 @@ public class CommandProcessor {
                     if (bData != null) {
                         int newBatteryPercentage = bData.optInt("pt", -1);
                         int newBatteryVoltage = bData.optInt("vt", -1);
-                        
+
                         if (newBatteryPercentage != -1) {
                             Log.d(TAG, "🔋 Battery percentage: " + newBatteryPercentage + "%");
                         }
                         if (newBatteryVoltage != -1) {
                             Log.d(TAG, "🔋 Battery voltage: " + newBatteryVoltage + "mV");
                         }
-                        
+
                         // Send battery status over BLE if we have valid data
                         if (newBatteryPercentage != -1 || newBatteryVoltage != -1) {
                             sendBatteryStatusOverBle(newBatteryPercentage, newBatteryVoltage);
@@ -411,7 +405,7 @@ public class CommandProcessor {
                     // File transfer acknowledgment from BES chip (K900 specific code)
                     Log.d(TAG, "📦 BES file transfer ACK detected in CommandProcessor");
                     break;
-                    
+
                 default:
                     Log.d(TAG, "📦 Unknown ODM payload: " + command);
                     break;
@@ -429,7 +423,7 @@ public class CommandProcessor {
             AsgSettings.ButtonPressMode mode = serviceManager.getAsgSettings().getButtonPressMode();
             String pressType = isLongPress ? "long" : "short";
             Log.d(TAG, "Handling " + pressType + " button press with mode: " + mode.getValue());
-            
+
             switch (mode) {
                 case PHOTO:
                     // Current behavior - take photo/video only
@@ -447,18 +441,18 @@ public class CommandProcessor {
                         }
                     }
                     break;
-                    
+
                 case APPS:
                     // Send to apps only
                     Log.d(TAG, "📱 Sending " + pressType + " button press to apps (APPS mode)");
                     sendButtonPressToPhone(isLongPress);
                     break;
-                    
+
                 case BOTH:
                     // Send to apps AND take photo/video
                     Log.d(TAG, "🔄 Sending " + pressType + " button press to apps AND taking photo/video (BOTH mode)");
                     sendButtonPressToPhone(isLongPress);
-                    
+
                     if (isLongPress) {
                         Log.d(TAG, "📹 Video recording not yet implemented (BOTH mode, long press)");
                         // TODO: Implement video recording
@@ -478,8 +472,8 @@ public class CommandProcessor {
      * Send button press to phone via Bluetooth
      */
     private void sendButtonPressToPhone(boolean isLongPress) {
-        if (serviceManager != null && serviceManager.getBluetoothManager() != null && 
-            serviceManager.getBluetoothManager().isConnected()) {
+        if (serviceManager != null && serviceManager.getBluetoothManager() != null &&
+                serviceManager.getBluetoothManager().isConnected()) {
             try {
                 JSONObject buttonObject = new JSONObject();
                 buttonObject.put("type", "button_press");
@@ -501,12 +495,12 @@ public class CommandProcessor {
      * Send battery status over BLE
      */
     private void sendBatteryStatusOverBle(int batteryPercentage, int batteryVoltage) {
-        if (serviceManager != null && serviceManager.getBluetoothManager() != null && 
-            serviceManager.getBluetoothManager().isConnected()) {
+        if (serviceManager != null && serviceManager.getBluetoothManager() != null &&
+                serviceManager.getBluetoothManager().isConnected()) {
             try {
                 // Calculate charging status based on voltage
                 boolean isCharging = batteryVoltage > 3900;
-                
+
                 JSONObject obj = new JSONObject();
                 obj.put("type", "battery_status");
                 obj.put("charging", isCharging);
@@ -515,7 +509,7 @@ public class CommandProcessor {
                 Log.d(TAG, "Formatted battery status message: " + jsonString);
                 serviceManager.getBluetoothManager().sendData(jsonString.getBytes());
                 Log.d(TAG, "Sent battery status via BLE");
-                
+
                 // Update the main service with battery status
                 if (stateManager != null) {
                     stateManager.updateBatteryStatus(batteryPercentage, isCharging, System.currentTimeMillis());

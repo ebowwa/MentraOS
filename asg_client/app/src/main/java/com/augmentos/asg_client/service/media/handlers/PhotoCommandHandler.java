@@ -2,6 +2,8 @@ package com.augmentos.asg_client.service.media.handlers;
 
 import android.content.Context;
 import android.util.Log;
+
+import com.augmentos.asg_client.io.file.core.FileManager;
 import com.augmentos.asg_client.io.media.core.MediaCaptureService;
 import com.augmentos.asg_client.service.legacy.interfaces.ICommandHandler;
 import com.augmentos.asg_client.service.legacy.managers.AsgClientServiceManager;
@@ -20,9 +22,11 @@ public class PhotoCommandHandler implements ICommandHandler {
     
     private final Context context;
     private final AsgClientServiceManager serviceManager;
+    private final FileManager fileManager;
 
-    public PhotoCommandHandler(Context context, AsgClientServiceManager serviceManager) {
+    public PhotoCommandHandler(Context context, AsgClientServiceManager serviceManager, FileManager fileManager) {
         this.context = context;
+        this.fileManager = fileManager;
         this.serviceManager = serviceManager;
     }
 
@@ -34,11 +38,21 @@ public class PhotoCommandHandler implements ICommandHandler {
     @Override
     public boolean handleCommand(JSONObject data) {
         try {
+
             String requestId = data.optString("requestId", "");
             String webhookUrl = data.optString("webhookUrl", "");
             String transferMethod = data.optString("transferMethod", "direct");
             String bleImgId = data.optString("bleImgId", "");
             boolean save = data.optBoolean("save", false);
+
+            String packageName = data.optString("packageName", "");
+
+
+            if(packageName.isEmpty()){
+                packageName = context.getPackageName();
+            }
+            Log.d(TAG, "Handling photo command for package: " + packageName);
+
 
             if (requestId.isEmpty()) {
                 Log.e(TAG, "Cannot take photo - missing requestId");
@@ -46,6 +60,9 @@ public class PhotoCommandHandler implements ICommandHandler {
             }
 
             String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
+
+
+            fileManager.getFile(packageName,"" ).getPath();
             String photoFilePath = context.getExternalFilesDir(null) + "/IMG_" + timeStamp + ".jpg";
 
             MediaCaptureService captureService = serviceManager.getMediaCaptureService();

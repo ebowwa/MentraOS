@@ -274,4 +274,9 @@ public class FileManagerImpl implements FileManager {
     public long getTotalSpace() {
         return baseDirectory.getTotalSpace();
     }
+    
+    @Override
+    public FileOperationLogger getOperationLogger() {
+        return operationLogger;
+    }
 } 

@@ -1,6 +1,9 @@
 package com.augmentos.asg_client.io.server.core;
 
 import android.content.Context;
+
+import com.augmentos.asg_client.io.file.core.FileManager;
+import com.augmentos.asg_client.io.file.core.FileManagerFactory;
 import com.augmentos.asg_client.io.server.interfaces.*;
 import com.augmentos.asg_client.io.server.services.AsgCameraServer;
 import com.augmentos.asg_client.logging.Logger;
@@ -11,35 +14,35 @@ import com.augmentos.asg_client.logging.LoggerFactory;
  * Follows Dependency Inversion Principle by depending on abstractions.
  */
 public class DefaultServerFactory {
-    
+
     /**
      * Create a default logger instance
      */
     public static Logger createLogger() {
         return LoggerFactory.createLogger();
     }
-    
+
     /**
      * Create a default network provider instance
      */
     public static NetworkProvider createNetworkProvider(Logger logger) {
         return new DefaultNetworkProvider(logger);
     }
-    
+
     /**
      * Create a default cache manager instance
      */
     public static CacheManager createCacheManager(Logger logger) {
         return new DefaultCacheManager(logger);
     }
-    
+
     /**
      * Create a default rate limiter instance
      */
     public static RateLimiter createRateLimiter(int maxRequests, long timeWindow, Logger logger) {
         return new DefaultRateLimiter(maxRequests, timeWindow, logger);
     }
-    
+
     /**
      * Create a default server config instance
      */
@@ -50,7 +53,7 @@ public class DefaultServerFactory {
                 .context(context)
                 .build();
     }
-    
+
     /**
      * Create a camera web server with default implementations
      */
@@ -58,11 +61,12 @@ public class DefaultServerFactory {
         ServerConfig config = createServerConfig(port, serverName, context);
         NetworkProvider networkProvider = createNetworkProvider(logger);
         CacheManager cacheManager = createCacheManager(logger);
+        FileManager fileManager = FileManagerFactory.getInstance();
         RateLimiter rateLimiter = createRateLimiter(100, 60000, logger); // 100 requests per minute
-        
-        return new AsgCameraServer(config, networkProvider, cacheManager, rateLimiter, logger);
+
+        return new AsgCameraServer(config, networkProvider, cacheManager, rateLimiter, logger, fileManager);
     }
-    
+
     /**
      * Create a camera web server with custom rate limiting
      */
@@ -72,7 +76,7 @@ public class DefaultServerFactory {
         NetworkProvider networkProvider = createNetworkProvider(logger);
         CacheManager cacheManager = createCacheManager(logger);
         RateLimiter rateLimiter = createRateLimiter(maxRequests, timeWindow, logger);
-        
-        return new AsgCameraServer(config, networkProvider, cacheManager, rateLimiter, logger);
+        FileManager fileManager = FileManagerFactory.getInstance();
+        return new AsgCameraServer(config, networkProvider, cacheManager, rateLimiter, logger, fileManager);
     }
 } 

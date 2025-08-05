@@ -1,5 +1,6 @@
 package com.augmentos.asg_client.service.media.handlers;
 
+import android.content.Context;
 import android.util.Log;
 import com.augmentos.asg_client.io.media.core.MediaCaptureService;
 import com.augmentos.asg_client.service.legacy.interfaces.ICommandHandler;
@@ -18,10 +19,12 @@ public class VideoCommandHandler implements ICommandHandler {
     private static final String TAG = "VideoCommandHandler";
     
     private final AsgClientServiceManager serviceManager;
+    private final Context context;
     private final IStreamingManager streamingManager;
 
-    public VideoCommandHandler(AsgClientServiceManager serviceManager, IStreamingManager streamingManager) {
+    public VideoCommandHandler(Context context, AsgClientServiceManager serviceManager, IStreamingManager streamingManager) {
         this.serviceManager = serviceManager;
+        this.context = context;
         this.streamingManager = streamingManager;
     }
 
@@ -34,6 +37,12 @@ public class VideoCommandHandler implements ICommandHandler {
     public boolean handleCommand(JSONObject data) {
         try {
             String requestId = data.optString("requestId", "");
+            String packageName = data.optString("packageName", "");
+            if(packageName.isEmpty()){
+                packageName = context.getPackageName();
+            }
+            Log.d(TAG, "Handling video command for package: " + packageName);
+
             if (requestId.isEmpty()) {
                 Log.e(TAG, "Cannot start video recording - missing requestId");
                 streamingManager.sendVideoRecordingStatusResponse(false, "missing_request_id", null);

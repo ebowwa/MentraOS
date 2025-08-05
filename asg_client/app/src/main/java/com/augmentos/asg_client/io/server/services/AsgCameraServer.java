@@ -10,6 +10,10 @@ import com.augmentos.asg_client.io.server.core.DefaultServerConfig;
 import com.augmentos.asg_client.io.server.interfaces.*;
 import com.augmentos.asg_client.logging.Logger;
 import com.augmentos.asg_client.logging.LoggerFactory;
+import com.augmentos.asg_client.io.file.core.FileManager;
+import com.augmentos.asg_client.io.file.core.FileManagerFactory;
+import com.augmentos.asg_client.io.file.core.FileManager.FileMetadata;
+import com.augmentos.asg_client.io.file.core.FileManager.FileOperationResult;
 import fi.iki.elonen.NanoHTTPD.IHTTPSession;
 import fi.iki.elonen.NanoHTTPD.Response;
 
@@ -19,21 +23,30 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.text.SimpleDateFormat;
 import java.util.*;
 
 /**
- * Camera web server for ASG (AugmentOS Smart Glasses) applications.
+ * Enhanced Camera web server for ASG (AugmentOS Smart Glasses) applications.
  * Provides RESTful API for photo capture, gallery browsing, and file downloads.
- * Follows SOLID principles with dependency injection.
+ * Integrates with the comprehensive file management system for better security,
+ * performance, and maintainability.
+ * 
+ * Follows SOLID principles with dependency injection and proper separation of concerns.
  */
 public class AsgCameraServer extends AsgServer {
 
     private static final String TAG = "CameraWebServer";
     private static final int DEFAULT_PORT = 8089;
-
-    private final String photoDirectory;
+    
+    // Package name for organizing camera files
+    private static final String CAMERA_PACKAGE = "com.augmentos.asg_client.camera";
+    
+    // File management system
+    private final FileManager fileManager;
+    
+    // Cache for latest photo metadata
+    private FileMetadata latestPhotoMetadata;
 
     /** Callback interface for handling "take-picture" requests. */
     public interface OnPictureRequestListener {
@@ -51,13 +64,17 @@ public class AsgCameraServer extends AsgServer {
      * @param cacheManager Cache manager
      * @param rateLimiter Rate limiter
      * @param logger Logger
+     * @param fileManager File manager for secure file operations
      */
     public AsgCameraServer(ServerConfig config, NetworkProvider networkProvider,
-                           CacheManager cacheManager, RateLimiter rateLimiter, Logger logger) {
+                           CacheManager cacheManager, RateLimiter rateLimiter, 
+                           Logger logger, FileManager fileManager) {
         super(config, networkProvider, cacheManager, rateLimiter, logger);
-        this.photoDirectory = getPhotoDirectory();
+        this.fileManager = fileManager;
         
-        logger.info(getTag(), "📸 Photo directory: " + photoDirectory);
+        logger.info(getTag(), "📸 Camera server initialized with file manager");
+        logger.info(getTag(), "📸 Camera package: " + CAMERA_PACKAGE);
+        logger.info(getTag(), "📸 Base directory: " + fileManager.getAvailableSpace() + " bytes available");
     }
 
     /**
@@ -71,7 +88,8 @@ public class AsgCameraServer extends AsgServer {
              createDefaultNetworkProvider(), 
              createDefaultCacheManager(), 
              createDefaultRateLimiter(), 
-             createDefaultLogger());
+             createDefaultLogger(),
+             FileManagerFactory.getInstance());
     }
 
     /**
@@ -116,6 +134,7 @@ public class AsgCameraServer extends AsgServer {
         return LoggerFactory.createLogger();
     }
 
+
     /**
      * Set the listener that will be notified when someone clicks "take picture."
      */
@@ -125,7 +144,7 @@ public class AsgCameraServer extends AsgServer {
     }
 
     /**
-     * Handle specific camera-related requests.
+     * Handle specific camera-related requests with enhanced file management.
      */
     @Override
     protected Response handleRequest(IHTTPSession session) {
@@ -156,6 +175,9 @@ public class AsgCameraServer extends AsgServer {
             case "/api/health":
                 logger.debug(getTag(), "❤️ Serving health check");
                 return serveHealth();
+            case "/api/cleanup":
+                logger.debug(getTag(), "🧹 Serving cleanup request");
+                return serveCleanup(session);
             default:
                 // Check if it's a static file request
                 if (uri.startsWith("/static/")) {
@@ -183,6 +205,7 @@ public class AsgCameraServer extends AsgServer {
             
             Map<String, Object> data = new HashMap<>();
             data.put("message", "Picture request received");
+            data.put("timestamp", System.currentTimeMillis());
             return createSuccessResponse(data);
         } else {
             logger.error(getTag(), "📸 ❌ Picture listener not available");
@@ -191,34 +214,30 @@ public class AsgCameraServer extends AsgServer {
     }
 
     /**
-     * Serve the latest photo with caching and compression.
+     * Serve the latest photo using the file management system.
      */
     private Response serveLatestPhoto() {
         logger.debug(getTag(), "🖼️ =========================================");
         logger.debug(getTag(), "🖼️ LATEST PHOTO REQUEST HANDLER");
         logger.debug(getTag(), "🖼️ =========================================");
         
-        String path = CameraNeo.getLastPhotoPath();
-        logger.debug(getTag(), "🖼️ 📍 Last photo path: " + path);
-        
-        if (path == null || path.isEmpty()) {
-            logger.warn(getTag(), "🖼️ ❌ No photo taken yet");
-            return createErrorResponse(Response.Status.NOT_FOUND, "No photo taken yet");
-        }
-
-        File photoFile = new File(path);
-        logger.debug(getTag(), "🖼️ 📁 Photo file: " + photoFile.getAbsolutePath());
-        logger.debug(getTag(), "🖼️ 📁 File exists: " + photoFile.exists());
-        logger.debug(getTag(), "🖼️ 📁 File size: " + (photoFile.exists() ? photoFile.length() : "N/A") + " bytes");
-        
-        if (!photoFile.exists()) {
-            logger.warn(getTag(), "🖼️ ❌ Photo file not found");
-            return createErrorResponse(Response.Status.NOT_FOUND, "Photo file not found");
-        }
-
         try {
+            // Get latest photo metadata
+            FileMetadata latestPhoto = getLatestPhotoMetadata();
+            if (latestPhoto == null) {
+                logger.warn(getTag(), "🖼️ ❌ No photo taken yet");
+                return createErrorResponse(Response.Status.NOT_FOUND, "No photo taken yet");
+            }
+
+            // Get the file using FileManager
+            File photoFile = fileManager.getFile(CAMERA_PACKAGE, latestPhoto.getFileName());
+            if (photoFile == null || !photoFile.exists()) {
+                logger.warn(getTag(), "🖼️ ❌ Photo file not found");
+                return createErrorResponse(Response.Status.NOT_FOUND, "Photo file not found");
+            }
+
             // Check cache first
-            String cacheKey = "latest_" + photoFile.lastModified();
+            String cacheKey = "latest_" + latestPhoto.getLastModified();
             Object cachedData = cacheManager.get(cacheKey);
             
             if (cachedData != null) {
@@ -229,27 +248,29 @@ public class AsgCameraServer extends AsgServer {
 
             // Read file and cache it
             logger.debug(getTag(), "🖼️ 📖 Reading photo file from disk...");
-            byte[] fileData = Files.readAllBytes(photoFile.toPath());
-            logger.debug(getTag(), "🖼️ 📖 File read successfully: " + fileData.length + " bytes");
-            
-            if (fileData.length <= MAX_FILE_SIZE) {
-                logger.debug(getTag(), "🖼️ 💾 Caching photo data...");
-                cacheManager.put(cacheKey, fileData, 300000); // Cache for 5 minutes
+            try (FileInputStream fis = new FileInputStream(photoFile)) {
+                byte[] fileData = fis.readAllBytes();
+                logger.debug(getTag(), "🖼️ 📖 File read successfully: " + fileData.length + " bytes");
                 
-                logger.debug(getTag(), "🖼️ ✅ Serving latest photo: " + photoFile.getName() + " (" + fileData.length + " bytes)");
-                return newChunkedResponse(Response.Status.OK, "image/jpeg", new java.io.ByteArrayInputStream(fileData));
-            } else {
-                logger.warn(getTag(), "🖼️ ❌ Photo file too large: " + fileData.length + " bytes (max: " + MAX_FILE_SIZE + ")");
-                return createErrorResponse(Response.Status.PAYLOAD_TOO_LARGE, "Photo file too large");
+                if (fileData.length <= MAX_FILE_SIZE) {
+                    logger.debug(getTag(), "🖼️ 💾 Caching photo data...");
+                    cacheManager.put(cacheKey, fileData, 300000); // Cache for 5 minutes
+                    
+                    logger.debug(getTag(), "🖼️ ✅ Serving latest photo: " + latestPhoto.getFileName() + " (" + fileData.length + " bytes)");
+                    return newChunkedResponse(Response.Status.OK, "image/jpeg", new java.io.ByteArrayInputStream(fileData));
+                } else {
+                    logger.warn(getTag(), "🖼️ ❌ Photo file too large: " + fileData.length + " bytes (max: " + MAX_FILE_SIZE + ")");
+                    return createErrorResponse(Response.Status.PAYLOAD_TOO_LARGE, "Photo file too large");
+                }
             }
-        } catch (IOException e) {
+        } catch (Exception e) {
             logger.error(getTag(), "🖼️ 💥 Error reading latest photo: " + e.getMessage(), e);
             return createErrorResponse(Response.Status.INTERNAL_ERROR, "Error reading photo file");
         }
     }
 
     /**
-     * Serve gallery listing with metadata.
+     * Serve gallery listing using the file management system.
      */
     private Response serveGallery() {
         logger.debug(getTag(), "📚 =========================================");
@@ -257,56 +278,58 @@ public class AsgCameraServer extends AsgServer {
         logger.debug(getTag(), "📚 =========================================");
         
         try {
-            File photoDir = new File(photoDirectory);
-            logger.debug(getTag(), "📚 📁 Photo directory: " + photoDir.getAbsolutePath());
-            logger.debug(getTag(), "📚 📁 Directory exists: " + photoDir.exists());
-            logger.debug(getTag(), "📚 📁 Is directory: " + (photoDir.exists() ? photoDir.isDirectory() : "N/A"));
+            // Get all photos using FileManager
+            List<FileMetadata> photoMetadataList = fileManager.listFiles(CAMERA_PACKAGE);
+            logger.debug(getTag(), "📚 📊 Found " + photoMetadataList.size() + " photo files");
             
-            if (!photoDir.exists() || !photoDir.isDirectory()) {
-                logger.warn(getTag(), "📚 ❌ Photo directory not found or not a directory");
-                return createErrorResponse(Response.Status.NOT_FOUND, "Photo directory not found");
-            }
-
-            logger.debug(getTag(), "📚 🔍 Scanning for photo files...");
-            File[] photoFiles = photoDir.listFiles((dir, name) -> 
-                name.toLowerCase().endsWith(".jpg") || name.toLowerCase().endsWith(".jpeg"));
-            
-            logger.debug(getTag(), "📚 📊 Found " + (photoFiles != null ? photoFiles.length : 0) + " photo files");
-            
-            if (photoFiles == null || photoFiles.length == 0) {
+            if (photoMetadataList.isEmpty()) {
                 logger.debug(getTag(), "📚 📭 No photos found, returning empty gallery");
                 Map<String, Object> data = new HashMap<>();
                 data.put("photos", new ArrayList<>());
+                data.put("total_count", 0);
+                data.put("total_size", 0);
                 return createSuccessResponse(data);
             }
 
             List<Map<String, Object>> photos = new ArrayList<>();
             SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US);
+            long totalSize = 0;
             
             logger.debug(getTag(), "📚 📋 Processing photo metadata...");
-            for (File photo : photoFiles) {
+            for (FileMetadata photoMetadata : photoMetadataList) {
                 Map<String, Object> photoInfo = new HashMap<>();
-                photoInfo.put("name", photo.getName());
-                photoInfo.put("size", photo.length());
-                photoInfo.put("modified", sdf.format(new Date(photo.lastModified())));
-                photoInfo.put("url", "/api/photo?file=" + photo.getName());
-                photoInfo.put("download", "/api/download?file=" + photo.getName());
+                photoInfo.put("name", photoMetadata.getFileName());
+                photoInfo.put("size", photoMetadata.getFileSize());
+                photoInfo.put("modified", sdf.format(new Date(photoMetadata.getLastModified())));
+                photoInfo.put("mime_type", photoMetadata.getMimeType());
+                photoInfo.put("url", "/api/photo?file=" + photoMetadata.getFileName());
+                photoInfo.put("download", "/api/download?file=" + photoMetadata.getFileName());
                 photos.add(photoInfo);
                 
-                logger.debug(getTag(), "📚 📸 Photo: " + photo.getName() + " (" + photo.length() + " bytes)");
+                totalSize += photoMetadata.getFileSize();
+                logger.debug(getTag(), "📚 📸 Photo: " + photoMetadata.getFileName() + " (" + photoMetadata.getFileSize() + " bytes)");
             }
 
             // Sort by modification time (newest first)
             logger.debug(getTag(), "📚 🔄 Sorting photos by modification time...");
             photos.sort((a, b) -> {
-                long timeA = new File(photoDirectory, (String) Objects.requireNonNull(a.get("name"))).lastModified();
-                long timeB = new File(photoDirectory, (String) Objects.requireNonNull(b.get("name"))).lastModified();
-                return Long.compare(timeB, timeA);
+                String timeAStr = (String) a.get("modified");
+                String timeBStr = (String) b.get("modified");
+                try {
+                    Date dateA = sdf.parse(timeAStr);
+                    Date dateB = sdf.parse(timeBStr);
+                    return Long.compare(dateB.getTime(), dateA.getTime());
+                } catch (Exception e) {
+                    return 0; // Keep original order if parsing fails
+                }
             });
 
             logger.debug(getTag(), "📚 ✅ Gallery served successfully with " + photos.size() + " photos");
             Map<String, Object> data = new HashMap<>();
             data.put("photos", photos);
+            data.put("total_count", photos.size());
+            data.put("total_size", totalSize);
+            data.put("package_name", CAMERA_PACKAGE);
             return createSuccessResponse(data);
         } catch (Exception e) {
             logger.error(getTag(), "📚 💥 Error serving gallery: " + e.getMessage(), e);
@@ -315,7 +338,7 @@ public class AsgCameraServer extends AsgServer {
     }
 
     /**
-     * Serve a specific photo by filename.
+     * Serve a specific photo by filename using the file management system.
      */
     private Response servePhoto(IHTTPSession session) {
         logger.debug(getTag(), "🖼️ =========================================");
@@ -333,38 +356,34 @@ public class AsgCameraServer extends AsgServer {
             return createErrorResponse(Response.Status.BAD_REQUEST, "File parameter required");
         }
 
-        // Security: prevent directory traversal
-        if (filename.contains("..") || filename.contains("/") || filename.contains("\\")) {
-            logger.warn(getTag(), "🖼️ ❌ Invalid filename (directory traversal attempt): " + filename);
-            return createErrorResponse(Response.Status.BAD_REQUEST, "Invalid filename");
-        }
-
-        File photoFile = new File(photoDirectory, filename);
-        logger.debug(getTag(), "🖼️ 📁 Full file path: " + photoFile.getAbsolutePath());
-        logger.debug(getTag(), "🖼️ 📁 File exists: " + photoFile.exists());
-        logger.debug(getTag(), "🖼️ 📁 Is file: " + (photoFile.exists() ? photoFile.isFile() : "N/A"));
-        logger.debug(getTag(), "🖼️ 📁 File size: " + (photoFile.exists() ? photoFile.length() : "N/A") + " bytes");
-        
-        if (!photoFile.exists() || !photoFile.isFile()) {
-            logger.warn(getTag(), "🖼️ ❌ Photo file not found or not a file");
-            return createErrorResponse(Response.Status.NOT_FOUND, "Photo not found");
-        }
-
         try {
+            // Get file using FileManager (security validation is handled automatically)
+            File photoFile = fileManager.getFile(CAMERA_PACKAGE, filename);
+            if (photoFile == null || !photoFile.exists()) {
+                logger.warn(getTag(), "🖼️ ❌ Photo file not found: " + filename);
+                return createErrorResponse(Response.Status.NOT_FOUND, "Photo not found");
+            }
+
+            // Get metadata for MIME type
+            FileMetadata metadata = fileManager.getFileMetadata(CAMERA_PACKAGE, filename);
+            String mimeType = metadata != null ? metadata.getMimeType() : "image/jpeg";
+
             logger.debug(getTag(), "🖼️ 📖 Reading photo file from disk...");
-            byte[] fileData = Files.readAllBytes(photoFile.toPath());
-            logger.debug(getTag(), "🖼️ 📖 File read successfully: " + fileData.length + " bytes");
-            
-            logger.debug(getTag(), "🖼️ ✅ Serving photo: " + filename + " (" + fileData.length + " bytes)");
-            return newChunkedResponse(Response.Status.OK, "image/jpeg", new java.io.ByteArrayInputStream(fileData));
-        } catch (IOException e) {
+            try (FileInputStream fis = new FileInputStream(photoFile)) {
+                byte[] fileData = fis.readAllBytes();
+                logger.debug(getTag(), "🖼️ 📖 File read successfully: " + fileData.length + " bytes");
+                
+                logger.debug(getTag(), "🖼️ ✅ Serving photo: " + filename + " (" + fileData.length + " bytes)");
+                return newChunkedResponse(Response.Status.OK, mimeType, new java.io.ByteArrayInputStream(fileData));
+            }
+        } catch (Exception e) {
             logger.error(getTag(), "🖼️ 💥 Error reading photo " + filename + ": " + e.getMessage(), e);
             return createErrorResponse(Response.Status.INTERNAL_ERROR, "Error reading photo file");
         }
     }
 
     /**
-     * Serve photo download with proper headers.
+     * Serve photo download with proper headers using the file management system.
      */
     private Response serveDownload(IHTTPSession session) {
         logger.debug(getTag(), "⬇️ =========================================");
@@ -382,40 +401,77 @@ public class AsgCameraServer extends AsgServer {
             return createErrorResponse(Response.Status.BAD_REQUEST, "File parameter required");
         }
 
-        // Security: prevent directory traversal
-        if (filename.contains("..") || filename.contains("/") || filename.contains("\\")) {
-            logger.warn(getTag(), "⬇️ ❌ Invalid filename (directory traversal attempt): " + filename);
-            return createErrorResponse(Response.Status.BAD_REQUEST, "Invalid filename");
-        }
-
-        File photoFile = new File(photoDirectory, filename);
-        logger.debug(getTag(), "⬇️ 📁 Full file path: " + photoFile.getAbsolutePath());
-        logger.debug(getTag(), "⬇️ 📁 File exists: " + photoFile.exists());
-        logger.debug(getTag(), "⬇️ 📁 Is file: " + (photoFile.exists() ? photoFile.isFile() : "N/A"));
-        logger.debug(getTag(), "⬇️ 📁 File size: " + (photoFile.exists() ? photoFile.length() : "N/A") + " bytes");
-        
-        if (!photoFile.exists() || !photoFile.isFile()) {
-            logger.warn(getTag(), "⬇️ ❌ Photo file not found or not a file");
-            return createErrorResponse(Response.Status.NOT_FOUND, "Photo not found");
-        }
-
         try {
+            // Get file using FileManager (security validation is handled automatically)
+            File photoFile = fileManager.getFile(CAMERA_PACKAGE, filename);
+            if (photoFile == null || !photoFile.exists()) {
+                logger.warn(getTag(), "⬇️ ❌ Photo file not found: " + filename);
+                return createErrorResponse(Response.Status.NOT_FOUND, "Photo not found");
+            }
+
+            // Get metadata for MIME type
+            FileMetadata metadata = fileManager.getFileMetadata(CAMERA_PACKAGE, filename);
+            String mimeType = metadata != null ? metadata.getMimeType() : "image/jpeg";
+
             Map<String, String> headers = new HashMap<>();
             headers.put("Content-Disposition", "attachment; filename=\"" + filename + "\"");
-            headers.put("Content-Type", "image/jpeg");
+            headers.put("Content-Type", mimeType);
             headers.put("Content-Length", String.valueOf(photoFile.length()));
             
             logger.debug(getTag(), "⬇️ 📋 Response headers: " + headers);
             logger.debug(getTag(), "⬇️ ✅ Starting download: " + filename + " (" + photoFile.length() + " bytes)");
-            return newChunkedResponse(Response.Status.OK, "image/jpeg", new FileInputStream(photoFile));
-        } catch (IOException e) {
+            return newChunkedResponse(Response.Status.OK, mimeType, new FileInputStream(photoFile));
+        } catch (Exception e) {
             logger.error(getTag(), "⬇️ 💥 Error downloading photo " + filename + ": " + e.getMessage(), e);
             return createErrorResponse(Response.Status.INTERNAL_ERROR, "Error downloading photo file");
         }
     }
 
     /**
-     * Serve server status information.
+     * Serve cleanup request to remove old photos.
+     */
+    private Response serveCleanup(IHTTPSession session) {
+        logger.debug(getTag(), "🧹 =========================================");
+        logger.debug(getTag(), "🧹 CLEANUP REQUEST HANDLER");
+        logger.debug(getTag(), "🧹 =========================================");
+        
+        Map<String, String> params = session.getParms();
+        String maxAgeParam = params.get("max_age_hours");
+        
+        // Default to 24 hours if not specified
+        long maxAgeHours = 24;
+        if (maxAgeParam != null && !maxAgeParam.isEmpty()) {
+            try {
+                maxAgeHours = Long.parseLong(maxAgeParam);
+            } catch (NumberFormatException e) {
+                logger.warn(getTag(), "🧹 ❌ Invalid max_age_hours parameter: " + maxAgeParam);
+                return createErrorResponse(Response.Status.BAD_REQUEST, "Invalid max_age_hours parameter");
+            }
+        }
+        
+        long maxAgeMs = maxAgeHours * 60 * 60 * 1000; // Convert to milliseconds
+        
+        try {
+            logger.debug(getTag(), "🧹 🗑️ Cleaning up photos older than " + maxAgeHours + " hours...");
+            int cleanedCount = fileManager.cleanupOldFiles(CAMERA_PACKAGE, maxAgeMs);
+            
+            logger.debug(getTag(), "🧹 ✅ Cleanup completed: " + cleanedCount + " files removed");
+            
+            Map<String, Object> data = new HashMap<>();
+            data.put("message", "Cleanup completed successfully");
+            data.put("files_removed", cleanedCount);
+            data.put("max_age_hours", maxAgeHours);
+            data.put("timestamp", System.currentTimeMillis());
+            
+            return createSuccessResponse(data);
+        } catch (Exception e) {
+            logger.error(getTag(), "🧹 💥 Error during cleanup: " + e.getMessage(), e);
+            return createErrorResponse(Response.Status.INTERNAL_ERROR, "Error during cleanup");
+        }
+    }
+
+    /**
+     * Serve enhanced server status information with file management metrics.
      */
     private Response serveStatus() {
         logger.debug(getTag(), "📊 =========================================");
@@ -428,26 +484,27 @@ public class AsgCameraServer extends AsgServer {
             status.put("port", getListeningPort());
             status.put("uptime", System.currentTimeMillis() - getStartTime());
             status.put("cache_size", cacheManager.size());
-            status.put("photo_directory", photoDirectory);
             status.put("server_url", getServerUrl());
+            
+            // File management metrics
+            status.put("package_name", CAMERA_PACKAGE);
+            status.put("total_photos", fileManager.listFiles(CAMERA_PACKAGE).size());
+            status.put("package_size", fileManager.getPackageSize(CAMERA_PACKAGE));
+            status.put("available_space", fileManager.getAvailableSpace());
+            status.put("total_space", fileManager.getTotalSpace());
+            
+            // Performance metrics from file manager
+            var performanceStats = fileManager.getOperationLogger().getPerformanceStats();
+            status.put("file_operations_total", performanceStats.totalOperations);
+            status.put("file_operations_success_rate", performanceStats.successRate);
+            status.put("file_operations_bytes_processed", performanceStats.totalBytesProcessed);
             
             logger.debug(getTag(), "📊 📈 Server port: " + getListeningPort());
             logger.debug(getTag(), "📊 📈 Cache size: " + cacheManager.size());
-            logger.debug(getTag(), "📊 📈 Photo directory: " + photoDirectory);
-            logger.debug(getTag(), "📊 📈 Server URL: " + getServerUrl());
-            
-            // Get photo directory stats
-            File photoDir = new File(photoDirectory);
-            if (photoDir.exists()) {
-                File[] photos = photoDir.listFiles((dir, name) -> 
-                    name.toLowerCase().endsWith(".jpg") || name.toLowerCase().endsWith(".jpeg"));
-                int totalPhotos = photos != null ? photos.length : 0;
-                status.put("total_photos", totalPhotos);
-                logger.debug(getTag(), "📊 📈 Total photos: " + totalPhotos);
-            } else {
-                status.put("total_photos", 0);
-                logger.debug(getTag(), "📊 📈 Total photos: 0 (directory not found)");
-            }
+            logger.debug(getTag(), "📊 📈 Total photos: " + status.get("total_photos"));
+            logger.debug(getTag(), "📊 📈 Package size: " + status.get("package_size") + " bytes");
+            logger.debug(getTag(), "📊 📈 Available space: " + status.get("available_space") + " bytes");
+            logger.debug(getTag(), "📊 📈 Success rate: " + performanceStats.successRate + "%");
 
             logger.debug(getTag(), "📊 ✅ Status served successfully");
             return createSuccessResponse(status);
@@ -519,27 +576,46 @@ public class AsgCameraServer extends AsgServer {
     }
 
     /**
-     * Get the photo directory path.
+     * Get the latest photo metadata with caching.
      */
-    private String getPhotoDirectory() {
-        // Try to get from CameraNeo first
-        String lastPhotoPath = CameraNeo.getLastPhotoPath();
-        if (lastPhotoPath != null && !lastPhotoPath.isEmpty()) {
-            File lastPhoto = new File(lastPhotoPath);
-            if (lastPhoto.exists()) {
-                String parent = lastPhoto.getParent();
-                if (parent != null) {
-                    return parent;
+    private FileMetadata getLatestPhotoMetadata() {
+        try {
+            // Check if we have a cached latest photo
+            if (latestPhotoMetadata != null) {
+                // Verify it still exists
+                if (fileManager.fileExists(CAMERA_PACKAGE, latestPhotoMetadata.getFileName())) {
+                    return latestPhotoMetadata;
                 }
             }
+            
+            // Get all photos and find the latest one
+            List<FileMetadata> photos = fileManager.listFiles(CAMERA_PACKAGE);
+            if (photos.isEmpty()) {
+                return null;
+            }
+            
+            // Sort by modification time (newest first) and return the latest
+            photos.sort((a, b) -> Long.compare(b.getLastModified(), a.getLastModified()));
+            latestPhotoMetadata = photos.get(0);
+            
+            return latestPhotoMetadata;
+        } catch (Exception e) {
+            logger.error(getTag(), "Error getting latest photo metadata: " + e.getMessage(), e);
+            return null;
         }
-        
-        // Fallback to default directory
-        File externalDir = config.getContext().getExternalFilesDir(null);
-        if (externalDir != null) {
-            return externalDir.getAbsolutePath();
-        }
-        
-        throw new IllegalStateException("Cannot determine photo directory");
+    }
+    
+    /**
+     * Get the FileManager instance for external access.
+     */
+    public FileManager getFileManager() {
+        return fileManager;
+    }
+    
+    /**
+     * Get the camera package name.
+     */
+    public String getCameraPackage() {
+        return CAMERA_PACKAGE;
     }
 } 

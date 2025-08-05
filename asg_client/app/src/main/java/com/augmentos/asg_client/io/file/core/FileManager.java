@@ -4,6 +4,7 @@ import com.augmentos.asg_client.io.file.interfaces.FileOperations;
 import com.augmentos.asg_client.io.file.interfaces.FileMetadataOperations;
 import com.augmentos.asg_client.io.file.interfaces.PackageOperations;
 import com.augmentos.asg_client.io.file.interfaces.StorageOperations;
+import com.augmentos.asg_client.io.file.utils.FileOperationLogger;
 import java.io.File;
 import java.io.InputStream;
 import java.util.List;
@@ -83,4 +84,10 @@ public interface FileManager extends FileOperations, FileMetadataOperations, Pac
         public String getMimeType() { return mimeType; }
         public String getPackageName() { return packageName; }
     }
+    
+    /**
+     * Get the operation logger for performance monitoring and audit trails.
+     * @return FileOperationLogger instance
+     */
+    FileOperationLogger getOperationLogger();
 } 
