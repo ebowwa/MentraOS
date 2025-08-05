@@ -470,7 +470,8 @@ export class CoreCommunicator extends EventEmitter {
   }
 
   async sendForgetSmartGlasses() {
-    return await this.sendData({command: "forget_smart_glasses"})
+    await this.sendData({command: "forget_smart_glasses"})
+    await this.sendData({command: "connect_wearable", params: {model_name: "Simulated Glasses"}})
   }
 
   async sendToggleVirtualWearable(enabled: boolean) {
