@@ -122,17 +122,33 @@ uint32_t protobuf_get_brightness_level(void);
 
 /**
  * @brief Set brightness level and update LED 3
+ * Note: Manual brightness setting automatically disables auto brightness
  *
  * @param level Brightness level (0-100%, will be clamped)
  */
 void protobuf_set_brightness_level(uint32_t level);
 
 /**
+ * @brief Get current auto brightness state
+ *
+ * @return true if auto brightness is enabled, false otherwise
+ */
+bool protobuf_get_auto_brightness_enabled(void);
+
+/**
  * @brief Process brightness configuration message
+ * Note: This will automatically disable auto brightness mode
  *
  * @param brightness_config Pointer to brightness configuration message
  */
 void protobuf_process_brightness_config(const mentraos_ble_BrightnessConfig *brightness_config);
+
+/**
+ * @brief Process auto brightness configuration message
+ *
+ * @param auto_brightness_config Pointer to auto brightness configuration message
+ */
+void protobuf_process_auto_brightness_config(const mentraos_ble_AutoBrightnessConfig *auto_brightness_config);
 
 /**
  * @brief Process display text message
@@ -154,6 +170,9 @@ void protobuf_process_display_scrolling_text(const mentraos_ble_DisplayScrolling
  * @param text Pointer to text string containing brightness information
  */
 void protobuf_parse_text_brightness(const char *text);
+
+// Clear display functionality (temporary implementation until protobuf definition is updated)
+void protobuf_process_clear_display(void);
 
 #ifdef __cplusplus
 }

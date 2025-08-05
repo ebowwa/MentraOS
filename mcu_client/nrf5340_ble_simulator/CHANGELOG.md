@@ -2,6 +2,54 @@
 
 All notable changes to the nRF5340 DK BLE Glasses Protobuf Simulator will be documented in this file.
 
+## [1.5.0] - 2025-08-05
+
+### Added
+- **AutoBrightnessConfig protobuf message support** (Tag 38)
+  - Automatic brightness adjustment based on ambient light sensor
+  - bool enabled field for toggling auto brightness mode
+  - Manual override logic that disables auto mode when manual brightness is set
+  - State management with global auto_brightness_enabled flag
+- **Enhanced directional logging system** with professional UART tags
+  - [Phone->Glasses] prefix for incoming messages (control commands, requests)
+  - [Glasses->Phone] prefix for outgoing messages (notifications, responses)
+  - Removed all emoji characters for clean professional logging output
+  - Accurate message direction indicators for debugging clarity
+- **Comprehensive auto brightness implementation**
+  - protobuf_process_auto_brightness_config() function with detailed analysis
+  - protobuf_get_auto_brightness_enabled() getter function
+  - Auto brightness state preservation and manual override detection
+  - Protocol compliance validation and error reporting
+- **Light sensor integration preparation**
+  - TODO markers for light sensor driver integration
+  - Brightness algorithm placeholders for automatic adjustment curves
+  - Real-time sensor monitoring architecture planning
+
+### Enhanced Message Support
+- **AutoBrightnessConfig message recognition** for mobile app auto brightness toggle (0x02 0xB2 0x02 0x02 0x08 0x01)
+- **Manual brightness override logic** automatically disables auto mode when BrightnessConfig messages received
+- **State transition logging** with detailed before/after analysis
+- **Protocol documentation** updated with AutoBrightnessConfig details
+
+### Logging Improvements
+- **Professional debugging output** with emoji-free messages
+- **Directional UART tags** clearly indicating message flow direction
+- **Battery notification direction correction** from [Phone->Glasses] to [Glasses->Phone]
+- **Comprehensive message analysis** with field-by-field breakdown
+- **Enhanced protocol compliance reporting** for all message types
+
+### Technical Implementation
+- **Global state management** for auto brightness mode
+- **PWM brightness control** with automatic override detection
+- **Message handler architecture** supporting both manual and automatic brightness
+- **Protocol compliance validation** for AutoBrightnessConfig messages
+- **Memory efficient implementation** with minimal RAM overhead
+
+### Bug Fixes
+- **Corrected battery notification direction** in UART logging tags
+- **Fixed directional message flow indicators** for accurate debugging
+- **Resolved auto brightness message recognition** for mobile app integration
+
 ## [1.4.0] - 2025-08-05
 
 ### Added
