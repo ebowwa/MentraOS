@@ -13,6 +13,7 @@ import static com.augmentos.augmentos_core.Constants.notificationFilterKey;
 import static com.augmentos.augmentos_core.Constants.newsSummaryKey;
 
 
+import android.Manifest;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -23,6 +24,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
+import android.content.pm.ServiceInfo;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.hardware.display.VirtualDisplay;
@@ -36,6 +39,7 @@ import android.service.notification.NotificationListenerService;
 import android.util.Log;
 
 import androidx.core.app.NotificationCompat;
+import androidx.core.content.ContextCompat;
 import androidx.lifecycle.LifecycleService;
 import androidx.preference.PreferenceManager;
 
@@ -45,6 +49,7 @@ import com.augmentos.augmentos_core.augmentos_backend.ServerCommsCallback;
 import com.augmentos.augmentos_core.augmentos_backend.ThirdPartyCloudApp;
 import com.augmentos.augmentos_core.augmentos_backend.WebSocketLifecycleManager;
 import com.augmentos.augmentos_core.augmentos_backend.WebSocketManager;
+import com.augmentos.augmentos_core.enums.SpeechRequiredDataType;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.BatteryLevelEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.ButtonPressEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.CaseEvent;
@@ -243,6 +248,9 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     // WiFi status for glasses that require WiFi (e.g., Mentra Live)
     private boolean glassesNeedWifiCredentials = false;
     private boolean glassesWifiConnected = false;
+    
+    // Track current foreground service type
+    private int currentForegroundServiceType = ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC;
     private String glassesWifiSsid = "";
     private String glassesWifiLocalIp = "";
 
@@ -291,6 +299,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     private String glassesBuildNumber = null;
     private String glassesDeviceModel = null;
     private String glassesAndroidVersion = null;
+    private String glassesOtaVersionUrl = null;
     private String glassesSerialNumber = null;
     private String glassesStyle = null;
     private String glassesColor = null;
@@ -330,6 +339,9 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                         playStartupSequenceOnSmartGlasses();
                         asrPlanner.updateAsrLanguages();
                         ServerComms.getInstance().requestSettingsFromServer();
+                        
+                        // Upgrade service type to avoid Android 15's 6-hour dataSync timeout
+                        upgradeForegroundServiceType();
                     } else if (connectionState == SmartGlassesConnectionState.DISCONNECTED) {
                         edgeAppSystem.stopAllThirdPartyApps();
 
@@ -665,7 +677,31 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                 // start the service in the foreground
                 Log.d("TEST", "starting foreground");
                 createNotificationChannel(); // New method to ensure one-time channel creation
-                startForeground(AUGMENTOS_NOTIFICATION_ID, this.buildSharedForegroundNotification(this));
+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    /*
+                        New in Android 15:
+                         Android 15 limits 'dataSync' Foreground service type to 6 hours per day.
+                         To get around this, we need to use 'connectedDevice' type (if we have BT permissions).
+                         If we don't have BT perms, we'll upgrade this FGS from 'dataSync'=>'connectedDevice'
+                         once we've connected a pair of glasses.
+                    */
+                    if (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT)
+                            == PackageManager.PERMISSION_GRANTED) {
+                        currentForegroundServiceType = ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC |
+                                        ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE;
+                        startForeground(AUGMENTOS_NOTIFICATION_ID,
+                                buildSharedForegroundNotification(this),
+                                currentForegroundServiceType);
+                    } else {
+                        currentForegroundServiceType = ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC;
+                        startForeground(AUGMENTOS_NOTIFICATION_ID,
+                                buildSharedForegroundNotification(this),
+                                currentForegroundServiceType);
+                    }
+                } else {
+                    startForeground(AUGMENTOS_NOTIFICATION_ID, this.buildSharedForegroundNotification(this));
+                }
 
                 // Reset restart flag to true when service starts
                 shouldRestartOnKill = true;
@@ -1441,6 +1477,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             coreInfo.put("charging_status", batteryStatusHelper.isBatteryCharging());
             coreInfo.put("sensing_enabled", SmartGlassesManager.getSensingEnabled(this));
             coreInfo.put("bypass_vad_for_debugging", SmartGlassesManager.getBypassVadForDebugging(this));
+            coreInfo.put("enforce_local_transcription", SmartGlassesManager.getEnforceLocalTranscription(this));
             coreInfo.put("bypass_audio_encoding_for_debugging", SmartGlassesManager.getBypassAudioEncodingForDebugging(this));
             coreInfo.put("contextual_dashboard_enabled", this.contextualDashboardEnabled);
             coreInfo.put("always_on_status_bar_enabled", this.alwaysOnStatusBarEnabled);
@@ -1472,6 +1509,12 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                 connectedGlasses.put("case_open", (caseOpen == null) ? false: caseOpen);
                 connectedGlasses.put("case_removed", (caseRemoved == null) ? true: caseRemoved);
 
+                // Add Bluetooth device name if available
+                String bluetoothName = smartGlassesManager.getConnectedSmartGlassesBluetoothName();
+                if (bluetoothName != null) {
+                    connectedGlasses.put("bluetooth_name", bluetoothName);
+                }
+
                 // Add WiFi status information for glasses that need WiFi
                 String deviceModel = smartGlassesManager.getConnectedSmartGlasses().deviceModelName;
 
@@ -1495,6 +1538,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                     connectedGlasses.put("glasses_build_number", glassesBuildNumber != null ? glassesBuildNumber : "");
                     connectedGlasses.put("glasses_device_model", glassesDeviceModel != null ? glassesDeviceModel : "");
                     connectedGlasses.put("glasses_android_version", glassesAndroidVersion != null ? glassesAndroidVersion : "");
+                    connectedGlasses.put("glasses_ota_version_url", glassesOtaVersionUrl != null ? glassesOtaVersionUrl : "");
                 }
 
                 // Add serial number information for Even Realities G1 glasses
@@ -1518,6 +1562,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                 headUpAngle = 20;
             }
             glassesSettings.put("head_up_angle", headUpAngle);
+            glassesSettings.put("button_mode", SmartGlassesManager.getButtonPressMode(this));
             status.put("glasses_settings", glassesSettings);
 
             // Adding OTA progress information
@@ -1680,9 +1725,9 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             }
 
             @Override
-            public void onMicrophoneStateChange(boolean microphoneEnabled) {
+            public void onMicrophoneStateChange(boolean microphoneEnabled, List<SpeechRequiredDataType> requiredData) {
                 if (smartGlassesManager != null && SmartGlassesManager.getSensingEnabled(getApplicationContext())) {
-                    smartGlassesManager.changeMicrophoneState(microphoneEnabled);
+                    smartGlassesManager.changeMicrophoneState(microphoneEnabled, requiredData);
                 }
             }
 
@@ -1927,6 +1972,36 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                     Log.e("LOCATION_DEBUG", "AugmentosService: locationSystem is null, cannot request single location.");
                 }
             }
+
+            @Override
+            public void onStartBufferRecording() {
+                Log.d(TAG, "onStartBufferRecording from server");
+                startBufferRecording();
+            }
+
+            @Override
+            public void onStopBufferRecording() {
+                Log.d(TAG, "onStopBufferRecording from server");
+                stopBufferRecording();
+            }
+
+            @Override
+            public void onSaveBufferVideo(String requestId, int durationSeconds) {
+                Log.d(TAG, "onSaveBufferVideo from server: requestId=" + requestId + ", duration=" + durationSeconds);
+                saveBufferVideo(requestId, durationSeconds);
+            }
+
+            @Override
+            public void onStartVideoRecording(String requestId, boolean save) {
+                Log.d(TAG, "onStartVideoRecording from server: requestId=" + requestId + ", save=" + save);
+                startVideoRecording(requestId, save);
+            }
+
+            @Override
+            public void onStopVideoRecording(String requestId) {
+                Log.d(TAG, "onStopVideoRecording from server: requestId=" + requestId);
+                stopVideoRecording(requestId);
+            }
         });
     }
 
@@ -1940,6 +2015,44 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     public void sendStatusToAugmentOsManager() {
         JSONObject status = generateStatusJson();
         blePeripheral.sendDataToAugmentOsManager(status.toString());
+    }
+    
+    /**
+     * Upgrades the foreground service type to include connectedDevice when glasses are connected.
+     * This avoids the 6-hour dataSync timeout on Android 15.
+     */
+    private void upgradeForegroundServiceType() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            return; // Service types not required before Android Q
+        }
+        
+        // Check if we're already using connectedDevice type
+        int desiredType = ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC | 
+                         ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE;
+        
+        if (currentForegroundServiceType == desiredType) {
+            Log.d(TAG, "Already using connectedDevice service type");
+            return;
+        }
+        
+        // Check if we have Bluetooth permissions (required for connectedDevice type)
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) 
+                != PackageManager.PERMISSION_GRANTED) {
+            Log.w(TAG, "Cannot upgrade to connectedDevice type - missing BLUETOOTH_CONNECT permission");
+            return;
+        }
+        
+        try {
+            // Upgrade the service type by calling startForeground again
+            startForeground(AUGMENTOS_NOTIFICATION_ID, 
+                    buildSharedForegroundNotification(this), 
+                    desiredType);
+            
+            currentForegroundServiceType = desiredType;
+            Log.d(TAG, "Successfully upgraded foreground service type to include connectedDevice");
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to upgrade foreground service type", e);
+        }
     }
 
     @Override
@@ -2139,6 +2252,13 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     public void setBypassAudioEncodingForDebugging(boolean bypassAudioEncodingForDebugging) {
         SmartGlassesManager.saveBypassAudioEncodingForDebugging(this, bypassAudioEncodingForDebugging);
         sendStatusToBackend();
+    }
+
+    @Override
+    public void setEnforceLocalTranscription(boolean enforceLocalTranscription) {
+        SmartGlassesManager.saveEnforceLocalTranscription(this, enforceLocalTranscription);
+        sendStatusToBackend();
+        sendStatusToAugmentOsManager();
     }
 
     @Override
@@ -2435,6 +2555,18 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             } else {
                 Log.d("AugmentOsService", "No SmartGlassesRepresentative available - preference will take effect on next connection");
             }
+        }
+    }
+
+    @Override
+    public void setButtonMode(String mode) {
+        Log.d("AugmentOsService", "Setting button mode: " + mode);
+        // Save locally
+        SmartGlassesManager.setButtonPressMode(this, mode);
+        
+        // Send to glasses if connected
+        if (smartGlassesManager != null && smartGlassesManagerBound) {
+            smartGlassesManager.sendButtonModeSetting(mode);
         }
     }
 
@@ -2746,7 +2878,8 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         this.glassesBuildNumber = event.getBuildNumber();
         this.glassesDeviceModel = event.getDeviceModel();
         this.glassesAndroidVersion = event.getAndroidVersion();
-        Log.d("AugmentOsService", "Glasses version info: " + glassesAppVersion + " " + glassesBuildNumber + " " + glassesDeviceModel + " " + glassesAndroidVersion);
+        this.glassesOtaVersionUrl = event.getOtaVersionUrl();
+        Log.d("AugmentOsService", "Glasses version info: " + glassesAppVersion + " " + glassesBuildNumber + " " + glassesDeviceModel + " " + glassesAndroidVersion + " OTA URL: " + glassesOtaVersionUrl);
         sendStatusToAugmentOsManager();
     }
 
@@ -2944,5 +3077,55 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             deviceModel = smartGlassesManager.getConnectedSmartGlasses().deviceModelName;
 
         EventBus.getDefault().post(new ButtonPressEvent(deviceModel, buttonId, pressType));
+    }
+
+    @Override
+    public void startBufferRecording() {
+        Log.d(TAG, "Starting buffer recording on smart glasses");
+        if (smartGlassesManager != null) {
+            smartGlassesManager.startBufferRecording();
+        } else {
+            Log.e(TAG, "SmartGlassesManager is null, cannot start buffer recording");
+        }
+    }
+
+    @Override
+    public void stopBufferRecording() {
+        Log.d(TAG, "Stopping buffer recording on smart glasses");
+        if (smartGlassesManager != null) {
+            smartGlassesManager.stopBufferRecording();
+        } else {
+            Log.e(TAG, "SmartGlassesManager is null, cannot stop buffer recording");
+        }
+    }
+
+    @Override
+    public void saveBufferVideo(String requestId, int durationSeconds) {
+        Log.d(TAG, "Saving buffer video: requestId=" + requestId + ", duration=" + durationSeconds + "s");
+        if (smartGlassesManager != null) {
+            smartGlassesManager.saveBufferVideo(requestId, durationSeconds);
+        } else {
+            Log.e(TAG, "SmartGlassesManager is null, cannot save buffer video");
+        }
+    }
+
+    @Override
+    public void startVideoRecording(String requestId, boolean save) {
+        Log.d(TAG, "Starting video recording: requestId=" + requestId + ", save=" + save);
+        if (smartGlassesManager != null) {
+            smartGlassesManager.startVideoRecording(requestId, save);
+        } else {
+            Log.e(TAG, "SmartGlassesManager is null, cannot start video recording");
+        }
+    }
+
+    @Override
+    public void stopVideoRecording(String requestId) {
+        Log.d(TAG, "Stopping video recording: requestId=" + requestId);
+        if (smartGlassesManager != null) {
+            smartGlassesManager.stopVideoRecording(requestId);
+        } else {
+            Log.e(TAG, "SmartGlassesManager is null, cannot stop video recording");
+        }
     }
 }

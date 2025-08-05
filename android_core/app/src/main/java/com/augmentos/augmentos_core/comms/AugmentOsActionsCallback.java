@@ -19,6 +19,7 @@ public interface AugmentOsActionsCallback {
     void setUpdatingScreen(boolean updatingScreen);
     void setBypassVadForDebugging(boolean bypassVadForDebugging);
     void setBypassAudioEncodingForDebugging(boolean bypassAudioEncodingForDebugging);
+    void setEnforceLocalTranscription(boolean enforceLocalTranscription);
     void setAlwaysOnStatusBarEnabled(boolean alwaysOnStatusBarEnabled);
     void setPowerSavingMode(boolean powerSavingMode);
     void installAppFromRepository(String repository, String packageName) throws JSONException;
@@ -37,6 +38,7 @@ public interface AugmentOsActionsCallback {
     void setGlassesWifiCredentials(String ssid, String password);
     void requestWifiScan();
     void setPreferredMic(String mic);
+    void setButtonMode(String mode);
     void setServerUrl(String url);
     void onAudioPlayRequest(JSONObject audioRequest);
     void onAudioPlayResponse(JSONObject audioResponse);
@@ -44,4 +46,9 @@ public interface AugmentOsActionsCallback {
     void simulateHeadPosition(String position);
     void simulateButtonPress(String buttonId, String pressType);
     void handleNotificationDismissal(JSONObject dismissalData);
+    void startBufferRecording();
+    void stopBufferRecording();
+    void saveBufferVideo(String requestId, int durationSeconds);
+    void startVideoRecording(String requestId, boolean save);
+    void stopVideoRecording(String requestId);
 }

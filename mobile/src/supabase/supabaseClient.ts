@@ -4,7 +4,6 @@ import {createClient} from "@supabase/supabase-js"
 // Import your env vars from '@env'
 // import { SUPABASE_URL, SUPABASE_ANON_KEY } from '@env';
 import {AppState} from "react-native"
-
 import Config from "react-native-config"
 
 const SUPABASE_URL = (Config.SUPABASE_URL as string) || "https://auth.mentra.glass"

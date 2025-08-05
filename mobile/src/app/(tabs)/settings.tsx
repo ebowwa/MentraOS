@@ -1,5 +1,5 @@
 import React, {useState, useEffect, useRef} from "react"
-import {View, Modal, ActivityIndicator} from "react-native"
+import {View, Modal, ActivityIndicator, Platform} from "react-native"
 import {Screen, Header, Text} from "@/components/ignite"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {translate} from "@/i18n"
@@ -135,14 +135,30 @@ export default function SettingsPage() {
 
         <RouteButton label={translate("settings:privacySettings")} onPress={() => push("/settings/privacy")} />
 
+        {/* TODO: Make this show up on iOS once unzipping is fixed there */}
+        {Platform.OS === "android" && (
+          <RouteButton
+            label={translate("settings:transcriptionSettings")}
+            onPress={() => push("/settings/transcription")}
+          />
+        )}
+
         <RouteButton label="Theme Settings" onPress={() => push("/settings/theme")} />
 
         {devMode && (
-          <RouteButton
-            label={translate("settings:developerSettings")}
-            // subtitle={translate("settings:developerSettingsSubtitle")}
-            onPress={() => push("/settings/developer")}
-          />
+          <>
+            <RouteButton
+              label={translate("settings:developerSettings")}
+              // subtitle={translate("settings:developerSettingsSubtitle")}
+              onPress={() => push("/settings/developer")}
+            />
+
+            <RouteButton
+              label="🎥 Buffer Recording Debug"
+              subtitle="Control 30-second video buffer on glasses"
+              onPress={() => push("/settings/buffer-debug")}
+            />
+          </>
         )}
 
         <ActionButton label={translate("settings:signOut")} variant="destructive" onPress={confirmSignOut} />

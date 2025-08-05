@@ -3,24 +3,31 @@
  * functionality and state for the server.
  */
 
-import { Logger } from 'pino';
-import WebSocket from 'ws';
-import { AppI, CloudToGlassesMessageType, ConnectionError, TranscriptSegment } from '@mentra/sdk';
-import { logger as rootLogger } from '../logging/pino-logger';
-import { Capabilities } from '@mentra/sdk';
-import AppManager from './AppManager';
-import AudioManager from './AudioManager';
-import MicrophoneManager from './MicrophoneManager';
-import DisplayManager from '../layout/DisplayManager6.1';
-import { DashboardManager } from '../dashboard';
-import VideoManager from './VideoManager';
-import PhotoManager from './PhotoManager';
-import { GlassesErrorCode } from '../websocket/websocket-glasses.service';
-import SessionStorage from './SessionStorage';
-import { PosthogService } from '../logging/posthog.service';
-import { TranscriptionManager } from './transcription/TranscriptionManager';
-import { ManagedStreamingExtension } from '../streaming/ManagedStreamingExtension';
-import { getCapabilitiesForModel } from '../../config/hardware-capabilities';
+import { Logger } from "pino";
+import WebSocket from "ws";
+import {
+  AppI,
+  CloudToAppMessageType,
+  CloudToGlassesMessageType,
+  ConnectionError,
+  TranscriptSegment,
+} from "@mentra/sdk";
+import { logger as rootLogger } from "../logging/pino-logger";
+import { Capabilities } from "@mentra/sdk";
+import AppManager from "./AppManager";
+import AudioManager from "./AudioManager";
+import MicrophoneManager from "./MicrophoneManager";
+import DisplayManager from "../layout/DisplayManager6.1";
+import { DashboardManager } from "../dashboard";
+import VideoManager from "./VideoManager";
+import PhotoManager from "./PhotoManager";
+import { GlassesErrorCode } from "../websocket/websocket-glasses.service";
+import SessionStorage from "./SessionStorage";
+import { PosthogService } from "../logging/posthog.service";
+import { TranscriptionManager } from "./transcription/TranscriptionManager";
+import { TranslationManager } from "./translation/TranslationManager";
+import { ManagedStreamingExtension } from "../streaming/ManagedStreamingExtension";
+import { getCapabilitiesForModel } from "../../config/hardware-capabilities";
 
 export const LOG_PING_PONG = false; // Set to true to enable detailed ping/pong logging
 /**
@@ -28,10 +35,9 @@ export const LOG_PING_PONG = false; // Set to true to enable detailed ping/pong 
  * functionality and state for the server.
  */
 export class UserSession {
-
   // Core identification
   public readonly userId: string;
-  public readonly startTime: Date;// = new Date();
+  public readonly startTime: Date; // = new Date();
   public disconnectedAt: Date | null = null;
 
   // Logging
@@ -66,6 +72,7 @@ export class UserSession {
   public appManager: AppManager;
   public audioManager: AudioManager;
   public transcriptionManager: TranscriptionManager;
+  public translationManager: TranslationManager;
 
   public videoManager: VideoManager;
   public photoManager: PhotoManager;
@@ -92,7 +99,7 @@ export class UserSession {
   constructor(userId: string, websocket: WebSocket) {
     this.userId = userId;
     this.websocket = websocket;
-    this.logger = rootLogger.child({ userId, service: 'UserSession' });
+    this.logger = rootLogger.child({ userId, service: "UserSession" });
 
     // Initialize managers
     this.appManager = new AppManager(this);
@@ -101,6 +108,7 @@ export class UserSession {
     this.displayManager = new DisplayManager(this);
     this.microphoneManager = new MicrophoneManager(this);
     this.transcriptionManager = new TranscriptionManager(this);
+    this.translationManager = new TranslationManager(this);
     this.photoManager = new PhotoManager(this);
     this.videoManager = new VideoManager(this);
     this.managedStreamingExtension = new ManagedStreamingExtension(this.logger);
@@ -130,7 +138,10 @@ export class UserSession {
       if (this.websocket && this.websocket.readyState === WebSocket.OPEN) {
         this.websocket.ping();
         if (LOG_PING_PONG) {
-          this.logger.debug({ ping: true }, `[UserSession:heartbeat:ping] Sent ping to glasses for user ${this.userId}`);
+          this.logger.debug(
+            { ping: true },
+            `[UserSession:heartbeat:ping] Sent ping to glasses for user ${this.userId}`,
+          );
         }
       } else {
         // WebSocket is not open, clear the interval
@@ -139,13 +150,18 @@ export class UserSession {
     }, HEARTBEAT_INTERVAL);
 
     // Set up pong handler
-    this.websocket.on('pong', () => {
+    this.websocket.on("pong", () => {
       if (LOG_PING_PONG) {
-        this.logger.debug({ pong: true }, `[UserSession:heartbeat:pong] Received pong from glasses for user ${this.userId}`);
+        this.logger.debug(
+          { pong: true },
+          `[UserSession:heartbeat:pong] Received pong from glasses for user ${this.userId}`,
+        );
       }
     });
 
-    this.logger.debug(`[UserSession:setupGlassesHeartbeat] Heartbeat established for glasses connection`);
+    this.logger.debug(
+      `[UserSession:setupGlassesHeartbeat] Heartbeat established for glasses connection`,
+    );
   }
 
   /**
@@ -155,7 +171,9 @@ export class UserSession {
     if (this.glassesHeartbeatInterval) {
       clearInterval(this.glassesHeartbeatInterval);
       this.glassesHeartbeatInterval = undefined;
-      this.logger.debug(`[UserSession:clearGlassesHeartbeat] Heartbeat cleared for glasses connection`);
+      this.logger.debug(
+        `[UserSession:clearGlassesHeartbeat] Heartbeat cleared for glasses connection`,
+      );
     }
   }
 
@@ -164,7 +182,9 @@ export class UserSession {
    * Called when glasses reconnect with a new WebSocket
    */
   updateWebSocket(newWebSocket: WebSocket): void {
-    this.logger.info(`[UserSession:updateWebSocket] Updating WebSocket connection for user ${this.userId}`);
+    this.logger.info(
+      `[UserSession:updateWebSocket] Updating WebSocket connection for user ${this.userId}`,
+    );
 
     // Clear old heartbeat
     this.clearGlassesHeartbeat();
@@ -175,7 +195,9 @@ export class UserSession {
     // Set up new heartbeat with the new WebSocket
     this.setupGlassesHeartbeat();
 
-    this.logger.debug(`[UserSession:updateWebSocket] WebSocket and heartbeat updated for user ${this.userId}`);
+    this.logger.debug(
+      `[UserSession:updateWebSocket] WebSocket and heartbeat updated for user ${this.userId}`,
+    );
   }
 
   /**
@@ -184,11 +206,15 @@ export class UserSession {
    */
   updateGlassesModel(modelName: string): void {
     if (this.currentGlassesModel === modelName) {
-      this.logger.debug(`[UserSession:updateGlassesModel] Model unchanged: ${modelName}`);
+      this.logger.debug(
+        `[UserSession:updateGlassesModel] Model unchanged: ${modelName}`,
+      );
       return;
     }
 
-    this.logger.info(`[UserSession:updateGlassesModel] Updating glasses model from "${this.currentGlassesModel}" to "${modelName}"`);
+    this.logger.info(
+      `[UserSession:updateGlassesModel] Updating glasses model from "${this.currentGlassesModel}" to "${modelName}"`,
+    );
 
     this.currentGlassesModel = modelName;
 
@@ -196,18 +222,70 @@ export class UserSession {
     const capabilities = getCapabilitiesForModel(modelName);
     if (capabilities) {
       this.capabilities = capabilities;
-      this.logger.info(`[UserSession:updateGlassesModel] Updated capabilities for ${modelName}`);
+      this.logger.info(
+        `[UserSession:updateGlassesModel] Updated capabilities for ${modelName}`,
+      );
     } else {
-      this.logger.warn(`[UserSession:updateGlassesModel] No capabilities found for model: ${modelName}`);
+      this.logger.warn(
+        `[UserSession:updateGlassesModel] No capabilities found for model: ${modelName}`,
+      );
 
       // Fallback to Even Realities G1 capabilities if no capabilities found and we don't have any yet
       if (!this.capabilities) {
-        const fallbackCapabilities = getCapabilitiesForModel("Even Realities G1");
+        const fallbackCapabilities =
+          getCapabilitiesForModel("Even Realities G1");
         if (fallbackCapabilities) {
           this.capabilities = fallbackCapabilities;
-          this.logger.info(`[UserSession:updateGlassesModel] Applied fallback capabilities (Even Realities G1) for unknown model: ${modelName}`);
+          this.logger.info(
+            `[UserSession:updateGlassesModel] Applied fallback capabilities (Even Realities G1) for unknown model: ${modelName}`,
+          );
         }
       }
+    }
+
+    // Send capabilities update to all connected apps
+    this.sendCapabilitiesUpdateToApps();
+  }
+
+  /**
+   * Send capabilities update message to all connected apps
+   * @private
+   */
+  private sendCapabilitiesUpdateToApps(): void {
+    try {
+      const capabilitiesUpdateMessage = {
+        type: CloudToAppMessageType.CAPABILITIES_UPDATE,
+        capabilities: this.capabilities,
+        modelName: this.currentGlassesModel,
+        timestamp: new Date(),
+        sessionId: this.userId,
+      };
+
+      // Send to all connected apps
+      this.appWebsockets.forEach((ws, packageName) => {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          try {
+            ws.send(JSON.stringify(capabilitiesUpdateMessage));
+            this.logger.debug(
+              `[UserSession:sendCapabilitiesUpdateToApps] Sent capabilities update to app ${packageName}`,
+            );
+          } catch (error) {
+            this.logger.error(
+              { error, packageName },
+              `[UserSession:sendCapabilitiesUpdateToApps] Failed to send capabilities update to app ${packageName}`,
+            );
+          }
+        }
+      });
+
+      this.logger.info(
+        `[UserSession:sendCapabilitiesUpdateToApps] Sent capabilities update to ${this.appWebsockets.size} connected apps`,
+      );
+    } catch (error) {
+      this.logger.error(
+        { error },
+        `[UserSession:sendCapabilitiesUpdateToApps] Error sending capabilities update to apps`,
+      );
     }
   }
 
@@ -222,11 +300,15 @@ export class UserSession {
     // If no capabilities set yet, try to use Even Realities G1 as fallback
     const fallbackCapabilities = getCapabilitiesForModel("Even Realities G1");
     if (fallbackCapabilities) {
-      this.logger.debug(`[UserSession:getCapabilities] Using fallback capabilities (Even Realities G1)`);
+      this.logger.debug(
+        `[UserSession:getCapabilities] Using fallback capabilities (Even Realities G1)`,
+      );
       return fallbackCapabilities;
     }
 
-    this.logger.warn(`[UserSession:getCapabilities] No capabilities available, including fallback`);
+    this.logger.warn(
+      `[UserSession:getCapabilities] No capabilities available, including fallback`,
+    );
     return null;
   }
 
@@ -273,19 +355,19 @@ export class UserSession {
    * @param message Error message
    * @param code Error code
    */
-  public sendError(message: string, code: GlassesErrorCode,): void {
+  public sendError(message: string, code: GlassesErrorCode): void {
     try {
       const errorMessage: ConnectionError = {
         type: CloudToGlassesMessageType.CONNECTION_ERROR,
         code: code,
         message,
-        timestamp: new Date()
+        timestamp: new Date(),
       };
 
       this.websocket.send(JSON.stringify(errorMessage));
       // this.websocket.close(1008, message);
     } catch (error) {
-      this.logger.error('Error sending error message to glasses:', error);
+      this.logger.error("Error sending error message to glasses:", error);
 
       // try {
       //   this.websocket.close(1011, 'Internal server error');
@@ -299,22 +381,27 @@ export class UserSession {
    * Dispose of all resources and remove from sessions map
    */
   async dispose(): Promise<void> {
-    this.logger.warn(`[UserSession:dispose]: Disposing UserSession: ${this.userId}`);
+    this.logger.warn(
+      `[UserSession:dispose]: Disposing UserSession: ${this.userId}`,
+    );
 
     // Log to posthog disconnected duration.
     const now = new Date();
     const duration = now.getTime() - this.startTime.getTime();
-    this.logger.info({ duration }, `User session ${this.userId} disconnected. Connected for ${duration}ms`);
+    this.logger.info(
+      { duration },
+      `User session ${this.userId} disconnected. Connected for ${duration}ms`,
+    );
     try {
       await PosthogService.trackEvent("disconnected", this.userId, {
         duration: duration,
         userId: this.userId,
         sessionId: this.userId,
         disconnectedAt: now.toISOString(),
-        startTime: this.startTime.toISOString()
+        startTime: this.startTime.toISOString(),
       });
     } catch (error) {
-      this.logger.error('Error tracking disconnected event:', error);
+      this.logger.error("Error tracking disconnected event:", error);
     }
 
     // Clean up all resources
@@ -324,10 +411,12 @@ export class UserSession {
     if (this.displayManager) this.displayManager.dispose();
     if (this.dashboardManager) this.dashboardManager.dispose();
     if (this.transcriptionManager) this.transcriptionManager.dispose();
+    if (this.translationManager) this.translationManager.dispose();
     // if (this.heartbeatManager) this.heartbeatManager.dispose();
     if (this.videoManager) this.videoManager.dispose();
     if (this.photoManager) this.photoManager.dispose();
-    if (this.managedStreamingExtension) this.managedStreamingExtension.dispose();
+    if (this.managedStreamingExtension)
+      this.managedStreamingExtension.dispose();
 
     // Clear glasses heartbeat
     this.clearGlassesHeartbeat();
@@ -358,11 +447,15 @@ export class UserSession {
     // Remove from session storage
     SessionStorage.getInstance().delete(this.userId);
 
-    this.logger.info({
-      disposalReason: this.disconnectedAt ? 'grace_period_timeout' : 'explicit_disposal'
-    }, `🗑️ Session disposed and removed from storage for ${this.userId}`);
+    this.logger.info(
+      {
+        disposalReason: this.disconnectedAt
+          ? "grace_period_timeout"
+          : "explicit_disposal",
+      },
+      `🗑️ Session disposed and removed from storage for ${this.userId}`,
+    );
   }
-
 
   /**
    * Get the session ID (for backward compatibility)

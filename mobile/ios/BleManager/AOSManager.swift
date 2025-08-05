@@ -24,7 +24,7 @@ struct ViewState {
 }
 
 // This class handles logic for managing devices and connections to AugmentOS servers
-@objc(AOSManager) class AOSManager: NSObject, ServerCommsCallback, MicCallback {
+@objc(AOSManager) class AOSManager: NSObject, ServerCommsCallback, MicCallback, SherpaOnnxTranscriber.TranscriptDelegate {
     private static var instance: AOSManager?
 
     static func getInstance() -> AOSManager {
@@ -61,10 +61,11 @@ struct ViewState {
     private var dashboardDepth: Int = 5
     private var sensingEnabled: Bool = true
     private var powerSavingMode: Bool = false
-    private var isSearching: Bool = true
+    private var isSearching: Bool = false
     private var isUpdatingScreen: Bool = false
     private var alwaysOnStatusBar: Bool = false
     private var bypassVad: Bool = false
+    private var enforceLocalTranscription: Bool = false
     private var bypassAudioEncoding: Bool = false
     private var onboardMicUnavailable: Bool = false
     private var metricSystemEnabled: Bool = false
@@ -89,16 +90,43 @@ struct ViewState {
     private var useOnboardMic = false
     private var preferredMic = "glasses"
     private var micEnabled = false
+    private var currentRequiredData: [SpeechRequiredDataType] = []
+
+    // button settings:
+    private var buttonPressMode = "photo"
 
     // VAD:
     private var vad: SileroVADStrategy?
     private var vadBuffer = [Data]()
     private var isSpeaking = false
 
+    private var transcriber: SherpaOnnxTranscriber?
+
+    private var shouldSendPcmData = true
+    private var shouldSendTranscript = false
+
     override init() {
         vad = SileroVADStrategy()
         serverComms = ServerComms.getInstance()
         super.init()
+
+        // Initialize SherpaOnnx Transcriber
+        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let window = windowScene.windows.first,
+           let rootViewController = window.rootViewController
+        {
+            transcriber = SherpaOnnxTranscriber(context: rootViewController)
+        } else {
+            CoreCommsService.log("Failed to create SherpaOnnxTranscriber - no root view controller found")
+        }
+
+        // Initialize the transcriber
+        if let transcriber = transcriber {
+            transcriber.initialize()
+            transcriber.transcriptDelegate = self
+            CoreCommsService.log("SherpaOnnxTranscriber fully initialized")
+        }
+
         Task {
             await loadSettings()
             self.vad?.setup(sampleRate: .rate_16k,
@@ -456,7 +484,14 @@ struct ViewState {
                     //          // first send out whatever's in the vadBuffer (if there is anything):
                     //          emptyVadBuffer()
                     //          self.serverComms.sendAudioChunk(lc3Data)
-                    self.serverComms.sendAudioChunk(pcmData)
+                    if self.shouldSendPcmData {
+                        self.serverComms.sendAudioChunk(pcmData)
+                    }
+
+                    // Also send to local transcriber when bypassing VAD
+                    if self.shouldSendTranscript {
+                        self.transcriber?.acceptAudio(pcm16le: pcmData)
+                    }
                     return
                 }
 
@@ -483,8 +518,15 @@ struct ViewState {
                     checkSetVadStatus(speaking: true)
                     // first send out whatever's in the vadBuffer (if there is anything):
                     emptyVadBuffer()
-                    //          self.serverComms.sendAudioChunk(lc3Data)
-                    self.serverComms.sendAudioChunk(pcmData)
+//          self.serverComms.sendAudioChunk(lc3Data)
+                    if self.shouldSendPcmData {
+                        self.serverComms.sendAudioChunk(pcmData)
+                    }
+
+                    // Send to local transcriber when speech is detected
+                    if self.shouldSendTranscript {
+                        self.transcriber?.acceptAudio(pcm16le: pcmData)
+                    }
                 } else {
                     checkSetVadStatus(speaking: false)
                     // add to the vadBuffer:
@@ -497,8 +539,34 @@ struct ViewState {
 
     // MARK: - ServerCommsCallback Implementation
 
-    func onMicrophoneStateChange(_ isEnabled: Bool) {
-        CoreCommsService.log("AOS: @@@@@@@@ changing microphone state to: \(isEnabled) @@@@@@@@@@@@@@@@")
+    func onMicrophoneStateChange(_ isEnabled: Bool, _ requiredData: [SpeechRequiredDataType]) {
+        CoreCommsService.log("AOS: @@@@@@@@ changing microphone state to: \(isEnabled) with requiredData: \(requiredData) @@@@@@@@@@@@@@@@")
+
+        if requiredData.contains(.PCM), requiredData.contains(.TRANSCRIPTION) {
+            shouldSendPcmData = true
+            shouldSendTranscript = true
+        } else if requiredData.contains(.PCM) {
+            shouldSendPcmData = true
+            shouldSendTranscript = false
+        } else if requiredData.contains(.TRANSCRIPTION) {
+            shouldSendTranscript = true
+            shouldSendPcmData = false
+        } else if requiredData.contains(.PCM_OR_TRANSCRIPTION) {
+            // TODO: Later add bandwidth based logic
+            CoreCommsService.log("AOS: enforceLocalTranscription=\(enforceLocalTranscription)")
+            if enforceLocalTranscription {
+                shouldSendTranscript = true
+                shouldSendPcmData = false
+            } else {
+                shouldSendPcmData = true
+                shouldSendTranscript = false
+            }
+        }
+
+        currentRequiredData = requiredData
+
+        CoreCommsService.log("AOS: shouldSendPcmData=\(shouldSendPcmData), shouldSendTranscript=\(shouldSendTranscript)")
+
         // in any case, clear the vadBuffer:
         vadBuffer.removeAll()
         micEnabled = isEnabled
@@ -620,6 +688,31 @@ struct ViewState {
         liveManager?.sendRtmpKeepAlive(message)
     }
 
+    func onStartBufferRecording() {
+        CoreCommsService.log("AOS: onStartBufferRecording")
+        liveManager?.startBufferRecording()
+    }
+
+    func onStopBufferRecording() {
+        CoreCommsService.log("AOS: onStopBufferRecording")
+        liveManager?.stopBufferRecording()
+    }
+
+    func onSaveBufferVideo(_ requestId: String, _ durationSeconds: Int) {
+        CoreCommsService.log("AOS: onSaveBufferVideo: requestId=\(requestId), duration=\(durationSeconds)s")
+        liveManager?.saveBufferVideo(requestId: requestId, durationSeconds: durationSeconds)
+    }
+
+    func onStartVideoRecording(_ requestId: String, _ save: Bool) {
+        CoreCommsService.log("AOS: onStartVideoRecording: requestId=\(requestId), save=\(save)")
+        liveManager?.startVideoRecording(requestId: requestId, save: save)
+    }
+
+    func onStopVideoRecording(_ requestId: String) {
+        CoreCommsService.log("AOS: onStopVideoRecording: requestId=\(requestId)")
+        liveManager?.stopVideoRecording(requestId: requestId)
+    }
+
     // TODO: ios this name is a bit misleading:
     func setOnboardMicEnabled(_ isEnabled: Bool) {
         Task {
@@ -701,6 +794,9 @@ struct ViewState {
                 return
             }
 
+            // cancel any pending clear display work item:
+            sendStateWorkItem?.cancel()
+
             let layoutType = currentViewState.layoutType
             switch layoutType {
             case "text_wall":
@@ -712,7 +808,7 @@ struct ViewState {
                 self.g1Manager?.sendDoubleTextWall(topText, bottomText)
                 self.mach1Manager?.sendDoubleTextWall(topText, bottomText)
             case "reference_card":
-                sendText(currentViewState.topText + "\n\n" + currentViewState.title)
+                sendText(currentViewState.title + "\n\n" + currentViewState.text)
             case "bitmap_view":
                 CoreCommsService.log("AOS: Processing bitmap_view layout")
                 guard let data = currentViewState.data else {
@@ -899,10 +995,10 @@ struct ViewState {
         CoreCommsService.log("AOS: Interruption: \(began)")
         if began {
             onboardMicUnavailable = true
-            onMicrophoneStateChange(micEnabled)
+            onMicrophoneStateChange(micEnabled, currentRequiredData)
         } else {
             onboardMicUnavailable = false
-            onMicrophoneStateChange(micEnabled)
+            onMicrophoneStateChange(micEnabled, currentRequiredData)
         }
     }
 
@@ -1025,7 +1121,20 @@ struct ViewState {
 
     private func setPreferredMic(_ mic: String) {
         preferredMic = mic
-        onMicrophoneStateChange(micEnabled)
+        onMicrophoneStateChange(micEnabled, currentRequiredData)
+        handleRequestStatus() // to update the UI
+        saveSettings()
+    }
+
+    private func setButtonMode(_ mode: String) {
+        buttonPressMode = mode
+        UserDefaults.standard.set(mode, forKey: "button_press_mode")
+
+        // Forward to glasses if Mentra Live
+        if let mentraLiveManager = liveManager {
+            mentraLiveManager.sendButtonModeSetting(mode)
+        }
+
         handleRequestStatus() // to update the UI
         saveSettings()
     }
@@ -1091,7 +1200,7 @@ struct ViewState {
     private func enableSensing(_ enabled: Bool) {
         sensingEnabled = enabled
         // Update microphone state when sensing is toggled
-        onMicrophoneStateChange(micEnabled)
+        onMicrophoneStateChange(micEnabled, currentRequiredData)
         handleRequestStatus() // to update the UI
         saveSettings()
     }
@@ -1110,6 +1219,24 @@ struct ViewState {
 
     private func bypassVad(_ enabled: Bool) {
         bypassVad = enabled
+        handleRequestStatus() // to update the UI
+        saveSettings()
+    }
+
+    private func enforceLocalTranscription(_ enabled: Bool) {
+        enforceLocalTranscription = enabled
+
+        if currentRequiredData.contains(.PCM_OR_TRANSCRIPTION) {
+            // TODO: Later add bandwidth based logic
+            if enforceLocalTranscription {
+                shouldSendTranscript = true
+                shouldSendPcmData = false
+            } else {
+                shouldSendPcmData = true
+                shouldSendTranscript = false
+            }
+        }
+
         handleRequestStatus() // to update the UI
         saveSettings()
     }
@@ -1168,6 +1295,7 @@ struct ViewState {
             case searchForCompatibleDeviceNames = "search_for_compatible_device_names"
             case enableContextualDashboard = "enable_contextual_dashboard"
             case setPreferredMic = "set_preferred_mic"
+            case setButtonMode = "set_button_mode"
             case ping
             case forgetSmartGlasses = "forget_smart_glasses"
             case startApp = "start_app"
@@ -1181,6 +1309,7 @@ struct ViewState {
             case enableAlwaysOnStatusBar = "enable_always_on_status_bar"
             case bypassVad = "bypass_vad_for_debugging"
             case bypassAudioEncoding = "bypass_audio_encoding_for_debugging"
+            case enforceLocalTranscription = "enforce_local_transcription"
             case setServerUrl = "set_server_url"
             case setMetricSystemEnabled = "set_metric_system_enabled"
             case toggleUpdatingScreen = "toggle_updating_screen"
@@ -1189,6 +1318,11 @@ struct ViewState {
             case sendWifiCredentials = "send_wifi_credentials"
             case simulateHeadPosition = "simulate_head_position"
             case simulateButtonPress = "simulate_button_press"
+            case startBufferRecording = "start_buffer_recording"
+            case stopBufferRecording = "stop_buffer_recording"
+            case saveBufferVideo = "save_buffer_video"
+            case startVideoRecording = "start_video_recording"
+            case stopVideoRecording = "stop_video_recording"
             case unknown
         }
 
@@ -1257,6 +1391,12 @@ struct ViewState {
                         break
                     }
                     setPreferredMic(mic)
+                case .setButtonMode:
+                    guard let params = params, let mode = params["mode"] as? String else {
+                        CoreCommsService.log("AOS: set_button_mode invalid params")
+                        break
+                    }
+                    setButtonMode(mode)
                 case .startApp:
                     guard let params = params, let target = params["target"] as? String else {
                         CoreCommsService.log("AOS: start_app invalid params")
@@ -1364,6 +1504,47 @@ struct ViewState {
                     }
                     // Use existing sendButtonPress method
                     ServerComms.getInstance().sendButtonPress(buttonId: buttonId, pressType: pressType)
+                case .enforceLocalTranscription:
+                    guard let params = params, let enabled = params["enabled"] as? Bool else {
+                        CoreCommsService.log("AOS: enforce_local_transcription invalid params")
+                        break
+                    }
+                    enforceLocalTranscription(enabled)
+                case .startBufferRecording:
+                    CoreCommsService.log("AOS: Starting buffer recording")
+                    liveManager?.startBufferRecording()
+                case .stopBufferRecording:
+                    CoreCommsService.log("AOS: Stopping buffer recording")
+                    liveManager?.stopBufferRecording()
+                case .saveBufferVideo:
+                    guard let params = params,
+                          let requestId = params["request_id"] as? String,
+                          let durationSeconds = params["duration_seconds"] as? Int
+                    else {
+                        CoreCommsService.log("AOS: save_buffer_video invalid params")
+                        break
+                    }
+                    CoreCommsService.log("AOS: Saving buffer video: requestId=\(requestId), duration=\(durationSeconds)s")
+                    liveManager?.saveBufferVideo(requestId: requestId, durationSeconds: durationSeconds)
+                case .startVideoRecording:
+                    guard let params = params,
+                          let requestId = params["request_id"] as? String,
+                          let save = params["save"] as? Bool
+                    else {
+                        CoreCommsService.log("AOS: start_video_recording invalid params")
+                        break
+                    }
+                    CoreCommsService.log("AOS: Starting video recording: requestId=\(requestId), save=\(save)")
+                    liveManager?.startVideoRecording(requestId: requestId, save: save)
+                case .stopVideoRecording:
+                    guard let params = params,
+                          let requestId = params["request_id"] as? String
+                    else {
+                        CoreCommsService.log("AOS: stop_video_recording invalid params")
+                        break
+                    }
+                    CoreCommsService.log("AOS: Stopping video recording: requestId=\(requestId)")
+                    liveManager?.stopVideoRecording(requestId: requestId)
                 case .unknown:
                     CoreCommsService.log("AOS: Unknown command type: \(commandString)")
                     handleRequestStatus()
@@ -1398,6 +1579,9 @@ struct ViewState {
         let simulatedConnected = defaultWearable == "Simulated Glasses"
         let isGlassesConnected = g1Connected || liveConnected || mach1Connected || simulatedConnected
         somethingConnected = isGlassesConnected
+        if isGlassesConnected {
+            isSearching = false
+        }
 
         // also referenced as glasses_info:
         var glassesSettings: [String: Any] = [:]
@@ -1411,6 +1595,7 @@ struct ViewState {
                 "glasses_build_number": liveManager?.glassesBuildNumber ?? "",
                 "glasses_device_model": liveManager?.glassesDeviceModel ?? "",
                 "glasses_android_version": liveManager?.glassesAndroidVersion ?? "",
+                "glasses_ota_version_url": liveManager?.glassesOtaVersionUrl ?? "",
             ]
         }
 
@@ -1439,12 +1624,18 @@ struct ViewState {
             }
         }
 
+        // Add Bluetooth device name if available
+        if let bluetoothName = getConnectedGlassesBluetoothName() {
+            connectedGlasses["bluetooth_name"] = bluetoothName
+        }
+
         glassesSettings = [
             "brightness": brightness,
             "auto_brightness": autoBrightness,
             "dashboard_height": dashboardHeight,
             "dashboard_depth": dashboardDepth,
             "head_up_angle": headUpAngle,
+            "button_mode": buttonPressMode,
         ]
 
         let cloudConnectionStatus = serverComms.isWebSocketConnected() ? "CONNECTED" : "DISCONNECTED"
@@ -1465,6 +1656,7 @@ struct ViewState {
             "power_saving_mode": powerSavingMode,
             "always_on_status_bar": alwaysOnStatusBar,
             "bypass_vad_for_debugging": bypassVad,
+            "enforce_local_transcription": enforceLocalTranscription,
             "bypass_audio_encoding_for_debugging": bypassAudioEncoding,
             "core_token": coreToken,
             "puck_connected": true,
@@ -1643,7 +1835,7 @@ struct ViewState {
 
     private func handleDeviceDisconnected() {
         CoreCommsService.log("AOS: Device disconnected")
-        onMicrophoneStateChange(false) // technically shouldn't be necessary
+        onMicrophoneStateChange(false, []) // technically shouldn't be necessary
         serverComms.sendGlassesConnectionState(modelName: defaultWearable, status: "DISCONNECTED")
         handleRequestStatus()
     }
@@ -1746,6 +1938,7 @@ struct ViewState {
         static let bypassAudioEncoding = "bypassAudioEncoding"
         static let preferredMic = "preferredMic"
         static let metricSystemEnabled = "metricSystemEnabled"
+        static let enforceLocalTranscription = "enforceLocalTranscription"
     }
 
     func onStatusUpdate(_ status: [String: Any]) {
@@ -1838,6 +2031,10 @@ struct ViewState {
             bypassVad(newBypassVad)
         }
 
+        if let newEnforceLocalTranscription = coreInfo?["enforce_local_transcription"] as? Bool, newEnforceLocalTranscription != enforceLocalTranscription {
+            enforceLocalTranscription(newEnforceLocalTranscription)
+        }
+
         if let newMetricSystemEnabled = coreInfo?["metric_system_enabled"] as? Bool, newMetricSystemEnabled != metricSystemEnabled {
             setMetricSystemEnabled(newMetricSystemEnabled)
         }
@@ -1885,6 +2082,7 @@ struct ViewState {
         defaults.set(bypassAudioEncoding, forKey: SettingsKeys.bypassAudioEncoding)
         defaults.set(preferredMic, forKey: SettingsKeys.preferredMic)
         defaults.set(metricSystemEnabled, forKey: SettingsKeys.metricSystemEnabled)
+        defaults.set(enforceLocalTranscription, forKey: SettingsKeys.enforceLocalTranscription)
 
         // Force immediate save (optional, as UserDefaults typically saves when appropriate)
         defaults.synchronize()
@@ -1902,7 +2100,9 @@ struct ViewState {
         powerSavingMode = false
         contextualDashboard = true
         bypassVad = false
+        enforceLocalTranscription = false
         preferredMic = "glasses"
+        buttonPressMode = UserDefaults.standard.string(forKey: "button_press_mode") ?? "photo"
         brightness = 50
         headUpAngle = 30
         metricSystemEnabled = false
@@ -1922,6 +2122,7 @@ struct ViewState {
         UserDefaults.standard.register(defaults: [SettingsKeys.headUpAngle: 30])
         UserDefaults.standard.register(defaults: [SettingsKeys.metricSystemEnabled: false])
         UserDefaults.standard.register(defaults: [SettingsKeys.autoBrightness: true])
+        UserDefaults.standard.register(defaults: [SettingsKeys.enforceLocalTranscription: false])
 
         let defaults = UserDefaults.standard
 
@@ -1941,6 +2142,7 @@ struct ViewState {
         headUpAngle = defaults.integer(forKey: SettingsKeys.headUpAngle)
         brightness = defaults.integer(forKey: SettingsKeys.brightness)
         metricSystemEnabled = defaults.bool(forKey: SettingsKeys.metricSystemEnabled)
+        enforceLocalTranscription = defaults.bool(forKey: SettingsKeys.enforceLocalTranscription)
 
         // TODO: load settings from the server
 
@@ -1952,10 +2154,69 @@ struct ViewState {
             "Contextual Dashboard: \(contextualDashboard), Head Up Angle: \(headUpAngle), Brightness: \(brightness)")
     }
 
+    // MARK: - Helper Functions
+
+    private func getConnectedGlassesBluetoothName() -> String? {
+        // Check each connected glasses type and return the Bluetooth name
+        if let liveManager = liveManager, liveManager.glassesReady {
+            return liveManager.getConnectedBluetoothName()
+        }
+
+        if let g1Manager = g1Manager, g1Manager.g1Ready {
+            return g1Manager.getConnectedBluetoothName()
+        }
+
+        if let mach1Manager = mach1Manager, mach1Manager.ready {
+            return mach1Manager.getConnectedBluetoothName()
+        }
+
+        return nil
+    }
+
     // MARK: - Cleanup
 
     @objc func cleanup() {
+        // Clean up transcriber resources
+        transcriber?.shutdown()
+        transcriber = nil
+
         cancellables.removeAll()
         saveSettings()
+    }
+
+    // MARK: - SherpaOnnxTranscriber.TranscriptDelegate
+
+    func didReceivePartialTranscription(_ text: String) {
+        // Send partial result to server with proper formatting
+        let transcription: [String: Any] = [
+            "type": "local_transcription",
+            "text": text,
+            "isFinal": false,
+            "startTime": Int(Date().timeIntervalSince1970 * 1000) - 1000, // 1 second ago
+            "endTime": Int(Date().timeIntervalSince1970 * 1000),
+            "speakerId": 0,
+            "transcribeLanguage": "en-US",
+            "provider": "sherpa-onnx",
+        ]
+
+        serverComms.sendTranscriptionResult(transcription: transcription)
+    }
+
+    func didReceiveFinalTranscription(_ text: String) {
+        // Send final result to server with proper formatting
+        if !text.isEmpty {
+            let transcription: [String: Any] = [
+                "type": "local_transcription",
+                "text": text,
+                "isFinal": true,
+                "startTime": Int(Date().timeIntervalSince1970 * 1000) - 2000, // 2 seconds ago
+                "endTime": Int(Date().timeIntervalSince1970 * 1000),
+                "speakerId": 0,
+                "transcribeLanguage": "en-US",
+                "provider": "sherpa-onnx",
+            ]
+
+            serverComms.sendTranscriptionResult(transcription: transcription)
+        }
     }
 }

@@ -3,8 +3,10 @@ package com.augmentos.augmentos_core.smarterglassesmanager.speechrecognition;
 import android.content.Context;
 import android.util.Log;
 
+import com.augmentos.augmentos_core.enums.SpeechRequiredDataType;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.AudioChunkNewEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.BypassVadForDebuggingEvent;
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.EnforceLocalTranscriptionEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.LC3AudioChunkNewEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.hci.AudioProcessingCallback;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.PauseAsrEvent;
@@ -29,10 +31,10 @@ public class SpeechRecSwitchSystem implements AudioProcessingCallback {
         this.microphoneState = true;
     }
 
-    public void microphoneStateChanged(boolean state){
+    public void microphoneStateChanged(boolean state, List<SpeechRequiredDataType> requiredData){
         microphoneState = state;
         if (speechRecFramework != null){
-            speechRecFramework.microphoneStateChanged(state);
+            speechRecFramework.microphoneStateChanged(state, requiredData);
         }
     }
 
@@ -63,11 +65,23 @@ public class SpeechRecSwitchSystem implements AudioProcessingCallback {
             speechRecFramework.changeBypassVadForDebuggingState(bypass);
         }
     }
+
+    public void setEnforceLocalTranscription(boolean enforce) {
+        if (speechRecFramework != null) {
+            speechRecFramework.changeEnforceLocalTranscriptionState(enforce);
+        }
+    }
     
     @Subscribe
     public void onBypassVadForDebuggingEvent(BypassVadForDebuggingEvent receivedEvent){
         //redirect audio to the currently in use ASR framework
         setBypassVad(receivedEvent.bypassVadForDebugging);
+    }
+
+    @Subscribe
+    public void onEnforceLocalTranscriptionEvent(EnforceLocalTranscriptionEvent receivedEvent){
+        //redirect audio to the currently in use ASR framework
+        setEnforceLocalTranscription(receivedEvent.enforceLocalTranscription);
     }
 
     // BATTERY OPTIMIZATION: Added direct method call to avoid EventBus overhead

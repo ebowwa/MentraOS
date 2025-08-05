@@ -4,20 +4,15 @@ import Constants from "expo-constants"
 /**
  * Detects if the current build allows developer features.
  * Returns true for:
- * - All Android builds (Google Play doesn't restrict dev features)
- * - iOS development builds (__DEV__ === true)
+ * - Development builds (__DEV__ === true) on both iOS and Android
  * - iOS TestFlight builds
  *
  * Returns false for:
  * - iOS App Store production builds
+ * - Android production builds (Google Play)
  */
 export const isDeveloperBuildOrTestflight = (): boolean => {
-  // Android: Always allow developer features
-  if (Platform.OS === "android") {
-    return true
-  }
-
-  // iOS Development: Allow if __DEV__ is true
+  // Development builds: Allow if __DEV__ is true (works for both iOS and Android)
   if (__DEV__) {
     return true
   }
@@ -74,14 +69,10 @@ export const isDeveloperBuildOrTestflight = (): boolean => {
 }
 
 /**
- * Returns true if this is an App Store production build
- * (inverse of isDeveloperBuildOrTestflight for iOS)
+ * Returns true if this is a production build (App Store or Google Play)
+ * (inverse of isDeveloperBuildOrTestflight)
  */
 export const isAppStoreProductionBuild = (): boolean => {
-  if (Platform.OS === "android") {
-    return false // Android builds don't need this restriction
-  }
-
   return !isDeveloperBuildOrTestflight()
 }
 

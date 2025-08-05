@@ -13,7 +13,7 @@ protocol ServerCommsCallback {
     func onAppStateChange(_ apps: [ThirdPartyCloudApp] /* , _ whatToStream: [String] */ )
     func onConnectionError(_ error: String)
     func onAuthError()
-    func onMicrophoneStateChange(_ isEnabled: Bool)
+    func onMicrophoneStateChange(_ isEnabled: Bool, _ requiredData: [SpeechRequiredDataType])
     func onDisplayEvent(_ event: [String: Any])
     func onRequestSingle(_ dataType: String)
     func onStatusUpdate(_ status: [String: Any])
@@ -24,6 +24,11 @@ protocol ServerCommsCallback {
     func onRtmpStreamStartRequest(_ message: [String: Any])
     func onRtmpStreamStop()
     func onRtmpStreamKeepAlive(_ message: [String: Any])
+    func onStartBufferRecording()
+    func onStopBufferRecording()
+    func onSaveBufferVideo(_ requestId: String, _ durationSeconds: Int)
+    func onStartVideoRecording(_ requestId: String, _ save: Bool)
+    func onStopVideoRecording(_ requestId: String)
 }
 
 class ServerComms {
@@ -339,14 +344,12 @@ class ServerComms {
     func sendAudioPlayResponse(requestId: String, success: Bool, error: String? = nil, duration: Double? = nil) {
         CoreCommsService.log("ServerComms: Sending audio play response - requestId: \(requestId), success: \(success), error: \(error ?? "none")")
         let message: [String: Any] = [
-            "command": "audio_play_response",
-            "params": [
-                "requestId": requestId,
-                "success": success,
-                "error": error as Any,
-                "duration": duration as Any,
-            ].compactMapValues { $0 },
-        ]
+            "type": "audio_play_response",
+            "requestId": requestId,
+            "success": success,
+            "error": error as Any,
+            "duration": duration as Any,
+        ].compactMapValues { $0 }
 
         do {
             let jsonData = try JSONSerialization.data(withJSONObject: message)
@@ -504,8 +507,27 @@ class ServerComms {
         case "microphone_state_change":
             CoreCommsService.log("ServerComms: microphone_state_change: \(msg)")
             let isMicrophoneEnabled = msg["isMicrophoneEnabled"] as? Bool ?? true
+
+            var requiredDataStrings: [String] = []
+            if let requiredDataArray = msg["requiredData"] as? [String] {
+                requiredDataStrings = requiredDataArray
+            } else if let requiredDataArray = msg["requiredData"] as? [Any] {
+                // Handle case where it might come as mixed array
+                requiredDataStrings = requiredDataArray.compactMap { $0 as? String }
+            }
+
+            // Convert string array to enum array
+            var requiredData = SpeechRequiredDataType.fromStringArray(requiredDataStrings)
+
+            // Treat empty array as PCM only
+            if requiredData.isEmpty {
+                requiredData.append(.PCM)
+            }
+
+            CoreCommsService.log("ServerComms: requiredData = \(requiredDataStrings)")
+
             if let callback = serverCommsCallback {
-                callback.onMicrophoneStateChange(isMicrophoneEnabled)
+                callback.onMicrophoneStateChange(isMicrophoneEnabled, requiredData)
             }
 
         case "display_event":
@@ -604,6 +626,31 @@ class ServerComms {
         case "keep_rtmp_stream_alive":
             CoreCommsService.log("ServerComms: Received KEEP_RTMP_STREAM_ALIVE: \(msg)")
             serverCommsCallback?.onRtmpStreamKeepAlive(msg)
+
+        case "start_buffer_recording":
+            CoreCommsService.log("ServerComms: Received START_BUFFER_RECORDING")
+            serverCommsCallback?.onStartBufferRecording()
+
+        case "stop_buffer_recording":
+            CoreCommsService.log("ServerComms: Received STOP_BUFFER_RECORDING")
+            serverCommsCallback?.onStopBufferRecording()
+
+        case "save_buffer_video":
+            CoreCommsService.log("ServerComms: Received SAVE_BUFFER_VIDEO: \(msg)")
+            let requestId = msg["requestId"] as? String ?? "buffer_\(Int(Date().timeIntervalSince1970 * 1000))"
+            let durationSeconds = msg["durationSeconds"] as? Int ?? 30
+            serverCommsCallback?.onSaveBufferVideo(requestId, durationSeconds)
+
+        case "start_video_recording":
+            CoreCommsService.log("ServerComms: Received START_VIDEO_RECORDING: \(msg)")
+            let requestId = msg["requestId"] as? String ?? "video_\(Int(Date().timeIntervalSince1970 * 1000))"
+            let save = msg["save"] as? Bool ?? true
+            serverCommsCallback?.onStartVideoRecording(requestId, save)
+
+        case "stop_video_recording":
+            CoreCommsService.log("ServerComms: Received STOP_VIDEO_RECORDING: \(msg)")
+            let requestId = msg["requestId"] as? String ?? ""
+            serverCommsCallback?.onStopVideoRecording(requestId)
 
         default:
             CoreCommsService.log("ServerComms: Unknown message type: \(type) / full: \(msg)")
@@ -870,6 +917,35 @@ class ServerComms {
         dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ssXXX"
         dateFormatter.locale = Locale(identifier: "en_US")
         return dateFormatter.string(from: Date())
+    }
+
+    /**
+     * Send transcription result to server
+     * Used by AOSManager to send pre-formatted transcription results
+     * Matches the Java ServerComms structure exactly
+     */
+    func sendTranscriptionResult(transcription: [String: Any]) {
+        guard wsManager.isConnected() else {
+            CoreCommsService.log("Cannot send transcription result: WebSocket not connected")
+            return
+        }
+
+        guard let text = transcription["text"] as? String, !text.isEmpty else {
+            CoreCommsService.log("Skipping empty transcription result")
+            return
+        }
+
+        do {
+            let jsonData = try JSONSerialization.data(withJSONObject: transcription)
+            if let jsonString = String(data: jsonData, encoding: .utf8) {
+                wsManager.sendText(jsonString)
+
+                let isFinal = transcription["isFinal"] as? Bool ?? false
+                CoreCommsService.log("Sent \(isFinal ? "final" : "partial") transcription: '\(text)'")
+            }
+        } catch {
+            CoreCommsService.log("Error sending transcription result: \(error)")
+        }
     }
 }
 

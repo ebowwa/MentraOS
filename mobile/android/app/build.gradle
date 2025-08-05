@@ -106,7 +106,7 @@ android {
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 39
-        versionName "2.2.1"
+        versionName "2.2.4"
     }
     signingConfigs {
         debug {
@@ -137,8 +137,13 @@ android {
         jniLibs {
             useLegacyPackaging (findProperty('expo.useLegacyPackaging')?.toBoolean() ?: false)
         }
+
         pickFirst '**/libjsc.so'
         pickFirst '**/libc++_shared.so'
+        // Sherpa-ONNX AAR dependency and silero-vad import the same lib in android_core/app
+        pickFirst '**/libonnxruntime.so'
+        pickFirst '**/libonnxruntime4j_jni.so'
+
         resources {
             excludes += ["META-INF/INDEX.LIST"]
         }
@@ -187,6 +192,9 @@ dependencies {
     implementation "androidx.media3:media3-common:1.2.1"
     implementation "androidx.media3:media3-ui:1.2.1"
 
+    // Apache Commons Compress for tar.bz2 extraction
+    implementation 'org.apache.commons:commons-compress:1.24.0'
+
     def isGifEnabled = (findProperty('expo.gif.enabled') ?: "") == "true";
     def isWebpEnabled = (findProperty('expo.webp.enabled') ?: "") == "true";
     def isWebpAnimatedEnabled = (findProperty('expo.webp.animated') ?: "") == "true";
@@ -209,5 +217,21 @@ dependencies {
         implementation("com.facebook.react:hermes-android")
     } else {
         implementation jscFlavor
+    }
+}
+
+// Force override onnxruntime version to 1.17.1 because sherpa-onnx bundles `libsherpa-onnx-jni.so` which depends on this version
+configurations.all {
+    resolutionStrategy {
+        eachDependency { DependencyResolveDetails details ->
+            if (details.requested.group == 'com.microsoft.onnxruntime') {
+                details.useVersion '1.17.1'
+                details.because('Force override vad’s transitive version')
+            }
+            if (details.requested.name == 'onnxruntime-android') {
+                details.useVersion '1.17.1'
+                details.because('Force override vad’s transitive version')
+            }
+        }
     }
 }

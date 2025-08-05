@@ -466,6 +466,48 @@ export class SubscriptionService {
     return null; // This line should be unreachable
   }
 
+  hasPCMTranscriptionSubscriptions(sessionId: string): {
+    hasMedia: boolean;
+    hasPCM: boolean;
+    hasTranscription: boolean;
+  } {
+    let hasMedia = false;
+    let hasPCM = false;
+    let hasTranscription = false;
+
+    for (const [key, subs] of this.subscriptions.entries()) {
+      if (!key.startsWith(sessionId + ":")) continue;
+      for (const sub of subs) {
+        if (sub === StreamType.AUDIO_CHUNK) {
+          hasPCM = true;
+          hasMedia = true;
+        } else if (
+          sub === StreamType.TRANSLATION ||
+          sub === StreamType.TRANSCRIPTION
+        ) {
+          hasTranscription = true;
+          hasMedia = true;
+        } else {
+          const langInfo = parseLanguageStream(sub as string);
+          if (
+            langInfo &&
+            (langInfo.type === StreamType.TRANSLATION ||
+              langInfo.type === StreamType.TRANSCRIPTION)
+          ) {
+            hasTranscription = true;
+            hasMedia = true;
+          }
+        }
+      }
+    }
+
+    return {
+      hasMedia,
+      hasPCM,
+      hasTranscription,
+    };
+  }
+
   /**
    * Returns an object listing which Apps (by package name) for a specific user (session)
    * are subscribed to "audio_chunk", "translation", and "transcription".
@@ -683,6 +725,7 @@ export class SubscriptionService {
 
   /**
    * Get all transcription-related subscriptions for a user session
+   * (now only returns transcription, not translation)
    */
   private getTranscriptionSubscriptions(
     userSession: UserSession,
@@ -695,8 +738,8 @@ export class SubscriptionService {
     for (const [key, subs] of this.subscriptions.entries()) {
       if (key.startsWith(userPrefix)) {
         for (const sub of subs) {
-          // Include transcription and translation subscriptions
-          if (sub.includes("transcription") || sub.includes("translation")) {
+          // Only include transcription subscriptions (not translation)
+          if (sub.includes("transcription") && !sub.includes("translation")) {
             transcriptionSubs.push(sub as ExtendedStreamType);
           }
         }
@@ -707,24 +750,60 @@ export class SubscriptionService {
   }
 
   /**
-   * Automatically sync TranscriptionManager with current subscriptions
+   * Get all translation-related subscriptions for a user session
+   */
+  private getTranslationSubscriptions(
+    userSession: UserSession,
+  ): ExtendedStreamType[] {
+    const translationSubs: ExtendedStreamType[] = [];
+
+    // Get all subscriptions for this user
+    const userPrefix = `${userSession.userId}:`;
+
+    for (const [key, subs] of this.subscriptions.entries()) {
+      if (key.startsWith(userPrefix)) {
+        for (const sub of subs) {
+          // Only include translation subscriptions
+          if (sub.includes("translation")) {
+            translationSubs.push(sub as ExtendedStreamType);
+          }
+        }
+      }
+    }
+
+    return translationSubs;
+  }
+
+  /**
+   * Automatically sync TranscriptionManager and TranslationManager with current subscriptions
    */
   private async syncTranscriptionManager(
     userSession: UserSession,
   ): Promise<void> {
     try {
+      // Sync transcription subscriptions
       const transcriptionSubs = this.getTranscriptionSubscriptions(userSession);
-      userSession.transcriptionManager.updateSubscriptions(transcriptionSubs);
+      await userSession.transcriptionManager.updateSubscriptions(
+        transcriptionSubs,
+      );
+
+      // Sync translation subscriptions
+      const translationSubs = this.getTranslationSubscriptions(userSession);
+      await userSession.translationManager.updateSubscriptions(translationSubs);
 
       // Ensure streams are synchronized after subscription update
-      await userSession.transcriptionManager.ensureStreamsExist();
+      await Promise.all([
+        userSession.transcriptionManager.ensureStreamsExist(),
+        userSession.translationManager.ensureStreamsExist(),
+      ]);
 
       logger.debug(
         {
           userId: userSession.userId,
           transcriptionSubs,
+          translationSubs,
         },
-        "Synced TranscriptionManager with current subscriptions",
+        "Synced TranscriptionManager and TranslationManager with current subscriptions",
       );
     } catch (error) {
       logger.error(
@@ -732,7 +811,7 @@ export class SubscriptionService {
           error,
           userId: userSession.userId,
         },
-        "Error syncing TranscriptionManager with subscriptions",
+        "Error syncing transcription/translation managers with subscriptions",
       );
     }
   }
@@ -885,7 +964,10 @@ export class SubscriptionService {
   private isValidSubscription(subscription: ExtendedStreamType): boolean {
     // 1. Check for standard StreamType enum values
     if (Object.values(StreamType).includes(subscription as StreamType)) {
-      logger.debug({ subscription }, "Subscription is a valid standard StreamType");
+      logger.debug(
+        { subscription },
+        "Subscription is a valid standard StreamType",
+      );
       return true;
     }
 
@@ -902,8 +984,14 @@ export class SubscriptionService {
     // This relies on the SDK's isLanguageStream, which correctly handles query
     // parameters by stripping them before validating the language code.
 
-    logger.debug({ subscription }, "Checking if subscription is a language stream");
-    logger.debug({ isLanguageStream: isLanguageStream(subscription) }, "isLanguageStream result");
+    logger.debug(
+      { subscription },
+      "Checking if subscription is a language stream",
+    );
+    logger.debug(
+      { isLanguageStream: isLanguageStream(subscription) },
+      "isLanguageStream result",
+    );
 
     if (isLanguageStream(subscription)) {
       const langInfo = parseLanguageStream(subscription);

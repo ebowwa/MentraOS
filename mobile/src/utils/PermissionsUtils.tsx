@@ -18,7 +18,8 @@ export const PermissionFeatures: Record<string, string> = {
   BASIC: "basic", // Basic permissions needed for the app to function
   POST_NOTIFICATIONS: "post_notifications",
   READ_NOTIFICATIONS: "read_notifications",
-  CAMERA: "camera",
+  CAMERA: "camera", // Phone camera permission for mirror mode
+  GLASSES_CAMERA: "glasses_camera", // Glasses camera permission for apps
   MICROPHONE: "microphone",
   CALENDAR: "calendar",
   LOCATION: "location",
@@ -72,6 +73,13 @@ const PERMISSION_CONFIG: Record<string, PermissionConfig> = {
     description: "Used for the fullscreen mirror mode",
     ios: [PERMISSIONS.IOS.CAMERA],
     android: [PermissionsAndroid.PERMISSIONS.CAMERA],
+    critical: false,
+  },
+  [PermissionFeatures.GLASSES_CAMERA]: {
+    name: "Glasses Camera",
+    description: "Allows apps to access the smart glasses camera for photo capture and video streaming",
+    ios: [], // No OS-level permission required
+    android: [], // No OS-level permission required
     critical: false,
   },
   [PermissionFeatures.MICROPHONE]: {
@@ -373,11 +381,33 @@ export const requestFeaturePermissions = async (featureKey: string): Promise<boo
   // Mark this feature as having been requested
   await markPermissionRequested(featureKey)
 
+  // If this feature does not require any OS-level permissions (e.g., glasses camera),
+  // we treat it as granted after recording the grant locally and return early.
+  if (config.android.length === 0 && config.ios.length === 0) {
+    await markPermissionGranted(featureKey)
+    return true
+  }
+
   // For Android
   if (Platform.OS === "android" && config.android.length > 0) {
     try {
+      // Filter out any null/undefined permissions before requesting
+      console.log(`${featureKey} original permissions:`, config.android)
+      console.log(
+        `${featureKey} permission values:`,
+        config.android.map(p => `${p} (${typeof p})`),
+      )
+
+      const validPermissions = config.android.filter(permission => permission != null)
+      console.log(`${featureKey} valid permissions after filtering:`, validPermissions)
+
+      if (validPermissions.length === 0) {
+        console.warn(`No valid permissions to request for feature: ${featureKey}`)
+        return false
+      }
+
       // Request all permissions for this feature
-      const results = await PermissionsAndroid.requestMultiple(config.android)
+      const results = await PermissionsAndroid.requestMultiple(validPermissions)
       console.log(`${featureKey} permissions results:`, results)
 
       // Check each permission result
@@ -573,6 +603,12 @@ export const checkFeaturePermissions = async (featureKey: string): Promise<boole
   if (!config) {
     console.error(`Unknown permission feature: ${featureKey}`)
     return false
+  }
+
+  // If this permission has no underlying OS-level mapping (e.g., glasses camera),
+  // rely on our internal flag to determine if the user has already accepted it.
+  if (config.android.length === 0 && config.ios.length === 0) {
+    return await hasPermissionBeenGranted(featureKey)
   }
 
   // For special permissions

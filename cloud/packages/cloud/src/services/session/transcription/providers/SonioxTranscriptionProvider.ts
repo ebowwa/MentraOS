@@ -3,12 +3,7 @@
  */
 
 import WebSocket from "ws";
-import {
-  StreamType,
-  getLanguageInfo,
-  TranscriptionData,
-  TranslationData,
-} from "@mentra/sdk";
+import { StreamType, getLanguageInfo, TranscriptionData, SonioxToken } from "@mentra/sdk";
 import { Logger } from "pino";
 import {
   TranscriptionProvider,
@@ -22,43 +17,29 @@ import {
   StreamCallbacks,
   StreamMetrics,
   StreamHealth,
-  SonioxProviderError
-} from '../types';
-import { SonioxTranslationUtils } from './SonioxTranslationUtils';
+  SonioxProviderError,
+} from "../types";
 
-// Soniox language support - based on their documentation
-const SONIOX_TRANSCRIPTION_LANGUAGES = [
-  "en-US",
-  "en-GB",
-  "en-AU",
-  "en-IN",
-  "es-ES",
-  "es-MX",
-  "es-US",
-  "fr-FR",
-  "fr-CA",
-  "de-DE",
-  "it-IT",
-  "pt-BR",
-  "pt-PT",
-  "nl-NL",
-  "sv-SE",
-  "da-DK",
-  "no-NO",
-  "ru-RU",
-  "pl-PL",
-  "cs-CZ",
-  "ja-JP",
-  "ko-KR",
-  "zh-CN",
-  "zh-TW",
-];
+// Import Soniox language configuration from JSON
+import sonioxLanguageData from "./SonioxLanguages.json";
+
+// Extract supported language codes for the real-time model
+const SONIOX_SUPPORTED_LANGUAGES: string[] = [];
+const rtModel = sonioxLanguageData.models.find(m => m.id === "stt-rt-preview");
+if (rtModel) {
+  // Extract just the language codes (e.g., "en", "es", "fr")
+  rtModel.languages.forEach(lang => {
+    if (!SONIOX_SUPPORTED_LANGUAGES.includes(lang.code)) {
+      SONIOX_SUPPORTED_LANGUAGES.push(lang.code);
+    }
+  });
+}
 
 // Soniox WebSocket endpoint
 const SONIOX_WEBSOCKET_URL = "wss://stt-rt.soniox.com/transcribe-websocket";
 
-// Soniox token response interface
-interface SonioxToken {
+// Soniox API token response interface (renamed to avoid conflict with SDK type)
+interface SonioxApiToken {
   text: string;
   start_ms: number;
   end_ms: number;
@@ -69,7 +50,7 @@ interface SonioxToken {
 }
 
 interface SonioxResponse {
-  tokens?: SonioxToken[];
+  tokens?: SonioxApiToken[];
   final_audio_proc_ms?: number;
   total_audio_proc_ms?: number;
   error_code?: number;
@@ -96,6 +77,14 @@ export class SonioxTranscriptionProvider implements TranscriptionProvider {
       lastCheck: Date.now(),
       failures: 0,
     };
+    
+    this.logger.info(
+      {
+        supportedLanguages: SONIOX_SUPPORTED_LANGUAGES.length,
+        languages: SONIOX_SUPPORTED_LANGUAGES
+      },
+      `Soniox provider initialized with ${SONIOX_SUPPORTED_LANGUAGES.length} supported languages`
+    );
   }
 
   async initialize(): Promise<void> {
@@ -149,8 +138,6 @@ export class SonioxTranscriptionProvider implements TranscriptionProvider {
       options.callbacks,
       this.logger,
       this.config,
-      options.ownsTranscription || [],
-      options.skipTranscriptionFor || [],
     );
 
     // Initialize WebSocket connection
@@ -159,46 +146,8 @@ export class SonioxTranscriptionProvider implements TranscriptionProvider {
     return stream;
   }
 
-  async createTranslationStream(
-    sourceLanguage: string,
-    targetLanguage: string,
-    options: StreamOptions,
-  ): Promise<StreamInstance> {
-    this.logger.debug(
-      {
-        sourceLanguage,
-        targetLanguage,
-        streamId: options.streamId,
-      },
-      "Creating Soniox translation stream",
-    );
-
-    if (!this.validateLanguagePair(sourceLanguage, targetLanguage)) {
-      throw new SonioxProviderError(
-        `Translation pair ${sourceLanguage} → ${targetLanguage} not supported by Soniox`,
-        400,
-      );
-    }
-
-    // Create real Soniox WebSocket translation stream
-    const stream = new SonioxTranscriptionStream(
-      options.streamId,
-      options.subscription,
-      this,
-      sourceLanguage,
-      targetLanguage, // Pass target language for translation
-      options.callbacks,
-      this.logger,
-      this.config,
-      options.ownsTranscription || [],
-      options.skipTranscriptionFor || [],
-    );
-
-    // Initialize WebSocket connection
-    await stream.initialize();
-
-    return stream;
-  }
+  // Translation is now handled by a separate TranslationManager
+  // This method should not be in TranscriptionProvider
 
   supportsSubscription(subscription: string): boolean {
     const languageInfo = getLanguageInfo(subscription);
@@ -206,59 +155,43 @@ export class SonioxTranscriptionProvider implements TranscriptionProvider {
       return false;
     }
 
-    // Support both transcription and translation
+    // Only support transcription
     if (languageInfo.type === StreamType.TRANSCRIPTION) {
       return this.supportsLanguage(languageInfo.transcribeLanguage);
-    }
-
-    if (
-      languageInfo.type === StreamType.TRANSLATION &&
-      languageInfo.translateLanguage
-    ) {
-      return this.validateLanguagePair(
-        languageInfo.transcribeLanguage,
-        languageInfo.translateLanguage,
-      );
     }
 
     return false;
   }
 
   supportsLanguage(language: string): boolean {
-    // Use SonioxTranslationUtils to check supported languages with normalization
-    const supportedLanguages = SonioxTranslationUtils.getSupportedLanguages();
-    const normalizedLanguage = SonioxTranslationUtils.normalizeLanguageCode(language);
-    return supportedLanguages.includes(normalizedLanguage);
+    // Check if the language is in our supported transcription languages list
+    // Language parameter is already a language code like "en-US", not a subscription string
+    
+    // Extract base language code (e.g., 'en' for 'en-US')
+    const baseLanguage = language.split("-")[0].toLowerCase();
+
+    // Check if this base language is supported by Soniox
+    return SONIOX_SUPPORTED_LANGUAGES.includes(baseLanguage);
   }
 
-  validateLanguagePair(source: string, target: string): boolean {
-    // Use SonioxTranslationUtils to validate language pairs with proper normalization
-    return SonioxTranslationUtils.supportsTranslation(source, target);
-  }
+  // Translation validation is now handled by TranslationManager
 
   getLanguageCapabilities(): ProviderLanguageCapabilities {
-    // Use SonioxTranslationUtils to build translation pairs dynamically
-    const translationPairs = new Map<string, string[]>();
-    const supportedLanguages = SonioxTranslationUtils.getSupportedLanguages();
+    // Build a list of language codes in the format expected (e.g., "en-US")
+    // For now, we'll just return the base language codes since Soniox 
+    // supports multiple variants for most languages
+    const transcriptionLanguages: string[] = [];
     
-    // Build translation pairs map by checking all combinations
-    for (const sourceLanguage of supportedLanguages) {
-      const targetLanguages: string[] = [];
-      for (const targetLanguage of supportedLanguages) {
-        if (SonioxTranslationUtils.supportsTranslation(sourceLanguage, targetLanguage)) {
-          targetLanguages.push(targetLanguage);
-        }
-      }
-      if (targetLanguages.length > 0) {
-        translationPairs.set(sourceLanguage, targetLanguages);
-      }
+    if (rtModel) {
+      rtModel.languages.forEach(lang => {
+        // Add the base language code (Soniox accepts base codes)
+        transcriptionLanguages.push(lang.code);
+      });
     }
     
     return {
-      transcriptionLanguages: [...SONIOX_TRANSCRIPTION_LANGUAGES],
-      translationPairs,
+      transcriptionLanguages,
       autoLanguageDetection: true, // Soniox supports auto language detection
-      realtimeTranslation: true, // Soniox supports real-time translation!
     };
   }
 
@@ -345,6 +278,18 @@ class SonioxTranscriptionStream implements StreamInstance {
   > = new Map();
   private fallbackPosition = 0; // Fallback position when timing info is missing
   private lastSentInterim = ""; // Track last sent interim to avoid duplicates
+  
+  // Helper to convert internal tokens to SDK format
+  private convertToSdkTokens(tokens: Array<{ text: string; isFinal: boolean; confidence: number; start_ms: number; end_ms: number; speaker?: string }>): SonioxToken[] {
+    return tokens.map(token => ({
+      text: token.text,
+      startMs: token.start_ms,
+      endMs: token.end_ms,
+      confidence: token.confidence,
+      isFinal: token.isFinal,
+      speaker: token.speaker
+    }));
+  }
 
   // Translation-specific token buffers (one per language)
   private translationTokenBuffers: Map<
@@ -376,8 +321,6 @@ class SonioxTranscriptionStream implements StreamInstance {
     public readonly callbacks: StreamCallbacks,
     public readonly logger: Logger,
     private readonly config: SonioxProviderConfig,
-    private readonly ownsTranscription: string[] = [],
-    private readonly skipTranscriptionFor: string[] = [],
   ) {
     this.metrics = {
       totalDuration: 0,
@@ -474,7 +417,9 @@ class SonioxTranscriptionStream implements StreamInstance {
       ? [languageHint, targetLanguageHint]
       : [languageHint];
 
-    const disableLanguageIdentification = this.subscription.endsWith('?no-language-identification=true');
+    const disableLanguageIdentification = this.subscription.endsWith(
+      "?no-language-identification=true",
+    );
     const config: any = {
       api_key: this.config.apiKey,
       model: this.config.model || "stt-rt-preview",
@@ -485,8 +430,8 @@ class SonioxTranscriptionStream implements StreamInstance {
       max_non_final_tokens_duration_ms: 2000,
       enable_endpoint_detection: true, // Automatically finalize tokens on speech pauses
       enable_speaker_diarization: true,
-      context: "Mentra, MentraOS, Mira, Hey Mira",
       language_hints: languageHints, // Default hints, can be overridden
+      // context: "Mentra, MentraOS, Mira, Hey Mira",
     };
 
     // Configure translation if target language is specified
@@ -573,17 +518,21 @@ class SonioxTranscriptionStream implements StreamInstance {
     }
   }
 
-  private processSonioxTokens(tokens: SonioxToken[]): void {
+  private processSonioxTokens(tokens: SonioxApiToken[]): void {
     if (this.targetLanguage) {
-      // Translation mode - group tokens by language
-      this.processTranslationTokens(tokens);
+      // Should never receive translation tokens in transcription provider
+      this.logger.error(
+        { streamId: this.id },
+        "Transcription provider incorrectly receiving translation tokens",
+      );
+      return;
     } else {
       // Transcription mode
       this.processTranscriptionTokens(tokens);
     }
   }
 
-  private processTranscriptionTokens(tokens: SonioxToken[]): void {
+  private processTranscriptionTokens(tokens: SonioxApiToken[]): void {
     // Soniox streams tokens cumulatively - each response contains tokens that should
     // update our running buffer. Tokens can change from interim to final and can be corrected.
     // Key insight: Use audio segment position (start_ms) as primary key to allow corrections.
@@ -648,6 +597,12 @@ class SonioxTranscriptionStream implements StreamInstance {
         endTime: Date.now() + 1000,
         transcribeLanguage: this.language,
         provider: "soniox",
+        metadata: {
+          provider: 'soniox',
+          soniox: {
+            tokens: this.convertToSdkTokens(sortedTokens)
+          }
+        }
       };
 
       if (this.callbacks.onData) {
@@ -668,6 +623,26 @@ class SonioxTranscriptionStream implements StreamInstance {
           provider: "soniox",
         },
         `🎙️ SONIOX: interim transcription - "${currentInterim}"`,
+      );
+      
+      // Log metadata details
+      this.logger.info(
+        {
+          streamId: this.id,
+          metadataType: "interim",
+          tokenCount: sortedTokens.length,
+          tokens: sortedTokens.map(t => ({
+            text: t.text,
+            confidence: t.confidence,
+            timeRange: `${t.start_ms}-${t.end_ms}ms`,
+            isFinal: t.isFinal
+          })),
+          lowConfidenceTokens: sortedTokens.filter(t => t.confidence < 0.8).map(t => ({
+            text: t.text,
+            confidence: t.confidence
+          }))
+        },
+        `🔍 METADATA: Interim transcription with ${sortedTokens.length} tokens`
       );
     }
 
@@ -693,6 +668,12 @@ class SonioxTranscriptionStream implements StreamInstance {
           endTime: Date.now() + 1000,
           transcribeLanguage: this.language,
           provider: "soniox",
+          metadata: {
+            provider: 'soniox',
+            soniox: {
+              tokens: this.convertToSdkTokens(finalTokens)
+            }
+          }
         };
 
         if (this.callbacks.onData) {
@@ -709,6 +690,29 @@ class SonioxTranscriptionStream implements StreamInstance {
             provider: "soniox",
           },
           `🎙️ SONIOX: FINAL transcription - "${finalTranscript}"`,
+        );
+        
+        // Log final metadata details
+        this.logger.info(
+          {
+            streamId: this.id,
+            metadataType: "final",
+            tokenCount: finalTokens.length,
+            averageConfidence: finalTokens.reduce((acc, t) => acc + t.confidence, 0) / finalTokens.length,
+            tokens: finalTokens.map(t => ({
+              text: t.text,
+              confidence: t.confidence,
+              timeRange: `${t.start_ms}-${t.end_ms}ms`,
+              isFinal: t.isFinal
+            })),
+            lowConfidenceTokens: finalTokens.filter(t => t.confidence < 0.8).map(t => ({
+              text: t.text,
+              confidence: t.confidence
+            })),
+            totalDurationMs: finalTokens.length > 0 ? 
+              finalTokens[finalTokens.length - 1].end_ms - finalTokens[0].start_ms : 0
+          },
+          `🔍 METADATA: Final transcription with ${finalTokens.length} tokens`
         );
       }
 
@@ -754,6 +758,12 @@ class SonioxTranscriptionStream implements StreamInstance {
         endTime: Date.now() + 1000,
         transcribeLanguage: this.language,
         provider: "soniox",
+        metadata: {
+          provider: 'soniox',
+          soniox: {
+            tokens: this.convertToSdkTokens(allTokens)
+          }
+        }
       };
 
       if (this.callbacks.onData) {
@@ -771,465 +781,39 @@ class SonioxTranscriptionStream implements StreamInstance {
         },
         `🎙️ SONIOX: VAD-triggered FINAL transcription - "${finalTranscript}"`,
       );
+      
+      // Log VAD-triggered metadata
+      this.logger.info(
+        {
+          streamId: this.id,
+          metadataType: "vad-final",
+          tokenCount: allTokens.length,
+          mixedTokenTypes: {
+            final: allTokens.filter(t => t.isFinal).length,
+            interim: allTokens.filter(t => !t.isFinal).length
+          },
+          averageConfidence: allTokens.reduce((acc, t) => acc + t.confidence, 0) / allTokens.length,
+          tokens: allTokens.slice(0, 10).map(t => ({ // Show first 10 tokens to avoid huge logs
+            text: t.text,
+            confidence: t.confidence,
+            timeRange: `${t.start_ms}-${t.end_ms}ms`,
+            isFinal: t.isFinal
+          })),
+          lowConfidenceTokens: allTokens.filter(t => t.confidence < 0.8).map(t => ({
+            text: t.text,
+            confidence: t.confidence
+          })),
+          totalDurationMs: allTokens.length > 0 ? 
+            allTokens[allTokens.length - 1].end_ms - allTokens[0].start_ms : 0
+        },
+        `🔍 METADATA: VAD-triggered final with ${allTokens.length} tokens (showing first 10)`
+      );
     }
 
     // Clear buffer for next VAD session
     this.tokenBuffer.clear();
     this.fallbackPosition = 0;
     this.lastSentInterim = "";
-  }
-
-  /**
-   * Force finalize all pending translation tokens (called when VAD stops)
-   * This sends whatever translation tokens we have as final translations
-   */
-  forceFinalizePendingTranslationTokens(): void {
-    for (const [language, tokenBuffer] of this.translationTokenBuffers) {
-      if (tokenBuffer.size === 0) continue;
-
-      const allTokens = Array.from(tokenBuffer.values()).sort(
-        (a, b) => a.start_ms - b.start_ms,
-      );
-
-      const finalText = allTokens
-        .map((token) => token.text)
-        .join("")
-        .trim();
-
-      if (!finalText) continue;
-
-      // Determine the type of translation data to send
-      const sourceLanguageCode = this.language.split("-")[0];
-      const targetLanguageCode = this.targetLanguage!.split("-")[0];
-      const detectedLanguageCode = language.split("-")[0];
-
-      const isTargetLanguage = detectedLanguageCode === targetLanguageCode;
-      const isOriginalLanguage = detectedLanguageCode === sourceLanguageCode;
-
-      if (isTargetLanguage && !isOriginalLanguage) {
-        // This is translated text
-        const translationData: TranslationData = {
-          type: StreamType.TRANSLATION,
-          text: finalText,
-          originalText: "",
-          isFinal: true,
-          confidence:
-            allTokens.reduce((acc, t) => acc + t.confidence, 0) /
-            allTokens.length,
-          startTime: Date.now(),
-          endTime: Date.now() + 1000,
-          transcribeLanguage: this.language,
-          translateLanguage: this.targetLanguage!,
-          didTranslate: true,
-          provider: "soniox",
-          speakerId: allTokens[0]?.speaker,
-        };
-
-        if (this.callbacks.onData) {
-          this.callbacks.onData(translationData);
-        }
-
-        this.logger.debug(
-          {
-            streamId: this.id,
-            translatedText: finalText.substring(0, 100),
-            isFinal: true,
-            language,
-            tokenCount: allTokens.length,
-            provider: "soniox",
-            trigger: "VAD_STOP",
-          },
-          `🌐 SONIOX TRANSLATION: VAD-triggered FINAL - "${finalText}"`,
-        );
-      } else if (isOriginalLanguage) {
-        // This is original transcription text - only send if we own this language
-        const shouldSendTranscription =
-          this.ownsTranscription.includes(language) &&
-          !this.skipTranscriptionFor.includes(language);
-
-        if (shouldSendTranscription) {
-          const transcriptionData: TranscriptionData = {
-            type: StreamType.TRANSCRIPTION,
-            text: finalText,
-            isFinal: true,
-            confidence:
-              allTokens.reduce((acc, t) => acc + t.confidence, 0) /
-              allTokens.length,
-            startTime: Date.now(),
-            endTime: Date.now() + 1000,
-            transcribeLanguage: this.language,
-            provider: "soniox",
-            speakerId: allTokens[0]?.speaker,
-          };
-
-          if (this.callbacks.onData) {
-            this.callbacks.onData(transcriptionData);
-          }
-
-          this.logger.debug(
-            {
-              streamId: this.id,
-              text: finalText.substring(0, 100),
-              isFinal: true,
-              language,
-              tokenCount: allTokens.length,
-              provider: "soniox",
-              trigger: "VAD_STOP",
-            },
-            `🎙️ SONIOX TRANSCRIPTION: VAD-triggered FINAL - "${finalText}"`,
-          );
-        }
-      }
-    }
-
-    // Clear all translation buffers for next VAD session
-    this.translationTokenBuffers.clear();
-    this.translationFallbackPositions.clear();
-    this.lastSentTranslationInterims.clear();
-  }
-
-  private processTranslationTokens(tokens: SonioxToken[]): void {
-    // Group tokens by language and add them to appropriate buffers
-    const tokensByLanguage = new Map<string, SonioxToken[]>();
-    let hasEndToken = false;
-
-    for (const token of tokens) {
-      // Check for endpoint detection
-      if (token.text === "<end>") {
-        hasEndToken = true;
-        continue;
-      }
-
-      const language = token.language || this.language;
-      if (!tokensByLanguage.has(language)) {
-        tokensByLanguage.set(language, []);
-      }
-      tokensByLanguage.get(language)!.push(token);
-    }
-
-    // Process each language group with proper buffering
-    for (const [detectedLanguage, langTokens] of tokensByLanguage) {
-      this.processLanguageTokensWithBuffer(
-        detectedLanguage,
-        langTokens,
-        hasEndToken,
-      );
-    }
-  }
-
-  private processLanguageTokensWithBuffer(
-    language: string,
-    tokens: SonioxToken[],
-    hasEndToken: boolean,
-  ): void {
-    // Initialize buffers for this language if needed
-    if (!this.translationTokenBuffers.has(language)) {
-      this.translationTokenBuffers.set(language, new Map());
-      this.translationFallbackPositions.set(language, 0);
-      this.lastSentTranslationInterims.set(language, "");
-    }
-
-    const tokenBuffer = this.translationTokenBuffers.get(language)!;
-    const fallbackPosition = this.translationFallbackPositions.get(language)!;
-    let newFallbackPosition = fallbackPosition;
-
-    let avgConfidence = 0;
-    let tokenCount = 0;
-
-    // Determine if this is original or translated text
-    const sourceLanguageCode = this.language.split("-")[0];
-    const targetLanguageCode = this.targetLanguage!.split("-")[0];
-    const detectedLanguageCode = language.split("-")[0];
-
-    const isTargetLanguage = detectedLanguageCode === targetLanguageCode;
-    const isOriginalLanguage = detectedLanguageCode === sourceLanguageCode;
-
-    // For translated text (target language), Soniox often sends cumulative tokens without reliable timestamps
-    // We need to handle this differently to avoid duplication
-    if (isTargetLanguage && !isOriginalLanguage) {
-      // Check if tokens have reliable timestamps
-      const hasReliableTimestamps = tokens.some(
-        (t) => t.start_ms !== undefined && t.start_ms >= 0,
-      );
-
-      if (!hasReliableTimestamps) {
-        // Translation tokens without timestamps - clear buffer and rebuild to avoid duplication
-        this.logger.debug(
-          {
-            streamId: this.id,
-            language,
-            tokenCount: tokens.length,
-            previousBufferSize: tokenBuffer.size,
-          },
-          `🔄 SONIOX TRANSLATION: [${language}] Rebuilding buffer (no timestamps)`,
-        );
-
-        tokenBuffer.clear();
-        newFallbackPosition = 0;
-
-        // Add all tokens as a fresh sequence
-        for (const token of tokens) {
-          tokenBuffer.set(newFallbackPosition, {
-            text: token.text,
-            isFinal: token.is_final,
-            confidence: token.confidence,
-            start_ms: newFallbackPosition,
-            end_ms: newFallbackPosition + 100,
-            speaker: token.speaker,
-          });
-
-          avgConfidence += token.confidence;
-          tokenCount++;
-          newFallbackPosition++;
-        }
-      } else {
-        // Has timestamps - use normal buffering logic
-        for (const token of tokens) {
-          let tokenKey: number;
-          if (token.start_ms !== undefined && token.start_ms >= 0) {
-            tokenKey = token.start_ms;
-          } else {
-            tokenKey = newFallbackPosition++;
-          }
-
-          tokenBuffer.set(tokenKey, {
-            text: token.text,
-            isFinal: token.is_final,
-            confidence: token.confidence,
-            start_ms: token.start_ms || tokenKey,
-            end_ms: token.end_ms || tokenKey + 100,
-            speaker: token.speaker,
-          });
-
-          avgConfidence += token.confidence;
-          tokenCount++;
-        }
-      }
-    } else {
-      // Original language transcription - use normal timestamp-based buffering
-      for (const token of tokens) {
-        let tokenKey: number;
-        if (token.start_ms !== undefined && token.start_ms >= 0) {
-          tokenKey = token.start_ms;
-        } else {
-          tokenKey = newFallbackPosition++;
-        }
-
-        // Debug: Log token details for original language
-        this.logger.debug(
-          {
-            streamId: this.id,
-            language,
-            tokenKey,
-            text: token.text.substring(0, 50),
-            start_ms: token.start_ms,
-            end_ms: token.end_ms,
-            isFinal: token.is_final,
-            bufferSize: tokenBuffer.size,
-          },
-          `🔍 SONIOX TOKEN: [${language}] Adding token to buffer`,
-        );
-
-        tokenBuffer.set(tokenKey, {
-          text: token.text,
-          isFinal: token.is_final,
-          confidence: token.confidence,
-          start_ms: token.start_ms || tokenKey,
-          end_ms: token.end_ms || tokenKey + 100,
-          speaker: token.speaker,
-        });
-
-        avgConfidence += token.confidence;
-        tokenCount++;
-      }
-    }
-
-    // Update fallback position
-    this.translationFallbackPositions.set(language, newFallbackPosition);
-
-    if (tokenCount > 0) {
-      avgConfidence /= tokenCount;
-    }
-
-    // Build interim text from all tokens in buffer (sorted by start time)
-    const sortedTokens = Array.from(tokenBuffer.entries())
-      .sort(([keyA], [keyB]) => keyA - keyB)
-      .map(([, token]) => token);
-
-    const currentInterim = sortedTokens
-      .map((t) => t.text)
-      .join("")
-      .replace(/\s+/g, " ")
-      .trim();
-
-    const lastSentInterim = this.lastSentTranslationInterims.get(language)!;
-
-    // Send interim updates if text has changed
-    if (currentInterim !== lastSentInterim && currentInterim) {
-      if (isTargetLanguage && !isOriginalLanguage) {
-        // This is translated text - send as interim translation
-        const translationData: TranslationData = {
-          type: StreamType.TRANSLATION,
-          text: currentInterim,
-          originalText: "",
-          isFinal: false,
-          confidence: avgConfidence,
-          startTime: Date.now(),
-          endTime: Date.now() + 1000,
-          transcribeLanguage: this.language,
-          translateLanguage: this.targetLanguage!,
-          didTranslate: true,
-          provider: "soniox",
-          speakerId: sortedTokens[0]?.speaker,
-        };
-
-        if (this.callbacks.onData) {
-          this.callbacks.onData(translationData);
-        }
-
-        this.logger.debug(
-          {
-            streamId: this.id,
-            translatedText: currentInterim.substring(0, 50),
-            isFinal: false,
-            detectedLanguage: language,
-            tokenCount: tokenBuffer.size,
-            provider: "soniox",
-          },
-          `🌐 SONIOX TRANSLATION: interim [${language}] "${currentInterim}"`,
-        );
-      } else if (isOriginalLanguage) {
-        // This is original transcription text - only send if we own this language
-        const shouldSendTranscription =
-          this.ownsTranscription.includes(language) &&
-          !this.skipTranscriptionFor.includes(language);
-
-        if (shouldSendTranscription) {
-          const transcriptionData: TranscriptionData = {
-            type: StreamType.TRANSCRIPTION,
-            text: currentInterim,
-            isFinal: false,
-            confidence: avgConfidence,
-            startTime: Date.now(),
-            endTime: Date.now() + 1000,
-            transcribeLanguage: this.language,
-            provider: "soniox",
-            speakerId: sortedTokens[0]?.speaker,
-          };
-
-          if (this.callbacks.onData) {
-            this.callbacks.onData(transcriptionData);
-          }
-        }
-
-        this.logger.debug(
-          {
-            streamId: this.id,
-            text: currentInterim.substring(0, 100),
-            isFinal: false,
-            detectedLanguage: language,
-            tokenCount: tokenBuffer.size,
-            provider: "soniox",
-          },
-          `🎙️ SONIOX: interim [${language}] "${currentInterim}"`,
-        );
-      }
-
-      this.lastSentTranslationInterims.set(language, currentInterim);
-    }
-
-    // Send final results when we get <end> token
-    if (hasEndToken) {
-      // Build final text from only final tokens
-      const finalTokens = sortedTokens.filter((t) => t.isFinal);
-      const finalText = finalTokens
-        .map((t) => t.text)
-        .join("")
-        .replace(/\s+/g, " ")
-        .trim();
-
-      if (finalText) {
-        if (isTargetLanguage && !isOriginalLanguage) {
-          // This is translated text - send as final translation
-          const translationData: TranslationData = {
-            type: StreamType.TRANSLATION,
-            text: finalText,
-            originalText: "",
-            isFinal: true,
-            confidence:
-              finalTokens.reduce((acc, t) => acc + t.confidence, 0) /
-              finalTokens.length,
-            startTime: Date.now(),
-            endTime: Date.now() + 1000,
-            transcribeLanguage: this.language,
-            translateLanguage: this.targetLanguage!,
-            didTranslate: true,
-            provider: "soniox",
-            speakerId: finalTokens[0]?.speaker,
-          };
-
-          if (this.callbacks.onData) {
-            this.callbacks.onData(translationData);
-          }
-
-          this.logger.debug(
-            {
-              streamId: this.id,
-              translatedText: finalText.substring(0, 100),
-              isFinal: true,
-              detectedLanguage: language,
-              finalTokenCount: finalTokens.length,
-              totalTokenCount: tokenBuffer.size,
-              provider: "soniox",
-            },
-            `🌐 SONIOX TRANSLATION: FINAL [${language}] "${finalText}"`,
-          );
-        } else if (isOriginalLanguage) {
-          // This is original transcription text - only send if we own this language
-          const shouldSendTranscription =
-            this.ownsTranscription.includes(language) &&
-            !this.skipTranscriptionFor.includes(language);
-
-          if (shouldSendTranscription) {
-            const transcriptionData: TranscriptionData = {
-              type: StreamType.TRANSCRIPTION,
-              text: finalText,
-              isFinal: true,
-              confidence:
-                finalTokens.reduce((acc, t) => acc + t.confidence, 0) /
-                finalTokens.length,
-              startTime: Date.now(),
-              endTime: Date.now() + 1000,
-              transcribeLanguage: this.language,
-              provider: "soniox",
-              speakerId: finalTokens[0]?.speaker,
-            };
-
-            if (this.callbacks.onData) {
-              this.callbacks.onData(transcriptionData);
-            }
-          }
-
-          this.logger.debug(
-            {
-              streamId: this.id,
-              text: finalText.substring(0, 100),
-              isFinal: true,
-              detectedLanguage: language,
-              finalTokenCount: finalTokens.length,
-              totalTokenCount: tokenBuffer.size,
-              provider: "soniox",
-            },
-            `🎙️ SONIOX: FINAL [${language}] "${finalText}"`,
-          );
-        }
-      }
-
-      // Clear buffer for this language after final processing
-      tokenBuffer.clear();
-      this.translationFallbackPositions.set(language, 0);
-      this.lastSentTranslationInterims.set(language, "");
-    }
   }
 
   private handleError(error: Error): void {
@@ -1247,11 +831,6 @@ class SonioxTranscriptionStream implements StreamInstance {
     this.tokenBuffer.clear();
     this.fallbackPosition = 0;
     this.lastSentInterim = "";
-
-    // Reset translation buffers
-    this.translationTokenBuffers.clear();
-    this.translationFallbackPositions.clear();
-    this.lastSentTranslationInterims.clear();
 
     this.provider.recordFailure(error);
 

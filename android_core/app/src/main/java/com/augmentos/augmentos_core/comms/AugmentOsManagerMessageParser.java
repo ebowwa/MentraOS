@@ -92,6 +92,11 @@ public class AugmentOsManagerMessageParser {
                     callback.setBypassAudioEncodingForDebugging(bypassAudioEncodingForDebugging);
                     break;
 
+                case "enforce_local_transcription":
+                    boolean enforceLocalTranscription = commandObject.getJSONObject("params").getBoolean("enabled");
+                    callback.setEnforceLocalTranscription(enforceLocalTranscription);
+                    break;
+
                 case "enable_always_on_status_bar":
                     boolean alwaysOnEnabled = commandObject.getJSONObject("params").getBoolean("enabled");
                     callback.setAlwaysOnStatusBarEnabled(alwaysOnEnabled);
@@ -202,6 +207,10 @@ public class AugmentOsManagerMessageParser {
                     String mic = commandObject.getJSONObject("params").getString("mic");
                     callback.setPreferredMic(mic);
                     break;
+                case "set_button_mode":
+                    String mode = commandObject.getJSONObject("params").getString("mode");
+                    callback.setButtonMode(mode);
+                    break;
 
                 case "audio_play_response":
                     JSONObject audioResponse = commandObject.getJSONObject("params");
@@ -222,6 +231,31 @@ public class AugmentOsManagerMessageParser {
                     String buttonId = commandObject.getJSONObject("params").getString("buttonId");
                     String pressType = commandObject.getJSONObject("params").getString("pressType");
                     callback.simulateButtonPress(buttonId, pressType);
+                    break;
+
+                case "start_buffer_recording":
+                    callback.startBufferRecording();
+                    break;
+
+                case "stop_buffer_recording":
+                    callback.stopBufferRecording();
+                    break;
+
+                case "save_buffer_video":
+                    String bufferRequestId = commandObject.getJSONObject("params").getString("request_id");
+                    int durationSeconds = commandObject.getJSONObject("params").getInt("duration_seconds");
+                    callback.saveBufferVideo(bufferRequestId, durationSeconds);
+                    break;
+
+                case "start_video_recording":
+                    String videoRequestId = commandObject.getJSONObject("params").getString("request_id");
+                    boolean save = commandObject.getJSONObject("params").optBoolean("save", true);
+                    callback.startVideoRecording(videoRequestId, save);
+                    break;
+
+                case "stop_video_recording":
+                    String stopRequestId = commandObject.getJSONObject("params").getString("request_id");
+                    callback.stopVideoRecording(stopRequestId);
                     break;
 
                 default:

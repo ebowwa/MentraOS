@@ -3,6 +3,10 @@ const en = {
     glassesNeededForGlassesMic: "Connect glasses to enable",
     phoneMic: "Phone Microphone",
     glassesMic: "Glasses Microphone",
+    cameraButtonAction: "Camera Button Action",
+    takeGalleryPhoto: "Take Gallery Photo",
+    useInApps: "Use in Apps",
+    both: "Both",
   },
   screenSettings: {
     title: "Display Position Settings",
@@ -104,6 +108,29 @@ const en = {
   },
   glasses: {
     title: "Glasses",
+    gallery: "Gallery",
+    galleryDescription: "View your recorded videos and photos.",
+    capturing: "Capturing...",
+    takePicture: "Take Picture",
+    connecting: "Connecting...",
+    connected: "Connected",
+    disconnected: "Disconnected",
+    connectionError: "Connection Error",
+    retry: "Retry",
+    noPhotos: "No photos yet",
+    takeFirstPhoto: "Take your first photo to get started!",
+    loadingPhotos: "Loading photos...",
+    success: "Success",
+    photoTaken: "Photo taken! Refreshing gallery...",
+    error: "Error",
+    photoError: "Failed to take picture",
+    download: "Download",
+    downloadReady: "Download Ready",
+    downloadUrl: "Download URL: {{url}}",
+    downloadError: "Failed to download photo",
+    serverInfo: "Server: Port {{port}}, Photos: {{photos}}, Uptime: {{uptime}}m",
+    photoInfo: "Size: {{size}} • Date: {{date}}",
+    connectToTakePicture: "Connect to take pictures",
   },
   store: {
     title: "Store",
@@ -114,6 +141,8 @@ const en = {
     glasses: "Glasses",
     bypassVAD: "Bypass VAD for Debugging",
     bypassVADSubtitle: "Bypass the VAD (Voice Activity Detection).",
+    enforceLocalTranscription: "Enforce Local Transcription",
+    enforceLocalTranscriptionSubtitle: "Enforce the use of edge transcription.",
     sensingLabel: "Enable Sensors",
     sensingSubtitle: "Enable the usage of sensors including camera, microphone, etc.",
     calendarLabel: "Calendar Access",
@@ -128,6 +157,7 @@ const en = {
     simulatedGlassesNote: "This setting has no effect when using Simulated Glasses",
     profileSettings: "Profile Settings",
     privacySettings: "Permissions and Privacy",
+    transcriptionSettings: "Transcription Settings",
     dashboardSettings: "Dashboard Settings",
     dashboardDescription: "Configure the contextual dashboard and HeadUp settings",
     screenSettings: "Display Position Settings",
@@ -155,8 +185,7 @@ const en = {
     reconnectOnAppForegroundSubtitle:
       "Automatically attempt to reconnect to glasses when the app comes back to the foreground.",
     powerSavingMode: "Power Saving Mode",
-    powerSavingModeSubtitle:
-      "Allows the display to fully turn off. May briefly show \"Even AI Listening\".",
+    powerSavingModeSubtitle: 'Allows the display to fully turn off. May briefly show "Even AI Listening".',
     powerSavingModeSubtitle2: "TODO",
   },
   profileSettings: {
@@ -182,7 +211,7 @@ const en = {
     deleteAccountMessage: "Are you sure you want to delete your account? This action cannot be undone.",
     deleteAccountWarning1Title: "⚠️ WARNING",
     deleteAccountWarning1Message:
-      "You are about to permanently delete your AugmentOS account. This action is IRREVERSIBLE.",
+      "You are about to permanently delete your Mentra account. This action is IRREVERSIBLE.",
     deleteAccountWarning2Title: "🚨 FINAL WARNING",
     deleteAccountWarning2Message:
       "This will PERMANENTLY DELETE:\n• All your data\n• All your settings\n• All your app configurations\n• Your entire account history\n\nThere is NO way to recover this data!",
@@ -256,6 +285,7 @@ const en = {
     delete: "Delete",
     continue: "Continue",
     next: "Next",
+    request: "Request",
   },
   welcomeScreen: {
     postscript:

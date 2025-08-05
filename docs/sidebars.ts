@@ -148,6 +148,20 @@ const sidebars: SidebarsConfig = {
           id: "contributing/add-new-glasses-support",
           label: "Adding New Glasses Support",
         },
+        {
+          type: "category",
+          label: "ASG Client",
+          link: {
+            type: "doc",
+            id: "asg-client/README",
+          },
+          items: [
+            "asg-client/architecture",
+            "asg-client/mentra-live",
+            "asg-client/button-system",
+            "asg-client/rtmp-streaming",
+          ],
+        },
       ],
     },
   ],

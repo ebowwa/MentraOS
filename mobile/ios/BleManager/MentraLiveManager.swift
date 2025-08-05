@@ -796,6 +796,7 @@ typealias JSONObject = [String: Any]
     private var lastReceivedMessageId = 0
     var glassesAppVersion: String = ""
     var glassesBuildNumber: String = ""
+    var glassesOtaVersionUrl: String = ""
     var glassesDeviceModel: String = ""
     var glassesAndroidVersion: String = ""
 
@@ -894,6 +895,10 @@ typealias JSONObject = [String: Any]
         }
     }
 
+    @objc func getConnectedBluetoothName() -> String? {
+        return connectedPeripheral?.name
+    }
+
     @objc func disconnect() {
         CoreCommsService.log("Disconnecting from Mentra Live glasses")
 
@@ -933,7 +938,7 @@ typealias JSONObject = [String: Any]
         // Always generate BLE ID for potential fallback
         let bleImgId = "I" + String(format: "%09d", Int(Date().timeIntervalSince1970 * 1000) % 100_000_000)
         json["bleImgId"] = bleImgId
-        json["transferMethod"] = "ble"
+        json["transferMethod"] = "auto"
 
         if let webhookUrl = webhookUrl, !webhookUrl.isEmpty {
             json["webhookUrl"] = webhookUrl
@@ -1445,15 +1450,17 @@ typealias JSONObject = [String: Any]
         let buildNumber = json["build_number"] as? String ?? ""
         let deviceModel = json["device_model"] as? String ?? ""
         let androidVersion = json["android_version"] as? String ?? ""
+        let otaVersionUrl = json["ota_version_url"] as? String ?? ""
 
         glassesAppVersion = appVersion
         glassesBuildNumber = buildNumber
+        glassesOtaVersionUrl = otaVersionUrl
         isNewVersion = (Int(buildNumber) ?? 0) >= 5
         glassesDeviceModel = deviceModel
         glassesAndroidVersion = androidVersion
 
-        CoreCommsService.log("Glasses Version - App: \(appVersion), Build: \(buildNumber), Device: \(deviceModel), Android: \(androidVersion)")
-        emitVersionInfo(appVersion: appVersion, buildNumber: buildNumber, deviceModel: deviceModel, androidVersion: androidVersion)
+        CoreCommsService.log("Glasses Version - App: \(appVersion), Build: \(buildNumber), Device: \(deviceModel), Android: \(androidVersion), OTA URL: \(otaVersionUrl)")
+        emitVersionInfo(appVersion: appVersion, buildNumber: buildNumber, deviceModel: deviceModel, androidVersion: androidVersion, otaVersionUrl: otaVersionUrl)
     }
 
     private func handleAck(_: [String: Any]) {
@@ -1963,12 +1970,13 @@ typealias JSONObject = [String: Any]
         // emitEvent("CoreMessageEvent", body: eventBody)
     }
 
-    private func emitVersionInfo(appVersion: String, buildNumber: String, deviceModel: String, androidVersion: String) {
+    private func emitVersionInfo(appVersion: String, buildNumber: String, deviceModel: String, androidVersion: String, otaVersionUrl: String) {
         let eventBody: [String: Any] = [
             "app_version": appVersion,
             "build_number": buildNumber,
             "device_model": deviceModel,
             "android_version": androidVersion,
+            "ota_version_url": otaVersionUrl,
         ]
 
         emitEvent("CoreMessageEvent", body: eventBody)
@@ -2198,5 +2206,107 @@ extension MentraLiveManager {
         // Extract payload
         let payload = protocolData.subdata(in: 5 ..< (5 + length))
         return payload
+    }
+
+    // MARK: - Button Mode Settings
+
+    func sendButtonModeSetting(_ mode: String) {
+        CoreCommsService.log("Sending button mode setting to glasses: \(mode)")
+
+        guard connectionState == .connected else {
+            CoreCommsService.log("Cannot send button mode - not connected")
+            return
+        }
+
+        let json: [String: Any] = [
+            "type": "button_mode_setting",
+            "mode": mode,
+        ]
+        sendJson(json)
+    }
+
+    // MARK: - Buffer Recording Methods
+
+    func startBufferRecording() {
+        CoreCommsService.log("Starting buffer recording on glasses")
+
+        guard connectionState == .connected else {
+            CoreCommsService.log("Cannot start buffer recording - not connected")
+            return
+        }
+
+        let json: [String: Any] = [
+            "type": "start_buffer_recording",
+        ]
+        sendJson(json)
+    }
+
+    func stopBufferRecording() {
+        CoreCommsService.log("Stopping buffer recording on glasses")
+
+        guard connectionState == .connected else {
+            CoreCommsService.log("Cannot stop buffer recording - not connected")
+            return
+        }
+
+        let json: [String: Any] = [
+            "type": "stop_buffer_recording",
+        ]
+        sendJson(json)
+    }
+
+    func saveBufferVideo(requestId: String, durationSeconds: Int) {
+        CoreCommsService.log("Saving buffer video: requestId=\(requestId), duration=\(durationSeconds)s")
+
+        guard connectionState == .connected else {
+            CoreCommsService.log("Cannot save buffer video - not connected")
+            return
+        }
+
+        let json: [String: Any] = [
+            "type": "save_buffer_video",
+            "request_id": requestId,
+            "duration_seconds": durationSeconds,
+        ]
+        sendJson(json)
+    }
+
+    private func sendUserSettings() {
+        CoreCommsService.log("Sending user settings to glasses")
+
+        // Send button mode setting
+        let buttonMode = UserDefaults.standard.string(forKey: "button_press_mode") ?? "photo"
+        sendButtonModeSetting(buttonMode)
+    }
+
+    func startVideoRecording(requestId: String, save: Bool) {
+        CoreCommsService.log("Starting video recording on glasses: requestId=\(requestId), save=\(save)")
+
+        guard connectionState == .connected else {
+            CoreCommsService.log("Cannot start video recording - not connected")
+            return
+        }
+
+        let json: [String: Any] = [
+            "type": "start_video_recording",
+            "request_id": requestId,
+            "save": save,
+        ]
+        sendJson(json)
+    }
+
+    func stopVideoRecording(requestId: String) {
+        CoreCommsService.log("Stopping video recording on glasses: requestId=\(requestId)")
+
+        guard connectionState == .connected else {
+            CoreCommsService.log("Cannot stop video recording - not connected")
+            return
+        }
+
+        let json: [String: Any] = [
+            "type": "stop_video_recording",
+            "request_id": requestId,
+        ]
+        sendJson(json)
     }
 }

@@ -67,14 +67,11 @@ export default function WifiPasswordScreen() {
     }
 
     // Navigate to connecting screen with credentials
-    router.push({
-      pathname: "/pairing/glasseswifisetup/connecting",
-      params: {
-        deviceModel,
-        ssid,
-        password,
-        rememberPassword: rememberPassword.toString(),
-      },
+    push("/pairing/glasseswifisetup/connecting", {
+      deviceModel,
+      ssid,
+      password,
+      rememberPassword: rememberPassword.toString(),
     })
   }
 
@@ -131,7 +128,7 @@ export default function WifiPasswordScreen() {
           <View style={themed($buttonContainer)}>
             <ActionButton label="Connect" onPress={handleConnect} />
 
-            <ActionButton label="Cancel" variant="secondary" onPress={() => router.back()} />
+            <ActionButton label="Cancel" variant="secondary" onPress={() => goBack()} />
           </View>
         </View>
       </ScrollView>

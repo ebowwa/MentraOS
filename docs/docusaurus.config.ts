@@ -125,6 +125,18 @@ const config: Config = {
       theme: prismThemes.github,
       darkTheme: prismThemes.dracula,
     },
+    algolia: {
+      // The application ID provided by Algolia
+      appId: "R0PF8RMXQP",
+
+      // Public API key: it is safe to commit it
+      apiKey: "2039573ae1ee012051a49fe662c2a608",
+
+      indexName: "Mentra Developer Documentation",
+
+      // Optional: see doc section below
+      contextualSearch: true,
+    },
   } satisfies Preset.ThemeConfig,
 }
 

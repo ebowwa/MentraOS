@@ -451,7 +451,7 @@ const GlassesRecordingsGallery: React.FC<GlassesRecordingsGalleryProps> = ({isDa
         </Text>
         <TouchableOpacity
           style={[styles.recordButton, {backgroundColor: theme.colors.galleryLoadingIndicator}]}
-          onPress={() => router.push("/mirror/fullscreen")}>
+          onPress={() => push("/mirror/fullscreen")}>
           <Text style={[styles.recordButtonText, {color: theme.colors.icon}]}>Go to Camera</Text>
         </TouchableOpacity>
       </View>
