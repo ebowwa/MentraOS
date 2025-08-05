@@ -97,58 +97,51 @@ const AdminPanel: React.FC = () => {
   const [yearNumber, setYearNumber] = useState(year);
   // Admin panel component
 
-  // WebSocket connection for real-time updates
+  // SSE connection for real-time updates
   useEffect(() => {
-    const setupWebSocket = () => {
-      const token = localStorage.getItem('core_token');
-      if (!token) {
-        console.log('No token available for WebSocket connection');
-        return;
-      }
-
-      // Try connecting with token as query parameter since browser WebSocket doesn't support custom headers
-      const wsUrl = `ws://localhost:8002/glasses-ws?token=${encodeURIComponent(token)}`;
-      console.log('🔌 Attempting WebSocket connection to:', wsUrl);
+    const setupSSE = () => {
+      console.log('🌊 Setting up SSE connection for app health status updates');
       
-      const ws = new WebSocket(wsUrl);
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8002';
+      const sseUrl = `${apiUrl}/api/app-uptime/health-status-stream`;
+      console.log('🌊 Connecting to SSE endpoint:', sseUrl);
+      
+      const eventSource = new EventSource(sseUrl);
 
-      ws.onopen = () => {
-        console.log('🔌 WebSocket connected for admin panel');
+      eventSource.onopen = () => {
+        console.log('🌊 SSE connection opened for admin panel');
       };
 
-      ws.onmessage = (event) => {
+      eventSource.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data);
-          console.log('📨 WebSocket message received:', message);
+          console.log('📨 SSE message received:', message);
           
-          if (message.type === 'SUBMITTED_APP_HEALTH_STATUS') {
-            console.log('SUBMITTED_APP_HEALTH_STATUS message received!');
+          if (message.type === 'SUBMITTED_APP_HEALTH_STATUS_UPDATE') {
+            console.log('SUBMITTED_APP_HEALTH_STATUS_UPDATE message received!');
             console.log("apps data from server:", message.data.apps);
             console.log("apps count:", message.data.count);
             setSubmittedAppsStatus(message.data.apps);
           }
         } catch (error) {
-          console.error('Error parsing WebSocket message:', error);
+          console.error('Error parsing SSE message:', error);
         }
       };
 
-      ws.onerror = (error) => {
-        console.error('WebSocket error:', error);
+      eventSource.onerror = (error) => {
+        console.error('SSE error:', error);
+        // EventSource will automatically reconnect
       };
 
-      ws.onclose = (event) => {
-        console.log('🔌 WebSocket disconnected', event.code, event.reason);
-      };
-
-      return ws;
+      return eventSource;
     };
 
-    // Setup WebSocket after a delay to ensure token is ready
+    // Setup SSE after a delay to ensure everything is ready
     const timer = setTimeout(() => {
-      const ws = setupWebSocket();
+      const eventSource = setupSSE();
       return () => {
-        if (ws) {
-          ws.close();
+        if (eventSource) {
+          eventSource.close();
         }
       };
     }, 1000);
