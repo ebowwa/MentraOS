@@ -20,7 +20,7 @@ import {getGlassesImage, getEvenRealitiesG1Image} from "@/utils/getGlassesImage"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {router} from "expo-router"
 import {Screen} from "@/components/ignite/Screen"
-import {Header} from "@/components/ignite"
+import {Button, Header} from "@/components/ignite"
 import {ThemedStyle} from "@/theme"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import Svg, {Defs, Ellipse, LinearGradient, RadialGradient, Rect, Stop} from "react-native-svg"
@@ -161,7 +161,7 @@ export default function SelectGlassesModelScreen() {
                 fontSize: 16,
                 flex: 1,
               }}>
-              {"If you don't have smart glasses yet, you can select 'Simulated Glasses'."}
+              {"If you don't have smart glasses yet, you can press 'Skip' to continue."}
             </Text>
           </View>
         )}
@@ -209,9 +209,27 @@ export default function SelectGlassesModelScreen() {
           </TouchableOpacity>
         ))}
       </ScrollView>
+      {isOnboarding && (
+        <View style={themed($skipButtonContainer)}>
+          <Button
+            preset="default"
+            tx="pairing:skip"
+            style={themed($skipButton)}
+            onPress={() => {
+              router.replace({pathname: "/(tabs)/home"})
+            }}
+          />
+        </View>
+      )}
     </Screen>
   )
 }
+
+const $skipButtonContainer: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
+  marginBottom: spacing.lg,
+})
+
+const $skipButton: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({})
 
 const $settingItem: ThemedStyle<ViewStyle> = ({colors, spacing, borderRadius}) => ({
   flexDirection: "row",

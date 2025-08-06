@@ -2113,24 +2113,26 @@ struct ViewState {
         dashboardDepth = 5
         alwaysOnStatusBar = false
         bypassAudioEncoding = false
+        defaultWearable = "Simulated Glasses"
 
-        UserDefaults.standard.register(defaults: [SettingsKeys.sensingEnabled: true])
-        UserDefaults.standard.register(defaults: [SettingsKeys.powerSavingMode: false])
-        UserDefaults.standard.register(defaults: [SettingsKeys.contextualDashboard: true])
-        UserDefaults.standard.register(defaults: [SettingsKeys.bypassVad: false])
-        UserDefaults.standard.register(defaults: [SettingsKeys.preferredMic: "glasses"])
-        UserDefaults.standard.register(defaults: [SettingsKeys.brightness: 50])
-        UserDefaults.standard.register(defaults: [SettingsKeys.headUpAngle: 30])
-        UserDefaults.standard.register(defaults: [SettingsKeys.metricSystemEnabled: false])
-        UserDefaults.standard.register(defaults: [SettingsKeys.autoBrightness: true])
-        UserDefaults.standard.register(defaults: [SettingsKeys.enforceLocalTranscription: false])
+        UserDefaults.standard.register(defaults: [SettingsKeys.sensingEnabled: sensingEnabled])
+        UserDefaults.standard.register(defaults: [SettingsKeys.powerSavingMode: powerSavingMode])
+        UserDefaults.standard.register(defaults: [SettingsKeys.contextualDashboard: contextualDashboard])
+        UserDefaults.standard.register(defaults: [SettingsKeys.bypassVad: bypassVad])
+        UserDefaults.standard.register(defaults: [SettingsKeys.preferredMic: preferredMic])
+        UserDefaults.standard.register(defaults: [SettingsKeys.brightness: brightness])
+        UserDefaults.standard.register(defaults: [SettingsKeys.headUpAngle: headUpAngle])
+        UserDefaults.standard.register(defaults: [SettingsKeys.metricSystemEnabled: metricSystemEnabled])
+        UserDefaults.standard.register(defaults: [SettingsKeys.autoBrightness: autoBrightness])
+        UserDefaults.standard.register(defaults: [SettingsKeys.enforceLocalTranscription: enforceLocalTranscription])
+        UserDefaults.standard.register(defaults: [SettingsKeys.defaultWearable: defaultWearable])
 
         let defaults = UserDefaults.standard
 
         // Load each setting with appropriate type handling
-        defaultWearable = defaults.string(forKey: SettingsKeys.defaultWearable) ?? ""
-        deviceName = defaults.string(forKey: SettingsKeys.deviceName) ?? ""
-        preferredMic = defaults.string(forKey: SettingsKeys.preferredMic) ?? "glasses"
+        defaultWearable = defaults.string(forKey: SettingsKeys.defaultWearable) ?? defaultWearable
+        deviceName = defaults.string(forKey: SettingsKeys.deviceName) ?? deviceName
+        preferredMic = defaults.string(forKey: SettingsKeys.preferredMic) ?? preferredMic
         contextualDashboard = defaults.bool(forKey: SettingsKeys.contextualDashboard)
         autoBrightness = defaults.bool(forKey: SettingsKeys.autoBrightness)
         sensingEnabled = defaults.bool(forKey: SettingsKeys.sensingEnabled)

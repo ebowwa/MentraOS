@@ -568,7 +568,7 @@ export default function DeviceSettings() {
         />
       )}
 
-      {defaultWearable && !modelName && !isSimulated && (
+      {defaultWearable && !isSimulated && (
         <ActionButton
           label={translate("settings:forgetGlasses")}
           variant="destructive"
