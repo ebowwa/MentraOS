@@ -156,13 +156,22 @@ export interface CalendarEvent extends BaseMessage {
 /**
  * Navigation update from glasses
  */
+export interface NavigationStep {
+  instruction: string;      // full instruction text
+  distanceMeters: number;   // distance for this step in meters
+  timeSeconds: number;      // estimated time for this step in seconds
+  streetName?: string;      // street/road name for this step
+  maneuver: string;         // "turn_left", "turn_right", "continue", etc.
+}
+
 export interface NavigationUpdate extends BaseMessage {
   type: GlassesToCloudMessageType.NAVIGATION_UPDATE | StreamType.NAVIGATION_UPDATE;
   instruction: string;
-  distanceRemaining: number; // meters
-  timeRemaining: number; // seconds
+  distanceRemaining: number; // meters to current step
+  timeRemaining: number; // seconds to current step
   streetName?: string;
   maneuver: string; // "turn_left", "turn_right", "continue", etc.
+  remainingSteps: NavigationStep[]; // all remaining steps in the route
 }
 
 /**

@@ -9,6 +9,15 @@ import Combine
 import Foundation
 import CoreLocation
 
+// navigation step data structure (matches NavigationStep in NavigationManager)
+struct NavigationStepData {
+    let instruction: String
+    let distanceMeters: Int
+    let timeSeconds: Int
+    let streetName: String?
+    let maneuver: String
+}
+
 // navigation data structures for sending to cloud
 struct NavigationUpdateData {
     let instruction: String
@@ -16,6 +25,7 @@ struct NavigationUpdateData {
     let timeRemaining: Int // seconds
     let streetName: String?
     let maneuver: String // "turn_left", "turn_right", "continue", etc.
+    let remainingSteps: [NavigationStepData] // all remaining steps
 }
 
 struct NavigationStatusData {
@@ -142,7 +152,16 @@ class ServerComms {
                 distanceRemaining: update.distanceRemaining,
                 timeRemaining: update.timeRemaining,
                 streetName: update.streetName,
-                maneuver: update.maneuver
+                maneuver: update.maneuver,
+                remainingSteps: update.remainingSteps.map { step in
+                    NavigationStepData(
+                        instruction: step.instruction,
+                        distanceMeters: step.distanceMeters,
+                        timeSeconds: step.timeSeconds,
+                        streetName: step.streetName,
+                        maneuver: step.maneuver
+                    )
+                }
             )
             self?.sendNavigationUpdate(updateData)
         }
@@ -339,6 +358,16 @@ class ServerComms {
         }
 
         do {
+            let remainingStepsArray = navigationUpdate.remainingSteps.map { step in
+                return [
+                    "instruction": step.instruction,
+                    "distanceMeters": step.distanceMeters,
+                    "timeSeconds": step.timeSeconds,
+                    "streetName": step.streetName ?? NSNull(),
+                    "maneuver": step.maneuver
+                ]
+            }
+            
             let event: [String: Any] = [
                 "type": "navigation_update",
                 "instruction": navigationUpdate.instruction,
@@ -346,6 +375,7 @@ class ServerComms {
                 "timeRemaining": navigationUpdate.timeRemaining,
                 "streetName": navigationUpdate.streetName ?? NSNull(),
                 "maneuver": navigationUpdate.maneuver,
+                "remainingSteps": remainingStepsArray,
                 "timestamp": Int(Date().timeIntervalSince1970 * 1000),
             ]
 

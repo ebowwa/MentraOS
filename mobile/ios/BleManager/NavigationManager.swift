@@ -15,13 +15,23 @@ import GoogleNavigation
 public typealias NavigationUpdateCallback = (NavigationUpdate) -> Void
 public typealias NavigationStatusCallback = (NavigationStatus) -> Void
 
+// navigation step data structure (individual step info)
+public struct NavigationStep {
+    let instruction: String      // full instruction text
+    let distanceMeters: Int     // distance for this step in meters
+    let timeSeconds: Int        // estimated time for this step in seconds
+    let streetName: String?     // street/road name for this step
+    let maneuver: String        // "turn_left", "turn_right", "continue", etc.
+}
+
 // navigation update data structure
 public struct NavigationUpdate {
     let instruction: String
-    let distanceRemaining: Int  // meters
-    let timeRemaining: Int      // seconds
+    let distanceRemaining: Int     // meters to current step
+    let timeRemaining: Int         // seconds to current step
     let streetName: String?
-    let maneuver: String        // "turn_left", "turn_right", "continue", etc.
+    let maneuver: String           // "turn_left", "turn_right", "continue", etc.
+    let remainingSteps: [NavigationStep]  // all remaining steps in the route
     let timestamp: TimeInterval
 }
 
@@ -97,7 +107,7 @@ public class NavigationManager: NSObject {
     
     // MARK: - Navigation Control
     
-    func startNavigation(destination: String, mode: String = "driving") {
+    func startNavigation(destination: String, mode: String = "walking") {
         CoreCommsService.log("🧭 Starting navigation to: \(destination) (mode: \(mode))")
         
         // ensure we're on the main thread for all UI operations
@@ -198,8 +208,22 @@ public class NavigationManager: NSObject {
             return
         }
         
-        // note: only driving mode is reliably supported, transit is not available
-        // we'll ignore the mode parameter for now and default to driving
+        // set travel mode based on the mode parameter  
+        // Note: According to Google Navigation SDK documentation, we set travel mode on mapView
+        switch mode.lowercased() {
+        case "walking":
+            mapView.travelMode = .walking
+            CoreCommsService.log("🧭 Set travel mode to: walking")
+        case "cycling":
+            mapView.travelMode = .cycling
+            CoreCommsService.log("🧭 Set travel mode to: cycling")
+        case "driving":
+            mapView.travelMode = .driving
+            CoreCommsService.log("🧭 Set travel mode to: driving")
+        default:
+            CoreCommsService.log("🧭 Unknown travel mode '\(mode)', defaulting to walking")
+            mapView.travelMode = .walking
+        }
         
         // set destinations and start navigation
         navigator.setDestinations(destinations) { [weak self] routeStatus in
@@ -363,7 +387,16 @@ public class NavigationManager: NSObject {
             distanceRemaining: update.distanceRemaining,
             timeRemaining: update.timeRemaining,
             streetName: update.streetName,
-            maneuver: update.maneuver
+            maneuver: update.maneuver,
+            remainingSteps: update.remainingSteps.map { step in
+                NavigationStepData(
+                    instruction: step.instruction,
+                    distanceMeters: step.distanceMeters,
+                    timeSeconds: step.timeSeconds,
+                    streetName: step.streetName,
+                    maneuver: step.maneuver
+                )
+            }
         )
         ServerComms.getInstance().sendNavigationUpdate(navigationUpdateData)
         
@@ -426,7 +459,7 @@ extension NavigationManager: CLLocationManagerDelegate {
 extension NavigationManager: GMSNavigatorListener {
     
     public func navigator(_ navigator: GMSNavigator, didArriveAt waypoint: GMSNavigationWaypoint) {
-        CoreCommsService.log("🧭 Arrived at destination: \(waypoint.title ?? "Unknown")")
+        CoreCommsService.log("🧭 Arrived at destination: \(waypoint.title.isEmpty ? "Unknown" : waypoint.title)")
         updateStatus(.finished)
         
         // stop navigation
@@ -460,6 +493,7 @@ extension NavigationManager: GMSNavigatorListener {
         let timeRemaining = extractTimeRemaining(from: navInfo)
         let streetName = extractStreetName(from: navInfo)
         let maneuver = extractManeuver(from: navInfo)
+        let remainingSteps = extractRemainingSteps(from: navInfo)
         
         // create navigation update with real data
         let update = NavigationUpdate(
@@ -468,6 +502,7 @@ extension NavigationManager: GMSNavigatorListener {
             timeRemaining: timeRemaining,
             streetName: streetName,
             maneuver: maneuver,
+            remainingSteps: remainingSteps,
             timestamp: Date().timeIntervalSince1970
         )
         
@@ -508,30 +543,42 @@ extension NavigationManager: GMSNavigatorListener {
     }
     
     private func extractDistanceRemaining(from navInfo: GMSNavigationNavInfo) -> Int {
-        // get distance to current step
-        if let currentStep = navInfo.currentStep {
-            return Int(currentStep.distanceFromPrevStepMeters)
+        // use the dynamic distance to current step that updates as you move
+        let distance = navInfo.distanceToCurrentStepMeters
+        
+        // check for invalid values (NaN, infinite, negative)
+        if distance.isNaN || distance.isInfinite || distance < 0 {
+            return 1000 // fallback distance
         }
         
-        // fallback distance
-        return 1000
+        return Int(distance)
     }
     
     private func extractTimeRemaining(from navInfo: GMSNavigationNavInfo) -> Int {
-        // get time to current step
-        if let currentStep = navInfo.currentStep {
-            return Int(currentStep.timeFromPrevStepSeconds)
+        // use the dynamic time to current step that updates as you move
+        let time = navInfo.timeToCurrentStepSeconds
+        
+        // check for invalid values (NaN, infinite, negative)
+        if time.isNaN || time.isInfinite || time < 0 {
+            return 300 // fallback time (5 minutes)
         }
         
-        // fallback time
-        return 300
+        return Int(time)
     }
     
     private func extractStreetName(from navInfo: GMSNavigationNavInfo) -> String? {
         // try to get current street name using documented properties
         if let currentStep = navInfo.currentStep {
-            // use simpleRoadName or fullRoadName as documented
-            return currentStep.simpleRoadName ?? currentStep.fullRoadName
+            // check if simpleRoadName is available and not empty, otherwise use fullRoadName
+            let simpleRoadName = currentStep.simpleRoadName
+            if !simpleRoadName.isEmpty {
+                return simpleRoadName
+            }
+            
+            let fullRoadName = currentStep.fullRoadName
+            if !fullRoadName.isEmpty {
+                return fullRoadName
+            }
         }
         
         return nil
@@ -567,6 +614,48 @@ extension NavigationManager: GMSNavigatorListener {
         return "continue"
     }
     
+    private func extractRemainingSteps(from navInfo: GMSNavigationNavInfo) -> [NavigationStep] {
+        // get all remaining steps from Google Navigation SDK
+        let remainingSteps = navInfo.remainingSteps
+        
+        // convert each GMSNavigationStepInfo to our NavigationStep struct
+        return remainingSteps.map { stepInfo in
+            return NavigationStep(
+                instruction: stepInfo.fullInstructionText,
+                distanceMeters: Int(stepInfo.distanceFromPrevStepMeters),
+                timeSeconds: Int(stepInfo.timeFromPrevStepSeconds),
+                streetName: stepInfo.simpleRoadName.isEmpty ? stepInfo.fullRoadName : stepInfo.simpleRoadName,
+                maneuver: extractManeuverFromStepInfo(stepInfo)
+            )
+        }
+    }
+    
+    private func extractManeuverFromStepInfo(_ stepInfo: GMSNavigationStepInfo) -> String {
+        // map GMSNavigationManeuver to string for individual step
+        switch stepInfo.maneuver {
+        case .turnLeft:
+            return "turn_left"
+        case .turnRight:
+            return "turn_right"
+        case .turnSlightLeft:
+            return "turn_slight_left"
+        case .turnSlightRight:
+            return "turn_slight_right"
+        case .turnSharpLeft:
+            return "turn_sharp_left"
+        case .turnSharpRight:
+            return "turn_sharp_right"
+        case .straight:
+            return "continue"
+        case .turnKeepLeft:
+            return "keep_left"
+        case .turnKeepRight:
+            return "keep_right"
+        default:
+            return "continue"
+        }
+    }
+    
     // MARK: - Fallback Navigation Update Generation (for route changes)
     
     private func generateNavigationUpdate() {
@@ -580,6 +669,7 @@ extension NavigationManager: GMSNavigatorListener {
             timeRemaining: 300,
             streetName: currentDestination,
             maneuver: "continue",
+            remainingSteps: [], // no remaining steps info available in fallback
             timestamp: Date().timeIntervalSince1970
         )
         
