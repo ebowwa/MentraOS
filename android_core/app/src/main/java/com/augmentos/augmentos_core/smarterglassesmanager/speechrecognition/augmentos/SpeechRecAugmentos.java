@@ -4,6 +4,7 @@ import android.content.Context;
 import android.util.Log;
 
 import com.augmentos.augmentos_core.augmentos_backend.ServerComms;
+import com.augmentos.augmentos_core.enums.SpeechRequiredDataType;
 import com.augmentos.augmentos_core.smarterglassesmanager.SmartGlassesManager;
 import com.augmentos.augmentos_core.smarterglassesmanager.speechrecognition.AsrStreamKey;
 import com.augmentos.augmentos_core.smarterglassesmanager.speechrecognition.SpeechRecFramework;
@@ -44,10 +45,20 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
     private final int vadFrameSize = 512; // 512-sample frames for VAD
     private volatile boolean vadRunning = true;
     private boolean bypassVadForDebugging = false;
+    private boolean enforceLocalTranscription = false;
 
     // LC3 audio rolling buffer
     private final ArrayList<byte[]> lc3RollingBuffer = new ArrayList<>();
     private final int LC3_BUFFER_MAX_SIZE = 22; // ~220ms of audio at 10ms per LC3 frame
+
+    // Sherpa ONNX Transcriber
+    private SherpaOnnxTranscriber sherpaTranscriber;
+
+    // Backend data sending control flags
+    private volatile boolean sendPcmToBackend = true;
+    private volatile boolean sendTranscriptionToBackend = false;
+    public boolean sendRawPCMToBackend = true;
+    private List<SpeechRequiredDataType> currentRequiredData = new ArrayList<>();
 
     private SpeechRecAugmentos(Context context) {
         this.mContext = context;
@@ -190,7 +201,7 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
     }
 
 
-    public boolean sendPcmToBackend = true;
+    //  public boolean sendPcmToBackend = true;
 
     /**
      * Called by external code to feed raw PCM chunks (16-bit, 16kHz).
@@ -372,15 +383,67 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
         }
     }
 
-    public void microphoneStateChanged(boolean state) {
+    /**
+     * Handles microphone state changes and propagates to all components
+     *
+     * @param state        true if microphone is on, false otherwise
+     * @param requiredData List of required data
+     */
+    public void microphoneStateChanged(boolean state, List<SpeechRequiredDataType> requiredData) {
+        // Pass to VAD
         if (vadPolicy != null) {
             vadPolicy.microphoneStateChanged(state);
         }
+
+        // Pass to transcriber
+        if (sherpaTranscriber != null && sherpaTranscriber.isInitialized()) {
+            sherpaTranscriber.microphoneStateChanged(state);
+        }
+
+
+        this.currentRequiredData = requiredData;
+
+        if (requiredData.contains(SpeechRequiredDataType.PCM) && requiredData.contains(SpeechRequiredDataType.TRANSCRIPTION)) {
+            this.sendPcmToBackend = true;
+            this.sendTranscriptionToBackend = true;
+        } else if (requiredData.contains(SpeechRequiredDataType.PCM)) {
+            this.sendPcmToBackend = true;
+            this.sendTranscriptionToBackend = false;
+        } else if (requiredData.contains(SpeechRequiredDataType.TRANSCRIPTION)) {
+            this.sendTranscriptionToBackend = true;
+            this.sendPcmToBackend = false;
+        } else if (requiredData.contains(SpeechRequiredDataType.PCM_OR_TRANSCRIPTION)) {
+            // TODO: bandwidth of the internet if it falls below certain threshold decide to send PCM or Transcription
+            if (this.enforceLocalTranscription) {
+                this.sendTranscriptionToBackend = true;
+                this.sendPcmToBackend = false;
+            } else {
+                this.sendPcmToBackend = true;
+                this.sendTranscriptionToBackend = false;
+            }
+        }
+
+        Log.d(TAG, "Microphone state changed to: " + (state ? "ON" : "OFF") + " with required data: " + requiredData);
     }
 
     public void changeBypassVadForDebuggingState(boolean bypassVadForDebugging) {
         Log.d(TAG, "setBypassVadForDebugging: " + bypassVadForDebugging);
         vadPolicy.changeBypassVadForDebugging(bypassVadForDebugging);
         this.bypassVadForDebugging = bypassVadForDebugging;
+    }
+
+    public void changeEnforceLocalTranscriptionState(boolean enforceLocalTranscription) {
+        Log.d(TAG, "setEnforceLocalTranscription: " + enforceLocalTranscription);
+        this.enforceLocalTranscription = enforceLocalTranscription;
+
+        if (this.currentRequiredData.contains(SpeechRequiredDataType.PCM_OR_TRANSCRIPTION)) {
+            if (this.enforceLocalTranscription) {
+                this.sendTranscriptionToBackend = true;
+                this.sendPcmToBackend = false;
+            } else {
+                this.sendTranscriptionToBackend = false;
+                this.sendPcmToBackend = true;
+            }
+        }
     }
 }

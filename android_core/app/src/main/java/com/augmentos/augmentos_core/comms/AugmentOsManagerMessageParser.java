@@ -34,10 +34,15 @@ public class AugmentOsManagerMessageParser {
 
             case "connect_wearable":
                 Log.d(TAG, "GOT A COMMAND TO CONNECT TO WEARABLE");
-                String modelName = commandObject.getJSONObject("params").getString("model_name");
-                String deviceName = commandObject.getJSONObject("params").getString("device_name");
-                Log.d(TAG, "Connect to model: " + modelName + ", device address: " + deviceName);
-                callback.connectToWearable(modelName, deviceName);
+                JSONObject params = commandObject.getJSONObject("params");
+                String modelName = params.getString("model_name");
+                String deviceName = params.getString("device_name");
+                String deviceAddress = null;
+                if (params.has("device_address")) {
+                    deviceAddress = params.getString("device_address");
+                }
+                Log.d(TAG, "Connect to model: " + modelName + ", device address: " + deviceName + ",address " + deviceAddress);
+                callback.connectToWearable(modelName, deviceName, deviceAddress);
                 break;
 
             case "forget_smart_glasses":

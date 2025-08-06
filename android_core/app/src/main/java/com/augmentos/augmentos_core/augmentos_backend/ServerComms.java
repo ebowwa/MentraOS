@@ -5,6 +5,7 @@ import android.util.Log;
 
 import com.augmentos.augmentos_core.BuildConfig;
 import com.augmentos.augmentos_core.CalendarItem;
+import com.augmentos.augmentos_core.enums.SpeechRequiredDataType;
 import com.augmentos.augmentos_core.smarterglassesmanager.speechrecognition.AsrStreamKey;
 import com.augmentos.augmentos_core.smarterglassesmanager.speechrecognition.augmentos.SpeechRecAugmentos;
 import com.augmentos.augmentoslib.enums.AsrStreamType;
@@ -707,9 +708,29 @@ public class ServerComms {
 
             case "microphone_state_change":
                 boolean isMicrophoneEnabled = msg.optBoolean("isMicrophoneEnabled", true);
-                Log.d(TAG, "Received microphone_state_change message." + isMicrophoneEnabled);
+
+                JSONArray requiredDataJson = msg.optJSONArray("requiredData");
+                List<SpeechRequiredDataType> requiredData = new ArrayList<>();
+                if (requiredDataJson != null) {
+                    for (int i = 0; i < requiredDataJson.length(); i++) {
+                        String datum = requiredDataJson.optString(i, "");
+                        if (!datum.isEmpty()) {
+                            try {
+                                requiredData.add(SpeechRequiredDataType.fromString(datum));
+                            } catch (IllegalArgumentException e) {
+                                Log.w(TAG, "Unknown required data type: " + datum, e);
+                            }
+                        }
+                    }
+                }
+                // Treat empty array as PCM only
+                if (requiredData.isEmpty()) {
+                    requiredData.add(SpeechRequiredDataType.PCM);
+                }
+
+                Log.d(TAG, "Received microphone_state_change message." + isMicrophoneEnabled + " requiredData=" + requiredData);
                 if (serverCommsCallback != null)
-                    serverCommsCallback.onMicrophoneStateChange(isMicrophoneEnabled);
+                    serverCommsCallback.onMicrophoneStateChange(isMicrophoneEnabled, requiredData);
                 break;
 
             case "photo_request":

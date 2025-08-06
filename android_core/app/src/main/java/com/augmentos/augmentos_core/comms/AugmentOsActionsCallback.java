@@ -34,6 +34,8 @@ public interface AugmentOsActionsCallback {
 
     void setBypassAudioEncodingForDebugging(boolean bypassAudioEncodingForDebugging);
 
+    void setEnforceLocalTranscription(boolean enforceLocalTranscription);
+
     void setAlwaysOnStatusBarEnabled(boolean alwaysOnStatusBarEnabled);
 
     void setPowerSavingMode(boolean powerSavingMode);
@@ -89,9 +91,14 @@ public interface AugmentOsActionsCallback {
     void onDisplayImageNotified(String localImageName);
 
     void handleNotificationDismissal(JSONObject dismissalData);
+
     void startBufferRecording();
+
     void stopBufferRecording();
+
     void saveBufferVideo(String requestId, int durationSeconds);
+
     void startVideoRecording(String requestId, boolean save);
+
     void stopVideoRecording(String requestId);
 }

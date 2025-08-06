@@ -23,7 +23,9 @@ import com.augmentos.augmentos_core.LocationSystem;
 import com.augmentos.augmentos_core.MainActivity;
 import com.augmentos.augmentos_core.R;
 import com.augmentos.augmentos_core.WindowManagerWithTimeouts;
+import com.augmentos.augmentos_core.enums.SpeechRequiredDataType;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.BypassVadForDebuggingEvent;
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.EnforceLocalTranscriptionEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.NewAsrLanguagesEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.SmartGlassesConnectionEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.smartglassescommunicators.AndroidSGC;
@@ -32,7 +34,7 @@ import com.augmentos.augmentos_core.smarterglassesmanager.smartglassesconnection
 import com.augmentos.augmentos_core.smarterglassesmanager.speechrecognition.ASR_FRAMEWORKS;
 import com.augmentos.augmentos_core.smarterglassesmanager.speechrecognition.SpeechRecSwitchSystem;
 import com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses.AudioWearable;
-import com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses.EvenRealitiesG1; 
+import com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses.EvenRealitiesG1;
 import com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses.MentraNexGlasses;
 import com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses.InmoAirOne;
 import com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses.MentraMach1;
@@ -54,6 +56,7 @@ import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 import androidx.preference.PreferenceManager;
 
@@ -208,7 +211,7 @@ public class SmartGlassesManager extends Service {
         // Register for EventBus events
         try {
             EventBus.getDefault().register(this);
-        } catch(EventBusException e) {
+        } catch (EventBusException e) {
             Log.e(TAG, "Error registering with EventBus", e);
         }
     }
@@ -221,7 +224,7 @@ public class SmartGlassesManager extends Service {
         String content = "";
 
         if (smartGlassesRepresentative != null &&
-            smartGlassesRepresentative.getConnectionState() == SmartGlassesConnectionState.CONNECTED) {
+                smartGlassesRepresentative.getConnectionState() == SmartGlassesConnectionState.CONNECTED) {
             SmartGlassesDevice device = smartGlassesRepresentative.smartGlassesDevice;
             title = device.deviceModelName;
             content = "Connected";
@@ -364,8 +367,8 @@ public class SmartGlassesManager extends Service {
         // BATTERY OPTIMIZATION: Explicitly register callback with the communicator
         // This ensures it's immediately available when audio events start coming in
         if (smartGlassesRepresentative != null &&
-            smartGlassesRepresentative.smartGlassesCommunicator != null &&
-            speechRecSwitchSystem != null) {
+                smartGlassesRepresentative.smartGlassesCommunicator != null &&
+                speechRecSwitchSystem != null) {
 
             // Force-setting the callback directly to bypass any potential registration issues
             smartGlassesRepresentative.smartGlassesCommunicator.audioProcessingCallback = speechRecSwitchSystem;
@@ -374,12 +377,12 @@ public class SmartGlassesManager extends Service {
             smartGlassesRepresentative.smartGlassesCommunicator.registerAudioProcessingCallback(speechRecSwitchSystem);
 
             Log.d(TAG, "BATTERY OPTIMIZATION: Explicitly registered and set audio processing callback for " +
-                device.getGlassesOs().name() + " - Callback is: " + (speechRecSwitchSystem != null ? "NOT NULL" : "NULL"));
+                    device.getGlassesOs().name() + " - Callback is: " + (speechRecSwitchSystem != null ? "NOT NULL" : "NULL"));
 
             // Special additional setup for AndroidSGC
             if (smartGlassesRepresentative.smartGlassesCommunicator instanceof AndroidSGC) {
                 ((AndroidSGC) smartGlassesRepresentative.smartGlassesCommunicator)
-                    .registerSpeechRecSystem(speechRecSwitchSystem);
+                        .registerSpeechRecSystem(speechRecSwitchSystem);
                 Log.d(TAG, "BATTERY OPTIMIZATION: Also registered special AndroidSGC callback");
             }
         }
@@ -554,6 +557,27 @@ public class SmartGlassesManager extends Service {
                 .apply();
     }
 
+    public static boolean getEnforceLocalTranscription(Context context) {
+        SharedPreferences sharedPreferences = context.getSharedPreferences("AugmentOSPrefs", Context.MODE_PRIVATE);
+        return sharedPreferences.getBoolean(context.getResources().getString(R.string.ENFORCE_LOCAL_TRANSCRIPTION), false);
+    }
+
+    public static void saveEnforceLocalTranscription(Context context, boolean enabled) {
+        SharedPreferences sharedPreferences = context.getSharedPreferences("AugmentOSPrefs", Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        if (context instanceof AugmentosService) {
+            AugmentosService service = (AugmentosService) context;
+            if (service.smartGlassesManager != null &&
+                    service.smartGlassesManager.speechRecSwitchSystem != null) {
+                service.smartGlassesManager.speechRecSwitchSystem.setEnforceLocalTranscription(enabled);
+            }
+        } else {
+            EventBus.getDefault().post(new EnforceLocalTranscriptionEvent(enabled));
+        }
+        editor.putBoolean(context.getResources().getString(R.string.ENFORCE_LOCAL_TRANSCRIPTION), enabled);
+        editor.apply();
+    }
+
     public static boolean getBypassVadForDebugging(Context context) {
         SharedPreferences sharedPreferences = context.getSharedPreferences("AugmentOSPrefs", Context.MODE_PRIVATE);
         //Log.d("AugmentOSPrefs", "Getting bypass VAD for debugging: " + sharedPreferences.getBoolean(context.getResources().getString(R.string.BYPASS_VAD_FOR_DEBUGGING), false));
@@ -571,7 +595,7 @@ public class SmartGlassesManager extends Service {
         if (context instanceof AugmentosService) {
             AugmentosService service = (AugmentosService) context;
             if (service.smartGlassesManager != null &&
-                service.smartGlassesManager.speechRecSwitchSystem != null) {
+                    service.smartGlassesManager.speechRecSwitchSystem != null) {
                 service.smartGlassesManager.speechRecSwitchSystem.setBypassVad(enabled);
             }
         } else {
@@ -614,13 +638,15 @@ public class SmartGlassesManager extends Service {
 
     public SmartGlassesDevice getConnectedSmartGlasses() {
         if (smartGlassesRepresentative == null) return null;
-        if (smartGlassesRepresentative.getConnectionState() != SmartGlassesConnectionState.CONNECTED) return null;
+        if (smartGlassesRepresentative.getConnectionState() != SmartGlassesConnectionState.CONNECTED)
+            return null;
         return smartGlassesRepresentative.smartGlassesDevice;
     }
 
     public SmartGlassesOperatingSystem getConnectedDeviceModelOs() {
         if (smartGlassesRepresentative == null) return null;
-        if (smartGlassesRepresentative.getConnectionState() != SmartGlassesConnectionState.CONNECTED) return null;
+        if (smartGlassesRepresentative.getConnectionState() != SmartGlassesConnectionState.CONNECTED)
+            return null;
         return smartGlassesRepresentative.smartGlassesDevice.glassesOs;
     }
 
@@ -762,7 +788,7 @@ public class SmartGlassesManager extends Service {
             smartGlassesRepresentative.smartGlassesCommunicator.sendButtonModeSetting(mode);
         }
     }
-    
+
     /**
      * Start buffer recording on smart glasses
      * Continuously records last 30 seconds in a circular buffer
@@ -774,7 +800,7 @@ public class SmartGlassesManager extends Service {
             Log.w(TAG, "Cannot start buffer recording - glasses not connected");
         }
     }
-    
+
     /**
      * Stop buffer recording on smart glasses
      */
@@ -785,10 +811,11 @@ public class SmartGlassesManager extends Service {
             Log.w(TAG, "Cannot stop buffer recording - glasses not connected");
         }
     }
-    
+
     /**
      * Save buffer video from smart glasses
-     * @param requestId Unique ID for this save request
+     *
+     * @param requestId       Unique ID for this save request
      * @param durationSeconds Number of seconds to save (1-30)
      */
     public void saveBufferVideo(String requestId, int durationSeconds) {
@@ -801,8 +828,9 @@ public class SmartGlassesManager extends Service {
 
     /**
      * Start video recording on smart glasses
+     *
      * @param requestId Unique ID for this recording request
-     * @param save Whether to save the video to storage
+     * @param save      Whether to save the video to storage
      */
     public void startVideoRecording(String requestId, boolean save) {
         if (smartGlassesRepresentative != null && smartGlassesRepresentative.smartGlassesCommunicator != null) {
@@ -814,6 +842,7 @@ public class SmartGlassesManager extends Service {
 
     /**
      * Stop video recording on smart glasses
+     *
      * @param requestId The request ID of the recording to stop
      */
     public void stopVideoRecording(String requestId) {
@@ -824,7 +853,7 @@ public class SmartGlassesManager extends Service {
         }
     }
 
-    public void changeMicrophoneState(boolean isMicrophoneEnabled) {
+    public void changeMicrophoneState(boolean isMicrophoneEnabled, List<SpeechRequiredDataType> requiredData) {
         Log.d(TAG, "Changing microphone state to " + isMicrophoneEnabled);
 
         if (smartGlassesRepresentative == null) {
@@ -832,12 +861,19 @@ public class SmartGlassesManager extends Service {
             return;
         }
 
+        // Also change required Data field in phone microphone manager.
+        if (smartGlassesRepresentative.getPhoneMicrophoneManager() != null) {
+            smartGlassesRepresentative.getPhoneMicrophoneManager().setRequiredData(requiredData);
+        } else {
+            Log.w(TAG, "PhoneMicrophoneManager is null, skipping setRequiredData call");
+        }
+
         // Simply delegate to the representative which will use PhoneMicrophoneManager
         // PhoneMicrophoneManager handles all the complexity of choosing the right mic
         smartGlassesRepresentative.changeBluetoothMicState(isMicrophoneEnabled);
 
         // Tell speech rec system about the state change
-        speechRecSwitchSystem.microphoneStateChanged(isMicrophoneEnabled);
+        speechRecSwitchSystem.microphoneStateChanged(isMicrophoneEnabled, requiredData);
     }
 
     // applyMicrophoneState method removed - all mic logic now handled by PhoneMicrophoneManager
@@ -863,8 +899,8 @@ public class SmartGlassesManager extends Service {
      */
     public boolean sendCustomCommand(String commandJson) {
         if (smartGlassesRepresentative != null &&
-            smartGlassesRepresentative.smartGlassesCommunicator != null &&
-            smartGlassesRepresentative.getConnectionState() == SmartGlassesConnectionState.CONNECTED) {
+                smartGlassesRepresentative.smartGlassesCommunicator != null &&
+                smartGlassesRepresentative.getConnectionState() == SmartGlassesConnectionState.CONNECTED) {
 
             Log.d(TAG, "Sending custom command to glasses: " + commandJson);
 
@@ -881,15 +917,15 @@ public class SmartGlassesManager extends Service {
     /**
      * Request a photo from the connected smart glasses
      *
-     * @param requestId The unique ID for this photo request
-     * @param appId The ID of the app requesting the photo
+     * @param requestId  The unique ID for this photo request
+     * @param appId      The ID of the app requesting the photo
      * @param webhookUrl The webhook URL where the photo should be uploaded directly
      * @return true if request was sent, false if glasses not connected
      */
     public boolean requestPhoto(String requestId, String appId, String webhookUrl) {
         if (smartGlassesRepresentative != null &&
-            smartGlassesRepresentative.smartGlassesCommunicator != null &&
-            smartGlassesRepresentative.getConnectionState() == SmartGlassesConnectionState.CONNECTED) {
+                smartGlassesRepresentative.smartGlassesCommunicator != null &&
+                smartGlassesRepresentative.getConnectionState() == SmartGlassesConnectionState.CONNECTED) {
 
             Log.d(TAG, "Requesting photo from glasses, requestId: " + requestId + ", appId: " + appId + ", webhookUrl: " + webhookUrl);
 
@@ -910,8 +946,8 @@ public class SmartGlassesManager extends Service {
      */
     public boolean requestRtmpStream(JSONObject message) {
         if (smartGlassesRepresentative != null &&
-            smartGlassesRepresentative.smartGlassesCommunicator != null &&
-            smartGlassesRepresentative.getConnectionState() == SmartGlassesConnectionState.CONNECTED) {
+                smartGlassesRepresentative.smartGlassesCommunicator != null &&
+                smartGlassesRepresentative.getConnectionState() == SmartGlassesConnectionState.CONNECTED) {
 
             String rtmpUrl = message.optString("rtmpUrl", "");
             Log.d(TAG, "Requesting RTMP stream from glasses to URL: " + rtmpUrl);
@@ -932,8 +968,8 @@ public class SmartGlassesManager extends Service {
      */
     public boolean stopRtmpStream() {
         if (smartGlassesRepresentative != null &&
-            smartGlassesRepresentative.smartGlassesCommunicator != null &&
-            smartGlassesRepresentative.getConnectionState() == SmartGlassesConnectionState.CONNECTED) {
+                smartGlassesRepresentative.smartGlassesCommunicator != null &&
+                smartGlassesRepresentative.getConnectionState() == SmartGlassesConnectionState.CONNECTED) {
 
             Log.d(TAG, "Requesting to stop RTMP stream from glasses");
 
@@ -948,14 +984,15 @@ public class SmartGlassesManager extends Service {
 
     /**
      * Send a keep alive message for RTMP streaming
+     *
      * @param message The keep alive message to send
      * @return true if message was sent, false otherwise
      */
     public boolean sendRtmpStreamKeepAlive(JSONObject message) {
         // Check if smart glasses are connected
         if (smartGlassesRepresentative != null &&
-            smartGlassesRepresentative.smartGlassesCommunicator != null &&
-            smartGlassesRepresentative.getConnectionState() == SmartGlassesConnectionState.CONNECTED) {
+                smartGlassesRepresentative.smartGlassesCommunicator != null &&
+                smartGlassesRepresentative.getConnectionState() == SmartGlassesConnectionState.CONNECTED) {
 
             Log.d(TAG, "Sending RTMP stream keep alive to glasses");
 
@@ -1001,12 +1038,13 @@ public class SmartGlassesManager extends Service {
 
     /**
      * Get the Bluetooth device name of the currently connected smart glasses
+     *
      * @return The Bluetooth device name, or null if not available
      */
     public String getConnectedSmartGlassesBluetoothName() {
         SmartGlassesDevice connectedDevice = getConnectedSmartGlasses();
         Log.d(TAG, "getConnectedSmartGlassesBluetoothName: connectedDevice = " + (connectedDevice != null ? connectedDevice.deviceModelName : "null"));
-        
+
         if (connectedDevice == null) {
             return null;
         }
@@ -1024,21 +1062,21 @@ public class SmartGlassesManager extends Service {
             Log.d(TAG, "getConnectedSmartGlassesBluetoothName: Mentra Live BT name = " + btName);
             return btName;
         }
-        
+
         // For Even Realities G1 glasses
         if (modelName.equals(new EvenRealitiesG1().deviceModelName)) {
             SharedPreferences prefs = getSharedPreferences("EvenRealitiesPrefs", Context.MODE_PRIVATE);
             String savedDeviceId = prefs.getString("SAVED_G1_ID_KEY", null);
             Log.d(TAG, "getConnectedSmartGlassesBluetoothName: Even Realities G1 device ID = " + savedDeviceId);
-            
+
             // The saved device ID is something like "G1_123", return it as is
             // Could also get left/right names separately if needed:
             // String leftName = prefs.getString("SAVED_G1_LEFT_NAME", null);
             // String rightName = prefs.getString("SAVED_G1_RIGHT_NAME", null);
-            
+
             return savedDeviceId;
         }
-        
+
         // For other glasses types that don't store BT names
         Log.d(TAG, "getConnectedSmartGlassesBluetoothName: No BT name for device type: " + modelName);
         return null;

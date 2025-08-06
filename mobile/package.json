@@ -96,6 +96,7 @@
     "react-native-view-shot": "^4.0.3",
     "react-native-webview": "13.12.5",
     "semver": "^7.7.2",
+    "start": "^5.1.0",
     "tar-js": "^0.3.0"
   },
   "devDependencies": {
