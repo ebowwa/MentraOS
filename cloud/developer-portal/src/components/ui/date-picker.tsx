@@ -12,8 +12,6 @@ interface DatePickerProps {
   onMonthYearChange?: (month: number, year: number) => void
   setMonthNumberDynamic?: (monthName: number) => void
   setYearNumber?: (yearNumber: number) => void
-  startUptimeMonth: number,
-  startUptimeYear: number
   // Styling props
   containerClassName?: string
   textClassName?: string
@@ -22,12 +20,18 @@ interface DatePickerProps {
   width?: string
   backgroundColor?: string
   borderRadius?: string
+  onNextMonth?: () => void
+  onPrevMonth?: () => void
+  
 }
 
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December"
 ]
+
+const START_UPTIME_MONTH = 7; // January
+const START_UPTIME_YEAR = 2025;
 
 export function DatePicker({ 
   className, 
@@ -36,8 +40,6 @@ export function DatePicker({
   onMonthYearChange,
   setMonthNumberDynamic,
   setYearNumber,
-  startUptimeMonth,
-  startUptimeYear,
   containerClassName,
   textClassName,
   buttonClassName,
@@ -45,47 +47,15 @@ export function DatePicker({
   width = "w-full",
   backgroundColor = "bg-white",
   borderRadius = "rounded-[10px]",
+  onNextMonth,
+  onPrevMonth
+
+
 }: DatePickerProps) {
   const currentDate = new Date()
   const [month, setMonth] = React.useState(initialMonth ?? currentDate.getMonth())
   const [year, setYear] = React.useState(initialYear ?? currentDate.getFullYear())
     
-  const handlePreviousMonth = () => {
-    let newMonth = month - 1
-    let newYear = year
-
-    if (newMonth < 0) {
-      newMonth = 11
-      newYear = year - 1
-    }
-
-    // Check if the new date would be before the start uptime date
-    if (newYear < startUptimeYear || (newYear === startUptimeYear && newMonth < startUptimeMonth)) {
-      return // Don't allow navigation before start date
-    }
-
-    setMonth(newMonth)
-    setYear(newYear)
-    setMonthNumberDynamic?.(newMonth)
-    setYearNumber?.(newYear)
-    onMonthYearChange?.(newMonth, newYear)
-  }
-
-  const handleNextMonth = () => {
-    let newMonth = month + 1
-    let newYear = year
-
-    if (newMonth > 11) {
-      newMonth = 0
-      newYear = year + 1
-    }
-
-    setMonth(newMonth)
-    setYear(newYear)
-    setMonthNumberDynamic?.(newMonth)
-    setYearNumber?.(newYear)
-    onMonthYearChange?.(newMonth, newYear)
-  }
 
   React.useEffect(() => {
     if (initialMonth !== undefined) {
@@ -110,7 +80,7 @@ export function DatePicker({
             buttonClassName,
             buttonHoverClassName
           )}
-          onClick={handlePreviousMonth}
+          onClick={onPrevMonth}
         >
           <ChevronLeft className="w-4 h-4" />
         </Button>
@@ -127,7 +97,7 @@ export function DatePicker({
             buttonClassName,
             buttonHoverClassName
           )}
-          onClick={handleNextMonth}
+          onClick={onNextMonth}
         >
           <ChevronRight className="w-4 h-4" />
         </Button>

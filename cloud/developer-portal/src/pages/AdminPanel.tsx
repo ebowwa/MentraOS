@@ -111,6 +111,36 @@ const AdminPanel: React.FC = () => {
   const [yearNumber, setYearNumber] = useState(year);
   const START_UPTIME_MONTH = 7; // August (0-indexed)
   const START_UPTIME_YEAR = 2025; // Starting year for uptime data
+
+
+  // Month navigation functions for DatePicker
+  const handlePrevMonth = () => {
+    let newMonth = monthNumberDynamic - 1;
+    let newYear = yearNumber;
+
+    if (newMonth < 0) {
+      newMonth = 11;
+      newYear = yearNumber - 1;
+    }
+    // if (newYear < START_UPTIME_YEAR || (newYear === START_UPTIME_YEAR && newMonth < START_UPTIME_MONTH)) {
+    //   return; // Don't allow navigation before start date
+    // }
+    setMonthNumberDynamic(newMonth);
+    setYearNumber(newYear);
+  };
+
+  const handleNextMonth = () => {
+    let newMonth = monthNumberDynamic + 1;
+    let newYear = yearNumber;
+
+    if (newMonth > 11) {
+      newMonth = 0;
+      newYear = yearNumber + 1;
+    }
+
+    setMonthNumberDynamic(newMonth);
+    setYearNumber(newYear);
+  };
   
 
   // Polling for app status updates
@@ -522,6 +552,26 @@ const AdminPanel: React.FC = () => {
     return allEntries;
   };
 
+  // Function to calculate uptime percentage from app items
+  const calculateUptimePercentage = (appItems: AppBatchItem[], month: number, year: number): number => {
+    if (!appItems || appItems.length === 0) return 0;
+
+    // Filter items for the specific month and year
+    const monthItems = appItems.filter(item => {
+      const itemDate = new Date(item.timestamp);
+      return itemDate.getMonth() === month && itemDate.getFullYear() === year;
+    });
+
+    if (monthItems.length === 0) return 0;
+
+    // Count healthy items (online status true OR health is 'healthy')
+    const healthyItems = monthItems.filter(item => 
+      item.onlineStatus === true || item.health === 'healthy'
+    );
+
+    return parseFloat(((healthyItems.length / monthItems.length) * 100).toFixed(1));
+  };
+
   return (
     <DashboardLayout>
       <div className="container mx-auto">
@@ -740,7 +790,15 @@ const AdminPanel: React.FC = () => {
                       <SelectItem value="production">Submitted</SelectItem>
                     </SelectContent>
                   </Select>
-                  <DatePicker startUptimeMonth={START_UPTIME_MONTH} startUptimeYear={START_UPTIME_YEAR} initialYear={year} initialMonth={monthNumber} setMonthNumberDynamic={setMonthNumberDynamic} setYearNumber={setYearNumber} />
+                  <DatePicker 
+                    className='w-[180px]'
+                    initialYear={yearNumber} 
+                    initialMonth={monthNumberDynamic} 
+                    setMonthNumberDynamic={setMonthNumberDynamic} 
+                    setYearNumber={setYearNumber}
+                    onPrevMonth={handlePrevMonth}
+                    onNextMonth={handleNextMonth}
+                  />
                 </div>
                 
                 <Card>
@@ -805,7 +863,11 @@ const AdminPanel: React.FC = () => {
                               </div>
                             </div>
                             <UptimeStatus title="Chat" 
-                              uptimePercentage={100} 
+                              uptimePercentage={calculateUptimePercentage(
+                                getAppBatchStatusByPackageName(collectedAllAppBatchStatus, app.packageName),
+                                monthNumberDynamic,
+                                yearNumber
+                              )} 
                               month={monthNumberDynamic} 
                               year={yearNumber} 
                               appHealthStatus={submittedAppsStatus.find(statusApp => statusApp.packageName === app.packageName)?.healthStatus || app.appHealthStatus || "unknown"}
@@ -910,13 +972,11 @@ const AdminPanel: React.FC = () => {
               };
               
               return <AppDetailView 
-                startUptimeMonth={START_UPTIME_MONTH}
-                startUptimeYear={START_UPTIME_YEAR}
                 app={appStatusData} 
                 onRefresh={fetchAppStatus}
                 isRefreshing={statusLoading}
                 appItems={getAppBatchStatusByPackageName(collectedAllAppBatchStatus, selectedApp.packageName)}
-                
+                lastUpdateTime={lastUpdateTime}
               />;
             })()}
 

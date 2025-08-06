@@ -93,13 +93,12 @@ interface AppDetailViewProps {
   selectedDayItems?: AppBatchItem[];
   currentMonth?: number;
   currentYear?: number;
-  startUptimeMonth: number;
-  startUptimeYear: number;
+  lastUpdateTime?: Date | null;
 }
 
 
 
-const AppDetailView: React.FC<AppDetailViewProps> = ({  app, startUptimeMonth, startUptimeYear, onRefresh, isRefreshing = false, appItems, selectedDay, selectedDayItems, currentMonth, currentYear }) => {
+const AppDetailView: React.FC<AppDetailViewProps> = ({  app, onRefresh, isRefreshing = false, appItems, selectedDay, selectedDayItems, currentMonth, currentYear, lastUpdateTime }) => {
   const [dayFilterState, setDayFilterState] = useState<{
     selectedDay: number | null;
     selectedDayItems: AppBatchItem[];
@@ -121,15 +120,18 @@ const AppDetailView: React.FC<AppDetailViewProps> = ({  app, startUptimeMonth, s
     });
   };
 
+
   return (
   <div className="  flex   p-4 font-sans">
-    <div className="w-full max-w-4xl">
+<div className="w-full max-w-4xl mx-auto">
     <Card className="p-8 bg-white text-black font-sans">
 
     <div className="flex flex-row items-center">
       <div className="flex flex-col flex-1">
         <div className="text-3xl font-bold">Service Status {app.status}</div>
-        <div className="text-sm text-gray-500">Last updated 1 minute ago. Next update in 15 sec.</div>
+        <div className="text-sm text-gray-500">
+          Last updated {lastUpdateTime ? lastUpdateTime.toLocaleTimeString() : 'Never'}
+        </div>
       </div>
       {onRefresh && (
         <Button 
@@ -149,87 +151,94 @@ const AppDetailView: React.FC<AppDetailViewProps> = ({  app, startUptimeMonth, s
       )}
     </div>
 
-    <div className="p-6 rounded-2xl shadow-sm flex items-center gap-4">
-      <div>
-        <img src={app.logo} alt={`${app.name} logo`} className="w-25 h-25 rounded-[15px]" />
+    <div className="p-4 md:p-6 rounded-2xl shadow-sm flex flex-col sm:flex-row items-start sm:items-center gap-4">
+      <div className="flex-shrink-0">
+        <img src={app.logo} alt={`${app.name} logo`} className="w-16 h-16 md:w-20 md:h-20 lg:w-24 lg:h-24 rounded-[15px] object-cover aspect-square" />
       </div>
-      <div className="flex-1">
-        <h2 className="text-2xl font-bold m-0">{app.name}</h2>
-        <p className="text-sm text-gray-500">Submitted on {app.submitted}</p>
-        <p className="text-sm text-gray-500">{app.packageName || 'N/A'}</p>
-
+      <div className="flex-1 min-w-0">
+        <h2 className="text-lg sm:text-xl md:text-2xl font-bold m-0 truncate">{app.name}</h2>
+        <p className="text-xs sm:text-sm text-gray-500 truncate">Submitted on {app.submitted}</p>
+        <p className="text-xs sm:text-sm text-gray-500 truncate">{app.packageName || 'N/A'}</p>
       </div>
-      <div className="flex flex-row gap-4 justify-center items-center">
+      <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 items-center w-full sm:w-auto">
         {app.status.toLowerCase() === 'online' ? (
-          <CheckCircle size={48} color='green'/>
+          <CheckCircle className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 text-green-500 flex-shrink-0"/>
         ) : (
-          <XCircle size={48} color='red'/>
+          <XCircle className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 text-red-500 flex-shrink-0"/>
         )}
-        <div>
-          <h2 className="text-2xl font-bold m-0">{app.status.toLowerCase() === 'online' ? 'All systems operational' : 'System experiencing issues'}</h2>
-          <p className="text-sm text-gray-500">
+        <div className="text-center sm:text-left">
+          <h2 className="text-sm sm:text-base md:text-lg lg:text-xl font-bold m-0">{app.status.toLowerCase() === 'online' ? 'All systems operational' : 'System experiencing issues'}</h2>
+          <p className="text-xs sm:text-sm text-gray-500">
             {app.status.toLowerCase() === 'online' 
               ? `` 
               : `Current status: ${app.status} - Check events below`}
           </p>
         </div>
       </div>
-      
     </div>
 
     {/* App Uptime Chart */}
-    <AppUptimeChart startUptimeMonth={startUptimeMonth} startUptimeYear={startUptimeYear} appItems={appItems} onDaySelection={handleDaySelection} />
+    <AppUptimeChart appItems={appItems} onDaySelection={handleDaySelection} />
 
-    {(app.details.events.length > 0 || dayFilterState.selectedDayItems.length > 0) && (
-      <div className="p-6 rounded-2xl">
-        <h3 className="text-3xl font-bold">
-          Problems
+    {dayFilterState.selectedDay && (
+      <div className="rounded-2xl">
+        <div className="flex items-center gap-4 mb-6">
+          <h3 className="text-2xl font-bold text-red-700 flex items-center gap-2">
+            <AlertCircle size={28} className="text-red-500" />
+            Problems
+          </h3>
           {dayFilterState.selectedDay && (
-            <span className="text-sm font-normal text-gray-600 ml-2">
-              - Day {dayFilterState.selectedDay}, {new Date(dayFilterState.currentYear, dayFilterState.currentMonth).toLocaleString('default', { month: 'long', year: 'numeric' })}
-            </span>
+            <div className="bg-red-100 border border-red-200 px-3 py-1 rounded-full text-sm font-medium text-red-700">
+              Day {dayFilterState.selectedDay}, {new Date(dayFilterState.currentYear, dayFilterState.currentMonth).toLocaleString('default', { month: 'long', year: 'numeric' })}
+            </div>
           )}
-        </h3>
+        </div>
         
-        {/* Show selected day unhealthy items if a day is selected */}
-        {dayFilterState.selectedDay && dayFilterState.selectedDayItems.length > 0 ? (
-          dayFilterState.selectedDayItems
-            .filter(item => item.health !== 'healthy' && !item.onlineStatus)
-            .map((item, index) => (
-              <div key={index} className="flex gap-4 mb-6">
-                <AlertCircle size={20} className="icon" />
-                <div className="space-y-1">
-                  <p className="font-medium text-black">{item.packageName} - Unhealthy Status</p>
-                  <p className="text-sm text-gray-600">{new Date(item.timestamp).toLocaleString()}</p>
-                  <p className="text-sm text-gray-600"><strong>Health:</strong> {item.health}</p>
-                  <p className="text-sm text-gray-600"><strong>Online Status:</strong> {item.onlineStatus ? 'Online' : 'Offline'}</p>
+        {/* Show selected day items if a day is selected */}
+        {dayFilterState.selectedDay ? (
+          // Check if there are any actual unhealthy items for this day
+          dayFilterState.selectedDayItems.some(item => item.health !== 'healthy' || !item.onlineStatus) ? (
+            // Show unhealthy items
+            dayFilterState.selectedDayItems
+              .filter(item => item.health !== 'healthy' || !item.onlineStatus)
+              .map((item, index) => (
+                <div key={index} className="bg-red-50 border border-red-200 flex items-center gap-6 mb-4 p-4 rounded-lg hover:bg-red-100 transition-colors duration-200">
+                  <AlertCircle size={24} className="text-red-500 flex-shrink-0" />
+                  <div className="flex flex-1 items-center justify-between">
+                    <div className="flex items-center gap-8">
+                      <div>
+                        <p className="font-semibold text-red-800">{item.packageName} - Unhealthy Status</p>
+                        <p className="text-sm text-red-600">{new Date(item.timestamp).toLocaleString()}</p>
+                      </div>
+                      <div className="flex gap-6">
+                        <div>
+                          <span className="text-xs font-medium text-red-700 uppercase tracking-wide">Health</span>
+                          <p className="text-sm text-red-600 font-medium">{item.health}</p>
+                        </div>
+                        <div>
+                          <span className="text-xs font-medium text-red-700 uppercase tracking-wide">Status</span>
+                          <p className="text-sm text-red-600 font-medium">{item.onlineStatus ? 'Online' : 'Offline'}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))
+          ) : (
+            // Show "no issues" message for healthy days (whether they have items or not)
+            <div className="bg-green-50 border border-green-200 flex items-center gap-6 mb-4 p-4 rounded-lg">
+              <CheckCircle size={24} className="text-green-500 flex-shrink-0" />
+              <div className="flex flex-1 items-center justify-between">
+                <div className="flex items-center gap-8">
+                  <div>
+                    <p className="font-semibold text-green-800">No issues found for this day</p>
+                    <p className="text-sm text-green-600">All systems were operational</p>
+                  </div>
                 </div>
               </div>
-            ))
-        ) : dayFilterState.selectedDay && dayFilterState.selectedDayItems.length === 0 ? (
-          <div className="flex gap-4 mb-6">
-            <div className="w-5 h-5 bg-gray-300 rounded-full flex items-center justify-center">
-              <span className="text-xs text-gray-600">✓</span>
             </div>
-            <div className="space-y-1">
-              <p className="font-medium text-black">No issues found for this day</p>
-              <p className="text-sm text-gray-600">All systems were operational</p>
-            </div>
-          </div>
-        ) : (
-          // Show general app events when no day is selected
-          app.details.events.map((event, index) => (
-            <div key={index} className="flex gap-4 mb-6">
-              {/* <AlertCircle size={20} className="icon" />
-              <div className="event-details">
-                <p>{app.name} was down for {event.duration} minutes</p>
-                <p>{event.date}, 19:44</p>
-                <p><strong>Reason:</strong> {event.reason}</p>
-                <p><strong>Details:</strong> {event.details}</p>
-              </div> */}
-            </div>
-          ))
-        )}
+          )
+        ) : null}
       </div>
     )}
   </Card>
@@ -246,11 +255,10 @@ interface AppUptimeChartProps {
   setYearNumber?: (yearNumber: number) => void
   currentMonth?: number;
   onDaySelection?: (day: number | null, items: AppBatchItem[], month: number, year: number) => void;
-  startUptimeMonth: number;
-  startUptimeYear: number;
+
 }
 
-const AppUptimeChart: React.FC<AppUptimeChartProps> = ({ startUptimeMonth, startUptimeYear, appItems, onMonthYearChange, setMonthNumberDynamic, setYearNumber, onDaySelection }) => {
+const AppUptimeChart: React.FC<AppUptimeChartProps> = ({ appItems, onMonthYearChange, setMonthNumberDynamic, setYearNumber, onDaySelection }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [selectedDayItems, setSelectedDayItems] = useState<AppBatchItem[]>([]);
@@ -285,6 +293,7 @@ const AppUptimeChart: React.FC<AppUptimeChartProps> = ({ startUptimeMonth, start
 
   // Navigate to next month
   const handleNextMonth = () => {
+    
     setCurrentDate(prevDate => {
       const newDate = new Date(prevDate);
       newDate.setMonth(newDate.getMonth() + 1);
@@ -318,34 +327,32 @@ const AppUptimeChart: React.FC<AppUptimeChartProps> = ({ startUptimeMonth, start
   const uptimePercentage = calculateUptimePercentage();
 
   return (
-    <div className="rounded-lg mt-6 p-4">
+    <div className="rounded-lg p-2">
       <div className="flex flex-row items-center justify-between relative mb-4">
-        <div className="text-[22px] font-bold ">{monthName} {year}</div>
-        <div>
-          <DatePicker 
-            startUptimeMonth={startUptimeMonth} 
-            startUptimeYear={startUptimeYear} 
-            initialYear={year} 
-            initialMonth={currentDate.getMonth()} 
-            setMonthNumberDynamic={setMonthNumberDynamic} 
-            setYearNumber={setYearNumber} 
-          />         
-          <Button
-          variant="outline"
-          size="icon"
-          className=" left-1 w-7 h-7 bg-transparent p-0 opacity-50 transition-opacity duration-200 ease-out border-0 hover:opacity-100"
-          onClick={handlePreviousMonth}
-          >
-            <ChevronLeft className="w-4 h-4" />
-          </Button>
-          <Button
-          variant="outline"
-          size="icon"
-          className="right-1 w-7 h-7 bg-transparent p-0 opacity-50 transition-opacity duration-200 ease-out border-0 hover:opacity-100"
-          onClick={handleNextMonth}
-          >
-            <ChevronRight className="w-4 h-4" />
-          </Button>
+        <div className="text-[22px] font-bold ">
+          <div className="flex items-center gap-3">
+            <span className="text-lg font-medium">
+              {uptimePercentage}% Uptime
+            </span>
+          </div>
+        </div>
+        <div className="flex items-center gap-6 text-sm">
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 bg-green-500 rounded-sm"></div>
+            <span className="text-gray-700">All Healthy</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 bg-yellow-500 rounded-sm"></div>
+            <span className="text-gray-700">Mixed Status</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 bg-red-500 rounded-sm"></div>
+            <span className="text-gray-700">All Unhealthy</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 bg-gray-300 rounded-sm"></div>
+            <span className="text-gray-700">No Data</span>
+          </div>
         </div>
         
       </div>
@@ -366,12 +373,14 @@ const AppUptimeChart: React.FC<AppUptimeChartProps> = ({ startUptimeMonth, start
         <div className="text-base font-bold ml-4 text-gray-500">
           <DatePicker 
             className='w-42 bg-gray-50 h-10.5 rounded-[7px] text-black'
-            startUptimeMonth={startUptimeMonth} 
-            startUptimeYear={startUptimeYear} 
+
             initialYear={year} 
             initialMonth={currentDate.getMonth()} 
             setMonthNumberDynamic={setMonthNumberDynamic} 
             setYearNumber={setYearNumber} 
+            onNextMonth={handleNextMonth}
+            onPrevMonth={handlePreviousMonth}
+            
           />  
         </div>
       </div>
