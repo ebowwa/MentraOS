@@ -172,6 +172,8 @@ export interface NavigationUpdate extends BaseMessage {
   streetName?: string;
   maneuver: string; // "turn_left", "turn_right", "continue", etc.
   remainingSteps: NavigationStep[]; // all remaining steps in the route
+  distanceToDestination: number; // meters to final destination
+  timeToDestination: number; // seconds to final destination (ETA)
 }
 
 /**

@@ -32,6 +32,8 @@ public struct NavigationUpdate {
     let streetName: String?
     let maneuver: String           // "turn_left", "turn_right", "continue", etc.
     let remainingSteps: [NavigationStep]  // all remaining steps in the route
+    let distanceToDestination: Int // meters to final destination
+    let timeToDestination: Int     // seconds to final destination (ETA)
     let timestamp: TimeInterval
 }
 
@@ -396,7 +398,9 @@ public class NavigationManager: NSObject {
                     streetName: step.streetName,
                     maneuver: step.maneuver
                 )
-            }
+            },
+            distanceToDestination: update.distanceToDestination,
+            timeToDestination: update.timeToDestination
         )
         ServerComms.getInstance().sendNavigationUpdate(navigationUpdateData)
         
@@ -494,6 +498,8 @@ extension NavigationManager: GMSNavigatorListener {
         let streetName = extractStreetName(from: navInfo)
         let maneuver = extractManeuver(from: navInfo)
         let remainingSteps = extractRemainingSteps(from: navInfo)
+        let distanceToDestination = extractDistanceToDestination(from: navInfo)
+        let timeToDestination = extractTimeToDestination(from: navInfo)
         
         // create navigation update with real data
         let update = NavigationUpdate(
@@ -503,6 +509,8 @@ extension NavigationManager: GMSNavigatorListener {
             streetName: streetName,
             maneuver: maneuver,
             remainingSteps: remainingSteps,
+            distanceToDestination: distanceToDestination,
+            timeToDestination: timeToDestination,
             timestamp: Date().timeIntervalSince1970
         )
         
@@ -564,6 +572,30 @@ extension NavigationManager: GMSNavigatorListener {
         }
         
         return Int(time)
+    }
+    
+    private func extractTimeToDestination(from navInfo: GMSNavigationNavInfo) -> Int {
+        // use the total time to final destination (ETA)
+        let time = navInfo.timeToFinalDestinationSeconds
+        
+        // check for invalid values (NaN, infinite, negative)
+        if time.isNaN || time.isInfinite || time < 0 {
+            return 1800 // fallback time (30 minutes)
+        }
+        
+        return Int(time)
+    }
+    
+    private func extractDistanceToDestination(from navInfo: GMSNavigationNavInfo) -> Int {
+        // use the total distance to final destination
+        let distance = navInfo.distanceToFinalDestinationMeters
+        
+        // check for invalid values (NaN, infinite, negative)
+        if distance.isNaN || distance.isInfinite || distance < 0 {
+            return 5000 // fallback distance (5km)
+        }
+        
+        return Int(distance)
     }
     
     private func extractStreetName(from navInfo: GMSNavigationNavInfo) -> String? {
@@ -670,6 +702,8 @@ extension NavigationManager: GMSNavigatorListener {
             streetName: currentDestination,
             maneuver: "continue",
             remainingSteps: [], // no remaining steps info available in fallback
+            distanceToDestination: 5000, // fallback distance to destination
+            timeToDestination: 1800, // fallback time to destination (30 min)
             timestamp: Date().timeIntervalSince1970
         )
         

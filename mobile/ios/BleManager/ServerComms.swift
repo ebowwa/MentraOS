@@ -21,11 +21,13 @@ struct NavigationStepData {
 // navigation data structures for sending to cloud
 struct NavigationUpdateData {
     let instruction: String
-    let distanceRemaining: Int // meters
-    let timeRemaining: Int // seconds
+    let distanceRemaining: Int // meters to current step
+    let timeRemaining: Int // seconds to current step
     let streetName: String?
     let maneuver: String // "turn_left", "turn_right", "continue", etc.
     let remainingSteps: [NavigationStepData] // all remaining steps
+    let distanceToDestination: Int // meters to final destination
+    let timeToDestination: Int // seconds to final destination (ETA)
 }
 
 struct NavigationStatusData {
@@ -161,7 +163,9 @@ class ServerComms {
                         streetName: step.streetName,
                         maneuver: step.maneuver
                     )
-                }
+                },
+                distanceToDestination: update.distanceToDestination,
+                timeToDestination: update.timeToDestination
             )
             self?.sendNavigationUpdate(updateData)
         }
@@ -363,7 +367,7 @@ class ServerComms {
                     "instruction": step.instruction,
                     "distanceMeters": step.distanceMeters,
                     "timeSeconds": step.timeSeconds,
-                    "streetName": step.streetName ?? NSNull(),
+                    "streetName": step.streetName as Any,
                     "maneuver": step.maneuver
                 ]
             }
@@ -376,6 +380,8 @@ class ServerComms {
                 "streetName": navigationUpdate.streetName ?? NSNull(),
                 "maneuver": navigationUpdate.maneuver,
                 "remainingSteps": remainingStepsArray,
+                "distanceToDestination": navigationUpdate.distanceToDestination,
+                "timeToDestination": navigationUpdate.timeToDestination,
                 "timestamp": Int(Date().timeIntervalSince1970 * 1000),
             ]
 
