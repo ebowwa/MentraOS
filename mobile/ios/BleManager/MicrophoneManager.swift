@@ -297,8 +297,18 @@ class OnboardMicrophoneManager {
 
         // Initialize audio engine and input node
         audioEngine = AVAudioEngine()
+
+        // Give the engine a moment to initialize
+        Thread.sleep(forTimeInterval: 0.1)
+
         guard let inputNode = audioEngine?.inputNode else {
             print("Failed to get audio input node")
+            return false
+        }
+
+        // Check if the node is ready
+        guard inputNode.numberOfInputs > 0 else {
+            print("Input node has no inputs")
             return false
         }
 
