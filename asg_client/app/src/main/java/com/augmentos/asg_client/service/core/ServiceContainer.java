@@ -9,6 +9,7 @@ import com.augmentos.asg_client.service.communication.interfaces.ICommunicationM
 import com.augmentos.asg_client.service.communication.interfaces.IResponseBuilder;
 import com.augmentos.asg_client.service.communication.managers.CommunicationManager;
 import com.augmentos.asg_client.service.communication.managers.ResponseBuilder;
+import com.augmentos.asg_client.service.core.processors.CommandProcessor;
 import com.augmentos.asg_client.service.legacy.managers.AsgClientServiceManager;
 import com.augmentos.asg_client.service.media.interfaces.IStreamingManager;
 import com.augmentos.asg_client.service.media.managers.StreamingManager;

@@ -27,6 +27,7 @@ import com.augmentos.asg_client.io.streaming.events.StreamingEvent;
 import com.augmentos.asg_client.io.streaming.interfaces.StreamingStatusCallback;
 import com.augmentos.asg_client.service.core.ServiceContainer;
 import com.augmentos.asg_client.service.communication.interfaces.ICommunicationManager;
+import com.augmentos.asg_client.service.core.processors.CommandProcessor;
 import com.augmentos.asg_client.service.system.interfaces.IConfigurationManager;
 import com.augmentos.asg_client.service.system.interfaces.IServiceLifecycle;
 import com.augmentos.asg_client.service.system.interfaces.IStateManager;
@@ -42,10 +43,11 @@ import org.json.JSONObject;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Fully refactored AsgClientService that follows SOLID principles.
- * 
+ * <p>
  * This service demonstrates:
  * - Single Responsibility Principle: Each manager handles one concern
  * - Open/Closed Principle: Easy to extend with new managers
@@ -56,7 +58,7 @@ import java.util.List;
 public class AsgClientService extends Service implements NetworkStateListener, BluetoothStateListener {
 
     // ---------------------------------------------
-    // Constants
+    // Constants //TODO: Extract all the Constants and Magic Number/Text to AsgConstants
     // ---------------------------------------------
     public static final String TAG = "AsgClientServiceV2";
 
@@ -69,10 +71,11 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     public static final String ACTION_RESTART_COMPLETE = "com.augmentos.asg_client.ACTION_RESTART_COMPLETE";
     public static final String ACTION_RESTART_CAMERA = "com.augmentos.asg_client.ACTION_RESTART_CAMERA";
     public static final String ACTION_START_OTA_UPDATER = "ACTION_START_OTA_UPDATER";
-    
+
     // OTA Update progress actions
     public static final String ACTION_DOWNLOAD_PROGRESS = "com.augmentos.otaupdater.ACTION_DOWNLOAD_PROGRESS";
     public static final String ACTION_INSTALLATION_PROGRESS = "com.augmentos.otaupdater.ACTION_INSTALLATION_PROGRESS";
+    public static final String ACTION_OTA_HEARTBEAT = "com.augmentos.otaupdater.ACTION_HEARTBEAT";
 
     // Service health monitoring
     private static final String ACTION_HEARTBEAT = "com.augmentos.asg_client.ACTION_HEARTBEAT";
@@ -82,13 +85,15 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     // Dependency Injection Container
     // ---------------------------------------------
     private ServiceContainer serviceContainer;
-    
+
     // Interface references (Dependency Inversion Principle)
     private IServiceLifecycle lifecycleManager;
     private ICommunicationManager communicationManager;
     private IConfigurationManager configurationManager;
     private IStateManager stateManager;
     private IStreamingManager streamingManager;
+
+    private CommandProcessor commandProcessor;
 
     // ---------------------------------------------
     // Service State
@@ -122,7 +127,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
             AugmentosService.LocalBinder binder = (AugmentosService.LocalBinder) service;
             augmentosService = binder.getService();
             isAugmentosBound = true;
-            
+
             // Update state manager
             if (stateManager instanceof StateManager) {
                 ((StateManager) stateManager).setAugmentosServiceBound(true);
@@ -139,7 +144,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
             Log.d(TAG, "AugmentosService disconnected");
             isAugmentosBound = false;
             augmentosService = null;
-            
+
             // Update state manager
             if (stateManager instanceof StateManager) {
                 ((StateManager) stateManager).setAugmentosServiceBound(false);
@@ -179,7 +184,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             serviceContainer.getNotificationManager().createNotificationChannel();
             startForeground(serviceContainer.getNotificationManager().getDefaultNotificationId(),
-                          serviceContainer.getNotificationManager().createForegroundNotification());
+                    serviceContainer.getNotificationManager().createForegroundNotification());
         }
 
         if (intent == null || intent.getAction() == null) {
@@ -235,16 +240,18 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     // ---------------------------------------------
     private void initializeServiceContainer() {
         serviceContainer = new ServiceContainer(this, this);
-        
+
         // Get interface references
         lifecycleManager = serviceContainer.getLifecycleManager();
         communicationManager = serviceContainer.getCommunicationManager();
         configurationManager = serviceContainer.getConfigurationManager();
         stateManager = serviceContainer.getStateManager();
         streamingManager = serviceContainer.getStreamingManager();
-        
+
         // Initialize container
         serviceContainer.initialize();
+
+        commandProcessor = serviceContainer.getCommandProcessor();
     }
 
     /**
@@ -254,8 +261,8 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         wifiDebounceHandler = new Handler(Looper.getMainLooper());
         wifiDebounceRunnable = () -> {
             if (pendingWifiState != lastWifiState) {
-                Log.d(TAG, "🔄 WiFi debounce timeout - sending final state: " + 
-                      (pendingWifiState ? "CONNECTED" : "DISCONNECTED"));
+                Log.d(TAG, "🔄 WiFi debounce timeout - sending final state: " +
+                        (pendingWifiState ? "CONNECTED" : "DISCONNECTED"));
                 lastWifiState = pendingWifiState;
                 communicationManager.sendWifiStatusOverBle(pendingWifiState);
             }
@@ -348,56 +355,14 @@ public class AsgClientService extends Service implements NetworkStateListener, B
 
         Log.d(TAG, "Received " + data.length + " bytes from Bluetooth");
 
-        // Check for ##...## protocol format
-        if (isK900ProtocolMessage(data)) {
-            handleK900ProtocolMessage(data);
-            return;
-        }
-
-        // Check for JSON message
-        if (data.length > 0 && data[0] == '{') {
-            try {
-                String jsonStr = new String(data, StandardCharsets.UTF_8);
-                JSONObject jsonObject = new JSONObject(jsonStr);
-                serviceContainer.getCommandProcessor().processJsonCommand(jsonObject);
-            } catch (Exception e) {
-                Log.e(TAG, "Error parsing JSON data", e);
-            }
-        }
+        // Delegate JSON parsing and processing to CommandProcessor
+        commandProcessor.processCommand(data);
     }
+
 
     // ---------------------------------------------
     // Helper Methods
     // ---------------------------------------------
-    private boolean isK900ProtocolMessage(byte[] data) {
-        return data.length > 4 && data[0] == 0x23 && data[1] == 0x23;
-    }
-
-    private void handleK900ProtocolMessage(byte[] data) {
-        // Look for end marker ($$)
-        int endMarkerPos = -1;
-        for (int i = 4; i < data.length - 1; i++) {
-            if (data[i] == 0x24 && data[i+1] == 0x24) {
-                endMarkerPos = i;
-                break;
-            }
-        }
-
-        if (endMarkerPos > 0) {
-            int payloadStart = 5;
-            int payloadLength = endMarkerPos - payloadStart;
-
-            if (payloadLength > 0 && data[payloadStart] == '{') {
-                try {
-                    String jsonStr = new String(data, payloadStart, payloadLength, "UTF-8");
-                    JSONObject jsonObject = new JSONObject(jsonStr);
-                    serviceContainer.getCommandProcessor().processJsonCommand(jsonObject);
-                } catch (Exception e) {
-                    Log.e(TAG, "Error parsing JSON from K900 protocol", e);
-                }
-            }
-        }
-    }
 
     private void onWifiConnected() {
         Log.d(TAG, "Connected to WiFi network");
@@ -407,8 +372,8 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     }
 
     private void processMediaQueue() {
-        if (serviceContainer.getServiceManager().getMediaQueueManager() != null && 
-            !serviceContainer.getServiceManager().getMediaQueueManager().isQueueEmpty()) {
+        if (serviceContainer.getServiceManager().getMediaQueueManager() != null &&
+                !serviceContainer.getServiceManager().getMediaQueueManager().isQueueEmpty()) {
             Log.d(TAG, "WiFi connected - processing media upload queue");
             serviceContainer.getServiceManager().getMediaQueueManager().processQueue();
         }
@@ -437,8 +402,8 @@ public class AsgClientService extends Service implements NetworkStateListener, B
             versionInfo.put("android_version", android.os.Build.VERSION.RELEASE);
             versionInfo.put("ota_version_url", OtaConstants.VERSION_JSON_URL);
 
-            if (serviceContainer.getServiceManager().getBluetoothManager() != null && 
-                serviceContainer.getServiceManager().getBluetoothManager().isConnected()) {
+            if (serviceContainer.getServiceManager().getBluetoothManager() != null &&
+                    serviceContainer.getServiceManager().getBluetoothManager().isConnected()) {
                 serviceContainer.getServiceManager().getBluetoothManager().sendData(versionInfo.toString().getBytes(StandardCharsets.UTF_8));
                 Log.d(TAG, "✅ Sent version info to phone");
             }
@@ -522,7 +487,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                     serviceContainer.getServiceManager().getBluetoothManager().sendData(data);
                 }
             }
-            
+
             @Override
             public boolean sendFileViaBluetooth(String filePath) {
                 if (serviceContainer.getServiceManager().getBluetoothManager() != null) {
@@ -547,15 +512,15 @@ public class AsgClientService extends Service implements NetworkStateListener, B
             @Override
             public void onReceive(Context context, Intent intent) {
                 String action = intent.getAction();
-                if (ACTION_HEARTBEAT.equals(action) || 
-                    "com.augmentos.otaupdater.ACTION_HEARTBEAT".equals(action)) {
-                    
+                if (ACTION_HEARTBEAT.equals(action) ||
+                        "com.augmentos.otaupdater.ACTION_HEARTBEAT".equals(action)) {
+
                     Log.d(TAG, "💓 Heartbeat received - sending acknowledgment");
-                    
+
                     Intent ackIntent = new Intent(ACTION_HEARTBEAT_ACK);
                     ackIntent.setPackage("com.augmentos.otaupdater");
                     sendBroadcast(ackIntent);
-                    
+
                     Log.d(TAG, "✅ Heartbeat acknowledgment sent");
                 }
             }
@@ -563,9 +528,10 @@ public class AsgClientService extends Service implements NetworkStateListener, B
 
         IntentFilter heartbeatFilter = new IntentFilter();
         heartbeatFilter.addAction(ACTION_HEARTBEAT);
-        heartbeatFilter.addAction("com.augmentos.otaupdater.ACTION_HEARTBEAT");
+        heartbeatFilter.addAction(ACTION_OTA_HEARTBEAT);
+
         registerReceiver(heartbeatReceiver, heartbeatFilter);
-        
+
         Log.d(TAG, "📡 Heartbeat receiver registered");
     }
 
@@ -589,17 +555,21 @@ public class AsgClientService extends Service implements NetworkStateListener, B
             @Override
             public void onReceive(Context context, Intent intent) {
                 String action = intent.getAction();
-                if ("com.augmentos.otaupdater.ACTION_DOWNLOAD_PROGRESS".equals(action)) {
-                    handleDownloadProgress(intent);
-                } else if ("com.augmentos.otaupdater.ACTION_INSTALLATION_PROGRESS".equals(action)) {
-                    handleInstallationProgress(intent);
+
+                switch (Objects.requireNonNull(action)) {
+                    case ACTION_DOWNLOAD_PROGRESS:
+                        handleDownloadProgress(intent);
+                        break;
+                    case ACTION_INSTALLATION_PROGRESS:
+                        handleInstallationProgress(intent);
+                        break;
                 }
             }
         };
 
         IntentFilter otaFilter = new IntentFilter();
-        otaFilter.addAction("com.augmentos.otaupdater.ACTION_DOWNLOAD_PROGRESS");
-        otaFilter.addAction("com.augmentos.otaupdater.ACTION_INSTALLATION_PROGRESS");
+        otaFilter.addAction(ACTION_DOWNLOAD_PROGRESS);
+        otaFilter.addAction(ACTION_INSTALLATION_PROGRESS);
         registerReceiver(otaProgressReceiver, otaFilter);
     }
 
@@ -610,11 +580,11 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         long totalBytes = intent.getLongExtra("total_bytes", 0);
         String errorMessage = intent.getStringExtra("error_message");
         long timestamp = intent.getLongExtra("timestamp", System.currentTimeMillis());
-        
+
         Log.d(TAG, "📥 Handling download progress: " + status + " - " + progress + "%");
-        
-        if (serviceContainer.getCommandProcessor() != null) {
-            serviceContainer.getCommandProcessor().sendDownloadProgressOverBle(status, progress, bytesDownloaded, totalBytes, errorMessage, timestamp);
+
+        if (commandProcessor != null) {
+            commandProcessor.sendDownloadProgressOverBle(status, progress, bytesDownloaded, totalBytes, errorMessage, timestamp);
         }
     }
 
@@ -623,11 +593,11 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         String apkPath = intent.getStringExtra("apk_path");
         String errorMessage = intent.getStringExtra("error_message");
         long timestamp = intent.getLongExtra("timestamp", System.currentTimeMillis());
-        
+
         Log.d(TAG, "🔧 Handling installation progress: " + status + " - " + apkPath);
-        
-        if (serviceContainer.getCommandProcessor() != null) {
-            serviceContainer.getCommandProcessor().sendInstallationProgressOverBle(status, apkPath, errorMessage, timestamp);
+
+        if (commandProcessor != null) {
+            commandProcessor.sendInstallationProgressOverBle(status, apkPath, errorMessage, timestamp);
         }
     }
 
@@ -641,8 +611,8 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         } else if (event instanceof StreamingEvent.Stopped) {
             Log.d(TAG, "RTMP streaming stopped");
         } else if (event instanceof StreamingEvent.Error) {
-            Log.e(TAG, "RTMP streaming error: " + 
-                  ((StreamingEvent.Error) event).getMessage());
+            Log.e(TAG, "RTMP streaming error: " +
+                    ((StreamingEvent.Error) event).getMessage());
         }
     }
 

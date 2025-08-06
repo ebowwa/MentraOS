@@ -1,10 +1,9 @@
-package com.augmentos.asg_client.service.media.handlers;
+package com.augmentos.asg_client.service.core.handlers;
 
 import android.content.Context;
 import android.util.Log;
 import com.augmentos.asg_client.io.media.core.MediaCaptureService;
 import com.augmentos.asg_client.io.file.core.FileManager;
-import com.augmentos.asg_client.service.legacy.interfaces.ICommandHandler;
 import com.augmentos.asg_client.service.legacy.managers.AsgClientServiceManager;
 import com.augmentos.asg_client.service.media.interfaces.IStreamingManager;
 

@@ -1,4 +1,4 @@
-package com.augmentos.asg_client.service.legacy.handlers;
+package com.augmentos.asg_client.service.core.handlers;
 
 import android.util.Log;
 import com.augmentos.asg_client.io.media.core.MediaCaptureService;

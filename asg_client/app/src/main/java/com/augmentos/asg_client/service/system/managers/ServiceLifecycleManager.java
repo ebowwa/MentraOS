@@ -9,7 +9,7 @@ import android.util.Log;
 
 import com.augmentos.asg_client.SysControl;
 import com.augmentos.asg_client.io.ota.services.OtaService;
-import com.augmentos.asg_client.service.core.CommandProcessor;
+import com.augmentos.asg_client.service.core.processors.CommandProcessor;
 import com.augmentos.asg_client.service.legacy.managers.AsgClientServiceManager;
 import com.augmentos.asg_client.service.system.interfaces.IServiceLifecycle;
 

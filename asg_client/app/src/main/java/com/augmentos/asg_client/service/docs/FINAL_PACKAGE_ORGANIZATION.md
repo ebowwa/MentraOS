@@ -130,16 +130,15 @@ service/
 ## 🔧 **Implementation Benefits**
 
 ### **1. Simplified Imports**
+
 ```java
 // Before (scattered)
+
 import com.augmentos.asg_client.service.interfaces.ICommunicationManager;
 import com.augmentos.asg_client.service.managers.CommunicationManager;
 import com.augmentos.asg_client.service.handlers.PhoneReadyCommandHandler;
 
 // After (cohesive)
-import com.augmentos.asg_client.service.communication.interfaces.ICommunicationManager;
-import com.augmentos.asg_client.service.communication.managers.CommunicationManager;
-import com.augmentos.asg_client.service.communication.handlers.PhoneReadyCommandHandler;
 ```
 
 ### **2. Easy Feature Development**
