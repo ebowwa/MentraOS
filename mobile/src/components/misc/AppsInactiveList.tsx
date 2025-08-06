@@ -203,6 +203,13 @@ export default function InactiveAppList({
       return
     }
 
+    if (appToStart.healthStatus !== "online") {
+      showAlert(translate("errors:appNotOnlineTitle"), translate("errors:appNotOnlineMessage"), [
+        {text: translate("common:ok")},
+      ])
+      return
+    }
+
     // check perms:
     const neededPermissions = await checkPermissionsUI(appToStart)
     if (neededPermissions.length > 0) {
