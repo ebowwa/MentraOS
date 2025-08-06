@@ -265,6 +265,64 @@ export function startUptimeScheduler(): void {
 }
 
 /**
+ * Collect all app health status
+ */
+
+export async function collectAllAppBatchStatus(month: string, year: number) {
+    try {
+        logger.debug(`Collecting app batch status for month: ${month}, year: ${year}`);
+
+        let monthNumber: number;
+
+        // Parse month - support numbers (1-12) or month names
+        if (!isNaN(Number(month))) {
+            // It's a number (1-12)
+            monthNumber = parseInt(month);
+            if (monthNumber < 1 || monthNumber > 12) {
+                throw new Error(`Month number must be between 1-12, got: ${month}`);
+            }
+        } else {
+            // Month name
+            const monthLower = month.toLowerCase();
+            const monthNames = ['january', 'february', 'march', 'april', 'may', 'june', 
+                               'july', 'august', 'september', 'october', 'november', 'december'];
+            
+            if (monthNames.includes(monthLower)) {
+                monthNumber = monthNames.indexOf(monthLower) + 1;
+            } else {
+                throw new Error(`Invalid month format: ${month}. Use number (1-12) or month name.`);
+            }
+        }
+
+        // Create date range for the month
+        const startDate = new Date(year, monthNumber - 1, 1);
+        const endDate = new Date(year, monthNumber, 0, 23, 59, 59, 999);
+
+        const allUptimeData = await AppUptime.find({
+            timestamp: {
+                $gte: startDate,
+                $lte: endDate
+            }
+        }).lean();
+
+        logger.debug(`Found ${allUptimeData.length} uptime records for month ${monthNumber}/${year}`);
+        
+        return {
+            success: true,
+            count: allUptimeData.length,
+            month: month,
+            monthNumber: monthNumber,
+            year: year,
+            dateRange: { start: startDate, end: endDate },
+            data: allUptimeData
+        };
+    } catch (error) {
+        logger.error("Error collecting all app batch status:", error);
+        throw error;
+    }
+}
+
+/**
  * Stop the uptime monitoring scheduler
  */
 export function stopUptimeScheduler(): void {

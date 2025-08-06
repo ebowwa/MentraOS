@@ -12,7 +12,7 @@ import { fetchSubmittedAppHealthStatus } from '../services/core/app-uptime.servi
 const router = Router();
 
 // Start the uptime scheduler when the routes are loaded
-// AppUptimeService.startUptimeScheduler();
+AppUptimeService.startUptimeScheduler();
 logger.info("🔄 App uptime monitoring scheduler started automatically");
 
 /**
@@ -239,6 +239,21 @@ router.get('/status', async (req: Request, res: Response) => {
       error: true,
       message: error instanceof Error ? error.message : 'Unknown error occurred',
       timestamp: new Date()
+    });
+  }
+});
+
+router.get('/get-app-uptime-days', async (req: Request, res: Response) => {
+  const month = req.query.month as string;
+  const year = parseInt(req.query.year as string);
+  try {
+    const result = await AppUptimeService.collectAllAppBatchStatus(month, year);
+    res.json(result);
+  } catch(error) {
+    logger.error('Error fetching app uptime days:', error);
+    res.status(500).json({
+      error: true,
+      message: error instanceof Error ? error.message : 'Unknown error occurred'
     });
   }
 });

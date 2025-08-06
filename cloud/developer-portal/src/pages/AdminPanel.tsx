@@ -36,6 +36,13 @@ interface AdminStat {
 
 // Admin user interface removed
 
+interface AppBatchItem {
+  packageName: string;
+  timestamp: string;
+  health: string;
+  onlineStatus: boolean;
+}
+
 interface AppDetail {
   _id: string;
   packageName: string;
@@ -76,6 +83,8 @@ const AdminPanel: React.FC = () => {
   });
   const [submittedApps, setSubmittedApps] = useState<any[]>([]);
   const [submittedAppsStatus, setSubmittedAppsStatus] = useState<any[]>([]);
+  const [collectedAllAppBatchStatus, setCollectedAllAppBatchStatus] = useState<AppBatchItem[]>([]);
+
 
   /* Admin management removed */
   const [selectedApp, setSelectedApp] = useState<AppDetail | null>(null);
@@ -112,6 +121,13 @@ const AdminPanel: React.FC = () => {
 
   }, []);
 
+  useEffect(() => {
+    const fetchData = async () => {
+      await fetchCollectedAllAppBatchStatus(monthNumberDynamic, yearNumber);
+    };
+    fetchData();
+  }, [monthNumberDynamic, yearNumber]);
+
   const fetchAppStatus = async () => {
       try {
         setStatusLoading(true);
@@ -133,6 +149,62 @@ const AdminPanel: React.FC = () => {
         setStatusLoading(false);
       }
     };
+
+  const fetchCollectedAllAppBatchStatus = async (month : number, year: number) => {
+    const adjustedMonth = month + 1; // Adjust month to 1-indexed for API
+    try {
+      setStatusLoading(true);
+      console.log('📡 Fetching collected app batch status for month:', month, 'year:', year);
+      const res = await axios.get(`/api/app-uptime/get-app-uptime-days?month=${adjustedMonth}&year=${year}`, {
+        headers: { 'Content-Type': 'application/json' }
+      });
+      // console.log('Status response testing?ggs:', res.data);
+      
+      if (res.data.data) {
+        console.log('Setting collected app batch status:', res.data.data);
+        
+        // Transform data into nested structure grouped by packageName and date
+        const groupedData = res.data.data.reduce((acc, entry) => {
+          const packageName = entry.packageName;
+          const dateKey = new Date(entry.timestamp).toISOString().split('T')[0]; // YYYY-MM-DD format
+          
+          // Initialize package group if it doesn't exist
+          if (!acc[packageName]) {
+            acc[packageName] = {};
+          }
+          
+          // Initialize date array if it doesn't exist
+          if (!acc[packageName][dateKey]) {
+            acc[packageName][dateKey] = [];
+          }
+          
+          // Add entry to the appropriate date array
+          acc[packageName][dateKey].push(entry);
+          
+          return acc;
+        }, {});
+        
+        // Sort entries within each date array by timestamp (newest first)
+        Object.keys(groupedData).forEach(packageName => {
+          Object.keys(groupedData[packageName]).forEach(date => {
+            groupedData[packageName][date].sort((a, b) => 
+              new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+            );
+          });
+        });
+        
+        setCollectedAllAppBatchStatus({...res.data, data: groupedData});
+        console.log('Grouped collected app batch status:', groupedData);
+      }
+      
+      // Set the last update time
+      setLastUpdateTime(new Date());
+    } catch (error) {
+      console.error('Error fetching app status:', error);
+    } finally {
+      setStatusLoading(false);
+    }
+  };
 
 
   // Load admin data when component mounts
@@ -564,7 +636,6 @@ const AdminPanel: React.FC = () => {
                           </div>
                         </div>
                         <div className="flex gap-2">
-                          <StatusBadge status={submittedAppsStatus.find(statusApp => statusApp.packageName === app.packageName)?.healthStatus || "unknown"} />
                           <Button size="sm" onClick={() => openAppReview(app.packageName)}>
                             Review
                           </Button>
@@ -613,7 +684,6 @@ const AdminPanel: React.FC = () => {
                             </div>
                           </div>
                           <div className="flex gap-2">
-                            <StatusBadge status={submittedAppsStatus.find(statusApp => statusApp.packageName === app.packageName)?.healthStatus || app.appHealthStatus || "unknown"} />
                             <Button size="sm" onClick={() => openAppReview(app.packageName)}>
                               Review
                             </Button>
@@ -708,8 +778,13 @@ const AdminPanel: React.FC = () => {
                                 <div className="text-xs text-gray-400">Submitted: {formatDate(app.updatedAt)}</div>
                               </div>
                             </div>
-                            <UptimeStatus title="Chat" uptimePercentage={100} month={monthNumberDynamic} year={yearNumber} appHealthStatus={submittedAppsStatus.find(statusApp => statusApp.packageName === app.packageName)?.healthStatus || app.appHealthStatus || "unknown"} />
-
+                            <UptimeStatus title="Chat" 
+                              uptimePercentage={100} 
+                              month={monthNumberDynamic} 
+                              year={yearNumber} 
+                              appHealthStatus={submittedAppsStatus.find(statusApp => statusApp.packageName === app.packageName)?.healthStatus || app.appHealthStatus || "unknown"}
+                              appItems={getAppBatchStatusByPackageName(collectedAllAppBatchStatus, app.packageName)}
+                              />
                           </div>
                         ))}
                       </div>
@@ -916,3 +991,33 @@ const AdminPanel: React.FC = () => {
 };
 
 export default AdminPanel;
+
+
+
+// ...existing code...
+
+const getAppBatchStatusByPackageName = (collectedData: any, packageName: string): AppBatchItem[] => {
+  // Check if collectedData exists and has the data object
+  if (!collectedData || !collectedData.data || typeof collectedData.data !== 'object') {
+    console.log('Invalid collectedData structure:', collectedData);
+    return [];
+  }
+
+  // Get the package data from the nested structure
+  const packageData = collectedData.data[packageName];
+  if (!packageData) {
+    console.log(`No data found for package: ${packageName}`);
+    return [];
+  }
+
+  // Flatten all entries from all dates for this package
+  const allEntries: AppBatchItem[] = [];
+  Object.values(packageData).forEach((dateEntries: any) => {
+    if (Array.isArray(dateEntries)) {
+      allEntries.push(...dateEntries);
+    }
+  });
+
+  return allEntries;
+};
+// ...existing code...
