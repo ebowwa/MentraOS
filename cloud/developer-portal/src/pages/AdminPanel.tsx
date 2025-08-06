@@ -145,8 +145,11 @@ const AdminPanel: React.FC = () => {
 
   // Polling for app status updates
   useEffect(() => {
+    const fetchData = async () => {
       // Fetch immediately
-    fetchAppStatus();
+      await fetchAppStatus();
+    };
+    fetchData();
   }, []);
 
   // When the current month and year are set
@@ -160,11 +163,9 @@ const AdminPanel: React.FC = () => {
   const fetchAppStatus = async () => {
       try {
         setStatusLoading(true);
-        console.log('📡 Fetching app status from /status endpoint');
         const res = await axios.get('/api/app-uptime/status', {
           headers: { 'Content-Type': 'application/json' }
         });
-        console.log('Status response:', res.data);
         
         if (res.data.apps) {
           setSubmittedAppsStatus(res.data.apps);
@@ -184,14 +185,12 @@ const AdminPanel: React.FC = () => {
     const adjustedMonth = month + 1; // Adjust month to 1-indexed for API
     try {
       setStatusLoading(true);
-      console.log('📡 Fetching collected app batch status for month:', month, 'year:', year);
       const res = await axios.get(`/api/app-uptime/get-app-uptime-days?month=${adjustedMonth}&year=${year}`, {
         headers: { 'Content-Type': 'application/json' }
       });
       // console.log('Status response testing?ggs:', res.data);
       
       if (res.data.data) {
-        console.log('Setting collected app batch status:', res.data.data);
         
         // Transform data into nested structure grouped by packageName and date
         const groupedData = res.data.data.reduce((acc: Record<string, Record<string, any[]>>, entry: any) => {
@@ -224,7 +223,6 @@ const AdminPanel: React.FC = () => {
         });
         
         setCollectedAllAppBatchStatus({...res.data, data: groupedData});
-        console.log('Grouped collected app batch status:', groupedData);
       }
       
       // Set the last update time
@@ -263,15 +261,7 @@ const AdminPanel: React.FC = () => {
     fetchData();
   }, []);
 
-  // Log when submittedApps state actually updates
-  useEffect(() => {
-    console.log('Updated apps with health status:', submittedApps);
-  }, [submittedApps]);
 
-  // Log when submittedAppsStatus state updates
-  useEffect(() => {
-    console.log('🔄 submittedAppsStatus state updated:', submittedAppsStatus);
-  }, [submittedAppsStatus]);
 
   // Check if user is admin and load data TODO may have to look it over with Issiah Claude was helping me here
   const loadAdminData = async () => {
@@ -308,7 +298,6 @@ const AdminPanel: React.FC = () => {
 
       // Always update with real data, even if empty
       if (statsData) {
-        console.log('Setting real stats data:', statsData);
         // Add health status to recent submissions if they exist
         if (statsData.recentSubmissions && statsData.recentSubmissions.length > 0) {
           const recentWithHealth = await addAppHealthStatus(statsData.recentSubmissions);
@@ -323,7 +312,6 @@ const AdminPanel: React.FC = () => {
         // If stats failed but we have app data, create a minimal stats object
         if (appsData) {
           const submittedCount = appsData.length;
-          console.log('Creating minimal stats from app data, submitted count:', submittedCount);
           const recentWithHealth = await addAppHealthStatus(appsData.slice(0, 3));
           setStats({
             counts: {
@@ -370,28 +358,28 @@ const AdminPanel: React.FC = () => {
           const healthData = res.data.data;
           
           if (healthData && healthData.status === "healthy") {
-            console.log(`✅ ${healthData.app || cloudApp.name} is healthy`);
+            // console.log(`✅ ${healthData.app || cloudApp.name} is healthy`);
             updatedApps[i] = { ...cloudApp, appHealthStatus: "healthy" };
           } else {
-            console.log(`❌ ${cloudApp.name} responded but not healthy`);
+            // console.log(`❌ ${cloudApp.name} responded but not healthy`);
             updatedApps[i] = { ...cloudApp, appHealthStatus: "unhealthy" };
           }
         } else {
-          console.warn(`Skipping ${publicUrl} - Not reachable`);
+          // console.warn(`Skipping ${publicUrl} - Not reachable`);
           updatedApps[i] = { ...cloudApp, appHealthStatus: "unreachable" };
         }
 
       } catch (error) {
         if (axios.isAxiosError(error)) {
           if (error.code === 'ECONNABORTED') {
-            console.warn(`Skipping ${publicUrl} - Request timeout`);
+            // console.warn(`Skipping ${publicUrl} - Request timeout`);
             updatedApps[i] = { ...cloudApp, appHealthStatus: "timeout" };
           } else {
-            console.warn(`Skipping ${publicUrl} - Network error:`, error.message);
+            // console.warn(`Skipping ${publicUrl} - Network error:`, error.message);
             updatedApps[i] = { ...cloudApp, appHealthStatus: "error" };
           }
         } else {
-          console.warn(`Skipping ${publicUrl} - Unknown error:`, error);
+          // console.warn(`Skipping ${publicUrl} - Unknown error:`, error);
           updatedApps[i] = { ...cloudApp, appHealthStatus: "error" };
         }
         continue;
@@ -406,7 +394,6 @@ const AdminPanel: React.FC = () => {
   const openAppReview = async (packageName: string) => {
     try {
       const appData = await api.admin.getAppDetail(packageName);
-      console.log('App details loaded:', appData);
       setSelectedApp(appData);
       setReviewNotes('');
       setOpenReviewDialog(true);
@@ -530,7 +517,6 @@ const AdminPanel: React.FC = () => {
   const getAppBatchStatusByPackageName = (collectedData: any, packageName: string): AppBatchItem[] => {
     // Check if collectedData exists and has the data object
     if (!collectedData || !collectedData.data || typeof collectedData.data !== 'object') {
-      console.log('Invalid collectedData structure:', collectedData);
       return [];
     }
 
@@ -816,8 +802,10 @@ const AdminPanel: React.FC = () => {
                           </div>
                           <Button 
                             className='w-30' 
-                            onClick={() => {
-                              fetchAppStatus();
+                            onClick={async () => {
+                              await fetchAppStatus();
+                              await fetchCollectedAllAppBatchStatus(monthNumberDynamic, yearNumber);
+
                             }}
                             disabled={statusLoading}
                           >
@@ -903,7 +891,7 @@ const AdminPanel: React.FC = () => {
               );
               
               const healthStatus = statusApp?.healthStatus || selectedApp.appHealthStatus || "unknown";
-              console.log(`Selected app health status: ${healthStatus}`);
+              // console.log(`Selected app health status: ${healthStatus}`);
               // Map health status to Online/Offline
               const getOnlineStatus = (health: string): 'Online' | 'Offline' => {
                 switch (health.toLowerCase()) {

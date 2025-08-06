@@ -12,44 +12,13 @@ interface AppUptimeI {
     severity: string; 
     appHealthStatus: string;
 } 
-// Issiah's Section ________________________________________________________________
 
 const logger = rootLogger.child({ service: 'app-uptime.service' }); // Create a specialized logger for this service to help with debugging
 const ONE_MINUTE_MS = 60000;
-
-
 let uptimeScheduler: NodeJS.Timeout | null = null;  // Store interval reference for cleanup
 
-// well make a new appupptime and send it to the mongo database
-export async function recordAppUptime(packageName: string): Promise<void> {
-    const appUptime = await AppUptime.create({
-        packageName: "com.mentra.merge",  // Hardcoded for testing
-        timestamp: Date.now()             // Current timestamp
-    });
-
-    await appUptime.save();
-}
-// example by issiah well keep this for future reference
-export async function startAppUptimeCheck() {
-    logger.debug("Starting app uptime check...");
-}
-
-export async function createAppUptimeData(packageName: string): Promise<void> {
-    const appUptime = new AppUptime({
-        packageName,
-        timestamp: new Date(),
-    });
-    await appUptime.save();
-}
-
-export async function getAppHealth(packageName: string) {
-    const healthData = await AppUptime.find({ packageName });
-    return healthData;
-}
-// ____________________________________________________________
 
 
-// Aryan's Section ____________________________________________________________
 //return their current health status.
 export async function fetchSubmittedAppHealthStatus() {
     console.log('🔍 Fetching submitted apps with health status...');
@@ -266,9 +235,7 @@ export async function collectAllAppBatchStatus(month: string, year: number) {
     }
 }
 
-/**
- * Stop the uptime monitoring scheduler
- */
+// Stops the uptime scheduler if it is running, clearing the interval and setting the reference to null.
 export function stopUptimeScheduler(): void {
     if (uptimeScheduler) {
         clearInterval(uptimeScheduler);

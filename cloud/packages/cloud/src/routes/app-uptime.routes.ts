@@ -14,65 +14,7 @@ const router = Router();
 // AppUptimeService.startUptimeScheduler(); 
 logger.info("🔄 App uptime monitoring scheduler started automatically");
 
-// Endpoint to start the uptime check process TESTING PURPOSES
-const startUptimeCheck = async (req: Request, res: Response) => {
-  try {
-    // Call the service function that contains the business logic
-    await AppUptimeService.startAppUptimeCheck()
-    
-    // Send success response back to the client
-    res.send({
-      message: "cool"
-    });
-  } catch (error) {
-    // If something goes wrong, log the error and send error response
-    logger.error('Error starting uptime check:', error);
-    res.status(500).json({
-      error: true,
-      message: error instanceof Error ? error.message : 'Unknown error occurred'
-    });
-  }
-};
-
-// Endpoint to start recording app uptime TESTING PURPOSES
-const startRecordAppUptime = async (req: Request, res: Response) => {
-  try {
-    // Call the service function that contains the business logic
-    await AppUptimeService.recordAppUptime("test.package.name");
-
-    // Send success response back to the client
-    res.send({
-      message: "created app uptime data successfully"
-    });
-  } catch (error) {
-    // If something goes wrong, log the error and send error response
-    logger.error('Error starting uptime check:', error);
-    res.status(500).json({
-      error: true,
-      message: error instanceof Error ? error.message : 'Unknown error occurred'
-    });
-  }
-};
-
-// Endpoint to create app uptime data TESTING PURPOSES
-const createAppUptimeData = async (req: Request, res: Response) => {
-  try {
-    await AppUptimeService.createAppUptimeData("test.package.name");
-
-    res.send({
-      message: "App uptime data created successfully"
-    });
-
-  } 
-  catch (error) {
-    logger.error('Error creating app uptime data:', error);
-    res.status(500).json({
-      error: true,
-      message: error instanceof Error ? error.message : 'Unknown error occurred'
-    });
-  }
-}
-
+// Endpoint to ping an app's health status
 async function pingAppHealth (req: Request, res: Response) {
   const url = req.query.url as string;
   if (!url) return res.status(400).send('Missing URL');
@@ -113,6 +55,7 @@ async function pingAppHealth (req: Request, res: Response) {
   }
 }
   
+// Endpoint to get the status of all apps
 async function appsStatus (req: Request, res: Response) {
   try {
     const healthStatus = await fetchSubmittedAppHealthStatus();
@@ -131,6 +74,7 @@ async function appsStatus (req: Request, res: Response) {
   }
 }
 
+// Endpoint to get app uptime days for a specific month and year
 async function getAppUptimeDays (req: Request, res: Response) {
   const month = req.query.month as string;
   const year = parseInt(req.query.year as string);
@@ -148,16 +92,14 @@ async function getAppUptimeDays (req: Request, res: Response) {
 }
 
 // Api Endpoints
-router.post('/start-uptimecheck', startUptimeCheck);
 
-router.post('/record-app-uptime', startRecordAppUptime);
-
-router.post('/create-app-uptime-data', createAppUptimeData);
-
+// Endpoint to ping an app's health status
 router.get('/ping', pingAppHealth);
 
+// Endpoint to get the status of all apps
 router.get('/status', appsStatus);
 
+// Endpoint to get app uptime days for a specific month and year
 router.get('/get-app-uptime-days', getAppUptimeDays);
 
   
