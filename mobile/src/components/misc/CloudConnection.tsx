@@ -71,16 +71,16 @@ export default function CloudConnection() {
     console.log("Cloud Connection Status:", status.core_info.cloud_connection_status)
     // if it changes to CONNECTED, fade out the cloud connection status
     if (status.core_info.cloud_connection_status === "CONNECTED") {
-      cloudConnectionStatusAnim.value = withTiming(0, {duration: 1000})
+      cloudConnectionStatusAnim.value = withTiming(0, {duration: 500})
       setTimeout(() => {
         setHideCloudConnection(true)
-      }, 1000)
+      }, 500)
       return
     } else {
       setHideCloudConnection(false)
     }
     // fade in the cloud connection status
-    cloudConnectionStatusAnim.value = withTiming(1, {duration: 1000})
+    cloudConnectionStatusAnim.value = withTiming(1, {duration: 500})
   }, [status.core_info.cloud_connection_status])
 
   // if (status.core_info.cloud_connection_status === "CONNECTED") {
@@ -108,11 +108,9 @@ export default function CloudConnection() {
 }
 
 const $animatedContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
-  // zIndex: 999,
-  // position: "absolute",
-  // top: 0,
-  // left: 0,
-  // right: 0,
+  zIndex: 999,
+  marginTop: -56,
+  marginBottom: 8,
 })
 
 const $outerContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
@@ -123,7 +121,8 @@ const $innerContainer: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   backgroundColor: colors.background,
   borderRadius: spacing.md,
   elevation: 1,
-  padding: spacing.sm,
+  paddingHorizontal: spacing.md,
+  paddingVertical: spacing.xs,
   margin: spacing.xxs,
 })
 
