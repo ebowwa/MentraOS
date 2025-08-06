@@ -124,119 +124,16 @@ const AppDetailView: React.FC<AppDetailViewProps> = ({  app, startUptimeMonth, s
   return (
   <div className="  flex   p-4 font-sans">
     <div className="w-full max-w-4xl">
-    <Card className="app-container">
-    <style>{`
-      .app-container {
-        padding: 2rem;
-        background: white;
-        color: black;
-        font-family: sans-serif;
-      }
+    <Card className="p-8 bg-white text-black font-sans">
 
-      .section-title {
-        font-size: 1.875rem;
-        font-weight: bold;
-      }
-
-      .status-note {
-        font-size: 0.875rem;
-        color: #6b7280;
-      }
-
-      .status-card {
-        padding: 1.5rem;
-        border-radius: 1rem;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-      }
-
-      .status-card h2 {
-        font-size: 1.5rem;
-        font-weight: bold;
-        margin: 0;
-      }
-
-      .uptime-chart {
-        display: flex;
-        gap: 2px;
-        margin-top: 1rem;
-      }
-
-      .uptime-bar {
-        flex-grow: 1;
-        height: 3rem;
-        border-radius: 4px;
-      }
-
-      .bar-up {
-        background: black;
-      }
-
-      .bar-down {
-        background: #d1d5db;
-      }
-
-      .uptime-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-        gap: 1rem;
-        margin-top: 1rem;
-      }
-
-      .uptime-box {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        background: white;
-        padding: 1rem;
-        border-radius: 0.5rem;
-      }
-
-      .uptime-box span:first-child {
-        font-size: 1.5rem;
-        font-weight: bold;
-      }
-
-      .uptime-box span:last-child {
-        font-size: 0.875rem;
-        color: #6b7280;
-      }
-
-      .event-section {
-        padding: 1.5rem;
-        border-radius: 1rem;
-      }
-
-      .event-entry {
-        display: flex;
-        gap: 1rem;
-        margin-bottom: 1.5rem;
-      }
-
-      .event-details p {
-        margin: 0.25rem 0;
-        font-size: 0.875rem;
-        color: #4b5563;
-      }
-
-      .event-details p:first-child {
-        font-weight: 500;
-        color: black;
-      }
-
-
-    `}</style>
-
-    <div style={{display:"flex", flexDirection:"row", alignItems:"center"}}>
-      <div style={{ display: 'flex', flexDirection: 'column' , flex: 1}}>
-        <div className="section-title">Service Status {app.status}</div>
-        <div className="status-note">Last updated 1 minute ago. Next update in 15 sec.</div>
+    <div className="flex flex-row items-center">
+      <div className="flex flex-col flex-1">
+        <div className="text-3xl font-bold">Service Status {app.status}</div>
+        <div className="text-sm text-gray-500">Last updated 1 minute ago. Next update in 15 sec.</div>
       </div>
       {onRefresh && (
         <Button 
-          style={{width: "100px"}} 
+          className="w-[100px]" 
           onClick={onRefresh}
           disabled={isRefreshing}
         >
@@ -252,25 +149,25 @@ const AppDetailView: React.FC<AppDetailViewProps> = ({  app, startUptimeMonth, s
       )}
     </div>
 
-    <div className="status-card">
+    <div className="p-6 rounded-2xl shadow-sm flex items-center gap-4">
       <div>
         <img src={app.logo} alt={`${app.name} logo`} className="w-25 h-25 rounded-[15px]" />
       </div>
-      <div style={{flex: 1}}>
-        <h2>{app.name}</h2>
-        <p className="status-note">Submitted on {app.submitted}</p>
-        <p className="status-note">{app.packageName || 'N/A'}</p>
+      <div className="flex-1">
+        <h2 className="text-2xl font-bold m-0">{app.name}</h2>
+        <p className="text-sm text-gray-500">Submitted on {app.submitted}</p>
+        <p className="text-sm text-gray-500">{app.packageName || 'N/A'}</p>
 
       </div>
-      <div style={{display: 'flex', flexDirection: 'row', gap: '1.0rem', justifyContent: "center", alignItems:"center"}}>
+      <div className="flex flex-row gap-4 justify-center items-center">
         {app.status.toLowerCase() === 'online' ? (
           <CheckCircle size={48} color='green'/>
         ) : (
           <XCircle size={48} color='red'/>
         )}
         <div>
-          <h2>{app.status.toLowerCase() === 'online' ? 'All systems operational' : 'System experiencing issues'}</h2>
-          <p className="status-note">
+          <h2 className="text-2xl font-bold m-0">{app.status.toLowerCase() === 'online' ? 'All systems operational' : 'System experiencing issues'}</h2>
+          <p className="text-sm text-gray-500">
             {app.status.toLowerCase() === 'online' 
               ? `` 
               : `Current status: ${app.status} - Check events below`}
@@ -284,8 +181,8 @@ const AppDetailView: React.FC<AppDetailViewProps> = ({  app, startUptimeMonth, s
     <AppUptimeChart startUptimeMonth={startUptimeMonth} startUptimeYear={startUptimeYear} appItems={appItems} onDaySelection={handleDaySelection} />
 
     {(app.details.events.length > 0 || dayFilterState.selectedDayItems.length > 0) && (
-      <div className="event-section">
-        <h3 className="section-title">
+      <div className="p-6 rounded-2xl">
+        <h3 className="text-3xl font-bold">
           Problems
           {dayFilterState.selectedDay && (
             <span className="text-sm font-normal text-gray-600 ml-2">
@@ -299,30 +196,30 @@ const AppDetailView: React.FC<AppDetailViewProps> = ({  app, startUptimeMonth, s
           dayFilterState.selectedDayItems
             .filter(item => item.health !== 'healthy' && !item.onlineStatus)
             .map((item, index) => (
-              <div key={index} className="event-entry">
+              <div key={index} className="flex gap-4 mb-6">
                 <AlertCircle size={20} className="icon" />
-                <div className="event-details">
-                  <p>{item.packageName} - Unhealthy Status</p>
-                  <p>{new Date(item.timestamp).toLocaleString()}</p>
-                  <p><strong>Health:</strong> {item.health}</p>
-                  <p><strong>Online Status:</strong> {item.onlineStatus ? 'Online' : 'Offline'}</p>
+                <div className="space-y-1">
+                  <p className="font-medium text-black">{item.packageName} - Unhealthy Status</p>
+                  <p className="text-sm text-gray-600">{new Date(item.timestamp).toLocaleString()}</p>
+                  <p className="text-sm text-gray-600"><strong>Health:</strong> {item.health}</p>
+                  <p className="text-sm text-gray-600"><strong>Online Status:</strong> {item.onlineStatus ? 'Online' : 'Offline'}</p>
                 </div>
               </div>
             ))
         ) : dayFilterState.selectedDay && dayFilterState.selectedDayItems.length === 0 ? (
-          <div className="event-entry">
+          <div className="flex gap-4 mb-6">
             <div className="w-5 h-5 bg-gray-300 rounded-full flex items-center justify-center">
               <span className="text-xs text-gray-600">✓</span>
             </div>
-            <div className="event-details">
-              <p>No issues found for this day</p>
-              <p>All systems were operational</p>
+            <div className="space-y-1">
+              <p className="font-medium text-black">No issues found for this day</p>
+              <p className="text-sm text-gray-600">All systems were operational</p>
             </div>
           </div>
         ) : (
           // Show general app events when no day is selected
           app.details.events.map((event, index) => (
-            <div key={index} className="event-entry">
+            <div key={index} className="flex gap-4 mb-6">
               {/* <AlertCircle size={20} className="icon" />
               <div className="event-details">
                 <p>{app.name} was down for {event.duration} minutes</p>
@@ -421,7 +318,7 @@ const AppUptimeChart: React.FC<AppUptimeChartProps> = ({ startUptimeMonth, start
   const uptimePercentage = calculateUptimePercentage();
 
   return (
-    <div style={{borderRadius: "0.5rem", marginTop: "1.5rem", padding: "1rem"}}>
+    <div className="rounded-lg mt-6 p-4">
       <div className="flex flex-row items-center justify-between relative mb-4">
         <div className="text-[22px] font-bold ">{monthName} {year}</div>
         <div>
@@ -452,7 +349,7 @@ const AppUptimeChart: React.FC<AppUptimeChartProps> = ({ startUptimeMonth, start
         </div>
         
       </div>
-      <div style={{display:"flex", flexDirection:"row", gap: "2px", justifyContent: "space-between", alignItems: "center"}}>
+      <div className="flex flex-row gap-0.5 justify-between items-center">
         <UptimeStreakBar 
           appItems={appItems} 
           dayCount={daysInMonth} 
@@ -466,7 +363,7 @@ const AppUptimeChart: React.FC<AppUptimeChartProps> = ({ startUptimeMonth, start
           selectedDay={selectedDay}
           onDayClick={handleDayClick}
         />
-        <div style={{fontSize: "1.00rem", fontWeight: "bold", marginLeft: "1rem", color:"grey"}}>
+        <div className="text-base font-bold ml-4 text-gray-500">
           <DatePicker 
             className='w-42 bg-gray-50 h-10.5 rounded-[7px] text-black'
             startUptimeMonth={startUptimeMonth} 
