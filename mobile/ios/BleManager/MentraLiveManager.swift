@@ -1348,6 +1348,20 @@ typealias JSONObject = [String: Any]
         }
 
         switch command {
+        case "sr_hrt":
+            if let bodyObj = json["B"] as? [String: Any] {
+                let ready = bodyObj["ready"] as? Int ?? 0
+                if ready == 1 {
+                    CoreCommsService.log("K900 SOC ready")
+                    let readyMsg: [String: Any] = [
+                        "type": "phone_ready",
+                        "timestamp": Int64(Date().timeIntervalSince1970 * 1000),
+                    ]
+                    // Send it through our data channel
+                    sendJson(readyMsg, wakeUp: true)
+                }
+            }
+
         case "sr_batv":
             if let body = json["B"] as? [String: Any],
                let voltage = body["vt"] as? Int,
@@ -1862,15 +1876,36 @@ typealias JSONObject = [String: Any]
             self.readinessCheckCounter += 1
             CoreCommsService.log("🔄 Readiness check #\(self.readinessCheckCounter): waiting for glasses SOC to boot")
 
-            let json: [String: Any] = [
-                "type": "phone_ready",
-                "timestamp": Int64(Date().timeIntervalSince1970 * 1000),
-            ]
-
-            self.sendJson(json, wakeUp: true)
+            // let json: [String: Any] = [
+            //     "type": "phone_ready",
+            //     "timestamp": Int64(Date().timeIntervalSince1970 * 1000),
+            // ]
+            // self.sendJson(json, wakeUp: true)
+            requestReadyK900()
         }
 
         readinessCheckDispatchTimer!.resume()
+    }
+
+    private func requestReadyK900() {
+        let cmdObject: [String: Any] = [
+            "C": "cs_hrt", // Video command
+            "B": "", // Add the body
+        ]
+
+        do {
+            let jsonData = try JSONSerialization.data(withJSONObject: cmdObject)
+            if let jsonStr = String(data: jsonData, encoding: .utf8) {
+                CoreCommsService.log("Sending hrt command: \(jsonStr)")
+
+                if let packedData = packDataToK900(jsonData, cmdType: K900ProtocolUtils.CMD_TYPE_STRING) {
+                    queueSend(packedData, id: String(globalMessageId))
+                    globalMessageId += 1
+                }
+            }
+        } catch {
+            CoreCommsService.log("Error creating video command: \(error)")
+        }
     }
 
     private func stopReadinessCheckLoop() {
