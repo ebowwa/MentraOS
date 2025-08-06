@@ -72,7 +72,6 @@ class ServerComms {
     private var _navigationManager: NavigationManager?
     var navigationManager: NavigationManager {
         if _navigationManager == nil {
-            CoreCommsService.log("🧭 ServerComms: Creating NavigationManager for the first time")
             _navigationManager = NavigationManager()
         }
         return _navigationManager!
@@ -583,10 +582,7 @@ class ServerComms {
     private func handleIncomingMessage(_ msg: [String: Any]) {
         guard let type = msg["type"] as? String else { return }
 
-        // Debug: Log all navigation-related messages
-        if type.contains("navigation") {
-            CoreCommsService.log("🧭 ServerComms: Received navigation-related message: \(type) - Full message: \(msg)")
-        }
+        // CoreCommsService.log("Received message of type: \(type)")
 
         switch type {
         case "connection_ack":

@@ -53,7 +53,7 @@ class NavigationService {
       destination, 
       mode,
       requestId: commandRequestId 
-    }, "🧭 Handling start navigation request from app");
+    }, "Handling start navigation request from app");
 
     // track this command
     this.pendingCommands.set(commandRequestId, userSession.sessionId);
@@ -67,16 +67,7 @@ class NavigationService {
     });
 
     // send command to mobile device
-    logger.info({ 
-      userId, 
-      websocketReady: userSession.websocket ? userSession.websocket.readyState === WebSocket.OPEN : false,
-      websocketExists: !!userSession.websocket,
-      destination,
-      mode: mode || "driving"
-    }, "🧭 About to send navigation command to iOS device");
-
     if (userSession.websocket && userSession.websocket.readyState === WebSocket.OPEN) {
-      logger.info({ userId, destination }, "🧭 Sending START_NAVIGATION command to iOS via WebSocket");
       this.sendCommandToDevice(
         userSession.websocket, 
         CloudToGlassesMessageType.START_NAVIGATION,
@@ -86,13 +77,8 @@ class NavigationService {
           requestId: commandRequestId
         }
       );
-      logger.info({ userId, destination }, "🧭 START_NAVIGATION command sent to iOS");
     } else {
-      logger.warn({ 
-        userId,
-        websocketExists: !!userSession.websocket,
-        websocketState: userSession.websocket?.readyState
-      }, "❌ User session or WebSocket not available to send start navigation command");
+      logger.warn({ userId }, "User session or WebSocket not available to send start navigation command");
       
       // update state to error since we can't send the command
       this.updateNavigationState(userSession.sessionId, {
@@ -118,7 +104,7 @@ class NavigationService {
       userId, 
       packageName,
       requestId: commandRequestId 
-    }, "🧭 Handling stop navigation request from app");
+    }, "Handling stop navigation request from app");
 
     // track this command
     this.pendingCommands.set(commandRequestId, userSession.sessionId);
@@ -154,7 +140,7 @@ class NavigationService {
       avoidTolls,
       avoidHighways,
       requestId: commandRequestId 
-    }, "🧭 Handling update navigation route request from app");
+    }, "Handling update navigation route request from app");
 
     // track this command
     this.pendingCommands.set(commandRequestId, userSession.sessionId);
@@ -189,7 +175,7 @@ class NavigationService {
       instruction: navigationUpdate.instruction,
       distanceRemaining: navigationUpdate.distanceRemaining,
       timeRemaining: navigationUpdate.timeRemaining 
-    }, "🧭 Received navigation update from device");
+    }, "Received navigation update from device");
 
     // update our state to show we're actively navigating
     this.updateNavigationState(userSession.sessionId, {
@@ -215,7 +201,7 @@ class NavigationService {
       status: navigationStatus.status,
       destination: navigationStatus.destination,
       errorMessage: navigationStatus.errorMessage
-    }, "🧭 Received navigation status from device");
+    }, "Received navigation status from device");
 
     // update our internal state
     this.updateNavigationState(userSession.sessionId, {

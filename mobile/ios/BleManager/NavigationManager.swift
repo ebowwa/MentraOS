@@ -227,9 +227,9 @@ public class NavigationManager: NSObject {
                     CoreCommsService.log("❌ Waypoint error")
                     self.updateStatus(.error("Invalid destination"))
                     
-                @unknown default:
-                    CoreCommsService.log("❌ Unknown error loading route: \(routeStatus) - possible API key issue")
-                    self.updateStatus(.error("Navigation SDK blocked - check API key configuration"))
+                default:
+                    CoreCommsService.log("❌ Unknown error loading route: \(routeStatus)")
+                    self.updateStatus(.error("Could not load route"))
                 }
             }
         }
@@ -300,17 +300,8 @@ public class NavigationManager: NSObject {
     }
     
     private func performGoogleMapsInitialization() {
-        // debug API key loading
-        let apiKey = googleMapsApiKey
-        if apiKey.isEmpty {
-            CoreCommsService.log("❌ Google Maps API key is empty!")
-            return
-        }
-        
-        CoreCommsService.log("🧭 Initializing Google Maps with API key: \(String(apiKey.prefix(10)))...")
-        
         // initialize Google Maps services
-        GMSServices.provideAPIKey(apiKey)
+        GMSServices.provideAPIKey(googleMapsApiKey)
         CoreCommsService.log("🧭 Google Maps initialized with API key")
         
         // create map view for navigation - this is enough for basic navigation

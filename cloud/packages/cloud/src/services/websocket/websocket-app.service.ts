@@ -361,7 +361,7 @@ export class AppWebSocketService {
             // Check if app has navigation permission
             const hasNavigationPermission = await this.checkNavigationPermission(navStartMsg.packageName, userSession);
             if (!hasNavigationPermission) {
-              this.logger.warn({ packageName: navStartMsg.packageName, userId: userSession.userId }, '🧭 Navigation start request denied: app does not have NAVIGATION permission');
+              this.logger.warn({ packageName: navStartMsg.packageName, userId: userSession.userId }, 'Navigation start request denied: app does not have NAVIGATION permission');
               this.sendError(appWebsocket, AppErrorCode.PERMISSION_DENIED, 'Navigation permission required to start navigation. Please add the NAVIGATION permission in the developer console.');
               break;
             }
@@ -374,9 +374,9 @@ export class AppWebSocketService {
               navStartMsg.mode,
               navStartMsg.requestId
             );
-            this.logger.info({ requestId: navStartMsg.requestId, packageName: navStartMsg.packageName, destination: navStartMsg.destination }, "🧭 Navigation start request processed by NavigationService.");
+            this.logger.info({ requestId: navStartMsg.requestId, packageName: navStartMsg.packageName, destination: navStartMsg.destination }, "Navigation start request processed by NavigationService.");
           } catch (e) {
-            this.logger.error({ e, packageName: message.packageName }, "🧭 Error starting navigation via NavigationService");
+            this.logger.error({ e, packageName: message.packageName }, "Error starting navigation via NavigationService");
             this.sendError(appWebsocket, AppErrorCode.INTERNAL_ERROR, (e as Error).message || "Failed to start navigation.");
           }
           break;
@@ -388,7 +388,7 @@ export class AppWebSocketService {
             // Check if app has navigation permission
             const hasNavigationPermission = await this.checkNavigationPermission(navStopMsg.packageName, userSession);
             if (!hasNavigationPermission) {
-              this.logger.warn({ packageName: navStopMsg.packageName, userId: userSession.userId }, '🧭 Navigation stop request denied: app does not have NAVIGATION permission');
+              this.logger.warn({ packageName: navStopMsg.packageName, userId: userSession.userId }, 'Navigation stop request denied: app does not have NAVIGATION permission');
               this.sendError(appWebsocket, AppErrorCode.PERMISSION_DENIED, 'Navigation permission required to stop navigation. Please add the NAVIGATION permission in the developer console.');
               break;
             }
@@ -399,9 +399,9 @@ export class AppWebSocketService {
               navStopMsg.packageName,
               navStopMsg.requestId
             );
-            this.logger.info({ requestId: navStopMsg.requestId, packageName: navStopMsg.packageName }, "🧭 Navigation stop request processed by NavigationService.");
+            this.logger.info({ requestId: navStopMsg.requestId, packageName: navStopMsg.packageName }, "Navigation stop request processed by NavigationService.");
           } catch (e) {
-            this.logger.error({ e, packageName: message.packageName }, "🧭 Error stopping navigation via NavigationService");
+            this.logger.error({ e, packageName: message.packageName }, "Error stopping navigation via NavigationService");
             this.sendError(appWebsocket, AppErrorCode.INTERNAL_ERROR, (e as Error).message || "Failed to stop navigation.");
           }
           break;
@@ -413,7 +413,7 @@ export class AppWebSocketService {
             // Check if app has navigation permission
             const hasNavigationPermission = await this.checkNavigationPermission(navUpdateMsg.packageName, userSession);
             if (!hasNavigationPermission) {
-              this.logger.warn({ packageName: navUpdateMsg.packageName, userId: userSession.userId }, '🧭 Navigation route update request denied: app does not have NAVIGATION permission');
+              this.logger.warn({ packageName: navUpdateMsg.packageName, userId: userSession.userId }, 'Navigation route update request denied: app does not have NAVIGATION permission');
               this.sendError(appWebsocket, AppErrorCode.PERMISSION_DENIED, 'Navigation permission required to update route preferences. Please add the NAVIGATION permission in the developer console.');
               break;
             }
@@ -426,9 +426,9 @@ export class AppWebSocketService {
               navUpdateMsg.avoidHighways,
               navUpdateMsg.requestId
             );
-            this.logger.info({ requestId: navUpdateMsg.requestId, packageName: navUpdateMsg.packageName }, "🧭 Navigation route update request processed by NavigationService.");
+            this.logger.info({ requestId: navUpdateMsg.requestId, packageName: navUpdateMsg.packageName }, "Navigation route update request processed by NavigationService.");
           } catch (e) {
-            this.logger.error({ e, packageName: message.packageName }, "🧭 Error updating navigation route via NavigationService");
+            this.logger.error({ e, packageName: message.packageName }, "Error updating navigation route via NavigationService");
             this.sendError(appWebsocket, AppErrorCode.INTERNAL_ERROR, (e as Error).message || "Failed to update navigation route.");
           }
           break;
@@ -724,7 +724,7 @@ export class AppWebSocketService {
    */
   private async checkNavigationPermission(packageName: string, userSession: UserSession): Promise<boolean> {
     // navigation is auto-granted for all apps - no permission check needed
-    logger.debug({ packageName, userId: userSession.userId }, '🧭 Navigation permission auto-granted');
+    logger.debug({ packageName, userId: userSession.userId }, 'Navigation permission auto-granted');
     return true;
   }
 
