@@ -22,7 +22,7 @@ import {
   } from "@/components/ui/select"
 import { DatePicker } from '@/components/ui/date-picker';
 import axios from 'axios';
-import { AppDetailView } from './AppUptime';
+import AppDetailView  from './AppUptime';
 interface AdminStat {
   counts: {
     development: number;
@@ -109,11 +109,9 @@ const AdminPanel: React.FC = () => {
 
   const [monthNumberDynamic, setMonthNumberDynamic] = useState(monthNumber);
   const [yearNumber, setYearNumber] = useState(year);
-  // Admin panel component
-
-
-
-
+  const START_UPTIME_MONTH = 7; // August (0-indexed)
+  const START_UPTIME_YEAR = 2025; // Starting year for uptime data
+  
 
   // Polling for app status updates
   useEffect(() => {
@@ -742,7 +740,7 @@ const AdminPanel: React.FC = () => {
                       <SelectItem value="production">Submitted</SelectItem>
                     </SelectContent>
                   </Select>
-                  <DatePicker initialYear={year} initialMonth={monthNumber} setMonthNumberDynamic={setMonthNumberDynamic} setYearNumber={setYearNumber} />
+                  <DatePicker startUptimeMonth={START_UPTIME_MONTH} startUptimeYear={START_UPTIME_YEAR} initialYear={year} initialMonth={monthNumber} setMonthNumberDynamic={setMonthNumberDynamic} setYearNumber={setYearNumber} />
                 </div>
                 
                 <Card>
@@ -912,10 +910,13 @@ const AdminPanel: React.FC = () => {
               };
               
               return <AppDetailView 
+                startUptimeMonth={START_UPTIME_MONTH}
+                startUptimeYear={START_UPTIME_YEAR}
                 app={appStatusData} 
                 onRefresh={fetchAppStatus}
                 isRefreshing={statusLoading}
                 appItems={getAppBatchStatusByPackageName(collectedAllAppBatchStatus, selectedApp.packageName)}
+                
               />;
             })()}
 

@@ -12,6 +12,16 @@ interface DatePickerProps {
   onMonthYearChange?: (month: number, year: number) => void
   setMonthNumberDynamic?: (monthName: number) => void
   setYearNumber?: (yearNumber: number) => void
+  startUptimeMonth: number,
+  startUptimeYear: number
+  // Styling props
+  containerClassName?: string
+  textClassName?: string
+  buttonClassName?: string
+  buttonHoverClassName?: string
+  width?: string
+  backgroundColor?: string
+  borderRadius?: string
 }
 
 const MONTHS = [
@@ -25,7 +35,16 @@ export function DatePicker({
   initialYear, 
   onMonthYearChange,
   setMonthNumberDynamic,
-  setYearNumber
+  setYearNumber,
+  startUptimeMonth,
+  startUptimeYear,
+  containerClassName,
+  textClassName,
+  buttonClassName,
+  buttonHoverClassName,
+  width = "w-full",
+  backgroundColor = "bg-white",
+  borderRadius = "rounded-[10px]",
 }: DatePickerProps) {
   const currentDate = new Date()
   const [month, setMonth] = React.useState(initialMonth ?? currentDate.getMonth())
@@ -38,6 +57,11 @@ export function DatePicker({
     if (newMonth < 0) {
       newMonth = 11
       newYear = year - 1
+    }
+
+    // Check if the new date would be before the start uptime date
+    if (newYear < startUptimeYear || (newYear === startUptimeYear && newMonth < startUptimeMonth)) {
+      return // Don't allow navigation before start date
     }
 
     setMonth(newMonth)
@@ -76,25 +100,33 @@ export function DatePicker({
   }, [initialMonth, initialYear, setMonthNumberDynamic, setYearNumber])
 
   return (
-    <div className={cn("flex bg-white rounded-[10px]", className)}>
-      <div className="flex justify-center items-center relative w-[200px]">
+    <div className={cn(`flex ${backgroundColor} ${borderRadius}`, className)}>
+      <div className={cn(`flex justify-center items-center relative ${width}`, containerClassName)}>
         <Button
           variant="outline"
           size="icon"
-          className="absolute left-1 w-7 h-7 bg-transparent p-0 opacity-50 transition-opacity duration-200 ease-out border-0 hover:opacity-100"
+          className={cn(
+            "absolute left-1 w-7 h-7 bg-transparent p-0 opacity-50 transition-opacity duration-200 ease-out border-0 hover:opacity-100",
+            buttonClassName,
+            buttonHoverClassName
+          )}
           onClick={handlePreviousMonth}
         >
           <ChevronLeft className="w-4 h-4" />
         </Button>
 
-        <div className="text-sm font-medium">
+        <div className={cn("text-sm font-medium", textClassName)}>
           {MONTHS[month]} {year}
         </div>
 
         <Button
           variant="outline"
           size="icon"
-          className="absolute right-1 w-7 h-7 bg-transparent p-0 opacity-50 transition-opacity duration-200 ease-out border-0 hover:opacity-100"
+          className={cn(
+            "absolute right-1 w-7 h-7 bg-transparent p-0 opacity-50 transition-opacity duration-200 ease-out border-0 hover:opacity-100",
+            buttonClassName,
+            buttonHoverClassName
+          )}
           onClick={handleNextMonth}
         >
           <ChevronRight className="w-4 h-4" />

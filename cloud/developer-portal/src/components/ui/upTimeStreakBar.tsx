@@ -66,7 +66,7 @@ const CustomTooltip: React.FC<TooltipProps> = ({ day, healthyCount, unhealthyCou
           <span>Unhealthy: {unhealthyCount}</span>
         </div>
         <div className="text-gray-300 text-xs border-t border-gray-700 pt-1 mt-2">
-          Total: {totalCount} apps
+          Total: {totalCount} pings
         </div>
       </div>
       <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
@@ -83,7 +83,7 @@ export const updateDayBar = (day: number, appItems: AppBatchItem[], width?: stri
   if (!appItems || !Array.isArray(appItems)) {
     return (
       <div
-        className={`flex-none ${width} ${height} bg-gray-300 rounded-[2px]`}
+        className={`${width || 'flex-1'} ${height} bg-gray-300 rounded-[2px]`}
         title={`Day: ${day}`}
       />
     );
@@ -102,7 +102,7 @@ export const updateDayBar = (day: number, appItems: AppBatchItem[], width?: stri
   if (itemsForDay.length === 0) {
     return (
       <div
-        className={`flex-none ${width || 'w-1.5'} ${height || 'h-5'} bg-gray-300 rounded-[2px]`}
+        className={`${width || 'flex-1'} ${height || 'h-5'} bg-gray-300 rounded-[2px]`}
         title={`Day: ${day} (No data)`}
       />
     );
@@ -132,7 +132,7 @@ export const updateDayBar = (day: number, appItems: AppBatchItem[], width?: stri
 
   return (
     <div
-      className={`flex-none ${width || 'w-1.5'} ${height || 'h-5'} ${colorClass} rounded-[2px]`}
+      className={`${width || 'flex-1'} ${height || 'h-5'} ${colorClass} rounded-[2px]`}
       title={tooltipText}
     />
   );
@@ -151,7 +151,7 @@ const UptimeDayBar: React.FC<UptimeDayBarProps> = ({ day, appItems, width, heigh
   if (!appItems || !Array.isArray(appItems)) {
     return (
       <div
-        className={`flex-none ${width || 'w-1.5'} ${height || 'h-5'} bg-gray-300 rounded-[2px] cursor-pointer transition-all duration-200 hover:bg-gray-400 active:transform active:scale-y-75 active:origin-bottom`}
+        className={`${width || 'flex-1'} ${height || 'h-5'} bg-gray-300 rounded-[2px] cursor-pointer transition-all duration-200 hover:bg-gray-400 active:transform active:scale-y-75 active:origin-bottom`}
         onMouseEnter={(e) => {
           setIsHovered(true);
           const rect = e.currentTarget.getBoundingClientRect();
@@ -197,7 +197,7 @@ const UptimeDayBar: React.FC<UptimeDayBarProps> = ({ day, appItems, width, heigh
   if (itemsForDay.length === 0) {
     return (
       <div
-        className={`flex-none ${width || 'w-1.5'} ${height || 'h-5'} bg-gray-300 rounded-[2px] cursor-pointer transition-all duration-200 hover:bg-gray-400 active:transform active:scale-y-75 active:origin-bottom ${isClicked ? 'transform scale-y-75 origin-bottom' : ''} ${isSelected ? 'ring-2 ring-blue-500 ring-offset-1' : ''}`}
+        className={`${width || 'flex-1'} ${height || 'h-5'} bg-gray-300 rounded-[2px] cursor-pointer transition-all duration-200 hover:bg-gray-400 active:transform active:scale-y-75 active:origin-bottom ${isClicked ? 'transform scale-y-75 origin-bottom' : ''} ${isSelected ? 'ring-2 ring-blue-500 ring-offset-1' : ''}`}
         onMouseEnter={(e) => {
           setIsHovered(true);
           const rect = e.currentTarget.getBoundingClientRect();
@@ -262,7 +262,7 @@ const UptimeDayBar: React.FC<UptimeDayBarProps> = ({ day, appItems, width, heigh
 
   return (
     <div
-      className={`flex-none ${width || 'w-1.5'} ${height || 'h-5'} ${colorClass} ${hoverColorClass} rounded-[2px] cursor-pointer transition-all duration-200 active:transform active:scale-y-75 active:origin-bottom ${isClicked ? 'transform scale-y-75 origin-bottom' : ''} ${isSelected ? 'ring-2 ring-blue-500 ring-offset-1' : ''}`}
+      className={`${width || 'flex-1'} ${height || 'h-5'} ${colorClass} ${hoverColorClass} rounded-[2px] cursor-pointer transition-all duration-200 active:transform active:scale-y-75 active:origin-bottom ${isClicked ? 'transform scale-y-75 origin-bottom' : ''} ${isSelected ? 'ring-2 ring-blue-500 ring-offset-1' : ''}`}
       onMouseEnter={(e) => {
         setIsHovered(true);
         const rect = e.currentTarget.getBoundingClientRect();
@@ -302,7 +302,7 @@ const UptimeDayBar: React.FC<UptimeDayBarProps> = ({ day, appItems, width, heigh
 export const UptimeStreakBar: React.FC<UptimeStreakBarProps> = ({ 
   appItems, 
   dayCount = 30,
-  barWidth = 'w-1.5', 
+  barWidth = 'flex-1', 
   barHeight = 'h-5',
   containerWidth = 'w-full',
   containerHeight = 'h-auto',
@@ -312,7 +312,7 @@ export const UptimeStreakBar: React.FC<UptimeStreakBarProps> = ({
   onDayClick,
 }) => {
   return (
-    <div className="flex items-center gap-0.5 overflow-hidden" style={{ padding:"20px" }}>
+    <div className="flex items-center gap-0.5 overflow-hidden pl-0 w-full" >
         {Array.from({ length: dayCount }, (_, index) => (
           <UptimeDayBar 
             key={index + 1} 

@@ -18,6 +18,7 @@ import pinoHttp from "pino-http";
 import { DebugService } from "./services/debug/debug-service";
 import { sessionService } from "./services/session/session.service";
 import { websocketService } from "./services/websocket/websocket.service";
+import * as AppUptimeService from "./services/core/app-uptime.service";
 
 // Import routes
 import appRoutes from "./routes/apps.routes";
@@ -329,6 +330,11 @@ app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 // Initialize WebSocket service
 // Initialize WebSocket servers
 websocketService.setupWebSocketServers(server);
+
+if (process.env.UPTIME_SERVICE_RUNNING === "true") {
+  AppUptimeService.startUptimeScheduler(); // start app uptime service scheduler
+}
+
 
 // Start the server
 try {

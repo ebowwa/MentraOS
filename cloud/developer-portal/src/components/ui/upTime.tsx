@@ -133,7 +133,7 @@ export const UptimeStatus: React.FC<UptimeStatusProps> = ({ title, uptimePercent
 
   return (
     <div className="flex flex-col gap-1.5">
-        <div className="flex flex-row items-center">
+        <div className="flex flex-row items-center w-60">
             <div className="text-xs flex-1">Uptime: {uptimePercentage}%</div>
             <StatusBadge status={appHealthStatus} />
         </div>

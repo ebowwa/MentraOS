@@ -4,6 +4,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { UptimeStreakBar } from '@/components/ui/upTimeStreakBar';
+import { DatePicker } from '@/components/ui/date-picker';
 
 // Removed unused month constants
 
@@ -80,6 +81,7 @@ interface AppBatchItem {
   timestamp: string;
   health: string;
   onlineStatus: boolean;
+  
 }
 
 interface AppDetailViewProps {
@@ -91,11 +93,13 @@ interface AppDetailViewProps {
   selectedDayItems?: AppBatchItem[];
   currentMonth?: number;
   currentYear?: number;
+  startUptimeMonth: number;
+  startUptimeYear: number;
 }
 
 
 
-export const AppDetailView: React.FC<AppDetailViewProps> = ({ app, onRefresh, isRefreshing = false, appItems, selectedDay, selectedDayItems, currentMonth, currentYear }) => {
+const AppDetailView: React.FC<AppDetailViewProps> = ({  app, startUptimeMonth, startUptimeYear, onRefresh, isRefreshing = false, appItems, selectedDay, selectedDayItems, currentMonth, currentYear }) => {
   const [dayFilterState, setDayFilterState] = useState<{
     selectedDay: number | null;
     selectedDayItems: AppBatchItem[];
@@ -118,7 +122,7 @@ export const AppDetailView: React.FC<AppDetailViewProps> = ({ app, onRefresh, is
   };
 
   return (
-  <div className=" min-h-screen flex items-center justify-center p-4 font-sans">
+  <div className="  flex   p-4 font-sans">
     <div className="w-full max-w-4xl">
     <Card className="app-container">
     <style>{`
@@ -277,9 +281,7 @@ export const AppDetailView: React.FC<AppDetailViewProps> = ({ app, onRefresh, is
     </div>
 
     {/* App Uptime Chart */}
-    <AppUptimeChart appItems={appItems} onDaySelection={handleDaySelection} />
-    
-    
+    <AppUptimeChart startUptimeMonth={startUptimeMonth} startUptimeYear={startUptimeYear} appItems={appItems} onDaySelection={handleDaySelection} />
 
     {(app.details.events.length > 0 || dayFilterState.selectedDayItems.length > 0) && (
       <div className="event-section">
@@ -347,9 +349,11 @@ interface AppUptimeChartProps {
   setYearNumber?: (yearNumber: number) => void
   currentMonth?: number;
   onDaySelection?: (day: number | null, items: AppBatchItem[], month: number, year: number) => void;
+  startUptimeMonth: number;
+  startUptimeYear: number;
 }
 
-const AppUptimeChart: React.FC<AppUptimeChartProps> = ({ appItems, onMonthYearChange, setMonthNumberDynamic, setYearNumber, onDaySelection }) => {
+const AppUptimeChart: React.FC<AppUptimeChartProps> = ({ startUptimeMonth, startUptimeYear, appItems, onMonthYearChange, setMonthNumberDynamic, setYearNumber, onDaySelection }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [selectedDayItems, setSelectedDayItems] = useState<AppBatchItem[]>([]);
@@ -421,6 +425,14 @@ const AppUptimeChart: React.FC<AppUptimeChartProps> = ({ appItems, onMonthYearCh
       <div className="flex flex-row items-center justify-between relative mb-4">
         <div className="text-[22px] font-bold ">{monthName} {year}</div>
         <div>
+          <DatePicker 
+            startUptimeMonth={startUptimeMonth} 
+            startUptimeYear={startUptimeYear} 
+            initialYear={year} 
+            initialMonth={currentDate.getMonth()} 
+            setMonthNumberDynamic={setMonthNumberDynamic} 
+            setYearNumber={setYearNumber} 
+          />         
           <Button
           variant="outline"
           size="icon"
@@ -455,7 +467,15 @@ const AppUptimeChart: React.FC<AppUptimeChartProps> = ({ appItems, onMonthYearCh
           onDayClick={handleDayClick}
         />
         <div style={{fontSize: "1.00rem", fontWeight: "bold", marginLeft: "1rem", color:"grey"}}>
-          Uptime: {uptimePercentage}%
+          <DatePicker 
+            className='w-42 bg-gray-50 h-10.5 rounded-[7px] text-black'
+            startUptimeMonth={startUptimeMonth} 
+            startUptimeYear={startUptimeYear} 
+            initialYear={year} 
+            initialMonth={currentDate.getMonth()} 
+            setMonthNumberDynamic={setMonthNumberDynamic} 
+            setYearNumber={setYearNumber} 
+          />  
         </div>
       </div>
     </div>
@@ -463,6 +483,6 @@ const AppUptimeChart: React.FC<AppUptimeChartProps> = ({ appItems, onMonthYearCh
 };
 
 
-
+export default AppDetailView;
 
 

@@ -54,14 +54,8 @@ export async function getAppHealth(packageName: string) {
 export async function fetchSubmittedAppHealthStatus() {
     console.log('🔍 Fetching submitted apps with health status...');
     const appsData = await App.find({ appStoreStatus: 'SUBMITTED' }).lean();
-    console.log(`Found ${appsData.length} submitted apps`);
-    
-    // Log the structure of the first app to see all available fields
-    if (appsData.length > 0) {
-        console.log('Sample app object structure:', JSON.stringify(appsData[0], null, 2));
-    }
-    
-    // Check health status for each app by calling their /health endpoint
+
+    // Check health status for each app by calling their /health endpoint 
     const appsWithHealthStatus = [];
     
     for (const app of appsData) {
@@ -121,7 +115,7 @@ export async function fetchSubmittedAppHealthStatus() {
         });
     }
     
-    console.log('🎯 Apps with health status:', JSON.stringify(appsWithHealthStatus, null, 2));
+    // console.log('🎯 Apps with health status:', JSON.stringify(appsWithHealthStatus, null, 2));
 
     return {
         success: true,
