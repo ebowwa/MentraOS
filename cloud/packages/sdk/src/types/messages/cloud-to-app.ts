@@ -135,7 +135,7 @@ export interface TranscriptionData extends BaseMessage {
  * Metadata for transcription containing token-level details
  */
 export interface TranscriptionMetadata {
-  provider: 'soniox' | 'azure' | string;
+  provider: "soniox" | "azure" | string;
   soniox?: {
     tokens: SonioxToken[];
   };

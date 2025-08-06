@@ -48,7 +48,8 @@ export const initI18n = async () => {
 
   await i18n.init({
     resources,
-    lng: locale?.languageTag ?? fallbackLocale,
+    // lng: locale?.languageTag ?? fallbackLocale,
+    lng: "en", // TODO: setup a ci process for translating text
     // This ensures we check the English language for missing keys
     fallbackLng: {
       default: ["en"],

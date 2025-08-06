@@ -197,7 +197,11 @@ export {
   validateAppConfig,
   ToolSchema,
   ToolParameterSchema,
+  HardwareRequirement,
 } from "./models";
+
+// Export hardware-related enums
+export { HardwareType, HardwareRequirementLevel } from "./enums";
 // Export RTMP streaming types
 export {
   VideoConfig,

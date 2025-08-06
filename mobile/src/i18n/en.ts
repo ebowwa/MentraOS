@@ -105,6 +105,12 @@ const en = {
     appWillRunWhenConnected: "This app will start running once your glasses are connected.",
     connectGlassesToStart: "Connect your glasses to get started",
     tapToStartLiveCaptions: "Tap to start the Live Captions app",
+    hardwareIncompatible: "Hardware Incompatible",
+    hardwareIncompatibleMessage:
+      "{{app}} requires hardware that is not available on your connected glasses: {{missing}}",
+    incompatibleApps: "Incompatible Apps",
+    incompatibleAppsDescription: "These apps require hardware features not available on your connected glasses",
+    incompatible: "Incompatible",
   },
   glasses: {
     title: "Glasses",

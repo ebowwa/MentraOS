@@ -34,7 +34,7 @@ export default function CoreTokenExchange() {
 
   const loadPendingRouteOrHome = async () => {
     const pendingRoute = getPendingRoute()
-    console.log("@@@@@@@@@@@@@LOADING PENDING ROUTE OR HOME @@@@@@@@@@@@@@@", pendingRoute)
+    console.log("@@@@@@@@@@@@@ LOADING PENDING ROUTE OR HOME @@@@@@@@@@@@@@@", pendingRoute)
     if (pendingRoute) {
       setPendingRoute(null)
       setTimeout(() => {
@@ -45,7 +45,7 @@ export default function CoreTokenExchange() {
       setTimeout(() => {
         router.dismissAll()
         replace("/(tabs)/home")
-      }, 1000)
+      }, 100)
     }
   }
 

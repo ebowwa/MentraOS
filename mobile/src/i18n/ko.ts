@@ -44,6 +44,13 @@ const ko: Translations = {
     tapToLogIn: "눌러서 로그인 하기!",
     hint: "힌트: 가장 좋아하는 암호와 아무런 아무 이메일 주소나 사용할 수 있어요 :)",
   },
+  home: {
+    hardwareIncompatible: "하드웨어 비호환",
+    hardwareIncompatibleMessage: "{{app}}은(는) 연결된 안경에서 사용할 수 없는 하드웨어가 필요합니다: {{missing}}",
+    incompatibleApps: "비호환 앱",
+    incompatibleAppsDescription: "이러한 앱들은 연결된 안경에서 사용할 수 없는 하드웨어 기능이 필요합니다",
+    incompatible: "비호환",
+  },
   demoNavigator: {
     componentsTab: "컴포넌트",
     debugTab: "디버그",

@@ -77,7 +77,7 @@ export default function VersionUpdateScreen() {
           // less jarring
           setTimeout(() => {
             replace("/auth/core-token-exchange")
-          }, 1000)
+          }, 100)
         },
         onFailure: errorCode => {
           console.error("Failed to fetch cloud version:", errorCode)
