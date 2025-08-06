@@ -8,20 +8,13 @@ import * as AppUptimeService from "../services/core/app-uptime.service";
 import axios from 'axios';
 import { fetchSubmittedAppHealthStatus } from '../services/core/app-uptime.service';
 
-// Create Express router - this groups related routes together
 const router = Router();
 
 // Start the uptime scheduler when the routes are loaded
 // AppUptimeService.startUptimeScheduler();
 logger.info("🔄 App uptime monitoring scheduler started automatically");
 
-/**
- * HTTP POST endpoint handler for starting uptime checks
- * When someone makes a POST request to /start-uptimecheck, this function runs
- * 
- * @param req - The incoming HTTP request (contains data sent by client)
- * @param res - The HTTP response we'll send back to the client
- */
+// Endpoint to start the uptime check process TESTING PURPOSES
 const startUptimeCheck = async (req: Request, res: Response) => {
   try {
     // Call the service function that contains the business logic
@@ -41,7 +34,7 @@ const startUptimeCheck = async (req: Request, res: Response) => {
   }
 };
 
-
+// Endpoint to start recording app uptime TESTING PURPOSES
 const startRecordAppUptime = async (req: Request, res: Response) => {
   try {
     // Call the service function that contains the business logic
@@ -61,7 +54,7 @@ const startRecordAppUptime = async (req: Request, res: Response) => {
   }
 };
 
-
+// Endpoint to create app uptime data TESTING PURPOSES
 const createAppUptimeData = async (req: Request, res: Response) => {
   try {
     await AppUptimeService.createAppUptimeData("test.package.name");
@@ -80,46 +73,7 @@ const createAppUptimeData = async (req: Request, res: Response) => {
   }
 }
 
-const getAppHealthStatus = async (req: Request, res: Response) => {
-  const packageName = req.query.packageName as string;
-  try {
-    const healthData = await AppUptimeService.getAppHealth(packageName);
-    res.send(healthData);
-  } catch (error) {
-    logger.error('Error fetching app health:', error);
-    res.status(500).json({
-      error: true,
-      message: error instanceof Error ? error.message : 'Unknown error occurred'
-    });
-  }
-};
-
-// Register the route - when POST request comes to '/start-uptimecheck', 
-// call the startUptimeCheck function
-// POST is used because this action triggers a process (not just retrieving data)
-router.post('/start-uptimecheck', startUptimeCheck);
-
-router.post('/record-app-uptime', startRecordAppUptime);
-
-
-router.post('/create-app-uptime-data', createAppUptimeData);
-
-router.get('/get-app-health', async (req: Request, res: Response) => {
-  const packageName = req.query.packageName as string;
-  try {
-    const healthData = await AppUptimeService.getAppHealth(packageName);
-    res.send(healthData);
-  } catch (error) {
-    logger.error('Error fetching app health:', error);
-    res.status(500).json({
-      error: true,
-      message: error instanceof Error ? error.message : 'Unknown error occurred'
-    });
-  }
-});
-// /api/ping.ts (or .js)
-
-router.get('/ping', async (req, res) => {
+async function pingAppHealth (req: Request, res: Response) {
   const url = req.query.url as string;
   if (!url) return res.status(400).send('Missing URL');
 
@@ -157,75 +111,9 @@ router.get('/ping', async (req, res) => {
       });
     }
   }
-});
-
-router.post('/send-batch', async (req: Request, res: Response) => {
-  try {
-    await AppUptimeService.sendBatchUptimeData();
-    res.json({
-      success: true,
-      message: "Batch uptime data sent successfully"
-    });
-  } catch (error) {
-    logger.error('Error sending batch uptime data:', error);
-    res.status(500).json({
-      error: true,
-      message: error instanceof Error ? error.message : 'Unknown error occurred'
-    });
-  }
-});
-
-router.post('/start-scheduler', async (req: Request, res: Response) => {
-  try {
-    AppUptimeService.startUptimeScheduler();
-    res.json({
-      success: true,
-      message: "Uptime scheduler started successfully"
-    });
-  } catch (error) {
-    logger.error('Error starting uptime scheduler:', error);
-    res.status(500).json({
-      error: true,
-      message: error instanceof Error ? error.message : 'Unknown error occurred'
-    });
-  }
-});
-
-router.post('/stop-scheduler', async (req: Request, res: Response) => {
-  try {
-    AppUptimeService.stopUptimeScheduler();
-    res.json({
-      success: true,
-      message: "Uptime scheduler stopped successfully"
-    });
-  } catch (error) {
-    logger.error('Error stopping uptime scheduler:', error);
-    res.status(500).json({
-      error: true,
-      message: error instanceof Error ? error.message : 'Unknown error occurred'
-    });
-  }
-});
-
-
-
-router.get('/get-submitted-app-health-status', async (req: Request, res: Response) => {
-  console.log('🔍 GET /get-submitted-app-health-status called');
-
-  try {
-    const result = await fetchSubmittedAppHealthStatus();
-    res.json(result);
-  } catch (error) {
-    console.log('❌ Error in get-submitted-app-health-status:', error);
-    logger.error('Error fetching submitted app health status:', error);
-    res.status(500).json({
-      error: true,
-      message: error instanceof Error ? error.message : 'Unknown error occurred'
-    });
-  }
-});
-
-router.get('/status', async (req: Request, res: Response) => {
+}
+  
+async function appsStatus (req: Request, res: Response) {
   try {
     const healthStatus = await fetchSubmittedAppHealthStatus();
     res.json({
@@ -241,11 +129,12 @@ router.get('/status', async (req: Request, res: Response) => {
       timestamp: new Date()
     });
   }
-});
+}
 
-router.get('/get-app-uptime-days', async (req: Request, res: Response) => {
+async function getAppUptimeDays (req: Request, res: Response) {
   const month = req.query.month as string;
   const year = parseInt(req.query.year as string);
+
   try {
     const result = await AppUptimeService.collectAllAppBatchStatus(month, year);
     res.json(result);
@@ -256,8 +145,22 @@ router.get('/get-app-uptime-days', async (req: Request, res: Response) => {
       message: error instanceof Error ? error.message : 'Unknown error occurred'
     });
   }
-});
+}
+
+// Api Endpoints
+router.post('/start-uptimecheck', startUptimeCheck);
+
+router.post('/record-app-uptime', startRecordAppUptime);
+
+router.post('/create-app-uptime-data', createAppUptimeData);
+
+router.get('/ping', pingAppHealth);
+
+router.get('/status', appsStatus);
+
+router.get('/get-app-uptime-days', getAppUptimeDays);
+
+  
 
 
-// Export the router so it can be used in the main Express app
 export default router;

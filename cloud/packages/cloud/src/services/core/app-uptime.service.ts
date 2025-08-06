@@ -1,14 +1,9 @@
-// Service Layer for App Uptime Business Logic
-// This file contains functions that interact with MongoDB to manage app uptime data
-// Services contain the "business logic" - the actual work your app does
+// This file is used to communicate between the MongoDB database
 
-import { timeStamp } from "console";
 import { AppUptime } from "../../models/app-uptime.model";
 import { logger as rootLogger } from "../logging/pino-logger";
 import axios from "axios";
 import App from '../../models/app.model';
-
-
 
 interface AppUptimeI {
     packageName: string; 
@@ -17,56 +12,24 @@ interface AppUptimeI {
     severity: string; 
     appHealthStatus: string;
 } 
+// Issiah's Section ________________________________________________________________
 
-// Create a specialized logger for this service to help with debugging
-const logger = rootLogger.child({ service: 'app-uptime.service' });
+const logger = rootLogger.child({ service: 'app-uptime.service' }); // Create a specialized logger for this service to help with debugging
+const ONE_MINUTE_MS = 60000;
 
-/**
- * Records when an app is running by creating/updating uptime records in MongoDB
- * This function demonstrates several ways to work with MongoDB documents
- * 
- * @param packageName - The identifier for the app (like "com.mentra.merge")
- */
+
+let uptimeScheduler: NodeJS.Timeout | null = null;  // Store interval reference for cleanup
+
+// well make a new appupptime and send it to the mongo database
 export async function recordAppUptime(packageName: string): Promise<void> {
-    // METHOD 1: Creating a document using the constructor (commented out)
-    // This creates a new AppUptime object in memory, then saves it to database
-    //   const uptimeRecord = new AppUptime({
-    //     packageName,
-    //     timestamp: new Date(),
-    //   });
-    //   return uptimeRecord.save();
-
-    // METHOD 2: Querying existing documents (commented out)
-    // find() searches for documents that match the criteria
-    // const appUptimes = await AppUptime.find({
-    //     packageName: "com.mentra.merge",
-    // })
-
-    // METHOD 3: Creating a document directly in the database
-    // create() makes a new document and saves it to MongoDB in one step
     const appUptime = await AppUptime.create({
         packageName: "com.mentra.merge",  // Hardcoded for testing
         timestamp: Date.now()             // Current timestamp
     });
 
-    // Modify the document in memory (adds "rfwf" to the package name)
-    // appUptime.packageName = packageName + "rfwf";
-    // Save the changes back to MongoDB
     await appUptime.save();
-
-    // METHOD 4: Update a document using findByIdAndUpdate
-    // This finds a document by its ID and updates it in one database operation
-    // const updatedAppUptime = await AppUptime.findByIdAndUpdate(
-    //     appUptime._id,                    // Find document with this ID
-    //     { timestamp: new Date() },        // Update timestamp to current time
-    //     { new: true }                     // Return the updated document (not the old one)
-    // );
 }
-
-/**
- * Starts the app uptime monitoring process
- * Currently just logs a message, but could be expanded to start timers, etc.
- */
+// example by issiah well keep this for future reference
 export async function startAppUptimeCheck() {
     logger.debug("Starting app uptime check...");
 }
@@ -83,18 +46,19 @@ export async function getAppHealth(packageName: string) {
     const healthData = await AppUptime.find({ packageName });
     return healthData;
 }
+// ____________________________________________________________
 
 
-
-
+// Aryan's Section ____________________________________________________________
+//return their current health status.
 export async function fetchSubmittedAppHealthStatus() {
     console.log('🔍 Fetching submitted apps with health status...');
     const appsData = await App.find({ appStoreStatus: 'SUBMITTED' }).lean();
-    console.log(`📊 Found ${appsData.length} submitted apps`);
+    console.log(`Found ${appsData.length} submitted apps`);
     
     // Log the structure of the first app to see all available fields
     if (appsData.length > 0) {
-        console.log('📋 Sample app object structure:', JSON.stringify(appsData[0], null, 2));
+        console.log('Sample app object structure:', JSON.stringify(appsData[0], null, 2));
     }
     
     // Check health status for each app by calling their /health endpoint
@@ -168,15 +132,7 @@ export async function fetchSubmittedAppHealthStatus() {
 
 
 
-
-
-// Store interval reference for cleanup
-let uptimeScheduler: NodeJS.Timeout | null = null;
-
-/**
- * Batch function to send uptime data to database
- * Fetches all submitted apps and records their health status
- */
+// Collects health data for all submitted apps, transforms it into uptime records, and batch inserts those records into the database.
 export async function sendBatchUptimeData(): Promise<void> {
     logger.debug("Starting batch uptime data collection...");
 
@@ -237,10 +193,7 @@ export async function sendBatchUptimeData(): Promise<void> {
     }
 }
 
-/**
- * Start the uptime monitoring scheduler
- * Runs the batch function every minute
- */
+// Starts a recurring scheduler that runs sendBatchUptimeData every minute, ensuring only one scheduler is active by clearing any existing one first.
 export function startUptimeScheduler(): void {
     // Clear existing scheduler if running
     if (uptimeScheduler) {
@@ -261,13 +214,10 @@ export function startUptimeScheduler(): void {
         } catch (error) {
             logger.error("Scheduled batch uptime collection failed:", error);
         }
-    }, 60000);
+    }, ONE_MINUTE_MS);
 }
 
-/**
- * Collect all app health status
- */
-
+// Fetches all app uptime records for a specified month and year by parsing the input, generating a date range, and querying the database within that range.
 export async function collectAllAppBatchStatus(month: string, year: number) {
     try {
         logger.debug(`Collecting app batch status for month: ${month}, year: ${year}`);

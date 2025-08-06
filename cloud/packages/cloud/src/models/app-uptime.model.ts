@@ -1,5 +1,7 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
+// Defines a Mongoose model for storing app uptime records including health status, online status, and response time.
+
 export interface AppUptimeI extends Document {
   packageName: string;           // e.g. "com.coledermott.pricepal"
   timestamp: Date;               // When this uptime record was created
