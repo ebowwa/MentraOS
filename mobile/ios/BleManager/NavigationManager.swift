@@ -215,6 +215,9 @@ public class NavigationManager: NSObject {
                     navigator.isGuidanceActive = true
                     mapView.cameraMode = .following
                     
+                    // generate initial navigation update
+                    self.generateNavigationUpdate()
+                    
                 case .locationUnavailable:
                     CoreCommsService.log("❌ Location unavailable")
                     self.updateStatus(.error("Location unavailable - check permissions"))
@@ -440,19 +443,148 @@ extension NavigationManager: GMSNavigatorListener {
         if currentStatus == .rerouting {
             updateStatus(.navigating)
         }
+        
+        // get updated navigation info when route changes
+        getLatestNavigationInfo(from: navigator)
     }
     
-    // simplified navigation update handling
-    // we can't easily get detailed step-by-step information without more complex setup
-    // for now, we'll just indicate that navigation is active
-    private func createBasicNavigationUpdate() -> NavigationUpdate {
-        return NavigationUpdate(
-            instruction: "Continue following route",
-            distanceRemaining: 0, // would need to calculate from route
-            timeRemaining: 0,     // would need to calculate from route
-            streetName: nil,
+    // This method provides real-time navigation updates during navigation
+    public func navigator(_ navigator: GMSNavigator, didUpdate navInfo: GMSNavigationNavInfo) {
+        CoreCommsService.log("🧭 Navigation info updated")
+        
+        guard isNavigating else { return }
+        
+        // extract real navigation data from navInfo
+        let instruction = extractInstruction(from: navInfo)
+        let distanceRemaining = extractDistanceRemaining(from: navInfo)
+        let timeRemaining = extractTimeRemaining(from: navInfo)
+        let streetName = extractStreetName(from: navInfo)
+        let maneuver = extractManeuver(from: navInfo)
+        
+        // create navigation update with real data
+        let update = NavigationUpdate(
+            instruction: instruction,
+            distanceRemaining: distanceRemaining,
+            timeRemaining: timeRemaining,
+            streetName: streetName,
+            maneuver: maneuver,
+            timestamp: Date().timeIntervalSince1970
+        )
+        
+        CoreCommsService.log("🧭 Real navigation update: \(instruction)")
+        CoreCommsService.log("🧭 Distance remaining: \(distanceRemaining)m, Time: \(timeRemaining)s")
+        
+        sendNavigationUpdate(update)
+    }
+    
+    // This method is called when navigation guidance becomes available/unavailable
+    public func navigator(_ navigator: GMSNavigator, didUpdateRemainingTime timeToDestination: TimeInterval, distance: CLLocationDistance) {
+        CoreCommsService.log("🧭 Updated time to destination: \(Int(timeToDestination))s, distance: \(Int(distance))m")
+        
+        // this gives us overall trip progress, can be used for additional context
+        if isNavigating {
+            // we can use this for trip-level updates if needed
+        }
+    }
+    
+    // MARK: - Navigation Data Extraction
+    // Methods to extract real navigation data from GMSNavigationNavInfo
+    
+    private func getLatestNavigationInfo(from navigator: GMSNavigator) {
+        // Note: currentNavInfo doesn't exist in the API
+        // We'll rely on the delegate method being called automatically
+        CoreCommsService.log("🧭 Waiting for navigation info update from delegate")
+    }
+    
+    private func extractInstruction(from navInfo: GMSNavigationNavInfo) -> String {
+        // try to get the current step instruction using documented properties
+        if let currentStep = navInfo.currentStep {
+            // use fullInstructionText as documented in GMSNavigationStepInfo
+            return currentStep.fullInstructionText
+        }
+        
+        // fallback to basic instruction
+        return "Continue following the route"
+    }
+    
+    private func extractDistanceRemaining(from navInfo: GMSNavigationNavInfo) -> Int {
+        // get distance to current step
+        if let currentStep = navInfo.currentStep {
+            return Int(currentStep.distanceFromPrevStepMeters)
+        }
+        
+        // fallback distance
+        return 1000
+    }
+    
+    private func extractTimeRemaining(from navInfo: GMSNavigationNavInfo) -> Int {
+        // get time to current step
+        if let currentStep = navInfo.currentStep {
+            return Int(currentStep.timeFromPrevStepSeconds)
+        }
+        
+        // fallback time
+        return 300
+    }
+    
+    private func extractStreetName(from navInfo: GMSNavigationNavInfo) -> String? {
+        // try to get current street name using documented properties
+        if let currentStep = navInfo.currentStep {
+            // use simpleRoadName or fullRoadName as documented
+            return currentStep.simpleRoadName ?? currentStep.fullRoadName
+        }
+        
+        return nil
+    }
+    
+    private func extractManeuver(from navInfo: GMSNavigationNavInfo) -> String {
+        // map GMSNavigationManeuver to string using correct enum values
+        if let currentStep = navInfo.currentStep {
+            switch currentStep.maneuver {
+            case .turnLeft:
+                return "turn_left"
+            case .turnRight:
+                return "turn_right"
+            case .turnSlightLeft:
+                return "turn_slight_left"
+            case .turnSlightRight:
+                return "turn_slight_right"
+            case .turnSharpLeft:
+                return "turn_sharp_left"
+            case .turnSharpRight:
+                return "turn_sharp_right"
+            case .straight:
+                return "continue"
+            case .turnKeepLeft:
+                return "keep_left"
+            case .turnKeepRight:
+                return "keep_right"
+            default:
+                return "continue"
+            }
+        }
+        
+        return "continue"
+    }
+    
+    // MARK: - Fallback Navigation Update Generation (for route changes)
+    
+    private func generateNavigationUpdate() {
+        guard isNavigating else { return }
+        
+        // Note: currentNavInfo doesn't exist, we rely on delegate calls
+        // This is just a fallback when delegate isn't called
+        let update = NavigationUpdate(
+            instruction: "Continue following the route",
+            distanceRemaining: 1000,
+            timeRemaining: 300,
+            streetName: currentDestination,
             maneuver: "continue",
             timestamp: Date().timeIntervalSince1970
         )
+        
+        sendNavigationUpdate(update)
+        CoreCommsService.log("🧭 Generated fallback navigation update")
     }
+    
 }
