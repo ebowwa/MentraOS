@@ -471,7 +471,7 @@ public class SmartGlassesManager extends Service {
 
     public static String getPreferredWearable(Context context) {
         return PreferenceManager.getDefaultSharedPreferences(context)
-                .getString(context.getResources().getString(R.string.PREFERRED_WEARABLE), "");
+                .getString(context.getResources().getString(R.string.PREFERRED_WEARABLE), "Simulated Glasses");
     }
 
     public static ASR_FRAMEWORKS getChosenAsrFramework(Context context) {
