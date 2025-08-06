@@ -479,7 +479,7 @@ struct ViewState {
                     return
                 }
 
-                if self.bypassVad {
+                if self.bypassVad || self.bypassVadForPCM {
                     //          let pcmConverter = PcmConverter()
                     //          let lc3Data = pcmConverter.encode(pcmData) as Data
                     //          checkSetVadStatus(speaking: true)
