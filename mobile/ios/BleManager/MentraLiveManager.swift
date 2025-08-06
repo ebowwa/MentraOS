@@ -1875,12 +1875,6 @@ typealias JSONObject = [String: Any]
 
             self.readinessCheckCounter += 1
             CoreCommsService.log("🔄 Readiness check #\(self.readinessCheckCounter): waiting for glasses SOC to boot")
-
-            // let json: [String: Any] = [
-            //     "type": "phone_ready",
-            //     "timestamp": Int64(Date().timeIntervalSince1970 * 1000),
-            // ]
-            // self.sendJson(json, wakeUp: true)
             requestReadyK900()
         }
 
