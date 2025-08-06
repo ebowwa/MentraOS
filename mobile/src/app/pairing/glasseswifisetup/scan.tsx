@@ -1,7 +1,7 @@
 import React, {useState, useEffect} from "react"
 import {View, Text, FlatList, TouchableOpacity, ActivityIndicator, BackHandler} from "react-native"
 import {useLocalSearchParams, router, useFocusEffect} from "expo-router"
-import {Screen, Header} from "@/components/ignite"
+import {Screen, Header, Button} from "@/components/ignite"
 import coreCommunicator from "@/bridge/CoreCommunicator"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
 import {useAppTheme} from "@/utils/useAppTheme"
@@ -9,7 +9,6 @@ import {ThemedStyle} from "@/theme"
 import {ViewStyle, TextStyle} from "react-native"
 import {useStatus} from "@/contexts/AugmentOSStatusProvider"
 import {useCallback} from "react"
-import ActionButton from "@/components/ui/ActionButton"
 import WifiCredentialsService from "@/utils/WifiCredentialsService"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 
@@ -147,12 +146,12 @@ export default function WifiScanScreen() {
               style={themed($networksList)}
               contentContainerStyle={themed($listContent)}
             />
-            <ActionButton label="Scan Again" onPress={startScan} variant="secondary" />
+            <Button text="Scan Again" onPress={startScan} style={themed($scanButton)} />
           </>
         ) : (
           <View style={themed($emptyContainer)}>
             <Text style={themed($emptyText)}>No networks found</Text>
-            <ActionButton label="Try Again" onPress={startScan} />
+            <Button text="Try Again" onPress={startScan} style={themed($tryAgainButton)} />
           </View>
         )}
       </View>
@@ -321,3 +320,9 @@ const $emptyText: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
   marginBottom: spacing.lg,
   textAlign: "center",
 })
+
+const $scanButton: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  marginTop: spacing.md,
+})
+
+const $tryAgainButton: ThemedStyle<ViewStyle> = () => ({})
