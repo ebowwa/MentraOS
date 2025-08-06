@@ -18,6 +18,8 @@ interface UptimeStreakBarProps {
   containerHeight?: string;
   currentMonth?: number;
   currentYear?: number;
+  selectedDay?: number | null;
+  onDayClick?: (day: number, itemsForDay: AppBatchItem[]) => void;
 }
 
 interface UptimeDayBarProps {
@@ -27,6 +29,8 @@ interface UptimeDayBarProps {
   height?: string;
   currentMonth?: number;
   currentYear?: number;
+  isSelected?: boolean;
+  onDayClick?: (day: number, itemsForDay: AppBatchItem[]) => void;
 }
 
 interface TooltipProps {
@@ -135,7 +139,7 @@ export const updateDayBar = (day: number, appItems: AppBatchItem[], width?: stri
 };
 
 // --- ENHANCED UPTIME DAY BAR COMPONENT ---
-const UptimeDayBar: React.FC<UptimeDayBarProps> = ({ day, appItems, width, height, currentMonth, currentYear }) => {
+const UptimeDayBar: React.FC<UptimeDayBarProps> = ({ day, appItems, width, height, currentMonth, currentYear, isSelected, onDayClick }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [isClicked, setIsClicked] = useState(false);
   const [tooltip, setTooltip] = useState({ show: false, position: { x: 0, y: 0 } });
@@ -193,7 +197,7 @@ const UptimeDayBar: React.FC<UptimeDayBarProps> = ({ day, appItems, width, heigh
   if (itemsForDay.length === 0) {
     return (
       <div
-        className={`flex-none ${width || 'w-1.5'} ${height || 'h-5'} bg-gray-300 rounded-[2px] cursor-pointer transition-all duration-200 hover:bg-gray-400 active:transform active:scale-y-75 active:origin-bottom ${isClicked ? 'transform scale-y-75 origin-bottom' : ''}`}
+        className={`flex-none ${width || 'w-1.5'} ${height || 'h-5'} bg-gray-300 rounded-[2px] cursor-pointer transition-all duration-200 hover:bg-gray-400 active:transform active:scale-y-75 active:origin-bottom ${isClicked ? 'transform scale-y-75 origin-bottom' : ''} ${isSelected ? 'ring-2 ring-blue-500 ring-offset-1' : ''}`}
         onMouseEnter={(e) => {
           setIsHovered(true);
           const rect = e.currentTarget.getBoundingClientRect();
@@ -212,6 +216,9 @@ const UptimeDayBar: React.FC<UptimeDayBarProps> = ({ day, appItems, width, heigh
         onClick={() => {
           setIsClicked(true);
           setTimeout(() => setIsClicked(false), 150);
+          if (onDayClick) {
+            onDayClick(day, []);
+          }
         }}
       >
         <CustomTooltip
@@ -255,7 +262,7 @@ const UptimeDayBar: React.FC<UptimeDayBarProps> = ({ day, appItems, width, heigh
 
   return (
     <div
-      className={`flex-none ${width || 'w-1.5'} ${height || 'h-5'} ${colorClass} ${hoverColorClass} rounded-[2px] cursor-pointer transition-all duration-200 active:transform active:scale-y-75 active:origin-bottom ${isClicked ? 'transform scale-y-75 origin-bottom' : ''}`}
+      className={`flex-none ${width || 'w-1.5'} ${height || 'h-5'} ${colorClass} ${hoverColorClass} rounded-[2px] cursor-pointer transition-all duration-200 active:transform active:scale-y-75 active:origin-bottom ${isClicked ? 'transform scale-y-75 origin-bottom' : ''} ${isSelected ? 'ring-2 ring-blue-500 ring-offset-1' : ''}`}
       onMouseEnter={(e) => {
         setIsHovered(true);
         const rect = e.currentTarget.getBoundingClientRect();
@@ -274,6 +281,9 @@ const UptimeDayBar: React.FC<UptimeDayBarProps> = ({ day, appItems, width, heigh
       onClick={() => {
         setIsClicked(true);
         setTimeout(() => setIsClicked(false), 150);
+        if (onDayClick) {
+          onDayClick(day, itemsForDay);
+        }
       }}
     >
       <CustomTooltip
@@ -298,9 +308,11 @@ export const UptimeStreakBar: React.FC<UptimeStreakBarProps> = ({
   containerHeight = 'h-auto',
   currentMonth,
   currentYear,
+  selectedDay,
+  onDayClick,
 }) => {
   return (
-    <div className="flex items-center gap-0.5 overflow-x-auto">
+    <div className="flex items-center gap-0.5 overflow-hidden" style={{ padding:"20px" }}>
         {Array.from({ length: dayCount }, (_, index) => (
           <UptimeDayBar 
             key={index + 1} 
@@ -310,6 +322,8 @@ export const UptimeStreakBar: React.FC<UptimeStreakBarProps> = ({
             height={barHeight}
             currentMonth={currentMonth}
             currentYear={currentYear}
+            isSelected={selectedDay === (index + 1)}
+            onDayClick={onDayClick}
           />
         ))}
       </div>

@@ -5,27 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { UptimeStreakBar } from '@/components/ui/upTimeStreakBar';
 
-// Month navigation constants
-const monthDays = {
-  january: 31,
-  february: 28,
-  februaryLeap: 29,
-  march: 31,
-  april: 30,
-  may: 31,
-  june: 30,
-  july: 31,
-  august: 31,
-  september: 30,
-  october: 31,
-  november: 30,
-  december: 31
-};
-
-const MONTH_NAMES = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December"
-];
+// Removed unused month constants
 
 // Define the data structures using TypeScript interfaces
 interface UptimeEvent {
@@ -35,25 +15,15 @@ interface UptimeEvent {
   details: string;
 }
 
-interface DayStatus {
-  day: number;
-  status: 'up' | 'down' | 'maintenance';
-}
-
-interface UptimeBarProps {
-  day: DayStatus;
-  onHover: (day: number | null) => void;
-}
-
 interface AppStatus {
   id: string;
   name: string;
-  logo: string; // Placeholder for SVG or emoji
-  packageName?: string; // Optional, if needed
+  logo: string;
+  packageName?: string;
   submitted: string;
   uptimePercentage: number;
   status: 'Online' | 'Offline';
-  uptimeHistory: string[]; // 'up' for up, 'down' for down
+  uptimeHistory: string[];
   details: {
     last24h: number;
     last7d: number;
@@ -63,87 +33,11 @@ interface AppStatus {
   };
 }
 
-// Mock data for a single app
-const mockApp: AppStatus = {
-  id: 'app-1',
-  name: 'Slack Dev Local',
-  logo: 'https://placehold.co/40x40/000000/ffffff?text=SL',
-  submitted: 'Aug 4, 2025, 12:59 PM',
-  uptimePercentage: 100.00,
-  status: 'Online',
-  uptimeHistory: Array(30).fill('up'), // 90 days of uptime
-  details: {
-    last24h: 100,
-    last7d: 99.952,
-    last30d: 99.984,
-    last90d: 99.970,
-    events: [
-      { date: 'July 18, 2025', duration: 19, reason: 'Connection Timeout', details: 'The response took so long that the connection timed out.' },
-    ],
-  },
-};
+// Mock data removed - using real data from appItems
 
-// Generate random uptime data for a given month and year
-const generateMonthData = (date: Date): DayStatus[] => {
-  const year = date.getFullYear();
-  const month = date.getMonth();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const data: DayStatus[] = [];
+// Removed fake random data generation - using real appItems data
 
-  for (let i = 1; i <= daysInMonth; i++) {
-    const random = Math.random();
-    let status: 'up' | 'down' | 'maintenance';
-    if (random < 0.05) { // 5% chance of being down
-      status = 'down';
-    } else if (random < 0.08) { // 3% chance of maintenance
-      status = 'maintenance';
-    } else { // 92% chance of being up
-      status = 'up';
-    }
-    data.push({ day: i, status });
-  }
-  return data;
-};
-
-// UptimeBar Component
-const UptimeBar: React.FC<UptimeBarProps> = ({ day, onHover }) => {
-  const statusStyles = {
-    up: 'bg-green-500 hover:bg-green-400',
-    down: 'bg-red-500 hover:bg-red-400',
-    maintenance: 'bg-yellow-500 hover:bg-yellow-400',
-  };
-
-  return (
-    <div 
-      className="relative flex-1 group"
-      onMouseEnter={() => onHover(day.day)}
-      onMouseLeave={() => onHover(null)}
-    >
-      <div className={`h-10 rounded-sm transition-all duration-200 ease-in-out cursor-pointer ${statusStyles[day.status]}`}></div>
-      <div className="absolute bottom-full mb-2 w-max left-1/2 -translate-x-1/2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
-        Day {day.day}: <span className="font-semibold capitalize">{day.status}</span>
-      </div>
-    </div>
-  );
-};
-
-// Legend Component
-const Legend: React.FC = () => (
-  <div className="flex items-center justify-center sm:justify-start gap-4 text-xs text-gray-500 mt-4">
-    <div className="flex items-center gap-2">
-      <div className="w-3 h-3 rounded-full bg-green-500"></div>
-      <span>Up</span>
-    </div>
-    <div className="flex items-center gap-2">
-      <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
-      <span>Maintenance</span>
-    </div>
-    <div className="flex items-center gap-2">
-      <div className="w-3 h-3 rounded-full bg-red-500"></div>
-      <span>Down</span>
-    </div>
-  </div>
-);
+// Removed unused UptimeBar and Legend components
 
 // Status Badge Component
 const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
@@ -177,99 +71,7 @@ const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
   );
 };
 
-// Combined Monthly Uptime Component
-interface MonthlyUptimeProps {
-  appStatus: AppStatus;
-  currentMonth?: number;
-  currentYear?: number;
-}
-
-const MonthlyUptimeChart: React.FC<MonthlyUptimeProps> = ({ 
-  appStatus, 
-  currentMonth = new Date().getMonth(), 
-  currentYear = new Date().getFullYear() 
-}) => {
-  const [currentDate, setCurrentDate] = useState(new Date(`${currentYear}-${(currentMonth + 1).toString().padStart(2, '0')}-01T00:00:00`));
-  const [hoveredDay, setHoveredDay] = useState<number | null>(null);
-
-  // Generate data for the current month. useMemo prevents re-generating on every render.
-  const monthData = useMemo(() => generateMonthData(currentDate), [currentDate]);
-
-  // Function to change the month
-  const changeMonth = (offset: number) => {
-    setCurrentDate(prevDate => {
-      const newDate = new Date(prevDate);
-      newDate.setMonth(newDate.getMonth() + offset);
-      return newDate;
-    });
-  };
-
-  // Calculate overall uptime percentage
-  const upDays = monthData.filter(d => d.status === 'up').length;
-  const totalDays = monthData.length;
-  const uptimePercentage = ((upDays / totalDays) * 100).toFixed(1);
-
-  const monthName = currentDate.toLocaleString('default', { month: 'long' });
-  const year = currentDate.getFullYear();
-
-  const navigateMonth = (direction: 'prev' | 'next') => {
-    changeMonth(direction === 'prev' ? -1 : 1);
-  };
-
-  return (
-    <div className="bg-white rounded-xl  p-6 sm:p-8">
-      {/* Header Section */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Uptime - {monthName} {year}</h1>
-        <div className="flex items-center gap-2 mt-3 sm:mt-0">
-          <button 
-            onClick={() => navigateMonth('prev')}
-            className="p-2 rounded-md hover:bg-gray-200 transition-colors"
-            aria-label="Previous month"
-          >
-            <ChevronLeft className="w-5 h-5 text-gray-600" />
-          </button>
-          <button 
-            onClick={() => navigateMonth('next')}
-            className="p-2 rounded-md hover:bg-gray-200 transition-colors"
-            aria-label="Next month"
-          >
-            <ChevronRight className="w-5 h-5 text-gray-600" />
-          </button>
-        </div>
-      </div>
-
-      {/* Stats Section */}
-      <div className="bg-gray-50 rounded-lg p-4 mb-6 flex flex-col sm:flex-row items-start sm:items-center gap-4">
-        <div className="text-lg font-semibold text-gray-700">
-          Uptime: <span className="text-blue-600">{uptimePercentage}%</span>
-        </div>
-        <div className="flex items-center gap-2 text-sm">
-          <div className={`w-3 h-3 rounded-full ${parseFloat(uptimePercentage) > 95 ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
-          <span className="font-medium text-gray-600">
-            {parseFloat(uptimePercentage) > 95 ? 'Excellent' : 'Action Required'}
-          </span>
-        </div>
-      </div>
-
-      {/* Uptime Bars Section */}
-      {/* <div>
-        <div className="flex gap-1">
-          {monthData.map(day => (
-            <UptimeBar key={day.day} day={day} onHover={setHoveredDay} />
-          ))}
-        </div>
-        <div className="flex justify-between text-xs text-gray-400 mt-2">
-          <span>Day 1</span>
-          <span>Day {totalDays}</span>
-        </div>
-      </div> */}
-
-      {/* Legend Section */}
-      <Legend />
-    </div>
-  );
-};
+// Removed MonthlyUptimeChart component - using real data in AppUptimeChart instead
 
 // Component for the detailed view of a single app
 
@@ -285,11 +87,37 @@ interface AppDetailViewProps {
   onRefresh?: () => void;
   isRefreshing?: boolean;
   appItems: AppBatchItem[];
+  selectedDay?: number | null;
+  selectedDayItems?: AppBatchItem[];
+  currentMonth?: number;
+  currentYear?: number;
 }
 
 
 
-export const AppDetailView: React.FC<AppDetailViewProps> = ({ app, onRefresh, isRefreshing = false, appItems }) => (
+export const AppDetailView: React.FC<AppDetailViewProps> = ({ app, onRefresh, isRefreshing = false, appItems, selectedDay, selectedDayItems, currentMonth, currentYear }) => {
+  const [dayFilterState, setDayFilterState] = useState<{
+    selectedDay: number | null;
+    selectedDayItems: AppBatchItem[];
+    currentMonth: number;
+    currentYear: number;
+  }>({
+    selectedDay: null,
+    selectedDayItems: [],
+    currentMonth: new Date().getMonth(),
+    currentYear: new Date().getFullYear(),
+  });
+
+  const handleDaySelection = (day: number | null, items: AppBatchItem[], month: number, year: number) => {
+    setDayFilterState({
+      selectedDay: day,
+      selectedDayItems: items,
+      currentMonth: month,
+      currentYear: year,
+    });
+  };
+
+  return (
   <div className=" min-h-screen flex items-center justify-center p-4 font-sans">
     <div className="w-full max-w-4xl">
     <Card className="app-container">
@@ -440,7 +268,7 @@ export const AppDetailView: React.FC<AppDetailViewProps> = ({ app, onRefresh, is
           <h2>{app.status.toLowerCase() === 'online' ? 'All systems operational' : 'System experiencing issues'}</h2>
           <p className="status-note">
             {app.status.toLowerCase() === 'online' 
-              ? `Uptime: ${app.uptimePercentage.toFixed(2)}%` 
+              ? `` 
               : `Current status: ${app.status} - Check events below`}
           </p>
         </div>
@@ -449,30 +277,67 @@ export const AppDetailView: React.FC<AppDetailViewProps> = ({ app, onRefresh, is
     </div>
 
     {/* App Uptime Chart */}
-    <AppUptimeChart appItems={appItems} />
+    <AppUptimeChart appItems={appItems} onDaySelection={handleDaySelection} />
     
     
 
-    {app.details.events.length > 0 && (
+    {(app.details.events.length > 0 || dayFilterState.selectedDayItems.length > 0) && (
       <div className="event-section">
-        <h3 className="section-title">Problems</h3>
-        {app.details.events.map((event, index) => (
-          <div key={index} className="event-entry">
-            <AlertCircle size={20} className="icon" />
+        <h3 className="section-title">
+          Problems
+          {dayFilterState.selectedDay && (
+            <span className="text-sm font-normal text-gray-600 ml-2">
+              - Day {dayFilterState.selectedDay}, {new Date(dayFilterState.currentYear, dayFilterState.currentMonth).toLocaleString('default', { month: 'long', year: 'numeric' })}
+            </span>
+          )}
+        </h3>
+        
+        {/* Show selected day unhealthy items if a day is selected */}
+        {dayFilterState.selectedDay && dayFilterState.selectedDayItems.length > 0 ? (
+          dayFilterState.selectedDayItems
+            .filter(item => item.health !== 'healthy' && !item.onlineStatus)
+            .map((item, index) => (
+              <div key={index} className="event-entry">
+                <AlertCircle size={20} className="icon" />
+                <div className="event-details">
+                  <p>{item.packageName} - Unhealthy Status</p>
+                  <p>{new Date(item.timestamp).toLocaleString()}</p>
+                  <p><strong>Health:</strong> {item.health}</p>
+                  <p><strong>Online Status:</strong> {item.onlineStatus ? 'Online' : 'Offline'}</p>
+                </div>
+              </div>
+            ))
+        ) : dayFilterState.selectedDay && dayFilterState.selectedDayItems.length === 0 ? (
+          <div className="event-entry">
+            <div className="w-5 h-5 bg-gray-300 rounded-full flex items-center justify-center">
+              <span className="text-xs text-gray-600">✓</span>
+            </div>
             <div className="event-details">
-              <p>{app.name} was down for {event.duration} minutes</p>
-              <p>{event.date}, 19:44</p>
-              <p><strong>Reason:</strong> {event.reason}</p>
-              <p><strong>Details:</strong> {event.details}</p>
+              <p>No issues found for this day</p>
+              <p>All systems were operational</p>
             </div>
           </div>
-        ))}
+        ) : (
+          // Show general app events when no day is selected
+          app.details.events.map((event, index) => (
+            <div key={index} className="event-entry">
+              {/* <AlertCircle size={20} className="icon" />
+              <div className="event-details">
+                <p>{app.name} was down for {event.duration} minutes</p>
+                <p>{event.date}, 19:44</p>
+                <p><strong>Reason:</strong> {event.reason}</p>
+                <p><strong>Details:</strong> {event.details}</p>
+              </div> */}
+            </div>
+          ))
+        )}
       </div>
     )}
   </Card>
     </div>
   </div>
-);
+  );
+};
 
 // App Uptime Chart Component with Month Navigation
 interface AppUptimeChartProps {
@@ -481,10 +346,13 @@ interface AppUptimeChartProps {
   setMonthNumberDynamic?: (monthName: number) => void
   setYearNumber?: (yearNumber: number) => void
   currentMonth?: number;
+  onDaySelection?: (day: number | null, items: AppBatchItem[], month: number, year: number) => void;
 }
 
-const AppUptimeChart: React.FC<AppUptimeChartProps> = ({ appItems, onMonthYearChange, setMonthNumberDynamic, setYearNumber }) => {
+const AppUptimeChart: React.FC<AppUptimeChartProps> = ({ appItems, onMonthYearChange, setMonthNumberDynamic, setYearNumber, onDaySelection }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [selectedDay, setSelectedDay] = useState<number | null>(null);
+  const [selectedDayItems, setSelectedDayItems] = useState<AppBatchItem[]>([]);
 
   // Get current month and year
   const monthName = currentDate.toLocaleString('default', { month: 'long' });
@@ -493,6 +361,15 @@ const AppUptimeChart: React.FC<AppUptimeChartProps> = ({ appItems, onMonthYearCh
   // Calculate days in current month
   const daysInMonth = new Date(year, currentDate.getMonth() + 1, 0).getDate();
 
+  // Handle day selection from streak bar
+  const handleDayClick = (day: number, itemsForDay: AppBatchItem[]) => {
+    setSelectedDay(day);
+    setSelectedDayItems(itemsForDay);
+    if (onDaySelection) {
+      onDaySelection(day, itemsForDay, currentDate.getMonth(), currentDate.getFullYear());
+    }
+  };
+
   // Navigate to previous month
   const handlePreviousMonth = () => {
     setCurrentDate(prevDate => {
@@ -500,6 +377,9 @@ const AppUptimeChart: React.FC<AppUptimeChartProps> = ({ appItems, onMonthYearCh
       newDate.setMonth(newDate.getMonth() - 1);
       return newDate;
     });
+    // Reset day selection when changing months
+    setSelectedDay(null);
+    setSelectedDayItems([]);
   };
 
   // Navigate to next month
@@ -509,6 +389,9 @@ const AppUptimeChart: React.FC<AppUptimeChartProps> = ({ appItems, onMonthYearCh
       newDate.setMonth(newDate.getMonth() + 1);
       return newDate;
     });
+    // Reset day selection when changing months
+    setSelectedDay(null);
+    setSelectedDayItems([]);
   };
 
   // Calculate uptime percentage from appItems
@@ -534,27 +417,30 @@ const AppUptimeChart: React.FC<AppUptimeChartProps> = ({ appItems, onMonthYearCh
   const uptimePercentage = calculateUptimePercentage();
 
   return (
-    <div style={{backgroundColor: "#f9fafb", borderRadius: "0.5rem", marginTop: "1.5rem", padding: "1rem"}}>
+    <div style={{borderRadius: "0.5rem", marginTop: "1.5rem", padding: "1rem"}}>
       <div className="flex flex-row items-center justify-between relative mb-4">
-        <div className="text-3xl font-bold">{monthName} {year}</div>
-        <Button
+        <div className="text-[22px] font-bold ">{monthName} {year}</div>
+        <div>
+          <Button
           variant="outline"
           size="icon"
-          className="absolute left-1 w-7 h-7 bg-transparent p-0 opacity-50 transition-opacity duration-200 ease-out border-0 hover:opacity-100"
+          className=" left-1 w-7 h-7 bg-transparent p-0 opacity-50 transition-opacity duration-200 ease-out border-0 hover:opacity-100"
           onClick={handlePreviousMonth}
-        >
-          <ChevronLeft className="w-4 h-4" />
-        </Button>
-        <Button
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </Button>
+          <Button
           variant="outline"
           size="icon"
-          className="absolute right-1 w-7 h-7 bg-transparent p-0 opacity-50 transition-opacity duration-200 ease-out border-0 hover:opacity-100"
+          className="right-1 w-7 h-7 bg-transparent p-0 opacity-50 transition-opacity duration-200 ease-out border-0 hover:opacity-100"
           onClick={handleNextMonth}
-        >
-          <ChevronRight className="w-4 h-4" />
-        </Button>
+          >
+            <ChevronRight className="w-4 h-4" />
+          </Button>
+        </div>
+        
       </div>
-      <div style={{display:"flex", flexDirection:"row", gap: "2px", justifyContent: "space-between", alignItems: "flex-end"}}>
+      <div style={{display:"flex", flexDirection:"row", gap: "2px", justifyContent: "space-between", alignItems: "center"}}>
         <UptimeStreakBar 
           appItems={appItems} 
           dayCount={daysInMonth} 
@@ -565,8 +451,10 @@ const AppUptimeChart: React.FC<AppUptimeChartProps> = ({ appItems, onMonthYearCh
           containerHeight="h-auto"
           currentMonth={currentDate.getMonth()}
           currentYear={currentDate.getFullYear()}
+          selectedDay={selectedDay}
+          onDayClick={handleDayClick}
         />
-        <div style={{fontSize: "1.25rem", fontWeight: "bold", marginLeft: "1rem"}}>
+        <div style={{fontSize: "1.00rem", fontWeight: "bold", marginLeft: "1rem", color:"grey"}}>
           Uptime: {uptimePercentage}%
         </div>
       </div>
