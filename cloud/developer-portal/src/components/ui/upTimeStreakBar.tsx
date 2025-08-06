@@ -16,6 +16,8 @@ interface UptimeStreakBarProps {
   barHeight?: string;
   containerWidth?: string;
   containerHeight?: string;
+  currentMonth?: number;
+  currentYear?: number;
 }
 
 interface UptimeDayBarProps {
@@ -23,6 +25,8 @@ interface UptimeDayBarProps {
   appItems: AppBatchItem[];
   width?: string;
   height?: string;
+  currentMonth?: number;
+  currentYear?: number;
 }
 
 interface TooltipProps {
@@ -67,7 +71,7 @@ const CustomTooltip: React.FC<TooltipProps> = ({ day, healthyCount, unhealthyCou
 };
 
 // --- INDIVIDUAL DAY BAR FUNCTION ---
-export const updateDayBar = (day: number, appItems: AppBatchItem[], width?: string, height?: string) => {
+export const updateDayBar = (day: number, appItems: AppBatchItem[], width?: string, height?: string, currentMonth?: number, currentYear?: number) => {
   let hasHealthy = false;
   let hasUnhealthy = false;
 
@@ -81,10 +85,13 @@ export const updateDayBar = (day: number, appItems: AppBatchItem[], width?: stri
     );
   }
 
-  // Filter items that match the given day (in local time)
+  // Filter items that match the given day, month, and year (in local time)
   const itemsForDay = appItems.filter(app => {
     const appDate = new Date(app.timestamp);
-    return appDate.getDate() === day;
+    const matchesDay = appDate.getDate() === day;
+    const matchesMonth = currentMonth !== undefined ? appDate.getMonth() === currentMonth : true;
+    const matchesYear = currentYear !== undefined ? appDate.getFullYear() === currentYear : true;
+    return matchesDay && matchesMonth && matchesYear;
   });
 
   // If no entries for the day, return gray
@@ -128,7 +135,7 @@ export const updateDayBar = (day: number, appItems: AppBatchItem[], width?: stri
 };
 
 // --- ENHANCED UPTIME DAY BAR COMPONENT ---
-const UptimeDayBar: React.FC<UptimeDayBarProps> = ({ day, appItems, width, height }) => {
+const UptimeDayBar: React.FC<UptimeDayBarProps> = ({ day, appItems, width, height, currentMonth, currentYear }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [isClicked, setIsClicked] = useState(false);
   const [tooltip, setTooltip] = useState({ show: false, position: { x: 0, y: 0 } });
@@ -173,10 +180,13 @@ const UptimeDayBar: React.FC<UptimeDayBarProps> = ({ day, appItems, width, heigh
     );
   }
 
-  // Filter items that match the given day (in local time)
+  // Filter items that match the given day, month, and year (in local time)
   const itemsForDay = appItems.filter(app => {
     const appDate = new Date(app.timestamp);
-    return appDate.getDate() === day;
+    const matchesDay = appDate.getDate() === day;
+    const matchesMonth = currentMonth !== undefined ? appDate.getMonth() === currentMonth : true;
+    const matchesYear = currentYear !== undefined ? appDate.getFullYear() === currentYear : true;
+    return matchesDay && matchesMonth && matchesYear;
   });
 
   // If no entries for the day, return gray
@@ -286,6 +296,8 @@ export const UptimeStreakBar: React.FC<UptimeStreakBarProps> = ({
   barHeight = 'h-5',
   containerWidth = 'w-full',
   containerHeight = 'h-auto',
+  currentMonth,
+  currentYear,
 }) => {
   return (
     <div className="flex items-center gap-0.5 overflow-x-auto">
@@ -296,6 +308,8 @@ export const UptimeStreakBar: React.FC<UptimeStreakBarProps> = ({
             appItems={appItems} 
             width={barWidth}
             height={barHeight}
+            currentMonth={currentMonth}
+            currentYear={currentYear}
           />
         ))}
       </div>

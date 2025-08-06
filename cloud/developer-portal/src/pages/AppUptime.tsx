@@ -563,6 +563,8 @@ const AppUptimeChart: React.FC<AppUptimeChartProps> = ({ appItems, onMonthYearCh
           barHeight="h-10"
           containerWidth="w-full"
           containerHeight="h-auto"
+          currentMonth={currentDate.getMonth()}
+          currentYear={currentDate.getFullYear()}
         />
         <div style={{fontSize: "1.25rem", fontWeight: "bold", marginLeft: "1rem"}}>
           Uptime: {uptimePercentage}%

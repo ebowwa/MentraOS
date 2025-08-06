@@ -119,15 +119,15 @@ const AdminPanel: React.FC = () => {
   useEffect(() => {
       // Fetch immediately
     fetchAppStatus();
-
   }, []);
 
+  // When the current month and year are set
   useEffect(() => {
     const fetchData = async () => {
       await fetchCollectedAllAppBatchStatus(monthNumberDynamic, yearNumber);
     };
     fetchData();
-  }, [monthNumberDynamic, yearNumber]);
+  }, [monthNumberDynamic, yearNumber]); 
 
   const fetchAppStatus = async () => {
       try {
@@ -151,7 +151,8 @@ const AdminPanel: React.FC = () => {
       }
     };
 
-  const fetchCollectedAllAppBatchStatus = async (month : number, year: number) => {
+  // Function to update the day bar based on app items
+  const fetchCollectedAllAppBatchStatus = async (month: number, year: number) => {
     const adjustedMonth = month + 1; // Adjust month to 1-indexed for API
     try {
       setStatusLoading(true);
@@ -244,7 +245,7 @@ const AdminPanel: React.FC = () => {
     console.log('🔄 submittedAppsStatus state updated:', submittedAppsStatus);
   }, [submittedAppsStatus]);
 
-  // Check if user is admin and load data
+  // Check if user is admin and load data TODO may have to look it over with Issiah Claude was helping me here
   const loadAdminData = async () => {
     setIsLoading(true);
 
@@ -272,9 +273,6 @@ const AdminPanel: React.FC = () => {
         console.error('Error fetching submitted apps:', err);
       }
 
-      // Admin management removed
-
-      // ONLY update state with real API data, do not use mock data anymore
       console.log('Updating state with API data:', {
         hasStats: !!statsData,
         submittedAppsCount: appsData?.length || 0
@@ -315,10 +313,7 @@ const AdminPanel: React.FC = () => {
       // Add health status and update state with real data
       console.log('Setting real submitted apps data, count:', appsData?.length || 0);
       setSubmittedApps(appsData || []);
-      
-      // Add health status and update state
-      // const appsWithHealth = await addAppHealthStatus(appsData || []);
-      // setSubmittedApps(appsWithHealth);
+    
 
     } catch (error) {
       console.error('Error loading admin data:', error);
@@ -328,7 +323,7 @@ const AdminPanel: React.FC = () => {
     
   };
 
-   // Get app status every 1 min: 
+  // Function to add health status to apps
   async function addAppHealthStatus(submittedApps: any[]) {
     if (!submittedApps || submittedApps.length === 0) return submittedApps;
 
@@ -379,7 +374,7 @@ const AdminPanel: React.FC = () => {
   }
 
 
-
+  // Ui doodoo 
   const openAppReview = async (packageName: string) => {
     try {
       const appData = await api.admin.getAppDetail(packageName);
@@ -432,8 +427,6 @@ const AdminPanel: React.FC = () => {
   };
 
   /* Admin management functions removed */
-
-
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -505,6 +498,32 @@ const AdminPanel: React.FC = () => {
     }
   };
 
+// Function to get app batch status by package name
+  const getAppBatchStatusByPackageName = (collectedData: any, packageName: string): AppBatchItem[] => {
+    // Check if collectedData exists and has the data object
+    if (!collectedData || !collectedData.data || typeof collectedData.data !== 'object') {
+      console.log('Invalid collectedData structure:', collectedData);
+      return [];
+    }
+
+    // Get the package data from the nested structure
+    const packageData = collectedData.data[packageName];
+    if (!packageData) {
+      console.log(`No data found for package: ${packageName}`);
+      return [];
+    }
+
+    // Flatten all entries from all dates for this package
+    const allEntries: AppBatchItem[] = [];
+    Object.values(packageData).forEach((dateEntries: any) => {
+      if (Array.isArray(dateEntries)) {
+        allEntries.push(...dateEntries);
+      }
+    });
+
+    return allEntries;
+  };
+
   return (
     <DashboardLayout>
       <div className="container mx-auto">
@@ -552,10 +571,9 @@ const AdminPanel: React.FC = () => {
                   App Status
                 </Button>
               </div>
-              <Button
-                style={chosenAppStatus === "" ? { display: "none" } : { display: "inline-flex" }}
+              <Button //here
                 variant={activeTab != "idle" ? "ghost" : "default"}
-                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary flex items-center gap-2"
+                className={`rounded-none border-b-2 border-transparent data-[state=active]:border-primary flex items-center gap-2 ${chosenAppStatus === "" ? "hidden" : "inline-flex"}`}
                 onClick={() => {
                   setActiveTab("idle");
                 }}
@@ -730,18 +748,18 @@ const AdminPanel: React.FC = () => {
                 <Card>
                   <CardHeader>
                     <CardTitle>
-                      <div style={{flex: 1, display: "flex", flexDirection: "row", alignItems: "center", gap: "10px"}}>
-                          <div style={{flex: 1}}>
+                        <div className="flex-1 flex items-center gap-2.5">
+                          <div className='flex-1'>
                             App Status
                           </div>
                           <span className="text-sm font-medium text-gray-500"></span>
-                          <div style={{display:"flex", flexDirection:"column", justifyContent:"center", alignItems:"center"}}>
+                          <div className='flex flex-col justify-center items-center'>
                             <div className="text-xs text-gray-600">
                               {lastUpdateTime ? lastUpdateTime.toLocaleTimeString() : 'Never'}
                             </div>
                           </div>
                           <Button 
-                            style={{width: "100px"}} 
+                            className='w-30' 
                             onClick={() => {
                               fetchAppStatus();
                             }}
@@ -753,15 +771,10 @@ const AdminPanel: React.FC = () => {
                               <>
                                 <Clock className="h-4 w-4" />
                                 <div>Update</div>
-
                               </>
-
                             )}
                           </Button>
-
                         </div>
-                      
-                      
                     </CardTitle>
                     
                   </CardHeader>
@@ -809,7 +822,8 @@ const AdminPanel: React.FC = () => {
               </div>
               
             )}
-            {chosenAppStatus !== "" && (() => {
+
+            {chosenAppStatus !== "" && activeTab === "idle" && (() => {
               // Find the selected app from submittedApps
               const selectedApp = submittedApps.find(app => app.name === chosenAppStatus);
               
@@ -1010,30 +1024,3 @@ export default AdminPanel;
 
 
 
-// ...existing code...
-
-const getAppBatchStatusByPackageName = (collectedData: any, packageName: string): AppBatchItem[] => {
-  // Check if collectedData exists and has the data object
-  if (!collectedData || !collectedData.data || typeof collectedData.data !== 'object') {
-    console.log('Invalid collectedData structure:', collectedData);
-    return [];
-  }
-
-  // Get the package data from the nested structure
-  const packageData = collectedData.data[packageName];
-  if (!packageData) {
-    console.log(`No data found for package: ${packageName}`);
-    return [];
-  }
-
-  // Flatten all entries from all dates for this package
-  const allEntries: AppBatchItem[] = [];
-  Object.values(packageData).forEach((dateEntries: any) => {
-    if (Array.isArray(dateEntries)) {
-      allEntries.push(...dateEntries);
-    }
-  });
-
-  return allEntries;
-};
-// ...existing code...
