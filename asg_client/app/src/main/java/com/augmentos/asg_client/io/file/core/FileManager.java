@@ -90,4 +90,11 @@ public interface FileManager extends FileOperations, FileMetadataOperations, Pac
      * @return FileOperationLogger instance
      */
     FileOperationLogger getOperationLogger();
+    
+    /**
+     * Get the default package name for file operations.
+     * This is used when no specific package is provided.
+     * @return Default package name
+     */
+    String getDefaultPackageName();
 } 

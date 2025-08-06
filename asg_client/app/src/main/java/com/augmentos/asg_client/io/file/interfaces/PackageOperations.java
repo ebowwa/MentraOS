@@ -1,10 +1,26 @@
 package com.augmentos.asg_client.io.file.interfaces;
 
+import java.io.File;
+
 /**
  * Interface for package-level operations.
  * Follows Interface Segregation Principle by focusing only on package operations.
  */
 public interface PackageOperations {
+    
+    /**
+     * Get the package directory for a given package name
+     * @param packageName The package name
+     * @return Package directory File object
+     */
+    File getPackageDirectory(String packageName);
+    
+    /**
+     * Ensure the package directory exists, creating it if necessary
+     * @param packageName The package name
+     * @return true if directory exists or was created successfully, false otherwise
+     */
+    boolean ensurePackageDirectoryExists(String packageName);
     
     /**
      * Get the total size of all files in a package

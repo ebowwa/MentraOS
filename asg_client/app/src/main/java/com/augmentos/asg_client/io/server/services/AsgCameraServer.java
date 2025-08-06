@@ -39,9 +39,6 @@ public class AsgCameraServer extends AsgServer {
     private static final String TAG = "CameraWebServer";
     private static final int DEFAULT_PORT = 8089;
     
-    // Package name for organizing camera files
-    private static final String CAMERA_PACKAGE = "com.augmentos.asg_client.camera";
-    
     // File management system
     private final FileManager fileManager;
     
@@ -73,7 +70,7 @@ public class AsgCameraServer extends AsgServer {
         this.fileManager = fileManager;
         
         logger.info(getTag(), "📸 Camera server initialized with file manager");
-        logger.info(getTag(), "📸 Camera package: " + CAMERA_PACKAGE);
+        logger.info(getTag(), "📸 Camera package: " + fileManager.getDefaultPackageName());
         logger.info(getTag(), "📸 Base directory: " + fileManager.getAvailableSpace() + " bytes available");
     }
 
@@ -230,7 +227,7 @@ public class AsgCameraServer extends AsgServer {
             }
 
             // Get the file using FileManager
-            File photoFile = fileManager.getFile(CAMERA_PACKAGE, latestPhoto.getFileName());
+            File photoFile = fileManager.getFile(fileManager.getDefaultPackageName(), latestPhoto.getFileName());
             if (photoFile == null || !photoFile.exists()) {
                 logger.warn(getTag(), "🖼️ ❌ Photo file not found");
                 return createErrorResponse(Response.Status.NOT_FOUND, "Photo file not found");
@@ -279,7 +276,7 @@ public class AsgCameraServer extends AsgServer {
         
         try {
             // Get all photos using FileManager
-            List<FileMetadata> photoMetadataList = fileManager.listFiles(CAMERA_PACKAGE);
+            List<FileMetadata> photoMetadataList = fileManager.listFiles(fileManager.getDefaultPackageName());
             logger.debug(getTag(), "📚 📊 Found " + photoMetadataList.size() + " photo files");
             
             if (photoMetadataList.isEmpty()) {
@@ -329,7 +326,7 @@ public class AsgCameraServer extends AsgServer {
             data.put("photos", photos);
             data.put("total_count", photos.size());
             data.put("total_size", totalSize);
-            data.put("package_name", CAMERA_PACKAGE);
+            data.put("package_name", fileManager.getDefaultPackageName());
             return createSuccessResponse(data);
         } catch (Exception e) {
             logger.error(getTag(), "📚 💥 Error serving gallery: " + e.getMessage(), e);
@@ -358,14 +355,14 @@ public class AsgCameraServer extends AsgServer {
 
         try {
             // Get file using FileManager (security validation is handled automatically)
-            File photoFile = fileManager.getFile(CAMERA_PACKAGE, filename);
+            File photoFile = fileManager.getFile(fileManager.getDefaultPackageName(), filename);
             if (photoFile == null || !photoFile.exists()) {
                 logger.warn(getTag(), "🖼️ ❌ Photo file not found: " + filename);
                 return createErrorResponse(Response.Status.NOT_FOUND, "Photo not found");
             }
 
             // Get metadata for MIME type
-            FileMetadata metadata = fileManager.getFileMetadata(CAMERA_PACKAGE, filename);
+            FileMetadata metadata = fileManager.getFileMetadata(fileManager.getDefaultPackageName(), filename);
             String mimeType = metadata != null ? metadata.getMimeType() : "image/jpeg";
 
             logger.debug(getTag(), "🖼️ 📖 Reading photo file from disk...");
@@ -403,14 +400,14 @@ public class AsgCameraServer extends AsgServer {
 
         try {
             // Get file using FileManager (security validation is handled automatically)
-            File photoFile = fileManager.getFile(CAMERA_PACKAGE, filename);
+            File photoFile = fileManager.getFile(fileManager.getDefaultPackageName(), filename);
             if (photoFile == null || !photoFile.exists()) {
                 logger.warn(getTag(), "⬇️ ❌ Photo file not found: " + filename);
                 return createErrorResponse(Response.Status.NOT_FOUND, "Photo not found");
             }
 
             // Get metadata for MIME type
-            FileMetadata metadata = fileManager.getFileMetadata(CAMERA_PACKAGE, filename);
+            FileMetadata metadata = fileManager.getFileMetadata(fileManager.getDefaultPackageName(), filename);
             String mimeType = metadata != null ? metadata.getMimeType() : "image/jpeg";
 
             Map<String, String> headers = new HashMap<>();
@@ -453,7 +450,7 @@ public class AsgCameraServer extends AsgServer {
         
         try {
             logger.debug(getTag(), "🧹 🗑️ Cleaning up photos older than " + maxAgeHours + " hours...");
-            int cleanedCount = fileManager.cleanupOldFiles(CAMERA_PACKAGE, maxAgeMs);
+            int cleanedCount = fileManager.cleanupOldFiles(fileManager.getDefaultPackageName(), maxAgeMs);
             
             logger.debug(getTag(), "🧹 ✅ Cleanup completed: " + cleanedCount + " files removed");
             
@@ -487,9 +484,9 @@ public class AsgCameraServer extends AsgServer {
             status.put("server_url", getServerUrl());
             
             // File management metrics
-            status.put("package_name", CAMERA_PACKAGE);
-            status.put("total_photos", fileManager.listFiles(CAMERA_PACKAGE).size());
-            status.put("package_size", fileManager.getPackageSize(CAMERA_PACKAGE));
+            status.put("package_name", fileManager.getDefaultPackageName());
+            status.put("total_photos", fileManager.listFiles(fileManager.getDefaultPackageName()).size());
+            status.put("package_size", fileManager.getPackageSize(fileManager.getDefaultPackageName()));
             status.put("available_space", fileManager.getAvailableSpace());
             status.put("total_space", fileManager.getTotalSpace());
             
@@ -583,13 +580,13 @@ public class AsgCameraServer extends AsgServer {
             // Check if we have a cached latest photo
             if (latestPhotoMetadata != null) {
                 // Verify it still exists
-                if (fileManager.fileExists(CAMERA_PACKAGE, latestPhotoMetadata.getFileName())) {
+                if (fileManager.fileExists(fileManager.getDefaultPackageName(), latestPhotoMetadata.getFileName())) {
                     return latestPhotoMetadata;
                 }
             }
             
             // Get all photos and find the latest one
-            List<FileMetadata> photos = fileManager.listFiles(CAMERA_PACKAGE);
+            List<FileMetadata> photos = fileManager.listFiles(fileManager.getDefaultPackageName());
             if (photos.isEmpty()) {
                 return null;
             }
@@ -616,6 +613,6 @@ public class AsgCameraServer extends AsgServer {
      * Get the camera package name.
      */
     public String getCameraPackage() {
-        return CAMERA_PACKAGE;
+        return fileManager.getDefaultPackageName();
     }
 } 

@@ -98,7 +98,7 @@ public class CommandProcessor {
         registerHandler(new PhoneReadyCommandHandler(communicationManager, stateManager, responseBuilder));
         registerHandler(new AuthTokenCommandHandler(communicationManager, configurationManager));
         registerHandler(new PhotoCommandHandler(context, serviceManager, fileManager));
-        registerHandler(new VideoCommandHandler(context, serviceManager, streamingManager));
+        registerHandler(new VideoCommandHandler(context, serviceManager, streamingManager, fileManager));
         registerHandler(new PingCommandHandler(communicationManager, responseBuilder));
         registerHandler(new RtmpCommandHandler(context, stateManager, streamingManager));
         registerHandler(new WifiCommandHandler(serviceManager, communicationManager, stateManager));

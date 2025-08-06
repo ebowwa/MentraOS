@@ -196,6 +196,26 @@ public class FileManagerImpl implements FileManager {
     
     // PackageOperations implementation
     @Override
+    public File getPackageDirectory(String packageName) {
+        // Security validation
+        if (!securityManager.validateOperation(packageName, null, "DIRECTORY")) {
+            return null;
+        }
+        
+        return directoryManager.getPackageDirectory(packageName);
+    }
+    
+    @Override
+    public boolean ensurePackageDirectoryExists(String packageName) {
+        // Security validation
+        if (!securityManager.validateOperation(packageName, null, "DIRECTORY")) {
+            return false;
+        }
+        
+        return directoryManager.ensurePackageDirectoryExists(packageName);
+    }
+    
+    @Override
     public long getPackageSize(String packageName) {
         // Security validation
         if (!securityManager.validateOperation(packageName, null, "SIZE")) {
@@ -278,5 +298,10 @@ public class FileManagerImpl implements FileManager {
     @Override
     public FileOperationLogger getOperationLogger() {
         return operationLogger;
+    }
+    
+    @Override
+    public String getDefaultPackageName() {
+        return "com.augmentos.asg_client.camera";
     }
 } 

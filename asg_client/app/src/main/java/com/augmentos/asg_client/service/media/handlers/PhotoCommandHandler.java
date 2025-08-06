@@ -9,24 +9,19 @@ import com.augmentos.asg_client.service.legacy.interfaces.ICommandHandler;
 import com.augmentos.asg_client.service.legacy.managers.AsgClientServiceManager;
 
 import org.json.JSONObject;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.Locale;
 
 /**
  * Handler for photo-related commands.
  * Follows Single Responsibility Principle by handling only photo commands.
+ * Extends BaseMediaCommandHandler for common package directory management.
  */
-public class PhotoCommandHandler implements ICommandHandler {
+public class PhotoCommandHandler extends BaseMediaCommandHandler {
     private static final String TAG = "PhotoCommandHandler";
     
-    private final Context context;
     private final AsgClientServiceManager serviceManager;
-    private final FileManager fileManager;
 
     public PhotoCommandHandler(Context context, AsgClientServiceManager serviceManager, FileManager fileManager) {
-        this.context = context;
-        this.fileManager = fileManager;
+        super(context, fileManager);
         this.serviceManager = serviceManager;
     }
 
@@ -38,6 +33,14 @@ public class PhotoCommandHandler implements ICommandHandler {
     @Override
     public boolean handleCommand(JSONObject data) {
         try {
+            // Resolve package name using base class functionality
+            String packageName = resolvePackageName(data);
+            logCommandStart(getCommandType(), packageName);
+
+            // Validate requestId using base class functionality
+            if (!validateRequestId(data)) {
+                return false;
+            }
 
             String requestId = data.optString("requestId", "");
             String webhookUrl = data.optString("webhookUrl", "");
@@ -45,52 +48,61 @@ public class PhotoCommandHandler implements ICommandHandler {
             String bleImgId = data.optString("bleImgId", "");
             boolean save = data.optBoolean("save", false);
 
-            String packageName = data.optString("packageName", "");
-
-
-            if(packageName.isEmpty()){
-                packageName = context.getPackageName();
-            }
-            Log.d(TAG, "Handling photo command for package: " + packageName);
-
-
-            if (requestId.isEmpty()) {
-                Log.e(TAG, "Cannot take photo - missing requestId");
+            // Generate file path using base class functionality
+            String fileName = generateUniqueFilename("IMG_", ".jpg");
+            String photoFilePath = generateFilePath(packageName, fileName);
+            if (photoFilePath == null) {
+                logCommandResult(getCommandType(), false, "Failed to generate file path");
                 return false;
             }
-
-            String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
-
-
-            fileManager.getFile(packageName,"" ).getPath();
-            String photoFilePath = context.getExternalFilesDir(null) + "/IMG_" + timeStamp + ".jpg";
 
             MediaCaptureService captureService = serviceManager.getMediaCaptureService();
             if (captureService == null) {
-                Log.e(TAG, "Media capture service not available");
+                logCommandResult(getCommandType(), false, "Media capture service not available");
                 return false;
             }
 
-            switch (transferMethod) {
-                case "ble":
-                    captureService.takePhotoForBleTransfer(photoFilePath, requestId, bleImgId, save);
-                    break;
-                case "auto":
-                    if (bleImgId.isEmpty()) {
-                        Log.e(TAG, "Auto mode requires bleImgId for fallback");
-                        return false;
-                    }
-                    captureService.takePhotoAutoTransfer(photoFilePath, requestId, webhookUrl, bleImgId, save);
-                    break;
-                default:
-                    captureService.takePhotoAndUpload(photoFilePath, requestId, webhookUrl, save);
-                    break;
-            }
+            // Process photo capture based on transfer method
+            boolean success = processPhotoCapture(captureService, photoFilePath, requestId, webhookUrl, bleImgId, save, transferMethod);
+            logCommandResult(getCommandType(), success, success ? null : "Photo capture failed");
+            return success;
             
-            return true;
         } catch (Exception e) {
             Log.e(TAG, "Error handling photo command", e);
+            logCommandResult(getCommandType(), false, "Exception: " + e.getMessage());
             return false;
+        }
+    }
+    
+    /**
+     * Process photo capture based on transfer method.
+     * 
+     * @param captureService Media capture service
+     * @param photoFilePath Photo file path
+     * @param requestId Request ID
+     * @param webhookUrl Webhook URL
+     * @param bleImgId BLE image ID
+     * @param save Whether to save the photo
+     * @param transferMethod Transfer method
+     * @return true if successful, false otherwise
+     */
+    private boolean processPhotoCapture(MediaCaptureService captureService, String photoFilePath, 
+                                      String requestId, String webhookUrl, String bleImgId, 
+                                      boolean save, String transferMethod) {
+        switch (transferMethod) {
+            case "ble":
+                captureService.takePhotoForBleTransfer(photoFilePath, requestId, bleImgId, save);
+                return true;
+            case "auto":
+                if (bleImgId.isEmpty()) {
+                    Log.e(TAG, "Auto mode requires bleImgId for fallback");
+                    return false;
+                }
+                captureService.takePhotoAutoTransfer(photoFilePath, requestId, webhookUrl, bleImgId, save);
+                return true;
+            default:
+                captureService.takePhotoAndUpload(photoFilePath, requestId, webhookUrl, save);
+                return true;
         }
     }
 } 

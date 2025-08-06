@@ -3,6 +3,7 @@ package com.augmentos.asg_client.service.media.handlers;
 import android.content.Context;
 import android.util.Log;
 import com.augmentos.asg_client.io.media.core.MediaCaptureService;
+import com.augmentos.asg_client.io.file.core.FileManager;
 import com.augmentos.asg_client.service.legacy.interfaces.ICommandHandler;
 import com.augmentos.asg_client.service.legacy.managers.AsgClientServiceManager;
 import com.augmentos.asg_client.service.media.interfaces.IStreamingManager;
@@ -14,17 +15,17 @@ import java.util.Locale;
 /**
  * Handler for video recording commands.
  * Follows Single Responsibility Principle by handling only video commands.
+ * Extends BaseMediaCommandHandler for common package directory management.
  */
-public class VideoCommandHandler implements ICommandHandler {
+public class VideoCommandHandler extends BaseMediaCommandHandler {
     private static final String TAG = "VideoCommandHandler";
     
     private final AsgClientServiceManager serviceManager;
-    private final Context context;
     private final IStreamingManager streamingManager;
 
-    public VideoCommandHandler(Context context, AsgClientServiceManager serviceManager, IStreamingManager streamingManager) {
+    public VideoCommandHandler(Context context, AsgClientServiceManager serviceManager, IStreamingManager streamingManager, FileManager fileManager) {
+        super(context, fileManager);
         this.serviceManager = serviceManager;
-        this.context = context;
         this.streamingManager = streamingManager;
     }
 
@@ -36,37 +37,36 @@ public class VideoCommandHandler implements ICommandHandler {
     @Override
     public boolean handleCommand(JSONObject data) {
         try {
-            String requestId = data.optString("requestId", "");
-            String packageName = data.optString("packageName", "");
-            if(packageName.isEmpty()){
-                packageName = context.getPackageName();
-            }
-            Log.d(TAG, "Handling video command for package: " + packageName);
+            // Resolve package name using base class functionality
+            String packageName = resolvePackageName(data);
+            logCommandStart(getCommandType(), packageName);
 
-            if (requestId.isEmpty()) {
-                Log.e(TAG, "Cannot start video recording - missing requestId");
+            // Validate requestId using base class functionality
+            if (!validateRequestId(data)) {
                 streamingManager.sendVideoRecordingStatusResponse(false, "missing_request_id", null);
                 return false;
             }
 
             MediaCaptureService captureService = serviceManager.getMediaCaptureService();
             if (captureService == null) {
-                Log.e(TAG, "Media capture service is not initialized");
+                logCommandResult(getCommandType(), false, "Media capture service is not initialized");
                 streamingManager.sendVideoRecordingStatusResponse(false, "service_unavailable", null);
                 return false;
             }
 
             if (captureService.isRecordingVideo()) {
-                Log.d(TAG, "Already recording video, ignoring start command");
+                logCommandResult(getCommandType(), true, "Already recording video");
                 streamingManager.sendVideoRecordingStatusResponse(true, "already_recording", null);
                 return true;
             }
 
             captureService.handleVideoButtonPress();
+            logCommandResult(getCommandType(), true, null);
             streamingManager.sendVideoRecordingStatusResponse(true, "recording_started", null);
             return true;
         } catch (Exception e) {
             Log.e(TAG, "Error handling video command", e);
+            logCommandResult(getCommandType(), false, "Exception: " + e.getMessage());
             streamingManager.sendVideoRecordingStatusResponse(false, "error", e.getMessage());
             return false;
         }
