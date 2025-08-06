@@ -1,5 +1,9 @@
 package com.augmentos.augmentos_core.smarterglassesmanager.smartglassescommunicators;
 
+import android.os.Bundle;
+
+import com.augmentos.augmentos_core.BuildConfig;
+
 import mentraos.ble.MentraosBle;
 import mentraos.ble.MentraosBle.DisplayText;
 import mentraos.ble.MentraosBle.DisplayScrollingText;
@@ -46,6 +50,7 @@ import android.bluetooth.le.ScanResult;
 import android.bluetooth.le.ScanSettings;
 import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.pm.ApplicationInfo;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
@@ -95,6 +100,8 @@ import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.Glass
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesBluetoothSearchStopEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesHeadDownEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesHeadUpEvent;
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.BleCommandReceiver;
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.BleCommandSender;
 import com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses.SmartGlassesDevice;
 import com.augmentos.augmentos_core.smarterglassesmanager.speechrecognition.augmentos.SpeechRecAugmentos;
 import com.augmentos.augmentos_core.R;
@@ -121,6 +128,8 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
     private final String NEX_MAIN_DEVICE_KEY = "NEX_MAIN_DEVICE_KEY";
     private final String NEX_MAIN_DEVICE_ADDRESS = "NEX_MAIN_DEVICE_ADDRESS";
     private final String SAVED_NEX_ID_KEY = "SAVED_Nex_ID_KEY";
+
+    private boolean isDebugMode = false;
 
     private int heartbeatCount = 0;
     private int micBeatCount = 0;
@@ -307,6 +316,7 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
     public MentraNexSGC(Context context, SmartGlassesDevice smartGlassesDevice) {
         super();
         this.context = context;
+        isDebugMode = isDebug(context);
         Log.d(TAG, "Init MentraNexSGC");
         loadPairedDeviceNames();
         loadPairedDeviceAddress();
@@ -460,7 +470,8 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
                 if (status == BluetoothGatt.GATT_SUCCESS) {
                     Log.d(TAG, "onCharacteristicWrite PROC_QUEUE - " + " glass write successful");
                     Log.d(TAG, "onCharacteristicWrite len - " + values.length);
-                    Log.d(TAG, "onCharacteristicWrite Values - " + bytesToHex(values));
+                    final String packetHex = bytesToHex(values);
+                    Log.d(TAG, "onCharacteristicWrite Values - " + packetHex);
                     final int dataLen = values.length;
                     if (dataLen > 0) {
                         final byte packetType = values[0];
@@ -468,7 +479,7 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
                         switch (packetType) {
                             case PACKET_TYPE_PROTOBUF:
                                 // just for test
-                                decodeProtobufsByWrite(protobufData);
+                                decodeProtobufsByWrite(protobufData, packetHex);
                                 break;
                         }
                     }
@@ -2878,8 +2889,9 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
             if (deviceName == null) {
                 return;
             }
+            final String packetHex = bytesToHex(data);
             Log.d(TAG, "onCharacteristicChangedHandler len: " + data.length);
-            Log.d(TAG, "onCharacteristicChangedHandler: " + bytesToHex(data));
+            Log.d(TAG, "onCharacteristicChangedHandler: " + packetHex);
             final int dataLen = data.length;
             if (dataLen == 0) {
                 return;
@@ -2893,8 +2905,8 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
                 }
                 break;
                 case PACKET_TYPE_PROTOBUF: {
-                    byte[] jsonData = Arrays.copyOfRange(data, 1, dataLen);
-                    decodeProtobufs(jsonData);
+                    byte[] protobufData = Arrays.copyOfRange(data, 1, dataLen);
+                    decodeProtobufs(protobufData, packetHex);
                 }
                 break;
                 case PACKET_TYPE_AUDIO: {
@@ -2976,21 +2988,32 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
         }
     }
 
-    private void decodeProtobufsByWrite(byte[] protobufBytes) {
+    private void decodeProtobufsByWrite(byte[] protobufBytes, String packetHex) {
         try {
             final PhoneToGlasses phoneToGlasses = PhoneToGlasses.parseFrom(protobufBytes);
             Log.d(TAG, "decodeProtobufsByWrite phoneToGlasses: " + phoneToGlasses.toString());
             Log.d(TAG, "decodeProtobufsByWrite phoneToGlasses payloadCase: " + phoneToGlasses.getPayloadCase());
+            final String payloadCase = phoneToGlasses.getPayloadCase().toString();
+
+            if (isDebugMode) {
+                EventBus.getDefault()
+                        .post(new BleCommandSender(payloadCase, packetHex));
+            }
         } catch (Exception e) {
         }
     }
 
     // decodeProtobufs from binary bytes
-    private void decodeProtobufs(byte[] protobufBytes) {
+    private void decodeProtobufs(byte[] protobufBytes, String packetHex) {
         try {
             final GlassesToPhone glassesToPhone = GlassesToPhone.parseFrom(protobufBytes);
+            final String payloadCase = glassesToPhone.getPayloadCase().toString();
             Log.d(TAG, "decodeProtobufs glassesToPhone: " + glassesToPhone.toString());
-            Log.d(TAG, "decodeProtobufs glassesToPhone payloadCase: " + glassesToPhone.getPayloadCase());
+            Log.d(TAG, "decodeProtobufs glassesToPhone payloadCase: " + payloadCase);
+            if (isDebugMode) {
+                EventBus.getDefault()
+                        .post(new BleCommandReceiver(payloadCase, packetHex));
+            }
             switch (glassesToPhone.getPayloadCase()) {
                 case BATTERY_STATUS: {
                     final BatteryStatus batteryStatus = glassesToPhone.getBatteryStatus();
@@ -3131,6 +3154,10 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
             Log.e(TAG, "Error decoding manufacturer data: " + e.getMessage());
             return null;
         }
+    }
+
+    private Boolean isDebug(Context context) {
+        return BuildConfig.DEBUG;
     }
 
     private class DisplayTextJson {

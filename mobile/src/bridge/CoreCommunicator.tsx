@@ -307,6 +307,12 @@ export class CoreCommunicator extends EventEmitter {
           .catch(error => {
             console.error("Failed to handle audio stop request:", error)
           })
+      } else if ("receive_command_from_ble" in data) {
+        console.log("receive_command_from_ble ", data)
+        GlobalEventEmitter.emit("receive_command_from_ble", data.receive_command_from_ble)
+      } else if ("send_command_to_ble" in data) {
+        console.log("send_command_to_ble", data)
+        GlobalEventEmitter.emit("send_command_to_ble", data.send_command_to_ble)
       }
     } catch (e) {
       console.error("Error parsing data from Core:", e)

@@ -65,6 +65,8 @@ import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.HeadU
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.KeepAliveAckEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.MicModeChangedEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.RtmpStreamStatusEvent;
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.BleCommandReceiver;
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.BleCommandSender;
 import com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses.SmartGlassesDevice;
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.BitmapJavaUtils;
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.SmartGlassesConnectionState;
@@ -1425,6 +1427,16 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     public void onNewScreenImageEvent(NewScreenImageEvent event) {
         if (smartGlassesManager != null)
             smartGlassesManager.windowManager.showAppLayer("server", () -> smartGlassesManager.sendBitmap(event.bmp), -1);
+    }
+
+    @Subscribe
+    public void onBleCommandReceiver(BleCommandReceiver event) {
+        blePeripheral.sendBleCommandReceiverEventToManager(event);
+    }
+
+    @Subscribe
+    public void onBleCommandSender(BleCommandSender event) {
+        blePeripheral.sendBleCommandSenderEventToManager(event);
     }
 
     private void startNotificationService() {

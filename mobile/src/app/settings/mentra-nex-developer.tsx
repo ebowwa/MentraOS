@@ -3,8 +3,9 @@ import {View, Text, StyleSheet, Switch, TouchableOpacity, Platform, ScrollView, 
 import Icon from "react-native-vector-icons/MaterialCommunityIcons"
 import {useStatus} from "@/contexts/AugmentOSStatusProvider"
 import coreCommunicator from "@/bridge/CoreCommunicator"
+import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
 import {saveSetting, loadSetting} from "@/utils/SettingsHelper"
-import {SETTINGS_KEYS} from "@/consts"
+import {MOCK_CONNECTION, SETTINGS_KEYS} from "@/consts"
 import axios from "axios"
 import showAlert from "@/utils/AlertUtils"
 import {useAppTheme} from "@/utils/useAppTheme"
@@ -18,7 +19,6 @@ import {spacing} from "@/theme"
 
 export default function MentraNexDeveloperSettingsScreen() {
   const {status} = useStatus()
-
   const {theme} = useAppTheme()
   const {goBack, push} = useNavigationHistory()
   // State for custom URL management
@@ -26,6 +26,32 @@ export default function MentraNexDeveloperSettingsScreen() {
   const [positionX, setPositionX] = useState("0")
   const [positionY, setPositionY] = useState("0")
   const [size, setSize] = useState("20")
+  const [commandSender, setCommandSender] = useState<object | null>(null)
+  const [commandReceiver, setCommandReceiver] = useState<object | null>(null)
+  useEffect(() => {
+    const handleCommandFromSender = (sender: object) => {
+      console.log("handleCommandFromSender:", sender)
+      setCommandSender(sender)
+    }
+
+    const handleCommandFromReceiver = (receiver: object) => {
+      console.log("handleCommandFromReceiver:", receiver)
+      setCommandReceiver(receiver)
+    }
+
+    if (!MOCK_CONNECTION) {
+      GlobalEventEmitter.on("send_command_to_ble", handleCommandFromSender)
+      GlobalEventEmitter.on("receive_command_from_ble", handleCommandFromReceiver)
+    }
+
+    return () => {
+      if (!MOCK_CONNECTION) {
+        GlobalEventEmitter.removeListener("send_command_to_ble", handleCommandFromSender)
+        GlobalEventEmitter.removeListener("receive_command_from_ble", handleCommandFromReceiver)
+      }
+    }
+  }, [])
+
   // Modified handler for Custom URL
   const onSendTextClick = async () => {
     if (status.core_info.puck_connected && status.glasses_info?.model_name) {
@@ -51,10 +77,10 @@ export default function MentraNexDeveloperSettingsScreen() {
   }
 
   const onRestTextClick = async () => {
-    setText("")
-    setPositionX(null)
-    setPositionY(null)
-    setSize(null)
+    setText("Hello World")
+    setPositionX("0")
+    setPositionY("0")
+    setSize("20")
   }
 
   const onSendImageClick = async () => {
@@ -210,7 +236,7 @@ export default function MentraNexDeveloperSettingsScreen() {
             },
           ]}>
           <View style={styles.settingTextContainer}>
-            <Text style={[styles.label, {color: theme.colors.text}]}>Send the testing image to Firmware</Text>
+            <Text style={[styles.label, {color: theme.colors.text}]}>Send the testing image to BLE</Text>
 
             <View style={styles.buttonRow}>
               <PillButton
@@ -221,6 +247,41 @@ export default function MentraNexDeveloperSettingsScreen() {
                 buttonStyle={styles.saveButton}
               />
             </View>
+          </View>
+        </View>
+
+        <Spacer height={theme.spacing.md} />
+        <View
+          style={[
+            styles.settingContainer,
+            {
+              backgroundColor: theme.colors.background,
+              borderWidth: theme.spacing.xxxs,
+              borderColor: theme.colors.border,
+            },
+          ]}>
+          <View style={styles.settingTextContainer}>
+            <Text style={[styles.label, {color: theme.colors.text}]}>Send Command to BLE</Text>
+
+            <Text style={[styles.value, {color: theme.colors.textDim}]}>Command:{commandSender?.command ?? ""}</Text>
+            <Text style={[styles.value, {color: theme.colors.textDim}]}>HEX:{commandSender?.commandText ?? ""}</Text>
+          </View>
+        </View>
+
+        <Spacer height={theme.spacing.md} />
+        <View
+          style={[
+            styles.settingContainer,
+            {
+              backgroundColor: theme.colors.background,
+              borderWidth: theme.spacing.xxxs,
+              borderColor: theme.colors.border,
+            },
+          ]}>
+          <View style={styles.settingTextContainer}>
+            <Text style={[styles.label, {color: theme.colors.text}]}>Received Command from BLE</Text>
+            <Text style={[styles.value, {color: theme.colors.textDim}]}>Command: {commandReceiver?.command ?? ""}</Text>
+            <Text style={[styles.value, {color: theme.colors.textDim}]}>HEX: {commandReceiver?.commandText ?? ""}</Text>
           </View>
         </View>
       </ScrollView>

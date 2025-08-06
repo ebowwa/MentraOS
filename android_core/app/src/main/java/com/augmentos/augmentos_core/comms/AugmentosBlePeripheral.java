@@ -24,6 +24,9 @@ import com.augmentos.augmentoslib.ThirdPartyEdgeApp;
 import com.augmentos.augmentoslib.events.CoreToManagerOutputEvent;
 import com.augmentos.augmentoslib.events.ManagerToCoreRequestEvent;
 
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.BleCommandReceiver;
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.BleCommandSender;
+
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
 import org.json.JSONException;
@@ -105,8 +108,7 @@ public class AugmentosBlePeripheral {
                 // this.stop();
                 this.isSimulatedPuck = true;
             }
-        }
-        catch (Exception e){
+        } catch (Exception e) {
             Log.e(TAG, "Failed to parse ManagerToCoreRequestEvent", e);
         }
     }
@@ -290,7 +292,7 @@ public class AugmentosBlePeripheral {
                     // Process the complete data
                     try {
                         parser.parseMessage(completeData);
-                        isSimulatedPuck=false;
+                        isSimulatedPuck = false;
                     } catch (JSONException e) {
                         Log.e(TAG, "Invalid JSON command: " + e.getMessage());
                     }
@@ -315,7 +317,7 @@ public class AugmentosBlePeripheral {
 
                         // Process the complete data (e.g., parse JSON)
                         parser.parseMessage(completeData);
-                        isSimulatedPuck=false;
+                        isSimulatedPuck = false;
 
                         // Send a success response
                         gattServer.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, 0, null);
@@ -337,7 +339,7 @@ public class AugmentosBlePeripheral {
 
             @SuppressLint("MissingPermission")
             @Override
-            public void onDescriptorWriteRequest (BluetoothDevice device, int requestId, BluetoothGattDescriptor descriptor, boolean preparedWrite, boolean responseNeeded, int offset, byte[] value) {
+            public void onDescriptorWriteRequest(BluetoothDevice device, int requestId, BluetoothGattDescriptor descriptor, boolean preparedWrite, boolean responseNeeded, int offset, byte[] value) {
 
                 connectedDevice = device;  // perhaps add to some kind of collection of devices to update?
 
@@ -397,9 +399,9 @@ public class AugmentosBlePeripheral {
         Log.d(TAG, "GATT server setup complete");
     }
 
-    public void sendPing(){
+    public void sendPing() {
         JSONObject ping = new JSONObject();
-        try{
+        try {
             ping.put("ping", true);
         } catch (JSONException e) {
             throw new RuntimeException(e);
@@ -409,7 +411,7 @@ public class AugmentosBlePeripheral {
 
     public void sendPermissionsErrorToManager() {
         JSONObject data = new JSONObject();
-        try{
+        try {
             data.put("need_permissions", true);
         } catch (JSONException e) {
             throw new RuntimeException(e);
@@ -430,7 +432,7 @@ public class AugmentosBlePeripheral {
 
     public void sendAuthErrorToManager() {
         JSONObject data = new JSONObject();
-        try{
+        try {
             data.put("auth_error", true);
         } catch (JSONException e) {
             throw new RuntimeException(e);
@@ -442,7 +444,7 @@ public class AugmentosBlePeripheral {
 //        Log.d(TAG, "sendNotifyManager");
         JSONObject data = new JSONObject();
         JSONObject messageObj = new JSONObject();
-        try{
+        try {
             messageObj.put("message", message);
             messageObj.put("type", type);
             data.put("notify_manager", messageObj);
@@ -463,7 +465,7 @@ public class AugmentosBlePeripheral {
 
 //        Log.d(TAG, "sendNotifyManager");
         JSONObject data = new JSONObject();
-        try{
+        try {
             data.put("glasses_display_event", displayEvent);
         } catch (JSONException e) {
             throw new RuntimeException(e);
@@ -474,7 +476,7 @@ public class AugmentosBlePeripheral {
     public void sendAppInfoToManager(ThirdPartyEdgeApp app) {
 //        Log.d(TAG, "sendNotifyManager");
         JSONObject data = new JSONObject();
-        try{
+        try {
             data.put("app_info", app.toJson(true));
 
         } catch (JSONException e) {
@@ -496,11 +498,11 @@ public class AugmentosBlePeripheral {
         sendDataToAugmentOsManager(message.toString());
     }
 
-    public void sendGlassesBluetoothDiscoverResultToManager(String modelName, String deviceName,String deviceAddress) {
-        Log.d(TAG, "sendGlassesSearchResultsToManager modelName: "+modelName+" deviceName: "+deviceName+" deviceAddress: "+deviceAddress);
+    public void sendGlassesBluetoothDiscoverResultToManager(String modelName, String deviceName, String deviceAddress) {
+        Log.d(TAG, "sendGlassesSearchResultsToManager modelName: " + modelName + " deviceName: " + deviceName + " deviceAddress: " + deviceAddress);
         JSONObject data = new JSONObject();
         JSONObject messageObj = new JSONObject();
-        try{
+        try {
             messageObj.put("model_name", modelName);
             messageObj.put("device_name", deviceName);
             messageObj.put("device_address", deviceAddress);
@@ -515,7 +517,7 @@ public class AugmentosBlePeripheral {
         Log.d(TAG, "sendGlassesSearchResultsToManager");
         JSONObject data = new JSONObject();
         JSONObject messageObj = new JSONObject();
-        try{
+        try {
             messageObj.put("model_name", modelName);
             data.put("compatible_glasses_search_stop", messageObj);
         } catch (JSONException e) {
@@ -528,7 +530,7 @@ public class AugmentosBlePeripheral {
         Log.d(TAG, "sendAppIsInstalledEventToManager");
         JSONObject data = new JSONObject();
         JSONObject messageObj = new JSONObject();
-        try{
+        try {
             messageObj.put("package_name", packageName);
             data.put("app_is_downloaded", messageObj);
         } catch (JSONException e) {
@@ -537,10 +539,38 @@ public class AugmentosBlePeripheral {
         sendDataToAugmentOsManager(data.toString());
     }
 
+    public void sendBleCommandReceiverEventToManager(BleCommandReceiver event) {
+        Log.d(TAG, "sendBleCommandReceiverEventToManager");
+        JSONObject data = new JSONObject();
+        JSONObject messageObj = new JSONObject();
+        try {
+            messageObj.put("command", event.command);
+            messageObj.put("commandText", event.commandText);
+            data.put("receive_command_from_ble", messageObj);
+        } catch (JSONException e) {
+            throw new RuntimeException(e);
+        }
+        sendDataToAugmentOsManager(data.toString());
+    }
+
+    public void sendBleCommandSenderEventToManager(BleCommandSender event) {
+        Log.d(TAG, "sendBleCommandSenderEventToManager");
+        JSONObject data = new JSONObject();
+        JSONObject messageObj = new JSONObject();
+        try {
+            messageObj.put("command", event.command);
+            messageObj.put("commandText", event.commandText);
+            data.put("send_command_to_ble", messageObj);
+        } catch (JSONException e) {
+            throw new RuntimeException(e);
+        }
+        sendDataToAugmentOsManager(data.toString());
+    }
+
     @SuppressLint("MissingPermission")
     public void sendDataToAugmentOsManager(String jsonData) {
-        if(isSimulatedPuck){
-           // Log.d(TAG, "Simulated puck is active, sending data to AugmentOS Manager: " + jsonData);
+        if (isSimulatedPuck) {
+            // Log.d(TAG, "Simulated puck is active, sending data to AugmentOS Manager: " + jsonData);
 
             EventBus.getDefault().post(new CoreToManagerOutputEvent(jsonData));
             return;
@@ -734,7 +764,7 @@ public class AugmentosBlePeripheral {
                 BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
                 int pairingVariant = intent.getIntExtra(BluetoothDevice.EXTRA_PAIRING_VARIANT, -1);
 
-                if (device == null){
+                if (device == null) {
                     Log.d(TAG, "PAIRING: DEVICE IS NULL");
                     return;
                 }
@@ -748,7 +778,7 @@ public class AugmentosBlePeripheral {
         }
     };
 
-    public void destroy(){
+    public void destroy() {
         stopBle();
         try {
             EventBus.getDefault().unregister(this);  // Unregister EventBus
