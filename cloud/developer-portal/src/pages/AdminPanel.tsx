@@ -695,9 +695,6 @@ const AdminPanel: React.FC = () => {
                           <div className="font-medium">{app.name}</div>
                           <div className="text-sm text-gray-500">{app.packageName}</div>
                           <div className="text-xs text-gray-400">Submitted: {formatDate(app.updatedAt)}</div>
-                          <div className="text-xs">
-                            Status: {submittedAppsStatus.find(statusApp => statusApp.packageName === app.packageName)?.healthStatus || 'unknown'}
-                          </div>
                         </div>
                         <div className="flex gap-2">
                           <Button size="sm" onClick={() => openAppReview(app.packageName)}>
