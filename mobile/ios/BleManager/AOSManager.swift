@@ -252,6 +252,8 @@ struct ViewState {
                     return
                 }
 
+                // CoreCommsService.log("ABOUT TO DECODE LC3 DATA len: \(lc3Data.count)")
+
                 if self.bypassVad {
                     checkSetVadStatus(speaking: true)
                     // first send out whatever's in the vadBuffer (if there is anything):
@@ -1661,6 +1663,7 @@ struct ViewState {
             "core_token": coreToken,
             "puck_connected": true,
             "metric_system_enabled": metricSystemEnabled,
+            "contextual_dashboard_enabled": contextualDashboard,
         ]
 
         // hardcoded list of apps:
