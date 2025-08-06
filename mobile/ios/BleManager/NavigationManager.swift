@@ -12,11 +12,11 @@ import GoogleMaps
 import GoogleNavigation
 
 // navigation update callback type
-typealias NavigationUpdateCallback = (NavigationUpdate) -> Void
-typealias NavigationStatusCallback = (NavigationStatus) -> Void
+public typealias NavigationUpdateCallback = (NavigationUpdate) -> Void
+public typealias NavigationStatusCallback = (NavigationStatus) -> Void
 
 // navigation update data structure
-struct NavigationUpdate {
+public struct NavigationUpdate {
     let instruction: String
     let distanceRemaining: Int  // meters
     let timeRemaining: Int      // seconds
@@ -26,7 +26,7 @@ struct NavigationUpdate {
 }
 
 // navigation status enum
-enum NavigationStatus {
+public enum NavigationStatus: Equatable {
     case idle
     case planning
     case navigating
@@ -35,7 +35,7 @@ enum NavigationStatus {
     case error(String)
 }
 
-class NavigationManager: NSObject {
+public class NavigationManager: NSObject {
     
     // callbacks for navigation events
     private var navigationUpdateCallback: NavigationUpdateCallback?
@@ -44,10 +44,8 @@ class NavigationManager: NSObject {
     // location manager for permissions and basic location
     private let locationManager = CLLocationManager()
     
-    // google navigation components
-    private var navigator: GMSNavigator?
+    // google navigation components - using GMSMapView with navigation enabled
     private var mapView: GMSMapView?
-    private var roadSnappedLocationProvider: GMSRoadSnappedLocationProvider?
     
     // current navigation state
     private var currentStatus: NavigationStatus = .idle
@@ -102,82 +100,109 @@ class NavigationManager: NSObject {
     func startNavigation(destination: String, mode: String = "driving") {
         CoreCommsService.log("🧭 Starting navigation to: \(destination) (mode: \(mode))")
         
-        // check permissions first
-        guard hasLocationPermission() else {
-            CoreCommsService.log("❌ Cannot start navigation: no location permission")
-            updateStatus(.error("Location permission required"))
-            return
+        // ensure we're on the main thread for all UI operations
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            
+            // check permissions first
+            guard self.hasLocationPermission() else {
+                CoreCommsService.log("❌ Cannot start navigation: no location permission")
+                self.updateStatus(.error("Location permission required"))
+                return
+            }
+            
+            // check api key
+            guard !self.googleMapsApiKey.isEmpty else {
+                CoreCommsService.log("❌ Cannot start navigation: no Google Maps API key")
+                self.updateStatus(.error("Google Maps API key required"))
+                return
+            }
+            
+            // check map view
+            guard let mapView = self.mapView else {
+                CoreCommsService.log("❌ Cannot start navigation: map view not initialized")
+                self.updateStatus(.error("Navigation service not available"))
+                return
+            }
+            
+            // update state
+            self.currentDestination = destination
+            self.isNavigating = true
+            self.updateStatus(.planning)
+            
+            // first enable navigation on the map view if not already enabled
+            if !mapView.isNavigationEnabled {
+                // show terms and conditions first
+                let companyName = "MentraOS"
+                GMSNavigationServices.showTermsAndConditionsDialogIfNeeded(withCompanyName: companyName) { [weak self] termsAccepted in
+                    guard let self = self else { return }
+                    
+                    if termsAccepted {
+                        mapView.isNavigationEnabled = true
+                        mapView.navigator?.add(self)
+                        self.proceedWithNavigation(destination: destination, mode: mode)
+                    } else {
+                        CoreCommsService.log("❌ Navigation terms not accepted")
+                        self.updateStatus(.error("Navigation terms not accepted"))
+                    }
+                }
+            } else {
+                // terms already accepted, proceed with navigation
+                self.proceedWithNavigation(destination: destination, mode: mode)
+            }
         }
-        
-        // check api key
-        guard !googleMapsApiKey.isEmpty else {
-            CoreCommsService.log("❌ Cannot start navigation: no Google Maps API key")
-            updateStatus(.error("Google Maps API key required"))
-            return
-        }
-        
-        // check navigator
-        guard let navigator = navigator else {
-            CoreCommsService.log("❌ Cannot start navigation: navigator not initialized")
-            updateStatus(.error("Navigation service not available"))
-            return
-        }
-        
-        // update state
-        currentDestination = destination
-        isNavigating = true
-        updateStatus(.planning)
-        
-        // create destination
+    }
+    
+    private func proceedWithNavigation(destination: String, mode: String) {
+        // create destination using place ID or geocoding
+        // for now, let's use geocoding as a fallback
         let geocoder = CLGeocoder()
         geocoder.geocodeAddressString(destination) { [weak self] placemarks, error in
             guard let self = self else { return }
             
-            if let error = error {
-                CoreCommsService.log("❌ Geocoding error: \(error.localizedDescription)")
-                self.updateStatus(.error("Could not find destination"))
-                return
+            // ensure we're back on the main thread for UI operations
+            DispatchQueue.main.async {
+                if let error = error {
+                    CoreCommsService.log("❌ Geocoding error: \(error.localizedDescription)")
+                    self.updateStatus(.error("Could not find destination"))
+                    return
+                }
+                
+                guard let placemark = placemarks?.first,
+                      let location = placemark.location else {
+                    CoreCommsService.log("❌ Could not geocode destination")
+                    self.updateStatus(.error("Could not find destination"))
+                    return
+                }
+                
+                self.startNavigationToCoordinate(location.coordinate, mode: mode)
             }
-            
-            guard let placemark = placemarks?.first,
-                  let location = placemark.location else {
-                CoreCommsService.log("❌ Could not geocode destination")
-                self.updateStatus(.error("Could not find destination"))
-                return
-            }
-            
-            self.startNavigationToCoordinate(location.coordinate, mode: mode)
         }
     }
     
     private func startNavigationToCoordinate(_ coordinate: CLLocationCoordinate2D, mode: String) {
-        guard let navigator = navigator else { return }
+        guard let mapView = mapView,
+              let navigator = mapView.navigator else { 
+            updateStatus(.error("Navigation not available"))
+            return 
+        }
         
         CoreCommsService.log("🧭 Starting navigation to coordinate: \(coordinate.latitude), \(coordinate.longitude)")
         
-        // create destination
-        let destination = GMSNavigationWaypoint(location: coordinate, title: currentDestination ?? "Destination")
-        
-        // create travel mode
-        let travelMode: GMSNavigationTravelMode
-        switch mode.lowercased() {
-        case "walking":
-            travelMode = .walking
-        case "cycling":
-            travelMode = .cycling
-        case "transit":
-            travelMode = .transit
-        default:
-            travelMode = .driving
+        // create destination waypoint - simplified approach without place ID for now
+        var destinations = [GMSNavigationWaypoint]()
+        if let waypoint = GMSNavigationWaypoint(location: coordinate, title: currentDestination ?? "Destination") {
+            destinations.append(waypoint)
+        } else {
+            updateStatus(.error("Could not create waypoint"))
+            return
         }
         
-        // build route request
-        let request = GMSNavigationRouteRequest()
-        request.destinations = [destination]
-        request.travelMode = travelMode
+        // note: only driving mode is reliably supported, transit is not available
+        // we'll ignore the mode parameter for now and default to driving
         
-        // start route calculation
-        navigator.loadRoute(request) { [weak self] routeStatus in
+        // set destinations and start navigation
+        navigator.setDestinations(destinations) { [weak self] routeStatus in
             guard let self = self else { return }
             
             DispatchQueue.main.async {
@@ -187,27 +212,24 @@ class NavigationManager: NSObject {
                     self.updateStatus(.navigating)
                     
                     // start navigation guidance
-                    navigator.startNavigation()
-                    navigator.startGuidance()
+                    navigator.isGuidanceActive = true
+                    mapView.cameraMode = .following
                     
-                    // enable voice guidance
-                    navigator.setVoiceGuidance(.audible)
-                    
-                case .networkError:
-                    CoreCommsService.log("❌ Network error loading route")
-                    self.updateStatus(.error("Network error"))
+                case .locationUnavailable:
+                    CoreCommsService.log("❌ Location unavailable")
+                    self.updateStatus(.error("Location unavailable - check permissions"))
                     
                 case .noRouteFound:
                     CoreCommsService.log("❌ No route found to destination")
                     self.updateStatus(.error("No route found"))
                     
-                case .quotaExceeded:
-                    CoreCommsService.log("❌ API quota exceeded")
-                    self.updateStatus(.error("Service temporarily unavailable"))
+                case .waypointError:
+                    CoreCommsService.log("❌ Waypoint error")
+                    self.updateStatus(.error("Invalid destination"))
                     
-                default:
-                    CoreCommsService.log("❌ Unknown error loading route: \(routeStatus)")
-                    self.updateStatus(.error("Could not load route"))
+                @unknown default:
+                    CoreCommsService.log("❌ Unknown error loading route: \(routeStatus) - possible API key issue")
+                    self.updateStatus(.error("Navigation SDK blocked - check API key configuration"))
                 }
             }
         }
@@ -216,17 +238,23 @@ class NavigationManager: NSObject {
     func stopNavigation() {
         CoreCommsService.log("🧭 Stopping navigation")
         
-        // stop google navigation
-        if let navigator = navigator, isNavigating {
-            navigator.stopNavigation()
-            navigator.stopGuidance()
+        // ensure we're on the main thread for UI operations
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            
+            // stop google navigation
+            if let mapView = self.mapView,
+               let navigator = mapView.navigator,
+               self.isNavigating {
+                navigator.isGuidanceActive = false
+            }
+            
+            self.isNavigating = false
+            self.currentDestination = nil
+            self.updateStatus(.idle)
+            
+            CoreCommsService.log("🧭 Navigation stopped")
         }
-        
-        isNavigating = false
-        currentDestination = nil
-        updateStatus(.idle)
-        
-        CoreCommsService.log("🧭 Navigation stopped")
     }
     
     func getCurrentStatus() -> NavigationStatus {
@@ -242,26 +270,15 @@ class NavigationManager: NSObject {
     func updateRoutePreferences(avoidTolls: Bool = false, avoidHighways: Bool = false) {
         CoreCommsService.log("🧭 Updating route preferences - avoidTolls: \(avoidTolls), avoidHighways: \(avoidHighways)")
         
-        guard let navigator = navigator else {
-            CoreCommsService.log("❌ Cannot update route preferences: navigator not available")
-            return
-        }
+        // note: route preferences updating is not straightforward in the iOS Navigation SDK
+        // this would require re-calculating the route with new options
+        // for now, we'll just log that this was requested
+        CoreCommsService.log("⚠️ Route preference updates not yet implemented - would require re-routing")
         
-        // create route options
-        var routingOptions = GMSNavigationRoutingOptions()
-        routingOptions.avoidTolls = avoidTolls
-        routingOptions.avoidHighways = avoidHighways
-        
-        // apply routing options
-        navigator.setRoutingOptions(routingOptions)
-        
-        if isNavigating {
-            CoreCommsService.log("🧭 Route preferences updated mid-navigation, requesting reroute")
-            updateStatus(.rerouting)
-            
-            // request rerouting with new preferences
-            navigator.requestRerouting()
-        }
+        // in a full implementation, you would:
+        // 1. store the preferences 
+        // 2. re-call setDestinations with updated routing options
+        // 3. handle the transition smoothly
     }
     
     // MARK: - Google Maps Integration
@@ -272,27 +289,40 @@ class NavigationManager: NSObject {
             return
         }
         
-        // initialize Google Maps services
-        GMSServices.provideAPIKey(googleMapsApiKey)
-        CoreCommsService.log("🧭 Google Maps initialized with API key")
-        
-        // create map view (required for navigation)
-        let camera = GMSCameraPosition.camera(withLatitude: 37.7749, longitude: -122.4194, zoom: 15.0)
-        mapView = GMSMapView.map(withFrame: .zero, camera: camera)
-        
-        // initialize navigator
-        do {
-            navigator = try GMSNavigator(mapView: mapView!)
-            navigator?.delegate = self
-            CoreCommsService.log("🧭 Google Navigator initialized successfully")
-        } catch {
-            CoreCommsService.log("❌ Failed to initialize Google Navigator: \(error.localizedDescription)")
-            updateStatus(.error("Navigation service initialization failed"))
+        // ensure we're on the main thread for UI creation
+        if Thread.isMainThread {
+            performGoogleMapsInitialization()
+        } else {
+            DispatchQueue.main.sync {
+                performGoogleMapsInitialization()
+            }
+        }
+    }
+    
+    private func performGoogleMapsInitialization() {
+        // debug API key loading
+        let apiKey = googleMapsApiKey
+        if apiKey.isEmpty {
+            CoreCommsService.log("❌ Google Maps API key is empty!")
+            return
         }
         
-        // initialize road snapped location provider for better location tracking
-        roadSnappedLocationProvider = GMSRoadSnappedLocationProvider()
-        roadSnappedLocationProvider?.delegate = self
+        CoreCommsService.log("🧭 Initializing Google Maps with API key: \(String(apiKey.prefix(10)))...")
+        
+        // initialize Google Maps services
+        GMSServices.provideAPIKey(apiKey)
+        CoreCommsService.log("🧭 Google Maps initialized with API key")
+        
+        // create map view for navigation - this is enough for basic navigation
+        let camera = GMSCameraPosition.camera(withLatitude: 37.7749, longitude: -122.4194, zoom: 15.0)
+        let options = GMSMapViewOptions()
+        options.camera = camera
+        options.frame = .zero
+        
+        mapView = GMSMapView(options: options)
+        
+        // we'll configure navigation in startNavigation when user accepts terms
+        CoreCommsService.log("🧭 Google Maps initialized successfully")
     }
     
     // MARK: - Helper Methods
@@ -355,9 +385,11 @@ class NavigationManager: NSObject {
         // test the full flow with real Google Navigation
         startNavigation(destination: "1600 Amphitheatre Parkway, Mountain View, CA")
         
-        // test route preferences after 10 seconds
-        DispatchQueue.main.asyncAfter(deadline: .now() + 10.0) {
-            self.updateRoutePreferences(avoidTolls: true, avoidHighways: false)
+        // we can test other functionality after navigation starts
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
+            if self.isNavigating {
+                CoreCommsService.log("🧭 Navigation is active - test successful")
+            }
         }
     }
 }
@@ -366,7 +398,7 @@ class NavigationManager: NSObject {
 
 extension NavigationManager: CLLocationManagerDelegate {
     
-    func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
+    public func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
         CoreCommsService.log("🧭 Location authorization changed to: \(status.rawValue)")
         
         switch status {
@@ -382,59 +414,25 @@ extension NavigationManager: CLLocationManagerDelegate {
         }
     }
     
-    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+    public func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         // handle location updates during navigation
         if let location = locations.last, isNavigating {
             CoreCommsService.log("🧭 Location updated during navigation: \(location.coordinate.latitude), \(location.coordinate.longitude)")
         }
     }
     
-    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+    public func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
         CoreCommsService.log("❌ Location manager error: \(error.localizedDescription)")
         updateStatus(.error("Location error: \(error.localizedDescription)"))
     }
 }
 
-// MARK: - GMSNavigatorDelegate
+// MARK: - GMSNavigatorListener
 
-extension NavigationManager: GMSNavigatorDelegate {
+extension NavigationManager: GMSNavigatorListener {
     
-    func navigator(_ navigator: GMSNavigator, didUpdateCurrentRoute route: GMSNavigationRoute) {
-        CoreCommsService.log("🧭 Route updated")
-        if currentStatus == .rerouting {
-            updateStatus(.navigating)
-        }
-    }
-    
-    func navigator(_ navigator: GMSNavigator, didUpdate navInfo: GMSNavigationNavInfo) {
-        // extract navigation information
-        let distanceRemaining = Int(navInfo.distanceToCurrentStepMeters)
-        let timeRemaining = Int(navInfo.timeToCurrentStepSeconds)
-        let instruction = navInfo.fullInstructions ?? "Continue"
-        let streetName = navInfo.currentStep?.maneuver?.toString() ?? "Unknown"
-        
-        // convert maneuver to string
-        let maneuverString: String
-        if let maneuver = navInfo.currentStep?.maneuver {
-            maneuverString = maneuverToString(maneuver)
-        } else {
-            maneuverString = "continue"
-        }
-        
-        let update = NavigationUpdate(
-            instruction: instruction,
-            distanceRemaining: distanceRemaining,
-            timeRemaining: timeRemaining,
-            streetName: streetName,
-            maneuver: maneuverString,
-            timestamp: Date().timeIntervalSince1970
-        )
-        
-        sendNavigationUpdate(update)
-    }
-    
-    func navigator(_ navigator: GMSNavigator, didArriveAt waypoint: GMSNavigationWaypoint) {
-        CoreCommsService.log("🧭 Arrived at destination")
+    public func navigator(_ navigator: GMSNavigator, didArriveAt waypoint: GMSNavigationWaypoint) {
+        CoreCommsService.log("🧭 Arrived at destination: \(waypoint.title ?? "Unknown")")
         updateStatus(.finished)
         
         // stop navigation
@@ -446,59 +444,24 @@ extension NavigationManager: GMSNavigatorDelegate {
         }
     }
     
-    func navigator(_ navigator: GMSNavigator, didFailReroutingWithError error: Error) {
-        CoreCommsService.log("❌ Rerouting failed: \(error.localizedDescription)")
-        updateStatus(.error("Rerouting failed"))
-    }
-    
-    func navigatorDidBeginRerouting(_ navigator: GMSNavigator) {
-        CoreCommsService.log("🧭 Rerouting started")
-        updateStatus(.rerouting)
-    }
-    
-    func navigatorDidFinishRerouting(_ navigator: GMSNavigator) {
-        CoreCommsService.log("🧭 Rerouting completed")
-        updateStatus(.navigating)
-    }
-    
-    // helper method to convert maneuver enum to string
-    private func maneuverToString(_ maneuver: GMSNavigationManeuver) -> String {
-        switch maneuver {
-        case .turnLeft: return "turn_left"
-        case .turnRight: return "turn_right"
-        case .turnSlightLeft: return "turn_slight_left"
-        case .turnSlightRight: return "turn_slight_right"
-        case .turnSharpLeft: return "turn_sharp_left"
-        case .turnSharpRight: return "turn_sharp_right"
-        case .uturnLeft: return "uturn_left"
-        case .uturnRight: return "uturn_right"
-        case .continue: return "continue"
-        case .merge: return "merge"
-        case .onRamp: return "on_ramp"
-        case .offRamp: return "off_ramp"
-        case .fork: return "fork"
-        case .roundaboutEnter: return "roundabout_enter"
-        case .roundaboutExit: return "roundabout_exit"
-        case .roundaboutLeft: return "roundabout_left"
-        case .roundaboutRight: return "roundabout_right"
-        case .arrive: return "arrive"
-        default: return "continue"
-        }
-    }
-}
-
-// MARK: - GMSRoadSnappedLocationProviderDelegate
-
-extension NavigationManager: GMSRoadSnappedLocationProviderDelegate {
-    
-    func locationProvider(_ locationProvider: GMSRoadSnappedLocationProvider, didUpdate location: CLLocation) {
-        // handle road-snapped location updates during navigation
-        if isNavigating {
-            CoreCommsService.log("🧭 Road-snapped location updated: \(location.coordinate.latitude), \(location.coordinate.longitude)")
+    public func navigatorDidChangeRoute(_ navigator: GMSNavigator) {
+        CoreCommsService.log("🧭 Route changed")
+        if currentStatus == .rerouting {
+            updateStatus(.navigating)
         }
     }
     
-    func locationProvider(_ locationProvider: GMSRoadSnappedLocationProvider, didFailWithError error: Error) {
-        CoreCommsService.log("❌ Road-snapped location provider error: \(error.localizedDescription)")
+    // simplified navigation update handling
+    // we can't easily get detailed step-by-step information without more complex setup
+    // for now, we'll just indicate that navigation is active
+    private func createBasicNavigationUpdate() -> NavigationUpdate {
+        return NavigationUpdate(
+            instruction: "Continue following route",
+            distanceRemaining: 0, // would need to calculate from route
+            timeRemaining: 0,     // would need to calculate from route
+            streetName: nil,
+            maneuver: "continue",
+            timestamp: Date().timeIntervalSince1970
+        )
     }
 }

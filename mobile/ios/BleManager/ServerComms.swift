@@ -7,6 +7,7 @@
 
 import Combine
 import Foundation
+import CoreLocation
 
 // navigation data structures for sending to cloud
 struct NavigationUpdateData {
@@ -68,6 +69,14 @@ class ServerComms {
     let calendarManager = CalendarManager()
     let locationManager = LocationManager()
     let mediaManager = MediaManager()
+    private var _navigationManager: NavigationManager?
+    var navigationManager: NavigationManager {
+        if _navigationManager == nil {
+            CoreCommsService.log("🧭 ServerComms: Creating NavigationManager for the first time")
+            _navigationManager = NavigationManager()
+        }
+        return _navigationManager!
+    }
 
     static func getInstance() -> ServerComms {
         if instance == nil {
@@ -125,6 +134,27 @@ class ServerComms {
         // setup location change notification:
         locationManager.setLocationChangedCallback { [weak self] in
             self?.sendLocationUpdates()
+        }
+        
+        // setup navigation update callbacks:
+        navigationManager.setNavigationUpdateCallback { [weak self] (update: NavigationUpdate) in
+            let updateData = NavigationUpdateData(
+                instruction: update.instruction,
+                distanceRemaining: update.distanceRemaining,
+                timeRemaining: update.timeRemaining,
+                streetName: update.streetName,
+                maneuver: update.maneuver
+            )
+            self?.sendNavigationUpdate(updateData)
+        }
+        
+        navigationManager.setNavigationStatusCallback { [weak self] (status: NavigationStatus) in
+            let statusData = NavigationStatusData(
+                status: self?.convertNavigationStatusToString(status) ?? "error",
+                errorMessage: self?.extractErrorMessage(from: status),
+                destination: nil  // destination will come from the NavigationManager callback if needed
+            )
+            self?.sendNavigationStatus(statusData)
         }
     }
 
@@ -553,7 +583,10 @@ class ServerComms {
     private func handleIncomingMessage(_ msg: [String: Any]) {
         guard let type = msg["type"] as? String else { return }
 
-        // CoreCommsService.log("Received message of type: \(type)")
+        // Debug: Log all navigation-related messages
+        if type.contains("navigation") {
+            CoreCommsService.log("🧭 ServerComms: Received navigation-related message: \(type) - Full message: \(msg)")
+        }
 
         switch type {
         case "connection_ack":
@@ -662,6 +695,27 @@ class ServerComms {
             {
                 locationManager.requestSingleUpdate(accuracy: accuracy, correlationId: correlationId)
             }
+
+        case "start_navigation":
+            CoreCommsService.log("🧭 ServerComms: Received start_navigation command")
+            if let destination = msg["destination"] as? String {
+                let mode = msg["mode"] as? String ?? "driving"
+                let requestId = msg["requestId"] as? String ?? ""
+                CoreCommsService.log("🧭 Starting navigation to: \(destination), mode: \(mode), requestId: \(requestId)")
+                navigationManager.startNavigation(destination: destination, mode: mode)
+            } else {
+                CoreCommsService.log("❌ Invalid start_navigation command: missing destination")
+            }
+
+        case "stop_navigation":
+            CoreCommsService.log("🧭 ServerComms: Received stop_navigation command")
+            navigationManager.stopNavigation()
+
+        case "update_navigation_route":
+            CoreCommsService.log("🧭 ServerComms: Received update_navigation_route command")
+            let avoidTolls = msg["avoidTolls"] as? Bool ?? false
+            let avoidHighways = msg["avoidHighways"] as? Bool ?? false
+            navigationManager.updateRoutePreferences(avoidTolls: avoidTolls, avoidHighways: avoidHighways)
 
         case "app_started":
             if let packageName = msg["packageName"] as? String, let callback = serverCommsCallback {
@@ -992,6 +1046,36 @@ class ServerComms {
         dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ssXXX"
         dateFormatter.locale = Locale(identifier: "en_US")
         return dateFormatter.string(from: Date())
+    }
+    
+    // MARK: - Navigation Helper Methods
+    
+    /// convert NavigationStatus enum to string for cloud
+    private func convertNavigationStatusToString(_ status: NavigationStatus) -> String {
+        switch status {
+        case .idle:
+            return "idle"
+        case .planning:
+            return "planning"
+        case .navigating:
+            return "navigating"
+        case .rerouting:
+            return "rerouting"
+        case .finished:
+            return "finished"
+        case .error(_):
+            return "error"
+        }
+    }
+    
+    /// extract error message from NavigationStatus if it's an error
+    private func extractErrorMessage(from status: NavigationStatus) -> String? {
+        switch status {
+        case .error(let message):
+            return message
+        default:
+            return nil
+        }
     }
 
     /**

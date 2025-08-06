@@ -11,6 +11,7 @@
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
 		13B07FC11A68108700A75B9A /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 13B07FB71A68108700A75B9A /* main.m */; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
+		3EDA9D572E42CC3500F939A5 /* NavigationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3EDA9D562E42CC3500F939A5 /* NavigationManager.swift */; };
 		6D5628382E2C062700C872F3 /* sherpa-onnx.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6DCD26AF2E2BF6B00086760F /* sherpa-onnx.xcframework */; };
 		6D9355E72E2B9B2300A5A14A /* SherpaOnnxTranscriber.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D9355E62E2B9B2300A5A14A /* SherpaOnnxTranscriber.swift */; };
 		6DAA264F2E2BF04E00B9AEC4 /* joiner.onnx in Resources */ = {isa = PBXBuildFile; fileRef = 6DAA264C2E2BF04E00B9AEC4 /* joiner.onnx */; };
@@ -81,6 +82,7 @@
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = AOS/Info.plist; sourceTree = "<group>"; };
 		13B07FB71A68108700A75B9A /* main.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = main.m; path = AOS/main.m; sourceTree = "<group>"; };
 		14C4353E097941A5AC9B6A09 /* noop-file.swift */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.swift; name = "noop-file.swift"; path = "AOS/noop-file.swift"; sourceTree = "<group>"; };
+		3EDA9D562E42CC3500F939A5 /* NavigationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationManager.swift; sourceTree = "<group>"; };
 		58EEBF8E8E6FB1BC6CAF49B5 /* libPods-AOS.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-AOS.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		6C2E3173556A471DD304B334 /* Pods-AOS.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-AOS.debug.xcconfig"; path = "Target Support Files/Pods-AOS/Pods-AOS.debug.xcconfig"; sourceTree = "<group>"; };
 		6D62BA742E2BDFD100140E04 /* SherpaOnnx.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SherpaOnnx.swift; sourceTree = "<group>"; };
@@ -284,6 +286,7 @@
 		C5DE979D2DDD0EA80032FC99 /* BleManager */ = {
 			isa = PBXGroup;
 			children = (
+				3EDA9D562E42CC3500F939A5 /* NavigationManager.swift */,
 				CDD4E42A2E3DBFFB00329C8C /* TarBz2Extractor.swift */,
 				6DFC99682E33FA9400611B81 /* SpeechRequiredDataType.swift */,
 				6D9355E62E2B9B2300A5A14A /* SherpaOnnxTranscriber.swift */,
@@ -673,6 +676,7 @@
 				C5DE97A22DDD0EA80032FC99 /* MediaManager.swift in Sources */,
 				C5DE97A42DDD0EA80032FC99 /* LocationManager.swift in Sources */,
 				C5DE97A62DDD0EA80032FC99 /* Models.swift in Sources */,
+				3EDA9D572E42CC3500F939A5 /* NavigationManager.swift in Sources */,
 				C5DE97A92DDD0EA80032FC99 /* Enums.swift in Sources */,
 				C5DE98472DDD0F420032FC99 /* SileroVAD.swift in Sources */,
 				C5DE98482DDD0F420032FC99 /* lc3.c in Sources */,
