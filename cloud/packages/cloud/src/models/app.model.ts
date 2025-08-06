@@ -1,8 +1,24 @@
 // cloud/server/src/models/app.model.ts
-import mongoose, { Schema, Document, Types } from 'mongoose';
-import { AppI as _AppI, AppType, ToolSchema, ToolParameterSchema, AppSetting, AppSettingType, PermissionType, Permission } from '@mentra/sdk';
+import mongoose, { Schema, Document, Types } from "mongoose";
+import {
+  AppI as _AppI,
+  AppType,
+  ToolSchema,
+  ToolParameterSchema,
+  AppSetting,
+  AppSettingType,
+  PermissionType,
+  Permission,
+  HardwareRequirement,
+  HardwareType,
+  HardwareRequirementLevel,
+} from "@mentra/sdk";
 
-export type AppStoreStatus = 'DEVELOPMENT' | 'SUBMITTED' | 'REJECTED' | 'PUBLISHED';
+export type AppStoreStatus =
+  | "DEVELOPMENT"
+  | "SUBMITTED"
+  | "REJECTED"
+  | "PUBLISHED";
 
 // Extend the AppI interface for our MongoDB document
 export interface AppI extends _AppI, Document {
@@ -47,7 +63,7 @@ export interface AppI extends _AppI, Document {
    * App visibility setting
    * @deprecated Use organizationId instead. Will be removed after migration.
    */
-  visibility?: 'private' | 'organization';
+  visibility?: "private" | "organization";
 
   /**
    * Specific emails the app is shared with
@@ -60,181 +76,211 @@ export interface AppI extends _AppI, Document {
   onboardingStatus?: Map<string, boolean>;
 }
 
-
 // Using existing schema with flexible access
-const AppSchema = new Schema({
-
-  // Type of app "background" | "standard" | "system_dashboard". "background by default"
-  appType: {
-    type: String,
-    enum: Object.values(AppType),
-    default: AppType.BACKGROUND
-  },
-
-  // Appstore / Developer properties
-  appStoreStatus: {
-    type: String,
-    enum: ['DEVELOPMENT', 'SUBMITTED', 'REJECTED', 'PUBLISHED'],
-    default: 'DEVELOPMENT'
-  },
-  reviewNotes: {
-    type: String,
-    default: ''
-  },
-  reviewedBy: {
-    type: String
-  },
-  reviewedAt: {
-    type: Date
-  },
-
-  // App AI Tools
-  tools: [{
-    id: {
+const AppSchema = new Schema(
+  {
+    // Type of app "background" | "standard" | "system_dashboard". "background by default"
+    appType: {
       type: String,
-      required: true
+      enum: Object.values(AppType),
+      default: AppType.BACKGROUND,
     },
-    description: {
+
+    // Appstore / Developer properties
+    appStoreStatus: {
       type: String,
-      required: true
+      enum: ["DEVELOPMENT", "SUBMITTED", "REJECTED", "PUBLISHED"],
+      default: "DEVELOPMENT",
     },
-    activationPhrases: {
-      type: [String],
-      required: false
+    reviewNotes: {
+      type: String,
+      default: "",
     },
-    parameters: {
-      type: Map,
-      of: new Schema({
-        type: {
+    reviewedBy: {
+      type: String,
+    },
+    reviewedAt: {
+      type: Date,
+    },
+
+    // App AI Tools
+    tools: [
+      {
+        id: {
           type: String,
-          enum: ['string', 'number', 'boolean'],
-          required: true
+          required: true,
         },
         description: {
           type: String,
-          required: true
+          required: true,
         },
-        enum: {
+        activationPhrases: {
           type: [String],
-          required: false
+          required: false,
         },
-        required: {
-          type: Boolean,
-          default: false
-        }
-      }),
-      required: false
-    }
-  }],
+        parameters: {
+          type: Map,
+          of: new Schema({
+            type: {
+              type: String,
+              enum: ["string", "number", "boolean"],
+              required: true,
+            },
+            description: {
+              type: String,
+              required: true,
+            },
+            enum: {
+              type: [String],
+              required: false,
+            },
+            required: {
+              type: Boolean,
+              default: false,
+            },
+          }),
+          required: false,
+        },
+      },
+    ],
 
-  // App Settings Configuration
-  settings: [{
-    type: {
-      type: String,
-      enum: Object.values(AppSettingType),
-      required: true
-    },
-    key: {
-      type: String,
-      required: false
-    },
-    label: {
-      type: String,
-      required: false
-    },
-    title: {
-      type: String,
-      required: false
-    },
-    defaultValue: {
-      type: Schema.Types.Mixed,
-      required: false
-    },
-    value: {
-      type: Schema.Types.Mixed,
-      required: false
-    },
-    options: [{
-      label: { type: String, required: true },
-      value: { type: Schema.Types.Mixed, required: true }
-    }],
-    min: {
-      type: Number,
-      required: false
-    },
-    max: {
-      type: Number,
-      required: false
-    },
-    maxLines: {
-      type: Number,
-      required: false
-    }
-  }],
+    // App Settings Configuration
+    settings: [
+      {
+        type: {
+          type: String,
+          enum: Object.values(AppSettingType),
+          required: true,
+        },
+        key: {
+          type: String,
+          required: false,
+        },
+        label: {
+          type: String,
+          required: false,
+        },
+        title: {
+          type: String,
+          required: false,
+        },
+        defaultValue: {
+          type: Schema.Types.Mixed,
+          required: false,
+        },
+        value: {
+          type: Schema.Types.Mixed,
+          required: false,
+        },
+        options: [
+          {
+            label: { type: String, required: true },
+            value: { type: Schema.Types.Mixed, required: true },
+          },
+        ],
+        min: {
+          type: Number,
+          required: false,
+        },
+        max: {
+          type: Number,
+          required: false,
+        },
+        maxLines: {
+          type: Number,
+          required: false,
+        },
+      },
+    ],
 
-  // Add permissions array to schema
-  permissions: [{
-    type: {
-      type: String,
-      enum: Object.values(PermissionType),
-      required: true
+    // Add permissions array to schema
+    permissions: [
+      {
+        type: {
+          type: String,
+          enum: Object.values(PermissionType),
+          required: true,
+        },
+        description: {
+          type: String,
+          required: false,
+        },
+      },
+    ],
+
+    // Hardware Requirements
+    hardwareRequirements: [
+      {
+        type: {
+          type: String,
+          enum: Object.values(HardwareType),
+          required: true,
+        },
+        level: {
+          type: String,
+          enum: Object.values(HardwareRequirementLevel),
+          required: true,
+        },
+        description: {
+          type: String,
+          required: false,
+        },
+      },
+    ],
+
+    /**
+     * Reference to the organization that owns this app
+     */
+    organizationId: {
+      type: Schema.Types.ObjectId,
+      ref: "Organization",
+      index: true,
+      // not marking as required yet for backward compatibility during migration
     },
-    description: {
+
+    // Deprecated fields - will be removed after migration
+    developerId: {
       type: String,
-      required: false
-    }
-  }],
-
-  /**
-   * Reference to the organization that owns this app
-   */
-  organizationId: {
-    type: Schema.Types.ObjectId,
-    ref: 'Organization',
-    index: true,
-    // not marking as required yet for backward compatibility during migration
+      required: true, // keeping as required for backward compatibility
+    },
+    organizationDomain: {
+      type: String,
+      required: false,
+      default: null,
+    },
+    sharedWithOrganization: {
+      type: Boolean,
+      required: false,
+      default: false,
+    },
+    visibility: {
+      type: String,
+      enum: ["private", "organization"],
+      default: "private",
+    },
+    sharedWithEmails: {
+      type: [String],
+      required: false,
+      default: [],
+    },
+    onboardingInstructions: {
+      type: String,
+      default: "",
+    },
+    onboardingStatus: {
+      type: Map,
+      of: Boolean,
+      default: {},
+    },
   },
-
-  // Deprecated fields - will be removed after migration
-  developerId: {
-    type: String,
-    required: true // keeping as required for backward compatibility
+  {
+    strict: false,
+    timestamps: true,
   },
-  organizationDomain: {
-    type: String,
-    required: false,
-    default: null
-  },
-  sharedWithOrganization: {
-    type: Boolean,
-    required: false,
-    default: false
-  },
-  visibility: {
-    type: String,
-    enum: ['private', 'organization'],
-    default: 'private'
-  },
-  sharedWithEmails: {
-    type: [String],
-    required: false,
-    default: []
-  },
-  onboardingInstructions: {
-    type: String,
-    default: ''
-  },
-  onboardingStatus: {
-    type: Map,
-    of: Boolean,
-    default: {}
-  }
-}, {
-  strict: false,
-  timestamps: true
-});
+);
 
 // Add index for organizationId
 AppSchema.index({ organizationId: 1 });
 
-export default mongoose.models.App || mongoose.model<AppI>('App', AppSchema, 'apps');
+export default mongoose.models.App ||
+  mongoose.model<AppI>("App", AppSchema, "apps");
