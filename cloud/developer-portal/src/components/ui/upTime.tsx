@@ -1,5 +1,9 @@
 import React from 'react';
 import { Badge } from "@/components/ui/badge";
+import { updateDayBar, UptimeStreakBar, type AppBatchItem } from "./upTimeStreakBar";
+
+// Re-export for convenience
+export { updateDayBar, UptimeStreakBar, type AppBatchItem };
 
 // --- TYPE DEFINITIONS ---
 // It's good practice to define types for component props.
@@ -14,12 +18,6 @@ interface StatusBarProps {
   color: string;
 }
 
-interface AppBatchItem {
-  packageName: string;
-  timestamp: string;
-  health: string;
-  onlineStatus: boolean;
-}
 
 // Props for the UptimeStatus component
 interface UptimeStatusProps {
@@ -63,51 +61,6 @@ const MONTH_NAMES = [
   "july", "august", "september", "october", "november", "december"
 ];
 
-const updateDayBar = (day: number, appItems: AppBatchItem[]) => {
-  let hasHealthy = false;
-  let hasUnhealthy = false;
-
-  // Check if appItems is valid and is an array
-  if (!appItems || !Array.isArray(appItems)) {
-    return (
-      <div className="flex-none w-1.5 h-5 bg-gray-300 rounded-[2px]" />
-    );
-  }
-
-  // Filter items that match the given day (in local time)
-  const itemsForDay = appItems.filter(app => {
-    const appDate = new Date(app.timestamp);
-    return appDate.getDate() === day;
-  });
-
-  // If no entries for the day, return gray
-  if (itemsForDay.length === 0) {
-    return (
-      <div className="flex-none w-1.5 h-5 bg-gray-300 rounded-[2px]" />
-    );
-  }
-
-  // Evaluate health status of apps for this day
-  for (const app of itemsForDay) {
-    if (app.health === 'healthy') {
-      hasHealthy = true;
-    } else {
-      hasUnhealthy = true;
-    }
-  }
-
-  // Determine color based on the rules
-  let colorClass = "bg-red-500"; // Default to all unhealthy
-  if (hasHealthy && !hasUnhealthy) {
-    colorClass = "bg-green-500"; // All healthy
-  } else if (hasHealthy && hasUnhealthy) {
-    colorClass = "bg-yellow-500"; // Mixed
-  }
-
-  return (
-    <div className={`flex-none w-1.5 h-5 ${colorClass} rounded-[2px]`} />
-  );
-};
 
 
 

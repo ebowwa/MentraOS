@@ -12,7 +12,7 @@ import { fetchSubmittedAppHealthStatus } from '../services/core/app-uptime.servi
 const router = Router();
 
 // Start the uptime scheduler when the routes are loaded
-AppUptimeService.startUptimeScheduler();
+// AppUptimeService.startUptimeScheduler();
 logger.info("🔄 App uptime monitoring scheduler started automatically");
 
 /**

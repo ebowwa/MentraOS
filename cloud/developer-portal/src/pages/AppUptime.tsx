@@ -3,6 +3,7 @@ import { CheckCircle, AlertCircle, XCircle, Loader2, Clock, ChevronLeft, Chevron
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { UptimeStreakBar } from '@/components/ui/upTimeStreakBar';
 
 // Month navigation constants
 const monthDays = {
@@ -252,7 +253,7 @@ const MonthlyUptimeChart: React.FC<MonthlyUptimeProps> = ({
       </div>
 
       {/* Uptime Bars Section */}
-      <div>
+      {/* <div>
         <div className="flex gap-1">
           {monthData.map(day => (
             <UptimeBar key={day.day} day={day} onHover={setHoveredDay} />
@@ -262,7 +263,7 @@ const MonthlyUptimeChart: React.FC<MonthlyUptimeProps> = ({
           <span>Day 1</span>
           <span>Day {totalDays}</span>
         </div>
-      </div>
+      </div> */}
 
       {/* Legend Section */}
       <Legend />
@@ -272,16 +273,23 @@ const MonthlyUptimeChart: React.FC<MonthlyUptimeProps> = ({
 
 // Component for the detailed view of a single app
 
+interface AppBatchItem {
+  packageName: string;
+  timestamp: string;
+  health: string;
+  onlineStatus: boolean;
+}
 
 interface AppDetailViewProps {
   app: AppStatus;
   onRefresh?: () => void;
   isRefreshing?: boolean;
+  appItems: AppBatchItem[];
 }
 
 
 
-export const AppDetailView: React.FC<AppDetailViewProps> = ({ app, onRefresh, isRefreshing = false }) => (
+export const AppDetailView: React.FC<AppDetailViewProps> = ({ app, onRefresh, isRefreshing = false, appItems }) => (
   <div className=" min-h-screen flex items-center justify-center p-4 font-sans">
     <div className="w-full max-w-4xl">
     <Card className="app-container">
@@ -365,11 +373,8 @@ export const AppDetailView: React.FC<AppDetailViewProps> = ({ app, onRefresh, is
       }
 
       .event-section {
-        margin-top: 2rem;
-        background: #f5f5f5;
         padding: 1.5rem;
         border-radius: 1rem;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
       }
 
       .event-entry {
@@ -443,11 +448,14 @@ export const AppDetailView: React.FC<AppDetailViewProps> = ({ app, onRefresh, is
       
     </div>
 
-    <MonthlyUptimeChart appStatus={app} />
+    {/* App Uptime Chart */}
+    <AppUptimeChart appItems={appItems} />
+    
+    
 
     {app.details.events.length > 0 && (
       <div className="event-section">
-        <h3 className="section-title">Status updates</h3>
+        <h3 className="section-title">Problems</h3>
         {app.details.events.map((event, index) => (
           <div key={index} className="event-entry">
             <AlertCircle size={20} className="icon" />
@@ -465,6 +473,104 @@ export const AppDetailView: React.FC<AppDetailViewProps> = ({ app, onRefresh, is
     </div>
   </div>
 );
+
+// App Uptime Chart Component with Month Navigation
+interface AppUptimeChartProps {
+  appItems: AppBatchItem[];
+  onMonthYearChange?: (month: number, year: number) => void
+  setMonthNumberDynamic?: (monthName: number) => void
+  setYearNumber?: (yearNumber: number) => void
+  currentMonth?: number;
+}
+
+const AppUptimeChart: React.FC<AppUptimeChartProps> = ({ appItems, onMonthYearChange, setMonthNumberDynamic, setYearNumber }) => {
+  const [currentDate, setCurrentDate] = useState(new Date());
+
+  // Get current month and year
+  const monthName = currentDate.toLocaleString('default', { month: 'long' });
+  const year = currentDate.getFullYear();
+
+  // Calculate days in current month
+  const daysInMonth = new Date(year, currentDate.getMonth() + 1, 0).getDate();
+
+  // Navigate to previous month
+  const handlePreviousMonth = () => {
+    setCurrentDate(prevDate => {
+      const newDate = new Date(prevDate);
+      newDate.setMonth(newDate.getMonth() - 1);
+      return newDate;
+    });
+  };
+
+  // Navigate to next month
+  const handleNextMonth = () => {
+    setCurrentDate(prevDate => {
+      const newDate = new Date(prevDate);
+      newDate.setMonth(newDate.getMonth() + 1);
+      return newDate;
+    });
+  };
+
+  // Calculate uptime percentage from appItems
+  const calculateUptimePercentage = () => {
+    if (!appItems || appItems.length === 0) return 0;
+
+    // Get items from current month
+    const currentMonthItems = appItems.filter(item => {
+      const itemDate = new Date(item.timestamp);
+      return itemDate.getMonth() === currentDate.getMonth() && 
+             itemDate.getFullYear() === currentDate.getFullYear();
+    });
+
+    if (currentMonthItems.length === 0) return 0;
+
+    const upItems = currentMonthItems.filter(item => 
+      item.onlineStatus === true || item.health === 'healthy'
+    );
+
+    return ((upItems.length / currentMonthItems.length) * 100).toFixed(1);
+  };
+
+  const uptimePercentage = calculateUptimePercentage();
+
+  return (
+    <div style={{backgroundColor: "#f9fafb", borderRadius: "0.5rem", marginTop: "1.5rem", padding: "1rem"}}>
+      <div className="flex flex-row items-center justify-between relative mb-4">
+        <div className="text-3xl font-bold">{monthName} {year}</div>
+        <Button
+          variant="outline"
+          size="icon"
+          className="absolute left-1 w-7 h-7 bg-transparent p-0 opacity-50 transition-opacity duration-200 ease-out border-0 hover:opacity-100"
+          onClick={handlePreviousMonth}
+        >
+          <ChevronLeft className="w-4 h-4" />
+        </Button>
+        <Button
+          variant="outline"
+          size="icon"
+          className="absolute right-1 w-7 h-7 bg-transparent p-0 opacity-50 transition-opacity duration-200 ease-out border-0 hover:opacity-100"
+          onClick={handleNextMonth}
+        >
+          <ChevronRight className="w-4 h-4" />
+        </Button>
+      </div>
+      <div style={{display:"flex", flexDirection:"row", gap: "2px", justifyContent: "space-between", alignItems: "flex-end"}}>
+        <UptimeStreakBar 
+          appItems={appItems} 
+          dayCount={daysInMonth} 
+          title="Daily Status Overview" 
+          barWidth="w-4.5"
+          barHeight="h-10"
+          containerWidth="w-full"
+          containerHeight="h-auto"
+        />
+        <div style={{fontSize: "1.25rem", fontWeight: "bold", marginLeft: "1rem"}}>
+          Uptime: {uptimePercentage}%
+        </div>
+      </div>
+    </div>
+  );
+};
 
 
 

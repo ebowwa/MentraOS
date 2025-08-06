@@ -98,6 +98,7 @@ const AdminPanel: React.FC = () => {
   // Active tab state to replace the shadcn Tabs component
   const [activeTab, setActiveTab] = useState('dashboard');
   const [chosenAppStatus, setChosenAppStatus] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
 
 
 
@@ -164,7 +165,7 @@ const AdminPanel: React.FC = () => {
         console.log('Setting collected app batch status:', res.data.data);
         
         // Transform data into nested structure grouped by packageName and date
-        const groupedData = res.data.data.reduce((acc, entry) => {
+        const groupedData = res.data.data.reduce((acc: Record<string, Record<string, any[]>>, entry: any) => {
           const packageName = entry.packageName;
           const dateKey = new Date(entry.timestamp).toISOString().split('T')[0]; // YYYY-MM-DD format
           
@@ -187,7 +188,7 @@ const AdminPanel: React.FC = () => {
         // Sort entries within each date array by timestamp (newest first)
         Object.keys(groupedData).forEach(packageName => {
           Object.keys(groupedData[packageName]).forEach(date => {
-            groupedData[packageName][date].sort((a, b) => 
+            groupedData[packageName][date].sort((a: any, b: any) => 
               new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
             );
           });
@@ -442,6 +443,17 @@ const AdminPanel: React.FC = () => {
       minute: '2-digit'
     });
   };
+
+  // Filter apps based on search query
+  const filteredApps = submittedApps.filter(app => {
+    if (!searchQuery.trim()) return true;
+    
+    const query = searchQuery.toLowerCase();
+    return (
+      app.name.toLowerCase().includes(query) ||
+      app.packageName.toLowerCase().includes(query)
+    );
+  });
 
   // Function to check API connectivity
   const checkApiConnection = async () => {
@@ -699,14 +711,17 @@ const AdminPanel: React.FC = () => {
             {activeTab === "app_status" && (
               <div className='space-y-4'>
                 <div className="flex flex-row gap-[10px]">
-                  <Search inputHint="Search app" />
+                  <Search 
+                    inputHint="Search app" 
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
                   <Select onValueChange={(value) => console.log(value)}>
                     <SelectTrigger className="w-[180px]">
-                      <SelectValue placeholder="Select environment" />
+                      <SelectValue placeholder="Submitted" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="production">Production</SelectItem>
-                      <SelectItem value="developer">Developer</SelectItem>
+                      <SelectItem value="production">Submitted</SelectItem>
                     </SelectContent>
                   </Select>
                   <DatePicker initialYear={year} initialMonth={monthNumber} setMonthNumberDynamic={setMonthNumberDynamic} setYearNumber={setYearNumber} />
@@ -751,17 +766,17 @@ const AdminPanel: React.FC = () => {
                     
                   </CardHeader>
                   <CardContent>
-                    {submittedApps.length === 0 ? (
+                    {filteredApps.length === 0 ? (
                       <div className="py-6 text-center text-gray-500">
-                        No pending submissions
+                        {searchQuery.trim() ? 'No apps match your search' : 'No pending submissions'}
                       </div>
                     ) : (
                       <div className="divide-y">
-                        {submittedApps.map((app) => (
-                          <div key={app._id} className="py-4 flex justify-between items-center" onClick={() => {
+                        {filteredApps.map((app) => (
+                          <div key={app._id} className="py-4 flex justify-between items-center 
+                          hover:bg-gray-50 cursor-pointer transition-colors px-4" onClick={() => {
                             setChosenAppStatus(app.name);
                             setActiveTab("idle");
-
                           }}>
                             <div className="flex items-center">
                               <img
@@ -886,6 +901,7 @@ const AdminPanel: React.FC = () => {
                 app={appStatusData} 
                 onRefresh={fetchAppStatus}
                 isRefreshing={statusLoading}
+                appItems={getAppBatchStatusByPackageName(collectedAllAppBatchStatus, selectedApp.packageName)}
               />;
             })()}
 
