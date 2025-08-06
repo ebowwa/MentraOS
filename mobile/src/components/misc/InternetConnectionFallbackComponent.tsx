@@ -6,22 +6,24 @@ import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityI
 
 interface InternetConnectionFallbackComponentProps {
   retry: () => void
+  message?: string
 }
 
-export default function InternetConnectionFallbackComponent({retry}: InternetConnectionFallbackComponentProps) {
+export default function InternetConnectionFallbackComponent({
+  retry,
+  message = "Unable to connect. Please check your internet connection.",
+}: InternetConnectionFallbackComponentProps) {
   const {theme, themed} = useAppTheme()
 
   return (
     <View style={styles.fallbackContainer}>
-      <MaterialCommunityIcons name="alert-circle-outline" size={60} color={theme.colors.text} />
-      <Text style={themed($fallbackText)}>AugmentOS Store not yet available in 2.0.</Text>
-      {/*<TouchableOpacity*/}
-      {/*  style={[styles.retryButton, { backgroundColor: theme.selectedChipBg }]}*/}
-      {/*  onPress={retry}>*/}
-      {/*  <Text style={[styles.retryButtonText, { color: theme.selectedChipText }]}>*/}
-      {/*    Retry*/}
-      {/*  </Text>*/}
-      {/*</TouchableOpacity>*/}
+      <MaterialCommunityIcons name="wifi-off" size={60} color={theme.colors.text} />
+      <Text style={themed($fallbackText)}>{message}</Text>
+      <TouchableOpacity
+        style={[styles.retryButton, {backgroundColor: theme.colors.palette.primary500}]}
+        onPress={retry}>
+        <Text style={[styles.retryButtonText, {color: theme.colors.palette.neutral100}]}>Retry</Text>
+      </TouchableOpacity>
     </View>
   )
 }

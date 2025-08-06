@@ -109,7 +109,7 @@ export const getEvenRealitiesG1Image = (
     a_brown1_l_wearing_dark: require("../../assets/glasses/even_realities/g1/image_g1_a_brown1_l_wearing_dark.png"),
     a_brown1_l_folded_dark: require("../../assets/glasses/even_realities/g1/image_g1_a_brown1_l_folded_dark.png"),
     a_brown1_l_prescription_dark: require("../../assets/glasses/even_realities/g1/image_g1_a_brown1_l_prescription_dark.png"),
-    a_brown1_l_case_open_dark: require("../../assets/glasses/even_realities/g1/image_g1_a_brown1_l_case_open_full_dark.png"),
+    a_brown1_l_case_open_full_dark: require("../../assets/glasses/even_realities/g1/image_g1_a_brown1_l_case_open_full_dark.png"),
     a_brown1_l_case_close_dark: require("../../assets/glasses/even_realities/g1/image_g1_l_case_close_full_dark.png"),
     a_brown1_l_case_charging_dark: require("../../assets/glasses/even_realities/g1/image_g1_l_case_close_charging_dark.png"),
 

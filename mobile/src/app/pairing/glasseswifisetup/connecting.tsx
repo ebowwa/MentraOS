@@ -1,7 +1,7 @@
 import React, {useState, useEffect, useRef} from "react"
-import {View, Text, ActivityIndicator} from "react-native"
+import {View, Text, ActivityIndicator, TouchableOpacity} from "react-native"
 import {useLocalSearchParams, router} from "expo-router"
-import {Screen, Header} from "@/components/ignite"
+import {Screen, Header, Button} from "@/components/ignite"
 import coreCommunicator from "@/bridge/CoreCommunicator"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
 import {useAppTheme} from "@/utils/useAppTheme"
@@ -10,6 +10,7 @@ import {ViewStyle, TextStyle} from "react-native"
 import ActionButton from "@/components/ui/ActionButton"
 import WifiCredentialsService from "@/utils/WifiCredentialsService"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
+import {Ionicons, MaterialIcons} from "@expo/vector-icons"
 
 export default function WifiConnectingScreen() {
   const params = useLocalSearchParams()
@@ -52,15 +53,8 @@ export default function WifiConnectingScreen() {
         }
 
         setConnectionStatus("success")
-        GlobalEventEmitter.emit("SHOW_BANNER", {
-          message: `Successfully connected to ${data.ssid}`,
-          type: "success",
-        })
-
-        // Navigate back to home after short delay
-        setTimeout(() => {
-          navigate("/")
-        }, 1500)
+        // Don't show banner anymore since we have a dedicated success screen
+        // User will manually dismiss with Done button
       } else if (!data.connected && connectionStatus === "connecting") {
         // Set up 5-second grace period before showing failure
         failureGracePeriodRef.current = setTimeout(() => {
@@ -97,11 +91,11 @@ export default function WifiConnectingScreen() {
         if (connectionStatus === "connecting") {
           console.log("321321 Connection timed out. Please try again.")
           setConnectionStatus("failed")
-          setErrorMessage("#@32 Connection timed out. Please try again.")
-          GlobalEventEmitter.emit("SHOW_BANNER", {
-            message: "WiFi connection timed out",
-            type: "error",
-          })
+          setErrorMessage("Connection timed out. Please try again.")
+          // GlobalEventEmitter.emit("SHOW_BANNER", {
+          //   message: "WiFi connection timed out",
+          //   type: "error",
+          // })
         }
       }, 20000)
     } catch (error) {
@@ -144,31 +138,98 @@ export default function WifiConnectingScreen() {
 
       case "success":
         return (
-          <>
-            <Text style={themed($successIcon)}>✓</Text>
-            <Text style={themed($successText)}>Successfully connected!</Text>
-            <Text style={themed($subText)}>Returning to home...</Text>
-          </>
+          <View style={themed($successContainer)}>
+            <View style={themed($successContent)}>
+              <View style={themed($successIconContainer)}>
+                <Ionicons name="checkmark-circle" size={80} color="#0066FF" />
+              </View>
+
+              <Text style={themed($successTitle)}>Network added!</Text>
+
+              <Text style={themed($successDescription)}>Your {deviceModel} will automatically update when it is:</Text>
+
+              <View style={themed($conditionsList)}>
+                <View style={themed($conditionItem)}>
+                  <View style={themed($conditionIcon)}>
+                    <MaterialIcons name="power-settings-new" size={24} color={theme.colors.text} />
+                  </View>
+                  <Text style={themed($conditionText)}>Powered on</Text>
+                </View>
+
+                <View style={themed($conditionItem)}>
+                  <View style={themed($conditionIcon)}>
+                    <MaterialIcons name="bolt" size={24} color={theme.colors.text} />
+                  </View>
+                  <Text style={themed($conditionText)}>Charging</Text>
+                </View>
+
+                <View style={themed($conditionItem)}>
+                  <View style={themed($conditionIcon)}>
+                    <MaterialIcons name="wifi" size={24} color={theme.colors.text} />
+                  </View>
+                  <Text style={themed($conditionText)}>Connected to a saved Wi-Fi network</Text>
+                </View>
+              </View>
+            </View>
+
+            <View style={themed($successButtonContainer)}>
+              <Button onPress={() => navigate("/")}>
+                <Text>Done</Text>
+              </Button>
+            </View>
+          </View>
         )
 
       case "failed":
         return (
-          <>
-            <Text style={themed($errorIcon)}>✗</Text>
-            <Text style={themed($errorText)}>Connection Failed</Text>
-            <Text style={themed($errorMessage)}>{errorMessage}</Text>
-            <View style={themed($buttonContainer)}>
-              <ActionButton label="Try Again" onPress={handleTryAgain} />
-              <ActionButton label="Cancel" onPress={handleCancel} variant="secondary" />
+          <View style={themed($failureContainer)}>
+            <View style={themed($failureContent)}>
+              <View style={themed($failureIconContainer)}>
+                <Ionicons name="close-circle" size={80} color={theme.colors.error} />
+              </View>
+
+              <Text style={themed($failureTitle)}>Connection Failed</Text>
+
+              <Text style={themed($failureDescription)}>{errorMessage}</Text>
+
+              <View style={themed($failureTipsList)}>
+                <View style={themed($failureTipItem)}>
+                  <View style={themed($failureTipIcon)}>
+                    <MaterialIcons name="lock" size={24} color={theme.colors.textDim} />
+                  </View>
+                  <Text style={themed($failureTipText)}>Make sure the password was entered correctly</Text>
+                </View>
+
+                <View style={themed($failureTipItem)}>
+                  <View style={themed($failureTipIcon)}>
+                    <MaterialIcons name="wifi" size={24} color={theme.colors.textDim} />
+                  </View>
+                  <Text style={themed($failureTipText)}>
+                    Mentra Live Beta can only connect to pure 2.4GHz WiFi networks (not 5GHz or dual-band 2.4/5GHz)
+                  </Text>
+                </View>
+              </View>
             </View>
-          </>
+
+            <View style={themed($failureButtonsContainer)}>
+              <Button onPress={handleTryAgain}>
+                <Text>Try Again</Text>
+              </Button>
+              <View style={{height: theme.spacing.sm}} />
+              <Button onPress={handleCancel} preset="reversed">
+                <Text>Cancel</Text>
+              </Button>
+            </View>
+          </View>
         )
     }
   }
 
   return (
     <Screen preset="fixed" contentContainerStyle={themed($container)}>
-      <Header title="Connecting" leftIcon="caretLeft" onLeftPress={handleHeaderBack} />
+      {connectionStatus === "connecting" && (
+        <Header title="Connecting" leftIcon="caretLeft" onLeftPress={handleHeaderBack} />
+      )}
       <View style={themed($content)}>{renderContent()}</View>
     </Screen>
   )
@@ -200,40 +261,122 @@ const $subText: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
   textAlign: "center",
 })
 
-const $successIcon: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
-  fontSize: 60,
-  color: colors.tint,
-  marginBottom: spacing.md,
+const $successContainer: ThemedStyle<ViewStyle> = () => ({
+  flex: 1,
+  width: "100%",
+  justifyContent: "space-between",
 })
 
-const $successText: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
+const $successContent: ThemedStyle<ViewStyle> = () => ({
+  flex: 1,
+  justifyContent: "center",
+})
+
+const $successIconContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  alignItems: "center",
+  marginTop: spacing.xxl,
+  marginBottom: spacing.lg,
+})
+
+const $successTitle: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
   fontSize: 24,
-  fontWeight: "bold",
-  color: colors.tint,
-  marginBottom: spacing.xs,
+  fontWeight: "600",
+  color: colors.text,
   textAlign: "center",
+  marginBottom: spacing.lg,
 })
 
-const $errorIcon: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
-  fontSize: 60,
-  color: colors.error,
-  marginBottom: spacing.md,
-})
-
-const $errorText: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
-  fontSize: 24,
-  fontWeight: "bold",
-  color: colors.error,
-  marginBottom: spacing.xs,
+const $successDescription: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
+  fontSize: 16,
+  color: colors.textDim,
   textAlign: "center",
+  marginBottom: spacing.xl,
+  paddingHorizontal: spacing.lg,
 })
 
-const $errorMessage: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
+const $conditionsList: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  paddingHorizontal: spacing.xl,
+})
+
+const $conditionItem: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  flexDirection: "row",
+  alignItems: "center",
+  marginBottom: spacing.lg,
+})
+
+const $conditionIcon: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  marginRight: spacing.md,
+  width: 32,
+})
+
+const $conditionText: ThemedStyle<TextStyle> = ({colors}) => ({
   fontSize: 16,
   color: colors.text,
-  marginBottom: spacing.xl,
+  flex: 1,
+})
+
+const $successButtonContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  marginBottom: spacing.lg,
+})
+
+const $failureContainer: ThemedStyle<ViewStyle> = () => ({
+  flex: 1,
+  width: "100%",
+  justifyContent: "space-between",
+})
+
+const $failureContent: ThemedStyle<ViewStyle> = () => ({
+  flex: 1,
+  justifyContent: "center",
+})
+
+const $failureIconContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  alignItems: "center",
+  marginTop: spacing.xxl,
+  marginBottom: spacing.lg,
+})
+
+const $failureTitle: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
+  fontSize: 24,
+  fontWeight: "600",
+  color: colors.error,
   textAlign: "center",
-  paddingHorizontal: spacing.lg,
+  marginBottom: spacing.lg,
+})
+
+const $failureDescription: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
+  fontSize: 16,
+  color: colors.textDim,
+  textAlign: "center",
+  marginBottom: spacing.xl,
+  paddingHorizontal: spacing.xl,
+})
+
+const $failureButtonsContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  //marginHorizontal: spacing.lg,
+  marginBottom: spacing.lg,
+})
+
+const $failureTipsList: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  paddingHorizontal: spacing.xl,
+  marginTop: spacing.md,
+})
+
+const $failureTipItem: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  flexDirection: "row",
+  alignItems: "center",
+  marginBottom: spacing.lg,
+})
+
+const $failureTipIcon: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  marginRight: spacing.md,
+  width: 32,
+})
+
+const $failureTipText: ThemedStyle<TextStyle> = ({colors}) => ({
+  fontSize: 16,
+  color: colors.textDim,
+  flex: 1,
 })
 
 const $buttonContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({

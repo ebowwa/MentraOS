@@ -1,7 +1,7 @@
-import demoHi from "./demo-hi"
-import {Translations} from "./en"
+import en, {Translations} from "./en"
 
 const hi: Translations = {
+  ...en,
   common: {
     ok: "ठीक है!",
     cancel: "रद्द करें",
@@ -43,6 +43,15 @@ const hi: Translations = {
     passwordFieldPlaceholder: "सुपर सीक्रेट पासवर्ड यहाँ",
     tapToLogIn: "लॉग इन करने के लिए टैप करें!",
     hint: "संकेत: आप किसी भी ईमेल पते और अपने पसंदीदा पासवर्ड का उपयोग कर सकते हैं :)",
+  },
+  home: {
+    hardwareIncompatible: "हार्डवेयर असंगत",
+    hardwareIncompatibleMessage:
+      "{{app}} को ऐसे हार्डवेयर की आवश्यकता है जो आपके कनेक्टेड चश्मे में उपलब्ध नहीं है: {{missing}}",
+    incompatibleApps: "असंगत ऐप्स",
+    incompatibleAppsDescription:
+      "इन ऐप्स को ऐसी हार्डवेयर सुविधाओं की आवश्यकता है जो आपके कनेक्टेड चश्मे में उपलब्ध नहीं हैं",
+    incompatible: "असंगत",
   },
   demoNavigator: {
     componentsTab: "कंपोनेंट्स",
@@ -119,8 +128,6 @@ const hi: Translations = {
         "अभी तक कोई पसंदीदा नहीं जोड़ा गया है। इसे अपने पसंदीदा में जोड़ने के लिए किसी एपिसोड पर दिल पर टैप करें!",
     },
   },
-
-  ...demoHi,
 }
 
 export default hi

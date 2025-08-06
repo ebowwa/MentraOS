@@ -3,7 +3,12 @@
  */
 
 import WebSocket from "ws";
-import { StreamType, getLanguageInfo, TranscriptionData, SonioxToken } from "@mentra/sdk";
+import {
+  StreamType,
+  getLanguageInfo,
+  TranscriptionData,
+  SonioxToken,
+} from "@mentra/sdk";
 import { Logger } from "pino";
 import {
   TranscriptionProvider,
@@ -25,10 +30,12 @@ import sonioxLanguageData from "./SonioxLanguages.json";
 
 // Extract supported language codes for the real-time model
 const SONIOX_SUPPORTED_LANGUAGES: string[] = [];
-const rtModel = sonioxLanguageData.models.find(m => m.id === "stt-rt-preview");
+const rtModel = sonioxLanguageData.models.find(
+  (m) => m.id === "stt-rt-preview",
+);
 if (rtModel) {
   // Extract just the language codes (e.g., "en", "es", "fr")
-  rtModel.languages.forEach(lang => {
+  rtModel.languages.forEach((lang) => {
     if (!SONIOX_SUPPORTED_LANGUAGES.includes(lang.code)) {
       SONIOX_SUPPORTED_LANGUAGES.push(lang.code);
     }
@@ -77,13 +84,13 @@ export class SonioxTranscriptionProvider implements TranscriptionProvider {
       lastCheck: Date.now(),
       failures: 0,
     };
-    
+
     this.logger.info(
       {
         supportedLanguages: SONIOX_SUPPORTED_LANGUAGES.length,
-        languages: SONIOX_SUPPORTED_LANGUAGES
+        languages: SONIOX_SUPPORTED_LANGUAGES,
       },
-      `Soniox provider initialized with ${SONIOX_SUPPORTED_LANGUAGES.length} supported languages`
+      `Soniox provider initialized with ${SONIOX_SUPPORTED_LANGUAGES.length} supported languages`,
     );
   }
 
@@ -166,7 +173,7 @@ export class SonioxTranscriptionProvider implements TranscriptionProvider {
   supportsLanguage(language: string): boolean {
     // Check if the language is in our supported transcription languages list
     // Language parameter is already a language code like "en-US", not a subscription string
-    
+
     // Extract base language code (e.g., 'en' for 'en-US')
     const baseLanguage = language.split("-")[0].toLowerCase();
 
@@ -178,17 +185,17 @@ export class SonioxTranscriptionProvider implements TranscriptionProvider {
 
   getLanguageCapabilities(): ProviderLanguageCapabilities {
     // Build a list of language codes in the format expected (e.g., "en-US")
-    // For now, we'll just return the base language codes since Soniox 
+    // For now, we'll just return the base language codes since Soniox
     // supports multiple variants for most languages
     const transcriptionLanguages: string[] = [];
-    
+
     if (rtModel) {
-      rtModel.languages.forEach(lang => {
+      rtModel.languages.forEach((lang) => {
         // Add the base language code (Soniox accepts base codes)
         transcriptionLanguages.push(lang.code);
       });
     }
-    
+
     return {
       transcriptionLanguages,
       autoLanguageDetection: true, // Soniox supports auto language detection
@@ -278,16 +285,25 @@ class SonioxTranscriptionStream implements StreamInstance {
   > = new Map();
   private fallbackPosition = 0; // Fallback position when timing info is missing
   private lastSentInterim = ""; // Track last sent interim to avoid duplicates
-  
+
   // Helper to convert internal tokens to SDK format
-  private convertToSdkTokens(tokens: Array<{ text: string; isFinal: boolean; confidence: number; start_ms: number; end_ms: number; speaker?: string }>): SonioxToken[] {
-    return tokens.map(token => ({
+  private convertToSdkTokens(
+    tokens: Array<{
+      text: string;
+      isFinal: boolean;
+      confidence: number;
+      start_ms: number;
+      end_ms: number;
+      speaker?: string;
+    }>,
+  ): SonioxToken[] {
+    return tokens.map((token) => ({
       text: token.text,
       startMs: token.start_ms,
       endMs: token.end_ms,
       confidence: token.confidence,
       isFinal: token.isFinal,
-      speaker: token.speaker
+      speaker: token.speaker,
     }));
   }
 
@@ -422,7 +438,7 @@ class SonioxTranscriptionStream implements StreamInstance {
     );
     const config: any = {
       api_key: this.config.apiKey,
-      model: this.config.model || "stt-rt-preview",
+      model: this.config.model || "stt-rt-preview-v2",
       audio_format: "pcm_s16le",
       sample_rate: 16000,
       num_channels: 1,
@@ -598,11 +614,11 @@ class SonioxTranscriptionStream implements StreamInstance {
         transcribeLanguage: this.language,
         provider: "soniox",
         metadata: {
-          provider: 'soniox',
+          provider: "soniox",
           soniox: {
-            tokens: this.convertToSdkTokens(sortedTokens)
-          }
-        }
+            tokens: this.convertToSdkTokens(sortedTokens),
+          },
+        },
       };
 
       if (this.callbacks.onData) {
@@ -624,25 +640,27 @@ class SonioxTranscriptionStream implements StreamInstance {
         },
         `🎙️ SONIOX: interim transcription - "${currentInterim}"`,
       );
-      
+
       // Log metadata details
       this.logger.info(
         {
           streamId: this.id,
           metadataType: "interim",
           tokenCount: sortedTokens.length,
-          tokens: sortedTokens.map(t => ({
+          tokens: sortedTokens.map((t) => ({
             text: t.text,
             confidence: t.confidence,
             timeRange: `${t.start_ms}-${t.end_ms}ms`,
-            isFinal: t.isFinal
+            isFinal: t.isFinal,
           })),
-          lowConfidenceTokens: sortedTokens.filter(t => t.confidence < 0.8).map(t => ({
-            text: t.text,
-            confidence: t.confidence
-          }))
+          lowConfidenceTokens: sortedTokens
+            .filter((t) => t.confidence < 0.8)
+            .map((t) => ({
+              text: t.text,
+              confidence: t.confidence,
+            })),
         },
-        `🔍 METADATA: Interim transcription with ${sortedTokens.length} tokens`
+        `🔍 METADATA: Interim transcription with ${sortedTokens.length} tokens`,
       );
     }
 
@@ -669,11 +687,11 @@ class SonioxTranscriptionStream implements StreamInstance {
           transcribeLanguage: this.language,
           provider: "soniox",
           metadata: {
-            provider: 'soniox',
+            provider: "soniox",
             soniox: {
-              tokens: this.convertToSdkTokens(finalTokens)
-            }
-          }
+              tokens: this.convertToSdkTokens(finalTokens),
+            },
+          },
         };
 
         if (this.callbacks.onData) {
@@ -691,28 +709,35 @@ class SonioxTranscriptionStream implements StreamInstance {
           },
           `🎙️ SONIOX: FINAL transcription - "${finalTranscript}"`,
         );
-        
+
         // Log final metadata details
         this.logger.info(
           {
             streamId: this.id,
             metadataType: "final",
             tokenCount: finalTokens.length,
-            averageConfidence: finalTokens.reduce((acc, t) => acc + t.confidence, 0) / finalTokens.length,
-            tokens: finalTokens.map(t => ({
+            averageConfidence:
+              finalTokens.reduce((acc, t) => acc + t.confidence, 0) /
+              finalTokens.length,
+            tokens: finalTokens.map((t) => ({
               text: t.text,
               confidence: t.confidence,
               timeRange: `${t.start_ms}-${t.end_ms}ms`,
-              isFinal: t.isFinal
+              isFinal: t.isFinal,
             })),
-            lowConfidenceTokens: finalTokens.filter(t => t.confidence < 0.8).map(t => ({
-              text: t.text,
-              confidence: t.confidence
-            })),
-            totalDurationMs: finalTokens.length > 0 ? 
-              finalTokens[finalTokens.length - 1].end_ms - finalTokens[0].start_ms : 0
+            lowConfidenceTokens: finalTokens
+              .filter((t) => t.confidence < 0.8)
+              .map((t) => ({
+                text: t.text,
+                confidence: t.confidence,
+              })),
+            totalDurationMs:
+              finalTokens.length > 0
+                ? finalTokens[finalTokens.length - 1].end_ms -
+                  finalTokens[0].start_ms
+                : 0,
           },
-          `🔍 METADATA: Final transcription with ${finalTokens.length} tokens`
+          `🔍 METADATA: Final transcription with ${finalTokens.length} tokens`,
         );
       }
 
@@ -759,11 +784,11 @@ class SonioxTranscriptionStream implements StreamInstance {
         transcribeLanguage: this.language,
         provider: "soniox",
         metadata: {
-          provider: 'soniox',
+          provider: "soniox",
           soniox: {
-            tokens: this.convertToSdkTokens(allTokens)
-          }
-        }
+            tokens: this.convertToSdkTokens(allTokens),
+          },
+        },
       };
 
       if (this.callbacks.onData) {
@@ -781,7 +806,7 @@ class SonioxTranscriptionStream implements StreamInstance {
         },
         `🎙️ SONIOX: VAD-triggered FINAL transcription - "${finalTranscript}"`,
       );
-      
+
       // Log VAD-triggered metadata
       this.logger.info(
         {
@@ -789,24 +814,31 @@ class SonioxTranscriptionStream implements StreamInstance {
           metadataType: "vad-final",
           tokenCount: allTokens.length,
           mixedTokenTypes: {
-            final: allTokens.filter(t => t.isFinal).length,
-            interim: allTokens.filter(t => !t.isFinal).length
+            final: allTokens.filter((t) => t.isFinal).length,
+            interim: allTokens.filter((t) => !t.isFinal).length,
           },
-          averageConfidence: allTokens.reduce((acc, t) => acc + t.confidence, 0) / allTokens.length,
-          tokens: allTokens.slice(0, 10).map(t => ({ // Show first 10 tokens to avoid huge logs
+          averageConfidence:
+            allTokens.reduce((acc, t) => acc + t.confidence, 0) /
+            allTokens.length,
+          tokens: allTokens.slice(0, 10).map((t) => ({
+            // Show first 10 tokens to avoid huge logs
             text: t.text,
             confidence: t.confidence,
             timeRange: `${t.start_ms}-${t.end_ms}ms`,
-            isFinal: t.isFinal
+            isFinal: t.isFinal,
           })),
-          lowConfidenceTokens: allTokens.filter(t => t.confidence < 0.8).map(t => ({
-            text: t.text,
-            confidence: t.confidence
-          })),
-          totalDurationMs: allTokens.length > 0 ? 
-            allTokens[allTokens.length - 1].end_ms - allTokens[0].start_ms : 0
+          lowConfidenceTokens: allTokens
+            .filter((t) => t.confidence < 0.8)
+            .map((t) => ({
+              text: t.text,
+              confidence: t.confidence,
+            })),
+          totalDurationMs:
+            allTokens.length > 0
+              ? allTokens[allTokens.length - 1].end_ms - allTokens[0].start_ms
+              : 0,
         },
-        `🔍 METADATA: VAD-triggered final with ${allTokens.length} tokens (showing first 10)`
+        `🔍 METADATA: VAD-triggered final with ${allTokens.length} tokens (showing first 10)`,
       );
     }
 

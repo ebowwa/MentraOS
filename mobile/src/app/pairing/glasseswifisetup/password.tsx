@@ -1,12 +1,11 @@
 import React, {useState, useEffect} from "react"
 import {View, Text, TextInput, KeyboardAvoidingView, Platform, TouchableOpacity} from "react-native"
 import {useLocalSearchParams, router} from "expo-router"
-import {Screen, Icon, Header, Checkbox} from "@/components/ignite"
+import {Screen, Icon, Header, Checkbox, Button} from "@/components/ignite"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {ThemedStyle} from "@/theme"
 import {ViewStyle, TextStyle} from "react-native"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
-import ActionButton from "@/components/ui/ActionButton"
 import WifiCredentialsService from "@/utils/WifiCredentialsService"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {ScrollView} from "react-native"
@@ -126,9 +125,22 @@ export default function WifiPasswordScreen() {
           </View>
 
           <View style={themed($buttonContainer)}>
-            <ActionButton label="Connect" onPress={handleConnect} />
+            <Button
+              text="Connect"
+              style={themed($primaryButton)}
+              pressedStyle={themed($pressedButton)}
+              textStyle={themed($buttonText)}
+              onPress={handleConnect}
+            />
 
-            <ActionButton label="Cancel" variant="secondary" onPress={() => goBack()} />
+            <Button
+              text="Cancel"
+              style={themed($secondaryButton)}
+              pressedStyle={themed($pressedSecondaryButton)}
+              textStyle={themed($buttonText)}
+              onPress={() => goBack()}
+              preset="reversed"
+            />
           </View>
         </View>
       </ScrollView>
@@ -228,5 +240,25 @@ const $checkboxDescription: ThemedStyle<TextStyle> = ({colors}) => ({
 
 const $buttonContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
   marginTop: spacing.xl,
-  gap: spacing.md,
+  gap: spacing.sm,
+})
+
+const $primaryButton: ThemedStyle<ViewStyle> = () => ({})
+
+const $secondaryButton: ThemedStyle<ViewStyle> = () => ({})
+
+const $pressedButton: ThemedStyle<ViewStyle> = ({colors}) => ({
+  backgroundColor: colors.buttonPressed,
+  opacity: 0.9,
+})
+
+const $pressedSecondaryButton: ThemedStyle<ViewStyle> = ({colors}) => ({
+  backgroundColor: colors.palette.neutral200,
+  opacity: 0.9,
+})
+
+const $buttonText: ThemedStyle<TextStyle> = ({colors}) => ({
+  color: colors.textAlt,
+  fontSize: 16,
+  fontWeight: "bold",
 })

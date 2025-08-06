@@ -7,24 +7,24 @@
  */
 
 export interface CameraCapabilities {
-  resolution?: { width: number; height: number; };
+  resolution?: { width: number; height: number };
   hasHDR?: boolean;
   hasFocus?: boolean;
   video: {
     canRecord: boolean;
     canStream: boolean;
     supportedStreamTypes?: string[];
-    supportedResolutions?: { width: number; height: number; }[];
+    supportedResolutions?: { width: number; height: number }[];
   };
 }
 
-export interface ScreenCapabilities {
+export interface DisplayCapabilities {
   count?: number;
   isColor?: boolean;
   color?: string; // e.g., "green", "full_color", "pallet"
   canDisplayBitmap?: boolean;
-  resolution?: { width: number; height: number; };
-  fieldOfView?: { horizontal?: number; vertical?: number; };
+  resolution?: { width: number; height: number };
+  fieldOfView?: { horizontal?: number; vertical?: number };
   maxTextLines?: number;
   adjustBrightness?: boolean;
 }
@@ -49,7 +49,7 @@ export interface IMUCapabilities {
 export interface ButtonCapabilities {
   count?: number;
   buttons?: {
-    type: 'press' | 'swipe1d' | 'swipe2d';
+    type: "press" | "swipe1d" | "swipe2d";
     events: string[]; // e.g., "press", "double_press", "long_press", "swipe_up", "swipe_down"
     isCapacitive?: boolean;
   }[];
@@ -74,9 +74,9 @@ export interface Capabilities {
   hasCamera: boolean;
   camera: CameraCapabilities | null;
 
-  // Screen capabilities
-  hasScreen: boolean;
-  screen: ScreenCapabilities | null;
+  // Display capabilities
+  hasDisplay: boolean;
+  display: DisplayCapabilities | null;
 
   // Microphone capabilities
   hasMicrophone: boolean;

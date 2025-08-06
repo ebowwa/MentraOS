@@ -19,11 +19,16 @@ const TextSettingNoSave: React.FC<TextSettingNoSaveProps> = ({label, value, onCh
   // Check for pending value when component gets focus
   useFocusEffect(
     React.useCallback(() => {
+      // Only process if there's actually a pending value (meaning we just returned from text editor)
       const pendingValue = textEditorStore.getPendingValue()
       if (pendingValue && pendingValue.key === settingKey) {
         onChangeText(pendingValue.value)
+        textEditorStore.clearPendingValue() // Only clear when we use it
+      } else if (pendingValue) {
+        // If there's a pending value but it doesn't match, put it back
+        textEditorStore.setPendingValue(pendingValue.key, pendingValue.value)
       }
-    }, [settingKey, onChangeText]),
+    }, [settingKey]),
   )
 
   const handleOpenEditor = () => {

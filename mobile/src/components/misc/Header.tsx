@@ -23,27 +23,29 @@ const Header: React.FC<HeaderProps> = ({isDarkTheme, navigation}) => {
   const route = useRoute()
   const {push} = useNavigationHistory()
 
+  const checkPermissions = async () => {
+    // Check notification permission
+    if (Platform.OS === "android") {
+      const hasNotificationPermission = await checkNotificationAccessSpecialPermission()
+      setHasNotificationListenerPermission(hasNotificationPermission)
+    } else {
+      // TODO: ios (there's no way to get the notification permission on ios so just set to true to disable the warning)
+      setHasNotificationListenerPermission(true)
+    }
+
+    // Check calendar permission
+    const hasCalPermission = await checkFeaturePermissions(PermissionFeatures.CALENDAR)
+    setHasCalendarPermission(hasCalPermission)
+  }
+
   // Check permissions when component mounts
   // and when app comes back to foreground
   useEffect(() => {
-    const checkPermissions = async () => {
-      // Check notification permission
-      if (Platform.OS === "android") {
-        const hasNotificationPermission = await checkNotificationAccessSpecialPermission()
-        setHasNotificationListenerPermission(hasNotificationPermission)
-      } else {
-        // TODO: ios (there's no way to get the notification permission on ios so just set to true to disable the warning)
-        setHasNotificationListenerPermission(true)
-      }
-
-      // Check calendar permission
-      const hasCalPermission = await checkFeaturePermissions(PermissionFeatures.CALENDAR)
-      setHasCalendarPermission(hasCalPermission)
-    }
-
     // Check permissions on component mount
     checkPermissions()
+  }, [appState, route.name])
 
+  useEffect(() => {
     // Set up AppState listener to check permissions when app comes back to foreground
     const subscription = AppState.addEventListener("change", nextAppState => {
       if (appState.match(/inactive|background/) && nextAppState === "active") {
@@ -58,7 +60,7 @@ const Header: React.FC<HeaderProps> = ({isDarkTheme, navigation}) => {
     return () => {
       subscription.remove()
     }
-  }, [appState, route.name])
+  }, []) // subscribe only once
 
   const handleNotificationAlert = () => {
     // Show explanation alert before navigating to privacy settings
