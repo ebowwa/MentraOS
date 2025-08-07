@@ -43,6 +43,8 @@ import Divider from "@/components/misc/Divider"
 import {InfoRow} from "@/components/settings/InfoRow"
 import {SettingsGroup} from "@/components/settings/SettingsGroup"
 import {showAlert} from "@/utils/AlertUtils"
+import {checkPermissionsUI, PERMISSION_CONFIG, PermissionFeatures, requestPermissionsUI} from "@/utils/PermissionsUtils"
+import {translate} from "@/i18n"
 
 export default function AppSettings() {
   const {packageName, appName: appNameParam, fromWebView} = useLocalSearchParams()
@@ -131,38 +133,96 @@ export default function AppSettings() {
 
         // Clear the pending operation since it completed successfully
         clearPendingOperation(packageName)
-      } else {
-        // Optimistically update UI first
-        optimisticallyStartApp(packageName)
+        return
+      }
 
-        // Check if it's a standard app
-        if (appInfo.appType === "standard") {
-          // Find any running standard apps
-          const runningStandardApps = appStatus.filter(
-            app => app.is_running && app.appType === "standard" && app.packageName !== packageName,
-          )
+      if (appInfo.healthStatus !== "online") {
+        showAlert(translate("errors:appNotOnlineTitle"), translate("errors:appNotOnlineMessage"), [
+          {text: translate("common:ok")},
+        ])
+        return
+      }
 
-          // If there's any running standard app, stop it first
-          for (const runningApp of runningStandardApps) {
-            // Optimistically update UI
-            optimisticallyStopApp(runningApp.packageName)
+      // check perms:
+      const neededPermissions = await checkPermissionsUI(appInfo)
+      if (neededPermissions.length > 0) {
+        await showAlert(
+          neededPermissions.length > 1
+            ? translate("home:permissionsRequiredTitle")
+            : translate("home:permissionRequiredTitle"),
+          translate("home:permissionMessage", {
+            permissions: neededPermissions.map(perm => PERMISSION_CONFIG[perm]?.name || perm).join(", "),
+          }),
+          [
+            {
+              text: translate("common:cancel"),
+              onPress: () => {},
+              style: "cancel",
+            },
+            {
+              text: translate("common:next"),
+              onPress: async () => {
+                await requestPermissionsUI(neededPermissions)
 
-            try {
-              await backendServerComms.stopApp(runningApp.packageName)
-              clearPendingOperation(runningApp.packageName)
-            } catch (error) {
-              console.error("Stop app error:", error)
-              refreshAppStatus()
-            }
+                // Check if permissions were actually granted (for non-special permissions)
+                // Special permissions like READ_NOTIFICATIONS on Android require manual action
+                const stillNeededPermissions = await checkPermissionsUI(appInfo)
+
+                // If we still need READ_NOTIFICATIONS, don't auto-retry
+                // The user needs to manually grant it in settings and try again
+                if (
+                  stillNeededPermissions.includes(PermissionFeatures.READ_NOTIFICATIONS) &&
+                  Platform.OS === "android"
+                ) {
+                  // Permission flow is in progress, user needs to complete it manually
+                  return
+                }
+
+                // For other permissions that were granted, proceed with starting the app
+                if (stillNeededPermissions.length === 0) {
+                  handleStartStopApp()
+                }
+              },
+            },
+          ],
+          {
+            iconName: "information-outline",
+            iconColor: theme.colors.textDim,
+          },
+        )
+        return
+      }
+
+      // Optimistically update UI first
+      optimisticallyStartApp(packageName)
+
+      // Check if it's a standard app
+      if (appInfo.appType === "standard") {
+        // Find any running standard apps
+        const runningStandardApps = appStatus.filter(
+          app => app.is_running && app.appType === "standard" && app.packageName !== packageName,
+        )
+
+        // If there's any running standard app, stop it first
+        for (const runningApp of runningStandardApps) {
+          // Optimistically update UI
+          optimisticallyStopApp(runningApp.packageName)
+
+          try {
+            await backendServerComms.stopApp(runningApp.packageName)
+            clearPendingOperation(runningApp.packageName)
+          } catch (error) {
+            console.error("Stop app error:", error)
+            refreshAppStatus()
           }
         }
-
-        // Then request the server to start the app
-        await backendServerComms.startApp(packageName)
-
-        // Clear the pending operation since it completed successfully
-        clearPendingOperation(packageName)
       }
+
+      // Then request the server to start the app
+      await backendServerComms.startApp(packageName)
+
+      // Clear the pending operation since it completed successfully
+      clearPendingOperation(packageName)
     } catch (error) {
       // Clear the pending operation for this app
       clearPendingOperation(packageName)

@@ -246,4 +246,59 @@ public abstract class SmartGlassesCommunicator {
         // Default implementation does nothing
         Log.d("SmartGlassesCommunicator", "Button mode setting not implemented for this device");
     }
+
+    /**
+     * Start buffer recording on smart glasses
+     * Continuously records last 30 seconds in a circular buffer
+     * Default implementation does nothing - specific communicators should override
+     */
+    public void startBufferRecording() {
+        // Default implementation does nothing
+        Log.d("SmartGlassesCommunicator", "Start buffer recording not implemented for this device");
+    }
+
+    /**
+     * Stop buffer recording on smart glasses
+     * Default implementation does nothing - specific communicators should override
+     */
+    public void stopBufferRecording() {
+        // Default implementation does nothing
+        Log.d("SmartGlassesCommunicator", "Stop buffer recording not implemented for this device");
+    }
+
+    /**
+     * Save buffer video from smart glasses
+     * Saves the last N seconds from the circular buffer
+     * Default implementation does nothing - specific communicators should override
+     *
+     * @param requestId Unique ID for this save request
+     * @param durationSeconds Number of seconds to save (1-30)
+     */
+    public void saveBufferVideo(String requestId, int durationSeconds) {
+        // Default implementation does nothing
+        Log.d("SmartGlassesCommunicator", "Save buffer video not implemented for this device");
+    }
+
+    /**
+     * Start video recording on smart glasses
+     * Default implementation does nothing - specific communicators should override
+     *
+     * @param requestId Unique ID for this recording request
+     * @param save Whether to save the video to storage
+     */
+    public void startVideoRecording(String requestId, boolean save) {
+        // Default implementation does nothing
+        Log.d("SmartGlassesCommunicator", "Start video recording not implemented for this device");
+    }
+
+    /**
+     * Stop video recording on smart glasses
+     * Default implementation does nothing - specific communicators should override
+     *
+     * @param requestId The request ID of the recording to stop
+     */
+    public void stopVideoRecording(String requestId) {
+        // Default implementation does nothing
+        Log.d("SmartGlassesCommunicator", "Stop video recording not implemented for this device");
+    }
 }

@@ -108,6 +108,7 @@ export interface SettingsUpdate {
 
 export interface MicrophoneStateChange {
   isMicrophoneEnabled: boolean;
+  bypassVad?: boolean; // NEW: VAD bypass flag for PCM subscriptions
   timestamp: Date;
 }
 

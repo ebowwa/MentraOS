@@ -66,8 +66,8 @@ public class RtmpStreamingService extends Service {
     private boolean mIsStreaming = false;
     private SurfaceTexture mSurfaceTexture;
     private Surface mSurface;
-    private static final int SURFACE_WIDTH = 540;
-    private static final int SURFACE_HEIGHT = 960;
+    private static final int SURFACE_WIDTH = 960;//720;//540;
+    private static final int SURFACE_HEIGHT = 960;//720;//960;
 
     // Reconnection logic parameters
     private int mReconnectAttempts = 0;
@@ -538,13 +538,13 @@ public class RtmpStreamingService extends Service {
             // Configure audio settings using proper constructor
             AudioConfig audioConfig = new AudioConfig(
                     MediaFormat.MIMETYPE_AUDIO_AAC, // Use actual mime type instead of null
-                    128000, // 128 kbps
+                    64000, // 128 kbps
                     44100, // 44.1 kHz
-                    AudioFormat.CHANNEL_IN_MONO, // Switch to mono for better compatibility
+                    AudioFormat.CHANNEL_IN_STEREO, // Switch to mono for better compatibility
                     audioProfile, // Default profile
                     0, // Default byte format
-                    true, // Enable echo cancellation
-                    true // Enable noise suppression
+                    false, // Enable echo cancellation
+                    false // Enable noise suppression
             );
 
             // For MIME type, use the actual mime type instead of null
@@ -555,7 +555,7 @@ public class RtmpStreamingService extends Service {
             // Configure video settings using proper constructor
             VideoConfig videoConfig = new VideoConfig(
                     MediaFormat.MIMETYPE_VIDEO_AVC,
-                    1000000, // 1 Mbps
+                    2000000, // 1 Mbps
                     new Size(SURFACE_WIDTH, SURFACE_HEIGHT),
                     15, // Increase to 15 FPS minimum
                     profile,
@@ -1267,6 +1267,7 @@ public class RtmpStreamingService extends Service {
         if (sInstance != null) {
             if (sInstance.mCurrentStreamId != null && sInstance.mCurrentStreamId.equals(streamId) && sInstance.mIsStreamingActive) {
                 Log.d(TAG, "Resetting stream timeout for streamId: " + streamId);
+                WakeLockManager.acquireFullWakeLockAndBringToForeground(sInstance.getApplicationContext(), 2180000, 5000); // 3 min CPU, 5 sec screen
                 sInstance.scheduleStreamTimeout(streamId); // Reschedule with fresh timeout
                 return true;
             } else {
@@ -1403,7 +1404,7 @@ public class RtmpStreamingService extends Service {
         // Use the WakeLockManager to acquire both CPU and screen wake locks AND bring app to foreground
         // This prevents "Camera disabled by policy" errors when app is backgrounded
         // For streaming we use longer timeout for CPU wake lock than for photo capture
-        WakeLockManager.acquireFullWakeLockAndBringToForeground(this, 180000, 5000); // 3 min CPU, 5 sec screen
+        WakeLockManager.acquireFullWakeLockAndBringToForeground(this, 2180000, 5000); // 3 min CPU, 5 sec screen
     }
 
     /**

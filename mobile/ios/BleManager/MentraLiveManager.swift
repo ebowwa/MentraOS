@@ -938,7 +938,7 @@ typealias JSONObject = [String: Any]
         // Always generate BLE ID for potential fallback
         let bleImgId = "I" + String(format: "%09d", Int(Date().timeIntervalSince1970 * 1000) % 100_000_000)
         json["bleImgId"] = bleImgId
-        json["transferMethod"] = "ble"
+        json["transferMethod"] = "auto"
 
         if let webhookUrl = webhookUrl, !webhookUrl.isEmpty {
             json["webhookUrl"] = webhookUrl
@@ -1348,6 +1348,20 @@ typealias JSONObject = [String: Any]
         }
 
         switch command {
+        case "sr_hrt":
+            if let bodyObj = json["B"] as? [String: Any] {
+                let ready = bodyObj["ready"] as? Int ?? 0
+                if ready == 1 {
+                    CoreCommsService.log("K900 SOC ready")
+                    let readyMsg: [String: Any] = [
+                        "type": "phone_ready",
+                        "timestamp": Int64(Date().timeIntervalSince1970 * 1000),
+                    ]
+                    // Send it through our data channel
+                    sendJson(readyMsg, wakeUp: true)
+                }
+            }
+
         case "sr_batv":
             if let body = json["B"] as? [String: Any],
                let voltage = body["vt"] as? Int,
@@ -1861,16 +1875,31 @@ typealias JSONObject = [String: Any]
 
             self.readinessCheckCounter += 1
             CoreCommsService.log("🔄 Readiness check #\(self.readinessCheckCounter): waiting for glasses SOC to boot")
-
-            let json: [String: Any] = [
-                "type": "phone_ready",
-                "timestamp": Int64(Date().timeIntervalSince1970 * 1000),
-            ]
-
-            self.sendJson(json, wakeUp: true)
+            requestReadyK900()
         }
 
         readinessCheckDispatchTimer!.resume()
+    }
+
+    private func requestReadyK900() {
+        let cmdObject: [String: Any] = [
+            "C": "cs_hrt", // Video command
+            "B": "", // Add the body
+        ]
+
+        do {
+            let jsonData = try JSONSerialization.data(withJSONObject: cmdObject)
+            if let jsonStr = String(data: jsonData, encoding: .utf8) {
+                CoreCommsService.log("Sending hrt command: \(jsonStr)")
+
+                if let packedData = packDataToK900(jsonData, cmdType: K900ProtocolUtils.CMD_TYPE_STRING) {
+                    queueSend(packedData, id: String(globalMessageId))
+                    globalMessageId += 1
+                }
+            }
+        } catch {
+            CoreCommsService.log("Error creating video command: \(error)")
+        }
     }
 
     private func stopReadinessCheckLoop() {
@@ -2225,11 +2254,88 @@ extension MentraLiveManager {
         sendJson(json)
     }
 
+    // MARK: - Buffer Recording Methods
+
+    func startBufferRecording() {
+        CoreCommsService.log("Starting buffer recording on glasses")
+
+        guard connectionState == .connected else {
+            CoreCommsService.log("Cannot start buffer recording - not connected")
+            return
+        }
+
+        let json: [String: Any] = [
+            "type": "start_buffer_recording",
+        ]
+        sendJson(json)
+    }
+
+    func stopBufferRecording() {
+        CoreCommsService.log("Stopping buffer recording on glasses")
+
+        guard connectionState == .connected else {
+            CoreCommsService.log("Cannot stop buffer recording - not connected")
+            return
+        }
+
+        let json: [String: Any] = [
+            "type": "stop_buffer_recording",
+        ]
+        sendJson(json)
+    }
+
+    func saveBufferVideo(requestId: String, durationSeconds: Int) {
+        CoreCommsService.log("Saving buffer video: requestId=\(requestId), duration=\(durationSeconds)s")
+
+        guard connectionState == .connected else {
+            CoreCommsService.log("Cannot save buffer video - not connected")
+            return
+        }
+
+        let json: [String: Any] = [
+            "type": "save_buffer_video",
+            "request_id": requestId,
+            "duration_seconds": durationSeconds,
+        ]
+        sendJson(json)
+    }
+
     private func sendUserSettings() {
         CoreCommsService.log("Sending user settings to glasses")
 
         // Send button mode setting
         let buttonMode = UserDefaults.standard.string(forKey: "button_press_mode") ?? "photo"
         sendButtonModeSetting(buttonMode)
+    }
+
+    func startVideoRecording(requestId: String, save: Bool) {
+        CoreCommsService.log("Starting video recording on glasses: requestId=\(requestId), save=\(save)")
+
+        guard connectionState == .connected else {
+            CoreCommsService.log("Cannot start video recording - not connected")
+            return
+        }
+
+        let json: [String: Any] = [
+            "type": "start_video_recording",
+            "request_id": requestId,
+            "save": save,
+        ]
+        sendJson(json)
+    }
+
+    func stopVideoRecording(requestId: String) {
+        CoreCommsService.log("Stopping video recording on glasses: requestId=\(requestId)")
+
+        guard connectionState == .connected else {
+            CoreCommsService.log("Cannot stop video recording - not connected")
+            return
+        }
+
+        let json: [String: Any] = [
+            "type": "stop_video_recording",
+            "request_id": requestId,
+        ]
+        sendJson(json)
     }
 }

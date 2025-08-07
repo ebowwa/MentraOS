@@ -1,4 +1,5 @@
 PODS:
+  - BitByteData (2.0.4)
   - boost (1.84.0)
   - BVLinearGradient (2.8.3):
     - React-Core
@@ -1412,7 +1413,7 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - Yoga
-  - react-native-keyboard-controller (1.18.1):
+  - react-native-keyboard-controller (1.17.5):
     - DoubleConversion
     - glog
     - hermes-engine
@@ -1425,7 +1426,7 @@ PODS:
     - React-featureflags
     - React-graphics
     - React-ImageManager
-    - react-native-keyboard-controller/common (= 1.18.1)
+    - react-native-keyboard-controller/common (= 1.17.5)
     - React-NativeModulesApple
     - React-RCTFabric
     - React-rendererdebug
@@ -1434,7 +1435,7 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - Yoga
-  - react-native-keyboard-controller/common (1.18.1):
+  - react-native-keyboard-controller/common (1.17.5):
     - DoubleConversion
     - glog
     - hermes-engine
@@ -1542,7 +1543,7 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - Yoga
-  - react-native-video (6.16.1):
+  - react-native-video (6.15.0):
     - DoubleConversion
     - glog
     - hermes-engine
@@ -1555,7 +1556,7 @@ PODS:
     - React-featureflags
     - React-graphics
     - React-ImageManager
-    - react-native-video/Video (= 6.16.1)
+    - react-native-video/Video (= 6.15.0)
     - React-NativeModulesApple
     - React-RCTFabric
     - React-rendererdebug
@@ -1564,7 +1565,7 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - Yoga
-  - react-native-video/Fabric (6.16.1):
+  - react-native-video/Fabric (6.15.0):
     - DoubleConversion
     - glog
     - hermes-engine
@@ -1585,7 +1586,7 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - Yoga
-  - react-native-video/Video (6.16.1):
+  - react-native-video/Video (6.15.0):
     - DoubleConversion
     - glog
     - hermes-engine
@@ -2009,7 +2010,7 @@ PODS:
     - Yoga
   - RNInAppBrowser (3.7.0):
     - React-Core
-  - RNPermissions (5.4.2):
+  - RNPermissions (5.4.1):
     - DoubleConversion
     - glog
     - hermes-engine
@@ -2214,6 +2215,47 @@ PODS:
   - SDWebImageSVGCoder (1.7.0):
     - SDWebImage/Core (~> 5.6)
   - SocketRocket (0.7.1)
+  - SWCompression (4.8.6):
+    - BitByteData (~> 2.0)
+    - SWCompression/BZip2 (= 4.8.6)
+    - SWCompression/Deflate (= 4.8.6)
+    - SWCompression/GZip (= 4.8.6)
+    - SWCompression/LZ4 (= 4.8.6)
+    - SWCompression/LZMA (= 4.8.6)
+    - SWCompression/LZMA2 (= 4.8.6)
+    - SWCompression/SevenZip (= 4.8.6)
+    - SWCompression/TAR (= 4.8.6)
+    - SWCompression/XZ (= 4.8.6)
+    - SWCompression/ZIP (= 4.8.6)
+    - SWCompression/Zlib (= 4.8.6)
+  - SWCompression/BZip2 (4.8.6):
+    - BitByteData (~> 2.0)
+  - SWCompression/Deflate (4.8.6):
+    - BitByteData (~> 2.0)
+  - SWCompression/GZip (4.8.6):
+    - BitByteData (~> 2.0)
+    - SWCompression/Deflate
+  - SWCompression/LZ4 (4.8.6):
+    - BitByteData (~> 2.0)
+  - SWCompression/LZMA (4.8.6):
+    - BitByteData (~> 2.0)
+  - SWCompression/LZMA2 (4.8.6):
+    - BitByteData (~> 2.0)
+    - SWCompression/LZMA
+  - SWCompression/SevenZip (4.8.6):
+    - BitByteData (~> 2.0)
+    - SWCompression/LZMA2
+  - SWCompression/TAR (4.8.6):
+    - BitByteData (~> 2.0)
+  - SWCompression/XZ (4.8.6):
+    - BitByteData (~> 2.0)
+    - SWCompression/LZMA2
+  - SWCompression/ZIP (4.8.6):
+    - BitByteData (~> 2.0)
+    - SWCompression/Deflate
+  - SWCompression/Zlib (4.8.6):
+    - BitByteData (~> 2.0)
+    - SWCompression/Deflate
   - SwiftUIIntrospect (1.3.0)
   - Yoga (0.0.0)
   - ZXingObjC/Core (3.6.9)
@@ -2330,10 +2372,12 @@ DEPENDENCIES:
   - RNSVG (from `../node_modules/react-native-svg`)
   - SDWebImage
   - SDWebImageSVGCoder
+  - SWCompression (~> 4.8)
   - Yoga (from `../node_modules/react-native/ReactCommon/yoga`)
 
 SPEC REPOS:
   trunk:
+    - BitByteData
     - libavif
     - libdav1d
     - onnxruntime-c
@@ -2342,6 +2386,7 @@ SPEC REPOS:
     - SDWebImageAVIFCoder
     - SDWebImageSVGCoder
     - SocketRocket
+    - SWCompression
     - SwiftUIIntrospect
     - ZXingObjC
 
@@ -2555,6 +2600,7 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native/ReactCommon/yoga"
 
 SPEC CHECKSUMS:
+  BitByteData: 2422ed269fcddc44976d97f171a183d25ef535ce
   boost: 1dca942403ed9342f98334bf4c3621f011aa7946
   BVLinearGradient: cb006ba232a1f3e4f341bb62c42d1098c284da70
   DoubleConversion: f16ae600a246532c4020132d54af21d0ddb2a385
@@ -2618,10 +2664,10 @@ SPEC CHECKSUMS:
   react-native-config: 644074ab88db883fcfaa584f03520ec29589d7df
   react-native-create-thumbnail: 733160dca9a548262e1030e7fcdae90a93d203ca
   react-native-image-picker: c5da8aa14fdffbd4d77338c352f52a8d85fcacec
-  react-native-keyboard-controller: f0738d3b08715654f3c427943b8a4605c5e3a72d
+  react-native-keyboard-controller: b3d68f377e97666bf539ee7d8d6d77ac7a50f9ca
   react-native-mmkv: 5c69dce0d439e1791a884f6b166e76fc7fadaca6
   react-native-safe-area-context: cd916088cac5300c3266876218377518987b995e
-  react-native-video: bc6104529a6fde35127a1625b30d557412fdb70d
+  react-native-video: eae250f36f196913fdfacd3f502030d6d396fc5c
   react-native-view-shot: c6708fc5e7a841021007fdf7d6659d031e17efee
   react-native-webview: 6b9fc65c1951203a3e958ff3cc0a858d4b6be901
   React-nativeconfig: 8efdb1ef1e9158c77098a93085438f7e7b463678
@@ -2657,7 +2703,7 @@ SPEC CHECKSUMS:
   RNFS: 89de7d7f4c0f6bafa05343c578f61118c8282ed8
   RNGestureHandler: fffddeb8af59709c6d8de11b6461a6af63cad532
   RNInAppBrowser: 6d3eb68d471b9834335c664704719b8be1bfdb20
-  RNPermissions: 166b6880aa94483ac566c35f3d7ec9b999239e7e
+  RNPermissions: 66e7065dd1826bf37f8d180248b2cb2c4ae26aca
   RNReanimated: 2e5069649cbab2c946652d3b97589b2ae0526220
   RNScreens: 362f4c861dd155f898908d5035d97b07a3f1a9d1
   RNSVG: b889dc9c1948eeea0576a16cc405c91c37a12c19
@@ -2665,10 +2711,11 @@ SPEC CHECKSUMS:
   SDWebImageAVIFCoder: 00310d246aab3232ce77f1d8f0076f8c4b021d90
   SDWebImageSVGCoder: 15a300a97ec1c8ac958f009c02220ac0402e936c
   SocketRocket: d4aabe649be1e368d1318fdf28a022d714d65748
+  SWCompression: 9379873ad5e9f25b31db88c441649b59a4c2bab7
   SwiftUIIntrospect: fee9aa07293ee280373a591e1824e8ddc869ba5d
   Yoga: feb4910aba9742cfedc059e2b2902e22ffe9954a
   ZXingObjC: 8898711ab495761b2dbbdec76d90164a6d7e14c5
 
-PODFILE CHECKSUM: f63a02a6651d99f73d8d2837f308f63ba7a2d156
+PODFILE CHECKSUM: ef698a73b641683aeb971c14586f73c6bfbefb49
 
 COCOAPODS: 1.16.2

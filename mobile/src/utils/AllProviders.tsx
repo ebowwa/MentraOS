@@ -34,7 +34,19 @@ export const AllProviders = withWrappers(
   DeeplinkProvider,
   GestureHandlerRootView,
   ModalProvider,
-  props => (
-    <PostHogProvider apiKey={Constants.expoConfig?.extra?.POSTHOG_API_KEY ?? ""}>{props.children}</PostHogProvider>
-  ),
+  props => {
+    const posthogApiKey = Constants.expoConfig?.extra?.POSTHOG_API_KEY
+
+    // If no API key is provided, disable PostHog to prevent errors
+    if (!posthogApiKey || posthogApiKey.trim() === "") {
+      console.log("PostHog API key not found, disabling PostHog analytics")
+      return <>{props.children}</>
+    }
+
+    return (
+      <PostHogProvider apiKey={posthogApiKey} options={{disabled: false}}>
+        {props.children}
+      </PostHogProvider>
+    )
+  },
 )

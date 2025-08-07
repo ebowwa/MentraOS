@@ -18,6 +18,7 @@ const STORE_PACKAGE_NAME = "org.augmentos.store"
 export default function AppStoreWeb() {
   const [webviewLoading, setWebviewLoading] = useState(true)
   const [hasError, setHasError] = useState(false)
+  const [errorMessage, setErrorMessage] = useState("")
   // const packageName = route?.params?.packageName;
   const {packageName} = useLocalSearchParams()
   const [canGoBack, setCanGoBack] = useState(false)
@@ -32,7 +33,7 @@ export default function AppStoreWeb() {
 
   // Construct the final URL with packageName if provided
   const finalUrl = useMemo(() => {
-    if (!appStoreUrl) return appStoreUrl
+    if (!appStoreUrl) return null
 
     const url = new URL(appStoreUrl)
     console.log("AppStoreWeb: appStoreUrl", appStoreUrl)
@@ -60,10 +61,48 @@ export default function AppStoreWeb() {
 
   // Handle WebView loading events
   const handleLoadStart = () => setWebviewLoading(true)
-  const handleLoadEnd = () => setWebviewLoading(false)
-  const handleError = () => {
+  const handleLoadEnd = () => {
+    setWebviewLoading(false)
+    setHasError(false)
+  }
+
+  const handleError = (syntheticEvent: any) => {
+    const {nativeEvent} = syntheticEvent
+    console.error("WebView error:", nativeEvent)
     setWebviewLoading(false)
     setHasError(true)
+
+    // Parse error message to show user-friendly text
+    const errorDesc = nativeEvent.description || ""
+    let friendlyMessage = "Unable to load the App Store"
+
+    if (
+      errorDesc.includes("ERR_INTERNET_DISCONNECTED") ||
+      errorDesc.includes("ERR_NETWORK_CHANGED") ||
+      errorDesc.includes("ERR_CONNECTION_FAILED") ||
+      errorDesc.includes("ERR_NAME_NOT_RESOLVED")
+    ) {
+      friendlyMessage = "No internet connection. Please check your network settings and try again."
+    } else if (errorDesc.includes("ERR_CONNECTION_TIMED_OUT") || errorDesc.includes("ERR_TIMED_OUT")) {
+      friendlyMessage = "Connection timed out. Please check your internet connection and try again."
+    } else if (errorDesc.includes("ERR_CONNECTION_REFUSED")) {
+      friendlyMessage = "Unable to connect to the App Store server. Please try again later."
+    } else if (errorDesc.includes("ERR_SSL") || errorDesc.includes("ERR_CERT")) {
+      friendlyMessage = "Security error. Please check your device's date and time settings."
+    } else if (errorDesc) {
+      // For any other errors, just show a generic message without the technical error
+      friendlyMessage = "Unable to load the App Store. Please try again."
+    }
+
+    setErrorMessage(friendlyMessage)
+  }
+
+  const handleRetry = () => {
+    setHasError(false)
+    setErrorMessage("")
+    if (prefetchedWebviewRef.current) {
+      prefetchedWebviewRef.current.reload()
+    }
   }
 
   // Handle messages from WebView
@@ -107,14 +146,30 @@ export default function AppStoreWeb() {
   )
 
   // Show loading state while getting the URL
-  if (!appStoreUrl) {
+  if (!finalUrl) {
     return (
       <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.lg}}>
         <Header leftTx="store:title" />
-        <View style={[styles.loadingContainer, {backgroundColor: theme.colors.background}]}>
+        <View
+          style={[
+            styles.loadingContainer,
+            {backgroundColor: theme.colors.background, marginHorizontal: -theme.spacing.lg},
+          ]}>
           <ActivityIndicator size="large" color={theme2.primaryColor} />
           <Text text="Preparing App Store..." style={[styles.loadingText, {color: theme2.textColor}]} />
         </View>
+      </Screen>
+    )
+  }
+
+  if (hasError) {
+    return (
+      <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.lg}}>
+        <Header leftTx="store:title" />
+        <InternetConnectionFallbackComponent
+          retry={handleRetry}
+          message={errorMessage || "Unable to load the App Store. Please check your connection and try again."}
+        />
       </Screen>
     )
   }
@@ -123,46 +178,42 @@ export default function AppStoreWeb() {
   return (
     <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.lg}}>
       <Header leftTx="store:title" />
-      {hasError ? (
-        <InternetConnectionFallbackComponent retry={() => setHasError(false)} />
-      ) : (
-        <View
-          style={[
-            styles.webViewContainer,
-            {backgroundColor: theme.colors.background, marginHorizontal: -theme.spacing.lg},
-          ]}>
-          {/* Show the prefetched WebView, but now visible and full size */}
-          <WebView
-            ref={prefetchedWebviewRef}
-            source={{uri: finalUrl || appStoreUrl}}
-            style={[styles.webView, {backgroundColor: theme.colors.background}]}
-            onLoadStart={() => setWebviewLoading(true)}
-            onLoadEnd={() => setWebviewLoading(false)}
-            onError={handleError}
-            onNavigationStateChange={navState => setCanGoBack(navState.canGoBack)}
-            onMessage={handleWebViewMessage}
-            javaScriptEnabled={true}
-            domStorageEnabled={true}
-            startInLoadingState={true}
-            scalesPageToFit={false}
-            bounces={false}
-            scrollEnabled={true}
-            injectedJavaScript={`
+      <View
+        style={[
+          styles.webViewContainer,
+          {backgroundColor: theme.colors.background, marginHorizontal: -theme.spacing.lg},
+        ]}>
+        {/* Show the prefetched WebView, but now visible and full size */}
+        <WebView
+          ref={prefetchedWebviewRef}
+          source={{uri: finalUrl}}
+          style={[styles.webView, {backgroundColor: theme.colors.background}]}
+          onLoadStart={() => setWebviewLoading(true)}
+          onLoadEnd={() => setWebviewLoading(false)}
+          onError={handleError}
+          onNavigationStateChange={navState => setCanGoBack(navState.canGoBack)}
+          onMessage={handleWebViewMessage}
+          javaScriptEnabled={true}
+          domStorageEnabled={true}
+          startInLoadingState={true}
+          scalesPageToFit={false}
+          bounces={false}
+          scrollEnabled={true}
+          injectedJavaScript={`
               const meta = document.createElement('meta');
               meta.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
               meta.setAttribute('name', 'viewport');
               document.getElementsByTagName('head')[0].appendChild(meta);
               true;
             `}
-            renderLoading={() => (
-              <View style={[styles.loadingOverlay, {backgroundColor: theme.colors.background}]}>
-                <ActivityIndicator size="large" color={theme2.primaryColor} />
-                <Text text="Loading App Store..." style={[styles.loadingText, {color: theme2.textColor}]} />
-              </View>
-            )}
-          />
-        </View>
-      )}
+          renderLoading={() => (
+            <View style={[styles.loadingOverlay, {backgroundColor: theme.colors.background}]}>
+              <ActivityIndicator size="large" color={theme2.primaryColor} />
+              <Text text="Loading App Store..." style={[styles.loadingText, {color: theme2.textColor}]} />
+            </View>
+          )}
+        />
+      </View>
     </Screen>
   )
 }

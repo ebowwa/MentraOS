@@ -29,6 +29,7 @@ import sessionService from "./session.service";
 import axios, { AxiosError } from "axios";
 import App from "../../models/app.model";
 import { locationService } from "../core/location.service";
+import { HardwareCompatibilityService } from "./HardwareCompatibilityService";
 
 const logger = rootLogger.child({ service: "AppManager" });
 
@@ -87,7 +88,12 @@ if (!AUGMENTOS_AUTH_JWT_SECRET) {
 interface AppStartResult {
   success: boolean;
   error?: {
-    stage: "WEBHOOK" | "CONNECTION" | "AUTHENTICATION" | "TIMEOUT";
+    stage:
+      | "WEBHOOK"
+      | "CONNECTION"
+      | "AUTHENTICATION"
+      | "TIMEOUT"
+      | "HARDWARE_CHECK";
     message: string;
     details?: any;
   };
@@ -259,6 +265,44 @@ export class AppManager {
         success: false,
         error: { stage: "WEBHOOK", message: `App ${packageName} not found` },
       };
+    }
+
+    // Check hardware compatibility
+    const compatibilityResult = HardwareCompatibilityService.checkCompatibility(
+      app,
+      this.userSession.capabilities,
+    );
+
+    if (!compatibilityResult.isCompatible) {
+      logger.error(
+        {
+          packageName,
+          missingHardware: compatibilityResult.missingRequired,
+          capabilities: this.userSession.capabilities,
+        },
+        `App ${packageName} is incompatible with connected glasses hardware`,
+      );
+      return {
+        success: false,
+        error: {
+          stage: "HARDWARE_CHECK",
+          message:
+            HardwareCompatibilityService.getCompatibilityMessage(
+              compatibilityResult,
+            ),
+        },
+      };
+    }
+
+    // Log optional hardware warnings
+    if (compatibilityResult.missingOptional.length > 0) {
+      logger.warn(
+        {
+          packageName,
+          missingOptional: compatibilityResult.missingOptional,
+        },
+        `App ${packageName} has optional hardware requirements that are not available`,
+      );
     }
 
     // If the app is a standard app, check if any other foreground app is running

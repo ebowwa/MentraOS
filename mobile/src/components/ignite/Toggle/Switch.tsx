@@ -69,19 +69,19 @@ function SwitchInput(props: SwitchInputProps) {
     setTimeout(() => {
       Animated.timing(trackColorAnim.current, {
         toValue: on ? 1 : 0,
-        duration: 100, // Quick color transition at the end
+        duration: 50, // Quick color transition at the end
         useNativeDriver: false,
       }).start()
-    }, 150) // Start color change 150ms into the 200ms animation
+    }, 50) // Start color change 150ms into the 200ms animation
   }, [on])
 
-  useEffect(() => {
-    Animated.timing(opacity.current, {
-      toValue: on ? 1 : 0,
-      duration: 200, // Match the faster animation speed
-      useNativeDriver: true,
-    }).start()
-  }, [on])
+  // useEffect(() => {
+  //   Animated.timing(opacity.current, {
+  //     toValue: on ? 1 : 0,
+  //     duration: 200, // Match the faster animation speed
+  //     useNativeDriver: true,
+  //   }).start()
+  // }, [on])
 
   const knobSizeFallback = 2
 

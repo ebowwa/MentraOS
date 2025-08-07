@@ -11,14 +11,19 @@ import {
 } from "react-native-permissions"
 import {Permission as RNPermission} from "react-native"
 import {PermissionsAndroid} from "react-native"
-import {checkNotificationAccessSpecialPermission} from "../utils/NotificationServiceUtils"
+import {
+  checkAndRequestNotificationAccessSpecialPermission,
+  checkNotificationAccessSpecialPermission,
+} from "../utils/NotificationServiceUtils"
+import {AppInterface, AppPermission} from "@/contexts/AppStatusProvider"
 
 // Define permission features with their required permissions
 export const PermissionFeatures: Record<string, string> = {
   BASIC: "basic", // Basic permissions needed for the app to function
   POST_NOTIFICATIONS: "post_notifications",
   READ_NOTIFICATIONS: "read_notifications",
-  CAMERA: "camera",
+  CAMERA: "camera", // Phone camera permission for mirror mode
+  GLASSES_CAMERA: "glasses_camera", // Glasses camera permission for apps
   MICROPHONE: "microphone",
   CALENDAR: "calendar",
   LOCATION: "location",
@@ -72,6 +77,13 @@ const PERMISSION_CONFIG: Record<string, PermissionConfig> = {
     description: "Used for the fullscreen mirror mode",
     ios: [PERMISSIONS.IOS.CAMERA],
     android: [PermissionsAndroid.PERMISSIONS.CAMERA],
+    critical: false,
+  },
+  [PermissionFeatures.GLASSES_CAMERA]: {
+    name: "Glasses Camera",
+    description: "Allows apps to access the smart glasses camera for photo capture and video streaming",
+    ios: [], // No OS-level permission required
+    android: [], // No OS-level permission required
     critical: false,
   },
   [PermissionFeatures.MICROPHONE]: {
@@ -373,6 +385,13 @@ export const requestFeaturePermissions = async (featureKey: string): Promise<boo
   // Mark this feature as having been requested
   await markPermissionRequested(featureKey)
 
+  // If this feature does not require any OS-level permissions (e.g., glasses camera),
+  // we treat it as granted after recording the grant locally and return early.
+  if (config.android.length === 0 && config.ios.length === 0) {
+    await markPermissionGranted(featureKey)
+    return true
+  }
+
   // For Android
   if (Platform.OS === "android" && config.android.length > 0) {
     try {
@@ -590,6 +609,12 @@ export const checkFeaturePermissions = async (featureKey: string): Promise<boole
     return false
   }
 
+  // If this permission has no underlying OS-level mapping (e.g., glasses camera),
+  // rely on our internal flag to determine if the user has already accepted it.
+  if (config.android.length === 0 && config.ios.length === 0) {
+    return await hasPermissionBeenGranted(featureKey)
+  }
+
   // For special permissions
   if (config.specialRequestNeeded) {
     if (featureKey === PermissionFeatures.BACKGROUND_LOCATION) {
@@ -727,6 +752,91 @@ export const doesHaveAllPermissions = async (): Promise<boolean> => {
 
   // If we reach here, we have basic permissions or they've been requested already
   return true
+}
+
+export const checkPermissionsUI = async (app: AppInterface) => {
+  let permissions = app.permissions || []
+  const neededPermissions: string[] = []
+
+  if (permissions.length == 1 && permissions[0].type == "ALL") {
+    permissions = [
+      {type: "MICROPHONE", required: true},
+      {type: "CALENDAR", required: true},
+      {type: "POST_NOTIFICATIONS", required: true},
+      {type: "READ_NOTIFICATIONS", required: true},
+      {type: "LOCATION", required: true},
+      {type: "BACKGROUND_LOCATION", required: true},
+    ] as AppPermission[]
+  }
+
+  if (app.packageName == "cloud.augmentos.notify") {
+    permissions.push({type: "READ_NOTIFICATIONS", required: true, description: "Read notifications"})
+  }
+
+  for (const permission of permissions) {
+    if (!(permission["required"] ?? true)) {
+      continue
+    }
+    switch (permission.type) {
+      case "MICROPHONE":
+        const hasMicrophone = await checkFeaturePermissions(PermissionFeatures.MICROPHONE)
+        if (!hasMicrophone) {
+          neededPermissions.push(PermissionFeatures.MICROPHONE)
+        }
+        break
+      case "CAMERA":
+        const hasCamera = await checkFeaturePermissions(PermissionFeatures.GLASSES_CAMERA)
+        if (!hasCamera) {
+          neededPermissions.push(PermissionFeatures.GLASSES_CAMERA)
+        }
+        break
+      case "CALENDAR":
+        const hasCalendar = await checkFeaturePermissions(PermissionFeatures.CALENDAR)
+        if (!hasCalendar) {
+          neededPermissions.push(PermissionFeatures.CALENDAR)
+        }
+        break
+      case "LOCATION":
+        const hasLocation = await checkFeaturePermissions(PermissionFeatures.LOCATION)
+        if (!hasLocation) {
+          neededPermissions.push(PermissionFeatures.LOCATION)
+        }
+        break
+      case "BACKGROUND_LOCATION":
+        const hasBackgroundLocation = await checkFeaturePermissions(PermissionFeatures.BACKGROUND_LOCATION)
+        if (!hasBackgroundLocation) {
+          neededPermissions.push(PermissionFeatures.BACKGROUND_LOCATION)
+        }
+        break
+      case "POST_NOTIFICATIONS":
+        const hasNotificationPermission = await checkFeaturePermissions(PermissionFeatures.POST_NOTIFICATIONS)
+        if (!hasNotificationPermission) {
+          neededPermissions.push(PermissionFeatures.POST_NOTIFICATIONS)
+        }
+        break
+      case "READ_NOTIFICATIONS":
+        if (Platform.OS == "ios") {
+          break
+        }
+        const hasNotificationAccess = await checkNotificationAccessSpecialPermission()
+        if (!hasNotificationAccess) {
+          neededPermissions.push(PermissionFeatures.READ_NOTIFICATIONS)
+        }
+        break
+    }
+  }
+
+  return neededPermissions
+}
+
+export const requestPermissionsUI = async (permissions: string[]) => {
+  for (const permission of permissions) {
+    await requestFeaturePermissions(permission)
+  }
+
+  if (permissions.includes(PermissionFeatures.READ_NOTIFICATIONS) && Platform.OS === "android") {
+    await checkAndRequestNotificationAccessSpecialPermission()
+  }
 }
 
 export {PERMISSION_CONFIG}

@@ -65,6 +65,7 @@ struct ViewState {
     private var isUpdatingScreen: Bool = false
     private var alwaysOnStatusBar: Bool = false
     private var bypassVad: Bool = false
+    private var bypassVadForPCM: Bool = false // NEW: PCM subscription bypass
     private var enforceLocalTranscription: Bool = false
     private var bypassAudioEncoding: Bool = false
     private var onboardMicUnavailable: Bool = false
@@ -252,7 +253,8 @@ struct ViewState {
                     return
                 }
 
-                if self.bypassVad {
+                if self.bypassVad || self.bypassVadForPCM {
+                    CoreCommsService.log("AOS: Glasses mic VAD bypassed - bypassVad=\(self.bypassVad), bypassVadForPCM=\(self.bypassVadForPCM)")
                     checkSetVadStatus(speaking: true)
                     // first send out whatever's in the vadBuffer (if there is anything):
                     emptyVadBuffer()
@@ -477,7 +479,7 @@ struct ViewState {
                     return
                 }
 
-                if self.bypassVad {
+                if self.bypassVad || self.bypassVadForPCM {
                     //          let pcmConverter = PcmConverter()
                     //          let lc3Data = pcmConverter.encode(pcmData) as Data
                     //          checkSetVadStatus(speaking: true)
@@ -539,10 +541,14 @@ struct ViewState {
 
     // MARK: - ServerCommsCallback Implementation
 
-    func onMicrophoneStateChange(_ isEnabled: Bool, _ requiredData: [SpeechRequiredDataType]) {
-        CoreCommsService.log("AOS: @@@@@@@@ changing microphone state to: \(isEnabled) with requiredData: \(requiredData) @@@@@@@@@@@@@@@@")
+    func onMicrophoneStateChange(_ isEnabled: Bool, _ requiredData: [SpeechRequiredDataType], _ bypassVad: Bool) {
+        CoreCommsService.log("AOS: @@@@@@@@ changing microphone state to: \(isEnabled) with requiredData: \(requiredData) bypassVad=\(bypassVad) @@@@@@@@@@@@@@@@")
 
-        if requiredData.contains(.PCM) && requiredData.contains(.TRANSCRIPTION) {
+        // NEW: Set PCM-specific bypass based on cloud command
+        bypassVadForPCM = bypassVad
+        CoreCommsService.log("AOS: bypassVadForPCM set to: \(bypassVadForPCM)")
+
+        if requiredData.contains(.PCM), requiredData.contains(.TRANSCRIPTION) {
             shouldSendPcmData = true
             shouldSendTranscript = true
         } else if requiredData.contains(.PCM) {
@@ -562,7 +568,6 @@ struct ViewState {
                 shouldSendTranscript = false
             }
         }
-
 
         currentRequiredData = requiredData
 
@@ -687,6 +692,31 @@ struct ViewState {
     func onRtmpStreamKeepAlive(_ message: [String: Any]) {
         CoreCommsService.log("AOS: onRtmpStreamKeepAlive: \(message)")
         liveManager?.sendRtmpKeepAlive(message)
+    }
+
+    func onStartBufferRecording() {
+        CoreCommsService.log("AOS: onStartBufferRecording")
+        liveManager?.startBufferRecording()
+    }
+
+    func onStopBufferRecording() {
+        CoreCommsService.log("AOS: onStopBufferRecording")
+        liveManager?.stopBufferRecording()
+    }
+
+    func onSaveBufferVideo(_ requestId: String, _ durationSeconds: Int) {
+        CoreCommsService.log("AOS: onSaveBufferVideo: requestId=\(requestId), duration=\(durationSeconds)s")
+        liveManager?.saveBufferVideo(requestId: requestId, durationSeconds: durationSeconds)
+    }
+
+    func onStartVideoRecording(_ requestId: String, _ save: Bool) {
+        CoreCommsService.log("AOS: onStartVideoRecording: requestId=\(requestId), save=\(save)")
+        liveManager?.startVideoRecording(requestId: requestId, save: save)
+    }
+
+    func onStopVideoRecording(_ requestId: String) {
+        CoreCommsService.log("AOS: onStopVideoRecording: requestId=\(requestId)")
+        liveManager?.stopVideoRecording(requestId: requestId)
     }
 
     // TODO: ios this name is a bit misleading:
@@ -971,10 +1001,10 @@ struct ViewState {
         CoreCommsService.log("AOS: Interruption: \(began)")
         if began {
             onboardMicUnavailable = true
-            onMicrophoneStateChange(micEnabled, currentRequiredData)
+            onMicrophoneStateChange(micEnabled, currentRequiredData, bypassVadForPCM)
         } else {
             onboardMicUnavailable = false
-            onMicrophoneStateChange(micEnabled, currentRequiredData)
+            onMicrophoneStateChange(micEnabled, currentRequiredData, bypassVadForPCM)
         }
     }
 
@@ -1097,7 +1127,7 @@ struct ViewState {
 
     private func setPreferredMic(_ mic: String) {
         preferredMic = mic
-        onMicrophoneStateChange(micEnabled, currentRequiredData)
+        onMicrophoneStateChange(micEnabled, currentRequiredData, bypassVadForPCM)
         handleRequestStatus() // to update the UI
         saveSettings()
     }
@@ -1176,7 +1206,7 @@ struct ViewState {
     private func enableSensing(_ enabled: Bool) {
         sensingEnabled = enabled
         // Update microphone state when sensing is toggled
-        onMicrophoneStateChange(micEnabled, currentRequiredData)
+        onMicrophoneStateChange(micEnabled, currentRequiredData, bypassVadForPCM)
         handleRequestStatus() // to update the UI
         saveSettings()
     }
@@ -1212,7 +1242,7 @@ struct ViewState {
                 shouldSendTranscript = false
             }
         }
-        
+
         handleRequestStatus() // to update the UI
         saveSettings()
     }
@@ -1294,6 +1324,11 @@ struct ViewState {
             case sendWifiCredentials = "send_wifi_credentials"
             case simulateHeadPosition = "simulate_head_position"
             case simulateButtonPress = "simulate_button_press"
+            case startBufferRecording = "start_buffer_recording"
+            case stopBufferRecording = "stop_buffer_recording"
+            case saveBufferVideo = "save_buffer_video"
+            case startVideoRecording = "start_video_recording"
+            case stopVideoRecording = "stop_video_recording"
             case unknown
         }
 
@@ -1481,6 +1516,41 @@ struct ViewState {
                         break
                     }
                     enforceLocalTranscription(enabled)
+                case .startBufferRecording:
+                    CoreCommsService.log("AOS: Starting buffer recording")
+                    liveManager?.startBufferRecording()
+                case .stopBufferRecording:
+                    CoreCommsService.log("AOS: Stopping buffer recording")
+                    liveManager?.stopBufferRecording()
+                case .saveBufferVideo:
+                    guard let params = params,
+                          let requestId = params["request_id"] as? String,
+                          let durationSeconds = params["duration_seconds"] as? Int
+                    else {
+                        CoreCommsService.log("AOS: save_buffer_video invalid params")
+                        break
+                    }
+                    CoreCommsService.log("AOS: Saving buffer video: requestId=\(requestId), duration=\(durationSeconds)s")
+                    liveManager?.saveBufferVideo(requestId: requestId, durationSeconds: durationSeconds)
+                case .startVideoRecording:
+                    guard let params = params,
+                          let requestId = params["request_id"] as? String,
+                          let save = params["save"] as? Bool
+                    else {
+                        CoreCommsService.log("AOS: start_video_recording invalid params")
+                        break
+                    }
+                    CoreCommsService.log("AOS: Starting video recording: requestId=\(requestId), save=\(save)")
+                    liveManager?.startVideoRecording(requestId: requestId, save: save)
+                case .stopVideoRecording:
+                    guard let params = params,
+                          let requestId = params["request_id"] as? String
+                    else {
+                        CoreCommsService.log("AOS: stop_video_recording invalid params")
+                        break
+                    }
+                    CoreCommsService.log("AOS: Stopping video recording: requestId=\(requestId)")
+                    liveManager?.stopVideoRecording(requestId: requestId)
                 case .unknown:
                     CoreCommsService.log("AOS: Unknown command type: \(commandString)")
                     handleRequestStatus()
@@ -1597,6 +1667,7 @@ struct ViewState {
             "core_token": coreToken,
             "puck_connected": true,
             "metric_system_enabled": metricSystemEnabled,
+            "contextual_dashboard_enabled": contextualDashboard,
         ]
 
         // hardcoded list of apps:
@@ -1771,7 +1842,7 @@ struct ViewState {
 
     private func handleDeviceDisconnected() {
         CoreCommsService.log("AOS: Device disconnected")
-        onMicrophoneStateChange(false, []) // technically shouldn't be necessary
+        onMicrophoneStateChange(false, [], false)
         serverComms.sendGlassesConnectionState(modelName: defaultWearable, status: "DISCONNECTED")
         handleRequestStatus()
     }

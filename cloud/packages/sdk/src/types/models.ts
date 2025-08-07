@@ -1,7 +1,14 @@
 // @mentra/sdk
 // packages/sdk/types/src/models.ts - Core models
 
-import { AppSettingType, AppState, Language, AppType } from "./enums";
+import {
+  AppSettingType,
+  AppState,
+  Language,
+  AppType,
+  HardwareType,
+  HardwareRequirementLevel,
+} from "./enums";
 
 // Tool parameter type definition
 export interface ToolParameterSchema {
@@ -60,6 +67,15 @@ export interface Permission {
 }
 
 /**
+ * Hardware requirement for an app
+ */
+export interface HardwareRequirement {
+  type: HardwareType;
+  level: HardwareRequirementLevel;
+  description?: string; // Why this hardware is needed
+}
+
+/**
  * Base interface for applications
  */
 export interface AppI {
@@ -90,6 +106,12 @@ export interface AppI {
   version?: string;
   settings?: AppSettings;
   tools?: ToolSchema[];
+
+  /**
+   * Hardware requirements for the app
+   * If not specified, app is assumed to work with any hardware
+   */
+  hardwareRequirements?: HardwareRequirement[];
 
   isPublic?: boolean;
   appStoreStatus?: "DEVELOPMENT" | "SUBMITTED" | "REJECTED" | "PUBLISHED";

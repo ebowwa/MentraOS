@@ -14,12 +14,12 @@ import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 
 export default function ThemeSettingsPage() {
   const {theme, themed, setThemeContextOverride} = useAppTheme()
-  const [selectedTheme, setSelectedTheme] = useState<ThemeType>("light")
+  const [selectedTheme, setSelectedTheme] = useState<ThemeType>("system")
   const {replace} = useNavigationHistory()
 
   useEffect(() => {
     // Load saved theme preference
-    loadSetting(SETTINGS_KEYS.THEME_PREFERENCE, "light").then(savedTheme => {
+    loadSetting(SETTINGS_KEYS.THEME_PREFERENCE, "system").then(savedTheme => {
       setSelectedTheme(savedTheme as ThemeType)
     })
   }, [])
