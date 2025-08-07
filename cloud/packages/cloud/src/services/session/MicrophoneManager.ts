@@ -108,6 +108,9 @@ export class MicrophoneManager {
     }
 
     try {
+      // Check if we should bypass VAD for PCM-specific subscriptions
+      const shouldBypassVad = this.shouldBypassVadForPCM();
+
       // TODO: Remove this type extension once the SDK is updated
       const message: MicrophoneStateChange & { requiredData: Array<'pcm' | 'transcription' | 'pcm_or_transcription'> } = {
         type: CloudToGlassesMessageType.MICROPHONE_STATE_CHANGE,
@@ -124,6 +127,7 @@ export class MicrophoneManager {
         },
         isMicrophoneEnabled: isEnabled,
         requiredData: requiredData,
+        bypassVad: shouldBypassVad, // NEW: Include VAD bypass flag
         timestamp: new Date(),
       };
 
@@ -132,6 +136,16 @@ export class MicrophoneManager {
     } catch (error) {
       this.logger.error(error, 'Error sending microphone state change');
     }
+  }
+
+  /**
+   * Check if we should bypass VAD for PCM-specific subscriptions
+   * Bypass VAD when apps need PCM data (regardless of transcription)
+   */
+  private shouldBypassVadForPCM(): boolean {
+    const hasPCMTranscriptionSubscriptions = subscriptionService.hasPCMTranscriptionSubscriptions(this.session.sessionId);
+    // Bypass VAD when apps specifically need PCM data
+    return hasPCMTranscriptionSubscriptions.hasPCM;
   }
 
   calculateRequiredData(hasPCM: boolean, hasTranscription: boolean): Array<'pcm' | 'transcription' | 'pcm_or_transcription'> {
