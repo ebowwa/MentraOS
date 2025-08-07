@@ -198,7 +198,7 @@ See the [Camera Documentation](/camera/) for complete guides and examples.
 
 ## 17. Location
 
-The location module provides battery‑efficient access to device location via the [`LocationManager`](/reference/managers/location-manager) (accessible through `session.location`). Your app can subscribe to continuous updates at different accuracy tiers or request a single fix with `getLatestLocation`. The system intelligently reuses active high‑accuracy streams and recent cached fixes, only powering GPS when necessary. Location data is delivered as [`LocationUpdate`](/reference/interfaces/event-types#locationupdate) events and requires appropriate location permissions.
+The location module provides battery‑efficient access to device location via the [`LocationManager`](/reference/managers/location-manager) (accessible through `session.location`). Your app can subscribe to continuous updates at different accuracy tiers or request a single fix with `getLatestLocation`. Location data is delivered as [`LocationUpdate`](/reference/interfaces/event-types#locationupdate) events and requires appropriate location permissions.
 
 ---
 
