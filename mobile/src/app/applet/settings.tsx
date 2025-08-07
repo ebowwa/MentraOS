@@ -65,10 +65,6 @@ export default function AppSettings() {
     outputRange: [0, 0, 1],
     extrapolate: "clamp",
   })
-  if (!packageName || typeof packageName !== "string") {
-    console.error("No packageName found in params")
-    return null
-  }
 
   // State to hold the complete configuration from the server.
   const [serverAppInfo, setServerAppInfo] = useState<any>(null)
@@ -76,8 +72,14 @@ export default function AppSettings() {
   const [settingsState, setSettingsState] = useState<{[key: string]: any}>({})
   // Get app info from status
   const {status} = useStatus()
-  const {appStatus, refreshAppStatus, optimisticallyStartApp, optimisticallyStopApp, clearPendingOperation} =
-    useAppStatus()
+  const {
+    appStatus,
+    refreshAppStatus,
+    optimisticallyStartApp,
+    optimisticallyStopApp,
+    clearPendingOperation,
+    checkAppHealthStatus,
+  } = useAppStatus()
   const appInfo = useMemo(() => {
     return appStatus.find(app => app.packageName === packageName) || null
   }, [appStatus, packageName])
@@ -85,6 +87,11 @@ export default function AppSettings() {
   const SETTINGS_CACHE_KEY = (packageName: string) => `app_settings_cache_${packageName}`
   const [settingsLoading, setSettingsLoading] = useState(true)
   const [hasCachedSettings, setHasCachedSettings] = useState(false)
+
+  if (!packageName || typeof packageName !== "string") {
+    console.error("No packageName found in params")
+    return null
+  }
 
   // IMMEDIATE TACTICAL BYPASS: Check for webviewURL in app status data and redirect instantly
   useEffect(() => {
@@ -136,7 +143,7 @@ export default function AppSettings() {
         return
       }
 
-      if (appInfo.healthStatus !== "online") {
+      if ((await checkAppHealthStatus(appInfo.packageName)) !== "healthy") {
         showAlert(translate("errors:appNotOnlineTitle"), translate("errors:appNotOnlineMessage"), [
           {text: translate("common:ok")},
         ])

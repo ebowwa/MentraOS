@@ -51,6 +51,7 @@ export default function InactiveAppList({
     optimisticallyStopApp,
     clearPendingOperation,
     isSensingEnabled,
+    checkAppHealthStatus,
   } = useAppStatus()
   const {status} = useStatus()
   const [onboardingModalVisible, setOnboardingModalVisible] = useState(false)
@@ -203,7 +204,7 @@ export default function InactiveAppList({
       return
     }
 
-    if (appToStart.healthStatus !== "online") {
+    if ((await checkAppHealthStatus(appToStart.packageName)) !== "healthy") {
       showAlert(translate("errors:appNotOnlineTitle"), translate("errors:appNotOnlineMessage"), [
         {text: translate("common:ok")},
       ])
