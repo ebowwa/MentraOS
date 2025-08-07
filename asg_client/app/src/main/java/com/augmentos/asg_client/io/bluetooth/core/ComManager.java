@@ -16,11 +16,11 @@ import java.util.Arrays;
  */
 public class ComManager {
     private static final String TAG = "ComManager";
-    
+
     // Serial port configuration - matches the K900 SDK
     private static final String COM_PATH = "/dev/ttyS1";
     private static final int COM_BAUDRATE = 460800;
-    
+
     private SerialListener mListener;
     private RecvThread mRecvThread = null;
     private byte[] mReadBuf = new byte[1024];
@@ -32,51 +32,54 @@ public class ComManager {
 
     /**
      * Create a new ComManager
+     *
      * @param context The application context
      */
     public ComManager(Context context) {
         mContext = context;
     }
-    
+
     /**
      * Register a listener for serial events
+     *
      * @param listener The listener to register
      */
-    public void registerListener(SerialListener listener) { 
-        mListener = listener; 
+    public void registerListener(SerialListener listener) {
+        mListener = listener;
     }
-    
+
     /**
      * Start the serial communication
+     *
      * @return true if started successfully, false otherwise
      */
     public boolean start() {
-        if(mbStart)
+        if (mbStart)
             return true;
-            
+
         boolean bSucc = SerialManager.getInstance().openSerial(COM_PATH, COM_BAUDRATE);
         Log.d(TAG, "openSerial dev=" + COM_PATH + ", bSucc=" + bSucc);
-        
-        if(mListener != null)
+
+        if (mListener != null)
             mListener.onSerialOpen(bSucc, 0, COM_PATH, "");
-            
-        if(bSucc) {
+
+        if (bSucc) {
             mbStart = true;
             mIS = SerialManager.getInstance().getInputStream(COM_PATH);
             mOS = SerialManager.getInstance().getOutputStream(COM_PATH);
-            
-            if(mRecvThread != null) {
+
+            if (mRecvThread != null) {
                 mRecvThread.setStop();
                 mRecvThread = null;
             }
-            
+
             mRecvThread = new RecvThread();
             mRecvThread.start();
-            
-            if(mListener != null)
+
+            if (mListener != null)
                 mListener.onSerialReady(COM_PATH);
         }
-        
+
         return bSucc;
     }
 
@@ -84,35 +87,85 @@ public class ComManager {
      * Stop the serial communication
      */
     public void stop() {
-        if(mbStart) {
+        if (mbStart) {
             Log.d(TAG, "ComManager stopping");
-            if(mRecvThread != null) {
+            if (mRecvThread != null) {
                 mRecvThread.setStop();
                 mRecvThread.interrupt();
                 mRecvThread = null;
             }
             SerialManager.getInstance().closeSerial(COM_PATH);
             mbStart = false;
-            
-            if(mListener != null)
+
+            if (mListener != null)
                 mListener.onSerialClose(COM_PATH);
-                
+
             Log.d(TAG, "ComManager stopped");
         }
     }
 
-    // ... rest of the implementation would continue here
-    // For brevity, I'm showing the key parts that need import updates
-    
+    /**
+     * Send data over the serial port
+     *
+     * @param data The data to send
+     */
+    public boolean send(byte[] data) {
+        if (mbStart && mOS != null) {
+            try {
+                Log.d(TAG, ">>> sending " + data.length + " bytes");
+                mOS.write(data);
+                mOS.flush();
+
+                return true;
+            } catch (IOException e) {
+                Log.e(TAG, "Error writing to serial port: " + e.getMessage());
+            }
+        } else {
+            Log.d(TAG, "Cannot send data - not started or output stream is null. mbStart=" + mbStart + ", mOS=" + mOS);
+        }
+
+        return false;
+    }
+
+    /**
+     * Send file data over the serial port (without logging the data content)
+     *
+     * @param data The file data to send
+     */
+    public void sendFile(byte[] data) {
+        if (mbStart && mOS != null) {
+            try {
+                // Don't log file data content, just write it
+                mOS.write(data);
+                mOS.flush();
+            } catch (IOException e) {
+                Log.e(TAG, "Error writing file to serial port: " + e.getMessage());
+            }
+        } else {
+            Log.d(TAG, "Cannot send file - not started or output stream is null. mbStart=" + mbStart + ", mOS=" + mOS);
+        }
+    }
+
+    /**
+     * Set fast mode for file transfers
+     *
+     * @param bFast true to enable fast mode (5ms sleep), false for normal mode (50ms sleep)
+     */
+    public void setFastMode(boolean bFast) {
+        mbRequestFast = bFast;
+        Log.d(TAG, "Fast mode " + (bFast ? "enabled" : "disabled"));
+    }
+
+
     /**
      * Thread for receiving data from the serial port
      */
     class RecvThread extends Thread {
         private boolean mbStop = false;
-        
+
         public RecvThread() {
         }
-        
+
         public void setStop() {
             mbStop = true;
         }
@@ -120,23 +173,23 @@ public class ComManager {
         @Override
         public void run() {
             int readSize;
-            
-            while(!mbStop) {
-                if(mIS != null) {
+
+            while (!mbStop) {
+                if (mIS != null) {
                     try {
                         readSize = mIS.read(mReadBuf);
-                        if(readSize > 0) {
+                        if (readSize > 0) {
                             // Simple log with byte count only
                             Log.d(TAG, "UART read: " + readSize + " bytes");
-                            
-                            if(mListener != null)
+
+                            if (mListener != null)
                                 mListener.onSerialRead(COM_PATH, mReadBuf, readSize);
                         }
                     } catch (IOException e) {
                         Log.e(TAG, "Error reading from serial port", e);
                     }
                 }
-                
+
                 try {
                     // Use fast mode (5ms) for file transfers, normal mode (50ms) otherwise
                     // Note: Original K900_server_sdk used 150ms, but K900Server_common uses 50ms/5ms
@@ -146,7 +199,7 @@ public class ComManager {
                     break;
                 }
             }
-            
+
             Log.d(TAG, "RecvThread exiting");
         }
     }

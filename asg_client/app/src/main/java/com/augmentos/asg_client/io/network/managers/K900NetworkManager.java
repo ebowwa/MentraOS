@@ -54,48 +54,86 @@ public class K900NetworkManager extends BaseNetworkManager {
     
     @Override
     public void initialize() {
+        Log.d(TAG, "🌐 =========================================");
+        Log.d(TAG, "🌐 K900 NETWORK MANAGER INITIALIZE");
+        Log.d(TAG, "🌐 =========================================");
+        
         super.initialize();
+        Log.d(TAG, "🌐 ✅ Base network manager initialized");
+        
         registerWifiStateReceiver();
+        Log.d(TAG, "🌐 ✅ WiFi state receiver registered");
         
         // Check if we're already connected to WiFi
-        if (isConnectedToWifi()) {
+        boolean wifiConnected = isConnectedToWifi();
+        Log.d(TAG, "🌐 📡 Current WiFi connection status: " + wifiConnected);
+        
+        if (wifiConnected) {
+            Log.d(TAG, "🌐 ✅ WiFi already connected, showing notification");
             notificationManager.showWifiStateNotification(true);
         } else {
+            Log.d(TAG, "🌐 ❌ WiFi not connected, showing notification and enabling WiFi");
             notificationManager.showWifiStateNotification(false);
             // Auto-enable WiFi if not connected
             enableWifi();
         }
+        
+        Log.d(TAG, "🌐 ✅ K900 Network Manager initialization complete");
     }
     
     @Override
     public void enableWifi() {
+        Log.d(TAG, "📶 =========================================");
+        Log.d(TAG, "📶 ENABLE WIFI");
+        Log.d(TAG, "📶 =========================================");
+        
         // Use K900 API to enable WiFi
         try {
-            // First try using standard WifiManager
-            if (!wifiManager.isWifiEnabled()) {
-                wifiManager.setWifiEnabled(true);
+            Log.d(TAG, "📶 🔍 Checking current WiFi state...");
+            boolean currentlyEnabled = wifiManager.isWifiEnabled();
+            Log.d(TAG, "📶 📡 WiFi currently enabled: " + currentlyEnabled);
+            
+            if (!currentlyEnabled) {
+                Log.d(TAG, "📶 🔧 Enabling WiFi via WifiManager...");
+                boolean enabled = wifiManager.setWifiEnabled(true);
+                Log.d(TAG, "📶 " + (enabled ? "✅ WiFi enable command sent successfully" : "❌ Failed to send WiFi enable command"));
+                
                 notificationManager.showDebugNotification(
                         "WiFi Enabling", 
                         "Attempting to enable WiFi");
+            } else {
+                Log.d(TAG, "📶 ✅ WiFi already enabled, no action needed");
             }
         } catch (Exception e) {
-            Log.e(TAG, "Error enabling WiFi", e);
+            Log.e(TAG, "📶 💥 Error enabling WiFi", e);
         }
     }
     
     @Override
     public void disableWifi() {
+        Log.d(TAG, "📶 =========================================");
+        Log.d(TAG, "📶 DISABLE WIFI");
+        Log.d(TAG, "📶 =========================================");
+        
         // Use K900 API to disable WiFi
         try {
-            // First try using standard WifiManager
-            if (wifiManager.isWifiEnabled()) {
-                wifiManager.setWifiEnabled(false);
+            Log.d(TAG, "📶 🔍 Checking current WiFi state...");
+            boolean currentlyEnabled = wifiManager.isWifiEnabled();
+            Log.d(TAG, "📶 📡 WiFi currently enabled: " + currentlyEnabled);
+            
+            if (currentlyEnabled) {
+                Log.d(TAG, "📶 🔧 Disabling WiFi via WifiManager...");
+                boolean disabled = wifiManager.setWifiEnabled(false);
+                Log.d(TAG, "📶 " + (disabled ? "✅ WiFi disable command sent successfully" : "❌ Failed to send WiFi disable command"));
+                
                 notificationManager.showDebugNotification(
                         "WiFi Disabling", 
                         "Disabling WiFi");
+            } else {
+                Log.d(TAG, "📶 ✅ WiFi already disabled, no action needed");
             }
         } catch (Exception e) {
-            Log.e(TAG, "Error disabling WiFi", e);
+            Log.e(TAG, "📶 💥 Error disabling WiFi", e);
         }
     }
 
@@ -109,22 +147,30 @@ public class K900NetworkManager extends BaseNetworkManager {
     
     @Override
     public void startHotspot(String ssid, String password) {
-        Log.d(TAG, "Starting K900 hotspot with SSID: " + ssid);
+        Log.d(TAG, "🔥 =========================================");
+        Log.d(TAG, "🔥 START K900 HOTSPOT");
+        Log.d(TAG, "🔥 =========================================");
+        Log.d(TAG, "🔥 SSID: " + (ssid != null ? ssid : DEFAULT_HOTSPOT_SSID));
+        Log.d(TAG, "🔥 Password: " + (password != null ? "***" : "***"));
         
         try {
             // Use K900-specific broadcast to start hotspot
+            Log.d(TAG, "🔥 📡 Creating K900 hotspot start broadcast...");
             Intent intent = new Intent(K900_BROADCAST_ACTION);
             intent.putExtra("command", "start_hotspot");
             intent.putExtra("ssid", ssid != null ? ssid : DEFAULT_HOTSPOT_SSID);
             intent.putExtra("password", password != null ? password : DEFAULT_HOTSPOT_PASSWORD);
+            
+            Log.d(TAG, "🔥 📤 Sending K900 hotspot start broadcast...");
             context.sendBroadcast(intent);
             
+            Log.d(TAG, "🔥 ✅ K900 hotspot start broadcast sent successfully");
             notificationManager.showHotspotStateNotification(true);
             notifyHotspotStateChanged(true);
             
-            Log.i(TAG, "K900 hotspot start command sent");
+            Log.i(TAG, "🔥 ✅ K900 hotspot start command sent");
         } catch (Exception e) {
-            Log.e(TAG, "Error starting K900 hotspot", e);
+            Log.e(TAG, "🔥 💥 Error starting K900 hotspot", e);
             notificationManager.showDebugNotification(
                     "Hotspot Error", 
                     "Failed to start K900 hotspot: " + e.getMessage());
@@ -133,20 +179,26 @@ public class K900NetworkManager extends BaseNetworkManager {
     
     @Override
     public void stopHotspot() {
-        Log.d(TAG, "Stopping K900 hotspot");
+        Log.d(TAG, "🔥 =========================================");
+        Log.d(TAG, "🔥 STOP K900 HOTSPOT");
+        Log.d(TAG, "🔥 =========================================");
         
         try {
             // Use K900-specific broadcast to stop hotspot
+            Log.d(TAG, "🔥 📡 Creating K900 hotspot stop broadcast...");
             Intent intent = new Intent(K900_BROADCAST_ACTION);
             intent.putExtra("command", "stop_hotspot");
+            
+            Log.d(TAG, "🔥 📤 Sending K900 hotspot stop broadcast...");
             context.sendBroadcast(intent);
             
+            Log.d(TAG, "🔥 ✅ K900 hotspot stop broadcast sent successfully");
             notificationManager.showHotspotStateNotification(false);
             notifyHotspotStateChanged(false);
             
-            Log.i(TAG, "K900 hotspot stop command sent");
+            Log.i(TAG, "🔥 ✅ K900 hotspot stop command sent");
         } catch (Exception e) {
-            Log.e(TAG, "Error stopping K900 hotspot", e);
+            Log.e(TAG, "🔥 💥 Error stopping K900 hotspot", e);
             notificationManager.showDebugNotification(
                     "Hotspot Error", 
                     "Failed to stop K900 hotspot: " + e.getMessage());
@@ -155,23 +207,31 @@ public class K900NetworkManager extends BaseNetworkManager {
     
     @Override
     public void connectToWifi(String ssid, String password) {
-        Log.d(TAG, "Connecting to WiFi network: " + ssid);
+        Log.d(TAG, "📶 =========================================");
+        Log.d(TAG, "📶 CONNECT TO WIFI");
+        Log.d(TAG, "📶 =========================================");
+        Log.d(TAG, "📶 SSID: " + ssid);
+        Log.d(TAG, "📶 Password: " + (password != null ? "***" : "null"));
         
         try {
             // Use K900-specific broadcast to connect to WiFi
+            Log.d(TAG, "📶 📡 Creating K900 WiFi connect broadcast...");
             Intent intent = new Intent(K900_BROADCAST_ACTION);
             intent.putExtra("command", "connect_wifi");
             intent.putExtra("ssid", ssid);
             intent.putExtra("password", password);
+            
+            Log.d(TAG, "📶 📤 Sending K900 WiFi connect broadcast...");
             context.sendBroadcast(intent);
             
+            Log.d(TAG, "📶 ✅ K900 WiFi connect broadcast sent successfully");
             notificationManager.showDebugNotification(
                     "WiFi Connection", 
                     "Attempting to connect to: " + ssid);
             
-            Log.i(TAG, "K900 WiFi connect command sent for SSID: " + ssid);
+            Log.i(TAG, "📶 ✅ K900 WiFi connect command sent for SSID: " + ssid);
         } catch (Exception e) {
-            Log.e(TAG, "Error connecting to WiFi", e);
+            Log.e(TAG, "📶 💥 Error connecting to WiFi", e);
             notificationManager.showDebugNotification(
                     "WiFi Error", 
                     "Failed to connect to WiFi: " + e.getMessage());

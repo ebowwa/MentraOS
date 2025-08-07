@@ -37,22 +37,36 @@ public class PhoneReadyCommandHandler implements ICommandHandler {
 
     @Override
     public boolean handleCommand(JSONObject data) {
+        Log.d(TAG, "📱 =========================================");
+        Log.d(TAG, "📱 HANDLE PHONE READY COMMAND");
+        Log.d(TAG, "📱 =========================================");
+        Log.d(TAG, "📱 Received phone_ready data: " + (data != null ? data.toString() : "null"));
+        
         try {
-            Log.d(TAG, "📱 Received phone_ready message - sending glasses_ready response");
+            Log.d(TAG, "📱 📱 Received phone_ready message - sending glasses_ready response");
             
+            Log.d(TAG, "📱 🔨 Building glasses_ready response...");
             JSONObject response = responseBuilder.buildGlassesReadyResponse();
-            communicationManager.sendBluetoothResponse(response);
+            Log.d(TAG, "📱 📤 Sending glasses_ready response: " + response.toString());
+            
+            boolean sent = communicationManager.sendBluetoothResponse(response);
+            Log.d(TAG, "📱 " + (sent ? "✅ Glasses ready response sent successfully" : "❌ Failed to send glasses ready response"));
 
             // Auto-send WiFi status after glasses_ready
+            Log.d(TAG, "📱 🔄 Scheduling WiFi status check in 500ms...");
             new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                Log.d(TAG, "📱 📡 Checking WiFi connection status...");
                 if (stateManager.isConnectedToWifi()) {
+                    Log.d(TAG, "📱 ✅ WiFi connected, sending status...");
                     communicationManager.sendWifiStatusOverBle(true);
+                } else {
+                    Log.d(TAG, "📱 ❌ WiFi not connected, skipping status send");
                 }
             }, 500);
             
-            return true;
+            return sent;
         } catch (Exception e) {
-            Log.e(TAG, "Error handling phone ready command", e);
+            Log.e(TAG, "📱 💥 Error handling phone ready command", e);
             return false;
         }
     }

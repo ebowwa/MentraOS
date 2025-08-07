@@ -31,12 +31,21 @@ public class PingCommandHandler implements ICommandHandler {
 
     @Override
     public boolean handleCommand(JSONObject data) {
+        Log.d(TAG, "🏓 =========================================");
+        Log.d(TAG, "🏓 HANDLE PING COMMAND");
+        Log.d(TAG, "🏓 =========================================");
+        Log.d(TAG, "🏓 Received ping data: " + (data != null ? data.toString() : "null"));
+        
         try {
+            Log.d(TAG, "🏓 🔨 Building ping response...");
             JSONObject pingResponse = responseBuilder.buildPingResponse();
-            communicationManager.sendBluetoothResponse(pingResponse);
-            return true;
+            Log.d(TAG, "🏓 📤 Sending ping response: " + pingResponse.toString());
+            
+            boolean sent = communicationManager.sendBluetoothResponse(pingResponse);
+            Log.d(TAG, "🏓 " + (sent ? "✅ Ping command handled successfully" : "❌ Failed to send ping response"));
+            return sent;
         } catch (Exception e) {
-            Log.e(TAG, "Error handling ping command", e);
+            Log.e(TAG, "🏓 💥 Error handling ping command", e);
             return false;
         }
     }
