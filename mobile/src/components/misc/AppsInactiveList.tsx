@@ -18,7 +18,7 @@ import {loadSetting, saveSetting} from "@/utils/SettingsHelper"
 import {SETTINGS_KEYS} from "@/consts"
 import {useFocusEffect} from "@react-navigation/native"
 import {useAppStatus} from "@/contexts/AppStatusProvider"
-import {checkPermissionsUI, requestPermissionsUI} from "@/utils/PermissionsUtils"
+import {askPermissionsUI, canStartAppUI, checkPermissionsUI, requestPermissionsUI} from "@/utils/PermissionsUtils"
 import {PermissionFeatures} from "@/utils/PermissionsUtils"
 import showAlert from "@/utils/AlertUtils"
 import {PERMISSION_CONFIG} from "@/utils/PermissionsUtils"
@@ -198,63 +198,25 @@ export default function InactiveAppList({
     }
 
     // Find the app we're trying to start
-    const appToStart = appStatus.find(app => app.packageName === packageName)
-    if (!appToStart) {
+    const appInfo = appStatus.find(app => app.packageName === packageName)
+    if (!appInfo) {
       console.error("App not found:", packageName)
       return
     }
 
-    if ((await checkAppHealthStatus(appToStart.packageName)) !== "healthy") {
-      showAlert(translate("errors:appNotOnlineTitle"), translate("errors:appNotOnlineMessage"), [
-        {text: translate("common:ok")},
-      ])
+    // if ((await checkAppHealthStatus(appInfo.packageName)) !== "healthy") {
+    //   showAlert(translate("errors:appNotOnlineTitle"), translate("errors:appNotOnlineMessage"), [
+    //     {text: translate("common:ok")},
+    //   ])
+    //   return
+    // }
+
+    // ask for needed perms:
+    const result = await askPermissionsUI(appInfo, theme)
+    if (result === -1) {
       return
-    }
-
-    // check perms:
-    const neededPermissions = await checkPermissionsUI(appToStart)
-    if (neededPermissions.length > 0) {
-      await showAlert(
-        neededPermissions.length > 1
-          ? translate("home:permissionsRequiredTitle")
-          : translate("home:permissionRequiredTitle"),
-        translate("home:permissionMessage", {
-          permissions: neededPermissions.map(perm => PERMISSION_CONFIG[perm]?.name || perm).join(", "),
-        }),
-        [
-          {
-            text: translate("common:cancel"),
-            onPress: () => {},
-            style: "cancel",
-          },
-          {
-            text: translate("common:next"),
-            onPress: async () => {
-              await requestPermissionsUI(neededPermissions)
-
-              // Check if permissions were actually granted (for non-special permissions)
-              // Special permissions like READ_NOTIFICATIONS on Android require manual action
-              const stillNeededPermissions = await checkPermissionsUI(appToStart)
-
-              // If we still need READ_NOTIFICATIONS, don't auto-retry
-              // The user needs to manually grant it in settings and try again
-              if (stillNeededPermissions.includes(PermissionFeatures.READ_NOTIFICATIONS) && Platform.OS === "android") {
-                // Permission flow is in progress, user needs to complete it manually
-                return
-              }
-
-              // For other permissions that were granted, proceed with starting the app
-              if (stillNeededPermissions.length === 0) {
-                startApp(packageName)
-              }
-            },
-          },
-        ],
-        {
-          iconName: "information-outline",
-          iconColor: theme.colors.textDim,
-        },
-      )
+    } else if (result === 0) {
+      startApp(appInfo.packageName) // restart this function
       return
     }
 
