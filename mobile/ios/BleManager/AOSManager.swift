@@ -570,7 +570,7 @@ struct ViewState {
 
         // in any case, clear the vadBuffer:
         vadBuffer.removeAll()
-        micEnabled = isEnabled
+        micEnabled = isEnabled || shouldSendPcmData
 
         // Handle microphone state change if needed
         Task {
@@ -605,7 +605,8 @@ struct ViewState {
                 }
 
                 if !useGlassesMic, !useOnboardMic {
-                    CoreCommsService.log("no mic to use!!!!!!")
+                    CoreCommsService.log("no mic to use! falling back to glasses mic!!!!! (this should not happen)")
+                    useGlassesMic = true
                 }
             }
 
