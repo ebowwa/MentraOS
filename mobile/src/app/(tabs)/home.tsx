@@ -34,16 +34,10 @@ import {translate} from "@/i18n"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {showAlert} from "@/utils/AlertUtils"
 
-interface AnimatedSectionProps extends PropsWithChildren {
-  delay?: number
-}
-
 export default function Homepage() {
   const {appStatus, refreshAppStatus, optimisticallyStartApp, optimisticallyStopApp, clearPendingOperation} =
     useAppStatus()
   const {status} = useStatus()
-  const [isSimulatedPuck, setIsSimulatedPuck] = React.useState(false)
-  const [isCheckingVersion, setIsCheckingVersion] = useState(false)
   const [isInitialLoading, setIsInitialLoading] = useState(true)
   const [hasMissingPermissions, setHasMissingPermissions] = useState(false)
   const [showOnboardingSpotlight, setShowOnboardingSpotlight] = useState(false)
@@ -107,6 +101,15 @@ export default function Homepage() {
   useFocusEffect(
     useCallback(() => {
       checkPermissions()
+    }, []),
+  )
+
+  // propagate any changes in app lists when this screen is mounted:
+  useFocusEffect(
+    useCallback(() => {
+      return async () => {
+        await refreshAppStatus()
+      }
     }, []),
   )
 

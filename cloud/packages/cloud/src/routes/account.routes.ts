@@ -7,7 +7,7 @@ import fs from "fs";
 import { User } from "../models/user.model";
 import { GalleryPhoto } from "../models/gallery-photo.model";
 import sessionService from "../services/session/session.service";
-import { emailService } from "../services/email/resend.service";
+// Email service import removed - no longer needed for account deletion
 import { logger } from "../services/logging/pino-logger";
 import UserSession from "../services/session/UserSession";
 
@@ -28,17 +28,7 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey, {
   },
 });
 
-// In-memory stores for deletion and export requests (in a real app, use a database)
-interface DeletionRequest {
-  id: string;
-  userId: string;
-  email: string;
-  reason?: string;
-  verificationCode: string;
-  createdAt: Date;
-  expiresAt: Date; // 24 hours after creation
-}
-
+// In-memory store for export requests (in a real app, use a database)
 interface ExportRequest {
   id: string;
   userId: string;
@@ -51,7 +41,6 @@ interface ExportRequest {
   filePath?: string;
 }
 
-const deletionRequests = new Map<string, DeletionRequest>();
 const exportRequests = new Map<string, ExportRequest>();
 
 /**
@@ -139,16 +128,9 @@ if (!fs.existsSync(EXPORTS_DIR)) {
   fs.mkdirSync(EXPORTS_DIR, { recursive: true });
 }
 
-// Clean up expired requests periodically
-const cleanupExpiredRequests = () => {
+// Clean up old export files periodically
+const cleanupExpiredExports = () => {
   const now = new Date();
-
-  // Clean up deletion requests
-  for (const [id, request] of deletionRequests.entries()) {
-    if (request.expiresAt < now) {
-      deletionRequests.delete(id);
-    }
-  }
 
   // Clean up old export files (older than 24 hours)
   for (const [id, request] of exportRequests.entries()) {
@@ -162,7 +144,7 @@ const cleanupExpiredRequests = () => {
 };
 
 // Run cleanup every hour
-setInterval(cleanupExpiredRequests, 60 * 60 * 1000);
+setInterval(cleanupExpiredExports, 60 * 60 * 1000);
 
 /**
  * Get user profile information
@@ -301,8 +283,11 @@ router.put(
 );
 
 /**
- * Request account deletion
+ * Delete account immediately
  * POST /api/account/request-deletion
+ *
+ * This endpoint immediately deletes the user account without email verification
+ * since the mobile app already has a 3-step confirmation process
  */
 router.post(
   "/request-deletion",
@@ -316,23 +301,7 @@ router.post(
         return res.status(401).json({ error: "Unauthorized" });
       }
 
-      // // Find the user by email
-      // const { data: userData, error: findError } = await supabase.auth.admin.listUsers({
-      //   filter: {
-      //     email: userEmail,
-      //   }
-      // });
-
-      // if (findError) {
-      //   logger.error('Error finding user:', findError);
-      //   return res.status(500).json({ error: 'Failed to find user' });
-      // }
-
-      // if (!userData || userData.users.length === 0) {
-      //   return res.status(404).json({ error: 'User not found' });
-      // }
-
-      // const user = userData.users[0];
+      logger.info({ userEmail, reason }, "Account deletion requested");
 
       const { data: user, error } = await supabase
         .from("auth.users")
@@ -349,59 +318,24 @@ router.post(
         return res.status(404).json({ error: "User not found" });
       }
 
-      // Generate a random verification code
-      const verificationCode = crypto
-        .randomBytes(3)
-        .toString("hex")
-        .toUpperCase();
+      // Delete the user from Supabase immediately
+      const { error: deleteError } = await supabase.auth.admin.deleteUser(
+        user.id,
+      );
 
-      // Create deletion request
-      const requestId = `req_${crypto.randomBytes(8).toString("hex")}`;
-      const now = new Date();
-      const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000); // 24 hours from now
-
-      const deletionRequest: DeletionRequest = {
-        id: requestId,
-        userId: user.id,
-        email: userEmail,
-        reason,
-        verificationCode,
-        createdAt: now,
-        expiresAt,
-      };
-
-      deletionRequests.set(requestId, deletionRequest);
-
-      // Send verification email
-      try {
-        const emailResult = await emailService.sendAccountDeletionVerification(
-          userEmail,
-          verificationCode,
-        );
-        if (emailResult.error) {
-          logger.error(
-            { error: emailResult.error, userEmail },
-            "Failed to send deletion verification email",
-          );
-          // Still continue - user can retry if email fails
-        } else {
-          logger.info(
-            { emailId: emailResult.id, userEmail },
-            "Deletion verification email sent successfully",
-          );
-        }
-      } catch (emailError) {
-        logger.error(
-          { error: emailError, userEmail },
-          "Error sending deletion verification email",
-        );
-        // Continue - don't fail the request if email fails
+      if (deleteError) {
+        logger.error("Error deleting user:", deleteError);
+        return res.status(500).json({ error: "Failed to delete user account" });
       }
 
+      // Perform comprehensive data cleanup
+      await performCompleteUserDataCleanup(userEmail, user.id);
+
+      logger.info({ userEmail }, "Account deleted successfully");
+
       res.json({
-        requestId,
-        message:
-          "Deletion request submitted. Please check your email for verification code.",
+        success: true,
+        message: "Account deleted successfully",
       });
     } catch (error) {
       logger.error("Error in /account/request-deletion:", error);
@@ -410,78 +344,8 @@ router.post(
   },
 );
 
-/**
- * Confirm account deletion
- * DELETE /api/account/confirm-deletion
- */
-router.delete(
-  "/confirm-deletion",
-  validateCoreToken,
-  async (req: Request, res: Response) => {
-    try {
-      const userEmail = (req as any).email;
-      const { requestId, confirmationCode } = req.body;
-
-      if (!userEmail) {
-        return res.status(401).json({ error: "Unauthorized" });
-      }
-
-      if (!requestId || !confirmationCode) {
-        return res
-          .status(400)
-          .json({ error: "Request ID and confirmation code are required" });
-      }
-
-      // Check if the deletion request exists
-      const deletionRequest = deletionRequests.get(requestId);
-
-      if (!deletionRequest) {
-        return res.status(404).json({ error: "Deletion request not found" });
-      }
-
-      // Check if the request has expired
-      if (deletionRequest.expiresAt < new Date()) {
-        deletionRequests.delete(requestId);
-        return res.status(400).json({ error: "Deletion request has expired" });
-      }
-
-      // Check if the request belongs to the user
-      if (deletionRequest.email !== userEmail) {
-        return res
-          .status(403)
-          .json({ error: "Not authorized to confirm this deletion request" });
-      }
-
-      // Check if the confirmation code is correct
-      if (deletionRequest.verificationCode !== confirmationCode) {
-        return res.status(400).json({ error: "Invalid confirmation code" });
-      }
-
-      // Delete the user from Supabase
-      const { error: deleteError } = await supabase.auth.admin.deleteUser(
-        deletionRequest.userId,
-      );
-
-      if (deleteError) {
-        logger.error("Error deleting user:", deleteError);
-        return res.status(500).json({ error: "Failed to delete user account" });
-      }
-
-      // Remove the deletion request
-      deletionRequests.delete(requestId);
-
-      // ✅ Comprehensive data cleanup
-      await performCompleteUserDataCleanup(userEmail, deletionRequest.userId);
-
-      res.json({
-        message: "Account deleted successfully",
-      });
-    } catch (error) {
-      logger.error("Error in /account/confirm-deletion:", error);
-      res.status(500).json({ error: "Internal server error" });
-    }
-  },
-);
+// The confirm-deletion endpoint has been removed since we now delete accounts immediately
+// without email verification. The mobile app already has a 3-step confirmation process.
 
 /**
  * Request data export

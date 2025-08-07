@@ -43,7 +43,14 @@ import Divider from "@/components/misc/Divider"
 import {InfoRow} from "@/components/settings/InfoRow"
 import {SettingsGroup} from "@/components/settings/SettingsGroup"
 import {showAlert} from "@/utils/AlertUtils"
-import {checkPermissionsUI, PERMISSION_CONFIG, PermissionFeatures, requestPermissionsUI} from "@/utils/PermissionsUtils"
+import {
+  askPermissionsUI,
+  canStartAppUI,
+  checkPermissionsUI,
+  PERMISSION_CONFIG,
+  PermissionFeatures,
+  requestPermissionsUI,
+} from "@/utils/PermissionsUtils"
 import {translate} from "@/i18n"
 
 export default function AppSettings() {
@@ -65,10 +72,6 @@ export default function AppSettings() {
     outputRange: [0, 0, 1],
     extrapolate: "clamp",
   })
-  if (!packageName || typeof packageName !== "string") {
-    console.error("No packageName found in params")
-    return null
-  }
 
   // State to hold the complete configuration from the server.
   const [serverAppInfo, setServerAppInfo] = useState<any>(null)
@@ -76,8 +79,14 @@ export default function AppSettings() {
   const [settingsState, setSettingsState] = useState<{[key: string]: any}>({})
   // Get app info from status
   const {status} = useStatus()
-  const {appStatus, refreshAppStatus, optimisticallyStartApp, optimisticallyStopApp, clearPendingOperation} =
-    useAppStatus()
+  const {
+    appStatus,
+    refreshAppStatus,
+    optimisticallyStartApp,
+    optimisticallyStopApp,
+    clearPendingOperation,
+    checkAppHealthStatus,
+  } = useAppStatus()
   const appInfo = useMemo(() => {
     return appStatus.find(app => app.packageName === packageName) || null
   }, [appStatus, packageName])
@@ -85,6 +94,11 @@ export default function AppSettings() {
   const SETTINGS_CACHE_KEY = (packageName: string) => `app_settings_cache_${packageName}`
   const [settingsLoading, setSettingsLoading] = useState(true)
   const [hasCachedSettings, setHasCachedSettings] = useState(false)
+
+  if (!packageName || typeof packageName !== "string") {
+    console.error("No packageName found in params")
+    return null
+  }
 
   // IMMEDIATE TACTICAL BYPASS: Check for webviewURL in app status data and redirect instantly
   useEffect(() => {
@@ -123,6 +137,8 @@ export default function AppSettings() {
 
     console.log(`${appInfo.is_running ? "Stopping" : "Starting"} app: ${packageName}`)
 
+    console.log("appInfo", appInfo.is_running)
+
     try {
       if (appInfo.is_running) {
         // Optimistically update UI first
@@ -136,60 +152,20 @@ export default function AppSettings() {
         return
       }
 
-      if (appInfo.healthStatus !== "online") {
-        showAlert(translate("errors:appNotOnlineTitle"), translate("errors:appNotOnlineMessage"), [
-          {text: translate("common:ok")},
-        ])
+      // const healthStatus = await checkAppHealthStatus(appInfo.packageName)
+      // if (healthStatus !== "healthy") {
+      //   showAlert(translate("errors:appNotOnlineTitle"), translate("errors:appNotOnlineMessage"), [
+      //     {text: translate("common:ok")},
+      //   ])
+      //   return
+      // }
+
+      // ask for needed perms:
+      const result = await askPermissionsUI(appInfo, theme)
+      if (result === -1) {
         return
-      }
-
-      // check perms:
-      const neededPermissions = await checkPermissionsUI(appInfo)
-      if (neededPermissions.length > 0) {
-        await showAlert(
-          neededPermissions.length > 1
-            ? translate("home:permissionsRequiredTitle")
-            : translate("home:permissionRequiredTitle"),
-          translate("home:permissionMessage", {
-            permissions: neededPermissions.map(perm => PERMISSION_CONFIG[perm]?.name || perm).join(", "),
-          }),
-          [
-            {
-              text: translate("common:cancel"),
-              onPress: () => {},
-              style: "cancel",
-            },
-            {
-              text: translate("common:next"),
-              onPress: async () => {
-                await requestPermissionsUI(neededPermissions)
-
-                // Check if permissions were actually granted (for non-special permissions)
-                // Special permissions like READ_NOTIFICATIONS on Android require manual action
-                const stillNeededPermissions = await checkPermissionsUI(appInfo)
-
-                // If we still need READ_NOTIFICATIONS, don't auto-retry
-                // The user needs to manually grant it in settings and try again
-                if (
-                  stillNeededPermissions.includes(PermissionFeatures.READ_NOTIFICATIONS) &&
-                  Platform.OS === "android"
-                ) {
-                  // Permission flow is in progress, user needs to complete it manually
-                  return
-                }
-
-                // For other permissions that were granted, proceed with starting the app
-                if (stillNeededPermissions.length === 0) {
-                  handleStartStopApp()
-                }
-              },
-            },
-          ],
-          {
-            iconName: "information-outline",
-            iconColor: theme.colors.textDim,
-          },
-        )
+      } else if (result === 0) {
+        handleStartStopApp() // restart this function
         return
       }
 

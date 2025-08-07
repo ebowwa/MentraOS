@@ -66,6 +66,13 @@ public class SpeechRecSwitchSystem implements AudioProcessingCallback {
         }
     }
 
+    // NEW: Set PCM-specific VAD bypass (separate from user debug bypass)
+    public void setBypassVadForPCM(boolean bypass) {
+        if (speechRecFramework != null) {
+            speechRecFramework.changeBypassVadForPCMState(bypass);
+        }
+    }
+
     public void setEnforceLocalTranscription(boolean enforce) {
         if (speechRecFramework != null) {
             speechRecFramework.changeEnforceLocalTranscriptionState(enforce);
