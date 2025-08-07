@@ -21,6 +21,7 @@ import com.augmentos.asg_client.SysControl;
 import com.augmentos.asg_client.io.bluetooth.interfaces.BluetoothStateListener;
 import com.augmentos.asg_client.io.media.core.MediaCaptureService;
 import com.augmentos.asg_client.io.media.interfaces.ServiceCallbackInterface;
+import com.augmentos.asg_client.io.media.managers.MediaUploadQueueManager;
 import com.augmentos.asg_client.io.network.interfaces.NetworkStateListener;
 import com.augmentos.asg_client.io.ota.utils.OtaConstants;
 import com.augmentos.asg_client.io.streaming.events.StreamingEvent;
@@ -123,30 +124,44 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     private final ServiceConnection augmentosConnection = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
-            Log.d(TAG, "AugmentosService connected");
-            AugmentosService.LocalBinder binder = (AugmentosService.LocalBinder) service;
-            augmentosService = binder.getService();
-            isAugmentosBound = true;
+            Log.i(TAG, "🔗 AugmentosService connected successfully");
+            Log.d(TAG, "📋 Component name: " + name.getClassName());
+            
+            try {
+                AugmentosService.LocalBinder binder = (AugmentosService.LocalBinder) service;
+                augmentosService = binder.getService();
+                isAugmentosBound = true;
+                Log.d(TAG, "✅ AugmentosService bound and ready");
 
-            // Update state manager
-            if (stateManager instanceof StateManager) {
-                ((StateManager) stateManager).setAugmentosServiceBound(true);
-            }
+                // Update state manager
+                if (stateManager instanceof StateManager) {
+                    Log.d(TAG, "📊 Updating state manager with AugmentosService binding");
+                    ((StateManager) stateManager).setAugmentosServiceBound(true);
+                }
 
-            // Check WiFi connectivity
-            if (stateManager.isConnectedToWifi()) {
-                onWifiConnected();
+                // Check WiFi connectivity
+                if (stateManager.isConnectedToWifi()) {
+                    Log.d(TAG, "🌐 WiFi is connected - triggering onWifiConnected");
+                    onWifiConnected();
+                } else {
+                    Log.d(TAG, "📶 WiFi is not connected - skipping onWifiConnected");
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "💥 Error in AugmentosService connection", e);
             }
         }
 
         @Override
         public void onServiceDisconnected(ComponentName name) {
-            Log.d(TAG, "AugmentosService disconnected");
+            Log.w(TAG, "🔌 AugmentosService disconnected");
+            Log.d(TAG, "📋 Component name: " + name.getClassName());
+            
             isAugmentosBound = false;
             augmentosService = null;
 
             // Update state manager
             if (stateManager instanceof StateManager) {
+                Log.d(TAG, "📊 Updating state manager with AugmentosService unbinding");
                 ((StateManager) stateManager).setAugmentosServiceBound(false);
             }
         }
@@ -158,80 +173,134 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     @Override
     public void onCreate() {
         super.onCreate();
-        Log.d(TAG, "AsgClientServiceV2 onCreate");
+        Log.i(TAG, "🚀 AsgClientServiceV2 onCreate() started");
+        Log.d(TAG, "📊 Android API Level: " + Build.VERSION.SDK_INT);
 
-        // Register for EventBus events
-        EventBus.getDefault().register(this);
+        try {
+            // Register for EventBus events
+            Log.d(TAG, "📡 Registering for EventBus events");
+            EventBus.getDefault().register(this);
+            Log.d(TAG, "✅ EventBus registration successful");
 
-        // Initialize dependency injection container
-        initializeServiceContainer();
+            // Initialize dependency injection container
+            Log.d(TAG, "🔧 Initializing service container");
+            initializeServiceContainer();
 
-        // Initialize WiFi debouncing
-        initializeWifiDebouncing();
+            // Initialize WiFi debouncing
+            Log.d(TAG, "📶 Initializing WiFi debouncing");
+            initializeWifiDebouncing();
 
-        // Register receivers
-        registerReceivers();
+            // Register receivers
+            Log.d(TAG, "📻 Registering broadcast receivers");
+            registerReceivers();
 
-        // Send version info
-        sendVersionInfo();
+            // Send version info
+            Log.d(TAG, "📋 Sending initial version information");
+            sendVersionInfo();
+
+            Log.i(TAG, "✅ AsgClientServiceV2 onCreate() completed successfully");
+        } catch (Exception e) {
+            Log.e(TAG, "💥 Error in onCreate()", e);
+        }
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        Log.d(TAG, "🎯 onStartCommand() called - StartId: " + startId + ", Flags: " + flags);
+        
         super.onStartCommand(intent, flags, startId);
 
-        // Ensure foreground service on API 26+
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            serviceContainer.getNotificationManager().createNotificationChannel();
-            startForeground(serviceContainer.getNotificationManager().getDefaultNotificationId(),
-                    serviceContainer.getNotificationManager().createForegroundNotification());
-        }
+        try {
+            // Ensure foreground service on API 26+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                Log.d(TAG, "📱 API 26+ detected - setting up foreground service");
+                serviceContainer.getNotificationManager().createNotificationChannel();
+                startForeground(serviceContainer.getNotificationManager().getDefaultNotificationId(),
+                        serviceContainer.getNotificationManager().createForegroundNotification());
+                Log.d(TAG, "✅ Foreground service started");
+            } else {
+                Log.d(TAG, "📱 API < 26 - skipping foreground service setup");
+            }
 
-        if (intent == null || intent.getAction() == null) {
-            Log.e(TAG, "Received null intent or null action");
-            return START_STICKY;
-        }
+            if (intent == null || intent.getAction() == null) {
+                Log.w(TAG, "⚠️ Received null intent or null action");
+                return START_STICKY;
+            }
 
-        // Delegate action handling to lifecycle manager
-        lifecycleManager.handleAction(intent.getAction(), intent.getExtras());
+            String action = intent.getAction();
+            Log.i(TAG, "🎯 Processing action: " + action);
+            
+            // Delegate action handling to lifecycle manager
+            lifecycleManager.handleAction(action, intent.getExtras());
+            Log.d(TAG, "✅ Action processed successfully");
+            
+        } catch (Exception e) {
+            Log.e(TAG, "💥 Error in onStartCommand()", e);
+        }
+        
         return START_STICKY;
     }
 
     @Override
     public void onDestroy() {
+        Log.i(TAG, "🛑 AsgClientServiceV2 onDestroy() started");
+        
+        try {
+            // Unregister from EventBus
+            if (EventBus.getDefault().isRegistered(this)) {
+                Log.d(TAG, "📡 Unregistering from EventBus");
+                EventBus.getDefault().unregister(this);
+                Log.d(TAG, "✅ EventBus unregistration successful");
+            } else {
+                Log.d(TAG, "⏭️ Not registered with EventBus - skipping unregistration");
+            }
+
+            // Clean up service container
+            if (serviceContainer != null) {
+                Log.d(TAG, "🧹 Cleaning up service container");
+                serviceContainer.cleanup();
+                Log.d(TAG, "✅ Service container cleanup completed");
+            } else {
+                Log.d(TAG, "⏭️ Service container is null - skipping cleanup");
+            }
+
+            // Unregister receivers
+            Log.d(TAG, "📻 Unregistering broadcast receivers");
+            unregisterReceivers();
+
+            // Unbind from AugmentosService
+            if (isAugmentosBound) {
+                Log.d(TAG, "🔌 Unbinding from AugmentosService");
+                unbindService(augmentosConnection);
+                isAugmentosBound = false;
+                Log.d(TAG, "✅ AugmentosService unbound");
+            } else {
+                Log.d(TAG, "⏭️ Not bound to AugmentosService - skipping unbind");
+            }
+
+            // Clean up WiFi debouncing
+            if (wifiDebounceHandler != null && wifiDebounceRunnable != null) {
+                Log.d(TAG, "📶 Cleaning up WiFi debouncing");
+                wifiDebounceHandler.removeCallbacks(wifiDebounceRunnable);
+                Log.d(TAG, "✅ WiFi debouncing cleanup completed");
+            }
+
+            // Stop RTMP streaming
+            Log.d(TAG, "📹 Stopping RTMP streaming");
+            streamingManager.stopRtmpStreaming();
+            Log.d(TAG, "✅ RTMP streaming stopped");
+
+            Log.i(TAG, "✅ AsgClientServiceV2 onDestroy() completed successfully");
+        } catch (Exception e) {
+            Log.e(TAG, "💥 Error in onDestroy()", e);
+        }
+        
         super.onDestroy();
-        Log.d(TAG, "AsgClientServiceV2 onDestroy");
-
-        // Unregister from EventBus
-        if (EventBus.getDefault().isRegistered(this)) {
-            EventBus.getDefault().unregister(this);
-        }
-
-        // Clean up service container
-        if (serviceContainer != null) {
-            serviceContainer.cleanup();
-        }
-
-        // Unregister receivers
-        unregisterReceivers();
-
-        // Unbind from AugmentosService
-        if (isAugmentosBound) {
-            unbindService(augmentosConnection);
-            isAugmentosBound = false;
-        }
-
-        // Clean up WiFi debouncing
-        if (wifiDebounceHandler != null && wifiDebounceRunnable != null) {
-            wifiDebounceHandler.removeCallbacks(wifiDebounceRunnable);
-        }
-
-        // Stop RTMP streaming
-        streamingManager.stopRtmpStreaming();
     }
 
     @Override
     public IBinder onBind(Intent intent) {
+        Log.d(TAG, "🔗 onBind() called");
         return new LocalBinder();
     }
 
@@ -239,61 +308,125 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     // Initialization Methods
     // ---------------------------------------------
     private void initializeServiceContainer() {
-        serviceContainer = new ServiceContainer(this, this);
+        Log.d(TAG, "🔧 initializeServiceContainer() started");
+        
+        try {
+            serviceContainer = new ServiceContainer(this, this );
+            Log.d(TAG, "✅ ServiceContainer created successfully");
 
-        // Get interface references
-        lifecycleManager = serviceContainer.getLifecycleManager();
-        communicationManager = serviceContainer.getCommunicationManager();
-        configurationManager = serviceContainer.getConfigurationManager();
-        stateManager = serviceContainer.getStateManager();
-        streamingManager = serviceContainer.getStreamingManager();
+            // Initialize container
+            Log.d(TAG, "🚀 Initializing service container");
+            serviceContainer.initialize();
+            Log.d(TAG, "✅ Service container initialization completed");
 
-        // Initialize container
-        serviceContainer.initialize();
+            //Wait for 1 second
+            Thread.sleep(1000);
 
-        commandProcessor = serviceContainer.getCommandProcessor();
+            // Get interface references
+            Log.d(TAG, "📋 Getting interface references from service container");
+            lifecycleManager = serviceContainer.getLifecycleManager();
+            communicationManager = serviceContainer.getCommunicationManager();
+            configurationManager = serviceContainer.getConfigurationManager();
+            stateManager = serviceContainer.getStateManager();
+            streamingManager = serviceContainer.getStreamingManager();
+            commandProcessor = serviceContainer.getCommandProcessor();
+            
+            Log.d(TAG, "✅ All interface references obtained");
+            Log.d(TAG, "📊 Interface status - LifecycleManager: " + (lifecycleManager != null ? "valid" : "null") +
+                      ", CommunicationManager: " + (communicationManager != null ? "valid" : "null") +
+                      ", ConfigurationManager: " + (configurationManager != null ? "valid" : "null") +
+                      ", StateManager: " + (stateManager != null ? "valid" : "null") +
+                      ", StreamingManager: " + (streamingManager != null ? "valid" : "null") +
+                      ", CommandProcessor: " + (commandProcessor != null ? "valid" : "null"));
+
+
+        } catch (Exception e) {
+            Log.e(TAG, "💥 Error initializing service container", e);
+            try {
+                throw e;
+            } catch (InterruptedException ex) {
+                throw new RuntimeException(ex);
+            }
+        }
     }
 
     /**
      * Initialize WiFi debouncing
      */
     private void initializeWifiDebouncing() {
-        wifiDebounceHandler = new Handler(Looper.getMainLooper());
-        wifiDebounceRunnable = () -> {
-            if (pendingWifiState != lastWifiState) {
-                Log.d(TAG, "🔄 WiFi debounce timeout - sending final state: " +
-                        (pendingWifiState ? "CONNECTED" : "DISCONNECTED"));
-                lastWifiState = pendingWifiState;
-                communicationManager.sendWifiStatusOverBle(pendingWifiState);
-            }
-        };
+        Log.d(TAG, "📶 initializeWifiDebouncing() started");
+        
+        try {
+            wifiDebounceHandler = new Handler(Looper.getMainLooper());
+            wifiDebounceRunnable = () -> {
+                if (pendingWifiState != lastWifiState) {
+                    Log.i(TAG, "🔄 WiFi debounce timeout - sending final state: " +
+                            (pendingWifiState ? "CONNECTED" : "DISCONNECTED"));
+                    lastWifiState = pendingWifiState;
+                    communicationManager.sendWifiStatusOverBle(pendingWifiState);
+                    Log.d(TAG, "✅ WiFi status sent over BLE");
+                } else {
+                    Log.d(TAG, "⏭️ WiFi state unchanged - no action needed");
+                }
+            };
+            Log.d(TAG, "✅ WiFi debouncing initialized successfully");
+        } catch (Exception e) {
+            Log.e(TAG, "💥 Error initializing WiFi debouncing", e);
+        }
     }
 
     /**
      * Register all receivers
      */
     private void registerReceivers() {
-        registerHeartbeatReceiver();
-        registerRestartReceiver();
-        registerOtaProgressReceiver();
+        Log.d(TAG, "📻 registerReceivers() started");
+        
+        try {
+            registerHeartbeatReceiver();
+            registerRestartReceiver();
+            registerOtaProgressReceiver();
+            Log.d(TAG, "✅ All receivers registered successfully");
+        } catch (Exception e) {
+            Log.e(TAG, "💥 Error registering receivers", e);
+        }
     }
 
     /**
      * Unregister all receivers
      */
     private void unregisterReceivers() {
+        Log.d(TAG, "📻 unregisterReceivers() started");
+        
         try {
             if (heartbeatReceiver != null) {
+                Log.d(TAG, "💓 Unregistering heartbeat receiver");
                 unregisterReceiver(heartbeatReceiver);
+                Log.d(TAG, "✅ Heartbeat receiver unregistered");
+            } else {
+                Log.d(TAG, "⏭️ Heartbeat receiver is null - skipping");
             }
+            
             if (restartReceiver != null) {
+                Log.d(TAG, "🔄 Unregistering restart receiver");
                 unregisterReceiver(restartReceiver);
+                Log.d(TAG, "✅ Restart receiver unregistered");
+            } else {
+                Log.d(TAG, "⏭️ Restart receiver is null - skipping");
             }
+            
             if (otaProgressReceiver != null) {
+                Log.d(TAG, "📥 Unregistering OTA progress receiver");
                 unregisterReceiver(otaProgressReceiver);
+                Log.d(TAG, "✅ OTA progress receiver unregistered");
+            } else {
+                Log.d(TAG, "⏭️ OTA progress receiver is null - skipping");
             }
+            
+            Log.d(TAG, "✅ All receivers unregistered successfully");
         } catch (IllegalArgumentException e) {
-            Log.w(TAG, "Receiver was not registered");
+            Log.w(TAG, "⚠️ Receiver was not registered: " + e.getMessage());
+        } catch (Exception e) {
+            Log.e(TAG, "💥 Error unregistering receivers", e);
         }
     }
 
@@ -302,29 +435,42 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     // ---------------------------------------------
     @Override
     public void onWifiStateChanged(boolean isConnected) {
-        Log.d(TAG, "🔄 WiFi state changed: " + (isConnected ? "CONNECTED" : "DISCONNECTED"));
+        Log.i(TAG, "🔄 WiFi state changed: " + (isConnected ? "CONNECTED" : "DISCONNECTED"));
+        Log.d(TAG, "📊 Previous state: " + (lastWifiState ? "CONNECTED" : "DISCONNECTED") + 
+                  ", Pending state: " + (pendingWifiState ? "CONNECTED" : "DISCONNECTED"));
 
         pendingWifiState = isConnected;
 
         if (wifiDebounceHandler != null && wifiDebounceRunnable != null) {
+            Log.d(TAG, "⏱️ Removing existing WiFi debounce callback");
             wifiDebounceHandler.removeCallbacks(wifiDebounceRunnable);
+            Log.d(TAG, "⏱️ Scheduling new WiFi debounce callback in " + WIFI_STATE_DEBOUNCE_MS + "ms");
             wifiDebounceHandler.postDelayed(wifiDebounceRunnable, WIFI_STATE_DEBOUNCE_MS);
+        } else {
+            Log.w(TAG, "⚠️ WiFi debouncing not initialized - sending state immediately");
+            communicationManager.sendWifiStatusOverBle(isConnected);
         }
 
         if (isConnected) {
+            Log.d(TAG, "🌐 WiFi connected - triggering connected actions");
             onWifiConnected();
             processMediaQueue();
+        } else {
+            Log.d(TAG, "📶 WiFi disconnected - no additional actions needed");
         }
     }
 
     @Override
     public void onHotspotStateChanged(boolean isEnabled) {
-        Log.d(TAG, "Hotspot state changed: " + (isEnabled ? "ENABLED" : "DISABLED"));
+        Log.i(TAG, "📡 Hotspot state changed: " + (isEnabled ? "ENABLED" : "DISABLED"));
     }
 
     @Override
     public void onWifiCredentialsReceived(String ssid, String password, String authToken) {
-        Log.d(TAG, "WiFi credentials received for network: " + ssid);
+        Log.i(TAG, "🔑 WiFi credentials received for network: " + ssid);
+        Log.d(TAG, "📋 Credentials - SSID: " + ssid + 
+                  ", Password: " + (password != null ? "***" : "null") + 
+                  ", AuthToken: " + (authToken != null ? "***" : "null"));
     }
 
     // ---------------------------------------------
@@ -332,31 +478,50 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     // ---------------------------------------------
     @Override
     public void onConnectionStateChanged(boolean connected) {
-        Log.d(TAG, "Bluetooth connection state changed: " + (connected ? "CONNECTED" : "DISCONNECTED"));
+        Log.i(TAG, "📶 Bluetooth connection state changed: " + (connected ? "CONNECTED" : "DISCONNECTED"));
 
         if (connected) {
+            Log.d(TAG, "⏱️ Scheduling WiFi status send in 3 seconds");
             // Send WiFi status after delay
             new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                Log.d(TAG, "📤 Sending WiFi status after Bluetooth connection");
                 if (stateManager.isConnectedToWifi()) {
+                    Log.d(TAG, "🌐 WiFi is connected - sending status");
                     communicationManager.sendWifiStatusOverBle(true);
+                } else {
+                    Log.d(TAG, "📶 WiFi is not connected - sending status");
+                    communicationManager.sendWifiStatusOverBle(false);
                 }
             }, 3000);
 
+            Log.d(TAG, "📋 Sending version information after Bluetooth connection");
             sendVersionInfo();
+        } else {
+            Log.d(TAG, "📶 Bluetooth disconnected - no additional actions needed");
         }
     }
 
     @Override
     public void onDataReceived(byte[] data) {
+        Log.d(TAG, "📥 Bluetooth onDataReceived() called");
+        
         if (data == null || data.length == 0) {
-            Log.w(TAG, "Received empty data packet from Bluetooth");
+            Log.w(TAG, "⚠️ Received empty data packet from Bluetooth");
             return;
         }
 
-        Log.d(TAG, "Received " + data.length + " bytes from Bluetooth");
+        Log.i(TAG, "📥 Received " + data.length + " bytes from Bluetooth");
+        Log.d(TAG, "📋 Data preview: " + new String(data, 0, Math.min(data.length, 100)) + 
+                  (data.length > 100 ? "..." : ""));
 
-        // Delegate JSON parsing and processing to CommandProcessor
-        commandProcessor.processCommand(data);
+        try {
+            // Delegate JSON parsing and processing to CommandProcessor
+            Log.d(TAG, "🔄 Delegating data processing to CommandProcessor");
+            commandProcessor.processCommand(data);
+            Log.d(TAG, "✅ Data processing delegated successfully");
+        } catch (Exception e) {
+            Log.e(TAG, "💥 Error processing received data", e);
+        }
     }
 
 
@@ -365,50 +530,73 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     // ---------------------------------------------
 
     private void onWifiConnected() {
-        Log.d(TAG, "Connected to WiFi network");
+        Log.i(TAG, "🌐 Connected to WiFi network");
+        
         if (isAugmentosBound && augmentosService != null) {
-            Log.d(TAG, "AugmentOS service is available, connecting to backend...");
+            Log.i(TAG, "🔗 AugmentOS service is available, connecting to backend...");
+        } else {
+            Log.d(TAG, "⏭️ AugmentOS service not available - waiting for binding");
         }
     }
 
     private void processMediaQueue() {
-        if (serviceContainer.getServiceManager().getMediaQueueManager() != null &&
-                !serviceContainer.getServiceManager().getMediaQueueManager().isQueueEmpty()) {
-            Log.d(TAG, "WiFi connected - processing media upload queue");
-            serviceContainer.getServiceManager().getMediaQueueManager().processQueue();
+        Log.d(TAG, "📁 processMediaQueue() called");
+        
+        if (serviceContainer.getServiceManager().getMediaQueueManager() != null) {
+            if (!serviceContainer.getServiceManager().getMediaQueueManager().isQueueEmpty()) {
+                Log.i(TAG, "📁 WiFi connected - processing media upload queue");
+                serviceContainer.getServiceManager().getMediaQueueManager().processQueue();
+                Log.d(TAG, "✅ Media queue processing initiated");
+            } else {
+                Log.d(TAG, "📁 Media queue is empty - no processing needed");
+            }
+        } else {
+            Log.w(TAG, "⚠️ Media queue manager is null - cannot process queue");
         }
     }
 
     public void sendVersionInfo() {
-        Log.d(TAG, "📊 Sending version information");
+        Log.i(TAG, "📊 Sending version information");
 
         try {
             JSONObject versionInfo = new JSONObject();
             versionInfo.put("type", "version_info");
             versionInfo.put("timestamp", System.currentTimeMillis());
+            
             String appVersion = "1.0.0";
             String buildNumber = "1";
-            Log.d(TAG, "App version: " + appVersion + ", Build number: " + buildNumber);
+            Log.d(TAG, "📋 Default app version: " + appVersion + ", Build number: " + buildNumber);
 
             try {
                 appVersion = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
                 buildNumber = String.valueOf(getPackageManager().getPackageInfo(getPackageName(), 0).versionCode);
+                Log.d(TAG, "✅ Retrieved app version: " + appVersion + ", Build number: " + buildNumber);
             } catch (Exception e) {
-                Log.e(TAG, "Error getting app version", e);
+                Log.e(TAG, "💥 Error getting app version - using defaults", e);
             }
+            
             versionInfo.put("app_version", appVersion);
             versionInfo.put("build_number", buildNumber);
             versionInfo.put("device_model", android.os.Build.MODEL);
             versionInfo.put("android_version", android.os.Build.VERSION.RELEASE);
             versionInfo.put("ota_version_url", OtaConstants.VERSION_JSON_URL);
 
+            Log.d(TAG, "📋 Version info prepared - Device: " + android.os.Build.MODEL + 
+                      ", Android: " + android.os.Build.VERSION.RELEASE + 
+                      ", OTA URL: " + OtaConstants.VERSION_JSON_URL);
+
             if (serviceContainer.getServiceManager().getBluetoothManager() != null &&
                     serviceContainer.getServiceManager().getBluetoothManager().isConnected()) {
+                Log.d(TAG, "📤 Sending version info via Bluetooth");
                 serviceContainer.getServiceManager().getBluetoothManager().sendData(versionInfo.toString().getBytes(StandardCharsets.UTF_8));
-                Log.d(TAG, "✅ Sent version info to phone");
+                Log.i(TAG, "✅ Sent version info to phone successfully");
+            } else {
+                Log.w(TAG, "⚠️ Bluetooth manager not available or not connected - cannot send version info");
             }
         } catch (JSONException e) {
-            Log.e(TAG, "Error creating version info", e);
+            Log.e(TAG, "💥 Error creating version info JSON", e);
+        } catch (Exception e) {
+            Log.e(TAG, "💥 Error sending version info", e);
         }
     }
 
@@ -431,75 +619,91 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     // Media Capture Listeners
     // ---------------------------------------------
     public MediaCaptureService.MediaCaptureListener getMediaCaptureListener() {
+        Log.d(TAG, "📸 Creating media capture listener");
+        
         return new MediaCaptureService.MediaCaptureListener() {
             @Override
             public void onPhotoCapturing(String requestId) {
-                Log.d(TAG, "Photo capturing: " + requestId);
+                Log.i(TAG, "📸 Photo capturing started - ID: " + requestId);
             }
 
             @Override
             public void onPhotoCaptured(String requestId, String filePath) {
-                Log.d(TAG, "Photo captured: " + requestId + " at " + filePath);
+                Log.i(TAG, "✅ Photo captured successfully - ID: " + requestId + ", Path: " + filePath);
             }
 
             @Override
             public void onPhotoUploading(String requestId) {
-                Log.d(TAG, "Photo uploading: " + requestId);
+                Log.i(TAG, "📤 Photo uploading started - ID: " + requestId);
             }
 
             @Override
             public void onPhotoUploaded(String requestId, String url) {
-                Log.d(TAG, "Photo uploaded: " + requestId + " to " + url);
+                Log.i(TAG, "✅ Photo uploaded successfully - ID: " + requestId + ", URL: " + url);
             }
 
             @Override
             public void onVideoRecordingStarted(String requestId, String filePath) {
-                Log.d(TAG, "Video recording started: " + requestId);
+                Log.i(TAG, "🎥 Video recording started - ID: " + requestId + ", Path: " + filePath);
             }
 
             @Override
             public void onVideoRecordingStopped(String requestId, String filePath) {
-                Log.d(TAG, "Video recording stopped: " + requestId);
+                Log.i(TAG, "⏹️ Video recording stopped - ID: " + requestId + ", Path: " + filePath);
             }
 
             @Override
             public void onVideoUploading(String requestId) {
-                Log.d(TAG, "Video uploading: " + requestId);
+                Log.i(TAG, "📤 Video uploading started - ID: " + requestId);
             }
 
             @Override
             public void onVideoUploaded(String requestId, String url) {
-                Log.d(TAG, "Video uploaded: " + requestId + " to " + url);
+                Log.i(TAG, "✅ Video uploaded successfully - ID: " + requestId + ", URL: " + url);
             }
 
             @Override
             public void onMediaError(String requestId, String error, int mediaType) {
-                Log.e(TAG, "Media error: " + requestId + " - " + error);
+                String mediaTypeName = mediaType == MediaUploadQueueManager.MEDIA_TYPE_PHOTO ? "Photo" : "Video";
+                Log.e(TAG, "❌ " + mediaTypeName + " error - ID: " + requestId + ", Error: " + error);
             }
         };
     }
 
     public ServiceCallbackInterface getServiceCallback() {
+        Log.d(TAG, "📡 Creating service callback interface");
+        
         return new ServiceCallbackInterface() {
             @Override
             public void sendThroughBluetooth(byte[] data) {
+                Log.d(TAG, "📤 sendThroughBluetooth() called - Data length: " + (data != null ? data.length : "null"));
+                
                 if (serviceContainer.getServiceManager().getBluetoothManager() != null) {
+                    Log.d(TAG, "📶 Sending data through Bluetooth");
                     serviceContainer.getServiceManager().getBluetoothManager().sendData(data);
+                    Log.d(TAG, "✅ Data sent through Bluetooth successfully");
+                } else {
+                    Log.w(TAG, "⚠️ Bluetooth manager is null - cannot send data");
                 }
             }
 
             @Override
             public boolean sendFileViaBluetooth(String filePath) {
+                Log.d(TAG, "📁 sendFileViaBluetooth() called - File: " + filePath);
+                
                 if (serviceContainer.getServiceManager().getBluetoothManager() != null) {
+                    Log.d(TAG, "📶 Starting BLE file transfer");
                     boolean started = serviceContainer.getServiceManager().getBluetoothManager().sendImageFile(filePath);
                     if (started) {
-                        Log.d(TAG, "BLE file transfer started for: " + filePath);
+                        Log.i(TAG, "✅ BLE file transfer started successfully for: " + filePath);
                     } else {
-                        Log.e(TAG, "Failed to start BLE file transfer for: " + filePath);
+                        Log.e(TAG, "❌ Failed to start BLE file transfer for: " + filePath);
                     }
                     return started;
+                } else {
+                    Log.w(TAG, "⚠️ Bluetooth manager is null - cannot send file");
+                    return false;
                 }
-                return false;
             }
         };
     }
@@ -508,96 +712,162 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     // Broadcast Receiver Registration Methods
     // ---------------------------------------------
     private void registerHeartbeatReceiver() {
-        heartbeatReceiver = new BroadcastReceiver() {
-            @Override
-            public void onReceive(Context context, Intent intent) {
-                String action = intent.getAction();
-                if (ACTION_HEARTBEAT.equals(action) ||
-                        "com.augmentos.otaupdater.ACTION_HEARTBEAT".equals(action)) {
+        Log.d(TAG, "💓 registerHeartbeatReceiver() started");
+        
+        try {
+            heartbeatReceiver = new BroadcastReceiver() {
+                @Override
+                public void onReceive(Context context, Intent intent) {
+                    String action = intent.getAction();
+                    Log.d(TAG, "💓 Heartbeat receiver triggered - Action: " + action);
+                    
+                    if (ACTION_HEARTBEAT.equals(action) ||
+                            "com.augmentos.otaupdater.ACTION_HEARTBEAT".equals(action)) {
 
-                    Log.d(TAG, "💓 Heartbeat received - sending acknowledgment");
+                        Log.i(TAG, "💓 Heartbeat received - sending acknowledgment");
 
-                    Intent ackIntent = new Intent(ACTION_HEARTBEAT_ACK);
-                    ackIntent.setPackage("com.augmentos.otaupdater");
-                    sendBroadcast(ackIntent);
+                        try {
+                            Intent ackIntent = new Intent(ACTION_HEARTBEAT_ACK);
+                            ackIntent.setPackage("com.augmentos.otaupdater");
+                            sendBroadcast(ackIntent);
 
-                    Log.d(TAG, "✅ Heartbeat acknowledgment sent");
+                            Log.i(TAG, "✅ Heartbeat acknowledgment sent successfully");
+                        } catch (Exception e) {
+                            Log.e(TAG, "💥 Error sending heartbeat acknowledgment", e);
+                        }
+                    } else {
+                        Log.d(TAG, "⏭️ Unknown action received: " + action);
+                    }
                 }
-            }
-        };
+            };
 
-        IntentFilter heartbeatFilter = new IntentFilter();
-        heartbeatFilter.addAction(ACTION_HEARTBEAT);
-        heartbeatFilter.addAction(ACTION_OTA_HEARTBEAT);
+            IntentFilter heartbeatFilter = new IntentFilter();
+            heartbeatFilter.addAction(ACTION_HEARTBEAT);
+            heartbeatFilter.addAction(ACTION_OTA_HEARTBEAT);
 
-        registerReceiver(heartbeatReceiver, heartbeatFilter);
-
-        Log.d(TAG, "📡 Heartbeat receiver registered");
+            registerReceiver(heartbeatReceiver, heartbeatFilter);
+            Log.d(TAG, "✅ Heartbeat receiver registered successfully");
+        } catch (Exception e) {
+            Log.e(TAG, "💥 Error registering heartbeat receiver", e);
+        }
     }
 
     private void registerRestartReceiver() {
-        restartReceiver = new BroadcastReceiver() {
-            @Override
-            public void onReceive(Context context, Intent intent) {
-                String action = intent.getAction();
-                if (ACTION_RESTART_SERVICE.equals(action)) {
-                    Log.d(TAG, "Received restart request from OTA updater");
+        Log.d(TAG, "🔄 registerRestartReceiver() started");
+        
+        try {
+            restartReceiver = new BroadcastReceiver() {
+                @Override
+                public void onReceive(Context context, Intent intent) {
+                    String action = intent.getAction();
+                    Log.d(TAG, "🔄 Restart receiver triggered - Action: " + action);
+                    
+                    if (ACTION_RESTART_SERVICE.equals(action)) {
+                        Log.i(TAG, "🔄 Received restart request from OTA updater");
+                    } else {
+                        Log.d(TAG, "⏭️ Unknown action received: " + action);
+                    }
                 }
-            }
-        };
+            };
 
-        IntentFilter restartFilter = new IntentFilter(ACTION_RESTART_SERVICE);
-        registerReceiver(restartReceiver, restartFilter);
+            IntentFilter restartFilter = new IntentFilter(ACTION_RESTART_SERVICE);
+            registerReceiver(restartReceiver, restartFilter);
+            Log.d(TAG, "✅ Restart receiver registered successfully");
+        } catch (Exception e) {
+            Log.e(TAG, "💥 Error registering restart receiver", e);
+        }
     }
 
     private void registerOtaProgressReceiver() {
-        otaProgressReceiver = new BroadcastReceiver() {
-            @Override
-            public void onReceive(Context context, Intent intent) {
-                String action = intent.getAction();
+        Log.d(TAG, "📥 registerOtaProgressReceiver() started");
+        
+        try {
+            otaProgressReceiver = new BroadcastReceiver() {
+                @Override
+                public void onReceive(Context context, Intent intent) {
+                    String action = intent.getAction();
+                    Log.d(TAG, "📥 OTA progress receiver triggered - Action: " + action);
 
-                switch (Objects.requireNonNull(action)) {
-                    case ACTION_DOWNLOAD_PROGRESS:
-                        handleDownloadProgress(intent);
-                        break;
-                    case ACTION_INSTALLATION_PROGRESS:
-                        handleInstallationProgress(intent);
-                        break;
+                    switch (Objects.requireNonNull(action)) {
+                        case ACTION_DOWNLOAD_PROGRESS:
+                            Log.d(TAG, "📥 Handling download progress");
+                            handleDownloadProgress(intent);
+                            break;
+                        case ACTION_INSTALLATION_PROGRESS:
+                            Log.d(TAG, "🔧 Handling installation progress");
+                            handleInstallationProgress(intent);
+                            break;
+                        default:
+                            Log.d(TAG, "⏭️ Unknown OTA action: " + action);
+                            break;
+                    }
                 }
-            }
-        };
+            };
 
-        IntentFilter otaFilter = new IntentFilter();
-        otaFilter.addAction(ACTION_DOWNLOAD_PROGRESS);
-        otaFilter.addAction(ACTION_INSTALLATION_PROGRESS);
-        registerReceiver(otaProgressReceiver, otaFilter);
+            IntentFilter otaFilter = new IntentFilter();
+            otaFilter.addAction(ACTION_DOWNLOAD_PROGRESS);
+            otaFilter.addAction(ACTION_INSTALLATION_PROGRESS);
+            registerReceiver(otaProgressReceiver, otaFilter);
+            Log.d(TAG, "✅ OTA progress receiver registered successfully");
+        } catch (Exception e) {
+            Log.e(TAG, "💥 Error registering OTA progress receiver", e);
+        }
     }
 
     private void handleDownloadProgress(Intent intent) {
-        String status = intent.getStringExtra("status");
-        int progress = intent.getIntExtra("progress", 0);
-        long bytesDownloaded = intent.getLongExtra("bytes_downloaded", 0);
-        long totalBytes = intent.getLongExtra("total_bytes", 0);
-        String errorMessage = intent.getStringExtra("error_message");
-        long timestamp = intent.getLongExtra("timestamp", System.currentTimeMillis());
+        Log.d(TAG, "📥 handleDownloadProgress() started");
+        
+        try {
+            String status = intent.getStringExtra("status");
+            int progress = intent.getIntExtra("progress", 0);
+            long bytesDownloaded = intent.getLongExtra("bytes_downloaded", 0);
+            long totalBytes = intent.getLongExtra("total_bytes", 0);
+            String errorMessage = intent.getStringExtra("error_message");
+            long timestamp = intent.getLongExtra("timestamp", System.currentTimeMillis());
 
-        Log.d(TAG, "📥 Handling download progress: " + status + " - " + progress + "%");
+            Log.i(TAG, "📥 Download progress: " + status + " - " + progress + "% (" + 
+                      bytesDownloaded + "/" + totalBytes + " bytes)");
+            
+            if (errorMessage != null) {
+                Log.w(TAG, "⚠️ Download error: " + errorMessage);
+            }
 
-        if (commandProcessor != null) {
-            commandProcessor.sendDownloadProgressOverBle(status, progress, bytesDownloaded, totalBytes, errorMessage, timestamp);
+            if (commandProcessor != null) {
+                Log.d(TAG, "📤 Sending download progress to command processor");
+                commandProcessor.sendDownloadProgressOverBle(status, progress, bytesDownloaded, totalBytes, errorMessage, timestamp);
+                Log.d(TAG, "✅ Download progress sent successfully");
+            } else {
+                Log.w(TAG, "⚠️ Command processor is null - cannot send download progress");
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "💥 Error handling download progress", e);
         }
     }
 
     private void handleInstallationProgress(Intent intent) {
-        String status = intent.getStringExtra("status");
-        String apkPath = intent.getStringExtra("apk_path");
-        String errorMessage = intent.getStringExtra("error_message");
-        long timestamp = intent.getLongExtra("timestamp", System.currentTimeMillis());
+        Log.d(TAG, "🔧 handleInstallationProgress() started");
+        
+        try {
+            String status = intent.getStringExtra("status");
+            String apkPath = intent.getStringExtra("apk_path");
+            String errorMessage = intent.getStringExtra("error_message");
+            long timestamp = intent.getLongExtra("timestamp", System.currentTimeMillis());
 
-        Log.d(TAG, "🔧 Handling installation progress: " + status + " - " + apkPath);
+            Log.i(TAG, "🔧 Installation progress: " + status + " - " + apkPath);
+            
+            if (errorMessage != null) {
+                Log.w(TAG, "⚠️ Installation error: " + errorMessage);
+            }
 
-        if (commandProcessor != null) {
-            commandProcessor.sendInstallationProgressOverBle(status, apkPath, errorMessage, timestamp);
+            if (commandProcessor != null) {
+                Log.d(TAG, "📤 Sending installation progress to command processor");
+                commandProcessor.sendInstallationProgressOverBle(status, apkPath, errorMessage, timestamp);
+                Log.d(TAG, "✅ Installation progress sent successfully");
+            } else {
+                Log.w(TAG, "⚠️ Command processor is null - cannot send installation progress");
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "💥 Error handling installation progress", e);
         }
     }
 
@@ -606,13 +876,17 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     // ---------------------------------------------
     @Subscribe(threadMode = ThreadMode.MAIN)
     public void onStreamingEvent(StreamingEvent event) {
+        Log.d(TAG, "📹 Streaming event received: " + event.getClass().getSimpleName());
+        
         if (event instanceof StreamingEvent.Started) {
-            Log.d(TAG, "RTMP streaming started successfully");
+            Log.i(TAG, "✅ RTMP streaming started successfully");
         } else if (event instanceof StreamingEvent.Stopped) {
-            Log.d(TAG, "RTMP streaming stopped");
+            Log.i(TAG, "⏹️ RTMP streaming stopped");
         } else if (event instanceof StreamingEvent.Error) {
-            Log.e(TAG, "RTMP streaming error: " +
+            Log.e(TAG, "❌ RTMP streaming error: " +
                     ((StreamingEvent.Error) event).getMessage());
+        } else {
+            Log.d(TAG, "📹 Unknown streaming event type: " + event.getClass().getSimpleName());
         }
     }
 
@@ -621,6 +895,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     // ---------------------------------------------
     public class LocalBinder extends Binder {
         public AsgClientService getService() {
+            Log.d(TAG, "🔗 LocalBinder.getService() called");
             return AsgClientService.this;
         }
     }
@@ -629,14 +904,20 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     // Utility Methods
     // ---------------------------------------------
     public static void openWifi(Context context, boolean bEnable) {
+        Log.d(TAG, "🌐 openWifi() called - Enable: " + bEnable);
+        
         try {
             if (bEnable) {
+                Log.d(TAG, "📶 Enabling WiFi via ADB command");
                 SysControl.injectAdbCommand(context, "svc wifi enable");
+                Log.d(TAG, "✅ WiFi enable command executed");
             } else {
+                Log.d(TAG, "📶 Disabling WiFi via ADB command");
                 SysControl.injectAdbCommand(context, "svc wifi disable");
+                Log.d(TAG, "✅ WiFi disable command executed");
             }
         } catch (Exception e) {
-            Log.e(TAG, "Error opening WiFi settings", e);
+            Log.e(TAG, "💥 Error executing WiFi command", e);
         }
     }
 } 

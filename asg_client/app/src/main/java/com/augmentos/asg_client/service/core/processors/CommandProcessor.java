@@ -66,6 +66,7 @@ public class CommandProcessor {
                             IConfigurationManager configurationManager,
                             AsgClientServiceManager serviceManager,
                             FileManager fileManager) {
+        Log.d(TAG, "🔧 Initializing CommandProcessor with dependencies");
         this.context = context;
         this.communicationManager = communicationManager;
         this.stateManager = stateManager;
@@ -76,6 +77,7 @@ public class CommandProcessor {
         this.fileManager = fileManager;
 
         // Initialize components (Single Responsibility Principle)
+        Log.d(TAG, "📦 Creating command processing components");
         this.commandHandlerRegistry = new CommandHandlerRegistry();
         this.commandParser = new CommandParser();
         this.protocolDetector = new CommandProtocolDetector();
@@ -85,6 +87,7 @@ public class CommandProcessor {
 
         // Register command handlers
         initializeCommandHandlers();
+        Log.i(TAG, "✅ CommandProcessor initialization completed successfully");
     }
 
     /**
@@ -92,24 +95,30 @@ public class CommandProcessor {
      * Follows Single Responsibility Principle by delegating to specialized components.
      */
     public void processCommand(byte[] data) {
+        Log.d(TAG, "🚀 processCommand() called with data length: " + (data != null ? data.length : "null"));
+        
         if (data == null || data.length == 0) {
-            Log.w(TAG, "Received null or empty data");
+            Log.w(TAG, "⚠️ Received null or empty data - skipping processing");
             return;
         }
 
         try {
+            Log.d(TAG, "📝 Parsing JSON from byte data");
             // Parse JSON from byte data
             JSONObject jsonObject = commandParser.parseToJson(data);
             if (jsonObject == null) {
-                Log.w(TAG, "Failed to parse JSON from byte data");
+                Log.w(TAG, "❌ Failed to parse JSON from byte data");
                 return;
             }
 
+            Log.d(TAG, "📋 Successfully parsed JSON: " + jsonObject.toString());
             // Process the parsed JSON command
             processJsonCommand(jsonObject);
         } catch (Exception e) {
-            Log.e(TAG, "Error processing command from byte data", e);
+            Log.e(TAG, "💥 Error processing command from byte data", e);
         }
+        
+        Log.d(TAG, "🏁 processCommand() completed");
     }
 
     /**
@@ -117,12 +126,20 @@ public class CommandProcessor {
      * Follows Open/Closed Principle by using registry pattern.
      */
     private void processJsonCommand(JSONObject json) {
+        Log.d(TAG, "🔄 processJsonCommand() started");
+        
         try {
             // Extract command data
+            Log.d(TAG, "🔍 Extracting command data from JSON");
             CommandData commandData = extractCommandData(json);
             if (commandData == null) {
+                Log.w(TAG, "⚠️ No command data extracted - processing complete");
                 return;
             }
+
+            Log.d(TAG, "📊 Command data extracted - Type: " + commandData.type() + 
+                      ", MessageID: " + commandData.messageId() + 
+                      ", Data: " + commandData.data());
 
             // Send acknowledgment if required
             sendAcknowledgment(commandData);
@@ -130,44 +147,57 @@ public class CommandProcessor {
             // Route to appropriate handler
             routeCommand(commandData);
         } catch (Exception e) {
-            Log.e(TAG, "Error processing JSON command", e);
+            Log.e(TAG, "💥 Error processing JSON command", e);
         }
+        
+        Log.d(TAG, "🏁 processJsonCommand() completed");
     }
 
     /**
      * Extract and validate command data from JSON using improved protocol detector.
      */
     private CommandData extractCommandData(JSONObject json) {
+        Log.d(TAG, "🔍 extractCommandData() started");
+        
         try {
             // Use protocol detector to identify and extract command data
+            Log.d(TAG, "🔬 Detecting protocol type");
             CommandProtocolDetector.ProtocolDetectionResult result = protocolDetector.detectProtocol(json);
             
+            Log.d(TAG, "📊 Protocol detection result - Type: " + result.protocolType().getDisplayName() + 
+                      ", Valid: " + result.isValid());
+            
             if (!result.isValid()) {
-                Log.w(TAG, "Invalid protocol detected: " + result.protocolType().getDisplayName());
+                Log.w(TAG, "❌ Invalid protocol detected: " + result.protocolType().getDisplayName());
                 return null;
             }
             
             switch (result.protocolType()) {
                 case K900_PROTOCOL:
+                    Log.i(TAG, "🎯 Processing K900 protocol command");
                     // Handle K900 format using dedicated handler
                     k900CommandHandler.processK900Command(json);
+                    Log.d(TAG, "✅ K900 command processed successfully");
                     return null; // K900 commands are handled directly
                     
                 case JSON_COMMAND:
+                    Log.i(TAG, "📋 Processing standard JSON command");
                     // Standard JSON command processing
-                    return new CommandData(
+                    CommandData commandData = new CommandData(
                         result.commandType(),
                         result.extractedData(),
                         result.messageId()
                     );
+                    Log.d(TAG, "✅ Command data created successfully: " + commandData.type());
+                    return commandData;
                     
                 case UNKNOWN:
                 default:
-                    Log.w(TAG, "Unknown protocol type: " + result.protocolType().getDisplayName());
+                    Log.w(TAG, "❓ Unknown protocol type: " + result.protocolType().getDisplayName());
                     return null;
             }
         } catch (Exception e) {
-            Log.e(TAG, "Error extracting command data", e);
+            Log.e(TAG, "💥 Error extracting command data", e);
             return null;
         }
     }
@@ -176,9 +206,14 @@ public class CommandProcessor {
      * Send acknowledgment for commands with message IDs.
      */
     private void sendAcknowledgment(CommandData commandData) {
+        Log.d(TAG, "📤 sendAcknowledgment() called");
+        
         if (commandData != null && commandData.messageId() != -1) {
+            Log.d(TAG, "📨 Sending ACK for message ID: " + commandData.messageId());
             communicationManager.sendAckResponse(commandData.messageId());
-            Log.d(TAG, "📤 Sent ACK for message ID: " + commandData.messageId());
+            Log.d(TAG, "✅ ACK sent successfully for message ID: " + commandData.messageId());
+        } else {
+            Log.d(TAG, "⏭️ Skipping ACK - no message ID or null command data");
         }
     }
 
@@ -187,25 +222,34 @@ public class CommandProcessor {
      * Follows Open/Closed Principle - new handlers can be added without modifying this method.
      */
     private void routeCommand(CommandData commandData) {
+        Log.d(TAG, "🛣️ routeCommand() started");
+        
         if (commandData == null) {
+            Log.d(TAG, "⏭️ Skipping routing - null command data (likely K900 command)");
             return; // K900 commands are handled separately in extractCommandData
         }
         
         String type = commandData.type();
-        Log.d(TAG, "Processing command type: " + type);
+        Log.i(TAG, "🎯 Routing command type: " + type);
 
         // Try modern command handler first
+        Log.d(TAG, "🔍 Looking up handler for command type: " + type);
         ICommandHandler handler = commandHandlerRegistry.getHandler(type);
         if (handler != null) {
+            Log.d(TAG, "✅ Found modern handler: " + handler.getClass().getSimpleName());
             boolean success = handler.handleCommand(commandData.data());
-            if (!success) {
-                Log.w(TAG, "Handler failed to process command: " + type);
+            if (success) {
+                Log.i(TAG, "✅ Command handled successfully by modern handler: " + type);
+            } else {
+                Log.w(TAG, "⚠️ Modern handler failed to process command: " + type);
             }
             return;
         }
 
         // Fall back to legacy processor
+        Log.d(TAG, "🔄 No modern handler found, falling back to legacy processor");
         legacyProcessor.handleLegacyCommand(type, commandData.data());
+        Log.d(TAG, "🏁 Command routed to legacy processor: " + type);
     }
 
     /**
@@ -213,19 +257,49 @@ public class CommandProcessor {
      * New handlers can be added here without modifying existing code.
      */
     private void initializeCommandHandlers() {
-        commandHandlerRegistry.registerHandler(new PhoneReadyCommandHandler(communicationManager, stateManager, responseBuilder));
-        commandHandlerRegistry.registerHandler(new AuthTokenCommandHandler(communicationManager, configurationManager));
-        commandHandlerRegistry.registerHandler(new PhotoCommandHandler(context, serviceManager, fileManager));
-        commandHandlerRegistry.registerHandler(new VideoCommandHandler(context, serviceManager, streamingManager, fileManager));
-        commandHandlerRegistry.registerHandler(new PingCommandHandler(communicationManager, responseBuilder));
-        commandHandlerRegistry.registerHandler(new RtmpCommandHandler(context, stateManager, streamingManager));
-        commandHandlerRegistry.registerHandler(new WifiCommandHandler(serviceManager, communicationManager, stateManager));
-        commandHandlerRegistry.registerHandler(new BatteryCommandHandler(stateManager));
-        commandHandlerRegistry.registerHandler(new VersionCommandHandler(context, serviceManager));
-        commandHandlerRegistry.registerHandler(new SettingsCommandHandler(serviceManager, communicationManager, responseBuilder));
-        commandHandlerRegistry.registerHandler(new OtaCommandHandler());
+        Log.d(TAG, "🔧 initializeCommandHandlers() started");
+        
+        try {
+            Log.d(TAG, "📝 Registering command handlers...");
+            
+            commandHandlerRegistry.registerHandler(new PhoneReadyCommandHandler(communicationManager, stateManager, responseBuilder));
+            Log.d(TAG, "✅ Registered PhoneReadyCommandHandler");
+            
+            commandHandlerRegistry.registerHandler(new AuthTokenCommandHandler(communicationManager, configurationManager));
+            Log.d(TAG, "✅ Registered AuthTokenCommandHandler");
+            
+            commandHandlerRegistry.registerHandler(new PhotoCommandHandler(context, serviceManager, fileManager));
+            Log.d(TAG, "✅ Registered PhotoCommandHandler");
+            
+            commandHandlerRegistry.registerHandler(new VideoCommandHandler(context, serviceManager, streamingManager, fileManager));
+            Log.d(TAG, "✅ Registered VideoCommandHandler");
+            
+            commandHandlerRegistry.registerHandler(new PingCommandHandler(communicationManager, responseBuilder));
+            Log.d(TAG, "✅ Registered PingCommandHandler");
+            
+            commandHandlerRegistry.registerHandler(new RtmpCommandHandler(context, stateManager, streamingManager));
+            Log.d(TAG, "✅ Registered RtmpCommandHandler");
+            
+            commandHandlerRegistry.registerHandler(new WifiCommandHandler(serviceManager, communicationManager, stateManager));
+            Log.d(TAG, "✅ Registered WifiCommandHandler");
+            
+            commandHandlerRegistry.registerHandler(new BatteryCommandHandler(stateManager));
+            Log.d(TAG, "✅ Registered BatteryCommandHandler");
+            
+            commandHandlerRegistry.registerHandler(new VersionCommandHandler(context, serviceManager));
+            Log.d(TAG, "✅ Registered VersionCommandHandler");
+            
+            commandHandlerRegistry.registerHandler(new SettingsCommandHandler(serviceManager, communicationManager, responseBuilder));
+            Log.d(TAG, "✅ Registered SettingsCommandHandler");
+            
+            commandHandlerRegistry.registerHandler(new OtaCommandHandler());
+            Log.d(TAG, "✅ Registered OtaCommandHandler");
 
-        Log.d(TAG, "✅ Registered " + commandHandlerRegistry.getHandlerCount() + " command handlers");
+            Log.i(TAG, "✅ Successfully registered " + commandHandlerRegistry.getHandlerCount() + " command handlers");
+            
+        } catch (Exception e) {
+            Log.e(TAG, "💥 Error during command handler initialization", e);
+        }
     }
 
 
@@ -238,21 +312,45 @@ public class CommandProcessor {
      * Send download progress notification.
      */
     public void sendDownloadProgressOverBle(String status, int progress, long bytesDownloaded, long totalBytes, String errorMessage, long timestamp) {
-        responseSender.sendDownloadProgress(status, progress, bytesDownloaded, totalBytes, errorMessage, timestamp);
+        Log.d(TAG, "📤 sendDownloadProgressOverBle() called - Status: " + status + 
+                  ", Progress: " + progress + "%, Downloaded: " + bytesDownloaded + 
+                  "/" + totalBytes + " bytes");
+        
+        try {
+            responseSender.sendDownloadProgress(status, progress, bytesDownloaded, totalBytes, errorMessage, timestamp);
+            Log.d(TAG, "✅ Download progress sent successfully");
+        } catch (Exception e) {
+            Log.e(TAG, "💥 Error sending download progress", e);
+        }
     }
 
     /**
      * Send installation progress notification.
      */
     public void sendInstallationProgressOverBle(String status, String apkPath, String errorMessage, long timestamp) {
-        responseSender.sendInstallationProgress(status, apkPath, errorMessage, timestamp);
+        Log.d(TAG, "📤 sendInstallationProgressOverBle() called - Status: " + status + 
+                  ", APK Path: " + apkPath + ", Error: " + errorMessage);
+        
+        try {
+            responseSender.sendInstallationProgress(status, apkPath, errorMessage, timestamp);
+            Log.d(TAG, "✅ Installation progress sent successfully");
+        } catch (Exception e) {
+            Log.e(TAG, "💥 Error sending installation progress", e);
+        }
     }
 
     /**
      * Send report swipe status.
      */
     public void sendReportSwipe(boolean report) {
-        responseSender.sendReportSwipe(report);
+        Log.d(TAG, "📤 sendReportSwipe() called - Report: " + report);
+        
+        try {
+            responseSender.sendReportSwipe(report);
+            Log.d(TAG, "✅ Report swipe status sent successfully");
+        } catch (Exception e) {
+            Log.e(TAG, "💥 Error sending report swipe status", e);
+        }
     }
 
 } 

@@ -57,11 +57,10 @@ public class DefaultServerFactory {
     /**
      * Create a camera web server with default implementations
      */
-    public static AsgCameraServer createCameraWebServer(int port, String serverName, Context context, Logger logger) {
+    public static AsgCameraServer createCameraWebServer(int port, String serverName, Context context, Logger logger,  FileManager fileManager) {
         ServerConfig config = createServerConfig(port, serverName, context);
         NetworkProvider networkProvider = createNetworkProvider(logger);
         CacheManager cacheManager = createCacheManager(logger);
-        FileManager fileManager = FileManagerFactory.getInstance();
         RateLimiter rateLimiter = createRateLimiter(100, 60000, logger); // 100 requests per minute
 
         return new AsgCameraServer(config, networkProvider, cacheManager, rateLimiter, logger, fileManager);
@@ -71,12 +70,12 @@ public class DefaultServerFactory {
      * Create a camera web server with custom rate limiting
      */
     public static AsgCameraServer createCameraWebServer(int port, String serverName, Context context,
-                                                        int maxRequests, long timeWindow, Logger logger) {
+                                                        int maxRequests, long timeWindow, Logger logger, FileManager fileManager) {
         ServerConfig config = createServerConfig(port, serverName, context);
         NetworkProvider networkProvider = createNetworkProvider(logger);
         CacheManager cacheManager = createCacheManager(logger);
         RateLimiter rateLimiter = createRateLimiter(maxRequests, timeWindow, logger);
-        FileManager fileManager = FileManagerFactory.getInstance();
+
         return new AsgCameraServer(config, networkProvider, cacheManager, rateLimiter, logger, fileManager);
     }
 } 

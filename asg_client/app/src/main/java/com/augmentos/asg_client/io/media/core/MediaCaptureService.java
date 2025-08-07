@@ -6,6 +6,8 @@ import android.util.Log;
 import androidx.annotation.NonNull;
 import androidx.preference.PreferenceManager;
 
+import com.augmentos.asg_client.io.file.core.FileManager;
+import com.augmentos.asg_client.io.file.core.FileManagerFactory;
 import com.augmentos.augmentos_core.utils.ServerConfigUtil;
 import com.augmentos.asg_client.io.media.upload.MediaUploadService;
 import com.augmentos.asg_client.io.media.managers.MediaUploadQueueManager;
@@ -69,6 +71,7 @@ public class MediaCaptureService {
     
     // Track original photo paths for BLE fallback
     private Map<String, String> photoOriginalPaths = new HashMap<>();
+    private final FileManager fileManager;
 
     /**
      * Interface for listening to media capture and upload events
@@ -102,9 +105,10 @@ public class MediaCaptureService {
      * @param context           Application context
      * @param mediaQueueManager MediaUploadQueueManager instance
      */
-    public MediaCaptureService(@NonNull Context context, @NonNull MediaUploadQueueManager mediaQueueManager) {
+    public MediaCaptureService(@NonNull Context context, @NonNull MediaUploadQueueManager mediaQueueManager, FileManager fileManager) {
         mContext = context.getApplicationContext();
         mMediaQueueManager = mediaQueueManager;
+        this.fileManager = fileManager;
     }
 
     /**
@@ -204,7 +208,7 @@ public class MediaCaptureService {
 
                             // Take photo and upload directly to server
                             String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
-                            String photoFilePath = mContext.getExternalFilesDir(null) + File.separator + "IMG_" + timeStamp + ".jpg";
+                            String photoFilePath = fileManager.getDefaultMediaDirectory() + File.separator + "IMG_" + timeStamp + ".jpg";
                             takePhotoAndUpload(photoFilePath, requestId, null, save);
                         } else {
                             Log.d(TAG, "Button press handled by server, no photo needed");
@@ -312,7 +316,7 @@ public class MediaCaptureService {
 
                             // Generate filename with requestId
                             String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
-                            String videoFilePath = mContext.getExternalFilesDir(null) + File.separator + "VID_" + timeStamp + "_" + requestId + ".mp4";
+                            String videoFilePath = fileManager.getDefaultMediaDirectory() + File.separator + "VID_" + timeStamp + "_" + requestId + ".mp4";
 
                             // Start video recording with server-provided requestId
                             startVideoRecording(videoFilePath, requestId);
@@ -341,7 +345,7 @@ public class MediaCaptureService {
         // Generate IDs for local recording
         String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
         String requestId = "local_video_" + timeStamp;
-        String videoFilePath = mContext.getExternalFilesDir(null) + File.separator + "VID_" + timeStamp + ".mp4";
+        String videoFilePath = fileManager.getDefaultMediaDirectory() + File.separator + "VID_" + timeStamp + ".mp4";
 
         startVideoRecording(videoFilePath, requestId);
     }
@@ -488,7 +492,12 @@ public class MediaCaptureService {
         }
 
         String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
-        String photoFilePath = mContext.getExternalFilesDir(null) + File.separator + "IMG_" + timeStamp + ".jpg";
+
+
+
+        String photoFilePath = fileManager.getDefaultMediaDirectory() + File.separator + "IMG_" + timeStamp + ".jpg";
+
+        Log.d(TAG, "Taking photo locally at: " + photoFilePath);
 
         // Generate a temporary requestId
         String requestId = "local_" + timeStamp;
@@ -875,7 +884,7 @@ public class MediaCaptureService {
             }
 
             // Get this class's directory
-            String classDirectory = mContext.getExternalFilesDir(null) + File.separator + "MediaCaptureService";
+            String classDirectory = fileManager.getDefaultMediaDirectory() + File.separator + "MediaCaptureService";
             File directory = new File(classDirectory);
             if (!directory.exists()) {
                 directory.mkdirs();
@@ -1080,7 +1089,7 @@ public class MediaCaptureService {
                 
                 // 5. Save compressed data to temporary file with bleImgId as name
                 // For BLE, we ALWAYS use AVIF (no extension in filename due to 16-char limit)
-                String compressedPath = mContext.getExternalFilesDir(null) + "/" + bleImgId;
+                String compressedPath = fileManager.getDefaultMediaDirectory() + "/" + bleImgId;
                 try (java.io.FileOutputStream fos = new java.io.FileOutputStream(compressedPath)) {
                     fos.write(compressedData);
                 }

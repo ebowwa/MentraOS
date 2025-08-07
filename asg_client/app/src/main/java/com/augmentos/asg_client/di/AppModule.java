@@ -10,9 +10,4 @@ public class AppModule {
     public static void initialize(Context context) {
         FileManagerFactory.initialize(context);
     }
-
-    public static FileManager providesFileManager() {
-
-        return FileManagerFactory.getInstance();
-    }
 }

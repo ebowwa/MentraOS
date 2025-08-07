@@ -3,6 +3,7 @@ package com.augmentos.asg_client.service.core;
 import android.content.Context;
 import android.util.Log;
 
+import com.augmentos.asg_client.di.AppModule;
 import com.augmentos.asg_client.io.file.core.FileManager;
 import com.augmentos.asg_client.io.file.core.FileManagerFactory;
 import com.augmentos.asg_client.service.communication.interfaces.ICommunicationManager;
@@ -46,11 +47,13 @@ public class ServiceContainer {
     public ServiceContainer(Context context, AsgClientService service) {
         this.context = context;
 
+        this.fileManager = FileManagerFactory.getInstance();
+
         // Initialize interface implementations first
         this.communicationManager = new CommunicationManager(null); // Will be updated after serviceManager creation
 
         // Initialize core components with service reference
-        this.serviceManager = new AsgClientServiceManager(context, service, communicationManager);
+        this.serviceManager = new AsgClientServiceManager(context, service, communicationManager, fileManager);
         this.notificationManager = new AsgNotificationManager(context);
 
         // Update communication manager with service manager reference
@@ -58,7 +61,6 @@ public class ServiceContainer {
         this.configurationManager = new ConfigurationManager(context);
         this.stateManager = new StateManager(serviceManager);
         this.streamingManager = new StreamingManager(context, serviceManager);
-        this.fileManager = FileManagerFactory.getInstance();
 
 
         // Initialize CommandProcessor with interface-based managers

@@ -1,10 +1,12 @@
 package com.augmentos.asg_client.io.file.core;
 
 import android.content.Context;
+
 import com.augmentos.asg_client.logging.Logger;
 import com.augmentos.asg_client.io.file.platform.AndroidPlatformStrategy;
 import com.augmentos.asg_client.io.file.platform.PlatformRegistry;
 import com.augmentos.asg_client.io.file.platform.PlatformStrategy;
+
 import java.io.File;
 
 /**
@@ -12,15 +14,15 @@ import java.io.File;
  * Follows Dependency Inversion Principle by depending on abstractions.
  */
 public class FileManagerFactory {
-    
+
     private static final String TAG = "FileManagerFactory";
-    
+
     // Singleton instance
     private static FileManager instance;
-    
+
     // Platform configuration
     private static PlatformConfig platformConfig;
-    
+
     /**
      * Platform configuration holder
      */
@@ -28,32 +30,41 @@ public class FileManagerFactory {
         private final File baseDirectory;
         private final Logger logger;
         private final String platformName;
-        
+
         public PlatformConfig(File baseDirectory, Logger logger, String platformName) {
             this.baseDirectory = baseDirectory;
             this.logger = logger;
             this.platformName = platformName;
         }
-        
-        public File getBaseDirectory() { return baseDirectory; }
-        public Logger getLogger() { return logger; }
-        public String getPlatformName() { return platformName; }
+
+        public File getBaseDirectory() {
+            return baseDirectory;
+        }
+
+        public Logger getLogger() {
+            return logger;
+        }
+
+        public String getPlatformName() {
+            return platformName;
+        }
     }
-    
+
     /**
      * Initialize with Android context (convenience method)
+     *
      * @param context The Android application context
      */
     public static void initialize(Context context) {
         if (context == null) {
             throw new IllegalArgumentException("Context cannot be null");
         }
-        
+
         AndroidPlatformStrategy strategy = new AndroidPlatformStrategy(context);
         PlatformConfig config = new PlatformConfig(
-            strategy.getBaseDirectory(),
-            strategy.createLogger(),
-            strategy.getPlatformName()
+                strategy.getBaseDirectory(),
+                strategy.createLogger(),
+                strategy.getPlatformName()
         );
 
         platformConfig = config;
@@ -62,16 +73,16 @@ public class FileManagerFactory {
                         " with base directory: " + config.getBaseDirectory().getAbsolutePath());
     }
 
-    
+
     /**
      * Auto-detect platform and initialize
      */
     public static void initialize() {
         PlatformStrategy strategy = PlatformRegistry.detectPlatform();
         PlatformConfig config = new PlatformConfig(
-            strategy.getBaseDirectory(),
-            strategy.createLogger(),
-            strategy.getPlatformName()
+                strategy.getBaseDirectory(),
+                strategy.createLogger(),
+                strategy.getPlatformName()
         );
 
         platformConfig = config;
@@ -79,9 +90,10 @@ public class FileManagerFactory {
                 "FileManagerFactory initialized for platform: " + config.getPlatformName() +
                         " with base directory: " + config.getBaseDirectory().getAbsolutePath());
     }
-    
+
     /**
      * Get the singleton FileManager instance
+     *
      * @return FileManager instance
      * @throws IllegalStateException if not initialized
      */
@@ -89,7 +101,7 @@ public class FileManagerFactory {
         if (platformConfig == null) {
             throw new IllegalStateException("FileManagerFactory not initialized. Call initialize() first.");
         }
-        
+
         if (instance == null) {
             synchronized (FileManagerFactory.class) {
                 if (instance == null) {
@@ -98,22 +110,23 @@ public class FileManagerFactory {
                 }
             }
         }
-        
+
         return instance;
     }
-    
+
     /**
      * Create a platform-specific FileManager instance
+     *
      * @return FileManager instance for the current platform
      */
     private static FileManager createPlatformSpecificManager() {
         if (platformConfig == null) {
             throw new IllegalStateException("Platform not configured");
         }
-        
+
         return new FileManagerImpl(platformConfig.getBaseDirectory(), platformConfig.getLogger());
     }
-    
+
 //    /**
 //     * Create a new FileManager instance with custom configuration
 //     * @param config The platform configuration
@@ -127,8 +140,10 @@ public class FileManagerFactory {
 //        return new FileManagerImpl(config.getBaseDirectory(), config.getLogger());
 //    }
 //
+
     /**
      * Create a new FileManager instance for Android
+     *
      * @param context The Android context
      * @return New FileManager instance
      */
@@ -143,8 +158,9 @@ public class FileManagerFactory {
 
     /**
      * Create a new FileManager instance with custom settings
+     *
      * @param baseDirectory The base directory for files
-     * @param logger The logger to use
+     * @param logger        The logger to use
      * @return New FileManager instance
      */
     public static FileManager createInstance(File baseDirectory, Logger logger) {
@@ -169,25 +185,28 @@ public class FileManagerFactory {
             }
         }
     }
-    
+
     /**
      * Check if the factory is initialized
+     *
      * @return true if initialized, false otherwise
      */
     public static boolean isInitialized() {
         return platformConfig != null;
     }
-    
+
     /**
      * Get the current platform configuration
+     *
      * @return PlatformConfig or null if not initialized
      */
     public static PlatformConfig getPlatformConfig() {
         return platformConfig;
     }
-    
+
     /**
      * Get the current platform name
+     *
      * @return Platform name or null if not initialized
      */
     public static String getPlatformName() {

@@ -263,7 +263,10 @@ public class CameraNeo extends LifecycleService {
             switch (action) {
                 case ACTION_TAKE_PHOTO:
                     String photoFilePath = intent.getStringExtra(EXTRA_PHOTO_FILE_PATH);
+                    Log.d(TAG, "Photo file path: " + photoFilePath);
+
                     if (photoFilePath == null || photoFilePath.isEmpty()) {
+                        Log.d(TAG, "Photo file path is empty, using default");
                         String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
                         photoFilePath = getExternalFilesDir(null) + File.separator + "IMG_" + timeStamp + ".jpg";
                     }

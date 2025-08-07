@@ -135,7 +135,7 @@ public class CommandProtocolDetector {
      */
     public void addDetectionStrategy(ProtocolDetectionStrategy strategy) {
         if (strategy != null) {
-            detectionStrategies.add(0, strategy); // Add at beginning for priority
+            detectionStrategies.add(0, strategy); // Add at beginning for priority`
             Log.d(TAG, "➕ Added new protocol detection strategy: " + strategy.getProtocolType().getDisplayName());
         }
     }

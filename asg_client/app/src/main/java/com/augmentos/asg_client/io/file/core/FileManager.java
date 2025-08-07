@@ -6,8 +6,6 @@ import com.augmentos.asg_client.io.file.interfaces.PackageOperations;
 import com.augmentos.asg_client.io.file.interfaces.StorageOperations;
 import com.augmentos.asg_client.io.file.utils.FileOperationLogger;
 import java.io.File;
-import java.io.InputStream;
-import java.util.List;
 
 /**
  * FileManager interface following SOLID principles.
@@ -19,7 +17,9 @@ import java.util.List;
  * Dependency Inversion: Depends on abstractions
  */
 public interface FileManager extends FileOperations, FileMetadataOperations, PackageOperations, StorageOperations {
-    
+
+
+
     /**
      * File operation result containing success status and metadata
      */
@@ -97,4 +97,5 @@ public interface FileManager extends FileOperations, FileMetadataOperations, Pac
      * @return Default package name
      */
     String getDefaultPackageName();
+    File getDefaultMediaDirectory();
 } 

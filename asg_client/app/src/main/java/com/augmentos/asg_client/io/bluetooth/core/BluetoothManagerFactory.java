@@ -47,7 +47,7 @@ public class BluetoothManagerFactory {
      * @param context The application context
      * @return true if the device is a K900, false otherwise
      */
-    private static boolean isK900Device(Context context) {
+    public static boolean isK900Device(Context context) {
         // This method should be in sync with NetworkManagerFactory's implementation
         // Check for K900-specific broadcast receivers
         try {
