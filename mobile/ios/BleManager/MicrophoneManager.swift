@@ -22,7 +22,6 @@ class OnboardMicrophoneManager {
 
     /// Publisher for voice data
     private let voiceDataSubject = PassthroughSubject<Data, Never>()
-    private var audioPlayer: AVAudioPlayer?
 
     private var micCallback: MicCallback?
 
@@ -336,6 +335,7 @@ class OnboardMicrophoneManager {
 
         guard let converter = converter else {
             CoreCommsService.log("MIC: converter is nil")
+            audioEngine = nil
             return false
         }
 
