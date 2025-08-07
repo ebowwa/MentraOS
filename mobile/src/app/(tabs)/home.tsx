@@ -21,6 +21,7 @@ import {ConnectDeviceButton, ConnectedGlasses, DeviceToolbar} from "@/components
 import {Spacer} from "@/components/misc/Spacer"
 import Divider from "@/components/misc/Divider"
 import {
+  askPermissionsUI,
   checkFeaturePermissions,
   checkPermissionsUI,
   PERMISSION_CONFIG,
@@ -193,56 +194,18 @@ export default function Homepage() {
 
   // Handler functions for grid view
   const handleStartApp = async (packageName: string) => {
-    const appToStart = appStatus.find(app => app.packageName === packageName)
-    if (!appToStart) {
+    const appInfo = appStatus.find(app => app.packageName === packageName)
+    if (!appInfo) {
       console.error("App not found:", packageName)
       return
     }
 
-    // if (appToStart.healthStatus !== "online") {
-    //   showAlert(translate("errors:appNotOnlineTitle"), translate("errors:appNotOnlineMessage"), [
-    //     {text: translate("common:ok")},
-    //   ])
-    //   return
-    // }
-
-    // Check permissions
-    const neededPermissions = await checkPermissionsUI(appToStart)
-    if (neededPermissions.length > 0) {
-      await showAlert(
-        neededPermissions.length > 1
-          ? translate("home:permissionsRequiredTitle")
-          : translate("home:permissionRequiredTitle"),
-        translate("home:permissionMessage", {
-          permissions: neededPermissions.map(perm => PERMISSION_CONFIG[perm]?.name || perm).join(", "),
-        }),
-        [
-          {
-            text: translate("common:cancel"),
-            onPress: () => {},
-            style: "cancel",
-          },
-          {
-            text: translate("common:next"),
-            onPress: async () => {
-              await requestPermissionsUI(neededPermissions)
-              const stillNeededPermissions = await checkPermissionsUI(appToStart)
-
-              if (stillNeededPermissions.includes(PermissionFeatures.READ_NOTIFICATIONS) && Platform.OS === "android") {
-                return
-              }
-
-              if (stillNeededPermissions.length === 0) {
-                handleStartApp(packageName)
-              }
-            },
-          },
-        ],
-        {
-          iconName: "information-outline",
-          iconColor: theme.colors.textDim,
-        },
-      )
+    // ask for needed perms:
+    const result = await askPermissionsUI(appInfo, theme)
+    if (result === -1) {
+      return
+    } else if (result === 0) {
+      handleStartApp(packageName) // restart this function
       return
     }
 
@@ -250,7 +213,7 @@ export default function Homepage() {
     optimisticallyStartApp(packageName)
 
     // Handle foreground apps
-    if (appToStart?.appType === "standard") {
+    if (appInfo?.appType === "standard") {
       const runningStandardApps = appStatus.filter(
         app => app.is_running && app.appType === "standard" && app.packageName !== packageName,
       )
@@ -279,7 +242,7 @@ export default function Homepage() {
           translate("home:hardwareIncompatible"),
           error.response.data.error.message ||
             translate("home:hardwareIncompatibleMessage", {
-              app: appToStart.name,
+              app: appInfo.name,
               missing: "required hardware",
             }),
           [{text: translate("common:ok")}],
