@@ -38,6 +38,13 @@ export interface PhotoRequestOptions {
   saveToGallery?: boolean;
   /** Custom webhook URL to override the TPA's default webhookUrl */
   customWebhookUrl?: string;
+  /**
+   * Desired photo size.
+   * - small: lowest resolution, faster capture/transfer
+   * - medium: balanced default
+   * - large: highest available resolution on device
+   */
+  size?: "small" | "medium" | "large";
 }
 
 /**
@@ -152,10 +159,10 @@ export class CameraModule {
    * ```typescript
    * // Request a photo
    * const photo = await session.camera.requestPhoto();
-   * 
+   *
    * // Request a photo with custom webhook URL
-   * const photo = await session.camera.requestPhoto({ 
-   *   customWebhookUrl: 'https://my-custom-endpoint.com/photo-upload' 
+   * const photo = await session.camera.requestPhoto({
+   *   customWebhookUrl: 'https://my-custom-endpoint.com/photo-upload'
    * });
    * ```
    */
@@ -177,16 +184,17 @@ export class CameraModule {
           timestamp: new Date(),
           saveToGallery: options?.saveToGallery || false,
           customWebhookUrl: options?.customWebhookUrl,
+          size: options?.size || "medium",
         };
 
         // Send request to cloud
         this.send(message);
 
         this.logger.info(
-          { 
-            requestId, 
+          {
+            requestId,
             saveToGallery: options?.saveToGallery,
-            hasCustomWebhook: !!options?.customWebhookUrl 
+            hasCustomWebhook: !!options?.customWebhookUrl,
           },
           `📸 Photo request sent`,
         );
@@ -195,19 +203,19 @@ export class CameraModule {
         if (options?.customWebhookUrl) {
           this.logger.info(
             { requestId, customWebhookUrl: options.customWebhookUrl },
-            `📸 Using custom webhook URL - resolving promise immediately since photo will be uploaded directly to custom endpoint`
+            `📸 Using custom webhook URL - resolving promise immediately since photo will be uploaded directly to custom endpoint`,
           );
-          
+
           // Create a mock PhotoData object for custom webhook URLs
           const mockPhotoData: PhotoData = {
             buffer: Buffer.from([]), // Empty buffer since we don't have the actual photo
-            mimeType: 'image/jpeg',
-            filename: 'photo.jpg',
+            mimeType: "image/jpeg",
+            filename: "photo.jpg",
             requestId,
             size: 0,
             timestamp: new Date(),
           };
-          
+
           // Resolve immediately and clean up
           this.pendingPhotoRequests.delete(requestId);
           resolve(mockPhotoData);

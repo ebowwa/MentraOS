@@ -926,7 +926,7 @@ typealias JSONObject = [String: Any]
         sendJson(json, wakeUp: true)
     }
 
-    @objc func requestPhoto(_ requestId: String, appId: String, webhookUrl: String?) {
+    @objc func requestPhoto(_ requestId: String, appId: String, webhookUrl: String?, size: String?) {
         CoreCommsService.log("Requesting photo: \(requestId) for app: \(appId)")
 
         var json: [String: Any] = [
@@ -943,6 +943,13 @@ typealias JSONObject = [String: Any]
         if let webhookUrl = webhookUrl, !webhookUrl.isEmpty {
             json["webhookUrl"] = webhookUrl
             blePhotoTransfers[bleImgId] = BlePhotoTransfer(bleImgId: bleImgId, requestId: requestId, webhookUrl: webhookUrl)
+        }
+
+        // propagate size (default to medium if invalid)
+        if let size = size, ["small", "medium", "large"].contains(size) {
+            json["size"] = size
+        } else {
+            json["size"] = "medium"
         }
 
         CoreCommsService.log("Using auto transfer mode with BLE fallback ID: \(bleImgId)")

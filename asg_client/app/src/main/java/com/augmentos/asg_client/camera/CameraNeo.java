@@ -81,6 +81,10 @@ public class CameraNeo extends LifecycleService {
     // Target photo resolution (4:3 landscape orientation)
     private static final int TARGET_WIDTH = 1440;
     private static final int TARGET_HEIGHT = 1080;
+    private static final int TARGET_WIDTH_SMALL = 800;
+    private static final int TARGET_HEIGHT_SMALL = 600;
+    private static final int TARGET_WIDTH_LARGE = 3200;
+    private static final int TARGET_HEIGHT_LARGE = 2400;
 
     // Auto-exposure settings for better photo quality - now dynamic
     private static final int JPEG_QUALITY = 90; // High quality JPEG
@@ -131,7 +135,7 @@ public class CameraNeo extends LifecycleService {
     public static final String ACTION_STOP_VIDEO_RECORDING = "com.augmentos.camera.ACTION_STOP_VIDEO_RECORDING";
     public static final String EXTRA_VIDEO_FILE_PATH = "com.augmentos.camera.EXTRA_VIDEO_FILE_PATH";
     public static final String EXTRA_VIDEO_ID = "com.augmentos.camera.EXTRA_VIDEO_ID";
-    
+
     // Buffer recording actions
     public static final String ACTION_START_BUFFER = "com.augmentos.camera.ACTION_START_BUFFER";
     public static final String ACTION_STOP_BUFFER = "com.augmentos.camera.ACTION_STOP_BUFFER";
@@ -161,7 +165,7 @@ public class CameraNeo extends LifecycleService {
     private long recordingStartTime;
     private Timer recordingTimer;
     private Size videoSize; // To store selected video size
-    
+
     // Buffer recording components
     private enum RecordingMode {
         SINGLE_VIDEO,  // Current behavior - record once and stop
@@ -189,7 +193,7 @@ public class CameraNeo extends LifecycleService {
 
         void onRecordingError(String videoId, String errorMessage);
     }
-    
+
     /**
      * Interface for buffer recording callbacks
      */
@@ -260,6 +264,16 @@ public class CameraNeo extends LifecycleService {
         context.startForegroundService(intent);
     }
 
+    public static void takePictureWithCallback(Context context, String filePath, PhotoCaptureCallback callback, String size) {
+        sPhotoCallback = callback;
+
+        Intent intent = new Intent(context, CameraNeo.class);
+        intent.setAction(ACTION_TAKE_PHOTO);
+        intent.putExtra(EXTRA_PHOTO_FILE_PATH, filePath);
+        intent.putExtra("PHOTO_SIZE", size);
+        context.startForegroundService(intent);
+    }
+
     /**
      * Start video recording and get notified through callback
      *
@@ -290,7 +304,7 @@ public class CameraNeo extends LifecycleService {
         intent.putExtra(EXTRA_VIDEO_ID, videoId);
         context.startForegroundService(intent);
     }
-    
+
     /**
      * Start buffer recording
      * @param context Application context
@@ -302,7 +316,7 @@ public class CameraNeo extends LifecycleService {
         intent.setAction(ACTION_START_BUFFER);
         context.startForegroundService(intent);
     }
-    
+
     /**
      * Stop buffer recording
      * @param context Application context
@@ -312,7 +326,7 @@ public class CameraNeo extends LifecycleService {
         intent.setAction(ACTION_STOP_BUFFER);
         context.startForegroundService(intent);
     }
-    
+
     /**
      * Save buffer video
      * @param context Application context
@@ -338,11 +352,12 @@ public class CameraNeo extends LifecycleService {
             switch (action) {
                 case ACTION_TAKE_PHOTO:
                     String photoFilePath = intent.getStringExtra(EXTRA_PHOTO_FILE_PATH);
+                    String requestedSize = intent.getStringExtra("PHOTO_SIZE");
                     if (photoFilePath == null || photoFilePath.isEmpty()) {
                         String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
                         photoFilePath = getExternalFilesDir(null) + File.separator + "IMG_" + timeStamp + ".jpg";
                     }
-                    setupCameraAndTakePicture(photoFilePath);
+                    setupCameraAndTakePicture(photoFilePath, requestedSize);
                     break;
                 case ACTION_START_VIDEO_RECORDING:
                     currentVideoId = intent.getStringExtra(EXTRA_VIDEO_ID);
@@ -357,15 +372,15 @@ public class CameraNeo extends LifecycleService {
                     String videoIdToStop = intent.getStringExtra(EXTRA_VIDEO_ID);
                     stopCurrentVideoRecording(videoIdToStop);
                     break;
-                    
+
                 case ACTION_START_BUFFER:
                     startBufferRecording();
                     break;
-                    
+
                 case ACTION_STOP_BUFFER:
                     stopBufferRecording();
                     break;
-                    
+
                 case ACTION_SAVE_BUFFER:
                     int seconds = intent.getIntExtra(EXTRA_BUFFER_SECONDS, 30);
                     String requestId = intent.getStringExtra(EXTRA_BUFFER_REQUEST_ID);
@@ -376,10 +391,14 @@ public class CameraNeo extends LifecycleService {
         return START_STICKY;
     }
 
-    private void setupCameraAndTakePicture(String filePath) {
+    private void setupCameraAndTakePicture(String filePath, String requestedSize) {
         wakeUpScreen();
+        // Pass requested size via a temporary member so openCameraInternal can apply it
+        this.pendingRequestedSize = requestedSize;
         openCameraInternal(filePath, false); // false indicates not for video
     }
+
+    private String pendingRequestedSize;
 
     private void setupCameraAndStartRecording(String videoId, String filePath) {
         if (isRecording) {
@@ -434,7 +453,7 @@ public class CameraNeo extends LifecycleService {
             conditionalStopSelf(); // Changed to conditional stop
         }
     }
-    
+
     /**
      * Start buffer recording mode
      */
@@ -443,7 +462,7 @@ public class CameraNeo extends LifecycleService {
             Log.w(TAG, "Already in buffer mode");
             return;
         }
-        
+
         // Check if camera is already in use
         if (isCameraInUse()) {
             Log.e(TAG, "Cannot start buffer - camera already in use");
@@ -452,9 +471,9 @@ public class CameraNeo extends LifecycleService {
             }
             return;
         }
-        
+
         Log.d(TAG, "Starting buffer recording mode");
-        
+
         // Initialize buffer manager
         bufferManager = new CircularVideoBufferInternal(this);
         bufferManager.setCallback(new CircularVideoBufferInternal.SegmentSwitchCallback() {
@@ -464,7 +483,7 @@ public class CameraNeo extends LifecycleService {
                 // Handle segment switch - recreate camera session with new surface
                 switchToNewSegment(newSurface);
             }
-            
+
             @Override
             public void onBufferError(String error) {
                 Log.e(TAG, "Buffer error: " + error);
@@ -472,33 +491,33 @@ public class CameraNeo extends LifecycleService {
                     sBufferCallback.onBufferError(error);
                 }
             }
-            
+
             @Override
             public void onSegmentReady(int segmentIndex, String filePath) {
                 Log.d(TAG, "Buffer segment " + segmentIndex + " ready: " + filePath);
             }
         });
-        
+
         try {
             // Prepare all MediaRecorder instances
             bufferManager.prepareAllRecorders();
-            
+
             // Set mode and open camera
             currentMode = RecordingMode.BUFFER;
             isInBufferMode = true;
-            
+
             // Open camera for buffer recording
             wakeUpScreen();
             openCameraInternal(null, true); // true for video mode
-            
+
             // Notify callback
             if (sBufferCallback != null) {
                 sBufferCallback.onBufferStarted();
             }
-            
+
             // Start segment switch timer
             startSegmentSwitchTimer();
-            
+
         } catch (IOException e) {
             Log.e(TAG, "Failed to start buffer recording", e);
             if (sBufferCallback != null) {
@@ -508,7 +527,7 @@ public class CameraNeo extends LifecycleService {
             currentMode = RecordingMode.SINGLE_VIDEO;
         }
     }
-    
+
     /**
      * Stop buffer recording mode
      */
@@ -517,34 +536,34 @@ public class CameraNeo extends LifecycleService {
             Log.w(TAG, "Not in buffer mode");
             return;
         }
-        
+
         Log.d(TAG, "Stopping buffer recording");
-        
+
         // Clear buffer mode flag
         isInBufferMode = false;
         currentMode = RecordingMode.SINGLE_VIDEO;
-        
+
         // Stop segment timer
         stopSegmentSwitchTimer();
-        
+
         // Stop buffer manager
         if (bufferManager != null) {
             bufferManager.stopBuffering();
             bufferManager = null;
         }
-        
+
         // Close camera
         closeCamera();
-        
+
         // Notify callback
         if (sBufferCallback != null) {
             sBufferCallback.onBufferStopped();
         }
-        
+
         // Now we can stop the service
         stopSelf();
     }
-    
+
     /**
      * Save buffer video
      */
@@ -556,16 +575,16 @@ public class CameraNeo extends LifecycleService {
             }
             return;
         }
-        
+
         // Generate output path
         String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
-        String outputPath = getExternalFilesDir(null) + File.separator + 
+        String outputPath = getExternalFilesDir(null) + File.separator +
                           "BUFFER_" + timeStamp + "_" + requestId + ".mp4";
-        
+
         try {
             Log.d(TAG, "Saving last " + seconds + " seconds to " + outputPath);
             bufferManager.saveLastNSeconds(seconds, outputPath);
-            
+
             // Notify callback
             if (sBufferCallback != null) {
                 sBufferCallback.onBufferSaved(outputPath, seconds);
@@ -577,7 +596,7 @@ public class CameraNeo extends LifecycleService {
             }
         }
     }
-    
+
     /**
      * Start timer for segment switching
      */
@@ -595,7 +614,7 @@ public class CameraNeo extends LifecycleService {
             }
         }, SEGMENT_DURATION_MS);
     }
-    
+
     /**
      * Stop segment switch timer
      */
@@ -605,7 +624,7 @@ public class CameraNeo extends LifecycleService {
             segmentSwitchHandler = null;
         }
     }
-    
+
     /**
      * Switch camera session to new segment surface
      */
@@ -616,11 +635,11 @@ public class CameraNeo extends LifecycleService {
                 cameraCaptureSession.stopRepeating();
                 cameraCaptureSession.close();
                 cameraCaptureSession = null;
-                
+
                 // Recreate session with new surface
                 recorderSurface = newSurface; // Update the surface
                 createCameraSessionInternal(true); // Recreate for video
-                
+
             } catch (CameraAccessException e) {
                 Log.e(TAG, "Error switching to new segment", e);
                 if (sBufferCallback != null) {
@@ -629,7 +648,7 @@ public class CameraNeo extends LifecycleService {
             }
         }
     }
-    
+
     /**
      * Conditional stop self - only stops if not in buffer mode
      */
@@ -716,7 +735,26 @@ public class CameraNeo extends LifecycleService {
                 return;
             }
 
-            jpegSize = chooseOptimalSize(jpegSizes, TARGET_WIDTH, TARGET_HEIGHT);
+            int desiredW = TARGET_WIDTH;
+            int desiredH = TARGET_HEIGHT;
+            if (pendingRequestedSize != null) {
+                switch (pendingRequestedSize) {
+                    case "small":
+                        desiredW = TARGET_WIDTH_SMALL;
+                        desiredH = TARGET_HEIGHT_SMALL;
+                        break;
+                    case "large":
+                        desiredW = TARGET_WIDTH_LARGE;
+                        desiredH = TARGET_HEIGHT_LARGE;
+                        break;
+                    case "medium":
+                    default:
+                        desiredW = TARGET_WIDTH;
+                        desiredH = TARGET_HEIGHT;
+                        break;
+                }
+            }
+            jpegSize = chooseOptimalSize(jpegSizes, desiredW, desiredH);
             Log.d(TAG, "Selected JPEG size: " + jpegSize.getWidth() + "x" + jpegSize.getHeight());
 
             // If this is for video, set up video size too
@@ -1010,7 +1048,7 @@ public class CameraNeo extends LifecycleService {
                     // Use regular recorder surface
                     surfaceToUse = recorderSurface;
                 }
-                
+
                 if (surfaceToUse == null) {
                     notifyVideoError(currentVideoId, "Recorder surface null");
                     conditionalStopSelf();
@@ -1164,7 +1202,7 @@ public class CameraNeo extends LifecycleService {
             isRecording = false;
         }
     }
-    
+
     /**
      * Start buffer recording internally after camera session is configured
      */
@@ -1176,14 +1214,14 @@ public class CameraNeo extends LifecycleService {
             }
             return;
         }
-        
+
         try {
             // Start repeating request for continuous recording
             cameraCaptureSession.setRepeatingRequest(previewBuilder.build(), null, backgroundHandler);
-            
+
             // Start recording on current segment
             bufferManager.startCurrentSegment();
-            
+
             Log.d(TAG, "Buffer recording started on segment");
         } catch (CameraAccessException | IllegalStateException e) {
             Log.e(TAG, "Failed to start buffer recording", e);

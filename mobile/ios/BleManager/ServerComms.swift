@@ -20,7 +20,7 @@ protocol ServerCommsCallback {
     func onAppStarted(_ packageName: String)
     func onAppStopped(_ packageName: String)
     func onJsonMessage(_ message: [String: Any])
-    func onPhotoRequest(_ requestId: String, _ appId: String, _ webhookUrl: String)
+    func onPhotoRequest(_ requestId: String, _ appId: String, _ webhookUrl: String, _ size: String)
     func onRtmpStreamStartRequest(_ message: [String: Any])
     func onRtmpStreamStop()
     func onRtmpStreamKeepAlive(_ message: [String: Any])
@@ -605,9 +605,10 @@ class ServerComms {
             let requestId = msg["requestId"] as? String ?? ""
             let appId = msg["appId"] as? String ?? ""
             let webhookUrl = msg["webhookUrl"] as? String ?? ""
-            CoreCommsService.log("Received photo_request, requestId: \(requestId), appId: \(appId), webhookUrl: \(webhookUrl)")
+            let size = (msg["size"] as? String) ?? "medium"
+            CoreCommsService.log("Received photo_request, requestId: \(requestId), appId: \(appId), webhookUrl: \(webhookUrl), size: \(size)")
             if !requestId.isEmpty, !appId.isEmpty {
-                serverCommsCallback?.onPhotoRequest(requestId, appId, webhookUrl)
+                serverCommsCallback?.onPhotoRequest(requestId, appId, webhookUrl, size)
             } else {
                 CoreCommsService.log("Invalid photo request: missing requestId or appId")
             }

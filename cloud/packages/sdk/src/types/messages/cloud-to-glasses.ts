@@ -1,9 +1,13 @@
 // src/messages/cloud-to-glasses.ts
 
-import { BaseMessage } from './base';
-import { CloudToGlassesMessageType, ResponseTypes, UpdateTypes } from '../message-types';
-import { UserSession } from '../user-session';
-import { Layout } from '../layouts';
+import { BaseMessage } from "./base";
+import {
+  CloudToGlassesMessageType,
+  ResponseTypes,
+  UpdateTypes,
+} from "../message-types";
+import { UserSession } from "../user-session";
+import { Layout } from "../layouts";
 
 //===========================================================
 // Responses
@@ -64,7 +68,7 @@ export interface MicrophoneStateChange extends BaseMessage {
   type: CloudToGlassesMessageType.MICROPHONE_STATE_CHANGE;
   userSession: Partial<UserSession>;
   isMicrophoneEnabled: boolean;
-  requiredData: Array<'pcm' | 'transcription' | 'pcm_or_transcription'>;
+  requiredData: Array<"pcm" | "transcription" | "pcm_or_transcription">;
   bypassVad?: boolean; // NEW: PCM subscription bypass
 }
 
@@ -78,6 +82,8 @@ export interface PhotoRequestToGlasses extends BaseMessage {
   appId: string;
   saveToGallery?: boolean;
   webhookUrl?: string; // URL where ASG should send the photo directly
+  /** Desired capture size to guide device resolution selection */
+  size?: "small" | "medium" | "large";
 }
 
 /**
@@ -112,8 +118,8 @@ export interface StartRtmpStream extends BaseMessage {
   rtmpUrl: string;
   appId: string;
   streamId?: string;
-  video?: any;  // Video configuration
-  audio?: any;  // Audio configuration
+  video?: any; // Video configuration
+  audio?: any; // Audio configuration
   stream?: any; // Stream configuration
 }
 
@@ -144,7 +150,15 @@ export interface KeepRtmpStreamAlive extends BaseMessage {
  */
 export interface SetLocationTier extends BaseMessage {
   type: CloudToGlassesMessageType.SET_LOCATION_TIER;
-  tier: 'realtime' | 'high' | 'tenMeters' | 'hundredMeters' | 'kilometer' | 'threeKilometers' | 'reduced' | 'standard';
+  tier:
+    | "realtime"
+    | "high"
+    | "tenMeters"
+    | "hundredMeters"
+    | "kilometer"
+    | "threeKilometers"
+    | "reduced"
+    | "standard";
 }
 
 /**
@@ -211,54 +225,80 @@ export function isUpdate(message: CloudToGlassesMessage): boolean {
 }
 
 // Individual type guards
-export function isConnectionAck(message: CloudToGlassesMessage): message is ConnectionAck {
+export function isConnectionAck(
+  message: CloudToGlassesMessage,
+): message is ConnectionAck {
   return message.type === CloudToGlassesMessageType.CONNECTION_ACK;
 }
 
-export function isConnectionError(message: CloudToGlassesMessage): message is ConnectionError {
+export function isConnectionError(
+  message: CloudToGlassesMessage,
+): message is ConnectionError {
   return message.type === CloudToGlassesMessageType.CONNECTION_ERROR;
 }
 
-export function isAuthError(message: CloudToGlassesMessage): message is AuthError {
+export function isAuthError(
+  message: CloudToGlassesMessage,
+): message is AuthError {
   return message.type === CloudToGlassesMessageType.AUTH_ERROR;
 }
 
-export function isDisplayEvent(message: CloudToGlassesMessage): message is DisplayEvent {
+export function isDisplayEvent(
+  message: CloudToGlassesMessage,
+): message is DisplayEvent {
   return message.type === CloudToGlassesMessageType.DISPLAY_EVENT;
 }
 
-export function isAppStateChange(message: CloudToGlassesMessage): message is AppStateChange {
+export function isAppStateChange(
+  message: CloudToGlassesMessage,
+): message is AppStateChange {
   return message.type === CloudToGlassesMessageType.APP_STATE_CHANGE;
 }
 
-export function isMicrophoneStateChange(message: CloudToGlassesMessage): message is MicrophoneStateChange {
+export function isMicrophoneStateChange(
+  message: CloudToGlassesMessage,
+): message is MicrophoneStateChange {
   return message.type === CloudToGlassesMessageType.MICROPHONE_STATE_CHANGE;
 }
 
-export function isPhotoRequest(message: CloudToGlassesMessage): message is PhotoRequestToGlasses {
+export function isPhotoRequest(
+  message: CloudToGlassesMessage,
+): message is PhotoRequestToGlasses {
   return message.type === CloudToGlassesMessageType.PHOTO_REQUEST;
 }
 
-export function isSettingsUpdate(message: CloudToGlassesMessage): message is SettingsUpdate {
+export function isSettingsUpdate(
+  message: CloudToGlassesMessage,
+): message is SettingsUpdate {
   return message.type === CloudToGlassesMessageType.SETTINGS_UPDATE;
 }
 
-export function isStartRtmpStream(message: CloudToGlassesMessage): message is StartRtmpStream {
+export function isStartRtmpStream(
+  message: CloudToGlassesMessage,
+): message is StartRtmpStream {
   return message.type === CloudToGlassesMessageType.START_RTMP_STREAM;
 }
 
-export function isStopRtmpStream(message: CloudToGlassesMessage): message is StopRtmpStream {
+export function isStopRtmpStream(
+  message: CloudToGlassesMessage,
+): message is StopRtmpStream {
   return message.type === CloudToGlassesMessageType.STOP_RTMP_STREAM;
 }
 
-export function isKeepRtmpStreamAlive(message: CloudToGlassesMessage): message is KeepRtmpStreamAlive {
+export function isKeepRtmpStreamAlive(
+  message: CloudToGlassesMessage,
+): message is KeepRtmpStreamAlive {
   return message.type === CloudToGlassesMessageType.KEEP_RTMP_STREAM_ALIVE;
 }
 
-export function isAudioPlayRequestToGlasses(message: CloudToGlassesMessage): message is AudioPlayRequestToGlasses {
+export function isAudioPlayRequestToGlasses(
+  message: CloudToGlassesMessage,
+): message is AudioPlayRequestToGlasses {
   return message.type === CloudToGlassesMessageType.AUDIO_PLAY_REQUEST;
 }
 
-export function isAudioStopRequestToGlasses(message: CloudToGlassesMessage): message is AudioStopRequestToGlasses {
+export function isAudioStopRequestToGlasses(
+  message: CloudToGlassesMessage,
+): message is AudioStopRequestToGlasses {
   return message.type === CloudToGlassesMessageType.AUDIO_STOP_REQUEST;
 }
