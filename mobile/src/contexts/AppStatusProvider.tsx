@@ -235,14 +235,16 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
     // GET the app's /health endpoint
     try {
       const app = appStatus.find(app => app.packageName === packageName)
+      console.log("APP", app)
       if (!app) {
         return "offline"
       }
       const healthResponse = await fetch(`${app.publicUrl}/health`)
       const healthData = await healthResponse.json()
+      console.log("HEALTH DATA", healthData)
       return healthData.status
     } catch (error) {
-      // console.error("AppStatusProvider: Error checking app health status:", error)
+      console.error("AppStatusProvider: Error checking app health status:", error)
       return "offline"
     }
   }
