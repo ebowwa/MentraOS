@@ -2,8 +2,7 @@ import React, {useRef, useCallback, PropsWithChildren, useState, useEffect} from
 import {View, Animated, Platform, ViewStyle, ScrollView, TouchableOpacity} from "react-native"
 import {useFocusEffect} from "@react-navigation/native"
 import {Header, Screen} from "@/components/ignite"
-import AppsActiveList from "@/components/misc/AppsActiveList"
-import AppsInactiveList from "@/components/misc/AppsInactiveList"
+import {AppsCombinedGridView} from "@/components/misc/AppsCombinedGridView"
 import AppsIncompatibleList from "@/components/misc/AppsIncompatibleList"
 import {useStatus} from "@/contexts/AugmentOSStatusProvider"
 import {useAppStatus} from "@/contexts/AppStatusProvider"
@@ -21,20 +20,27 @@ import NotificationOn from "assets/icons/component/NotificationOn"
 import {ConnectDeviceButton, ConnectedGlasses, DeviceToolbar} from "@/components/misc/ConnectedDeviceInfo"
 import {Spacer} from "@/components/misc/Spacer"
 import Divider from "@/components/misc/Divider"
-import {checkFeaturePermissions, PermissionFeatures} from "@/utils/PermissionsUtils"
+import {
+  checkFeaturePermissions,
+  checkPermissionsUI,
+  PERMISSION_CONFIG,
+  PermissionFeatures,
+  requestPermissionsUI,
+} from "@/utils/PermissionsUtils"
 import {router} from "expo-router"
 import {OnboardingSpotlight} from "@/components/misc/OnboardingSpotlight"
 import {SETTINGS_KEYS} from "@/consts"
 import {translate} from "@/i18n"
-import showAlert from "@/utils/AlertUtils"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
+import {showAlert} from "@/utils/AlertUtils"
 
 interface AnimatedSectionProps extends PropsWithChildren {
   delay?: number
 }
 
 export default function Homepage() {
-  const {appStatus} = useAppStatus()
+  const {appStatus, refreshAppStatus, optimisticallyStartApp, optimisticallyStopApp, clearPendingOperation} =
+    useAppStatus()
   const {status} = useStatus()
   const [isSimulatedPuck, setIsSimulatedPuck] = React.useState(false)
   const [isCheckingVersion, setIsCheckingVersion] = useState(false)
@@ -45,11 +51,12 @@ export default function Homepage() {
   const [liveCaptionsPackageName, setLiveCaptionsPackageName] = useState<string | null>(null)
   const liveCaptionsRef = useRef<any>(null)
   const connectButtonRef = useRef<any>(null)
+  const backendComms = BackendServerComms.getInstance()
 
   const fadeAnim = useRef(new Animated.Value(0)).current
   const bellFadeAnim = useRef(new Animated.Value(0)).current
   const {themed, theme} = useAppTheme()
-  const {push} = useNavigationHistory()
+  const {push, replace} = useNavigationHistory()
 
   // Reset loading state when connection status changes
   useEffect(() => {
@@ -181,6 +188,136 @@ export default function Homepage() {
     push("/settings/privacy")
   }
 
+  // Handler functions for grid view
+  const handleStartApp = async (packageName: string) => {
+    const appToStart = appStatus.find(app => app.packageName === packageName)
+    if (!appToStart) {
+      console.error("App not found:", packageName)
+      return
+    }
+
+    // if (appToStart.healthStatus !== "online") {
+    //   showAlert(translate("errors:appNotOnlineTitle"), translate("errors:appNotOnlineMessage"), [
+    //     {text: translate("common:ok")},
+    //   ])
+    //   return
+    // }
+
+    // Check permissions
+    const neededPermissions = await checkPermissionsUI(appToStart)
+    if (neededPermissions.length > 0) {
+      await showAlert(
+        neededPermissions.length > 1
+          ? translate("home:permissionsRequiredTitle")
+          : translate("home:permissionRequiredTitle"),
+        translate("home:permissionMessage", {
+          permissions: neededPermissions.map(perm => PERMISSION_CONFIG[perm]?.name || perm).join(", "),
+        }),
+        [
+          {
+            text: translate("common:cancel"),
+            onPress: () => {},
+            style: "cancel",
+          },
+          {
+            text: translate("common:next"),
+            onPress: async () => {
+              await requestPermissionsUI(neededPermissions)
+              const stillNeededPermissions = await checkPermissionsUI(appToStart)
+
+              if (stillNeededPermissions.includes(PermissionFeatures.READ_NOTIFICATIONS) && Platform.OS === "android") {
+                return
+              }
+
+              if (stillNeededPermissions.length === 0) {
+                handleStartApp(packageName)
+              }
+            },
+          },
+        ],
+        {
+          iconName: "information-outline",
+          iconColor: theme.colors.textDim,
+        },
+      )
+      return
+    }
+
+    // Optimistically update UI
+    optimisticallyStartApp(packageName)
+
+    // Handle foreground apps
+    if (appToStart?.appType === "standard") {
+      const runningStandardApps = appStatus.filter(
+        app => app.is_running && app.appType === "standard" && app.packageName !== packageName,
+      )
+
+      for (const runningApp of runningStandardApps) {
+        optimisticallyStopApp(runningApp.packageName)
+        try {
+          await backendComms.stopApp(runningApp.packageName)
+          clearPendingOperation(runningApp.packageName)
+        } catch (error) {
+          console.error("Stop app error:", error)
+          refreshAppStatus()
+        }
+      }
+    }
+
+    try {
+      await backendComms.startApp(packageName)
+      clearPendingOperation(packageName)
+      await saveSetting(SETTINGS_KEYS.HAS_EVER_ACTIVATED_APP, true)
+    } catch (error: any) {
+      console.error("Start app error:", error)
+
+      if (error?.response?.data?.error?.stage === "HARDWARE_CHECK") {
+        showAlert(
+          translate("home:hardwareIncompatible"),
+          error.response.data.error.message ||
+            translate("home:hardwareIncompatibleMessage", {
+              app: appToStart.name,
+              missing: "required hardware",
+            }),
+          [{text: translate("common:ok")}],
+          {
+            iconName: "alert-circle-outline",
+            iconColor: theme.colors.error,
+          },
+        )
+      }
+
+      clearPendingOperation(packageName)
+      refreshAppStatus()
+    }
+  }
+
+  const handleStopApp = async (packageName: string) => {
+    optimisticallyStopApp(packageName)
+
+    try {
+      await backendComms.stopApp(packageName)
+      clearPendingOperation(packageName)
+    } catch (error) {
+      refreshAppStatus()
+      console.error("Stop app error:", error)
+    }
+  }
+
+  const handleOpenAppSettings = (app: any) => {
+    push("/applet/settings", {packageName: app.packageName, appName: app.name})
+  }
+
+  const handleOpenWebView = (app: any) => {
+    if (app.webviewURL) {
+      replace("/applet/webview", {
+        webviewURL: app.webviewURL,
+        appName: app.name,
+        packageName: app.packageName,
+      })
+    }
+  }
+
   // Simple animated wrapper so we do not duplicate logic
 
   useFocusEffect(
@@ -241,9 +378,19 @@ export default function Homepage() {
         <Divider variant="full" />
         <Spacer height={theme.spacing.md} />
 
-        <AppsActiveList />
-        <Spacer height={spacing.xl} />
-        <AppsInactiveList key={`apps-list-${appStatus.length}`} liveCaptionsRef={liveCaptionsRef} />
+        <AppsCombinedGridView
+          activeApps={appStatus.filter(app => app.is_running)}
+          inactiveApps={appStatus.filter(
+            app =>
+              !app.is_running &&
+              (!app.compatibility || app.compatibility.isCompatible) &&
+              !(Platform.OS === "ios" && (app.packageName === "cloud.augmentos.notify" || app.name === "Notify")),
+          )}
+          onStartApp={handleStartApp}
+          onStopApp={handleStopApp}
+          onOpenSettings={handleOpenAppSettings}
+          onOpenWebView={handleOpenWebView}
+        />
         <Spacer height={spacing.xl} />
         <AppsIncompatibleList />
       </ScrollView>
