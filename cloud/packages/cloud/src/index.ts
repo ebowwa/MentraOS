@@ -39,7 +39,7 @@ import permissionsRoutes from "./routes/permissions.routes";
 import accountRoutes from "./routes/account.routes";
 import organizationRoutes from "./routes/organization.routes";
 import onboardingRoutes from "./routes/onboarding.routes";
-import rtmpRelayRoutes from "./routes/rtmp-relay.routes";
+//import rtmpRelayRoutes from "./routes/rtmp-relay.routes";
 import appUptimeRoutes from "./routes/app-uptime.routes";
 import streamsRoutes from "./routes/streams.routes";
 
@@ -238,7 +238,7 @@ app.use(audioRoutes);
 app.use("/api/user-data", userDataRoutes);
 app.use("/api/account", accountRoutes);
 app.use("/api/onboarding", onboardingRoutes);
-app.use("/api/rtmp-relay", rtmpRelayRoutes);
+//app.use("/api/rtmp-relay", rtmpRelayRoutes);
 app.use("/api/app-uptime", appUptimeRoutes);
 app.use("/api/streams", streamsRoutes);
 
@@ -338,7 +338,6 @@ websocketService.setupWebSocketServers(server);
 if (process.env.UPTIME_SERVICE_RUNNING === "true") {
   AppUptimeService.startUptimeScheduler(); // start app uptime service scheduler
 }
-
 
 // Start the server
 try {
