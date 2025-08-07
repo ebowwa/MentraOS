@@ -28,6 +28,20 @@ class CoreCommsService: RCTEventEmitter {
         emitter.sendEvent(withName: "CoreMessageEvent", body: msg)
     }
 
+    static func sendAppStartedEvent(_ packageName: String) {
+        let msg = ["type": "app_started", "packageName": packageName]
+        let jsonData = try! JSONSerialization.data(withJSONObject: msg)
+        let jsonString = String(data: jsonData, encoding: .utf8)
+        emitter.sendEvent(withName: "CoreMessageEvent", body: jsonString!)
+    }
+
+    static func sendAppStoppedEvent(_ packageName: String) {
+        let msg = ["type": "app_stopped", "packageName": packageName]
+        let jsonData = try! JSONSerialization.data(withJSONObject: msg)
+        let jsonString = String(data: jsonData, encoding: .utf8)
+        emitter.sendEvent(withName: "CoreMessageEvent", body: jsonString!)
+    }
+
     override func supportedEvents() -> [String] {
         // add more as needed
         return ["onReady", "onPending", "onFailure", "onConnectionStateChanged", "CoreMessageIntentEvent", "CoreMessageEvent", "WIFI_SCAN_RESULTS"]

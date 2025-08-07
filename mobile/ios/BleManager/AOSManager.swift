@@ -152,11 +152,6 @@ struct ViewState {
         // Set up voice data handling
         setupVoiceDataHandling()
 
-        // configure on board mic:
-        //    setupOnboardMicrophoneIfNeeded()
-
-        // initManagerCallbacks()
-
         // Subscribe to WebSocket status changes
         serverComms.wsManager.status
             .sink { [weak self] _ in
@@ -632,8 +627,9 @@ struct ViewState {
     func onAppStarted(_ packageName: String) {
         // tell the server what pair of glasses we're using:
         serverComms.sendGlassesConnectionState(modelName: defaultWearable, status: "CONNECTED")
+        CoreCommsService.sendAppStartedEvent(packageName)
 
-        CoreCommsService.log("App started: \(packageName) - checking for auto-reconnection")
+        CoreCommsService.log("AOS: App started: \(packageName)")
 
         // Check if glasses are disconnected but there is a saved pair, initiate connection
         if !somethingConnected, !defaultWearable.isEmpty {
@@ -666,7 +662,7 @@ struct ViewState {
 
     func onAppStopped(_ packageName: String) {
         CoreCommsService.log("AOS: App stopped: \(packageName)")
-        // Handle app stopped if needed
+        CoreCommsService.sendAppStoppedEvent(packageName)
     }
 
     func onJsonMessage(_ message: [String: Any]) {

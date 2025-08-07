@@ -34,7 +34,7 @@ interface AnimatedSectionProps extends PropsWithChildren {
 }
 
 export default function Homepage() {
-  const {appStatus} = useAppStatus()
+  const {appStatus, refreshAppStatus} = useAppStatus()
   const {status} = useStatus()
   const [isSimulatedPuck, setIsSimulatedPuck] = React.useState(false)
   const [isCheckingVersion, setIsCheckingVersion] = useState(false)
@@ -100,6 +100,15 @@ export default function Homepage() {
   useFocusEffect(
     useCallback(() => {
       checkPermissions()
+    }, []),
+  )
+
+  // propagate any changes in app lists when this screen is mounted:
+  useFocusEffect(
+    useCallback(() => {
+      return async () => {
+        await refreshAppStatus()
+      }
     }, []),
   )
 

@@ -67,13 +67,15 @@ export interface AppInterface {
   }
 }
 
+export type AppHealthStatus = "healthy" | "unhealthy" | "offline"
+
 interface AppStatusContextType {
   appStatus: AppInterface[]
   refreshAppStatus: () => Promise<void>
   optimisticallyStartApp: (packageName: string) => void
   optimisticallyStopApp: (packageName: string) => void
   clearPendingOperation: (packageName: string) => void
-  checkAppHealthStatus: (packageName: string) => Promise<string>
+  checkAppHealthStatus: (packageName: string) => Promise<AppHealthStatus>
   isLoading: boolean
   error: string | null
   isSensingEnabled: boolean
@@ -229,7 +231,7 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
     delete pendingOperations.current[packageName]
   }, [])
 
-  const checkAppHealthStatus = async (packageName: string) => {
+  const checkAppHealthStatus = async (packageName: string): Promise<AppHealthStatus> => {
     // GET the app's /health endpoint
     try {
       const app = appStatus.find(app => app.packageName === packageName)
@@ -240,7 +242,7 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
       const healthData = await healthResponse.json()
       return healthData.status
     } catch (error) {
-      console.error("AppStatusProvider: Error checking app health status:", error)
+      // console.error("AppStatusProvider: Error checking app health status:", error)
       return "offline"
     }
   }
