@@ -216,6 +216,13 @@ export class ManagedStreamingExtension {
       managedStream.cfLiveInputId,
     );
 
+    // Wait for Cloudflare live input to fully initialize
+    this.logger.info(
+      { userId, packageName },
+      "⏳ Waiting 3 seconds for Cloudflare live input to initialize",
+    );
+    await new Promise((resolve) => setTimeout(resolve, 3000));
+
     // Send start command to glasses with Cloudflare RTMP URL
     const startMessage: StartRtmpStream = {
       type: CloudToGlassesMessageType.START_RTMP_STREAM,
