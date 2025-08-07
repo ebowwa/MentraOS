@@ -230,11 +230,11 @@ export class CloudflareStreamService {
             requireSignedURLs: config.requireSignedURLs || false,
             timeoutSeconds: 0, // Use platform default
           },
-          meta: {
-            mentraOS: true,
-            userId: userId,
-            quality: config.quality,
-          },
+          // meta: {
+          //   mentraOS: true,
+          //   userId: userId,
+          //   quality: config.quality,
+          // },
         };
         this.logger.debug({ requestBody }, "📤 Sending request to Cloudflare");
         return await this.api.post("/live_inputs", requestBody);
