@@ -143,9 +143,8 @@ const $sectionTitle: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
 const $tabBar: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   flexDirection: "row",
   backgroundColor: colors.background,
-  borderBottomWidth: 1,
-  borderBottomColor: colors.separator,
-  paddingHorizontal: spacing.md,
+  // paddingHorizontal: spacing.md,
+  borderRadius: spacing.sm,
 })
 
 const $tabButton: ThemedStyle<ViewStyle> = ({spacing}) => ({
