@@ -65,6 +65,7 @@ export interface AppInterface {
     }>
     message: string
   }
+  healthStatus?: "online" | string
 }
 
 interface AppStatusContextType {

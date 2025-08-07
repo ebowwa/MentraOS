@@ -1667,6 +1667,7 @@ struct ViewState {
             "core_token": coreToken,
             "puck_connected": true,
             "metric_system_enabled": metricSystemEnabled,
+            "contextual_dashboard_enabled": contextualDashboard,
         ]
 
         // hardcoded list of apps:
