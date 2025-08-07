@@ -37,6 +37,7 @@ export interface PhotoRequest extends BaseMessage {
   packageName: string;
   requestId: string; // SDK-generated request ID to track the request
   saveToGallery?: boolean;
+  customWebhookUrl?: string; // Custom webhook URL to override TPA's default
 }
 
 // Video, Audio and Stream configuration interfaces are imported from '../rtmp-stream'

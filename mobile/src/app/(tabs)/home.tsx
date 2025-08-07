@@ -225,11 +225,10 @@ export default function Homepage() {
         }
       />
 
+      <CloudConnection />
       <ScrollView
         style={{marginRight: -theme.spacing.md, paddingRight: theme.spacing.md}}
         contentInsetAdjustmentBehavior="automatic">
-        <CloudConnection />
-
         <SensingDisabledWarning />
 
         <ConnectedGlasses showTitle={false} />

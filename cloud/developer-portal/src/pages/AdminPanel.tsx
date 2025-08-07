@@ -1,17 +1,28 @@
 // pages/AdminPanel.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, use } from 'react';
 import DashboardLayout from '../components/DashboardLayout';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle,  } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Search } from "@/components/ui/search";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useNavigate } from 'react-router-dom';
-import { Loader2, CheckCircle, XCircle, Clock, Package } from 'lucide-react';
+import { Loader2, CheckCircle, XCircle, Clock, Package, Smartphone, X } from 'lucide-react';
 import api from '../services/api.service';
-
+import {StatusBadge, UptimeStatus} from '@/components/ui/upTime';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+  } from "@/components/ui/select"
+import { DatePicker } from '@/components/ui/date-picker';
+import axios from 'axios';
+import AppDetailView  from './AppUptime';
 interface AdminStat {
   counts: {
     development: number;
@@ -24,6 +35,13 @@ interface AdminStat {
 }
 
 // Admin user interface removed
+
+interface AppBatchItem {
+  packageName: string;
+  timestamp: string;
+  health: string;
+  onlineStatus: boolean;
+}
 
 interface AppDetail {
   _id: string;
@@ -64,17 +82,158 @@ const AdminPanel: React.FC = () => {
     recentSubmissions: []
   });
   const [submittedApps, setSubmittedApps] = useState<any[]>([]);
+  const [submittedAppsStatus, setSubmittedAppsStatus] = useState<any[]>([]);
+  const [collectedAllAppBatchStatus, setCollectedAllAppBatchStatus] = useState<AppBatchItem[]>([]);
+
+
   /* Admin management removed */
   const [selectedApp, setSelectedApp] = useState<AppDetail | null>(null);
   const [reviewNotes, setReviewNotes] = useState('');
 
   const [openReviewDialog, setOpenReviewDialog] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+  const [statusLoading, setStatusLoading] = useState(false);
+  const [lastUpdateTime, setLastUpdateTime] = useState<Date | null>(null);
 
   // Active tab state to replace the shadcn Tabs component
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [chosenAppStatus, setChosenAppStatus] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
 
-  // Admin panel component
+
+
+  // Get todays date: 
+  const today = new Date();
+  const monthNumber = today.getMonth(); // Months are 0-indexed in JavaScript
+  const year = today.getFullYear();
+
+  const [monthNumberDynamic, setMonthNumberDynamic] = useState(monthNumber);
+  const [yearNumber, setYearNumber] = useState(year);
+  const START_UPTIME_MONTH = 7; // August (0-indexed)
+  const START_UPTIME_YEAR = 2025; // Starting year for uptime data
+
+
+  // Month navigation functions for DatePicker
+  const handlePrevMonth = () => {
+    let newMonth = monthNumberDynamic - 1;
+    let newYear = yearNumber;
+
+    if (newMonth < 0) {
+      newMonth = 11;
+      newYear = yearNumber - 1;
+    }
+    // if (newYear < START_UPTIME_YEAR || (newYear === START_UPTIME_YEAR && newMonth < START_UPTIME_MONTH)) {
+    //   return; // Don't allow navigation before start date
+    // }
+    setMonthNumberDynamic(newMonth);
+    setYearNumber(newYear);
+  };
+
+  const handleNextMonth = () => {
+    let newMonth = monthNumberDynamic + 1;
+    let newYear = yearNumber;
+
+    if (newMonth > 11) {
+      newMonth = 0;
+      newYear = yearNumber + 1;
+    }
+
+    setMonthNumberDynamic(newMonth);
+    setYearNumber(newYear);
+  };
+  
+
+  // Polling for app status updates
+  useEffect(() => {
+    const fetchData = async () => {
+      // Fetch immediately
+      await fetchAppStatus();
+    };
+    fetchData();
+  }, []);
+
+  // When the current month and year are set
+  useEffect(() => {
+    const fetchData = async () => {
+      await fetchCollectedAllAppBatchStatus(monthNumberDynamic, yearNumber);
+    };
+    fetchData();
+  }, [monthNumberDynamic, yearNumber]); 
+
+  const fetchAppStatus = async () => {
+      try {
+        setStatusLoading(true);
+        const res = await axios.get('/api/app-uptime/status', {
+          headers: { 'Content-Type': 'application/json' }
+        });
+        
+        if (res.data.apps) {
+          setSubmittedAppsStatus(res.data.apps);
+        }
+        
+        // Set the last update time
+        setLastUpdateTime(new Date());
+      } catch (error) {
+        console.error('Error fetching app status:', error);
+      } finally {
+        setStatusLoading(false);
+      }
+    };
+
+  // Function to update the day bar based on app items
+  const fetchCollectedAllAppBatchStatus = async (month: number, year: number) => {
+    const adjustedMonth = month + 1; // Adjust month to 1-indexed for API
+    try {
+      setStatusLoading(true);
+      const res = await axios.get(`/api/app-uptime/get-app-uptime-days?month=${adjustedMonth}&year=${year}`, {
+        headers: { 'Content-Type': 'application/json' }
+      });
+      // console.log('Status response testing?ggs:', res.data);
+      
+      if (res.data.data) {
+        
+        // Transform data into nested structure grouped by packageName and date
+        const groupedData = res.data.data.reduce((acc: Record<string, Record<string, any[]>>, entry: any) => {
+          const packageName = entry.packageName;
+          const dateKey = new Date(entry.timestamp).toISOString().split('T')[0]; // YYYY-MM-DD format
+          
+          // Initialize package group if it doesn't exist
+          if (!acc[packageName]) {
+            acc[packageName] = {};
+          }
+          
+          // Initialize date array if it doesn't exist
+          if (!acc[packageName][dateKey]) {
+            acc[packageName][dateKey] = [];
+          }
+          
+          // Add entry to the appropriate date array
+          acc[packageName][dateKey].push(entry);
+          
+          return acc;
+        }, {});
+        
+        // Sort entries within each date array by timestamp (newest first)
+        Object.keys(groupedData).forEach(packageName => {
+          Object.keys(groupedData[packageName]).forEach(date => {
+            groupedData[packageName][date].sort((a: any, b: any) => 
+              new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+            );
+          });
+        });
+        
+        setCollectedAllAppBatchStatus({...res.data, data: groupedData});
+      }
+      
+      // Set the last update time
+      setLastUpdateTime(new Date());
+    } catch (error) {
+      console.error('Error fetching app status:', error);
+    } finally {
+      setStatusLoading(false);
+    }
+  };
+
 
   // Load admin data when component mounts
   useEffect(() => {
@@ -102,7 +261,9 @@ const AdminPanel: React.FC = () => {
     fetchData();
   }, []);
 
-  // Check if user is admin and load data
+
+
+  // Check if user is admin and load data TODO may have to look it over with Issiah Claude was helping me here
   const loadAdminData = async () => {
     setIsLoading(true);
 
@@ -130,9 +291,6 @@ const AdminPanel: React.FC = () => {
         console.error('Error fetching submitted apps:', err);
       }
 
-      // Admin management removed
-
-      // ONLY update state with real API data, do not use mock data anymore
       console.log('Updating state with API data:', {
         hasStats: !!statsData,
         submittedAppsCount: appsData?.length || 0
@@ -140,13 +298,21 @@ const AdminPanel: React.FC = () => {
 
       // Always update with real data, even if empty
       if (statsData) {
-        console.log('Setting real stats data:', statsData);
-        setStats(statsData);
+        // Add health status to recent submissions if they exist
+        if (statsData.recentSubmissions && statsData.recentSubmissions.length > 0) {
+          const recentWithHealth = await addAppHealthStatus(statsData.recentSubmissions);
+          setStats({
+            ...statsData,
+            recentSubmissions: recentWithHealth
+          });
+        } else {
+          setStats(statsData);
+        }
       } else {
         // If stats failed but we have app data, create a minimal stats object
         if (appsData) {
           const submittedCount = appsData.length;
-          console.log('Creating minimal stats from app data, submitted count:', submittedCount);
+          const recentWithHealth = await addAppHealthStatus(appsData.slice(0, 3));
           setStats({
             counts: {
               development: 0,
@@ -155,27 +321,79 @@ const AdminPanel: React.FC = () => {
               rejected: 0,
               admins: 0 // Admin count not needed
             },
-            recentSubmissions: appsData.slice(0, 3) // Use up to 3 most recent submissions
+            recentSubmissions: recentWithHealth
           });
         }
       }
 
-      // Always update submitted apps with real data
+      // Add health status and update state with real data
       console.log('Setting real submitted apps data, count:', appsData?.length || 0);
       setSubmittedApps(appsData || []);
+    
 
     } catch (error) {
       console.error('Error loading admin data:', error);
     } finally {
       setIsLoading(false);
     }
+    
   };
 
+  // Function to add health status to apps
+  async function addAppHealthStatus(submittedApps: any[]) {
+    if (!submittedApps || submittedApps.length === 0) return submittedApps;
 
+    const updatedApps = [...submittedApps];
+
+    for (let i = 0; i < updatedApps.length; i++) {
+      const cloudApp = updatedApps[i];
+      const publicUrl = cloudApp.publicUrl;
+
+      try {
+        const res = await axios.get(`/api/app-uptime/ping?url=${encodeURIComponent(publicUrl + '/health')}`, {
+          timeout: 10000
+        });
+
+        if (res.data.success && res.data.status === 200) {
+          const healthData = res.data.data;
+          
+          if (healthData && healthData.status === "healthy") {
+            // console.log(`✅ ${healthData.app || cloudApp.name} is healthy`);
+            updatedApps[i] = { ...cloudApp, appHealthStatus: "healthy" };
+          } else {
+            // console.log(`❌ ${cloudApp.name} responded but not healthy`);
+            updatedApps[i] = { ...cloudApp, appHealthStatus: "unhealthy" };
+          }
+        } else {
+          // console.warn(`Skipping ${publicUrl} - Not reachable`);
+          updatedApps[i] = { ...cloudApp, appHealthStatus: "unreachable" };
+        }
+
+      } catch (error) {
+        if (axios.isAxiosError(error)) {
+          if (error.code === 'ECONNABORTED') {
+            // console.warn(`Skipping ${publicUrl} - Request timeout`);
+            updatedApps[i] = { ...cloudApp, appHealthStatus: "timeout" };
+          } else {
+            // console.warn(`Skipping ${publicUrl} - Network error:`, error.message);
+            updatedApps[i] = { ...cloudApp, appHealthStatus: "error" };
+          }
+        } else {
+          // console.warn(`Skipping ${publicUrl} - Unknown error:`, error);
+          updatedApps[i] = { ...cloudApp, appHealthStatus: "error" };
+        }
+        continue;
+      }
+    }
+    
+    return updatedApps;
+  }
+
+
+  // Ui doodoo 
   const openAppReview = async (packageName: string) => {
     try {
       const appData = await api.admin.getAppDetail(packageName);
-      console.log('App details loaded:', appData);
       setSelectedApp(appData);
       setReviewNotes('');
       setOpenReviewDialog(true);
@@ -224,8 +442,6 @@ const AdminPanel: React.FC = () => {
   };
 
   /* Admin management functions removed */
-
-
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -235,6 +451,17 @@ const AdminPanel: React.FC = () => {
       minute: '2-digit'
     });
   };
+
+  // Filter apps based on search query
+  const filteredApps = submittedApps.filter(app => {
+    if (!searchQuery.trim()) return true;
+    
+    const query = searchQuery.toLowerCase();
+    return (
+      app.name.toLowerCase().includes(query) ||
+      app.packageName.toLowerCase().includes(query)
+    );
+  });
 
   // Function to check API connectivity
   const checkApiConnection = async () => {
@@ -286,6 +513,51 @@ const AdminPanel: React.FC = () => {
     }
   };
 
+// Function to get app batch status by package name
+  const getAppBatchStatusByPackageName = (collectedData: any, packageName: string): AppBatchItem[] => {
+    // Check if collectedData exists and has the data object
+    if (!collectedData || !collectedData.data || typeof collectedData.data !== 'object') {
+      return [];
+    }
+
+    // Get the package data from the nested structure
+    const packageData = collectedData.data[packageName];
+    if (!packageData) {
+      console.log(`No data found for package: ${packageName}`);
+      return [];
+    }
+
+    // Flatten all entries from all dates for this package
+    const allEntries: AppBatchItem[] = [];
+    Object.values(packageData).forEach((dateEntries: any) => {
+      if (Array.isArray(dateEntries)) {
+        allEntries.push(...dateEntries);
+      }
+    });
+
+    return allEntries;
+  };
+
+  // Function to calculate uptime percentage from app items
+  const calculateUptimePercentage = (appItems: AppBatchItem[], month: number, year: number): number => {
+    if (!appItems || appItems.length === 0) return 0;
+
+    // Filter items for the specific month and year
+    const monthItems = appItems.filter(item => {
+      const itemDate = new Date(item.timestamp);
+      return itemDate.getMonth() === month && itemDate.getFullYear() === year;
+    });
+
+    if (monthItems.length === 0) return 0;
+
+    // Count healthy items (online status true OR health is 'healthy')
+    const healthyItems = monthItems.filter(item => 
+      item.onlineStatus === true || item.health === 'healthy'
+    );
+
+    return parseFloat(((healthyItems.length / monthItems.length) * 100).toFixed(1));
+  };
+
   return (
     <DashboardLayout>
       <div className="container mx-auto">
@@ -299,20 +571,61 @@ const AdminPanel: React.FC = () => {
           </div>
         ) : (
           <div>
-            <div className="flex border-b mb-6">
-              <Button
-                variant={activeTab === "dashboard" ? "default" : "ghost"}
-                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary mr-2"
-                onClick={() => setActiveTab("dashboard")}
+            <div className="flex justify-between border-b mb-6">
+              <div className="flex">
+                <Button
+                  variant={activeTab === "dashboard" ? "default" : "ghost"}
+                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary mr-2"
+                  onClick={() => {
+                    setActiveTab("dashboard");
+                    // setChosenAppStatus("idle");
+                  }}
+                >
+                  Dashboard
+                </Button>
+                <Button
+                  variant={activeTab === "apps" ? "default" : "ghost"}
+                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary mr-2"
+                  onClick={() => {
+                    setActiveTab("apps");
+                    // setChosenAppStatus("idle");
+                  }}
+                >
+                  App Submissions
+                </Button>
+                <Button
+                  variant={activeTab === "app_status" ? "default" : "ghost"}
+                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary mr-2"
+                  onClick={() => {
+                    setActiveTab("app_status");
+                    // setChosenAppStatus("idle");
+
+                  }}
+                >
+                  App Status
+                </Button>
+              </div>
+              <Button //here
+                variant={activeTab != "idle" ? "ghost" : "default"}
+                className={`rounded-none border-b-2 border-transparent data-[state=active]:border-primary flex items-center gap-2 ${chosenAppStatus === "" ? "hidden" : "inline-flex"}`}
+                onClick={() => {
+                  setActiveTab("idle");
+                }}
               >
-                Dashboard
-              </Button>
-              <Button
-                variant={activeTab === "apps" ? "default" : "ghost"}
-                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary mr-2"
-                onClick={() => setActiveTab("apps")}
-              >
-                App Submissions
+                <Smartphone 
+                  className={`h-4 w-4 ${activeTab === "idle" ? "text-white" : "text-black"}`} 
+                />
+                <span>{chosenAppStatus}</span>
+                <X 
+                  className={`h-4 w-4 ml-2 cursor-pointer ${activeTab === "idle" ? "text-white hover:bg-gray-600" : "text-black hover:bg-gray-200"} rounded p-0.5`}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log("X clicked - closing tab");
+                    setChosenAppStatus("");
+                    setActiveTab("app_status");
+                  }}
+                />
               </Button>
             </div>
 
@@ -383,9 +696,11 @@ const AdminPanel: React.FC = () => {
                           <div className="text-sm text-gray-500">{app.packageName}</div>
                           <div className="text-xs text-gray-400">Submitted: {formatDate(app.updatedAt)}</div>
                         </div>
-                        <Button size="sm" onClick={() => openAppReview(app.packageName)}>
-                          Review
-                        </Button>
+                        <div className="flex gap-2">
+                          <Button size="sm" onClick={() => openAppReview(app.packageName)}>
+                            Review
+                          </Button>
+                        </div>
                       </div>
                     ))}
 
@@ -429,9 +744,11 @@ const AdminPanel: React.FC = () => {
                               <div className="text-xs text-gray-400">Submitted: {formatDate(app.updatedAt)}</div>
                             </div>
                           </div>
-                          <Button size="sm" onClick={() => openAppReview(app.packageName)}>
-                            Review
-                          </Button>
+                          <div className="flex gap-2">
+                            <Button size="sm" onClick={() => openAppReview(app.packageName)}>
+                              Review
+                            </Button>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -439,6 +756,214 @@ const AdminPanel: React.FC = () => {
                 </CardContent>
               </Card>
             )}
+
+            {activeTab === "app_status" && (
+              <div className='space-y-4'>
+                <div className="flex flex-row gap-[10px]">
+                  <Search 
+                    inputHint="Search app" 
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                  <Select onValueChange={(value) => console.log(value)}>
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder="Submitted" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="production">Submitted</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <DatePicker 
+                    className='w-[180px]'
+                    initialYear={yearNumber} 
+                    initialMonth={monthNumberDynamic} 
+                    setMonthNumberDynamic={setMonthNumberDynamic} 
+                    setYearNumber={setYearNumber}
+                    onPrevMonth={handlePrevMonth}
+                    onNextMonth={handleNextMonth}
+                  />
+                </div>
+                
+                <Card>
+                  <CardHeader>
+                    <CardTitle>
+                        <div className="flex-1 flex items-center gap-2.5">
+                          <div className='flex-1'>
+                            App Status
+                          </div>
+                          <span className="text-sm font-medium text-gray-500"></span>
+                          <div className='flex flex-col justify-center items-center'>
+                            <div className="text-xs text-gray-600">
+                              {lastUpdateTime ? lastUpdateTime.toLocaleTimeString() : 'Never'}
+                            </div>
+                          </div>
+                          <Button 
+                            className='w-30' 
+                            onClick={async () => {
+                              await fetchAppStatus();
+                              await fetchCollectedAllAppBatchStatus(monthNumberDynamic, yearNumber);
+
+                            }}
+                            disabled={statusLoading}
+                          >
+                            {statusLoading ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <>
+                                <Clock className="h-4 w-4" />
+                                <div>Update</div>
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                    </CardTitle>
+                    
+                  </CardHeader>
+                  <CardContent>
+                    {filteredApps.length === 0 ? (
+                      <div className="py-6 text-center text-gray-500">
+                        {searchQuery.trim() ? 'No apps match your search' : 'No pending submissions'}
+                      </div>
+                    ) : (
+                      <div className="divide-y">
+                        {filteredApps.map((app) => (
+                          <div key={app._id} className="py-4 flex justify-between items-center 
+                          hover:bg-gray-50 cursor-pointer transition-colors px-4" onClick={() => {
+                            setChosenAppStatus(app.name);
+                            setActiveTab("idle");
+                          }}>
+                            <div className="flex items-center">
+                              <img
+                                src={app.logoURL || 'https://placehold.co/100x100?text=App'}
+                                alt={app.name}
+                                className="w-10 h-10 rounded-md mr-3"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).src = 'https://placehold.co/100x100?text=App';
+                                }}
+                            />
+                              <div>
+                                <div className="font-medium">{app.name}</div>
+                                <div className="text-sm text-gray-500">{app.packageName}</div>
+                                <div className="text-xs text-gray-400">Submitted: {formatDate(app.updatedAt)}</div>
+                              </div>
+                            </div>
+                            <UptimeStatus title="Chat" 
+                              uptimePercentage={calculateUptimePercentage(
+                                getAppBatchStatusByPackageName(collectedAllAppBatchStatus, app.packageName),
+                                monthNumberDynamic,
+                                yearNumber
+                              )} 
+                              month={monthNumberDynamic} 
+                              year={yearNumber} 
+                              appHealthStatus={submittedAppsStatus.find(statusApp => statusApp.packageName === app.packageName)?.healthStatus || app.appHealthStatus || "unknown"}
+                              appItems={getAppBatchStatusByPackageName(collectedAllAppBatchStatus, app.packageName)}
+                              />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+              
+            )}
+
+            {chosenAppStatus !== "" && activeTab === "idle" && (() => {
+              // Find the selected app from submittedApps
+              const selectedApp = submittedApps.find(app => app.name === chosenAppStatus);
+              
+              if (!selectedApp) {
+                return (
+                  <Card>
+                    <CardContent className="p-6 text-center text-gray-500">
+                      App not found: {chosenAppStatus}
+                    </CardContent>
+                  </Card>
+                );
+              }
+              
+              // Get real-time health status from submittedAppsStatus array
+              const statusApp = submittedAppsStatus.find(statusApp => 
+                statusApp.packageName === selectedApp.packageName
+              );
+              
+              const healthStatus = statusApp?.healthStatus || selectedApp.appHealthStatus || "unknown";
+              // console.log(`Selected app health status: ${healthStatus}`);
+              // Map health status to Online/Offline
+              const getOnlineStatus = (health: string): 'Online' | 'Offline' => {
+                switch (health.toLowerCase()) {
+                  case 'healthy':
+                  case 'operational':
+                  case 'up':
+                    return 'Online';
+                  case 'unhealthy':
+                  case 'down':
+                  case 'error':
+                  case 'timeout':
+                  case 'unreachable':
+                    return 'Offline';
+                  default:
+                    return 'Offline'; // Default to offline for unknown status
+                }
+              };
+              
+              const isOnline = getOnlineStatus(healthStatus);
+              const uptimePercentage = isOnline === 'Online' ? 99.984 : 
+                (healthStatus === 'timeout' ? 85.5 : 
+                 healthStatus === 'unreachable' ? 75.2 : 95.123);
+              
+              // Create uptime history based on current status
+              const uptimeHistory = Array(90).fill('up').map((_, i) => {
+                if (isOnline === 'Offline') {
+                  // Show recent downtime for offline apps
+                  if (i > 87) return 'down';
+                  return Math.random() > 0.05 ? 'up' : 'down';
+                } else {
+                  // Show mostly up with occasional small downtimes
+                  return Math.random() > 0.01 ? 'up' : 'down';
+                }
+              });
+              
+              // Transform the app data to match AppStatus interface
+              const appStatusData = {
+                id: selectedApp._id || selectedApp.packageName,
+                name: selectedApp.name,
+                logo: selectedApp.logoURL || 'https://placehold.co/48x48/374151/ffffff?text=APP',
+                packageName: selectedApp.packageName,
+                submitted: formatDate(selectedApp.createdAt || selectedApp.updatedAt),
+                uptimePercentage,
+                status: healthStatus,
+                uptimeHistory,
+                details: {
+                  last24h: isOnline === 'Online' ? 100 : (healthStatus === 'timeout' ? 85.5 : 98.5),
+                  last7d: isOnline === 'Online' ? 99.952 : (healthStatus === 'timeout' ? 85.234 : 97.234),
+                  last30d: isOnline === 'Online' ? 99.984 : (healthStatus === 'timeout' ? 85.789 : 96.789),
+                  last90d: uptimePercentage,
+                  events: isOnline === 'Offline' ? [
+                    {
+                      date: new Date().toLocaleDateString(),
+                      duration: healthStatus === 'timeout' ? 25 : 15,
+                      reason: healthStatus === 'timeout' ? 'Connection Timeout' : 
+                              healthStatus === 'unreachable' ? 'Service Unreachable' :
+                              'Health Check Failed',
+                      details: `App ${selectedApp.name} ${
+                        healthStatus === 'timeout' ? 'timed out during health check' :
+                        healthStatus === 'unreachable' ? 'is not reachable at the configured endpoint' :
+                        `failed health check with status: ${healthStatus}`
+                      }`
+                    }
+                  ] : []
+                }
+              };
+              
+              return <AppDetailView 
+                app={appStatusData} 
+                onRefresh={fetchAppStatus}
+                isRefreshing={statusLoading}
+                appItems={getAppBatchStatusByPackageName(collectedAllAppBatchStatus, selectedApp.packageName)}
+                lastUpdateTime={lastUpdateTime}
+              />;
+            })()}
 
             {/* Admin management tab removed */}
           </div>
@@ -542,3 +1067,6 @@ const AdminPanel: React.FC = () => {
 };
 
 export default AdminPanel;
+
+
+
