@@ -5,6 +5,7 @@ import com.augmentos.asg_client.io.file.managers.FileOperationsManager;
 import com.augmentos.asg_client.io.file.managers.FileSecurityManager;
 import com.augmentos.asg_client.io.file.managers.FileLockManager;
 import com.augmentos.asg_client.io.file.managers.DirectoryManager;
+import com.augmentos.asg_client.io.file.managers.ThumbnailManager;
 import com.augmentos.asg_client.io.file.utils.FileOperationLogger;
 import com.augmentos.asg_client.io.file.utils.MimeTypeRegistry;
 import java.io.File;
@@ -28,6 +29,7 @@ public class FileManagerImpl implements FileManager {
     private final FileSecurityManager securityManager;
     private final FileLockManager lockManager;
     private final DirectoryManager directoryManager;
+    private final ThumbnailManager thumbnailManager;
     private final FileOperationLogger operationLogger;
     
     // Dependencies
@@ -43,6 +45,7 @@ public class FileManagerImpl implements FileManager {
         this.securityManager = new FileSecurityManager(logger);
         this.lockManager = new FileLockManager(logger);
         this.directoryManager = new DirectoryManager(baseDirectory, logger);
+        this.thumbnailManager = new ThumbnailManager(baseDirectory, logger);
         this.operationLogger = new FileOperationLogger(logger);
         
         logger.info(TAG, "FileManagerImpl initialized with base directory: " + baseDirectory.getAbsolutePath());
@@ -103,9 +106,34 @@ public class FileManagerImpl implements FileManager {
                 return null;
             }
             
-            File file = new File(packageDir, fileName);
+            // Handle files in subdirectories by resolving the full path
+            File file;
+            if (fileName.contains(File.separator) || fileName.contains("/")) {
+                // File is in a subdirectory, resolve the full path
+                file = new File(packageDir, fileName);
+                Log.d(TAG, "📁 Looking for file in subdirectory: " + file.getAbsolutePath());
+            } else {
+                // File is in root directory
+                file = new File(packageDir, fileName);
+                Log.d(TAG, "📁 Looking for file in root directory: " + file.getAbsolutePath());
+            }
+            
             if (!file.exists() || !file.isFile()) {
                 Log.d(TAG, "📁 File does not exist: " + file.getAbsolutePath());
+                return null;
+            }
+            
+            // Security check: ensure the file is within the package directory
+            try {
+                String packagePath = packageDir.getCanonicalPath();
+                String filePath = file.getCanonicalPath();
+                
+                if (!filePath.startsWith(packagePath)) {
+                    Log.w(TAG, "❌ Security violation: File path outside package directory");
+                    return null;
+                }
+            } catch (Exception e) {
+                Log.w(TAG, "⚠️ Error checking file path security", e);
                 return null;
             }
             
@@ -195,16 +223,21 @@ public class FileManagerImpl implements FileManager {
             }
             
             Log.d(TAG, "📋 Creating metadata for file: " + fileName);
+            
+            // Use the original fileName (which may be a relative path) for the metadata
+            // This preserves the directory structure information
+            String mimeType = new MimeTypeRegistry().getMimeType(file.getName());
+            
             FileMetadata metadata = new FileMetadata(
-                fileName,
+                    fileName, // Use the original fileName to preserve path structure
                 file.getAbsolutePath(),
                 file.length(),
                 file.lastModified(),
-                new MimeTypeRegistry().getMimeType(fileName),
+                mimeType,
                 packageName
             );
             
-            Log.d(TAG, "✅ Metadata created successfully: " + metadata);
+            Log.d(TAG, "✅ Metadata created successfully for: " + fileName + " (Size: " + file.length() + " bytes)");
             return metadata;
             
         } catch (Exception e) {
@@ -244,26 +277,12 @@ public class FileManagerImpl implements FileManager {
                 return new ArrayList<>();
             }
             
-            File[] files = packageDir.listFiles(File::isFile);
+            // Recursively collect all files from package directory and subdirectories
             List<FileMetadata> metadataList = new ArrayList<>();
-            
-            if (files != null) {
-                Log.d(TAG, "📋 Found " + files.length + " files in package directory");
-                for (File file : files) {
-                    String mimeType = new MimeTypeRegistry().getMimeType(file.getName());
-                    metadataList.add(new FileMetadata(
-                        file.getName(),
-                        file.getAbsolutePath(),
-                        file.length(),
-                        file.lastModified(),
-                        mimeType,
-                        packageName
-                    ));
-                }
-            }
+            int totalFiles = collectFilesRecursively(packageDir, packageName, metadataList);
             
             operationLogger.logOperation("LIST", packageName, null, metadataList.size(), true);
-            Log.d(TAG, "✅ File listing completed - " + metadataList.size() + " files");
+            Log.d(TAG, "✅ File listing completed - " + metadataList.size() + " files found in " + totalFiles + " locations");
             return metadataList;
         } catch (Exception e) {
             Log.e(TAG, "💥 Error listing files", e);
@@ -274,6 +293,77 @@ public class FileManagerImpl implements FileManager {
                 lockManager.releaseReadLock(lock, packageName);
             }
         }
+    }
+    
+    /**
+     * Recursively collect all files from a directory and its subdirectories
+     * @param directory The directory to scan
+     * @param packageName The package name for metadata
+     * @param metadataList The list to populate with file metadata
+     * @return Total number of files found
+     */
+    private int collectFilesRecursively(File directory, String packageName, List<FileMetadata> metadataList) {
+        if (!directory.exists() || !directory.isDirectory()) {
+            return 0;
+        }
+        
+        int fileCount = 0;
+        File[] items = directory.listFiles();
+        
+        if (items != null) {
+            for (File item : items) {
+                if (item.isFile()) {
+                    // Add file to metadata list
+                    String mimeType = new MimeTypeRegistry().getMimeType(item.getName());
+                    String relativePath = getRelativePath(directory, item);
+                    
+                    metadataList.add(new FileMetadata(
+                        relativePath, // Use relative path as filename to preserve directory structure
+                        item.getAbsolutePath(),
+                        item.length(),
+                        item.lastModified(),
+                        mimeType,
+                        packageName
+                    ));
+                    fileCount++;
+                    
+                    Log.d(TAG, "📄 Found file: " + relativePath + " (" + item.length() + " bytes)");
+                } else if (item.isDirectory()) {
+                    // Recursively scan subdirectory
+                    Log.d(TAG, "📁 Scanning subdirectory: " + item.getName());
+                    fileCount += collectFilesRecursively(item, packageName, metadataList);
+                }
+            }
+        }
+        
+        return fileCount;
+    }
+    
+    /**
+     * Get relative path from base directory to file
+     * @param baseDir The base directory
+     * @param file The file
+     * @return Relative path string
+     */
+    private String getRelativePath(File baseDir, File file) {
+        try {
+            String basePath = baseDir.getAbsolutePath();
+            String filePath = file.getAbsolutePath();
+            
+            if (filePath.startsWith(basePath)) {
+                String relativePath = filePath.substring(basePath.length());
+                // Remove leading slash if present
+                if (relativePath.startsWith(File.separator)) {
+                    relativePath = relativePath.substring(1);
+                }
+                return relativePath;
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "⚠️ Error calculating relative path for: " + file.getAbsolutePath(), e);
+        }
+        
+        // Fallback to just filename if relative path calculation fails
+        return file.getName();
     }
     
     @Override
@@ -327,16 +417,8 @@ public class FileManagerImpl implements FileManager {
                 return 0;
             }
             
-            File[] files = packageDir.listFiles(File::isFile);
-            if (files == null) {
-                Log.w(TAG, "⚠️ Failed to list files for package size calculation");
-                return 0;
-            }
-            
-            long totalSize = 0;
-            for (File file : files) {
-                totalSize += file.length();
-            }
+            // Recursively calculate size of all files in package directory and subdirectories
+            long totalSize = calculateDirectorySizeRecursively(packageDir);
             
             Log.d(TAG, "✅ Package size calculated: " + totalSize + " bytes");
             return totalSize;
@@ -349,6 +431,35 @@ public class FileManagerImpl implements FileManager {
                 lockManager.releaseReadLock(lock, packageName);
             }
         }
+    }
+    
+    /**
+     * Recursively calculate the total size of all files in a directory and its subdirectories
+     * @param directory The directory to calculate size for
+     * @return Total size in bytes
+     */
+    private long calculateDirectorySizeRecursively(File directory) {
+        if (!directory.exists() || !directory.isDirectory()) {
+            return 0;
+        }
+        
+        long totalSize = 0;
+        File[] items = directory.listFiles();
+        
+        if (items != null) {
+            for (File item : items) {
+                if (item.isFile()) {
+                    totalSize += item.length();
+                    Log.d(TAG, "📄 File size: " + item.getName() + " (" + item.length() + " bytes)");
+                } else if (item.isDirectory()) {
+                    // Recursively calculate size of subdirectory
+                    Log.d(TAG, "📁 Calculating size of subdirectory: " + item.getName());
+                    totalSize += calculateDirectorySizeRecursively(item);
+                }
+            }
+        }
+        
+        return totalSize;
     }
     
     @Override
@@ -454,42 +565,11 @@ public class FileManagerImpl implements FileManager {
             long cutoffTime = System.currentTimeMillis() - maxAgeMs;
             Log.d(TAG, "⏰ Cutoff time: " + new java.util.Date(cutoffTime));
             
-            // Scan for old files
-            File[] files = packageDir.listFiles();
-            if (files == null) {
-                Log.w(TAG, "⚠️ Cannot list files in directory: " + packageDir.getAbsolutePath());
-                return 0;
-            }
-            
+            // Recursively scan and clean up old files
             int deletedCount = 0;
             long totalDeletedSize = 0;
             
-            Log.d(TAG, "🔍 Scanning " + files.length + " files for cleanup...");
-            
-            for (File file : files) {
-                if (file.isFile()) {
-                    long lastModified = file.lastModified();
-                    if (lastModified < cutoffTime) {
-                        long fileSize = file.length();
-                        Log.d(TAG, "🗑️ Deleting old file: " + file.getName() + " (last modified: " + new java.util.Date(lastModified) + ", size: " + fileSize + " bytes)");
-                        
-                        try {
-                            if (file.delete()) {
-                                deletedCount++;
-                                totalDeletedSize += fileSize;
-                                Log.d(TAG, "✅ Successfully deleted: " + file.getName());
-                                
-                                // Log the deletion
-                                operationLogger.logFileOperation(packageName, file.getName(), "DELETE", "Old file cleanup", fileSize);
-                            } else {
-                                Log.w(TAG, "❌ Failed to delete file: " + file.getName());
-                            }
-                        } catch (Exception e) {
-                            Log.e(TAG, "💥 Exception deleting file: " + file.getName(), e);
-                        }
-                    }
-                }
-            }
+            deletedCount = cleanupFilesRecursively(packageDir, packageName, cutoffTime, totalDeletedSize);
             
             Log.i(TAG, "✅ Cleanup completed: " + deletedCount + " files deleted, " + totalDeletedSize + " bytes freed");
             return deletedCount;
@@ -498,6 +578,60 @@ public class FileManagerImpl implements FileManager {
             Log.e(TAG, "💥 Exception during file cleanup for package: " + packageName, e);
             return 0;
         }
+    }
+    
+    /**
+     * Recursively scan and clean up old files in a directory and its subdirectories
+     * @param directory The directory to scan
+     * @param packageName The package name for logging
+     * @param cutoffTime The cutoff time for file deletion
+     * @param totalDeletedSize Running total of deleted size
+     * @return Number of files deleted
+     */
+    private int cleanupFilesRecursively(File directory, String packageName, long cutoffTime, long totalDeletedSize) {
+        if (!directory.exists() || !directory.isDirectory()) {
+            return 0;
+        }
+        
+        int deletedCount = 0;
+        File[] items = directory.listFiles();
+        
+        if (items != null) {
+            Log.d(TAG, "🔍 Scanning " + items.length + " items in: " + directory.getName());
+            
+            for (File item : items) {
+                if (item.isFile()) {
+                    long lastModified = item.lastModified();
+                    if (lastModified < cutoffTime) {
+                        long fileSize = item.length();
+                        String relativePath = getRelativePath(directory, item);
+                        
+                        Log.d(TAG, "🗑️ Deleting old file: " + relativePath + " (last modified: " + new java.util.Date(lastModified) + ", size: " + fileSize + " bytes)");
+                        
+                        try {
+                            if (item.delete()) {
+                                deletedCount++;
+                                totalDeletedSize += fileSize;
+                                Log.d(TAG, "✅ Successfully deleted: " + relativePath);
+                                
+                                // Log the deletion
+                                operationLogger.logOperation("DELETE", packageName, relativePath, fileSize, true);
+                            } else {
+                                Log.w(TAG, "❌ Failed to delete file: " + relativePath);
+                            }
+                        } catch (Exception e) {
+                            Log.e(TAG, "💥 Exception deleting file: " + relativePath, e);
+                        }
+                    }
+                } else if (item.isDirectory()) {
+                    // Recursively clean up subdirectory
+                    Log.d(TAG, "📁 Scanning subdirectory for cleanup: " + item.getName());
+                    deletedCount += cleanupFilesRecursively(item, packageName, cutoffTime, totalDeletedSize);
+                }
+            }
+        }
+        
+        return deletedCount;
     }
     
     // StorageOperations implementation
@@ -525,5 +659,10 @@ public class FileManagerImpl implements FileManager {
     @Override
     public String getDefaultPackageName() {
         return "com.augmentos.asg_client.camera";
+    }
+    
+    @Override
+    public ThumbnailManager getThumbnailManager() {
+        return thumbnailManager;
     }
 } 

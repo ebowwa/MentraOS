@@ -23,9 +23,9 @@ public class K900CommandHandler {
     private final IStateManager stateManager;
     private final ICommunicationManager communicationManager;
 
-    public K900CommandHandler(AsgClientServiceManager serviceManager, 
-                             IStateManager stateManager,
-                             ICommunicationManager communicationManager) {
+    public K900CommandHandler(AsgClientServiceManager serviceManager,
+                              IStateManager stateManager,
+                              ICommunicationManager communicationManager) {
         this.serviceManager = serviceManager;
         this.stateManager = stateManager;
         this.communicationManager = communicationManager;
@@ -33,6 +33,7 @@ public class K900CommandHandler {
 
     /**
      * Process K900 protocol commands
+     *
      * @param json The K900 command JSON
      */
     public void processK900Command(JSONObject json) {
@@ -161,18 +162,19 @@ public class K900CommandHandler {
      * Handle PHOTO mode button press
      */
     private void handlePhotoMode(boolean isLongPress) {
+
+        MediaCaptureService captureService = serviceManager.getMediaCaptureService();
+        if (captureService == null) {
+            Log.d(TAG, "MediaCaptureService is null, initializing");
+            return;
+        }
+
         if (isLongPress) {
             Log.d(TAG, "📹 Video recording not yet implemented (PHOTO mode, long press)");
-            // TODO: Implement video recording
+            captureService.handleVideoButtonPress();
         } else {
-            MediaCaptureService captureService = serviceManager.getMediaCaptureService();
-            if (captureService == null) {
-                Log.d(TAG, "MediaCaptureService is null, initializing");
-                // The service manager will handle initialization
-            } else {
-                Log.d(TAG, "📸 Taking photo locally (PHOTO mode, short press)");
-                captureService.takePhotoLocally();
-            }
+            Log.d(TAG, "📸 Taking photo locally (PHOTO mode, short press)");
+            captureService.takePhotoLocally();
         }
     }
 

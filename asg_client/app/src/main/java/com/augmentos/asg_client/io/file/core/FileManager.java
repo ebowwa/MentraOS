@@ -5,6 +5,7 @@ import com.augmentos.asg_client.io.file.interfaces.FileMetadataOperations;
 import com.augmentos.asg_client.io.file.interfaces.PackageOperations;
 import com.augmentos.asg_client.io.file.interfaces.StorageOperations;
 import com.augmentos.asg_client.io.file.utils.FileOperationLogger;
+import com.augmentos.asg_client.io.file.managers.ThumbnailManager;
 import java.io.File;
 
 /**
@@ -97,5 +98,16 @@ public interface FileManager extends FileOperations, FileMetadataOperations, Pac
      * @return Default package name
      */
     String getDefaultPackageName();
+    
+    /**
+     * Get the default media directory for file operations.
+     * @return Default media directory
+     */
     File getDefaultMediaDirectory();
+    
+    /**
+     * Get the thumbnail manager for video thumbnail operations.
+     * @return ThumbnailManager instance
+     */
+    ThumbnailManager getThumbnailManager();
 } 

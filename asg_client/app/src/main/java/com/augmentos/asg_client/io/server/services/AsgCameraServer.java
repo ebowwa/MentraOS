@@ -29,6 +29,11 @@ import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.*;
 
+// JSON parsing imports
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
 /**
  * Enhanced Camera web server for ASG (AugmentOS Smart Glasses) applications.
  * Provides RESTful API for photo capture, gallery browsing, and file downloads.
@@ -127,6 +132,9 @@ public class AsgCameraServer extends AsgServer {
             case "/api/cleanup":
                 logger.debug(TAG, "🧹 Serving cleanup request");
                 return serveCleanup(session);
+            case "/api/delete-files":
+                logger.debug(TAG, "🗑️ Serving delete files request");
+                return serveDeleteFiles(session);
             default:
                 // Check if it's a static file request
                 if (uri.startsWith("/static/")) {
@@ -236,7 +244,7 @@ public class AsgCameraServer extends AsgServer {
         try {
             // Get all photos using FileManager with timeout
             List<FileMetadata> photoMetadataList = fileManager.listFiles(fileManager.getDefaultPackageName());
-            
+
             long fetchTime = System.currentTimeMillis() - startTime;
             logger.debug(TAG, "📚 Found " + photoMetadataList.size() + " photos in " + fetchTime + "ms");
 
@@ -265,7 +273,7 @@ public class AsgCameraServer extends AsgServer {
                     logger.warn(TAG, "📚 Gallery processing timeout after " + (System.currentTimeMillis() - startTime) + "ms");
                     return createErrorResponse(Response.Status.REQUEST_TIMEOUT, "Gallery processing timeout");
                 }
-                
+
                 Map<String, Object> photoInfo = new HashMap<>();
                 photoInfo.put("name", photoMetadata.getFileName());
                 photoInfo.put("size", photoMetadata.getFileSize());
@@ -273,8 +281,18 @@ public class AsgCameraServer extends AsgServer {
                 photoInfo.put("mime_type", photoMetadata.getMimeType());
                 photoInfo.put("url", "/api/photo?file=" + photoMetadata.getFileName());
                 photoInfo.put("download", "/api/download?file=" + photoMetadata.getFileName());
+                
+                // Add video-specific information
+                if (isVideoFile(photoMetadata.getFileName())) {
+                    photoInfo.put("is_video", true);
+                    photoInfo.put("thumbnail_url", "/api/photo?file=" + photoMetadata.getFileName());
+                    logger.debug(TAG, "📚 Added video info for: " + photoMetadata.getFileName());
+                } else {
+                    photoInfo.put("is_video", false);
+                    logger.debug(TAG, "📚 Added image info for: " + photoMetadata.getFileName());
+                }
+                
                 photos.add(photoInfo);
-
                 totalSize += photoMetadata.getFileSize();
             }
 
@@ -293,7 +311,7 @@ public class AsgCameraServer extends AsgServer {
 
             long totalTime = System.currentTimeMillis() - startTime;
             logger.debug(TAG, "📚 Gallery served successfully with " + photos.size() + " photos in " + totalTime + "ms");
-            
+
             Map<String, Object> data = new HashMap<>();
             data.put("photos", photos);
             data.put("total_count", photos.size());
@@ -309,10 +327,10 @@ public class AsgCameraServer extends AsgServer {
     }
 
     /**
-     * Serve a specific photo by filename using the file management system.
+     * Serve a specific photo or video thumbnail by filename using the file management system.
      */
     private Response servePhoto(IHTTPSession session) {
-        logger.debug(TAG, "🖼️ Photo request started");
+        logger.debug(TAG, "🖼️ Photo/Video request started");
 
         Map<String, String> params = session.getParms();
         String filename = params.get("file");
@@ -326,34 +344,103 @@ public class AsgCameraServer extends AsgServer {
 
         try {
             // Get file using FileManager (security validation is handled automatically)
-            File photoFile = fileManager.getFile(fileManager.getDefaultPackageName(), filename);
-            if (photoFile == null || !photoFile.exists()) {
-                logger.warn(TAG, "🖼️ Photo file not found: " + filename);
-                return createErrorResponse(Response.Status.NOT_FOUND, "Photo not found");
+            File mediaFile = fileManager.getFile(fileManager.getDefaultPackageName(), filename);
+            if (mediaFile == null || !mediaFile.exists()) {
+                logger.warn(TAG, "🖼️ Media file not found: " + filename);
+                return createErrorResponse(Response.Status.NOT_FOUND, "Media file not found");
             }
 
             // Get metadata for MIME type
             FileMetadata metadata = fileManager.getFileMetadata(fileManager.getDefaultPackageName(), filename);
             String mimeType = metadata != null ? metadata.getMimeType() : "image/jpeg";
 
-            logger.debug(TAG, "🖼️ Reading photo file from disk...");
-            try (FileInputStream fis = new FileInputStream(photoFile)) {
-                byte[] fileData = null;
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    fileData = fis.readAllBytes();
-                } else {
-                    fileData = new byte[(int) photoFile.length()];
-                    fis.read(fileData);
-                }
-                logger.debug(TAG, "🖼️ File read successfully: " + fileData.length + " bytes");
-
-                logger.debug(TAG, "🖼️ Serving photo: " + filename + " (" + fileData.length + " bytes)");
-                return newChunkedResponse(Response.Status.OK, mimeType, new java.io.ByteArrayInputStream(fileData));
+            // Check if it's a video file
+            if (isVideoFile(filename)) {
+                logger.debug(TAG, "🎥 Video file detected: " + filename);
+                return serveVideoThumbnail(mediaFile, filename);
+            } else {
+                logger.debug(TAG, "🖼️ Image file detected: " + filename);
+                return serveImageFile(mediaFile, filename, mimeType);
             }
         } catch (Exception e) {
-            logger.error(TAG, "🖼️ Error reading photo " + filename + ": " + e.getMessage(), e);
-            return createErrorResponse(Response.Status.INTERNAL_ERROR, "Error reading photo file");
+            logger.error(TAG, "🖼️ Error reading media file " + filename + ": " + e.getMessage(), e);
+            return createErrorResponse(Response.Status.INTERNAL_ERROR, "Error reading media file");
         }
+    }
+    
+    /**
+     * Serve video thumbnail
+     */
+    private Response serveVideoThumbnail(File videoFile, String filename) {
+        logger.debug(TAG, "🎥 Generating/serving thumbnail for video: " + filename);
+        
+        try {
+            // Get or create thumbnail
+            File thumbnailFile = fileManager.getThumbnailManager().getOrCreateThumbnail(videoFile);
+            
+            if (thumbnailFile == null || !thumbnailFile.exists()) {
+                logger.warn(TAG, "🎥 Failed to generate thumbnail for video: " + filename);
+                return createErrorResponse(Response.Status.INTERNAL_ERROR, "Failed to generate video thumbnail");
+            }
+            
+            // Read thumbnail file
+            try (FileInputStream fis = new FileInputStream(thumbnailFile)) {
+                byte[] thumbnailData = null;
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    thumbnailData = fis.readAllBytes();
+                } else {
+                    thumbnailData = new byte[(int) thumbnailFile.length()];
+                    fis.read(thumbnailData);
+                }
+                
+                logger.debug(TAG, "🎥 Serving video thumbnail: " + filename + " (" + thumbnailData.length + " bytes)");
+                return newChunkedResponse(Response.Status.OK, "image/jpeg", new java.io.ByteArrayInputStream(thumbnailData));
+            }
+        } catch (Exception e) {
+            logger.error(TAG, "🎥 Error serving video thumbnail " + filename + ": " + e.getMessage(), e);
+            return createErrorResponse(Response.Status.INTERNAL_ERROR, "Error serving video thumbnail");
+        }
+    }
+    
+    /**
+     * Serve image file
+     */
+    private Response serveImageFile(File imageFile, String filename, String mimeType) {
+        logger.debug(TAG, "🖼️ Reading image file from disk...");
+        
+        try (FileInputStream fis = new FileInputStream(imageFile)) {
+            byte[] fileData = null;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                fileData = fis.readAllBytes();
+            } else {
+                fileData = new byte[(int) imageFile.length()];
+                fis.read(fileData);
+            }
+            logger.debug(TAG, "🖼️ File read successfully: " + fileData.length + " bytes");
+
+            logger.debug(TAG, "🖼️ Serving image: " + filename + " (" + fileData.length + " bytes)");
+            return newChunkedResponse(Response.Status.OK, mimeType, new java.io.ByteArrayInputStream(fileData));
+        } catch (Exception e) {
+            logger.error(TAG, "🖼️ Error reading image file " + filename + ": " + e.getMessage(), e);
+            return createErrorResponse(Response.Status.INTERNAL_ERROR, "Error reading image file");
+        }
+    }
+    
+    /**
+     * Check if a file is a video file
+     */
+    private boolean isVideoFile(String filename) {
+        if (filename == null) return false;
+        
+        String lowerFilename = filename.toLowerCase();
+        return lowerFilename.endsWith(".mp4") || 
+               lowerFilename.endsWith(".avi") || 
+               lowerFilename.endsWith(".mov") || 
+               lowerFilename.endsWith(".wmv") || 
+               lowerFilename.endsWith(".flv") || 
+               lowerFilename.endsWith(".webm") || 
+               lowerFilename.endsWith(".mkv") || 
+               lowerFilename.endsWith(".3gp");
     }
 
     /**
@@ -429,11 +516,16 @@ public class AsgCameraServer extends AsgServer {
             logger.debug(TAG, "🧹 🗑️ Cleaning up photos older than " + maxAgeHours + " hours...");
             int cleanedCount = fileManager.cleanupOldFiles(fileManager.getDefaultPackageName(), maxAgeMs);
 
-            logger.debug(TAG, "🧹 ✅ Cleanup completed: " + cleanedCount + " files removed");
+            // Also cleanup old thumbnails
+            logger.debug(TAG, "🧹 🗑️ Cleaning up old thumbnails...");
+            int thumbnailCleanedCount = fileManager.getThumbnailManager().cleanupOldThumbnails(maxAgeMs);
+
+            logger.debug(TAG, "🧹 ✅ Cleanup completed: " + cleanedCount + " files and " + thumbnailCleanedCount + " thumbnails removed");
 
             Map<String, Object> data = new HashMap<>();
             data.put("message", "Cleanup completed successfully");
             data.put("files_removed", cleanedCount);
+            data.put("thumbnails_removed", thumbnailCleanedCount);
             data.put("max_age_hours", maxAgeHours);
             data.put("timestamp", System.currentTimeMillis());
 
@@ -441,6 +533,123 @@ public class AsgCameraServer extends AsgServer {
         } catch (Exception e) {
             logger.error(TAG, "🧹 💥 Error during cleanup: " + e.getMessage(), e);
             return createErrorResponse(Response.Status.INTERNAL_ERROR, "Error during cleanup");
+        }
+    }
+
+    /**
+     * Serve delete files request to remove specific files.
+     * Accepts POST request with JSON body: {"files": ["file1.jpg", "file2.jpg"]}
+     */
+    private Response serveDeleteFiles(IHTTPSession session) {
+        logger.debug(TAG, "🗑️ Delete files request started");
+
+        // Check if it's a POST request
+        if (!"POST".equals(session.getMethod().name())) {
+            logger.warn(TAG, "🗑️ Invalid method: " + session.getMethod().name() + " (expected POST)");
+            return createErrorResponse(Response.Status.METHOD_NOT_ALLOWED, "Only POST method is allowed");
+        }
+
+        try {
+            // Read request body
+            Map<String, String> headers = session.getHeaders();
+            int contentLength = Integer.parseInt(headers.getOrDefault("content-length", "0"));
+
+            if (contentLength <= 0) {
+                logger.warn(TAG, "🗑️ Empty request body");
+                return createErrorResponse(Response.Status.BAD_REQUEST, "Request body is required");
+            }
+
+            // Read JSON body
+            byte[] body = new byte[contentLength];
+            InputStream inputStream = session.getInputStream();
+            int bytesRead = inputStream.read(body);
+
+            if (bytesRead != contentLength) {
+                logger.warn(TAG, "🗑️ Incomplete request body: expected " + contentLength + " bytes, got " + bytesRead);
+                return createErrorResponse(Response.Status.BAD_REQUEST, "Incomplete request body");
+            }
+
+            String jsonBody = new String(body, StandardCharsets.UTF_8);
+            logger.debug(TAG, "🗑️ Request body: " + jsonBody);
+
+            // Parse JSON
+            JSONObject jsonObject = new JSONObject(jsonBody);
+            JSONArray filesArray = jsonObject.getJSONArray("files");
+
+            if (filesArray.length() == 0) {
+                logger.warn(TAG, "🗑️ Empty files array");
+                return createErrorResponse(Response.Status.BAD_REQUEST, "Files array cannot be empty");
+            }
+
+            // Process file deletion
+            List<Map<String, Object>> results = new ArrayList<>();
+            int successCount = 0;
+            int failureCount = 0;
+            long totalDeletedSize = 0;
+
+            for (int i = 0; i < filesArray.length(); i++) {
+                String fileName = filesArray.getString(i);
+
+                if (fileName == null || fileName.trim().isEmpty()) {
+                    logger.warn(TAG, "🗑️ Skipping empty filename at index " + i);
+                    Map<String, Object> result = new HashMap<>();
+                    result.put("file", fileName);
+                    result.put("success", false);
+                    result.put("message", "Empty filename");
+                    results.add(result);
+                    failureCount++;
+                    continue;
+                }
+
+                logger.debug(TAG, "🗑️ Deleting file: " + fileName);
+
+                // Get file metadata before deletion for size calculation
+                FileMetadata metadata = fileManager.getFileMetadata(fileManager.getDefaultPackageName(), fileName);
+                long fileSize = metadata != null ? metadata.getFileSize() : 0;
+
+                // Delete the file
+                FileOperationResult deleteResult = fileManager.deleteFile(fileManager.getDefaultPackageName(), fileName);
+
+                Map<String, Object> result = new HashMap<>();
+                result.put("file", fileName);
+                result.put("success", deleteResult.isSuccess());
+                result.put("message", deleteResult.getMessage());
+                result.put("size", fileSize);
+
+                if (deleteResult.isSuccess()) {
+                    successCount++;
+                    totalDeletedSize += fileSize;
+                    logger.debug(TAG, "🗑️ Successfully deleted: " + fileName + " (" + fileSize + " bytes)");
+                } else {
+                    failureCount++;
+                    logger.warn(TAG, "🗑️ Failed to delete: " + fileName + " - " + deleteResult.getMessage());
+                }
+
+                results.add(result);
+            }
+
+            // Prepare response
+            Map<String, Object> responseData = new HashMap<>();
+            responseData.put("message", "File deletion completed");
+            responseData.put("total_files", filesArray.length());
+            responseData.put("successful_deletions", successCount);
+            responseData.put("failed_deletions", failureCount);
+            responseData.put("total_deleted_size", totalDeletedSize);
+            responseData.put("results", results);
+            responseData.put("timestamp", System.currentTimeMillis());
+
+            logger.info(TAG, "🗑️ Delete files completed: " + successCount + " successful, " + failureCount + " failed, " + totalDeletedSize + " bytes freed");
+            return createSuccessResponse(responseData);
+
+        } catch (JSONException e) {
+            logger.error(TAG, "🗑️ JSON parsing error: " + e.getMessage(), e);
+            return createErrorResponse(Response.Status.BAD_REQUEST, "Invalid JSON format: " + e.getMessage());
+        } catch (IOException e) {
+            logger.error(TAG, "🗑️ IO error reading request body: " + e.getMessage(), e);
+            return createErrorResponse(Response.Status.INTERNAL_ERROR, "Error reading request body");
+        } catch (Exception e) {
+            logger.error(TAG, "🗑️ Unexpected error during file deletion: " + e.getMessage(), e);
+            return createErrorResponse(Response.Status.INTERNAL_ERROR, "Unexpected error: " + e.getMessage());
         }
     }
 
@@ -466,6 +675,10 @@ public class AsgCameraServer extends AsgServer {
             status.put("package_size", fileManager.getPackageSize(fileManager.getDefaultPackageName()));
             status.put("available_space", fileManager.getAvailableSpace());
             status.put("total_space", fileManager.getTotalSpace());
+            
+            // Thumbnail metrics
+            status.put("thumbnail_count", fileManager.getThumbnailManager().getThumbnailCount());
+            status.put("thumbnail_directory_size", fileManager.getThumbnailManager().getThumbnailDirectorySize());
 
             // Performance metrics from file manager
             var performanceStats = fileManager.getOperationLogger().getPerformanceStats();
@@ -478,6 +691,8 @@ public class AsgCameraServer extends AsgServer {
             logger.debug(TAG, "📊 📈 Total photos: " + status.get("total_photos"));
             logger.debug(TAG, "📊 📈 Package size: " + status.get("package_size") + " bytes");
             logger.debug(TAG, "📊 📈 Available space: " + status.get("available_space") + " bytes");
+            logger.debug(TAG, "📊 📈 Thumbnail count: " + status.get("thumbnail_count"));
+            logger.debug(TAG, "📊 📈 Thumbnail directory size: " + status.get("thumbnail_directory_size") + " bytes");
             logger.debug(TAG, "📊 📈 Success rate: " + performanceStats.successRate + "%");
 
             logger.debug(TAG, "📊 ✅ Status served successfully");
