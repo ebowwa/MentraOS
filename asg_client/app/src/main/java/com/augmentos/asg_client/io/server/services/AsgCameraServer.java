@@ -135,6 +135,15 @@ public class AsgCameraServer extends AsgServer {
             case "/api/delete-files":
                 logger.debug(TAG, "🗑️ Serving delete files request");
                 return serveDeleteFiles(session);
+            case "/api/sync":
+                logger.debug(TAG, "🔄 Serving sync request");
+                return serveSync(session);
+            case "/api/sync-batch":
+                logger.debug(TAG, "📦 Serving batch sync request");
+                return serveBatchSync(session);
+            case "/api/sync-status":
+                logger.debug(TAG, "📊 Serving sync status request");
+                return serveSyncStatus(session);
             default:
                 // Check if it's a static file request
                 if (uri.startsWith("/static/")) {
@@ -807,4 +816,334 @@ public class AsgCameraServer extends AsgServer {
     public String getCameraPackage() {
         return fileManager.getDefaultPackageName();
     }
-} 
+
+    /**
+     * Serve sync request for efficient client-side synchronization.
+     * Returns only files that have changed since the last sync.
+     */
+    private Response serveSync(IHTTPSession session) {
+        logger.debug(TAG, "🔄 =========================================");
+        logger.debug(TAG, "🔄 SYNC REQUEST HANDLER");
+        logger.debug(TAG, "🔄 =========================================");
+
+        Map<String, String> params = session.getParms();
+        String lastSyncTimeParam = params.get("last_sync");
+        String clientId = params.get("client_id");
+        String includeThumbnails = params.get("include_thumbnails");
+
+        // Validate client ID
+        if (clientId == null || clientId.trim().isEmpty()) {
+            logger.warn(TAG, "🔄 ❌ Client ID is required for sync");
+            return createErrorResponse(Response.Status.BAD_REQUEST, "Client ID is required");
+        }
+
+        long lastSyncTime = 0;
+        if (lastSyncTimeParam != null && !lastSyncTimeParam.isEmpty()) {
+            try {
+                lastSyncTime = Long.parseLong(lastSyncTimeParam);
+            } catch (NumberFormatException e) {
+                logger.warn(TAG, "🔄 ❌ Invalid last_sync parameter: " + lastSyncTimeParam);
+                return createErrorResponse(Response.Status.BAD_REQUEST, "Invalid last_sync parameter");
+            }
+        }
+
+        boolean includeThumbnailsFlag = "true".equalsIgnoreCase(includeThumbnails);
+
+        try {
+            logger.debug(TAG, "🔄 📊 Processing sync request for client: " + clientId);
+            logger.debug(TAG, "🔄 📊 Last sync time: " + lastSyncTime + " (" + new Date(lastSyncTime) + ")");
+
+            // Get all files
+            List<FileMetadata> allFiles = fileManager.listFiles(fileManager.getDefaultPackageName());
+
+            // Filter files that have changed since last sync
+            List<Map<String, Object>> changedFiles = new ArrayList<>();
+            List<Map<String, Object>> deletedFiles = new ArrayList<>();
+
+            // For now, we'll return all files since we don't track deletions
+            // In a more sophisticated implementation, you'd track deletions separately
+            for (FileMetadata fileMetadata : allFiles) {
+                if (fileMetadata.getLastModified() > lastSyncTime) {
+                    Map<String, Object> fileInfo = new HashMap<>();
+                    fileInfo.put("name", fileMetadata.getFileName());
+                    fileInfo.put("size", fileMetadata.getFileSize());
+                    fileInfo.put("modified", fileMetadata.getLastModified());
+                    fileInfo.put("mime_type", fileMetadata.getMimeType());
+                    fileInfo.put("url", "/api/photo?file=" + fileMetadata.getFileName());
+                    fileInfo.put("download", "/api/download?file=" + fileMetadata.getFileName());
+
+                    // Add video-specific information
+                    if (isVideoFile(fileMetadata.getFileName())) {
+                        fileInfo.put("is_video", true);
+                        if (includeThumbnailsFlag) {
+                            fileInfo.put("thumbnail_url", "/api/photo?file=" + fileMetadata.getFileName());
+                        }
+                    } else {
+                        fileInfo.put("is_video", false);
+                    }
+
+                    changedFiles.add(fileInfo);
+                }
+            }
+
+            // Calculate sync statistics
+            long currentTime = System.currentTimeMillis();
+            long totalSize = changedFiles.stream()
+                    .mapToLong(file -> (Long) file.get("size"))
+                    .sum();
+
+            Map<String, Object> syncData = new HashMap<>();
+            syncData.put("client_id", clientId);
+            syncData.put("sync_timestamp", currentTime);
+            syncData.put("last_sync_time", lastSyncTime);
+            syncData.put("changed_files", changedFiles);
+            syncData.put("deleted_files", deletedFiles);
+            syncData.put("total_changed", changedFiles.size());
+            syncData.put("total_deleted", deletedFiles.size());
+            syncData.put("total_size", totalSize);
+            syncData.put("server_time", currentTime);
+
+            logger.debug(TAG, "🔄 ✅ Sync completed: " + changedFiles.size() + " changed files, " +
+                           deletedFiles.size() + " deleted files, " + totalSize + " bytes");
+
+            return createSuccessResponse(syncData);
+        } catch (Exception e) {
+            logger.error(TAG, "🔄 💥 Error during sync: " + e.getMessage(), e);
+            return createErrorResponse(Response.Status.INTERNAL_ERROR, "Error during sync");
+        }
+    }
+
+    /**
+     * Serve batch sync request for downloading multiple files efficiently.
+     * Accepts POST request with JSON body containing file list.
+     */
+    private Response serveBatchSync(IHTTPSession session) {
+        logger.debug(TAG, "📦 =========================================");
+        logger.debug(TAG, "📦 BATCH SYNC REQUEST HANDLER");
+        logger.debug(TAG, "📦 =========================================");
+
+        // Check if it's a POST request
+        if (!"POST".equals(session.getMethod().name())) {
+            logger.warn(TAG, "📦 Invalid method: " + session.getMethod().name() + " (expected POST)");
+            return createErrorResponse(Response.Status.METHOD_NOT_ALLOWED, "Only POST method is allowed");
+        }
+
+        try {
+            // Read request body
+            Map<String, String> headers = session.getHeaders();
+            int contentLength = Integer.parseInt(headers.getOrDefault("content-length", "0"));
+
+            if (contentLength <= 0) {
+                logger.warn(TAG, "📦 Empty request body");
+                return createErrorResponse(Response.Status.BAD_REQUEST, "Request body is required");
+            }
+
+            // Read JSON body
+            byte[] body = new byte[contentLength];
+            InputStream inputStream = session.getInputStream();
+            int bytesRead = inputStream.read(body);
+
+            if (bytesRead != contentLength) {
+                logger.warn(TAG, "📦 Incomplete request body: expected " + contentLength + " bytes, got " + bytesRead);
+                return createErrorResponse(Response.Status.BAD_REQUEST, "Incomplete request body");
+            }
+
+            String jsonBody = new String(body, StandardCharsets.UTF_8);
+            logger.debug(TAG, "📦 Request body: " + jsonBody);
+
+            // Parse JSON
+            JSONObject jsonObject = new JSONObject(jsonBody);
+            JSONArray filesArray = jsonObject.getJSONArray("files");
+            String clientId = jsonObject.optString("client_id", "unknown");
+            boolean includeThumbnails = jsonObject.optBoolean("include_thumbnails", false);
+
+            if (filesArray.length() == 0) {
+                logger.warn(TAG, "📦 Empty files array");
+                return createErrorResponse(Response.Status.BAD_REQUEST, "Files array cannot be empty");
+            }
+
+            // Process batch download
+            List<Map<String, Object>> results = new ArrayList<>();
+            int successCount = 0;
+            int failureCount = 0;
+            long totalDownloadedSize = 0;
+
+            for (int i = 0; i < filesArray.length(); i++) {
+                String fileName = filesArray.getString(i);
+
+                if (fileName == null || fileName.trim().isEmpty()) {
+                    logger.warn(TAG, "📦 Skipping empty filename at index " + i);
+                    Map<String, Object> result = new HashMap<>();
+                    result.put("file", fileName);
+                    result.put("success", false);
+                    result.put("message", "Empty filename");
+                    results.add(result);
+                    failureCount++;
+                    continue;
+                }
+
+                logger.debug(TAG, "📦 Processing file: " + fileName);
+
+                try {
+                    // Get file metadata
+                    FileMetadata metadata = fileManager.getFileMetadata(fileManager.getDefaultPackageName(), fileName);
+                    if (metadata == null) {
+                        Map<String, Object> result = new HashMap<>();
+                        result.put("file", fileName);
+                        result.put("success", false);
+                        result.put("message", "File not found");
+                        results.add(result);
+                        failureCount++;
+                        continue;
+                    }
+
+                    // Get file
+                    File file = fileManager.getFile(fileManager.getDefaultPackageName(), fileName);
+                    if (file == null || !file.exists()) {
+                        Map<String, Object> result = new HashMap<>();
+                        result.put("file", fileName);
+                        result.put("success", false);
+                        result.put("message", "File not accessible");
+                        results.add(result);
+                        failureCount++;
+                        continue;
+                    }
+
+                    // Read file data
+                    byte[] fileData;
+                    try (FileInputStream fis = new FileInputStream(file)) {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            fileData = fis.readAllBytes();
+                        } else {
+                            fileData = new byte[(int) file.length()];
+                            fis.read(fileData);
+                        }
+                    }
+
+                    // Encode as base64 for JSON transmission
+                    String base64Data = android.util.Base64.encodeToString(fileData, android.util.Base64.DEFAULT);
+
+                    Map<String, Object> result = new HashMap<>();
+                    result.put("file", fileName);
+                    result.put("success", true);
+                    result.put("size", fileData.length);
+                    result.put("modified", metadata.getLastModified());
+                    result.put("mime_type", metadata.getMimeType());
+                    result.put("data", base64Data);
+                    result.put("is_video", isVideoFile(fileName));
+
+                    // Include thumbnail if requested and it's a video
+                    if (includeThumbnails && isVideoFile(fileName)) {
+                        File thumbnailFile = fileManager.getThumbnailManager().getOrCreateThumbnail(file);
+                        if (thumbnailFile != null && thumbnailFile.exists()) {
+                            try (FileInputStream fis = new FileInputStream(thumbnailFile)) {
+                                byte[] thumbnailData;
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                    thumbnailData = fis.readAllBytes();
+                                } else {
+                                    thumbnailData = new byte[(int) thumbnailFile.length()];
+                                    fis.read(thumbnailData);
+                                }
+                                String thumbnailBase64 = android.util.Base64.encodeToString(thumbnailData, android.util.Base64.DEFAULT);
+                                result.put("thumbnail_data", thumbnailBase64);
+                            }
+                        }
+                    }
+
+                    results.add(result);
+                    successCount++;
+                    totalDownloadedSize += fileData.length;
+
+                    logger.debug(TAG, "📦 Successfully processed: " + fileName + " (" + fileData.length + " bytes)");
+
+                } catch (Exception e) {
+                    logger.error(TAG, "📦 Error processing file " + fileName + ": " + e.getMessage(), e);
+                    Map<String, Object> result = new HashMap<>();
+                    result.put("file", fileName);
+                    result.put("success", false);
+                    result.put("message", "Error processing file: " + e.getMessage());
+                    results.add(result);
+                    failureCount++;
+                }
+            }
+
+            // Prepare response
+            Map<String, Object> responseData = new HashMap<>();
+            responseData.put("client_id", clientId);
+            responseData.put("batch_timestamp", System.currentTimeMillis());
+            responseData.put("total_files", filesArray.length());
+            responseData.put("successful_downloads", successCount);
+            responseData.put("failed_downloads", failureCount);
+            responseData.put("total_downloaded_size", totalDownloadedSize);
+            responseData.put("results", results);
+
+            logger.info(TAG, "📦 Batch sync completed: " + successCount + " successful, " + failureCount + " failed, " + totalDownloadedSize + " bytes transferred");
+            return createSuccessResponse(responseData);
+
+        } catch (JSONException e) {
+            logger.error(TAG, "📦 JSON parsing error: " + e.getMessage(), e);
+            return createErrorResponse(Response.Status.BAD_REQUEST, "Invalid JSON format: " + e.getMessage());
+        } catch (IOException e) {
+            logger.error(TAG, "📦 IO error reading request body: " + e.getMessage(), e);
+            return createErrorResponse(Response.Status.INTERNAL_ERROR, "Error reading request body");
+        } catch (Exception e) {
+            logger.error(TAG, "📦 Unexpected error during batch sync: " + e.getMessage(), e);
+            return createErrorResponse(Response.Status.INTERNAL_ERROR, "Unexpected error: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Serve sync status for monitoring sync operations.
+     */
+    private Response serveSyncStatus(IHTTPSession session) {
+        logger.debug(TAG, "📊 =========================================");
+        logger.debug(TAG, "📊 SYNC STATUS REQUEST HANDLER");
+        logger.debug(TAG, "📊 =========================================");
+
+        try {
+            Map<String, Object> status = new HashMap<>();
+
+            // Basic server info
+            status.put("server_time", System.currentTimeMillis());
+            status.put("server_uptime", System.currentTimeMillis() - getStartTime());
+
+            // File statistics
+            List<FileMetadata> allFiles = fileManager.listFiles(fileManager.getDefaultPackageName());
+            status.put("total_files", allFiles.size());
+            status.put("total_size", allFiles.stream().mapToLong(FileMetadata::getFileSize).sum());
+
+            // File type breakdown
+            long imageCount = allFiles.stream().filter(f -> !isVideoFile(f.getFileName())).count();
+            long videoCount = allFiles.stream().filter(f -> isVideoFile(f.getFileName())).count();
+            status.put("image_count", imageCount);
+            status.put("video_count", videoCount);
+
+            // Thumbnail statistics
+            status.put("thumbnail_count", fileManager.getThumbnailManager().getThumbnailCount());
+            status.put("thumbnail_size", fileManager.getThumbnailManager().getThumbnailDirectorySize());
+
+            // Storage information
+            status.put("available_space", fileManager.getAvailableSpace());
+            status.put("total_space", fileManager.getTotalSpace());
+
+            // Performance metrics
+            var performanceStats = fileManager.getOperationLogger().getPerformanceStats();
+            status.put("file_operations_total", performanceStats.totalOperations);
+            status.put("file_operations_success_rate", performanceStats.successRate);
+
+            // Sync recommendations
+            Map<String, Object> recommendations = new HashMap<>();
+            recommendations.put("recommended_sync_interval_ms", 30000); // 30 seconds
+            recommendations.put("max_batch_size", 10); // Max files per batch
+            recommendations.put("include_thumbnails", true); // Include thumbnails for videos
+            recommendations.put("compression_enabled", false); // Base64 encoding used
+            status.put("sync_recommendations", recommendations);
+
+            logger.debug(TAG, "📊 ✅ Sync status served successfully");
+            return createSuccessResponse(status);
+        } catch (Exception e) {
+            logger.error(TAG, "📊 💥 Error serving sync status: " + e.getMessage(), e);
+            return createErrorResponse(Response.Status.INTERNAL_ERROR, "Error getting sync status");
+        }
+    }
+}
