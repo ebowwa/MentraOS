@@ -49,6 +49,21 @@ public interface IMediaManager {
     void sendVideoRecordingStatusResponse(boolean success, JSONObject statusObject);
     
     /**
+     * Send buffer status response
+     * @param success Success status
+     * @param status Status message
+     * @param details Additional details
+     */
+    void sendBufferStatusResponse(boolean success, String status, String details);
+    
+    /**
+     * Send buffer status response with JSON object
+     * @param success Success status
+     * @param statusObject Status JSON object
+     */
+    void sendBufferStatusResponse(boolean success, JSONObject statusObject);
+    
+    /**
      * Get streaming status callback
      * @return Streaming status callback
      */

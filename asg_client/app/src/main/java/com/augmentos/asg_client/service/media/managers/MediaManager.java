@@ -153,6 +153,63 @@ public class MediaManager implements IMediaManager {
     }
     
     @Override
+    public void sendBufferStatusResponse(boolean success, String status, String details) {
+        if (serviceManager != null && serviceManager.getBluetoothManager() != null && 
+            serviceManager.getBluetoothManager().isConnected()) {
+            try {
+                JSONObject response = new JSONObject();
+                response.put("type", "buffer_status");
+                response.put("success", success);
+                response.put("status", status);
+                if (details != null) {
+                    response.put("details", details);
+                }
+                response.put("timestamp", System.currentTimeMillis());
+
+                String jsonString = response.toString();
+                Log.d(TAG, "📤 Sending buffer status response: " + jsonString);
+                serviceManager.getBluetoothManager().sendData(jsonString.getBytes());
+
+            } catch (JSONException e) {
+                Log.e(TAG, "Error creating buffer status response", e);
+            }
+        } else {
+            Log.w(TAG, "Cannot send buffer status response - not connected to BLE device");
+        }
+    }
+
+    @Override
+    public void sendBufferStatusResponse(boolean success, JSONObject statusObject) {
+        if (serviceManager != null && serviceManager.getBluetoothManager() != null && 
+            serviceManager.getBluetoothManager().isConnected()) {
+            try {
+                JSONObject response = new JSONObject();
+                response.put("type", "buffer_status");
+                response.put("success", success);
+                
+                // Merge the status object fields into the response
+                if (statusObject != null) {
+                    java.util.Iterator<String> keys = statusObject.keys();
+                    while (keys.hasNext()) {
+                        String key = keys.next();
+                        response.put(key, statusObject.get(key));
+                    }
+                }
+                response.put("timestamp", System.currentTimeMillis());
+
+                String jsonString = response.toString();
+                Log.d(TAG, "📤 Sending buffer status response: " + jsonString);
+                serviceManager.getBluetoothManager().sendData(jsonString.getBytes());
+
+            } catch (JSONException e) {
+                Log.e(TAG, "Error creating buffer status response", e);
+            }
+        } else {
+            Log.w(TAG, "Cannot send buffer status response - not connected to BLE device");
+        }
+    }
+
+    @Override
     public StreamingStatusCallback getStreamingStatusCallback() {
         return streamingStatusCallback;
     }

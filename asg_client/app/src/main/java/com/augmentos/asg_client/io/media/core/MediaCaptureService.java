@@ -51,6 +51,7 @@ public class MediaCaptureService {
     private final MediaUploadQueueManager mMediaQueueManager;
     private MediaCaptureListener mMediaCaptureListener;
     private ServiceCallbackInterface mServiceCallback;
+    private CircularVideoBuffer mVideoBuffer;
 
     // Track current video recording
     private boolean isRecordingVideo = false;
@@ -109,6 +110,43 @@ public class MediaCaptureService {
         mContext = context.getApplicationContext();
         mMediaQueueManager = mediaQueueManager;
         this.fileManager = fileManager;
+        
+        // Initialize video buffer
+        mVideoBuffer = new CircularVideoBuffer(context);
+        mVideoBuffer.setCallback(new CircularVideoBuffer.BufferCallback() {
+            @Override
+            public void onBufferingStarted() {
+                Log.d(TAG, "Video buffering started");
+            }
+            
+            @Override
+            public void onBufferingStopped() {
+                Log.d(TAG, "Video buffering stopped");
+            }
+            
+            @Override
+            public void onSegmentRecorded(int segmentIndex, String filePath) {
+                Log.d(TAG, "Buffer segment " + segmentIndex + " recorded: " + filePath);
+            }
+            
+            @Override
+            public void onBufferSaved(String outputPath, int durationSeconds) {
+                Log.d(TAG, "Buffer saved: " + outputPath + " (" + durationSeconds + " seconds)");
+                // Notify listener if needed
+                if (mMediaCaptureListener != null) {
+                    // Use a special ID for buffer saves
+                    mMediaCaptureListener.onVideoUploaded("buffer_save", outputPath);
+                }
+            }
+            
+            @Override
+            public void onBufferError(String error) {
+                Log.e(TAG, "Buffer error: " + error);
+                if (mMediaCaptureListener != null) {
+                    mMediaCaptureListener.onMediaError("buffer", error, MediaUploadQueueManager.MEDIA_TYPE_VIDEO);
+                }
+            }
+        });
     }
 
     /**
@@ -1189,5 +1227,183 @@ public class MediaCaptureService {
         } catch (JSONException e) {
             Log.e(TAG, "Error creating BLE transfer error", e);
         }
+    }
+    
+    // ========== CIRCULAR VIDEO BUFFER METHODS ==========
+    
+    /**
+     * Start buffer recording - continuously records in a circular buffer
+     */
+    public void startBufferRecording() {
+        if (mVideoBuffer == null) {
+            Log.e(TAG, "Video buffer not initialized");
+            return;
+        }
+        
+        if (isRecordingVideo) {
+            Log.w(TAG, "Cannot start buffer while recording video");
+            return;
+        }
+        
+        mVideoBuffer.startBuffering();
+    }
+    
+    /**
+     * Stop buffer recording
+     */
+    public void stopBufferRecording() {
+        if (mVideoBuffer == null) {
+            Log.e(TAG, "Video buffer not initialized");
+            return;
+        }
+        
+        mVideoBuffer.stopBuffering();
+    }
+    
+    /**
+     * Check if currently buffering
+     */
+    public boolean isBuffering() {
+        return mVideoBuffer != null && mVideoBuffer.isBuffering();
+    }
+    
+    /**
+     * Save the last N seconds of buffered video to a file
+     */
+    public void saveBufferVideo(int secondsToSave, String requestId) {
+        if (mVideoBuffer == null) {
+            Log.e(TAG, "Video buffer not initialized");
+            if (mMediaCaptureListener != null) {
+                mMediaCaptureListener.onMediaError(requestId, "Buffer not initialized", MediaUploadQueueManager.MEDIA_TYPE_VIDEO);
+            }
+            return;
+        }
+        
+        if (!mVideoBuffer.isBuffering()) {
+            Log.e(TAG, "Cannot save buffer - not currently buffering");
+            if (mMediaCaptureListener != null) {
+                mMediaCaptureListener.onMediaError(requestId, "Not buffering", MediaUploadQueueManager.MEDIA_TYPE_VIDEO);
+            }
+            return;
+        }
+        
+        // Create output file path
+        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
+        String outputPath = fileManager.getDefaultMediaDirectory() + File.separator + "BUFFER_" + timeStamp + ".mp4";
+        
+        // Save the buffer
+        mVideoBuffer.saveBuffer(secondsToSave, outputPath);
+        
+        // Notify that save has started  
+        if (mMediaCaptureListener != null) {
+            mMediaCaptureListener.onVideoRecordingStarted(requestId, outputPath);
+        }
+    }
+    
+    /**
+     * Handle start video command from phone with requestId tracking
+     */
+    public void handleStartVideoCommand(String requestId, boolean save) {
+        // Check if already recording
+        if (isRecordingVideo) {
+            Log.w(TAG, "Already recording video, ignoring start command");
+            if (mMediaCaptureListener != null) {
+                mMediaCaptureListener.onMediaError(requestId, "Already recording", MediaUploadQueueManager.MEDIA_TYPE_VIDEO);
+            }
+            return;
+        }
+        
+        // Generate video file path
+        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
+        String videoPath = fileManager.getDefaultMediaDirectory() + File.separator + "VID_" + timeStamp + ".mp4";
+        
+        // Store video info
+        currentVideoId = requestId;
+        currentVideoPath = videoPath;
+        recordingStartTime = System.currentTimeMillis();
+        isRecordingVideo = true;
+        
+        // Start recording with CameraNeo
+        CameraNeo.startVideoRecording(mContext, requestId, videoPath, new CameraNeo.VideoRecordingCallback() {
+            @Override
+            public void onRecordingStarted(String videoId) {
+                Log.d(TAG, "Video recording started: " + videoId);
+                if (mMediaCaptureListener != null) {
+                    mMediaCaptureListener.onVideoRecordingStarted(requestId, videoPath);
+                }
+            }
+            
+            @Override
+            public void onRecordingProgress(String videoId, long durationMs) {
+                // Progress updates if needed
+            }
+            
+            @Override
+            public void onRecordingStopped(String videoId, String filePath) {
+                Log.d(TAG, "Video recording stopped: " + filePath);
+                isRecordingVideo = false;
+                if (mMediaCaptureListener != null) {
+                    mMediaCaptureListener.onVideoRecordingStopped(requestId, filePath);
+                }
+                // Upload if needed
+                if (!save) {
+                    uploadVideo(filePath, requestId);
+                }
+            }
+            
+            @Override
+            public void onRecordingError(String videoId, String errorMessage) {
+                Log.e(TAG, "Video recording error: " + errorMessage);
+                isRecordingVideo = false;
+                if (mMediaCaptureListener != null) {
+                    mMediaCaptureListener.onMediaError(requestId, errorMessage, MediaUploadQueueManager.MEDIA_TYPE_VIDEO);
+                }
+            }
+        });
+    }
+    
+    /**
+     * Handle stop video command from phone with requestId verification
+     */
+    public void handleStopVideoCommand(String requestId) {
+        if (!isRecordingVideo || currentVideoId == null) {
+            Log.w(TAG, "Not recording, cannot stop");
+            if (mMediaCaptureListener != null) {
+                mMediaCaptureListener.onMediaError(requestId, "Not recording", MediaUploadQueueManager.MEDIA_TYPE_VIDEO);
+            }
+            return;
+        }
+        
+        // Verify requestId matches current recording
+        if (!currentVideoId.equals(requestId)) {
+            Log.e(TAG, "RequestId mismatch - current: " + currentVideoId + ", stop request: " + requestId);
+            if (mMediaCaptureListener != null) {
+                mMediaCaptureListener.onMediaError(requestId, "RequestId mismatch", MediaUploadQueueManager.MEDIA_TYPE_VIDEO);
+            }
+            return;
+        }
+        
+        // Stop the recording
+        CameraNeo.stopVideoRecording(mContext, currentVideoId);
+    }
+    
+    /**
+     * Get buffer status as JSON
+     */
+    public JSONObject getBufferStatus() {
+        if (mVideoBuffer != null) {
+            return mVideoBuffer.getBufferStatus();
+        }
+        
+        // Return empty status if buffer not initialized
+        JSONObject status = new JSONObject();
+        try {
+            status.put("isBuffering", false);
+            status.put("availableDuration", 0);
+            status.put("error", "Buffer not initialized");
+        } catch (JSONException e) {
+            Log.e(TAG, "Error creating buffer status", e);
+        }
+        return status;
     }
 }

@@ -69,8 +69,8 @@ public class RtmpStreamingService extends Service {
     private boolean mIsStreaming = false;
     private SurfaceTexture mSurfaceTexture;
     private Surface mSurface;
-    private static final int SURFACE_WIDTH = 540;
-    private static final int SURFACE_HEIGHT = 960;
+    private static final int SURFACE_WIDTH = 960;//720;//540;
+    private static final int SURFACE_HEIGHT = 960;//720;//960;
 
     // Reconnection logic parameters
     private int mReconnectAttempts = 0;
