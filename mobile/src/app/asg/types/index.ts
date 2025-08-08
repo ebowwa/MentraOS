@@ -8,6 +8,9 @@ export interface PhotoInfo {
   download: string
   size: number
   modified: string
+  is_video?: boolean
+  thumbnail_data?: string
+  downloaded_at?: number
 }
 
 export interface GalleryResponse {
