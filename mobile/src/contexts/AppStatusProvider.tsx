@@ -67,12 +67,15 @@ export interface AppInterface {
   }
 }
 
+export type AppHealthStatus = "healthy" | "unhealthy" | "offline"
+
 interface AppStatusContextType {
   appStatus: AppInterface[]
   refreshAppStatus: () => Promise<void>
   optimisticallyStartApp: (packageName: string) => void
   optimisticallyStopApp: (packageName: string) => void
   clearPendingOperation: (packageName: string) => void
+  checkAppHealthStatus: (packageName: string) => Promise<AppHealthStatus>
   isLoading: boolean
   error: string | null
   isSensingEnabled: boolean
@@ -228,6 +231,24 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
     delete pendingOperations.current[packageName]
   }, [])
 
+  const checkAppHealthStatus = async (packageName: string): Promise<AppHealthStatus> => {
+    // GET the app's /health endpoint
+    try {
+      const app = appStatus.find(app => app.packageName === packageName)
+      console.log("APP", app)
+      if (!app) {
+        return "offline"
+      }
+      const healthResponse = await fetch(`${app.publicUrl}/health`)
+      const healthData = await healthResponse.json()
+      console.log("HEALTH DATA", healthData)
+      return healthData.status
+    } catch (error) {
+      console.error("AppStatusProvider: Error checking app health status:", error)
+      return "offline"
+    }
+  }
+
   // Initial fetch and refresh on user change or status change
   useEffect(() => {
     refreshAppStatus()
@@ -346,6 +367,7 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
         clearPendingOperation,
         isLoading,
         error,
+        checkAppHealthStatus,
         isSensingEnabled: status.core_info.sensing_enabled,
       }}>
       {children}

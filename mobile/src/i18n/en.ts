@@ -280,6 +280,10 @@ const en = {
     microphoneActive: "Microphone Active",
     microphoneActiveMessage: "One or more apps are currently using your glasses microphone.",
   },
+  errors: {
+    appNotOnlineTitle: "App Not Online",
+    appNotOnlineMessage: "This app is not online. Please try again later.",
+  },
   common: {
     ok: "OK",
     cancel: "Cancel",
@@ -315,9 +319,6 @@ const en = {
       content: "No data found yet. Try clicking the button to refresh or reload the app.",
       button: "Let's try this again",
     },
-  },
-  errors: {
-    invalidEmail: "Invalid email address.",
   },
   navigation: {
     home: "Home",

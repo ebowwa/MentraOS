@@ -45,6 +45,7 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
     private final int vadFrameSize = 512; // 512-sample frames for VAD
     private volatile boolean vadRunning = true;
     private boolean bypassVadForDebugging = false;
+    private boolean bypassVadForPCM = false; // NEW: PCM subscription bypass
     private boolean enforceLocalTranscription = false;
 
     // LC3 audio rolling buffer
@@ -312,13 +313,17 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
                 }
             }
             //SENDING STUFF
-            // If bypassing VAD for debugging or currently speaking, send data live
-            if (sendPcmToBackend && (bypassVadForDebugging || isSpeaking)) {
+            // If bypassing VAD for debugging, PCM subscription, or currently speaking, send data live
+            if (sendPcmToBackend && (bypassVadForDebugging || bypassVadForPCM || isSpeaking)) {
+                // if (bypassVadForDebugging || bypassVadForPCM) {
+                //     Log.d(TAG, "Sending audio due to VAD bypass - bypassVadForDebugging=" + bypassVadForDebugging + 
+                //               ", bypassVadForPCM=" + bypassVadForPCM + ", isSpeaking=" + isSpeaking);
+                // }
                 ServerComms.getInstance().sendAudioChunk(audioChunk);
             }
         }
 
-        if (sendTranscriptionToBackend && (bypassVadForDebugging || isSpeaking)) {
+        if (sendTranscriptionToBackend && (bypassVadForDebugging || bypassVadForPCM || isSpeaking)) {
             if (sherpaTranscriber != null) {
                 sherpaTranscriber.acceptAudio(audioChunk);
             }
@@ -346,8 +351,12 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
 
 
             //SENDING STUFF
-            // If bypassing VAD for debugging or currently speaking, send data live
-            if (bypassVadForDebugging || isSpeaking) {
+            // If bypassing VAD for debugging, PCM subscription, or currently speaking, send data live
+            if (bypassVadForDebugging || bypassVadForPCM || isSpeaking) {
+                if (bypassVadForDebugging || bypassVadForPCM) {
+                    Log.d(TAG, "Sending LC3 audio due to VAD bypass - bypassVadForDebugging=" + bypassVadForDebugging + 
+                              ", bypassVadForPCM=" + bypassVadForPCM + ", isSpeaking=" + isSpeaking);
+                }
                 ServerComms.getInstance().sendAudioChunk(LC3audioChunk);
             }
 
@@ -520,5 +529,11 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
                 this.sendPcmToBackend = true;
             }
         }
+    }
+
+    public void changeBypassVadForPCMState(boolean bypassVadForPCM) {
+        Log.d(TAG, "setBypassVadForPCM: " + bypassVadForPCM);
+        vadPolicy.changeBypassVadForPCM(bypassVadForPCM);
+        this.bypassVadForPCM = bypassVadForPCM;
     }
 }

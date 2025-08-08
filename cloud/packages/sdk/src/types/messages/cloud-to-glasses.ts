@@ -65,6 +65,7 @@ export interface MicrophoneStateChange extends BaseMessage {
   userSession: Partial<UserSession>;
   isMicrophoneEnabled: boolean;
   requiredData: Array<'pcm' | 'transcription' | 'pcm_or_transcription'>;
+  bypassVad?: boolean; // NEW: PCM subscription bypass
 }
 
 /**
