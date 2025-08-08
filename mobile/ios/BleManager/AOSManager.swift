@@ -152,11 +152,6 @@ struct ViewState {
         // Set up voice data handling
         setupVoiceDataHandling()
 
-        // configure on board mic:
-        //    setupOnboardMicrophoneIfNeeded()
-
-        // initManagerCallbacks()
-
         // Subscribe to WebSocket status changes
         serverComms.wsManager.status
             .sink { [weak self] _ in
@@ -575,7 +570,7 @@ struct ViewState {
 
         // in any case, clear the vadBuffer:
         vadBuffer.removeAll()
-        micEnabled = isEnabled
+        micEnabled = isEnabled || shouldSendPcmData
 
         // Handle microphone state change if needed
         Task {
@@ -610,14 +605,21 @@ struct ViewState {
                 }
 
                 if !useGlassesMic, !useOnboardMic {
-                    CoreCommsService.log("no mic to use!!!!!!")
+                    CoreCommsService.log("AOS: no mic to use! falling back to glasses mic!!!!! (this should not happen)")
+                    useGlassesMic = true
                 }
             }
 
             useGlassesMic = actuallyEnabled && useGlassesMic
             useOnboardMic = actuallyEnabled && useOnboardMic
 
-            CoreCommsService.log("AOS: user enabled microphone: \(isEnabled) sensingEnabled: \(self.sensingEnabled) useOnboardMic: \(useOnboardMic) useGlassesMic: \(useGlassesMic) glassesHasMic: \(glassesHasMic) preferredMic: \(self.preferredMic) somethingConnected: \(self.somethingConnected) onboardMicUnavailable: \(self.onboardMicUnavailable)")
+            CoreCommsService.log("AOS: useGlassesMic: \(useGlassesMic) useOnboardMic: \(useOnboardMic) actuallyEnabled: \(actuallyEnabled)")
+            CoreCommsService.log("AOS: isEnabled: \(isEnabled) sensingEnabled: \(self.sensingEnabled) glassesHasMic: \(glassesHasMic)")
+            CoreCommsService.log("AOS: useGlassesMic: \(useGlassesMic) useOnboardMic: \(useOnboardMic)")
+            CoreCommsService.log("AOS: preferredMic: \(self.preferredMic) onboardMicUnavailable: \(self.onboardMicUnavailable)")
+            CoreCommsService.log("AOS: somethingConnected: \(self.somethingConnected)")
+
+            // CoreCommsService.log("AOS: user enabled microphone: \(isEnabled) sensingEnabled: \(self.sensingEnabled) useOnboardMic: \(useOnboardMic) useGlassesMic: \(useGlassesMic) glassesHasMic: \(glassesHasMic) preferredMic: \(self.preferredMic) somethingConnected: \(self.somethingConnected) onboardMicUnavailable: \(self.onboardMicUnavailable)")
 
             if self.somethingConnected {
                 await self.g1Manager?.setMicEnabled(enabled: useGlassesMic)
@@ -632,8 +634,9 @@ struct ViewState {
     func onAppStarted(_ packageName: String) {
         // tell the server what pair of glasses we're using:
         serverComms.sendGlassesConnectionState(modelName: defaultWearable, status: "CONNECTED")
+        CoreCommsService.sendAppStartedEvent(packageName)
 
-        CoreCommsService.log("App started: \(packageName) - checking for auto-reconnection")
+        CoreCommsService.log("AOS: App started: \(packageName)")
 
         // Check if glasses are disconnected but there is a saved pair, initiate connection
         if !somethingConnected, !defaultWearable.isEmpty {
@@ -666,7 +669,7 @@ struct ViewState {
 
     func onAppStopped(_ packageName: String) {
         CoreCommsService.log("AOS: App stopped: \(packageName)")
-        // Handle app stopped if needed
+        CoreCommsService.sendAppStoppedEvent(packageName)
     }
 
     func onJsonMessage(_ message: [String: Any]) {
