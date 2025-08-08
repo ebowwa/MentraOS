@@ -5,7 +5,7 @@ on:
     branches:
       - dev
     paths:
-      - 'cloud/**'
+      - "cloud/**"
 jobs:
   porter-deploy:
     runs-on: ubuntu-latest

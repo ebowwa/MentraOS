@@ -10,6 +10,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.PowerManager;
 import android.util.Log;
+import com.augmentos.asg_client.service.core.AsgClientService;
 
 /**
  * A transparent activity that starts the AsgClientService as a foreground service

@@ -24,255 +24,481 @@ import {useStatus} from "@/contexts/AugmentOSStatusProvider"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {PhotoInfo} from "../../types"
 import {asgCameraApi} from "../../services/asgCameraApi"
+import {localStorageService} from "../../services/localStorageService"
 
 interface GalleryScreenProps {
   deviceModel?: string
 }
 
+type TabType = "server" | "downloaded"
+
 export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps) {
-  const {theme, themed} = useAppTheme()
   const {status} = useStatus()
   const {goBack} = useNavigationHistory()
-
-  // Gallery state
-  const [photos, setPhotos] = useState<PhotoInfo[]>([])
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string>()
-  const [selectedPhoto, setSelectedPhoto] = useState<string>()
-  const [isModalVisible, setIsModalVisible] = useState(false)
-  const [modalPhoto, setModalPhoto] = useState<PhotoInfo | null>(null)
+  const {theme, themed} = useAppTheme()
+  const {width} = Dimensions.get("window")
+  const numColumns = Math.floor(width / 120)
 
   // Get glasses WiFi info for server connection
   const glassesWifiIp = status.glasses_info?.glasses_wifi_local_ip
   const isWifiConnected = status.glasses_info?.glasses_wifi_connected
 
-  // Load gallery photos
-  const loadGallery = useCallback(async () => {
+  // State management
+  const [photos, setPhotos] = useState<PhotoInfo[]>([])
+  const [downloadedPhotos, setDownloadedPhotos] = useState<PhotoInfo[]>([])
+  const [selectedPhoto, setSelectedPhoto] = useState<PhotoInfo | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const [isSyncing, setIsSyncing] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState<TabType>("server")
+  const [syncProgress, setSyncProgress] = useState<{
+    current: number
+    total: number
+    message: string
+  } | null>(null)
+
+  // Load photos from server
+  const loadPhotos = useCallback(async () => {
     if (!isWifiConnected || !glassesWifiIp) {
-      console.log(`[GalleryScreen] WiFi not connected or IP not available`)
+      setError("Glasses not connected to WiFi")
       return
     }
 
-    console.log(`[GalleryScreen] Loading gallery...`)
-    console.log(`[GalleryScreen] WiFi IP: ${glassesWifiIp}`)
-    console.log(`[GalleryScreen] WiFi Connected: ${isWifiConnected}`)
-
-    const serverUrl = `http://${glassesWifiIp}:8089`
-    console.log(`[GalleryScreen] Setting server URL: ${serverUrl}`)
-    asgCameraApi.setServer(serverUrl)
-
     setIsLoading(true)
-    setError(undefined)
+    setError(null)
 
     try {
-      // Add a small delay to avoid potential timing issues
-      await new Promise(resolve => setTimeout(resolve, 500))
+      // Set the server URL to the glasses WiFi IP
+      asgCameraApi.setServer(glassesWifiIp, 8089)
+      console.log(`[GalleryScreen] Set server URL to: ${glassesWifiIp}:8089`)
 
-      console.log(`[GalleryScreen] Fetching gallery photos...`)
-      const photos = await asgCameraApi.getGalleryPhotos()
-      console.log(`[GalleryScreen] Gallery loaded successfully with ${photos.length} photos`)
-      setPhotos(photos)
+      const serverPhotos = await asgCameraApi.getGalleryPhotos()
+      setPhotos(serverPhotos)
     } catch (err) {
-      console.error(`[GalleryScreen] Error loading gallery:`, err)
-      setError(err instanceof Error ? err.message : "Failed to load gallery")
+      setError(err instanceof Error ? err.message : "Failed to load photos")
     } finally {
       setIsLoading(false)
     }
   }, [isWifiConnected, glassesWifiIp])
 
-  // Load gallery on mount and when WiFi status changes
-  useEffect(() => {
-    loadGallery()
-  }, [loadGallery])
+  // Load downloaded photos
+  const loadDownloadedPhotos = useCallback(async () => {
+    try {
+      const downloadedFiles = await localStorageService.getDownloadedFiles()
+      const photoInfos = Object.values(downloadedFiles).map(file => localStorageService.convertToPhotoInfo(file))
+      setDownloadedPhotos(photoInfos)
+    } catch (err) {
+      console.error("Error loading downloaded photos:", err)
+    }
+  }, [])
+
+  // Sync files from server to local storage
+  const handleSync = async () => {
+    if (!isWifiConnected || !glassesWifiIp) {
+      Alert.alert("Error", "Glasses not connected to WiFi")
+      return
+    }
+
+    setIsSyncing(true)
+    setError(null)
+    setSyncProgress(null)
+
+    try {
+      console.log(`[GalleryScreen] Starting sync process...`)
+
+      // Set the server URL to the glasses WiFi IP
+      asgCameraApi.setServer(glassesWifiIp, 8089)
+      console.log(`[GalleryScreen] Set server URL to: ${glassesWifiIp}:8089`)
+
+      // Get sync state
+      const syncState = await localStorageService.getSyncState()
+      console.log(`[GalleryScreen] Sync state:`, syncState)
+
+      // Get changed files from server
+      const syncResponse = await asgCameraApi.syncWithServer(
+        syncState.client_id,
+        syncState.last_sync_time,
+        true, // include thumbnails
+      )
+
+      console.log(`[GalleryScreen] Sync response:`, syncResponse)
+
+      if (syncResponse.changed_files.length === 0) {
+        Alert.alert("Sync Complete", "No new files to download")
+        return
+      }
+
+      setSyncProgress({
+        current: 0,
+        total: syncResponse.changed_files.length,
+        message: "Downloading files...",
+      })
+
+      // Download files in batches
+      const downloadResult = await asgCameraApi.batchSyncFiles(syncResponse.changed_files, true)
+
+      console.log(`[GalleryScreen] Download result:`, downloadResult)
+
+      // Save downloaded files to local storage
+      for (const photoInfo of downloadResult.downloaded) {
+        const downloadedFile = localStorageService.convertToDownloadedFile(
+          photoInfo,
+          photoInfo.download.split(",")[1], // Remove data URL prefix
+          photoInfo.thumbnail_data,
+        )
+        await localStorageService.saveDownloadedFile(downloadedFile)
+      }
+
+      // Delete files from server after successful download
+      if (downloadResult.downloaded.length > 0) {
+        const deleteResult = await asgCameraApi.deleteFilesFromServer(downloadResult.downloaded.map(f => f.name))
+        console.log(`[GalleryScreen] Delete result:`, deleteResult)
+      }
+
+      // Update sync state
+      await localStorageService.updateSyncState({
+        last_sync_time: syncResponse.server_time,
+        total_downloaded: syncState.total_downloaded + downloadResult.downloaded.length,
+        total_size: syncState.total_size + downloadResult.total_size,
+      })
+
+      // Reload photos
+      await Promise.all([loadPhotos(), loadDownloadedPhotos()])
+
+      Alert.alert(
+        "Sync Complete",
+        `Successfully downloaded ${downloadResult.downloaded.length} files\nFailed: ${downloadResult.failed.length}`,
+      )
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Sync failed"
+      setError(errorMessage)
+      Alert.alert("Sync Error", errorMessage)
+    } finally {
+      setIsSyncing(false)
+      setSyncProgress(null)
+    }
+  }
+
+  // Take picture
+  const handleTakePicture = async () => {
+    if (!isWifiConnected || !glassesWifiIp) {
+      Alert.alert("Error", "Glasses not connected to WiFi")
+      return
+    }
+
+    try {
+      // Set the server URL to the glasses WiFi IP
+      asgCameraApi.setServer(glassesWifiIp, 8089)
+
+      await asgCameraApi.takePicture()
+      Alert.alert("Success", "Picture taken successfully!")
+      loadPhotos() // Reload photos
+    } catch (err) {
+      Alert.alert("Error", err instanceof Error ? err.message : "Failed to take picture")
+    }
+  }
 
   // Handle photo selection
-  const handlePhotoPress = async (photo: PhotoInfo) => {
-    try {
-      setModalPhoto(photo)
-      setIsModalVisible(true)
-    } catch (err) {
-      Alert.alert("Error", "Failed to load photo")
-    }
+  const handlePhotoPress = (photo: PhotoInfo) => {
+    setSelectedPhoto(photo)
   }
 
-  // Close modal
-  const closeModal = () => {
-    setIsModalVisible(false)
-    setModalPhoto(null)
+  // Handle photo deletion
+  const handleDeletePhoto = async (photo: PhotoInfo) => {
+    if (!isWifiConnected || !glassesWifiIp) {
+      Alert.alert("Error", "Glasses not connected to WiFi")
+      return
+    }
+
+    Alert.alert("Delete Photo", `Are you sure you want to delete "${photo.name}"?`, [
+      {text: "Cancel", style: "cancel"},
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await asgCameraApi.deleteFilesFromServer([photo.name])
+            Alert.alert("Success", "Photo deleted successfully!")
+            loadPhotos() // Reload photos
+          } catch (err) {
+            Alert.alert("Error", err instanceof Error ? err.message : "Failed to delete photo")
+          }
+        },
+      },
+    ])
   }
 
-  // Take a new picture
-  const handleTakePicture = async () => {
-    try {
-      await asgCameraApi.takePicture()
-      Alert.alert("Success", "Picture taken! Refreshing gallery...")
-      // Wait a bit for the photo to be saved, then refresh
-      setTimeout(loadGallery, 1000)
-    } catch (err) {
-      Alert.alert("Error", "Failed to take picture")
-    }
+  // Handle downloaded photo deletion
+  const handleDeleteDownloadedPhoto = async (photo: PhotoInfo) => {
+    Alert.alert("Delete Downloaded Photo", `Are you sure you want to delete "${photo.name}" from local storage?`, [
+      {text: "Cancel", style: "cancel"},
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await localStorageService.deleteDownloadedFile(photo.name)
+            await loadDownloadedPhotos() // Reload downloaded photos
+            Alert.alert("Success", "Photo deleted from local storage!")
+          } catch (err) {
+            Alert.alert("Error", "Failed to delete photo from local storage")
+          }
+        },
+      },
+    ])
   }
+
+  // Load data on mount and when dependencies change
+  useEffect(() => {
+    loadPhotos()
+    loadDownloadedPhotos()
+  }, [loadPhotos, loadDownloadedPhotos])
+
+  // Handle back button
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        if (selectedPhoto) {
+          setSelectedPhoto(null)
+          return true
+        }
+        return false
+      }
+
+      BackHandler.addEventListener("hardwareBackPress", onBackPress)
+      return () => BackHandler.removeEventListener("hardwareBackPress", onBackPress)
+    }, [selectedPhoto]),
+  )
+
+  // Add to navigation history
+  useEffect(() => {
+    // Navigation history is handled automatically by the context
+  }, [])
+
+  const currentPhotos = activeTab === "server" ? photos : downloadedPhotos
+  const isServerTab = activeTab === "server"
 
   return (
-    <Screen preset="fixed" contentContainerStyle={themed($container)} safeAreaEdges={[]}>
-      <ScrollView
-        style={{marginBottom: 20, marginTop: 10, marginRight: -theme.spacing.md, paddingRight: theme.spacing.md}}>
-        <View style={themed($content)}>
-          {/* Connection Status */}
-          <View style={themed($statusContainer)}>
-            <Text style={themed($statusText)}>
-              {isWifiConnected ? `Connected to: ${glassesWifiIp || "Unknown IP"}` : "Glasses not connected to WiFi"}
-            </Text>
+    <Screen preset="fixed" contentContainerStyle={themed($screenContentContainer)} safeAreaEdges={["top"]}>
+      <Header
+        title={`${deviceModel} Gallery`}
+        titleStyle={themed($headerTitle)}
+        containerStyle={themed($headerContainer)}
+      />
+
+      {/* Tab Navigation */}
+      <View style={themed($tabContainer)}>
+        <TouchableOpacity
+          style={[activeTab === "server" ? themed($activeTab) : themed($inactiveTab)]}
+          onPress={() => setActiveTab("server")}>
+          <Text style={[activeTab === "server" ? themed($activeTabText) : themed($inactiveTabText)]}>
+            On Server ({photos.length})
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[activeTab === "downloaded" ? themed($activeTab) : themed($inactiveTab)]}
+          onPress={() => setActiveTab("downloaded")}>
+          <Text style={[activeTab === "downloaded" ? themed($activeTabText) : themed($inactiveTabText)]}>
+            Downloaded ({downloadedPhotos.length})
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Action Buttons */}
+      <View style={themed($actionButtonsContainer)}>
+        {isServerTab && (
+          <TouchableOpacity style={themed($takePictureButton)} onPress={handleTakePicture}>
+            <Text style={themed($buttonText)}>Take Picture</Text>
+          </TouchableOpacity>
+        )}
+        <TouchableOpacity
+          style={[themed($syncButton), isSyncing && themed($syncButtonDisabled)]}
+          onPress={handleSync}
+          disabled={isSyncing}>
+          {isSyncing ? (
+            <ActivityIndicator size="small" color={theme.colors.background} />
+          ) : (
+            <Text style={themed($buttonText)}>Sync</Text>
+          )}
+        </TouchableOpacity>
+      </View>
+
+      {/* Sync Progress */}
+      {syncProgress && (
+        <View style={themed($syncProgressContainer)}>
+          <Text style={themed($syncProgressText)}>
+            {syncProgress.message} ({syncProgress.current}/{syncProgress.total})
+          </Text>
+          <View style={themed($syncProgressBar)}>
+            <View
+              style={[themed($syncProgressFill), {width: `${(syncProgress.current / syncProgress.total) * 100}%`}]}
+            />
           </View>
-
-          {/* Take Picture Button */}
-          {isWifiConnected && (
-            <TouchableOpacity style={themed($takePictureButton)} onPress={handleTakePicture}>
-              <Text style={themed($takePictureText)}>Take Picture</Text>
-            </TouchableOpacity>
-          )}
-
-          {/* Loading State */}
-          {isLoading && (
-            <View style={themed($loadingContainer)}>
-              <ActivityIndicator size="large" color={theme.colors.palette.primary500} />
-              <Text style={themed($loadingText)}>Loading gallery...</Text>
-            </View>
-          )}
-
-          {/* Error State */}
-          {error && (
-            <View style={themed($errorContainer)}>
-              <Text style={themed($errorText)}>{error}</Text>
-              {error.includes("Camera server not reachable") && (
-                <Text style={themed($errorHelpText)}>
-                  Troubleshooting:
-                  {"\n"}• Ensure glasses are connected to WiFi
-                  {"\n"}• Check if camera server is running
-                  {"\n"}• Verify phone and glasses are on same network
-                  {"\n"}• Try restarting the glasses
-                </Text>
-              )}
-              <TouchableOpacity style={themed($retryButton)} onPress={loadGallery}>
-                <Text style={themed($retryText)}>Retry</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-
-          {/* Gallery Grid */}
-          {!isLoading && !error && photos && photos.length > 0 && (
-            <View style={themed($galleryContainer)}>
-              <Text style={themed($galleryTitle)}>Photos ({photos ? photos.length : 0})</Text>
-              <View style={themed($galleryGrid)}>
-                {photos &&
-                  photos.map((photo, index) => (
-                    <TouchableOpacity
-                      key={index}
-                      style={themed($photoContainer)}
-                      onPress={() => handlePhotoPress(photo)}>
-                      <Image
-                        source={{
-                          uri: `${asgCameraApi.getServerUrl()}/api/photo?file=${encodeURIComponent(photo.name)}`,
-                        }}
-                        style={{width: "100%", height: 120, borderRadius: 8}}
-                        resizeMode="cover"
-                      />
-                      <Text style={themed($photoName)} numberOfLines={1}>
-                        {photo.name}
-                      </Text>
-                      <Text style={themed($photoSize)}>{Math.round(photo.size / 1024)}KB</Text>
-                    </TouchableOpacity>
-                  ))}
-              </View>
-            </View>
-          )}
-
-          {/* Empty State */}
-          {!isLoading && !error && photos && photos.length === 0 && (
-            <View style={themed($emptyContainer)}>
-              <Text style={themed($emptyText)}>No photos found</Text>
-              <Text style={themed($emptySubtext)}>Take a picture to see it here</Text>
-            </View>
-          )}
         </View>
+      )}
+
+      {/* Error Display */}
+      {error && (
+        <View style={themed($errorContainer)}>
+          <Text style={themed($errorText)}>{error}</Text>
+        </View>
+      )}
+
+      {/* Photo Grid */}
+      <ScrollView style={themed($photoGridContainer)}>
+        {isLoading ? (
+          <View style={themed($loadingContainer)}>
+            <ActivityIndicator size="large" color={theme.colors.palette.primary500} />
+            <Text style={themed($loadingText)}>Loading photos...</Text>
+          </View>
+        ) : currentPhotos.length === 0 ? (
+          <View style={themed($emptyContainer)}>
+            <Text style={themed($emptyText)}>{isServerTab ? "No photos on server" : "No downloaded photos"}</Text>
+          </View>
+        ) : (
+          <View style={themed($photoGrid)}>
+            {currentPhotos.map((photo, index) => (
+              <TouchableOpacity
+                key={`${photo.name}-${index}`}
+                style={themed($photoItem)}
+                onPress={() => handlePhotoPress(photo)}
+                onLongPress={() => (isServerTab ? handleDeletePhoto(photo) : handleDeleteDownloadedPhoto(photo))}>
+                <Image source={{uri: photo.url}} style={themed($photoImage)} />
+                {photo.is_video && (
+                  <View style={themed($videoIndicator)}>
+                    <Text style={themed($videoIndicatorText)}>▶</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
       </ScrollView>
 
-      {/* Full Image Modal */}
-      <Modal visible={isModalVisible} transparent={true} animationType="fade" onRequestClose={closeModal}>
+      {/* Photo Modal */}
+      <Modal
+        visible={!!selectedPhoto}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setSelectedPhoto(null)}>
         <View style={themed($modalOverlay)}>
-          <TouchableOpacity style={themed($modalCloseButton)} onPress={closeModal}>
-            <Text style={themed($modalCloseText)}>✕</Text>
+          <TouchableOpacity style={themed($modalContent)} onPress={() => setSelectedPhoto(null)} activeOpacity={1}>
+            {selectedPhoto && <Image source={{uri: selectedPhoto.url}} style={themed($modalImage)} />}
           </TouchableOpacity>
-
-          {modalPhoto && (
-            <View style={themed($modalContent)}>
-              <Image
-                source={{
-                  uri: `${asgCameraApi.getServerUrl()}/api/download?file=${encodeURIComponent(modalPhoto.name)}`,
-                }}
-                style={themed($modalImage)}
-                resizeMode="contain"
-              />
-              <Text style={themed($modalPhotoName)}>{modalPhoto.name}</Text>
-              <Text style={themed($modalPhotoSize)}>{Math.round(modalPhoto.size / 1024)}KB</Text>
-            </View>
-          )}
         </View>
       </Modal>
     </Screen>
   )
 }
 
-const $container: ThemedStyle<ViewStyle> = () => ({
+const $screenContentContainer: ThemedStyle<ViewStyle> = () => ({
   flex: 1,
 })
 
-const $content: ThemedStyle<ViewStyle> = ({spacing}) => ({
-  flex: 1,
-  padding: spacing.lg,
-  alignItems: "center",
+const $headerContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  paddingTop: spacing.md,
+  paddingBottom: spacing.sm,
+  paddingHorizontal: spacing.md,
 })
 
-const $statusContainer: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
-  backgroundColor: colors.background,
-  padding: spacing.md,
-  borderRadius: spacing.xs,
-  marginBottom: spacing.xl,
-  width: "100%",
-  borderWidth: 1,
-  borderColor: colors.border,
-})
-
-const $statusText: ThemedStyle<TextStyle> = ({colors}) => ({
-  fontSize: 14,
+const $headerTitle: ThemedStyle<TextStyle> = ({colors}) => ({
+  fontSize: 24,
+  fontWeight: "bold",
   color: colors.text,
-  textAlign: "center",
 })
 
-const $takePictureButton: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
-  backgroundColor: colors.palette.primary100,
-  padding: spacing.md,
+const $tabContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  flexDirection: "row",
+  justifyContent: "space-around",
+  backgroundColor: "transparent",
+  marginBottom: spacing.md,
+  paddingHorizontal: spacing.md,
+})
+
+const $activeTab: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
+  paddingVertical: spacing.xs,
+  paddingHorizontal: spacing.md,
   borderRadius: spacing.xs,
-  marginBottom: spacing.lg,
-  width: "100%",
-  alignItems: "center",
+  backgroundColor: colors.palette.primary100,
 })
 
-const $takePictureText: ThemedStyle<TextStyle> = ({colors}) => ({
-  fontSize: 16,
+const $inactiveTab: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
+  paddingVertical: spacing.xs,
+  paddingHorizontal: spacing.md,
+  borderRadius: spacing.xs,
+  backgroundColor: colors.background,
+})
+
+const $activeTabText: ThemedStyle<TextStyle> = ({colors}) => ({
+  fontSize: 14,
   fontWeight: "600",
   color: colors.palette.primary500,
 })
 
-const $loadingContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
-  alignItems: "center",
-  padding: spacing.xl,
+const $inactiveTabText: ThemedStyle<TextStyle> = ({colors}) => ({
+  fontSize: 14,
+  color: colors.textDim,
 })
 
-const $loadingText: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
-  fontSize: 16,
+const $actionButtonsContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  flexDirection: "row",
+  justifyContent: "space-around",
+  marginBottom: spacing.md,
+  paddingHorizontal: spacing.md,
+})
+
+const $takePictureButton: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
+  backgroundColor: colors.palette.primary100,
+  paddingVertical: spacing.xs,
+  paddingHorizontal: spacing.md,
+  borderRadius: spacing.xs,
+  width: "45%",
+  alignItems: "center",
+})
+
+const $syncButton: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
+  backgroundColor: colors.palette.primary100,
+  paddingVertical: spacing.xs,
+  paddingHorizontal: spacing.md,
+  borderRadius: spacing.xs,
+  width: "45%",
+  alignItems: "center",
+})
+
+const $syncButtonDisabled: ThemedStyle<ViewStyle> = ({colors}) => ({
+  backgroundColor: colors.palette.neutral200,
+  opacity: 0.7,
+})
+
+const $buttonText: ThemedStyle<TextStyle> = ({colors}) => ({
+  fontSize: 14,
+  fontWeight: "600",
+  color: colors.palette.primary500,
+})
+
+const $syncProgressContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  marginTop: spacing.md,
+  marginBottom: spacing.md,
+  paddingHorizontal: spacing.md,
+})
+
+const $syncProgressText: ThemedStyle<TextStyle> = ({colors}) => ({
+  fontSize: 14,
   color: colors.textDim,
-  marginTop: spacing.sm,
+  textAlign: "center",
+})
+
+const $syncProgressBar: ThemedStyle<ViewStyle> = ({colors}) => ({
+  height: 8,
+  backgroundColor: colors.palette.neutral200,
+  borderRadius: 4,
+  overflow: "hidden",
+})
+
+const $syncProgressFill: ThemedStyle<ViewStyle> = ({colors}) => ({
+  height: "100%",
+  backgroundColor: colors.palette.primary500,
+  borderRadius: 4,
 })
 
 const $errorContainer: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
@@ -290,72 +516,27 @@ const $errorText: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
   marginBottom: spacing.sm,
 })
 
-const $errorHelpText: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
-  fontSize: 12,
+const $photoGridContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  flex: 1,
+  padding: spacing.md,
+})
+
+const $loadingContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  flex: 1,
+  justifyContent: "center",
+  alignItems: "center",
+  padding: spacing.xl,
+})
+
+const $loadingText: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
+  fontSize: 16,
   color: colors.textDim,
-  textAlign: "left",
-  marginBottom: spacing.sm,
-  fontFamily: "monospace",
-})
-
-const $retryButton: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
-  backgroundColor: colors.palette.angry500,
-  paddingHorizontal: spacing.md,
-  paddingVertical: spacing.xs,
-  borderRadius: spacing.xs,
-})
-
-const $retryText: ThemedStyle<TextStyle> = ({colors}) => ({
-  fontSize: 14,
-  color: colors.background,
-  fontWeight: "600",
-})
-
-const $galleryContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
-  width: "100%",
-})
-
-const $galleryTitle: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
-  fontSize: 18,
-  fontWeight: "600",
-  color: colors.text,
-  marginBottom: spacing.md,
-})
-
-const $galleryGrid: ThemedStyle<ViewStyle> = ({spacing}) => ({
-  flexDirection: "row",
-  flexWrap: "wrap",
-  justifyContent: "space-between",
-})
-
-const $photoContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
-  width: "48%",
-  marginBottom: spacing.md,
-  borderRadius: spacing.xs,
-  overflow: "hidden",
-})
-
-const $photoImage: ThemedStyle<ViewStyle> = ({spacing}) => ({
-  width: "100%",
-  height: 120,
-  borderRadius: 8,
-})
-
-const $photoName: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
-  fontSize: 12,
-  color: colors.text,
-  marginTop: spacing.xs,
-  paddingHorizontal: spacing.xs,
-})
-
-const $photoSize: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
-  fontSize: 10,
-  color: colors.textDim,
-  paddingHorizontal: spacing.xs,
-  marginBottom: spacing.xs,
+  marginTop: spacing.sm,
 })
 
 const $emptyContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  flex: 1,
+  justifyContent: "center",
   alignItems: "center",
   padding: spacing.xl,
 })
@@ -366,10 +547,38 @@ const $emptyText: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
   marginBottom: spacing.xs,
 })
 
-const $emptySubtext: ThemedStyle<TextStyle> = ({colors}) => ({
-  fontSize: 14,
-  color: colors.textDim,
-  textAlign: "center",
+const $photoGrid: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  flexDirection: "row",
+  flexWrap: "wrap",
+  justifyContent: "space-between",
+})
+
+const $photoItem: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  width: "48%",
+  marginBottom: spacing.md,
+  borderRadius: spacing.xs,
+  overflow: "hidden",
+})
+
+const $photoImage: ThemedStyle<ImageStyle> = ({spacing}) => ({
+  width: "100%",
+  height: 120,
+  borderRadius: 8,
+})
+
+const $videoIndicator: ThemedStyle<ViewStyle> = ({colors}) => ({
+  position: "absolute",
+  bottom: 0,
+  right: 0,
+  backgroundColor: "rgba(0,0,0,0.5)",
+  borderRadius: 5,
+  paddingHorizontal: 5,
+  paddingVertical: 2,
+})
+
+const $videoIndicatorText: ThemedStyle<TextStyle> = ({colors}) => ({
+  fontSize: 12,
+  color: colors.background,
 })
 
 // Modal styles
@@ -378,25 +587,6 @@ const $modalOverlay: ThemedStyle<ViewStyle> = ({colors}) => ({
   backgroundColor: "rgba(0, 0, 0, 0.9)",
   justifyContent: "center",
   alignItems: "center",
-})
-
-const $modalCloseButton: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
-  position: "absolute",
-  top: 50,
-  right: 20,
-  zIndex: 1000,
-  backgroundColor: "rgba(0, 0, 0, 0.7)",
-  borderRadius: 20,
-  width: 40,
-  height: 40,
-  justifyContent: "center",
-  alignItems: "center",
-})
-
-const $modalCloseText: ThemedStyle<TextStyle> = ({colors}) => ({
-  fontSize: 20,
-  color: colors.background,
-  fontWeight: "bold",
 })
 
 const $modalContent: ThemedStyle<ViewStyle> = ({spacing}) => ({
@@ -410,18 +600,4 @@ const $modalImage: ThemedStyle<ImageStyle> = () => ({
   width: Dimensions.get("window").width - 40,
   height: Dimensions.get("window").height - 200,
   borderRadius: 8,
-})
-
-const $modalPhotoName: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
-  fontSize: 16,
-  color: colors.background,
-  marginTop: spacing.md,
-  textAlign: "center",
-})
-
-const $modalPhotoSize: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
-  fontSize: 14,
-  color: colors.textDim,
-  marginTop: spacing.xs,
-  textAlign: "center",
 })

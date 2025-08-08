@@ -8,8 +8,6 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
 
-import com.augmentos.asg_client.AsgClientService;
-
 public class ServiceHeartbeatReceiver extends BroadcastReceiver {
     private static final String TAG = "ServiceHeartbeatReceiver";
     private static final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.US);

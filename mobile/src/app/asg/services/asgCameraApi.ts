@@ -22,15 +22,21 @@ export class AsgCameraApiClient {
    * Set the server URL and port
    */
   setServer(serverUrl: string, port?: number) {
-    const newUrl = `http://${serverUrl.replace(/^https?:\/\//, "")}`
+    console.log(`[ASG Camera API] setServer called with serverUrl: ${serverUrl}, port: ${port}`)
     const newPort = port || this.port
+    const newUrl = `http://${serverUrl.replace(/^https?:\/\//, "")}:${newPort}`
 
-    // Only update if the URL or port actually changed
-    if (this.baseUrl !== newUrl || this.port !== newPort) {
+    console.log(`[ASG Camera API] Constructed newUrl: ${newUrl}`)
+    console.log(`[ASG Camera API] Current baseUrl: ${this.baseUrl}`)
+
+    // Only update if the URL actually changed
+    if (this.baseUrl !== newUrl) {
       const oldUrl = this.baseUrl
       this.baseUrl = newUrl
       this.port = newPort
       console.log(`[ASG Camera API] Server changed from ${oldUrl} to ${this.baseUrl}`)
+    } else {
+      console.log(`[ASG Camera API] Server URL unchanged: ${this.baseUrl}`)
     }
   }
 
@@ -65,7 +71,11 @@ export class AsgCameraApiClient {
     const url = `${this.baseUrl}${endpoint}`
     const method = options?.method || "GET"
 
-    console.log(`[ASG Camera API] ${method} ${url}`)
+    console.log(`[ASG Camera API] makeRequest called with endpoint: ${endpoint}`)
+    console.log(`[ASG Camera API] Current baseUrl: ${this.baseUrl}`)
+    console.log(`[ASG Camera API] Full URL: ${url}`)
+    console.log(`[ASG Camera API] Method: ${method}`)
+    console.log(`[ASG Camera API] Retries remaining: ${retries}`)
     console.log(`[ASG Camera API] Request options:`, {
       method,
       headers: options?.headers,
@@ -81,13 +91,19 @@ export class AsgCameraApiClient {
       }
 
       // Prepare headers - don't set Content-Type for GET requests
-      const headers: Record<string, string> = {}
+      const headers: Record<string, string> = {
+        "Accept": "application/json",
+        "User-Agent": "MentraOS-Mobile/1.0",
+      }
       if (method !== "GET") {
         headers["Content-Type"] = "application/json"
       }
       if (options?.headers) {
         Object.assign(headers, options.headers)
       }
+
+      console.log(`[ASG Camera API] Making fetch request to: ${url}`)
+      console.log(`[ASG Camera API] Headers being sent:`, headers)
 
       const response = await fetch(url, {
         headers,
@@ -100,6 +116,7 @@ export class AsgCameraApiClient {
         statusText: response.statusText,
         contentType: response.headers.get("content-type"),
         contentLength: response.headers.get("content-length"),
+        url: response.url,
       })
 
       if (!response.ok) {
@@ -118,15 +135,16 @@ export class AsgCameraApiClient {
 
       // Handle different response types
       const contentType = response.headers.get("content-type")
+      console.log(`[ASG Camera API] Response content-type: ${contentType}`)
 
       if (contentType?.includes("application/json")) {
         const data = await response.json()
-        console.log(`[ASG Camera API] JSON Response:`, data)
+        console.log(`[ASG Camera API] JSON Response received:`, data)
         return data
       } else if (contentType?.includes("image/")) {
         // For image responses, return the blob
         const blob = await response.blob()
-        console.log(`[ASG Camera API] Image Response:`, {
+        console.log(`[ASG Camera API] Image Response received:`, {
           size: blob.size,
           type: blob.type,
         })
@@ -134,12 +152,23 @@ export class AsgCameraApiClient {
       } else {
         // For text responses
         const text = await response.text()
-        console.log(`[ASG Camera API] Text Response:`, text.substring(0, 200) + (text.length > 200 ? "..." : ""))
+        console.log(
+          `[ASG Camera API] Text Response received:`,
+          text.substring(0, 200) + (text.length > 200 ? "..." : ""),
+        )
         return text as T
       }
     } catch (error) {
       const duration = Date.now() - startTime
       console.error(`[ASG Camera API] Error (${endpoint}) after ${duration}ms:`, error)
+      console.error(`[ASG Camera API] Error details:`, {
+        endpoint,
+        url,
+        method,
+        duration,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        errorStack: error instanceof Error ? error.stack : undefined,
+      })
       throw error
     }
   }
@@ -180,21 +209,18 @@ export class AsgCameraApiClient {
    * Get gallery photos from the server
    */
   async getGallery(): Promise<GalleryResponse> {
-    console.log(`[ASG Camera API] Getting gallery...`)
+    console.log(`[ASG Camera API] getGallery called`)
+    console.log(`[ASG Camera API] Current baseUrl: ${this.baseUrl}`)
+    console.log(`[ASG Camera API] Full gallery URL: ${this.baseUrl}/api/gallery`)
 
     // Use browser-like headers since we know the browser works
     try {
-      console.log(`[ASG Camera API] Trying endpoint: /api/gallery`)
+      console.log(`[ASG Camera API] Making direct fetch to gallery endpoint`)
       const response = await fetch(`${this.baseUrl}/api/gallery`, {
         method: "GET",
         headers: {
-          "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-          "Accept-Language": "en-US,en;q=0.5",
-          "Accept-Encoding": "gzip, deflate",
-          "Connection": "keep-alive",
-          "Upgrade-Insecure-Requests": "1",
-          "User-Agent":
-            "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
+          "Accept": "application/json",
+          "User-Agent": "MentraOS-Mobile/1.0",
         },
         signal: AbortSignal.timeout(10000), // 10 second timeout
       })
@@ -460,6 +486,126 @@ export class AsgCameraApiClient {
         error: error instanceof Error ? error.message : "Unknown error",
       }
     }
+  }
+
+  /**
+   * Sync with server to get changed files since last sync
+   */
+  async syncWithServer(
+    clientId: string,
+    lastSyncTime?: number,
+    includeThumbnails: boolean = false,
+  ): Promise<{
+    client_id: string
+    changed_files: PhotoInfo[]
+    deleted_files: string[]
+    server_time: number
+    total_files: number
+  }> {
+    const params = new URLSearchParams({
+      client_id: clientId,
+      include_thumbnails: includeThumbnails.toString(),
+    })
+
+    if (lastSyncTime) {
+      params.append("last_sync_time", lastSyncTime.toString())
+    }
+
+    const response = await this.makeRequest(`/api/sync?${params.toString()}`, {
+      method: "GET",
+    })
+
+    return response
+  }
+
+  /**
+   * Batch sync files from server
+   */
+  async batchSyncFiles(
+    files: PhotoInfo[],
+    includeThumbnails: boolean = false,
+  ): Promise<{
+    downloaded: PhotoInfo[]
+    failed: string[]
+    total_size: number
+  }> {
+    const results = {
+      downloaded: [] as PhotoInfo[],
+      failed: [] as string[],
+      total_size: 0,
+    }
+
+    // Process files in small batches to avoid overwhelming the server
+    const batchSize = 3
+    for (let i = 0; i < files.length; i += batchSize) {
+      const batch = files.slice(i, i + batchSize)
+
+      try {
+        const batchPromises = batch.map(async file => {
+          try {
+            const fileData = await this.downloadFile(file.name, includeThumbnails)
+            results.total_size += file.size
+            return {...file, ...fileData}
+          } catch (error) {
+            console.error(`Failed to download ${file.name}:`, error)
+            results.failed.push(file.name)
+            return null
+          }
+        })
+
+        const batchResults = await Promise.all(batchPromises)
+        results.downloaded.push(...(batchResults.filter(Boolean) as PhotoInfo[]))
+
+        // Small delay between batches
+        if (i + batchSize < files.length) {
+          await new Promise(resolve => setTimeout(resolve, 100))
+        }
+      } catch (error) {
+        console.error(`Batch ${i / batchSize + 1} failed:`, error)
+        results.failed.push(...batch.map(f => f.name))
+      }
+    }
+
+    return results
+  }
+
+  /**
+   * Delete files from server after successful sync
+   */
+  async deleteFilesFromServer(fileNames: string[]): Promise<{
+    deleted: string[]
+    failed: string[]
+  }> {
+    if (fileNames.length === 0) {
+      return {deleted: [], failed: []}
+    }
+
+    try {
+      const response = await this.makeRequest("/delete", {
+        method: "POST",
+        body: JSON.stringify({files: fileNames}),
+      })
+
+      return response
+    } catch (error) {
+      console.error("Failed to delete files from server:", error)
+      return {deleted: [], failed: fileNames}
+    }
+  }
+
+  /**
+   * Get sync status from server
+   */
+  async getSyncStatus(): Promise<{
+    total_files: number
+    total_size: number
+    last_modified: number
+  }> {
+    const response = await this.makeRequest("/sync/status", {
+      method: "GET",
+    })
+
+    return response
   }
 }
 

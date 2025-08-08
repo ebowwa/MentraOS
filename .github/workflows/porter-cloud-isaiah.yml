@@ -3,7 +3,7 @@
     branches:
       - translation-manager
     paths:
-      - 'cloud/**'
+      - "cloud/**"
 name: Deploy cloud-isaiah
 jobs:
   porter-deploy:
