@@ -47,7 +47,7 @@
 #include <stdlib.h>
 
 #include "protobuf_handler.h"
-#include "mentraos_ble.pb.h"
+#include "proto/mentraos_ble.pb.h"
 #include "mentra_ble_service.h"
 #include "lvgl_interface.h"
 #include <pb_decode.h>
@@ -165,11 +165,13 @@ void protobuf_parse_control_message(const uint8_t *protobuf_data, uint16_t len)
 	mentraos_ble_PhoneToGlasses phone_msg = mentraos_ble_PhoneToGlasses_init_default;
 	
 	LOG_INF("Attempting to decode PhoneToGlasses message...");
+	printk("[Phone->Glasses] Decoding protobuf message (%u bytes)\n", len);
 	bool decode_result = decode_phone_to_glasses_message(protobuf_data, len, &phone_msg);
 	
 	if (decode_result) {
 		LOG_INF("Successfully decoded PhoneToGlasses message!");
 		LOG_INF("Message type (which_payload): %u", phone_msg.which_payload);
+		printk("[Phone->Glasses] Successfully decoded message type: %u\n", phone_msg.which_payload);
 		
 		// Enhanced message type logging with protocol details
 		const char *message_name;
@@ -223,6 +225,7 @@ void protobuf_parse_control_message(const uint8_t *protobuf_data, uint16_t len)
 		LOG_INF("  - Tag: %u", phone_msg.which_payload);
 		LOG_INF("  - Description: %s", message_description);
 		LOG_INF("  - Protocol: MentraOS BLE Protobuf v3");
+		printk("[Phone->Glasses] %s (Tag %u): %s\n", message_name, phone_msg.which_payload, message_description);
 		
 		// Process the decoded message based on payload type
 		switch (phone_msg.which_payload) {
@@ -302,6 +305,7 @@ void protobuf_parse_control_message(const uint8_t *protobuf_data, uint16_t len)
 		
 	} else {
 		LOG_ERR("Failed to decode protobuf message - falling back to detailed analysis");
+		printk("[Phone->Glasses] ❌ Failed to decode protobuf message (%u bytes)\n", len);
 		
 		// Enhanced protobuf wire format analysis
 		LOG_INF("=== PROTOBUF DECODE FAILURE ANALYSIS ===");
