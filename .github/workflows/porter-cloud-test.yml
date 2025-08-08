@@ -4,7 +4,8 @@ on:
   push:
     branches:
       - transcription-manager
-
+    paths:
+      - 'cloud/**'
 jobs:
   porter-deploy:
     runs-on: ubuntu-latest
