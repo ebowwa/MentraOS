@@ -233,7 +233,7 @@ export default function SelectGlassesBluetoothScreen() {
       // give some time to show the loader (otherwise it's a bit jarring)
       coreCommunicator.sendConnectWearable(glassesModelName, deviceName)
     }, 2000)
-    push("/pairing/guide", {glassesModelName: glassesModelName})
+    push("/pairing/loading", {glassesModelName: glassesModelName})
   }
 
   const glassesImage = useMemo(() => getGlassesImage(glassesModelName), [glassesModelName])

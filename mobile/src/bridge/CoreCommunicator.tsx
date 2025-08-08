@@ -307,6 +307,9 @@ export class CoreCommunicator extends EventEmitter {
         case "audio_stop_request":
           await AudioPlayService.stopAllAudio()
           break
+        case "pair_failure":
+          GlobalEventEmitter.emit("PAIR_FAILURE", data.error)
+          break
         default:
           console.log("Unknown event type:", data.type)
           break
