@@ -378,6 +378,12 @@ MBEDTLS_PSA_CRYPTO_CONFIG_FILE:STRING=nrf-psa-crypto-config.h
 //PSA crypto config file (PSA_NEED)
 MBEDTLS_PSA_CRYPTO_USER_CONFIG_FILE:STRING=nrf-psa-crypto-user-config.h
 
+//nanopb generator source
+NANOPB_GENERATOR_SOURCE_DIR:PATH=/opt/nordic/ncs/v3.0.0/modules/lib/nanopb/generator
+
+//Path to a file.
+NANOPB_INCLUDE_DIRS:PATH=/opt/nordic/ncs/v3.0.0/modules/lib/nanopb
+
 //nrfxlib folder
 NRFXLIB_DIR:STRING=/opt/nordic/ncs/v3.0.0/nrfxlib
 
@@ -398,6 +404,9 @@ OPENOCD:FILEPATH=/opt/homebrew/bin/openocd
 
 //Path to a program.
 PAHOLE:FILEPATH=PAHOLE-NOTFOUND
+
+//The Google Protocol Buffers Compiler
+PROTOBUF_PROTOC_EXECUTABLE:FILEPATH=/opt/nordic/ncs/v3.0.0/modules/lib/nanopb/generator/protoc
 
 //Path used for generated PSA crypto configuratiosn for the interface
 PSA_CRYPTO_CONFIG_INTERFACE_PATH:STRING=/Users/loayyari/Documents/Github/MentraOS/mcu_client/nrf5340_ble_simulator/build/nrf5340_ble_simulator/generated/interface_nrf_security_psa
@@ -495,9 +504,6 @@ ZEPHYR_BASE:PATH=/opt/nordic/ncs/v3.0.0/zephyr
 //Path to Zephyr git repository index file
 ZEPHYR_GIT_INDEX:PATH=/opt/nordic/ncs/v3.0.0/zephyr/.git/index
 
-//Zephyr toolchain variant
-ZEPHYR_TOOLCHAIN_VARIANT:STRING=zephyr
-
 //Value Computed by CMake
 Zephyr-Kernel_BINARY_DIR:STATIC=/Users/loayyari/Documents/Github/MentraOS/mcu_client/nrf5340_ble_simulator/build/nrf5340_ble_simulator
 
@@ -545,6 +551,27 @@ open_amp_IS_TOP_LEVEL:STATIC=OFF
 
 //Value Computed by CMake
 open_amp_SOURCE_DIR:STATIC=/opt/nordic/ncs/v3.0.0/modules/lib/open-amp/open-amp
+
+//Path to a file.
+pb.h__nano_pb_file:FILEPATH=/opt/nordic/ncs/v3.0.0/modules/lib/nanopb/pb.h
+
+//Path to a file.
+pb_common.c__nano_pb_file:FILEPATH=/opt/nordic/ncs/v3.0.0/modules/lib/nanopb/pb_common.c
+
+//Path to a file.
+pb_common.h__nano_pb_file:FILEPATH=/opt/nordic/ncs/v3.0.0/modules/lib/nanopb/pb_common.h
+
+//Path to a file.
+pb_decode.c__nano_pb_file:FILEPATH=/opt/nordic/ncs/v3.0.0/modules/lib/nanopb/pb_decode.c
+
+//Path to a file.
+pb_decode.h__nano_pb_file:FILEPATH=/opt/nordic/ncs/v3.0.0/modules/lib/nanopb/pb_decode.h
+
+//Path to a file.
+pb_encode.c__nano_pb_file:FILEPATH=/opt/nordic/ncs/v3.0.0/modules/lib/nanopb/pb_encode.c
+
+//Path to a file.
+pb_encode.h__nano_pb_file:FILEPATH=/opt/nordic/ncs/v3.0.0/modules/lib/nanopb/pb_encode.h
 
 
 ########################
@@ -713,6 +740,8 @@ CONF_FILE_BUILD_TYPE:INTERNAL=
 FIND_PACKAGE_MESSAGE_DETAILS_Dtc:INTERNAL=[/opt/nordic/ncs/toolchains/ef4fc6722e/bin/dtc][v1.6.1(1.4.6)]
 //Details about finding GnuLd
 FIND_PACKAGE_MESSAGE_DETAILS_GnuLd:INTERNAL=[/opt/nordic/ncs/toolchains/ef4fc6722e/opt/zephyr-sdk/arm-zephyr-eabi/arm-zephyr-eabi/bin/ld.bfd][v2.38()]
+//Details about finding Nanopb
+FIND_PACKAGE_MESSAGE_DETAILS_Nanopb:INTERNAL=[/opt/nordic/ncs/v3.0.0/modules/lib/nanopb][/opt/nordic/ncs/v3.0.0/modules/lib/nanopb/pb_decode.c;/opt/nordic/ncs/v3.0.0/modules/lib/nanopb/pb_encode.c;/opt/nordic/ncs/v3.0.0/modules/lib/nanopb/pb_common.c][/opt/nordic/ncs/v3.0.0/modules/lib/nanopb/pb_decode.h;/opt/nordic/ncs/v3.0.0/modules/lib/nanopb/pb_encode.h;/opt/nordic/ncs/v3.0.0/modules/lib/nanopb/pb_common.h;/opt/nordic/ncs/v3.0.0/modules/lib/nanopb/pb.h][/opt/nordic/ncs/v3.0.0/modules/lib/nanopb/generator][/opt/nordic/ncs/v3.0.0/modules/lib/nanopb/generator/protoc][v()]
 //Details about finding Python3
 FIND_PACKAGE_MESSAGE_DETAILS_Python3:INTERNAL=[/opt/nordic/ncs/toolchains/ef4fc6722e/bin/python][cfound components: Interpreter ][v3.12.4(3.10)]
 //ADVANCED property for variable: GIT_EXECUTABLE
@@ -726,10 +755,16 @@ HWM:INTERNAL=v2
 //Zephyr hardware model
 HWMv2:INTERNAL=True
 KERNEL_META_PATH:INTERNAL=/Users/loayyari/Documents/Github/MentraOS/mcu_client/nrf5340_ble_simulator/build/nrf5340_ble_simulator/zephyr/zephyr.meta
+//ADVANCED property for variable: NANOPB_GENERATOR_SOURCE_DIR
+NANOPB_GENERATOR_SOURCE_DIR-ADVANCED:INTERNAL=1
+//ADVANCED property for variable: NANOPB_INCLUDE_DIRS
+NANOPB_INCLUDE_DIRS-ADVANCED:INTERNAL=1
 //shared var
 PM_YML_DEP_FILES:INTERNAL=/opt/nordic/ncs/v3.0.0/nrf/subsys/partition_manager/pm.yml.settings;/opt/nordic/ncs/v3.0.0/nrf/subsys/partition_manager/pm.yml.rpmsg_nrf53;/opt/nordic/ncs/v3.0.0/nrf/subsys/partition_manager/pm.yml.tfm;/opt/nordic/ncs/v3.0.0/nrf/subsys/partition_manager/pm.yml.trustzone
 //shared var
 PM_YML_FILES:INTERNAL=/Users/loayyari/Documents/Github/MentraOS/mcu_client/nrf5340_ble_simulator/build/nrf5340_ble_simulator/modules/nrf/subsys/partition_manager/pm.yml.settings;/Users/loayyari/Documents/Github/MentraOS/mcu_client/nrf5340_ble_simulator/build/nrf5340_ble_simulator/modules/nrf/subsys/partition_manager/pm.yml.rpmsg_nrf53;/Users/loayyari/Documents/Github/MentraOS/mcu_client/nrf5340_ble_simulator/build/nrf5340_ble_simulator/modules/nrf/subsys/partition_manager/pm.yml.tfm;/Users/loayyari/Documents/Github/MentraOS/mcu_client/nrf5340_ble_simulator/build/nrf5340_ble_simulator/modules/nrf/subsys/partition_manager/pm.yml.trustzone
+//ADVANCED property for variable: PROTOBUF_PROTOC_EXECUTABLE
+PROTOBUF_PROTOC_EXECUTABLE-ADVANCED:INTERNAL=1
 //List of SoC directories for SoC (nrf5340)
 SOC_DIRECTORIES:INTERNAL=/opt/nordic/ncs/v3.0.0/zephyr/soc/nordic
 //SoC Linker script
@@ -740,8 +775,24 @@ WEST:INTERNAL=/opt/nordic/ncs/toolchains/ef4fc6722e/bin/python;-m;west
 ZEPHYR_BINARY_DIR:INTERNAL=/Users/loayyari/Documents/Github/MentraOS/mcu_client/nrf5340_ble_simulator/build/nrf5340_ble_simulator/zephyr
 //Cached environment variable ZEPHYR_SDK_INSTALL_DIR
 ZEPHYR_SDK_INSTALL_DIR:INTERNAL=/opt/nordic/ncs/toolchains/ef4fc6722e/opt/zephyr-sdk
+//Cached environment variable ZEPHYR_TOOLCHAIN_VARIANT
+ZEPHYR_TOOLCHAIN_VARIANT:INTERNAL=zephyr
 _Python3_EXECUTABLE:INTERNAL=/opt/nordic/ncs/toolchains/ef4fc6722e/bin/python
 //Python3 Properties
 _Python3_INTERPRETER_PROPERTIES:INTERNAL=Python;3;12;4;64;;cpython-312-darwin;/opt/nordic/ncs/toolchains/ef4fc6722e/opt/python@3.12/Frameworks/Python.framework/Versions/3.12/lib/python3.12;/opt/nordic/ncs/toolchains/ef4fc6722e/lib/python3.12;/opt/nordic/ncs/toolchains/ef4fc6722e/opt/python@3.12/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages;/opt/nordic/ncs/toolchains/ef4fc6722e/lib/python3.12/site-packages
 _Python3_INTERPRETER_SIGNATURE:INTERNAL=7470556f9d98f58c0ed013c2544c54d9
+//ADVANCED property for variable: pb.h__nano_pb_file
+pb.h__nano_pb_file-ADVANCED:INTERNAL=1
+//ADVANCED property for variable: pb_common.c__nano_pb_file
+pb_common.c__nano_pb_file-ADVANCED:INTERNAL=1
+//ADVANCED property for variable: pb_common.h__nano_pb_file
+pb_common.h__nano_pb_file-ADVANCED:INTERNAL=1
+//ADVANCED property for variable: pb_decode.c__nano_pb_file
+pb_decode.c__nano_pb_file-ADVANCED:INTERNAL=1
+//ADVANCED property for variable: pb_decode.h__nano_pb_file
+pb_decode.h__nano_pb_file-ADVANCED:INTERNAL=1
+//ADVANCED property for variable: pb_encode.c__nano_pb_file
+pb_encode.c__nano_pb_file-ADVANCED:INTERNAL=1
+//ADVANCED property for variable: pb_encode.h__nano_pb_file
+pb_encode.h__nano_pb_file-ADVANCED:INTERNAL=1
 

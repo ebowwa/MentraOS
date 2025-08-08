@@ -47,8 +47,9 @@
 #include <stdlib.h>
 
 #include "protobuf_handler.h"
-#include "proto/mentraos_ble.pb.h"
+#include "mentraos_ble.pb.h"
 #include "mentra_ble_service.h"
+#include "lvgl_interface.h"
 #include <pb_decode.h>
 #include <pb_encode.h>
 
@@ -886,6 +887,14 @@ void protobuf_process_display_text(const mentraos_ble_DisplayText *display_text)
 	printk("\n[Phone->Glasses TEXT] Display Text: \"%s\" (len:%zu, pos:(%u,%u), color:0x%04X, font:%u, size:%u)\n", 
 	       display_text->text, text_length, display_text->x, display_text->y, 
 	       color_rgb565, display_text->font_code, display_text->size);
+	
+	// *** LVGL INTEGRATION: Display text on dummy display ***
+	if (lvgl_is_display_ready()) {
+		lvgl_display_protobuf_text(display_text->text, color_rgb565, 
+		                          display_text->x, display_text->y, display_text->size);
+	} else {
+		printk("⚠️ LVGL: Display not ready\n");
+	}
 	
 	LOG_INF("=== END DISPLAY TEXT MESSAGE ===");
 }
