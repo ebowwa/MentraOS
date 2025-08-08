@@ -152,13 +152,12 @@ export default function AppSettings() {
         return
       }
 
-      // const healthStatus = await checkAppHealthStatus(appInfo.packageName)
-      // if (healthStatus !== "healthy") {
-      //   showAlert(translate("errors:appNotOnlineTitle"), translate("errors:appNotOnlineMessage"), [
-      //     {text: translate("common:ok")},
-      //   ])
-      //   return
-      // }
+      if (!(await checkAppHealthStatus(appInfo.packageName))) {
+        showAlert(translate("errors:appNotOnlineTitle"), translate("errors:appNotOnlineMessage"), [
+          {text: translate("common:ok")},
+        ])
+        return
+      }
 
       // ask for needed perms:
       const result = await askPermissionsUI(appInfo, theme)
