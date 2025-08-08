@@ -13,7 +13,7 @@ import crypto from 'crypto';
 interface StreamInfo {
   streamId: string;
   sessionId: string;
-  appId: string;
+  packageName: string;
   rtmpUrl: string;
   status: 'initializing' | 'active' | 'stopping' | 'stopped' | 'timeout';
   startTime: Date;
@@ -33,8 +33,8 @@ export class StreamTrackerService {
   /**
    * Start tracking a new stream
    */
-  public startTracking(streamId: string, sessionId: string, appId: string, rtmpUrl: string): void {
-    logger.info(`[StreamTracker]: Starting tracking for streamId: ${streamId}, app: ${appId}`);
+  public startTracking(streamId: string, sessionId: string, packageName: string, rtmpUrl: string): void {
+    logger.info(`[StreamTracker]: Starting tracking for streamId: ${streamId}, packageName: ${packageName}`);
 
     // Cancel existing stream if any
     this.stopTracking(streamId);
@@ -43,7 +43,7 @@ export class StreamTrackerService {
     const streamInfo: StreamInfo = {
       streamId,
       sessionId,
-      appId,
+      packageName,
       rtmpUrl,
       status: 'initializing',
       startTime: now,
@@ -115,8 +115,8 @@ export class StreamTrackerService {
   /**
    * Get all active streams for an app
    */
-  public getStreamsForApp(appId: string): StreamInfo[] {
-    return Array.from(this.streams.values()).filter(stream => stream.appId === appId);
+  public getStreamsForApp(packageName: string): StreamInfo[] {
+    return Array.from(this.streams.values()).filter(stream => stream.packageName === packageName);
   }
 
   /**

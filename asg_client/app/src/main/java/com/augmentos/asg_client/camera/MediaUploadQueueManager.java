@@ -232,7 +232,7 @@ public class MediaUploadQueueManager {
                     // Only process queued media in this pass
                     if (STATUS_QUEUED.equals(status)) {
                         String requestId = media.getString("requestId");
-                        String appId = media.getString("appId");
+                        String packageName = media.getString("packageName");
                         String queuedPath = media.getString("queuedPath");
                         int mediaType = media.getInt("mediaType"); // Get mediaType
 
@@ -242,7 +242,7 @@ public class MediaUploadQueueManager {
                         updateMediaInManifest(i, media);
 
                         // Attempt to upload the media
-                        uploadMedia(queuedPath, requestId, appId, mediaType, i);
+                        uploadMedia(queuedPath, requestId, packageName, mediaType, i);
 
                         processed++;
                     }
@@ -261,7 +261,7 @@ public class MediaUploadQueueManager {
     /**
      * Upload a media item from the queue
      */
-    private void uploadMedia(String queuedPath, String requestId, String appId, int mediaType, int index) {
+    private void uploadMedia(String queuedPath, String requestId, String packageName, int mediaType, int index) {
         MediaUploadService.uploadMedia(
                 mContext,
                 queuedPath,
@@ -582,7 +582,7 @@ public class MediaUploadQueueManager {
                     // Create a new entry for this file
                     JSONObject mediaEntry = new JSONObject();
                     mediaEntry.put("requestId", requestId);
-                    mediaEntry.put("appId", "system");
+                    mediaEntry.put("packageName", "system");
                     mediaEntry.put("originalPath", "");
                     mediaEntry.put("queuedPath", file.getAbsolutePath());
                     mediaEntry.put("mediaType", mediaType);

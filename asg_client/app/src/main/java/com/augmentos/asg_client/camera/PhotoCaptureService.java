@@ -150,14 +150,14 @@ public class PhotoCaptureService {
                         if ("take_photo".equals(jsonResponse.optString("action"))) {
                             String requestId = jsonResponse.optString("requestId");
                             boolean saveToGallery = jsonResponse.optBoolean("saveToGallery", true);
-                            String appId = jsonResponse.optString("appId", "system");
+                            String packageName = jsonResponse.optString("packageName", "system");
                             
                             Log.d(TAG, "Server requesting photo with requestId: " + requestId);
                             
                             // Take photo and upload directly to server
                             String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
                             String photoFilePath = mContext.getExternalFilesDir(null) + File.separator + "IMG_" + timeStamp + ".jpg";
-                            takePhotoAndUpload(photoFilePath, requestId, appId);
+                            takePhotoAndUpload(photoFilePath, requestId, packageName);
                         } else {
                             Log.d(TAG, "Button press handled by server, no photo needed");
                         }
@@ -229,7 +229,7 @@ public class PhotoCaptureService {
     /**
      * Take a photo and upload it to AugmentOS Cloud
      */
-    public void takePhotoAndUpload(String photoFilePath, String requestId, String appId) {
+    public void takePhotoAndUpload(String photoFilePath, String requestId, String packageName) {
         // Notify that we're about to take a photo
         if (mPhotoCaptureListener != null) {
             mPhotoCaptureListener.onPhotoCapturing(requestId);
@@ -252,13 +252,13 @@ public class PhotoCaptureService {
                         }
                         
                         // Upload the photo to AugmentOS Cloud
-                        uploadPhotoToCloud(filePath, requestId, appId);
+                        uploadPhotoToCloud(filePath, requestId, packageName);
                     }
                     
                     @Override
                     public void onPhotoError(String errorMessage) {
                         Log.e(TAG, "Failed to capture photo: " + errorMessage);
-                        sendPhotoErrorResponse(requestId, appId, errorMessage);
+                        sendPhotoErrorResponse(requestId, packageName, errorMessage);
                         
                         if (mPhotoCaptureListener != null) {
                             mPhotoCaptureListener.onPhotoError(requestId, errorMessage);
@@ -268,7 +268,7 @@ public class PhotoCaptureService {
             );
         } catch (Exception e) {
             Log.e(TAG, "Error taking photo", e);
-            sendPhotoErrorResponse(requestId, appId, "Error taking photo: " + e.getMessage());
+            sendPhotoErrorResponse(requestId, packageName, "Error taking photo: " + e.getMessage());
             
             if (mPhotoCaptureListener != null) {
                 mPhotoCaptureListener.onPhotoError(requestId, "Error taking photo: " + e.getMessage());
@@ -279,7 +279,7 @@ public class PhotoCaptureService {
     /**
      * Upload photo to AugmentOS Cloud
      */
-    private void uploadPhotoToCloud(String photoFilePath, String requestId, String appId) {
+    private void uploadPhotoToCloud(String photoFilePath, String requestId, String packageName) {
         // Upload the photo to AugmentOS Cloud
         PhotoUploadService.uploadPhoto(
             mContext,
@@ -289,8 +289,8 @@ public class PhotoCaptureService {
                 @Override
                 public void onSuccess(String url) {
                     Log.d(TAG, "Photo uploaded successfully: " + url);
-                    sendPhotoSuccessResponse(requestId, appId, url);
-                    
+                    sendPhotoSuccessResponse(requestId, packageName, url);
+
                     // Notify listener about successful upload
                     if (mPhotoCaptureListener != null) {
                         mPhotoCaptureListener.onPhotoUploaded(requestId, url);
@@ -300,7 +300,7 @@ public class PhotoCaptureService {
                 @Override
                 public void onFailure(String errorMessage) {
                     Log.e(TAG, "Photo upload failed: " + errorMessage);
-                    sendPhotoErrorResponse(requestId, appId, errorMessage);
+                    sendPhotoErrorResponse(requestId, packageName, errorMessage);
                     
                     // Notify listener about error
                     if (mPhotoCaptureListener != null) {
@@ -315,7 +315,7 @@ public class PhotoCaptureService {
      * Send a success response for a photo request
      * This should be overridden by the service that uses this class
      */
-    protected void sendPhotoSuccessResponse(String requestId, String appId, String photoUrl) {
+    protected void sendPhotoSuccessResponse(String requestId, String packageName, String photoUrl) {
         // Default implementation is empty
         // This should be overridden by the service that uses this class
     }
@@ -324,7 +324,7 @@ public class PhotoCaptureService {
      * Send an error response for a photo request
      * This should be overridden by the service that uses this class
      */
-    protected void sendPhotoErrorResponse(String requestId, String appId, String errorMessage) {
+    protected void sendPhotoErrorResponse(String requestId, String packageName, String errorMessage) {
         // Default implementation is empty
         // This should be overridden by the service that uses this class
     }

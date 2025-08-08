@@ -1,7 +1,7 @@
 # Maestro Configuration for MentraOS
 
 # Global test configuration
-appId: com.mentra.mentra
+packageName: com.mentra.mentra
 name: "MentraOS E2E Tests"
 
 # Test tags for organizing test runs

@@ -1,4 +1,4 @@
-appId: ${MAESTRO_APP_ID}
+packageName: ${MAESTRO_APP_ID}
 ---
 # Test: Launch App with Simulated Glasses
 # Description: Tests launching Mira app on simulated glasses and verifying "Starting App" status

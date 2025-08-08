@@ -1,7 +1,7 @@
 # Common subflow for opening the app with a clear state, clear keychain, and getting past the Expo Dev Client prompts.
 # Use this for local development flows.
 ---
-appId: ${MAESTRO_APP_ID}
+packageName: ${MAESTRO_APP_ID}
 ---
 - runFlow:
     file: "./_OpenAppClearStateAndKeychain.yaml"

@@ -69,7 +69,7 @@ type DebuggerEvent =
   | { type: 'SESSION_UPDATE'; sessionId: string; data: Partial<DebugSessionInfo> }
   | { type: 'SESSION_DISCONNECTED'; sessionId: string; timestamp: string }
   | { type: 'SESSION_CONNECTED'; sessionId: string; timestamp: string }
-  | { type: 'APP_STATE_CHANGE'; sessionId: string; appId: string; state: any }
+  | { type: 'APP_STATE_CHANGE'; sessionId: string; packageName: string; state: any }
   | { type: 'DISPLAY_UPDATE'; sessionId: string; display: any }
   | { type: 'TRANSCRIPTION_UPDATE'; sessionId: string; transcript: any }
   | { type: 'SYSTEM_STATS_UPDATE'; stats: SystemStats };
@@ -334,13 +334,13 @@ export class DebugService {
     }
   }
 
-  public updateAppState(sessionId: string, appId: string, state: any) {
+  public updateAppState(sessionId: string, packageName: string, state: any) {
     if (!this.isActive) return; // Skip if debug service is not active
 
     this.broadcastEvent({
       type: 'APP_STATE_CHANGE',
       sessionId,
-      appId,
+      packageName,
       state
     });
   }

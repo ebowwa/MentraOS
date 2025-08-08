@@ -43,7 +43,7 @@ export interface ManagedStreamState extends BaseStreamState {
 export interface UnmanagedStreamState extends BaseStreamState {
   type: "unmanaged";
   rtmpUrl: string;
-  requestingAppId: string;
+  requestingPackageName: string;
   streamId: string;
 }
 
@@ -57,7 +57,7 @@ export type StreamState = ManagedStreamState | UnmanagedStreamState;
  */
 export interface CreateManagedStreamOptions {
   userId: string;
-  appId: string;
+  packageName: string;
   liveInput: LiveInputResult;
 }
 
@@ -148,20 +148,20 @@ export class StreamStateManager {
   createOrJoinManagedStream(
     options: CreateManagedStreamOptions,
   ): ManagedStreamState {
-    const { userId, appId, liveInput } = options;
+    const { userId, packageName, liveInput } = options;
 
     // Check if user already has a managed stream
     const existingStream = this.userStreams.get(userId);
 
     if (existingStream && existingStream.type === "managed") {
       // Add viewer to existing stream
-      existingStream.activeViewers.add(appId);
+      existingStream.activeViewers.add(packageName);
       existingStream.lastActivity = new Date();
 
       this.logger.info(
         {
           userId,
-          appId,
+          packageName,
           viewerCount: existingStream.activeViewers.size,
         },
         "Added viewer to existing managed stream",
@@ -180,7 +180,7 @@ export class StreamStateManager {
       hlsUrl: liveInput.hlsUrl,
       dashUrl: liveInput.dashUrl,
       webrtcUrl: liveInput.webrtcUrl,
-      activeViewers: new Set([appId]),
+      activeViewers: new Set([packageName]),
       streamId,
       createdAt: new Date(),
       lastActivity: new Date(),
@@ -188,7 +188,7 @@ export class StreamStateManager {
         cfOutputId: output.uid,
         url: output.url,
         name: undefined, // Will be set later if needed
-        addedBy: appId, // Initial outputs are owned by the app that created the stream
+        addedBy: packageName, // Initial outputs are owned by the app that created the stream
         status: output,
       })),
     };
@@ -201,7 +201,7 @@ export class StreamStateManager {
     this.logger.info(
       {
         userId,
-        appId,
+        packageName,
         streamId,
         cfLiveInputId: liveInput.liveInputId,
       },
@@ -214,20 +214,20 @@ export class StreamStateManager {
   /**
    * Remove a viewer from a managed stream
    */
-  removeViewerFromManagedStream(userId: string, appId: string): boolean {
+  removeViewerFromManagedStream(userId: string, packageName: string): boolean {
     const stream = this.userStreams.get(userId);
 
     if (!stream || stream.type !== "managed") {
       return false;
     }
 
-    stream.activeViewers.delete(appId);
+    stream.activeViewers.delete(packageName);
     stream.lastActivity = new Date();
 
     this.logger.info(
       {
         userId,
-        appId,
+        packageName,
         remainingViewers: stream.activeViewers.size,
       },
       "Removed viewer from managed stream",
@@ -242,7 +242,7 @@ export class StreamStateManager {
    */
   createUnmanagedStream(
     userId: string,
-    appId: string,
+    packageName: string,
     rtmpUrl: string,
   ): UnmanagedStreamState {
     const streamId = this.generateStreamId();
@@ -251,7 +251,7 @@ export class StreamStateManager {
       userId,
       type: "unmanaged",
       rtmpUrl,
-      requestingAppId: appId,
+      requestingPackageName: packageName,
       streamId,
       createdAt: new Date(),
       lastActivity: new Date(),
@@ -264,7 +264,7 @@ export class StreamStateManager {
     this.logger.info(
       {
         userId,
-        appId,
+        packageName,
         streamId,
       },
       "Created unmanaged stream",

@@ -32,7 +32,7 @@ const ApiKeyDialog: React.FC<ApiKeyDialogProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [lastRegenerated, setLastRegenerated] = useState(new Date());
-  const [currentAppId, setCurrentAppId] = useState<string | null>(null);
+  const [currentPackageName, setCurrentPackageName] = useState<string | null>(null);
 
   // Format API key to be partially masked
   const formatApiKey = (key: string): string => {
@@ -99,11 +99,11 @@ const ApiKeyDialog: React.FC<ApiKeyDialogProps> = ({
   // Complete reset of dialog state when App changes
   useEffect(() => {
     if (app) {
-      const appId = app.packageName;
+      const packageName = app.packageName;
 
       // Only reset state if App has changed
-      if (currentAppId !== appId) {
-        console.log(`App changed from ${currentAppId} to ${appId}, resetting dialog state`);
+      if (currentPackageName !== packageName) {
+        console.log(`App changed from ${currentPackageName} to ${packageName}, resetting dialog state`);
 
         // Reset all state
         setApiKey('');
@@ -112,11 +112,11 @@ const ApiKeyDialog: React.FC<ApiKeyDialogProps> = ({
         setShowConfirmation(false);
         setIsCopied(false);
 
-        // Update current App ID tracker
-        setCurrentAppId(appId);
+        // Update current Package Name tracker
+        setCurrentPackageName(packageName);
       }
     }
-  }, [app, currentAppId]);
+  }, [app, currentPackageName]);
 
   // Update local state when apiKey prop changes (only if it's a real key)
   useEffect(() => {

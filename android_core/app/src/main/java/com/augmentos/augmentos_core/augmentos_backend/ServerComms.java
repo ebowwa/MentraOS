@@ -622,18 +622,18 @@ public class ServerComms {
     /**
      * Sends a video stream response message to the server
      *
-     * @param appId The ID of the app requesting the stream
+     * @param packageName The ID of the app requesting the stream
      * @param streamUrl URL of the video stream
      */
-    public void sendVideoStreamResponse(String appId, String streamUrl) {
+    public void sendVideoStreamResponse(String packageName, String streamUrl) {
         try {
             JSONObject event = new JSONObject();
             event.put("type", "video_stream_response");
-            event.put("appId", appId);
+            event.put("packageName", packageName);
             event.put("streamUrl", streamUrl);
             event.put("timestamp", System.currentTimeMillis());
             wsManager.sendText(event.toString());
-            Log.d(TAG, "Sent video stream response for appId: " + appId);
+            Log.d(TAG, "Sent video stream response for packageName: " + packageName);
         } catch (JSONException e) {
             Log.e(TAG, "Error building video_stream_response JSON", e);
         }
@@ -737,13 +737,13 @@ public class ServerComms {
 
             case "photo_request":
                 String requestId = msg.optString("requestId");
-                String appId = msg.optString("appId");
+                String packageName = msg.optString("packageName");
                 String webhookUrl = msg.optString("webhookUrl", "");
-                Log.d(TAG, "Received photo_request, requestId: " + requestId + ", appId: " + appId + ", webhookUrl: " + webhookUrl);
-                if (serverCommsCallback != null && !requestId.isEmpty() && !appId.isEmpty()) {
-                    serverCommsCallback.onPhotoRequest(requestId, appId, webhookUrl);
+                Log.d(TAG, "Received photo_request, requestId: " + requestId + ", packageName: " + packageName + ", webhookUrl: " + webhookUrl);
+                if (serverCommsCallback != null && !requestId.isEmpty() && !packageName.isEmpty()) {
+                    serverCommsCallback.onPhotoRequest(requestId, packageName, webhookUrl);
                 } else {
-                    Log.e(TAG, "Invalid photo request: missing requestId or appId");
+                    Log.e(TAG, "Invalid photo request: missing requestId or packageName");
                 }
                 break;
 

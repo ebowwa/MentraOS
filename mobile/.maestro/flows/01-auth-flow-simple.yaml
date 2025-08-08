@@ -1,4 +1,4 @@
-appId: ${MAESTRO_APP_ID}
+packageName: ${MAESTRO_APP_ID}
 ---
 # Test: Authentication Flow (Simplified)
 # Description: Tests login flow - assumes app starts logged out

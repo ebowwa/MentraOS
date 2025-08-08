@@ -36,7 +36,7 @@ interface GalleryPhoto {
   id: string
   photoUrl: string
   uploadDate: string
-  appId: string
+  packageName: string
   userId: string
 }
 
@@ -51,7 +51,7 @@ interface MediaItem {
   formattedDate?: string // Pre-formatted date for display
   formattedTime?: string // Pre-formatted time for display
   metadata: {
-    appId?: string // Source app for cloud photos
+    packageName?: string // Source app for cloud photos
     fileName?: string // For local recordings
     // Other metadata as needed
   }
@@ -156,7 +156,7 @@ const GlassesRecordingsGallery: React.FC<GlassesRecordingsGalleryProps> = ({isDa
       formattedDate,
       formattedTime,
       metadata: {
-        appId: photo.appId,
+        packageName: photo.packageName,
       },
     }
   }
@@ -513,7 +513,7 @@ const GlassesRecordingsGallery: React.FC<GlassesRecordingsGalleryProps> = ({isDa
                   id: item.id,
                   photoUrl: item.contentUrl,
                   uploadDate: new Date(item.timestamp).toISOString(),
-                  appId: item.metadata.appId || "Unknown",
+                  packageName: item.metadata.packageName || "Unknown",
                 }}
                 isDarkTheme={isDarkTheme}
                 onViewPhoto={viewPhoto}
@@ -546,7 +546,7 @@ const GlassesRecordingsGallery: React.FC<GlassesRecordingsGalleryProps> = ({isDa
                   {new Date(selectedPhoto.uploadDate).toLocaleString()}
                 </Text>
                 <Text style={[styles.photoDetailText, {color: theme.colors.icon}]}>
-                  From app: {selectedPhoto.appId}
+                  From app: {selectedPhoto.packageName}
                 </Text>
               </View>
             </View>

@@ -900,19 +900,19 @@ public class SmartGlassesManager extends Service {
      * Request a photo from the connected smart glasses
      *
      * @param requestId The unique ID for this photo request
-     * @param appId The ID of the app requesting the photo
+     * @param packageName The ID of the app requesting the photo
      * @param webhookUrl The webhook URL where the photo should be uploaded directly
      * @return true if request was sent, false if glasses not connected
      */
-    public boolean requestPhoto(String requestId, String appId, String webhookUrl) {
+    public boolean requestPhoto(String requestId, String packageName, String webhookUrl) {
         if (smartGlassesRepresentative != null &&
             smartGlassesRepresentative.smartGlassesCommunicator != null &&
             smartGlassesRepresentative.getConnectionState() == SmartGlassesConnectionState.CONNECTED) {
 
-            Log.d(TAG, "Requesting photo from glasses, requestId: " + requestId + ", appId: " + appId + ", webhookUrl: " + webhookUrl);
+            Log.d(TAG, "Requesting photo from glasses, requestId: " + requestId + ", packageName: " + packageName + ", webhookUrl: " + webhookUrl);
 
             // Pass the request to the smart glasses communicator
-            smartGlassesRepresentative.smartGlassesCommunicator.requestPhoto(requestId, appId, webhookUrl);
+            smartGlassesRepresentative.smartGlassesCommunicator.requestPhoto(requestId, packageName, webhookUrl);
             return true;
         } else {
             Log.e(TAG, "Cannot request photo - glasses not connected");

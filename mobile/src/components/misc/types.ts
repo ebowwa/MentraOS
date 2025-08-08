@@ -21,7 +21,7 @@ export type RootStackParamList = {
   GlassesMirrorFullscreen: undefined
   GlassesRecordingsGallery: undefined
   VideoPlayerScreen: {filePath: string; fileName?: string}
-  Reviews: {appId: string; appName: string}
+  Reviews: {packageName: string; appName: string}
   ConnectingToPuck: undefined
   PhoneNotificationSettings: undefined
   PrivacySettingsScreen: undefined

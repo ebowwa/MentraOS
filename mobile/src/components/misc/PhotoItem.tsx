@@ -6,7 +6,7 @@ interface PhotoItemProps {
   photo: {
     photoUrl: string
     uploadDate: string
-    appId: string
+    packageName: string
     id: string
   }
   isDarkTheme: boolean
@@ -55,7 +55,7 @@ const PhotoItem: React.FC<PhotoItemProps> = ({
           </Text>
 
           {/* App source */}
-          <Text style={[styles.appSource, isDarkTheme ? styles.lightText : styles.darkText]}>From: {photo.appId}</Text>
+          <Text style={[styles.appSource, isDarkTheme ? styles.lightText : styles.darkText]}>From: {photo.packageName}</Text>
 
           {/* Action Buttons */}
           <View style={styles.photoActions}>

@@ -164,10 +164,10 @@ public abstract class SmartGlassesCommunicator {
      * Requests the smart glasses to take a photo
      *
      * @param requestId The unique ID for this photo request
-     * @param appId The ID of the app requesting the photo
+     * @param packageName The ID of the app requesting the photo
      * @param webhookUrl The webhook URL where the photo should be uploaded directly
      */
-    public void requestPhoto(String requestId, String appId, String webhookUrl) {
+    public void requestPhoto(String requestId, String packageName, String webhookUrl) {
         // Default implementation does nothing
         Log.d("SmartGlassesCommunicator", "Photo request not implemented for this device");
     }
@@ -177,9 +177,9 @@ public abstract class SmartGlassesCommunicator {
      * Default implementation does nothing - specific communicators should override
      *
      * @param requestId The unique ID for this photo request
-     * @param appId The ID of the app requesting the photo
+     * @param packageName The ID of the app requesting the photo
      */
-    public void requestPhoto(String requestId, String appId) {
+    public void requestPhoto(String requestId, String packageName) {
         // Default implementation does nothing
         Log.d("SmartGlassesCommunicator", "Photo request not implemented for this device");
     }

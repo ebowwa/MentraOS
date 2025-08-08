@@ -20,7 +20,7 @@ protocol ServerCommsCallback {
     func onAppStarted(_ packageName: String)
     func onAppStopped(_ packageName: String)
     func onJsonMessage(_ message: [String: Any])
-    func onPhotoRequest(_ requestId: String, _ appId: String, _ webhookUrl: String)
+    func onPhotoRequest(_ requestId: String, _ packageName: String, _ webhookUrl: String)
     func onRtmpStreamStartRequest(_ message: [String: Any])
     func onRtmpStreamStop()
     func onRtmpStreamKeepAlive(_ message: [String: Any])
@@ -436,11 +436,11 @@ class ServerComms {
         }
     }
 
-    func sendVideoStreamResponse(appId: String, streamUrl: String) {
+    func sendVideoStreamResponse(packageName: String, streamUrl: String) {
         do {
             let event: [String: Any] = [
                 "type": "video_stream_response",
-                "appId": appId,
+                "packageName": packageName,
                 "streamUrl": streamUrl,
                 "timestamp": Int(Date().timeIntervalSince1970 * 1000),
             ]
@@ -603,13 +603,13 @@ class ServerComms {
 
         case "photo_request":
             let requestId = msg["requestId"] as? String ?? ""
-            let appId = msg["appId"] as? String ?? ""
+            let packageName = msg["packageName"] as? String ?? ""
             let webhookUrl = msg["webhookUrl"] as? String ?? ""
-            CoreCommsService.log("Received photo_request, requestId: \(requestId), appId: \(appId), webhookUrl: \(webhookUrl)")
-            if !requestId.isEmpty, !appId.isEmpty {
-                serverCommsCallback?.onPhotoRequest(requestId, appId, webhookUrl)
+            CoreCommsService.log("Received photo_request, requestId: \(requestId), packageName: \(packageName), webhookUrl: \(webhookUrl)")
+            if !requestId.isEmpty, !packageName.isEmpty {
+                serverCommsCallback?.onPhotoRequest(requestId, packageName, webhookUrl)
             } else {
-                CoreCommsService.log("Invalid photo request: missing requestId or appId")
+                CoreCommsService.log("Invalid photo request: missing requestId or packageName")
             }
 
         case "start_rtmp_stream":

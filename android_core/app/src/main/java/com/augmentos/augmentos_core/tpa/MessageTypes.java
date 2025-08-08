@@ -50,7 +50,7 @@ public class MessageTypes {
     public static final String PHOTO_RESPONSE = "photo_response";
     public static final String PHOTO_REQUEST_ID = "requestId";
     public static final String PHOTO_URL = "photoUrl";
-    public static final String PHOTO_APP_ID = "appId";
+    public static final String PHOTO_APP_ID = "packageName";
 
     //VIDEO STREAM REQUEST
 

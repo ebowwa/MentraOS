@@ -20,10 +20,10 @@ public interface ServerCommsCallback {
      * Called when the server requests a photo to be taken
      *
      * @param requestId Unique ID for this photo request
-     * @param appId ID of the app requesting the photo
+     * @param packageName ID of the app requesting the photo
      * @param webhookUrl The webhook URL associated with the photo request
      */
-    void onPhotoRequest(String requestId, String appId, String webhookUrl);
+    void onPhotoRequest(String requestId, String packageName, String webhookUrl);
 
     /**
      * Called when the server requests an RTMP stream

@@ -1,4 +1,4 @@
-appId: ${MAESTRO_APP_ID}
+packageName: ${MAESTRO_APP_ID}
 ---
 # Test: Simulated Glasses Pairing
 # Description: Tests pairing flow with simulated glasses (requires BT permission but doesn't use actual BT)

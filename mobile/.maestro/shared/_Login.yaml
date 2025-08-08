@@ -1,6 +1,6 @@
 #flow: Shared _Login
 #intent: shared login flow for any flow that needs to start with a log in.
-appId: ${MAESTRO_APP_ID}
+packageName: ${MAESTRO_APP_ID}
 ---
 - assertVisible: "Log In"
 - tapOn:

@@ -8,7 +8,7 @@ export interface GalleryPhotoDocument extends Document {
   filename: string;      // Filename in storage
   photoUrl: string;      // URL to access the photo
   requestId: string;     // Original request ID that triggered the photo
-  appId: string;         // App that requested the photo
+  packageName: string;         // App that requested the photo
   uploadDate: Date;      // When the photo was uploaded
   metadata?: {
     originalFilename?: string;
@@ -41,7 +41,7 @@ const GalleryPhotoSchema = new Schema<GalleryPhotoDocument>({
     type: String,
     required: true
   },
-  appId: {
+  packageName: {
     type: String,
     required: true
   },

@@ -926,13 +926,13 @@ typealias JSONObject = [String: Any]
         sendJson(json, wakeUp: true)
     }
 
-    @objc func requestPhoto(_ requestId: String, appId: String, webhookUrl: String?) {
-        CoreCommsService.log("Requesting photo: \(requestId) for app: \(appId)")
+    @objc func requestPhoto(_ requestId: String, packageName: String, webhookUrl: String?) {
+        CoreCommsService.log("Requesting photo: \(requestId) for app: \(packageName)")
 
         var json: [String: Any] = [
             "type": "take_photo",
             "requestId": requestId,
-            "appId": appId,
+            "packageName": packageName,
         ]
 
         // Always generate BLE ID for potential fallback

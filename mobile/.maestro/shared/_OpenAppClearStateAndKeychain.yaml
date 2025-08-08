@@ -1,5 +1,5 @@
 ---
-appId: ${MAESTRO_APP_ID}
+packageName: ${MAESTRO_APP_ID}
 ---
 - launchApp:
     clearState: true

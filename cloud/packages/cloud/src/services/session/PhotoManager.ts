@@ -28,7 +28,7 @@ interface PendingPhotoRequest {
   userId: string; // From UserSession
   timestamp: number;
   // origin: 'app'; // All requests via PhotoManager are App initiated for now
-  packageName: string;    // Renamed from appId for consistency with App messages
+  packageName: string;    // Renamed from packageName for consistency with App messages
   saveToGallery: boolean;
   timeoutId: NodeJS.Timeout;
 }
@@ -99,7 +99,7 @@ export class PhotoManager {
       type: CloudToGlassesMessageType.PHOTO_REQUEST,
       sessionId: this.userSession.sessionId,
       requestId,
-      appId: packageName, // Glasses expect `appId`
+      packageName: packageName, // Glasses expect `packageName`
       webhookUrl, // Use custom webhookUrl if provided, otherwise default
       timestamp: new Date(),
     };

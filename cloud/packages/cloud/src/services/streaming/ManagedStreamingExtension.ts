@@ -136,7 +136,7 @@ export class ManagedStreamingExtension {
       // Add viewer to existing stream
       const managedStream = this.stateManager.createOrJoinManagedStream({
         userId,
-        appId: packageName,
+        packageName: packageName,
         liveInput: {
           liveInputId: existingStream.cfLiveInputId,
           rtmpUrl: existingStream.cfIngestUrl,
@@ -205,7 +205,7 @@ export class ManagedStreamingExtension {
     );
     const managedStream = this.stateManager.createOrJoinManagedStream({
       userId,
-      appId: packageName,
+      packageName: packageName,
       liveInput,
     });
 
@@ -228,7 +228,7 @@ export class ManagedStreamingExtension {
       type: CloudToGlassesMessageType.START_RTMP_STREAM,
       sessionId: userSession.sessionId,
       rtmpUrl: liveInput.rtmpUrl, // Cloudflare ingest URL
-      appId: "MANAGED_STREAM", // Special app ID for managed streams
+      packageName: "MANAGED_STREAM", // Special package name for managed streams
       streamId: managedStream.streamId,
       video: video || {},
       audio: audio || {},
@@ -373,10 +373,10 @@ export class ManagedStreamingExtension {
     }
 
     // Send status to all viewers
-    for (const appId of stream.activeViewers) {
+    for (const packageName of stream.activeViewers) {
       await this.sendManagedStreamStatus(
         userSession,
-        appId,
+        packageName,
         stream.streamId,
         mappedStatus,
       );
@@ -692,10 +692,10 @@ export class ManagedStreamingExtension {
     if (!userSession) return;
 
     // Send updated status to all viewers
-    for (const appId of stream.activeViewers) {
+    for (const packageName of stream.activeViewers) {
       await this.sendManagedStreamStatus(
         userSession,
-        appId,
+        packageName,
         stream.streamId,
         "active",
         "Outputs updated",
@@ -763,10 +763,10 @@ export class ManagedStreamingExtension {
           }
 
           // Send status update to all apps viewing this stream
-          for (const appId of managedStream.activeViewers) {
+          for (const packageName of managedStream.activeViewers) {
             await this.sendManagedStreamStatus(
               userSession,
-              appId,
+              packageName,
               managedStream.streamId,
               "active",
               "Stream is now live",
@@ -1061,7 +1061,7 @@ export class ManagedStreamingExtension {
       const stopMessage: StopRtmpStream = {
         type: CloudToGlassesMessageType.STOP_RTMP_STREAM,
         sessionId: userSession.sessionId,
-        appId: "MANAGED_STREAM", // Same special app ID used when starting
+        packageName: "MANAGED_STREAM", // Same special app ID used when starting
         streamId: stream.streamId,
         timestamp: new Date(),
       };

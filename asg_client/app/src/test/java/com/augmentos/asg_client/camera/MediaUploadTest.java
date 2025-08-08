@@ -64,7 +64,7 @@ public class MediaUploadTest {
         metadata.put("deviceId", "K900_unknown");
         metadata.put("timestamp", System.currentTimeMillis());
         metadata.put("mediaType", "photo");
-        metadata.put("appId", "asg_client");
+        metadata.put("packageName", "asg_client");
 
         System.out.println("Metadata: " + metadata.toString());
 

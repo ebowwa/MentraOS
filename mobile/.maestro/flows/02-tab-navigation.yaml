@@ -1,4 +1,4 @@
-appId: ${MAESTRO_APP_ID}
+packageName: ${MAESTRO_APP_ID}
 ---
 # Test: Tab Navigation
 # Description: Tests bottom tab navigation between all main screens

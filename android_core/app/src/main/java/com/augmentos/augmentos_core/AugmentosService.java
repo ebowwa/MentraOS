@@ -1759,12 +1759,12 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             }
 
             @Override
-            public void onPhotoRequest(String requestId, String appId, String webhookUrl) {
-                Log.d(TAG, "Photo request received: requestId=" + requestId + ", appId=" + appId + ", webhookUrl=" + webhookUrl);
+            public void onPhotoRequest(String requestId, String packageName, String webhookUrl) {
+                Log.d(TAG, "Photo request received: requestId=" + requestId + ", packageName=" + packageName + ", webhookUrl=" + webhookUrl);
 
                 // Forward the request to the smart glasses manager
                 if (smartGlassesManager != null) {
-                    boolean requestSent = smartGlassesManager.requestPhoto(requestId, appId, webhookUrl);
+                    boolean requestSent = smartGlassesManager.requestPhoto(requestId, packageName, webhookUrl);
                     if (!requestSent) {
                         Log.e(TAG, "Failed to send photo request to glasses");
                     }
@@ -1932,7 +1932,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             public void onAudioStopRequest(JSONObject audioStopRequest) {
                 // Extract the audio stop request parameters
                 String sessionId = audioStopRequest.optString("sessionId", "");
-                String appId = audioStopRequest.optString("appId", "");
+                String packageName = audioStopRequest.optString("packageName", "");
 
                 // Send the audio stop request as a message to the AugmentOS Manager via BLE
                 if (blePeripheral != null) {
@@ -1940,11 +1940,11 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                         JSONObject message = new JSONObject();
                         message.put("type", "audio_stop_request");
                         message.put("sessionId", sessionId);
-                        message.put("appId", appId);
+                        message.put("packageName", packageName);
 
                         // Send to AugmentOS Manager
                         blePeripheral.sendDataToAugmentOsManager(message.toString());
-                        Log.d(TAG, "🔇 Forwarded audio stop request to manager from app: " + appId);
+                        Log.d(TAG, "🔇 Forwarded audio stop request to manager from app: " + packageName);
 
                     } catch (JSONException e) {
                         Log.e(TAG, "Error creating audio stop request message for manager", e);

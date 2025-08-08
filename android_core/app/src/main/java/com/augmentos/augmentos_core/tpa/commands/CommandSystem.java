@@ -51,11 +51,11 @@ public class CommandSystem {
 
     //command timeout
     class AppPrivilegeTimeout {
-        public String appId;
+        public String packageName;
         public long timeStart;
 
-        AppPrivilegeTimeout(String appId, long timeStart) {
-            this.appId = appId;
+        AppPrivilegeTimeout(String packageName, long timeStart) {
+            this.packageName = packageName;
             this.timeStart = timeStart;
         }
     }
@@ -261,7 +261,7 @@ public class CommandSystem {
 //            }
 //
 //            //if the app responded in good time (and it's the same app that was actually triggered, then allow the request
-//            if (sendingPackage.equals(appPrivilegeTimeout.appId)) {
+//            if (sendingPackage.equals(appPrivilegeTimeout.packageName)) {
 //                if ((System.currentTimeMillis() - appPrivilegeTimeout.timeStart) < commandResponseWindowTime) {
 //                    return true;
 //                }

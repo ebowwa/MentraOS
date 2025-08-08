@@ -333,7 +333,7 @@ export class AppWebSocketService {
             const glassesAudioStopRequest = {
               type: CloudToGlassesMessageType.AUDIO_STOP_REQUEST,
               sessionId: userSession.sessionId,
-              appId: audioStopMsg.packageName,
+              packageName: audioStopMsg.packageName,
               timestamp: new Date()
             };
 

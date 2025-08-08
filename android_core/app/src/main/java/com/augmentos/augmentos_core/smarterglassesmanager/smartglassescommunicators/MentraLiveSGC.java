@@ -1518,14 +1518,14 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             case "photo_response":
                 // Process photo response (success or failure)
                 String requestId = json.optString("requestId", "");
-                String appId = json.optString("appId", "");
+                String packageName = json.optString("packageName", "");
                 boolean photoSuccess = json.optBoolean("success", false);
 
                 if (!photoSuccess) {
                     // Handle failed photo response
                     String errorMsg = json.optString("error", "Unknown error");
                     Log.d(TAG, "Photo request failed - requestId: " + requestId +
-                          ", appId: " + appId + ", error: " + errorMsg);
+                          ", packageName: " + packageName + ", error: " + errorMsg);
                 } else {
                     // Handle successful photo (in future implementation)
                     Log.d(TAG, "Photo request succeeded - requestId: " + requestId);
@@ -2282,14 +2282,14 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     }
 
     @Override
-    public void requestPhoto(String requestId, String appId, String webhookUrl) {
-        Log.d(TAG, "Requesting photo: " + requestId + " for app: " + appId + " with webhookUrl: " + webhookUrl);
+    public void requestPhoto(String requestId, String packageName, String webhookUrl) {
+        Log.d(TAG, "Requesting photo: " + requestId + " for package: " + packageName + " with webhookUrl: " + webhookUrl);
 
         try {
             JSONObject json = new JSONObject();
             json.put("type", "take_photo");
             json.put("requestId", requestId);
-            json.put("appId", appId);
+            json.put("packageName", packageName);
             if (webhookUrl != null && !webhookUrl.isEmpty()) {
                 json.put("webhookUrl", webhookUrl);
             }
@@ -2321,7 +2321,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     //    try {
             JSONObject json = message;
             json.remove("timestamp");
-            json.remove("appId");
+            json.remove("packageName");
             json.remove("video");
             json.remove("audio");
             //String rtmpUrl=json.getString("rtmpUrl");

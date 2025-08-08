@@ -121,7 +121,7 @@ export class VideoManager {
       type: CloudToGlassesMessageType.START_RTMP_STREAM,
       sessionId: this.userSession.sessionId,
       rtmpUrl,
-      appId: packageName,
+      packageName: packageName,
       streamId,
       video: video || {},
       audio: audio || {},
@@ -469,7 +469,7 @@ export class VideoManager {
       const stopMessage: StopRtmpStream = {
         type: CloudToGlassesMessageType.STOP_RTMP_STREAM,
         sessionId: this.userSession.sessionId,
-        appId: packageName,
+        packageName: packageName,
         streamId: streamId || '',
         timestamp: new Date(),
       };
@@ -504,7 +504,7 @@ export class VideoManager {
       status, // The SDK status string
       errorDetails,
       stats,
-      appId: packageName, // Clarify which app this status pertains to
+      packageName: packageName, // Clarify which app this status pertains to
       timestamp: new Date(),
     };
 
@@ -543,7 +543,7 @@ export class VideoManager {
       streamId,
       status,
       errorDetails,
-      appId: packageName,
+      packageName: packageName,
       stats,
       timestamp: new Date(),
     };

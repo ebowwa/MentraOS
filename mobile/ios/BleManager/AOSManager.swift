@@ -338,9 +338,9 @@ struct ViewState {
                 guard let self = self else { return }
                 self.serverComms.sendPhotoResponse(requestId: requestId, photoUrl: photoUrl)
             }
-            liveManager!.onVideoStreamResponse = { [weak self] (appId: String, streamUrl: String) in
+            liveManager!.onVideoStreamResponse = { [weak self] (packageName: String, streamUrl: String) in
                 guard let self = self else { return }
-                self.serverComms.sendVideoStreamResponse(appId: appId, streamUrl: streamUrl)
+                self.serverComms.sendVideoStreamResponse(packageName: packageName, streamUrl: streamUrl)
             }
         }
 
@@ -677,9 +677,9 @@ struct ViewState {
         liveManager?.sendJson(message)
     }
 
-    func onPhotoRequest(_ requestId: String, _ appId: String, _ webhookUrl: String) {
-        CoreCommsService.log("AOS: onPhotoRequest: \(requestId), \(appId), \(webhookUrl)")
-        liveManager?.requestPhoto(requestId, appId: appId, webhookUrl: webhookUrl.isEmpty ? nil : webhookUrl)
+    func onPhotoRequest(_ requestId: String, _ packageName: String, _ webhookUrl: String) {
+        CoreCommsService.log("AOS: onPhotoRequest: \(requestId), \(packageName), \(webhookUrl)")
+        liveManager?.requestPhoto(requestId, packageName: packageName, webhookUrl: webhookUrl.isEmpty ? nil : webhookUrl)
     }
 
     func onRtmpStreamStartRequest(_ message: [String: Any]) {

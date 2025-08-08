@@ -1,4 +1,4 @@
-appId: ${MAESTRO_APP_ID}
+packageName: ${MAESTRO_APP_ID}
 ---
 # Test: No Internet Connection
 # Description: Tests app behavior when launched without internet connection

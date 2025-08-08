@@ -32,7 +32,7 @@ export interface PendingPhotoRequest {
   userId: string;          // User ID who initiated the request
   timestamp: number;       // When the request was created
   origin: PhotoRequestOrigin; // Whether this is from system or App
-  appId?: string;          // App ID (required for App requests, optional for system)
+  packageName?: string;          // App ID (required for App requests, optional for system)
   ws?: WebSocket;          // WebSocket connection (only for App requests)
   saveToGallery: boolean;  // Whether to save to gallery (defaults true for system, configurable for App)
 }
@@ -105,14 +105,14 @@ class PhotoRequestService {
    * Create a new App-initiated photo request
    *
    * @param userId User ID who initiated the request
-   * @param appId App ID that requested the photo
+   * @param packageName App ID that requested the photo
    * @param ws WebSocket connection to send the response to
    * @param config Optional configuration options
    * @returns The request ID for the new photo request
    */
   createAppPhotoRequest(
     userId: string,
-    appId: string,
+    packageName: string,
     ws: WebSocket,
     config?: PhotoRequestConfig
   ): string {
@@ -127,12 +127,12 @@ class PhotoRequestService {
       userId,
       timestamp,
       origin: 'app',
-      appId,
+      packageName,
       ws,
       saveToGallery
     });
 
-    logger.info(`[PhotoRequestService] Created App photo request: ${requestId} for app ${appId}, user ${userId}`);
+    logger.info(`[PhotoRequestService] Created App photo request: ${requestId} for package ${packageName}, user ${userId}`);
 
     // Set timeout to clean up if not used
     this.setRequestTimeout(requestId, timeoutMs);
@@ -195,7 +195,7 @@ class PhotoRequestService {
       };
 
       pendingRequest.ws.send(JSON.stringify(photoResponse));
-      logger.info(`[PhotoRequestService] Photo response sent to App ${pendingRequest.appId}, requestId: ${requestId}`);
+      logger.info(`[PhotoRequestService] Photo response sent to App ${pendingRequest.packageName}, requestId: ${requestId}`);
     } else if (pendingRequest.origin === 'system') {
       // For system requests, we don't need to forward anything, just log it
       logger.info(`[PhotoRequestService] System photo request completed: ${requestId}`);

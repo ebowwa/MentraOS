@@ -210,7 +210,7 @@ public class MediaUploadService extends Service { // Renamed class
             metadata.put("deviceId", deviceId);
             metadata.put("timestamp", System.currentTimeMillis());
             metadata.put("mediaType", mediaType == MediaUploadQueueManager.MEDIA_TYPE_PHOTO ? "photo" : "video");
-            metadata.put("appId", "asg_client");  // Add appId
+            metadata.put("packageName", "asg_client");  // Add packageName
 
             // Create multipart request
             RequestBody requestBody = new MultipartBody.Builder()

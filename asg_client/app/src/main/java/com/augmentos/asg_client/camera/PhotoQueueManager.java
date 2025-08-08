@@ -156,10 +156,10 @@ public class PhotoQueueManager {
      * 
      * @param photoFilePath Path to the photo file
      * @param requestId Request ID associated with this photo
-     * @param appId App ID that requested the photo
+     * @param packageName App ID that requested the photo
      * @return true if successfully queued, false otherwise
      */
-    public boolean queuePhoto(String photoFilePath, String requestId, String appId) {
+    public boolean queuePhoto(String photoFilePath, String requestId, String packageName) {
         File photoFile = new File(photoFilePath);
         
         // Check if file exists
@@ -179,7 +179,7 @@ public class PhotoQueueManager {
             // Add to manifest
             JSONObject photoEntry = new JSONObject();
             photoEntry.put("requestId", requestId);
-            photoEntry.put("appId", appId);
+            photoEntry.put("packageName", packageName);
             photoEntry.put("originalPath", photoFilePath);
             photoEntry.put("queuedPath", queuedFile.getAbsolutePath());
             photoEntry.put("status", STATUS_QUEUED);
@@ -235,7 +235,7 @@ public class PhotoQueueManager {
                     // Only process queued photos in this pass
                     if (STATUS_QUEUED.equals(status)) {
                         String requestId = photo.getString("requestId");
-                        String appId = photo.getString("appId");
+                        String packageName = photo.getString("packageName");
                         String queuedPath = photo.getString("queuedPath");
                         
                         // Update status to uploading
@@ -244,7 +244,7 @@ public class PhotoQueueManager {
                         updatePhotoInManifest(i, photo);
                         
                         // Attempt to upload the photo
-                        uploadPhoto(queuedPath, requestId, appId, i);
+                        uploadPhoto(queuedPath, requestId, packageName, i);
                         
                         processed++;
                     }
@@ -263,7 +263,7 @@ public class PhotoQueueManager {
     /**
      * Upload a photo from the queue
      */
-    private void uploadPhoto(String queuedPath, String requestId, String appId, int index) {
+    private void uploadPhoto(String queuedPath, String requestId, String packageName, int index) {
         PhotoUploadService.uploadPhoto(
             mContext,
             queuedPath,
@@ -572,7 +572,7 @@ public class PhotoQueueManager {
                     // Create a new entry for this file
                     JSONObject photoEntry = new JSONObject();
                     photoEntry.put("requestId", requestId);
-                    photoEntry.put("appId", "system");
+                    photoEntry.put("packageName", "system");
                     photoEntry.put("originalPath", "");
                     photoEntry.put("queuedPath", file.getAbsolutePath());
                     photoEntry.put("status", STATUS_QUEUED);
