@@ -40,10 +40,32 @@ export class MicrophoneManager {
   // Debounce mechanism for subscription changes
   private subscriptionDebounceTimer: NodeJS.Timeout | null = null;
 
+  // Keep-alive mechanism for microphone state
+  private keepAliveTimer: NodeJS.Timeout | null = null;
+  private readonly KEEP_ALIVE_INTERVAL_MS = 10000; // 10 seconds
+
+  // Unauthorized audio detection
+  private unauthorizedAudioTimer: NodeJS.Timeout | null = null;
+  private readonly UNAUTHORIZED_AUDIO_DEBOUNCE_MS = 5000; // 5 seconds
+
+  // Cached subscription state to avoid expensive repeated lookups
+  private cachedSubscriptionState: {
+    hasPCM: boolean;
+    hasTranscription: boolean;
+    hasMedia: boolean;
+  } = {
+    hasPCM: false,
+    hasTranscription: false,
+    hasMedia: false,
+  };
+
   constructor(session: UserSession) {
     this.session = session;
     this.logger = session.logger.child({ service: "MicrophoneManager" });
     this.logger.info("MicrophoneManager initialized");
+    
+    // Initialize cached subscription state
+    this.updateCachedSubscriptionState();
   }
 
   /**
@@ -107,6 +129,9 @@ export class MicrophoneManager {
       // Update transcription service state
       this.updateTranscriptionState();
 
+      // Update keep-alive timer based on final state
+      this.updateKeepAliveTimer();
+
       // Cleanup: reset debounce timer
       this.debounceTimer = null;
       this.pendingState = null;
@@ -128,17 +153,9 @@ export class MicrophoneManager {
    * Send microphone state change message to glasses
    * This replicates the exact message format from the original implementation
    */
-  private sendStateChangeToGlasses(
-    isEnabled: boolean,
-    requiredData: Array<"pcm" | "transcription" | "pcm_or_transcription">,
-  ): void {
-    if (
-      !this.session.websocket ||
-      this.session.websocket.readyState !== WebSocket.OPEN
-    ) {
-      this.logger.warn(
-        "Cannot send microphone state change: WebSocket not open",
-      );
+  private sendStateChangeToGlasses(isEnabled: boolean, requiredData: Array<'pcm' | 'transcription' | 'pcm_or_transcription'>, isKeepAlive: boolean = false): void {
+    if (!this.session.websocket || this.session.websocket.readyState !== WebSocket.OPEN) {
+      this.logger.warn('Cannot send microphone state change: WebSocket not open');
       return;
     }
 
@@ -169,10 +186,31 @@ export class MicrophoneManager {
       };
 
       this.session.websocket.send(JSON.stringify(message));
-      this.logger.debug({ message }, "Sent microphone state change message");
+      this.logger.debug({ message, isKeepAlive }, isKeepAlive ? 'Sent microphone keep-alive message' : 'Sent microphone state change message');
+
+      // Start or update keep-alive timer after successful send
+      if (!isKeepAlive) {
+        this.updateKeepAliveTimer();
+      }
     } catch (error) {
       this.logger.error(error, "Error sending microphone state change");
     }
+  }
+
+  /**
+   * Update cached subscription state
+   * This is called when subscriptions change to avoid repeated expensive lookups
+   */
+  private updateCachedSubscriptionState(): void {
+    const state = subscriptionService.hasPCMTranscriptionSubscriptions(
+      this.session.sessionId
+    );
+    this.cachedSubscriptionState = {
+      hasPCM: state.hasPCM,
+      hasTranscription: state.hasTranscription,
+      hasMedia: state.hasMedia,
+    };
+    this.logger.debug('Updated cached subscription state', this.cachedSubscriptionState);
   }
 
   /**
@@ -180,12 +218,8 @@ export class MicrophoneManager {
    * Bypass VAD when apps need PCM data (regardless of transcription)
    */
   private shouldBypassVadForPCM(): boolean {
-    const hasPCMTranscriptionSubscriptions =
-      subscriptionService.hasPCMTranscriptionSubscriptions(
-        this.session.sessionId,
-      );
-    // Bypass VAD when apps specifically need PCM data
-    return hasPCMTranscriptionSubscriptions.hasPCM;
+    // Use cached state instead of calling service
+    return this.cachedSubscriptionState.hasPCM;
   }
 
   calculateRequiredData(
@@ -245,15 +279,13 @@ export class MicrophoneManager {
         { status },
         "Glasses connected, checking media subscriptions " + status,
       );
-      const hasPCMTranscriptionSubscriptions =
-        subscriptionService.hasPCMTranscriptionSubscriptions(
-          this.session.sessionId,
-        );
-      // const hasMediaSubscriptions = subscriptionService.hasMediaSubscriptions(this.session.sessionId);
-      const hasMediaSubscriptions = hasPCMTranscriptionSubscriptions.hasMedia;
+      // Update cache before using it
+      this.updateCachedSubscriptionState();
+      
+      const hasMediaSubscriptions = this.cachedSubscriptionState.hasMedia;
       const requiredData = this.calculateRequiredData(
-        hasPCMTranscriptionSubscriptions.hasPCM,
-        hasPCMTranscriptionSubscriptions.hasTranscription,
+        this.cachedSubscriptionState.hasPCM,
+        this.cachedSubscriptionState.hasTranscription,
       );
       this.updateState(hasMediaSubscriptions, requiredData);
     }
@@ -271,15 +303,13 @@ export class MicrophoneManager {
 
     // Set new debounce timer to batch rapid subscription changes
     this.subscriptionDebounceTimer = setTimeout(() => {
-      // const hasMediaSubscriptions = subscriptionService.hasMediaSubscriptions(this.session.sessionId);
-      const hasPCMTranscriptionSubscriptions =
-        subscriptionService.hasPCMTranscriptionSubscriptions(
-          this.session.sessionId,
-        );
-      const hasMediaSubscriptions = hasPCMTranscriptionSubscriptions.hasMedia;
+      // Update cache when subscriptions change
+      this.updateCachedSubscriptionState();
+      
+      const hasMediaSubscriptions = this.cachedSubscriptionState.hasMedia;
       const requiredData = this.calculateRequiredData(
-        hasPCMTranscriptionSubscriptions.hasPCM,
-        hasPCMTranscriptionSubscriptions.hasTranscription,
+        this.cachedSubscriptionState.hasPCM,
+        this.cachedSubscriptionState.hasTranscription,
       );
       this.logger.info(
         `Subscription changed, media subscriptions: ${hasMediaSubscriptions}`,
@@ -300,6 +330,101 @@ export class MicrophoneManager {
   // }
 
   /**
+   * Update the keep-alive timer based on current state
+   * Starts timer if mic is enabled and there are media subscriptions
+   * Stops timer if mic is disabled or no media subscriptions
+   */
+  private updateKeepAliveTimer(): void {
+    // Check if we should have a keep-alive timer running using cached state
+    const shouldHaveKeepAlive = this.enabled && this.cachedSubscriptionState.hasMedia;
+
+    if (shouldHaveKeepAlive && !this.keepAliveTimer) {
+      // Start keep-alive timer
+      this.logger.info('Starting microphone keep-alive timer');
+      this.keepAliveTimer = setInterval(() => {
+        // Only send if WebSocket is still open and we still have media subscriptions
+        if (this.session.websocket && this.session.websocket.readyState === WebSocket.OPEN) {
+          // Use cached state for the check
+          if (this.cachedSubscriptionState.hasMedia && this.enabled) {
+            this.logger.debug('Sending microphone keep-alive');
+            this.sendStateChangeToGlasses(this.lastSentState, this.lastSentRequiredData, true);
+          } else {
+            // Conditions no longer met, stop the timer
+            this.stopKeepAliveTimer();
+          }
+        }
+      }, this.KEEP_ALIVE_INTERVAL_MS);
+    } else if (!shouldHaveKeepAlive && this.keepAliveTimer) {
+      // Stop keep-alive timer
+      this.stopKeepAliveTimer();
+    }
+  }
+
+  /**
+   * Stop the keep-alive timer
+   */
+  private stopKeepAliveTimer(): void {
+    if (this.keepAliveTimer) {
+      this.logger.info('Stopping microphone keep-alive timer');
+      clearInterval(this.keepAliveTimer);
+      this.keepAliveTimer = null;
+    }
+  }
+
+  /**
+   * Called when audio data is received from the glasses
+   * Checks if we're receiving unauthorized audio and sends mic off immediately
+   */
+  onAudioReceived(): void {
+    // Skip if we're in the debounce period
+    if (this.unauthorizedAudioTimer) {
+      return;
+    }
+
+    // Check if we should NOT be receiving audio using cached state
+    const shouldMicBeOff = !this.enabled || !this.cachedSubscriptionState.hasMedia;
+
+    if (shouldMicBeOff) {
+      // We're receiving audio when we shouldn't be
+      this.logger.warn('Receiving unauthorized audio - forcing mic off immediately');
+      
+      // Send mic off immediately
+      const requiredData = this.calculateRequiredData(
+        this.cachedSubscriptionState.hasPCM,
+        this.cachedSubscriptionState.hasTranscription
+      );
+      this.sendStateChangeToGlasses(false, requiredData);
+      
+      // Update internal state
+      this.enabled = false;
+      this.lastSentState = false;
+      this.lastSentRequiredData = requiredData;
+      
+      // Stop keep-alive since mic should be off
+      this.stopKeepAliveTimer();
+      
+      // Start debounce timer to ignore further unauthorized audio for 5 seconds
+      this.unauthorizedAudioTimer = setTimeout(() => {
+        this.logger.debug('Unauthorized audio debounce period ended');
+        // Update cached subscription state before resuming detection
+        // This ensures we have fresh state in case subscriptions changed during debounce
+        this.updateCachedSubscriptionState();
+        this.unauthorizedAudioTimer = null;
+      }, this.UNAUTHORIZED_AUDIO_DEBOUNCE_MS);
+    }
+  }
+
+  /**
+   * Stop the unauthorized audio timer
+   */
+  private stopUnauthorizedAudioTimer(): void {
+    if (this.unauthorizedAudioTimer) {
+      clearTimeout(this.unauthorizedAudioTimer);
+      this.unauthorizedAudioTimer = null;
+    }
+  }
+
+  /**
    * Cleanup resources
    */
   dispose(): void {
@@ -313,6 +438,10 @@ export class MicrophoneManager {
       clearTimeout(this.subscriptionDebounceTimer);
       this.subscriptionDebounceTimer = null;
     }
+    // Stop keep-alive timer
+    this.stopKeepAliveTimer();
+    // Stop unauthorized audio timer
+    this.stopUnauthorizedAudioTimer();
   }
 }
 
