@@ -2,6 +2,34 @@
 
 All notable changes to the nRF5340 DK BLE Glasses Protobuf Simulator will be documented in this file.
 
+## [1.8.0] - 2025-08-09
+
+### Fixed
+- **Critical protobuf include path restoration** 
+  - Fixed `#include "proto/mentraos_ble.pb.h"` path that was accidentally changed during LVGL implementation
+  - Restored full protobuf message processing functionality (DisplayText, BrightnessConfig, all message types)
+  - This fix resolves the issue where protobuf messages weren't being decoded/processed
+
+### Added  
+- **Enhanced console logging for protobuf debugging**
+  - Added printk() console output for protobuf message processing visibility on UART
+  - Protobuf messages now show clear processing status in console alongside RTT debug logs
+  - Format: `[Phone->Glasses] MessageType (Tag X): Description`
+  - Failed decoding messages now show `❌ Failed to decode protobuf message` for immediate visibility
+
+### Enhanced
+- **LVGL + Protobuf integration** now fully functional
+  - DisplayText protobuf messages correctly processed and displayed via LVGL interface
+  - BrightnessConfig messages properly control LED dimming with console feedback
+  - All protobuf message types (BatteryStateRequest, DisplayText, BrightnessConfig, etc.) working correctly
+  - Clean logging separation: RTT for detailed debug, UART console for protobuf communication + status
+
+### Technical Details
+- **Root cause**: During LVGL implementation, protobuf include was changed from correct path
+- **Impact**: Protobuf message definitions weren't included, causing silent decode failures  
+- **Resolution**: Restored correct include path while preserving LVGL functionality
+- **Verification**: All protobuf message processing, LVGL display, and console logging working correctly
+
 ## [1.7.0] - 2025-08-09
 
 ### Added
@@ -45,10 +73,19 @@ All notable changes to the nRF5340 DK BLE Glasses Protobuf Simulator will be doc
   - Hardware abstraction layer for future physical display integration
 
 ### Development Preparation
-- **Protobuf integration readiness** with clean UART console output
-  - Temporary protobuf function disabling during LVGL implementation
-  - Preserved existing protobuf architecture for seamless re-integration
-  - Logging separation ensuring protobuf messages remain uncontaminated
+- **Complete protobuf + LVGL integration implemented**
+  - `lvgl_interface.h` header for protobuf-LVGL communication bridge
+  - `lvgl_display_protobuf_text()` function to display protobuf text messages on LVGL
+  - `lvgl_is_display_ready()` function for safe LVGL operations
+  - DisplayText protobuf messages automatically displayed via LVGL system
+  - Optimized logging format: `📱 LVGL: 'text' | X:20 Y:260 | Color:0x2710 Size:20`
+
+### Protobuf Integration
+- **DisplayText message support** with LVGL display integration
+  - Protobuf DisplayText messages (Tag 30) processed and displayed on dummy display
+  - Text content, position (X,Y), color (RGB565), and font size support
+  - Console logging for protobuf message visibility alongside LVGL display
+  - Clean integration between protobuf handler and LVGL graphics system
 
 ### Future Integration Points
 - **Ready for protobuf message display binding** to show received text on LVGL
