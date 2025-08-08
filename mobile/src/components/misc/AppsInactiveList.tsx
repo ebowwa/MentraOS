@@ -265,8 +265,8 @@ export default function InactiveAppList({
     optimisticallyStartApp(packageName)
 
     // Check if it's a standard app
-    if (appToStart?.appType === "standard") {
-      console.log("% appToStart", appToStart)
+    if (appInfo?.appType === "standard") {
+      console.log("% appToStart", appInfo)
       // Find any running standard apps
       const runningStandardApps = getRunningStandardApps(packageName)
 
@@ -324,7 +324,7 @@ export default function InactiveAppList({
           translate("home:hardwareIncompatible"),
           error.response.data.error.message ||
             translate("home:hardwareIncompatibleMessage", {
-              app: appToStart.name,
+              app: appInfo.name,
               missing: "required hardware",
             }),
           [{text: translate("common:ok")}],
