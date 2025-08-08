@@ -28,6 +28,14 @@ class CoreCommsService: RCTEventEmitter {
         emitter.sendEvent(withName: "CoreMessageEvent", body: msg)
     }
 
+    static func showBanner(type: String, message: String) {
+        let data = ["notify_manager":
+            ["type": type, "message": message]] as [String: Any]
+        let jsonData = try! JSONSerialization.data(withJSONObject: data)
+        let jsonString = String(data: jsonData, encoding: .utf8)
+        emitter.sendEvent(withName: "CoreMessageEvent", body: jsonString!)
+    }
+
     static func sendAppStartedEvent(_ packageName: String) {
         let msg = ["type": "app_started", "packageName": packageName]
         let jsonData = try! JSONSerialization.data(withJSONObject: msg)
