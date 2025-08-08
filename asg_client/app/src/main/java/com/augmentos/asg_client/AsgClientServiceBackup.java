@@ -1798,7 +1798,7 @@ public class AsgClientServiceBackup extends Service implements NetworkStateListe
                     }
 
                     // Check if camera is already in use (for any operation)
-                    if (CameraNeo.isCameraInUse()) {
+                    if (com.augmentos.asg_client.camera.CameraNeo.isCameraInUse()) {
                         Log.d(TAG, "Camera already in use, cannot start video recording");
                         sendVideoRecordingStatusResponse(false, "camera_busy", null);
                         return;
@@ -1847,7 +1847,7 @@ public class AsgClientServiceBackup extends Service implements NetworkStateListe
                     }
                     
                     // Check if camera is already in use
-                    if (CameraNeo.isCameraInUse()) {
+                    if (com.augmentos.asg_client.camera.CameraNeo.isCameraInUse()) {
                         Log.d(TAG, "Camera already in use, cannot start buffer recording");
                         sendBufferStatusResponse(false, "camera_busy", null);
                         return;

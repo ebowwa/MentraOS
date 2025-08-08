@@ -25,11 +25,6 @@ def asgStorePassword = project.hasProperty("ASG_STORE_PASSWORD") ? project.prope
 def asgKeyPassword = project.hasProperty("ASG_KEY_PASSWORD") ? project.property("ASG_KEY_PASSWORD") : ""
 def asgKeyAlias = project.hasProperty("ASG_KEY_ALIAS") ? project.property("ASG_KEY_ALIAS") : "asg"
 
-/**
- * Sentry auth token for error reporting (optional)
- */
-def sentryAuthToken = envProperties['SENTRY_AUTH_TOKEN'] ?: System.getenv("SENTRY_AUTH_TOKEN") ?: ""
-
 android {
     namespace 'com.augmentos.asg_client'
     compileSdk 34
