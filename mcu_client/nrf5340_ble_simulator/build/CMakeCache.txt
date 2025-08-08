@@ -24,7 +24,7 @@ APPLICATION_SOURCE_DIR:PATH=/opt/nordic/ncs/v3.0.0/zephyr/share/sysbuild/templat
 APP_DIR:PATH=/Users/loayyari/Documents/Github/MentraOS/mcu_client/nrf5340_ble_simulator
 
 //Selected board
-BOARD:STRING=nrf5340dk/nrf5340/cpuapp
+BOARD:STRING=nrf5340dk/nrf5340/cpuapp/ns
 
 //Main board directory for board (nrf5340dk)
 BOARD_DIR:PATH=/opt/nordic/ncs/v3.0.0/zephyr/boards/nordic/nrf5340dk
@@ -33,7 +33,7 @@ BOARD_DIR:PATH=/opt/nordic/ncs/v3.0.0/zephyr/boards/nordic/nrf5340dk
 BOARD_EXTENSIONS:BOOL=ON
 
 //Selected board
-CACHED_BOARD:STRING=nrf5340dk/nrf5340/cpuapp
+CACHED_BOARD:STRING=nrf5340dk/nrf5340/cpuapp/ns
 
 //Selected shield
 CACHED_SHIELD:STRING=

@@ -17,7 +17,7 @@
  */
 
 /* TF-M */
-/* #undef MBEDTLS_PSA_CRYPTO_SPM */
+#define MBEDTLS_PSA_CRYPTO_SPM
 
 /* PSA core configurations */
 #define MBEDTLS_PSA_CRYPTO_CLIENT
@@ -26,7 +26,7 @@
 /* #undef MBEDTLS_PSA_CRYPTO_BUILTIN_KEYS */
 /* Avoid redefinition as TF-M defines this on the command line */
 #ifndef MBEDTLS_PSA_CRYPTO_KEY_ID_ENCODES_OWNER
-/* #undef MBEDTLS_PSA_CRYPTO_KEY_ID_ENCODES_OWNER */
+#define MBEDTLS_PSA_CRYPTO_KEY_ID_ENCODES_OWNER
 #endif
 
 /* Platform */
@@ -40,14 +40,14 @@
 /* Platform configurations for _ALT defines */
 /* #undef MBEDTLS_PLATFORM_EXIT_ALT */
 /* #undef MBEDTLS_PLATFORM_FPRINTF_ALT */
-/* #undef MBEDTLS_PLATFORM_PRINTF_ALT */
+#define MBEDTLS_PLATFORM_PRINTF_ALT
 /* #undef MBEDTLS_PLATFORM_SNPRINTF_ALT */
 /* #undef MBEDTLS_PLATFORM_SETUP_TEARDOWN_ALT */
 #define MBEDTLS_ENTROPY_HARDWARE_ALT
 
 /* Threading configurations */
-#define MBEDTLS_THREADING_C
-#define MBEDTLS_THREADING_ALT
+/* #undef MBEDTLS_THREADING_C */
+/* #undef MBEDTLS_THREADING_ALT */
 
 /* Legacy configurations for _ALT defines */
 #define MBEDTLS_AES_SETKEY_ENC_ALT

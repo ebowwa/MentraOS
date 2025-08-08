@@ -11,4 +11,3 @@
 "SNIPPET_ROOT":"/opt/nordic/ncs/v3.0.0/nrf"
 "SOC_ROOT":"/opt/nordic/ncs/v3.0.0/nrf"
 "MODULE_EXT_ROOT":"/opt/nordic/ncs/v3.0.0/nrf"
-"DTS_ROOT":"/Users/loayyari/Documents/Github/MentraOS/mcu_client/nrf5340_ble_simulator/custom_driver_module"

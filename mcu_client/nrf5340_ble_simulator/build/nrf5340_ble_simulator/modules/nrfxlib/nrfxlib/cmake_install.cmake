@@ -39,11 +39,6 @@ endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for the subdirectory.
-  include("/Users/loayyari/Documents/Github/MentraOS/mcu_client/nrf5340_ble_simulator/build/nrf5340_ble_simulator/modules/nrfxlib/nrfxlib/crypto/cmake_install.cmake")
-endif()
-
-if(NOT CMAKE_INSTALL_LOCAL_ONLY)
-  # Include the install script for the subdirectory.
   include("/Users/loayyari/Documents/Github/MentraOS/mcu_client/nrf5340_ble_simulator/build/nrf5340_ble_simulator/modules/nrfxlib/nrfxlib/softdevice_controller/cmake_install.cmake")
 endif()
 

@@ -130,9 +130,6 @@ config ZEPHYR_UOSCORE_UEDHOC_MODULE
 config ZEPHYR_ZCBOR_MODULE
    bool
    default y
-config ZEPHYR_CUSTOM_DRIVER_MODULE_MODULE
-   bool
-   default y
 config ZEPHYR_NRFXLIB_MODULE
    bool
    default y

@@ -615,6 +615,7 @@ void protobuf_send_battery_notification(void)
 		LOG_ERR("  - Protobuf encoding error");
 		LOG_ERR("  - Buffer size may be insufficient");
 		LOG_ERR("  - Required: ~32 bytes, Available: %zu bytes", sizeof(buffer) - 1);
+		LOG_ERR("Failed to encode battery notification");
 	}
 }
 

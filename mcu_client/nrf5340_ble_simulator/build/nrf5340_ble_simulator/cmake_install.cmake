@@ -42,16 +42,6 @@ if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   include("/Users/loayyari/Documents/Github/MentraOS/mcu_client/nrf5340_ble_simulator/build/nrf5340_ble_simulator/zephyr/cmake_install.cmake")
 endif()
 
-if(NOT CMAKE_INSTALL_LOCAL_ONLY)
-  # Include the install script for the subdirectory.
-  include("/Users/loayyari/Documents/Github/MentraOS/mcu_client/nrf5340_ble_simulator/build/nrf5340_ble_simulator/src/BspLog/cmake_install.cmake")
-endif()
-
-if(NOT CMAKE_INSTALL_LOCAL_ONLY)
-  # Include the install script for the subdirectory.
-  include("/Users/loayyari/Documents/Github/MentraOS/mcu_client/nrf5340_ble_simulator/build/nrf5340_ble_simulator/src/mos_components/mos_sysport/cmake_install.cmake")
-endif()
-
 if(CMAKE_INSTALL_COMPONENT)
   set(CMAKE_INSTALL_MANIFEST "install_manifest_${CMAKE_INSTALL_COMPONENT}.txt")
 else()

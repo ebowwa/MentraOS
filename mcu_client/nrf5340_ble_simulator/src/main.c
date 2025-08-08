@@ -24,7 +24,7 @@
 #include <zephyr/bluetooth/hci.h>
 
 #include "mentra_ble_service.h"
-#include "protobuf_handler.h"
+// #include "protobuf_handler.h"  // TEMPORARILY COMMENTED FOR LVGL TESTING
 #include "bsp_log.h"
 // #include "mos_lvgl_display.h"  // Disabled for brightness testing
 
@@ -336,7 +336,8 @@ static int uart_init(void)
 	if (tx) {
 		pos = snprintf(tx->data, sizeof(tx->data),
 			       "nRF5340 BLE Glasses Simulator\r\n"
-			       "Ready for protobuf testing!\r\n");
+			       "Ready for protobuf testing!\r\n"
+			       "=====================================\r\n");
 
 		if ((pos < 0) || (pos >= sizeof(tx->data))) {
 			k_free(rx);
@@ -545,21 +546,21 @@ static void bt_receive_cb(struct bt_conn *conn, const uint8_t *const data,
 
 	LOG_INF("Received data from: %s", addr);
 
-	// Analyze the protobuf message
-	protobuf_analyze_message(data, len);
+	// Analyze the protobuf message - TEMPORARILY COMMENTED FOR LVGL TESTING
+	// protobuf_analyze_message(data, len);
 
-	// Generate and send echo response
-	uint8_t echo_buffer[128];
-	int echo_len = protobuf_generate_echo_response(data, len, echo_buffer, sizeof(echo_buffer));
+	// Generate and send echo response - TEMPORARILY COMMENTED FOR LVGL TESTING
+	// uint8_t echo_buffer[128];
+	// int echo_len = protobuf_generate_echo_response(data, len, echo_buffer, sizeof(echo_buffer));
 	
-	if (echo_len > 0) {
-		int err = mentra_ble_send(conn, echo_buffer, echo_len);
-		if (err) {
-			LOG_ERR("Failed to send echo response: %d", err);
-		} else {
-			LOG_INF("Sent echo response: %s", echo_buffer);
-		}
-	}
+	// if (echo_len > 0) {
+	//	int err = mentra_ble_send(conn, echo_buffer, echo_len);
+	//	if (err) {
+	//		LOG_ERR("Failed to send echo response: %d", err);
+	//	} else {
+	//		LOG_INF("Sent echo response: %s", echo_buffer);
+	//	}
+	// }
 
 	// Also forward to UART for debugging
 	for (uint16_t pos = 0; pos != len;) {
@@ -649,17 +650,17 @@ void button_changed(uint32_t button_state, uint32_t has_changed)
 	// Handle battery level control when not in authentication mode
 	if (buttons & KEY_BATTERY_INCREASE) {
 		LOG_INF("🔋⬆️  Button 1 pressed: Increasing battery level");
-		protobuf_increase_battery_level();
+		// protobuf_increase_battery_level();  // TEMPORARILY COMMENTED FOR LVGL TESTING
 	}
 
 	if (buttons & KEY_BATTERY_DECREASE) {
 		LOG_INF("🔋⬇️  Button 2 pressed: Decreasing battery level");
-		protobuf_decrease_battery_level();
+		// protobuf_decrease_battery_level();  // TEMPORARILY COMMENTED FOR LVGL TESTING
 	}
 
 	if (buttons & KEY_BATTERY_CHARGING_TOGGLE) {
 		LOG_INF("🔋⚡ Button 3 pressed: Toggling charging status");
-		protobuf_toggle_charging_state();
+		// protobuf_toggle_charging_state();  // TEMPORARILY COMMENTED FOR LVGL TESTING
 	}
 }
 
@@ -690,15 +691,15 @@ int main(void)
 	LOG_INF("🔋 Battery level control enabled:");
 	LOG_INF("   📌 Button 1: Increase battery level (+5%%)");
 	LOG_INF("   📌 Button 2: Decrease battery level (-5%%)");
-	LOG_INF("   📊 Current battery level: %u%%", protobuf_get_battery_level());
+	// LOG_INF("   📊 Current battery level: %u%%", protobuf_get_battery_level());  // TEMPORARILY COMMENTED FOR LVGL TESTING
 
 	// Initialize brightness control
 	LOG_INF("💡 LED 3 brightness control enabled:");
 	LOG_INF("   📱 Mobile app can set brightness level (0-100%%)");
-	LOG_INF("   📊 Current brightness level: %u%%", protobuf_get_brightness_level());
+	// LOG_INF("   📊 Current brightness level: %u%%", protobuf_get_brightness_level());  // TEMPORARILY COMMENTED FOR LVGL TESTING
 	
 	// Set initial brightness to 50%
-	protobuf_set_brightness_level(50);
+	// protobuf_set_brightness_level(50);  // TEMPORARILY COMMENTED FOR LVGL TESTING
 
 	err = uart_init();
 	if (err) {

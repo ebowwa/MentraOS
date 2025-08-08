@@ -1,26 +1,19 @@
 /*
- * HLS12VGA Display Configuration for nRF5340 BLE Simulator
- * Allows testing display functionality on nRF5340DK
+ * Simplified Display Configuration for LVGL Testing
+ * Uses dummy display driver to test LVGL functionality
  */
 
 / {
 	chosen {
-		zephyr,display = &hls12vga_display;
+		zephyr,display = &dummy_display;
 	};
-};
 
-&spi1 {
-	status = "okay";
-	cs-gpios = <&gpio1 8 GPIO_ACTIVE_LOW>;
-	
-	hls12vga_display: hls12vga@0 {
-		compatible = "zephyr,custom-hls12vga";
-		reg = <0>;
-		spi-max-frequency = <8000000>;
-		reset-gpios = <&gpio0 26 GPIO_ACTIVE_LOW>;
-		dc-gpios = <&gpio0 27 GPIO_ACTIVE_HIGH>;
-		busy-gpios = <&gpio1 9 GPIO_ACTIVE_HIGH>;
+	/* Dummy display device for LVGL testing */
+	dummy_display: dummy_display {
+		compatible = "zephyr,dummy-display";
+		status = "okay";
 		width = <640>;
 		height = <480>;
+		refresh-time-ms = <16>;  /* ~60 FPS */
 	};
 };

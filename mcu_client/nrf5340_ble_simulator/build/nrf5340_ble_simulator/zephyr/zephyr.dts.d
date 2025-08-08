@@ -1,8 +1,8 @@
 empty_file.o: /opt/nordic/ncs/v3.0.0/zephyr/misc/empty_file.c \
- /opt/nordic/ncs/v3.0.0/zephyr/boards/nordic/nrf5340dk/nrf5340dk_nrf5340_cpuapp.dts \
- /opt/nordic/ncs/v3.0.0/zephyr/dts/arm/nordic/nrf5340_cpuapp_qkaa.dtsi \
+ /opt/nordic/ncs/v3.0.0/zephyr/boards/nordic/nrf5340dk/nrf5340dk_nrf5340_cpuapp_ns.dts \
+ /opt/nordic/ncs/v3.0.0/zephyr/dts/arm/nordic/nrf5340_cpuappns_qkaa.dtsi \
  /opt/nordic/ncs/v3.0.0/zephyr/dts/common/mem.h \
- /opt/nordic/ncs/v3.0.0/zephyr/dts/arm/nordic/nrf5340_cpuapp.dtsi \
+ /opt/nordic/ncs/v3.0.0/zephyr/dts/arm/nordic/nrf5340_cpuappns.dtsi \
  /opt/nordic/ncs/v3.0.0/zephyr/dts/arm/armv8-m.dtsi \
  /opt/nordic/ncs/v3.0.0/zephyr/dts/common/skeleton.dtsi \
  /opt/nordic/ncs/v3.0.0/zephyr/dts/common/nordic/nrf_common.dtsi \

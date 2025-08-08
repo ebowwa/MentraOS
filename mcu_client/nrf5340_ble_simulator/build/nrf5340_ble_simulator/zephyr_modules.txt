@@ -41,7 +41,6 @@
 "tinycrypt":"/opt/nordic/ncs/v3.0.0/modules/crypto/tinycrypt":"/opt/nordic/ncs/v3.0.0/modules/crypto/tinycrypt"
 "uoscore-uedhoc":"/opt/nordic/ncs/v3.0.0/modules/lib/uoscore-uedhoc":"${ZEPHYR_UOSCORE_UEDHOC_CMAKE_DIR}"
 "zcbor":"/opt/nordic/ncs/v3.0.0/modules/lib/zcbor":"${ZEPHYR_ZCBOR_CMAKE_DIR}"
-"custom_driver_module":"/Users/loayyari/Documents/Github/MentraOS/mcu_client/nrf5340_ble_simulator/custom_driver_module":"/Users/loayyari/Documents/Github/MentraOS/mcu_client/nrf5340_ble_simulator/custom_driver_module"
 "nrfxlib":"/opt/nordic/ncs/v3.0.0/nrfxlib":"${ZEPHYR_NRFXLIB_CMAKE_DIR}"
 "nrf_hw_models":"/opt/nordic/ncs/v3.0.0/modules/bsim_hw_models/nrf_hw_models":"/opt/nordic/ncs/v3.0.0/modules/bsim_hw_models/nrf_hw_models"
 "connectedhomeip":"/opt/nordic/ncs/v3.0.0/modules/lib/matter":"/opt/nordic/ncs/v3.0.0/modules/lib/matter/config/nrfconnect/chip-module"

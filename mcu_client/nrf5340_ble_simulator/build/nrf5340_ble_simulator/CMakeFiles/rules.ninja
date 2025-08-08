@@ -22,25 +22,6 @@ rule CUSTOM_COMMAND
 #############################################
 # Rule for compiling C files.
 
-rule C_COMPILER__nanopb_
-  depfile = $DEP_FILE
-  deps = gcc
-  command = ccache /opt/nordic/ncs/toolchains/ef4fc6722e/opt/zephyr-sdk/arm-zephyr-eabi/bin/arm-zephyr-eabi-gcc $DEFINES $INCLUDES $FLAGS -MD -MT $out -MF $DEP_FILE -o $out -c $in
-  description = Building C object $out
-
-
-#############################################
-# Rule for linking C static library.
-
-rule C_STATIC_LIBRARY_LINKER__nanopb_
-  command = $PRE_LINK && ccache /opt/nordic/ncs/toolchains/ef4fc6722e/Cellar/cmake/3.21.0/bin/cmake -E rm -f $TARGET_FILE && ccache /opt/nordic/ncs/toolchains/ef4fc6722e/opt/zephyr-sdk/arm-zephyr-eabi/bin/arm-zephyr-eabi-ar qc $TARGET_FILE $LINK_FLAGS $in && ccache /opt/nordic/ncs/toolchains/ef4fc6722e/opt/zephyr-sdk/arm-zephyr-eabi/bin/arm-zephyr-eabi-ranlib $TARGET_FILE && ccache /opt/nordic/ncs/toolchains/ef4fc6722e/Cellar/cmake/3.21.0/bin/cmake -E touch $TARGET_FILE && $POST_BUILD
-  description = Linking C static library $TARGET_FILE
-  restat = $RESTAT
-
-
-#############################################
-# Rule for compiling C files.
-
 rule C_COMPILER__app_
   depfile = $DEP_FILE
   deps = gcc
@@ -508,6 +489,25 @@ rule C_STATIC_LIBRARY_LINKER__drivers__console_
 #############################################
 # Rule for compiling C files.
 
+rule C_COMPILER__drivers__display_
+  depfile = $DEP_FILE
+  deps = gcc
+  command = ccache /opt/nordic/ncs/toolchains/ef4fc6722e/opt/zephyr-sdk/arm-zephyr-eabi/bin/arm-zephyr-eabi-gcc $DEFINES $INCLUDES $FLAGS -MD -MT $out -MF $DEP_FILE -o $out -c $in
+  description = Building C object $out
+
+
+#############################################
+# Rule for linking C static library.
+
+rule C_STATIC_LIBRARY_LINKER__drivers__display_
+  command = $PRE_LINK && ccache /opt/nordic/ncs/toolchains/ef4fc6722e/Cellar/cmake/3.21.0/bin/cmake -E rm -f $TARGET_FILE && ccache /opt/nordic/ncs/toolchains/ef4fc6722e/opt/zephyr-sdk/arm-zephyr-eabi/bin/arm-zephyr-eabi-ar qc $TARGET_FILE $LINK_FLAGS $in && ccache /opt/nordic/ncs/toolchains/ef4fc6722e/opt/zephyr-sdk/arm-zephyr-eabi/bin/arm-zephyr-eabi-ranlib $TARGET_FILE && ccache /opt/nordic/ncs/toolchains/ef4fc6722e/Cellar/cmake/3.21.0/bin/cmake -E touch $TARGET_FILE && $POST_BUILD
+  description = Linking C static library $TARGET_FILE
+  restat = $RESTAT
+
+
+#############################################
+# Rule for compiling C files.
+
 rule C_COMPILER__drivers__entropy_
   depfile = $DEP_FILE
   deps = gcc
@@ -641,6 +641,25 @@ rule C_STATIC_LIBRARY_LINKER__drivers__serial_
 #############################################
 # Rule for compiling C files.
 
+rule C_COMPILER__drivers__spi_
+  depfile = $DEP_FILE
+  deps = gcc
+  command = ccache /opt/nordic/ncs/toolchains/ef4fc6722e/opt/zephyr-sdk/arm-zephyr-eabi/bin/arm-zephyr-eabi-gcc $DEFINES $INCLUDES $FLAGS -MD -MT $out -MF $DEP_FILE -o $out -c $in
+  description = Building C object $out
+
+
+#############################################
+# Rule for linking C static library.
+
+rule C_STATIC_LIBRARY_LINKER__drivers__spi_
+  command = $PRE_LINK && ccache /opt/nordic/ncs/toolchains/ef4fc6722e/Cellar/cmake/3.21.0/bin/cmake -E rm -f $TARGET_FILE && ccache /opt/nordic/ncs/toolchains/ef4fc6722e/opt/zephyr-sdk/arm-zephyr-eabi/bin/arm-zephyr-eabi-ar qc $TARGET_FILE $LINK_FLAGS $in && ccache /opt/nordic/ncs/toolchains/ef4fc6722e/opt/zephyr-sdk/arm-zephyr-eabi/bin/arm-zephyr-eabi-ranlib $TARGET_FILE && ccache /opt/nordic/ncs/toolchains/ef4fc6722e/Cellar/cmake/3.21.0/bin/cmake -E touch $TARGET_FILE && $POST_BUILD
+  description = Linking C static library $TARGET_FILE
+  restat = $RESTAT
+
+
+#############################################
+# Rule for compiling C files.
+
 rule C_COMPILER__drivers__timer_
   depfile = $DEP_FILE
   deps = gcc
@@ -736,44 +755,6 @@ rule C_STATIC_LIBRARY_LINKER__mbedcrypto_
 #############################################
 # Rule for compiling C files.
 
-rule C_COMPILER__oberon_psa_core_
-  depfile = $DEP_FILE
-  deps = gcc
-  command = ccache /opt/nordic/ncs/toolchains/ef4fc6722e/opt/zephyr-sdk/arm-zephyr-eabi/bin/arm-zephyr-eabi-gcc $DEFINES $INCLUDES $FLAGS -MD -MT $out -MF $DEP_FILE -o $out -c $in
-  description = Building C object $out
-
-
-#############################################
-# Rule for linking C static library.
-
-rule C_STATIC_LIBRARY_LINKER__oberon_psa_core_
-  command = $PRE_LINK && ccache /opt/nordic/ncs/toolchains/ef4fc6722e/Cellar/cmake/3.21.0/bin/cmake -E rm -f $TARGET_FILE && ccache /opt/nordic/ncs/toolchains/ef4fc6722e/opt/zephyr-sdk/arm-zephyr-eabi/bin/arm-zephyr-eabi-ar qc $TARGET_FILE $LINK_FLAGS $in && ccache /opt/nordic/ncs/toolchains/ef4fc6722e/opt/zephyr-sdk/arm-zephyr-eabi/bin/arm-zephyr-eabi-ranlib $TARGET_FILE && ccache /opt/nordic/ncs/toolchains/ef4fc6722e/Cellar/cmake/3.21.0/bin/cmake -E touch $TARGET_FILE && $POST_BUILD
-  description = Linking C static library $TARGET_FILE
-  restat = $RESTAT
-
-
-#############################################
-# Rule for compiling C files.
-
-rule C_COMPILER__oberon_psa_driver_
-  depfile = $DEP_FILE
-  deps = gcc
-  command = ccache /opt/nordic/ncs/toolchains/ef4fc6722e/opt/zephyr-sdk/arm-zephyr-eabi/bin/arm-zephyr-eabi-gcc $DEFINES $INCLUDES $FLAGS -MD -MT $out -MF $DEP_FILE -o $out -c $in
-  description = Building C object $out
-
-
-#############################################
-# Rule for linking C static library.
-
-rule C_STATIC_LIBRARY_LINKER__oberon_psa_driver_
-  command = $PRE_LINK && ccache /opt/nordic/ncs/toolchains/ef4fc6722e/Cellar/cmake/3.21.0/bin/cmake -E rm -f $TARGET_FILE && ccache /opt/nordic/ncs/toolchains/ef4fc6722e/opt/zephyr-sdk/arm-zephyr-eabi/bin/arm-zephyr-eabi-ar qc $TARGET_FILE $LINK_FLAGS $in && ccache /opt/nordic/ncs/toolchains/ef4fc6722e/opt/zephyr-sdk/arm-zephyr-eabi/bin/arm-zephyr-eabi-ranlib $TARGET_FILE && ccache /opt/nordic/ncs/toolchains/ef4fc6722e/Cellar/cmake/3.21.0/bin/cmake -E touch $TARGET_FILE && $POST_BUILD
-  description = Linking C static library $TARGET_FILE
-  restat = $RESTAT
-
-
-#############################################
-# Rule for compiling C files.
-
 rule C_COMPILER__mbedtls_zephyr_
   depfile = $DEP_FILE
   deps = gcc
@@ -793,7 +774,7 @@ rule C_STATIC_LIBRARY_LINKER__mbedtls_zephyr_
 #############################################
 # Rule for compiling C files.
 
-rule C_COMPILER__.2e.2e__nrf__drivers__hw_cc3xx_
+rule C_COMPILER__tfm_api_nrf_
   depfile = $DEP_FILE
   deps = gcc
   command = ccache /opt/nordic/ncs/toolchains/ef4fc6722e/opt/zephyr-sdk/arm-zephyr-eabi/bin/arm-zephyr-eabi-gcc $DEFINES $INCLUDES $FLAGS -MD -MT $out -MF $DEP_FILE -o $out -c $in
@@ -803,7 +784,7 @@ rule C_COMPILER__.2e.2e__nrf__drivers__hw_cc3xx_
 #############################################
 # Rule for linking C static library.
 
-rule C_STATIC_LIBRARY_LINKER__.2e.2e__nrf__drivers__hw_cc3xx_
+rule C_STATIC_LIBRARY_LINKER__tfm_api_nrf_
   command = $PRE_LINK && ccache /opt/nordic/ncs/toolchains/ef4fc6722e/Cellar/cmake/3.21.0/bin/cmake -E rm -f $TARGET_FILE && ccache /opt/nordic/ncs/toolchains/ef4fc6722e/opt/zephyr-sdk/arm-zephyr-eabi/bin/arm-zephyr-eabi-ar qc $TARGET_FILE $LINK_FLAGS $in && ccache /opt/nordic/ncs/toolchains/ef4fc6722e/opt/zephyr-sdk/arm-zephyr-eabi/bin/arm-zephyr-eabi-ranlib $TARGET_FILE && ccache /opt/nordic/ncs/toolchains/ef4fc6722e/Cellar/cmake/3.21.0/bin/cmake -E touch $TARGET_FILE && $POST_BUILD
   description = Linking C static library $TARGET_FILE
   restat = $RESTAT
@@ -812,7 +793,7 @@ rule C_STATIC_LIBRARY_LINKER__.2e.2e__nrf__drivers__hw_cc3xx_
 #############################################
 # Rule for compiling C files.
 
-rule C_COMPILER__modules__nanopb_
+rule C_COMPILER__.2e.2e__nrf__modules__trusted-firmware-m_
   depfile = $DEP_FILE
   deps = gcc
   command = ccache /opt/nordic/ncs/toolchains/ef4fc6722e/opt/zephyr-sdk/arm-zephyr-eabi/bin/arm-zephyr-eabi-gcc $DEFINES $INCLUDES $FLAGS -MD -MT $out -MF $DEP_FILE -o $out -c $in
@@ -822,7 +803,26 @@ rule C_COMPILER__modules__nanopb_
 #############################################
 # Rule for linking C static library.
 
-rule C_STATIC_LIBRARY_LINKER__modules__nanopb_
+rule C_STATIC_LIBRARY_LINKER__.2e.2e__nrf__modules__trusted-firmware-m_
+  command = $PRE_LINK && ccache /opt/nordic/ncs/toolchains/ef4fc6722e/Cellar/cmake/3.21.0/bin/cmake -E rm -f $TARGET_FILE && ccache /opt/nordic/ncs/toolchains/ef4fc6722e/opt/zephyr-sdk/arm-zephyr-eabi/bin/arm-zephyr-eabi-ar qc $TARGET_FILE $LINK_FLAGS $in && ccache /opt/nordic/ncs/toolchains/ef4fc6722e/opt/zephyr-sdk/arm-zephyr-eabi/bin/arm-zephyr-eabi-ranlib $TARGET_FILE && ccache /opt/nordic/ncs/toolchains/ef4fc6722e/Cellar/cmake/3.21.0/bin/cmake -E touch $TARGET_FILE && $POST_BUILD
+  description = Linking C static library $TARGET_FILE
+  restat = $RESTAT
+
+
+#############################################
+# Rule for compiling C files.
+
+rule C_COMPILER__tfm_api_
+  depfile = $DEP_FILE
+  deps = gcc
+  command = ccache /opt/nordic/ncs/toolchains/ef4fc6722e/opt/zephyr-sdk/arm-zephyr-eabi/bin/arm-zephyr-eabi-gcc $DEFINES $INCLUDES $FLAGS -MD -MT $out -MF $DEP_FILE -o $out -c $in
+  description = Building C object $out
+
+
+#############################################
+# Rule for linking C static library.
+
+rule C_STATIC_LIBRARY_LINKER__tfm_api_
   command = $PRE_LINK && ccache /opt/nordic/ncs/toolchains/ef4fc6722e/Cellar/cmake/3.21.0/bin/cmake -E rm -f $TARGET_FILE && ccache /opt/nordic/ncs/toolchains/ef4fc6722e/opt/zephyr-sdk/arm-zephyr-eabi/bin/arm-zephyr-eabi-ar qc $TARGET_FILE $LINK_FLAGS $in && ccache /opt/nordic/ncs/toolchains/ef4fc6722e/opt/zephyr-sdk/arm-zephyr-eabi/bin/arm-zephyr-eabi-ranlib $TARGET_FILE && ccache /opt/nordic/ncs/toolchains/ef4fc6722e/Cellar/cmake/3.21.0/bin/cmake -E touch $TARGET_FILE && $POST_BUILD
   description = Linking C static library $TARGET_FILE
   restat = $RESTAT
@@ -861,6 +861,25 @@ rule C_COMPILER__metal_
 # Rule for linking C static library.
 
 rule C_STATIC_LIBRARY_LINKER__metal_
+  command = $PRE_LINK && ccache /opt/nordic/ncs/toolchains/ef4fc6722e/Cellar/cmake/3.21.0/bin/cmake -E rm -f $TARGET_FILE && ccache /opt/nordic/ncs/toolchains/ef4fc6722e/opt/zephyr-sdk/arm-zephyr-eabi/bin/arm-zephyr-eabi-ar qc $TARGET_FILE $LINK_FLAGS $in && ccache /opt/nordic/ncs/toolchains/ef4fc6722e/opt/zephyr-sdk/arm-zephyr-eabi/bin/arm-zephyr-eabi-ranlib $TARGET_FILE && ccache /opt/nordic/ncs/toolchains/ef4fc6722e/Cellar/cmake/3.21.0/bin/cmake -E touch $TARGET_FILE && $POST_BUILD
+  description = Linking C static library $TARGET_FILE
+  restat = $RESTAT
+
+
+#############################################
+# Rule for compiling C files.
+
+rule C_COMPILER__modules__lvgl_
+  depfile = $DEP_FILE
+  deps = gcc
+  command = ccache /opt/nordic/ncs/toolchains/ef4fc6722e/opt/zephyr-sdk/arm-zephyr-eabi/bin/arm-zephyr-eabi-gcc $DEFINES $INCLUDES $FLAGS -MD -MT $out -MF $DEP_FILE -o $out -c $in
+  description = Building C object $out
+
+
+#############################################
+# Rule for linking C static library.
+
+rule C_STATIC_LIBRARY_LINKER__modules__lvgl_
   command = $PRE_LINK && ccache /opt/nordic/ncs/toolchains/ef4fc6722e/Cellar/cmake/3.21.0/bin/cmake -E rm -f $TARGET_FILE && ccache /opt/nordic/ncs/toolchains/ef4fc6722e/opt/zephyr-sdk/arm-zephyr-eabi/bin/arm-zephyr-eabi-ar qc $TARGET_FILE $LINK_FLAGS $in && ccache /opt/nordic/ncs/toolchains/ef4fc6722e/opt/zephyr-sdk/arm-zephyr-eabi/bin/arm-zephyr-eabi-ranlib $TARGET_FILE && ccache /opt/nordic/ncs/toolchains/ef4fc6722e/Cellar/cmake/3.21.0/bin/cmake -E touch $TARGET_FILE && $POST_BUILD
   description = Linking C static library $TARGET_FILE
   restat = $RESTAT

@@ -2,8 +2,8 @@
 _region_min_align = 32;
 MEMORY
     {
-    FLASH (rx) : ORIGIN = 0x0, LENGTH = 0xfc000
-    RAM (wx) : ORIGIN = 0x20000000, LENGTH = 0x70000
+    FLASH (rx) : ORIGIN = 0x8000, LENGTH = 0xf4000
+    RAM (wx) : ORIGIN = 0x20008000, LENGTH = 0x68000
    
     IDT_LIST (wx) : ORIGIN = 0xFFFF7FFF, LENGTH = 32K
     }
@@ -41,7 +41,7 @@ SECTIONS
  *(.iplt)
  }
    
- __rom_region_start = 0x0;
+ __rom_region_start = 0x8000;
     rom_start :
  {
 HIDDEN(__rom_start_address = .);
@@ -121,6 +121,7 @@ flash_driver_api_area : SUBALIGN(4) { _flash_driver_api_list_start = .; KEEP(*(S
 gpio_driver_api_area : SUBALIGN(4) { _gpio_driver_api_list_start = .; KEEP(*(SORT_BY_NAME(._gpio_driver_api.static.*))); _gpio_driver_api_list_end = .; } > FLASH
 mbox_driver_api_area : SUBALIGN(4) { _mbox_driver_api_list_start = .; KEEP(*(SORT_BY_NAME(._mbox_driver_api.static.*))); _mbox_driver_api_list_end = .; } > FLASH
 pwm_driver_api_area : SUBALIGN(4) { _pwm_driver_api_list_start = .; KEEP(*(SORT_BY_NAME(._pwm_driver_api.static.*))); _pwm_driver_api_list_end = .; } > FLASH
+spi_driver_api_area : SUBALIGN(4) { _spi_driver_api_list_start = .; KEEP(*(SORT_BY_NAME(._spi_driver_api.static.*))); _spi_driver_api_list_end = .; } > FLASH
 shared_irq_driver_api_area : SUBALIGN(4) { _shared_irq_driver_api_list_start = .; KEEP(*(SORT_BY_NAME(._shared_irq_driver_api.static.*))); _shared_irq_driver_api_list_end = .; } > FLASH
 crypto_driver_api_area : SUBALIGN(4) { _crypto_driver_api_list_start = .; KEEP(*(SORT_BY_NAME(._crypto_driver_api.static.*))); _crypto_driver_api_list_end = .; } > FLASH
 adc_driver_api_area : SUBALIGN(4) { _adc_driver_api_list_start = .; KEEP(*(SORT_BY_NAME(._adc_driver_api.static.*))); _adc_driver_api_list_end = .; } > FLASH
@@ -174,7 +175,6 @@ rtc_driver_api_area : SUBALIGN(4) { _rtc_driver_api_list_start = .; KEEP(*(SORT_
 sdhc_driver_api_area : SUBALIGN(4) { _sdhc_driver_api_list_start = .; KEEP(*(SORT_BY_NAME(._sdhc_driver_api.static.*))); _sdhc_driver_api_list_end = .; } > FLASH
 sensor_driver_api_area : SUBALIGN(4) { _sensor_driver_api_list_start = .; KEEP(*(SORT_BY_NAME(._sensor_driver_api.static.*))); _sensor_driver_api_list_end = .; } > FLASH
 smbus_driver_api_area : SUBALIGN(4) { _smbus_driver_api_list_start = .; KEEP(*(SORT_BY_NAME(._smbus_driver_api.static.*))); _smbus_driver_api_list_end = .; } > FLASH
-spi_driver_api_area : SUBALIGN(4) { _spi_driver_api_list_start = .; KEEP(*(SORT_BY_NAME(._spi_driver_api.static.*))); _spi_driver_api_list_end = .; } > FLASH
 stepper_driver_api_area : SUBALIGN(4) { _stepper_driver_api_list_start = .; KEEP(*(SORT_BY_NAME(._stepper_driver_api.static.*))); _stepper_driver_api_list_end = .; } > FLASH
 syscon_driver_api_area : SUBALIGN(4) { _syscon_driver_api_list_start = .; KEEP(*(SORT_BY_NAME(._syscon_driver_api.static.*))); _syscon_driver_api_list_end = .; } > FLASH
 tee_driver_api_area : SUBALIGN(4) { _tee_driver_api_list_start = .; KEEP(*(SORT_BY_NAME(._tee_driver_api.static.*))); _tee_driver_api_list_end = .; } > FLASH
@@ -277,7 +277,7 @@ ztest :
  *(.igot)
  }
    
- . = 0x20000000;
+ . = 0x20008000;
  . = ALIGN(_region_min_align);
  _image_ram_start = .;
 _RTT_SECTION_NAME (NOLOAD) : ALIGN_WITH_INPUT
@@ -319,6 +319,7 @@ __ramfunc_load_start = LOADADDR(.ramfunc);
   KEEP(*(".z_devstate.*"));
                 __device_states_end = .;
         } > RAM AT > FLASH
+ pm_device_slots_area : ALIGN_WITH_INPUT { _pm_device_slots_list_start = .; KEEP(*(SORT_BY_NAME(._pm_device_slots.static.*))); _pm_device_slots_list_end = .; } > RAM AT > FLASH
  log_mpsc_pbuf_area : ALIGN_WITH_INPUT { _log_mpsc_pbuf_list_start = .; *(SORT_BY_NAME(._log_mpsc_pbuf.static.*)); _log_mpsc_pbuf_list_end = .; } > RAM AT > FLASH
  log_msg_ptr_area : ALIGN_WITH_INPUT { _log_msg_ptr_list_start = .; KEEP(*(SORT_BY_NAME(._log_msg_ptr.static.*))); _log_msg_ptr_list_end = .; } > RAM AT > FLASH
  log_dynamic_area : ALIGN_WITH_INPUT { _log_dynamic_list_start = .; KEEP(*(SORT_BY_NAME(._log_dynamic.static.*))); _log_dynamic_list_end = .; } > RAM AT > FLASH
@@ -409,7 +410,7 @@ _flash_used = LOADADDR(.last_section) + SIZEOF(.last_section) - __rom_region_sta
         *(".noinit.*")
  *(".kernel_noinit.*")
         } > RAM AT > RAM
-    __kernel_ram_end = 0x20000000 + 0x70000;
+    __kernel_ram_end = 0x20008000 + 0x68000;
     __kernel_ram_size = __kernel_ram_end - __kernel_ram_start;
     .last_ram_section (NOLOAD) :
     {

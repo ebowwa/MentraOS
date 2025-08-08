@@ -46,8 +46,8 @@
 #define MBEDTLS_ENTROPY_HARDWARE_ALT
 
 /* Threading configurations */
-#define MBEDTLS_THREADING_C
-#define MBEDTLS_THREADING_ALT
+/* #undef MBEDTLS_THREADING_C */
+/* #undef MBEDTLS_THREADING_ALT */
 
 /* Legacy configurations for _ALT defines */
 #define MBEDTLS_AES_SETKEY_ENC_ALT

@@ -3,7 +3,7 @@ cmake:
     name: nrf5340dk
     path:
      - /opt/nordic/ncs/v3.0.0/zephyr/boards/nordic/nrf5340dk
-    qualifiers: nrf5340/cpuapp
+    qualifiers: nrf5340/cpuapp/ns
     revision: 
   images:
    - name: nrf5340_ble_simulator
@@ -19,6 +19,6 @@ cmake:
      - /Users/loayyari/Documents/Github/MentraOS/mcu_client/nrf5340_ble_simulator/build/_sysbuild/empty.conf
 version: 0.1.0
 west:
-  command: /opt/nordic/ncs/toolchains/ef4fc6722e/bin/west build -p always -b nrf5340dk/nrf5340/cpuapp
+  command: /opt/nordic/ncs/toolchains/ef4fc6722e/bin/west build --build-dir build . --pristine --board nrf5340dk/nrf5340/cpuapp/ns
   topdir: /opt/nordic/ncs/v3.0.0
   version: 1.2.0

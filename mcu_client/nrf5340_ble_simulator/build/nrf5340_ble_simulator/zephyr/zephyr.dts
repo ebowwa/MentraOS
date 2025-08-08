@@ -6,7 +6,7 @@
 	model = "Nordic NRF5340 DK NRF5340 Application";
 	compatible = "nordic,nrf5340-dk-nrf5340-cpuapp";
 	chosen {
-		zephyr,entropy = &cryptocell;
+		zephyr,entropy = &psa_rng;
 		zephyr,flash-controller = &flash_controller;
 		zephyr,console = &uart0;
 		zephyr,shell-uart = &uart0;
@@ -17,12 +17,12 @@
 		nordic,802154-spinel-ipc = &ipc0;
 		zephyr,ieee802154 = &ieee802154;
 		zephyr,ipc_shm = &sram0_shared;
-		zephyr,sram = &sram0_image;
+		zephyr,sram = &sram0_ns_app;
 		zephyr,flash = &flash0;
-		zephyr,code-partition = &slot0_partition;
-		zephyr,sram-secure-partition = &sram0_s;
-		zephyr,sram-non-secure-partition = &sram0_ns;
+		zephyr,code-partition = &slot0_ns_partition;
 		nordic,nus-uart = &uart0;
+		zephyr,display = &dummy_display;
+		lvgl,debug-uart = &uart1;
 	};
 	aliases {
 		led0 = &led0;
@@ -60,25 +60,14 @@
 			reg = < 0xe000e010 0x10 >;
 			status = "disabled";
 		};
-		ficr: ficr@ff0000 {
-			compatible = "nordic,nrf-ficr";
-			reg = < 0xff0000 0x1000 >;
-			#nordic,ficr-cells = < 0x1 >;
-			status = "okay";
-		};
-		uicr: uicr@ff8000 {
-			compatible = "nordic,nrf-uicr";
-			reg = < 0xff8000 0x1000 >;
-			status = "okay";
-		};
 		sram0: memory@20000000 {
 			compatible = "mmio-sram";
 			reg = < 0x20000000 0x80000 >;
 		};
-		peripheral@50000000 {
+		peripheral@40000000 {
 			#address-cells = < 0x1 >;
 			#size-cells = < 0x1 >;
-			ranges = < 0x0 0x50000000 0x10000000 >;
+			ranges = < 0x0 0x40000000 0x10000000 >;
 			dcnf: dcnf@0 {
 				compatible = "nordic,nrf-dcnf";
 				reg = < 0x0 0x1000 >;
@@ -223,7 +212,7 @@
 				compatible = "nordic,nrf-uarte";
 				reg = < 0x9000 0x1000 >;
 				interrupts = < 0x9 0x1 >;
-				status = "disabled";
+				status = "okay";
 				current-speed = < 0x1c200 >;
 				pinctrl-0 = < &uart1_default >;
 				pinctrl-1 = < &uart1_sleep >;
@@ -627,33 +616,13 @@
 				status = "okay";
 			};
 		};
-		spu: spu@50003000 {
-			compatible = "nordic,nrf-spu";
-			reg = < 0x50003000 0x1000 >;
-			interrupts = < 0x3 0x1 >;
-			status = "okay";
-		};
-		gpiote: gpiote0: gpiote@5000d000 {
-			compatible = "nordic,nrf-gpiote";
-			reg = < 0x5000d000 0x1000 >;
-			interrupts = < 0xd 0x5 >;
-			status = "okay";
-			instance = < 0x0 >;
-			phandle = < 0x11 >;
-		};
-		gpiote1: gpiote@4002f000 {
+		gpiote: gpiote1: gpiote@4002f000 {
 			compatible = "nordic,nrf-gpiote";
 			reg = < 0x4002f000 0x1000 >;
 			interrupts = < 0x2f 0x5 >;
-			status = "disabled";
-			instance = < 0x1 >;
-		};
-		cryptocell: crypto@50844000 {
-			compatible = "nordic,cryptocell", "arm,cryptocell-312";
-			reg = < 0x50844000 0x1000 >, < 0x50845000 0x1000 >;
-			reg-names = "wrapper", "core";
-			interrupts = < 0x44 0x1 >;
 			status = "okay";
+			instance = < 0x1 >;
+			phandle = < 0x11 >;
 		};
 	};
 	pinctrl: pin-controller {
@@ -723,7 +692,7 @@
 		uart1_default: uart1_default {
 			phandle = < 0x6 >;
 			group1 {
-				psels = < 0x21 >, < 0x200000b >;
+				psels = < 0x21 >, < 0x1000020 >;
 			};
 			group2 {
 				psels = < 0x1000020 >, < 0x300000a >;
@@ -733,7 +702,7 @@
 		uart1_sleep: uart1_sleep {
 			phandle = < 0x7 >;
 			group1 {
-				psels = < 0x21 >, < 0x1000020 >, < 0x200000b >, < 0x300000a >;
+				psels = < 0x21 >, < 0x1000020 >;
 				low-power-enable;
 			};
 		};
@@ -778,17 +747,12 @@
 	cpus {
 		#address-cells = < 0x1 >;
 		#size-cells = < 0x0 >;
-		cpu0: cpu@0 {
+		cpu@0 {
 			device_type = "cpu";
 			compatible = "arm,cortex-m33f";
 			reg = < 0x0 >;
 			#address-cells = < 0x1 >;
 			#size-cells = < 0x1 >;
-			itm: itm@e0000000 {
-				compatible = "arm,armv8m-itm";
-				reg = < 0xe0000000 0x1000 >;
-				swo-ref-frequency = < 0x3d09000 >;
-			};
 			mpu: mpu@e000ed90 {
 				compatible = "arm,armv8m-mpu";
 				reg = < 0xe000ed90 0x40 >;
@@ -808,6 +772,10 @@
 				status = "okay";
 			};
 		};
+	};
+	psa_rng: psa-rng {
+		compatible = "zephyr,psa-crypto-rng";
+		status = "okay";
 	};
 	leds {
 		compatible = "gpio-leds";
@@ -901,5 +869,11 @@
 			reg = < 0x20070000 0x10000 >;
 			phandle = < 0x13 >;
 		};
+	};
+	dummy_display: dummy_display {
+		compatible = "zephyr,dummy-dc";
+		status = "okay";
+		width = < 0x280 >;
+		height = < 0x1e0 >;
 	};
 };
