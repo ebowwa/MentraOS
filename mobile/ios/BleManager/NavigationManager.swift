@@ -24,6 +24,12 @@ public struct NavigationStep {
     let maneuver: String        // "turn_left", "turn_right", "continue", etc.
 }
 
+// coordinate point for polyline
+public struct NavigationCoordinate {
+    let latitude: Double
+    let longitude: Double
+}
+
 // navigation update data structure
 public struct NavigationUpdate {
     let instruction: String
@@ -34,6 +40,7 @@ public struct NavigationUpdate {
     let remainingSteps: [NavigationStep]  // all remaining steps in the route
     let distanceToDestination: Int // meters to final destination
     let timeToDestination: Int     // seconds to final destination (ETA)
+    let routePolyline: [NavigationCoordinate]  // polyline coordinates for the current route
     let timestamp: TimeInterval
 }
 
@@ -63,6 +70,7 @@ public class NavigationManager: NSObject {
     private var currentStatus: NavigationStatus = .idle
     private var isNavigating = false
     private var currentDestination: String?
+    private var currentRoutePolyline: [NavigationCoordinate] = []
     
     // google maps api key
     private var googleMapsApiKey: String {
@@ -168,24 +176,93 @@ public class NavigationManager: NSObject {
     private func proceedWithNavigation(destination: String, mode: String) {
         // create destination using place ID or geocoding
         // for now, let's use geocoding as a fallback
+        CoreCommsService.log("🧭 Starting geocoding for destination: '\(destination)'")
+        
+        // check network connectivity first
         let geocoder = CLGeocoder()
+        
+        // try to geocode with a timeout and better error handling
         geocoder.geocodeAddressString(destination) { [weak self] placemarks, error in
             guard let self = self else { return }
             
             // ensure we're back on the main thread for UI operations
             DispatchQueue.main.async {
                 if let error = error {
-                    CoreCommsService.log("❌ Geocoding error: \(error.localizedDescription)")
+                    CoreCommsService.log("❌ Geocoding error for '\(destination)': \(error.localizedDescription)")
+                    CoreCommsService.log("❌ Error domain: \(error._domain), code: \(error._code)")
+                    
+                    // try fallback destinations for testing
+                    self.tryFallbackDestinations(originalDestination: destination, mode: mode)
+                    return
+                }
+                
+                CoreCommsService.log("🧭 Geocoding completed. Found \(placemarks?.count ?? 0) placemarks")
+                
+                guard let placemark = placemarks?.first,
+                      let location = placemark.location else {
+                    CoreCommsService.log("❌ Could not extract location from geocoding results")
+                    if let placemarks = placemarks {
+                        CoreCommsService.log("❌ Placemarks available but no location: \(placemarks)")
+                    }
                     self.updateStatus(.error("Could not find destination"))
+                    return
+                }
+                
+                CoreCommsService.log("🧭 Successfully geocoded to: \(location.coordinate.latitude), \(location.coordinate.longitude)")
+                CoreCommsService.log("🧭 Placemark details: \(placemark)")
+                
+                self.startNavigationToCoordinate(location.coordinate, mode: mode)
+            }
+        }
+    }
+    
+    private func tryFallbackDestinations(originalDestination: String, mode: String) {
+        // list of fallback destinations to try if geocoding fails
+        let fallbackDestinations = [
+            "San Francisco, CA",
+            "1 Market Street, San Francisco, CA",
+            "Union Square, San Francisco, CA",
+            "Pier 39, San Francisco, CA"
+        ]
+        
+        CoreCommsService.log("🧭 Trying fallback destinations for '\(originalDestination)'")
+        
+        // try each fallback destination
+        tryGeocodingFallbacks(destinations: fallbackDestinations, mode: mode, index: 0)
+    }
+    
+    private func tryGeocodingFallbacks(destinations: [String], mode: String, index: Int) {
+        guard index < destinations.count else {
+            CoreCommsService.log("❌ All fallback destinations failed")
+            updateStatus(.error("Could not find any destination"))
+            return
+        }
+        
+        let destination = destinations[index]
+        CoreCommsService.log("🧭 Trying fallback destination \(index + 1)/\(destinations.count): '\(destination)'")
+        
+        let geocoder = CLGeocoder()
+        geocoder.geocodeAddressString(destination) { [weak self] placemarks, error in
+            guard let self = self else { return }
+            
+            DispatchQueue.main.async {
+                if let error = error {
+                    CoreCommsService.log("❌ Fallback destination '\(destination)' failed: \(error.localizedDescription)")
+                    // try next fallback
+                    self.tryGeocodingFallbacks(destinations: destinations, mode: mode, index: index + 1)
                     return
                 }
                 
                 guard let placemark = placemarks?.first,
                       let location = placemark.location else {
-                    CoreCommsService.log("❌ Could not geocode destination")
-                    self.updateStatus(.error("Could not find destination"))
+                    CoreCommsService.log("❌ Fallback destination '\(destination)' had no location")
+                    // try next fallback
+                    self.tryGeocodingFallbacks(destinations: destinations, mode: mode, index: index + 1)
                     return
                 }
+                
+                CoreCommsService.log("🧭 Successfully used fallback destination: '\(destination)'")
+                CoreCommsService.log("🧭 Coordinates: \(location.coordinate.latitude), \(location.coordinate.longitude)")
                 
                 self.startNavigationToCoordinate(location.coordinate, mode: mode)
             }
@@ -400,7 +477,13 @@ public class NavigationManager: NSObject {
                 )
             },
             distanceToDestination: update.distanceToDestination,
-            timeToDestination: update.timeToDestination
+            timeToDestination: update.timeToDestination,
+            routePolyline: update.routePolyline.map { coordinate in
+                NavigationCoordinateData(
+                    latitude: coordinate.latitude,
+                    longitude: coordinate.longitude
+                )
+            }
         )
         ServerComms.getInstance().sendNavigationUpdate(navigationUpdateData)
         
@@ -481,6 +564,9 @@ extension NavigationManager: GMSNavigatorListener {
             updateStatus(.navigating)
         }
         
+        // extract updated polyline when route changes
+        currentRoutePolyline = extractRoutePolyline(from: navigator)
+        
         // get updated navigation info when route changes
         getLatestNavigationInfo(from: navigator)
     }
@@ -511,6 +597,7 @@ extension NavigationManager: GMSNavigatorListener {
             remainingSteps: remainingSteps,
             distanceToDestination: distanceToDestination,
             timeToDestination: timeToDestination,
+            routePolyline: currentRoutePolyline,
             timestamp: Date().timeIntervalSince1970
         )
         
@@ -688,6 +775,36 @@ extension NavigationManager: GMSNavigatorListener {
         }
     }
     
+    private func extractRoutePolyline(from navigator: GMSNavigator) -> [NavigationCoordinate] {
+        // get the current route path from the navigator
+        guard let routeLegs = navigator.routeLegs, !routeLegs.isEmpty else {
+            CoreCommsService.log("🧭 No route legs available for polyline extraction")
+            return []
+        }
+        
+        var coordinates: [NavigationCoordinate] = []
+        
+        // iterate through all route legs to build complete polyline
+        for routeLeg in routeLegs {
+            guard let path = routeLeg.path else {
+                CoreCommsService.log("🧭 No path available for route leg")
+                continue
+            }
+            
+            // extract coordinates from GMSPath
+            for i in 0..<path.count() {
+                let coordinate = path.coordinate(at: i)
+                coordinates.append(NavigationCoordinate(
+                    latitude: coordinate.latitude,
+                    longitude: coordinate.longitude
+                ))
+            }
+        }
+        
+        CoreCommsService.log("🧭 Extracted polyline with \(coordinates.count) coordinates")
+        return coordinates
+    }
+    
     // MARK: - Fallback Navigation Update Generation (for route changes)
     
     private func generateNavigationUpdate() {
@@ -704,6 +821,7 @@ extension NavigationManager: GMSNavigatorListener {
             remainingSteps: [], // no remaining steps info available in fallback
             distanceToDestination: 5000, // fallback distance to destination
             timeToDestination: 1800, // fallback time to destination (30 min)
+            routePolyline: currentRoutePolyline, // use current cached polyline
             timestamp: Date().timeIntervalSince1970
         )
         

@@ -1,0 +1,1106 @@
+Classes
+The following classes are available globally.
+
+GMSLocationSimulator
+A class you can use to simulate a device location for testing purposes.
+
+Declaration
+Swift
+
+
+class GMSLocationSimulator : NSObject
+Objective-C
+
+
+@interface GMSLocationSimulator : NSObject
+GMSMapView
+This is the main class of the Google Maps SDK for iOS and is the entry point for all methods related to the map.
+
+The map should be instantiated with one of the constructors -init or -initWithOptions:.
+
+GMSMapView can only be read and modified from the main thread, similar to all UIKit objects. Calling these methods from another thread will result in an exception or undefined behavior.
+
+Declaration
+Swift
+
+
+class GMSMapView : UIView
+Objective-C
+
+
+@interface GMSMapView : UIView
+GMSMapViewOptions
+This class defines initialization-time options for GMSMapView.
+
+Declaration
+Swift
+
+
+class GMSMapViewOptions : NSObject
+Objective-C
+
+
+@interface GMSMapViewOptions : NSObject
+GMSNavigationDirectionsListController
+A controller that manages and displays a directions list. The controller maintains its own states internally based on the associated navigator. The directionsListView is updated automatically based on navigator states.
+
+Declaration
+Swift
+
+
+class GMSNavigationDirectionsListController : NSObject
+Objective-C
+
+
+@interface GMSNavigationDirectionsListController : NSObject
+GMSNavigationInstructionOptions
+Options for formatting attributed instruction strings.
+
+Declaration
+Swift
+
+
+class GMSNavigationInstructionOptions : NSObject
+Objective-C
+
+
+@interface GMSNavigationInstructionOptions : NSObject
+GMSNavigationLane
+Information about a single lane during navigation.
+
+Declaration
+Swift
+
+
+class GMSNavigationLane : NSObject
+Objective-C
+
+
+@interface GMSNavigationLane : NSObject
+GMSNavigationLaneDirection
+Information about a single lane direction during navigation.
+
+Declaration
+Swift
+
+
+class GMSNavigationLaneDirection : NSObject
+Objective-C
+
+
+@interface GMSNavigationLaneDirection : NSObject
+GMSNavigationLicensePlateRestriction
+A class contains information for license plate restriction. It maintains the state of vehicle’s license plate information and restriction.
+
+Declaration
+Swift
+
+
+class GMSNavigationLicensePlateRestriction : NSObject
+Objective-C
+
+
+@interface GMSNavigationLicensePlateRestriction : NSObject
+GMSNavigationNavInfo
+Contains information about the state of navigation
+
+Declaration
+Swift
+
+
+class GMSNavigationNavInfo : NSObject
+Objective-C
+
+
+@interface GMSNavigationNavInfo : NSObject
+GMSNavigationRouteInfo
+An immutable class that encapsulates ETA and distance information for both the default best route, and the shortest route, to a specific waypoint.
+
+Declaration
+Swift
+
+
+class GMSNavigationRouteInfo : NSObject
+Objective-C
+
+
+@interface GMSNavigationRouteInfo : NSObject
+GMSNavigationRoutingOptions
+An immutable class that contains options related to routing logic (e.g., routing strategy).
+
+Declaration
+Swift
+
+
+class GMSNavigationRoutingOptions : NSObject, NSCopying, NSMutableCopying
+Objective-C
+
+
+@interface GMSNavigationRoutingOptions : NSObject <NSCopying, NSMutableCopying>
+GMSNavigationMutableRoutingOptions
+A mutable class that contains options related to routing logic (e.g., routing strategy).
+
+Declaration
+Swift
+
+
+class GMSNavigationMutableRoutingOptions : GMSNavigationRoutingOptions
+Objective-C
+
+
+@interface GMSNavigationMutableRoutingOptions : GMSNavigationRoutingOptions
+GMSNavigationServices
+Services enabling control of mobile access to the Google Maps Navigation SDK for iOS.
+
+Declaration
+Swift
+
+
+class GMSNavigationServices : NSObject
+Objective-C
+
+
+@interface GMSNavigationServices : NSObject
+GMSNavigationSession
+This class provides a set of related objects that can be used to programmatically control a navigation session.
+
+Declaration
+Swift
+
+
+class GMSNavigationSession : NSObject
+Objective-C
+
+
+@interface GMSNavigationSession : NSObject
+GMSNavigationSpeedAlertOptions
+An immutable class that defines triggering thresholds for different severities of speed alerts, represented by GMSNavigationSpeedAlertSeverity.
+
+You can use this to customize the speed alert triggering thresholds in percentage for both minor and major alerts, and customize the time based triggering threshold for major speed alert.
+
+The speed alerts triggered by corresponding thresholds from this GMSNavigationSpeedAlertOptions have UI customized in GMSNavigationSpeedometerUIOptions if set.
+
+Declaration
+Swift
+
+
+class GMSNavigationSpeedAlertOptions : NSObject, NSCopying, NSMutableCopying
+Objective-C
+
+
+@interface GMSNavigationSpeedAlertOptions
+    : NSObject <NSCopying, NSMutableCopying>
+GMSNavigationMutableSpeedAlertOptions
+A mutable class that defines triggering thresholds for different severities of speed alerts, represented by GMSNavigationSpeedAlertSeverity.
+
+Declaration
+Swift
+
+
+class GMSNavigationMutableSpeedAlertOptions : GMSNavigationSpeedAlertOptions
+Objective-C
+
+
+@interface GMSNavigationMutableSpeedAlertOptions
+    : GMSNavigationSpeedAlertOptions
+GMSNavigationSpeedometerUIOptions
+An immutable class that encapsulates UI configuration for different severities of speed alerts, represented by GMSNavigationSpeedAlertSeverity.
+
+You can use this class to customize the speed alert UI, such as the colors of the font and icon background of minor and major speed alert.
+
+You use GMSNavigationSpeedometerUIOptions to customize the speed alert UI for different severities. You must use GMSNavigationSpeedAlertOptions to define the triggering thresholds for each severity of speed alert.
+
+Declaration
+Swift
+
+
+class GMSNavigationSpeedometerUIOptions : NSObject, NSCopying, NSMutableCopying
+Objective-C
+
+
+@interface GMSNavigationSpeedometerUIOptions
+    : NSObject <NSCopying, NSMutableCopying>
+GMSNavigationMutableSpeedometerUIOptions
+The mutable class that encapsulates UI configuration for different severities of speed alerts, represented by GMSNavigationSpeedAlertSeverity.
+
+Declaration
+Swift
+
+
+class GMSNavigationMutableSpeedometerUIOptions : GMSNavigationSpeedometerUIOptions
+Objective-C
+
+
+@interface GMSNavigationMutableSpeedometerUIOptions
+    : GMSNavigationSpeedometerUIOptions
+GMSNavigationStepInfo
+Information about a single step along a navigation route.
+
+Declaration
+Swift
+
+
+class GMSNavigationStepInfo : NSObject
+Objective-C
+
+
+@interface GMSNavigationStepInfo : NSObject
+GMSNavigationStepInfoImageOptions
+Declaration
+Swift
+
+
+class GMSNavigationStepInfoImageOptions : NSObject
+Objective-C
+
+
+@interface GMSNavigationStepInfoImageOptions : NSObject
+/**
+ * The object which provides screen metrics for the screen the image will be displayed on. In most
+ * cases, developers can pass the instance of UIScreen for the screen where the image will be
+ * displayed. This property defaults to UIScreen.mainScreen.
+ */
+@property(nonatomic, nullable) id<GMSNavigationScreenMetrics> screenMetrics;
+
+/**
+ * The image size for maneuverImage in `GMSNavigationStepInfo`.
+ * Defaults to `GMSNavigationManeuverImageSizeSquare96`.
+ */
+@property(nonatomic) GMSNavigationManeuverImageSize maneuverImageSize;
+
+- (instancetype)init NS_DESIGNATED_INITIALIZER;
+
+@end
+GMSNavigationTermsAndConditionsOptions
+Options for displaying terms and conditions.
+
+Declaration
+Swift
+
+
+class GMSNavigationTermsAndConditionsOptions : NSObject, NSCopying
+Objective-C
+
+
+@interface GMSNavigationTermsAndConditionsOptions : NSObject <NSCopying>
+GMSNavigationTermsDialogUIParams
+Parameters that describe the look and feel of the dialog.
+
+Declaration
+Swift
+
+
+class GMSNavigationTermsDialogUIParams : NSObject
+Objective-C
+
+
+@interface GMSNavigationTermsDialogUIParams : NSObject
+GMSNavigationTimeAndDistance
+An immutable class that encapsulates the distance remaining and the ETA for a route.
+
+Declaration
+Swift
+
+
+class GMSNavigationTimeAndDistance : NSObject
+Objective-C
+
+
+@interface GMSNavigationTimeAndDistance : NSObject
+GMSNavigationTransactionRecorder
+Contains methods for recording transactions. This class should only be used if you are a Mobility Services customer and are billed by Google on a per-transaction basis.
+
+Declaration
+Swift
+
+
+class GMSNavigationTransactionRecorder : NSObject
+Objective-C
+
+
+@interface GMSNavigationTransactionRecorder : NSObject
+GMSNavigationWaypoint
+An immutable waypoint class, used to specify navigation destinations. It may be initialized from a CLLocationCoordinate2D or a Google Place ID.
+
+Declaration
+Swift
+
+
+class GMSNavigationWaypoint : NSObject, NSCopying, NSMutableCopying
+Objective-C
+
+
+@interface GMSNavigationWaypoint : NSObject <NSCopying, NSMutableCopying>
+GMSNavigationMutableWaypoint
+A mutable waypoint class.
+
+Declaration
+Swift
+
+
+class GMSNavigationMutableWaypoint : GMSNavigationWaypoint
+Objective-C
+
+
+@interface GMSNavigationMutableWaypoint : GMSNavigationWaypoint
+GMSNavigator
+This is the main class of the Google Navigation SDK for iOS and provides methods for controlling navigation to a destination and accessing route and progress information.
+
+This class does not support subclassing.
+
+This class is not thread-safe. All methods must be called from the main thread.
+
+Declaration
+Swift
+
+
+class GMSNavigator : NSObject
+Objective-C
+
+
+@interface GMSNavigator : NSObject
+GMSRoadSnappedLocationProvider
+Provides updates of the device’s location. This class functions similarly to CLLocationManager, except that if the device is in driving mode, the location updates is snapped to the nearest road.
+
+This class is not intended for subclassing.
+
+Declaration
+Swift
+
+
+class GMSRoadSnappedLocationProvider : NSObject
+Objective-C
+
+
+@interface GMSRoadSnappedLocationProvider : NSObject
+GMSRouteLeg
+An immutable class which represents a single leg of a journey, either from the device’s current position to the first destination, or from one destination to a subsequent destination.
+
+Declaration
+Swift
+
+
+class GMSRouteLeg : NSObject
+Objective-C
+
+
+@interface GMSRouteLeg : NSObject
+GMSUISettings
+Settings for the user interface of a GMSMapView.
+
+Declaration
+Swift
+
+
+class GMSUISettings : NSObject
+Objective-C
+
+
+@interface GMSUISettings : NSObject
+GMSAddress
+A result from a reverse geocode request, containing a human-readable address. This class is immutable and should not be instantiated directly unless under testing circumstances. Obtain an instance via GMSGeocoder.
+
+Some of the fields may be nil, indicating they are not present.
+
+Declaration
+Swift
+
+
+class GMSAddress : NSObject, NSCopying, NSSecureCoding
+Objective-C
+
+
+@interface GMSAddress : NSObject <NSCopying, NSSecureCoding>
+GMSAdvancedMarker
+An advanced marker is an icon placed at a particular point on the map’s surface.
+
+Declaration
+Swift
+
+
+class GMSAdvancedMarker : GMSMarker
+Objective-C
+
+
+@interface GMSAdvancedMarker : GMSMarker
+GMSCALayer
+GMSCALayer is a superclass used by layers in the Google Maps SDK for iOS, such as GMSMapLayer and GMSPanoramaLayer.
+
+This is an implementation detail and it should not be instantiated directly.
+
+Declaration
+Swift
+
+
+class GMSCALayer : CALayer
+Objective-C
+
+
+@interface GMSCALayer : CALayer
+GMSCameraPosition
+An immutable class that aggregates all camera position parameters.
+
+Declaration
+Swift
+
+
+class GMSCameraPosition : NSObject, NSCopying, NSMutableCopying
+Objective-C
+
+
+@interface GMSCameraPosition : NSObject <NSCopying, NSMutableCopying>
+GMSMutableCameraPosition
+Mutable version of GMSCameraPosition.
+
+Declaration
+Swift
+
+
+class GMSMutableCameraPosition : GMSCameraPosition
+Objective-C
+
+
+@interface GMSMutableCameraPosition : GMSCameraPosition
+GMSCameraUpdate
+GMSCameraUpdate represents an update that may be applied to a GMSMapView.
+
+It encapsulates some logic for modifying the current camera.
+
+It should only be constructed using the factory helper methods below.
+
+Declaration
+Swift
+
+
+class GMSCameraUpdate : NSObject
+Objective-C
+
+
+@interface GMSCameraUpdate : NSObject
+GMSCircle
+A circle on the Earth’s surface (spherical cap).
+
+Declaration
+Swift
+
+
+class GMSCircle : GMSOverlay
+Objective-C
+
+
+@interface GMSCircle : GMSOverlay
+GMSCoordinateBounds
+GMSCoordinateBounds represents a rectangular bounding box on the Earth’s surface. GMSCoordinateBounds is immutable and can’t be modified after construction.
+
+Declaration
+Swift
+
+
+class GMSCoordinateBounds : NSObject
+Objective-C
+
+
+@interface GMSCoordinateBounds : NSObject
+GMSDatasetFeature
+An interface representing a feature from a dataset.
+
+The featureType of a DatasetFeature will always be GMSFeatureTypeDataset.
+
+Declaration
+Swift
+
+
+class DatasetFeature : NSObject, Feature
+Objective-C
+
+
+
+@interface GMSDatasetFeature : NSObject <GMSFeature>
+GMSDatasetFeatureLayer
+An interface representing a feature layer for a dataset.
+
+The featureType of a GMSDatasetFeatureLayer will always be GMSFeatureTypeDataset.
+
+Declaration
+Swift
+
+
+class DatasetFeatureLayer : FeatureLayer<DatasetFeature>
+Objective-C
+
+
+
+@interface GMSDatasetFeatureLayer : GMSFeatureLayer <GMSDatasetFeature *>
+GMSFeatureLayer
+A class representing a collection of all features of the same GMSFeatureType, whose style can be overridden on the client. Each GMSFeatureType will have one corresponding GMSFeatureLayer.
+
+Declaration
+Swift
+
+
+class FeatureLayer<T> : NSObject where T : Feature
+Objective-C
+
+
+
+@interface GMSFeatureLayer<__covariant T : id <GMSFeature>> : NSObject
+GMSFeatureStyle
+Specifies how a map feature should appear when displayed on a map.
+
+Declaration
+Swift
+
+
+class FeatureStyle : NSObject, NSCopying, NSMutableCopying
+Objective-C
+
+
+
+@interface GMSFeatureStyle : NSObject <NSCopying, NSMutableCopying>
+GMSMutableFeatureStyle
+Mutable version of GMSFeatureStyle.
+
+Declaration
+Swift
+
+
+class MutableFeatureStyle : FeatureStyle
+Objective-C
+
+
+
+@interface GMSMutableFeatureStyle : GMSFeatureStyle
+GMSGeocoder
+Exposes a service for reverse geocoding. This maps Earth coordinates (latitude and longitude) to a collection of addresses near that coordinate.
+
+Declaration
+Swift
+
+
+class GMSGeocoder : NSObject
+Objective-C
+
+
+@interface GMSGeocoder : NSObject
+GMSReverseGeocodeResponse
+A collection of results from a reverse geocode request.
+
+Declaration
+Swift
+
+
+class GMSReverseGeocodeResponse : NSObject, NSCopying
+Objective-C
+
+
+@interface GMSReverseGeocodeResponse : NSObject <NSCopying>
+GMSGroundOverlay
+GMSGroundOverlay specifies the available options for a ground overlay that exists on the Earth’s surface. Unlike a marker, the position of a ground overlay is specified explicitly and it does not face the camera.
+
+Declaration
+Swift
+
+
+class GMSGroundOverlay : GMSOverlay
+Objective-C
+
+
+@interface GMSGroundOverlay : GMSOverlay
+GMSIndoorBuilding
+Describes a building which contains levels.
+
+Declaration
+Swift
+
+
+class GMSIndoorBuilding : NSObject
+Objective-C
+
+
+@interface GMSIndoorBuilding : NSObject
+GMSIndoorDisplay
+Provides ability to observe or control the display of indoor level data.
+
+Like GMSMapView, GMSIndoorDisplay may only be used from the main thread.
+
+Declaration
+Swift
+
+
+class GMSIndoorDisplay : NSObject
+Objective-C
+
+
+@interface GMSIndoorDisplay : NSObject
+GMSIndoorLevel
+Declaration
+Swift
+
+
+class GMSIndoorLevel : NSObject
+Objective-C
+
+
+@interface GMSIndoorLevel : NSObject
+
+- (instancetype)init NS_UNAVAILABLE;
+
+/** Localized display name for the level, e.g. "Ground floor". */
+@property(nonatomic, copy, readonly, nullable) NSString *name;
+
+/** Localized short display name for the level, e.g. "1". */
+@property(nonatomic, copy, readonly, nullable) NSString *shortName;
+
+@end
+GMSMapID
+An opaque identifier for a custom map configuration.
+
+Declaration
+Swift
+
+
+class GMSMapID : NSObject, NSCopying
+Objective-C
+
+
+@interface GMSMapID : NSObject <NSCopying>
+GMSMapLayer
+GMSMapLayer is a custom subclass of CALayer, provided as the layer class on GMSMapView. This layer should not be instantiated directly. It provides model access to the camera normally defined on GMSMapView.
+
+Modifying or animating these properties will typically interrupt any current gesture on GMSMapView, e.g., a user’s pan or rotation. Similarly, if a user performs an enabled gesture during an animation, the animation will stop ‘in-place’ (at the current presentation value).
+
+Declaration
+Swift
+
+
+class GMSMapLayer : GMSCALayer
+Objective-C
+
+
+@interface GMSMapLayer : GMSCALayer
+GMSMapStyle
+GMSMapStyle holds details about a style which can be applied to a map.
+
+With style options you can customize the presentation of the standard Google map styles, changing the visual display of features like roads, parks, and other points of interest. As well as changing the style of these features, you can also hide features entirely. This means that you can emphasize particular components of the map or make the map complement the content of your app.
+
+For more information see: https://developers.google.com/maps/documentation/ios-sdk/styling
+
+Declaration
+Swift
+
+
+class GMSMapStyle : NSObject
+Objective-C
+
+
+@interface GMSMapStyle : NSObject
+GMSMarker
+A marker is an icon placed at a particular point on the map’s surface. A marker’s icon is drawn oriented against the device’s screen rather than the map’s surface; i.e., it will not necessarily change orientation due to map rotations, tilting, or zooming.
+
+Declaration
+Swift
+
+
+class GMSMarker : GMSOverlay
+Objective-C
+
+
+@interface GMSMarker : GMSOverlay
+GMSMarkerLayer
+GMSMarkerLayer is a subclass of GMSOverlayLayer, available on a per-marker basis, that allows animation of several properties of its associated GMSMarker.
+
+Note that this CALayer is never actually rendered directly, as GMSMapView is provided entirely via an OpenGL layer. As such, adjustments or animations to ‘default’ properties of CALayer will not have any effect.
+
+Declaration
+Swift
+
+
+class GMSMarkerLayer : GMSOverlayLayer
+Objective-C
+
+
+@interface GMSMarkerLayer : GMSOverlayLayer
+GMSMutablePath
+GMSMutablePath is a dynamic (resizable) array of CLLocationCoordinate2D. All coordinates must be valid. GMSMutablePath is the mutable counterpart to the immutable GMSPath.
+
+Declaration
+Swift
+
+
+class GMSMutablePath : GMSPath
+Objective-C
+
+
+@interface GMSMutablePath : GMSPath
+GMSOverlay
+GMSOverlay is an abstract class that represents some overlay that may be attached to a specific GMSMapView. It may not be instantiated directly; instead, instances of concrete overlay types should be created directly (such as GMSMarker, GMSPolyline, and GMSPolygon).
+
+This supports the NSCopying protocol; [overlay_ copy] will return a copy of the overlay type, but with map set to nil.
+
+Declaration
+Swift
+
+
+class GMSOverlay : NSObject, NSCopying
+Objective-C
+
+
+@interface GMSOverlay : NSObject <NSCopying>
+GMSOverlayLayer
+GMSOverlayLayer is a custom subclass of CALayer, and an abstract baseclass for GMSOverlay layers that allow custom animations.
+
+Note that this CALayer or any subclass are never actually rendered directly, as GMSMapView is provided entirely via an OpenGL layer. As such, adjustments or animations to ‘default’ properties of CALayer will not have any effect.
+
+This is an implementation detail and it should not be instantiated directly.
+
+Declaration
+Swift
+
+
+class GMSOverlayLayer : CALayer
+Objective-C
+
+
+@interface GMSOverlayLayer : CALayer
+GMSPanorama
+GMSPanorama represents metadata for a specific panorama on the Earth. This class is not instantiable directly and is obtained via GMSPanoramaService or GMSPanoramaView.
+
+Declaration
+Swift
+
+
+class GMSPanorama : NSObject
+Objective-C
+
+
+@interface GMSPanorama : NSObject
+GMSPanoramaCamera
+GMSPanoramaCamera is used to control the viewing direction of a GMSPanoramaView. It does not contain information about which particular panorama should be displayed.
+
+Declaration
+Swift
+
+
+class GMSPanoramaCamera : NSObject
+Objective-C
+
+
+@interface GMSPanoramaCamera : NSObject
+GMSPanoramaCameraUpdate
+GMSPanoramaCameraUpdate represents an update that may be applied to a GMSPanoramaView. It encapsulates some logic for modifying the current camera. It should only be constructed using the factory helper methods below.
+
+Declaration
+Swift
+
+
+class GMSPanoramaCameraUpdate : NSObject
+Objective-C
+
+
+@interface GMSPanoramaCameraUpdate : NSObject
+GMSPanoramaLayer
+GMSPanoramaLayer is a custom subclass of CALayer, provided as the layer class on GMSPanoramaView. This layer should not be instantiated directly.
+
+Declaration
+Swift
+
+
+class GMSPanoramaLayer : GMSCALayer
+Objective-C
+
+
+@interface GMSPanoramaLayer : GMSCALayer
+GMSPanoramaLink
+Links from a GMSPanorama to neighboring panoramas.
+
+Declaration
+Swift
+
+
+class GMSPanoramaLink : NSObject
+Objective-C
+
+
+@interface GMSPanoramaLink : NSObject
+GMSPanoramaService
+GMSPanoramaService can be used to request panorama metadata even when a GMSPanoramaView is not active.
+
+Get an instance like this: [[GMSPanoramaService alloc] init].
+
+Declaration
+Swift
+
+
+class GMSPanoramaService : NSObject
+Objective-C
+
+
+@interface GMSPanoramaService : NSObject
+GMSPanoramaView
+A panorama is used to display Street View imagery. It should be constructed via [[GMSPanoramaView alloc] initWithFrame:], and configured post-initialization.
+
+All properties and methods should be accessed on the main thread, similar to all UIKit objects. The GMSPanoramaViewDelegate methods will also be called back only on the main thread.
+
+The backgroundColor of this view is shown while no panorama is visible, such as while it is loading or if the panorama is later set to nil. The alpha color of backgroundColor is not supported.
+
+Declaration
+Swift
+
+
+class GMSPanoramaView : UIView
+Objective-C
+
+
+@interface GMSPanoramaView : UIView
+GMSPath
+GMSPath encapsulates an immutable array of CLLocationCooordinate2D. All the coordinates of a GMSPath must be valid. The mutable counterpart is GMSMutablePath.
+
+Declaration
+Swift
+
+
+class GMSPath : NSObject, NSCopying, NSMutableCopying
+Objective-C
+
+
+@interface GMSPath : NSObject <NSCopying, NSMutableCopying>
+GMSPinImage
+Provides a custom pin image for an advanced marker.
+
+Declaration
+Swift
+
+
+class GMSPinImage : UIImage
+Objective-C
+
+
+@interface GMSPinImage : UIImage
+GMSPinImageGlyph
+Provides a custom pin image glyph for an advanced marker.
+
+Declaration
+Swift
+
+
+class GMSPinImageGlyph : NSObject
+Objective-C
+
+
+@interface GMSPinImageGlyph : NSObject
+GMSPinImageOptions
+Provides pin image customization for an advanced marker.
+
+Declaration
+Swift
+
+
+class GMSPinImageOptions : NSObject
+Objective-C
+
+
+@interface GMSPinImageOptions : NSObject
+GMSPlaceFeature
+An interface representing a place feature (a feature with a Place ID).
+
+Declaration
+Swift
+
+
+class PlaceFeature : NSObject, Feature
+Objective-C
+
+
+
+@interface GMSPlaceFeature : NSObject <GMSFeature>
+GMSPolygon
+GMSPolygon defines a polygon that appears on the map. A polygon (like a polyline) defines a series of connected coordinates in an ordered sequence; additionally, polygons form a closed loop and define a filled region.
+
+Declaration
+Swift
+
+
+class GMSPolygon : GMSOverlay
+Objective-C
+
+
+@interface GMSPolygon : GMSOverlay
+GMSPolygonLayer
+GMSPolygonLayer is a subclass of GMSOverlayLayer, available on a per-polygon basis, that allows animation of several properties of its associated GMSPolygon.
+
+Note that this CALayer is never actually rendered directly, as GMSMapView is provided entirely via an OpenGL layer. As such, adjustments or animations to ‘default’ properties of CALayer will not have any effect.
+
+Declaration
+Swift
+
+
+class GMSPolygonLayer : GMSOverlayLayer
+Objective-C
+
+
+@interface GMSPolygonLayer : GMSOverlayLayer
+GMSPolyline
+GMSPolyline specifies the available options for a polyline that exists on the Earth’s surface. It is drawn as a physical line between the points specified in path.
+
+Declaration
+Swift
+
+
+class GMSPolyline : GMSOverlay
+Objective-C
+
+
+@interface GMSPolyline : GMSOverlay
+GMSProjection
+Defines a mapping between Earth coordinates CLLocationCoordinate2D and coordinates in the map’s view CGPoint. A projection is constant and immutable, in that the mapping it embodies never changes. The mapping is not necessarily linear.
+
+Passing invalid Earth coordinates (i.e., per CLLocationCoordinate2DIsValid) to this object may result in undefined behavior.
+
+This class should not be instantiated directly unless under testing conditions. Instead, obtain it via projection on GMSMapView.
+
+Declaration
+Swift
+
+
+class GMSProjection : NSObject
+Objective-C
+
+
+@interface GMSProjection : NSObject
+GMSServices
+Service class for the Google Maps SDK for iOS.
+
+This class is not thread safe. All methods should only be invoked on the main thread.
+
+Declaration
+Swift
+
+
+class GMSServices : NSObject
+Objective-C
+
+
+@interface GMSServices : NSObject
+GMSStampStyle
+The abstract base class for polyline styles that draw a repeating image over a GMSStyleSpan.
+
+Declaration
+Swift
+
+
+class GMSStampStyle : NSObject
+Objective-C
+
+
+@interface GMSStampStyle : NSObject
+GMSTextureStyle
+A polyline style that draws a repeating image over a GMSStyleSpan.
+
+Declaration
+Swift
+
+
+class GMSTextureStyle : GMSStampStyle
+Objective-C
+
+
+@interface GMSTextureStyle : GMSStampStyle
+GMSSpriteStyle
+Describes the drawing style for a stamp image over a GMSStyleSpan.
+
+Note
+
+Only supports transparent background. If any color is set to the GMSStyleSpan it will only be treated as a fallback.
+
+Note
+
+Use of GMSSpriteStyle requires Metal rendering framework. See GMSServices::setMetalRendererEnabled:(BOOL) to learn how to enable Metal. If GMSStyleSpan is added to a map without Metal being enabled, the stamp will not render and instead the polyline span will attempt to fallback to any set color. If no color is set, it will fallback to the default polyline color, [UIColor blueColor].
+
+Note
+
+Use GMSMapView::mapCapabilities property to query if a GMSMapView supports GMSSpriteStyle.
+
+Declaration
+Swift
+
+
+class GMSSpriteStyle : GMSStampStyle
+Objective-C
+
+
+@interface GMSSpriteStyle : GMSStampStyle
+GMSStrokeStyle
+Describes the drawing style for one-dimensional entities such as polylines.
+
+Declaration
+Swift
+
+
+class GMSStrokeStyle : NSObject
+Objective-C
+
+
+@interface GMSStrokeStyle : NSObject
+GMSStyleSpan
+Describes the style for some region of a polyline.
+
+Declaration
+Swift
+
+
+class GMSStyleSpan : NSObject
+Objective-C
+
+
+@interface GMSStyleSpan : NSObject
+GMSSyncTileLayer
+GMSSyncTileLayer is an abstract subclass of GMSTileLayer that provides a sync interface to generate image tile data.
+
+Declaration
+Swift
+
+
+class GMSSyncTileLayer : GMSTileLayer
+Objective-C
+
+
+@interface GMSSyncTileLayer : GMSTileLayer
+GMSTileLayer
+GMSTileLayer is an abstract class that allows overlaying of custom image tiles on a specified GMSMapView. It may not be initialized directly, and subclasses must implement the tileForX:y:zoom: method to return tiles.
+
+At zoom level 0 the whole world is a square covered by a single tile, and the coordinates x and y are both 0 for that tile. At zoom level 1, the world is covered by 4 tiles with x and y being 0 or 1, and so on.
+
+Declaration
+Swift
+
+
+class GMSTileLayer : NSObject
+Objective-C
+
+
+@interface GMSTileLayer : NSObject
+GMSURLTileLayer
+GMSURLTileProvider fetches tiles based on the URLs returned from a GMSTileURLConstructor. For example:
+
+
+   GMSTileURLConstructor constructor = ^(NSUInteger x, NSUInteger y, NSUInteger zoom) {
+     NSString *URLStr =
+         [NSString stringWithFormat:@"https://example.com/%d/%d/%d.png", x, y, zoom];
+     return [NSURL URLWithString:URLStr];
+   };
+   GMSTileLayer *layer =
+       [GMSURLTileLayer tileLayerWithURLConstructor:constructor];
+   layer.userAgent = @"SDK user agent";
+   layer.map = map;
+ 
+GMSURLTileProvider may not be subclassed and should only be created via its convenience constructor.
+
+Declaration
+Swift
+
+
+class GMSURLTileLayer : GMSTileLayer
+Objective-C
+
+
+@interface GMSURLTileLayer : GMSTileLayer

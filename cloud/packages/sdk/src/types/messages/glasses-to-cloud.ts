@@ -154,6 +154,14 @@ export interface CalendarEvent extends BaseMessage {
 }
 
 /**
+ * Navigation coordinate point for polyline data
+ */
+export interface NavigationCoordinate {
+  latitude: number;
+  longitude: number;
+}
+
+/**
  * Navigation update from glasses
  */
 export interface NavigationStep {
@@ -174,6 +182,7 @@ export interface NavigationUpdate extends BaseMessage {
   remainingSteps: NavigationStep[]; // all remaining steps in the route
   distanceToDestination: number; // meters to final destination
   timeToDestination: number; // seconds to final destination (ETA)
+  routePolyline: NavigationCoordinate[]; // polyline coordinates for the current route
 }
 
 /**

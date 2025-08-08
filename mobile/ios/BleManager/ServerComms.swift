@@ -18,6 +18,11 @@ struct NavigationStepData {
     let maneuver: String
 }
 
+struct NavigationCoordinateData {
+    let latitude: Double
+    let longitude: Double
+}
+
 // navigation data structures for sending to cloud
 struct NavigationUpdateData {
     let instruction: String
@@ -28,6 +33,7 @@ struct NavigationUpdateData {
     let remainingSteps: [NavigationStepData] // all remaining steps
     let distanceToDestination: Int // meters to final destination
     let timeToDestination: Int // seconds to final destination (ETA)
+    let routePolyline: [NavigationCoordinateData] // polyline coordinates for the route
 }
 
 struct NavigationStatusData {
@@ -372,6 +378,13 @@ class ServerComms {
                 ]
             }
             
+            let routePolylineArray = navigationUpdate.routePolyline.map { coordinate in
+                return [
+                    "latitude": coordinate.latitude,
+                    "longitude": coordinate.longitude
+                ]
+            }
+            
             let event: [String: Any] = [
                 "type": "navigation_update",
                 "instruction": navigationUpdate.instruction,
@@ -382,6 +395,7 @@ class ServerComms {
                 "remainingSteps": remainingStepsArray,
                 "distanceToDestination": navigationUpdate.distanceToDestination,
                 "timeToDestination": navigationUpdate.timeToDestination,
+                "routePolyline": routePolylineArray,
                 "timestamp": Int(Date().timeIntervalSince1970 * 1000),
             ]
 
