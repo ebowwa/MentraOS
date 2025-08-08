@@ -14,6 +14,13 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.Executors;
 
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.K900ProtocolUtils;
+import com.augmentos.asg_client.reporting.domains.BluetoothReporting;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Implementation of IBluetoothManager for K900 devices.
@@ -176,6 +183,36 @@ public class K900BluetoothManager extends BaseBluetoothManager implements Serial
             notificationManager.showBluetoothStateNotification(false);
         }
     }
+    
+    @Override
+    public void shutdown() {
+        Log.d(TAG, "Shutting down K900BluetoothManager");
+        
+        // Cancel any active file transfer
+        if (currentFileTransfer != null && currentFileTransfer.isActive) {
+            Log.d(TAG, "Cancelling active file transfer");
+            currentFileTransfer.isActive = false;
+            comManager.setFastMode(false);
+        }
+        
+        // Clear pending packets
+        pendingPackets.clear();
+        
+        // Shutdown file transfer executor
+        if (fileTransferExecutor != null) {
+            fileTransferExecutor.shutdownNow();
+        }
+        
+        // Stop the ComManager
+        if (comManager != null) {
+            comManager.stop();
+        }
+        
+        // Call parent shutdown
+        super.shutdown();
+        
+        Log.d(TAG, "K900BluetoothManager shut down");
+    }
 
     @Override
     public void stopAdvertising() {
@@ -241,25 +278,47 @@ public class K900BluetoothManager extends BaseBluetoothManager implements Serial
                 Log.d(TAG, "📥 📦 First 20 bytes: " + hexDump.toString());
             }
 
-            // Add the data to our message parser (if available)
-            // if (messageParser.addData(dataCopy, size)) {
-            //     // Try to extract complete messages
-            //     List<byte[]> completeMessages = messageParser.parseMessages();
-            //     if (completeMessages != null && !completeMessages.isEmpty()) {
-            //         // Process each complete message
-            //         for (byte[] message : completeMessages) {
-            //             // Check for file transfer acknowledgments
-            //             processReceivedMessage(message);
-            //             
-            //             // Notify listeners of the received message
-            //             notifyDataReceived(message);
-            //         }
-            //     }
-            // }
-
-            // For now, just notify listeners of the raw data
-            Log.d(TAG, "📥 📤 Notifying listeners of received data...");
-            notifyDataReceived(dataCopy);
+            // Add the data to our message parser
+            if (messageParser != null && messageParser.addData(dataCopy, size)) {
+                // Try to extract complete messages
+                List<byte[]> completeMessages = messageParser.parseMessages();
+                if (completeMessages != null && !completeMessages.isEmpty()) {
+                    Log.d(TAG, "📥 Extracted " + completeMessages.size() + " complete messages");
+                    // Process each complete message
+                    for (byte[] message : completeMessages) {
+                        // Check for file transfer acknowledgments first
+                        processReceivedMessage(message);
+                        
+                        // Extract payload from K900 protocol message for listeners
+                        if (K900ProtocolUtils.isK900ProtocolFormat(message)) {
+                            // Try to extract payload (big-endian first, then little-endian)
+                            byte[] payload = K900ProtocolUtils.extractPayload(message);
+                            if (payload == null) {
+                                payload = K900ProtocolUtils.extractPayloadFromK900(message);
+                            }
+                            
+                            if (payload != null && payload.length > 0) {
+                                // Notify listeners with the clean payload (JSON data without markers)
+                                Log.d(TAG, "📥 Notifying listeners with extracted payload (" + payload.length + " bytes)");
+                                notifyDataReceived(payload);
+                            } else {
+                                Log.w(TAG, "📥 Failed to extract payload from K900 message");
+                            }
+                        } else {
+                            // Not a K900 protocol message, pass as-is
+                            Log.d(TAG, "📥 Non-K900 message, passing as-is");
+                            notifyDataReceived(message);
+                        }
+                    }
+                } else {
+                    // No complete messages yet, just accumulating data
+                    Log.d(TAG, "📥 Data added to parser, waiting for complete message");
+                }
+            } else {
+                // If parser is not available or data couldn't be added, send raw data
+                Log.d(TAG, "📥 📤 Parser unavailable, notifying listeners of raw data...");
+                notifyDataReceived(dataCopy);
+            }
             Log.d(TAG, "📥 ✅ Data processing complete");
         } else {
             Log.w(TAG, "📥 ❌ Invalid data received - null or empty");
@@ -306,6 +365,249 @@ public class K900BluetoothManager extends BaseBluetoothManager implements Serial
         } else {
             Log.d(TAG, "🔌 ❌ Failed to open serial port");
             notificationManager.showDebugNotification("Serial Error", "Failed to open serial port: " + serialPath + " - " + msg);
+        }
+    }
+    
+    /**
+     * Send an image file over the K900 Bluetooth connection
+     * @param filePath Path to the image file to send
+     * @return true if transfer started successfully
+     */
+    @Override
+    public boolean sendImageFile(String filePath) {
+        if (!isSerialOpen) {
+            Log.e(TAG, "Cannot send file - serial port not open");
+            
+            // Report file transfer failure
+            BluetoothReporting.reportFileTransferFailure(context, filePath, "send_file", 
+                "serial_port_not_open", null);
+            return false;
+        }
+        
+        if (currentFileTransfer != null && currentFileTransfer.isActive) {
+            Log.e(TAG, "File transfer already in progress");
+            
+            // Report file transfer failure
+            BluetoothReporting.reportFileTransferFailure(context, filePath, "send_file", 
+                "transfer_already_in_progress", null);
+            return false;
+        }
+        
+        File file = new File(filePath);
+        if (!file.exists() || !file.isFile()) {
+            Log.e(TAG, "File not found: " + filePath);
+            
+            // Report file transfer failure
+            BluetoothReporting.reportFileTransferFailure(context, filePath, "send_file", 
+                "file_not_found", null);
+            return false;
+        }
+        
+        // Read the file data
+        byte[] fileData;
+        try (FileInputStream fis = new FileInputStream(file)) {
+            fileData = new byte[(int) file.length()];
+            int bytesRead = fis.read(fileData);
+            if (bytesRead != fileData.length) {
+                Log.e(TAG, "Failed to read complete file");
+                
+                // Report file transfer failure
+                BluetoothReporting.reportFileTransferFailure(context, filePath, "send_file", 
+                    "incomplete_file_read", null);
+                return false;
+            }
+        } catch (IOException e) {
+            Log.e(TAG, "Error reading file: " + filePath, e);
+            
+            // Report file transfer failure with exception
+            BluetoothReporting.reportFileTransferFailure(context, filePath, "send_file", 
+                "io_exception", e);
+            return false;
+        }
+        
+        // Create file transfer session
+        String fileName = file.getName();
+        if (fileName.length() > 16) {
+            fileName = fileName.substring(0, 16); // Truncate to 16 chars max
+        }
+        
+        currentFileTransfer = new FileTransferSession(filePath, fileName, fileData);
+        pendingPackets.clear();
+        
+        Log.d(TAG, "Starting file transfer: " + fileName + " (" + fileData.length + " bytes, " + 
+                   currentFileTransfer.totalPackets + " packets)");
+        
+        notificationManager.showDebugNotification("File Transfer", 
+            "Starting transfer of " + fileName + " (" + currentFileTransfer.totalPackets + " packets)");
+        
+        // Enable fast mode for file transfer
+        comManager.setFastMode(true);
+        
+        // Send the first packet
+        sendNextFilePacket();
+        
+        return true;
+    }
+    
+    /**
+     * Send the next file packet
+     */
+    private void sendNextFilePacket() {
+        if (currentFileTransfer == null || !currentFileTransfer.isActive) {
+            return;
+        }
+        
+        if (currentFileTransfer.currentPacketIndex >= currentFileTransfer.totalPackets) {
+            // Transfer complete
+            long transferDuration = System.currentTimeMillis() - currentFileTransfer.startTime;
+            Log.d(TAG, "✅ File transfer complete: " + currentFileTransfer.fileName);
+            Log.d(TAG, "⏱️ Transfer took: " + transferDuration + "ms for " + currentFileTransfer.fileSize + " bytes");
+            Log.d(TAG, "📊 Transfer rate: " + (currentFileTransfer.fileSize * 1000 / transferDuration) + " bytes/sec");
+            
+            notificationManager.showDebugNotification("File Transfer Complete", 
+                currentFileTransfer.fileName + " in " + transferDuration + "ms");
+            
+            // Delete the file after successful transfer
+            try {
+                File file = new File(currentFileTransfer.filePath);
+                if (file.exists() && file.delete()) {
+                    Log.d(TAG, "🗑️ Deleted file after successful BLE transfer: " + currentFileTransfer.filePath);
+                } else {
+                    Log.w(TAG, "Failed to delete file: " + currentFileTransfer.filePath);
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Error deleting file after BLE transfer", e);
+            }
+            
+            // Disable fast mode
+            comManager.setFastMode(false);
+            
+            currentFileTransfer = null;
+            pendingPackets.clear();
+            return;
+        }
+        
+        // Calculate packet data
+        int packetIndex = currentFileTransfer.currentPacketIndex;
+        int offset = packetIndex * K900ProtocolUtils.FILE_PACK_SIZE;
+        int packSize = Math.min(K900ProtocolUtils.FILE_PACK_SIZE, 
+                                currentFileTransfer.fileSize - offset);
+        
+        // Extract packet data
+        byte[] packetData = new byte[packSize];
+        System.arraycopy(currentFileTransfer.fileData, offset, packetData, 0, packSize);
+        
+        // Pack the file packet
+        byte[] packet = K900ProtocolUtils.packFilePacket(
+            packetData, packetIndex, packSize, currentFileTransfer.fileSize,
+            currentFileTransfer.fileName, 0, // flags = 0
+            K900ProtocolUtils.CMD_TYPE_PHOTO
+        );
+        
+        if (packet == null) {
+            Log.e(TAG, "Failed to pack file packet " + packetIndex);
+            currentFileTransfer = null;
+            return;
+        }
+        
+        // Send the packet using sendFile (no logging)
+        comManager.sendFile(packet);
+        
+        // Track packet state for acknowledgment
+        pendingPackets.put(packetIndex, new FilePacketState());
+        
+        Log.d(TAG, "Sent file packet " + packetIndex + "/" + (currentFileTransfer.totalPackets - 1) + 
+                   " (" + packSize + " bytes)");
+        
+        // Schedule acknowledgment timeout check
+        fileTransferExecutor.schedule(() -> checkFilePacketAck(packetIndex), 
+                                     FILE_TRANSFER_ACK_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+    }
+    
+    /**
+     * Check if file packet acknowledgment was received
+     */
+    private void checkFilePacketAck(int packetIndex) {
+        if (currentFileTransfer == null || !currentFileTransfer.isActive) {
+            return;
+        }
+        
+        FilePacketState packetState = pendingPackets.get(packetIndex);
+        if (packetState == null) {
+            // Packet was acknowledged and removed
+            return;
+        }
+        
+        long timeSinceLastSend = System.currentTimeMillis() - packetState.lastSendTime;
+        if (timeSinceLastSend >= FILE_TRANSFER_ACK_TIMEOUT_MS) {
+            packetState.retryCount++;
+            
+            if (packetState.retryCount >= FILE_TRANSFER_MAX_RETRIES) {
+                Log.e(TAG, "File packet " + packetIndex + " failed after " + FILE_TRANSFER_MAX_RETRIES + " retries");
+                
+                // Report file transfer failure
+                BluetoothReporting.reportFileTransferFailure(context, currentFileTransfer.filePath, 
+                    "send_file", "packet_timeout", null);
+                
+                notificationManager.showDebugNotification("File Transfer Failed", 
+                    "Packet " + packetIndex + " timeout");
+                
+                // Cancel transfer
+                comManager.setFastMode(false);
+                currentFileTransfer = null;
+                pendingPackets.clear();
+            } else {
+                Log.w(TAG, "File packet " + packetIndex + " timeout, retrying (attempt " + 
+                          (packetState.retryCount + 1) + "/" + FILE_TRANSFER_MAX_RETRIES + ")");
+                
+                // Resend the packet
+                currentFileTransfer.currentPacketIndex = packetIndex;
+                packetState.lastSendTime = System.currentTimeMillis();
+                sendNextFilePacket();
+            }
+        }
+    }
+    
+    /**
+     * Handle file transfer acknowledgment
+     * Made public so K900CommandHandler can call it when ACK is received as JSON
+     */
+    public void handleFileTransferAck(int state, int index) {
+        if (currentFileTransfer == null || !currentFileTransfer.isActive) {
+            return;
+        }
+        
+        Log.d(TAG, "File transfer ACK: state=" + state + ", index=" + index);
+        
+        if (state == 1) { // Success (K900 uses state=1 for success)
+            // Remove from pending packets
+            pendingPackets.remove(index);
+            
+            // Move to next packet
+            currentFileTransfer.currentPacketIndex = index + 1;
+            sendNextFilePacket();
+        } else {
+            // Error - retry the packet
+            Log.w(TAG, "File packet " + index + " failed with state " + state + ", retrying");
+            currentFileTransfer.currentPacketIndex = index;
+            sendNextFilePacket();
+        }
+    }
+    
+    /**
+     * Process received message for file transfer acknowledgments
+     */
+    private void processReceivedMessage(byte[] message) {
+        if (message == null || message.length < 4) {
+            return;
+        }
+        
+        // Check if this is a file transfer acknowledgment
+        // Format: [CMD_TYPE][STATE][INDEX_HIGH][INDEX_LOW]...
+        if (message[0] == K900ProtocolUtils.CMD_TYPE_PHOTO && message.length >= 4) {
+            int state = message[1] & 0xFF;
+            int index = ((message[2] & 0xFF) << 8) | (message[3] & 0xFF);
+            handleFileTransferAck(state, index);
         }
     }
 } 

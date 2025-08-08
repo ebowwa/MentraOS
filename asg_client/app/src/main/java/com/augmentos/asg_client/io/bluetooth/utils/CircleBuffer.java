@@ -25,31 +25,6 @@ public class CircleBuffer {
     }
     
     /**
-     * Check if the buffer can accommodate the specified number of bytes
-     * @param len Number of bytes to check
-     * @return true if the buffer can accommodate the bytes, false otherwise
-     */
-    public boolean canAdd(int len) {
-        if (len > mLen) {
-            return false;
-        }
-        
-        if (begin == end) {
-            return true; // Empty buffer
-        }
-        
-        if (end > begin) {
-            // Data is contiguous, check if there's enough space
-            int availableSpace = mLen - end + begin - 1;
-            return availableSpace >= len;
-        } else {
-            // Data wraps around, check if there's enough space
-            int availableSpace = begin - end - 1;
-            return availableSpace >= len;
-        }
-    }
-    
-    /**
      * Add data to the buffer
      * @param buf Source buffer
      * @param offset Offset in source buffer
@@ -123,26 +98,32 @@ public class CircleBuffer {
             return fetchSize;
         } else {
             int laterSize = mLen - begin;
-            if (laterSize >= len) {
-                fetchSize = len;
-                ByteUtil.copyBytes(mBuf, begin, fetchSize, buf, offset);
+            if (len <= laterSize) {
+                ByteUtil.copyBytes(mBuf, begin, len, buf, offset);
+                return len;
             } else {
-                fetchSize = laterSize;
-                ByteUtil.copyBytes(mBuf, begin, fetchSize, buf, offset);
-                int remainingLen = len - laterSize;
-                if (remainingLen > 0 && end > 0) {
-                    int frontFetchSize = Math.min(remainingLen, end);
-                    ByteUtil.copyBytes(mBuf, 0, frontFetchSize, buf, offset + laterSize);
-                    fetchSize += frontFetchSize;
+                int offset2 = offset;
+                if (laterSize > 0) {
+                    ByteUtil.copyBytes(mBuf, begin, laterSize, buf, offset2);
+                    offset2 += laterSize;
                 }
+                
+                int frontSize = end;
+                if (len - laterSize <= frontSize) {
+                    fetchSize = len - laterSize;
+                } else {
+                    fetchSize = frontSize;
+                }
+                
+                ByteUtil.copyBytes(mBuf, 0, fetchSize, buf, offset2);
+                return (fetchSize + laterSize);
             }
-            return fetchSize;
         }
     }
     
     /**
-     * Get the current data length in the buffer
-     * @return Number of bytes currently in the buffer
+     * Get the amount of data in the buffer
+     * @return Number of bytes in the buffer
      */
     public int getDataLen() {
         if (begin == end) {
@@ -150,17 +131,70 @@ public class CircleBuffer {
         }
         
         if (end > begin) {
-            return end - begin;
+            return (end - begin);
         } else {
-            return mLen - begin + end;
+            return (mLen + end - begin);
         }
+    }
+    
+    /**
+     * Remove data from the head of the buffer
+     * @param size Number of bytes to remove
+     */
+    public void removeHead(int size) {
+        if (end >= begin) {
+            if (begin + size >= end) {
+                begin = end;
+            } else {
+                begin += size;
+            }
+        } else {
+            int remaindSize = mLen - begin + end;
+            if (size >= remaindSize) {
+                begin = end;
+            } else {
+                begin = (begin + size) % mLen;
+            }
+        }
+        
+        // Keep this circle buffer log
+        //Log.d(TAG, "Removed " + size + " bytes from buffer head, " + getDataLen() + " bytes remaining");
     }
     
     /**
      * Clear the buffer
      */
     public void clear() {
-        begin = 0;
-        end = 0;
+        begin = end = 0;
+        for (int i = 0; i < mLen; i++) {
+            mBuf[i] = 0;
+        }
+        // Keep this circle buffer log
+        Log.d(TAG, "Buffer cleared");
     }
-} 
+    
+    /**
+     * Check if the buffer can add the specified amount of data
+     * @param size Size to check
+     * @return true if the data can be added, false otherwise
+     */
+    private boolean canAdd(int size) {
+        if (size >= mLen) {
+            return false;
+        }
+        
+        if (begin == end) {
+            // empty list
+            return true;
+        }
+        
+        int remaind = 0;
+        if (end > begin) {
+            remaind = mLen - (end - begin) - 1;
+        } else {
+            remaind = begin - end - 1;
+        }
+        
+        return size <= remaind;
+    }
+}

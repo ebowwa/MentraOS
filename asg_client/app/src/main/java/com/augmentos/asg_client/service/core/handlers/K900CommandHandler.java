@@ -61,7 +61,7 @@ public class K900CommandHandler {
                     break;
 
                 case "cs_flts":
-                    handleFileTransferAck();
+                    handleFileTransferAck(bData);
                     break;
 
                 default:
@@ -127,10 +127,47 @@ public class K900CommandHandler {
     /**
      * Handle file transfer acknowledgment
      */
-    private void handleFileTransferAck() {
+    private void handleFileTransferAck(JSONObject bData) {
         Log.d(TAG, "📦 BES file transfer ACK detected");
-        // File transfer acknowledgment from BES chip (K900 specific code)
-        // Add any specific handling logic here
+        
+        if (bData == null) {
+            Log.w(TAG, "📦 File transfer ACK received but no B field data");
+            return;
+        }
+        
+        // Extract state and index from the JSON
+        int state = bData.optInt("state", -1);
+        int index = bData.optInt("index", -1);
+        
+        if (state == -1 || index == -1) {
+            Log.e(TAG, "📦 File transfer ACK missing state or index");
+            return;
+        }
+        
+        Log.d(TAG, "📦 File transfer ACK: state=" + state + ", index=" + index);
+        
+        // Get the Bluetooth manager and cast to K900BluetoothManager if needed
+        if (serviceManager != null && serviceManager.getBluetoothManager() != null) {
+            com.augmentos.asg_client.io.bluetooth.interfaces.IBluetoothManager bluetoothManager = 
+                serviceManager.getBluetoothManager();
+            
+            // Check if it's a K900BluetoothManager
+            if (bluetoothManager instanceof com.augmentos.asg_client.io.bluetooth.managers.K900BluetoothManager) {
+                com.augmentos.asg_client.io.bluetooth.managers.K900BluetoothManager k900Manager = 
+                    (com.augmentos.asg_client.io.bluetooth.managers.K900BluetoothManager) bluetoothManager;
+                
+                // Convert index from 1-based to 0-based (K900 uses 1-based, our code expects 0-based)
+                int zeroBasedIndex = index - 1;
+                
+                // Call the file transfer acknowledgment handler
+                k900Manager.handleFileTransferAck(state, zeroBasedIndex);
+                Log.d(TAG, "📦 File transfer ACK forwarded to K900BluetoothManager");
+            } else {
+                Log.w(TAG, "📦 Bluetooth manager is not K900BluetoothManager, cannot handle file ACK");
+            }
+        } else {
+            Log.w(TAG, "📦 Service manager or Bluetooth manager not available");
+        }
     }
 
     /**
