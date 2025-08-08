@@ -39,8 +39,7 @@ export default function AppWebView() {
     useCallback(() => {
       const onBackPress = () => {
         // Always go back to home when back is pressed
-        // replace("/(tabs)/home")
-        goBack()
+        clearHistoryAndGoHome()
         return true
       }
 
