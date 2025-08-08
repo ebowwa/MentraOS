@@ -36,6 +36,10 @@ export class MicrophoneManager {
   // Debounce mechanism for subscription changes
   private subscriptionDebounceTimer: NodeJS.Timeout | null = null;
 
+  // Keep-alive mechanism for microphone state
+  private keepAliveTimer: NodeJS.Timeout | null = null;
+  private readonly KEEP_ALIVE_INTERVAL_MS = 10000; // 10 seconds
+
   constructor(session: UserSession) {
     this.session = session;
     this.logger = session.logger.child({ service: 'MicrophoneManager' });
@@ -86,6 +90,9 @@ export class MicrophoneManager {
       // Update transcription service state
       this.updateTranscriptionState();
 
+      // Update keep-alive timer based on final state
+      this.updateKeepAliveTimer();
+
       // Cleanup: reset debounce timer
       this.debounceTimer = null;
       this.pendingState = null;
@@ -101,7 +108,7 @@ export class MicrophoneManager {
    * Send microphone state change message to glasses
    * This replicates the exact message format from the original implementation
    */
-  private sendStateChangeToGlasses(isEnabled: boolean, requiredData: Array<'pcm' | 'transcription' | 'pcm_or_transcription'>): void {
+  private sendStateChangeToGlasses(isEnabled: boolean, requiredData: Array<'pcm' | 'transcription' | 'pcm_or_transcription'>, isKeepAlive: boolean = false): void {
     if (!this.session.websocket || this.session.websocket.readyState !== WebSocket.OPEN) {
       this.logger.warn('Cannot send microphone state change: WebSocket not open');
       return;
@@ -132,7 +139,12 @@ export class MicrophoneManager {
       };
 
       this.session.websocket.send(JSON.stringify(message));
-      this.logger.debug({ message }, 'Sent microphone state change message');
+      this.logger.debug({ message, isKeepAlive }, isKeepAlive ? 'Sent microphone keep-alive message' : 'Sent microphone state change message');
+
+      // Start or update keep-alive timer after successful send
+      if (!isKeepAlive) {
+        this.updateKeepAliveTimer();
+      }
     } catch (error) {
       this.logger.error(error, 'Error sending microphone state change');
     }
@@ -237,6 +249,49 @@ export class MicrophoneManager {
   // }
 
   /**
+   * Update the keep-alive timer based on current state
+   * Starts timer if mic is enabled and there are media subscriptions
+   * Stops timer if mic is disabled or no media subscriptions
+   */
+  private updateKeepAliveTimer(): void {
+    // Check if we should have a keep-alive timer running
+    const hasPCMTranscriptionSubscriptions = subscriptionService.hasPCMTranscriptionSubscriptions(this.session.sessionId);
+    const shouldHaveKeepAlive = this.enabled && hasPCMTranscriptionSubscriptions.hasMedia;
+
+    if (shouldHaveKeepAlive && !this.keepAliveTimer) {
+      // Start keep-alive timer
+      this.logger.info('Starting microphone keep-alive timer');
+      this.keepAliveTimer = setInterval(() => {
+        // Only send if WebSocket is still open and we still have media subscriptions
+        if (this.session.websocket && this.session.websocket.readyState === WebSocket.OPEN) {
+          const currentSubscriptions = subscriptionService.hasPCMTranscriptionSubscriptions(this.session.sessionId);
+          if (currentSubscriptions.hasMedia && this.enabled) {
+            this.logger.debug('Sending microphone keep-alive');
+            this.sendStateChangeToGlasses(this.lastSentState, this.lastSentRequiredData, true);
+          } else {
+            // Conditions no longer met, stop the timer
+            this.stopKeepAliveTimer();
+          }
+        }
+      }, this.KEEP_ALIVE_INTERVAL_MS);
+    } else if (!shouldHaveKeepAlive && this.keepAliveTimer) {
+      // Stop keep-alive timer
+      this.stopKeepAliveTimer();
+    }
+  }
+
+  /**
+   * Stop the keep-alive timer
+   */
+  private stopKeepAliveTimer(): void {
+    if (this.keepAliveTimer) {
+      this.logger.info('Stopping microphone keep-alive timer');
+      clearInterval(this.keepAliveTimer);
+      this.keepAliveTimer = null;
+    }
+  }
+
+  /**
    * Cleanup resources
    */
   dispose(): void {
@@ -250,6 +305,8 @@ export class MicrophoneManager {
       clearTimeout(this.subscriptionDebounceTimer);
       this.subscriptionDebounceTimer = null;
     }
+    // Stop keep-alive timer
+    this.stopKeepAliveTimer();
   }
 }
 
