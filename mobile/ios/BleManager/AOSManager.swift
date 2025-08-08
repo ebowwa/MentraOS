@@ -92,6 +92,7 @@ struct ViewState {
     private var preferredMic = "glasses"
     private var micEnabled = false
     private var currentRequiredData: [SpeechRequiredDataType] = []
+    private var pcmAudioPlayer: PCMAudioPlayer?
 
     // button settings:
     private var buttonPressMode = "photo"
@@ -109,6 +110,7 @@ struct ViewState {
     override init() {
         vad = SileroVADStrategy()
         serverComms = ServerComms.getInstance()
+        pcmAudioPlayer = PCMAudioPlayer()
         super.init()
 
         // Initialize SherpaOnnx Transcriber
@@ -267,6 +269,8 @@ struct ViewState {
                     CoreCommsService.log("PCM conversion resulted in empty data")
                     return
                 }
+
+                self.pcmAudioPlayer?.playPCMData(pcmData)
 
                 // feed PCM to the VAD:
                 guard let vad = self.vad else {
