@@ -5,6 +5,7 @@ import com.augmentos.asg_client.service.legacy.interfaces.ICommandHandler;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Command handler registry following Open/Closed Principle.
@@ -27,14 +28,18 @@ public class CommandHandlerRegistry {
             return;
         }
         
-        String commandType = handler.getCommandType();
-        if (commandType == null || commandType.trim().isEmpty()) {
-            Log.w(TAG, "Handler has invalid command type: " + commandType);
+        Set<String> commandTypes = handler.getSupportedCommandTypes();
+        if (commandTypes == null || commandTypes.isEmpty()) {
+            Log.w(TAG, "Handler has no supported command types");
             return;
         }
         
-        handlers.put(commandType, handler);
-        Log.d(TAG, "✅ Registered command handler for: " + commandType);
+        for (String commandType : commandTypes) {
+            if (commandType != null && !commandType.trim().isEmpty()) {
+                handlers.put(commandType, handler);
+                Log.d(TAG, "✅ Registered command handler for: " + commandType);
+            }
+        }
     }
 
     /**
@@ -42,7 +47,7 @@ public class CommandHandlerRegistry {
      * @param type The command type to look up
      * @return The handler for the command type, or null if not found
      */
-    public ICommandHandler getHandler(String type) {
+    public ICommandHandler getHandlerByCommandType(String type) {
         if (type == null || type.trim().isEmpty()) {
             Log.w(TAG, "Attempted to get handler for null or empty type");
             return null;

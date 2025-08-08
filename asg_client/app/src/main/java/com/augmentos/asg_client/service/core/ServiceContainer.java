@@ -3,7 +3,7 @@ package com.augmentos.asg_client.service.core;
 import android.content.Context;
 import android.util.Log;
 
-import com.augmentos.asg_client.di.AppModule;
+
 import com.augmentos.asg_client.io.file.core.FileManager;
 import com.augmentos.asg_client.io.file.core.FileManagerFactory;
 import com.augmentos.asg_client.service.communication.interfaces.ICommunicationManager;
@@ -12,8 +12,8 @@ import com.augmentos.asg_client.service.communication.managers.CommunicationMana
 import com.augmentos.asg_client.service.communication.managers.ResponseBuilder;
 import com.augmentos.asg_client.service.core.processors.CommandProcessor;
 import com.augmentos.asg_client.service.legacy.managers.AsgClientServiceManager;
-import com.augmentos.asg_client.service.media.interfaces.IStreamingManager;
-import com.augmentos.asg_client.service.media.managers.StreamingManager;
+import com.augmentos.asg_client.service.media.interfaces.IMediaManager;
+import com.augmentos.asg_client.service.media.managers.MediaManager;
 import com.augmentos.asg_client.service.system.interfaces.IConfigurationManager;
 import com.augmentos.asg_client.service.system.interfaces.IServiceLifecycle;
 import com.augmentos.asg_client.service.system.interfaces.IStateManager;
@@ -40,7 +40,7 @@ public class ServiceContainer {
     private final ICommunicationManager communicationManager;
     private final IConfigurationManager configurationManager;
     private final IStateManager stateManager;
-    private final IStreamingManager streamingManager;
+    private final IMediaManager streamingManager;
 
     private final FileManager fileManager;
 
@@ -60,7 +60,7 @@ public class ServiceContainer {
         ((CommunicationManager) this.communicationManager).setServiceManager(serviceManager);
         this.configurationManager = new ConfigurationManager(context);
         this.stateManager = new StateManager(serviceManager);
-        this.streamingManager = new StreamingManager(context, serviceManager);
+        this.streamingManager = new MediaManager(context, serviceManager);
 
 
         // Initialize CommandProcessor with interface-based managers
@@ -113,7 +113,7 @@ public class ServiceContainer {
     /**
      * Get streaming manager
      */
-    public IStreamingManager getStreamingManager() {
+    public IMediaManager getStreamingManager() {
         return streamingManager;
     }
 

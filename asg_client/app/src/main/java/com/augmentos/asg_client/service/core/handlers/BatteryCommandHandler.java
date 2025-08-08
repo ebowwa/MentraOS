@@ -7,6 +7,8 @@ import com.augmentos.asg_client.service.system.interfaces.IStateManager;
 
 import org.json.JSONObject;
 
+import java.util.Set;
+
 /**
  * Handler for battery-related commands.
  * Follows Single Responsibility Principle by handling only battery commands.
@@ -21,12 +23,32 @@ public class BatteryCommandHandler implements ICommandHandler {
     }
 
     @Override
-    public String getCommandType() {
-        return "battery_status";
+    public Set<String> getSupportedCommandTypes() {
+        return Set.of("battery_status", "request_battery_state");
     }
 
     @Override
-    public boolean handleCommand(JSONObject data) {
+    public boolean handleCommand(String commandType, JSONObject data) {
+        try {
+            switch (commandType) {
+                case "battery_status":
+                    return handleBatteryStatus(data);
+                case "request_battery_state":
+                    return handleRequestBatteryState();
+                default:
+                    Log.e(TAG, "Unsupported battery command: " + commandType);
+                    return false;
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error handling battery command: " + commandType, e);
+            return false;
+        }
+    }
+
+    /**
+     * Handle battery status command
+     */
+    private boolean handleBatteryStatus(JSONObject data) {
         try {
             int level = data.optInt("level", -1);
             boolean charging = data.optBoolean("charging", false);
@@ -36,6 +58,21 @@ public class BatteryCommandHandler implements ICommandHandler {
             return true;
         } catch (Exception e) {
             Log.e(TAG, "Error handling battery status command", e);
+            return false;
+        }
+    }
+
+    /**
+     * Handle request battery state command
+     */
+    private boolean handleRequestBatteryState() {
+        try {
+            // This would typically trigger sending current battery status
+            // Implementation depends on the state manager
+            Log.d(TAG, "Requesting battery state");
+            return true;
+        } catch (Exception e) {
+            Log.e(TAG, "Error handling request battery state command", e);
             return false;
         }
     }

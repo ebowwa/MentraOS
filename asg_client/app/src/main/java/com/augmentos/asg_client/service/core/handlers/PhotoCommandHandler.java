@@ -9,6 +9,8 @@ import com.augmentos.asg_client.service.legacy.managers.AsgClientServiceManager;
 
 import org.json.JSONObject;
 
+import java.util.Set;
+
 /**
  * Handler for photo-related commands.
  * Follows Single Responsibility Principle by handling only photo commands.
@@ -25,16 +27,34 @@ public class PhotoCommandHandler extends BaseMediaCommandHandler {
     }
 
     @Override
-    public String getCommandType() {
-        return "take_photo";
+    public Set<String> getSupportedCommandTypes() {
+        return Set.of("take_photo");
     }
 
     @Override
-    public boolean handleCommand(JSONObject data) {
+    public boolean handleCommand(String commandType, JSONObject data) {
+        try {
+            switch (commandType) {
+                case "take_photo":
+                    return handleTakePhoto(data);
+                default:
+                    Log.e(TAG, "Unsupported photo command: " + commandType);
+                    return false;
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error handling photo command: " + commandType, e);
+            return false;
+        }
+    }
+
+    /**
+     * Handle take photo command
+     */
+    private boolean handleTakePhoto(JSONObject data) {
         try {
             // Resolve package name using base class functionality
             String packageName = resolvePackageName(data);
-            logCommandStart(getCommandType(), packageName);
+            logCommandStart("take_photo", packageName);
 
             // Validate requestId using base class functionality
             if (!validateRequestId(data)) {
@@ -51,24 +71,24 @@ public class PhotoCommandHandler extends BaseMediaCommandHandler {
             String fileName = generateUniqueFilename("IMG_", ".jpg");
             String photoFilePath = generateFilePath(packageName, fileName);
             if (photoFilePath == null) {
-                logCommandResult(getCommandType(), false, "Failed to generate file path");
+                logCommandResult("take_photo", false, "Failed to generate file path");
                 return false;
             }
 
             MediaCaptureService captureService = serviceManager.getMediaCaptureService();
             if (captureService == null) {
-                logCommandResult(getCommandType(), false, "Media capture service not available");
+                logCommandResult("take_photo", false, "Media capture service not available");
                 return false;
             }
 
             // Process photo capture based on transfer method
             boolean success = processPhotoCapture(captureService, photoFilePath, requestId, webhookUrl, bleImgId, save, transferMethod);
-            logCommandResult(getCommandType(), success, success ? null : "Photo capture failed");
+            logCommandResult("take_photo", success, success ? null : "Photo capture failed");
             return success;
             
         } catch (Exception e) {
-            Log.e(TAG, "Error handling photo command", e);
-            logCommandResult(getCommandType(), false, "Exception: " + e.getMessage());
+            Log.e(TAG, "Error handling take photo command", e);
+            logCommandResult("take_photo", false, "Exception: " + e.getMessage());
             return false;
         }
     }

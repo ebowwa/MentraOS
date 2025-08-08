@@ -6,7 +6,7 @@ import org.json.JSONObject;
  * Interface for streaming management (RTMP, video recording, etc.).
  * Follows Interface Segregation Principle by providing focused streaming methods.
  */
-public interface IStreamingManager {
+public interface IMediaManager {
     
     /**
      * Start RTMP streaming

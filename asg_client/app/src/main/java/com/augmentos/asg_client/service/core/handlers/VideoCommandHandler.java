@@ -2,14 +2,17 @@ package com.augmentos.asg_client.service.core.handlers;
 
 import android.content.Context;
 import android.util.Log;
+
 import com.augmentos.asg_client.io.media.core.MediaCaptureService;
 import com.augmentos.asg_client.io.file.core.FileManager;
 import com.augmentos.asg_client.service.legacy.managers.AsgClientServiceManager;
-import com.augmentos.asg_client.service.media.interfaces.IStreamingManager;
+import com.augmentos.asg_client.service.media.interfaces.IMediaManager;
 
 import org.json.JSONException;
 import org.json.JSONObject;
+
 import java.util.Locale;
+import java.util.Set;
 
 /**
  * Handler for video recording commands.
@@ -18,27 +21,49 @@ import java.util.Locale;
  */
 public class VideoCommandHandler extends BaseMediaCommandHandler {
     private static final String TAG = "VideoCommandHandler";
-    
-    private final AsgClientServiceManager serviceManager;
-    private final IStreamingManager streamingManager;
 
-    public VideoCommandHandler(Context context, AsgClientServiceManager serviceManager, IStreamingManager streamingManager, FileManager fileManager) {
+    private final AsgClientServiceManager serviceManager;
+    private final IMediaManager streamingManager;
+
+    public VideoCommandHandler(Context context, AsgClientServiceManager serviceManager, IMediaManager streamingManager, FileManager fileManager) {
         super(context, fileManager);
         this.serviceManager = serviceManager;
         this.streamingManager = streamingManager;
     }
 
     @Override
-    public String getCommandType() {
-        return "start_video_recording";
+    public Set<String> getSupportedCommandTypes() {
+        return Set.of("start_video_recording", "stop_video_recording", "get_video_recording_status");
     }
 
     @Override
-    public boolean handleCommand(JSONObject data) {
+    public boolean handleCommand(String commandType, JSONObject data) {
+        try {
+            switch (commandType) {
+                case "start_video_recording":
+                    return handleStartVideoRecording(data);
+                case "stop_video_recording":
+                    return handleStopCommand();
+                case "get_video_recording_status":
+                    return handleStatusCommand();
+                default:
+                    Log.e(TAG, "Unsupported video command: " + commandType);
+                    return false;
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error handling video command: " + commandType, e);
+            return false;
+        }
+    }
+
+    /**
+     * Handle start video recording command
+     */
+    private boolean handleStartVideoRecording(JSONObject data) {
         try {
             // Resolve package name using base class functionality
             String packageName = resolvePackageName(data);
-            logCommandStart(getCommandType(), packageName);
+            logCommandStart("start_video_recording", packageName);
 
             // Validate requestId using base class functionality
             if (!validateRequestId(data)) {
@@ -48,24 +73,24 @@ public class VideoCommandHandler extends BaseMediaCommandHandler {
 
             MediaCaptureService captureService = serviceManager.getMediaCaptureService();
             if (captureService == null) {
-                logCommandResult(getCommandType(), false, "Media capture service is not initialized");
+                logCommandResult("start_video_recording", false, "Media capture service is not initialized");
                 streamingManager.sendVideoRecordingStatusResponse(false, "service_unavailable", null);
                 return false;
             }
 
             if (captureService.isRecordingVideo()) {
-                logCommandResult(getCommandType(), true, "Already recording video");
+                logCommandResult("start_video_recording", true, "Already recording video");
                 streamingManager.sendVideoRecordingStatusResponse(true, "already_recording", null);
                 return true;
             }
 
             captureService.handleVideoButtonPress();
-            logCommandResult(getCommandType(), true, null);
+            logCommandResult("start_video_recording", true, null);
             streamingManager.sendVideoRecordingStatusResponse(true, "recording_started", null);
             return true;
         } catch (Exception e) {
-            Log.e(TAG, "Error handling video command", e);
-            logCommandResult(getCommandType(), false, "Exception: " + e.getMessage());
+            Log.e(TAG, "Error handling start video recording command", e);
+            logCommandResult("start_video_recording", false, "Exception: " + e.getMessage());
             streamingManager.sendVideoRecordingStatusResponse(false, "error", e.getMessage());
             return false;
         }

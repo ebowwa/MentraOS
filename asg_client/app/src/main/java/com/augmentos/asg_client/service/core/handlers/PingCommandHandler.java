@@ -8,6 +8,8 @@ import com.augmentos.asg_client.service.legacy.interfaces.ICommandHandler;
 
 import org.json.JSONObject;
 
+import java.util.Set;
+
 /**
  * Handler for ping commands.
  * Follows Single Responsibility Principle by handling only ping commands.
@@ -25,12 +27,30 @@ public class PingCommandHandler implements ICommandHandler {
     }
 
     @Override
-    public String getCommandType() {
-        return "ping";
+    public Set<String> getSupportedCommandTypes() {
+        return Set.of("ping");
     }
 
     @Override
-    public boolean handleCommand(JSONObject data) {
+    public boolean handleCommand(String commandType, JSONObject data) {
+        try {
+            switch (commandType) {
+                case "ping":
+                    return handlePing(data);
+                default:
+                    Log.e(TAG, "Unsupported ping command: " + commandType);
+                    return false;
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error handling ping command: " + commandType, e);
+            return false;
+        }
+    }
+
+    /**
+     * Handle ping command
+     */
+    private boolean handlePing(JSONObject data) {
         Log.d(TAG, "🏓 =========================================");
         Log.d(TAG, "🏓 HANDLE PING COMMAND");
         Log.d(TAG, "🏓 =========================================");

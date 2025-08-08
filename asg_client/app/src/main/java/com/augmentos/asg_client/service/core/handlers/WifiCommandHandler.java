@@ -10,6 +10,7 @@ import com.augmentos.asg_client.service.system.interfaces.IStateManager;
 import org.json.JSONObject;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Handler for WiFi-related commands.
@@ -31,12 +32,36 @@ public class WifiCommandHandler implements ICommandHandler {
     }
 
     @Override
-    public String getCommandType() {
-        return "set_wifi_credentials";
+    public Set<String> getSupportedCommandTypes() {
+        return Set.of("set_wifi_credentials", "request_wifi_status", "request_wifi_scan", "set_hotspot_state");
     }
 
     @Override
-    public boolean handleCommand(JSONObject data) {
+    public boolean handleCommand(String commandType, JSONObject data) {
+        try {
+            switch (commandType) {
+                case "set_wifi_credentials":
+                    return handleSetWifiCredentials(data);
+                case "request_wifi_status":
+                    return handleRequestWifiStatus();
+                case "request_wifi_scan":
+                    return handleRequestWifiScan();
+                case "set_hotspot_state":
+                    return handleSetHotspotState(data);
+                default:
+                    Log.e(TAG, "Unsupported WiFi command: " + commandType);
+                    return false;
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error handling WiFi command: " + commandType, e);
+            return false;
+        }
+    }
+
+    /**
+     * Handle set WiFi credentials command
+     */
+    private boolean handleSetWifiCredentials(JSONObject data) {
         try {
             String ssid = data.optString("ssid", "");
             String password = data.optString("password", "");

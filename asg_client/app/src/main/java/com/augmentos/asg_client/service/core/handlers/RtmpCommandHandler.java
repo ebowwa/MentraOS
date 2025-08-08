@@ -2,13 +2,16 @@ package com.augmentos.asg_client.service.core.handlers;
 
 import android.content.Context;
 import android.util.Log;
+
 import com.augmentos.asg_client.io.streaming.services.RtmpStreamingService;
 import com.augmentos.asg_client.service.legacy.interfaces.ICommandHandler;
-import com.augmentos.asg_client.service.media.interfaces.IStreamingManager;
+import com.augmentos.asg_client.service.media.interfaces.IMediaManager;
 import com.augmentos.asg_client.service.system.interfaces.IStateManager;
 
 import org.json.JSONException;
 import org.json.JSONObject;
+
+import java.util.Set;
 
 /**
  * Handler for RTMP streaming commands.
@@ -16,24 +19,48 @@ import org.json.JSONObject;
  */
 public class RtmpCommandHandler implements ICommandHandler {
     private static final String TAG = "RtmpCommandHandler";
-    
+
     private final Context context;
     private final IStateManager stateManager;
-    private final IStreamingManager streamingManager;
+    private final IMediaManager streamingManager;
 
-    public RtmpCommandHandler(Context context, IStateManager stateManager, IStreamingManager streamingManager) {
+    public RtmpCommandHandler(Context context, IStateManager stateManager, IMediaManager streamingManager) {
         this.context = context;
         this.stateManager = stateManager;
         this.streamingManager = streamingManager;
     }
 
     @Override
-    public String getCommandType() {
-        return "start_rtmp_stream";
+    public Set<String> getSupportedCommandTypes() {
+        return Set.of("start_rtmp_stream", "stop_rtmp_stream", "get_rtmp_status", "keep_rtmp_stream_alive");
     }
 
     @Override
-    public boolean handleCommand(JSONObject data) {
+    public boolean handleCommand(String commandType, JSONObject data) {
+        try {
+            switch (commandType) {
+                case "start_rtmp_stream":
+                    return handleStartRtmpStream(data);
+                case "stop_rtmp_stream":
+                    return handleStopCommand();
+                case "get_rtmp_status":
+                    return handleStatusCommand();
+                case "keep_rtmp_stream_alive":
+                    return handleKeepAliveCommand(data);
+                default:
+                    Log.e(TAG, "Unsupported RTMP command: " + commandType);
+                    return false;
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error handling RTMP command: " + commandType, e);
+            return false;
+        }
+    }
+
+    /**
+     * Handle start RTMP stream command
+     */
+    private boolean handleStartRtmpStream(JSONObject data) {
         try {
             String rtmpUrl = data.optString("rtmpUrl", "");
             if (rtmpUrl.isEmpty()) {

@@ -7,15 +7,12 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
-import android.content.SharedPreferences;
 import android.os.Binder;
 import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
 import android.util.Log;
-
-import androidx.preference.PreferenceManager;
 
 import com.augmentos.asg_client.SysControl;
 import com.augmentos.asg_client.io.bluetooth.interfaces.BluetoothStateListener;
@@ -25,14 +22,12 @@ import com.augmentos.asg_client.io.media.managers.MediaUploadQueueManager;
 import com.augmentos.asg_client.io.network.interfaces.NetworkStateListener;
 import com.augmentos.asg_client.io.ota.utils.OtaConstants;
 import com.augmentos.asg_client.io.streaming.events.StreamingEvent;
-import com.augmentos.asg_client.io.streaming.interfaces.StreamingStatusCallback;
-import com.augmentos.asg_client.service.core.ServiceContainer;
 import com.augmentos.asg_client.service.communication.interfaces.ICommunicationManager;
 import com.augmentos.asg_client.service.core.processors.CommandProcessor;
 import com.augmentos.asg_client.service.system.interfaces.IConfigurationManager;
 import com.augmentos.asg_client.service.system.interfaces.IServiceLifecycle;
 import com.augmentos.asg_client.service.system.interfaces.IStateManager;
-import com.augmentos.asg_client.service.media.interfaces.IStreamingManager;
+import com.augmentos.asg_client.service.media.interfaces.IMediaManager;
 import com.augmentos.asg_client.service.system.managers.StateManager;
 import com.augmentos.augmentos_core.AugmentosService;
 
@@ -43,7 +38,6 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.nio.charset.StandardCharsets;
-import java.util.List;
 import java.util.Objects;
 
 /**
@@ -92,7 +86,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     private ICommunicationManager communicationManager;
     private IConfigurationManager configurationManager;
     private IStateManager stateManager;
-    private IStreamingManager streamingManager;
+    private IMediaManager streamingManager;
 
     private CommandProcessor commandProcessor;
 

@@ -6,6 +6,8 @@ import com.augmentos.asg_client.service.legacy.interfaces.ICommandHandler;
 
 import org.json.JSONObject;
 
+import java.util.Set;
+
 /**
  * Handler for OTA-related commands.
  * Follows Single Responsibility Principle by handling only OTA commands.
@@ -18,12 +20,30 @@ public class OtaCommandHandler implements ICommandHandler {
     }
 
     @Override
-    public String getCommandType() {
-        return "ota_update_response";
+    public Set<String> getSupportedCommandTypes() {
+        return Set.of("ota_update_response");
     }
 
     @Override
-    public boolean handleCommand(JSONObject data) {
+    public boolean handleCommand(String commandType, JSONObject data) {
+        try {
+            switch (commandType) {
+                case "ota_update_response":
+                    return handleOtaUpdateResponse(data);
+                default:
+                    Log.e(TAG, "Unsupported OTA command: " + commandType);
+                    return false;
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error handling OTA command: " + commandType, e);
+            return false;
+        }
+    }
+
+    /**
+     * Handle OTA update response command
+     */
+    private boolean handleOtaUpdateResponse(JSONObject data) {
         try {
             boolean accepted = data.optBoolean("accepted", false);
             if (accepted) {

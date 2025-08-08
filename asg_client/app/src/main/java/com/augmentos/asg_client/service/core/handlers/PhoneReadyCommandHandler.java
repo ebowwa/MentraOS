@@ -11,6 +11,8 @@ import com.augmentos.asg_client.service.system.interfaces.IStateManager;
 
 import org.json.JSONObject;
 
+import java.util.Set;
+
 /**
  * Handler for phone ready commands.
  * Follows Single Responsibility Principle by handling only phone ready commands.
@@ -31,12 +33,30 @@ public class PhoneReadyCommandHandler implements ICommandHandler {
     }
 
     @Override
-    public String getCommandType() {
-        return "phone_ready";
+    public Set<String> getSupportedCommandTypes() {
+        return Set.of("phone_ready");
     }
 
     @Override
-    public boolean handleCommand(JSONObject data) {
+    public boolean handleCommand(String commandType, JSONObject data) {
+        try {
+            switch (commandType) {
+                case "phone_ready":
+                    return handlePhoneReady(data);
+                default:
+                    Log.e(TAG, "Unsupported phone ready command: " + commandType);
+                    return false;
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error handling phone ready command: " + commandType, e);
+            return false;
+        }
+    }
+
+    /**
+     * Handle phone ready command
+     */
+    private boolean handlePhoneReady(JSONObject data) {
         Log.d(TAG, "📱 =========================================");
         Log.d(TAG, "📱 HANDLE PHONE READY COMMAND");
         Log.d(TAG, "📱 =========================================");

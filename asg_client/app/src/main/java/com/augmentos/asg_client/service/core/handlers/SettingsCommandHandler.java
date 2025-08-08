@@ -9,6 +9,8 @@ import com.augmentos.asg_client.service.legacy.managers.AsgClientServiceManager;
 import com.augmentos.asg_client.settings.AsgSettings;
 import org.json.JSONObject;
 
+import java.util.Set;
+
 /**
  * Handler for settings-related commands.
  * Follows Single Responsibility Principle by handling only settings commands.
@@ -29,12 +31,32 @@ public class SettingsCommandHandler implements ICommandHandler {
     }
 
     @Override
-    public String getCommandType() {
-        return "set_photo_mode";
+    public Set<String> getSupportedCommandTypes() {
+        return Set.of("set_photo_mode", "button_mode_setting");
     }
 
     @Override
-    public boolean handleCommand(JSONObject data) {
+    public boolean handleCommand(String commandType, JSONObject data) {
+        try {
+            switch (commandType) {
+                case "set_photo_mode":
+                    return handleSetPhotoMode(data);
+                case "button_mode_setting":
+                    return handleButtonModeSetting(data);
+                default:
+                    Log.e(TAG, "Unsupported settings command: " + commandType);
+                    return false;
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error handling settings command: " + commandType, e);
+            return false;
+        }
+    }
+
+    /**
+     * Handle set photo mode command
+     */
+    private boolean handleSetPhotoMode(JSONObject data) {
         try {
             String mode = data.optString("mode", "save_locally");
             JSONObject ack = responseBuilder.buildPhotoModeAckResponse(mode);

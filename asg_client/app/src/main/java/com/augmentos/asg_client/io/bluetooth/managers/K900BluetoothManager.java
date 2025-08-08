@@ -6,24 +6,13 @@ import android.util.Log;
 import com.augmentos.asg_client.io.bluetooth.core.ComManager;
 import com.augmentos.asg_client.io.bluetooth.interfaces.SerialListener;
 import com.augmentos.asg_client.io.bluetooth.utils.K900MessageParser;
-import com.augmentos.asg_client.io.bluetooth.utils.ByteUtil;
 import com.augmentos.asg_client.io.bluetooth.core.BaseBluetoothManager;
 import com.augmentos.asg_client.io.bluetooth.utils.DebugNotificationManager;
 
-import java.util.Arrays;
-import java.util.List;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 
-import org.json.JSONObject;
-import org.json.JSONException;
-
-import com.augmentos.asg_client.reporting.domains.BluetoothReporting;
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.K900ProtocolUtils;
 
 /**
@@ -33,9 +22,9 @@ import com.augmentos.augmentos_core.smarterglassesmanager.utils.K900ProtocolUtil
 public class K900BluetoothManager extends BaseBluetoothManager implements SerialListener {
     private static final String TAG = "K900BluetoothManager";
 
-    private ComManager comManager;
+    private final ComManager comManager;
     private boolean isSerialOpen = false;
-    private DebugNotificationManager notificationManager;
+    private final DebugNotificationManager notificationManager;
     private K900MessageParser messageParser;
 
     // File transfer state management

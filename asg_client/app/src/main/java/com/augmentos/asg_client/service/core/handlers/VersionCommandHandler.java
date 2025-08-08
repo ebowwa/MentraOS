@@ -9,6 +9,7 @@ import com.augmentos.asg_client.service.legacy.managers.AsgClientServiceManager;
 import org.json.JSONException;
 import org.json.JSONObject;
 import java.nio.charset.StandardCharsets;
+import java.util.Set;
 
 /**
  * Handler for version-related commands.
@@ -26,12 +27,32 @@ public class VersionCommandHandler implements ICommandHandler {
     }
 
     @Override
-    public String getCommandType() {
-        return "request_version";
+    public Set<String> getSupportedCommandTypes() {
+        return Set.of("request_version", "cs_syvr");
     }
 
     @Override
-    public boolean handleCommand(JSONObject data) {
+    public boolean handleCommand(String commandType, JSONObject data) {
+        try {
+            switch (commandType) {
+                case "request_version":
+                    return handleRequestVersion();
+                case "cs_syvr":
+                    return handleCsSyvrCommand();
+                default:
+                    Log.e(TAG, "Unsupported version command: " + commandType);
+                    return false;
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error handling version command: " + commandType, e);
+            return false;
+        }
+    }
+
+    /**
+     * Handle request version command
+     */
+    private boolean handleRequestVersion() {
         try {
             Log.d(TAG, "📊 Received version request - sending version info");
             sendVersionInfo();

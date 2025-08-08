@@ -7,7 +7,7 @@ import com.augmentos.asg_client.io.streaming.events.StreamingCommand;
 import com.augmentos.asg_client.io.streaming.interfaces.StreamingStatusCallback;
 import com.augmentos.asg_client.io.streaming.services.RtmpStreamingService;
 import com.augmentos.asg_client.service.legacy.managers.AsgClientServiceManager;
-import com.augmentos.asg_client.service.media.interfaces.IStreamingManager;
+import com.augmentos.asg_client.service.media.interfaces.IMediaManager;
 
 import org.greenrobot.eventbus.EventBus;
 import org.json.JSONException;
@@ -17,7 +17,7 @@ import org.json.JSONObject;
  * Manages all streaming operations (RTMP, video recording, etc.).
  * Follows Single Responsibility Principle by handling only streaming concerns.
  */
-public class StreamingManager implements IStreamingManager {
+public class MediaManager implements IMediaManager {
     
     private static final String TAG = "StreamingManager";
     
@@ -25,7 +25,7 @@ public class StreamingManager implements IStreamingManager {
     private final AsgClientServiceManager serviceManager;
     private final StreamingStatusCallback streamingStatusCallback;
     
-    public StreamingManager(Context context, AsgClientServiceManager serviceManager) {
+    public MediaManager(Context context, AsgClientServiceManager serviceManager) {
         this.context = context;
         this.serviceManager = serviceManager;
         this.streamingStatusCallback = createStreamingStatusCallback();
