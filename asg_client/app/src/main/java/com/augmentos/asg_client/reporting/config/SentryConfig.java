@@ -1,7 +1,5 @@
 package com.augmentos.asg_client.reporting.config;
 
-import android.content.Context;
-import android.content.SharedPreferences;
 import android.util.Log;
 
 import java.io.IOException;
@@ -20,7 +18,7 @@ import java.util.Properties;
  * SECURITY NOTES:
  * - Never commit actual DSNs to version control
  * - Use environment variables or properties files for sensitive data
- * - The sentry.properties file is already in .gitignore
+ * - The sentry.properties.development file is already in .gitignore
  * - Environment variables take precedence for CI/CD deployments
  */
 public class SentryConfig {
@@ -50,8 +48,8 @@ public class SentryConfig {
     
     // Properties file names (in order of priority)
     private static final String[] PROPERTIES_FILES = {
-        "sentry.properties",     // Main config file (in .gitignore)
-        "env",                   // Environment file (in .gitignore)
+            "sentry.properties.development",     // Main config file (in .gitignore)
+        "sentry.properties",     // Fallback config file
         "config.properties"      // General config (can be committed)
     };
     
@@ -64,18 +62,24 @@ public class SentryConfig {
      * Priority: Environment Variable > Properties File > Build Config > null
      */
     public static String getSentryDsn() {
+        Log.d(TAG, "Getting Sentry DSN from secure sources...");
+        
         // 1. Check environment variable first (highest priority)
         String dsn = System.getenv(ENV_SENTRY_DSN);
         if (dsn != null && !dsn.trim().isEmpty()) {
-            Log.d(TAG, "Using Sentry DSN from environment variable");
+            Log.i(TAG, "Using Sentry DSN from environment variable");
             return dsn.trim();
+        } else {
+            Log.d(TAG, "No SENTRY_DSN environment variable found");
         }
         
         // 2. Check properties files
         dsn = getProperty(KEY_SENTRY_DSN);
         if (dsn != null && !dsn.trim().isEmpty()) {
-            Log.d(TAG, "Using Sentry DSN from properties file");
+            Log.i(TAG, "Using Sentry DSN from properties file");
             return dsn.trim();
+        } else {
+            Log.d(TAG, "No sentry.dsn property found in configuration files");
         }
         
         // 3. Check BuildConfig (if available)
@@ -86,12 +90,14 @@ public class SentryConfig {
             dsnField.setAccessible(true);
             String buildDsn = (String) dsnField.get(null);
             if (buildDsn != null && !buildDsn.trim().isEmpty()) {
-                Log.d(TAG, "Using Sentry DSN from BuildConfig");
+                Log.i(TAG, "Using Sentry DSN from BuildConfig");
                 return buildDsn.trim();
+            } else {
+                Log.d(TAG, "BuildConfig SENTRY_DSN is null or empty");
             }
         } catch (Exception e) {
             // BuildConfig field doesn't exist, which is fine
-            Log.d(TAG, "No BuildConfig SENTRY_DSN found");
+            Log.d(TAG, "No BuildConfig SENTRY_DSN field found: " + e.getMessage());
         }
         
         // 4. Return null for security (no default DSN)
@@ -241,19 +247,45 @@ public class SentryConfig {
      * Log configuration status (safe for production)
      */
     public static void logConfigurationStatus() {
-        if (isValidConfiguration()) {
-            Log.i(TAG, "Sentry configuration is valid and enabled");
-            Log.d(TAG, "Sentry environment: " + getEnvironment());
-            Log.d(TAG, "Sentry release: " + getRelease());
-            Log.d(TAG, "Sentry sample rate: " + getSampleRate());
+        Log.i(TAG, "=== Sentry Configuration Status ===");
+        
+        // Check configuration sources
+        String dsnSource = "none";
+        if (System.getenv(ENV_SENTRY_DSN) != null) {
+            dsnSource = "environment variable";
+        } else if (getProperty(KEY_SENTRY_DSN) != null) {
+            dsnSource = "properties file";
         } else {
-            Log.w(TAG, "Sentry configuration is invalid or disabled");
-            if (!isSentryEnabled()) {
-                Log.d(TAG, "Sentry is disabled");
-            } else {
-                Log.d(TAG, "Sentry is enabled but DSN is not configured");
+            try {
+                Class<?> buildConfigClass = Class.forName("com.augmentos.asg_client.BuildConfig");
+                java.lang.reflect.Field dsnField = buildConfigClass.getDeclaredField("SENTRY_DSN");
+                dsnField.setAccessible(true);
+                String buildDsn = (String) dsnField.get(null);
+                if (buildDsn != null && !buildDsn.trim().isEmpty()) {
+                    dsnSource = "BuildConfig";
+                }
+            } catch (Exception e) {
+                // BuildConfig field doesn't exist
             }
         }
+        
+        Log.i(TAG, "DSN source: " + dsnSource);
+        Log.i(TAG, "Sentry enabled: " + isSentryEnabled());
+        Log.i(TAG, "Environment: " + getEnvironment());
+        Log.i(TAG, "Release: " + getRelease());
+        Log.i(TAG, "Sample rate: " + getSampleRate());
+        
+        if (isValidConfiguration()) {
+            Log.i(TAG, "✓ Sentry configuration is valid and ready");
+        } else {
+            Log.w(TAG, "✗ Sentry configuration is invalid or disabled");
+            if (!isSentryEnabled()) {
+                Log.d(TAG, "  - Sentry is disabled");
+            } else {
+                Log.d(TAG, "  - Sentry is enabled but DSN is not configured");
+            }
+        }
+        Log.i(TAG, "=====================================");
     }
     
     /**
@@ -277,6 +309,7 @@ public class SentryConfig {
      */
     private static void loadProperties() {
         cachedProperties = new Properties();
+        boolean anyFileLoaded = false;
         
         for (String fileName : PROPERTIES_FILES) {
             try (InputStream input = SentryConfig.class.getClassLoader().getResourceAsStream(fileName)) {
@@ -289,12 +322,18 @@ public class SentryConfig {
                         cachedProperties.setProperty(key, fileProps.getProperty(key));
                     }
                     
-                    Log.d(TAG, "Loaded properties from: " + fileName);
+                    Log.i(TAG, "Successfully loaded properties from: " + fileName);
+                    anyFileLoaded = true;
+                } else {
+                    Log.d(TAG, "Properties file not found: " + fileName);
                 }
             } catch (IOException e) {
-                // File doesn't exist or can't be read, which is fine
-                Log.d(TAG, "Could not load properties from: " + fileName);
+                Log.w(TAG, "Error loading properties from " + fileName + ": " + e.getMessage());
             }
+        }
+        
+        if (!anyFileLoaded) {
+            Log.w(TAG, "No Sentry properties files were loaded. Using environment variables and defaults only.");
         }
         
         propertiesLoaded = true;

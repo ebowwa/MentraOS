@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 
 // --- TYPE DEFINITIONS ---
 interface AppBatchItem {
@@ -43,16 +43,23 @@ interface TooltipProps {
 }
 
 // --- CUSTOM TOOLTIP COMPONENT ---
-const CustomTooltip: React.FC<TooltipProps> = ({ day, healthyCount, unhealthyCount, totalCount, show, position }) => {
+const CustomTooltip: React.FC<TooltipProps> = ({
+  day,
+  healthyCount,
+  unhealthyCount,
+  totalCount,
+  show,
+  position,
+}) => {
   if (!show) return null;
 
   return (
-    <div 
+    <div
       className="fixed z-50 bg-gray-900 text-white text-xs rounded-lg px-3 py-2 shadow-lg pointer-events-none transform -translate-x-1/2 -translate-y-full"
-      style={{ 
-        left: position.x, 
+      style={{
+        left: position.x,
         top: position.y - 8,
-        maxWidth: '200px'
+        maxWidth: "200px",
       }}
     >
       <div className="font-semibold mb-1">Day {day}</div>
@@ -75,7 +82,14 @@ const CustomTooltip: React.FC<TooltipProps> = ({ day, healthyCount, unhealthyCou
 };
 
 // --- INDIVIDUAL DAY BAR FUNCTION ---
-export const updateDayBar = (day: number, appItems: AppBatchItem[], width?: string, height?: string, currentMonth?: number, currentYear?: number) => {
+export const updateDayBar = (
+  day: number,
+  appItems: AppBatchItem[],
+  width?: string,
+  height?: string,
+  currentMonth?: number,
+  currentYear?: number,
+) => {
   let hasHealthy = false;
   let hasUnhealthy = false;
 
@@ -83,18 +97,20 @@ export const updateDayBar = (day: number, appItems: AppBatchItem[], width?: stri
   if (!appItems || !Array.isArray(appItems)) {
     return (
       <div
-        className={`${width || 'flex-1'} ${height} bg-gray-300 rounded-[2px]`}
+        className={`${width || "flex-1"} ${height} bg-gray-300 rounded-[2px]`}
         title={`Day: ${day}`}
       />
     );
   }
 
   // Filter items that match the given day, month, and year (in local time)
-  const itemsForDay = appItems.filter(app => {
+  const itemsForDay = appItems.filter((app) => {
     const appDate = new Date(app.timestamp);
     const matchesDay = appDate.getDate() === day;
-    const matchesMonth = currentMonth !== undefined ? appDate.getMonth() === currentMonth : true;
-    const matchesYear = currentYear !== undefined ? appDate.getFullYear() === currentYear : true;
+    const matchesMonth =
+      currentMonth !== undefined ? appDate.getMonth() === currentMonth : true;
+    const matchesYear =
+      currentYear !== undefined ? appDate.getFullYear() === currentYear : true;
     return matchesDay && matchesMonth && matchesYear;
   });
 
@@ -102,7 +118,7 @@ export const updateDayBar = (day: number, appItems: AppBatchItem[], width?: stri
   if (itemsForDay.length === 0) {
     return (
       <div
-        className={`${width || 'flex-1'} ${height || 'h-5'} bg-gray-300 rounded-[2px]`}
+        className={`${width || "flex-1"} ${height || "h-5"} bg-gray-300 rounded-[2px]`}
         title={`Day: ${day} (No data)`}
       />
     );
@@ -110,7 +126,7 @@ export const updateDayBar = (day: number, appItems: AppBatchItem[], width?: stri
 
   // Evaluate health status of apps for this day
   for (const app of itemsForDay) {
-    if (app.health === 'healthy') {
+    if (app.health === "healthy") {
       hasHealthy = true;
     } else {
       hasUnhealthy = true;
@@ -126,23 +142,37 @@ export const updateDayBar = (day: number, appItems: AppBatchItem[], width?: stri
   }
 
   // Optional: Display a more descriptive tooltip with counts
-  const healthyCount = itemsForDay.filter(app => app.health === 'healthy').length;
+  const healthyCount = itemsForDay.filter(
+    (app) => app.health === "healthy",
+  ).length;
   const unhealthyCount = itemsForDay.length - healthyCount;
   const tooltipText = `Day: ${day} | Healthy: ${healthyCount}, Unhealthy: ${unhealthyCount}`;
 
   return (
     <div
-      className={`${width || 'flex-1'} ${height || 'h-5'} ${colorClass} rounded-[2px]`}
+      className={`${width || "flex-1"} ${height || "h-5"} ${colorClass} rounded-[2px]`}
       title={tooltipText}
     />
   );
 };
 
 // --- ENHANCED UPTIME DAY BAR COMPONENT ---
-const UptimeDayBar: React.FC<UptimeDayBarProps> = ({ day, appItems, width, height, currentMonth, currentYear, isSelected, onDayClick }) => {
+const UptimeDayBar: React.FC<UptimeDayBarProps> = ({
+  day,
+  appItems,
+  width,
+  height,
+  currentMonth,
+  currentYear,
+  isSelected,
+  onDayClick,
+}) => {
   const [isHovered, setIsHovered] = useState(false);
   const [isClicked, setIsClicked] = useState(false);
-  const [tooltip, setTooltip] = useState({ show: false, position: { x: 0, y: 0 } });
+  const [tooltip, setTooltip] = useState({
+    show: false,
+    position: { x: 0, y: 0 },
+  });
 
   let hasHealthy = false;
   let hasUnhealthy = false;
@@ -151,7 +181,7 @@ const UptimeDayBar: React.FC<UptimeDayBarProps> = ({ day, appItems, width, heigh
   if (!appItems || !Array.isArray(appItems)) {
     return (
       <div
-        className={`${width || 'flex-1'} ${height || 'h-5'} bg-gray-300 rounded-[2px] cursor-pointer transition-all duration-200 hover:bg-gray-400 active:transform active:scale-y-75 active:origin-bottom`}
+        className={`${width || "flex-1"} ${height || "h-5"} bg-gray-300 rounded-[2px] cursor-pointer transition-all duration-200 hover:bg-gray-400 active:transform active:scale-y-75 active:origin-bottom`}
         onMouseEnter={(e) => {
           setIsHovered(true);
           const rect = e.currentTarget.getBoundingClientRect();
@@ -159,8 +189,8 @@ const UptimeDayBar: React.FC<UptimeDayBarProps> = ({ day, appItems, width, heigh
             show: true,
             position: {
               x: rect.left + rect.width / 2,
-              y: rect.top
-            }
+              y: rect.top,
+            },
           });
         }}
         onMouseLeave={() => {
@@ -185,11 +215,13 @@ const UptimeDayBar: React.FC<UptimeDayBarProps> = ({ day, appItems, width, heigh
   }
 
   // Filter items that match the given day, month, and year (in local time)
-  const itemsForDay = appItems.filter(app => {
+  const itemsForDay = appItems.filter((app) => {
     const appDate = new Date(app.timestamp);
     const matchesDay = appDate.getDate() === day;
-    const matchesMonth = currentMonth !== undefined ? appDate.getMonth() === currentMonth : true;
-    const matchesYear = currentYear !== undefined ? appDate.getFullYear() === currentYear : true;
+    const matchesMonth =
+      currentMonth !== undefined ? appDate.getMonth() === currentMonth : true;
+    const matchesYear =
+      currentYear !== undefined ? appDate.getFullYear() === currentYear : true;
     return matchesDay && matchesMonth && matchesYear;
   });
 
@@ -197,7 +229,7 @@ const UptimeDayBar: React.FC<UptimeDayBarProps> = ({ day, appItems, width, heigh
   if (itemsForDay.length === 0) {
     return (
       <div
-        className={`${width || 'flex-1'} ${height || 'h-5'} bg-gray-300 rounded-[2px] cursor-pointer transition-all duration-200 hover:bg-gray-400 active:transform active:scale-y-75 active:origin-bottom ${isClicked ? 'transform scale-y-75 origin-bottom' : ''} ${isSelected ? 'ring-2 ring-blue-500 ring-offset-1' : ''}`}
+        className={`${width || "flex-1"} ${height || "h-5"} bg-gray-300 rounded-[2px] cursor-pointer transition-all duration-200 hover:bg-gray-400 active:transform active:scale-y-75 active:origin-bottom ${isClicked ? "transform scale-y-75 origin-bottom" : ""} ${isSelected ? "ring-2 ring-blue-500 ring-offset-1" : ""}`}
         onMouseEnter={(e) => {
           setIsHovered(true);
           const rect = e.currentTarget.getBoundingClientRect();
@@ -205,8 +237,8 @@ const UptimeDayBar: React.FC<UptimeDayBarProps> = ({ day, appItems, width, heigh
             show: true,
             position: {
               x: rect.left + rect.width / 2,
-              y: rect.top
-            }
+              y: rect.top,
+            },
           });
         }}
         onMouseLeave={() => {
@@ -235,7 +267,7 @@ const UptimeDayBar: React.FC<UptimeDayBarProps> = ({ day, appItems, width, heigh
 
   // Evaluate health status of apps for this day
   for (const app of itemsForDay) {
-    if (app.health === 'healthy') {
+    if (app.health === "healthy") {
       hasHealthy = true;
     } else {
       hasUnhealthy = true;
@@ -245,7 +277,7 @@ const UptimeDayBar: React.FC<UptimeDayBarProps> = ({ day, appItems, width, heigh
   // Determine color based on the rules
   let colorClass = "bg-red-500"; // Default to all unhealthy
   let hoverColorClass = "hover:bg-red-600";
-  
+
   if (hasHealthy && !hasUnhealthy) {
     colorClass = "bg-green-500"; // All healthy
     hoverColorClass = "hover:bg-green-600";
@@ -257,12 +289,14 @@ const UptimeDayBar: React.FC<UptimeDayBarProps> = ({ day, appItems, width, heigh
   }
 
   // Calculate counts for tooltip
-  const healthyCount = itemsForDay.filter(app => app.health === 'healthy').length;
+  const healthyCount = itemsForDay.filter(
+    (app) => app.health === "healthy",
+  ).length;
   const unhealthyCount = itemsForDay.length - healthyCount;
 
   return (
     <div
-      className={`${width || 'flex-1'} ${height || 'h-5'} ${colorClass} ${hoverColorClass} rounded-[2px] cursor-pointer transition-all duration-200 active:transform active:scale-y-75 active:origin-bottom ${isClicked ? 'transform scale-y-75 origin-bottom' : ''} ${isSelected ? 'ring-2 ring-blue-500 ring-offset-1' : ''}`}
+      className={`${width || "flex-1"} ${height || "h-5"} ${colorClass} ${hoverColorClass} rounded-[2px] cursor-pointer transition-all duration-200 active:transform active:scale-y-75 active:origin-bottom ${isClicked ? "transform scale-y-75 origin-bottom" : ""} ${isSelected ? "ring-2 ring-blue-500 ring-offset-1" : ""}`}
       onMouseEnter={(e) => {
         setIsHovered(true);
         const rect = e.currentTarget.getBoundingClientRect();
@@ -270,8 +304,8 @@ const UptimeDayBar: React.FC<UptimeDayBarProps> = ({ day, appItems, width, heigh
           show: true,
           position: {
             x: rect.left + rect.width / 2,
-            y: rect.top
-          }
+            y: rect.top,
+          },
         });
       }}
       onMouseLeave={() => {
@@ -299,36 +333,41 @@ const UptimeDayBar: React.FC<UptimeDayBarProps> = ({ day, appItems, width, heigh
 };
 
 // --- MAIN UPTIME STREAK BAR COMPONENT ---
-export const UptimeStreakBar: React.FC<UptimeStreakBarProps> = ({ 
-  appItems, 
+export const UptimeStreakBar: React.FC<UptimeStreakBarProps> = ({
+  appItems,
   dayCount = 30,
-  barWidth = 'flex-1', 
-  barHeight = 'h-5',
-  containerWidth = 'w-full',
-  containerHeight = 'h-auto',
+  barWidth = "flex-1",
+  barHeight = "h-5",
+  containerWidth = "w-full",
+  containerHeight = "h-auto",
   currentMonth,
   currentYear,
   selectedDay,
   onDayClick,
 }) => {
   return (
-    <div className="flex items-center gap-0.5 overflow-hidden pl-0 w-full" >
-        {Array.from({ length: dayCount }, (_, index) => (
-          <UptimeDayBar 
-            key={index + 1} 
-            day={index + 1} 
-            appItems={appItems} 
-            width={barWidth}
-            height={barHeight}
-            currentMonth={currentMonth}
-            currentYear={currentYear}
-            isSelected={selectedDay === (index + 1)}
-            onDayClick={onDayClick}
-          />
-        ))}
-      </div>
+    <div className="flex items-center gap-0.5 overflow-hidden pl-0 w-full">
+      {Array.from({ length: dayCount }, (_, index) => (
+        <UptimeDayBar
+          key={index + 1}
+          day={index + 1}
+          appItems={appItems}
+          width={barWidth}
+          height={barHeight}
+          currentMonth={currentMonth}
+          currentYear={currentYear}
+          isSelected={selectedDay === index + 1}
+          onDayClick={onDayClick}
+        />
+      ))}
+    </div>
   );
 };
 
 // --- EXPORT TYPES FOR REUSE ---
-export type { AppBatchItem, UptimeStreakBarProps, UptimeDayBarProps, TooltipProps };
+export type {
+  AppBatchItem,
+  UptimeStreakBarProps,
+  UptimeDayBarProps,
+  TooltipProps,
+};
