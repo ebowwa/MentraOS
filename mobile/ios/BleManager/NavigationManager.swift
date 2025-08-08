@@ -123,17 +123,17 @@ public class NavigationManager: NSObject {
         // ensure we're on the main thread for all UI operations
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
-            
-            // check permissions first
+        
+        // check permissions first
             guard self.hasLocationPermission() else {
-                CoreCommsService.log("❌ Cannot start navigation: no location permission")
+            CoreCommsService.log("❌ Cannot start navigation: no location permission")
                 self.updateStatus(.error("Location permission required"))
-                return
-            }
-            
-            // check api key
+            return
+        }
+        
+        // check api key
             guard !self.googleMapsApiKey.isEmpty else {
-                CoreCommsService.log("❌ Cannot start navigation: no Google Maps API key")
+            CoreCommsService.log("❌ Cannot start navigation: no Google Maps API key")
                 self.updateStatus(.error("Google Maps API key required"))
                 return
             }
@@ -205,7 +205,7 @@ public class NavigationManager: NSObject {
                         CoreCommsService.log("❌ Placemarks available but no location: \(placemarks)")
                     }
                     self.updateStatus(.error("Could not find destination"))
-                    return
+            return
                 }
                 
                 CoreCommsService.log("🧭 Successfully geocoded to: \(location.coordinate.latitude), \(location.coordinate.longitude)")
@@ -246,25 +246,25 @@ public class NavigationManager: NSObject {
             guard let self = self else { return }
             
             DispatchQueue.main.async {
-                if let error = error {
+            if let error = error {
                     CoreCommsService.log("❌ Fallback destination '\(destination)' failed: \(error.localizedDescription)")
                     // try next fallback
                     self.tryGeocodingFallbacks(destinations: destinations, mode: mode, index: index + 1)
-                    return
-                }
-                
-                guard let placemark = placemarks?.first,
-                      let location = placemark.location else {
+                return
+            }
+            
+            guard let placemark = placemarks?.first,
+                  let location = placemark.location else {
                     CoreCommsService.log("❌ Fallback destination '\(destination)' had no location")
                     // try next fallback
                     self.tryGeocodingFallbacks(destinations: destinations, mode: mode, index: index + 1)
-                    return
-                }
+                return
+            }
                 
                 CoreCommsService.log("🧭 Successfully used fallback destination: '\(destination)'")
                 CoreCommsService.log("🧭 Coordinates: \(location.coordinate.latitude), \(location.coordinate.longitude)")
-                
-                self.startNavigationToCoordinate(location.coordinate, mode: mode)
+            
+            self.startNavigationToCoordinate(location.coordinate, mode: mode)
             }
         }
     }
@@ -347,8 +347,8 @@ public class NavigationManager: NSObject {
         // ensure we're on the main thread for UI operations
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
-            
-            // stop google navigation
+        
+        // stop google navigation
             if let mapView = self.mapView,
                let navigator = mapView.navigator,
                self.isNavigating {
@@ -358,8 +358,8 @@ public class NavigationManager: NSObject {
             self.isNavigating = false
             self.currentDestination = nil
             self.updateStatus(.idle)
-            
-            CoreCommsService.log("🧭 Navigation stopped")
+        
+        CoreCommsService.log("🧭 Navigation stopped")
         }
     }
     

@@ -171,7 +171,13 @@ class ServerComms {
                     )
                 },
                 distanceToDestination: update.distanceToDestination,
-                timeToDestination: update.timeToDestination
+                timeToDestination: update.timeToDestination,
+                routePolyline: update.routePolyline.map { coordinate in
+                    NavigationCoordinateData(
+                        latitude: coordinate.latitude,
+                        longitude: coordinate.longitude
+                    )
+                }
             )
             self?.sendNavigationUpdate(updateData)
         }
