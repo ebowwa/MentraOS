@@ -2,6 +2,8 @@
   push:
     branches:
       - translation-manager
+    paths:
+      - 'cloud/**'
 name: 🚀 [debug] Porter.run Deploy
 jobs:
   porter-deploy:
