@@ -15,16 +15,24 @@ export const SONIOX_API_KEY = process.env.SONIOX_API_KEY || "";
 export const SONIOX_ENDPOINT =
   process.env.SONIOX_ENDPOINT || "wss://stt-rt.soniox.com/transcribe-websocket";
 
-// Ensure required environment variables are set
+// Ensure required environment variables are set (warn if missing in development)
 if (!AZURE_SPEECH_KEY || !AZURE_SPEECH_REGION) {
-  throw new Error(
-    "Missing required Azure Speech environment variables: AZURE_SPEECH_KEY and AZURE_SPEECH_REGION",
-  );
+  const message =
+    "Missing required Azure Speech environment variables: AZURE_SPEECH_KEY and AZURE_SPEECH_REGION";
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(message);
+  } else {
+    console.warn(`⚠️  ${message}. Transcription features may not work.`);
+  }
 }
 if (!SONIOX_API_KEY || !SONIOX_ENDPOINT) {
-  throw new Error(
-    "Missing required Soniox environment variables: SONIOX_API_KEY and SONIOX_ENDPOINT",
-  );
+  const message =
+    "Missing required Soniox environment variables: SONIOX_API_KEY and SONIOX_ENDPOINT";
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(message);
+  } else {
+    console.warn(`⚠️  ${message}. Soniox transcription may not work.`);
+  }
 }
 
 //===========================================================
@@ -89,7 +97,7 @@ export interface AzureProviderConfig {
 export interface SonioxProviderConfig {
   apiKey: string;
   endpoint: string;
-  model?: string; // Default: 'stt-rt-preview'
+  model?: string; // Default: 'stt-rt-preview-v2'
   maxConnections?: number;
 }
 

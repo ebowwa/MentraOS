@@ -105,6 +105,12 @@ const en = {
     appWillRunWhenConnected: "This app will start running once your glasses are connected.",
     connectGlassesToStart: "Connect your glasses to get started",
     tapToStartLiveCaptions: "Tap to start the Live Captions app",
+    hardwareIncompatible: "Hardware Incompatible",
+    hardwareIncompatibleMessage:
+      "{{app}} requires hardware that is not available on your connected glasses: {{missing}}",
+    incompatibleApps: "Incompatible Apps",
+    incompatibleAppsDescription: "These apps require hardware features not available on your connected glasses",
+    incompatible: "Incompatible",
   },
   glasses: {
     title: "Glasses",
@@ -273,6 +279,10 @@ const en = {
     microphoneActive: "Microphone Active",
     microphoneActiveMessage: "One or more apps are currently using your glasses microphone.",
   },
+  errors: {
+    appNotOnlineTitle: "App Not Online",
+    appNotOnlineMessage: "This app is not online. Please try again later.",
+  },
   common: {
     ok: "OK",
     cancel: "Cancel",
@@ -308,9 +318,6 @@ const en = {
       content: "No data found yet. Try clicking the button to refresh or reload the app.",
       button: "Let's try this again",
     },
-  },
-  errors: {
-    invalidEmail: "Invalid email address.",
   },
   navigation: {
     home: "Home",

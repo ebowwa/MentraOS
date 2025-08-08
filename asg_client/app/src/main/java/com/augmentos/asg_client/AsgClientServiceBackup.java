@@ -1782,6 +1782,7 @@ public class AsgClientServiceBackup extends Service implements NetworkStateListe
 
                 case "start_video_recording":
                     String videoRequestId = dataToProcess.optString("requestId", "");
+                    boolean videoSave = dataToProcess.optBoolean("save", true); // Default to saving video
 
                     if (videoRequestId.isEmpty()) {
                         Log.e(TAG, "Cannot start video recording - missing requestId");
@@ -1796,23 +1797,31 @@ public class AsgClientServiceBackup extends Service implements NetworkStateListe
                         return;
                     }
 
-                    // Check if already recording
-                    if (captureService.isRecordingVideo()) {
-                        Log.d(TAG, "Already recording video, ignoring start command");
-                        sendVideoRecordingStatusResponse(true, "already_recording", null);
+                    // Check if camera is already in use (for any operation)
+                    if (CameraNeo.isCameraInUse()) {
+                        Log.d(TAG, "Camera already in use, cannot start video recording");
+                        sendVideoRecordingStatusResponse(false, "camera_busy", null);
                         return;
                     }
 
-                    Log.d(TAG, "Starting video recording with requestId: " + videoRequestId);
+                    Log.d(TAG, "Starting video recording with requestId: " + videoRequestId + ", save: " + videoSave);
 
-                    // Start video recording
-                    captureService.handleVideoButtonPress();
+                    // Start video recording with the new command method
+                    captureService.handleStartVideoCommand(videoRequestId, videoSave);
 
                     // Send success response
                     sendVideoRecordingStatusResponse(true, "recording_started", null);
                     break;
 
                 case "stop_video_recording":
+                    String stopRequestId = dataToProcess.optString("requestId", "");
+                    
+                    if (stopRequestId.isEmpty()) {
+                        Log.e(TAG, "Cannot stop video recording - missing requestId");
+                        sendVideoRecordingStatusResponse(false, "missing_request_id", null);
+                        return;
+                    }
+                    
                     captureService = getMediaCaptureService();
                     if (captureService == null) {
                         Log.e(TAG, "Media capture service is not initialized");
@@ -1820,20 +1829,86 @@ public class AsgClientServiceBackup extends Service implements NetworkStateListe
                         return;
                     }
 
-                    // Check if actually recording
-                    if (!captureService.isRecordingVideo()) {
-                        Log.d(TAG, "Not currently recording, ignoring stop command");
-                        sendVideoRecordingStatusResponse(false, "not_recording", null);
-                        return;
-                    }
+                    Log.d(TAG, "Stopping video recording with requestId: " + stopRequestId);
 
-                    Log.d(TAG, "Stopping video recording");
-
-                    // Stop the recording
-                    captureService.stopVideoRecording();
+                    // Stop the recording with requestId verification
+                    captureService.handleStopVideoCommand(stopRequestId);
 
                     // Send success response
                     sendVideoRecordingStatusResponse(true, "recording_stopped", null);
+                    break;
+
+                case "start_buffer_recording":
+                    captureService = getMediaCaptureService();
+                    if (captureService == null) {
+                        Log.e(TAG, "Media capture service is not initialized");
+                        sendBufferStatusResponse(false, "service_unavailable", null);
+                        return;
+                    }
+                    
+                    // Check if camera is already in use
+                    if (CameraNeo.isCameraInUse()) {
+                        Log.d(TAG, "Camera already in use, cannot start buffer recording");
+                        sendBufferStatusResponse(false, "camera_busy", null);
+                        return;
+                    }
+                    
+                    Log.d(TAG, "Starting buffer recording");
+                    captureService.startBufferRecording();
+                    sendBufferStatusResponse(true, "buffer_started", null);
+                    break;
+                    
+                case "stop_buffer_recording":
+                    captureService = getMediaCaptureService();
+                    if (captureService == null) {
+                        Log.e(TAG, "Media capture service is not initialized");
+                        sendBufferStatusResponse(false, "service_unavailable", null);
+                        return;
+                    }
+                    
+                    Log.d(TAG, "Stopping buffer recording");
+                    captureService.stopBufferRecording();
+                    sendBufferStatusResponse(true, "buffer_stopped", null);
+                    break;
+                    
+                case "save_buffer_video":
+                    String bufferRequestId = dataToProcess.optString("requestId", "");
+                    int secondsToSave = dataToProcess.optInt("duration", 30); // Default to 30 seconds
+                    
+                    if (bufferRequestId.isEmpty()) {
+                        Log.e(TAG, "Cannot save buffer - missing requestId");
+                        sendBufferStatusResponse(false, "missing_request_id", null);
+                        return;
+                    }
+                    
+                    captureService = getMediaCaptureService();
+                    if (captureService == null) {
+                        Log.e(TAG, "Media capture service is not initialized");
+                        sendBufferStatusResponse(false, "service_unavailable", null);
+                        return;
+                    }
+                    
+                    if (!captureService.isBuffering()) {
+                        Log.e(TAG, "Cannot save buffer - not currently buffering");
+                        sendBufferStatusResponse(false, "not_buffering", null);
+                        return;
+                    }
+                    
+                    Log.d(TAG, "Saving last " + secondsToSave + " seconds of buffer, requestId: " + bufferRequestId);
+                    captureService.saveBufferVideo(secondsToSave, bufferRequestId);
+                    sendBufferStatusResponse(true, "buffer_saving", null);
+                    break;
+                    
+                case "get_buffer_status":
+                    captureService = getMediaCaptureService();
+                    if (captureService == null) {
+                        Log.e(TAG, "Media capture service is not initialized");
+                        sendBufferStatusResponse(false, "service_unavailable", null);
+                        return;
+                    }
+                    
+                    JSONObject bufferStatus = captureService.getBufferStatus();
+                    sendBufferStatusResponse(true, "status", bufferStatus);
                     break;
 
                 case "get_video_recording_status":
@@ -2246,7 +2321,7 @@ public class AsgClientServiceBackup extends Service implements NetworkStateListe
 
                         // Send battery status over BLE if we have valid data
                         if (batteryPercentage != -1 || batteryVoltage != -1) {
-                            sendBatteryStatusOverBle();
+                            //sendBatteryStatusOverBle();
                         }
                     } else {
                         Log.w(TAG, "hm_batv received but no B field data");
@@ -2912,6 +2987,42 @@ public class AsgClientServiceBackup extends Service implements NetworkStateListe
                 bluetoothManager.sendData(jsonString.getBytes(StandardCharsets.UTF_8));
             } catch (JSONException e) {
                 Log.e(TAG, "Error creating video recording status response", e);
+            }
+        }
+    }
+    
+    /**
+     * Send a buffer status response
+     * 
+     * @param success Whether the operation was successful
+     * @param status Status message
+     * @param details Additional details (can be null)
+     */
+    private void sendBufferStatusResponse(boolean success, String status, JSONObject details) {
+        if (bluetoothManager != null && bluetoothManager.isConnected()) {
+            try {
+                JSONObject response = new JSONObject();
+                response.put("type", "buffer_status");
+                response.put("success", success);
+                response.put("status", status);
+                
+                if (details != null) {
+                    // Merge the details object fields into the response
+                    Iterator<String> keys = details.keys();
+                    while (keys.hasNext()) {
+                        String key = keys.next();
+                        response.put(key, details.get(key));
+                    }
+                }
+                
+                // Convert to string
+                String jsonString = response.toString();
+                Log.d(TAG, "Sending buffer status: " + jsonString);
+                
+                // Send the JSON response
+                bluetoothManager.sendData(jsonString.getBytes(StandardCharsets.UTF_8));
+            } catch (JSONException e) {
+                Log.e(TAG, "Error creating buffer status response", e);
             }
         }
     }

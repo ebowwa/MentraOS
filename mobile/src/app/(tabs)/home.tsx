@@ -4,6 +4,7 @@ import {useFocusEffect} from "@react-navigation/native"
 import {Header, Screen} from "@/components/ignite"
 import AppsActiveList from "@/components/misc/AppsActiveList"
 import AppsInactiveList from "@/components/misc/AppsInactiveList"
+import AppsIncompatibleList from "@/components/misc/AppsIncompatibleList"
 import {useStatus} from "@/contexts/AugmentOSStatusProvider"
 import {useAppStatus} from "@/contexts/AppStatusProvider"
 import BackendServerComms from "@/backend_comms/BackendServerComms"
@@ -33,7 +34,7 @@ interface AnimatedSectionProps extends PropsWithChildren {
 }
 
 export default function Homepage() {
-  const {appStatus} = useAppStatus()
+  const {appStatus, refreshAppStatus} = useAppStatus()
   const {status} = useStatus()
   const [isSimulatedPuck, setIsSimulatedPuck] = React.useState(false)
   const [isCheckingVersion, setIsCheckingVersion] = useState(false)
@@ -69,32 +70,47 @@ export default function Homepage() {
     }
   }, [appStatus.length])
 
+  const checkPermissions = async () => {
+    const hasCalendar = await checkFeaturePermissions(PermissionFeatures.CALENDAR)
+    const hasNotifications =
+      Platform.OS === "android" ? await checkFeaturePermissions(PermissionFeatures.READ_NOTIFICATIONS) : true
+
+    const hasLocation = await checkFeaturePermissions(PermissionFeatures.BACKGROUND_LOCATION)
+
+    const shouldShowBell = !hasCalendar || !hasNotifications || !hasLocation
+    setHasMissingPermissions(shouldShowBell)
+
+    // Animate bell in if needed
+    if (shouldShowBell) {
+      Animated.timing(bellFadeAnim, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }).start()
+    }
+  }
+
   // Check for missing permissions
   useEffect(() => {
-    const checkPermissions = async () => {
-      const hasCalendar = await checkFeaturePermissions(PermissionFeatures.CALENDAR)
-      const hasNotifications =
-        Platform.OS === "android" ? await checkFeaturePermissions(PermissionFeatures.READ_NOTIFICATIONS) : true
-
-      const hasLocation = await checkFeaturePermissions(PermissionFeatures.BACKGROUND_LOCATION)
-
-      const shouldShowBell = !hasCalendar || !hasNotifications || !hasLocation
-      setHasMissingPermissions(shouldShowBell)
-
-      // Animate bell in if needed
-      if (shouldShowBell) {
-        Animated.timing(bellFadeAnim, {
-          toValue: 1,
-          duration: 300,
-          useNativeDriver: true,
-        }).start()
-      }
-    }
-
     checkPermissions().catch(error => {
       console.error("Error checking permissions:", error)
     })
   }, [])
+
+  useFocusEffect(
+    useCallback(() => {
+      checkPermissions()
+    }, []),
+  )
+
+  // propagate any changes in app lists when this screen is mounted:
+  useFocusEffect(
+    useCallback(() => {
+      return async () => {
+        await refreshAppStatus()
+      }
+    }, []),
+  )
 
   // Check onboarding status
   useEffect(() => {
@@ -218,11 +234,10 @@ export default function Homepage() {
         }
       />
 
+      <CloudConnection />
       <ScrollView
         style={{marginRight: -theme.spacing.md, paddingRight: theme.spacing.md}}
         contentInsetAdjustmentBehavior="automatic">
-        <CloudConnection />
-
         <SensingDisabledWarning />
 
         <ConnectedGlasses showTitle={false} />
@@ -238,6 +253,8 @@ export default function Homepage() {
         <AppsActiveList />
         <Spacer height={spacing.xl} />
         <AppsInactiveList key={`apps-list-${appStatus.length}`} liveCaptionsRef={liveCaptionsRef} />
+        <Spacer height={spacing.xl} />
+        <AppsIncompatibleList />
       </ScrollView>
 
       <OnboardingSpotlight

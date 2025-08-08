@@ -4,10 +4,12 @@ name: Deploy to (us-west, us-east, australia-east, canada-central)
 on:
   push:
     branches:
-      - transcription-manager
+      - main
+    paths:
+      - "cloud/**"
 jobs:
   us-west:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -31,7 +33,7 @@ jobs:
           PORTER_TOKEN: ${{ secrets.PORTER_APP_15081_4965 }}
 
   us-east:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -53,7 +55,7 @@ jobs:
           PORTER_DEPLOYMENT_TARGET_ID: 2b421266-64ab-46d4-bf29-55b3223392ee
 
   australia-east:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -75,7 +77,7 @@ jobs:
           PORTER_DEPLOYMENT_TARGET_ID: 1978d230-f754-46c4-8aa7-cd7950a6b52e
 
   canada-central:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v3

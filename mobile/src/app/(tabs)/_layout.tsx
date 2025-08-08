@@ -113,6 +113,7 @@ export default function Layout() {
         // tabBarPosition: 'left',
         // animation: 'shift',
         // tabBarBackground: () => <View />,
+        tabBarVariant: "uikit",
         tabBarBackground: () => (
           <View
             style={{
@@ -122,7 +123,7 @@ export default function Layout() {
               top: 0,
               bottom: 0,
               borderTopColor: theme.colors.separator,
-              borderTopWidth: 2,
+              borderTopWidth: 1,
               overflow: "hidden",
             }}>
             <LinearGradient

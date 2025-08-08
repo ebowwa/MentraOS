@@ -23,21 +23,12 @@ export const ThemeContext = createContext<ThemeContextType>({
 const themeContextToTheme = (themeContext: ThemeContexts): Theme => (themeContext === "dark" ? darkTheme : lightTheme)
 
 const setImperativeTheming = async (theme: Theme) => {
-  SystemUI.setBackgroundColorAsync(theme.colors.background)
-
-  // Set navigation bar color for Android
-  if (Platform.OS === "android") {
-    try {
-      // For dark theme, use the darker start of the gradient to better match the tab bar appearance
-      // For light theme, use the same blue-tinted white as the tab bar
-      const navBarColor = theme.isDark ? "#090A14" : "#F8FAFF"
-      await NavigationBar.setBackgroundColorAsync(navBarColor)
-
-      // Set button colors based on theme
-      await NavigationBar.setButtonStyleAsync(theme.isDark ? "light" : "dark")
-    } catch (error) {
-      console.warn("Failed to set navigation bar color:", error)
-    }
+  // this is the color of the navigation bar on android and so it should be the end of the gradient:
+  // on ios it doesn't matter much other than for transitional screens and should be the same as the background
+  if (Platform.OS === "ios") {
+    SystemUI.setBackgroundColorAsync(theme.colors.background)
+  } else {
+    SystemUI.setBackgroundColorAsync(theme.colors.tabBarBackground1)
   }
 }
 

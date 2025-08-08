@@ -1,7 +1,7 @@
-import demoEs from "./demo-es"
-import {Translations} from "./en"
+import en, {Translations} from "./en"
 
 const es: Translations = {
+  ...en,
   common: {
     ok: "OK",
     cancel: "Cancelar",
@@ -44,6 +44,15 @@ const es: Translations = {
     passwordFieldPlaceholder: "Contraseña super secreta aquí",
     tapToLogIn: "¡Presiona acá para iniciar sesión!",
     hint: "Consejo: puedes usar cualquier email y tu contraseña preferida :)",
+  },
+  home: {
+    hardwareIncompatible: "Hardware Incompatible",
+    hardwareIncompatibleMessage:
+      "{{app}} requiere hardware que no está disponible en tus lentes conectados: {{missing}}",
+    incompatibleApps: "Apps Incompatibles",
+    incompatibleAppsDescription:
+      "Estas apps requieren características de hardware no disponibles en tus lentes conectados",
+    incompatible: "Incompatible",
   },
   demoNavigator: {
     componentsTab: "Componentes",
@@ -123,8 +132,6 @@ const es: Translations = {
         "No se han agregado episodios favoritos todavía. ¡Presiona el corazón dentro de un episodio para agregarlo a tus favoritos!",
     },
   },
-
-  ...demoEs,
 }
 
 export default es

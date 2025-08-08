@@ -53,7 +53,21 @@ export interface AppInterface {
   permissions: AppPermission[]
   is_running?: boolean
   is_foreground?: boolean
+  compatibility?: {
+    isCompatible: boolean
+    missingRequired: Array<{
+      type: string
+      description?: string
+    }>
+    missingOptional: Array<{
+      type: string
+      description?: string
+    }>
+    message: string
+  }
 }
+
+export type AppHealthStatus = "healthy" | "unhealthy" | "offline"
 
 interface AppStatusContextType {
   appStatus: AppInterface[]
@@ -61,6 +75,7 @@ interface AppStatusContextType {
   optimisticallyStartApp: (packageName: string) => void
   optimisticallyStopApp: (packageName: string) => void
   clearPendingOperation: (packageName: string) => void
+  checkAppHealthStatus: (packageName: string) => Promise<AppHealthStatus>
   isLoading: boolean
   error: string | null
   isSensingEnabled: boolean
@@ -80,6 +95,9 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
 
   // Track when the last refresh was performed
   const lastRefreshTime = useRef<number>(0)
+
+  // Track previous glasses connection to detect changes
+  const previousGlassesModel = useRef<string | null>(null)
 
   const refreshAppStatus = useCallback(async () => {
     console.log("AppStatusProvider: refreshAppStatus called - user exists:", !!user, "user email:", user?.email)
@@ -213,10 +231,58 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
     delete pendingOperations.current[packageName]
   }, [])
 
+  const checkAppHealthStatus = async (packageName: string): Promise<AppHealthStatus> => {
+    // GET the app's /health endpoint
+    try {
+      const app = appStatus.find(app => app.packageName === packageName)
+      console.log("APP", app)
+      if (!app) {
+        return "offline"
+      }
+      const healthResponse = await fetch(`${app.publicUrl}/health`)
+      const healthData = await healthResponse.json()
+      console.log("HEALTH DATA", healthData)
+      return healthData.status
+    } catch (error) {
+      console.error("AppStatusProvider: Error checking app health status:", error)
+      return "offline"
+    }
+  }
+
   // Initial fetch and refresh on user change or status change
   useEffect(() => {
     refreshAppStatus()
   }, [user, status.core_info.cloud_connection_status])
+
+  // Monitor glasses connection changes and refresh apps when glasses change
+  useEffect(() => {
+    const currentGlassesModel = status.glasses_info?.model_name || null
+
+    // Only check for changes after initial load (previousGlassesModel has been set at least once)
+    if (previousGlassesModel.current !== undefined) {
+      // Check if glasses connection changed
+      if (previousGlassesModel.current !== currentGlassesModel) {
+        console.log(
+          "AppStatusProvider: Glasses connection changed from",
+          previousGlassesModel.current || "none",
+          "to",
+          currentGlassesModel || "none",
+          "- refreshing app list",
+        )
+
+        // Only refresh if we have a user and the change is meaningful
+        if (user && (previousGlassesModel.current !== null || currentGlassesModel !== null)) {
+          // Add error handling for refresh
+          refreshAppStatus().catch(error => {
+            console.error("AppStatusProvider: Error refreshing apps after glasses change:", error)
+          })
+        }
+      }
+    }
+
+    // Update the previous glasses model for next comparison
+    previousGlassesModel.current = currentGlassesModel
+  }, [status.glasses_info?.model_name, user, refreshAppStatus])
 
   // Listen for app started/stopped events from CoreCommunicator
   useEffect(() => {
@@ -289,7 +355,7 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
     return () => {
       appStateSubscription.remove()
     }
-  }, [])
+  }, []) // subscribe only once
 
   return (
     <AppStatusContext.Provider
@@ -301,6 +367,7 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
         clearPendingOperation,
         isLoading,
         error,
+        checkAppHealthStatus,
         isSensingEnabled: status.core_info.sensing_enabled,
       }}>
       {children}

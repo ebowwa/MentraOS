@@ -107,7 +107,7 @@ export default function LoginScreen() {
     return () => {
       appStateSubscription.remove()
     }
-  }, [isAuthLoading, authOverlayOpacity])
+  }, [])
 
   const handleGoogleSignIn = async () => {
     try {

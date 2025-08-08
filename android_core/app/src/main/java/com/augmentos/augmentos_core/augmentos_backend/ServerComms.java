@@ -708,6 +708,7 @@ public class ServerComms {
 
             case "microphone_state_change":
                 boolean isMicrophoneEnabled = msg.optBoolean("isMicrophoneEnabled", true);
+                boolean bypassVad = msg.optBoolean("bypassVad", false); // NEW: Extract bypassVad field
 
                 JSONArray requiredDataJson = msg.optJSONArray("requiredData");
                 List<SpeechRequiredDataType> requiredData = new ArrayList<>();
@@ -728,9 +729,10 @@ public class ServerComms {
                     requiredData.add(SpeechRequiredDataType.PCM);
                 }
 
-                Log.d(TAG, "Received microphone_state_change message." + isMicrophoneEnabled + " requiredData=" + requiredData);
+                Log.d(TAG, "Received microphone_state_change message. enabled=" + isMicrophoneEnabled + 
+                      " requiredData=" + requiredData + " bypassVad=" + bypassVad);
                 if (serverCommsCallback != null)
-                    serverCommsCallback.onMicrophoneStateChange(isMicrophoneEnabled, requiredData);
+                    serverCommsCallback.onMicrophoneStateChange(isMicrophoneEnabled, requiredData, bypassVad); // NEW: Pass bypassVad
                 break;
 
             case "photo_request":
@@ -767,6 +769,46 @@ public class ServerComms {
 
                 if (serverCommsCallback != null) {
                     serverCommsCallback.onRtmpStreamKeepAlive(msg);
+                }
+                break;
+
+            case "start_buffer_recording":
+                Log.d(TAG, "Received START_BUFFER_RECORDING");
+                if (serverCommsCallback != null) {
+                    serverCommsCallback.onStartBufferRecording();
+                }
+                break;
+
+            case "stop_buffer_recording":
+                Log.d(TAG, "Received STOP_BUFFER_RECORDING");
+                if (serverCommsCallback != null) {
+                    serverCommsCallback.onStopBufferRecording();
+                }
+                break;
+
+            case "save_buffer_video":
+                Log.d(TAG, "Received SAVE_BUFFER_VIDEO: " + msg.toString());
+                String bufferRequestId = msg.optString("requestId", "buffer_" + System.currentTimeMillis());
+                int durationSeconds = msg.optInt("durationSeconds", 30);
+                if (serverCommsCallback != null) {
+                    serverCommsCallback.onSaveBufferVideo(bufferRequestId, durationSeconds);
+                }
+                break;
+
+            case "start_video_recording":
+                Log.d(TAG, "Received START_VIDEO_RECORDING: " + msg.toString());
+                String videoRequestId = msg.optString("requestId", "video_" + System.currentTimeMillis());
+                boolean save = msg.optBoolean("save", true);
+                if (serverCommsCallback != null) {
+                    serverCommsCallback.onStartVideoRecording(videoRequestId, save);
+                }
+                break;
+
+            case "stop_video_recording":
+                Log.d(TAG, "Received STOP_VIDEO_RECORDING: " + msg.toString());
+                String stopRequestId = msg.optString("requestId", "");
+                if (serverCommsCallback != null) {
+                    serverCommsCallback.onStopVideoRecording(stopRequestId);
                 }
                 break;
 

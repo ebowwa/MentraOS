@@ -216,6 +216,10 @@ dependencies {
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
 }
 
+// Check if Sentry auth token is available
+def sentryAuthToken = System.getenv("SENTRY_AUTH_TOKEN") ?: 
+                     project.hasProperty("sentryAuthToken") ? project.property("sentryAuthToken") : null
+
 sentry {
     org = "ahmad-wv"
     projectName = "asg"

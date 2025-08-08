@@ -1,7 +1,7 @@
-import demoAr from "./demo-ar"
-import {Translations} from "./en"
+import en, {Translations} from "./en"
 
 const ar: Translations = {
+  ...en,
   common: {
     ok: "نعم",
     cancel: "حذف",
@@ -42,6 +42,13 @@ const ar: Translations = {
     passwordFieldPlaceholder: "كلمة السر هنا فائقة السر",
     tapToLogIn: "انقر لتسجيل الدخول!",
     hint: "(: تلميح: يمكنك استخدام اي عنوان بريد الكتروني وكلمة السر المفضلة لديك",
+  },
+  home: {
+    hardwareIncompatible: "الأجهزة غير متوافقة",
+    hardwareIncompatibleMessage: "{{app}} يتطلب أجهزة غير متوفرة في النظارات المتصلة: {{missing}}",
+    incompatibleApps: "التطبيقات غير المتوافقة",
+    incompatibleAppsDescription: "تتطلب هذه التطبيقات ميزات أجهزة غير متوفرة في النظارات المتصلة",
+    incompatible: "غير متوافق",
   },
   demoNavigator: {
     componentsTab: "عناصر",
@@ -112,8 +119,6 @@ const ar: Translations = {
       content: "لم تتم اضافة اي مفضلات حتى الان. اضغط على القلب في إحدى الحلقات لإضافته الى المفضلة.",
     },
   },
-
-  ...demoAr,
 }
 
 export default ar
