@@ -3,7 +3,7 @@
     branches:
       - translation-manager
     paths:
-      - 'cloud/**'
+      - "cloud/**"
 name: 🚀 [debug] Porter.run Deploy
 jobs:
   porter-deploy:

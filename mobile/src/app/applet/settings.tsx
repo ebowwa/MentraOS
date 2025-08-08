@@ -587,7 +587,7 @@ export default function AppSettings() {
           leftIcon="caretLeft"
           onLeftPress={() => {
             if (serverAppInfo?.webviewURL) {
-              navigate("/applet/webview", {
+              replace("/applet/webview", {
                 webviewURL: serverAppInfo.webviewURL,
                 appName: appName as string,
                 packageName: packageName as string,

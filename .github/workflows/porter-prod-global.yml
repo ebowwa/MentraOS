@@ -5,7 +5,7 @@ on:
     branches:
       - main
     paths:
-      - 'cloud/**'
+      - "cloud/**"
 jobs:
   east-asia:
     runs-on: ubuntu-latest

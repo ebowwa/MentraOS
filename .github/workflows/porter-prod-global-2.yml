@@ -6,7 +6,7 @@ on:
     branches:
       - main
     paths:
-      - 'cloud/**'
+      - "cloud/**"
 jobs:
   us-west:
     runs-on: ubuntu-latest
