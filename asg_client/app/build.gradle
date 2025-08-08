@@ -25,6 +25,11 @@ def asgStorePassword = project.hasProperty("ASG_STORE_PASSWORD") ? project.prope
 def asgKeyPassword = project.hasProperty("ASG_KEY_PASSWORD") ? project.property("ASG_KEY_PASSWORD") : ""
 def asgKeyAlias = project.hasProperty("ASG_KEY_ALIAS") ? project.property("ASG_KEY_ALIAS") : "asg"
 
+/**
+ * Sentry auth token for error reporting (optional)
+ */
+def sentryAuthToken = envProperties['SENTRY_AUTH_TOKEN'] ?: System.getenv("SENTRY_AUTH_TOKEN") ?: ""
+
 android {
     namespace 'com.augmentos.asg_client'
     compileSdk 34
@@ -215,8 +220,30 @@ sentry {
     org = "ahmad-wv"
     projectName = "asg"
 
-    // this will upload your source code to Sentry to show it as part of the stack traces
-    // disable if you don't want to expose your sources
-    includeSourceContext = true
+    // Only enable Sentry features if auth token is present
+    if (sentryAuthToken) {
+        // this will upload your source code to Sentry to show it as part of the stack traces
+        includeSourceContext = true
+        uploadNativeSymbols = true
+        autoUploadNativeSymbols = true
+        autoUploadSourceContext = true
+    } else {
+        // Disable all Sentry upload tasks when no auth token
+        includeSourceContext = false
+        uploadNativeSymbols = false
+        autoUploadNativeSymbols = false
+        autoUploadSourceContext = false
+        
+        // Don't fail the build if Sentry operations fail
+        ignoredBuildTypes = ["release", "debug"]
+    }
+}
 
+// Disable Sentry tasks when auth token is not present
+afterEvaluate {
+    if (!sentryAuthToken) {
+        tasks.matching { it.name.contains("sentry") || it.name.contains("Sentry") }.configureEach {
+            enabled = false
+        }
+    }
 }
