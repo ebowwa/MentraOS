@@ -461,6 +461,119 @@ export class AsgCameraApiClient {
       }
     }
   }
+
+  /**
+   * Sync with server to get changed files since last sync
+   */
+  async syncWithServer(clientId: string, lastSyncTime?: number, includeThumbnails: boolean = false): Promise<{
+    client_id: string
+    changed_files: PhotoInfo[]
+    deleted_files: string[]
+    server_time: number
+    total_files: number
+  }> {
+    const params = new URLSearchParams({
+      client_id: clientId,
+      include_thumbnails: includeThumbnails.toString(),
+    })
+
+    if (lastSyncTime) {
+      params.append('last_sync_time', lastSyncTime.toString())
+    }
+
+    const response = await this.makeRequest(`/sync?${params.toString()}`, {
+      method: 'GET',
+    })
+
+    return response
+  }
+
+  /**
+   * Batch sync files from server
+   */
+  async batchSyncFiles(files: PhotoInfo[], includeThumbnails: boolean = false): Promise<{
+    downloaded: PhotoInfo[]
+    failed: string[]
+    total_size: number
+  }> {
+    const results = {
+      downloaded: [] as PhotoInfo[],
+      failed: [] as string[],
+      total_size: 0,
+    }
+
+    // Process files in small batches to avoid overwhelming the server
+    const batchSize = 3
+    for (let i = 0; i < files.length; i += batchSize) {
+      const batch = files.slice(i, i + batchSize)
+      
+      try {
+        const batchPromises = batch.map(async (file) => {
+          try {
+            const fileData = await this.downloadFile(file.name, includeThumbnails)
+            results.total_size += file.size
+            return { ...file, ...fileData }
+          } catch (error) {
+            console.error(`Failed to download ${file.name}:`, error)
+            results.failed.push(file.name)
+            return null
+          }
+        })
+
+        const batchResults = await Promise.all(batchPromises)
+        results.downloaded.push(...batchResults.filter(Boolean) as PhotoInfo[])
+        
+        // Small delay between batches
+        if (i + batchSize < files.length) {
+          await new Promise(resolve => setTimeout(resolve, 100))
+        }
+      } catch (error) {
+        console.error(`Batch ${i / batchSize + 1} failed:`, error)
+        results.failed.push(...batch.map(f => f.name))
+      }
+    }
+
+    return results
+  }
+
+  /**
+   * Delete files from server after successful sync
+   */
+  async deleteFilesFromServer(fileNames: string[]): Promise<{
+    deleted: string[]
+    failed: string[]
+  }> {
+    if (fileNames.length === 0) {
+      return { deleted: [], failed: [] }
+    }
+
+    try {
+      const response = await this.makeRequest('/delete', {
+        method: 'POST',
+        body: JSON.stringify({ files: fileNames }),
+      })
+
+      return response
+    } catch (error) {
+      console.error('Failed to delete files from server:', error)
+      return { deleted: [], failed: fileNames }
+    }
+  }
+
+  /**
+   * Get sync status from server
+   */
+  async getSyncStatus(): Promise<{
+    total_files: number
+    total_size: number
+    last_modified: number
+  }> {
+    const response = await this.makeRequest('/sync/status', {
+      method: 'GET',
+    })
+
+    return response
+  }
 }
 
 // Export a default instance - will be initialized with proper IP when used
