@@ -68,6 +68,10 @@ export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps)
     setError(null)
 
     try {
+      // Set the server URL to the glasses WiFi IP
+      asgCameraApi.setServer(glassesWifiIp, 8089)
+      console.log(`[GalleryScreen] Set server URL to: ${glassesWifiIp}:8089`)
+      
       const serverPhotos = await asgCameraApi.getGalleryPhotos()
       setPhotos(serverPhotos)
     } catch (err) {
@@ -103,6 +107,10 @@ export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps)
 
     try {
       console.log(`[GalleryScreen] Starting sync process...`)
+      
+      // Set the server URL to the glasses WiFi IP
+      asgCameraApi.setServer(glassesWifiIp, 8089)
+      console.log(`[GalleryScreen] Set server URL to: ${glassesWifiIp}:8089`)
       
       // Get sync state
       const syncState = await localStorageService.getSyncState()
@@ -187,6 +195,9 @@ export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps)
     }
 
     try {
+      // Set the server URL to the glasses WiFi IP
+      asgCameraApi.setServer(glassesWifiIp, 8089)
+      
       await asgCameraApi.takePicture()
       Alert.alert("Success", "Picture taken successfully!")
       loadPhotos() // Reload photos
