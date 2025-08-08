@@ -141,13 +141,26 @@ export class AsgCameraApiClient {
         const data = await response.json()
         console.log(`[ASG Camera API] JSON Response received:`, data)
         return data
-      } else if (contentType?.includes("image/")) {
-        // For image responses, return the blob
+      } else if (contentType?.includes("image/") || contentType?.includes("application/octet-stream")) {
+        // For image responses and binary data (including AVIF), return the blob
         const blob = await response.blob()
-        console.log(`[ASG Camera API] Image Response received:`, {
+        console.log(`[ASG Camera API] Binary/Image Response received:`, {
           size: blob.size,
           type: blob.type,
         })
+
+        // Quick check if this might be an AVIF file
+        if (contentType?.includes("application/octet-stream") && blob.size > 12) {
+          const arrayBuffer = await blob.arrayBuffer()
+          const bytes = new Uint8Array(arrayBuffer.slice(4, 12))
+          const ftypSignature = String.fromCharCode(...bytes)
+          if (ftypSignature === "ftypavif") {
+            console.log(`[ASG Camera API] Detected AVIF file in response`)
+          }
+          // Return a new blob since we consumed the original
+          return new Blob([arrayBuffer], {type: blob.type}) as T
+        }
+
         return blob as T
       } else {
         // For text responses
@@ -284,12 +297,18 @@ export class AsgCameraApiClient {
       const photos = response.data.photos
       console.log(`[ASG Camera API] Found ${photos.length} photos`)
 
-      // Ensure each photo has proper URLs
-      const processedPhotos = photos.map(photo => ({
-        ...photo,
-        url: this.constructPhotoUrl(photo.name),
-        download: this.constructDownloadUrl(photo.name),
-      }))
+      // Ensure each photo has proper URLs and detect AVIF files
+      const processedPhotos = photos.map(photo => {
+        // Check if filename suggests AVIF (no extension or .avif)
+        const mightBeAvif = !photo.name.includes(".") || photo.name.match(/\.(avif|avifs)$/i)
+
+        return {
+          ...photo,
+          url: this.constructPhotoUrl(photo.name),
+          download: this.constructDownloadUrl(photo.name),
+          mime_type: photo.mime_type || (mightBeAvif ? "image/avif" : undefined),
+        }
+      })
 
       console.log(`[ASG Camera API] Processed photos:`, processedPhotos)
       return processedPhotos
@@ -606,6 +625,96 @@ export class AsgCameraApiClient {
     })
 
     return response
+  }
+
+  /**
+   * Download a file from the server with AVIF detection
+   */
+  async downloadFile(
+    filename: string,
+    includeThumbnail: boolean = false,
+  ): Promise<{
+    data: string
+    thumbnail_data?: string
+    mime_type: string
+  }> {
+    console.log(`[ASG Camera API] Downloading file: ${filename}`)
+
+    try {
+      // Fetch the file as a blob
+      const response = await fetch(`${this.baseUrl}/api/photo?file=${encodeURIComponent(filename)}`, {
+        method: "GET",
+        headers: {
+          "Accept": "*/*",
+          "User-Agent": "MentraOS-Mobile/1.0",
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error(`Failed to download ${filename}: ${response.status}`)
+      }
+
+      // Get the blob
+      const blob = await response.blob()
+      console.log(`[ASG Camera API] Downloaded blob for ${filename}:`, {
+        size: blob.size,
+        type: blob.type,
+      })
+
+      // Read blob as array buffer to check file signature
+      const arrayBuffer = await blob.arrayBuffer()
+      const bytes = new Uint8Array(arrayBuffer)
+
+      // Check for AVIF signature (starts at byte 4: "ftypavif")
+      let isAvif = false
+      let mimeType = blob.type || "application/octet-stream"
+
+      if (bytes.length > 12) {
+        const ftypSignature = String.fromCharCode(...bytes.slice(4, 12))
+        if (ftypSignature === "ftypavif") {
+          isAvif = true
+          mimeType = "image/avif"
+          console.log(`[ASG Camera API] Detected AVIF file: ${filename}`)
+        }
+      }
+
+      // Convert to base64 data URL
+      const base64 = btoa(String.fromCharCode(...bytes))
+      const dataUrl = `data:${mimeType};base64,${base64}`
+
+      // Download thumbnail if requested and it's a video
+      let thumbnailData: string | undefined
+      if (includeThumbnail && filename.toLowerCase().match(/\.(mp4|mov|avi|mkv|webm)$/)) {
+        try {
+          const thumbnailResponse = await fetch(`${this.baseUrl}/api/thumbnail?file=${encodeURIComponent(filename)}`, {
+            method: "GET",
+            headers: {
+              "Accept": "image/*",
+              "User-Agent": "MentraOS-Mobile/1.0",
+            },
+          })
+
+          if (thumbnailResponse.ok) {
+            const thumbnailBlob = await thumbnailResponse.blob()
+            const thumbnailBuffer = await thumbnailBlob.arrayBuffer()
+            const thumbnailBytes = new Uint8Array(thumbnailBuffer)
+            const thumbnailBase64 = btoa(String.fromCharCode(...thumbnailBytes))
+            thumbnailData = `data:${thumbnailBlob.type};base64,${thumbnailBase64}`
+          }
+        } catch (error) {
+          console.warn(`[ASG Camera API] Failed to download thumbnail for ${filename}:`, error)
+        }
+      }
+
+      return {
+        data: dataUrl,
+        thumbnail_data: thumbnailData,
+        mime_type: mimeType,
+      }
+    } catch (error) {
+      console.error(`[ASG Camera API] Error downloading file ${filename}:`, error)
+      throw error
+    }
   }
 }
 

@@ -25,6 +25,7 @@ import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {PhotoInfo} from "../../types"
 import {asgCameraApi} from "../../services/asgCameraApi"
 import {localStorageService} from "../../services/localStorageService"
+import {PhotoImage} from "./PhotoImage"
 
 interface GalleryScreenProps {
   deviceModel?: string
@@ -363,7 +364,7 @@ export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps)
                 style={themed($photoItem)}
                 onPress={() => handlePhotoPress(photo)}
                 onLongPress={() => (isServerTab ? handleDeletePhoto(photo) : handleDeleteDownloadedPhoto(photo))}>
-                <Image source={{uri: photo.url}} style={themed($photoImage)} />
+                <PhotoImage photo={photo} style={themed($photoImage)} />
                 {photo.is_video && (
                   <View style={themed($videoIndicator)}>
                     <Text style={themed($videoIndicatorText)}>▶</Text>
@@ -383,7 +384,7 @@ export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps)
         onRequestClose={() => setSelectedPhoto(null)}>
         <View style={themed($modalOverlay)}>
           <TouchableOpacity style={themed($modalContent)} onPress={() => setSelectedPhoto(null)} activeOpacity={1}>
-            {selectedPhoto && <Image source={{uri: selectedPhoto.url}} style={themed($modalImage)} />}
+            {selectedPhoto && <PhotoImage photo={selectedPhoto} style={themed($modalImage)} />}
           </TouchableOpacity>
         </View>
       </Modal>
