@@ -128,8 +128,9 @@ export const AppsGridView: React.FC<AppsGridViewProps> = ({
 
   return (
     <View style={themed($container)}>
-      {title && <Text style={themed($title)} text={title} />}
+      {/* {title && <Text style={themed($title)} text={title} />} */}
 
+      {/* <ScrollView> */}
       <FlatList
         data={apps}
         renderItem={renderAppItem}
@@ -139,6 +140,7 @@ export const AppsGridView: React.FC<AppsGridViewProps> = ({
         scrollEnabled={false}
         contentContainerStyle={themed($gridContainer)}
       />
+      {/* </ScrollView> */}
 
       {selectedApp && touchableRefs.current[selectedApp.packageName] && (
         <Popover

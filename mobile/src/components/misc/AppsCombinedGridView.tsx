@@ -1,5 +1,6 @@
 import React, {useState} from "react"
-import {View, TouchableOpacity, ViewStyle, TextStyle} from "react-native"
+import {View, ViewStyle, TextStyle, Dimensions} from "react-native"
+import {TabView, SceneMap, TabBar} from "react-native-tab-view"
 import {AppsGridView} from "./AppsGridView"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {ThemedStyle} from "@/theme"
@@ -28,6 +29,8 @@ interface AppsCombinedGridViewProps {
   onOpenWebView?: (app: AppModel) => void
 }
 
+const initialLayout = {width: Dimensions.get("window").width}
+
 export const AppsCombinedGridView: React.FC<AppsCombinedGridViewProps> = ({
   activeApps,
   inactiveApps,
@@ -36,8 +39,12 @@ export const AppsCombinedGridView: React.FC<AppsCombinedGridViewProps> = ({
   onOpenSettings,
   onOpenWebView,
 }) => {
-  const {themed} = useAppTheme()
-  const [selectedTab, setSelectedTab] = useState<"active" | "inactive">("active")
+  const {themed, theme} = useAppTheme()
+  const [index, setIndex] = useState(0)
+  const [routes] = useState([
+    {key: "active", title: translate("home:activeApps")},
+    {key: "inactive", title: translate("home:inactiveApps")},
+  ])
 
   const hasActiveApps = activeApps.length > 0
   const hasInactiveApps = inactiveApps.length > 0
@@ -51,7 +58,7 @@ export const AppsCombinedGridView: React.FC<AppsCombinedGridViewProps> = ({
     )
   }
 
-  // // If only one type of apps, show without tabs
+  // // If only one type of apps exists
   // if (hasActiveApps && !hasInactiveApps) {
   //   return (
   //     <View style={themed($container)}>
@@ -82,54 +89,76 @@ export const AppsCombinedGridView: React.FC<AppsCombinedGridViewProps> = ({
   //   )
   // }
 
-  // Both types exist, use custom tabs
+  const ActiveRoute = () => (
+    <View style={themed($scene)}>
+      <AppsGridView
+        apps={activeApps}
+        onStartApp={onStartApp}
+        onStopApp={onStopApp}
+        onOpenSettings={onOpenSettings}
+        onOpenWebView={onOpenWebView}
+      />
+    </View>
+  )
+
+  const InactiveRoute = () => (
+    <View style={themed($scene)}>
+      <AppsGridView
+        apps={inactiveApps}
+        onStartApp={onStartApp}
+        onStopApp={onStopApp}
+        onOpenSettings={onOpenSettings}
+        onOpenWebView={onOpenWebView}
+      />
+    </View>
+  )
+
+  const renderScene = SceneMap({
+    active: ActiveRoute,
+    inactive: InactiveRoute,
+  })
+
+  const renderTabBar = (props: any) => (
+    <TabBar
+      {...props}
+      indicatorStyle={{backgroundColor: theme.colors.palette.accent500}}
+      style={{backgroundColor: theme.colors.background}}
+      labelStyle={{
+        fontSize: 16,
+        fontWeight: "600",
+        textTransform: "none",
+      }}
+      activeColor={theme.colors.text}
+      inactiveColor={theme.colors.textDim}
+    />
+  )
+
   return (
     <View style={themed($container)}>
-      {/* Tab Bar */}
-      <View style={themed($tabBar)}>
-        <TouchableOpacity style={themed($tabButton)} onPress={() => setSelectedTab("active")} activeOpacity={0.7}>
-          <Text
-            text={translate("home:activeApps")}
-            style={[themed($tabLabel), selectedTab === "active" && themed($tabLabelActive)]}
-          />
-          {selectedTab === "active" && <View style={themed($tabIndicator)} />}
-        </TouchableOpacity>
-
-        <TouchableOpacity style={themed($tabButton)} onPress={() => setSelectedTab("inactive")} activeOpacity={0.7}>
-          <Text
-            text={translate("home:inactiveApps")}
-            style={[themed($tabLabel), selectedTab === "inactive" && themed($tabLabelActive)]}
-          />
-          {selectedTab === "inactive" && <View style={themed($tabIndicator)} />}
-        </TouchableOpacity>
-      </View>
-
-      {/* Tab Content */}
-      <View style={themed($tabContent)}>
-        {selectedTab === "active" ? (
-          <AppsGridView
-            apps={activeApps}
-            onStartApp={onStartApp}
-            onStopApp={onStopApp}
-            onOpenSettings={onOpenSettings}
-            onOpenWebView={onOpenWebView}
-          />
-        ) : (
-          <AppsGridView
-            apps={inactiveApps}
-            onStartApp={onStartApp}
-            onStopApp={onStopApp}
-            onOpenSettings={onOpenSettings}
-            onOpenWebView={onOpenWebView}
-          />
-        )}
-      </View>
+      <TabView
+        navigationState={{index, routes}}
+        renderScene={renderScene}
+        renderTabBar={renderTabBar}
+        onIndexChange={setIndex}
+        initialLayout={initialLayout}
+        style={themed($tabView)}
+      />
     </View>
   )
 }
 
 const $container: ThemedStyle<ViewStyle> = () => ({
   flex: 1,
+  height: 5000,
+})
+
+const $tabView: ThemedStyle<ViewStyle> = () => ({
+  flex: 1,
+})
+
+const $scene: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  flex: 1,
+  paddingTop: spacing.md,
 })
 
 const $sectionTitle: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
@@ -138,45 +167,6 @@ const $sectionTitle: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
   color: colors.text,
   paddingHorizontal: spacing.md,
   marginBottom: spacing.md,
-})
-
-const $tabBar: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
-  flexDirection: "row",
-  backgroundColor: colors.background,
-  // paddingHorizontal: spacing.md,
-  borderRadius: spacing.sm,
-})
-
-const $tabButton: ThemedStyle<ViewStyle> = ({spacing}) => ({
-  flex: 1,
-  paddingVertical: spacing.sm,
-  alignItems: "center",
-  position: "relative",
-})
-
-const $tabLabel: ThemedStyle<TextStyle> = ({colors}) => ({
-  fontSize: 16,
-  fontWeight: "500",
-  color: colors.textDim,
-})
-
-const $tabLabelActive: ThemedStyle<TextStyle> = ({colors}) => ({
-  color: colors.text,
-  fontWeight: "600",
-})
-
-const $tabIndicator: ThemedStyle<ViewStyle> = ({colors}) => ({
-  position: "absolute",
-  bottom: 0,
-  left: 0,
-  right: 0,
-  height: 3,
-  backgroundColor: colors.primary,
-})
-
-const $tabContent: ThemedStyle<ViewStyle> = ({spacing}) => ({
-  flex: 1,
-  paddingTop: spacing.md,
 })
 
 const $emptyContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
