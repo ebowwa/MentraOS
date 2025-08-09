@@ -116,6 +116,9 @@ export class AudioManager {
       // Update the last audio timestamp
       this.userSession.lastAudioTimestamp = Date.now();
 
+      // Notify MicrophoneManager that we received audio
+      this.userSession.microphoneManager.onAudioReceived();
+
       // Add to recent audio buffer
       // this.addToRecentBuffer(audioData);
 

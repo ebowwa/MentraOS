@@ -152,8 +152,12 @@ export function NavigationHistoryProvider({children}: {children: React.ReactNode
     console.log("NAV_HISTORY: clearHistoryAndGoHome()")
     historyRef.current = []
     historyParamsRef.current = []
-    router.dismissAll()
-    router.navigate("/(tabs)/home")
+    try {
+      router.dismissAll()
+    } catch (error) {
+      console.error("NAV_HISTORY: clearHistoryAndGoHome() error", error)
+    }
+    router.replace("/(tabs)/home")
   }
 
   return (

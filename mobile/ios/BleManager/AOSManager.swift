@@ -570,7 +570,7 @@ struct ViewState {
 
         // in any case, clear the vadBuffer:
         vadBuffer.removeAll()
-        micEnabled = isEnabled
+        micEnabled = isEnabled || shouldSendPcmData
 
         // Handle microphone state change if needed
         Task {
@@ -605,14 +605,21 @@ struct ViewState {
                 }
 
                 if !useGlassesMic, !useOnboardMic {
-                    CoreCommsService.log("no mic to use!!!!!!")
+                    CoreCommsService.log("AOS: no mic to use! falling back to glasses mic!!!!! (this should not happen)")
+                    useGlassesMic = true
                 }
             }
 
             useGlassesMic = actuallyEnabled && useGlassesMic
             useOnboardMic = actuallyEnabled && useOnboardMic
 
-            CoreCommsService.log("AOS: user enabled microphone: \(isEnabled) sensingEnabled: \(self.sensingEnabled) useOnboardMic: \(useOnboardMic) useGlassesMic: \(useGlassesMic) glassesHasMic: \(glassesHasMic) preferredMic: \(self.preferredMic) somethingConnected: \(self.somethingConnected) onboardMicUnavailable: \(self.onboardMicUnavailable)")
+            CoreCommsService.log("AOS: useGlassesMic: \(useGlassesMic) useOnboardMic: \(useOnboardMic) actuallyEnabled: \(actuallyEnabled)")
+            CoreCommsService.log("AOS: isEnabled: \(isEnabled) sensingEnabled: \(self.sensingEnabled) glassesHasMic: \(glassesHasMic)")
+            CoreCommsService.log("AOS: useGlassesMic: \(useGlassesMic) useOnboardMic: \(useOnboardMic)")
+            CoreCommsService.log("AOS: preferredMic: \(self.preferredMic) onboardMicUnavailable: \(self.onboardMicUnavailable)")
+            CoreCommsService.log("AOS: somethingConnected: \(self.somethingConnected)")
+
+            // CoreCommsService.log("AOS: user enabled microphone: \(isEnabled) sensingEnabled: \(self.sensingEnabled) useOnboardMic: \(useOnboardMic) useGlassesMic: \(useGlassesMic) glassesHasMic: \(glassesHasMic) preferredMic: \(self.preferredMic) somethingConnected: \(self.somethingConnected) onboardMicUnavailable: \(self.onboardMicUnavailable)")
 
             if self.somethingConnected {
                 await self.g1Manager?.setMicEnabled(enabled: useGlassesMic)

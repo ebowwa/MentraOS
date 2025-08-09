@@ -5,6 +5,8 @@ on:
   push:
     branches:
       - main
+    paths:
+      - "cloud/**"
 jobs:
   us-west:
     runs-on: ubuntu-latest

@@ -168,7 +168,7 @@ export class ManagedStreamingExtension {
       liveInput = await this.cloudflareService.createLiveInput(userId, {
         quality,
         enableWebRTC,
-        enableRecording: false, // Live-only for now
+        enableRecording: true, // Must be true for live playback to work
         requireSignedURLs: false, // Public streams
         restreamDestinations, // Pass through restream destinations
       });

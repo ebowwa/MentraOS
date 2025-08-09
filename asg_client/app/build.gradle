@@ -75,7 +75,7 @@ android {
 
         minSdk 28
         targetSdk 33
-        versionCode 10
+        versionCode 11
         versionName "8.0"
 
         ndk {
@@ -200,6 +200,9 @@ dependencies {
     
     // AVIF encoding/decoding support
     implementation 'com.github.awxkee:avif-coder:1.7.3'
+
+    // Sentry SDK for error reporting
+    implementation 'io.sentry:sentry-android:7.5.0'
 
     // AndroidX Test dependencies
     androidTestImplementation 'androidx.test:core:1.5.0'

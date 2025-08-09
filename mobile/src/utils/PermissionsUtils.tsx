@@ -792,7 +792,7 @@ export const askPermissionsUI = async (app: AppInterface, theme: Theme): Promise
             // If we still need READ_NOTIFICATIONS, don't auto-retry
             if (stillNeededPermissions.includes(PermissionFeatures.READ_NOTIFICATIONS) && Platform.OS === "android") {
               // Permission flow is in progress, user needs to complete it manually
-              resolve(0) // Return 0 to indicate "in progress" state
+              resolve(-1) // Return 0 to indicate "in progress" state
               return
             }
 
@@ -827,10 +827,6 @@ export const checkPermissionsUI = async (app: AppInterface) => {
       {type: "LOCATION", required: true},
       {type: "BACKGROUND_LOCATION", required: true},
     ] as AppPermission[]
-  }
-
-  if (app.packageName == "cloud.augmentos.notify") {
-    permissions.push({type: "READ_NOTIFICATIONS", required: true, description: "Read notifications"})
   }
 
   for (const permission of permissions) {

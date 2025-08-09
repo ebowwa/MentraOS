@@ -28,6 +28,14 @@ class CoreCommsService: RCTEventEmitter {
         emitter.sendEvent(withName: "CoreMessageEvent", body: msg)
     }
 
+    static func showBanner(type: String, message: String) {
+        let data = ["notify_manager":
+            ["type": type, "message": message]] as [String: Any]
+        let jsonData = try! JSONSerialization.data(withJSONObject: data)
+        let jsonString = String(data: jsonData, encoding: .utf8)
+        emitter.sendEvent(withName: "CoreMessageEvent", body: jsonString!)
+    }
+
     static func sendAppStartedEvent(_ packageName: String) {
         let msg = ["type": "app_started", "packageName": packageName]
         let jsonData = try! JSONSerialization.data(withJSONObject: msg)
@@ -38,6 +46,13 @@ class CoreCommsService: RCTEventEmitter {
     static func sendAppStoppedEvent(_ packageName: String) {
         let msg = ["type": "app_stopped", "packageName": packageName]
         let jsonData = try! JSONSerialization.data(withJSONObject: msg)
+        let jsonString = String(data: jsonData, encoding: .utf8)
+        emitter.sendEvent(withName: "CoreMessageEvent", body: jsonString!)
+    }
+
+    static func sendPairFailureEvent(_ error: String) {
+        let msg = ["type": "pair_failure", "error": error]
+        let jsonData = try! JSONSerialization.data(withJSONObject: msg, options: [])
         let jsonString = String(data: jsonData, encoding: .utf8)
         emitter.sendEvent(withName: "CoreMessageEvent", body: jsonString!)
     }

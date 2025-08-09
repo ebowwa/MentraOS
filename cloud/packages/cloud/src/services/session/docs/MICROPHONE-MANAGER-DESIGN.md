@@ -1,420 +1,168 @@
-# MicrophoneManager Design Document
+# MicrophoneManager Documentation
 
 ## Overview
 
-The MicrophoneManager is a component responsible for managing microphone state within a user session. It encapsulates all microphone-related functionality that is currently spread throughout the WebSocket service, following the pattern used by other managers like DisplayManager and DashboardManager.
+MicrophoneManager handles all microphone state management for user sessions in MentraOS. It controls when the glasses' microphone is enabled/disabled based on app subscriptions and provides a keep-alive mechanism to ensure the client maintains microphone access.
 
-## Current Implementation Details
+## Core Responsibilities
 
-### Location and Structure
+1. **State Management**: Tracks microphone enabled/disabled state
+2. **Debounced Updates**: Prevents rapid state changes from overwhelming the client
+3. **Keep-Alive Messages**: Sends periodic reminders to maintain microphone access
+4. **Subscription Coordination**: Responds to app audio subscription changes
+5. **WebSocket Communication**: Sends state changes to glasses client
 
-Currently, microphone state management is implemented in `websocket.service.ts` with the following components:
+## Key Features
 
-1. **Type Definition**:
-   ```typescript
-   type MicrophoneStateChangeDebouncer = {
-     timer: ReturnType<typeof setTimeout> | null;
-     lastState: boolean;
-     lastSentState: boolean
-   };
-   ```
+### Debounced State Updates
 
-2. **Global State Map**:
-   ```typescript
-   private microphoneStateChangeDebouncers = new Map<string, MicrophoneStateChangeDebouncer>();
-   ```
+The manager implements intelligent debouncing to handle rapid state changes:
 
-3. **Debouncer Function**:
-   ```typescript
-   private sendDebouncedMicrophoneStateChange(
-     ws: WebSocket,
-     userSession: UserSession,
-     isEnabled: boolean,
-     delay = 1000
-   ): void {
-     // Implementation details for debouncing microphone state changes
-   }
-   ```
+- **First Update**: Sent immediately
+- **Subsequent Updates**: Debounced with configurable delay (default 1000ms)
+- **Smart Coalescing**: Multiple rapid changes result in a single final update
+- **State Tracking**: Only sends if final state differs from last sent state
 
-### Current Behavior
+### Performance Optimization
 
-1. **Initial State Management**:
-   - When a user connects, microphone state is initialized based on whether there are media subscriptions
-   - First call sends state change immediately
-   - Creates a debouncer object to track subsequent changes
+To avoid expensive repeated lookups, the manager caches subscription state:
 
-2. **Debouncing Mechanism**:
-   - Tracks the last sent state and the current desired state
-   - Only sends updates when the final state differs from the last sent state
-   - Uses a timer to delay updates, clearing previous timers if new changes arrive
-   - The debouncer is removed after processing
+- **Cached State**: Stores `hasPCM`, `hasTranscription`, and `hasMedia` flags
+- **Cache Updates**: Only recalculated when:
+  - Initial construction
+  - Subscription changes occur
+  - Glasses connection state changes
+  - After unauthorized audio debounce expires (sanity check)
+- **High-Frequency Calls**: `onAudioReceived()` uses cached state (called 50+ times/second)
+- **Significant Performance Gain**: Reduces subscription service calls from thousands to just a few per session
 
-3. **Transcription Integration**:
-   - Updates transcription service state based on microphone state
-   - If microphone enabled: `transcriptionService.startTranscription(userSession)`
-   - If microphone disabled: `transcriptionService.stopTranscription(userSession)`
+### Microphone Keep-Alive
 
-### Current Usage Points
+**Purpose**: Some glasses clients may release microphone access when the app goes to background (to allow other apps to use the mic). The keep-alive ensures the client maintains microphone access continuously, even while in the background.
 
-1. **GLASSES_CONNECTION_STATE Handler** (~line 1252):
-   ```typescript
-   case GlassesToCloudMessageType.GLASSES_CONNECTION_STATE: {
-     const glassesConnectionStateMessage = message as GlassesConnectionState;
-     userSession.logger.info('Glasses connection state:', glassesConnectionStateMessage);
+**Behavior**:
 
-     if (glassesConnectionStateMessage.status === 'CONNECTED') {
-       const mediaSubscriptions = subscriptionService.hasMediaSubscriptions(userSession.sessionId);
-       userSession.logger.info('Init Media subscriptions:', mediaSubscriptions);
-       this.sendDebouncedMicrophoneStateChange(ws, userSession, mediaSubscriptions);
-     }
+- Sends `MICROPHONE_STATE_CHANGE` message every 10 seconds
+- Only active when:
+  - Microphone is enabled
+  - WebSocket connection is open
+  - Active media/audio subscriptions exist
+- Automatically stops when conditions are no longer met
+- Keeps the microphone active even when the app is backgrounded
 
-     // Rest of the handler...
-   }
-   ```
+### Unauthorized Audio Detection
 
-2. **App Subscription Updates** (when a App subscribes to audio):
-   - Called when Apps update their subscription preferences
-   - Enables microphone if any App subscribes to audio streams
-   - Disables microphone if no Apps are subscribed to audio streams
+**Purpose**: Ensures the glasses client properly disables the microphone when instructed. If audio data continues to arrive after the mic should be off, the system immediately forces a mic off command.
 
-3. **Session Cleanup**:
-   - Clears any active debounce timers when sessions end
-   - Ensures microphone state is properly reset
+**Behavior**:
 
-4. **Default MentraOS Settings** (~line 111):
-   ```typescript
-   const DEFAULT_AUGMENTOS_SETTINGS = {
-     useOnboardMic: false,
-     // Other settings...
-   }
-   ```
+- Monitors incoming audio when mic should be disabled
+- If unauthorized audio detected:
+  - Immediately sends `MICROPHONE_STATE_CHANGE` with enabled=false
+  - Logs the incident for debugging
+  - Ignores further unauthorized audio for 5 seconds (debounce period)
+  - After debounce, refreshes cached subscription state before resuming detection
+- Prevents spam by not sending multiple off commands within 5 seconds
+- Ensures mic is disabled when no apps have active subscriptions
 
-5. **Core Status Update** (~line 1437):
-   ```typescript
-   // Updates useOnboardMic based on glasses state:
-   useOnboardMic: coreInfo.force_core_onboard_mic,
-   ```
+**Design Rationale**:
+The immediate response ensures quick security enforcement, while the debounce period prevents flooding the client with repeated off commands when receiving a stream of unauthorized audio (50+ chunks per second). The cache refresh after debounce handles edge cases where subscriptions might have changed during the 5-second window, ensuring we don't incorrectly flag legitimate audio as unauthorized.
 
-## Proposed Implementation
+### Subscription-Based Activation
 
-### New Directory Structure
+The microphone automatically activates based on app needs:
 
-```
-/packages/cloud/src/services/
-├── session/
-│   ├── MicrophoneManager.ts    # New microphone state manager
-│   └── MICROPHONE-MANAGER-DESIGN.md # This document
-```
+- **PCM Audio**: Apps needing raw audio data
+- **Transcription**: Apps needing speech-to-text
+- **PCM or Transcription**: Apps that can work with either
 
-### MicrophoneManager Class
+The manager calculates the optimal `requiredData` array based on all active subscriptions.
+
+## Message Protocol
+
+### Outgoing Messages
+
+**MICROPHONE_STATE_CHANGE**
 
 ```typescript
-/**
- * Manages microphone state for a user session
- */
-export class MicrophoneManager {
-  private session: ExtendedUserSession;
-  private logger: Logger;
-
-  // Track the current microphone state
-  private enabled: boolean = false;
-
-  // Debounce mechanism for state changes
-  private debounceTimer: NodeJS.Timeout | null = null;
-  private pendingState: boolean | null = null;
-  private lastSentState: boolean = false;
-
-  constructor(session: ExtendedUserSession) {
-    this.session = session;
-    this.logger = session.logger.child({ component: 'MicrophoneManager' });
-    this.logger.info('MicrophoneManager initialized');
-  }
-
-  /**
-   * Update the microphone state with debouncing
-   * Replicates the exact behavior of the original sendDebouncedMicrophoneStateChange
-   *
-   * @param isEnabled - Whether the microphone should be enabled
-   * @param delay - Debounce delay in milliseconds (default: 1000ms)
-   */
-  updateState(isEnabled: boolean, delay: number = 1000): void {
-    this.logger.debug(`Updating microphone state: ${isEnabled}, delay: ${delay}ms`);
-
-    if (this.debounceTimer === null) {
-      // First call: send immediately and update lastSentState
-      this.sendStateChangeToGlasses(isEnabled);
-      this.lastSentState = isEnabled;
-      this.pendingState = isEnabled;
-      this.enabled = isEnabled;
-    } else {
-      // For subsequent calls, update pending state
-      this.pendingState = isEnabled;
-
-      // Clear existing timer
-      clearTimeout(this.debounceTimer);
-      this.debounceTimer = null;
-    }
-
-    // Set or reset the debounce timer
-    this.debounceTimer = setTimeout(() => {
-      // Only send if the final state differs from the last sent state
-      if (this.pendingState !== this.lastSentState) {
-        this.logger.info(`Sending debounced microphone state change: ${this.pendingState}`);
-        this.sendStateChangeToGlasses(this.pendingState!);
-        this.lastSentState = this.pendingState!;
-        this.enabled = this.pendingState!;
-      }
-
-      // Update transcription service state
-      this.updateTranscriptionState();
-
-      // Cleanup: reset debounce timer
-      this.debounceTimer = null;
-      this.pendingState = null;
-    }, delay);
-  }
-
-  /**
-   * Send microphone state change message to glasses
-   * This replicates the exact message format from the original implementation
-   */
-  private sendStateChangeToGlasses(isEnabled: boolean): void {
-    if (!this.session.websocket || this.session.websocket.readyState !== WebSocket.OPEN) {
-      this.logger.warn('Cannot send microphone state change: WebSocket not open');
-      return;
-    }
-
-    try {
-      const message: MicrophoneStateChange = {
-        type: CloudToGlassesMessageType.MICROPHONE_STATE_CHANGE,
-        sessionId: this.session.sessionId,
-        userSession: {
-          sessionId: this.session.sessionId,
-          userId: this.session.userId,
-          startTime: this.session.startTime,
-          activeAppSessions: this.session.activeAppSessions || [],
-          loadingApps: Array.from(this.session.loadingApps || []),
-          isTranscribing: this.session.isTranscribing || false,
-        },
-        isEnabled: isEnabled,
-        timestamp: new Date(),
-      };
-
-      this.session.websocket.send(JSON.stringify(message));
-      this.logger.debug('Sent microphone state change message');
-    } catch (error) {
-      this.logger.error('Error sending microphone state change:', error);
-    }
-  }
-
-  /**
-   * Update transcription service state based on current microphone state
-   * This replicates the transcription service integration from the original implementation
-   */
-  private updateTranscriptionState(): void {
-    try {
-      if (this.enabled) {
-        this.logger.info('Starting transcription based on microphone state');
-        transcriptionService.startTranscription(this.session);
-      } else {
-        this.logger.info('Stopping transcription based on microphone state');
-        transcriptionService.stopTranscription(this.session);
-      }
-    } catch (error) {
-      this.logger.error('Error updating transcription state:', error);
-    }
-  }
-
-  /**
-   * Get the current microphone state
-   */
-  isEnabled(): boolean {
-    return this.enabled;
-  }
-
-  /**
-   * Handle glasses connection state changes
-   * This replicates the behavior in the GLASSES_CONNECTION_STATE case
-   */
-  handleConnectionStateChange(status: string): void {
-    if (status === 'CONNECTED') {
-      this.logger.info('Glasses connected, checking media subscriptions');
-      const hasMediaSubscriptions = this.checkMediaSubscriptions();
-      this.updateState(hasMediaSubscriptions);
-    }
-  }
-
-  /**
-   * Check if there are any media subscriptions that require microphone
-   * This replicates the subscription check in the original implementation
-   */
-  private checkMediaSubscriptions(): boolean {
-    try {
-      return subscriptionService.hasMediaSubscriptions(this.session.sessionId);
-    } catch (error) {
-      this.logger.error('Error checking media subscriptions:', error);
-      return false;
-    }
-  }
-
-  /**
-   * Handle subscription changes
-   * This should be called when Apps update their subscriptions
-   */
-  handleSubscriptionChange(): void {
-    const hasMediaSubscriptions = this.checkMediaSubscriptions();
-    this.logger.info(`Subscription changed, media subscriptions: ${hasMediaSubscriptions}`);
-    this.updateState(hasMediaSubscriptions);
-  }
-
-  /**
-   * Update microphone settings based on core status
-   * This replicates the onboard mic setting update
-   */
-  updateOnboardMicSetting(useOnboardMic: boolean): void {
-    this.logger.info(`Updating onboard mic setting: ${useOnboardMic}`);
-    // Update the setting in user preferences or session state
-    // Implementation depends on how settings are stored
-  }
-
-  /**
-   * Cleanup resources
-   */
-  dispose(): void {
-    this.logger.info('Disposing MicrophoneManager');
-    // Clear any timers
-    if (this.debounceTimer) {
-      clearTimeout(this.debounceTimer);
-      this.debounceTimer = null;
-    }
-  }
+{
+  type: CloudToGlassesMessageType.MICROPHONE_STATE_CHANGE,
+  sessionId: string,
+  userSession: {
+    sessionId: string,
+    userId: string,
+    startTime: Date,
+    activeAppSessions: string[],
+    loadingApps: Set<string>,
+    isTranscribing: boolean
+  },
+  isMicrophoneEnabled: boolean,
+  requiredData: Array<'pcm' | 'transcription' | 'pcm_or_transcription'>,
+  bypassVad: boolean,  // Bypass Voice Activity Detection for PCM
+  timestamp: Date
 }
 ```
 
-### ExtendedUserSession Integration
+## Edge Cases Handled
 
-The MicrophoneManager will be added to the ExtendedUserSession interface in the new structure:
+1. **Rapid Subscription Changes**
+   - Debounced to prevent excessive state changes
+   - Final state always reflects actual subscription needs
+
+2. **WebSocket Disconnection**
+   - Keep-alive pauses when connection is lost
+   - Resumes automatically on reconnection
+
+3. **Session Cleanup**
+   - All timers properly cleared on disposal
+   - Prevents memory leaks
+
+4. **Glasses Connection State**
+   - Checks subscriptions when glasses connect
+   - Ensures proper initial microphone state
+
+5. **VAD Bypass**
+   - Automatically bypasses Voice Activity Detection when apps need PCM data
+   - Ensures continuous audio stream for apps that process raw audio
+
+6. **Unauthorized Audio**
+   - Detects when audio arrives but mic should be off
+   - Immediately sends mic off command
+   - Ignores further detections for 5 seconds (debounce)
+   - Prevents accidental audio capture and command spam
+
+## Integration Points
+
+1. **UserSession**: Created and owned by each user session
+2. **SubscriptionService**: Queries to determine if audio subscriptions exist
+3. **WebSocket**: Sends state changes to glasses client
+4. **AppManager**: Notified via subscription changes
+5. **AudioManager**: Notifies MicrophoneManager when audio is received
+
+## Usage Example
 
 ```typescript
-// In services/session/types.ts or similar
-export interface ExtendedUserSession extends UserSession {
-  // Existing properties...
+// When app subscribes to audio
+userSession.microphoneManager.handleSubscriptionChange();
 
-  // Add the microphone manager
-  microphoneManager: MicrophoneManager;
+// When glasses connect
+userSession.microphoneManager.handleConnectionStateChange("CONNECTED");
 
-  // Other properties...
-}
+// Manual state update
+const requiredData = ["pcm", "transcription"];
+userSession.microphoneManager.updateState(true, requiredData, 1000);
+
+// Cleanup
+userSession.microphoneManager.dispose();
 ```
 
-### Usage in New WebSocket Services
+## Why This Design?
 
-```typescript
-// In services/websocket/websocket-glasses.service.ts
-private async handleGlassesConnectionState(userSession: ExtendedUserSession, message: GlassesConnectionState): Promise<void> {
-  try {
-    userSession.logger.info('Glasses connection state:', message);
+1. **Centralized Control**: All microphone logic in one place
+2. **Reliability**: Keep-alive ensures consistent microphone access
+3. **Efficiency**: Debouncing prevents unnecessary messages, caching prevents expensive lookups
+4. **Flexibility**: Supports various audio processing needs
+5. **Maintainability**: Clear separation of concerns
+6. **Performance**: Cached subscription state reduces service calls by 99%+
 
-    // Update the microphone state based on connection status
-    userSession.microphoneManager.handleConnectionStateChange(message.status);
-
-    // Rest of the handling...
-
-  } catch (error) {
-    userSession.logger.error('Error handling glasses connection state:', error);
-  }
-}
-
-// In services/websocket/websocket-app.service.ts
-private async handleAppSubscriptionUpdate(userSession: ExtendedUserSession, message: AppSubscriptionUpdate): Promise<void> {
-  try {
-    // Update subscriptions...
-
-    // Notify microphone manager about subscription changes
-    userSession.microphoneManager.handleSubscriptionChange();
-
-  } catch (error) {
-    userSession.logger.error('Error handling subscription update:', error);
-  }
-}
-```
-
-### Session Service Integration
-
-```typescript
-// In services/session/session.service.ts
-async createSession(ws: WebSocket, userId: string): Promise<ExtendedUserSession> {
-  // Existing session creation code...
-
-  // Create the session object
-  const userSession: ExtendedUserSession = {
-    // Other properties...
-  };
-
-  // Initialize the MicrophoneManager
-  userSession.microphoneManager = new MicrophoneManager(userSession);
-
-  // Rest of the method...
-
-  return userSession;
-}
-
-// In services/session/session.service.ts - cleanup
-endSession(userSession: ExtendedUserSession): void {
-  if (!userSession) return;
-
-  userSession.logger.info(`[Ending session] Starting cleanup for ${userSession.sessionId}`);
-
-  // Cleanup microphone manager
-  if (userSession.microphoneManager) {
-    userSession.microphoneManager.dispose();
-  }
-
-  // Rest of cleanup...
-}
-```
-
-## Migration Strategy
-
-1. We will NOT modify the existing `websocket.service.ts` file
-2. All new code will be in separate directories:
-   - `/services/session/MicrophoneManager.ts`
-   - `/services/websocket/websocket-glasses.service.ts`
-   - `/services/websocket/websocket-app.service.ts`
-
-3. The new WebSocket and session services will use MicrophoneManager
-4. Once completely tested, we'll switch over to the new implementation
-
-## Critical Behaviors to Preserve
-
-1. **Initial State on Connection**:
-   - Check for media subscriptions when glasses connect
-   - Send initial state immediately without debouncing
-
-2. **Debouncing Behavior**:
-   - First state change sent immediately
-   - Subsequent changes are debounced
-   - Multiple rapid changes collapse to a single update
-   - Final state is always the last requested state
-
-3. **Message Format**:
-   - Maintain exact message format expected by glasses client
-   - Include all required session properties
-
-4. **Transcription Integration**:
-   - Start/stop transcription based on microphone state
-   - Update session.isTranscribing flag appropriately
-
-5. **Subscription Awareness**:
-   - Enable mic when any App subscribes to audio streams
-   - Disable mic when no Apps need audio anymore
-
-6. **Cleanup**:
-   - Properly dispose of timers when session ends
-   - Prevent memory leaks from lingering references
-
-7. **Error Handling**:
-   - Graceful recovery from WebSocket errors
-   - Continued operation if transcription service fails
-
-By encapsulating all microphone functionality in the MicrophoneManager, we ensure no regression in behavior while making the code more maintainable and testable.
+The keep-alive mechanism specifically addresses real-world issues where glasses clients lose microphone access when backgrounded, ensuring continuous audio capture even while the app remains in the background. The unauthorized audio detection provides an additional safety layer, ensuring the microphone is truly disabled when no apps need audio, even if the client fails to respond to the initial off command.
