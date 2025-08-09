@@ -299,12 +299,6 @@ export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps)
 
   return (
     <Screen preset="fixed" contentContainerStyle={themed($screenContentContainer)} safeAreaEdges={["top"]}>
-      <Header
-        title={`${deviceModel} Gallery`}
-        titleStyle={themed($headerTitle)}
-        containerStyle={themed($headerContainer)}
-      />
-
       {/* Tab Navigation */}
       <View style={themed($tabContainer)}>
         <TouchableOpacity
@@ -323,36 +317,12 @@ export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps)
         </TouchableOpacity>
       </View>
 
-      {/* Action Buttons */}
-      <View style={themed($actionButtonsContainer)}>
-        {isServerTab && (
+      {/* Take Picture Button - only for server tab */}
+      {isServerTab && (
+        <View style={themed($actionButtonsContainer)}>
           <TouchableOpacity style={themed($takePictureButton)} onPress={handleTakePicture}>
             <Text style={themed($buttonText)}>Take Picture</Text>
           </TouchableOpacity>
-        )}
-        <TouchableOpacity
-          style={[themed($syncButton), isSyncing && themed($syncButtonDisabled)]}
-          onPress={handleSync}
-          disabled={isSyncing}>
-          {isSyncing ? (
-            <ActivityIndicator size="small" color={theme.colors.background} />
-          ) : (
-            <Text style={themed($buttonText)}>Sync</Text>
-          )}
-        </TouchableOpacity>
-      </View>
-
-      {/* Sync Progress */}
-      {syncProgress && (
-        <View style={themed($syncProgressContainer)}>
-          <Text style={themed($syncProgressText)}>
-            {syncProgress.message} ({syncProgress.current}/{syncProgress.total})
-          </Text>
-          <View style={themed($syncProgressBar)}>
-            <View
-              style={[themed($syncProgressFill), {width: `${(syncProgress.current / syncProgress.total) * 100}%`}]}
-            />
-          </View>
         </View>
       )}
 
@@ -364,38 +334,73 @@ export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps)
       )}
 
       {/* Photo Grid */}
-      {isLoading ? (
-        <View style={themed($photoGridContainer)}>
-          <GallerySkeleton itemCount={numColumns * 4} numColumns={numColumns} itemWidth={itemWidth} />
-        </View>
-      ) : currentPhotos.length === 0 ? (
-        <View style={themed($emptyContainer)}>
-          <Text style={themed($emptyText)}>{isServerTab ? "No photos on server" : "No downloaded photos"}</Text>
-        </View>
-      ) : (
-        <FlatList
-          data={currentPhotos}
-          numColumns={numColumns}
-          key={numColumns} // Force re-render when columns change
-          renderItem={({item: photo}) => (
-            <TouchableOpacity
-              style={[themed($photoItem), {width: itemWidth}]}
-              onPress={() => handlePhotoPress(photo)}
-              onLongPress={() => (isServerTab ? handleDeletePhoto(photo) : handleDeleteDownloadedPhoto(photo))}>
-              <PhotoImage photo={photo} style={[themed($photoImage), {width: itemWidth, height: itemWidth * 0.8}]} />
-              {photo.is_video && (
-                <View style={themed($videoIndicator)}>
-                  <Text style={themed($videoIndicatorText)}>▶</Text>
-                </View>
-              )}
-            </TouchableOpacity>
+      <View style={themed($galleryContainer)}>
+        {isLoading ? (
+          <View style={themed($photoGridContainer)}>
+            <GallerySkeleton itemCount={numColumns * 4} numColumns={numColumns} itemWidth={itemWidth} />
+          </View>
+        ) : currentPhotos.length === 0 ? (
+          <View style={themed($emptyContainer)}>
+            <Text style={themed($emptyText)}>{isServerTab ? "No photos on server" : "No downloaded photos"}</Text>
+          </View>
+        ) : (
+          <FlatList
+            data={currentPhotos}
+            numColumns={numColumns}
+            key={numColumns} // Force re-render when columns change
+            renderItem={({item: photo}) => (
+              <TouchableOpacity
+                style={[themed($photoItem), {width: itemWidth}]}
+                onPress={() => handlePhotoPress(photo)}
+                onLongPress={() => (isServerTab ? handleDeletePhoto(photo) : handleDeleteDownloadedPhoto(photo))}>
+                <PhotoImage photo={photo} style={[themed($photoImage), {width: itemWidth, height: itemWidth * 0.8}]} />
+                {photo.is_video && (
+                  <View style={themed($videoIndicator)}>
+                    <Text style={themed($videoIndicatorText)}>▶</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            )}
+            keyExtractor={(item, index) => `${item.name}-${index}`}
+            contentContainerStyle={[themed($photoGridContent), {paddingBottom: 100}]} // Extra padding for sync button
+            columnWrapperStyle={numColumns > 1 ? themed($columnWrapper) : undefined}
+            ItemSeparatorComponent={() => <View style={{height: spacing.xs}} />}
+          />
+        )}
+      </View>
+
+      {/* Sync Button - Fixed at bottom */}
+      <TouchableOpacity
+        style={[themed($syncButtonFixed), isSyncing && themed($syncButtonFixedDisabled)]}
+        onPress={handleSync}
+        disabled={isSyncing}
+        activeOpacity={0.8}>
+        <View style={themed($syncButtonContent)}>
+          {isSyncing && syncProgress ? (
+            <>
+              <Text style={themed($syncButtonText)}>{syncProgress.message}</Text>
+              <Text style={themed($syncButtonSubtext)}>
+                {syncProgress.current} / {syncProgress.total}
+              </Text>
+              <View style={themed($syncButtonProgressBar)}>
+                <View
+                  style={[
+                    themed($syncButtonProgressFill),
+                    {width: `${(syncProgress.current / syncProgress.total) * 100}%`},
+                  ]}
+                />
+              </View>
+            </>
+          ) : isSyncing ? (
+            <>
+              <ActivityIndicator size="small" color={theme.colors.textAlt} />
+              <Text style={themed($syncButtonText)}>Syncing...</Text>
+            </>
+          ) : (
+            <Text style={themed($syncButtonText)}>Sync Photos</Text>
           )}
-          keyExtractor={(item, index) => `${item.name}-${index}`}
-          contentContainerStyle={themed($photoGridContent)}
-          columnWrapperStyle={numColumns > 1 ? themed($columnWrapper) : undefined}
-          ItemSeparatorComponent={() => <View style={{height: spacing.xs}} />}
-        />
-      )}
+        </View>
+      </TouchableOpacity>
 
       {/* Photo Modal */}
       <Modal
@@ -433,8 +438,9 @@ const $tabContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
   flexDirection: "row",
   justifyContent: "space-around",
   backgroundColor: "transparent",
-  marginBottom: spacing.md,
+  marginBottom: spacing.sm,
   paddingHorizontal: spacing.md,
+  paddingTop: spacing.sm,
 })
 
 const $activeTab: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
@@ -464,8 +470,8 @@ const $inactiveTabText: ThemedStyle<TextStyle> = ({colors}) => ({
 
 const $actionButtonsContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
   flexDirection: "row",
-  justifyContent: "space-around",
-  marginBottom: spacing.md,
+  justifyContent: "center",
+  marginBottom: spacing.sm,
   paddingHorizontal: spacing.md,
 })
 
@@ -474,8 +480,9 @@ const $takePictureButton: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   paddingVertical: spacing.xs,
   paddingHorizontal: spacing.md,
   borderRadius: spacing.xs,
-  width: "45%",
   alignItems: "center",
+  flex: 1,
+  maxWidth: 200,
 })
 
 const $syncButton: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
@@ -625,4 +632,67 @@ const $modalImage: ThemedStyle<ImageStyle> = () => ({
   width: Dimensions.get("window").width - 40,
   height: Dimensions.get("window").height - 200,
   borderRadius: 8,
+})
+
+// New styles for the fixed sync button
+const $galleryContainer: ThemedStyle<ViewStyle> = () => ({
+  flex: 1,
+})
+
+const $syncButtonFixed: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
+  position: "absolute",
+  bottom: spacing.xl,
+  left: spacing.md,
+  right: spacing.md,
+  backgroundColor: colors.buttonPrimary,
+  borderRadius: 16,
+  paddingVertical: spacing.md,
+  paddingHorizontal: spacing.lg,
+  shadowColor: "#000",
+  shadowOffset: {
+    width: 0,
+    height: 2,
+  },
+  shadowOpacity: 0.15,
+  shadowRadius: 3.84,
+  elevation: 5,
+})
+
+const $syncButtonFixedDisabled: ThemedStyle<ViewStyle> = ({colors}) => ({
+  backgroundColor: colors.palette.neutral400,
+  opacity: 0.9,
+})
+
+const $syncButtonContent: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  alignItems: "center",
+  justifyContent: "center",
+})
+
+const $syncButtonText: ThemedStyle<TextStyle> = ({colors}) => ({
+  fontSize: 16,
+  fontWeight: "600",
+  color: colors.textAlt,
+  marginBottom: 2,
+})
+
+const $syncButtonSubtext: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
+  fontSize: 13,
+  color: colors.textAlt,
+  opacity: 0.9,
+  marginBottom: spacing.xs,
+})
+
+const $syncButtonProgressBar: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  height: 4,
+  backgroundColor: "rgba(255,255,255,0.2)",
+  borderRadius: 2,
+  overflow: "hidden",
+  marginTop: spacing.xs,
+  width: "100%",
+})
+
+const $syncButtonProgressFill: ThemedStyle<ViewStyle> = () => ({
+  height: "100%",
+  backgroundColor: "rgba(255,255,255,0.8)",
+  borderRadius: 2,
 })

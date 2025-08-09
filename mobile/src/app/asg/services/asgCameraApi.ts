@@ -612,10 +612,27 @@ export class AsgCameraApiClient {
     }
 
     try {
-      const response = await this.makeRequest("/api/delete", {
+      const response = await this.makeRequest("/api/delete-files", {
         method: "POST",
         body: JSON.stringify({files: fileNames}),
       })
+
+      // Parse the response format from the ASG server
+      if (response.data && response.data.results) {
+        const deleted: string[] = []
+        const failed: string[] = []
+
+        for (const result of response.data.results) {
+          if (result.success) {
+            deleted.push(result.file)
+          } else {
+            failed.push(result.file)
+          }
+        }
+
+        console.log(`[ASG Camera API] Delete results: ${deleted.length} deleted, ${failed.length} failed`)
+        return {deleted, failed}
+      }
 
       return response
     } catch (error) {
