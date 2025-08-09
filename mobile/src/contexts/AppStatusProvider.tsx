@@ -240,6 +240,9 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
       // POST /api/app-uptime/app-pkg-health-check with body { "packageName": packageName }
       const healthResponse = await fetch(`${baseUrl}/api/app-uptime/app-pkg-health-check`, {
         method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({packageName}),
       })
       const healthData = await healthResponse.json()
