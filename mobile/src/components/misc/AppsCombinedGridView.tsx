@@ -248,23 +248,12 @@ const AppsCombinedGridViewRoot: React.FC<AppsCombinedGridViewProps> = () => {
           backgroundColor: theme.colors.text,
           borderRadius: 10,
           height: 2,
-          // width: 100,
-          // width: "40%",
-          // marginRight: -10,
-          // marginLeft: 30,
-          // marginHorizontal: "auto",
           flex: 1,
-          // alignSelf: "center",
-          // marginLeft: "auto",
           justifyContent: "center",
           alignItems: "center",
         }}
         indicatorContainerStyle={{
           flex: 1,
-          // alignSelf: "center",
-          // justifyContent: "center",
-          // alignItems: "center",
-          // backgroundColor: "red",
         }}
         style={themed($tabBar)}
         labelStyle={{
@@ -279,13 +268,7 @@ const AppsCombinedGridViewRoot: React.FC<AppsCombinedGridViewProps> = () => {
     [theme.colors],
   )
 
-  console.log("APPSCOMBINEDGRIDVIEW RE-RENDER")
-
-  // return (
-  //   <View style={themed($container)}>
-  //     <Text text={translate("home:activeApps")} />
-  //   </View>
-  // )
+  // console.log("APPSCOMBINEDGRIDVIEW RE-RENDER")
 
   return (
     <View style={[themed($container)]}>
