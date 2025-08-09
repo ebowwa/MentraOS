@@ -1,20 +1,5 @@
 services:
-  # this new service will run first. it installs dependencies and builds the shared packages
-  # that other services like 'cloud' and 'dashboard-manager' need to run.
-  builder:
-    build:
-      context: .
-      dockerfile: Dockerfile.dev
-    volumes:
-      - ./:/app
-      - node_modules:/app/node_modules
-      - bun_cache:/root/.bun
-    # this command installs everything and then builds the shared packages one by one
-    # command: >
-    #   bash -c "bun install && 
-    #   cd packages/sdk && bun run build" 
-
-  # Cloud service
+  # Cloud service - handles its own SDK building
   cloud:
     stop_grace_period: 10s
     init: true
@@ -22,7 +7,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1.0'
+          cpus: "1.0"
           memory: 1G
         reservations:
           memory: 256M
@@ -42,18 +27,9 @@ services:
       - ./:/app
       - node_modules:/app/node_modules
       - bun_cache:/root/.bun
-    command: bash -c "cd packages/cloud && bun install && bun run dev"
-    # networks:
-    #   - augmentos-network-dev
-    depends_on:
-      builder:
-        condition: service_completed_successfully
-
-# networks:
-#   augmentos-network-dev:
-#     driver: bridge
-#     external: true
-#     name: augmentos-network-dev
+    command: bash -c "bun install && cd packages/sdk && bun run build && cd ../cloud && bun install && bun run dev"
+    tty: true
+    stdin_open: true
 
 volumes:
   node_modules:

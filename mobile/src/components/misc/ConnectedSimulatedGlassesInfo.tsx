@@ -16,7 +16,7 @@ export default function ConnectedSimulatedGlassesInfo() {
   const scaleAnim = useRef(new Animated.Value(0.8)).current
   const {status} = useStatus()
   const {lastEvent} = useGlassesMirror()
-  const {theme} = useAppTheme()
+  const {themed, theme} = useAppTheme()
   const [permission, requestPermission] = useCameraPermissions()
   const {push} = useNavigationHistory()
 
@@ -42,16 +42,6 @@ export default function ConnectedSimulatedGlassesInfo() {
       scaleAnim.stopAnimation()
     }
   }, [])
-
-  const sendDisconnectWearable = async () => {
-    console.log("Disconnecting simulated wearable")
-    try {
-      await coreCommunicator.sendDisconnectWearable()
-      await coreCommunicator.sendForgetSmartGlasses()
-    } catch (error) {
-      console.error("Error disconnecting simulated wearable:", error)
-    }
-  }
 
   // Function to navigate to fullscreen mode
   const navigateToFullScreen = async () => {
@@ -101,89 +91,89 @@ export default function ConnectedSimulatedGlassesInfo() {
   }
 
   return (
-    <View style={styles.connectedContent}>
-      {/* Mirror Display Area - Takes up all available space above bottom bar */}
+    <View style={themed($connectedContent)}>
       <Animated.View
         style={[
-          styles.mirrorWrapper,
+          themed($mirrorWrapper),
           {
             opacity: fadeAnim,
             transform: [{scale: scaleAnim}],
           },
         ]}>
-        <View style={{flex: 1, width: "100%", position: "relative"}}>
-          <GlassesDisplayMirror layout={lastEvent?.layout} fallbackMessage="Glasses Mirror" />
-          {/* absolute position bottom right fullscreen button */}
-          <TouchableOpacity style={{position: "absolute", bottom: 10, right: 10}} onPress={navigateToFullScreen}>
-            {/* <Text>Fullscreen</Text> */}
-            <Icon name="fullscreen" size={24} color={theme.colors.text} />
-          </TouchableOpacity>
-        </View>
+        <GlassesDisplayMirror layout={lastEvent?.layout} fallbackMessage="Glasses Mirror" />
+        <TouchableOpacity style={{position: "absolute", bottom: 10, right: 10}} onPress={navigateToFullScreen}>
+          <Icon name="fullscreen" size={24} color={theme.colors.text} />
+        </TouchableOpacity>
       </Animated.View>
     </View>
   )
 }
 
-const styles = StyleSheet.create({
-  bottomBar: {
-    alignItems: "center",
-    backgroundColor: "#6750A414",
-    borderBottomLeftRadius: 10,
-    borderBottomRightRadius: 10,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    padding: 10,
-    width: "100%",
-  },
-  connectedContent: {
-    alignItems: "center",
-    flex: 1,
-    justifyContent: "center",
-    marginBottom: 0,
-    marginBottom: 10,
-  },
-  deviceInfoContainer: {
-    borderRadius: 10,
-    display: "flex",
-    flexDirection: "column",
-    height: 230,
-    justifyContent: "space-between",
-    marginTop: 16,
-    paddingBottom: 0,
-    paddingHorizontal: 10,
-    paddingTop: 10,
-    width: "100%", // Increased space above component to match ConnectedDeviceInfo
-  },
-  disconnectButton: {
-    alignItems: "center",
-    backgroundColor: "#E24A24",
-    borderRadius: 12,
-    flexDirection: "row",
-    justifyContent: "center",
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  disconnectText: {
-    color: "#fff",
-    fontFamily: "Montserrat-Regular",
-    fontSize: 12,
-    fontWeight: "500",
-  },
-  mirrorContainer: {
-    height: "100%",
-    padding: 0,
-    width: "100%",
-  },
-  mirrorWrapper: {
-    alignItems: "center",
-    flex: 1,
-    justifyContent: "center",
-    marginBottom: 0,
-    width: "100%",
-  },
-  simulatedGlassesText: {
-    fontFamily: "Montserrat-Bold",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
+import {ViewStyle, TextStyle} from "react-native"
+import {ThemedStyle} from "@/theme"
+
+export const $bottomBar: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
+  alignItems: "center",
+  backgroundColor: "#6750A414",
+  borderBottomLeftRadius: 10,
+  borderBottomRightRadius: 10,
+  flexDirection: "row",
+  justifyContent: "space-between",
+  padding: 10,
+  width: "100%",
+})
+
+export const $connectedContent: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  alignItems: "center",
+  justifyContent: "center",
+  marginBottom: 10,
+})
+
+export const $deviceInfoContainer: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
+  borderRadius: 10,
+  display: "flex",
+  flexDirection: "column",
+  height: 230,
+  justifyContent: "space-between",
+  marginTop: 16,
+  paddingBottom: 0,
+  paddingHorizontal: 10,
+  paddingTop: 10,
+  width: "100%", // Increased space above component to match ConnectedDeviceInfo
+})
+
+export const $disconnectButton: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
+  alignItems: "center",
+  backgroundColor: "#E24A24",
+  borderRadius: 12,
+  flexDirection: "row",
+  justifyContent: "center",
+  paddingHorizontal: 10,
+  paddingVertical: 6,
+})
+
+export const $disconnectText: ThemedStyle<TextStyle> = ({colors}) => ({
+  color: "#fff",
+  fontFamily: "Montserrat-Regular",
+  fontSize: 12,
+  fontWeight: "500",
+})
+
+export const $mirrorContainer: ThemedStyle<ViewStyle> = () => ({
+  height: "100%",
+  padding: 0,
+  width: "100%",
+})
+
+export const $mirrorWrapper: ThemedStyle<ViewStyle> = () => ({
+  alignItems: "center",
+  justifyContent: "center",
+  marginBottom: 0,
+  width: "100%",
+})
+
+export const $simulatedGlassesText: ThemedStyle<TextStyle> = () => ({
+  fontFamily: "Montserrat-Bold",
+  fontSize: 16,
+  fontWeight: "bold",
 })

@@ -52,7 +52,7 @@ export default function IncompatibleAppsList() {
   }
 
   return (
-    <View>
+    <View style={themed($container)}>
       <AppsHeader title="home:incompatibleApps" showSearchIcon={false} />
 
       <View style={themed($descriptionContainer)}>
@@ -85,6 +85,10 @@ export default function IncompatibleAppsList() {
     </View>
   )
 }
+
+const $container: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  marginHorizontal: spacing.lg,
+})
 
 const $descriptionContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
   paddingHorizontal: spacing.md,
