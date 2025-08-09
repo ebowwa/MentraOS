@@ -1353,7 +1353,7 @@ typealias JSONObject = [String: Any]
                 let ready = bodyObj["ready"] as? Int ?? 0
 
                 let percentage = bodyObj["pt"] as? Int ?? 0
-                if percentage > 0, percentage <= 200 {
+                if percentage > 0, percentage <= 20 {
                     if !glassesReady {
                         CoreCommsService.sendPairFailureEvent("errors:pairingBatteryTooLow")
                         return
