@@ -114,6 +114,8 @@ const en = {
     incompatibleApps: "Incompatible Apps",
     incompatibleAppsDescription: "These apps require hardware features not available on your connected glasses",
     incompatible: "Incompatible",
+    noAppsInstalled: "No apps installed",
+    swipeToView: "Swipe to view {{target}}",
   },
   glasses: {
     title: "Glasses",
@@ -300,6 +302,10 @@ const en = {
     continue: "Continue",
     next: "Next",
     request: "Request",
+    start: "Start",
+    stop: "Stop",
+    settings: "Settings",
+    openWebView: "Open Web View",
   },
   welcomeScreen: {
     postscript:

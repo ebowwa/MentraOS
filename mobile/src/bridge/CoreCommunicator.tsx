@@ -22,6 +22,7 @@ export class CoreCommunicator extends EventEmitter {
   private validationInProgress: Promise<boolean> | null = null
   private reconnectionTimer: NodeJS.Timeout | null = null
   private isConnected: boolean = false
+  private lastMessage: string = ""
 
   // Utility methods for checking permissions and device capabilities
   async isBluetoothEnabled(): Promise<boolean> {
@@ -226,6 +227,13 @@ export class CoreCommunicator extends EventEmitter {
       console.log("JAVA: ", jsonString.slice(6))
       return
     }
+
+    // console.log("RECEIVED MESSAGE FROM CORE")
+    if (this.lastMessage === jsonString) {
+      console.log("DUPLICATE MESSAGE FROM CORE")
+      return
+    }
+    this.lastMessage = jsonString
 
     try {
       const data = JSON.parse(jsonString)
