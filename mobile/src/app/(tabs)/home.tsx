@@ -240,6 +240,8 @@ export default function Homepage() {
         contentInsetAdjustmentBehavior="automatic">
         <SensingDisabledWarning />
 
+        <Spacer height={theme.spacing.xs} />
+
         <ConnectedGlasses showTitle={false} />
         <DeviceToolbar />
         <Spacer height={theme.spacing.md} />
