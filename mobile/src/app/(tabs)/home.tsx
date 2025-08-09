@@ -1,4 +1,4 @@
-import React, {useRef, useCallback, PropsWithChildren, useState, useEffect} from "react"
+import React, {useRef, useCallback, PropsWithChildren, useState, useEffect, useMemo} from "react"
 import {View, Animated, Platform, ViewStyle, ScrollView, TouchableOpacity} from "react-native"
 import {useFocusEffect} from "@react-navigation/native"
 import {Header, Screen} from "@/components/ignite"
@@ -36,14 +36,7 @@ import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {showAlert} from "@/utils/AlertUtils"
 
 export default function Homepage() {
-  const {
-    appStatus,
-    refreshAppStatus,
-    optimisticallyStartApp,
-    optimisticallyStopApp,
-    clearPendingOperation,
-    checkAppHealthStatus,
-  } = useAppStatus()
+  const {appStatus, refreshAppStatus} = useAppStatus()
   const {status} = useStatus()
   const [isInitialLoading, setIsInitialLoading] = useState(true)
   const [hasMissingPermissions, setHasMissingPermissions] = useState(false)
@@ -198,105 +191,6 @@ export default function Homepage() {
     push("/settings/privacy")
   }
 
-  // Handler functions for grid view
-  const handleStartApp = async (packageName: string) => {
-    const appInfo = appStatus.find(app => app.packageName === packageName)
-    if (!appInfo) {
-      console.error("App not found:", packageName)
-      return
-    }
-
-    if (!(await checkAppHealthStatus(appInfo.packageName))) {
-      showAlert(translate("errors:appNotOnlineTitle"), translate("errors:appNotOnlineMessage"), [
-        {text: translate("common:ok")},
-      ])
-      return
-    }
-
-    // ask for needed perms:
-    const result = await askPermissionsUI(appInfo, theme)
-    if (result === -1) {
-      return
-    } else if (result === 0) {
-      handleStartApp(appInfo.packageName) // restart this function
-      return
-    }
-
-    // Optimistically update UI
-    optimisticallyStartApp(packageName)
-
-    // Handle foreground apps
-    if (appInfo?.appType === "standard") {
-      const runningStandardApps = appStatus.filter(
-        app => app.is_running && app.appType === "standard" && app.packageName !== packageName,
-      )
-
-      for (const runningApp of runningStandardApps) {
-        optimisticallyStopApp(runningApp.packageName)
-        try {
-          await backendComms.stopApp(runningApp.packageName)
-          clearPendingOperation(runningApp.packageName)
-        } catch (error) {
-          console.error("Stop app error:", error)
-          refreshAppStatus()
-        }
-      }
-    }
-
-    try {
-      await backendComms.startApp(packageName)
-      clearPendingOperation(packageName)
-      await saveSetting(SETTINGS_KEYS.HAS_EVER_ACTIVATED_APP, true)
-    } catch (error: any) {
-      console.error("Start app error:", error)
-
-      if (error?.response?.data?.error?.stage === "HARDWARE_CHECK") {
-        showAlert(
-          translate("home:hardwareIncompatible"),
-          error.response.data.error.message ||
-            translate("home:hardwareIncompatibleMessage", {
-              app: appInfo.name,
-              missing: "required hardware",
-            }),
-          [{text: translate("common:ok")}],
-          {
-            iconName: "alert-circle-outline",
-            iconColor: theme.colors.error,
-          },
-        )
-      }
-
-      clearPendingOperation(packageName)
-      refreshAppStatus()
-    }
-  }
-
-  const handleStopApp = async (packageName: string) => {
-    optimisticallyStopApp(packageName)
-
-    try {
-      await backendComms.stopApp(packageName)
-      clearPendingOperation(packageName)
-    } catch (error) {
-      refreshAppStatus()
-      console.error("Stop app error:", error)
-    }
-  }
-
-  const handleOpenAppSettings = (app: any) => {
-    push("/applet/settings", {packageName: app.packageName, appName: app.name})
-  }
-
-  const handleOpenWebView = (app: any) => {
-    if (app.webviewURL) {
-      replace("/applet/webview", {
-        webviewURL: app.webviewURL,
-        appName: app.name,
-        packageName: app.packageName,
-      })
-    }
-  }
-
   // Simple animated wrapper so we do not duplicate logic
 
   useFocusEffect(
@@ -321,6 +215,8 @@ export default function Homepage() {
       }
     }, [fadeAnim]),
   )
+
+  console.log("HOMEPAGE RE-RENDER")
 
   return (
     <Screen preset="fixed" style={themed($screen)}>
@@ -359,19 +255,7 @@ export default function Homepage() {
       <Divider variant="full" />
       <Spacer height={theme.spacing.md} />
 
-      <AppsCombinedGridView
-        activeApps={appStatus.filter(app => app.is_running)}
-        inactiveApps={appStatus.filter(
-          app =>
-            !app.is_running &&
-            (!app.compatibility || app.compatibility.isCompatible) &&
-            !(Platform.OS === "ios" && (app.packageName === "cloud.augmentos.notify" || app.name === "Notify")),
-        )}
-        onStartApp={handleStartApp}
-        onStopApp={handleStopApp}
-        onOpenSettings={handleOpenAppSettings}
-        onOpenWebView={handleOpenWebView}
-      />
+      <AppsCombinedGridView />
       <Spacer height={spacing.xl} />
       <AppsIncompatibleList />
       {/* </ScrollView> */}

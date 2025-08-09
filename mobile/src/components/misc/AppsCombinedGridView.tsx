@@ -1,5 +1,5 @@
 import React, {useState, useCallback, useMemo} from "react"
-import {View, ViewStyle, TextStyle, Dimensions} from "react-native"
+import {View, ViewStyle, TextStyle, Dimensions, Platform} from "react-native"
 import {TabView, SceneMap, TabBar} from "react-native-tab-view"
 import {AppsGridView} from "./AppsGridView"
 import {useAppTheme} from "@/utils/useAppTheme"
@@ -8,6 +8,13 @@ import {Text} from "@/components/ignite"
 import {translate} from "@/i18n"
 // import { ScrollView } from "react-native-gesture-handler"
 import {ScrollView} from "react-native"
+import {useAppStatus} from "@/contexts/AppStatusProvider"
+import BackendServerComms from "@/backend_comms/BackendServerComms"
+import showAlert from "@/utils/AlertUtils"
+import {askPermissionsUI} from "@/utils/PermissionsUtils"
+import {saveSetting} from "@/utils/SettingsHelper"
+import {SETTINGS_KEYS} from "@/consts"
+import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 
 interface AppModel {
   name: string
@@ -22,50 +29,162 @@ interface AppModel {
   }
 }
 
-interface AppsCombinedGridViewProps {
-  activeApps: AppModel[]
-  inactiveApps: AppModel[]
-  onStartApp: (packageName: string) => void
-  onStopApp: (packageName: string) => void
-  onOpenSettings: (app: AppModel) => void
-  onOpenWebView?: (app: AppModel) => void
-}
+interface AppsCombinedGridViewProps {}
 
 const initialLayout = {width: Dimensions.get("window").width}
 
-const GRID_COLUMNS = 4
-const APP_ITEM_HEIGHT = 100 // Approximate height of each app item (icon + text)
-const TAB_BAR_HEIGHT = 48 // Height of the tab bar
-
-export const AppsCombinedGridView: React.FC<AppsCombinedGridViewProps> = ({
-  activeApps,
-  inactiveApps,
-  onStartApp,
-  onStopApp,
-  onOpenSettings,
-  onOpenWebView,
-}) => {
+const AppsCombinedGridViewRoot: React.FC<AppsCombinedGridViewProps> = () => {
   const {themed, theme} = useAppTheme()
+  const {
+    appStatus,
+    checkAppHealthStatus,
+    optimisticallyStartApp,
+    optimisticallyStopApp,
+    clearPendingOperation,
+    refreshAppStatus,
+  } = useAppStatus()
+  const {push, replace} = useNavigationHistory()
+
+  const backendComms = BackendServerComms.getInstance()
   const [index, setIndex] = useState(0)
   const [routes] = useState([
     {key: "active", title: translate("home:activeApps")},
     {key: "inactive", title: translate("home:inactiveApps")},
   ])
 
-  const hasActiveApps = activeApps.length > 0
-  const hasInactiveApps = inactiveApps.length > 0
+  // Handler functions for grid view
+  const handleStartApp = useCallback(
+    async (packageName: string) => {
+      const appInfo = appStatus.find(app => app.packageName === packageName)
+      if (!appInfo) {
+        console.error("App not found:", packageName)
+        return
+      }
 
-  // Calculate the height needed for the TabView
-  const calculateGridHeight = (appsCount: number) => {
-    if (appsCount === 0) return 200 // Empty state height
-    const rows = Math.ceil(appsCount / GRID_COLUMNS)
-    return rows * APP_ITEM_HEIGHT + theme.spacing.md * 2 // Add padding
-  }
+      if (!(await checkAppHealthStatus(appInfo.packageName))) {
+        showAlert(translate("errors:appNotOnlineTitle"), translate("errors:appNotOnlineMessage"), [
+          {text: translate("common:ok")},
+        ])
+        return
+      }
 
-  const activeAppsHeight = calculateGridHeight(activeApps.length)
-  const inactiveAppsHeight = calculateGridHeight(inactiveApps.length)
-  const maxContentHeight = Math.max(activeAppsHeight, inactiveAppsHeight)
-  const tabViewHeight = maxContentHeight + TAB_BAR_HEIGHT
+      // ask for needed perms:
+      const result = await askPermissionsUI(appInfo, theme)
+      if (result === -1) {
+        return
+      } else if (result === 0) {
+        handleStartApp(appInfo.packageName) // restart this function
+        return
+      }
+
+      // Optimistically update UI
+      optimisticallyStartApp(packageName)
+
+      // Handle foreground apps
+      if (appInfo?.appType === "standard") {
+        const runningStandardApps = appStatus.filter(
+          app => app.is_running && app.appType === "standard" && app.packageName !== packageName,
+        )
+
+        for (const runningApp of runningStandardApps) {
+          optimisticallyStopApp(runningApp.packageName)
+          try {
+            await backendComms.stopApp(runningApp.packageName)
+            clearPendingOperation(runningApp.packageName)
+          } catch (error) {
+            console.error("Stop app error:", error)
+            refreshAppStatus()
+          }
+        }
+      }
+
+      try {
+        await backendComms.startApp(packageName)
+        clearPendingOperation(packageName)
+        await saveSetting(SETTINGS_KEYS.HAS_EVER_ACTIVATED_APP, true)
+      } catch (error: any) {
+        console.error("Start app error:", error)
+
+        if (error?.response?.data?.error?.stage === "HARDWARE_CHECK") {
+          showAlert(
+            translate("home:hardwareIncompatible"),
+            error.response.data.error.message ||
+              translate("home:hardwareIncompatibleMessage", {
+                app: appInfo.name,
+                missing: "required hardware",
+              }),
+            [{text: translate("common:ok")}],
+            {
+              iconName: "alert-circle-outline",
+              iconColor: theme.colors.error,
+            },
+          )
+        }
+
+        clearPendingOperation(packageName)
+        refreshAppStatus()
+      }
+    },
+    [
+      appStatus,
+      checkAppHealthStatus,
+      optimisticallyStartApp,
+      optimisticallyStopApp,
+      clearPendingOperation,
+      refreshAppStatus,
+      backendComms,
+      theme,
+    ],
+  )
+
+  const handleStopApp = useCallback(
+    async (packageName: string) => {
+      optimisticallyStopApp(packageName)
+
+      try {
+        await backendComms.stopApp(packageName)
+        clearPendingOperation(packageName)
+      } catch (error) {
+        refreshAppStatus()
+        console.error("Stop app error:", error)
+      }
+    },
+    [optimisticallyStopApp, clearPendingOperation, refreshAppStatus, backendComms],
+  )
+
+  const handleOpenAppSettings = useCallback(
+    (app: any) => {
+      push("/applet/settings", {packageName: app.packageName, appName: app.name})
+    },
+    [push],
+  )
+
+  const handleOpenWebView = useCallback(
+    (app: any) => {
+      if (app.webviewURL) {
+        replace("/applet/webview", {
+          webviewURL: app.webviewURL,
+          appName: app.name,
+          packageName: app.packageName,
+        })
+      }
+    },
+    [replace],
+  )
+
+  // Memoize filtered arrays to prevent unnecessary re-renders
+  const activeApps = useMemo(() => appStatus.filter(app => app.is_running), [appStatus])
+
+  const inactiveApps = useMemo(
+    () =>
+      appStatus.filter(
+        app =>
+          !app.is_running &&
+          (!app.compatibility || app.compatibility.isCompatible) &&
+          !(Platform.OS === "ios" && (app.packageName === "cloud.augmentos.notify" || app.name === "Notify")),
+      ),
+    [appStatus],
+  )
 
   // If no apps at all
   // if (!hasActiveApps && !hasInactiveApps) {
@@ -81,14 +200,14 @@ export const AppsCombinedGridView: React.FC<AppsCombinedGridViewProps> = ({
       <View style={themed($scene)}>
         <AppsGridView
           apps={activeApps}
-          onStartApp={onStartApp}
-          onStopApp={onStopApp}
-          onOpenSettings={onOpenSettings}
-          onOpenWebView={onOpenWebView}
+          onStartApp={handleStartApp}
+          onStopApp={handleStopApp}
+          onOpenSettings={handleOpenAppSettings}
+          onOpenWebView={handleOpenWebView}
         />
       </View>
     ),
-    [activeApps, onStartApp, onStopApp, onOpenSettings, onOpenWebView, themed],
+    [activeApps, handleStartApp, handleStopApp, handleOpenAppSettings, handleOpenWebView, themed],
   )
 
   const InactiveRoute = useMemo(
@@ -97,15 +216,15 @@ export const AppsCombinedGridView: React.FC<AppsCombinedGridViewProps> = ({
         <ScrollView>
           <AppsGridView
             apps={inactiveApps}
-            onStartApp={onStartApp}
-            onStopApp={onStopApp}
-            onOpenSettings={onOpenSettings}
-            onOpenWebView={onOpenWebView}
+            onStartApp={handleStartApp}
+            onStopApp={handleStopApp}
+            onOpenSettings={handleOpenAppSettings}
+            onOpenWebView={handleOpenWebView}
           />
         </ScrollView>
       </View>
     ),
-    [inactiveApps, onStartApp, onStopApp, onOpenSettings, onOpenWebView, themed],
+    [inactiveApps, handleStartApp, handleStopApp, handleOpenAppSettings, handleOpenWebView, themed],
   )
 
   const renderScene = useMemo(
@@ -135,6 +254,14 @@ export const AppsCombinedGridView: React.FC<AppsCombinedGridViewProps> = ({
     [theme.colors],
   )
 
+  console.log("APPSCOMBINEDGRIDVIEW RE-RENDER")
+
+  // return (
+  //   <View style={themed($container)}>
+  //     <Text text={translate("home:activeApps")} />
+  //   </View>
+  // )
+
   return (
     <View style={[themed($container)]}>
       <TabView
@@ -143,12 +270,15 @@ export const AppsCombinedGridView: React.FC<AppsCombinedGridViewProps> = ({
         renderTabBar={renderTabBar}
         onIndexChange={setIndex}
         initialLayout={initialLayout}
-        style={[themed($tabView), {height: tabViewHeight}]}
+        style={[themed($tabView)]}
         lazy={false}
       />
     </View>
   )
 }
+
+// memoize the component to prevent unnecessary re-renders:
+export const AppsCombinedGridView = React.memo(AppsCombinedGridViewRoot)
 
 const $container: ThemedStyle<ViewStyle> = () => ({
   flex: 1,
