@@ -64,11 +64,13 @@ This error occurs when the configuration files cannot be loaded. Check:
 ### Debug Steps
 
 1. Check logs for configuration status:
+
    ```
    adb logcat | grep SentryConfig
    ```
 
 2. Verify file loading:
+
    ```
    adb logcat | grep "Successfully loaded properties"
    ```
@@ -95,8 +97,9 @@ This error occurs when the configuration files cannot be loaded. Check:
 ## Testing
 
 The app includes a test method in `MainActivity.testSentryConfiguration()` that:
+
 - Logs configuration status
 - Sends a test message to Sentry
 - Reports provider status
 
-Run the app and check logs to verify Sentry is working correctly. 
+Run the app and check logs to verify Sentry is working correctly.

@@ -7,12 +7,36 @@ import { logger } from "../services/logging/pino-logger";
 import * as AppUptimeService from "../services/core/app-uptime.service";
 import axios from "axios";
 import { fetchSubmittedAppHealthStatus } from "../services/core/app-uptime.service";
-
 const router = Router();
 
 // Start the uptime scheduler when the routes are loaded
 // AppUptimeService.startUptimeScheduler();
 logger.info("🔄 App uptime monitoring scheduler started automatically");
+
+// Endpoint to ping an app's health status
+export async function appPkgHealthCheck(req: Request, res: Response) {
+  const { packageName } = req.body;
+  if (!packageName) return res.status(400).send("Missing packageName");
+
+  try {
+    const isHealthy = await AppUptimeService.pkgHealthCheck(packageName);
+    res.json({
+      packageName,
+      success: isHealthy,
+      status: isHealthy ? 200 : 500,
+      timestamp: new Date(),
+    });
+  } catch (err) {
+    logger.error(`Error in appPkgHealthCheck for ${packageName}:`, err);
+    res.json({
+      packageName,
+      success: false,
+      status: 500,
+      error: "Health check failed",
+      timestamp: new Date(),
+    });
+  }
+}
 
 // Endpoint to ping an app's health status
 async function pingAppHealth(req: Request, res: Response) {
@@ -93,10 +117,36 @@ async function getAppUptimeDays(req: Request, res: Response) {
   }
 }
 
+// Health check endpoint for the service itself
+async function healthCheck(req: Request, res: Response) {
+  try {
+    res.json({
+      status: "healthy",
+      service: "app-uptime-service",
+      timestamp: new Date(),
+      uptime: process.uptime(),
+    });
+  } catch (error) {
+    logger.error("Health check failed:", error);
+    res.status(500).json({
+      status: "unhealthy",
+      service: "app-uptime-service",
+      error: "Health check failed",
+      timestamp: new Date(),
+    });
+  }
+}
+
 // Api Endpoints
 
 // Endpoint to ping an app's health status
 router.get("/ping", pingAppHealth);
+
+// Health check for the service
+router.get("/health-check", healthCheck);
+
+// Endpoint to check health of a specific app package
+router.post("/app-pkg-health-check", appPkgHealthCheck);
 
 // Endpoint to get the status of all apps
 router.get("/status", appsStatus);

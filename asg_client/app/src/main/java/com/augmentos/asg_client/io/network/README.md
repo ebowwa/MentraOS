@@ -23,7 +23,9 @@ io/network/
 ## 🔧 Components
 
 ### **INetworkManager Interface**
+
 The main interface that defines network management operations:
+
 - `initialize()` - Initialize the network manager
 - `enableWifi()` / `disableWifi()` - Control WiFi state
 - `startHotspot()` / `stopHotspot()` - Control hotspot functionality
@@ -35,13 +37,17 @@ The main interface that defines network management operations:
 - `shutdown()` - Cleanup resources
 
 ### **NetworkStateListener Interface**
+
 Interface for receiving network state change notifications:
+
 - `onWifiStateChanged(boolean isConnected)` - WiFi connection state changes
 - `onHotspotStateChanged(boolean isEnabled)` - Hotspot state changes
 - `onWifiCredentialsReceived(String ssid, String password, String authToken)` - Credentials received
 
 ### **BaseNetworkManager**
+
 Abstract base class providing common functionality:
+
 - Listener management and notification
 - Platform detection (K900 vs standard Android)
 - Common WiFi state checking
@@ -49,7 +55,9 @@ Abstract base class providing common functionality:
 - Network scanning utilities
 
 ### **NetworkManagerFactory**
+
 Factory class for creating appropriate network managers:
+
 - **K900 Detection**: Automatically detects K900 devices
 - **System Permissions**: Checks for system-level access
 - **Fallback Support**: Provides limited functionality when permissions are restricted
@@ -58,25 +66,30 @@ Factory class for creating appropriate network managers:
 ### **Platform-Specific Managers**
 
 #### **K900NetworkManager**
+
 - Uses K900-specific broadcast intents
 - Native hotspot and WiFi control
 - Enhanced functionality for K900 devices
 - Automatic device detection
 
 #### **SystemNetworkManager**
+
 - Uses reflection to access system APIs
 - Full WiFi and hotspot control
 - Requires system permissions
 - Includes embedded web server for hotspot setup
 
 #### **FallbackNetworkManager**
+
 - Limited functionality without system permissions
 - User prompts for manual configuration
 - K900 enhancement when K900 device is detected
 - Graceful degradation of features
 
 ### **DebugNotificationManager**
+
 Utility for showing debug notifications:
+
 - Device type detection notifications
 - WiFi state change notifications
 - Hotspot state notifications
@@ -85,6 +98,7 @@ Utility for showing debug notifications:
 ## 🚀 Usage Examples
 
 ### **Basic Usage**
+
 ```java
 // Get appropriate network manager for current device
 INetworkManager networkManager = NetworkManagerFactory.getNetworkManager(context);
@@ -98,12 +112,12 @@ networkManager.addWifiListener(new NetworkStateListener() {
     public void onWifiStateChanged(boolean isConnected) {
         Log.d("Network", "WiFi connected: " + isConnected);
     }
-    
+
     @Override
     public void onHotspotStateChanged(boolean isEnabled) {
         Log.d("Network", "Hotspot enabled: " + isEnabled);
     }
-    
+
     @Override
     public void onWifiCredentialsReceived(String ssid, String password, String authToken) {
         Log.d("Network", "Credentials received for: " + ssid);
@@ -127,6 +141,7 @@ if (networkManager.isConnectedToWifi()) {
 ```
 
 ### **Platform Detection**
+
 ```java
 // The factory automatically detects the best manager
 INetworkManager manager = NetworkManagerFactory.getNetworkManager(context);
@@ -150,6 +165,7 @@ The `NetworkManagerFactory` uses the following detection logic:
 3. **Fallback**: Uses limited functionality with user prompts
 
 ### **Detection Priority**
+
 1. **K900 Device** → `K900NetworkManager` (Full native functionality)
 2. **System Permissions** → `SystemNetworkManager` (Full reflection-based functionality)
 3. **Limited Permissions** → `FallbackNetworkManager` (Limited functionality with K900 enhancement)
@@ -157,26 +173,31 @@ The `NetworkManagerFactory` uses the following detection logic:
 ## 🛡️ Features
 
 ### **Platform Agnostic**
+
 - Works on K900 and standard Android devices
 - Automatic device detection and manager selection
 - Consistent API across all implementations
 
 ### **Graceful Degradation**
+
 - Falls back to limited functionality when permissions are restricted
 - User-friendly prompts for manual configuration
 - Maintains core functionality even with restrictions
 
 ### **Enhanced K900 Support**
+
 - Native K900 broadcast support
 - Enhanced hotspot functionality
 - Automatic K900 detection in fallback mode
 
 ### **Debug Support**
+
 - Comprehensive debug notifications
 - Device type detection reporting
 - State change monitoring
 
 ### **Thread Safe**
+
 - All operations are thread-safe
 - Proper listener management
 - Safe broadcast receiver handling
@@ -199,4 +220,4 @@ The `NetworkManagerFactory` uses the following detection logic:
 
 ---
 
-This network I/O package provides a robust, platform-agnostic foundation for all network operations in the ASG client system. 
+This network I/O package provides a robust, platform-agnostic foundation for all network operations in the ASG client system.

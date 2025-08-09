@@ -22,6 +22,7 @@ AsgClientService (Main Service - 763 lines)
 ## Log Tags and Debugging
 
 ### Main Service Logs
+
 ```java
 // Service lifecycle
 Log.d(TAG, "AsgClientServiceV2 onCreate");
@@ -45,6 +46,7 @@ Log.d(TAG, "✅ Sent version info to phone");
 ```
 
 ### ServiceContainer Logs
+
 ```java
 // Container initialization
 Log.d(TAG, "ServiceContainer initialized");
@@ -62,6 +64,7 @@ Log.d(TAG, "Getting NotificationManager from container");
 ### Manager Logs
 
 #### ServiceLifecycleManager
+
 ```java
 Log.d(TAG, "Service lifecycle manager initialized");
 Log.d(TAG, "Handling action: " + action);
@@ -69,6 +72,7 @@ Log.d(TAG, "Service cleanup completed");
 ```
 
 #### CommunicationManager
+
 ```java
 Log.d(TAG, "📤 Sending WiFi status: " + isConnected);
 Log.d(TAG, "📤 Sending battery status: " + level + "%");
@@ -78,6 +82,7 @@ Log.d(TAG, "📤 Sending RTMP status response: " + status);
 ```
 
 #### StateManager
+
 ```java
 Log.d(TAG, "🔋 Battery status updated: " + level + "% " + (charging ? "(charging)" : "(not charging)"));
 Log.d(TAG, "WiFi state updated: " + (isConnected ? "CONNECTED" : "DISCONNECTED"));
@@ -85,6 +90,7 @@ Log.d(TAG, "Bluetooth state updated: " + (isConnected ? "CONNECTED" : "DISCONNEC
 ```
 
 #### StreamingManager
+
 ```java
 Log.d(TAG, "🎥 Starting RTMP streaming");
 Log.d(TAG, "🎥 Stopping RTMP streaming");
@@ -93,6 +99,7 @@ Log.d(TAG, "📹 Video recording stopped: " + requestId);
 ```
 
 ### CommandProcessor Logs
+
 ```java
 Log.d(TAG, "Processing JSON message type: " + type);
 Log.d(TAG, "📤 Sent ACK for message ID: " + messageId);
@@ -105,12 +112,15 @@ Log.d(TAG, "📦 Payload is not valid JSON, treating as ODM format");
 ### Issue 1: Service Not Starting
 
 #### Symptoms
+
 - Service fails to start
 - App crashes on service start
 - Service not found in AndroidManifest.xml
 
 #### Debug Steps
+
 1. **Check AndroidManifest.xml**
+
    ```xml
    <service
        android:name=".service.AsgClientService"
@@ -119,11 +129,13 @@ Log.d(TAG, "📦 Payload is not valid JSON, treating as ODM format");
    ```
 
 2. **Check Service Initialization Logs**
+
    ```bash
    adb logcat | grep "AsgClientServiceV2"
    ```
 
 3. **Check ServiceContainer Initialization**
+
    ```bash
    adb logcat | grep "ServiceContainer"
    ```
@@ -134,12 +146,14 @@ Log.d(TAG, "📦 Payload is not valid JSON, treating as ODM format");
    ```
 
 #### Common Causes
+
 - Missing permissions in AndroidManifest.xml
 - ServiceContainer initialization failure
 - Manager dependency injection failure
 - Context issues
 
 #### Solutions
+
 ```java
 // Add missing permissions
 <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
@@ -156,23 +170,28 @@ if (serviceContainer == null) {
 ### Issue 2: Bluetooth Communication Issues
 
 #### Symptoms
+
 - No data received via Bluetooth
 - No data sent via Bluetooth
 - Bluetooth connection not established
 
 #### Debug Steps
+
 1. **Check Bluetooth Permissions**
+
    ```bash
    adb logcat | grep "Bluetooth"
    ```
 
 2. **Check Connection State**
+
    ```java
    boolean isConnected = stateManager.isBluetoothConnected();
    Log.d(TAG, "Bluetooth connected: " + isConnected);
    ```
 
 3. **Check Data Reception**
+
    ```java
    Log.d(TAG, "Received " + data.length + " bytes from Bluetooth");
    ```
@@ -183,15 +202,17 @@ if (serviceContainer == null) {
    ```
 
 #### Common Causes
+
 - Bluetooth permissions not granted
 - Bluetooth manager not initialized
 - Connection state not properly tracked
 - Data format issues
 
 #### Solutions
+
 ```java
 // Check permissions
-if (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH) 
+if (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH)
     != PackageManager.PERMISSION_GRANTED) {
     Log.e(TAG, "Bluetooth permission not granted");
     return;
@@ -207,17 +228,21 @@ if (serviceContainer.getServiceManager().getBluetoothManager() == null) {
 ### Issue 3: Command Processing Issues
 
 #### Symptoms
+
 - Commands not processed
 - Incorrect responses
 - JSON parsing errors
 
 #### Debug Steps
+
 1. **Check Command Reception**
+
    ```bash
    adb logcat | grep "Processing JSON message"
    ```
 
 2. **Check JSON Parsing**
+
    ```java
    try {
        JSONObject jsonObject = new JSONObject(jsonStr);
@@ -228,6 +253,7 @@ if (serviceContainer.getServiceManager().getBluetoothManager() == null) {
    ```
 
 3. **Check Command Routing**
+
    ```java
    Log.d(TAG, "Processing command type: " + type);
    ```
@@ -238,12 +264,14 @@ if (serviceContainer.getServiceManager().getBluetoothManager() == null) {
    ```
 
 #### Common Causes
+
 - Malformed JSON data
 - Unknown command types
 - CommandProcessor not initialized
 - Missing command handlers
 
 #### Solutions
+
 ```java
 // Validate JSON before processing
 if (jsonObject == null) {
@@ -272,18 +300,22 @@ switch (type) {
 ### Issue 4: State Management Issues
 
 #### Symptoms
+
 - Incorrect battery status
 - WiFi status not updated
 - State not persisted
 
 #### Debug Steps
+
 1. **Check State Updates**
+
    ```bash
    adb logcat | grep "Battery status updated"
    adb logcat | grep "WiFi state updated"
    ```
 
 2. **Check State Queries**
+
    ```java
    int batteryLevel = stateManager.getBatteryLevel();
    boolean isCharging = stateManager.isCharging();
@@ -299,12 +331,14 @@ switch (type) {
    ```
 
 #### Common Causes
+
 - State not properly updated
 - State manager not initialized
 - State persistence issues
 - Race conditions
 
 #### Solutions
+
 ```java
 // Ensure state manager is initialized
 if (stateManager == null) {
@@ -322,23 +356,28 @@ synchronized (this) {
 ### Issue 5: Streaming Issues
 
 #### Symptoms
+
 - RTMP streaming not working
 - Video recording issues
 - Streaming callbacks not triggered
 
 #### Debug Steps
+
 1. **Check Streaming Initialization**
+
    ```bash
    adb logcat | grep "Starting RTMP streaming"
    adb logcat | grep "Stopping RTMP streaming"
    ```
 
 2. **Check Video Recording**
+
    ```bash
    adb logcat | grep "Video recording"
    ```
 
 3. **Check Streaming Callbacks**
+
    ```java
    StreamingStatusCallback callback = streamingManager.getStreamingStatusCallback();
    if (callback == null) {
@@ -348,22 +387,24 @@ synchronized (this) {
 
 4. **Check Permissions**
    ```java
-   if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) 
+   if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
        != PackageManager.PERMISSION_GRANTED) {
        Log.e(TAG, "Camera permission not granted");
    }
    ```
 
 #### Common Causes
+
 - Camera permissions not granted
 - Streaming service not initialized
 - Network connectivity issues
 - RTMP URL configuration issues
 
 #### Solutions
+
 ```java
 // Check camera permissions
-if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) 
+if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
     != PackageManager.PERMISSION_GRANTED) {
     Log.e(TAG, "Camera permission required for streaming");
     return;
@@ -385,6 +426,7 @@ if (rtmpUrl == null || rtmpUrl.isEmpty()) {
 ## Performance Monitoring
 
 ### Memory Usage Monitoring
+
 ```java
 // Monitor service memory usage
 Runtime runtime = Runtime.getRuntime();
@@ -396,6 +438,7 @@ Log.d(TAG, "Memory Usage - Used: " + usedMemory + " bytes, Max: " + maxMemory + 
 ```
 
 ### Component Performance Monitoring
+
 ```java
 // Monitor manager performance
 long startTime = System.currentTimeMillis();
@@ -409,6 +452,7 @@ if (duration > 100) { // Log slow operations
 ```
 
 ### Command Processing Performance
+
 ```java
 // Monitor command processing time
 long startTime = System.currentTimeMillis();
@@ -422,6 +466,7 @@ Log.d(TAG, "Command processing took: " + duration + "ms");
 ## Debugging Tools and Commands
 
 ### ADB Commands
+
 ```bash
 # Filter logs by service
 adb logcat | grep "AsgClientService"
@@ -442,6 +487,7 @@ adb logcat | grep "AsgClientService"
 ```
 
 ### Log Analysis Scripts
+
 ```bash
 # Count log entries by component
 adb logcat | grep "AsgClientService" | awk '{print $5}' | sort | uniq -c
@@ -454,6 +500,7 @@ adb logcat | grep "AsgClientService" | grep "WiFi\|Bluetooth\|Battery"
 ```
 
 ### Debug Configuration
+
 ```java
 // Enable debug logging
 if (BuildConfig.DEBUG) {
@@ -461,14 +508,15 @@ if (BuildConfig.DEBUG) {
 }
 
 // Add debug information
-Log.d(TAG, "Service state - WiFi: " + stateManager.isConnectedToWifi() + 
-           ", Bluetooth: " + stateManager.isBluetoothConnected() + 
+Log.d(TAG, "Service state - WiFi: " + stateManager.isConnectedToWifi() +
+           ", Bluetooth: " + stateManager.isBluetoothConnected() +
            ", Battery: " + stateManager.getBatteryLevel() + "%");
 ```
 
 ## Testing and Validation
 
 ### Unit Testing
+
 ```java
 // Test service container
 @Test
@@ -486,13 +534,14 @@ public void testCommandProcessing() {
     JSONObject command = new JSONObject();
     command.put("type", "test_command");
     command.put("data", "test_data");
-    
+
     commandProcessor.processJsonCommand(command);
     // Verify response
 }
 ```
 
 ### Integration Testing
+
 ```java
 // Test service lifecycle
 @Test
@@ -500,13 +549,13 @@ public void testServiceLifecycle() {
     // Start service
     Intent intent = new Intent(context, AsgClientService.class);
     context.startService(intent);
-    
+
     // Verify service started
     assertTrue(isServiceRunning(AsgClientService.class));
-    
+
     // Stop service
     context.stopService(intent);
-    
+
     // Verify service stopped
     assertFalse(isServiceRunning(AsgClientService.class));
 }
@@ -517,6 +566,7 @@ public void testServiceLifecycle() {
 This debugging reference provides comprehensive tools and techniques for troubleshooting issues in the `AsgClientService` package. The modular architecture makes it easy to isolate and resolve problems by focusing on specific components and their interactions.
 
 Key debugging principles:
+
 1. **Use appropriate log levels** (D for debug, W for warnings, E for errors)
 2. **Monitor component initialization** and state
 3. **Check permissions** and system requirements
@@ -525,4 +575,4 @@ Key debugging principles:
 6. **Use ADB commands** for real-time debugging
 7. **Write unit tests** for component validation
 
-The SOLID architecture makes debugging much easier by providing clear separation of concerns and well-defined interfaces for each component. 
+The SOLID architecture makes debugging much easier by providing clear separation of concerns and well-defined interfaces for each component.

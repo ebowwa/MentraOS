@@ -48,23 +48,27 @@ io/file/
 ### 1. **Core Package** (`core/`)
 
 #### `FileManager` Interface
+
 Composes all focused interfaces:
+
 ```java
-public interface FileManager extends 
-    FileOperations, 
-    FileMetadataOperations, 
-    PackageOperations, 
+public interface FileManager extends
+    FileOperations,
+    FileMetadataOperations,
+    PackageOperations,
     StorageOperations {
     // Contains only nested classes for results and metadata
 }
 ```
 
 #### `FileManagerImpl`
+
 - **Responsibility**: Orchestrates focused managers
 - **Features**: Security validation, thread synchronization, atomic operations
 - **Architecture**: Delegates to specialized managers
 
 #### `FileManagerFactory`
+
 - **Strategy Pattern**: Creates platform-specific instances
 - **Singleton Management**: Centralized instance management
 - **Configuration**: Platform-agnostic configuration
@@ -72,46 +76,58 @@ public interface FileManager extends
 ### 2. **Interfaces Package** (`interfaces/`)
 
 #### `FileOperations`
+
 Handles basic file operations:
+
 - `saveFile()` - Save files with atomic operations
 - `getFile()` - Retrieve files
 - `deleteFile()` - Delete files safely
 - `updateFile()` - Update existing files
 
 #### `FileMetadataOperations`
+
 Manages file metadata:
+
 - `getFileMetadata()` - Get file information
 - `listFiles()` - List files in a package
 - `fileExists()` - Check file existence
 
 #### `PackageOperations`
+
 Handles package-level operations:
+
 - `getPackageSize()` - Calculate package size
 - `cleanupOldFiles()` - Clean up based on retention policy
 
 #### `StorageOperations`
+
 Manages storage information:
+
 - `getAvailableSpace()` - Get available storage
 - `getTotalSpace()` - Get total storage
 
 ### 3. **Managers Package** (`managers/`)
 
 #### `FileOperationsManager`
+
 - **Responsibility**: File I/O operations
 - **Features**: Atomic file operations, temporary file handling
 - **Thread Safety**: Delegated to `FileLockManager`
 
 #### `FileSecurityManager`
+
 - **Responsibility**: Security validation
 - **Features**: Package/file name validation, MIME type checking
 - **Security**: Path traversal prevention, dangerous extension blocking
 
 #### `FileLockManager`
+
 - **Responsibility**: Thread synchronization
 - **Features**: Package-level read/write locks
 - **Concurrency**: `ConcurrentHashMap` with `ReentrantReadWriteLock`
 
 #### `DirectoryManager`
+
 - **Responsibility**: Directory structure management
 - **Features**: Package directory creation, size calculation
 - **Organization**: Package-based directory structure
@@ -119,6 +135,7 @@ Manages storage information:
 ### 4. **Platform Package** (`platform/`)
 
 #### `PlatformStrategy` Interface
+
 ```java
 public interface PlatformStrategy {
     File getBaseDirectory();
@@ -129,6 +146,7 @@ public interface PlatformStrategy {
 ```
 
 #### Platform Implementations
+
 - **`AndroidPlatformStrategy`**: Uses Android Context for file paths
 - **`JavaSEPlatformStrategy`**: Uses user home directory
 - **`PlatformRegistry`**: Manages platform detection and registration
@@ -136,6 +154,7 @@ public interface PlatformStrategy {
 ### 5. **Security Package** (`security/`)
 
 #### `FileSecurityValidator`
+
 - **Path Traversal Prevention**: Blocks `../`, `/`, `\`, etc.
 - **Dangerous Extensions**: Blocks executable files
 - **Input Validation**: Package and file name validation
@@ -144,11 +163,13 @@ public interface PlatformStrategy {
 ### 6. **Utils Package** (`utils/`)
 
 #### `FileOperationLogger`
+
 - **History Tracking**: Last 1000 operations in memory
 - **Performance Metrics**: Success rates, byte counts
 - **Audit Trail**: Timestamped operation records
 
 #### `MimeTypeRegistry`
+
 - **Comprehensive Mappings**: Images, videos, audio, documents, archives
 - **Extension Detection**: File type identification
 - **Custom Support**: Add/remove MIME types
@@ -156,6 +177,7 @@ public interface PlatformStrategy {
 ## 🔧 Usage Examples
 
 ### Android Usage
+
 ```java
 // Initialize with Android context
 FileManagerFactory.initialize(context);
@@ -165,14 +187,15 @@ FileManager fileManager = FileManagerFactory.getInstance();
 
 // Use file operations
 FileOperationResult result = fileManager.saveFile(
-    "com.example.app", 
-    "document.pdf", 
-    inputStream, 
+    "com.example.app",
+    "document.pdf",
+    inputStream,
     "application/pdf"
 );
 ```
 
 ### Java SE Usage
+
 ```java
 // Auto-detect platform
 FileManagerFactory.initialize();
@@ -185,6 +208,7 @@ List<FileMetadata> files = fileManager.listFiles("com.example.app");
 ```
 
 ### Custom Platform
+
 ```java
 // Create custom platform configuration
 PlatformConfig config = new PlatformConfig(
@@ -203,12 +227,14 @@ FileManager fileManager = FileManagerFactory.createInstance(config);
 ## 🛡️ Security Features
 
 ### Input Validation
+
 - **Package Names**: Alphanumeric, dots, underscores, hyphens only
 - **File Names**: Safe characters, length limits
 - **Path Traversal**: Blocked patterns (`../`, `/`, `\`, etc.)
 - **Dangerous Extensions**: Blocked executable files
 
 ### File Operations
+
 - **Atomic Operations**: Temporary files for safe saving
 - **Thread Safety**: Package-level read/write locks
 - **Error Handling**: Comprehensive error reporting
@@ -216,11 +242,13 @@ FileManager fileManager = FileManagerFactory.createInstance(config);
 ## 📊 Monitoring & Logging
 
 ### Operation Logging
+
 - **History Tracking**: Last 1000 operations in memory
 - **Performance Metrics**: Success rates, byte counts
 - **Audit Trail**: Timestamped operation records
 
 ### Performance Statistics
+
 ```java
 PerformanceStats stats = fileManager.getOperationLogger().getPerformanceStats();
 System.out.println("Success Rate: " + stats.successRate + "%");
@@ -230,11 +258,13 @@ System.out.println("Total Operations: " + stats.totalOperations);
 ## 🔄 Thread Safety
 
 ### Lock Management
+
 - **Package-Level Locks**: Each package has its own read/write lock
 - **Concurrent Access**: Multiple packages can be accessed simultaneously
 - **Deadlock Prevention**: Consistent lock ordering
 
 ### Atomic Operations
+
 - **File Saving**: Temporary file → atomic move
 - **File Updates**: Atomic replacement
 - **Directory Operations**: Safe directory creation
@@ -242,11 +272,13 @@ System.out.println("Total Operations: " + stats.totalOperations);
 ## 🚀 Performance Features
 
 ### Memory Efficiency
+
 - **Streaming**: Direct file I/O without loading entire files
 - **Buffer Management**: 8KB buffers for optimal performance
 - **Lazy Loading**: Metadata loaded on demand
 
 ### Storage Optimization
+
 - **Space Monitoring**: Available space checking
 - **Cleanup Operations**: Automatic old file removal
 - **Size Tracking**: Package and total size monitoring
@@ -254,18 +286,20 @@ System.out.println("Total Operations: " + stats.totalOperations);
 ## 🧪 Testing Support
 
 ### Factory Reset
+
 ```java
 // Reset singleton for testing
 FileManagerFactory.reset();
 
 // Create isolated instances
 FileManager testManager = FileManagerFactory.createInstance(
-    new File("/test/path"), 
+    new File("/test/path"),
     new TestLogger()
 );
 ```
 
 ### Mock Support
+
 - **Interface-Based**: Easy to mock all interfaces
 - **Strategy Injection**: Platform strategies can be mocked
 - **Logger Abstraction**: Platform-agnostic logging
@@ -273,6 +307,7 @@ FileManager testManager = FileManagerFactory.createInstance(
 ## 🔧 Configuration
 
 ### Platform Detection
+
 ```java
 // Auto-detect (recommended)
 FileManagerFactory.initialize();
@@ -287,6 +322,7 @@ FileManagerFactory.initialize(new PlatformConfig(
 ```
 
 ### Custom Settings
+
 ```java
 // Custom base directory
 File customDir = new File("/custom/files");
@@ -298,18 +334,19 @@ FileManager fileManager = FileManagerFactory.createInstance(customDir, customLog
 ## 📈 Extensibility
 
 ### Adding New Platforms
+
 ```java
 public class CustomPlatformStrategy implements PlatformStrategy {
     @Override
     public File getBaseDirectory() {
         return new File("/custom/path");
     }
-    
+
     @Override
     public Logger createLogger() {
         return new CustomLogger();
     }
-    
+
     // ... other methods
 }
 
@@ -318,6 +355,7 @@ PlatformRegistry.registerStrategy("custom", new CustomPlatformStrategy());
 ```
 
 ### Adding New Operations
+
 ```java
 // Extend existing interfaces or create new ones
 public interface AdvancedFileOperations extends FileOperations {
@@ -331,6 +369,7 @@ public interface AdvancedFileOperations extends FileOperations {
 ### Common Issues
 
 #### "FileManagerFactory not initialized"
+
 ```java
 // Solution: Initialize before use
 FileManagerFactory.initialize(context); // Android
@@ -338,6 +377,7 @@ FileManagerFactory.initialize(); // Auto-detect
 ```
 
 #### "Security validation failed"
+
 ```java
 // Check package and file names
 // Ensure no path traversal attempts
@@ -345,6 +385,7 @@ FileManagerFactory.initialize(); // Auto-detect
 ```
 
 #### "Failed to create package directory"
+
 ```java
 // Check file permissions
 // Verify available storage space
@@ -352,6 +393,7 @@ FileManagerFactory.initialize(); // Auto-detect
 ```
 
 ### Debug Information
+
 ```java
 // Get platform information
 String platform = FileManagerFactory.getPlatformName();
@@ -367,6 +409,7 @@ PerformanceStats stats = fileManager.getOperationLogger().getPerformanceStats();
 ## 🔮 Future Enhancements
 
 ### Planned Features
+
 - **Encryption Support**: File-level encryption
 - **Compression**: Automatic file compression
 - **Cloud Integration**: Cloud storage providers
@@ -374,6 +417,7 @@ PerformanceStats stats = fileManager.getOperationLogger().getPerformanceStats();
 - **Advanced Monitoring**: Real-time performance metrics
 
 ### Architecture Benefits
+
 - **Maintainable**: Clear separation of concerns
 - **Testable**: Easy to unit test each component
 - **Extensible**: New features can be added without modification
@@ -382,4 +426,4 @@ PerformanceStats stats = fileManager.getOperationLogger().getPerformanceStats();
 
 ---
 
-This SOLID-compliant FileManager system provides a robust, secure, and extensible foundation for file operations across multiple platforms while maintaining high performance and thread safety. 
+This SOLID-compliant FileManager system provides a robust, secure, and extensible foundation for file operations across multiple platforms while maintaining high performance and thread safety.

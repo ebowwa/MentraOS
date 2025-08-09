@@ -31,16 +31,22 @@ io/media/
 ### **Media Interfaces**
 
 #### **ServiceCallbackInterface**
+
 Interface for communication between media services and the main application:
+
 - `sendThroughBluetooth(byte[] data)` - Send data via Bluetooth
 - `sendFileViaBluetooth(String filePath)` - Send file via Bluetooth
 
 #### **AudioChunkCallback**
+
 Interface for receiving audio chunk notifications:
+
 - `onSuccess(ByteBuffer chunk)` - Called when new audio chunk is available
 
 #### **MediaCaptureCallback**
+
 Interface for media capture event notifications:
+
 - `onCaptureStarted(String mediaType)` - Capture started
 - `onCaptureSuccess(String mediaType, File file)` - Capture completed
 - `onCaptureError(String mediaType, String error)` - Capture failed
@@ -50,7 +56,9 @@ Interface for media capture event notifications:
 ### **Media Core Services**
 
 #### **MediaCaptureService**
+
 Main service for handling photo and video capture:
+
 - **Photo Capture**: High-quality photo capture with auto-exposure
 - **Video Recording**: Video recording with configurable quality
 - **Upload Integration**: Automatic upload to cloud services
@@ -58,14 +66,18 @@ Main service for handling photo and video capture:
 - **Gallery Integration**: Save media to device gallery
 
 #### **PhotoCaptureService**
+
 Specialized service for photo capture operations:
+
 - **Button Press Handling**: Responds to photo button presses
 - **Cloud Integration**: REST API calls to cloud servers
 - **Local Fallback**: Local photo capture when offline
 - **Upload Management**: Photo upload to cloud services
 
 #### **CameraNeo**
+
 Advanced camera implementation with high-quality features:
+
 - **Auto-Exposure**: Dynamic exposure control for optimal quality
 - **Auto-Focus**: Automatic focus adjustment
 - **High Resolution**: Support for high-resolution capture
@@ -75,7 +87,9 @@ Advanced camera implementation with high-quality features:
 ### **Media Managers**
 
 #### **MediaUploadQueueManager**
+
 Manages queues of media files for upload:
+
 - **Persistence**: Queue survives app restarts
 - **Retry Logic**: Automatic retry of failed uploads
 - **Status Tracking**: Track upload progress and status
@@ -83,14 +97,18 @@ Manages queues of media files for upload:
 - **Error Handling**: Robust error handling and recovery
 
 #### **PhotoQueueManager**
+
 Specialized queue manager for photo uploads:
+
 - **Photo-Specific Logic**: Optimized for photo upload workflows
 - **Metadata Management**: Track photo metadata and settings
 - **Compression**: Automatic photo compression for upload
 - **Gallery Integration**: Save photos to device gallery
 
 #### **GlassesMicrophoneManager**
+
 Manages microphone on smart glasses:
+
 - **Audio Streaming**: Stream audio to connected devices
 - **LC3 Encoding**: High-quality audio encoding
 - **Bluetooth Integration**: Stream via Bluetooth LE
@@ -99,7 +117,9 @@ Manages microphone on smart glasses:
 ### **Media Upload Services**
 
 #### **MediaUploadService**
+
 Foreground service for media upload management:
+
 - **Background Processing**: Upload media in background
 - **User Notifications**: Keep users informed of upload progress
 - **Queue Processing**: Process upload queues automatically
@@ -107,7 +127,9 @@ Foreground service for media upload management:
 - **Statistics Tracking**: Track upload success/failure rates
 
 #### **PhotoUploadService**
+
 Specialized service for photo uploads:
+
 - **Photo-Specific Upload**: Optimized for photo file formats
 - **Metadata Handling**: Preserve photo metadata during upload
 - **Compression**: Automatic compression for faster uploads
@@ -116,7 +138,9 @@ Specialized service for photo uploads:
 ### **Media Utilities**
 
 #### **MediaUtils**
+
 Utility class for common media operations:
+
 - **File Management**: Create, delete, and manage media files
 - **Storage Management**: Check storage space and availability
 - **File Naming**: Generate unique filenames with timestamps
@@ -126,6 +150,7 @@ Utility class for common media operations:
 ## 🚀 Usage Examples
 
 ### **Basic Media Capture**
+
 ```java
 // Initialize media capture service
 MediaCaptureService mediaService = new MediaCaptureService(context, mediaQueueManager);
@@ -136,12 +161,12 @@ mediaService.setMediaCaptureListener(new MediaCaptureService.MediaCaptureListene
     public void onPhotoCaptured(String requestId, String filePath) {
         Log.d("Media", "Photo captured: " + filePath);
     }
-    
+
     @Override
     public void onVideoRecordingStarted(String requestId, String filePath) {
         Log.d("Media", "Video recording started: " + filePath);
     }
-    
+
     @Override
     public void onMediaError(String requestId, String error, int mediaType) {
         Log.e("Media", "Media error: " + error);
@@ -156,6 +181,7 @@ mediaService.handleVideoButtonPress();
 ```
 
 ### **Photo Capture with Upload**
+
 ```java
 // Initialize photo capture service
 PhotoCaptureService photoService = new PhotoCaptureService(context, photoQueueManager);
@@ -166,12 +192,12 @@ photoService.setPhotoCaptureListener(new PhotoCaptureService.PhotoCaptureListene
     public void onPhotoCaptured(String requestId, String filePath) {
         Log.d("Photo", "Photo captured: " + filePath);
     }
-    
+
     @Override
     public void onPhotoUploaded(String requestId, String url) {
         Log.d("Photo", "Photo uploaded: " + url);
     }
-    
+
     @Override
     public void onPhotoError(String requestId, String error) {
         Log.e("Photo", "Photo error: " + error);
@@ -183,6 +209,7 @@ photoService.takePhotoAndUpload("/path/to/photo.jpg", "request123", "app456");
 ```
 
 ### **Audio Recording**
+
 ```java
 // Initialize microphone manager
 GlassesMicrophoneManager micManager = new GlassesMicrophoneManager(context, bluetoothManager);
@@ -204,6 +231,7 @@ micManager.stopRecording();
 ```
 
 ### **Media Upload Management**
+
 ```java
 // Initialize upload queue manager
 MediaUploadQueueManager uploadManager = new MediaUploadQueueManager(context);
@@ -214,12 +242,12 @@ uploadManager.setMediaQueueCallback(new MediaUploadQueueManager.MediaQueueCallba
     public void onMediaQueued(String requestId, String filePath, int mediaType) {
         Log.d("Upload", "Media queued: " + filePath);
     }
-    
+
     @Override
     public void onMediaUploaded(String requestId, String url, int mediaType) {
         Log.d("Upload", "Media uploaded: " + url);
     }
-    
+
     @Override
     public void onMediaUploadFailed(String requestId, String error, int mediaType) {
         Log.e("Upload", "Upload failed: " + error);
@@ -234,6 +262,7 @@ uploadManager.processQueue();
 ```
 
 ### **Media Utilities**
+
 ```java
 // Generate unique filename
 String filename = MediaUtils.generateMediaFilename(MediaUtils.MEDIA_TYPE_PHOTO, "vacation");
@@ -257,6 +286,7 @@ Log.d("Media", "File size: " + sizeStr);
 ## 🔄 Media Workflow
 
 ### **Photo Capture Workflow**
+
 1. **Button Press**: User presses photo button
 2. **Cloud Check**: Service checks cloud connectivity
 3. **Capture**: Camera captures high-quality photo
@@ -267,6 +297,7 @@ Log.d("Media", "File size: " + sizeStr);
 8. **Notification**: User is notified of completion
 
 ### **Video Recording Workflow**
+
 1. **Start Recording**: User initiates video recording
 2. **Camera Setup**: Camera is configured for video
 3. **Recording**: Video is recorded with optimal settings
@@ -277,6 +308,7 @@ Log.d("Media", "File size: " + sizeStr);
 8. **Cleanup**: Temporary files are cleaned up
 
 ### **Audio Streaming Workflow**
+
 1. **Initialize**: Microphone manager is initialized
 2. **Start Recording**: Audio recording begins
 3. **Encoding**: Audio is encoded using LC3 codec
@@ -288,30 +320,35 @@ Log.d("Media", "File size: " + sizeStr);
 ## 🛡️ Features
 
 ### **High-Quality Capture**
+
 - **Auto-Exposure**: Dynamic exposure control
 - **Auto-Focus**: Automatic focus adjustment
 - **High Resolution**: Support for high-resolution capture
 - **Quality Optimization**: Automatic quality optimization
 
 ### **Robust Upload System**
+
 - **Queue Management**: Persistent upload queues
 - **Retry Logic**: Automatic retry of failed uploads
 - **Network Handling**: Graceful network connectivity handling
 - **Progress Tracking**: Real-time upload progress tracking
 
 ### **Audio Excellence**
+
 - **LC3 Encoding**: High-quality audio encoding
 - **Low Latency**: Real-time audio processing
 - **Bluetooth Integration**: Seamless Bluetooth streaming
 - **Noise Reduction**: Automatic noise reduction
 
 ### **Storage Management**
+
 - **Space Monitoring**: Automatic storage space monitoring
 - **File Organization**: Organized file structure
 - **Cleanup**: Automatic temporary file cleanup
 - **Gallery Integration**: Seamless gallery integration
 
 ### **Error Handling**
+
 - **Graceful Degradation**: Fallback mechanisms for failures
 - **Error Recovery**: Automatic error recovery
 - **User Feedback**: Clear user feedback for errors
@@ -338,4 +375,4 @@ Log.d("Media", "File size: " + sizeStr);
 
 ---
 
-This media I/O package provides a comprehensive, high-quality foundation for all media operations in the ASG client system, supporting photos, videos, and audio with professional-grade features and robust error handling. 
+This media I/O package provides a comprehensive, high-quality foundation for all media operations in the ASG client system, supporting photos, videos, and audio with professional-grade features and robust error handling.

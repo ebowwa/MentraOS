@@ -204,7 +204,7 @@ export default function InactiveAppList({
       return
     }
 
-    if ((await checkAppHealthStatus(appInfo.packageName)) !== "healthy") {
+    if (!(await checkAppHealthStatus(appInfo.packageName))) {
       showAlert(translate("errors:appNotOnlineTitle"), translate("errors:appNotOnlineMessage"), [
         {text: translate("common:ok")},
       ])

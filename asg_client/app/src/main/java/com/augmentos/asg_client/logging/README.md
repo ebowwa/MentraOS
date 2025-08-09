@@ -16,7 +16,9 @@ logging/
 ## 🔧 Components
 
 ### **Logger Interface**
+
 The main logging interface that defines the contract for all logger implementations:
+
 - `debug(String tag, String message)` - Log debug messages
 - `info(String tag, String message)` - Log info messages
 - `warn(String tag, String message)` - Log warning messages
@@ -24,19 +26,25 @@ The main logging interface that defines the contract for all logger implementati
 - `error(String tag, String message, Throwable throwable)` - Log error messages with exceptions
 
 ### **AndroidLogger**
+
 Android-specific implementation using Android's `Log` class:
+
 - Uses `android.util.Log` for platform-specific logging
 - Provides consistent tag handling
 - Supports all Android log levels
 
 ### **ConsoleLogger**
+
 Console-based implementation for non-Android platforms:
+
 - Uses `System.out` and `System.err` for output
 - Provides colored output for different log levels
 - Includes stack trace printing for exceptions
 
 ### **LoggerFactory**
+
 Factory class for creating platform-specific loggers:
+
 - Auto-detects platform (Android vs non-Android)
 - Provides convenience methods for creating loggers
 - Supports custom tag configuration
@@ -44,6 +52,7 @@ Factory class for creating platform-specific loggers:
 ## 🚀 Usage Examples
 
 ### **Basic Usage**
+
 ```java
 // Auto-detect platform and create logger
 Logger logger = LoggerFactory.createLogger();
@@ -55,6 +64,7 @@ logger.error("MyTag", "An error occurred", exception);
 ```
 
 ### **Platform-Specific Loggers**
+
 ```java
 // Create Android logger explicitly
 Logger androidLogger = LoggerFactory.createAndroidLogger();
@@ -64,6 +74,7 @@ Logger consoleLogger = LoggerFactory.createConsoleLogger();
 ```
 
 ### **Integration with FileManager**
+
 ```java
 // In FileManagerFactory
 Logger logger = LoggerFactory.createLogger();
@@ -81,21 +92,25 @@ The `LoggerFactory` automatically detects the platform:
 ## 🛡️ Features
 
 ### **Platform Agnostic**
+
 - Works on Android and non-Android platforms
 - Consistent API across all implementations
 - No platform-specific dependencies in core code
 
 ### **Thread Safe**
+
 - All implementations are thread-safe
 - No shared state between logger instances
 - Safe for concurrent use
 
 ### **Extensible**
+
 - Easy to add new logger implementations
 - Factory pattern allows for easy extension
 - Interface-based design follows SOLID principles
 
 ### **Performance**
+
 - Minimal overhead
 - No unnecessary object creation
 - Efficient platform detection
@@ -103,6 +118,7 @@ The `LoggerFactory` automatically detects the platform:
 ## 🔧 Integration
 
 ### **With FileManager System**
+
 The logging package is designed to work seamlessly with the FileManager system:
 
 ```java
@@ -117,6 +133,7 @@ Logger logger = LoggerFactory.createLogger();
 ```
 
 ### **With Server Components**
+
 ```java
 // In server implementations
 Logger logger = LoggerFactory.createLogger();
@@ -141,4 +158,4 @@ Logger logger = LoggerFactory.createLogger();
 
 ---
 
-This logging package provides a robust, platform-agnostic foundation for all logging needs in the ASG client system. 
+This logging package provides a robust, platform-agnostic foundation for all logging needs in the ASG client system.

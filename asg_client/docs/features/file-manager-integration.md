@@ -11,6 +11,7 @@ The `PhotoCommandHandler` and `AsgCameraServer` now use the same `FileManager` f
 ### SOLID-Compliant Design
 
 #### **Single Responsibility Principle (SRP)**
+
 - **FileManager**: Manages file operations and default package configuration
 - **BaseMediaCommandHandler**: Handles common package directory operations
 - **PhotoCommandHandler**: Handles only photo-specific commands
@@ -18,21 +19,25 @@ The `PhotoCommandHandler` and `AsgCameraServer` now use the same `FileManager` f
 - **AsgCameraServer**: Handles only web server operations
 
 #### **Open/Closed Principle (OCP)**
+
 - **BaseMediaCommandHandler**: Open for extension (new media handlers), closed for modification
 - **FileManager**: Open for extension (new file operations), closed for modification
 - Easy to add new media command handlers without changing existing code
 
 #### **Liskov Substitution Principle (LSP)**
+
 - All media handlers can be substituted with `BaseMediaCommandHandler`
 - All handlers implement `ICommandHandler` interface
 - Consistent behavior across all media handlers
 
 #### **Interface Segregation Principle (ISP)**
+
 - `ICommandHandler`: Focused interface for command handling
 - `FileManager`: Focused interface for file operations
 - `BaseMediaCommandHandler`: Focused abstract class for media operations
 
 #### **Dependency Inversion Principle (DIP)**
+
 - Handlers depend on `FileManager` abstraction
 - `CommandProcessor` depends on `ICommandHandler` abstractions
 - No concrete dependencies in high-level modules
@@ -101,16 +106,17 @@ FileManager Base Directory/
    - Uses base class methods for package operations
 
 2. **Photo-Specific Logic**:
+
    ```java
    // Resolve package name using base class
    String packageName = resolvePackageName(data);
    logCommandStart(getCommandType(), packageName);
-   
+
    // Validate requestId using base class
    if (!validateRequestId(data)) {
        return false;
    }
-   
+
    // Generate file path using base class
    String fileName = generateUniqueFilename("IMG_", ".jpg");
    String photoFilePath = generateFilePath(packageName, fileName);
@@ -124,11 +130,12 @@ FileManager Base Directory/
    - Uses base class methods for package operations
 
 2. **Video-Specific Logic**:
+
    ```java
    // Resolve package name using base class
    String packageName = resolvePackageName(data);
    logCommandStart(getCommandType(), packageName);
-   
+
    // Validate requestId using base class
    if (!validateRequestId(data)) {
        streamingManager.sendVideoRecordingStatusResponse(false, "missing_request_id", null);
@@ -152,6 +159,7 @@ FileManager Base Directory/
 ## Benefits
 
 ### SOLID Compliance
+
 - **SRP**: Each class has single responsibility
 - **OCP**: Easy to extend without modification
 - **LSP**: Consistent behavior across handlers
@@ -159,28 +167,33 @@ FileManager Base Directory/
 - **DIP**: Depends on abstractions
 
 ### Centralized Configuration
+
 - FileManager is the single source of truth for default package name
 - Easy to change default package name in one place
 - Consistent package naming across all components
 
 ### Code Reusability
+
 - Common functionality extracted to base class
 - No code duplication across media handlers
 - Easy to add new media handlers
 - Consistent error handling and logging
 
 ### Security
+
 - FileManager provides security validation for all operations
 - Package-based isolation prevents unauthorized access
 - Thread-safe operations with read/write locks
 
 ### Consistency
+
 - Both components use the same file structure
 - Unified file management through FileManager
 - Consistent package naming from centralized source
 - Standardized logging and error handling
 
 ### Maintainability
+
 - Single source of truth for file operations
 - Centralized directory management
 - Easy to extend for new packages
@@ -270,6 +283,7 @@ FileManager Base Directory/
 The integration is tested through multiple test classes:
 
 ### BaseMediaCommandHandlerTest
+
 - Tests common package directory functionality
 - Tests package name resolution
 - Tests file path generation
@@ -277,6 +291,7 @@ The integration is tested through multiple test classes:
 - Tests error handling scenarios
 
 ### PhotoCommandHandlerTest
+
 - Tests photo command handling
 - Tests default package usage (using FileManager's default)
 - Tests custom package usage
@@ -284,6 +299,7 @@ The integration is tested through multiple test classes:
 - Tests MediaCaptureService integration
 
 ### VideoCommandHandlerTest
+
 - Tests video command handling
 - Tests package directory integration
 - Tests streaming manager integration
@@ -296,4 +312,4 @@ The integration is tested through multiple test classes:
 4. **File Compression**: Automatic compression for large files
 5. **Backup Integration**: Package-based backup strategies
 6. **Additional Media Handlers**: Easy to add new handlers using BaseMediaCommandHandler
-7. **Plugin Architecture**: Dynamic loading of media handlers 
+7. **Plugin Architecture**: Dynamic loading of media handlers

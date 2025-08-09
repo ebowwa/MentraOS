@@ -32,7 +32,9 @@ io/bluetooth/
 ### **Bluetooth Interfaces**
 
 #### **IBluetoothManager**
+
 Core interface for Bluetooth management operations:
+
 - `initialize()` - Initialize the Bluetooth manager
 - `startAdvertising()` - Start BLE advertising
 - `stopAdvertising()` - Stop BLE advertising
@@ -45,12 +47,16 @@ Core interface for Bluetooth management operations:
 - `shutdown()` - Cleanup resources
 
 #### **BluetoothStateListener**
+
 Interface for receiving Bluetooth state changes:
+
 - `onConnectionStateChanged(boolean connected)` - Connection state change
 - `onDataReceived(byte[] data)` - Data received from device
 
 #### **SerialListener**
+
 Interface for serial port events:
+
 - `onSerialOpen(boolean success, int code, String serialPath, String msg)` - Serial port opened
 - `onSerialReady(String serialPath)` - Serial port ready
 - `onSerialRead(String serialPath, byte[] data, int size)` - Data read from serial
@@ -59,20 +65,26 @@ Interface for serial port events:
 ### **Bluetooth Core Classes**
 
 #### **BaseBluetoothManager**
+
 Abstract base class providing common functionality:
+
 - **Listener Management**: Register/unregister Bluetooth state listeners
 - **State Notification**: Notify listeners of connection and data events
 - **Common Operations**: Default implementations for basic operations
 - **Resource Management**: Basic cleanup and initialization
 
 #### **BluetoothManagerFactory**
+
 Factory class for creating appropriate Bluetooth managers:
+
 - **Device Detection**: Automatically detects K900 vs standard Android devices
 - **Manager Creation**: Creates the appropriate manager implementation
 - **Platform Support**: Supports multiple device types and platforms
 
 #### **ComManager**
+
 Serial communication manager for K900 devices:
+
 - **Serial Port Management**: Opens/closes serial ports
 - **Data Transfer**: Handles data transmission via serial
 - **Event Handling**: Manages serial port events and callbacks
@@ -81,7 +93,9 @@ Serial communication manager for K900 devices:
 ### **Bluetooth Managers**
 
 #### **StandardBluetoothManager**
+
 Implementation for standard Android devices:
+
 - **BLE Peripheral**: Implements BLE peripheral functionality
 - **GATT Server**: Provides GATT services for client connections
 - **Advertising**: Handles BLE advertising with custom device name
@@ -90,7 +104,9 @@ Implementation for standard Android devices:
 - **Connection Management**: Robust connection state management
 
 #### **K900BluetoothManager**
+
 Implementation for K900 smart glasses:
+
 - **Serial Communication**: Uses serial port to communicate with BES2700 module
 - **File Transfer**: Advanced file transfer capabilities with retry logic
 - **Message Parsing**: Handles K900 protocol message parsing
@@ -98,7 +114,9 @@ Implementation for K900 smart glasses:
 - **Error Recovery**: Robust error handling and recovery mechanisms
 
 #### **NordicBluetoothManager**
+
 Implementation using Nordic BLE libraries:
+
 - **Nordic BLE**: Uses Nordic Semiconductor BLE libraries
 - **Server Management**: Advanced BLE server management
 - **Connection Validation**: Periodic connection validation
@@ -108,34 +126,44 @@ Implementation using Nordic BLE libraries:
 ### **Bluetooth Utilities**
 
 #### **BTUtil**
+
 Utility class for Bluetooth operations:
+
 - **Enable/Disable**: Control Bluetooth adapter state
 - **Permission Checking**: Verify Bluetooth permissions
 - **Platform Compatibility**: Handle different Android versions
 
 #### **ByteUtil**
+
 Byte array manipulation utilities:
+
 - **Data Copying**: Safe byte array copying operations
 - **Type Conversion**: Convert between bytes and integers
 - **Hex Formatting**: Format byte arrays as hex strings
 - **K900 Compatibility**: Compatible with K900 protocol requirements
 
 #### **CircleBuffer**
+
 Circular buffer implementation:
+
 - **Data Buffering**: Efficient data buffering for UART communication
 - **Overflow Protection**: Prevents buffer overflow
 - **Thread Safety**: Thread-safe buffer operations
 - **Memory Efficiency**: Memory-efficient circular buffer design
 
 #### **K900MessageParser**
+
 K900 protocol message parser:
+
 - **Message Detection**: Detects K900 protocol message markers
 - **Fragmentation Handling**: Handles fragmented messages
 - **Buffer Management**: Manages message buffers efficiently
 - **Validation**: Validates message integrity
 
 #### **DebugNotificationManager**
+
 Debug notification utilities:
+
 - **User Feedback**: Show notifications for Bluetooth events
 - **Debug Information**: Display debug information during development
 - **State Notifications**: Notify users of connection state changes
@@ -144,6 +172,7 @@ Debug notification utilities:
 ## 🚀 Usage Examples
 
 ### **Basic Bluetooth Setup**
+
 ```java
 // Get the appropriate Bluetooth manager for the device
 IBluetoothManager bluetoothManager = BluetoothManagerFactory.getBluetoothManager(context);
@@ -161,7 +190,7 @@ bluetoothManager.addBluetoothListener(new BluetoothStateListener() {
             Log.d("Bluetooth", "Disconnected from companion device");
         }
     }
-    
+
     @Override
     public void onDataReceived(byte[] data) {
         Log.d("Bluetooth", "Received " + data.length + " bytes");
@@ -174,6 +203,7 @@ bluetoothManager.startAdvertising();
 ```
 
 ### **Data Transmission**
+
 ```java
 // Send data to connected device
 byte[] data = "Hello, World!".getBytes();
@@ -197,6 +227,7 @@ if (fileSuccess) {
 ```
 
 ### **K900-Specific Operations**
+
 ```java
 // K900 devices automatically handle BLE advertising
 // No need to call startAdvertising() on K900 devices
@@ -204,7 +235,7 @@ if (fileSuccess) {
 // Check if connected
 if (bluetoothManager.isConnected()) {
     Log.d("Bluetooth", "Connected via K900 serial port");
-    
+
     // Send data through serial connection
     byte[] data = "K900 data".getBytes();
     bluetoothManager.sendData(data);
@@ -212,6 +243,7 @@ if (bluetoothManager.isConnected()) {
 ```
 
 ### **Serial Communication (K900)**
+
 ```java
 // Create serial communication manager
 ComManager comManager = new ComManager(context);
@@ -226,18 +258,18 @@ comManager.registerListener(new SerialListener() {
             Log.e("Serial", "Failed to open serial port: " + msg);
         }
     }
-    
+
     @Override
     public void onSerialReady(String serialPath) {
         Log.d("Serial", "Serial port ready: " + serialPath);
     }
-    
+
     @Override
     public void onSerialRead(String serialPath, byte[] data, int size) {
         Log.d("Serial", "Read " + size + " bytes from serial port");
         // Process received data
     }
-    
+
     @Override
     public void onSerialClose(String serialPath) {
         Log.d("Serial", "Serial port closed: " + serialPath);
@@ -252,6 +284,7 @@ if (started) {
 ```
 
 ### **Debug Notifications**
+
 ```java
 // Create debug notification manager
 DebugNotificationManager notificationManager = new DebugNotificationManager(context);
@@ -270,6 +303,7 @@ notificationManager.showAdvertisingNotification("Xy_A");
 ```
 
 ### **Utility Operations**
+
 ```java
 // Enable Bluetooth
 boolean enabled = BTUtil.openBluetooth(context);
@@ -293,6 +327,7 @@ if (added) {
 ## 🔄 Bluetooth Workflow
 
 ### **Standard Android Device Workflow**
+
 1. **Initialization**: Bluetooth manager is initialized
 2. **Advertising**: BLE advertising starts with device name "Xy_A"
 3. **Discovery**: Companion app discovers the device
@@ -302,6 +337,7 @@ if (added) {
 7. **Disconnection**: Device disconnects when companion app disconnects
 
 ### **K900 Device Workflow**
+
 1. **Initialization**: K900 Bluetooth manager is initialized
 2. **Serial Setup**: Serial port connection to BES2700 is established
 3. **Protocol Handshake**: K900 protocol handshake is performed
@@ -311,6 +347,7 @@ if (added) {
 7. **Cleanup**: Serial connection is closed on shutdown
 
 ### **Message Parsing Workflow (K900)**
+
 1. **Data Reception**: Raw data is received from serial port
 2. **Buffer Management**: Data is added to circular buffer
 3. **Message Detection**: Protocol markers (## and $$) are detected
@@ -322,30 +359,35 @@ if (added) {
 ## 🛡️ Features
 
 ### **Multi-Device Support**
+
 - **K900 Devices**: Serial-based communication with BES2700 module
 - **Standard Android**: Native BLE peripheral implementation
 - **Nordic Devices**: Advanced BLE with Nordic libraries
 - **Automatic Detection**: Automatic device type detection
 
 ### **Robust Communication**
+
 - **Error Handling**: Comprehensive error handling and recovery
 - **Retry Logic**: Automatic retry for failed operations
 - **Connection Management**: Robust connection state management
 - **Timeout Handling**: Proper timeout handling for operations
 
 ### **Advanced File Transfer**
+
 - **Large Files**: Support for large file transfers
 - **Progress Tracking**: Real-time transfer progress tracking
 - **Retry Mechanism**: Automatic retry for failed transfers
 - **Integrity Checking**: File integrity verification
 
 ### **Debug Support**
+
 - **Notifications**: User-friendly debug notifications
 - **Logging**: Comprehensive logging for troubleshooting
 - **State Tracking**: Detailed state tracking and reporting
 - **Error Reporting**: Clear error reporting and diagnostics
 
 ### **Performance Optimization**
+
 - **MTU Optimization**: Dynamic MTU size negotiation
 - **Buffer Management**: Efficient buffer management
 - **Memory Usage**: Optimized memory usage
@@ -372,4 +414,4 @@ if (added) {
 
 ---
 
-This Bluetooth I/O package provides a comprehensive, high-performance foundation for all Bluetooth operations in the ASG client system, supporting multiple device types with robust error handling and advanced features. 
+This Bluetooth I/O package provides a comprehensive, high-performance foundation for all Bluetooth operations in the ASG client system, supporting multiple device types with robust error handling and advanced features.

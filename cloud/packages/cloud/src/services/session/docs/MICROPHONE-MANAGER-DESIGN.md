@@ -17,6 +17,7 @@ MicrophoneManager handles all microphone state management for user sessions in M
 ### Debounced State Updates
 
 The manager implements intelligent debouncing to handle rapid state changes:
+
 - **First Update**: Sent immediately
 - **Subsequent Updates**: Debounced with configurable delay (default 1000ms)
 - **Smart Coalescing**: Multiple rapid changes result in a single final update
@@ -25,6 +26,7 @@ The manager implements intelligent debouncing to handle rapid state changes:
 ### Performance Optimization
 
 To avoid expensive repeated lookups, the manager caches subscription state:
+
 - **Cached State**: Stores `hasPCM`, `hasTranscription`, and `hasMedia` flags
 - **Cache Updates**: Only recalculated when:
   - Initial construction
@@ -39,6 +41,7 @@ To avoid expensive repeated lookups, the manager caches subscription state:
 **Purpose**: Some glasses clients may release microphone access when the app goes to background (to allow other apps to use the mic). The keep-alive ensures the client maintains microphone access continuously, even while in the background.
 
 **Behavior**:
+
 - Sends `MICROPHONE_STATE_CHANGE` message every 10 seconds
 - Only active when:
   - Microphone is enabled
@@ -52,6 +55,7 @@ To avoid expensive repeated lookups, the manager caches subscription state:
 **Purpose**: Ensures the glasses client properly disables the microphone when instructed. If audio data continues to arrive after the mic should be off, the system immediately forces a mic off command.
 
 **Behavior**:
+
 - Monitors incoming audio when mic should be disabled
 - If unauthorized audio detected:
   - Immediately sends `MICROPHONE_STATE_CHANGE` with enabled=false
@@ -67,6 +71,7 @@ The immediate response ensures quick security enforcement, while the debounce pe
 ### Subscription-Based Activation
 
 The microphone automatically activates based on app needs:
+
 - **PCM Audio**: Apps needing raw audio data
 - **Transcription**: Apps needing speech-to-text
 - **PCM or Transcription**: Apps that can work with either
@@ -78,6 +83,7 @@ The manager calculates the optimal `requiredData` array based on all active subs
 ### Outgoing Messages
 
 **MICROPHONE_STATE_CHANGE**
+
 ```typescript
 {
   type: CloudToGlassesMessageType.MICROPHONE_STATE_CHANGE,
@@ -140,10 +146,10 @@ The manager calculates the optimal `requiredData` array based on all active subs
 userSession.microphoneManager.handleSubscriptionChange();
 
 // When glasses connect
-userSession.microphoneManager.handleConnectionStateChange('CONNECTED');
+userSession.microphoneManager.handleConnectionStateChange("CONNECTED");
 
 // Manual state update
-const requiredData = ['pcm', 'transcription'];
+const requiredData = ["pcm", "transcription"];
 userSession.microphoneManager.updateState(true, requiredData, 1000);
 
 // Cleanup

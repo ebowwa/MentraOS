@@ -32,11 +32,12 @@ AsgClientService (Main Service - 763 lines)
 ### **Before vs After**
 
 #### ❌ **Before: Direct AsgClientServiceManager Access**
+
 ```java
 // CommandProcessor directly accessing AsgClientServiceManager
 public class CommandProcessor {
     private final AsgClientServiceManager serviceManager;
-    
+
     public void handleRequestWifiStatus() {
         INetworkManager networkManager = serviceManager.getNetworkManager();
         if (networkManager != null) {
@@ -48,6 +49,7 @@ public class CommandProcessor {
 ```
 
 #### ✅ **After: Interface-Based Access**
+
 ```java
 // CommandProcessor using interface-based managers
 public class CommandProcessor {
@@ -55,7 +57,7 @@ public class CommandProcessor {
     private final IStateManager stateManager;
     private final IStreamingManager streamingManager;
     private final AsgClientServiceManager serviceManager; // Legacy support
-    
+
     public void handleRequestWifiStatus() {
         if (stateManager.isConnectedToWifi()) {
             communicationManager.sendWifiStatusOverBle(true);
@@ -69,9 +71,10 @@ public class CommandProcessor {
 ## 🔧 **Implementation Details**
 
 ### **1. CommandProcessor Constructor**
+
 ```java
-public CommandProcessor(Context context, 
-                      AsgClientService service, 
+public CommandProcessor(Context context,
+                      AsgClientService service,
                       ICommunicationManager communicationManager,
                       IStateManager stateManager,
                       IStreamingManager streamingManager,
@@ -86,26 +89,27 @@ public CommandProcessor(Context context,
 ```
 
 ### **2. ServiceContainer Initialization**
+
 ```java
 public ServiceContainer(Context context) {
     this.context = context;
-    
+
     // Initialize core components
     this.serviceManager = new AsgClientServiceManager(context, null);
     this.notificationManager = new AsgNotificationManager(context);
-    
+
     // Initialize interface implementations
     this.communicationManager = new CommunicationManager(serviceManager);
     this.stateManager = new StateManager(serviceManager);
     this.streamingManager = new StreamingManager(context, serviceManager);
-    
+
     // Initialize CommandProcessor with interface-based managers
-    this.commandProcessor = new CommandProcessor(context, null, 
-                                               communicationManager, 
-                                               stateManager, 
-                                               streamingManager, 
+    this.commandProcessor = new CommandProcessor(context, null,
+                                               communicationManager,
+                                               stateManager,
+                                               streamingManager,
                                                serviceManager);
-    
+
     // Initialize lifecycle manager with all components
     this.lifecycleManager = new ServiceLifecycleManager(context, serviceManager, commandProcessor, notificationManager);
 }
@@ -114,6 +118,7 @@ public ServiceContainer(Context context) {
 ## 📋 **Manager Responsibilities**
 
 ### **ICommunicationManager**
+
 ```java
 // Handles all Bluetooth communication
 void sendWifiStatusOverBle(boolean isConnected);
@@ -128,6 +133,7 @@ boolean sendBluetoothData(byte[] data);
 ```
 
 ### **IStateManager**
+
 ```java
 // Handles state tracking and queries
 void updateBatteryStatus(int level, boolean charging, long timestamp);
@@ -140,6 +146,7 @@ boolean isAugmentosServiceBound();
 ```
 
 ### **IStreamingManager**
+
 ```java
 // Handles RTMP streaming and video recording
 void startRtmpStreaming();
@@ -152,6 +159,7 @@ StreamingStatusCallback getStreamingStatusCallback();
 ```
 
 ### **IServiceLifecycle**
+
 ```java
 // Handles service lifecycle management
 void initialize();
@@ -164,22 +172,26 @@ boolean isInitialized();
 ## 🔄 **Migration Strategy**
 
 ### **Phase 1: Hybrid Approach (Current)**
+
 - ✅ Use interface-based managers for new functionality
 - ✅ Keep `AsgClientServiceManager` for legacy components
 - ✅ Gradually migrate existing code to use interfaces
 
 ### **Phase 2: Full Interface Migration**
+
 - 🔄 Migrate all components to use interface-based managers
 - 🔄 Remove direct `AsgClientServiceManager` dependencies
 - 🔄 Create additional interfaces as needed
 
 ### **Phase 3: Legacy Cleanup**
+
 - 🔄 Remove `AsgClientServiceManager` once all components are migrated
 - 🔄 Consolidate remaining functionality into appropriate managers
 
 ## 💡 **Best Practices**
 
 ### **1. Use Interface-Based Managers First**
+
 ```java
 // ✅ Good: Use interface-based manager
 if (stateManager.isConnectedToWifi()) {
@@ -195,6 +207,7 @@ if (networkManager != null) {
 ```
 
 ### **2. Keep Legacy Support for Complex Operations**
+
 ```java
 // ✅ Good: Use service manager for complex legacy operations
 MediaCaptureService captureService = serviceManager.getMediaCaptureService();
@@ -207,6 +220,7 @@ communicationManager.sendMediaSuccessResponse(requestId, mediaUrl, mediaType);
 ```
 
 ### **3. Delegate to Appropriate Managers**
+
 ```java
 // ✅ Good: Delegate to streaming manager
 streamingManager.sendVideoRecordingStatusResponse(true, "recording_started", null);
@@ -219,6 +233,7 @@ stateManager.updateBatteryStatus(level, charging, timestamp);
 ```
 
 ### **4. Avoid Direct Service Access**
+
 ```java
 // ❌ Avoid: Direct service access from CommandProcessor
 service.sendWifiStatusOverBle(isConnected);
@@ -230,6 +245,7 @@ communicationManager.sendWifiStatusOverBle(isConnected);
 ## 🧪 **Testing Benefits**
 
 ### **Easy Mocking**
+
 ```java
 @Test
 public void testCommandProcessing() {
@@ -237,31 +253,32 @@ public void testCommandProcessing() {
     ICommunicationManager mockCommunication = mock(ICommunicationManager.class);
     IStateManager mockState = mock(IStateManager.class);
     IStreamingManager mockStreaming = mock(IStreamingManager.class);
-    
+
     // Create CommandProcessor with mocks
-    CommandProcessor processor = new CommandProcessor(context, service, 
-                                                    mockCommunication, 
-                                                    mockState, 
-                                                    mockStreaming, 
+    CommandProcessor processor = new CommandProcessor(context, service,
+                                                    mockCommunication,
+                                                    mockState,
+                                                    mockStreaming,
                                                     serviceManager);
-    
+
     // Test behavior
     when(mockState.isConnectedToWifi()).thenReturn(true);
-    
+
     // Verify interactions
     verify(mockCommunication).sendWifiStatusOverBle(true);
 }
 ```
 
 ### **Isolated Testing**
+
 ```java
 @Test
 public void testCommunicationManager() {
     ICommunicationManager communication = new CommunicationManager(serviceManager);
-    
+
     // Test communication functionality in isolation
     communication.sendWifiStatusOverBle(true);
-    
+
     // Verify Bluetooth manager was called correctly
     verify(bluetoothManager).sendData(any(byte[].class));
 }
@@ -270,6 +287,7 @@ public void testCommunicationManager() {
 ## 🔍 **Debugging Benefits**
 
 ### **Clear Component Boundaries**
+
 ```java
 // Easy to identify which manager is responsible
 Log.d(TAG, "CommunicationManager: Sending WiFi status");
@@ -278,6 +296,7 @@ Log.d(TAG, "StreamingManager: RTMP stream started");
 ```
 
 ### **Isolated Error Handling**
+
 ```java
 try {
     communicationManager.sendWifiStatusOverBle(isConnected);
@@ -297,11 +316,12 @@ try {
 ## 📊 **Performance Benefits**
 
 ### **Lazy Loading**
+
 ```java
 // Managers are initialized only when needed
 public class ServiceContainer {
     private ICommunicationManager communicationManager;
-    
+
     public ICommunicationManager getCommunicationManager() {
         if (communicationManager == null) {
             communicationManager = new CommunicationManager(serviceManager);
@@ -312,6 +332,7 @@ public class ServiceContainer {
 ```
 
 ### **Reduced Coupling**
+
 ```java
 // Changes to one manager don't affect others
 // CommunicationManager changes don't affect StateManager
@@ -321,6 +342,7 @@ public class ServiceContainer {
 ## 🚀 **Future Extensibility**
 
 ### **Adding New Managers**
+
 ```java
 // Easy to add new managers without changing existing code
 public interface IMediaManager {
@@ -335,6 +357,7 @@ public class MediaManager implements IMediaManager {
 ```
 
 ### **Adding New Interfaces**
+
 ```java
 // Easy to add new interfaces for new concerns
 public interface IConfigurationManager {
@@ -355,4 +378,4 @@ The interface-based approach provides:
 5. **Better Debugging**: Isolated component boundaries
 6. **Performance Benefits**: Lazy loading and reduced coupling
 
-**Key Takeaway**: Always prefer interface-based managers over direct `AsgClientServiceManager` access for new functionality, while maintaining legacy support for complex operations that haven't been migrated yet. 
+**Key Takeaway**: Always prefer interface-based managers over direct `AsgClientServiceManager` access for new functionality, while maintaining legacy support for complex operations that haven't been migrated yet.

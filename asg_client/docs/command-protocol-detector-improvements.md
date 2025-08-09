@@ -10,7 +10,8 @@ The `CommandProtocolDetector` class has been significantly improved to follow SO
 
 **Before**: The class was handling both protocol detection and data extraction in a single method.
 
-**After**: 
+**After**:
+
 - Each strategy class has a single responsibility
 - `JsonCommandProtocolStrategy` only handles JSON command detection
 - `K900ProtocolStrategy` only handles K900 protocol detection
@@ -22,6 +23,7 @@ The `CommandProtocolDetector` class has been significantly improved to follow SO
 **Before**: Adding new protocols required modifying the main detection method.
 
 **After**:
+
 - New protocols can be added by implementing the `ProtocolDetectionStrategy` interface
 - The system is open for extension but closed for modification
 - Custom strategies can be added at runtime using `addDetectionStrategy()`
@@ -31,6 +33,7 @@ The `CommandProtocolDetector` class has been significantly improved to follow SO
 **Before**: No clear interface for different detection strategies.
 
 **After**:
+
 - All strategies implement the same `ProtocolDetectionStrategy` interface
 - Any strategy can be substituted for another without breaking the system
 - Consistent behavior across all protocol types
@@ -40,6 +43,7 @@ The `CommandProtocolDetector` class has been significantly improved to follow SO
 **Before**: The result record had mixed responsibilities.
 
 **After**:
+
 - `ProtocolDetectionStrategy` interface is focused and cohesive
 - `ProtocolDetectionResult` class has clear, single-purpose methods
 - Each interface method has a specific, well-defined purpose
@@ -49,6 +53,7 @@ The `CommandProtocolDetector` class has been significantly improved to follow SO
 **Before**: Tightly coupled to JSON parsing and specific protocol formats.
 
 **After**:
+
 - Depends on abstractions (`ProtocolDetectionStrategy` interface)
 - Strategies can be injected and configured
 - Easy to test with mock strategies
@@ -74,7 +79,7 @@ public static class ProtocolDetectionResult {
     private final String commandType;
     private final long messageId;
     private final boolean isValid;
-    
+
     // Clear, focused methods
     public boolean isValid() { return isValid; }
     public boolean hasMessageId() { return messageId != -1; }
@@ -89,7 +94,7 @@ public enum ProtocolType {
     JSON_COMMAND("JSON Command"),
     K900_PROTOCOL("K900 Protocol"),
     UNKNOWN("Unknown Protocol");
-    
+
     private final String displayName;
     // ...
 }
@@ -125,13 +130,13 @@ public class CustomProtocolStrategy implements ProtocolDetectionStrategy {
     public boolean canHandle(JSONObject json) {
         return json.has("custom_field");
     }
-    
+
     @Override
     public ProtocolDetectionResult detect(JSONObject json) {
         // Custom detection logic
         return new ProtocolDetectionResult(/* ... */);
     }
-    
+
     @Override
     public ProtocolType getProtocolType() {
         return ProtocolType.JSON_COMMAND; // or new type
@@ -145,26 +150,31 @@ detector.addDetectionStrategy(new CustomProtocolStrategy());
 ## Benefits
 
 ### 1. Maintainability
+
 - Clear separation of concerns
 - Easy to understand and modify individual strategies
 - Reduced cognitive load when working with the code
 
 ### 2. Extensibility
+
 - New protocols can be added without modifying existing code
 - Runtime strategy registration
 - Plugin-like architecture
 
 ### 3. Testability
+
 - Each strategy can be tested independently
 - Easy to mock strategies for unit testing
 - Clear interfaces for integration testing
 
 ### 4. Robustness
+
 - Better error handling and validation
 - Graceful degradation for unknown protocols
 - Consistent behavior across different protocol types
 
 ### 5. Performance
+
 - Early termination when protocol is identified
 - Efficient strategy selection
 - Minimal object creation
@@ -206,9 +216,10 @@ if (result.isValid()) {
 ## Conclusion
 
 The improved `CommandProtocolDetector` provides a solid foundation for protocol detection that is:
+
 - Easy to maintain and extend
 - Robust and reliable
 - Well-tested and documented
 - Following industry best practices
 
-This refactoring demonstrates how applying SOLID principles can transform a simple utility class into a powerful, extensible system component. 
+This refactoring demonstrates how applying SOLID principles can transform a simple utility class into a powerful, extensible system component.

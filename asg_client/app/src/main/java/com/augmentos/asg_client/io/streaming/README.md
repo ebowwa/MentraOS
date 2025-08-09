@@ -37,7 +37,9 @@ io/streaming/
 ### **Streaming Interfaces**
 
 #### **IStreamingService**
+
 Core interface for streaming management operations:
+
 - `initialize(Context context)` - Initialize the streaming service
 - `setStreamingUrl(String url)` - Set the streaming URL
 - `getStreamingUrl()` - Get the current streaming URL
@@ -52,7 +54,9 @@ Core interface for streaming management operations:
 - `shutdown()` - Cleanup resources
 
 #### **StreamingStatusCallback**
+
 Interface for receiving streaming status updates:
+
 - `onStreamStarting(String streamingUrl)` - Streaming starting
 - `onStreamStarted(String streamingUrl)` - Streaming started
 - `onStreamStopped()` - Streaming stopped
@@ -62,7 +66,9 @@ Interface for receiving streaming status updates:
 - `onStreamError(String error)` - Streaming error
 
 #### **StreamingEventListener**
+
 Interface for listening to streaming events:
+
 - `onStreamerReady()` - Streamer ready
 - `onPreviewAttached()` - Preview attached
 - `onStreamInitializing()` - Stream initializing
@@ -76,7 +82,9 @@ Interface for listening to streaming events:
 ### **Streaming Events**
 
 #### **StreamingCommand**
+
 Commands that can be sent to streaming services:
+
 - **Start** - Start streaming
 - **Stop** - Stop streaming
 - **SetRtmpUrl** - Set RTMP URL
@@ -86,7 +94,9 @@ Commands that can be sent to streaming services:
 - **SetMute** - Mute/unmute audio
 
 #### **StreamingEvent**
+
 Events emitted by streaming services:
+
 - **Ready** - Streamer ready
 - **PreviewAttached** - Preview attached
 - **Initializing** - Stream initializing
@@ -100,7 +110,9 @@ Events emitted by streaming services:
 ### **Streaming Services**
 
 #### **RtmpStreamingService**
+
 RTMP streaming service implementation using StreamPackLite:
+
 - **RTMP Streaming**: Full RTMP streaming capabilities
 - **Reconnection Logic**: Robust reconnection with exponential backoff
 - **Error Handling**: Comprehensive error handling and recovery
@@ -113,7 +125,9 @@ RTMP streaming service implementation using StreamPackLite:
 ### **Streaming UI Components**
 
 #### **StreamingActivity**
+
 Main streaming activity for user interaction:
+
 - **Preview Display**: Camera preview using PreviewView
 - **Stream Control**: Start/stop streaming controls
 - **Status Display**: Real-time streaming status
@@ -121,7 +135,9 @@ Main streaming activity for user interaction:
 - **Event Handling**: Handles streaming events via EventBus
 
 #### **RtmpStreamingFragment**
+
 Fragment for RTMP streaming demonstration:
+
 - **UI Controls**: Complete streaming control interface
 - **Camera Controls**: Switch camera and toggle flash
 - **URL Input**: RTMP URL input field
@@ -131,7 +147,9 @@ Fragment for RTMP streaming demonstration:
 ### **Streaming Utilities**
 
 #### **StreamingUtils**
+
 Utility class for streaming operations:
+
 - **URL Validation**: RTMP URL format validation
 - **URL Parsing**: Extract stream key and server URL
 - **Formatting**: Duration, bitrate, and file size formatting
@@ -139,7 +157,9 @@ Utility class for streaming operations:
 - **Stream ID Generation**: Generate unique stream IDs
 
 #### **StreamingNotificationManager**
+
 Notification management for streaming:
+
 - **Streaming Notifications**: Active streaming notifications
 - **Reconnecting Notifications**: Reconnection status notifications
 - **Error Notifications**: Error notifications
@@ -149,6 +169,7 @@ Notification management for streaming:
 ## 🚀 Usage Examples
 
 ### **Basic Streaming Setup**
+
 ```java
 // Get streaming service
 RtmpStreamingService streamingService = new RtmpStreamingService();
@@ -165,32 +186,32 @@ streamingService.setStreamingStatusCallback(new StreamingStatusCallback() {
     public void onStreamStarting(String streamingUrl) {
         Log.d("Streaming", "Starting stream to: " + streamingUrl);
     }
-    
+
     @Override
     public void onStreamStarted(String streamingUrl) {
         Log.d("Streaming", "Stream started: " + streamingUrl);
     }
-    
+
     @Override
     public void onStreamStopped() {
         Log.d("Streaming", "Stream stopped");
     }
-    
+
     @Override
     public void onReconnecting(int attempt, int maxAttempts, String reason) {
         Log.d("Streaming", "Reconnecting: " + attempt + "/" + maxAttempts);
     }
-    
+
     @Override
     public void onReconnected(String streamingUrl, int attempt) {
         Log.d("Streaming", "Reconnected on attempt: " + attempt);
     }
-    
+
     @Override
     public void onReconnectFailed(int maxAttempts) {
         Log.e("Streaming", "Reconnection failed after " + maxAttempts + " attempts");
     }
-    
+
     @Override
     public void onStreamError(String error) {
         Log.e("Streaming", "Stream error: " + error);
@@ -207,6 +228,7 @@ if (success) {
 ```
 
 ### **Streaming Commands and Events**
+
 ```java
 // Send streaming commands via EventBus
 EventBus.getDefault().post(new StreamingCommand.Start());
@@ -234,16 +256,17 @@ public void onStreamingEvent(StreamingEvent event) {
 ```
 
 ### **Streaming Utilities**
+
 ```java
 // Validate RTMP URL
 String rtmpUrl = "rtmp://server.com/live/streamkey";
 if (StreamingUtils.isValidRtmpUrl(rtmpUrl)) {
     Log.d("Streaming", "Valid RTMP URL");
-    
+
     // Extract components
     String streamKey = StreamingUtils.extractStreamKey(rtmpUrl);
     String serverUrl = StreamingUtils.extractServerUrl(rtmpUrl);
-    
+
     Log.d("Streaming", "Stream Key: " + streamKey);
     Log.d("Streaming", "Server URL: " + serverUrl);
 }
@@ -270,6 +293,7 @@ Log.d("Streaming", "Stream ID: " + streamId);
 ```
 
 ### **Notification Management**
+
 ```java
 // Create notification manager
 StreamingNotificationManager notificationManager = new StreamingNotificationManager(context);
@@ -292,12 +316,13 @@ notificationManager.cancelAllNotifications();
 ```
 
 ### **Service Integration**
+
 ```java
 // Start streaming service
 public static void startStreaming(Context context, String rtmpUrl) {
     Intent intent = new Intent(context, RtmpStreamingService.class);
     intent.putExtra("rtmp_url", rtmpUrl);
-    
+
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
         context.startForegroundService(intent);
     } else {
@@ -324,6 +349,7 @@ public static boolean isReconnecting() {
 ## 🔄 Streaming Workflow
 
 ### **RTMP Streaming Workflow**
+
 1. **Initialization**: Streaming service is initialized
 2. **URL Configuration**: RTMP URL is set
 3. **Camera Setup**: Camera preview surface is created
@@ -335,6 +361,7 @@ public static boolean isReconnecting() {
 9. **Cleanup**: Resources are cleaned up on stop
 
 ### **Reconnection Workflow**
+
 1. **Connection Loss**: Connection is lost or fails
 2. **Failure Detection**: Failure is detected and logged
 3. **Retry Logic**: Exponential backoff retry logic is applied
@@ -344,6 +371,7 @@ public static boolean isReconnecting() {
 7. **Recovery**: If successful, streaming resumes
 
 ### **Error Handling Workflow**
+
 1. **Error Detection**: Error is detected in streaming process
 2. **Error Classification**: Error is classified as retryable or non-retryable
 3. **Retryable Errors**: Network errors trigger reconnection
@@ -355,18 +383,21 @@ public static boolean isReconnecting() {
 ## 🛡️ Features
 
 ### **Multi-Protocol Support**
+
 - **RTMP**: Real-time messaging protocol streaming
 - **RTMPS**: Secure RTMP streaming
 - **RTMPT**: RTMP tunneling
 - **Extensible**: Easy to add new protocols
 
 ### **Robust Streaming**
+
 - **Reconnection Logic**: Automatic reconnection with exponential backoff
 - **Error Handling**: Comprehensive error handling and recovery
 - **Timeout Management**: Stream timeout detection and handling
 - **Performance Monitoring**: Real-time performance monitoring
 
 ### **Advanced Features**
+
 - **Camera Control**: Switch between front and back cameras
 - **Flash Control**: Toggle camera flash
 - **Audio Control**: Mute/unmute audio
@@ -374,12 +405,14 @@ public static boolean isReconnecting() {
 - **Surface Management**: Efficient surface management
 
 ### **User Experience**
+
 - **Notifications**: User-friendly streaming notifications
 - **Status Updates**: Real-time streaming status updates
 - **Error Reporting**: Clear error reporting and diagnostics
 - **Progress Tracking**: Streaming progress tracking
 
 ### **Performance Optimization**
+
 - **Memory Management**: Efficient memory usage
 - **Battery Optimization**: Battery-efficient streaming
 - **Wake Lock Management**: Prevents device sleep during streaming
@@ -408,4 +441,4 @@ public static boolean isReconnecting() {
 
 ---
 
-This Streaming I/O package provides a comprehensive, high-performance foundation for all streaming operations in the ASG client system, supporting multiple protocols with robust error handling and advanced features. 
+This Streaming I/O package provides a comprehensive, high-performance foundation for all streaming operations in the ASG client system, supporting multiple protocols with robust error handling and advanced features.

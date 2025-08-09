@@ -36,7 +36,9 @@ io/ota/
 ### **OTA Interfaces**
 
 #### **IOtaService**
+
 Core interface for OTA service operations:
+
 - `initialize(Context context)` - Initialize the OTA service
 - `startService()` - Start the OTA service
 - `stopService()` - Stop the OTA service
@@ -51,7 +53,9 @@ Core interface for OTA service operations:
 - `shutdown()` - Cleanup resources
 
 #### **IOtaHelper**
+
 Core interface for OTA helper operations:
+
 - `initialize(Context context)` - Initialize the OTA helper
 - `startVersionCheck(Context context)` - Start version checking
 - `isCheckingVersion()` - Check if version checking is in progress
@@ -68,7 +72,9 @@ Core interface for OTA helper operations:
 - `cleanup()` - Cleanup resources
 
 #### **OtaProgressCallback**
+
 Interface for receiving OTA progress updates:
+
 - `onOtaCheckStarted()` - OTA check starts
 - `onOtaCheckCompleted(boolean hasUpdate, String versionInfo)` - OTA check completes
 - `onOtaCheckFailed(String error)` - OTA check fails
@@ -89,14 +95,18 @@ Interface for receiving OTA progress updates:
 ### **OTA Events**
 
 #### **DownloadProgressEvent**
+
 Event for download progress updates:
+
 - **STARTED** - Download started
 - **PROGRESS** - Download progress update
 - **FINISHED** - Download finished
 - **FAILED** - Download failed
 
 #### **InstallationProgressEvent**
+
 Event for installation progress updates:
+
 - **STARTED** - Installation started
 - **FINISHED** - Installation finished
 - **FAILED** - Installation failed
@@ -104,7 +114,9 @@ Event for installation progress updates:
 ### **OTA Services**
 
 #### **OtaService**
+
 OTA service implementation:
+
 - **Service Management**: Android service lifecycle management
 - **Notification Management**: User-friendly notifications
 - **Event Handling**: EventBus integration for progress updates
@@ -115,7 +127,9 @@ OTA service implementation:
 ### **OTA Helpers**
 
 #### **OtaHelper**
+
 OTA helper implementation:
+
 - **Version Checking**: Automatic version checking with retry logic
 - **Download Management**: Robust download with progress tracking
 - **Installation Management**: APK installation with verification
@@ -128,7 +142,9 @@ OTA helper implementation:
 ### **OTA Utilities**
 
 #### **OtaUtils**
+
 Utility class for OTA operations:
+
 - **Version Management**: Get current app version information
 - **File Integrity**: MD5 hash calculation and verification
 - **Storage Management**: Storage space checking and management
@@ -138,7 +154,9 @@ Utility class for OTA operations:
 - **Cleanup**: Old APK file cleanup
 
 #### **OtaNotificationManager**
+
 Notification management for OTA:
+
 - **Service Notifications**: OTA service status notifications
 - **Download Notifications**: Download progress notifications
 - **Installation Notifications**: Installation status notifications
@@ -147,7 +165,9 @@ Notification management for OTA:
 - **Progress Tracking**: Real-time progress tracking
 
 #### **OtaConstants**
+
 OTA constants and configuration:
+
 - **URLs**: Version check and update URLs
 - **Paths**: APK and backup file paths
 - **Actions**: Intent actions for OTA operations
@@ -158,6 +178,7 @@ OTA constants and configuration:
 ## 🚀 Usage Examples
 
 ### **Basic OTA Service Setup**
+
 ```java
 // Get OTA service
 OtaService otaService = new OtaService();
@@ -171,7 +192,7 @@ otaService.setProgressCallback(new OtaProgressCallback() {
     public void onOtaCheckStarted() {
         Log.d("OTA", "OTA check started");
     }
-    
+
     @Override
     public void onOtaCheckCompleted(boolean hasUpdate, String versionInfo) {
         if (hasUpdate) {
@@ -180,42 +201,42 @@ otaService.setProgressCallback(new OtaProgressCallback() {
             Log.d("OTA", "No update available");
         }
     }
-    
+
     @Override
     public void onOtaCheckFailed(String error) {
         Log.e("OTA", "OTA check failed: " + error);
     }
-    
+
     @Override
     public void onDownloadStarted(long totalBytes) {
         Log.d("OTA", "Download started: " + totalBytes + " bytes");
     }
-    
+
     @Override
     public void onDownloadProgress(int progress, long bytesDownloaded, long totalBytes) {
         Log.d("OTA", "Download progress: " + progress + "%");
     }
-    
+
     @Override
     public void onDownloadCompleted(String apkPath) {
         Log.d("OTA", "Download completed: " + apkPath);
     }
-    
+
     @Override
     public void onDownloadFailed(String error) {
         Log.e("OTA", "Download failed: " + error);
     }
-    
+
     @Override
     public void onInstallationStarted(String apkPath) {
         Log.d("OTA", "Installation started: " + apkPath);
     }
-    
+
     @Override
     public void onInstallationCompleted(String apkPath) {
         Log.d("OTA", "Installation completed: " + apkPath);
     }
-    
+
     @Override
     public void onInstallationFailed(String error) {
         Log.e("OTA", "Installation failed: " + error);
@@ -232,6 +253,7 @@ if (success) {
 ```
 
 ### **OTA Helper Operations**
+
 ```java
 // Create OTA helper
 OtaHelper otaHelper = new OtaHelper(context);
@@ -272,6 +294,7 @@ if (batterySufficient) {
 ```
 
 ### **OTA Events**
+
 ```java
 // Listen for download progress events
 @Subscribe(threadMode = ThreadMode.MAIN)
@@ -310,6 +333,7 @@ public void onInstallationProgress(InstallationProgressEvent event) {
 ```
 
 ### **OTA Utilities**
+
 ```java
 // Get current version information
 long versionCode = OtaUtils.getCurrentVersionCode(context);
@@ -345,6 +369,7 @@ OtaUtils.cleanupOldApkFiles(3); // Keep latest 3 files
 ```
 
 ### **Notification Management**
+
 ```java
 // Create notification manager
 OtaNotificationManager notificationManager = new OtaNotificationManager(context);
@@ -370,11 +395,12 @@ notificationManager.cancelAllNotifications();
 ```
 
 ### **Service Integration**
+
 ```java
 // Start OTA service
 public static void startOtaService(Context context) {
     Intent intent = new Intent(context, OtaService.class);
-    
+
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
         context.startForegroundService(intent);
     } else {
@@ -398,6 +424,7 @@ public static boolean isOtaServiceRunning() {
 ## 🔄 OTA Workflow
 
 ### **Version Check Workflow**
+
 1. **Initialization**: OTA service is initialized
 2. **Network Check**: Verify network connectivity
 3. **Battery Check**: Verify battery level is sufficient
@@ -407,6 +434,7 @@ public static boolean isOtaServiceRunning() {
 7. **User Notification**: Notify user of available updates
 
 ### **Download Workflow**
+
 1. **Download Initiation**: Start download process
 2. **Storage Check**: Verify sufficient storage space
 3. **Download Progress**: Track download progress
@@ -415,6 +443,7 @@ public static boolean isOtaServiceRunning() {
 6. **Download Completion**: Complete download process
 
 ### **Installation Workflow**
+
 1. **Installation Initiation**: Start installation process
 2. **Permission Check**: Verify installation permissions
 3. **APK Verification**: Verify APK file integrity
@@ -423,6 +452,7 @@ public static boolean isOtaServiceRunning() {
 6. **Restart Notification**: Notify user to restart app
 
 ### **Rollback Workflow**
+
 1. **Failure Detection**: Detect installation failure
 2. **Backup Verification**: Verify backup file exists
 3. **Rollback Initiation**: Start rollback process
@@ -433,6 +463,7 @@ public static boolean isOtaServiceRunning() {
 ## 🛡️ Features
 
 ### **Robust Update Management**
+
 - **Automatic Checks**: Periodic automatic update checks
 - **Network Awareness**: Network-aware update operations
 - **Battery Awareness**: Battery-aware update operations
@@ -440,6 +471,7 @@ public static boolean isOtaServiceRunning() {
 - **Error Recovery**: Comprehensive error handling and recovery
 
 ### **Security and Integrity**
+
 - **MD5 Verification**: APK file integrity verification
 - **Version Validation**: Version compatibility checking
 - **Backup Management**: Automatic backup creation and restoration
@@ -447,6 +479,7 @@ public static boolean isOtaServiceRunning() {
 - **Permission Management**: Proper permission handling
 
 ### **User Experience**
+
 - **Progress Tracking**: Real-time progress tracking
 - **Notifications**: User-friendly notifications
 - **Status Updates**: Clear status updates
@@ -454,6 +487,7 @@ public static boolean isOtaServiceRunning() {
 - **Background Operation**: Background update operations
 
 ### **Performance Optimization**
+
 - **Storage Management**: Efficient storage space management
 - **Memory Management**: Memory-efficient operations
 - **Network Optimization**: Optimized network usage
@@ -483,4 +517,4 @@ public static boolean isOtaServiceRunning() {
 
 ---
 
-This OTA I/O package provides a comprehensive, secure, and user-friendly foundation for all OTA operations in the ASG client system, supporting robust update mechanisms with automatic rollback capabilities. 
+This OTA I/O package provides a comprehensive, secure, and user-friendly foundation for all OTA operations in the ASG client system, supporting robust update mechanisms with automatic rollback capabilities.

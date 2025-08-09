@@ -13,6 +13,7 @@
 ## 🎯 **Step-by-Step Visual Flow**
 
 ### **1. 📱 Data Reception (Entry Point)**
+
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                           onDataReceived(byte[] data)                      │
@@ -27,6 +28,7 @@
 ```
 
 ### **2. 🔄 Protocol Processing**
+
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                        Protocol Detection & Parsing                        │
@@ -47,6 +49,7 @@
 ```
 
 ### **3. 🎯 Command Processing (CommandProcessor)**
+
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                        processJsonCommand(JSONObject json)                 │
@@ -64,6 +67,7 @@
 ```
 
 ### **4. 🎪 Command Handler Routing**
+
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                           Command Handler Map                              │
@@ -88,6 +92,7 @@
 ## 🎯 **Command Type Categories & Flow**
 
 ### **📡 COMMUNICATION Commands**
+
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                           COMMUNICATION CATEGORY                           │
@@ -114,6 +119,7 @@
 ```
 
 ### **📸 MEDIA Commands**
+
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                              MEDIA CATEGORY                                │
@@ -141,6 +147,7 @@
 ```
 
 ### **⚙️ SYSTEM Commands**
+
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                              SYSTEM CATEGORY                               │
@@ -186,7 +193,7 @@
 │                           COMPLETE COMMAND FLOW                            │
 └─────────────────────────────────────────────────────────────────────────────┘
 
-📱 PHONE (BLE) 
+📱 PHONE (BLE)
     │
     ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -254,6 +261,7 @@
 ## 🎯 **Handler Execution Examples**
 
 ### **📷 Photo Command Flow**
+
 ```
 📱 take_photo → PhotoCommandHandler
     ├── Extract: requestId, photoMode
@@ -264,6 +272,7 @@
 ```
 
 ### **📶 WiFi Command Flow**
+
 ```
 📱 set_wifi_credentials → WifiCommandHandler
     ├── Extract: ssid, password, authToken
@@ -274,6 +283,7 @@
 ```
 
 ### **🔋 Battery Command Flow**
+
 ```
 📱 battery_status → BatteryCommandHandler
     ├── Get: battery level from system
@@ -285,26 +295,31 @@
 ## 🔧 **Key Components in Flow**
 
 ### **1. ServiceContainer (Dependency Injection)**
+
 - **Purpose**: Manages all dependencies and managers
 - **Role**: Provides access to handlers, managers, and services
 - **Flow**: Initializes all components and provides them to handlers
 
 ### **2. CommandProcessor (Command Router)**
+
 - **Purpose**: Routes commands to appropriate handlers
 - **Role**: Maintains handler registry and executes commands
 - **Flow**: Receives JSON, extracts type, finds handler, executes
 
 ### **3. CommunicationManager (Response Handler)**
+
 - **Purpose**: Handles all Bluetooth communication
 - **Role**: Sends responses back to phone
 - **Flow**: Formats and sends JSON responses via BLE
 
 ### **4. StateManager (State Management)**
+
 - **Purpose**: Manages system state (WiFi, battery, etc.)
 - **Role**: Updates and provides current system state
 - **Flow**: Handlers update state, other components read state
 
 ### **5. ResponseBuilder (Response Creation)**
+
 - **Purpose**: Creates standardized JSON responses
 - **Role**: Ensures consistent response format
 - **Flow**: Handlers use to create responses
@@ -312,6 +327,7 @@
 ## 🎯 **Benefits of This Architecture**
 
 ### **✅ SOLID Principles**
+
 - **Single Responsibility**: Each handler handles one command type
 - **Open/Closed**: Easy to add new handlers without modifying existing code
 - **Liskov Substitution**: All handlers implement same interface
@@ -319,14 +335,16 @@
 - **Dependency Inversion**: Depends on abstractions, not concretions
 
 ### **✅ Maintainability**
+
 - **Modular**: Each command type is isolated
 - **Testable**: Handlers can be tested independently
 - **Extensible**: Easy to add new command types
 - **Debuggable**: Clear flow and logging at each step
 
 ### **✅ Performance**
+
 - **Efficient**: Direct routing to handlers
 - **Scalable**: Can handle many command types
 - **Responsive**: Quick command processing and response
 
-This architecture provides a clean, maintainable, and extensible command execution system that follows SOLID principles and provides excellent separation of concerns. 
+This architecture provides a clean, maintainable, and extensible command execution system that follows SOLID principles and provides excellent separation of concerns.
