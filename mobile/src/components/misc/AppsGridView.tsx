@@ -27,12 +27,12 @@ interface AppModel {
 
 interface AppsGridViewProps {
   apps: AppModel[]
-  onStartApp: (packageName: string) => void
-  onStopApp: (packageName: string) => void
-  onOpenSettings: (app: AppModel) => void
+  onStartApp?: (packageName: string) => void
+  onStopApp?: (packageName: string) => void
+  onOpenSettings?: (app: AppModel) => void
   onOpenWebView?: (app: AppModel) => void
   title?: string
-  showInactiveApps?: boolean
+  isIncompatible?: boolean
 }
 
 const GRID_COLUMNS = 4
@@ -45,7 +45,7 @@ export const AppsGridViewRoot: React.FC<AppsGridViewProps> = ({
   onOpenSettings,
   onOpenWebView,
   title,
-  showInactiveApps = false,
+  isIncompatible = false,
 }) => {
   const {themed, theme} = useAppTheme()
   const [selectedApp, setSelectedApp] = useState<AppModel | null>(null)
@@ -246,12 +246,12 @@ const $container: ThemedStyle<ViewStyle> = ({spacing}) => ({
 })
 
 const $gridContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
-  paddingHorizontal: spacing.sm,
+  // paddingHorizontal: -spacing.sm,
 })
 
-const $row: ThemedStyle<ViewStyle> = () => ({
+const $row: ThemedStyle<ViewStyle> = ({spacing}) => ({
   justifyContent: "space-between",
-  // paddingHorizontal: spacing.sm,
+  paddingHorizontal: spacing.md,
 })
 
 const $gridItem: ThemedStyle<ViewStyle> = ({spacing}) => ({
@@ -266,8 +266,8 @@ const $appContainer: ThemedStyle<ViewStyle> = () => ({
 })
 
 const $appIcon: ThemedStyle<ViewStyle> = ({spacing}) => ({
-  width: 60,
-  height: 60,
+  width: 64,
+  height: 64,
   marginBottom: spacing.xs,
 })
 
@@ -284,7 +284,8 @@ const $activeIndicator: ThemedStyle<ViewStyle> = ({colors}) => ({
 })
 
 const $appName: ThemedStyle<TextStyle> = ({colors}) => ({
-  fontSize: 12,
+  fontSize: 11,
+  fontWeight: "600",
   color: colors.text,
   textAlign: "center",
   lineHeight: 14,

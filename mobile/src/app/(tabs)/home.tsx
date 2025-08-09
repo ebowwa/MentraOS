@@ -243,21 +243,22 @@ export default function Homepage() {
         contentInsetAdjustmentBehavior="automatic"> */}
       <SensingDisabledWarning />
 
-      <Spacer height={theme.spacing.xs} />
+      {/* <Spacer height={theme.spacing.xs} /> */}
 
       <ConnectedGlasses showTitle={false} />
       <DeviceToolbar />
-      <Spacer height={theme.spacing.md} />
+      {/* <Spacer height={theme.spacing.md} /> */}
       <View ref={connectButtonRef}>
         <ConnectDeviceButton />
       </View>
-      <Spacer height={theme.spacing.lg} />
-      <Divider variant="full" />
       <Spacer height={theme.spacing.md} />
+      {/* <Spacer height={theme.spacing.lg} />
+      <Divider variant="full" />
+      <Spacer height={theme.spacing.md} /> */}
 
       <AppsCombinedGridView />
-      <Spacer height={spacing.xl} />
-      <AppsIncompatibleList />
+      {/* <Spacer height={spacing.xl} /> */}
+      {/* <AppsIncompatibleList /> */}
       {/* </ScrollView> */}
 
       <OnboardingSpotlight

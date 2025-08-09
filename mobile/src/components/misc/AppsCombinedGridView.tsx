@@ -15,6 +15,7 @@ import {askPermissionsUI} from "@/utils/PermissionsUtils"
 import {saveSetting} from "@/utils/SettingsHelper"
 import {SETTINGS_KEYS} from "@/consts"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
+import AppsIncompatibleList from "@/components/misc/AppsIncompatibleList"
 
 interface AppModel {
   name: string
@@ -198,7 +199,7 @@ const AppsCombinedGridViewRoot: React.FC<AppsCombinedGridViewProps> = () => {
   const ActiveRoute = useMemo(
     () => () => (
       <View style={themed($scene)}>
-        <ScrollView showsVerticalScrollIndicator={false}>
+        <ScrollView showsVerticalScrollIndicator={true}>
           <AppsGridView
             apps={activeApps}
             onStartApp={handleStartApp}
@@ -215,7 +216,7 @@ const AppsCombinedGridViewRoot: React.FC<AppsCombinedGridViewProps> = () => {
   const InactiveRoute = useMemo(
     () => () => (
       <View style={themed($scene)}>
-        <ScrollView showsVerticalScrollIndicator={false}>
+        <ScrollView showsVerticalScrollIndicator={true}>
           <AppsGridView
             apps={inactiveApps}
             onStartApp={handleStartApp}
@@ -223,6 +224,7 @@ const AppsCombinedGridViewRoot: React.FC<AppsCombinedGridViewProps> = () => {
             onOpenSettings={handleOpenAppSettings}
             onOpenWebView={handleOpenWebView}
           />
+          <AppsIncompatibleList />
         </ScrollView>
       </View>
     ),
@@ -242,8 +244,29 @@ const AppsCombinedGridViewRoot: React.FC<AppsCombinedGridViewProps> = () => {
     (props: any) => (
       <TabBar
         {...props}
-        indicatorStyle={{backgroundColor: theme.colors.text}}
-        style={{backgroundColor: theme.colors.background}}
+        indicatorStyle={{
+          backgroundColor: theme.colors.text,
+          borderRadius: 10,
+          height: 2,
+          // width: 100,
+          // width: "40%",
+          // marginRight: -10,
+          // marginLeft: 30,
+          // marginHorizontal: "auto",
+          flex: 1,
+          // alignSelf: "center",
+          // marginLeft: "auto",
+          justifyContent: "center",
+          alignItems: "center",
+        }}
+        indicatorContainerStyle={{
+          flex: 1,
+          // alignSelf: "center",
+          // justifyContent: "center",
+          // alignItems: "center",
+          // backgroundColor: "red",
+        }}
+        style={themed($tabBar)}
         labelStyle={{
           fontSize: 16,
           fontWeight: "600",
@@ -282,14 +305,24 @@ const AppsCombinedGridViewRoot: React.FC<AppsCombinedGridViewProps> = () => {
 // memoize the component to prevent unnecessary re-renders:
 export const AppsCombinedGridView = React.memo(AppsCombinedGridViewRoot)
 
-const $container: ThemedStyle<ViewStyle> = () => ({
+const $container: ThemedStyle<ViewStyle> = ({spacing}) => ({
   flex: 1,
+  marginHorizontal: -spacing.lg,
 })
-
-const $tabView: ThemedStyle<ViewStyle> = () => ({})
 
 const $scene: ThemedStyle<ViewStyle> = ({spacing}) => ({
   paddingTop: spacing.md,
+})
+
+const $tabBar: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
+  backgroundColor: colors.background,
+  // width: "100%",
+  marginHorizontal: spacing.lg,
+  borderRadius: spacing.sm,
+})
+
+const $tabView: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  // paddingHorizontal: spacing.lg,
 })
 
 const $emptyContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
