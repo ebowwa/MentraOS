@@ -243,9 +243,10 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
         body: JSON.stringify({packageName}),
       })
       const healthData = await healthResponse.json()
+      console.log("AppStatusProvider: Health data:", healthData)
       return healthData.success
     } catch (error) {
-      console.error("AppStatusProvider: Error checking app health status:", error)
+      // console.error("AppStatusProvider: Error checking app health status:", error)
       return false
     }
   }

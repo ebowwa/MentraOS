@@ -36,8 +36,14 @@ import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {showAlert} from "@/utils/AlertUtils"
 
 export default function Homepage() {
-  const {appStatus, refreshAppStatus, optimisticallyStartApp, optimisticallyStopApp, clearPendingOperation} =
-    useAppStatus()
+  const {
+    appStatus,
+    refreshAppStatus,
+    optimisticallyStartApp,
+    optimisticallyStopApp,
+    clearPendingOperation,
+    checkAppHealthStatus,
+  } = useAppStatus()
   const {status} = useStatus()
   const [isInitialLoading, setIsInitialLoading] = useState(true)
   const [hasMissingPermissions, setHasMissingPermissions] = useState(false)
@@ -200,12 +206,19 @@ export default function Homepage() {
       return
     }
 
+    if (!(await checkAppHealthStatus(appInfo.packageName))) {
+      showAlert(translate("errors:appNotOnlineTitle"), translate("errors:appNotOnlineMessage"), [
+        {text: translate("common:ok")},
+      ])
+      return
+    }
+
     // ask for needed perms:
     const result = await askPermissionsUI(appInfo, theme)
     if (result === -1) {
       return
     } else if (result === 0) {
-      handleStartApp(packageName) // restart this function
+      handleStartApp(appInfo.packageName) // restart this function
       return
     }
 
