@@ -7,7 +7,6 @@ import { logger } from "../services/logging/pino-logger";
 import * as AppUptimeService from "../services/core/app-uptime.service";
 import axios from "axios";
 import { fetchSubmittedAppHealthStatus } from "../services/core/app-uptime.service";
-
 const router = Router();
 
 // Start the uptime scheduler when the routes are loaded
