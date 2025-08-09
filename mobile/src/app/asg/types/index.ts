@@ -12,6 +12,9 @@ export interface PhotoInfo {
   is_video?: boolean
   thumbnail_data?: string
   downloaded_at?: number
+  // New fields for filesystem storage
+  filePath?: string
+  thumbnailPath?: string
 }
 
 export interface GalleryResponse {

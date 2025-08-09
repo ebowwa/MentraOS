@@ -4,6 +4,8 @@
  */
 
 import {PhotoInfo, GalleryResponse, ServerStatus, HealthResponse} from "../types"
+import RNFS from "react-native-fs"
+import {localStorageService} from "./localStorageService"
 
 export class AsgCameraApiClient {
   private baseUrl: string
@@ -515,11 +517,15 @@ export class AsgCameraApiClient {
     lastSyncTime?: number,
     includeThumbnails: boolean = false,
   ): Promise<{
-    client_id: string
-    changed_files: PhotoInfo[]
-    deleted_files: string[]
-    server_time: number
-    total_files: number
+    status: string
+    data: {
+      client_id: string
+      changed_files: PhotoInfo[]
+      deleted_files: string[]
+      server_time: number
+      total_changed: number
+      total_size: number
+    }
   }> {
     const params = new URLSearchParams({
       client_id: clientId,
@@ -564,7 +570,13 @@ export class AsgCameraApiClient {
           try {
             const fileData = await this.downloadFile(file.name, includeThumbnails)
             results.total_size += file.size
-            return {...file, ...fileData}
+            // Combine file info with downloaded file paths
+            return {
+              ...file,
+              filePath: fileData.filePath,
+              thumbnailPath: fileData.thumbnailPath,
+              mime_type: fileData.mime_type || file.mime_type,
+            }
           } catch (error) {
             console.error(`Failed to download ${file.name}:`, error)
             results.failed.push(file.name)
@@ -600,7 +612,7 @@ export class AsgCameraApiClient {
     }
 
     try {
-      const response = await this.makeRequest("/delete", {
+      const response = await this.makeRequest("/api/delete", {
         method: "POST",
         body: JSON.stringify({files: fileNames}),
       })
@@ -628,78 +640,106 @@ export class AsgCameraApiClient {
   }
 
   /**
-   * Download a file from the server with AVIF detection
+   * Download a file from the server and save to filesystem
    */
   async downloadFile(
     filename: string,
     includeThumbnail: boolean = false,
   ): Promise<{
-    data: string
-    thumbnail_data?: string
+    filePath: string
+    thumbnailPath?: string
     mime_type: string
   }> {
     console.log(`[ASG Camera API] Downloading file: ${filename}`)
 
     try {
-      // Fetch the file as a blob
-      const response = await fetch(`${this.baseUrl}/api/photo?file=${encodeURIComponent(filename)}`, {
-        method: "GET",
+      // Get the local file path where we'll save this
+      const localFilePath = localStorageService.getPhotoFilePath(filename)
+      const localThumbnailPath = includeThumbnail ? localStorageService.getThumbnailFilePath(filename) : undefined
+
+      // Download the file directly to filesystem
+      console.log(`[ASG Camera API] Downloading to: ${localFilePath}`)
+
+      const downloadResult = await RNFS.downloadFile({
+        fromUrl: `${this.baseUrl}/api/photo?file=${encodeURIComponent(filename)}`,
+        toFile: localFilePath,
         headers: {
           "Accept": "*/*",
           "User-Agent": "MentraOS-Mobile/1.0",
         },
-      })
+        progressDivider: 10,
+        begin: res => {
+          console.log(`[ASG Camera API] Download started for ${filename}, size: ${res.contentLength}`)
+        },
+        progress: res => {
+          const percentage = Math.round((res.bytesWritten / res.contentLength) * 100)
+          if (percentage % 20 === 0) {
+            // Log every 20%
+            console.log(`[ASG Camera API] Download progress ${filename}: ${percentage}%`)
+          }
+        },
+      }).promise
 
-      if (!response.ok) {
-        throw new Error(`Failed to download ${filename}: ${response.status}`)
+      if (downloadResult.statusCode !== 200) {
+        throw new Error(`Failed to download ${filename}: HTTP ${downloadResult.statusCode}`)
       }
 
-      // Get the blob
-      const blob = await response.blob()
-      console.log(`[ASG Camera API] Downloaded blob for ${filename}:`, {
-        size: blob.size,
-        type: blob.type,
-      })
+      console.log(`[ASG Camera API] Successfully downloaded ${filename} to filesystem`)
 
-      // Read blob as array buffer to check file signature
-      const arrayBuffer = await blob.arrayBuffer()
-      const bytes = new Uint8Array(arrayBuffer)
+      // Detect MIME type by checking file signature
+      let mimeType = "application/octet-stream"
+      try {
+        // Read first 20 bytes to check file signature
+        const firstBytes = await RNFS.read(localFilePath, 20, 0, "base64")
+        const decodedBytes = atob(firstBytes)
 
-      // Check for AVIF signature (starts at byte 4: "ftypavif")
-      let isAvif = false
-      let mimeType = blob.type || "application/octet-stream"
-
-      if (bytes.length > 12) {
-        const ftypSignature = String.fromCharCode(...bytes.slice(4, 12))
-        if (ftypSignature === "ftypavif") {
-          isAvif = true
-          mimeType = "image/avif"
-          console.log(`[ASG Camera API] Detected AVIF file: ${filename}`)
+        // Check for AVIF signature
+        if (decodedBytes.length > 11) {
+          const ftypSignature = decodedBytes.substring(4, 12)
+          if (ftypSignature === "ftypavif") {
+            mimeType = "image/avif"
+            console.log(`[ASG Camera API] Detected AVIF file: ${filename}`)
+          } else if (decodedBytes.substring(0, 2) === "\xFF\xD8") {
+            mimeType = "image/jpeg"
+          } else if (decodedBytes.substring(0, 8) === "\x89PNG\r\n\x1a\n") {
+            mimeType = "image/png"
+          }
         }
-      }
 
-      // Convert to base64 data URL
-      const base64 = btoa(String.fromCharCode(...bytes))
-      const dataUrl = `data:${mimeType};base64,${base64}`
+        // Also check by extension
+        if (mimeType === "application/octet-stream") {
+          if (filename.toLowerCase().endsWith(".jpg") || filename.toLowerCase().endsWith(".jpeg")) {
+            mimeType = "image/jpeg"
+          } else if (filename.toLowerCase().endsWith(".png")) {
+            mimeType = "image/png"
+          } else if (filename.toLowerCase().endsWith(".mp4")) {
+            mimeType = "video/mp4"
+          } else if (!filename.includes(".")) {
+            // Files without extension are likely AVIF
+            mimeType = "image/avif"
+          }
+        }
+      } catch (e) {
+        console.warn(`[ASG Camera API] Could not detect MIME type for ${filename}:`, e)
+      }
 
       // Download thumbnail if requested and it's a video
-      let thumbnailData: string | undefined
+      let thumbnailPath: string | undefined
       if (includeThumbnail && filename.toLowerCase().match(/\.(mp4|mov|avi|mkv|webm)$/)) {
         try {
-          const thumbnailResponse = await fetch(`${this.baseUrl}/api/thumbnail?file=${encodeURIComponent(filename)}`, {
-            method: "GET",
+          console.log(`[ASG Camera API] Downloading thumbnail for ${filename}`)
+          const thumbResult = await RNFS.downloadFile({
+            fromUrl: `${this.baseUrl}/api/thumbnail?file=${encodeURIComponent(filename)}`,
+            toFile: localThumbnailPath!,
             headers: {
               "Accept": "image/*",
               "User-Agent": "MentraOS-Mobile/1.0",
             },
-          })
+          }).promise
 
-          if (thumbnailResponse.ok) {
-            const thumbnailBlob = await thumbnailResponse.blob()
-            const thumbnailBuffer = await thumbnailBlob.arrayBuffer()
-            const thumbnailBytes = new Uint8Array(thumbnailBuffer)
-            const thumbnailBase64 = btoa(String.fromCharCode(...thumbnailBytes))
-            thumbnailData = `data:${thumbnailBlob.type};base64,${thumbnailBase64}`
+          if (thumbResult.statusCode === 200) {
+            thumbnailPath = localThumbnailPath
+            console.log(`[ASG Camera API] Downloaded thumbnail to: ${thumbnailPath}`)
           }
         } catch (error) {
           console.warn(`[ASG Camera API] Failed to download thumbnail for ${filename}:`, error)
@@ -707,8 +747,8 @@ export class AsgCameraApiClient {
       }
 
       return {
-        data: dataUrl,
-        thumbnail_data: thumbnailData,
+        filePath: localFilePath,
+        thumbnailPath: thumbnailPath,
         mime_type: mimeType,
       }
     } catch (error) {

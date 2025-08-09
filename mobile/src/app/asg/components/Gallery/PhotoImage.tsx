@@ -46,6 +46,13 @@ export function PhotoImage({photo, style, showPlaceholder = true}: PhotoImagePro
         return
       }
 
+      // For file:// URLs, check MIME type directly
+      if (photo.url.startsWith("file://") && photo.mime_type === "image/avif") {
+        setIsAvif(true)
+        setIsLoading(false)
+        return
+      }
+
       setIsLoading(false)
     }
 

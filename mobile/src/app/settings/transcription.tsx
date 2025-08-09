@@ -79,7 +79,8 @@ export default function TranscriptionSettingsScreen() {
         // Auto-restart transcription if mic is active
         if (status.core_info.is_mic_enabled_for_frontend) {
           showAlert("Restarting Transcription", "Switching to new model...", [{text: "OK"}])
-          await coreCommunicator.restartTranscription()
+          // TODO: Make this work correctly
+          //await coreCommunicator.restartTranscription(true)
         } else {
           showAlert("Model Activated", `Switched to ${info.name}`, [{text: "OK"}])
         }

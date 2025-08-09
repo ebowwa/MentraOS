@@ -14,11 +14,12 @@ import {
   Modal,
   Dimensions,
   ScrollView,
+  FlatList,
 } from "react-native"
 import {useLocalSearchParams, useFocusEffect} from "expo-router"
 import {Screen, Header} from "@/components/ignite"
 import {useAppTheme} from "@/utils/useAppTheme"
-import {ThemedStyle} from "@/theme"
+import {spacing, ThemedStyle} from "@/theme"
 import {ViewStyle, TextStyle, ImageStyle} from "react-native"
 import {useStatus} from "@/contexts/AugmentOSStatusProvider"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
@@ -26,6 +27,7 @@ import {PhotoInfo} from "../../types"
 import {asgCameraApi} from "../../services/asgCameraApi"
 import {localStorageService} from "../../services/localStorageService"
 import {PhotoImage} from "./PhotoImage"
+import {GallerySkeleton} from "./GallerySkeleton"
 
 interface GalleryScreenProps {
   deviceModel?: string
@@ -37,8 +39,20 @@ export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps)
   const {status} = useStatus()
   const {goBack} = useNavigationHistory()
   const {theme, themed} = useAppTheme()
-  const {width} = Dimensions.get("window")
-  const numColumns = Math.floor(width / 120)
+
+  // Responsive column calculation
+  const screenWidth = Dimensions.get("window").width
+  const MIN_ITEM_WIDTH = 150 // Minimum width for each photo
+
+  // Calculate columns: 2 for phones, 3-4 for tablets
+  const calculateColumns = () => {
+    const availableWidth = screenWidth - spacing.md * 2
+    const columns = Math.floor(availableWidth / MIN_ITEM_WIDTH)
+    return Math.max(2, Math.min(columns, 4)) // Min 2, max 4 columns
+  }
+
+  const numColumns = calculateColumns()
+  const itemWidth = (screenWidth - spacing.md * 2 - spacing.xs * (numColumns - 1)) / numColumns
 
   // Get glasses WiFi info for server connection
   const glassesWifiIp = status.glasses_info?.glasses_wifi_local_ip
@@ -124,30 +138,34 @@ export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps)
 
       console.log(`[GalleryScreen] Sync response:`, syncResponse)
 
-      if (syncResponse.changed_files.length === 0) {
+      // Access the data property of the response
+      const syncData = syncResponse.data || syncResponse
+
+      if (!syncData.changed_files || syncData.changed_files.length === 0) {
         Alert.alert("Sync Complete", "No new files to download")
         return
       }
 
       setSyncProgress({
         current: 0,
-        total: syncResponse.changed_files.length,
+        total: syncData.changed_files.length,
         message: "Downloading files...",
       })
 
       // Download files in batches
-      const downloadResult = await asgCameraApi.batchSyncFiles(syncResponse.changed_files, true)
+      const downloadResult = await asgCameraApi.batchSyncFiles(syncData.changed_files, true)
 
       console.log(`[GalleryScreen] Download result:`, downloadResult)
 
-      // Save downloaded files to local storage
+      // Save downloaded files metadata to local storage (files are already saved to filesystem)
       for (const photoInfo of downloadResult.downloaded) {
         const downloadedFile = localStorageService.convertToDownloadedFile(
           photoInfo,
-          photoInfo.download.split(",")[1], // Remove data URL prefix
-          photoInfo.thumbnail_data,
+          photoInfo.filePath, // File path from download
+          photoInfo.thumbnailPath, // Thumbnail path if exists
         )
         await localStorageService.saveDownloadedFile(downloadedFile)
+        console.log(`[GalleryScreen] Saved metadata for ${photoInfo.name}`)
       }
 
       // Delete files from server after successful download
@@ -158,7 +176,7 @@ export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps)
 
       // Update sync state
       await localStorageService.updateSyncState({
-        last_sync_time: syncResponse.server_time,
+        last_sync_time: syncData.server_time,
         total_downloaded: syncState.total_downloaded + downloadResult.downloaded.length,
         total_size: syncState.total_size + downloadResult.total_size,
       })
@@ -346,35 +364,38 @@ export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps)
       )}
 
       {/* Photo Grid */}
-      <ScrollView style={themed($photoGridContainer)}>
-        {isLoading ? (
-          <View style={themed($loadingContainer)}>
-            <ActivityIndicator size="large" color={theme.colors.palette.primary500} />
-            <Text style={themed($loadingText)}>Loading photos...</Text>
-          </View>
-        ) : currentPhotos.length === 0 ? (
-          <View style={themed($emptyContainer)}>
-            <Text style={themed($emptyText)}>{isServerTab ? "No photos on server" : "No downloaded photos"}</Text>
-          </View>
-        ) : (
-          <View style={themed($photoGrid)}>
-            {currentPhotos.map((photo, index) => (
-              <TouchableOpacity
-                key={`${photo.name}-${index}`}
-                style={themed($photoItem)}
-                onPress={() => handlePhotoPress(photo)}
-                onLongPress={() => (isServerTab ? handleDeletePhoto(photo) : handleDeleteDownloadedPhoto(photo))}>
-                <PhotoImage photo={photo} style={themed($photoImage)} />
-                {photo.is_video && (
-                  <View style={themed($videoIndicator)}>
-                    <Text style={themed($videoIndicatorText)}>▶</Text>
-                  </View>
-                )}
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
-      </ScrollView>
+      {isLoading ? (
+        <View style={themed($photoGridContainer)}>
+          <GallerySkeleton itemCount={numColumns * 4} numColumns={numColumns} itemWidth={itemWidth} />
+        </View>
+      ) : currentPhotos.length === 0 ? (
+        <View style={themed($emptyContainer)}>
+          <Text style={themed($emptyText)}>{isServerTab ? "No photos on server" : "No downloaded photos"}</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={currentPhotos}
+          numColumns={numColumns}
+          key={numColumns} // Force re-render when columns change
+          renderItem={({item: photo}) => (
+            <TouchableOpacity
+              style={[themed($photoItem), {width: itemWidth}]}
+              onPress={() => handlePhotoPress(photo)}
+              onLongPress={() => (isServerTab ? handleDeletePhoto(photo) : handleDeleteDownloadedPhoto(photo))}>
+              <PhotoImage photo={photo} style={[themed($photoImage), {width: itemWidth, height: itemWidth * 0.8}]} />
+              {photo.is_video && (
+                <View style={themed($videoIndicator)}>
+                  <Text style={themed($videoIndicatorText)}>▶</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          )}
+          keyExtractor={(item, index) => `${item.name}-${index}`}
+          contentContainerStyle={themed($photoGridContent)}
+          columnWrapperStyle={numColumns > 1 ? themed($columnWrapper) : undefined}
+          ItemSeparatorComponent={() => <View style={{height: spacing.xs}} />}
+        />
+      )}
 
       {/* Photo Modal */}
       <Modal
@@ -522,6 +543,15 @@ const $photoGridContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
   padding: spacing.md,
 })
 
+const $photoGridContent: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  paddingHorizontal: spacing.md,
+  paddingVertical: spacing.sm,
+})
+
+const $columnWrapper: ThemedStyle<ViewStyle> = () => ({
+  justifyContent: "space-between",
+})
+
 const $loadingContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
   flex: 1,
   justifyContent: "center",
@@ -548,22 +578,16 @@ const $emptyText: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
   marginBottom: spacing.xs,
 })
 
-const $photoGrid: ThemedStyle<ViewStyle> = ({spacing}) => ({
-  flexDirection: "row",
-  flexWrap: "wrap",
-  justifyContent: "space-between",
-})
+// Removed - using FlatList now
 
 const $photoItem: ThemedStyle<ViewStyle> = ({spacing}) => ({
-  width: "48%",
-  marginBottom: spacing.md,
   borderRadius: spacing.xs,
   overflow: "hidden",
+  backgroundColor: "rgba(0,0,0,0.05)",
 })
 
 const $photoImage: ThemedStyle<ImageStyle> = ({spacing}) => ({
   width: "100%",
-  height: 120,
   borderRadius: 8,
 })
 
