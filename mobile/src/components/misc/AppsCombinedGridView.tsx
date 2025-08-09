@@ -198,7 +198,7 @@ const AppsCombinedGridViewRoot: React.FC<AppsCombinedGridViewProps> = () => {
 
   const ActiveRoute = useMemo(
     () => () => (
-      <View style={themed($scene)}>
+      <View style={[themed($scene), {minHeight: 300}]}>
         <ScrollView showsVerticalScrollIndicator={true}>
           <AppsGridView
             apps={activeApps}
