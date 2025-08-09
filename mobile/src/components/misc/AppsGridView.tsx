@@ -38,7 +38,7 @@ interface AppsGridViewProps {
 const GRID_COLUMNS = 4
 const SCREEN_WIDTH = Dimensions.get("window").width
 
-const AppsGridViewMemo: React.FC<AppsGridViewProps> = ({
+export const AppsGridView: React.FC<AppsGridViewProps> = ({
   apps,
   onStartApp,
   onStopApp,
@@ -129,11 +129,10 @@ const AppsGridViewMemo: React.FC<AppsGridViewProps> = ({
     }
   }
 
+  console.log("APPSGRIDVIEW RE-RENDER", apps.length)
+
   return (
     <View style={themed($container)}>
-      {/* {title && <Text style={themed($title)} text={title} />} */}
-
-      {/* <ScrollView> */}
       <FlatList
         data={apps}
         renderItem={renderAppItem}
@@ -143,7 +142,6 @@ const AppsGridViewMemo: React.FC<AppsGridViewProps> = ({
         scrollEnabled={false}
         contentContainerStyle={themed($gridContainer)}
       />
-      {/* </ScrollView> */}
 
       {selectedApp && touchableRefs.current[selectedApp.packageName] && (
         <Popover
@@ -196,7 +194,50 @@ const AppsGridViewMemo: React.FC<AppsGridViewProps> = ({
   )
 }
 
-export const AppsGridView = React.memo(AppsGridViewMemo)
+// export const AppsGridView = React.memo(AppsGridViewMemo, (prevProps, nextProps) => {
+//   // Custom comparison function - return true if props are equal (skip re-render)
+//   // Check if apps array has changed (compare by reference first, then deep compare if needed)
+//   if (prevProps.apps !== nextProps.apps) {
+//     // Check if the arrays have same length and same items
+//     if (prevProps.apps.length !== nextProps.apps.length) {
+//       console.log("APPSGRIDVIEW apps length changed", prevProps.apps.length, nextProps.apps.length)
+//       return false // Props changed, re-render needed
+//     }
+
+//     // Deep compare apps array
+//     for (let i = 0; i < prevProps.apps.length; i++) {
+//       const prevApp = prevProps.apps[i]
+//       const nextApp = nextProps.apps[i]
+
+//       if (prevApp.packageName !== nextApp.packageName ||
+//           prevApp.name !== nextApp.name ||
+//           prevApp.is_running !== nextApp.is_running ||
+//           prevApp.is_foreground !== nextApp.is_foreground) {
+//             console.log("APPSGRIDVIEW app changed", prevApp.packageName, nextApp.packageName)
+//         return false // Props changed, re-render needed
+//       }
+//     }
+//   }
+
+//   // Check if callbacks have changed (they should be stable with useCallback)
+//   if (prevProps.onStartApp !== nextProps.onStartApp ||
+//       prevProps.onStopApp !== nextProps.onStopApp ||
+//       prevProps.onOpenSettings !== nextProps.onOpenSettings ||
+//       prevProps.onOpenWebView !== nextProps.onOpenWebView) {
+//     console.log("APPSGRIDVIEW callbacks changed", prevProps.onStartApp, nextProps.onStartApp)
+//     return false // Props changed, re-render needed
+//   }
+
+//   // Check other props
+//   if (prevProps.title !== nextProps.title ||
+//       prevProps.showInactiveApps !== nextProps.showInactiveApps) {
+//     console.log("APPSGRIDVIEW other props changed", prevProps.title, nextProps.title)
+//     return false // Props changed, re-render needed
+//   }
+
+//   console.log("APPSGRIDVIEW props are equal")
+//   return true // Props are equal, skip re-render
+// })
 
 const $container: ThemedStyle<ViewStyle> = ({spacing}) => ({
   marginTop: spacing.md,

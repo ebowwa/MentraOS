@@ -1,4 +1,4 @@
-import React, {useState} from "react"
+import React, {useState, useCallback, useMemo} from "react"
 import {View, ViewStyle, TextStyle, Dimensions} from "react-native"
 import {TabView, SceneMap, TabBar} from "react-native-tab-view"
 import {AppsGridView} from "./AppsGridView"
@@ -68,89 +68,71 @@ export const AppsCombinedGridView: React.FC<AppsCombinedGridViewProps> = ({
   const tabViewHeight = maxContentHeight + TAB_BAR_HEIGHT
 
   // If no apps at all
-  if (!hasActiveApps && !hasInactiveApps) {
-    return (
-      <View style={themed($emptyContainer)}>
-        <Text text={translate("home:noAppsInstalled")} style={themed($emptyText)} />
-      </View>
-    )
-  }
-
-  // // If only one type of apps exists
-  // if (hasActiveApps && !hasInactiveApps) {
+  // if (!hasActiveApps && !hasInactiveApps) {
   //   return (
-  //     <View style={themed($container)}>
-  //       <Text style={themed($sectionTitle)} text={translate("home:activeApps")} />
-  //       <AppsGridView
-  //         apps={activeApps}
-  //         onStartApp={onStartApp}
-  //         onStopApp={onStopApp}
-  //         onOpenSettings={onOpenSettings}
-  //         onOpenWebView={onOpenWebView}
-  //       />
+  //     <View style={themed($emptyContainer)}>
+  //       <Text text={translate("home:noAppsInstalled")} style={themed($emptyText)} />
   //     </View>
   //   )
   // }
 
-  // if (!hasActiveApps && hasInactiveApps) {
-  //   return (
-  //     <View style={themed($container)}>
-  //       <Text style={themed($sectionTitle)} text={translate("home:inactiveApps")} />
-  //       <AppsGridView
-  //         apps={inactiveApps}
-  //         onStartApp={onStartApp}
-  //         onStopApp={onStopApp}
-  //         onOpenSettings={onOpenSettings}
-  //         onOpenWebView={onOpenWebView}
-  //       />
-  //     </View>
-  //   )
-  // }
-
-  const ActiveRoute = () => (
-    <View style={themed($scene)}>
-      <AppsGridView
-        apps={activeApps}
-        onStartApp={onStartApp}
-        onStopApp={onStopApp}
-        onOpenSettings={onOpenSettings}
-        onOpenWebView={onOpenWebView}
-      />
-    </View>
-  )
-
-  const InactiveRoute = () => (
-    <View style={themed($scene)}>
-      <ScrollView>
+  const ActiveRoute = useMemo(
+    () => () => (
+      <View style={themed($scene)}>
         <AppsGridView
-          apps={inactiveApps}
+          apps={activeApps}
           onStartApp={onStartApp}
           onStopApp={onStopApp}
           onOpenSettings={onOpenSettings}
           onOpenWebView={onOpenWebView}
         />
-      </ScrollView>
-    </View>
+      </View>
+    ),
+    [activeApps, onStartApp, onStopApp, onOpenSettings, onOpenWebView, themed],
   )
 
-  const renderScene = SceneMap({
-    active: ActiveRoute,
-    inactive: InactiveRoute,
-  })
+  const InactiveRoute = useMemo(
+    () => () => (
+      <View style={themed($scene)}>
+        <ScrollView>
+          <AppsGridView
+            apps={inactiveApps}
+            onStartApp={onStartApp}
+            onStopApp={onStopApp}
+            onOpenSettings={onOpenSettings}
+            onOpenWebView={onOpenWebView}
+          />
+        </ScrollView>
+      </View>
+    ),
+    [inactiveApps, onStartApp, onStopApp, onOpenSettings, onOpenWebView, themed],
+  )
 
-  const renderTabBar = (props: any) => (
-    <TabBar
-      {...props}
-      indicatorStyle={{backgroundColor: theme.colors.palette.accent500}}
-      style={{backgroundColor: theme.colors.background}}
-      labelStyle={{
-        fontSize: 16,
-        fontWeight: "600",
-        textTransform: "none",
-      }}
-      activeColor={theme.colors.text}
-      inactiveColor={theme.colors.textDim}
-    />
+  const renderScene = useMemo(
+    () =>
+      SceneMap({
+        active: ActiveRoute,
+        inactive: InactiveRoute,
+      }),
+    [ActiveRoute, InactiveRoute],
+  )
+
+  const renderTabBar = useCallback(
+    (props: any) => (
+      <TabBar
+        {...props}
+        indicatorStyle={{backgroundColor: theme.colors.palette.accent500}}
+        style={{backgroundColor: theme.colors.background}}
+        labelStyle={{
+          fontSize: 16,
+          fontWeight: "600",
+          textTransform: "none",
+        }}
+        activeColor={theme.colors.text}
+        inactiveColor={theme.colors.textDim}
+      />
+    ),
+    [theme.colors],
   )
 
   return (

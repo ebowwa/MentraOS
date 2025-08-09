@@ -236,14 +236,18 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
       if (!app) {
         return false
       }
-      // const baseUrl = await BackendServerComms.getInstance().getServerUrl()
-      // // POST /api/app-uptime/app-pkg-health-check with body { "packageName": packageName }
-      // const healthResponse = await fetch(`${baseUrl}/api/app-uptime/app-pkg-health-check`, {
-      //   method: "POST",
-      //   body: JSON.stringify({packageName}),
-      // })
-      // const healthData = await healthResponse.json()
-      return true
+      const baseUrl = await BackendServerComms.getInstance().getServerUrl()
+      // POST /api/app-uptime/app-pkg-health-check with body { "packageName": packageName }
+      const healthUrl = `${baseUrl}/api/app-uptime/app-pkg-health-check`
+      const healthResponse = await fetch(healthUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({packageName}),
+      })
+      const healthData = await healthResponse.json()
+      return healthData.success
     } catch (error) {
       console.error("AppStatusProvider: Error checking app health status:", error)
       return false
@@ -288,11 +292,9 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
   // Listen for app started/stopped events from CoreCommunicator
   useEffect(() => {
     const onAppStarted = (packageName: string) => {
-      console.log("APP_STARTED_EVENT", packageName)
       optimisticallyStartApp(packageName)
     }
     const onAppStopped = (packageName: string) => {
-      console.log("APP_STOPPED_EVENT", packageName)
       optimisticallyStopApp(packageName)
     }
     const onResetAppStatus = () => {
