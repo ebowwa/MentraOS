@@ -10,7 +10,6 @@ import {
   Image,
   TouchableOpacity,
   ActivityIndicator,
-  Modal,
   Dimensions,
   ScrollView,
   FlatList,
@@ -27,8 +26,10 @@ import {asgCameraApi} from "../../services/asgCameraApi"
 import {localStorageService} from "../../services/localStorageService"
 import {PhotoImage} from "./PhotoImage"
 import {GallerySkeleton} from "./GallerySkeleton"
+import {MediaViewer} from "./MediaViewer"
 import showAlert from "@/utils/AlertUtils"
 import {translate} from "@/i18n"
+import Share from "react-native-share"
 
 interface GalleryScreenProps {
   deviceModel?: string
@@ -224,6 +225,62 @@ export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps)
     setSelectedPhoto(photo)
   }
 
+  // Handle photo sharing
+  const handleSharePhoto = async (photo: PhotoInfo) => {
+    try {
+      if (!photo) {
+        console.error("No photo provided to share")
+        return
+      }
+
+      let shareUrl = ""
+
+      console.log("Sharing photo:", {
+        name: photo.name,
+        url: photo.url,
+        filePath: photo.filePath,
+        mime_type: photo.mime_type,
+        is_video: photo.is_video,
+      })
+
+      // For file:// URLs, share directly
+      if (photo.url && photo.url.startsWith("file://")) {
+        shareUrl = photo.url
+      } else if (photo.filePath) {
+        // If we have a local file path, use that
+        shareUrl = photo.filePath.startsWith("file://") ? photo.filePath : `file://${photo.filePath}`
+      } else {
+        // For server photos, we need to download first
+        showAlert("Info", "Please sync this photo first to share it", [{text: translate("common:ok")}])
+        return
+      }
+
+      if (!shareUrl) {
+        console.error("No valid share URL found")
+        showAlert("Error", "Unable to share this photo", [{text: translate("common:ok")}])
+        return
+      }
+
+      console.log("Final share URL:", shareUrl)
+
+      // Use react-native-share for proper file sharing
+      const shareOptions = {
+        url: shareUrl,
+        type: photo.mime_type || (photo.is_video ? "video/*" : "image/*"),
+        failOnCancel: false, // Don't throw error on cancel
+      }
+
+      await Share.open(shareOptions)
+    } catch (error) {
+      // User cancelled share is not an error
+      if (error.message === "User did not share" || error.message?.includes("cancel")) {
+        return
+      }
+      console.error("Error sharing photo:", error)
+      showAlert("Error", "Failed to share photo", [{text: translate("common:ok")}])
+    }
+  }
+
   // Handle photo deletion
   const handleDeletePhoto = async (photo: PhotoInfo) => {
     if (!isWifiConnected || !glassesWifiIp) {
@@ -262,7 +319,7 @@ export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps)
           try {
             await localStorageService.deleteDownloadedFile(photo.name)
             await loadDownloadedPhotos() // Reload downloaded photos
-            showAlert("Success", "Photo deleted from local storage!", [{text: translate("common:ok")}])
+            //showAlert("Success", "Photo deleted from local storage!", [{text: translate("common:ok")}])
           } catch (err) {
             showAlert("Error", "Failed to delete photo from local storage", [{text: translate("common:ok")}])
           }
@@ -429,18 +486,13 @@ export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps)
         </TouchableOpacity>
       )}
 
-      {/* Photo Modal */}
-      <Modal
+      {/* Media Viewer */}
+      <MediaViewer
         visible={!!selectedPhoto}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setSelectedPhoto(null)}>
-        <View style={themed($modalOverlay)}>
-          <TouchableOpacity style={themed($modalContent)} onPress={() => setSelectedPhoto(null)} activeOpacity={1}>
-            {selectedPhoto && <PhotoImage photo={selectedPhoto} style={themed($modalImage)} />}
-          </TouchableOpacity>
-        </View>
-      </Modal>
+        photo={selectedPhoto}
+        onClose={() => setSelectedPhoto(null)}
+        onShare={() => selectedPhoto && handleSharePhoto(selectedPhoto)}
+      />
     </View>
   )
 }

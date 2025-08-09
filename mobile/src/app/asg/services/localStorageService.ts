@@ -264,6 +264,8 @@ export class LocalStorageService {
       is_video: downloadedFile.is_video,
       thumbnail_data: thumbnailUrl,
       downloaded_at: downloadedFile.downloaded_at,
+      filePath: downloadedFile.filePath,
+      thumbnailPath: downloadedFile.thumbnailPath,
     }
   }
 
