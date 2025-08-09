@@ -1874,7 +1874,6 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                             // Send it through our data channel
                             sendJson(readyMsg, true);
                         }
-                        int batteryPercentage = bodyObj.optInt("pt", -1);
                         int charg = bodyObj.optInt("charg", -1);
                         if (batteryPercentage != -1 && charg != -1)
                             updateBatteryStatus(batteryPercentage, charg == 1);
