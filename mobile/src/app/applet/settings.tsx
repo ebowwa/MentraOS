@@ -45,7 +45,6 @@ import {SettingsGroup} from "@/components/settings/SettingsGroup"
 import {showAlert} from "@/utils/AlertUtils"
 import {
   askPermissionsUI,
-  canStartAppUI,
   checkPermissionsUI,
   PERMISSION_CONFIG,
   PermissionFeatures,
