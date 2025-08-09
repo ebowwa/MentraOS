@@ -10,7 +10,6 @@ import {
   Image,
   TouchableOpacity,
   ActivityIndicator,
-  Alert,
   Modal,
   Dimensions,
   ScrollView,
@@ -110,7 +109,7 @@ export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps)
   // Sync files from server to local storage
   const handleSync = async () => {
     if (!isWifiConnected || !glassesWifiIp) {
-      Alert.alert("Error", "Glasses not connected to WiFi")
+      showAlert("Error", "Glasses not connected to WiFi", [{text: translate("common:ok")}])
       return
     }
 
@@ -184,14 +183,15 @@ export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps)
       // Reload photos
       await Promise.all([loadPhotos(), loadDownloadedPhotos()])
 
-      Alert.alert(
-        "Sync Complete",
-        `Successfully downloaded ${downloadResult.downloaded.length} files\nFailed: ${downloadResult.failed.length}`,
-      )
+      // showAlert(
+      //   "Sync Complete",
+      //   `Successfully downloaded ${downloadResult.downloaded.length} files\nFailed: ${downloadResult.failed.length}`,
+      //   [{text: translate("common:ok")}]
+      // )
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Sync failed"
       setError(errorMessage)
-      Alert.alert("Sync Error", errorMessage)
+      showAlert("Sync Error", errorMessage, [{text: translate("common:ok")}])
     } finally {
       setIsSyncing(false)
       setSyncProgress(null)
@@ -201,7 +201,7 @@ export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps)
   // Take picture
   const handleTakePicture = async () => {
     if (!isWifiConnected || !glassesWifiIp) {
-      Alert.alert("Error", "Glasses not connected to WiFi")
+      showAlert("Error", "Glasses not connected to WiFi", [{text: translate("common:ok")}])
       return
     }
 
@@ -210,10 +210,12 @@ export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps)
       asgCameraApi.setServer(glassesWifiIp, 8089)
 
       await asgCameraApi.takePicture()
-      Alert.alert("Success", "Picture taken successfully!")
+      showAlert("Success", "Picture taken successfully!", [{text: translate("common:ok")}])
       loadPhotos() // Reload photos
     } catch (err) {
-      Alert.alert("Error", err instanceof Error ? err.message : "Failed to take picture")
+      showAlert("Error", err instanceof Error ? err.message : "Failed to take picture", [
+        {text: translate("common:ok")},
+      ])
     }
   }
 
@@ -225,22 +227,24 @@ export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps)
   // Handle photo deletion
   const handleDeletePhoto = async (photo: PhotoInfo) => {
     if (!isWifiConnected || !glassesWifiIp) {
-      Alert.alert("Error", "Glasses not connected to WiFi")
+      showAlert("Error", "Glasses not connected to WiFi", [{text: translate("common:ok")}])
       return
     }
 
-    Alert.alert("Delete Photo", `Are you sure you want to delete "${photo.name}"?`, [
-      {text: "Cancel", style: "cancel"},
+    showAlert("Delete Photo", `Are you sure you want to delete "${photo.name}"?`, [
+      {text: translate("common:cancel"), style: "cancel"},
       {
-        text: "Delete",
+        text: translate("common:delete"),
         style: "destructive",
         onPress: async () => {
           try {
             await asgCameraApi.deleteFilesFromServer([photo.name])
-            Alert.alert("Success", "Photo deleted successfully!")
+            showAlert("Success", "Photo deleted successfully!", [{text: translate("common:ok")}])
             loadPhotos() // Reload photos
           } catch (err) {
-            Alert.alert("Error", err instanceof Error ? err.message : "Failed to delete photo")
+            showAlert("Error", err instanceof Error ? err.message : "Failed to delete photo", [
+              {text: translate("common:ok")},
+            ])
           }
         },
       },
@@ -249,18 +253,18 @@ export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps)
 
   // Handle downloaded photo deletion
   const handleDeleteDownloadedPhoto = async (photo: PhotoInfo) => {
-    Alert.alert("Delete Downloaded Photo", `Are you sure you want to delete "${photo.name}" from local storage?`, [
-      {text: "Cancel", style: "cancel"},
+    showAlert("Delete Downloaded Photo", `Are you sure you want to delete "${photo.name}" from local storage?`, [
+      {text: translate("common:cancel"), style: "cancel"},
       {
-        text: "Delete",
+        text: translate("common:delete"),
         style: "destructive",
         onPress: async () => {
           try {
             await localStorageService.deleteDownloadedFile(photo.name)
             await loadDownloadedPhotos() // Reload downloaded photos
-            Alert.alert("Success", "Photo deleted from local storage!")
+            showAlert("Success", "Photo deleted from local storage!", [{text: translate("common:ok")}])
           } catch (err) {
-            Alert.alert("Error", "Failed to delete photo from local storage")
+            showAlert("Error", "Failed to delete photo from local storage", [{text: translate("common:ok")}])
           }
         },
       },
@@ -376,7 +380,10 @@ export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps)
               </TouchableOpacity>
             )}
             keyExtractor={(item, index) => `${item.name}-${index}`}
-            contentContainerStyle={[themed($photoGridContent), {paddingBottom: 100}]} // Extra padding for sync button
+            contentContainerStyle={[
+              themed($photoGridContent),
+              {paddingBottom: serverPhotos.length > 0 ? 100 : spacing.lg},
+            ]} // Extra padding when sync button is shown
             columnWrapperStyle={numColumns > 1 ? themed($columnWrapper) : undefined}
             ItemSeparatorComponent={() => <View style={{height: spacing.xs}} />}
           />
@@ -393,9 +400,9 @@ export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps)
           <View style={themed($syncButtonContent)}>
             {isSyncing && syncProgress ? (
               <>
-                <Text style={themed($syncButtonText)}>{syncProgress.message}</Text>
-                <Text style={themed($syncButtonSubtext)}>
-                  {syncProgress.current} / {syncProgress.total}
+                <Text style={themed($syncButtonText)}>
+                  Syncing {syncProgress.total - syncProgress.current} Photo
+                  {syncProgress.total - syncProgress.current !== 1 ? "s" : ""}...
                 </Text>
                 <View style={themed($syncButtonProgressBar)}>
                   <View
@@ -407,10 +414,12 @@ export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps)
                 </View>
               </>
             ) : isSyncing ? (
-              <>
-                <ActivityIndicator size="small" color={theme.colors.textAlt} />
-                <Text style={themed($syncButtonText)}>Syncing...</Text>
-              </>
+              <View style={themed($syncButtonRow)}>
+                <ActivityIndicator size="small" color={theme.colors.textAlt} style={{marginRight: spacing.xs}} />
+                <Text style={themed($syncButtonText)}>
+                  Syncing {serverPhotos.length} Photo{serverPhotos.length !== 1 ? "s" : ""}...
+                </Text>
+              </View>
             ) : (
               <Text style={themed($syncButtonText)}>
                 Sync {serverPhotos.length} Photo{serverPhotos.length !== 1 ? "s" : ""}
@@ -688,6 +697,12 @@ const $syncButtonFixedDisabled: ThemedStyle<ViewStyle> = ({colors}) => ({
 })
 
 const $syncButtonContent: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  alignItems: "center",
+  justifyContent: "center",
+})
+
+const $syncButtonRow: ThemedStyle<ViewStyle> = () => ({
+  flexDirection: "row",
   alignItems: "center",
   justifyContent: "center",
 })
