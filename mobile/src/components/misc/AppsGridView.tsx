@@ -16,6 +16,9 @@ interface AppModel {
   is_foreground?: boolean
   appType?: string
   webviewURL?: string
+  publicUrl?: string
+  logoURL?: string
+  permissions?: any[]
   compatibility?: {
     isCompatible: boolean
     message?: string
@@ -35,7 +38,7 @@ interface AppsGridViewProps {
 const GRID_COLUMNS = 4
 const SCREEN_WIDTH = Dimensions.get("window").width
 
-export const AppsGridView: React.FC<AppsGridViewProps> = ({
+const AppsGridViewMemo: React.FC<AppsGridViewProps> = ({
   apps,
   onStartApp,
   onStopApp,
@@ -47,7 +50,7 @@ export const AppsGridView: React.FC<AppsGridViewProps> = ({
   const {themed, theme} = useAppTheme()
   const [selectedApp, setSelectedApp] = useState<AppModel | null>(null)
   const [popoverVisible, setPopoverVisible] = useState(false)
-  const touchableRefs = useRef<{[key: string]: TouchableOpacity | null}>({})
+  const touchableRefs = useRef<{[key: string]: React.Component | null}>({})
 
   const handleAppPress = (app: AppModel) => {
     setSelectedApp(app)
@@ -192,6 +195,8 @@ export const AppsGridView: React.FC<AppsGridViewProps> = ({
     </View>
   )
 }
+
+export const AppsGridView = React.memo(AppsGridViewMemo)
 
 const $container: ThemedStyle<ViewStyle> = ({spacing}) => ({
   marginTop: spacing.md,

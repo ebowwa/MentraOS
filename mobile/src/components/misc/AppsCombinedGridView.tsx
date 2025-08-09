@@ -6,6 +6,8 @@ import {useAppTheme} from "@/utils/useAppTheme"
 import {ThemedStyle} from "@/theme"
 import {Text} from "@/components/ignite"
 import {translate} from "@/i18n"
+// import { ScrollView } from "react-native-gesture-handler"
+import {ScrollView} from "react-native"
 
 interface AppModel {
   name: string
@@ -119,13 +121,15 @@ export const AppsCombinedGridView: React.FC<AppsCombinedGridViewProps> = ({
 
   const InactiveRoute = () => (
     <View style={themed($scene)}>
-      <AppsGridView
-        apps={inactiveApps}
-        onStartApp={onStartApp}
-        onStopApp={onStopApp}
-        onOpenSettings={onOpenSettings}
-        onOpenWebView={onOpenWebView}
-      />
+      <ScrollView>
+        <AppsGridView
+          apps={inactiveApps}
+          onStartApp={onStartApp}
+          onStopApp={onStopApp}
+          onOpenSettings={onOpenSettings}
+          onOpenWebView={onOpenWebView}
+        />
+      </ScrollView>
     </View>
   )
 
@@ -164,7 +168,9 @@ export const AppsCombinedGridView: React.FC<AppsCombinedGridViewProps> = ({
   )
 }
 
-const $container: ThemedStyle<ViewStyle> = () => ({})
+const $container: ThemedStyle<ViewStyle> = () => ({
+  flex: 1,
+})
 
 const $tabView: ThemedStyle<ViewStyle> = () => ({})
 
