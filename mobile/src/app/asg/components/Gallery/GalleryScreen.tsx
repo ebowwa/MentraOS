@@ -2,7 +2,7 @@
  * Main gallery screen component
  */
 
-import React, {useCallback, useState, useEffect} from "react"
+import React, {useCallback, useState, useEffect, useMemo} from "react"
 import {
   View,
   Text,
@@ -17,7 +17,7 @@ import {
   FlatList,
 } from "react-native"
 import {useLocalSearchParams, useFocusEffect} from "expo-router"
-import {Screen, Header} from "@/components/ignite"
+import {useSafeAreaInsets} from "react-native-safe-area-context"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {spacing, ThemedStyle} from "@/theme"
 import {ViewStyle, TextStyle, ImageStyle} from "react-native"
@@ -33,12 +33,11 @@ interface GalleryScreenProps {
   deviceModel?: string
 }
 
-type TabType = "server" | "downloaded"
-
 export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps) {
   const {status} = useStatus()
   const {goBack} = useNavigationHistory()
   const {theme, themed} = useAppTheme()
+  const insets = useSafeAreaInsets()
 
   // Responsive column calculation
   const screenWidth = Dimensions.get("window").width
@@ -59,13 +58,12 @@ export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps)
   const isWifiConnected = status.glasses_info?.glasses_wifi_connected
 
   // State management
-  const [photos, setPhotos] = useState<PhotoInfo[]>([])
+  const [serverPhotos, setServerPhotos] = useState<PhotoInfo[]>([])
   const [downloadedPhotos, setDownloadedPhotos] = useState<PhotoInfo[]>([])
   const [selectedPhoto, setSelectedPhoto] = useState<PhotoInfo | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [isSyncing, setIsSyncing] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<TabType>("server")
   const [syncProgress, setSyncProgress] = useState<{
     current: number
     total: number
@@ -87,8 +85,8 @@ export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps)
       asgCameraApi.setServer(glassesWifiIp, 8089)
       console.log(`[GalleryScreen] Set server URL to: ${glassesWifiIp}:8089`)
 
-      const serverPhotos = await asgCameraApi.getGalleryPhotos()
-      setPhotos(serverPhotos)
+      const photos = await asgCameraApi.getGalleryPhotos()
+      setServerPhotos(photos)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load photos")
     } finally {
@@ -294,66 +292,65 @@ export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps)
     // Navigation history is handled automatically by the context
   }, [])
 
-  const currentPhotos = activeTab === "server" ? photos : downloadedPhotos
-  const isServerTab = activeTab === "server"
+  // Combine photos: server photos first, then downloaded photos
+  const allPhotos = useMemo(() => {
+    const serverPhotoMap = new Map(serverPhotos.map(p => [p.name, {...p, isOnServer: true}]))
+    const downloadedPhotoMap = new Map(downloadedPhotos.map(p => [p.name, {...p, isOnServer: false}]))
+
+    // Mark photos that exist on server
+    const combinedPhotos: (PhotoInfo & {isOnServer: boolean})[] = []
+
+    // Add server photos first
+    serverPhotoMap.forEach(photo => {
+      combinedPhotos.push(photo)
+    })
+
+    // Add downloaded photos that aren't on server
+    downloadedPhotoMap.forEach((photo, name) => {
+      if (!serverPhotoMap.has(name)) {
+        combinedPhotos.push(photo)
+      }
+    })
+
+    return combinedPhotos
+  }, [serverPhotos, downloadedPhotos])
 
   return (
-    <Screen preset="fixed" contentContainerStyle={themed($screenContentContainer)} safeAreaEdges={["top"]}>
-      {/* Tab Navigation */}
-      <View style={themed($tabContainer)}>
-        <TouchableOpacity
-          style={[activeTab === "server" ? themed($activeTab) : themed($inactiveTab)]}
-          onPress={() => setActiveTab("server")}>
-          <Text style={[activeTab === "server" ? themed($activeTabText) : themed($inactiveTabText)]}>
-            On Server ({photos.length})
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[activeTab === "downloaded" ? themed($activeTab) : themed($inactiveTab)]}
-          onPress={() => setActiveTab("downloaded")}>
-          <Text style={[activeTab === "downloaded" ? themed($activeTabText) : themed($inactiveTabText)]}>
-            Downloaded ({downloadedPhotos.length})
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Take Picture Button - only for server tab */}
-      {isServerTab && (
-        <View style={themed($actionButtonsContainer)}>
-          <TouchableOpacity style={themed($takePictureButton)} onPress={handleTakePicture}>
-            <Text style={themed($buttonText)}>Take Picture</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {/* Error Display */}
-      {error && (
-        <View style={themed($errorContainer)}>
-          <Text style={themed($errorText)}>{error}</Text>
-        </View>
-      )}
-
+    <View style={themed($screenContainer)}>
       {/* Photo Grid */}
       <View style={themed($galleryContainer)}>
-        {isLoading ? (
+        {error ? (
+          <View style={themed($errorContainer)}>
+            <Text style={themed($errorText)}>{error}</Text>
+          </View>
+        ) : isLoading ? (
           <View style={themed($photoGridContainer)}>
             <GallerySkeleton itemCount={numColumns * 4} numColumns={numColumns} itemWidth={itemWidth} />
           </View>
-        ) : currentPhotos.length === 0 ? (
+        ) : allPhotos.length === 0 ? (
           <View style={themed($emptyContainer)}>
-            <Text style={themed($emptyText)}>{isServerTab ? "No photos on server" : "No downloaded photos"}</Text>
+            <Text style={themed($emptyText)}>No photos</Text>
           </View>
         ) : (
           <FlatList
-            data={currentPhotos}
+            data={allPhotos}
             numColumns={numColumns}
             key={numColumns} // Force re-render when columns change
             renderItem={({item: photo}) => (
               <TouchableOpacity
                 style={[themed($photoItem), {width: itemWidth}]}
                 onPress={() => handlePhotoPress(photo)}
-                onLongPress={() => (isServerTab ? handleDeletePhoto(photo) : handleDeleteDownloadedPhoto(photo))}>
+                onLongPress={() =>
+                  "isOnServer" in photo && photo.isOnServer
+                    ? handleDeletePhoto(photo)
+                    : handleDeleteDownloadedPhoto(photo)
+                }>
                 <PhotoImage photo={photo} style={[themed($photoImage), {width: itemWidth, height: itemWidth * 0.8}]} />
+                {"isOnServer" in photo && photo.isOnServer && (
+                  <View style={themed($serverBadge)}>
+                    <View style={themed($serverBadgeDot)} />
+                  </View>
+                )}
                 {photo.is_video && (
                   <View style={themed($videoIndicator)}>
                     <Text style={themed($videoIndicatorText)}>▶</Text>
@@ -369,38 +366,42 @@ export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps)
         )}
       </View>
 
-      {/* Sync Button - Fixed at bottom */}
-      <TouchableOpacity
-        style={[themed($syncButtonFixed), isSyncing && themed($syncButtonFixedDisabled)]}
-        onPress={handleSync}
-        disabled={isSyncing}
-        activeOpacity={0.8}>
-        <View style={themed($syncButtonContent)}>
-          {isSyncing && syncProgress ? (
-            <>
-              <Text style={themed($syncButtonText)}>{syncProgress.message}</Text>
-              <Text style={themed($syncButtonSubtext)}>
-                {syncProgress.current} / {syncProgress.total}
+      {/* Sync Button - Fixed at bottom, only show if there are server photos */}
+      {serverPhotos.length > 0 && (
+        <TouchableOpacity
+          style={[themed($syncButtonFixed), isSyncing && themed($syncButtonFixedDisabled)]}
+          onPress={handleSync}
+          disabled={isSyncing}
+          activeOpacity={0.8}>
+          <View style={themed($syncButtonContent)}>
+            {isSyncing && syncProgress ? (
+              <>
+                <Text style={themed($syncButtonText)}>{syncProgress.message}</Text>
+                <Text style={themed($syncButtonSubtext)}>
+                  {syncProgress.current} / {syncProgress.total}
+                </Text>
+                <View style={themed($syncButtonProgressBar)}>
+                  <View
+                    style={[
+                      themed($syncButtonProgressFill),
+                      {width: `${(syncProgress.current / syncProgress.total) * 100}%`},
+                    ]}
+                  />
+                </View>
+              </>
+            ) : isSyncing ? (
+              <>
+                <ActivityIndicator size="small" color={theme.colors.textAlt} />
+                <Text style={themed($syncButtonText)}>Syncing...</Text>
+              </>
+            ) : (
+              <Text style={themed($syncButtonText)}>
+                Sync {serverPhotos.length} Photo{serverPhotos.length !== 1 ? "s" : ""}
               </Text>
-              <View style={themed($syncButtonProgressBar)}>
-                <View
-                  style={[
-                    themed($syncButtonProgressFill),
-                    {width: `${(syncProgress.current / syncProgress.total) * 100}%`},
-                  ]}
-                />
-              </View>
-            </>
-          ) : isSyncing ? (
-            <>
-              <ActivityIndicator size="small" color={theme.colors.textAlt} />
-              <Text style={themed($syncButtonText)}>Syncing...</Text>
-            </>
-          ) : (
-            <Text style={themed($syncButtonText)}>Sync Photos</Text>
-          )}
-        </View>
-      </TouchableOpacity>
+            )}
+          </View>
+        </TouchableOpacity>
+      )}
 
       {/* Photo Modal */}
       <Modal
@@ -414,9 +415,14 @@ export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps)
           </TouchableOpacity>
         </View>
       </Modal>
-    </Screen>
+    </View>
   )
 }
+
+const $screenContainer: ThemedStyle<ViewStyle> = ({colors}) => ({
+  flex: 1,
+  backgroundColor: colors.background,
+})
 
 const $screenContentContainer: ThemedStyle<ViewStyle> = () => ({
   flex: 1,
@@ -532,9 +538,9 @@ const $syncProgressFill: ThemedStyle<ViewStyle> = ({colors}) => ({
 
 const $errorContainer: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   backgroundColor: colors.palette.angry100,
-  padding: spacing.md,
+  padding: spacing.sm,
   borderRadius: spacing.xs,
-  marginBottom: spacing.lg,
+  margin: spacing.md,
   alignItems: "center",
 })
 
@@ -547,12 +553,13 @@ const $errorText: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
 
 const $photoGridContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
   flex: 1,
-  padding: spacing.md,
+  paddingHorizontal: spacing.md,
+  paddingTop: spacing.xs,
 })
 
 const $photoGridContent: ThemedStyle<ViewStyle> = ({spacing}) => ({
   paddingHorizontal: spacing.md,
-  paddingVertical: spacing.sm,
+  paddingTop: spacing.xs,
 })
 
 const $columnWrapper: ThemedStyle<ViewStyle> = () => ({
@@ -695,4 +702,32 @@ const $syncButtonProgressFill: ThemedStyle<ViewStyle> = () => ({
   height: "100%",
   backgroundColor: "rgba(255,255,255,0.8)",
   borderRadius: 2,
+})
+
+// Server badge styles
+const $serverBadge: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  position: "absolute",
+  top: spacing.xs,
+  right: spacing.xs,
+  width: 12,
+  height: 12,
+  backgroundColor: "rgba(255,255,255,0.9)",
+  borderRadius: 6,
+  justifyContent: "center",
+  alignItems: "center",
+  shadowColor: "#000",
+  shadowOffset: {
+    width: 0,
+    height: 1,
+  },
+  shadowOpacity: 0.2,
+  shadowRadius: 1.41,
+  elevation: 2,
+})
+
+const $serverBadgeDot: ThemedStyle<ViewStyle> = () => ({
+  width: 8,
+  height: 8,
+  backgroundColor: "#FF3B30",
+  borderRadius: 4,
 })
