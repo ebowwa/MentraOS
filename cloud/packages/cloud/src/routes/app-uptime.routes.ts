@@ -37,6 +37,7 @@ export async function appPkgHealthCheck(req: Request, res: Response) {
     });
   }
 }
+
 // Endpoint to ping an app's health status
 async function pingAppHealth(req: Request, res: Response) {
   const url = req.query.url as string;

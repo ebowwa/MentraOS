@@ -41,6 +41,7 @@ import com.augmentos.augmentos_core.smarterglassesmanager.utils.SmartGlassesConn
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesVersionInfoEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.DownloadProgressEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.InstallationProgressEvent;
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.PairFailureEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.K900ProtocolUtils;
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.BlePhotoUploadService;
 
@@ -1855,6 +1856,14 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 try {
                     JSONObject bodyObj = json.optJSONObject("B");
                     if (bodyObj != null) {
+
+                        int batteryPercentage = bodyObj.optInt("pt", -1);
+                        if (batteryPercentage > 0 && batteryPercentage <= 20) {
+                            Log.d(TAG, "K900 battery percentage: " + batteryPercentage);
+                            EventBus.getDefault().post(new PairFailureEvent("errors:pairingBatteryTooLow"));
+                            return;
+                        }
+
                         int ready = bodyObj.optInt("ready", 0);
                         if (ready == 1) {
                             Log.d(TAG, "K900 SOC ready");
@@ -1865,7 +1874,6 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                             // Send it through our data channel
                             sendJson(readyMsg, true);
                         }
-                        int batteryPercentage = bodyObj.optInt("pt", -1);
                         int charg = bodyObj.optInt("charg", -1);
                         if (batteryPercentage != -1 && charg != -1)
                             updateBatteryStatus(batteryPercentage, charg == 1);

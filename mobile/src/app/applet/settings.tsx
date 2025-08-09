@@ -45,7 +45,6 @@ import {SettingsGroup} from "@/components/settings/SettingsGroup"
 import {showAlert} from "@/utils/AlertUtils"
 import {
   askPermissionsUI,
-  canStartAppUI,
   checkPermissionsUI,
   PERMISSION_CONFIG,
   PermissionFeatures,
@@ -387,10 +386,17 @@ export default function AppSettings() {
 
       // Initialize local state using the "selected" property.
       if (data.settings && Array.isArray(data.settings)) {
+        // Get cached settings to preserve user values for existing settings
+        const cached = await loadSetting(SETTINGS_CACHE_KEY(packageName), null)
+        const cachedState = cached?.settingsState || {}
+
         const initialState: {[key: string]: any} = {}
         data.settings.forEach((setting: any) => {
           if (setting.type !== "group") {
-            initialState[setting.key] = setting.selected
+            // Use cached value if it exists (user has interacted with this setting before)
+            // Otherwise use 'selected' from backend (which includes defaultValue for new settings)
+            initialState[setting.key] =
+              cachedState[setting.key] !== undefined ? cachedState[setting.key] : setting.selected
           }
         })
         setSettingsState(initialState)
@@ -509,6 +515,7 @@ export default function AppSettings() {
             label={setting.label}
             value={settingsState[setting.key]}
             options={setting.options}
+            defaultValue={setting.defaultValue}
             onValueChange={val => handleSettingChange(setting.key, val)}
           />
         )
@@ -519,6 +526,7 @@ export default function AppSettings() {
             label={setting.label}
             value={settingsState[setting.key]}
             options={setting.options}
+            defaultValue={setting.defaultValue}
             onValueChange={val => handleSettingChange(setting.key, val)}
           />
         )
@@ -577,7 +585,7 @@ export default function AppSettings() {
           leftIcon="caretLeft"
           onLeftPress={() => {
             if (serverAppInfo?.webviewURL) {
-              navigate("/applet/webview", {
+              replace("/applet/webview", {
                 webviewURL: serverAppInfo.webviewURL,
                 appName: appName as string,
                 packageName: packageName as string,

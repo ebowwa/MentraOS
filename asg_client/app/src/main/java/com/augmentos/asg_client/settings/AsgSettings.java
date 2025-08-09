@@ -65,7 +65,8 @@ public class AsgSettings {
      */
     public void setButtonPressMode(ButtonPressMode mode) {
         Log.d(TAG, "Setting button press mode to: " + mode.getValue());
-        prefs.edit().putString(KEY_BUTTON_MODE, mode.getValue()).apply();
+        // Using commit() for immediate persistence (fixed the issue)
+        prefs.edit().putString(KEY_BUTTON_MODE, mode.getValue()).commit();
     }
     
     /**
