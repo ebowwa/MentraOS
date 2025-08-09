@@ -28,6 +28,8 @@ import {asgCameraApi} from "../../services/asgCameraApi"
 import {localStorageService} from "../../services/localStorageService"
 import {PhotoImage} from "./PhotoImage"
 import {GallerySkeleton} from "./GallerySkeleton"
+import showAlert from "@/utils/AlertUtils"
+import {translate} from "@/i18n"
 
 interface GalleryScreenProps {
   deviceModel?: string
@@ -140,7 +142,7 @@ export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps)
       const syncData = syncResponse.data || syncResponse
 
       if (!syncData.changed_files || syncData.changed_files.length === 0) {
-        Alert.alert("Sync Complete", "No new files to download")
+        showAlert("Sync Complete", "No new files to download", [{text: translate("common:ok")}])
         return
       }
 
@@ -292,27 +294,42 @@ export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps)
     // Navigation history is handled automatically by the context
   }, [])
 
-  // Combine photos: server photos first, then downloaded photos
+  // Combine photos: server photos first, then downloaded photos, both sorted newest first
   const allPhotos = useMemo(() => {
     const serverPhotoMap = new Map(serverPhotos.map(p => [p.name, {...p, isOnServer: true}]))
     const downloadedPhotoMap = new Map(downloadedPhotos.map(p => [p.name, {...p, isOnServer: false}]))
 
-    // Mark photos that exist on server
-    const combinedPhotos: (PhotoInfo & {isOnServer: boolean})[] = []
+    // Collect server photos and downloaded-only photos
+    const serverPhotosList: (PhotoInfo & {isOnServer: boolean})[] = []
+    const downloadedOnlyList: (PhotoInfo & {isOnServer: boolean})[] = []
 
-    // Add server photos first
+    // Add server photos
     serverPhotoMap.forEach(photo => {
-      combinedPhotos.push(photo)
+      serverPhotosList.push(photo)
     })
 
     // Add downloaded photos that aren't on server
     downloadedPhotoMap.forEach((photo, name) => {
       if (!serverPhotoMap.has(name)) {
-        combinedPhotos.push(photo)
+        downloadedOnlyList.push(photo)
       }
     })
 
-    return combinedPhotos
+    // Sort both lists by modified date (newest first)
+    // Convert modified string to timestamp for proper sorting
+    serverPhotosList.sort((a, b) => {
+      const aTime = typeof a.modified === "string" ? new Date(a.modified).getTime() : a.modified
+      const bTime = typeof b.modified === "string" ? new Date(b.modified).getTime() : b.modified
+      return bTime - aTime
+    })
+    downloadedOnlyList.sort((a, b) => {
+      const aTime = typeof a.modified === "string" ? new Date(a.modified).getTime() : a.modified
+      const bTime = typeof b.modified === "string" ? new Date(b.modified).getTime() : b.modified
+      return bTime - aTime
+    })
+
+    // Combine: server photos first (newest to oldest), then downloaded photos (newest to oldest)
+    return [...serverPhotosList, ...downloadedOnlyList]
   }, [serverPhotos, downloadedPhotos])
 
   return (

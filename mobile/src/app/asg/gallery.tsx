@@ -27,10 +27,8 @@ export default function AsgGallery() {
 
   return (
     <View style={themed($screenContainer)}>
-      <Header title="Photo Gallery" leftIcon="caretLeft" onLeftPress={handleGoBack} />
-      <View style={themed($container)}>
-        <GalleryScreen deviceModel={deviceModel as string} />
-      </View>
+      <Header leftIcon="caretLeft" onLeftPress={handleGoBack} />
+      <GalleryScreen deviceModel={deviceModel as string} />
     </View>
   )
 }
