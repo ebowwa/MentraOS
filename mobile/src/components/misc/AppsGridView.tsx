@@ -210,7 +210,7 @@ const $gridContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
 
 const $row: ThemedStyle<ViewStyle> = ({spacing}) => ({
   justifyContent: "space-between",
-  paddingHorizontal: spacing.sm,
+  // paddingHorizontal: spacing.sm,
 })
 
 const $gridItem: ThemedStyle<ViewStyle> = ({spacing}) => ({
