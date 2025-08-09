@@ -194,23 +194,14 @@ export const AppsGridView: React.FC<AppsGridViewProps> = ({
 }
 
 const $container: ThemedStyle<ViewStyle> = ({spacing}) => ({
-  flex: 1,
   marginTop: spacing.md,
-})
-
-const $title: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
-  fontSize: 18,
-  fontWeight: "600",
-  color: colors.text,
-  marginBottom: spacing.md,
-  marginLeft: spacing.md,
 })
 
 const $gridContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
   paddingHorizontal: spacing.sm,
 })
 
-const $row: ThemedStyle<ViewStyle> = ({spacing}) => ({
+const $row: ThemedStyle<ViewStyle> = () => ({
   justifyContent: "space-between",
   // paddingHorizontal: spacing.sm,
 })

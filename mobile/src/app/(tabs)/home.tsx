@@ -342,39 +342,39 @@ export default function Homepage() {
       />
 
       <CloudConnection />
-      <ScrollView
+      {/* <ScrollView
         style={{marginRight: -theme.spacing.md, paddingRight: theme.spacing.md}}
-        contentInsetAdjustmentBehavior="automatic">
-        <SensingDisabledWarning />
+        contentInsetAdjustmentBehavior="automatic"> */}
+      <SensingDisabledWarning />
 
-        <Spacer height={theme.spacing.xs} />
+      <Spacer height={theme.spacing.xs} />
 
-        <ConnectedGlasses showTitle={false} />
-        <DeviceToolbar />
-        <Spacer height={theme.spacing.md} />
-        <View ref={connectButtonRef}>
-          <ConnectDeviceButton />
-        </View>
-        <Spacer height={theme.spacing.lg} />
-        <Divider variant="full" />
-        <Spacer height={theme.spacing.md} />
+      <ConnectedGlasses showTitle={false} />
+      <DeviceToolbar />
+      <Spacer height={theme.spacing.md} />
+      <View ref={connectButtonRef}>
+        <ConnectDeviceButton />
+      </View>
+      <Spacer height={theme.spacing.lg} />
+      <Divider variant="full" />
+      <Spacer height={theme.spacing.md} />
 
-        <AppsCombinedGridView
-          activeApps={appStatus.filter(app => app.is_running)}
-          inactiveApps={appStatus.filter(
-            app =>
-              !app.is_running &&
-              (!app.compatibility || app.compatibility.isCompatible) &&
-              !(Platform.OS === "ios" && (app.packageName === "cloud.augmentos.notify" || app.name === "Notify")),
-          )}
-          onStartApp={handleStartApp}
-          onStopApp={handleStopApp}
-          onOpenSettings={handleOpenAppSettings}
-          onOpenWebView={handleOpenWebView}
-        />
-        <Spacer height={spacing.xl} />
-        <AppsIncompatibleList />
-      </ScrollView>
+      <AppsCombinedGridView
+        activeApps={appStatus.filter(app => app.is_running)}
+        inactiveApps={appStatus.filter(
+          app =>
+            !app.is_running &&
+            (!app.compatibility || app.compatibility.isCompatible) &&
+            !(Platform.OS === "ios" && (app.packageName === "cloud.augmentos.notify" || app.name === "Notify")),
+        )}
+        onStartApp={handleStartApp}
+        onStopApp={handleStopApp}
+        onOpenSettings={handleOpenAppSettings}
+        onOpenWebView={handleOpenWebView}
+      />
+      <Spacer height={spacing.xl} />
+      <AppsIncompatibleList />
+      {/* </ScrollView> */}
 
       <OnboardingSpotlight
         visible={showOnboardingSpotlight}

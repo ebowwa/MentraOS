@@ -392,42 +392,6 @@ const $deviceToolbar: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   marginTop: spacing.md,
 })
 
-export function ConnectedDeviceInfo() {
-  const {status, refreshStatus} = useStatus()
-  const {theme, themed} = useAppTheme()
-  const [microphoneActive, setMicrophoneActive] = useState(status.core_info.is_mic_enabled_for_frontend)
-
-  useEffect(() => {
-    setMicrophoneActive(status.core_info.is_mic_enabled_for_frontend)
-  }, [status.core_info.is_mic_enabled_for_frontend])
-
-  if (!status.glasses_info?.model_name) {
-    return null
-  }
-
-  // don't show if simulated glasses
-  if (status.glasses_info?.model_name.toLowerCase().includes("simulated")) {
-    return null
-  }
-
-  return (
-    <View style={themed($statusBar)}>
-      {/* Battery information moved to DeviceSettings */}
-
-      {/* disconnect button */}
-      {/* <TouchableOpacity
-        style={[styles.disconnectButton, status.core_info.is_searching && styles.disabledDisconnectButton]}
-        onPress={() => {
-          coreCommunicator.sendDisconnectWearable()
-        }}
-        disabled={status.core_info.is_searching}>
-        <Icon name="power-off" size={18} color="white" style={styles.icon} />
-        <Text style={styles.disconnectText}>Disconnect</Text>
-      </TouchableOpacity> */}
-    </View>
-  )
-}
-
 const $deviceInfoContainer: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   // padding: 16,
   // borderRadius: 12,

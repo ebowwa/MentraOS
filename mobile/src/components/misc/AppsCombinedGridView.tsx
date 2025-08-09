@@ -31,6 +31,10 @@ interface AppsCombinedGridViewProps {
 
 const initialLayout = {width: Dimensions.get("window").width}
 
+const GRID_COLUMNS = 4
+const APP_ITEM_HEIGHT = 100 // Approximate height of each app item (icon + text)
+const TAB_BAR_HEIGHT = 48 // Height of the tab bar
+
 export const AppsCombinedGridView: React.FC<AppsCombinedGridViewProps> = ({
   activeApps,
   inactiveApps,
@@ -48,6 +52,18 @@ export const AppsCombinedGridView: React.FC<AppsCombinedGridViewProps> = ({
 
   const hasActiveApps = activeApps.length > 0
   const hasInactiveApps = inactiveApps.length > 0
+
+  // Calculate the height needed for the TabView
+  const calculateGridHeight = (appsCount: number) => {
+    if (appsCount === 0) return 200 // Empty state height
+    const rows = Math.ceil(appsCount / GRID_COLUMNS)
+    return rows * APP_ITEM_HEIGHT + theme.spacing.md * 2 // Add padding
+  }
+
+  const activeAppsHeight = calculateGridHeight(activeApps.length)
+  const inactiveAppsHeight = calculateGridHeight(inactiveApps.length)
+  const maxContentHeight = Math.max(activeAppsHeight, inactiveAppsHeight)
+  const tabViewHeight = maxContentHeight + TAB_BAR_HEIGHT
 
   // If no apps at all
   if (!hasActiveApps && !hasInactiveApps) {
@@ -134,39 +150,26 @@ export const AppsCombinedGridView: React.FC<AppsCombinedGridViewProps> = ({
   )
 
   return (
-    <View style={themed($container)}>
+    <View style={[themed($container)]}>
       <TabView
         navigationState={{index, routes}}
         renderScene={renderScene}
         renderTabBar={renderTabBar}
         onIndexChange={setIndex}
         initialLayout={initialLayout}
-        style={themed($tabView)}
+        style={[themed($tabView), {height: tabViewHeight}]}
+        lazy={false}
       />
     </View>
   )
 }
 
-const $container: ThemedStyle<ViewStyle> = () => ({
-  flex: 1,
-  height: 5000,
-})
+const $container: ThemedStyle<ViewStyle> = () => ({})
 
-const $tabView: ThemedStyle<ViewStyle> = () => ({
-  flex: 1,
-})
+const $tabView: ThemedStyle<ViewStyle> = () => ({})
 
 const $scene: ThemedStyle<ViewStyle> = ({spacing}) => ({
-  flex: 1,
   paddingTop: spacing.md,
-})
-
-const $sectionTitle: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
-  fontSize: 20,
-  fontWeight: "600",
-  color: colors.text,
-  paddingHorizontal: spacing.md,
-  marginBottom: spacing.md,
 })
 
 const $emptyContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
