@@ -51,36 +51,36 @@ export const AppsCombinedGridView: React.FC<AppsCombinedGridViewProps> = ({
     )
   }
 
-  // If only one type of apps, show without tabs
-  if (hasActiveApps && !hasInactiveApps) {
-    return (
-      <View style={themed($container)}>
-        <Text style={themed($sectionTitle)} text={translate("home:activeApps")} />
-        <AppsGridView
-          apps={activeApps}
-          onStartApp={onStartApp}
-          onStopApp={onStopApp}
-          onOpenSettings={onOpenSettings}
-          onOpenWebView={onOpenWebView}
-        />
-      </View>
-    )
-  }
+  // // If only one type of apps, show without tabs
+  // if (hasActiveApps && !hasInactiveApps) {
+  //   return (
+  //     <View style={themed($container)}>
+  //       <Text style={themed($sectionTitle)} text={translate("home:activeApps")} />
+  //       <AppsGridView
+  //         apps={activeApps}
+  //         onStartApp={onStartApp}
+  //         onStopApp={onStopApp}
+  //         onOpenSettings={onOpenSettings}
+  //         onOpenWebView={onOpenWebView}
+  //       />
+  //     </View>
+  //   )
+  // }
 
-  if (!hasActiveApps && hasInactiveApps) {
-    return (
-      <View style={themed($container)}>
-        <Text style={themed($sectionTitle)} text={translate("home:inactiveApps")} />
-        <AppsGridView
-          apps={inactiveApps}
-          onStartApp={onStartApp}
-          onStopApp={onStopApp}
-          onOpenSettings={onOpenSettings}
-          onOpenWebView={onOpenWebView}
-        />
-      </View>
-    )
-  }
+  // if (!hasActiveApps && hasInactiveApps) {
+  //   return (
+  //     <View style={themed($container)}>
+  //       <Text style={themed($sectionTitle)} text={translate("home:inactiveApps")} />
+  //       <AppsGridView
+  //         apps={inactiveApps}
+  //         onStartApp={onStartApp}
+  //         onStopApp={onStopApp}
+  //         onOpenSettings={onOpenSettings}
+  //         onOpenWebView={onOpenWebView}
+  //       />
+  //     </View>
+  //   )
+  // }
 
   // Both types exist, use custom tabs
   return (

@@ -7,6 +7,7 @@ import {useAppTheme} from "@/utils/useAppTheme"
 import {ThemedStyle} from "@/theme"
 import {translate} from "@/i18n"
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons"
+import EmptyAppsView from "@/components/home/EmptyAppsView"
 
 interface AppModel {
   name: string
@@ -31,7 +32,7 @@ interface AppsGridViewProps {
   showInactiveApps?: boolean
 }
 
-const GRID_COLUMNS = 3
+const GRID_COLUMNS = 4
 const SCREEN_WIDTH = Dimensions.get("window").width
 
 export const AppsGridView: React.FC<AppsGridViewProps> = ({
@@ -94,7 +95,11 @@ export const AppsGridView: React.FC<AppsGridViewProps> = ({
         }}
         key={item.packageName}
         style={themed($gridItem)}
-        onPress={() => handleAppPress(item)}
+        onPress={() => {
+          if (item.packageName !== "") {
+            handleAppPress(item)
+          }
+        }}
         activeOpacity={0.7}>
         <View style={themed($appContainer)}>
           <AppIcon app={item} isForegroundApp={isForeground} style={themed($appIcon)} />
@@ -103,6 +108,22 @@ export const AppsGridView: React.FC<AppsGridViewProps> = ({
         <Text text={item.name} style={themed($appName)} numberOfLines={2} ellipsizeMode="tail" />
       </TouchableOpacity>
     )
+  }
+
+  // if the list is empty, show a message
+  if (apps.length === 0) {
+    return (
+      <View style={[themed($container), {marginTop: theme.spacing.lg}]}>
+        <EmptyAppsView statusMessageKey={"home:noActiveApps"} activeAppsMessageKey={"home:emptyActiveAppListInfo"} />
+      </View>
+    )
+  }
+
+  if (apps.length % GRID_COLUMNS !== 0) {
+    const missingApps = GRID_COLUMNS - (apps.length % GRID_COLUMNS)
+    for (let i = 0; i < missingApps; i++) {
+      apps.push({packageName: "", name: ""})
+    }
   }
 
   return (
@@ -172,6 +193,7 @@ export const AppsGridView: React.FC<AppsGridViewProps> = ({
 
 const $container: ThemedStyle<ViewStyle> = ({spacing}) => ({
   flex: 1,
+  marginTop: spacing.md,
 })
 
 const $title: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
@@ -192,7 +214,8 @@ const $row: ThemedStyle<ViewStyle> = ({spacing}) => ({
 })
 
 const $gridItem: ThemedStyle<ViewStyle> = ({spacing}) => ({
-  width: (SCREEN_WIDTH - spacing.md * 2 - spacing.sm * 4) / GRID_COLUMNS,
+  // width: (SCREEN_WIDTH - spacing.md * 2 - spacing.sm * 4) / GRID_COLUMNS,
+  width: (SCREEN_WIDTH - spacing.lg * 4) / GRID_COLUMNS,
   alignItems: "center",
   marginBottom: spacing.lg,
 })
