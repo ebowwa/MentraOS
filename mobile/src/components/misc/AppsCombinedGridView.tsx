@@ -198,13 +198,15 @@ const AppsCombinedGridViewRoot: React.FC<AppsCombinedGridViewProps> = () => {
   const ActiveRoute = useMemo(
     () => () => (
       <View style={themed($scene)}>
-        <AppsGridView
-          apps={activeApps}
-          onStartApp={handleStartApp}
-          onStopApp={handleStopApp}
-          onOpenSettings={handleOpenAppSettings}
-          onOpenWebView={handleOpenWebView}
-        />
+        <ScrollView showsVerticalScrollIndicator={false}>
+          <AppsGridView
+            apps={activeApps}
+            onStartApp={handleStartApp}
+            onStopApp={handleStopApp}
+            onOpenSettings={handleOpenAppSettings}
+            onOpenWebView={handleOpenWebView}
+          />
+        </ScrollView>
       </View>
     ),
     [activeApps, handleStartApp, handleStopApp, handleOpenAppSettings, handleOpenWebView, themed],
@@ -213,7 +215,7 @@ const AppsCombinedGridViewRoot: React.FC<AppsCombinedGridViewProps> = () => {
   const InactiveRoute = useMemo(
     () => () => (
       <View style={themed($scene)}>
-        <ScrollView>
+        <ScrollView showsVerticalScrollIndicator={false}>
           <AppsGridView
             apps={inactiveApps}
             onStartApp={handleStartApp}
@@ -240,7 +242,7 @@ const AppsCombinedGridViewRoot: React.FC<AppsCombinedGridViewProps> = () => {
     (props: any) => (
       <TabBar
         {...props}
-        indicatorStyle={{backgroundColor: theme.colors.palette.accent500}}
+        indicatorStyle={{backgroundColor: theme.colors.text}}
         style={{backgroundColor: theme.colors.background}}
         labelStyle={{
           fontSize: 16,
