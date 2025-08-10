@@ -262,10 +262,10 @@ export class LocalStorageService {
       modified: new Date(downloadedFile.modified).toISOString(),
       mime_type: downloadedFile.mime_type,
       is_video: downloadedFile.is_video,
-      thumbnail_data: thumbnailUrl,
+      thumbnail_data: undefined,
       downloaded_at: downloadedFile.downloaded_at,
       filePath: downloadedFile.filePath,
-      thumbnailPath: downloadedFile.thumbnailPath,
+      thumbnailPath: thumbnailUrl, // Use the file:// URL version for thumbnailPath
     }
   }
 

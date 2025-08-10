@@ -22,6 +22,25 @@ export function PhotoImage({photo, style, showPlaceholder = true}: PhotoImagePro
   const [hasError, setHasError] = useState(false)
   const [isAvif, setIsAvif] = useState(false)
 
+  // Determine the image URL to use:
+  // 1. For synced videos, use thumbnailPath if available
+  // 2. For server videos, use thumbnail_data if available (base64 data URL)
+  // 3. Otherwise use the main URL
+  const imageUrl = (() => {
+    if (photo.is_video) {
+      if (photo.thumbnailPath) {
+        return photo.thumbnailPath
+      }
+      if (photo.thumbnail_data) {
+        // thumbnail_data might already be a data URL or just base64
+        return photo.thumbnail_data.startsWith("data:")
+          ? photo.thumbnail_data
+          : `data:image/jpeg;base64,${photo.thumbnail_data}`
+      }
+    }
+    return photo.url
+  })()
+
   useEffect(() => {
     // Check if this is an AVIF file
     const checkIfAvif = async () => {
@@ -40,14 +59,14 @@ export function PhotoImage({photo, style, showPlaceholder = true}: PhotoImagePro
       }
 
       // Check if the URL returns AVIF data
-      if (photo.url.includes("application/octet-stream") || photo.url.includes("image/avif")) {
+      if (imageUrl.includes("application/octet-stream") || imageUrl.includes("image/avif")) {
         setIsAvif(true)
         setIsLoading(false)
         return
       }
 
       // For file:// URLs, check MIME type directly
-      if (photo.url.startsWith("file://") && photo.mime_type === "image/avif") {
+      if (imageUrl.startsWith("file://") && photo.mime_type === "image/avif") {
         setIsAvif(true)
         setIsLoading(false)
         return
@@ -57,7 +76,7 @@ export function PhotoImage({photo, style, showPlaceholder = true}: PhotoImagePro
     }
 
     checkIfAvif()
-  }, [photo])
+  }, [photo, imageUrl])
 
   const handleLoadEnd = () => {
     setIsLoading(false)
@@ -105,7 +124,7 @@ export function PhotoImage({photo, style, showPlaceholder = true}: PhotoImagePro
         </View>
       )}
       <Image
-        source={{uri: photo.url}}
+        source={{uri: imageUrl}}
         style={[style, isLoading && {opacity: 0}]}
         onLoadEnd={handleLoadEnd}
         onError={handleError}

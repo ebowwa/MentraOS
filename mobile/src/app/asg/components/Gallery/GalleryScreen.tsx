@@ -31,6 +31,7 @@ import showAlert from "@/utils/AlertUtils"
 import {translate} from "@/i18n"
 import {shareFile} from "@/utils/FileUtils"
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons"
+import {useNetworkConnectivity} from "@/contexts/NetworkConnectivityProvider"
 
 interface GalleryScreenProps {
   deviceModel?: string
@@ -60,6 +61,10 @@ export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps)
   const glassesWifiIp = status.glasses_info?.glasses_wifi_local_ip
   const isWifiConnected = status.glasses_info?.glasses_wifi_connected
 
+  // Network connectivity
+  const {networkStatus, isGalleryReachable, shouldShowWarning, getStatusMessage, checkConnectivity} =
+    useNetworkConnectivity()
+
   // State management
   const [serverPhotos, setServerPhotos] = useState<PhotoInfo[]>([])
   const [downloadedPhotos, setDownloadedPhotos] = useState<PhotoInfo[]>([])
@@ -72,11 +77,15 @@ export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps)
     total: number
     message: string
   } | null>(null)
+  const [connectionCheckInterval, setConnectionCheckInterval] = useState<NodeJS.Timeout | null>(null)
+  const [lastConnectionStatus, setLastConnectionStatus] = useState(false)
 
   // Load photos from server
   const loadPhotos = useCallback(async () => {
     if (!isWifiConnected || !glassesWifiIp) {
-      setError("Glasses not connected to WiFi")
+      // Don't set error - just don't load server photos
+      console.log("[GalleryScreen] Glasses not connected, skipping server photo load")
+      setServerPhotos([])
       return
     }
 
@@ -90,8 +99,11 @@ export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps)
 
       const photos = await asgCameraApi.getGalleryPhotos()
       setServerPhotos(photos)
+      setError(null) // Clear any previous errors on success
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load photos")
+      // Don't show error in main area - warning banner will handle it
+      console.error("[GalleryScreen] Failed to load server photos:", err)
+      setServerPhotos([])
     } finally {
       setIsLoading(false)
     }
@@ -111,7 +123,11 @@ export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps)
   // Sync files from server to local storage
   const handleSync = async () => {
     if (!isWifiConnected || !glassesWifiIp) {
-      showAlert("Error", "Glasses not connected to WiFi", [{text: translate("common:ok")}])
+      showAlert(
+        "Cannot Sync",
+        "Your glasses are not connected to WiFi. Please connect them to the same network as your phone.",
+        [{text: translate("common:ok")}],
+      )
       return
     }
 
@@ -203,7 +219,11 @@ export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps)
   // Take picture
   const handleTakePicture = async () => {
     if (!isWifiConnected || !glassesWifiIp) {
-      showAlert("Error", "Glasses not connected to WiFi", [{text: translate("common:ok")}])
+      showAlert(
+        "Cannot Take Picture",
+        "Your glasses are not connected to WiFi. Please connect them to the same network as your phone.",
+        [{text: translate("common:ok")}],
+      )
       return
     }
 
@@ -215,9 +235,15 @@ export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps)
       showAlert("Success", "Picture taken successfully!", [{text: translate("common:ok")}])
       loadPhotos() // Reload photos
     } catch (err) {
-      showAlert("Error", err instanceof Error ? err.message : "Failed to take picture", [
-        {text: translate("common:ok")},
-      ])
+      let errorMessage = "Cannot connect to your glasses. Please check your network connection."
+      if (err instanceof Error) {
+        if (err.message.includes("Network request failed") || err.message.includes("fetch")) {
+          errorMessage = "Cannot connect to your glasses. Please ensure both devices are on the same WiFi network."
+        } else {
+          errorMessage = err.message
+        }
+      }
+      showAlert("Connection Error", errorMessage, [{text: translate("common:ok")}])
     }
   }
 
@@ -370,6 +396,47 @@ export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps)
     // Navigation history is handled automatically by the context
   }, [])
 
+  // Auto-refresh connection check every 5 seconds if not connected
+  useEffect(() => {
+    // Set initial connection status
+    setLastConnectionStatus(isGalleryReachable)
+
+    // Only set up auto-refresh if gallery is not reachable
+    if (!isGalleryReachable) {
+      console.log("[GalleryScreen] Starting auto-refresh timer for connection check")
+
+      const interval = setInterval(async () => {
+        console.log("[GalleryScreen] Auto-checking connectivity...")
+        const status = await checkConnectivity()
+
+        // If connection is restored, reload photos
+        if (status.galleryReachable && !lastConnectionStatus) {
+          console.log("[GalleryScreen] Connection restored! Reloading photos...")
+          loadPhotos()
+          loadDownloadedPhotos()
+          setLastConnectionStatus(true)
+        } else if (!status.galleryReachable) {
+          setLastConnectionStatus(false)
+        }
+      }, 5000) // Check every 5 seconds
+
+      setConnectionCheckInterval(interval)
+    } else {
+      // Clear interval if connection is good
+      if (connectionCheckInterval) {
+        clearInterval(connectionCheckInterval)
+        setConnectionCheckInterval(null)
+      }
+    }
+
+    // Cleanup interval on unmount or when connection changes
+    return () => {
+      if (connectionCheckInterval) {
+        clearInterval(connectionCheckInterval)
+      }
+    }
+  }, [isGalleryReachable, checkConnectivity, loadPhotos, loadDownloadedPhotos])
+
   // Combine photos: server photos first, then downloaded photos, both sorted newest first
   const allPhotos = useMemo(() => {
     const serverPhotoMap = new Map(serverPhotos.map(p => [p.name, {...p, isOnServer: true}]))
@@ -424,6 +491,31 @@ export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps)
 
   return (
     <View style={themed($screenContainer)}>
+      {/* Network Warning Banner */}
+      {!isGalleryReachable && downloadedPhotos.length > 0 && (
+        <View style={themed($warningBannerContainer)}>
+          <View style={themed($warningBanner)}>
+            <MaterialCommunityIcons name="wifi-off" size={20} color={theme.colors.text} />
+            <View style={themed($warningTextContainer)}>
+              <Text style={themed($warningTitle)}>{getStatusMessage()}</Text>
+              <Text style={themed($warningMessage)}>Showing synced photos only</Text>
+            </View>
+            <TouchableOpacity
+              style={themed($infoButton)}
+              hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}
+              onPress={() => {
+                showAlert(
+                  "Gallery Sync",
+                  "To sync new photos from your glasses:\n\n• Connect both devices to the same WiFi network\n• Or connect glasses to your phone's hotspot\n\nThe gallery will automatically refresh when connected.",
+                  [{text: translate("common:ok")}],
+                )
+              }}>
+              <MaterialCommunityIcons name="information-outline" size={22} color={theme.colors.textDim} />
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
       {/* Photo Grid */}
       <View style={themed($galleryContainer)}>
         {error ? (
@@ -753,6 +845,46 @@ const $modalImage: ThemedStyle<ImageStyle> = () => ({
 // New styles for the fixed sync button
 const $galleryContainer: ThemedStyle<ViewStyle> = () => ({
   flex: 1,
+})
+
+// Warning banner styles
+const $warningBannerContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  paddingHorizontal: spacing.lg,
+  paddingTop: spacing.md,
+  paddingBottom: spacing.sm,
+})
+
+const $warningBanner: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
+  backgroundColor: colors.warningBackground,
+  paddingVertical: spacing.sm,
+  paddingHorizontal: spacing.md,
+  flexDirection: "row",
+  alignItems: "center",
+  borderRadius: spacing.md,
+  borderWidth: 2,
+  borderColor: colors.border,
+})
+
+const $warningTextContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  flex: 1,
+  marginLeft: spacing.sm,
+})
+
+const $warningTitle: ThemedStyle<TextStyle> = ({colors}) => ({
+  fontSize: 14,
+  fontWeight: "700", // Bold
+  color: colors.text,
+  marginBottom: 2,
+})
+
+const $warningMessage: ThemedStyle<TextStyle> = ({colors}) => ({
+  fontSize: 13,
+  color: colors.textDim,
+})
+
+const $infoButton: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  padding: spacing.xs,
+  marginLeft: spacing.xs,
 })
 
 const $syncButtonFixed: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({

@@ -745,22 +745,49 @@ export class AsgCameraApiClient {
       if (includeThumbnail && filename.toLowerCase().match(/\.(mp4|mov|avi|mkv|webm)$/)) {
         try {
           console.log(`[ASG Camera API] Downloading thumbnail for ${filename}`)
+          console.log(`[ASG Camera API] Using /api/photo endpoint for video thumbnail`)
+
+          // The server's /api/photo endpoint serves thumbnails for video files
+          // It detects video files and automatically generates/serves thumbnails instead of the full video
           const thumbResult = await RNFS.downloadFile({
-            fromUrl: `${this.baseUrl}/api/thumbnail?file=${encodeURIComponent(filename)}`,
+            fromUrl: `${this.baseUrl}/api/photo?file=${encodeURIComponent(filename)}`,
             toFile: localThumbnailPath!,
             headers: {
               "Accept": "image/*",
               "User-Agent": "MentraOS-Mobile/1.0",
             },
+            begin: res => {
+              console.log(`[ASG Camera API] Thumbnail download started for ${filename}, size: ${res.contentLength}`)
+            },
+            progress: res => {
+              const percentage = Math.round((res.bytesWritten / res.contentLength) * 100)
+              if (percentage % 25 === 0) {
+                console.log(`[ASG Camera API] Thumbnail download progress ${filename}: ${percentage}%`)
+              }
+            },
           }).promise
+
+          console.log(
+            `[ASG Camera API] Thumbnail download result for ${filename}: status=${thumbResult.statusCode}, bytesWritten=${thumbResult.bytesWritten}`,
+          )
 
           if (thumbResult.statusCode === 200) {
             thumbnailPath = localThumbnailPath
-            console.log(`[ASG Camera API] Downloaded thumbnail to: ${thumbnailPath}`)
+            console.log(`[ASG Camera API] Successfully downloaded thumbnail to: ${thumbnailPath}`)
+
+            // Verify the file exists
+            const exists = await RNFS.exists(thumbnailPath)
+            console.log(`[ASG Camera API] Thumbnail file exists: ${exists}`)
+          } else {
+            console.warn(`[ASG Camera API] Thumbnail download failed with status: ${thumbResult.statusCode}`)
           }
         } catch (error) {
           console.warn(`[ASG Camera API] Failed to download thumbnail for ${filename}:`, error)
         }
+      } else {
+        console.log(
+          `[ASG Camera API] Skipping thumbnail download - includeThumbnail: ${includeThumbnail}, filename: ${filename}, is video extension: ${filename.toLowerCase().match(/\.(mp4|mov|avi|mkv|webm)$/) ? "yes" : "no"}`,
+        )
       }
 
       return {

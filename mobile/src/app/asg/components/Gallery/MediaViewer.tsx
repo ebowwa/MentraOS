@@ -11,6 +11,7 @@ import {ThemedStyle, spacing} from "@/theme"
 import {ViewStyle, TextStyle} from "react-native"
 import {useSafeAreaInsets} from "react-native-safe-area-context"
 import {ImageViewer} from "./ImageViewer"
+import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons"
 
 interface MediaViewerProps {
   visible: boolean
@@ -47,7 +48,7 @@ export function MediaViewer({visible, photo, onClose, onShare, onDelete}: MediaV
         {/* Header */}
         <View style={[styles.header, {paddingTop: insets.top}]}>
           <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-            <Text style={styles.closeText}>‹</Text>
+            <MaterialCommunityIcons name="chevron-left" size={32} color="white" />
           </TouchableOpacity>
           <View style={{flex: 1}} />
           {onShare && (

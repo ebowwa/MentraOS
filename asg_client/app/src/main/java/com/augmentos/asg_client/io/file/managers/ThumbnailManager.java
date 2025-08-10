@@ -265,4 +265,44 @@ public class ThumbnailManager {
         File[] files = thumbnailDirectory.listFiles();
         return files != null ? files.length : 0;
     }
+    
+    /**
+     * Delete thumbnail for a specific video file
+     * @param videoFile The video file whose thumbnail should be deleted
+     * @return true if thumbnail was deleted or didn't exist, false if deletion failed
+     */
+    public boolean deleteThumbnailForVideo(File videoFile) {
+        if (videoFile == null) {
+            logger.warn(TAG, "Cannot delete thumbnail for null video file");
+            return true; // Not an error if file is null
+        }
+        
+        // Check if it's actually a video file
+        if (!isVideoFile(videoFile.getName())) {
+            logger.debug(TAG, "File is not a video, no thumbnail to delete: " + videoFile.getName());
+            return true; // Not an error if not a video
+        }
+        
+        // Generate the thumbnail filename for this video
+        String thumbnailFileName = generateThumbnailFileName(videoFile);
+        File thumbnailFile = new File(thumbnailDirectory, thumbnailFileName);
+        
+        // Check if thumbnail exists
+        if (!thumbnailFile.exists()) {
+            logger.debug(TAG, "Thumbnail doesn't exist for video: " + videoFile.getName());
+            return true; // Success - thumbnail doesn't exist
+        }
+        
+        // Try to delete the thumbnail
+        boolean deleted = thumbnailFile.delete();
+        if (deleted) {
+            logger.info(TAG, "Deleted thumbnail for video: " + videoFile.getName() + 
+                          " (thumbnail: " + thumbnailFileName + ")");
+        } else {
+            logger.error(TAG, "Failed to delete thumbnail for video: " + videoFile.getName() + 
+                           " (thumbnail: " + thumbnailFileName + ")");
+        }
+        
+        return deleted;
+    }
 } 
