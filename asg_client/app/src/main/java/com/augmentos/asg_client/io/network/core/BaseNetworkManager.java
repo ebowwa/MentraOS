@@ -9,6 +9,7 @@ import android.net.Network;
 import android.net.NetworkCapabilities;
 import android.net.LinkProperties;
 import android.net.wifi.WifiManager;
+import android.net.wifi.ScanResult;
 import android.util.Log;
 
 import com.augmentos.asg_client.NetworkUtils;
@@ -19,6 +20,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -214,128 +216,228 @@ public abstract class BaseNetworkManager implements INetworkManager {
 
     @Override
     public List<String> scanWifiNetworks() {
-        Log.d(TAG, "Scanning for WiFi networks...");
-        List<String> networks = new ArrayList<>();
-
-        if (isK900Device()) {
-            // K900-specific scanning
-            networks = scanWifiNetworksK900();
-        } else {
-            // Standard Android scanning
-            networks = scanWifiNetworksStandard();
-        }
-
-        Log.d(TAG, "Found " + networks.size() + " networks");
-        return networks;
-    }
-
-    private List<String> scanWifiNetworksK900() {
-        List<String> networks = new ArrayList<>();
-        CountDownLatch latch = new CountDownLatch(1);
-        AtomicBoolean scanCompleted = new AtomicBoolean(false);
-
-        BroadcastReceiver scanReceiver = new BroadcastReceiver() {
-            @Override
-            public void onReceive(Context context, Intent intent) {
-                if (scanCompleted.compareAndSet(false, true)) {
-                    Log.d(TAG, "K900 WiFi scan completed");
-                    latch.countDown();
-                }
-            }
-        };
-
-        BroadcastReceiver resultsReceiver = new BroadcastReceiver() {
-            @Override
-            public void onReceive(Context context, Intent intent) {
-                // Parse scan results from K900 broadcast
-                String action = intent.getAction();
-                if (action != null && action.contains("wifi_scan_results")) {
-                    // Extract network names from K900 broadcast
-                    // This is a simplified implementation
-                    Log.d(TAG, "K900 WiFi scan results received");
-                }
-            }
-        };
-
+        final List<String> networks = new ArrayList<>();
+        
         try {
-            // Register receivers
-            IntentFilter scanFilter = new IntentFilter(K900_BROADCAST_ACTION);
-            context.registerReceiver(scanReceiver, scanFilter);
-
-            IntentFilter resultsFilter = new IntentFilter();
-            resultsFilter.addAction("com.xy.xsetting.wifi_scan_results");
-            context.registerReceiver(resultsReceiver, resultsFilter);
-
-            // Send scan command to K900
-            Intent scanIntent = new Intent(K900_BROADCAST_ACTION);
-            scanIntent.putExtra("command", "wifi_scan");
-            context.sendBroadcast(scanIntent);
-
-            // Wait for scan to complete (with timeout)
-            boolean completed = latch.await(10, java.util.concurrent.TimeUnit.SECONDS);
-            if (!completed) {
-                Log.w(TAG, "K900 WiFi scan timeout");
+            // Ensure WiFi is enabled before scanning
+            if (!ensureWifiEnabled()) {
+                Log.e(TAG, "Cannot scan for WiFi networks - WiFi could not be enabled");
+                return networks;
             }
-
-        } catch (InterruptedException e) {
-            Log.e(TAG, "K900 WiFi scan interrupted", e);
-            Thread.currentThread().interrupt();
-        } finally {
+            
+            // Get WiFi manager for scanning
+            WifiManager wifiManager = (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
+            if (wifiManager == null) {
+                Log.e(TAG, "WiFi manager is null");
+                return networks;
+            }
+            
+            // Standard approach for WiFi scanning
             try {
-                context.unregisterReceiver(scanReceiver);
-                context.unregisterReceiver(resultsReceiver);
-            } catch (IllegalArgumentException e) {
-                Log.w(TAG, "Receiver already unregistered", e);
+                // Try to start a scan with regular Android APIs
+                final AtomicBoolean scanComplete = new AtomicBoolean(false);
+                final CountDownLatch scanLatch = new CountDownLatch(1);
+                
+                // Create a receiver for scan results
+                BroadcastReceiver wifiScanReceiver = new BroadcastReceiver() {
+                    @Override
+                    public void onReceive(Context context, Intent intent) {
+                        if (WifiManager.SCAN_RESULTS_AVAILABLE_ACTION.equals(intent.getAction())) {
+                            boolean success = intent.getBooleanExtra(WifiManager.EXTRA_RESULTS_UPDATED, false);
+                            Log.d(TAG, "Scan completed, success=" + success);
+                            scanComplete.set(true);
+                            scanLatch.countDown();
+                        }
+                    }
+                };
+                
+                // Register the receiver
+                IntentFilter intentFilter = new IntentFilter(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION);
+                context.registerReceiver(wifiScanReceiver, intentFilter);
+                
+                // Start the scan
+                boolean scanStarted = wifiManager.startScan();
+                Log.d(TAG, "WiFi scan started, success=" + scanStarted);
+                
+                if (!scanStarted) {
+                    Log.e(TAG, "Failed to start WiFi scan");
+                    
+                    // Try to get the results anyway, maybe there's a recent scan
+                    try {
+                        List<android.net.wifi.ScanResult> scanResults = wifiManager.getScanResults();
+                        if (scanResults != null && !scanResults.isEmpty()) {
+                            for (android.net.wifi.ScanResult result : scanResults) {
+                                String ssid = result.SSID;
+                                if (ssid != null && !ssid.isEmpty() && !networks.contains(ssid)) {
+                                    networks.add(ssid);
+                                    Log.d(TAG, "Found network from previous scan: " + ssid);
+                                }
+                            }
+                        }
+                    } catch (SecurityException se) {
+                        Log.e(TAG, "No permission to access previous scan results", se);
+                    } catch (Exception e) {
+                        Log.e(TAG, "Error getting previous scan results", e);
+                    }
+                    
+                    // Unregister the receiver
+                    try {
+                        context.unregisterReceiver(wifiScanReceiver);
+                    } catch (Exception e) {
+                        Log.e(TAG, "Error unregistering scan receiver", e);
+                    }
+                    
+                    return networks;
+                }
+                
+                // Wait for the scan to complete, but with a timeout
+                try {
+                    boolean completed = scanLatch.await(15, java.util.concurrent.TimeUnit.SECONDS);
+                    Log.d(TAG, "Scan await completed=" + completed + ", scanComplete=" + scanComplete.get());
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    Log.e(TAG, "Interrupted waiting for scan results", e);
+                }
+                
+                // Get the scan results
+                try {
+                    List<android.net.wifi.ScanResult> scanResults = wifiManager.getScanResults();
+                    if (scanResults != null) {
+                        for (android.net.wifi.ScanResult result : scanResults) {
+                            String ssid = result.SSID;
+                            if (ssid != null && !ssid.isEmpty() && !networks.contains(ssid)) {
+                                networks.add(ssid);
+                                Log.d(TAG, "Found network: " + ssid);
+                            }
+                        }
+                    }
+                } catch (SecurityException se) {
+                    Log.e(TAG, "No permission to access scan results", se);
+                } catch (Exception e) {
+                    Log.e(TAG, "Error getting scan results", e);
+                }
+                
+                // Unregister the receiver
+                try {
+                    context.unregisterReceiver(wifiScanReceiver);
+                } catch (Exception e) {
+                    Log.e(TAG, "Error unregistering scan receiver", e);
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Error scanning for WiFi networks", e);
             }
-        }
-
-        return networks;
-    }
-
-    private List<String> scanWifiNetworksStandard() {
-        List<String> networks = new ArrayList<>();
-        WifiManager wifiManager = (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
-
-        if (wifiManager == null) {
-            Log.w(TAG, "WifiManager is null");
+            
+            // Add the current network if not already in the list
+            String currentSsid = getCurrentWifiSsid();
+            if (!currentSsid.isEmpty() && !networks.contains(currentSsid)) {
+                networks.add(currentSsid);
+                Log.d(TAG, "Added current network to scan results: " + currentSsid);
+            }
+            
+            Log.d(TAG, "Found " + networks.size() + " networks with scan");
             return networks;
-        }
-
-        if (!wifiManager.isWifiEnabled()) {
-            Log.d(TAG, "WiFi is disabled, cannot scan");
-            return networks;
-        }
-
-        // For standard Android, we would typically use WifiManager.startScan()
-        // and register a BroadcastReceiver for SCAN_RESULTS_AVAILABLE_ACTION
-        // However, this requires location permissions and is more complex
-        // For now, we'll return an empty list and let subclasses implement
-        Log.d(TAG, "Standard WiFi scanning not implemented in base class");
-
-        return networks;
-    }
-
-    protected boolean isK900Device() {
-        try {
-            // Check if K900-specific system UI package exists
-            context.getPackageManager().getPackageInfo(K900_SYSTEM_UI_PACKAGE, 0);
-            Log.d(TAG, "K900 device detected");
-            return true;
         } catch (Exception e) {
-            Log.d(TAG, "Not a K900 device");
+            Log.e(TAG, "Error scanning for WiFi networks", e);
+            return networks;
+        }
+    }
+
+    /**
+     * Ensures WiFi is enabled, trying multiple methods if necessary.
+     * This method is reusable by subclasses to avoid code duplication.
+     * 
+     * @return true if WiFi is enabled or was successfully enabled, false otherwise
+     */
+    protected boolean ensureWifiEnabled() {
+        WifiManager wifiManager = (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
+        if (wifiManager == null) {
+            Log.e(TAG, "WiFi manager is null");
+            return false;
+        }
+
+        // Check if WiFi is already enabled
+        if (wifiManager.isWifiEnabled()) {
+            Log.d(TAG, "WiFi is already enabled");
+            return true;
+        }
+
+        Log.d(TAG, "WiFi is disabled, attempting to enable it");
+        
+        try {
+            // Try to enable WiFi using standard method
+            wifiManager.setWifiEnabled(true);
+
+            // Wait briefly for WiFi to initialize
+            try {
+                Thread.sleep(2000);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+
+            // Check if WiFi is now enabled
+            if (wifiManager.isWifiEnabled()) {
+                Log.d(TAG, "WiFi enabled successfully using standard method");
+                return true;
+            }
+
+            // If still not enabled, try broadcast method
+            //Log.d(TAG, "Standard WiFi enable failed, trying broadcast method");
+            //sendEnableWifiBroadcast();
+
+            // Wait for broadcast to take effect
+            try {
+                Thread.sleep(2000);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+
+            // Final check
+            boolean isEnabled = wifiManager.isWifiEnabled();
+            if (isEnabled) {
+                Log.d(TAG, "WiFi enabled successfully using broadcast method");
+            } else {
+                Log.e(TAG, "Failed to enable WiFi using all available methods");
+            }
+            return isEnabled;
+
+        } catch (SecurityException se) {
+            // Handle permission issues
+            //Log.e(TAG, "No permission to enable WiFi, trying broadcast method", se);
+            //sendEnableWifiBroadcast();
+
+            // Wait for broadcast to take effect
+            try {
+                Thread.sleep(2000);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+
+            // Check if broadcast method worked
+            boolean isEnabled = wifiManager.isWifiEnabled();
+            if (isEnabled) {
+                Log.d(TAG, "WiFi enabled via broadcast after permission error");
+            } else {
+                Log.e(TAG, "Failed to enable WiFi via broadcast after permission error");
+            }
+            return isEnabled;
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Error enabling WiFi", e);
             return false;
         }
     }
 
-    private void sendEnableWifiBroadcast() {
-        try {
-            Intent intent = new Intent(K900_BROADCAST_ACTION);
-            intent.putExtra("command", "enable_wifi");
-            context.sendBroadcast(intent);
-            Log.d(TAG, "Sent K900 enable WiFi broadcast");
-        } catch (Exception e) {
-            Log.e(TAG, "Error sending K900 enable WiFi broadcast", e);
-        }
+    protected boolean isK900Device() {
+        return true;
+//        try {
+//            // Check if K900-specific system UI package exists
+//            context.getPackageManager().getPackageInfo(K900_SYSTEM_UI_PACKAGE, 0);
+//            Log.d(TAG, "K900 device detected");
+//            return true;
+//        } catch (Exception e) {
+//            Log.d(TAG, "Not a K900 device");
+//            return false;
+//        }
     }
 
     @Override
