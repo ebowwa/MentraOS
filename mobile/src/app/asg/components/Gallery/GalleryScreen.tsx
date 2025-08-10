@@ -29,7 +29,8 @@ import {GallerySkeleton} from "./GallerySkeleton"
 import {MediaViewer} from "./MediaViewer"
 import showAlert from "@/utils/AlertUtils"
 import {translate} from "@/i18n"
-import Share from "react-native-share"
+import {shareFile} from "@/utils/FileUtils"
+import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons"
 
 interface GalleryScreenProps {
   deviceModel?: string
@@ -47,13 +48,13 @@ export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps)
 
   // Calculate columns: 2 for phones, 3-4 for tablets
   const calculateColumns = () => {
-    const availableWidth = screenWidth - spacing.md * 2
+    const availableWidth = screenWidth - spacing.lg * 2
     const columns = Math.floor(availableWidth / MIN_ITEM_WIDTH)
     return Math.max(2, Math.min(columns, 4)) // Min 2, max 4 columns
   }
 
   const numColumns = calculateColumns()
-  const itemWidth = (screenWidth - spacing.md * 2 - spacing.xs * (numColumns - 1)) / numColumns
+  const itemWidth = (screenWidth - spacing.lg * 2 - spacing.lg * (numColumns - 1)) / numColumns
 
   // Get glasses WiFi info for server connection
   const glassesWifiIp = status.glasses_info?.glasses_wifi_local_ip
@@ -221,7 +222,14 @@ export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps)
   }
 
   // Handle photo selection
-  const handlePhotoPress = (photo: PhotoInfo) => {
+  const handlePhotoPress = (photo: PhotoInfo & {isOnServer?: boolean}) => {
+    // Check if it's a video that's still on the glasses (not synced)
+    if (photo.is_video && photo.isOnServer) {
+      showAlert("Video Not Downloaded", "Please sync this video to your device to watch it", [
+        {text: translate("common:ok")},
+      ])
+      return
+    }
     setSelectedPhoto(photo)
   }
 
@@ -233,7 +241,7 @@ export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps)
         return
       }
 
-      let shareUrl = ""
+      let filePath = ""
 
       console.log("Sharing photo:", {
         name: photo.name,
@@ -243,41 +251,48 @@ export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps)
         is_video: photo.is_video,
       })
 
-      // For file:// URLs, share directly
+      // For file:// URLs, extract the path
       if (photo.url && photo.url.startsWith("file://")) {
-        shareUrl = photo.url
+        filePath = photo.url.replace("file://", "")
       } else if (photo.filePath) {
         // If we have a local file path, use that
-        shareUrl = photo.filePath.startsWith("file://") ? photo.filePath : `file://${photo.filePath}`
+        filePath = photo.filePath.startsWith("file://") ? photo.filePath.replace("file://", "") : photo.filePath
       } else {
         // For server photos, we need to download first
         showAlert("Info", "Please sync this photo first to share it", [{text: translate("common:ok")}])
         return
       }
 
-      if (!shareUrl) {
-        console.error("No valid share URL found")
+      if (!filePath) {
+        console.error("No valid file path found")
         showAlert("Error", "Unable to share this photo", [{text: translate("common:ok")}])
         return
       }
 
-      console.log("Final share URL:", shareUrl)
+      console.log("Final file path:", filePath)
 
-      // Use react-native-share for proper file sharing
-      const shareOptions = {
-        url: shareUrl,
-        type: photo.mime_type || (photo.is_video ? "video/*" : "image/*"),
-        failOnCancel: false, // Don't throw error on cancel
-      }
+      // Use the shareFile utility that handles platform-specific sharing
+      const mimeType = photo.mime_type || (photo.is_video ? "video/mp4" : "image/jpeg")
+      await shareFile(
+        filePath,
+        mimeType,
+        "Share Photo",
+        photo.is_video ? "Check out this video!" : "Check out this photo!",
+      )
 
-      await Share.open(shareOptions)
+      console.log("Share completed successfully")
     } catch (error) {
-      // User cancelled share is not an error
-      if (error.message === "User did not share" || error.message?.includes("cancel")) {
-        return
+      // Check if it's a file provider error
+      if (error instanceof Error && error.message?.includes("FileProvider")) {
+        showAlert(
+          "Sharing Not Available",
+          "File sharing will work after the next app build. For now, you can find your photos in the AugmentOS folder.",
+          [{text: translate("common:ok")}],
+        )
+      } else {
+        console.error("Error sharing photo:", error)
+        showAlert("Error", "Failed to share photo", [{text: translate("common:ok")}])
       }
-      console.error("Error sharing photo:", error)
-      showAlert("Error", "Failed to share photo", [{text: translate("common:ok")}])
     }
   }
 
@@ -393,6 +408,20 @@ export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps)
     return [...serverPhotosList, ...downloadedOnlyList]
   }, [serverPhotos, downloadedPhotos])
 
+  // Determine content type for sync button text
+  const syncContentType = useMemo(() => {
+    const hasVideos = serverPhotos.some(p => p.is_video)
+    const hasPhotos = serverPhotos.some(p => !p.is_video)
+
+    if (hasVideos && hasPhotos) {
+      return "Photos & Videos"
+    } else if (hasVideos) {
+      return serverPhotos.length === 1 ? "Video" : "Videos"
+    } else {
+      return serverPhotos.length === 1 ? "Photo" : "Photos"
+    }
+  }, [serverPhotos])
+
   return (
     <View style={themed($screenContainer)}>
       {/* Photo Grid */}
@@ -426,12 +455,12 @@ export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps)
                 <PhotoImage photo={photo} style={[themed($photoImage), {width: itemWidth, height: itemWidth * 0.8}]} />
                 {"isOnServer" in photo && photo.isOnServer && (
                   <View style={themed($serverBadge)}>
-                    <View style={themed($serverBadgeDot)} />
+                    <MaterialCommunityIcons name="glasses" size={14} color="white" />
                   </View>
                 )}
                 {photo.is_video && (
                   <View style={themed($videoIndicator)}>
-                    <Text style={themed($videoIndicatorText)}>▶</Text>
+                    <MaterialCommunityIcons name="video" size={14} color="white" />
                   </View>
                 )}
               </TouchableOpacity>
@@ -442,7 +471,7 @@ export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps)
               {paddingBottom: serverPhotos.length > 0 ? 100 : spacing.lg},
             ]} // Extra padding when sync button is shown
             columnWrapperStyle={numColumns > 1 ? themed($columnWrapper) : undefined}
-            ItemSeparatorComponent={() => <View style={{height: spacing.xs}} />}
+            ItemSeparatorComponent={() => <View style={{height: spacing.lg}} />}
           />
         )}
       </View>
@@ -458,8 +487,7 @@ export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps)
             {isSyncing && syncProgress ? (
               <>
                 <Text style={themed($syncButtonText)}>
-                  Syncing {syncProgress.total - syncProgress.current} Photo
-                  {syncProgress.total - syncProgress.current !== 1 ? "s" : ""}...
+                  Syncing {syncProgress.total - syncProgress.current} {syncContentType}...
                 </Text>
                 <View style={themed($syncButtonProgressBar)}>
                   <View
@@ -474,12 +502,12 @@ export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps)
               <View style={themed($syncButtonRow)}>
                 <ActivityIndicator size="small" color={theme.colors.textAlt} style={{marginRight: spacing.xs}} />
                 <Text style={themed($syncButtonText)}>
-                  Syncing {serverPhotos.length} Photo{serverPhotos.length !== 1 ? "s" : ""}...
+                  Syncing {serverPhotos.length} {syncContentType}...
                 </Text>
               </View>
             ) : (
               <Text style={themed($syncButtonText)}>
-                Sync {serverPhotos.length} Photo{serverPhotos.length !== 1 ? "s" : ""}
+                Sync {serverPhotos.length} {syncContentType}
               </Text>
             )}
           </View>
@@ -618,7 +646,7 @@ const $errorContainer: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   backgroundColor: colors.palette.angry100,
   padding: spacing.sm,
   borderRadius: spacing.xs,
-  margin: spacing.md,
+  margin: spacing.lg,
   alignItems: "center",
 })
 
@@ -631,13 +659,13 @@ const $errorText: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
 
 const $photoGridContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
   flex: 1,
-  paddingHorizontal: spacing.md,
-  paddingTop: spacing.xs,
+  paddingHorizontal: spacing.lg,
+  paddingTop: spacing.lg,
 })
 
 const $photoGridContent: ThemedStyle<ViewStyle> = ({spacing}) => ({
-  paddingHorizontal: spacing.md,
-  paddingTop: spacing.xs,
+  paddingHorizontal: spacing.lg,
+  paddingTop: spacing.lg,
 })
 
 const $columnWrapper: ThemedStyle<ViewStyle> = () => ({
@@ -683,19 +711,22 @@ const $photoImage: ThemedStyle<ImageStyle> = ({spacing}) => ({
   borderRadius: 8,
 })
 
-const $videoIndicator: ThemedStyle<ViewStyle> = ({colors}) => ({
+const $videoIndicator: ThemedStyle<ViewStyle> = ({spacing}) => ({
   position: "absolute",
-  bottom: 0,
-  right: 0,
-  backgroundColor: "rgba(0,0,0,0.5)",
-  borderRadius: 5,
-  paddingHorizontal: 5,
-  paddingVertical: 2,
-})
-
-const $videoIndicatorText: ThemedStyle<TextStyle> = ({colors}) => ({
-  fontSize: 12,
-  color: colors.background,
+  top: spacing.xs,
+  left: spacing.xs,
+  backgroundColor: "rgba(0,0,0,0.7)",
+  borderRadius: 12,
+  paddingHorizontal: 6,
+  paddingVertical: 3,
+  shadowColor: "#000",
+  shadowOffset: {
+    width: 0,
+    height: 1,
+  },
+  shadowOpacity: 0.3,
+  shadowRadius: 2,
+  elevation: 3,
 })
 
 // Modal styles
@@ -727,8 +758,8 @@ const $galleryContainer: ThemedStyle<ViewStyle> = () => ({
 const $syncButtonFixed: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   position: "absolute",
   bottom: spacing.xl,
-  left: spacing.md,
-  right: spacing.md,
+  left: spacing.lg,
+  right: spacing.lg,
   backgroundColor: colors.buttonPrimary,
   borderRadius: 16,
   paddingVertical: spacing.md,
@@ -793,10 +824,10 @@ const $serverBadge: ThemedStyle<ViewStyle> = ({spacing}) => ({
   position: "absolute",
   top: spacing.xs,
   right: spacing.xs,
-  width: 12,
-  height: 12,
-  backgroundColor: "rgba(255,255,255,0.9)",
-  borderRadius: 6,
+  backgroundColor: "rgba(0,0,0,0.7)",
+  borderRadius: 12,
+  paddingHorizontal: 6,
+  paddingVertical: 3,
   justifyContent: "center",
   alignItems: "center",
   shadowColor: "#000",
@@ -804,14 +835,7 @@ const $serverBadge: ThemedStyle<ViewStyle> = ({spacing}) => ({
     width: 0,
     height: 1,
   },
-  shadowOpacity: 0.2,
-  shadowRadius: 1.41,
-  elevation: 2,
-})
-
-const $serverBadgeDot: ThemedStyle<ViewStyle> = () => ({
-  width: 8,
-  height: 8,
-  backgroundColor: "#FF3B30",
-  borderRadius: 4,
+  shadowOpacity: 0.3,
+  shadowRadius: 2,
+  elevation: 3,
 })
