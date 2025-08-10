@@ -251,9 +251,11 @@ const AppsCombinedGridViewRoot: React.FC<AppsCombinedGridViewProps> = () => {
           flex: 1,
           justifyContent: "center",
           alignItems: "center",
+          width: "85%",
+          marginLeft: "7.5%",
         }}
         indicatorContainerStyle={{
-          flex: 1,
+          width: "50%",
         }}
         style={themed($tabBar)}
         labelStyle={{
@@ -299,7 +301,6 @@ const $scene: ThemedStyle<ViewStyle> = ({spacing}) => ({
 
 const $tabBar: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   backgroundColor: colors.background,
-  // width: "100%",
   marginHorizontal: spacing.lg,
   borderRadius: spacing.sm,
 })

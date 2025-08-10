@@ -241,8 +241,12 @@ export const AppsGridView = React.memo(AppsGridViewRoot, (prevProps, nextProps) 
   return true // Props are equal, skip re-render
 })
 
-const $container: ThemedStyle<ViewStyle> = ({spacing}) => ({
-  marginTop: spacing.md,
+const $container: ThemedStyle<ViewStyle> = ({spacing, colors}) => ({
+  // marginTop: spacing.md,
+  paddingTop: spacing.md,
+  backgroundColor: colors.background,
+  borderRadius: spacing.lg,
+  marginHorizontal: spacing.lg,
 })
 
 const $gridContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
