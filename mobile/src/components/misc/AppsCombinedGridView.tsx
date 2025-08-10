@@ -244,16 +244,7 @@ const AppsCombinedGridViewRoot: React.FC<AppsCombinedGridViewProps> = () => {
     (props: any) => (
       <TabBar
         {...props}
-        indicatorStyle={{
-          backgroundColor: theme.colors.text,
-          borderRadius: 10,
-          height: 2,
-          flex: 1,
-          justifyContent: "center",
-          alignItems: "center",
-          width: "85%",
-          marginLeft: "7.5%",
-        }}
+        indicatorStyle={themed($indicator)}
         indicatorContainerStyle={{
           width: "50%",
         }}
@@ -299,10 +290,23 @@ const $scene: ThemedStyle<ViewStyle> = ({spacing}) => ({
   paddingTop: spacing.md,
 })
 
+const $indicator: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
+  backgroundColor: colors.text,
+  borderRadius: 10,
+  height: 2,
+  flex: 1,
+  justifyContent: "center",
+  alignItems: "center",
+  width: "85%",
+  marginLeft: "7.5%",
+})
+
 const $tabBar: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   backgroundColor: colors.background,
   marginHorizontal: spacing.lg,
   borderRadius: spacing.sm,
+  borderWidth: spacing.xxxs,
+  borderColor: colors.border,
 })
 
 const $tabView: ThemedStyle<ViewStyle> = ({spacing}) => ({

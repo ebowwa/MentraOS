@@ -247,6 +247,8 @@ const $container: ThemedStyle<ViewStyle> = ({spacing, colors}) => ({
   backgroundColor: colors.background,
   borderRadius: spacing.lg,
   marginHorizontal: spacing.lg,
+  borderWidth: spacing.xxxs,
+  borderColor: colors.border,
 })
 
 const $gridContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
