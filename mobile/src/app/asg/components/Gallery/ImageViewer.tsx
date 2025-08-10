@@ -125,7 +125,7 @@ export function ImageViewer({visible, photo, onClose, onShare}: ImageViewerProps
         {showHeader && (
           <View style={[styles.header, {paddingTop: insets.top}]}>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <Text style={styles.closeText}>←</Text>
+              <Text style={styles.closeText}>‹</Text>
             </TouchableOpacity>
             <View style={{flex: 1}} />
             {onShare && (

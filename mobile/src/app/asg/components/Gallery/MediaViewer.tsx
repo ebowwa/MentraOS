@@ -47,7 +47,7 @@ export function MediaViewer({visible, photo, onClose, onShare, onDelete}: MediaV
         {/* Header */}
         <View style={[styles.header, {paddingTop: insets.top}]}>
           <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-            <Text style={styles.closeText}>←</Text>
+            <Text style={styles.closeText}>‹</Text>
           </TouchableOpacity>
           <View style={{flex: 1}} />
           {onShare && (
