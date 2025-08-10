@@ -245,7 +245,7 @@ const $container: ThemedStyle<ViewStyle> = ({spacing, colors}) => ({
   // marginTop: spacing.md,
   paddingTop: spacing.md,
   backgroundColor: colors.background,
-  borderRadius: spacing.lg,
+  borderRadius: spacing.md,
   marginHorizontal: spacing.lg,
   borderWidth: spacing.xxxs,
   borderColor: colors.border,
