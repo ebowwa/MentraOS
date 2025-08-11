@@ -17,6 +17,28 @@ const logger = rootLogger.child({ service: "app-uptime.service" }); // Create a 
 const ONE_MINUTE_MS = 60000;
 let uptimeScheduler: NodeJS.Timeout | null = null; // Store interval reference for cleanup
 
+// Pkg Health check by packageName.
+export async function pkgHealthCheck(packageName: string): Promise<boolean> {
+  try {
+    const app = await App.findOne({ packageName }).lean();
+    if (!app || !app.publicUrl) {
+      logger.warn(
+        `App with packageName ${packageName} not found or has no publicUrl`,
+      );
+      return false;
+    }
+
+    const response = await axios.get(`${app.publicUrl}/health`, {
+      timeout: 10000,
+      headers: { "Content-Type": "application/json" },
+    });
+    return response.status === 200;
+  } catch (error) {
+    logger.error(`Error checking health for ${packageName}:`, error);
+    return false;
+  }
+}
+
 //return their current health status.
 export async function fetchSubmittedAppHealthStatus() {
   console.log("🔍 Fetching submitted apps with health status...");

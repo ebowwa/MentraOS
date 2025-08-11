@@ -505,7 +505,7 @@ class ServerComms {
             }
 
         case "microphone_state_change":
-            CoreCommsService.log("ServerComms: microphone_state_change: \(msg)")
+            // CoreCommsService.log("ServerComms: microphone_state_change: \(msg)")
             let isMicrophoneEnabled = msg["isMicrophoneEnabled"] as? Bool ?? true
             let bypassVad = msg["bypassVad"] as? Bool ?? false // NEW: Extract bypassVad field
 

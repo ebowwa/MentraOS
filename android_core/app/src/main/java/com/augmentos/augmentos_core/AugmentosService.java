@@ -113,6 +113,7 @@ import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.Glass
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.DownloadProgressEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.InstallationProgressEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesSerialNumberEvent;
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.PairFailureEvent;
 
 public class AugmentosService extends LifecycleService implements AugmentOsActionsCallback {
     public static final String TAG = "AugmentOSService";
@@ -2883,6 +2884,22 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         this.glassesOtaVersionUrl = event.getOtaVersionUrl();
         Log.d("AugmentOsService", "Glasses version info: " + glassesAppVersion + " " + glassesBuildNumber + " " + glassesDeviceModel + " " + glassesAndroidVersion + " OTA URL: " + glassesOtaVersionUrl);
         sendStatusToAugmentOsManager();
+    }
+
+    // Event handler for pairing failure
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void onPairFailureEvent(PairFailureEvent event) {
+        Log.d(TAG, "Pairing failure: " + event.getError());
+        if (blePeripheral != null) {
+            try {
+                JSONObject msg = new JSONObject();
+                msg.put("type", "pair_failure");
+                msg.put("error", event.getError());
+                blePeripheral.sendDataToAugmentOsManager(msg.toString());
+            } catch (JSONException e) {
+                Log.e(TAG, "Error sending pair failure notification to manager", e);
+            }
+        }
     }
 
 

@@ -3,6 +3,7 @@
 ## 🎯 **Current State Analysis**
 
 ### **Current Structure**
+
 ```
 service/
 ├── AsgClientService.java (26KB, 663 lines)
@@ -45,6 +46,7 @@ service/
 ```
 
 ### **Issues with Current Structure**
+
 1. **Mixed Responsibilities**: Core service files mixed with documentation
 2. **Flat Structure**: All handlers in one directory
 3. **Documentation Clutter**: 15+ markdown files in root
@@ -53,6 +55,7 @@ service/
 ## 🏗️ **Proposed New Structure**
 
 ### **Organized Package Structure**
+
 ```
 service/
 ├── core/
@@ -136,6 +139,7 @@ service/
 ## 🎯 **Organization Benefits**
 
 ### **1. Clear Separation of Concerns**
+
 - **core/**: Main service classes
 - **interfaces/**: Organized by domain
 - **managers/**: Organized by responsibility
@@ -144,16 +148,19 @@ service/
 - **docs/**: All documentation
 
 ### **2. Improved Navigation**
+
 - **Domain-based grouping**: Related components together
 - **Logical hierarchy**: Clear parent-child relationships
 - **Easy discovery**: Developers can quickly find relevant code
 
 ### **3. Better Maintainability**
+
 - **Isolated changes**: Changes to one domain don't affect others
 - **Clear dependencies**: Easy to see what depends on what
 - **Reduced coupling**: Better separation between components
 
 ### **4. Enhanced Scalability**
+
 - **Easy to add new domains**: Just create new subdirectories
 - **Consistent structure**: New components follow established patterns
 - **Clear extension points**: Easy to see where to add new functionality
@@ -161,22 +168,26 @@ service/
 ## 🔧 **Implementation Strategy**
 
 ### **Phase 1: Create New Directory Structure**
+
 1. Create new subdirectories
 2. Move files to appropriate locations
 3. Update package declarations
 4. Update import statements
 
 ### **Phase 2: Create New Utility Classes**
+
 1. Create `ServiceUtils.java` for common utilities
 2. Create `Constants.java` for service constants
 3. Create base `IManager.java` interface
 
 ### **Phase 3: Update Documentation**
+
 1. Move all .md files to `docs/` directory
 2. Create new documentation structure
 3. Update references and links
 
 ### **Phase 4: Verify and Test**
+
 1. Ensure all imports work correctly
 2. Run compilation tests
 3. Verify no breaking changes
@@ -184,6 +195,7 @@ service/
 ## 📋 **Detailed File Organization**
 
 ### **Core Service Files**
+
 ```
 service/core/
 ├── AsgClientService.java (main service class)
@@ -191,6 +203,7 @@ service/core/
 ```
 
 ### **Interface Organization**
+
 ```
 service/interfaces/
 ├── lifecycle/
@@ -213,6 +226,7 @@ service/interfaces/
 ```
 
 ### **Manager Organization**
+
 ```
 service/managers/
 ├── lifecycle/
@@ -232,6 +246,7 @@ service/managers/
 ```
 
 ### **Handler Organization**
+
 ```
 service/handlers/
 ├── communication/
@@ -254,6 +269,7 @@ service/handlers/
 ```
 
 ### **Documentation Organization**
+
 ```
 service/docs/
 ├── README.md (main documentation)
@@ -277,12 +293,14 @@ service/docs/
 ## 🎯 **Expected Outcomes**
 
 ### **Immediate Benefits**
+
 - ✅ **Cleaner structure**: Easy to navigate and understand
 - ✅ **Better organization**: Related components grouped together
 - ✅ **Reduced clutter**: Documentation separated from code
 - ✅ **Improved maintainability**: Clear separation of concerns
 
 ### **Long-term Benefits**
+
 - ✅ **Easier onboarding**: New developers can quickly understand structure
 - ✅ **Better scalability**: Easy to add new components
 - ✅ **Reduced complexity**: Clear boundaries between domains
@@ -297,4 +315,4 @@ service/docs/
 5. **✅ Clear package structure** following domain organization
 6. **✅ No breaking changes** to existing functionality
 
-**Result**: A well-organized, maintainable, and scalable service package structure! 
+**Result**: A well-organized, maintainable, and scalable service package structure!

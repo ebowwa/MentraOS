@@ -9,6 +9,7 @@ The `CommandProcessor` class has been refactored to better follow SOLID principl
 ### **1. Single Responsibility Principle (SRP) ✅**
 
 #### **Before:**
+
 ```java
 // AsgClientService was doing too many things:
 // - Protocol detection (##...## vs JSON)
@@ -26,6 +27,7 @@ The `CommandProcessor` class has been refactored to better follow SOLID principl
 ```
 
 #### **After:**
+
 ```java
 // AsgClientService: Service lifecycle and delegation only
 // CommandProcessor: All command processing and protocol detection
@@ -37,6 +39,7 @@ The `CommandProcessor` class has been refactored to better follow SOLID principl
 ### **2. Open/Closed Principle (OCP) ✅**
 
 #### **Before:**
+
 ```java
 // Adding new protocols required modifying AsgClientService
 if (isK900ProtocolMessage(data)) {
@@ -48,6 +51,7 @@ if (isK900ProtocolMessage(data)) {
 ```
 
 #### **After:**
+
 ```java
 // Adding new protocols only requires extending CommandProcessor
 public void processCommand(byte[] data) {
@@ -62,12 +66,14 @@ registerHandler(new NewCommandHandler()); // ✅ Easy to add
 ### **3. Liskov Substitution Principle (LSP) ✅**
 
 #### **Before:**
+
 ```java
 // Mixed concrete implementations
 private final AsgClientServiceManager serviceManager;
 ```
 
 #### **After:**
+
 ```java
 // Interface-based dependencies
 private final ICommunicationManager communicationManager;
@@ -79,6 +85,7 @@ private final IStreamingManager streamingManager;
 ### **4. Interface Segregation Principle (ISP) ✅**
 
 #### **Before:**
+
 ```java
 // AsgClientService had to handle all types of protocols
 public void onDataReceived(byte[] data) {
@@ -91,6 +98,7 @@ public void onDataReceived(byte[] data) {
 ```
 
 #### **After:**
+
 ```java
 // AsgClientService: Simple delegation only
 public void onDataReceived(byte[] data) {
@@ -106,12 +114,14 @@ public void processCommand(byte[] data) {
 ### **5. Dependency Inversion Principle (DIP) ✅**
 
 #### **Before:**
+
 ```java
 // Depended on concrete implementations
 private final AsgClientServiceManager serviceManager;
 ```
 
 #### **After:**
+
 ```java
 // Depends on abstractions
 private final ICommunicationManager communicationManager;
@@ -124,6 +134,7 @@ private final IStreamingManager streamingManager;
 ### **1. Simplified `AsgClientService` ✅**
 
 #### **Before:**
+
 ```java
 public void onDataReceived(byte[] data) {
     // Protocol detection logic mixed with service logic
@@ -131,7 +142,7 @@ public void onDataReceived(byte[] data) {
         handleK900ProtocolMessage(data);
         return;
     }
-    
+
     if (data.length > 0 && data[0] == '{') {
         // JSON processing logic
         processJsonCommand(jsonObject);
@@ -143,6 +154,7 @@ private void handleK900ProtocolMessage(byte[] data) { /* ... */ }
 ```
 
 #### **After:**
+
 ```java
 public void onDataReceived(byte[] data) {
     // Simple delegation - Single Responsibility
@@ -154,6 +166,7 @@ public void onDataReceived(byte[] data) {
 ### **2. Enhanced `CommandProcessor` ✅**
 
 #### **Updated Method:**
+
 ```java
 public void processCommand(byte[] data) {
     // Detailed logging and hex data display
@@ -166,14 +179,14 @@ public void processCommand(byte[] data) {
     // K900 Protocol Detection (##...## format)
     if (data.length > 4 && data[0] == 0x23 && data[1] == 0x23) {
         Log.d(TAG, "🔍 Detected ##...## protocol formatted message");
-        
+
         // Extract command type and length
         byte commandType = data[2];
         int length = (data[3] & 0xFF) | ((data[4] & 0xFF) << 8);
-        
+
         // Find end marker ($$)
         int endMarkerPos = findEndMarker(data);
-        
+
         if (endMarkerPos > 0) {
             // Extract JSON payload and process
             String jsonStr = extractJsonPayload(data, endMarkerPos);
@@ -181,7 +194,7 @@ public void processCommand(byte[] data) {
             processJsonCommand(jsonObject);
         }
     }
-    
+
     // JSON Protocol Detection
     if (data.length > 0 && data[0] == '{') {
         String jsonStr = new String(data, StandardCharsets.UTF_8);
@@ -194,6 +207,7 @@ public void processCommand(byte[] data) {
 ### **3. Created `CommandProtocolDetector` ✅**
 
 #### **New Class:**
+
 ```java
 public class CommandProtocolDetector {
     public enum ProtocolType {
@@ -201,7 +215,7 @@ public class CommandProtocolDetector {
         K900_PROTOCOL,   // K900 protocol with invalid JSON in C field
         UNKNOWN          // Unknown or unsupported protocol
     }
-    
+
     public ProtocolDetectionResult detectProtocol(JSONObject json) {
         // Single responsibility: Only detects protocol type
         // Open/Closed: Easy to add new protocols
@@ -212,6 +226,7 @@ public class CommandProtocolDetector {
 ## 🔄 **Business Logic Flow (Preserved)**
 
 ### **Original Flow:**
+
 ```
 1. Bluetooth data received in AsgClientService
 2. Check for ##...## protocol format
@@ -223,6 +238,7 @@ public class CommandProtocolDetector {
 ```
 
 ### **Refactored Flow (Same Logic, Better Structure):**
+
 ```
 1. Bluetooth data received in AsgClientService
 2. Delegate to CommandProcessor.processCommand()
@@ -236,6 +252,7 @@ public class CommandProtocolDetector {
 ```
 
 ### **Key Business Logic Preserved:**
+
 - ✅ **K900 Protocol**: ##...## format correctly detected and processed
 - ✅ **JSON Protocol**: Direct JSON messages correctly processed
 - ✅ **C Field Detection**: Invalid JSON in "C" field correctly triggers K900 processing
@@ -261,21 +278,25 @@ service/
 ## 🎯 **Benefits Achieved**
 
 ### **1. Maintainability ✅**
+
 - **Clear Separation**: Each class has a single, well-defined responsibility
 - **Easy Debugging**: Issues can be isolated to specific components
 - **Reduced Complexity**: Smaller, focused classes are easier to understand
 
 ### **2. Testability ✅**
+
 - **Isolated Testing**: Each component can be tested independently
 - **Mock Dependencies**: Interface-based design allows easy mocking
 - **Focused Tests**: Tests can focus on specific functionality
 
 ### **3. Extensibility ✅**
+
 - **Easy Protocol Addition**: New protocols only require extending CommandProcessor
 - **Easy Handler Addition**: New commands only require new handlers
 - **No Modification**: Existing code doesn't need to change
 
 ### **4. Code Quality ✅**
+
 - **SOLID Compliance**: All 5 SOLID principles properly implemented
 - **Clean Architecture**: Clear separation of concerns
 - **Type Safety**: Strong typing with enums and DTOs
@@ -311,7 +332,7 @@ public class AudioCommandHandler implements ICommandHandler {
     public String getCommandType() {
         return "audio_control";
     }
-    
+
     @Override
     public boolean handleCommand(JSONObject data) {
         // Handle audio commands
@@ -327,13 +348,13 @@ private void initializeCommandHandlers() {
 
 ## 🎯 **SOLID Principles Summary**
 
-| Principle | Before | After |
-|-----------|--------|-------|
-| **SRP** | ❌ Mixed responsibilities | ✅ Single responsibility per class |
-| **OCP** | ❌ Required modification | ✅ Open for extension |
-| **LSP** | ❌ Concrete dependencies | ✅ Interface-based substitution |
-| **ISP** | ❌ Mixed command handling | ✅ Focused interfaces |
-| **DIP** | ❌ Concrete dependencies | ✅ Abstract dependencies |
+| Principle | Before                    | After                              |
+| --------- | ------------------------- | ---------------------------------- |
+| **SRP**   | ❌ Mixed responsibilities | ✅ Single responsibility per class |
+| **OCP**   | ❌ Required modification  | ✅ Open for extension              |
+| **LSP**   | ❌ Concrete dependencies  | ✅ Interface-based substitution    |
+| **ISP**   | ❌ Mixed command handling | ✅ Focused interfaces              |
+| **DIP**   | ❌ Concrete dependencies  | ✅ Abstract dependencies           |
 
 ## 🚀 **Next Steps**
 
@@ -375,4 +396,4 @@ The refactored system maintains **100% compatibility** with the original busines
 4. **Extensibility**: Easy to add new protocols without modifying AsgClientService
 5. **Testability**: Each component can be tested independently
 
-The refactored design now properly follows SOLID principles while preserving the original business logic and providing a solid foundation for future extensions and maintenance. 
+The refactored design now properly follows SOLID principles while preserving the original business logic and providing a solid foundation for future extensions and maintenance.

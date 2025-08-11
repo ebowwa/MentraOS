@@ -536,11 +536,11 @@
         .api-grid {
           grid-template-columns: 1fr;
         }
-        
+
         .api-endpoint {
           padding: 15px;
         }
-        
+
         .api-example pre {
           font-size: 0.7rem;
         }
@@ -579,15 +579,15 @@
             <button class="refresh-button" onclick="loadGallery()">🔄 Refresh</button>
           </div>
           <div id="galleryGrid" class="gallery-grid">
-                      <div class="empty-gallery">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-              <circle cx="8.5" cy="8.5" r="1.5"></circle>
-              <polyline points="21,15 16,10 5,21"></polyline>
-            </svg>
-            <div>No media files yet</div>
-            <div style="font-size: 0.9rem; margin-top: 10px">Take your first photo or video to get started!</div>
-          </div>
+            <div class="empty-gallery">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                <polyline points="21,15 16,10 5,21"></polyline>
+              </svg>
+              <div>No media files yet</div>
+              <div style="font-size: 0.9rem; margin-top: 10px">Take your first photo or video to get started!</div>
+            </div>
           </div>
         </div>
       </div>
@@ -601,20 +601,21 @@
             <code>GET /api/take-picture</code>
             <p>Triggers photo capture on the device</p>
           </div>
-          
+
           <div class="api-endpoint">
             <h3>🖼️ Latest Photo</h3>
             <code>GET /api/latest-photo</code>
             <p>Returns the most recently captured photo</p>
           </div>
-          
+
           <div class="api-endpoint">
             <h3>📚 Media Gallery</h3>
             <code>GET /api/gallery</code>
             <p>Returns list of all photos and videos with metadata</p>
             <div class="api-example">
               <strong>Response includes video information:</strong>
-              <pre>{
+              <pre>
+{
   "photos": [
     {
       "name": "photo1.jpg",
@@ -627,44 +628,50 @@
       "thumbnail_url": "/api/photo?file=video1.mp4"
     }
   ]
-}</pre>
+}</pre
+              >
             </div>
           </div>
-          
+
           <div class="api-endpoint">
             <h3>🖼️ Specific Photo/Video</h3>
             <code>GET /api/photo?file=filename.jpg</code>
             <p>Returns a specific photo or video thumbnail by filename</p>
             <div class="api-example">
               <strong>Video files return thumbnails:</strong>
-              <pre>GET /api/photo?file=video1.mp4
-→ Returns JPEG thumbnail image</pre>
+              <pre>
+GET /api/photo?file=video1.mp4
+→ Returns JPEG thumbnail image</pre
+              >
             </div>
           </div>
-          
+
           <div class="api-endpoint">
             <h3>⬇️ Download Media</h3>
             <code>GET /api/download?file=filename.jpg</code>
             <p>Downloads a specific photo or video file</p>
           </div>
-          
+
           <div class="api-endpoint">
             <h3>🧹 Cleanup Old Files</h3>
             <code>GET /api/cleanup?max_age_hours=24</code>
             <p>Deletes files older than specified hours (default: 24)</p>
           </div>
-          
+
           <div class="api-endpoint">
             <h3>🗑️ Delete Specific Files</h3>
             <code>POST /api/delete-files</code>
             <p>Deletes specific files by name</p>
             <div class="api-example">
               <strong>Request Body:</strong>
-              <pre>{
+              <pre>
+{
   "files": ["photo1.jpg", "photo2.jpg", "photo3.jpg"]
-}</pre>
+}</pre
+              >
               <strong>Response:</strong>
-              <pre>{
+              <pre>
+{
   "message": "File deletion completed",
   "total_files": 3,
   "successful_deletions": 2,
@@ -678,16 +685,17 @@
       "size": 1024288
     }
   ]
-}</pre>
+}</pre
+              >
             </div>
           </div>
-          
+
           <div class="api-endpoint">
             <h3>📊 Server Status</h3>
             <code>GET /api/status</code>
             <p>Returns server status and file management metrics</p>
           </div>
-          
+
           <div class="api-endpoint">
             <h3>❤️ Health Check</h3>
             <code>GET /api/health</code>
@@ -830,40 +838,43 @@
         }
 
         galleryGrid.innerHTML = photos
-          .map(
-            (photo, index) => {
-              const isVideo = photo.is_video || false;
-              const fileExtension = photo.name.split('.').pop().toLowerCase();
-              const isVideoByExtension = ['mp4', 'avi', 'mov', 'wmv', 'flv', 'webm', 'mkv', '3gp'].includes(fileExtension);
-              const isVideoFile = isVideo || isVideoByExtension;
-              
-              return `
+          .map((photo, index) => {
+            const isVideo = photo.is_video || false
+            const fileExtension = photo.name.split(".").pop().toLowerCase()
+            const isVideoByExtension = ["mp4", "avi", "mov", "wmv", "flv", "webm", "mkv", "3gp"].includes(fileExtension)
+            const isVideoFile = isVideo || isVideoByExtension
+
+            return `
                 <div class="photo-card" onclick="viewPhoto('${photo.name}', ${index})">
                     <img class="photo-image" src="/api/photo?file=${encodeURIComponent(photo.name)}"
                          alt="${photo.name}" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjE1MCIgdmlld0JveD0iMCAwIDIwMCAxNTAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMTUwIiBmaWxsPSIjRjhGOUZBIi8+CjxwYXRoIGQ9Ik04MCA3NUgxMjBWNzVIMTIwSDgwWiIgZmlsbD0iI0Q5RENEQyIvPgo8L3N2Zz4K'">
                     
-                    ${isVideoFile ? `
+                    ${
+                      isVideoFile
+                        ? `
                       <div class="video-indicator">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                           <polygon points="5,3 19,12 5,21"></polygon>
                         </svg>
                         Video
                       </div>
-                    ` : ''}
+                    `
+                        : ""
+                    }
                     
-                    <div class="file-type-badge ${isVideoFile ? 'video' : ''}">
-                      ${isVideoFile ? 'Video' : 'Image'}
+                    <div class="file-type-badge ${isVideoFile ? "video" : ""}">
+                      ${isVideoFile ? "Video" : "Image"}
                     </div>
                     
                     <div class="photo-info">
                         <div class="photo-name">${photo.name}</div>
                         <div class="photo-meta">
                             ${formatFileSize(photo.size)} • ${photo.modified}
-                            ${isVideoFile ? ' • 🎥 Video file' : ''}
+                            ${isVideoFile ? " • 🎥 Video file" : ""}
                         </div>
                         <div class="photo-actions">
                             <button class="action-button view-button" onclick="event.stopPropagation(); viewPhoto('${photo.name}', ${index})">
-                                ${isVideoFile ? '🎥 Play' : '👁️ View'}
+                                ${isVideoFile ? "🎥 Play" : "👁️ View"}
                             </button>
                             <button class="action-button download-button" onclick="event.stopPropagation(); downloadPhoto('${photo.name}')">
                                 ⬇️ Download
@@ -871,9 +882,8 @@
                         </div>
                     </div>
                 </div>
-            `;
-            }
-          )
+            `
+          })
           .join("")
       }
 
@@ -881,27 +891,27 @@
       function viewPhoto(filename, index) {
         const modal = document.getElementById("photoModal")
         const modalImage = document.getElementById("modalImage")
-        
-        const isVideo = currentGallery[index] && (currentGallery[index].is_video || false);
-        const fileExtension = filename.split('.').pop().toLowerCase();
-        const isVideoByExtension = ['mp4', 'avi', 'mov', 'wmv', 'flv', 'webm', 'mkv', '3gp'].includes(fileExtension);
-        const isVideoFile = isVideo || isVideoByExtension;
+
+        const isVideo = currentGallery[index] && (currentGallery[index].is_video || false)
+        const fileExtension = filename.split(".").pop().toLowerCase()
+        const isVideoByExtension = ["mp4", "avi", "mov", "wmv", "flv", "webm", "mkv", "3gp"].includes(fileExtension)
+        const isVideoFile = isVideo || isVideoByExtension
 
         if (isVideoFile) {
           // For videos, show thumbnail but provide download option
           modalImage.src = `/api/photo?file=${encodeURIComponent(filename)}`
           modalImage.alt = `Video thumbnail: ${filename}`
-          
+
           // Add a note that this is a video thumbnail
-          const videoNote = document.createElement('div')
-          videoNote.className = 'video-thumbnail-note'
+          const videoNote = document.createElement("div")
+          videoNote.className = "video-thumbnail-note"
           videoNote.innerHTML = `
             🎥 Video thumbnail • 
             <a href="/api/download?file=${encodeURIComponent(filename)}">
               Download Video
             </a>
           `
-          modal.querySelector('.modal-content').appendChild(videoNote)
+          modal.querySelector(".modal-content").appendChild(videoNote)
         } else {
           // For images, show the actual image
           modalImage.src = `/api/photo?file=${encodeURIComponent(filename)}`
@@ -922,9 +932,9 @@
       function closeModal() {
         const modal = document.getElementById("photoModal")
         modal.style.display = "none"
-        
+
         // Remove any video notes that were added
-        const videoNotes = modal.querySelectorAll('.video-thumbnail-note')
+        const videoNotes = modal.querySelectorAll(".video-thumbnail-note")
         videoNotes.forEach(note => note.remove())
       }
 
@@ -944,9 +954,9 @@
             window.URL.revokeObjectURL(url)
             document.body.removeChild(a)
 
-            const fileExtension = filename.split('.').pop().toLowerCase();
-            const isVideo = ['mp4', 'avi', 'mov', 'wmv', 'flv', 'webm', 'mkv', '3gp'].includes(fileExtension);
-            showToast(`Downloaded ${isVideo ? 'video' : 'photo'}: ${filename}`, "success")
+            const fileExtension = filename.split(".").pop().toLowerCase()
+            const isVideo = ["mp4", "avi", "mov", "wmv", "flv", "webm", "mkv", "3gp"].includes(fileExtension)
+            showToast(`Downloaded ${isVideo ? "video" : "photo"}: ${filename}`, "success")
           } else {
             throw new Error("Download failed")
           }

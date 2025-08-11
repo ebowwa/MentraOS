@@ -9,6 +9,7 @@ The `CommandProcessor` class has been refactored to extract all inner classes in
 ### Before Refactoring
 
 The `CommandProcessor` class contained 5 inner classes:
+
 - `CommandData` (record)
 - `CommandHandlerRegistry` (static class)
 - `JsonParser` (static class)
@@ -77,13 +78,15 @@ app/src/main/java/com/augmentos/asg_client/service/core/processors/
 ## Class Responsibilities
 
 ### CommandData.java
+
 - **Purpose**: Data container for command information
-- **Responsibilities**: 
+- **Responsibilities**:
   - Encapsulate command type, data, and message ID
   - Provide validation methods
   - Offer utility methods for command processing
 
 ### CommandHandlerRegistry.java
+
 - **Purpose**: Manage command handler registration and retrieval
 - **Responsibilities**:
   - Register new command handlers
@@ -92,6 +95,7 @@ app/src/main/java/com/augmentos/asg_client/service/core/processors/
   - Support Open/Closed Principle for handler extension
 
 ### JsonParser.java
+
 - **Purpose**: Parse JSON data from various formats
 - **Responsibilities**:
   - Parse K900 protocol format (##...$$)
@@ -100,6 +104,7 @@ app/src/main/java/com/augmentos/asg_client/service/core/processors/
   - Handle parsing errors gracefully
 
 ### LegacyCommandProcessor.java
+
 - **Purpose**: Handle legacy commands for backward compatibility
 - **Responsibilities**:
   - Process legacy command types
@@ -108,6 +113,7 @@ app/src/main/java/com/augmentos/asg_client/service/core/processors/
   - Handle legacy command errors
 
 ### ResponseSender.java
+
 - **Purpose**: Send responses over Bluetooth Low Energy
 - **Responsibilities**:
   - Send download progress notifications
@@ -170,11 +176,13 @@ public void testCommandHandlerRegistry() {
 ## Performance Impact
 
 ### Positive Impacts
+
 - **Reduced Memory Footprint**: Classes are loaded only when needed
 - **Better JIT Optimization**: Smaller classes can be optimized more effectively
 - **Improved Startup Time**: Lazy loading of components
 
 ### Minimal Overhead
+
 - **Import Statements**: Slightly more imports, but negligible impact
 - **Class Loading**: Modern JVMs handle this efficiently
 - **Method Calls**: No change in method call performance
@@ -182,6 +190,7 @@ public void testCommandHandlerRegistry() {
 ## Future Enhancements
 
 ### 1. Interface Extraction
+
 Consider extracting interfaces for better abstraction:
 
 ```java
@@ -195,6 +204,7 @@ public interface IResponseSender {
 ```
 
 ### 2. Configuration-Based Registration
+
 Make handler registration configurable:
 
 ```java
@@ -203,6 +213,7 @@ registry.registerHandlersFromConfig(config);
 ```
 
 ### 3. Plugin System
+
 Enable dynamic loading of components:
 
 ```java
@@ -211,6 +222,7 @@ PluginLoader.loadPlugins(pluginDirectory);
 ```
 
 ### 4. Metrics and Monitoring
+
 Add performance metrics to each component:
 
 ```java
@@ -228,4 +240,4 @@ The refactoring of `CommandProcessor` by extracting inner classes into separate 
 - **Increased Reusability**: Components can be used independently
 - **Future-Proof Design**: Easier to extend and modify
 
-This refactoring follows established software engineering principles and best practices, making the codebase more professional and maintainable. 
+This refactoring follows established software engineering principles and best practices, making the codebase more professional and maintainable.

@@ -58,7 +58,9 @@ The I/O package serves as the **communication layer** of the ASG client applicat
 ## 🔧 Design Principles
 
 ### **1. Separation of Concerns**
+
 Each subpackage handles a specific type of I/O operation:
+
 - **`file/`**: File system operations and management
 - **`network/`**: Network communication and connectivity
 - **`media/`**: Media capture, processing, and upload
@@ -67,19 +69,23 @@ Each subpackage handles a specific type of I/O operation:
 - **`ota/`**: System updates and maintenance
 
 ### **2. Unified Interface Pattern**
+
 All subpackages follow a consistent structure:
+
 - **`interfaces/`**: Define contracts and operation specifications
 - **`core/`**: Core functionality and base implementations
 - **`managers/`** or **`services/`**: High-level operation management
 - **`utils/`**: Utility functions and helper classes
 
 ### **3. Platform Independence**
+
 - **Abstract interfaces** define platform-agnostic contracts
 - **Platform-specific implementations** are isolated
 - **Easy swapping** of platform strategies
 - **Cross-platform compatibility** maintained
 
 ### **4. SOLID Principles**
+
 - **Single Responsibility**: Each class has one clear purpose
 - **Open/Closed**: Open for extension, closed for modification
 - **Liskov Substitution**: Implementations are interchangeable
@@ -89,6 +95,7 @@ All subpackages follow a consistent structure:
 ## 🚀 Quick Start
 
 ### **File Operations**
+
 ```java
 // Get file manager
 FileManager fileManager = FileManagerFactory.createFileManager();
@@ -104,6 +111,7 @@ List<FileInfo> files = fileManager.listFiles("com.example.app");
 ```
 
 ### **Network Operations**
+
 ```java
 // Get network manager
 NetworkManager networkManager = NetworkManagerFactory.createNetworkManager();
@@ -119,6 +127,7 @@ NetworkInfo networkInfo = networkManager.getNetworkInfo();
 ```
 
 ### **Media Operations**
+
 ```java
 // Get media capture service
 MediaCaptureService mediaService = new MediaCaptureService();
@@ -137,6 +146,7 @@ uploadService.uploadPhoto(filePath, uploadCallback);
 ```
 
 ### **Bluetooth Operations**
+
 ```java
 // Get Bluetooth manager
 BluetoothManager bluetoothManager = BluetoothManagerFactory.getBluetoothManager();
@@ -153,6 +163,7 @@ boolean isConnected = bluetoothManager.isConnected();
 ```
 
 ### **Streaming Operations**
+
 ```java
 // Get streaming service
 StreamingService streamingService = new RtmpStreamingService();
@@ -171,6 +182,7 @@ streamingService.setProgressCallback(new StreamingProgressCallback() {
 ```
 
 ### **OTA Operations**
+
 ```java
 // Get OTA service
 OtaService otaService = new OtaService();
@@ -190,17 +202,18 @@ otaService.setProgressCallback(new OtaProgressCallback() {
 ## 🔄 Integration Patterns
 
 ### **1. Service Integration**
+
 ```java
 // In your Android Service
 public class MyService extends Service {
     private FileManager fileManager;
     private NetworkManager networkManager;
     private MediaCaptureService mediaService;
-    
+
     @Override
     public void onCreate() {
         super.onCreate();
-        
+
         // Initialize I/O managers
         fileManager = FileManagerFactory.createFileManager();
         networkManager = NetworkManagerFactory.createNetworkManager();
@@ -210,24 +223,25 @@ public class MyService extends Service {
 ```
 
 ### **2. Activity Integration**
+
 ```java
 // In your Activity
 public class MainActivity extends AppCompatActivity {
     private BluetoothManager bluetoothManager;
     private StreamingService streamingService;
-    
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        
+
         // Initialize I/O managers
         bluetoothManager = BluetoothManagerFactory.getBluetoothManager();
         streamingService = new RtmpStreamingService();
-        
+
         // Set up event listeners
         EventBus.getDefault().register(this);
     }
-    
+
     @Subscribe(threadMode = ThreadMode.MAIN)
     public void onStreamingEvent(StreamingEvent event) {
         // Handle streaming events
@@ -236,17 +250,18 @@ public class MainActivity extends AppCompatActivity {
 ```
 
 ### **3. Background Processing**
+
 ```java
 // In your background service
 public class BackgroundService extends Service {
     private OtaService otaService;
-    
+
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         // Start OTA checks in background
         otaService = new OtaService();
         otaService.startService();
-        
+
         return START_STICKY;
     }
 }
@@ -255,6 +270,7 @@ public class BackgroundService extends Service {
 ## 🛡️ Error Handling
 
 ### **1. Graceful Degradation**
+
 ```java
 // All I/O operations include error handling
 try {
@@ -267,6 +283,7 @@ try {
 ```
 
 ### **2. Retry Mechanisms**
+
 ```java
 // Network operations include automatic retry
 NetworkManager networkManager = NetworkManagerFactory.createNetworkManager();
@@ -274,6 +291,7 @@ networkManager.setRetryPolicy(new ExponentialBackoffRetryPolicy(3, 1000));
 ```
 
 ### **3. Fallback Strategies**
+
 ```java
 // Bluetooth operations with fallback
 BluetoothManager bluetoothManager = BluetoothManagerFactory.getBluetoothManager();
@@ -286,6 +304,7 @@ if (!bluetoothManager.isConnected()) {
 ## 📈 Performance Considerations
 
 ### **1. Asynchronous Operations**
+
 ```java
 // All I/O operations are asynchronous
 fileManager.saveFileAsync(packageName, fileName, data, new FileOperationCallback() {
@@ -293,7 +312,7 @@ fileManager.saveFileAsync(packageName, fileName, data, new FileOperationCallback
     public void onSuccess(String filePath) {
         Log.d("File", "File saved successfully: " + filePath);
     }
-    
+
     @Override
     public void onError(Exception error) {
         Log.e("File", "Failed to save file", error);
@@ -302,12 +321,13 @@ fileManager.saveFileAsync(packageName, fileName, data, new FileOperationCallback
 ```
 
 ### **2. Resource Management**
+
 ```java
 // Proper resource cleanup
 @Override
 public void onDestroy() {
     super.onDestroy();
-    
+
     // Cleanup I/O resources
     if (bluetoothManager != null) {
         bluetoothManager.shutdown();
@@ -319,6 +339,7 @@ public void onDestroy() {
 ```
 
 ### **3. Memory Optimization**
+
 ```java
 // Efficient memory usage for large files
 fileManager.saveFileWithStreaming(packageName, fileName, inputStream, callback);
@@ -327,6 +348,7 @@ fileManager.saveFileWithStreaming(packageName, fileName, inputStream, callback);
 ## 🔧 Configuration
 
 ### **1. Package-Based Organization**
+
 ```java
 // Files are organized by package name
 String packageName = "com.example.app";
@@ -335,6 +357,7 @@ fileManager.saveFile(packageName, "user_data.json", userData);
 ```
 
 ### **2. Security Validation**
+
 ```java
 // All file operations include security validation
 FileSecurityValidator validator = new FileSecurityValidator();
@@ -343,6 +366,7 @@ validator.validateFileExtension(fileName);
 ```
 
 ### **3. Platform-Specific Configuration**
+
 ```java
 // Platform-specific implementations
 PlatformStrategy strategy = PlatformRegistry.getStrategy(Platform.ANDROID);
@@ -352,6 +376,7 @@ FileManager fileManager = new FileManagerImpl(strategy);
 ## 🧪 Testing
 
 ### **1. Unit Testing**
+
 ```java
 @Test
 public void testFileSave() {
@@ -359,7 +384,7 @@ public void testFileSave() {
     FileManager mockFileManager = mock(FileManager.class);
     when(mockFileManager.saveFile(anyString(), anyString(), any(byte[].class)))
         .thenReturn(true);
-    
+
     // Test file save operation
     boolean result = mockFileManager.saveFile("test", "data.json", testData);
     assertTrue(result);
@@ -367,12 +392,13 @@ public void testFileSave() {
 ```
 
 ### **2. Integration Testing**
+
 ```java
 @Test
 public void testNetworkIntegration() {
     NetworkManager networkManager = NetworkManagerFactory.createNetworkManager();
     networkManager.connectToWiFi("test_ssid", "test_password");
-    
+
     // Wait for connection
     await().atMost(10, TimeUnit.SECONDS)
         .until(() -> networkManager.isConnected());
@@ -380,6 +406,7 @@ public void testNetworkIntegration() {
 ```
 
 ### **3. Mock Testing**
+
 ```java
 // Mock I/O operations for testing
 @Mock
@@ -389,7 +416,7 @@ private BluetoothManager mockBluetoothManager;
 public void testBluetoothCommunication() {
     when(mockBluetoothManager.sendData(any(byte[].class)))
         .thenReturn(true);
-    
+
     // Test Bluetooth communication
     boolean sent = mockBluetoothManager.sendData(testData);
     assertTrue(sent);
@@ -399,6 +426,7 @@ public void testBluetoothCommunication() {
 ## 🔮 Future Extensions
 
 ### **1. Additional I/O Operations**
+
 ```
 io/
 ├── usb/                    # USB device communication
@@ -411,6 +439,7 @@ io/
 ```
 
 ### **2. Enhanced Features**
+
 - **Delta Updates**: Efficient update mechanisms
 - **Background Processing**: Completely background I/O operations
 - **Offline Support**: Offline-first I/O operations
@@ -418,6 +447,7 @@ io/
 - **Analytics**: I/O operation analytics and insights
 
 ### **3. Platform Extensions**
+
 - **iOS Support**: Cross-platform I/O operations
 - **Web Support**: Web-based I/O operations
 - **Desktop Support**: Desktop I/O operations
@@ -445,4 +475,4 @@ When adding new I/O operations:
 
 ---
 
-The I/O package provides a comprehensive, well-organized foundation for all input/output operations in the ASG client system, enabling robust communication with files, networks, devices, and external systems while maintaining clean architecture and excellent developer experience. 
+The I/O package provides a comprehensive, well-organized foundation for all input/output operations in the ASG client system, enabling robust communication with files, networks, devices, and external systems while maintaining clean architecture and excellent developer experience.

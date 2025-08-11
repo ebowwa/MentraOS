@@ -62,6 +62,7 @@ The `/api/delete-files` endpoint allows you to delete specific files from the ca
 ### Error Responses
 
 #### 400 Bad Request - Empty Files Array
+
 ```json
 {
   "status": "error",
@@ -70,6 +71,7 @@ The `/api/delete-files` endpoint allows you to delete specific files from the ca
 ```
 
 #### 400 Bad Request - Invalid JSON
+
 ```json
 {
   "status": "error",
@@ -78,6 +80,7 @@ The `/api/delete-files` endpoint allows you to delete specific files from the ca
 ```
 
 #### 405 Method Not Allowed
+
 ```json
 {
   "status": "error",
@@ -86,6 +89,7 @@ The `/api/delete-files` endpoint allows you to delete specific files from the ca
 ```
 
 #### 500 Internal Server Error
+
 ```json
 {
   "status": "error",
@@ -108,19 +112,19 @@ curl -X POST "http://localhost:8089/api/delete-files" \
 ### JavaScript Example
 
 ```javascript
-const response = await fetch('/api/delete-files', {
-  method: 'POST',
+const response = await fetch("/api/delete-files", {
+  method: "POST",
   headers: {
-    'Content-Type': 'application/json'
+    "Content-Type": "application/json",
   },
   body: JSON.stringify({
-    files: ['photo1.jpg', 'photo2.jpg', 'photo3.jpg']
-  })
-});
+    files: ["photo1.jpg", "photo2.jpg", "photo3.jpg"],
+  }),
+})
 
-const result = await response.json();
-console.log('Deleted files:', result.data.successful_deletions);
-console.log('Failed deletions:', result.data.failed_deletions);
+const result = await response.json()
+console.log("Deleted files:", result.data.successful_deletions)
+console.log("Failed deletions:", result.data.failed_deletions)
 ```
 
 ### Python Example
@@ -164,6 +168,7 @@ Use the provided test script to verify the endpoint functionality:
 ```
 
 This script tests various scenarios including:
+
 - Single file deletion
 - Multiple file deletion
 - Empty array handling
@@ -198,8 +203,9 @@ All operations are logged with appropriate levels:
 - **Error**: System errors and exceptions
 
 The logs include:
+
 - File names being processed
 - Success/failure status for each file
 - File sizes for successful deletions
 - Error messages for failed operations
-- Total operation statistics 
+- Total operation statistics

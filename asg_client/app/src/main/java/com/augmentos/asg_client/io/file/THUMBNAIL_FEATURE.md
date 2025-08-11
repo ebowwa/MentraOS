@@ -43,11 +43,13 @@ The `/api/photo` endpoint now handles both images and videos:
 - **Video files**: Returns a generated thumbnail instead
 
 **Example Request:**
+
 ```
 GET /api/photo?file=video1.mp4
 ```
 
 **Response:**
+
 - Returns a JPEG thumbnail image
 - Content-Type: `image/jpeg`
 
@@ -56,6 +58,7 @@ GET /api/photo?file=video1.mp4
 The gallery endpoint now includes video information:
 
 **Example Response:**
+
 ```json
 {
   "photos": [
@@ -89,6 +92,7 @@ The gallery endpoint now includes video information:
 The cleanup endpoint now also cleans up old thumbnails:
 
 **Example Response:**
+
 ```json
 {
   "message": "Cleanup completed successfully",
@@ -104,6 +108,7 @@ The cleanup endpoint now also cleans up old thumbnails:
 The status endpoint now includes thumbnail metrics:
 
 **Example Response:**
+
 ```json
 {
   "server": "CameraWebServer",
@@ -169,6 +174,7 @@ hash(video_path + "_" + last_modified) + ".jpg"
 ```
 
 This ensures:
+
 - Unique names for different videos
 - Automatic regeneration when videos are updated
 - No naming conflicts
@@ -225,19 +231,19 @@ A comprehensive test suite is included in `ThumbnailManagerTest.java` that cover
 
 ```javascript
 // Fetch gallery and display videos with thumbnails
-fetch('/api/gallery')
+fetch("/api/gallery")
   .then(response => response.json())
   .then(data => {
     data.photos.forEach(photo => {
       if (photo.is_video) {
         // Display thumbnail for video
-        displayThumbnail(photo.thumbnail_url, photo.name);
+        displayThumbnail(photo.thumbnail_url, photo.name)
       } else {
         // Display image directly
-        displayImage(photo.url, photo.name);
+        displayImage(photo.url, photo.name)
       }
-    });
-  });
+    })
+  })
 ```
 
 ## Troubleshooting
@@ -277,4 +283,4 @@ Potential improvements for future versions:
 - **Multiple Thumbnails**: Generate thumbnails at different time points
 - **Thumbnail Formats**: Support additional formats (PNG, WebP)
 - **Batch Processing**: Generate thumbnails for multiple videos at once
-- **Cloud Storage**: Store thumbnails in cloud storage for better scalability 
+- **Cloud Storage**: Store thumbnails in cloud storage for better scalability

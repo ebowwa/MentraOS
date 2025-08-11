@@ -49,6 +49,9 @@ const en = {
     scanningForGlasses2: "Ensure your glasses are in range.",
     preorderNow: "PREORDER NOW",
     preorderNowShipMessage: "Ships September 2025",
+    goHome: "Go Home",
+    tryAgain: "Try Again",
+    pairingFailed: "Pairing Failed",
   },
   connectivity: {
     bluetoothRequiredTitle: "Bluetooth Required",
@@ -111,6 +114,8 @@ const en = {
     incompatibleApps: "Incompatible Apps",
     incompatibleAppsDescription: "These apps require hardware features not available on your connected glasses",
     incompatible: "Incompatible",
+    noAppsInstalled: "No apps installed",
+    swipeToView: "Swipe to view {{target}}",
   },
   glasses: {
     title: "Glasses",
@@ -282,6 +287,7 @@ const en = {
   errors: {
     appNotOnlineTitle: "App Not Online",
     appNotOnlineMessage: "This app is not online. Please try again later.",
+    pairingBatteryTooLow: "The battery on your glasses is too low to pair. Please charge your glasses and try again.",
   },
   common: {
     ok: "OK",
@@ -296,6 +302,10 @@ const en = {
     continue: "Continue",
     next: "Next",
     request: "Request",
+    start: "Start",
+    stop: "Stop",
+    settings: "Settings",
+    openWebView: "Open Web View",
   },
   welcomeScreen: {
     postscript:

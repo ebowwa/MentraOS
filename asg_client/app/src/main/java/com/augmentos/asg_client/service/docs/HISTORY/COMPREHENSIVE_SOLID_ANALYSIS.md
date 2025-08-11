@@ -9,38 +9,39 @@ This document provides a comprehensive SOLID principles analysis of `CommandProc
 ### **1. Single Responsibility Principle (SRP) - MAJOR VIOLATIONS**
 
 #### **❌ CommandProcessor Violations**
+
 ```java
 // CommandProcessor has 8+ responsibilities in 849 lines:
 public class CommandProcessor {
     // 1. Command parsing and routing
     public void processJsonCommand(JSONObject json) { /* 156 lines */ }
-    
+
     // 2. JSON response creation (20+ methods)
     private void sendAckResponse(long messageId) { /* ... */ }
     private void sendTokenStatusResponse(boolean success) { /* ... */ }
     private void sendVideoRecordingStatusResponse(...) { /* ... */ }
     // ... 15+ more response methods
-    
+
     // 3. Bluetooth communication
     private void sendBluetoothResponse(JSONObject response) { /* ... */ }
-    
+
     // 4. Media capture coordination
     private void handleTakePhoto(JSONObject data) { /* 36 lines */ }
     private void handleStartVideoRecording(JSONObject data) { /* 23 lines */ }
     private void handleStopVideoRecording() { /* 16 lines */ }
-    
+
     // 5. Network management
     private void handleSetWifiCredentials(JSONObject data) { /* ... */ }
     private void handleRequestWifiScan() { /* ... */ }
-    
+
     // 6. Battery status handling
     private void handleBatteryStatus(JSONObject data) { /* ... */ }
     private void sendBatteryStatusOverBle(...) { /* ... */ }
-    
+
     // 7. OTA progress reporting
     public void sendDownloadProgressOverBle(...) { /* 28 lines */ }
     public void sendInstallationProgressOverBle(...) { /* 28 lines */ }
-    
+
     // 8. Button press handling
     private void handleConfigurableButtonPress(boolean isLongPress) { /* 43 lines */ }
     private void sendButtonPressToPhone(boolean isLongPress) { /* ... */ }
@@ -48,12 +49,14 @@ public class CommandProcessor {
 ```
 
 **Problems**:
+
 - **849 lines** with **8+ different responsibilities**
 - **20+ command types** handled in single class
 - **Mixed concerns**: parsing, response creation, communication, business logic
 - **Hard to maintain** and test
 
 #### **❌ AsgClientService Violations**
+
 ```java
 // AsgClientService has 6+ responsibilities in 763 lines:
 public class AsgClientService extends Service {
@@ -61,7 +64,7 @@ public class AsgClientService extends Service {
     public void onCreate() { /* ... */ }
     public int onStartCommand(Intent intent, int flags, int startId) { /* ... */ }
     public void onDestroy() { /* ... */ }
-    
+
     // 2. Event coordination
     @Override
     public void onWifiStateChanged(boolean isConnected) { /* ... */ }
@@ -69,31 +72,31 @@ public class AsgClientService extends Service {
     public void onConnectionStateChanged(boolean connected) { /* ... */ }
     @Override
     public void onDataReceived(byte[] data) { /* ... */ }
-    
+
     // 3. WiFi debouncing
     private void initializeWifiDebouncing() { /* ... */ }
     private Handler wifiDebounceHandler;
     private Runnable wifiDebounceRunnable;
-    
+
     // 4. Broadcast receiver management
     private void registerReceivers() { /* ... */ }
     private void unregisterReceivers() { /* ... */ }
     private BroadcastReceiver heartbeatReceiver;
     private BroadcastReceiver restartReceiver;
     private BroadcastReceiver otaProgressReceiver;
-    
+
     // 5. AugmentosService binding
     private final ServiceConnection augmentosConnection = new ServiceConnection() { /* ... */ };
     private AugmentosService augmentosService = null;
     private boolean isAugmentosBound = false;
-    
+
     // 6. Version info sending
     public void sendVersionInfo() { /* 33 lines */ }
-    
+
     // 7. Media capture listeners
     public MediaCaptureService.MediaCaptureListener getMediaCaptureListener() { /* 42 lines */ }
     public ServiceCallbackInterface getServiceCallback() { /* 28 lines */ }
-    
+
     // 8. EventBus subscriptions
     @Subscribe(threadMode = ThreadMode.MAIN)
     public void onStreamingEvent(StreamingEvent event) { /* ... */ }
@@ -101,6 +104,7 @@ public class AsgClientService extends Service {
 ```
 
 **Problems**:
+
 - **763 lines** with **6+ different responsibilities**
 - **Service lifecycle + business logic** mixed together
 - **Event handling + coordination** in same class
@@ -109,6 +113,7 @@ public class AsgClientService extends Service {
 ### **2. Open/Closed Principle (OCP) - VIOLATED**
 
 #### **❌ CommandProcessor Violations**
+
 ```java
 // Adding new commands requires modifying CommandProcessor
 switch (type) {
@@ -142,6 +147,7 @@ switch (type) {
 ```
 
 #### **❌ AsgClientService Violations**
+
 ```java
 // Adding new event types requires modifying AsgClientService
 @Subscribe(threadMode = ThreadMode.MAIN)
@@ -151,7 +157,7 @@ public void onStreamingEvent(StreamingEvent event) {
     } else if (event instanceof StreamingEvent.Stopped) {
         Log.d(TAG, "RTMP streaming stopped");
     } else if (event instanceof StreamingEvent.Error) {
-        Log.e(TAG, "RTMP streaming error: " + 
+        Log.e(TAG, "RTMP streaming error: " +
               ((StreamingEvent.Error) event).getMessage());
     }
     // ❌ Adding new event types requires modifying this method
@@ -161,6 +167,7 @@ public void onStreamingEvent(StreamingEvent event) {
 ### **3. Liskov Substitution Principle (LSP) - PARTIALLY VIOLATED**
 
 #### **❌ Mixed Interface Usage**
+
 ```java
 // Some interface-based (good)
 private final ICommunicationManager communicationManager;
@@ -177,6 +184,7 @@ private final AsgClientService service; // Direct service dependency
 ### **4. Interface Segregation Principle (ISP) - VIOLATED**
 
 #### **❌ Large Interface Dependencies**
+
 ```java
 // CommandProcessor depends on large interfaces
 private final AsgClientServiceManager serviceManager; // Large legacy interface with many methods
@@ -188,6 +196,7 @@ private final AsgClientService service; // Large service with many responsibilit
 ### **5. Dependency Inversion Principle (DIP) - PARTIALLY VIOLATED**
 
 #### **❌ Mixed Dependencies**
+
 ```java
 // Some interface-based (good)
 private final ICommunicationManager communicationManager;
@@ -202,6 +211,7 @@ private final AsgClientService service; // Direct service dependency
 ## ✅ **SOLID-Compliant Solution Architecture**
 
 ### **1. Command Handler Pattern**
+
 ```java
 // interfaces/ICommandHandler.java
 public interface ICommandHandler {
@@ -216,7 +226,7 @@ public interface ICommandHandler {
 public class PhotoCommandHandler implements ICommandHandler {
     @Override
     public String getCommandType() { return "take_photo"; }
-    
+
     @Override
     public boolean handleCommand(JSONObject data) {
         // Handle photo command only
@@ -226,7 +236,7 @@ public class PhotoCommandHandler implements ICommandHandler {
 public class VideoCommandHandler implements ICommandHandler {
     @Override
     public String getCommandType() { return "start_video_recording"; }
-    
+
     @Override
     public boolean handleCommand(JSONObject data) {
         // Handle video command only
@@ -235,6 +245,7 @@ public class VideoCommandHandler implements ICommandHandler {
 ```
 
 ### **2. Response Builder Pattern**
+
 ```java
 // interfaces/IResponseBuilder.java
 public interface IResponseBuilder {
@@ -251,6 +262,7 @@ public class ResponseBuilder implements IResponseBuilder {
 ```
 
 ### **3. Event Handler Pattern**
+
 ```java
 // interfaces/IEventHandler.java
 public interface IEventHandler {
@@ -265,7 +277,7 @@ public interface IEventHandler {
 public class StreamingEventHandler implements IEventHandler {
     @Override
     public String getEventType() { return "streaming_event"; }
-    
+
     @Override
     public boolean handleEvent(Intent intent) {
         // Handle streaming events only
@@ -274,6 +286,7 @@ public class StreamingEventHandler implements IEventHandler {
 ```
 
 ### **4. Service Lifecycle Manager**
+
 ```java
 // interfaces/IServiceLifecycleManager.java
 public interface IServiceLifecycleManager {
@@ -296,14 +309,15 @@ public class ServiceLifecycleManager implements IServiceLifecycleManager {
 ```
 
 ### **5. Refactored CommandProcessor**
+
 ```java
 // CommandProcessor.java - SOLID COMPLIANT
 public class CommandProcessor {
     private final Map<String, ICommandHandler> commandHandlers;
     private final IResponseBuilder responseBuilder;
     private final ICommunicationManager communicationManager;
-    
-    public CommandProcessor(List<ICommandHandler> handlers, 
+
+    public CommandProcessor(List<ICommandHandler> handlers,
                           IResponseBuilder responseBuilder,
                           ICommunicationManager communicationManager) {
         this.commandHandlers = handlers.stream()
@@ -311,11 +325,11 @@ public class CommandProcessor {
         this.responseBuilder = responseBuilder;
         this.communicationManager = communicationManager;
     }
-    
+
     public void processJsonCommand(JSONObject json) {
         String type = json.optString("type", "");
         ICommandHandler handler = commandHandlers.get(type);
-        
+
         if (handler != null) {
             handler.handleCommand(json);
         } else {
@@ -326,13 +340,14 @@ public class CommandProcessor {
 ```
 
 ### **6. Refactored AsgClientService**
+
 ```java
 // AsgClientService.java - SOLID COMPLIANT
 public class AsgClientService extends Service {
     private final IServiceLifecycleManager lifecycleManager;
     private final Map<String, IEventHandler> eventHandlers;
     private final IConfigurationManager configurationManager;
-    
+
     public AsgClientService(IServiceLifecycleManager lifecycleManager,
                           List<IEventHandler> eventHandlers,
                           IConfigurationManager configurationManager) {
@@ -341,18 +356,18 @@ public class AsgClientService extends Service {
             .collect(Collectors.toMap(IEventHandler::getEventType, h -> h));
         this.configurationManager = configurationManager;
     }
-    
+
     @Override
     public void onCreate() {
         super.onCreate();
         lifecycleManager.initialize();
     }
-    
+
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         return lifecycleManager.onStartCommand(intent, flags, startId);
     }
-    
+
     @Override
     public void onDestroy() {
         super.onDestroy();
@@ -364,6 +379,7 @@ public class AsgClientService extends Service {
 ## 📊 **Before vs After Comparison**
 
 ### **❌ Before: SOLID Violations**
+
 ```
 CommandProcessor: 849 lines, 8+ responsibilities
 ├── Command parsing and routing
@@ -387,6 +403,7 @@ AsgClientService: 763 lines, 6+ responsibilities
 ```
 
 **Problems**:
+
 - ❌ **SRP Violation**: Multiple responsibilities per class
 - ❌ **OCP Violation**: Hard to extend without modification
 - ❌ **LSP Violation**: Mixed interface usage
@@ -396,6 +413,7 @@ AsgClientService: 763 lines, 6+ responsibilities
 - ❌ **Maintainability**: Changes affect multiple concerns
 
 ### **✅ After: SOLID Compliant**
+
 ```
 CommandProcessor: ~50 lines, 1 responsibility
 └── Command routing and delegation
@@ -420,6 +438,7 @@ StreamingEventHandler: ~30 lines, 1 responsibility
 ```
 
 **Benefits**:
+
 - ✅ **SRP Compliance**: Single responsibility per class
 - ✅ **OCP Compliance**: Easy to extend without modification
 - ✅ **LSP Compliance**: Interface-based dependencies
@@ -431,6 +450,7 @@ StreamingEventHandler: ~30 lines, 1 responsibility
 ## 🎯 **SOLID Principles Compliance**
 
 ### **1. Single Responsibility Principle (SRP) ✅**
+
 ```java
 // Each class has one responsibility
 CommandProcessor: Command routing only
@@ -443,13 +463,14 @@ StreamingEventHandler: Streaming events only
 ```
 
 ### **2. Open/Closed Principle (OCP) ✅**
+
 ```java
 // Easy to extend without modifying existing code
 // Add new command handler
 public class NewCommandHandler implements ICommandHandler {
     @Override
     public String getCommandType() { return "new_command"; }
-    
+
     @Override
     public boolean handleCommand(JSONObject data) {
         // Handle new command
@@ -461,6 +482,7 @@ commandHandlers.add(new NewCommandHandler());
 ```
 
 ### **3. Liskov Substitution Principle (LSP) ✅**
+
 ```java
 // Any implementation can be substituted
 ICommandHandler handler = new PhotoCommandHandler();
@@ -470,6 +492,7 @@ ICommandHandler handler = new MockPhotoCommandHandler();
 ```
 
 ### **4. Interface Segregation Principle (ISP) ✅**
+
 ```java
 // Focused interfaces
 ICommandHandler: Only command handling
@@ -479,6 +502,7 @@ IServiceLifecycleManager: Only lifecycle management
 ```
 
 ### **5. Dependency Inversion Principle (DIP) ✅**
+
 ```java
 // Depends on abstractions, not concretions
 private final ICommandHandler commandHandler; // Interface
@@ -490,6 +514,7 @@ private final IServiceLifecycleManager lifecycleManager; // Interface
 ## 🧪 **Testing Benefits**
 
 ### **Easy Mocking**
+
 ```java
 @Test
 public void testPhotoCommand() {
@@ -497,30 +522,31 @@ public void testPhotoCommand() {
     ICommandHandler mockHandler = mock(ICommandHandler.class);
     IResponseBuilder mockBuilder = mock(IResponseBuilder.class);
     ICommunicationManager mockComm = mock(ICommunicationManager.class);
-    
+
     // Create CommandProcessor with mocks
     CommandProcessor processor = new CommandProcessor(
         Arrays.asList(mockHandler), mockBuilder, mockComm);
-    
+
     // Test behavior
     when(mockHandler.getCommandType()).thenReturn("take_photo");
     when(mockHandler.handleCommand(any())).thenReturn(true);
-    
+
     // Verify interactions
     verify(mockHandler).handleCommand(any());
 }
 ```
 
 ### **Isolated Testing**
+
 ```java
 @Test
 public void testPhotoCommandHandler() {
     ICommandHandler handler = new PhotoCommandHandler();
-    
+
     // Test in isolation
     JSONObject data = new JSONObject();
     data.put("requestId", "test_id");
-    
+
     boolean success = handler.handleCommand(data);
     assertTrue(success);
 }
@@ -529,12 +555,13 @@ public void testPhotoCommandHandler() {
 ## 🚀 **Future Extensibility**
 
 ### **Adding New Commands**
+
 ```java
 // Easy to add new commands without modifying existing code
 public class NewFeatureCommandHandler implements ICommandHandler {
     @Override
     public String getCommandType() { return "new_feature"; }
-    
+
     @Override
     public boolean handleCommand(JSONObject data) {
         // Handle new feature command
@@ -543,12 +570,13 @@ public class NewFeatureCommandHandler implements ICommandHandler {
 ```
 
 ### **Adding New Events**
+
 ```java
 // Easy to add new events without modifying existing code
 public class NewEventHandler implements IEventHandler {
     @Override
     public String getEventType() { return "new_event"; }
-    
+
     @Override
     public boolean handleEvent(Intent intent) {
         // Handle new event
@@ -557,12 +585,13 @@ public class NewEventHandler implements IEventHandler {
 ```
 
 ### **Adding New Response Types**
+
 ```java
 // Easy to add new response types without modifying existing code
 public interface IResponseBuilder {
     // Existing methods
     JSONObject buildAckResponse(long messageId);
-    
+
     // New methods (extension)
     JSONObject buildNewFeatureResponse(String feature, Object data);
 }
@@ -573,6 +602,7 @@ public interface IResponseBuilder {
 ### **Original Problem**: CommandProcessor (849 lines) and AsgClientService (763 lines) violate SOLID principles
 
 ### **Refactoring Results**:
+
 1. ✅ **SRP Compliance**: Each class has single responsibility
 2. ✅ **OCP Compliance**: Easy to extend without modification
 3. ✅ **LSP Compliance**: Interface-based dependencies
@@ -583,10 +613,11 @@ public interface IResponseBuilder {
 8. ✅ **Extensibility**: Easy to add new functionality
 
 ### **Architecture Benefits**:
+
 - **Modular Design**: Each concern handled by separate class
 - **Plugin Architecture**: Easy to add new handlers
 - **Testable Design**: Each component can be tested in isolation
 - **Maintainable Code**: Changes affect only specific handlers
 - **Scalable Architecture**: Easy to add new features
 
-**Key Takeaway**: The refactored architecture follows SOLID principles completely, making the code more maintainable, testable, and extensible while reducing complexity and improving separation of concerns. 
+**Key Takeaway**: The refactored architecture follows SOLID principles completely, making the code more maintainable, testable, and extensible while reducing complexity and improving separation of concerns.
