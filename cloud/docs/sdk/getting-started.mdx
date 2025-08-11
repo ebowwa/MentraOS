@@ -1,0 +1,165 @@
+---
+title: "Getting Started with the SDK"
+description: "Everything you need to know to build apps with the MentraOS SDK"
+---
+
+## Installation
+
+Install the MentraOS SDK from npm:
+
+<CodeGroup>
+```bash npm
+npm install @mentraos/sdk
+```
+
+```bash yarn
+yarn add @mentraos/sdk
+```
+
+```bash pnpm
+pnpm add @mentraos/sdk
+```
+</CodeGroup>
+
+## Basic Concepts
+
+The MentraOS SDK provides two main classes:
+
+<CardGroup cols={2}>
+  <Card title="AppServer" icon="server">
+    Handles webhook registration and session lifecycle
+  </Card>
+  <Card title="AppSession" icon="plug">
+    Manages the connection to a specific user session
+  </Card>
+</CardGroup>
+
+## Creating an App Server
+
+```typescript
+import { AppServer } from '@mentraos/sdk';
+
+const server = new AppServer({
+  packageName: 'com.yourcompany.yourapp',  // Your app's unique identifier
+  apiKey: process.env.MENTRAOS_API_KEY,     // Your API key from dev portal
+  port: 3000,                               // Port to listen on
+  webhookPath: '/webhook',                  // Optional: webhook endpoint
+  publicDir: './public'                     // Optional: static files
+});
+```
+
+## Handling Sessions
+
+When a user starts your app, you'll receive a session:
+
+```typescript
+server.onSession(async (session, sessionId, userId) => {
+  // session: AppSession instance for this user
+  // sessionId: Unique identifier for this session
+  // userId: User's email address
+  
+  console.log(`New session ${sessionId} for user ${userId}`);
+  
+  // Your app logic goes here
+});
+```
+
+## Session Lifecycle
+
+<Steps>
+  <Step title="User starts app">
+    User says "Start [app name]" or taps in the mobile app
+  </Step>
+  <Step title="Cloud sends webhook">
+    MentraOS Cloud sends a webhook to your server
+  </Step>
+  <Step title="Session created">
+    Your `onSession` handler is called with an AppSession
+  </Step>
+  <Step title="Real-time connection">
+    AppSession connects via WebSocket for real-time data
+  </Step>
+  <Step title="Session ends">
+    User stops app or connection is lost
+  </Step>
+</Steps>
+
+## TypeScript Support
+
+The SDK is written in TypeScript and provides full type definitions:
+
+```typescript
+import { 
+  AppServer,
+  AppSession,
+  TranscriptionData,
+  ButtonPress,
+  PhotoData,
+  LocationUpdate
+} from '@mentraos/sdk';
+
+// All types are available for your use
+```
+
+## Environment Variables
+
+Recommended environment variables:
+
+```bash
+# Required
+MENTRAOS_API_KEY=your_api_key_here
+
+# Optional
+PORT=3000
+NODE_ENV=production
+LOG_LEVEL=info
+```
+
+## Project Structure
+
+A typical MentraOS app project:
+
+```
+my-mentraos-app/
+├── src/
+│   ├── index.ts        # Main server file
+│   ├── handlers/       # Event handlers
+│   └── utils/          # Helper functions
+├── public/             # Static assets
+├── .env                # Environment variables
+├── package.json
+└── tsconfig.json       # TypeScript config
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="AppSession Reference"
+    icon="plug"
+    href="/sdk/app-session"
+  >
+    Learn about the AppSession class and its methods
+  </Card>
+  <Card
+    title="Event Handlers"
+    icon="bolt"
+    href="/sdk/event-handlers"
+  >
+    Handle transcriptions, button presses, and more
+  </Card>
+  <Card
+    title="Display Layouts"
+    icon="tv"
+    href="/sdk/display-layouts"
+  >
+    Show content on the glasses display
+  </Card>
+  <Card
+    title="Hardware Modules"
+    icon="microchip"
+    href="/sdk/hardware-modules"
+  >
+    Access camera, audio, location, and sensors
+  </Card>
+</CardGroup>
