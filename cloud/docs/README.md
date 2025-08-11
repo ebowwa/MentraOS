@@ -10,7 +10,7 @@ MentraOS Cloud is the backend infrastructure that connects smart glasses to thir
 
 Install Mintlify CLI:
 ```bash
-npm i -g mintlify
+bun install -g mintlify
 ```
 
 Run the docs locally:
@@ -38,4 +38,4 @@ View your local preview at `http://localhost:3000`.
 
 - [MentraOS GitHub](https://github.com/Mentra-Community/MentraOS)
 - [Discord Community](https://discord.gg/5ukNvkEAqT)
-- [NPM SDK Package](https://www.npmjs.com/package/@mentraos/sdk)
+- [SDK Package](https://www.npmjs.com/package/@mentraos/sdk)

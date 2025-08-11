@@ -173,7 +173,7 @@ Each manager should focus on one domain:
 
 ```typescript
 class ExampleManager {
-  private intervalId?: NodeJS.Timeout;
+  private intervalId?: Timer;
   
   startProcessing() {
     this.intervalId = setInterval(() => {
@@ -248,7 +248,7 @@ clearBuffers(): void
 
 ## Threading Considerations
 
-- All managers run in the Node.js event loop
+- All managers run in the Bun runtime event loop
 - Long operations should be async or use workers
 - Avoid blocking operations
 - Use timers for periodic tasks

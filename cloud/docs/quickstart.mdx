@@ -8,8 +8,8 @@ description: "Get your first MentraOS app running in 5 minutes"
 Before you begin, make sure you have:
 
 <Steps>
-  <Step title="Node.js">
-    Install [Node.js](https://nodejs.org/) version 16 or higher
+  <Step title="Bun">
+    Install [Bun](https://bun.sh) - our JavaScript runtime and package manager
   </Step>
   <Step title="Developer Account">
     Sign up at [dev.mentraos.com](https://dev.mentraos.com) to get your API key
@@ -23,19 +23,9 @@ Before you begin, make sure you have:
 
 ### 1. Install the SDK
 
-<CodeGroup>
-```bash npm
-npm install @mentraos/sdk
+```bash
+bun add @mentraos/sdk
 ```
-
-```bash yarn
-yarn add @mentraos/sdk
-```
-
-```bash pnpm
-pnpm add @mentraos/sdk
-```
-</CodeGroup>
 
 ### 2. Create Your App
 
@@ -95,7 +85,7 @@ MENTRAOS_API_KEY=your_api_key_here
 ### 4. Run Your App
 
 ```bash
-node app.js
+bun run app.js
 ```
 
 ## Connect Your App

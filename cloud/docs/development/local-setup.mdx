@@ -53,7 +53,7 @@ Here's a complete example with all variables:
 # Base Configuration
 NODE_ENV=development
 CLOUD_VERSION=2.0.0
-PORT=80  # Note: Docker maps this to 8002 externally
+PORT=80  # IMPORTANT: Must be 80 for Docker. External access is on 8002
 
 # Services URLs
 CLOUD_HOST_NAME=cloud
@@ -135,7 +135,8 @@ ELEVENLABS_DEFAULT_VOICE_ID=your-default-voice-id
 ### Essential vs Optional Variables
 
 **Essential for basic operation:**
-- `PORT`, `NODE_ENV`, `CLOUD_VERSION`
+- `PORT=80` - **Must be 80** for Docker port mapping to work
+- `NODE_ENV`, `CLOUD_VERSION`
 - `MONGO_URL` - MongoDB connection string
 - `SUPABASE_*` - All Supabase variables for authentication
 - `AUGMENTOS_AUTH_JWT_SECRET` - JWT signing secret
@@ -237,25 +238,29 @@ volumes:
 The cloud runs in Docker with all dependencies:
 
 ```bash
-# Quick setup (recommended)
-./scripts/docker-setup.sh
-
-# Or manually:
+cd MentraOS/cloud/
+# then
+bun install
+# then:
 bun run dev
 ```
 
 This:
 - Builds and starts the cloud service in Docker
-- Maps internal port 80 to external port 8002
+- Maps internal port 80 (from .env) to external port 8002 (from docker-compose.dev.yml)
 - Mounts your code for hot reloading
 - Installs dependencies and builds the SDK
+
+<Warning>
+The `PORT=80` in your `.env` file is critical. Docker expects the service to run on port 80 internally, which it then maps to 8002 externally. If you set a different PORT in .env, the service won't be accessible.
+</Warning>
 
 ### What Docker Does
 
 The `docker-compose.dev.yml` file:
 - Creates a container for the cloud service
 - Mounts your local code into `/app`
-- Shares node_modules in a Docker volume
+- Shares bun dependencies in a Docker volume
 - Runs: `bun install && cd packages/sdk && bun run build && cd ../cloud && bun install && bun run dev`
 
 ### Verify Services
@@ -629,10 +634,9 @@ db.apps.insertOne({
    ```json
    // .vscode/launch.json
    {
-     "type": "node",
+     "type": "bun",
      "request": "launch",
      "name": "Debug Cloud",
-     "runtimeExecutable": "bun",
      "program": "${workspaceFolder}/packages/cloud/src/index.ts",
      "env": {
        "NODE_ENV": "development"
