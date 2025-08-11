@@ -1,4 +1,4 @@
-import React, {useState} from "react"
+import React, {useCallback, useState} from "react"
 import {TouchableOpacity, ViewStyle} from "react-native"
 import Icon from "react-native-vector-icons/MaterialIcons"
 import CoreCommunicator from "@/bridge/CoreCommunicator"
@@ -6,6 +6,7 @@ import {Text} from "@/components/ignite"
 import {ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {useSafeAreaInsets} from "react-native-safe-area-context"
+import {useFocusEffect} from "@react-navigation/native"
 
 interface SimulatedGlassesControlsProps {}
 
@@ -13,6 +14,16 @@ export const SimulatedGlassesControls: React.FC<SimulatedGlassesControlsProps> =
   const {themed, theme} = useAppTheme()
   const insets = useSafeAreaInsets()
   const [showDashboard, setShowDashboard] = useState(false)
+
+  // when this is unmounted, set the dashboard position to down:
+  useFocusEffect(
+    useCallback(() => {
+      return () => {
+        console.log("SimulatedGlassesControls: unmounted, setting dashboard position to down")
+        setDashboardPosition(false)
+      }
+    }, []),
+  )
 
   const setDashboardPosition = async (isHeadUp: boolean) => {
     console.log("SimulatedGlassesControls: setting dashboard position to", isHeadUp ? "up" : "down")
