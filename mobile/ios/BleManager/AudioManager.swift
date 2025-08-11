@@ -32,7 +32,7 @@ class AudioManager: NSObject {
     private func setupAudioSession() {
         do {
             let audioSession = AVAudioSession.sharedInstance()
-            try audioSession.setCategory(.playback, mode: .default, options: [.allowBluetoothHFP, .allowBluetoothA2DP])
+            try audioSession.setCategory(.playback, mode: .voiceChat, options: [.allowBluetoothHFP, .allowBluetoothA2DP])
             try audioSession.setActive(true)
             CoreCommsService.log("AudioManager: Audio session configured successfully")
         } catch {

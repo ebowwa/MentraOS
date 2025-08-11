@@ -1631,7 +1631,7 @@ struct ViewState {
             "is_searching": isSearching,
             // only on if recording from glasses:
             // TODO: this isn't robust:
-            "is_mic_enabled_for_frontend": micEnabled && (preferredMic == "glasses") && somethingConnected,
+            "is_mic_enabled_for_frontend": micEnabled && (preferredMic == "glasses") && isSomethingConnected(),
             "sensing_enabled": sensingEnabled,
             "power_saving_mode": powerSavingMode,
             "always_on_status_bar": alwaysOnStatusBar,
