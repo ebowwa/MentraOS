@@ -29,49 +29,53 @@ bun add @mentraos/sdk
 
 ### 2. Create Your App
 
-Create a new file `app.js`:
+Create a new file `app.ts` with strict TypeScript:
 
-```javascript
-import { AppServer } from '@mentraos/sdk';
+```typescript
+import { AppServer, AppSession } from '@mentraos/sdk';
 
-// Create your app server
-const server = new AppServer({
+// Extend AppServer and override onSession
+class MyAppServer extends AppServer {
+  protected async onSession(
+    session: AppSession,
+    sessionId: string, // Format: "userId-packageName"
+    userId: string
+  ): Promise<void> {
+    console.log(`New session: ${sessionId} for user: ${userId}`);
+    
+    // Show welcome message
+    await session.layouts.showTextWall('Hello from MentraOS!');
+    
+    // Listen for transcriptions
+    session.events.onTranscription((data) => {
+      console.log(`User said: ${data.text}`);
+      
+      // Respond to "hello"
+      if (data.text.toLowerCase().includes('hello')) {
+        session.layouts.showReferenceCard({
+          title: 'Greeting',
+          text: 'Hello! How can I help you today?'
+        });
+      }
+    });
+    
+    // Listen for button presses
+    session.events.onButtonPress((data) => {
+      console.log(`Button pressed: ${data.buttonId}`);
+      session.layouts.showTextWall('Button pressed!');
+    });
+  }
+}
+
+// Create and start the server
+const server = new MyAppServer({
   packageName: 'com.example.myapp',
-  apiKey: process.env.MENTRAOS_API_KEY,
+  apiKey: process.env.MENTRAOS_API_KEY!,
   port: 3000
 });
 
-// Handle new sessions
-server.onSession(async (session, sessionId, userId) => {
-  console.log(`New session: ${sessionId} for user: ${userId}`);
-  
-  // Show welcome message
-  await session.layouts.showTextWall('Hello from MentraOS!');
-  
-  // Listen for transcriptions
-  session.events.onTranscription((data) => {
-    console.log(`User said: ${data.text}`);
-    
-    // Respond to "hello"
-    if (data.text.toLowerCase().includes('hello')) {
-      session.layouts.showReferenceCard({
-        title: 'Greeting',
-        text: 'Hello! How can I help you today?'
-      });
-    }
-  });
-  
-  // Listen for button presses
-  session.events.onButtonPress((data) => {
-    console.log(`Button pressed: ${data.buttonId}`);
-    session.layouts.showTextWall('Button pressed!');
-  });
-});
-
-// Start the server
-server.start().then(() => {
-  console.log('App server running on port 3000');
-});
+await server.start();
+console.log('App server running on port 3000');
 ```
 
 ### 3. Set Your API Key
@@ -85,7 +89,7 @@ MENTRAOS_API_KEY=your_api_key_here
 ### 4. Run Your App
 
 ```bash
-bun run app.js
+bun run app.ts
 ```
 
 ## Connect Your App

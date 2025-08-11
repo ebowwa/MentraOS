@@ -17,41 +17,68 @@ The MentraOS SDK provides two main classes:
 
 <CardGroup cols={2}>
   <Card title="AppServer" icon="server">
-    Handles webhook registration and session lifecycle
+    Base class you extend to create your app server. Handles webhook registration and session lifecycle.
   </Card>
   <Card title="AppSession" icon="plug">
-    Manages the connection to a specific user session
+    Manages the connection to a specific user session. Created automatically when users start your app.
   </Card>
 </CardGroup>
+
+<Note>
+**Important**: Apps should extend `AppServer` and override the `onSession` method. The sessionId parameter follows the format `"userId-packageName"` (e.g., `"user@example.com-com.example.app"`).
+</Note>
 
 ## Creating an App Server
 
 ```typescript
-import { AppServer } from '@mentraos/sdk';
+import { AppServer, AppSession } from '@mentraos/sdk';
 
-const server = new AppServer({
+// Extend AppServer to create your app
+class MyAppServer extends AppServer {
+  // Override onSession to handle new user sessions
+  protected async onSession(
+    session: AppSession,
+    sessionId: string,  // Format: "userId-packageName" 
+    userId: string      // User's email address
+  ): Promise<void> {
+    // Your app logic goes here
+    console.log(`New session ${sessionId} for user ${userId}`);
+  }
+}
+
+// Create instance with configuration
+const server = new MyAppServer({
   packageName: 'com.yourcompany.yourapp',  // Your app's unique identifier
-  apiKey: process.env.MENTRAOS_API_KEY,     // Your API key from dev portal
-  port: 3000,                               // Port to listen on
-  webhookPath: '/webhook',                  // Optional: webhook endpoint
-  publicDir: './public'                     // Optional: static files
+  apiKey: process.env.MENTRAOS_API_KEY!,    // Your API key from dev portal
+  port: 3000,                               // Port to listen on (default: 7010)
+  publicDir: './public'                     // Optional: static files directory
 });
 ```
 
 ## Handling Sessions
 
-When a user starts your app, you'll receive a session:
+When a user starts your app, your `onSession` method is called:
 
 ```typescript
-server.onSession(async (session, sessionId, userId) => {
-  // session: AppSession instance for this user
-  // sessionId: Unique identifier for this session
-  // userId: User's email address
-  
+protected async onSession(
+  session: AppSession,    // Session instance for this user
+  sessionId: string,      // Session ID (format: "userId-packageName")
+  userId: string          // User's email address
+): Promise<void> {
   console.log(`New session ${sessionId} for user ${userId}`);
   
-  // Your app logic goes here
-});
+  // Set up event handlers
+  session.events.onTranscription((data) => {
+    // Handle speech-to-text
+  });
+  
+  session.events.onButtonPress((data) => {
+    // Handle button presses
+  });
+  
+  // Show initial UI
+  await session.layouts.showTextWall('Welcome!');
+}
 ```
 
 ## Session Lifecycle
@@ -112,12 +139,39 @@ A typical MentraOS app project:
 my-mentraos-app/
 ├── src/
 │   ├── index.ts        # Main server file
+│   ├── server.ts       # Your AppServer class
 │   ├── handlers/       # Event handlers
 │   └── utils/          # Helper functions
 ├── public/             # Static assets
 ├── .env                # Environment variables
 ├── package.json
-└── tsconfig.json       # TypeScript config
+├── tsconfig.json       # TypeScript config
+└── bun.lockb           # Bun lock file
+```
+
+### TypeScript Configuration
+
+Use strict TypeScript for better type safety:
+
+```json
+// tsconfig.json
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ES2022",
+    "lib": ["ES2022"],
+    "moduleResolution": "bundler",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "allowJs": false,
+    "types": ["bun-types"]
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules"]
+}
 ```
 
 ## Next Steps
