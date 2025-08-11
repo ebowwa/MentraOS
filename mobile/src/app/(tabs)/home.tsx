@@ -125,19 +125,22 @@ export default function Homepage() {
           setOnboardingTarget("glasses")
           setShowOnboardingSpotlight(true)
         } else {
-          // Check if Live Captions app exists and is not running
-          const liveCaptionsApp = appStatus.find(
-            app =>
-              app.packageName === "com.augmentos.livecaptions" ||
-              app.packageName === "cloud.augmentos.live-captions" ||
-              app.packageName === "com.mentra.livecaptions",
-          )
+          // // Check if Live Captions app exists and is not running
+          // const liveCaptionsApp = appStatus.find(
+          //   app =>
+          //     app.packageName === "com.augmentos.livecaptions" ||
+          //     app.packageName === "cloud.augmentos.live-captions" ||
+          //     app.packageName === "com.mentra.livecaptions",
+          // )
 
-          if (liveCaptionsApp && !liveCaptionsApp.is_running) {
-            setOnboardingTarget("livecaptions")
-            setLiveCaptionsPackageName(liveCaptionsApp.packageName)
-            setShowOnboardingSpotlight(true)
-          }
+          // if (liveCaptionsApp && !liveCaptionsApp.is_running) {
+          //   setOnboardingTarget("livecaptions")
+          //   setLiveCaptionsPackageName(liveCaptionsApp.packageName)
+          //   setShowOnboardingSpotlight(true)
+          // }
+          // Skip Live Captions spotlight - mark onboarding as complete once glasses are connected                                  │ │
+          setShowOnboardingSpotlight(false)
+          await saveSetting(SETTINGS_KEYS.ONBOARDING_COMPLETED, true)
         }
       }
     }
@@ -239,8 +242,10 @@ export default function Homepage() {
 
       <CloudConnection />
       <SensingDisabledWarning />
-      <ConnectedGlasses showTitle={false} />
-      <DeviceToolbar />
+      <View>
+        <ConnectedGlasses showTitle={false} />
+        <DeviceToolbar />
+      </View>
       <View ref={connectButtonRef}>
         <ConnectDeviceButton />
       </View>

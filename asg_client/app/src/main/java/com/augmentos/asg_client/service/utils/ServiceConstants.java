@@ -65,7 +65,7 @@ public final class ServiceConstants {
     public static final String RESPONSE_VIDEO_RECORDING_STATUS = "video_recording_status";
     public static final String RESPONSE_RTMP_STATUS = "rtmp_status";
     public static final String RESPONSE_WIFI_STATUS = "wifi_status";
-    public static final String RESPONSE_WIFI_SCAN_RESULTS = "wifi_scan_results";
+    public static final String RESPONSE_WIFI_SCAN_RESULT = "wifi_scan_result";
     public static final String RESPONSE_PING = "pong";
     public static final String RESPONSE_GLASSES_READY = "glasses_ready";
     public static final String RESPONSE_DOWNLOAD_PROGRESS = "download_progress";

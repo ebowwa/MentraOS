@@ -8,9 +8,15 @@ export interface PhotoInfo {
   download: string
   size: number
   modified: string
+  mime_type?: string
   is_video?: boolean
   thumbnail_data?: string
   downloaded_at?: number
+  // New fields for filesystem storage
+  filePath?: string
+  thumbnailPath?: string
+  // Glasses model that captured this media
+  glassesModel?: string
 }
 
 export interface GalleryResponse {

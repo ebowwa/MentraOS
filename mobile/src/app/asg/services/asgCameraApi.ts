@@ -4,6 +4,8 @@
  */
 
 import {PhotoInfo, GalleryResponse, ServerStatus, HealthResponse} from "../types"
+import RNFS from "react-native-fs"
+import {localStorageService} from "./localStorageService"
 
 export class AsgCameraApiClient {
   private baseUrl: string
@@ -141,13 +143,26 @@ export class AsgCameraApiClient {
         const data = await response.json()
         console.log(`[ASG Camera API] JSON Response received:`, data)
         return data
-      } else if (contentType?.includes("image/")) {
-        // For image responses, return the blob
+      } else if (contentType?.includes("image/") || contentType?.includes("application/octet-stream")) {
+        // For image responses and binary data (including AVIF), return the blob
         const blob = await response.blob()
-        console.log(`[ASG Camera API] Image Response received:`, {
+        console.log(`[ASG Camera API] Binary/Image Response received:`, {
           size: blob.size,
           type: blob.type,
         })
+
+        // Quick check if this might be an AVIF file
+        if (contentType?.includes("application/octet-stream") && blob.size > 12) {
+          const arrayBuffer = await blob.arrayBuffer()
+          const bytes = new Uint8Array(arrayBuffer.slice(4, 12))
+          const ftypSignature = String.fromCharCode(...bytes)
+          if (ftypSignature === "ftypavif") {
+            console.log(`[ASG Camera API] Detected AVIF file in response`)
+          }
+          // Return a new blob since we consumed the original
+          return new Blob([arrayBuffer], {type: blob.type}) as T
+        }
+
         return blob as T
       } else {
         // For text responses
@@ -284,12 +299,18 @@ export class AsgCameraApiClient {
       const photos = response.data.photos
       console.log(`[ASG Camera API] Found ${photos.length} photos`)
 
-      // Ensure each photo has proper URLs
-      const processedPhotos = photos.map(photo => ({
-        ...photo,
-        url: this.constructPhotoUrl(photo.name),
-        download: this.constructDownloadUrl(photo.name),
-      }))
+      // Ensure each photo has proper URLs and detect AVIF files
+      const processedPhotos = photos.map(photo => {
+        // Check if filename suggests AVIF (no extension or .avif)
+        const mightBeAvif = !photo.name.includes(".") || photo.name.match(/\.(avif|avifs)$/i)
+
+        return {
+          ...photo,
+          url: this.constructPhotoUrl(photo.name),
+          download: this.constructDownloadUrl(photo.name),
+          mime_type: photo.mime_type || (mightBeAvif ? "image/avif" : undefined),
+        }
+      })
 
       console.log(`[ASG Camera API] Processed photos:`, processedPhotos)
       return processedPhotos
@@ -496,11 +517,15 @@ export class AsgCameraApiClient {
     lastSyncTime?: number,
     includeThumbnails: boolean = false,
   ): Promise<{
-    client_id: string
-    changed_files: PhotoInfo[]
-    deleted_files: string[]
-    server_time: number
-    total_files: number
+    status: string
+    data: {
+      client_id: string
+      changed_files: PhotoInfo[]
+      deleted_files: string[]
+      server_time: number
+      total_changed: number
+      total_size: number
+    }
   }> {
     const params = new URLSearchParams({
       client_id: clientId,
@@ -545,7 +570,13 @@ export class AsgCameraApiClient {
           try {
             const fileData = await this.downloadFile(file.name, includeThumbnails)
             results.total_size += file.size
-            return {...file, ...fileData}
+            // Combine file info with downloaded file paths
+            return {
+              ...file,
+              filePath: fileData.filePath,
+              thumbnailPath: fileData.thumbnailPath,
+              mime_type: fileData.mime_type || file.mime_type,
+            }
           } catch (error) {
             console.error(`Failed to download ${file.name}:`, error)
             results.failed.push(file.name)
@@ -581,10 +612,27 @@ export class AsgCameraApiClient {
     }
 
     try {
-      const response = await this.makeRequest("/delete", {
+      const response = await this.makeRequest("/api/delete-files", {
         method: "POST",
         body: JSON.stringify({files: fileNames}),
       })
+
+      // Parse the response format from the ASG server
+      if (response.data && response.data.results) {
+        const deleted: string[] = []
+        const failed: string[] = []
+
+        for (const result of response.data.results) {
+          if (result.success) {
+            deleted.push(result.file)
+          } else {
+            failed.push(result.file)
+          }
+        }
+
+        console.log(`[ASG Camera API] Delete results: ${deleted.length} deleted, ${failed.length} failed`)
+        return {deleted, failed}
+      }
 
       return response
     } catch (error) {
@@ -606,6 +654,159 @@ export class AsgCameraApiClient {
     })
 
     return response
+  }
+
+  /**
+   * Download a file from the server and save to filesystem
+   */
+  async downloadFile(
+    filename: string,
+    includeThumbnail: boolean = false,
+  ): Promise<{
+    filePath: string
+    thumbnailPath?: string
+    mime_type: string
+  }> {
+    console.log(`[ASG Camera API] Downloading file: ${filename}`)
+
+    try {
+      // Get the local file path where we'll save this
+      const localFilePath = localStorageService.getPhotoFilePath(filename)
+      const localThumbnailPath = includeThumbnail ? localStorageService.getThumbnailFilePath(filename) : undefined
+
+      // Determine if this is a video file based on extension
+      const isVideo = filename.match(/\.(mp4|mov|avi|webm|mkv)$/i)
+
+      // Use /api/download for videos (full file) and /api/photo for images
+      const downloadEndpoint = isVideo ? "download" : "photo"
+      const downloadUrl = `${this.baseUrl}/api/${downloadEndpoint}?file=${encodeURIComponent(filename)}`
+
+      // Download the file directly to filesystem
+      console.log(`[ASG Camera API] Downloading ${isVideo ? "video" : "photo"} from: ${downloadUrl}`)
+      console.log(`[ASG Camera API] Saving to: ${localFilePath}`)
+
+      const downloadResult = await RNFS.downloadFile({
+        fromUrl: downloadUrl,
+        toFile: localFilePath,
+        headers: {
+          "Accept": "*/*",
+          "User-Agent": "MentraOS-Mobile/1.0",
+        },
+        progressDivider: 10,
+        begin: res => {
+          console.log(`[ASG Camera API] Download started for ${filename}, size: ${res.contentLength}`)
+        },
+        progress: res => {
+          const percentage = Math.round((res.bytesWritten / res.contentLength) * 100)
+          if (percentage % 20 === 0) {
+            // Log every 20%
+            console.log(`[ASG Camera API] Download progress ${filename}: ${percentage}%`)
+          }
+        },
+      }).promise
+
+      if (downloadResult.statusCode !== 200) {
+        throw new Error(`Failed to download ${filename}: HTTP ${downloadResult.statusCode}`)
+      }
+
+      console.log(`[ASG Camera API] Successfully downloaded ${filename} to filesystem`)
+
+      // Detect MIME type by checking file signature
+      let mimeType = "application/octet-stream"
+      try {
+        // Read first 20 bytes to check file signature
+        const firstBytes = await RNFS.read(localFilePath, 20, 0, "base64")
+        const decodedBytes = atob(firstBytes)
+
+        // Check for AVIF signature
+        if (decodedBytes.length > 11) {
+          const ftypSignature = decodedBytes.substring(4, 12)
+          if (ftypSignature === "ftypavif") {
+            mimeType = "image/avif"
+            console.log(`[ASG Camera API] Detected AVIF file: ${filename}`)
+          } else if (decodedBytes.substring(0, 2) === "\xFF\xD8") {
+            mimeType = "image/jpeg"
+          } else if (decodedBytes.substring(0, 8) === "\x89PNG\r\n\x1a\n") {
+            mimeType = "image/png"
+          }
+        }
+
+        // Also check by extension
+        if (mimeType === "application/octet-stream") {
+          if (filename.toLowerCase().endsWith(".jpg") || filename.toLowerCase().endsWith(".jpeg")) {
+            mimeType = "image/jpeg"
+          } else if (filename.toLowerCase().endsWith(".png")) {
+            mimeType = "image/png"
+          } else if (filename.toLowerCase().endsWith(".mp4")) {
+            mimeType = "video/mp4"
+          } else if (!filename.includes(".")) {
+            // Files without extension are likely AVIF
+            mimeType = "image/avif"
+          }
+        }
+      } catch (e) {
+        console.warn(`[ASG Camera API] Could not detect MIME type for ${filename}:`, e)
+      }
+
+      // Download thumbnail if requested and it's a video
+      let thumbnailPath: string | undefined
+      if (includeThumbnail && filename.toLowerCase().match(/\.(mp4|mov|avi|mkv|webm)$/)) {
+        try {
+          console.log(`[ASG Camera API] Downloading thumbnail for ${filename}`)
+          console.log(`[ASG Camera API] Using /api/photo endpoint for video thumbnail`)
+
+          // The server's /api/photo endpoint serves thumbnails for video files
+          // It detects video files and automatically generates/serves thumbnails instead of the full video
+          const thumbResult = await RNFS.downloadFile({
+            fromUrl: `${this.baseUrl}/api/photo?file=${encodeURIComponent(filename)}`,
+            toFile: localThumbnailPath!,
+            headers: {
+              "Accept": "image/*",
+              "User-Agent": "MentraOS-Mobile/1.0",
+            },
+            begin: res => {
+              console.log(`[ASG Camera API] Thumbnail download started for ${filename}, size: ${res.contentLength}`)
+            },
+            progress: res => {
+              const percentage = Math.round((res.bytesWritten / res.contentLength) * 100)
+              if (percentage % 25 === 0) {
+                console.log(`[ASG Camera API] Thumbnail download progress ${filename}: ${percentage}%`)
+              }
+            },
+          }).promise
+
+          console.log(
+            `[ASG Camera API] Thumbnail download result for ${filename}: status=${thumbResult.statusCode}, bytesWritten=${thumbResult.bytesWritten}`,
+          )
+
+          if (thumbResult.statusCode === 200) {
+            thumbnailPath = localThumbnailPath
+            console.log(`[ASG Camera API] Successfully downloaded thumbnail to: ${thumbnailPath}`)
+
+            // Verify the file exists
+            const exists = await RNFS.exists(thumbnailPath)
+            console.log(`[ASG Camera API] Thumbnail file exists: ${exists}`)
+          } else {
+            console.warn(`[ASG Camera API] Thumbnail download failed with status: ${thumbResult.statusCode}`)
+          }
+        } catch (error) {
+          console.warn(`[ASG Camera API] Failed to download thumbnail for ${filename}:`, error)
+        }
+      } else {
+        console.log(
+          `[ASG Camera API] Skipping thumbnail download - includeThumbnail: ${includeThumbnail}, filename: ${filename}, is video extension: ${filename.toLowerCase().match(/\.(mp4|mov|avi|mkv|webm)$/) ? "yes" : "no"}`,
+        )
+      }
+
+      return {
+        filePath: localFilePath,
+        thumbnailPath: thumbnailPath,
+        mime_type: mimeType,
+      }
+    } catch (error) {
+      console.error(`[ASG Camera API] Error downloading file ${filename}:`, error)
+      throw error
+    }
   }
 }
 

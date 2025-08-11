@@ -53,8 +53,11 @@ export const AppsGridViewRoot: React.FC<AppsGridViewProps> = ({
   const touchableRefs = useRef<{[key: string]: React.Component | null}>({})
 
   const handleAppPress = (app: AppModel) => {
-    setSelectedApp(app)
-    setPopoverVisible(true)
+    // Ensure we have a valid ref before showing popover
+    if (touchableRefs.current[app.packageName]) {
+      setSelectedApp(app)
+      setPopoverVisible(true)
+    }
   }
 
   const handlePopoverClose = () => {
@@ -94,7 +97,9 @@ export const AppsGridViewRoot: React.FC<AppsGridViewProps> = ({
     return (
       <TouchableOpacity
         ref={ref => {
-          touchableRefs.current[item.packageName] = ref
+          if (item.packageName && item.packageName !== "") {
+            touchableRefs.current[item.packageName] = ref
+          }
         }}
         key={item.packageName}
         style={themed($gridItem)}
@@ -116,7 +121,7 @@ export const AppsGridViewRoot: React.FC<AppsGridViewProps> = ({
   // if the list is empty, show a message
   if (apps.length === 0) {
     return (
-      <View style={[themed($container), {marginTop: theme.spacing.lg}]}>
+      <View style={[themed($container)]}>
         <EmptyAppsView statusMessageKey={"home:noActiveApps"} activeAppsMessageKey={"home:emptyActiveAppListInfo"} />
       </View>
     )
@@ -141,9 +146,9 @@ export const AppsGridViewRoot: React.FC<AppsGridViewProps> = ({
         contentContainerStyle={themed($gridContainer)}
       />
 
-      {selectedApp && touchableRefs.current[selectedApp.packageName] && (
+      {selectedApp && touchableRefs.current[selectedApp.packageName] && popoverVisible && (
         <Popover
-          from={touchableRefs.current[selectedApp.packageName]!}
+          from={touchableRefs.current[selectedApp.packageName]}
           isVisible={popoverVisible}
           onRequestClose={handlePopoverClose}
           popoverStyle={themed($popoverStyle)}
@@ -242,13 +247,8 @@ export const AppsGridView = React.memo(AppsGridViewRoot, (prevProps, nextProps) 
 })
 
 const $container: ThemedStyle<ViewStyle> = ({spacing, colors}) => ({
-  // marginTop: spacing.md,
-  paddingTop: spacing.md,
-  backgroundColor: colors.background,
-  borderRadius: spacing.md,
-  marginHorizontal: spacing.lg,
-  borderWidth: spacing.xxxs,
-  borderColor: colors.border,
+  // All styling handled by parent container
+  paddingHorizontal: spacing.sm, // Reduced padding
 })
 
 const $gridContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
@@ -256,15 +256,15 @@ const $gridContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
 })
 
 const $row: ThemedStyle<ViewStyle> = ({spacing}) => ({
-  justifyContent: "space-between",
-  paddingHorizontal: spacing.md,
+  justifyContent: "space-evenly",
+  // Remove padding since container already has it
 })
 
 const $gridItem: ThemedStyle<ViewStyle> = ({spacing}) => ({
-  // width: (SCREEN_WIDTH - spacing.md * 2 - spacing.sm * 4) / GRID_COLUMNS,
-  width: (SCREEN_WIDTH - spacing.lg * 4) / GRID_COLUMNS,
+  // Calculate width more accurately: screen width - container margins - container padding - small buffer
+  width: (SCREEN_WIDTH - spacing.lg * 2 - spacing.sm * 2 - spacing.xs * 4) / GRID_COLUMNS,
   alignItems: "center",
-  marginBottom: spacing.lg,
+  marginBottom: spacing.sm,
 })
 
 const $appContainer: ThemedStyle<ViewStyle> = () => ({
@@ -272,14 +272,16 @@ const $appContainer: ThemedStyle<ViewStyle> = () => ({
 })
 
 const $appIcon: ThemedStyle<ViewStyle> = ({spacing}) => ({
-  width: 64,
-  height: 64,
+  width: 60, // Slightly smaller
+  height: 60,
+  borderRadius: 30, // Half of width/height for perfect circle
   marginBottom: spacing.xs,
+  overflow: "hidden",
 })
 
 const $activeIndicator: ThemedStyle<ViewStyle> = ({colors}) => ({
   position: "absolute",
-  bottom: 4,
+  //bottom: 4,
   right: 4,
   width: 12,
   height: 12,

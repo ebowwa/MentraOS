@@ -130,7 +130,7 @@ public class CommunicationManager implements ICommunicationManager {
             
             try {
                 JSONObject response = new JSONObject();
-                response.put("type", "wifi_scan_results");
+                response.put("type", "wifi_scan_result");
                 response.put("timestamp", System.currentTimeMillis());
                 
                 org.json.JSONArray networksArray = new org.json.JSONArray();

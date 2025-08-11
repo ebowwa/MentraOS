@@ -615,6 +615,12 @@ public class AsgCameraServer extends AsgServer {
                 // Get file metadata before deletion for size calculation
                 FileMetadata metadata = fileManager.getFileMetadata(fileManager.getDefaultPackageName(), fileName);
                 long fileSize = metadata != null ? metadata.getFileSize() : 0;
+                
+                // If it's a video file, get the file reference before deletion for thumbnail cleanup
+                File videoFile = null;
+                if (isVideoFile(fileName)) {
+                    videoFile = fileManager.getFile(fileManager.getDefaultPackageName(), fileName);
+                }
 
                 // Delete the file
                 FileOperationResult deleteResult = fileManager.deleteFile(fileManager.getDefaultPackageName(), fileName);
@@ -629,6 +635,17 @@ public class AsgCameraServer extends AsgServer {
                     successCount++;
                     totalDeletedSize += fileSize;
                     logger.debug(TAG, "🗑️ Successfully deleted: " + fileName + " (" + fileSize + " bytes)");
+                    
+                    // If it's a video file, also delete its thumbnail
+                    if (videoFile != null) {
+                        logger.debug(TAG, "🗑️ Deleting thumbnail for video: " + fileName);
+                        boolean thumbnailDeleted = fileManager.getThumbnailManager().deleteThumbnailForVideo(videoFile);
+                        if (thumbnailDeleted) {
+                            logger.debug(TAG, "🗑️ Thumbnail deleted for video: " + fileName);
+                        } else {
+                            logger.warn(TAG, "🗑️ Failed to delete thumbnail for video: " + fileName);
+                        }
+                    }
                 } else {
                     failureCount++;
                     logger.warn(TAG, "🗑️ Failed to delete: " + fileName + " - " + deleteResult.getMessage());
