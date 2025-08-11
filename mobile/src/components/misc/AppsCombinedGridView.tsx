@@ -3,7 +3,7 @@ import {View, ViewStyle, TextStyle, Dimensions, Platform} from "react-native"
 import {TabView, SceneMap, TabBar} from "react-native-tab-view"
 import {AppsGridView} from "./AppsGridView"
 import {useAppTheme} from "@/utils/useAppTheme"
-import {ThemedStyle} from "@/theme"
+import {spacing, ThemedStyle} from "@/theme"
 import {Text} from "@/components/ignite"
 import {translate} from "@/i18n"
 // import { ScrollView } from "react-native-gesture-handler"
@@ -16,6 +16,7 @@ import {saveSetting} from "@/utils/SettingsHelper"
 import {SETTINGS_KEYS} from "@/consts"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import AppsIncompatibleList from "@/components/misc/AppsIncompatibleList"
+import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons"
 
 interface AppModel {
   name: string
@@ -48,6 +49,7 @@ const AppsCombinedGridViewRoot: React.FC<AppsCombinedGridViewProps> = () => {
 
   const backendComms = BackendServerComms.getInstance()
   const [index, setIndex] = useState(0)
+  const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false)
   const [routes] = useState([
     {key: "active", title: translate("home:activeApps")},
     {key: "inactive", title: translate("home:inactiveApps")},
@@ -187,6 +189,20 @@ const AppsCombinedGridViewRoot: React.FC<AppsCombinedGridViewProps> = () => {
     [appStatus],
   )
 
+  // Track when apps have initially loaded
+  React.useEffect(() => {
+    if (appStatus.length > 0 && !hasInitiallyLoaded) {
+      setHasInitiallyLoaded(true)
+
+      // Auto-switch to the tab that has apps
+      if (activeApps.length === 0 && inactiveApps.length > 0) {
+        setIndex(1) // Switch to inactive tab
+      } else if (activeApps.length > 0 && inactiveApps.length === 0) {
+        setIndex(0) // Switch to active tab
+      }
+    }
+  }, [appStatus, activeApps.length, inactiveApps.length, hasInitiallyLoaded])
+
   // If no apps at all
   // if (!hasActiveApps && !hasInactiveApps) {
   //   return (
@@ -199,7 +215,10 @@ const AppsCombinedGridViewRoot: React.FC<AppsCombinedGridViewProps> = () => {
   const ActiveRoute = useMemo(
     () => () => (
       <View style={[themed($scene), {minHeight: 300}]}>
-        <ScrollView showsVerticalScrollIndicator={true}>
+        <ScrollView
+          showsVerticalScrollIndicator={true}
+          contentContainerStyle={{paddingBottom: spacing.lg}} // Space for tab bar
+        >
           <AppsGridView
             apps={activeApps}
             onStartApp={handleStartApp}
@@ -216,7 +235,10 @@ const AppsCombinedGridViewRoot: React.FC<AppsCombinedGridViewProps> = () => {
   const InactiveRoute = useMemo(
     () => () => (
       <View style={themed($scene)}>
-        <ScrollView showsVerticalScrollIndicator={true}>
+        <ScrollView
+          showsVerticalScrollIndicator={true}
+          contentContainerStyle={{paddingBottom: spacing.lg}} // Space for tab bar
+        >
           <AppsGridView
             apps={inactiveApps}
             onStartApp={handleStartApp}
@@ -241,27 +263,76 @@ const AppsCombinedGridViewRoot: React.FC<AppsCombinedGridViewProps> = () => {
   )
 
   const renderTabBar = useCallback(
-    (props: any) => (
-      <TabBar
-        {...props}
-        indicatorStyle={themed($indicator)}
-        indicatorContainerStyle={{
-          width: "50%",
-        }}
-        style={themed($tabBar)}
-        labelStyle={{
-          fontSize: 16,
-          fontWeight: "600",
-          textTransform: "none",
-        }}
-        activeColor={theme.colors.text}
-        inactiveColor={theme.colors.textDim}
-      />
-    ),
-    [theme.colors],
+    (props: any) => {
+      // Check if we should disable tabs (only after initial load)
+      const shouldDisableActiveTab = hasInitiallyLoaded && activeApps.length === 0 && inactiveApps.length > 0
+      const shouldDisableInactiveTab = hasInitiallyLoaded && inactiveApps.length === 0 && activeApps.length > 0
+
+      return (
+        <TabBar
+          {...props}
+          indicatorStyle={themed($indicator)}
+          indicatorContainerStyle={{
+            width: "50%",
+          }}
+          style={themed($tabBar)}
+          labelStyle={{
+            fontSize: 16,
+            fontWeight: "600",
+            textTransform: "none",
+          }}
+          activeColor={theme.colors.text}
+          inactiveColor={theme.colors.textDim}
+          onTabPress={({route, preventDefault}) => {
+            if (
+              (route.key === "active" && shouldDisableActiveTab) ||
+              (route.key === "inactive" && shouldDisableInactiveTab)
+            ) {
+              preventDefault()
+            }
+          }}
+          getLabelText={({route}) => {
+            const isDisabled =
+              (route.key === "active" && shouldDisableActiveTab) ||
+              (route.key === "inactive" && shouldDisableInactiveTab)
+            return route.title + (isDisabled ? "" : "")
+          }}
+        />
+      )
+    },
+    [theme.colors, hasInitiallyLoaded, activeApps.length, inactiveApps.length],
   )
 
   // console.log("APPSCOMBINEDGRIDVIEW RE-RENDER")
+
+  // Check if we should show the tooltip instead of tabs
+  const shouldShowTooltip = hasInitiallyLoaded && activeApps.length === 0 && inactiveApps.length > 0
+
+  if (shouldShowTooltip) {
+    return (
+      <View style={[themed($container)]}>
+        <View style={themed($tooltipBar)}>
+          <MaterialCommunityIcons name="gesture-tap" size={20} color={theme.colors.textDim} />
+          <Text text={translate("home:tapToActivate")} style={themed($tooltipText)} />
+        </View>
+        <View style={[themed($scene), {flex: 1}]}>
+          <ScrollView
+            showsVerticalScrollIndicator={true}
+            contentContainerStyle={{paddingBottom: spacing.lg}} // Space for tab bar
+          >
+            <AppsGridView
+              apps={inactiveApps}
+              onStartApp={handleStartApp}
+              onStopApp={handleStopApp}
+              onOpenSettings={handleOpenAppSettings}
+              onOpenWebView={handleOpenWebView}
+            />
+            <AppsIncompatibleList />
+          </ScrollView>
+        </View>
+      </View>
+    )
+  }
 
   return (
     <View style={[themed($container)]}>
@@ -307,6 +378,10 @@ const $tabBar: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   borderRadius: spacing.sm,
   borderWidth: spacing.xxxs,
   borderColor: colors.border,
+  elevation: 0,
+  shadowOpacity: 0,
+  shadowOffset: {width: 0, height: 0},
+  shadowRadius: 0,
 })
 
 const $tabView: ThemedStyle<ViewStyle> = ({spacing}) => ({
@@ -324,4 +399,26 @@ const $emptyText: ThemedStyle<TextStyle> = ({colors}) => ({
   fontSize: 16,
   color: colors.textDim,
   textAlign: "center",
+})
+
+const $tooltipBar: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
+  flexDirection: "row",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: spacing.xs,
+  paddingVertical: spacing.sm,
+  paddingHorizontal: spacing.lg,
+  marginHorizontal: spacing.lg,
+  marginBottom: spacing.xs,
+  backgroundColor: colors.background,
+  borderRadius: spacing.sm,
+  borderWidth: spacing.xxxs,
+  borderColor: colors.border,
+  height: 48, // Same height as tab bar
+})
+
+const $tooltipText: ThemedStyle<TextStyle> = ({colors}) => ({
+  fontSize: 14,
+  color: colors.textDim,
+  fontWeight: "500",
 })

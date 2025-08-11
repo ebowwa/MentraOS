@@ -239,8 +239,10 @@ export default function Homepage() {
 
       <CloudConnection />
       <SensingDisabledWarning />
-      <ConnectedGlasses showTitle={false} />
-      <DeviceToolbar />
+      <View>
+        <ConnectedGlasses showTitle={false} />
+        <DeviceToolbar />
+      </View>
       <View ref={connectButtonRef}>
         <ConnectDeviceButton />
       </View>

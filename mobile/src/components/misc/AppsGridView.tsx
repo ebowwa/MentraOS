@@ -274,7 +274,9 @@ const $appContainer: ThemedStyle<ViewStyle> = () => ({
 const $appIcon: ThemedStyle<ViewStyle> = ({spacing}) => ({
   width: 64,
   height: 64,
+  borderRadius: 32, // Half of width/height for perfect circle
   marginBottom: spacing.xs,
+  overflow: "hidden",
 })
 
 const $activeIndicator: ThemedStyle<ViewStyle> = ({colors}) => ({
