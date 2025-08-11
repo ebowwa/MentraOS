@@ -78,29 +78,36 @@ handleConnection(ws: WebSocket, userEmail: string) {
 Mobile app must send CONNECTION_INIT within 30 seconds:
 
 ```typescript
-// From mobile app
+// From mobile app (defined in glasses-to-cloud.ts:15-19)
 {
   type: "CONNECTION_INIT",
-  capabilities: {
-    hasDisplay: true,
-    hasSpeaker: true,
-    hasMicrophone: true,
-    hasCamera: true,
-    hasNotificationAccess: true
-  },
-  version: "1.0.0",
-  deviceModel: "MentraOS Live"
+  userId?: "alex@example.com",  // Optional user ID
+  coreToken?: "eyJhbGci..."     // Optional auth token
 }
 ```
 
 Cloud responds with CONNECTION_ACK:
 
 ```typescript
-// From cloud
+// From cloud (defined in cloud-to-glasses.ts:19-23)
+// Sent from websocket-glasses.service.ts:558-566
 {
   type: "CONNECTION_ACK",
-  capabilities: { /* echo back */ },
-  settings: { /* user settings */ }
+  sessionId: "alex-123456",      // Unique session ID
+  userSession: {                 // Partial<UserSession> from transformUserSessionForClient
+    userId: "alex@example.com",
+    startTime: "2024-01-01T00:00:00Z",
+    activeAppSessions: ["com.app1", "com.app2"],
+    loadingApps: [],
+    appSubscriptions: {
+      "com.app1": ["audio", "transcription"],
+      "com.app2": ["notification"]
+    },
+    requiresAudio: true,
+    minimumTranscriptionLanguages: ["en-US"],
+    isTranscribing: true
+  },
+  timestamp: "2024-01-01T00:00:00Z"
 }
 ```
 

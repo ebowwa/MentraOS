@@ -21,16 +21,11 @@ These messages come from the mobile app (remember, it's the bridge between glass
 
 ```typescript
 // "Hello, I'm here!"
+// From ConnectionInit interface (glasses-to-cloud.ts:15-19)
 {
   type: "CONNECTION_INIT",
-  capabilities: {
-    hasDisplay: true,
-    hasSpeaker: true,
-    hasMicrophone: true,
-    hasCamera: true
-  },
-  version: "1.0.0",
-  deviceModel: "MentraOS Live"
+  userId?: "user@example.com",   // Optional user ID
+  coreToken?: "eyJhbGci..."      // Optional auth token
 }
 ```
 
@@ -134,11 +129,20 @@ These messages tell the glasses what to do:
 
 ```typescript
 // "Welcome! You're connected!"
+// From ConnectionAck interface (cloud-to-glasses.ts:19-23)
 {
   type: "CONNECTION_ACK",
   sessionId: "session-789",
-  capabilities: { /* echo back */ },
-  settings: { /* user settings */ }
+  userSession: {  // Partial<UserSession>
+    userId: "user@example.com",
+    startTime: "2024-01-01T00:00:00Z",
+    activeAppSessions: [],
+    appSubscriptions: {},
+    requiresAudio: false,
+    isTranscribing: false
+    // ...other session data
+  },
+  timestamp: "2024-01-01T00:00:00Z"
 }
 
 // "Something went wrong!"
@@ -222,11 +226,12 @@ Apps use these messages to interact with the system:
 
 ```typescript
 // "I want to connect!"
+// From AppConnectionInit interface (app-to-cloud.ts:20-25)
 {
   type: "CONNECTION_INIT",
   packageName: "com.translator.app",
   sessionId: "session-789",
-  version: "2.1.0"
+  apiKey: "app_api_key_here"
 }
 
 // "I want these data streams!"
@@ -316,14 +321,16 @@ The cloud sends these to apps:
 
 ```typescript
 // "You're connected!"
+// From AppConnectionAck interface (cloud-to-app.ts:27-33)
 {
   type: "CONNECTION_ACK",
-  sessionId: "session-789",
-  userId: "alex@example.com",
+  settings: [/* app-specific settings */],
+  mentraosSettings: { /* system settings */ },
+  config: { /* app config */ },
   capabilities: {
     hasDisplay: true,
     hasCamera: true,
-    // ... etc
+    // ... device capabilities
   }
 }
 ```

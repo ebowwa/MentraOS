@@ -49,19 +49,20 @@ await session.connect(sessionId, userId);
 The app sends its credentials:
 
 ```typescript
-// App → Cloud
+// App → Cloud (AppConnectionInit)
 {
   type: "CONNECTION_INIT",
   packageName: "com.translator.app",
   sessionId: "session-789",
-  version: "2.1.0"
+  apiKey: "app_api_key_here"
 }
 
-// Cloud → App (if successful)
+// Cloud → App (AppConnectionAck)
 {
   type: "CONNECTION_ACK",
-  sessionId: "session-789",
-  userId: "alex@example.com",
+  settings: [/* app-specific settings */],
+  mentraosSettings: { /* system settings */ },
+  config: { /* app config */ },
   capabilities: {
     hasDisplay: true,
     hasMicrophone: true,
@@ -527,4 +528,4 @@ session.events.onAppMessage((message) => {
 
 ## What's Next?
 
-Now you know how apps work! Let's see some [complete scenarios](./6-common-scenarios.md) that show the full flow from user action to glasses display.
+Now you know how apps work! You're ready to build your own MentraOS applications using the SDK.

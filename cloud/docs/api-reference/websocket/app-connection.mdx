@@ -74,7 +74,7 @@ All message types are defined in `packages/sdk/src/types/messages/app-to-cloud.t
   "type": "CONNECTION_INIT",
   "packageName": "com.example.app",
   "sessionId": "session-123",
-  "version": "1.0.0"
+  "apiKey": "app_api_key_here"
 }
 ```
 
@@ -143,8 +143,9 @@ All message types are defined in `packages/sdk/src/types/messages/cloud-to-app.t
 ```json
 {
   "type": "CONNECTION_ACK",
-  "sessionId": "session-123",
-  "userId": "user@example.com",
+  "settings": [],           // App-specific settings
+  "mentraosSettings": {},   // System settings
+  "config": {},             // App config
   "capabilities": {
     "hasDisplay": true,
     "hasCamera": true,

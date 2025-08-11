@@ -468,49 +468,6 @@ bun run dev:rebuild
 4. **Check logs** for authentication errors
 5. **Verify .env** has correct JWT secrets
 
-### WebSocket Drops Frequently
-
-```bash
-# Increase timeouts in .env
-WS_HEARTBEAT_INTERVAL=30000
-WS_TIMEOUT=120000
-```
-
-## Advanced Development
-
-### Enable Debug Logging
-
-```bash
-# In .env
-LOG_LEVEL=debug
-LOG_PRETTY=true
-
-# Or when starting
-LOG_LEVEL=debug bun run dev
-```
-
-### Test Webhook Endpoints
-
-```bash
-# Use ngrok for app webhooks too
-ngrok http 3000 --subdomain=myapp
-
-# Or use webhook testing service
-# webhook.site
-```
-
-### Monitor Performance
-
-```bash
-# Watch resource usage
-htop
-
-# Monitor Docker logs
-docker stats
-
-# Watch MongoDB operations
-mongosh mongodb://localhost:27017/mentraos --eval "db.currentOp()"
-```
 
 ## Step 8: Run Web Portals (Store & Developer Console)
 

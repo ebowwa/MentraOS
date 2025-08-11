@@ -69,15 +69,8 @@ All message types are defined in `packages/sdk/src/types/messages/glasses-to-clo
 ```json
 {
   "type": "CONNECTION_INIT",
-  "capabilities": {
-    "hasDisplay": true,
-    "hasSpeaker": true,
-    "hasMicrophone": true,
-    "hasCamera": true,
-    "hasNotificationAccess": true
-  },
-  "version": "1.0.0",
-  "deviceModel": "MentraOS Live"
+  "userId": "user@example.com",    // Optional
+  "coreToken": "eyJhbGci..."       // Optional
 }
 ```
 
@@ -136,8 +129,20 @@ All message types are defined in `packages/sdk/src/types/messages/cloud-to-glass
 {
   "type": "CONNECTION_ACK",
   "sessionId": "session-123",
-  "capabilities": { /* echo back */ },
-  "settings": { /* user settings */ }
+  "userSession": {  // Partial<UserSession> from transformUserSessionForClient
+    "userId": "user@example.com",
+    "startTime": "2024-01-01T00:00:00Z",
+    "activeAppSessions": ["com.app1", "com.app2"],
+    "loadingApps": [],
+    "appSubscriptions": {
+      "com.app1": ["audio", "transcription"],
+      "com.app2": ["notification"]
+    },
+    "requiresAudio": true,
+    "minimumTranscriptionLanguages": ["en-US"],
+    "isTranscribing": true
+  },
+  "timestamp": "2024-01-01T00:00:00Z"
 }
 ```
 
@@ -222,14 +227,8 @@ ws.on('open', () => {
   // Send CONNECTION_INIT immediately
   ws.send(JSON.stringify({
     type: 'CONNECTION_INIT',
-    capabilities: {
-      hasDisplay: true,
-      hasSpeaker: true,
-      hasMicrophone: true,
-      hasCamera: true
-    },
-    version: '1.0.0',
-    deviceModel: 'MentraOS Live'
+    userId: 'user@example.com',      // Optional
+    coreToken: 'eyJhbGci...'         // Optional
   }));
 });
 

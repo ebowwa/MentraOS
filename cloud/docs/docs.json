@@ -27,8 +27,7 @@
               "cloud-overview/authentication-flow",
               "cloud-overview/user-sessions",
               "cloud-overview/message-types",
-              "cloud-overview/sdk-integration",
-              "cloud-overview/common-scenarios"
+              "cloud-overview/sdk-integration"
             ]
           },
           {
@@ -39,7 +38,8 @@
                 "pages": [
                   "cloud-architecture/services/websocket-service",
                   "cloud-architecture/services/session-service",
-                  "cloud-architecture/services/subscription-service"
+                  "cloud-architecture/services/subscription-service",
+                  "cloud-architecture/services/app-service"
                 ]
               },
               {
@@ -63,6 +63,18 @@
                   "cloud-architecture/managers/video-manager",
                   "cloud-architecture/managers/dashboard-manager",
                   "cloud-architecture/managers/managed-streaming-extension"
+                ]
+              },
+              {
+                "group": "Data Models",
+                "pages": [
+                  "cloud-architecture/data-models/overview",
+                  "cloud-architecture/data-models/user-model",
+                  "cloud-architecture/data-models/app-model",
+                  "cloud-architecture/data-models/gallery-photo-model",
+                  "cloud-architecture/data-models/organization-model",
+                  "cloud-architecture/data-models/app-uptime-model",
+                  "cloud-architecture/data-models/temp-token-model"
                 ]
               }
             ]

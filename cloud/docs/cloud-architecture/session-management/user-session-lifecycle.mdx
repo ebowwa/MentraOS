@@ -145,12 +145,11 @@ private setupGlassesHeartbeat(): void {
 Send initial connection success:
 
 ```typescript
-// In GlassesWebSocketService
+// In GlassesWebSocketService (websocket-glasses.service.ts:558-566)
 const connectionAck = {
   type: CloudToGlassesMessageType.CONNECTION_ACK,
-  sessionId: userSession.userId,
-  capabilities: userSession.capabilities,
-  settings: userSettings,
+  sessionId: userSession.sessionId,
+  userSession: await sessionService.transformUserSessionForClient(userSession),
   timestamp: new Date()
 };
 
