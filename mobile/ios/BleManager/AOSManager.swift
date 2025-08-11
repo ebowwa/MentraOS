@@ -50,7 +50,6 @@ struct ViewState {
     //  private var cachedWhatToStream = [String]()
     private var defaultWearable: String = ""
     private var deviceName: String = ""
-    private var somethingConnected: Bool = false
     private var shouldEnableMic: Bool = false
     private var contextualDashboard = true
     private var headUpAngle = 30
@@ -576,9 +575,6 @@ struct ViewState {
         Task {
             // Only enable microphone if sensing is also enabled
             var actuallyEnabled = isEnabled && self.sensingEnabled
-            // if !self.somethingConnected {
-            //     actuallyEnabled = false
-            // }
 
             let glassesHasMic = getGlassesHasMic()
 
@@ -617,12 +613,12 @@ struct ViewState {
             CoreCommsService.log("AOS: isEnabled: \(isEnabled) sensingEnabled: \(self.sensingEnabled) glassesHasMic: \(glassesHasMic)")
             CoreCommsService.log("AOS: useGlassesMic: \(useGlassesMic) useOnboardMic: \(useOnboardMic)")
             CoreCommsService.log("AOS: preferredMic: \(self.preferredMic) onboardMicUnavailable: \(self.onboardMicUnavailable)")
-            CoreCommsService.log("AOS: somethingConnected: \(self.somethingConnected)")
             CoreCommsService.log("AOS: actuallyEnabled: \(actuallyEnabled)")
 
             // CoreCommsService.log("AOS: user enabled microphone: \(isEnabled) sensingEnabled: \(self.sensingEnabled) useOnboardMic: \(useOnboardMic) useGlassesMic: \(useGlassesMic) glassesHasMic: \(glassesHasMic) preferredMic: \(self.preferredMic) somethingConnected: \(self.somethingConnected) onboardMicUnavailable: \(self.onboardMicUnavailable)")
 
-            if self.somethingConnected {
+            // if a g1 is connected, set the mic enabled:
+            if g1Manager?.g1Ready ?? false {
                 await self.g1Manager?.setMicEnabled(enabled: useGlassesMic)
             }
 
@@ -639,32 +635,8 @@ struct ViewState {
 
         CoreCommsService.log("AOS: App started: \(packageName)")
 
-        // Check if glasses are disconnected but there is a saved pair, initiate connection
-        if !somethingConnected, !defaultWearable.isEmpty {
-            CoreCommsService.log("Found preferred wearable: \(defaultWearable)")
-
-            if !defaultWearable.isEmpty {
-                CoreCommsService.log("Auto-connecting to glasses due to app start: \(defaultWearable)")
-
-                // Always run on main thread to avoid threading issues
-                DispatchQueue.main.async { [weak self] in
-                    guard let self = self else { return }
-
-                    // Attempt to connect using saved device name
-                    if !self.deviceName.isEmpty {
-                        self.handleConnectWearable(modelName: self.defaultWearable, deviceName: self.deviceName)
-
-                    } else {
-                        CoreCommsService.log("No saved device name found for auto-connection")
-                    }
-                }
-            } else {
-                CoreCommsService.log("No preferred wearable found for auto-connection")
-            }
-        } else if defaultWearable.isEmpty {
-            CoreCommsService.log("No preferred wearable set, cannot auto-connect")
-        } else {
-            CoreCommsService.log("Glasses already connected or connecting, skipping auto-reconnection. Connected: \(somethingConnected)")
+        if !defaultWearable.isEmpty, !isSomethingConnected() {
+            handleConnectWearable(modelName: defaultWearable, deviceName: deviceName)
         }
     }
 
@@ -800,7 +772,7 @@ struct ViewState {
                 return
             }
 
-            if !self.somethingConnected {
+            if !self.isSomethingConnected() {
                 return
             }
 
@@ -1074,7 +1046,6 @@ struct ViewState {
         sendText(" ") // clear the screen
         Task {
             connectTask?.cancel()
-            self.somethingConnected = false
             self.g1Manager?.disconnect()
             self.liveManager?.disconnect()
             self.mach1Manager?.disconnect()
@@ -1588,7 +1559,6 @@ struct ViewState {
         let mach1Connected = mach1Manager?.ready ?? false
         let simulatedConnected = defaultWearable == "Simulated Glasses"
         let isGlassesConnected = g1Connected || liveConnected || mach1Connected || simulatedConnected
-        somethingConnected = isGlassesConnected
         if isGlassesConnected {
             isSearching = false
         }
@@ -1661,7 +1631,7 @@ struct ViewState {
             "is_searching": isSearching,
             // only on if recording from glasses:
             // TODO: this isn't robust:
-            "is_mic_enabled_for_frontend": micEnabled && (preferredMic == "glasses") && somethingConnected,
+            "is_mic_enabled_for_frontend": micEnabled && (preferredMic == "glasses") && isSomethingConnected(),
             "sensing_enabled": sensingEnabled,
             "power_saving_mode": powerSavingMode,
             "always_on_status_bar": alwaysOnStatusBar,
@@ -1772,6 +1742,22 @@ struct ViewState {
         }
     }
 
+    private func isSomethingConnected() -> Bool {
+        if g1Manager?.g1Ready ?? false {
+            return true
+        }
+        if liveManager?.connectionState == .connected {
+            return true
+        }
+        if mach1Manager?.ready ?? false {
+            return true
+        }
+        if defaultWearable.contains("Simulated") {
+            return true
+        }
+        return false
+    }
+
     private func handleDeviceReady() {
         // send to the server our battery status:
         serverComms.sendBatteryStatus(level: batteryLevel, charging: false)
@@ -1790,13 +1776,19 @@ struct ViewState {
         isSearching = false
         defaultWearable = "Even Realities G1"
         handleRequestStatus()
+
+        let shouldSendBootingMessage = true
+
         // load settings and send the animation:
         Task {
             // give the glasses some extra time to finish booting:
             try? await Task.sleep(nanoseconds: 1_000_000_000) // 3 seconds
             await self.g1Manager?.setSilentMode(false) // turn off silent mode
             await self.g1Manager?.getBatteryStatus()
-            sendText("// BOOTING MENTRAOS")
+
+            if shouldSendBootingMessage {
+                sendText("// BOOTING MENTRAOS")
+            }
 
             // send loaded settings to glasses:
             self.g1Manager?.RN_getBatteryStatus()
@@ -1810,9 +1802,11 @@ struct ViewState {
             // self.g1Manager?.RN_setDashboardPosition(self.dashboardHeight, self.dashboardDepth)
             // try? await Task.sleep(nanoseconds: 400_000_000)
             //      playStartupSequence()
-            sendText("// MENTRAOS CONNECTED")
-            try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
-            sendText(" ") // clear screen
+            if shouldSendBootingMessage {
+                sendText("// MENTRAOS CONNECTED")
+                try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
+                sendText(" ") // clear screen
+            }
 
             // enable the mic if it was last on:
             // CoreCommsService.log("ENABLING MIC STATE: \(self.micEnabled)")

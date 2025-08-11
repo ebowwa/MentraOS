@@ -865,6 +865,10 @@ enum GlassesError: Error {
                 startReconnectionTimer()
                 break
             }
+
+            if success {
+                stopReconnectionTimer()
+            }
         }
     }
 
@@ -2082,6 +2086,7 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
     }
 
     private func startReconnectionTimer() {
+        CoreCommsService.log("G1: Starting reconnection timer")
         // Cancel any existing timer
         stopReconnectionTimer()
 
@@ -2116,6 +2121,7 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
     }
 
     private func stopReconnectionTimer() {
+        CoreCommsService.log("G1: Stopping reconnection timer")
         reconnectionTimer?.invalidate()
         reconnectionTimer = nil
     }
@@ -2167,8 +2173,10 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
     }
 
     @objc private func attemptReconnection() {
+        CoreCommsService.log("G1: Attempting reconnection (attempt \(reconnectionAttempts))...")
         // Check if we're already connected
         if g1Ready {
+            CoreCommsService.log("G1: G1 is already ready, cancelling reconnection attempt (& timer)")
             stopReconnectionTimer()
             return
         }
