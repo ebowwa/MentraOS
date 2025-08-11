@@ -27,7 +27,7 @@ import org.apache.commons.compress.compressors.bzip2.BZip2CompressorInputStream;
 
 public class FileProviderModule extends ReactContextBaseJavaModule {
     private final ReactApplicationContext reactContext;
-    private static final String AUTHORITY = "com.mentra.mentra.fileprovider";
+    private static final String AUTHORITY = "com.mentra.mentra.provider";
     private static final String STT_MODEL_PATH_KEY = "stt_model_path";
     private static final String PREFS_NAME = "AugmentosPrefs";
 

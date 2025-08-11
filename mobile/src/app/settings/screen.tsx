@@ -1,6 +1,6 @@
 import React, {useState, useEffect, useCallback} from "react"
 import {StyleSheet, ScrollView, Platform, ViewStyle, TextStyle} from "react-native"
-import {useStatus} from "@/contexts/AugmentOSStatusProvider"
+import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import coreCommunicator from "@/bridge/CoreCommunicator"
 import {Header, Screen} from "@/components/ignite"
 import {ThemedStyle} from "@/theme"
@@ -11,7 +11,7 @@ import SliderSetting from "@/components/settings/SliderSetting"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 
 export default function ScreenSettingsScreen() {
-  const {status} = useStatus()
+  const {status} = useCoreStatus()
   const {theme, themed} = useAppTheme()
   const {goBack, push} = useNavigationHistory()
   // -- States --

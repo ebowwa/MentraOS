@@ -13,7 +13,7 @@ import {
 } from "react-native"
 import {useFocusEffect} from "@react-navigation/native"
 import Icon from "react-native-vector-icons/FontAwesome"
-import {useStatus} from "@/contexts/AugmentOSStatusProvider"
+import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import {loadSetting} from "@/utils/SettingsHelper"
 import {SETTINGS_KEYS} from "@/consts"
 import {getGlassesImage, getEvenRealitiesG1Image} from "@/utils/getGlassesImage"
@@ -26,7 +26,7 @@ import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import Svg, {Defs, Ellipse, LinearGradient, RadialGradient, Rect, Stop} from "react-native-svg"
 
 export default function SelectGlassesModelScreen() {
-  const {status} = useStatus()
+  const {status} = useCoreStatus()
   const [glassesModelNameToPair, setGlassesModelNameToPair] = useState<string | null>(null)
   const [isOnboarding, setIsOnboarding] = useState(false)
   const {theme, themed} = useAppTheme()

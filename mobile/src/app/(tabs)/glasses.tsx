@@ -10,7 +10,7 @@ import {
   SplitDeviceInfo,
 } from "@/components/misc/ConnectedDeviceInfo"
 import ConnectedSimulatedGlassesInfo from "@/components/misc/ConnectedSimulatedGlassesInfo"
-import {useStatus} from "@/contexts/AugmentOSStatusProvider"
+import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import {useAppStatus} from "@/contexts/AppStatusProvider"
 // import {ScrollView} from 'react-native-gesture-handler';
 import BackendServerComms from "@/backend_comms/BackendServerComms"
@@ -35,7 +35,7 @@ interface AnimatedSectionProps extends PropsWithChildren {
 
 export default function Homepage() {
   const {appStatus} = useAppStatus()
-  const {status} = useStatus()
+  const {status} = useCoreStatus()
   const {push} = useNavigationHistory()
   const [isSimulatedPuck, setIsSimulatedPuck] = React.useState(false)
   const [isCheckingVersion, setIsCheckingVersion] = useState(false)

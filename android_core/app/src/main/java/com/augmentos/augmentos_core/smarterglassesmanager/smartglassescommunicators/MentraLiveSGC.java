@@ -1858,13 +1858,12 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                     if (bodyObj != null) {
 
                         int batteryPercentage = bodyObj.optInt("pt", -1);
-                        if (batteryPercentage > 0 && batteryPercentage <= 20) {
+                        int ready = bodyObj.optInt("ready", 0);
+                        if (ready == 0 && batteryPercentage > 0 && batteryPercentage <= 20) {
                             Log.d(TAG, "K900 battery percentage: " + batteryPercentage);
                             EventBus.getDefault().post(new PairFailureEvent("errors:pairingBatteryTooLow"));
                             return;
                         }
-
-                        int ready = bodyObj.optInt("ready", 0);
                         if (ready == 1) {
                             Log.d(TAG, "K900 SOC ready");
                             JSONObject readyMsg = new JSONObject();

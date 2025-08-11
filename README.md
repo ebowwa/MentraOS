@@ -8,7 +8,7 @@
 
 **The open source operating system for your smart glasses. Access the best apps and AI agents on your smart glasses and build new apps and agents:**
 
-![MentraOS Smart Glasses](./images/glasses_banner_TOSG_MentraOS_Cayden_low_res.jpg)
+![MentraOS Smart Glasses](./images/glasses_banner_TOSG_AugmentOS_Cayden_low_res.jpg)
 
 - AI Assistant
 - Live Captions

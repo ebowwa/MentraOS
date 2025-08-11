@@ -53,8 +53,11 @@ export const AppsGridViewRoot: React.FC<AppsGridViewProps> = ({
   const touchableRefs = useRef<{[key: string]: React.Component | null}>({})
 
   const handleAppPress = (app: AppModel) => {
-    setSelectedApp(app)
-    setPopoverVisible(true)
+    // Ensure we have a valid ref before showing popover
+    if (touchableRefs.current[app.packageName]) {
+      setSelectedApp(app)
+      setPopoverVisible(true)
+    }
   }
 
   const handlePopoverClose = () => {
@@ -65,9 +68,13 @@ export const AppsGridViewRoot: React.FC<AppsGridViewProps> = ({
   const handleStartStop = () => {
     if (selectedApp) {
       if (selectedApp.is_running) {
-        onStopApp(selectedApp.packageName)
+        if (onStopApp) {
+          onStopApp(selectedApp.packageName)
+        }
       } else {
-        onStartApp(selectedApp.packageName)
+        if (onStartApp) {
+          onStartApp(selectedApp.packageName)
+        }
       }
       handlePopoverClose()
     }
@@ -75,7 +82,9 @@ export const AppsGridViewRoot: React.FC<AppsGridViewProps> = ({
 
   const handleOpenSettings = () => {
     if (selectedApp) {
-      onOpenSettings(selectedApp)
+      if (onOpenSettings) {
+        onOpenSettings(selectedApp)
+      }
       handlePopoverClose()
     }
   }
@@ -94,7 +103,9 @@ export const AppsGridViewRoot: React.FC<AppsGridViewProps> = ({
     return (
       <TouchableOpacity
         ref={ref => {
-          touchableRefs.current[item.packageName] = ref
+          if (item.packageName && item.packageName !== "") {
+            touchableRefs.current[item.packageName] = ref
+          }
         }}
         key={item.packageName}
         style={themed($gridItem)}
@@ -116,7 +127,7 @@ export const AppsGridViewRoot: React.FC<AppsGridViewProps> = ({
   // if the list is empty, show a message
   if (apps.length === 0) {
     return (
-      <View style={[themed($container), {marginTop: theme.spacing.lg}]}>
+      <View style={[themed($container)]}>
         <EmptyAppsView statusMessageKey={"home:noActiveApps"} activeAppsMessageKey={"home:emptyActiveAppListInfo"} />
       </View>
     )
@@ -141,9 +152,9 @@ export const AppsGridViewRoot: React.FC<AppsGridViewProps> = ({
         contentContainerStyle={themed($gridContainer)}
       />
 
-      {selectedApp && touchableRefs.current[selectedApp.packageName] && (
+      {selectedApp && touchableRefs.current[selectedApp.packageName] && popoverVisible && (
         <Popover
-          from={touchableRefs.current[selectedApp.packageName]!}
+          from={touchableRefs.current[selectedApp.packageName]}
           isVisible={popoverVisible}
           onRequestClose={handlePopoverClose}
           popoverStyle={themed($popoverStyle)}
@@ -192,57 +203,11 @@ export const AppsGridViewRoot: React.FC<AppsGridViewProps> = ({
   )
 }
 
-export const AppsGridView = React.memo(AppsGridViewRoot, (prevProps, nextProps) => {
-  return false
-  // Custom comparison function - return true if props are equal (skip re-render)
-  // Check if apps array has changed (compare by reference first, then deep compare if needed)
-  if (prevProps.apps !== nextProps.apps) {
-    // Check if the arrays have same length and same items
-    if (prevProps.apps.length !== nextProps.apps.length) {
-      console.log("APPSGRIDVIEW apps length changed", prevProps.apps.length, nextProps.apps.length)
-      return false // Props changed, re-render needed
-    }
+export const AppsGridView = React.memo(AppsGridViewRoot)
 
-    // Deep compare apps array
-    for (let i = 0; i < prevProps.apps.length; i++) {
-      const prevApp = prevProps.apps[i]
-      const nextApp = nextProps.apps[i]
-
-      if (
-        prevApp.packageName !== nextApp.packageName ||
-        prevApp.name !== nextApp.name ||
-        prevApp.is_running !== nextApp.is_running ||
-        prevApp.is_foreground !== nextApp.is_foreground
-      ) {
-        console.log("APPSGRIDVIEW app changed", prevApp.packageName, nextApp.packageName)
-        return false // Props changed, re-render needed
-      }
-    }
-  }
-
-  // Check if callbacks have changed (they should be stable with useCallback)
-  if (
-    prevProps.onStartApp !== nextProps.onStartApp ||
-    prevProps.onStopApp !== nextProps.onStopApp ||
-    prevProps.onOpenSettings !== nextProps.onOpenSettings ||
-    prevProps.onOpenWebView !== nextProps.onOpenWebView
-  ) {
-    console.log("APPSGRIDVIEW callbacks changed", prevProps.onStartApp, nextProps.onStartApp)
-    return false // Props changed, re-render needed
-  }
-
-  // Check other props
-  if (prevProps.title !== nextProps.title || prevProps.showInactiveApps !== nextProps.showInactiveApps) {
-    console.log("APPSGRIDVIEW other props changed", prevProps.title, nextProps.title)
-    return false // Props changed, re-render needed
-  }
-
-  console.log("APPSGRIDVIEW props are equal")
-  return true // Props are equal, skip re-render
-})
-
-const $container: ThemedStyle<ViewStyle> = ({spacing}) => ({
-  marginTop: spacing.md,
+const $container: ThemedStyle<ViewStyle> = ({spacing, colors}) => ({
+  // All styling handled by parent container
+  paddingHorizontal: spacing.sm, // Reduced padding
 })
 
 const $gridContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
@@ -250,15 +215,15 @@ const $gridContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
 })
 
 const $row: ThemedStyle<ViewStyle> = ({spacing}) => ({
-  justifyContent: "space-between",
-  paddingHorizontal: spacing.md,
+  justifyContent: "space-evenly",
+  // Remove padding since container already has it
 })
 
 const $gridItem: ThemedStyle<ViewStyle> = ({spacing}) => ({
-  // width: (SCREEN_WIDTH - spacing.md * 2 - spacing.sm * 4) / GRID_COLUMNS,
-  width: (SCREEN_WIDTH - spacing.lg * 4) / GRID_COLUMNS,
+  // Calculate width more accurately: screen width - container margins - container padding - small buffer
+  width: (SCREEN_WIDTH - spacing.lg * 2 - spacing.sm * 2 - spacing.xs * 4) / GRID_COLUMNS,
   alignItems: "center",
-  marginBottom: spacing.lg,
+  marginBottom: spacing.sm,
 })
 
 const $appContainer: ThemedStyle<ViewStyle> = () => ({
@@ -266,14 +231,16 @@ const $appContainer: ThemedStyle<ViewStyle> = () => ({
 })
 
 const $appIcon: ThemedStyle<ViewStyle> = ({spacing}) => ({
-  width: 64,
-  height: 64,
+  width: 60, // Slightly smaller
+  height: 60,
+  borderRadius: 30, // Half of width/height for perfect circle
   marginBottom: spacing.xs,
+  overflow: "hidden",
 })
 
 const $activeIndicator: ThemedStyle<ViewStyle> = ({colors}) => ({
   position: "absolute",
-  bottom: 4,
+  //bottom: 4,
   right: 4,
   width: 12,
   height: 12,

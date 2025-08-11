@@ -14,7 +14,7 @@ import {
 import {useFocusEffect} from "@react-navigation/native"
 import {Button, Icon} from "@/components/ignite"
 import coreCommunicator from "@/bridge/CoreCommunicator"
-import {useStatus} from "@/contexts/AugmentOSStatusProvider"
+import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import {getGlassesImage} from "@/utils/getGlassesImage"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
 import {Slider} from "react-native-elements"
@@ -96,7 +96,7 @@ export default function DeviceSettings() {
   const slideAnim = useRef(new Animated.Value(-50)).current
   const {theme, themed} = useAppTheme()
   const [connectedGlasses, setConnectedGlasses] = useState("")
-  const {status} = useStatus()
+  const {status} = useCoreStatus()
   const [preferredMic, setPreferredMic] = useState(status.core_info.preferred_mic)
   const [powerSavingMode, setPowerSavingMode] = useState(status.core_info.power_saving_mode)
   const [buttonMode, setButtonMode] = useState(status.glasses_settings?.button_mode || "photo")

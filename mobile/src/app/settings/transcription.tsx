@@ -1,6 +1,6 @@
 import React, {useState, useEffect} from "react"
 import {ScrollView, View, ActivityIndicator, Alert} from "react-native"
-import {useStatus} from "@/contexts/AugmentOSStatusProvider"
+import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import coreCommunicator from "@/bridge/CoreCommunicator"
 import {Header, Screen, Text, Button} from "@/components/ignite"
 import {useAppTheme} from "@/utils/useAppTheme"
@@ -16,7 +16,7 @@ import showAlert from "@/utils/AlertUtils"
 const {AOSModule, FileProviderModule} = NativeModules
 
 export default function TranscriptionSettingsScreen() {
-  const {status} = useStatus()
+  const {status} = useCoreStatus()
   const [isEnforceLocalTranscriptionEnabled, setIsEnforceLocalTranscriptionEnabled] = useState(
     status.core_info.enforce_local_transcription,
   )
@@ -79,7 +79,8 @@ export default function TranscriptionSettingsScreen() {
         // Auto-restart transcription if mic is active
         if (status.core_info.is_mic_enabled_for_frontend) {
           showAlert("Restarting Transcription", "Switching to new model...", [{text: "OK"}])
-          await coreCommunicator.restartTranscription()
+          // TODO: Make this work correctly
+          //await coreCommunicator.restartTranscription(true)
         } else {
           showAlert("Model Activated", `Switched to ${info.name}`, [{text: "OK"}])
         }

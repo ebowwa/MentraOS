@@ -21,6 +21,10 @@ const en = {
     retryConnection: "Retry Connection",
     skipUpdate: "Skip Update",
   },
+  simulatedGlasses: {
+    showDashboard: "Show Dashboard",
+    hideDashboard: "Hide Dashboard",
+  },
   connection: {
     connected: "Connected",
     connecting: "Connecting",
@@ -88,6 +92,7 @@ const en = {
     apps: "Apps",
     inactiveApps: "Inactive Apps",
     tapToStart: "TAP TO START",
+    tapToActivate: "Tap an app to activate it",
     completeOnboardingTitle: "Complete Onboarding",
     completeOnboardingMessage: "Please tap the Live Captions app to complete the onboarding process.",
     tryLiveCaptionsTitle: "Try Live Captions!",
