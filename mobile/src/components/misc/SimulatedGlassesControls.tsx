@@ -1,34 +1,31 @@
-import React from "react"
-import {View, StyleSheet, TouchableOpacity} from "react-native"
+import React, {useState} from "react"
+import {TouchableOpacity, ViewStyle} from "react-native"
 import Icon from "react-native-vector-icons/MaterialIcons"
 import CoreCommunicator from "@/bridge/CoreCommunicator"
+import {Text} from "@/components/ignite"
+import {ThemedStyle} from "@/theme"
+import {useAppTheme} from "@/utils/useAppTheme"
+import {useSafeAreaInsets} from "react-native-safe-area-context"
 
-interface SimulatedGlassesControlsProps {
-  theme: any
-  insets: any
-}
+interface SimulatedGlassesControlsProps {}
 
-export const SimulatedGlassesControls: React.FC<SimulatedGlassesControlsProps> = ({theme, insets}) => {
-  const handleHeadUp = async () => {
-    console.log("SimulatedGlassesControls: Head up button pressed")
+export const SimulatedGlassesControls: React.FC<SimulatedGlassesControlsProps> = () => {
+  const {themed, theme} = useAppTheme()
+  const insets = useSafeAreaInsets()
+  const [showDashboard, setShowDashboard] = useState(false)
+
+  const setDashboardPosition = async (isHeadUp: boolean) => {
+    console.log("SimulatedGlassesControls: setting dashboard position to", isHeadUp ? "up" : "down")
     try {
-      const result = await CoreCommunicator.simulateHeadPosition("up")
-      console.log("SimulatedGlassesControls: Head up command sent successfully, result:", result)
+      await CoreCommunicator.simulateHeadPosition(isHeadUp ? "up" : "down")
     } catch (error) {
-      console.error("Failed to simulate head up:", error)
-      console.error("Error details:", JSON.stringify(error))
+      console.error("SimulatedGlassesControls: Error details:", error)
     }
   }
 
-  const handleHeadDown = async () => {
-    console.log("SimulatedGlassesControls: Head down button pressed")
-    try {
-      const result = await CoreCommunicator.simulateHeadPosition("down")
-      console.log("SimulatedGlassesControls: Head down command sent successfully, result:", result)
-    } catch (error) {
-      console.error("Failed to simulate head down:", error)
-      console.error("Error details:", JSON.stringify(error))
-    }
+  const toggleDashboard = async () => {
+    await setDashboardPosition(!showDashboard)
+    setShowDashboard(!showDashboard)
   }
 
   const handleButtonPress = async (pressType: "short" | "long") => {
@@ -68,30 +65,16 @@ export const SimulatedGlassesControls: React.FC<SimulatedGlassesControlsProps> =
     <>
       {/* Head Up button - right side, upper middle */}
       <TouchableOpacity
-        onPress={handleHeadUp}
+        onPress={toggleDashboard}
         style={[
-          styles.edgeButton,
-          styles.rightSide,
+          themed($toggleDashboardButton),
+          themed($rightSide),
           {
-            backgroundColor: theme.colors.palette.secondary200,
-            top: insets.top + 120,
+            bottom: insets.bottom + 40,
+            left: 120,
           },
         ]}>
-        <Icon name="keyboard-arrow-up" size={28} color={theme.colors.icon} />
-      </TouchableOpacity>
-
-      {/* Head Down button - right side, below head up */}
-      <TouchableOpacity
-        onPress={handleHeadDown}
-        style={[
-          styles.edgeButton,
-          styles.rightSide,
-          {
-            backgroundColor: theme.colors.palette.secondary200,
-            top: insets.top + 180,
-          },
-        ]}>
-        <Icon name="keyboard-arrow-down" size={28} color={theme.colors.icon} />
+        {showDashboard ? <Text tx="simulatedGlasses:hideDashboard" /> : <Text tx="simulatedGlasses:showDashboard" />}
       </TouchableOpacity>
 
       {/* Button Press - single button for both short and long press */}
@@ -99,9 +82,8 @@ export const SimulatedGlassesControls: React.FC<SimulatedGlassesControlsProps> =
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
         style={[
-          styles.edgeButton,
+          themed($edgeButton),
           {
-            backgroundColor: theme.colors.palette.secondary200,
             bottom: insets.bottom + 40,
             left: 20,
           },
@@ -112,17 +94,30 @@ export const SimulatedGlassesControls: React.FC<SimulatedGlassesControlsProps> =
   )
 }
 
-const styles = StyleSheet.create({
-  edgeButton: {
-    position: "absolute",
-    width: 48,
-    height: 48,
-    borderRadius: 50,
-    justifyContent: "center",
-    alignItems: "center",
-    zIndex: 20,
-  },
-  rightSide: {
-    right: 20,
-  },
+const $toggleDashboardButton: ThemedStyle<ViewStyle> = ({colors}) => ({
+  position: "absolute",
+  paddingHorizontal: 16,
+  height: 48,
+  width: 160,
+  borderRadius: 50,
+  justifyContent: "center",
+  alignItems: "center",
+  zIndex: 20,
+  backgroundColor: colors.palette.secondary200,
+})
+
+const $edgeButton: ThemedStyle<ViewStyle> = ({colors}) => ({
+  position: "absolute",
+  paddingHorizontal: 16,
+  height: 48,
+  // width: 130,
+  borderRadius: 50,
+  justifyContent: "center",
+  alignItems: "center",
+  zIndex: 20,
+  backgroundColor: colors.palette.secondary200,
+})
+
+const $rightSide: ThemedStyle<ViewStyle> = () => ({
+  right: 20,
 })

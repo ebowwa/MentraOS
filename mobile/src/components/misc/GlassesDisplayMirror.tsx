@@ -173,7 +173,7 @@ const GlassesDisplayMirror: React.FC<GlassesDisplayMirrorProps> = ({
     }
   }, [layout, containerWidth])
 
-  if (!layout || !layout.layoutType || layout.text === "") {
+  if (!layout || !layout.layoutType) {
     return (
       <View style={[themed($glassesScreen), containerStyle]}>
         <View style={themed($emptyContainer)}>
@@ -182,6 +182,8 @@ const GlassesDisplayMirror: React.FC<GlassesDisplayMirrorProps> = ({
       </View>
     )
   }
+
+  console.log("layout", layout)
 
   const content = <>{renderLayout(layout, themed($glassesText), canvasRef, containerRef, setContainerWidth)}</>
 
