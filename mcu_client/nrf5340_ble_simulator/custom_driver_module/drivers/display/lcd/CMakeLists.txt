@@ -16,16 +16,13 @@ zephyr_library_sources(hls12vga.c)
 #     ${CMAKE_CURRENT_SOURCE_DIR}/../../../../mentraos_nrf5340/src/BspLog
 # )
 
-set(BSP_LOG_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../../../nrf5340/src/BspLog)
-message(STATUS "BspLog directory: ${BSP_LOG_DIR}")
-
+# Point to the application's BspLog directory
+set(BSP_LOG_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../../src/BspLog)
 if(EXISTS ${BSP_LOG_DIR}/bsp_log.h)
-    message(STATUS "✅ Found bsp_log.h")
+    zephyr_library_include_directories(${BSP_LOG_DIR})
 else()
-    message(FATAL_ERROR "❌ bsp_log.h not found at: ${BSP_LOG_DIR}")
+    message(FATAL_ERROR "bsp_log.h not found at: ${BSP_LOG_DIR}")
 endif()
-
-zephyr_library_include_directories(${BSP_LOG_DIR})
 # zephyr_library_include_directories(
 #     ${CMAKE_CURRENT_SOURCE_DIR}
 #     ${BSP_LOG_DIR}

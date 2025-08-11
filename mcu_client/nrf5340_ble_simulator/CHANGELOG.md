@@ -2,6 +2,42 @@
 
 All notable changes to the nRF5340 DK BLE Glasses Protobuf Simulator will be documented in this file.
 
+## [1.9.0] - 2025-08-11
+
+### Added
+- **LVGL Hello World display baseline established**
+  - Successfully integrated LVGL with dummy display showing "Hello World" message
+  - Configured 640x480 resolution with 16-bit color depth for projector compatibility
+  - Added proper devicetree overlay with dummy display (zephyr,dummy-dc) as stable baseline
+  - Created board-specific overlay structure for future projector hardware integration
+
+### Enhanced
+- **Display driver infrastructure preparation**
+  - Added custom HLS12VGA projector driver module structure (temporarily disabled)
+  - Implemented proper Zephyr module.yml configuration for driver discovery
+  - Created devicetree bindings for custom HLS12VGA projector (zephyr,custom-hls12vga)
+  - Added SPI3 pinctrl configuration for projector hardware interface
+  - Structured driver with proper GPIO control for dual CS, power rails, and reset
+
+### Technical Infrastructure
+- **Build system improvements**
+  - Updated CMakeLists.txt with ZEPHYR_EXTRA_MODULES support for custom drivers
+  - Added Kconfig integration for custom driver modules
+  - Implemented conditional compilation between dummy and projector displays
+  - Fixed include paths and module discovery patterns
+
+### Working Features
+- ✅ LVGL displays "Hello World" via dummy display (640x480)
+- ✅ Protobuf integration maintained and functional
+- ✅ BLE communication working correctly
+- ✅ Build/flash/run cycle successful
+- ✅ Clean logging separation (RTT debug + UART console)
+
+### Next Phase
+- Pending: Enable HLS12VGA projector driver with proper module discovery
+- Ready: Switch from dummy display to real projector hardware
+- Prepared: GPIO configuration for projector power and control
+
 ## [1.8.0] - 2025-08-09
 
 ### Fixed

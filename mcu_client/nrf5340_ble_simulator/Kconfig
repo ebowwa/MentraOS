@@ -43,3 +43,6 @@ config NVS
 	default y if !(SOC_FLASH_NRF_RRAM || SOC_FLASH_NRF_MRAM)
 
 endmenu
+
+# Include custom driver module Kconfig (projector display)
+rsource "custom_driver_module/Kconfig"

@@ -1,4 +1,5 @@
 
+name: custom_driver_module
 build:
   kconfig: Kconfig
   cmake: .

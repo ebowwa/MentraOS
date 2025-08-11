@@ -5,6 +5,9 @@
 
 cmake_minimum_required(VERSION 3.20.0)
 
+# Note: custom driver module registration disabled for dummy display testing
+# set(ZEPHYR_EXTRA_MODULES ${CMAKE_CURRENT_SOURCE_DIR}/custom_driver_module)
+
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(nrf5340_ble_simulator)
 
@@ -12,9 +15,7 @@ project(nrf5340_ble_simulator)
 list(APPEND CMAKE_MODULE_PATH ${ZEPHYR_BASE}/modules/nanopb)
 include(nanopb)
 
-# Add custom driver module for HLS12VGA display - TEMPORARILY DISABLED
-# list(APPEND DTS_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/custom_driver_module)
-# add_subdirectory(custom_driver_module)
+# Custom driver module picked up via ZEPHYR_EXTRA_MODULES (module.yml)
 
 target_sources(app PRIVATE
     src/main.c
