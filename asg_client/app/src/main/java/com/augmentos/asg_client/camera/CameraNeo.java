@@ -80,13 +80,23 @@ public class CameraNeo extends LifecycleService {
     private Size jpegSize;
     private String cameraId;
 
-    // Target photo resolution (4:3 landscape orientation)
-    private static final int TARGET_WIDTH = 1440;
-    private static final int TARGET_HEIGHT = 1080;
+    // New fields for burst mode photo capture
+    private static final int MAX_BURST_PHOTOS = 1000000; // Approx 3fps for 5 seconds
+    private static final long PHOTO_BURST_INTERVAL_MS = 100; // Delay between close/open cycle
+    private boolean isBurstModeActive = false;
+    private int burstPhotoCounter = 0;
+    private String burstPhotoFileDirectory;
+    private String burstPhotoFilePrefix;
+    private String currentPhotoFilePath; // Store current photo file path for burst mode
 
-    // Auto-exposure settings for better photo quality - now dynamic
+    // Target photo resolution (4:3 landscape orientation)
+    private static final int TARGET_WIDTH = 1024;
+    private static final int TARGET_HEIGHT = 1024;
+
+    // Manual exposure settings for better photo quality
     private static final int JPEG_QUALITY = 90; // High quality JPEG
     private static final int JPEG_ORIENTATION = 270; // Standard orientation
+    private static final long MANUAL_EXPOSURE_TIME_NS = 100_000_000L; // 0.25ms manual exposure
 
     // Camera characteristics for dynamic auto-exposure and autofocus
     private int[] availableAeModes;
@@ -339,6 +349,13 @@ public class CameraNeo extends LifecycleService {
 
             switch (action) {
                 case ACTION_TAKE_PHOTO:
+                    if (isBurstModeActive) {
+                        Log.d(TAG, "Burst mode is already active. Ignoring new photo request.");
+                        return START_STICKY;
+                    }
+                    isBurstModeActive = true;
+                    burstPhotoCounter = 0;
+
                     String photoFilePath = intent.getStringExtra(EXTRA_PHOTO_FILE_PATH);
                     Log.d(TAG, "Photo file path: " + photoFilePath);
 
@@ -347,6 +364,15 @@ public class CameraNeo extends LifecycleService {
                         String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
                         photoFilePath = getExternalFilesDir(null) + File.separator + "IMG_" + timeStamp + ".jpg";
                     }
+
+                    // Store components for subsequent photo paths
+                    File firstFile = new File(photoFilePath);
+                    burstPhotoFileDirectory = firstFile.getParent();
+                    String fileName = firstFile.getName();
+                    int dotIndex = fileName.lastIndexOf('.');
+                    burstPhotoFilePrefix = (dotIndex == -1) ? fileName : fileName.substring(0, dotIndex);
+
+                    currentPhotoFilePath = photoFilePath; // Store for burst mode
                     setupCameraAndTakePicture(photoFilePath);
                     break;
                 case ACTION_START_VIDEO_RECORDING:
@@ -775,6 +801,9 @@ public class CameraNeo extends LifecycleService {
                         notifyPhotoError("Failed to acquire image data");
                         shotState = ShotState.IDLE;
                         closeCamera();
+                        if (isBurstModeActive) {
+                            isBurstModeActive = false;
+                        }
                         stopSelf();
                         return;
                     }
@@ -783,28 +812,52 @@ public class CameraNeo extends LifecycleService {
                     byte[] bytes = new byte[buffer.remaining()];
                     buffer.get(bytes);
 
-                    // Save the image data to the file
-                    boolean success = saveImageDataToFile(bytes, filePath);
+                    // Save the image data to the file (use current path for burst mode)
+                    String actualFilePath = isBurstModeActive ? currentPhotoFilePath : filePath;
+                    boolean success = saveImageDataToFile(bytes, actualFilePath);
 
                     if (success) {
-                        lastPhotoPath = filePath;
-                        notifyPhotoCaptured(filePath);
-                        Log.d(TAG, "Photo saved successfully: " + filePath);
+                        lastPhotoPath = actualFilePath;
+                        notifyPhotoCaptured(actualFilePath);
+                        Log.d(TAG, "Photo saved successfully: " + actualFilePath);
                     } else {
                         notifyPhotoError("Failed to save image");
                     }
 
-                    // Reset state and clean up resources
+                    // Reset state
                     shotState = ShotState.IDLE;
 
-                    // Clean up resources and stop service
-                    closeCamera();
-                    stopSelf();
+                    if (isBurstModeActive) {
+                        burstPhotoCounter++;
+                        if (burstPhotoCounter < MAX_BURST_PHOTOS) {
+                            Log.d(TAG, "Scheduling next photo capture after " + PHOTO_BURST_INTERVAL_MS + "ms (direct capture mode)");
+                            // Schedule the next photo capture without closing/reopening camera
+                            backgroundHandler.postDelayed(() -> {
+                                String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.US).format(new Date());
+                                String nextPhotoPath = new File(burstPhotoFileDirectory, burstPhotoFilePrefix + "_" + timeStamp + ".jpg").getAbsolutePath();
+                                captureNextBurstPhoto(nextPhotoPath);
+                            }, PHOTO_BURST_INTERVAL_MS);
+                        } else {
+                            // Burst is finished, now close camera
+                            Log.d(TAG, "Burst mode finished after " + burstPhotoCounter + " photos.");
+                            isBurstModeActive = false;
+                            closeCamera();
+                            stopSelf();
+                        }
+                    } else {
+                        // Not in burst mode (original behavior) - close camera
+                        closeCamera();
+                        stopSelf();
+                    }
+
                 } catch (Exception e) {
                     Log.e(TAG, "Error handling image data", e);
                     notifyPhotoError("Error processing photo: " + e.getMessage());
                     shotState = ShotState.IDLE;
                     closeCamera();
+                    if (isBurstModeActive) {
+                        isBurstModeActive = false;
+                    }
                     stopSelf();
                 }
             }, backgroundHandler);
@@ -1033,9 +1086,12 @@ public class CameraNeo extends LifecycleService {
                 previewBuilder.addTarget(imageReader.getSurface());
             }
 
-            // Configure auto-exposure settings for better photo quality
-            previewBuilder.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO);
-            previewBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON);
+            // Configure manual exposure settings for better photo quality
+            previewBuilder.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_OFF);
+            previewBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_OFF);
+
+            // Set manual exposure time to 0.5ms
+            previewBuilder.set(CaptureRequest.SENSOR_EXPOSURE_TIME, MANUAL_EXPOSURE_TIME_NS);
 
             // Use dynamic FPS range to prevent long exposure times that cause overexposure
             previewBuilder.set(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE, selectedFpsRange);
@@ -1094,8 +1150,8 @@ public class CameraNeo extends LifecycleService {
                             startRecordingInternal();
                         }
                     } else {
-                        // Start proper preview for photos with AE state monitoring
-                        startPreviewWithAeMonitoring();
+                        // Direct photo capture without preview for maximum speed
+                        capturePhoto();
                     }
                 }
 
@@ -1643,7 +1699,29 @@ public class CameraNeo extends LifecycleService {
     }
 
     /**
-     * Simplified photo capture - relies on AE convergence and automatic CONTINUOUS_PICTURE autofocus
+     * Capture next photo in burst mode without reopening camera
+     */
+    private void captureNextBurstPhoto(String filePath) {
+        if (cameraDevice == null || cameraCaptureSession == null) {
+            Log.e(TAG, "Camera not ready for burst capture");
+            notifyPhotoError("Camera not ready for burst capture");
+            isBurstModeActive = false;
+            closeCamera();
+            stopSelf();
+            return;
+        }
+
+        Log.d(TAG, "Capturing next burst photo: " + filePath);
+        
+        // Store the file path for the ImageReader callback
+        currentPhotoFilePath = filePath;
+        
+        // Direct photo capture without preview for maximum speed
+        capturePhoto();
+    }
+
+    /**
+     * Direct photo capture without preview - uses Camera2 auto-exposure and autofocus
      */
     private void capturePhoto() {
         try {
@@ -1655,7 +1733,8 @@ public class CameraNeo extends LifecycleService {
             stillBuilder.addTarget(imageReader.getSurface());
 
             // Copy settings from preview
-            stillBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON);
+            stillBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_OFF);
+            stillBuilder.set(CaptureRequest.SENSOR_EXPOSURE_TIME, MANUAL_EXPOSURE_TIME_NS);
             stillBuilder.set(CaptureRequest.CONTROL_AWB_MODE, CaptureRequest.CONTROL_AWB_MODE_AUTO);
             stillBuilder.set(CaptureRequest.CONTROL_AE_EXPOSURE_COMPENSATION, userExposureCompensation);
             stillBuilder.set(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE, selectedFpsRange);
