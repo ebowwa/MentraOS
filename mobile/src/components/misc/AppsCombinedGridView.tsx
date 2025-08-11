@@ -210,7 +210,7 @@ const AppsCombinedGridViewRoot: React.FC<AppsCombinedGridViewProps> = () => {
         setIndex(0) // Switch to active tab
       }
     }
-  }, [appStatus, activeApps.length, inactiveApps.length, hasInitiallyLoaded])
+  }, [activeApps.length, inactiveApps.length, hasInitiallyLoaded])
 
   // If no apps at all
   // if (!hasActiveApps && !hasInactiveApps) {
