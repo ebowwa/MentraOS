@@ -48,12 +48,16 @@ const AppsCombinedGridViewRoot: React.FC<AppsCombinedGridViewProps> = () => {
   const {push, replace} = useNavigationHistory()
 
   const backendComms = BackendServerComms.getInstance()
-  const [index, setIndex] = useState(0)
   const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false)
+  const [index, setIndex] = useState(0)
   const [routes] = useState([
     {key: "active", title: translate("home:activeApps")},
     {key: "inactive", title: translate("home:inactiveApps")},
   ])
+
+  const handleIndexChange = (index: number) => {
+    // console.log("handleIndexChange", index)
+  }
 
   // Handler functions for grid view
   const handleStartApp = useCallback(
@@ -337,7 +341,7 @@ const AppsCombinedGridViewRoot: React.FC<AppsCombinedGridViewProps> = () => {
           navigationState={{index, routes}}
           renderScene={renderScene}
           renderTabBar={renderTabBar}
-          onIndexChange={setIndex}
+          onIndexChange={handleIndexChange}
           initialLayout={initialLayout}
           style={{flex: 1}}
           lazy={false}
