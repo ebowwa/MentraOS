@@ -2173,8 +2173,10 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
     }
 
     @objc private func attemptReconnection() {
+        CoreCommsService.log("G1: Attempting reconnection (attempt \(reconnectionAttempts))...")
         // Check if we're already connected
         if g1Ready {
+            CoreCommsService.log("G1: G1 is already ready, cancelling reconnection attempt (& timer)")
             stopReconnectionTimer()
             return
         }
