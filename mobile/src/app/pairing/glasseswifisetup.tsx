@@ -5,14 +5,14 @@ import {Screen, Header} from "@/components/ignite"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {ThemedStyle} from "@/theme"
 import {ViewStyle, TextStyle, ScrollView} from "react-native"
-import {useStatus} from "@/contexts/AugmentOSStatusProvider"
+import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import RouteButton from "@/components/ui/RouteButton"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 
 export default function GlassesWifiSetupScreen() {
   const {deviceModel = "Glasses"} = useLocalSearchParams()
   const {theme, themed} = useAppTheme()
-  const {status} = useStatus()
+  const {status} = useCoreStatus()
   const {push, goBack} = useNavigationHistory()
 
   const handleGoBack = useCallback(() => {

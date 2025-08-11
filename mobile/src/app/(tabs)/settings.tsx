@@ -4,7 +4,7 @@ import {Screen, Header, Text} from "@/components/ignite"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {translate} from "@/i18n"
 
-import {useStatus} from "@/contexts/AugmentOSStatusProvider"
+import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import showAlert from "@/utils/AlertUtils"
 import {useAuth} from "@/contexts/AuthContext"
 import RouteButton from "@/components/ui/RouteButton"
@@ -18,7 +18,7 @@ import {SETTINGS_KEYS} from "@/consts"
 import Toast from "react-native-toast-message"
 
 export default function SettingsPage() {
-  const {status} = useStatus()
+  const {status} = useCoreStatus()
   const {logout, user} = useAuth()
   const {theme} = useAppTheme()
   const {push, replace} = useNavigationHistory()

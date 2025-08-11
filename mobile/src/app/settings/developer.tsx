@@ -1,7 +1,7 @@
 import React, {useState, useEffect} from "react"
 import {View, Text, StyleSheet, Switch, TouchableOpacity, Platform, ScrollView, TextInput} from "react-native"
 import Icon from "react-native-vector-icons/MaterialCommunityIcons"
-import {useStatus} from "@/contexts/AugmentOSStatusProvider"
+import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import coreCommunicator from "@/bridge/CoreCommunicator"
 import {saveSetting, loadSetting} from "@/utils/SettingsHelper"
 import {SETTINGS_KEYS} from "@/consts"
@@ -17,7 +17,7 @@ import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {spacing} from "@/theme"
 
 export default function DeveloperSettingsScreen() {
-  const {status} = useStatus()
+  const {status} = useCoreStatus()
   const [isBypassVADForDebuggingEnabled, setIsBypassVADForDebuggingEnabled] = useState(
     status.core_info.bypass_vad_for_debugging,
   )

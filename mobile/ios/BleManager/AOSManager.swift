@@ -576,9 +576,9 @@ struct ViewState {
         Task {
             // Only enable microphone if sensing is also enabled
             var actuallyEnabled = isEnabled && self.sensingEnabled
-            if !self.somethingConnected {
-                actuallyEnabled = false
-            }
+            // if !self.somethingConnected {
+            //     actuallyEnabled = false
+            // }
 
             let glassesHasMic = getGlassesHasMic()
 
@@ -618,6 +618,7 @@ struct ViewState {
             CoreCommsService.log("AOS: useGlassesMic: \(useGlassesMic) useOnboardMic: \(useOnboardMic)")
             CoreCommsService.log("AOS: preferredMic: \(self.preferredMic) onboardMicUnavailable: \(self.onboardMicUnavailable)")
             CoreCommsService.log("AOS: somethingConnected: \(self.somethingConnected)")
+            CoreCommsService.log("AOS: actuallyEnabled: \(actuallyEnabled)")
 
             // CoreCommsService.log("AOS: user enabled microphone: \(isEnabled) sensingEnabled: \(self.sensingEnabled) useOnboardMic: \(useOnboardMic) useGlassesMic: \(useGlassesMic) glassesHasMic: \(glassesHasMic) preferredMic: \(self.preferredMic) somethingConnected: \(self.somethingConnected) onboardMicUnavailable: \(self.onboardMicUnavailable)")
 

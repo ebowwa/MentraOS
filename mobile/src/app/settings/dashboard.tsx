@@ -13,7 +13,7 @@ import {
   ScrollView,
 } from "react-native"
 
-import {useStatus} from "@/contexts/AugmentOSStatusProvider"
+import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import coreCommunicator from "@/bridge/CoreCommunicator"
 import HeadUpAngleComponent from "@/components/misc/HeadUpAngleComponent"
 import {Header} from "@/components/ignite"
@@ -30,7 +30,7 @@ import {stat} from "react-native-fs"
 import {glassesFeatures} from "@/config/glassesFeatures"
 
 export default function DashboardSettingsScreen() {
-  const {status} = useStatus()
+  const {status} = useCoreStatus()
   const {themed, theme} = useAppTheme()
   const {goBack, push} = useNavigationHistory()
   const [isContextualDashboardEnabled, setIsContextualDashboardEnabled] = useState(

@@ -99,7 +99,6 @@ export interface AugmentOSMainStatus {
   wifi: WifiConnection | null
   gsm: GSMConnection | null
   auth: CoreAuthInfo
-  force_update: boolean
   ota_progress?: OtaProgress
 }
 
@@ -142,7 +141,6 @@ export class AugmentOSParser {
       core_token_status: "",
       last_verification_timestamp: 0,
     },
-    force_update: false,
   }
 
   static mockStatus: AugmentOSMainStatus = {
@@ -197,7 +195,6 @@ export class AugmentOSParser {
       core_token_status: "",
       last_verification_timestamp: 0,
     },
-    force_update: false,
   }
 
   static parseStatus(data: any): AugmentOSMainStatus {
@@ -277,7 +274,6 @@ export class AugmentOSParser {
           core_token_status: authInfo.core_token_status,
           last_verification_timestamp: authInfo.last_verification_timestamp,
         },
-        force_update: false, // status.force_update ?? false
         // TODO: Hardcoding this false fixes a bug that
         // causes us to jump back to the home screen whenever
         // a setting is changed. I don't know why this works.

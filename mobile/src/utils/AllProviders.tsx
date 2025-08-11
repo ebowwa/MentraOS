@@ -3,7 +3,7 @@ import "react-native-reanimated"
 import {withWrappers} from "@/utils/with-wrappers"
 import {Suspense} from "react"
 import {KeyboardProvider} from "react-native-keyboard-controller"
-import {StatusProvider} from "@/contexts/AugmentOSStatusProvider"
+import {CoreStatusProvider} from "@/contexts/CoreStatusProvider"
 import {AppStatusProvider} from "@/contexts/AppStatusProvider"
 import {GestureHandlerRootView} from "react-native-gesture-handler"
 import {AuthProvider} from "@/contexts/AuthContext"
@@ -24,7 +24,7 @@ SplashScreen.preventAutoHideAsync()
 export const AllProviders = withWrappers(
   Suspense,
   KeyboardProvider,
-  StatusProvider,
+  CoreStatusProvider,
   NetworkConnectivityProvider,
   AuthProvider,
   SearchResultsProvider,
