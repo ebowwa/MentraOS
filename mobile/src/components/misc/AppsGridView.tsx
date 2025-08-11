@@ -53,8 +53,11 @@ export const AppsGridViewRoot: React.FC<AppsGridViewProps> = ({
   const touchableRefs = useRef<{[key: string]: React.Component | null}>({})
 
   const handleAppPress = (app: AppModel) => {
-    setSelectedApp(app)
-    setPopoverVisible(true)
+    // Ensure we have a valid ref before showing popover
+    if (touchableRefs.current[app.packageName]) {
+      setSelectedApp(app)
+      setPopoverVisible(true)
+    }
   }
 
   const handlePopoverClose = () => {
@@ -94,7 +97,9 @@ export const AppsGridViewRoot: React.FC<AppsGridViewProps> = ({
     return (
       <TouchableOpacity
         ref={ref => {
-          touchableRefs.current[item.packageName] = ref
+          if (item.packageName && item.packageName !== "") {
+            touchableRefs.current[item.packageName] = ref
+          }
         }}
         key={item.packageName}
         style={themed($gridItem)}
@@ -141,9 +146,9 @@ export const AppsGridViewRoot: React.FC<AppsGridViewProps> = ({
         contentContainerStyle={themed($gridContainer)}
       />
 
-      {selectedApp && touchableRefs.current[selectedApp.packageName] && (
+      {selectedApp && touchableRefs.current[selectedApp.packageName] && popoverVisible && (
         <Popover
-          from={touchableRefs.current[selectedApp.packageName]!}
+          from={touchableRefs.current[selectedApp.packageName]}
           isVisible={popoverVisible}
           onRequestClose={handlePopoverClose}
           popoverStyle={themed($popoverStyle)}
@@ -259,7 +264,7 @@ const $gridItem: ThemedStyle<ViewStyle> = ({spacing}) => ({
   // Calculate width more accurately: screen width - container margins - container padding - small buffer
   width: (SCREEN_WIDTH - spacing.lg * 2 - spacing.sm * 2 - spacing.xs * 4) / GRID_COLUMNS,
   alignItems: "center",
-  marginBottom: spacing.lg,
+  marginBottom: spacing.sm,
 })
 
 const $appContainer: ThemedStyle<ViewStyle> = () => ({
@@ -276,7 +281,7 @@ const $appIcon: ThemedStyle<ViewStyle> = ({spacing}) => ({
 
 const $activeIndicator: ThemedStyle<ViewStyle> = ({colors}) => ({
   position: "absolute",
-  bottom: 4,
+  //bottom: 4,
   right: 4,
   width: 12,
   height: 12,

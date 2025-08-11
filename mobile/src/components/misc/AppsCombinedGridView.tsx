@@ -178,16 +178,25 @@ const AppsCombinedGridViewRoot: React.FC<AppsCombinedGridViewProps> = () => {
   // Memoize filtered arrays to prevent unnecessary re-renders
   const activeApps = useMemo(() => appStatus.filter(app => app.is_running), [appStatus])
 
-  const inactiveApps = useMemo(
-    () =>
-      appStatus.filter(
-        app =>
-          !app.is_running &&
-          (!app.compatibility || app.compatibility.isCompatible) &&
-          !(Platform.OS === "ios" && (app.packageName === "cloud.augmentos.notify" || app.name === "Notify")),
-      ),
-    [appStatus],
-  )
+  const inactiveApps = useMemo(() => {
+    const filtered = appStatus.filter(
+      app =>
+        !app.is_running &&
+        (!app.compatibility || app.compatibility.isCompatible) &&
+        !(Platform.OS === "ios" && (app.packageName === "cloud.augmentos.notify" || app.name === "Notify")),
+    )
+
+    // Log apps that were filtered out due to compatibility
+    const incompatibleCount = appStatus.filter(
+      app => !app.is_running && app.compatibility && !app.compatibility.isCompatible,
+    ).length
+
+    console.log(
+      `📊 Apps Status - Active: ${activeApps.length}, Inactive (compatible): ${filtered.length}, Incompatible: ${incompatibleCount}`,
+    )
+
+    return filtered
+  }, [appStatus, activeApps.length])
 
   // Track when apps have initially loaded
   React.useEffect(() => {
@@ -310,7 +319,6 @@ const AppsCombinedGridViewRoot: React.FC<AppsCombinedGridViewProps> = () => {
       <View style={[themed($container)]}>
         <View style={themed($singleContainer)}>
           <View style={themed($headerSection)}>
-            <MaterialCommunityIcons name="gesture-tap" size={20} color={theme.colors.textDim} />
             <Text text={translate("home:tapToActivate")} style={themed($tooltipText)} />
           </View>
           <ScrollView
