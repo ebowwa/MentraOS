@@ -100,16 +100,16 @@ export default function AppSettings() {
   }
 
   // IMMEDIATE TACTICAL BYPASS: Check for webviewURL in app status data and redirect instantly
-  useEffect(() => {
-    if (appInfo?.webviewURL && fromWebView !== "true") {
-      console.log("TACTICAL BYPASS: webviewURL detected in app status, executing immediate redirect")
-      replace("/applet/webview", {
-        webviewURL: appInfo.webviewURL,
-        appName: appName,
-        packageName: packageName,
-      })
-    }
-  }, [appInfo, fromWebView, appName, packageName, replace])
+  // useEffect(() => {
+  //   if (appInfo?.webviewURL && fromWebView !== "true") {
+  //     console.log("TACTICAL BYPASS: webviewURL detected in app status, executing immediate redirect")
+  //     replace("/applet/webview", {
+  //       webviewURL: appInfo.webviewURL,
+  //       appName: appName,
+  //       packageName: packageName,
+  //     })
+  //   }
+  // }, [appInfo, fromWebView, appName, packageName, replace])
 
   // propagate any changes in app lists when this screen is unmounted:
   useFocusEffect(
@@ -324,14 +324,14 @@ export default function AppSettings() {
         }
 
         // TACTICAL BYPASS: If webviewURL exists in cached data, execute immediate redirect
-        if (cached.serverAppInfo?.webviewURL && fromWebView !== "true") {
-          replace("/applet/webview", {
-            webviewURL: cached.serverAppInfo.webviewURL,
-            appName: appName,
-            packageName: packageName,
-          })
-          return
-        }
+        // if (cached.serverAppInfo?.webviewURL && fromWebView !== "true") {
+        //   replace("/applet/webview", {
+        //     webviewURL: cached.serverAppInfo.webviewURL,
+        //     appName: appName,
+        //     packageName: packageName,
+        //   })
+        //   return
+        // }
       } else {
         setHasCachedSettings(false)
         setSettingsLoading(true)
@@ -412,14 +412,14 @@ export default function AppSettings() {
       setSettingsLoading(false)
 
       // TACTICAL BYPASS: Execute immediate webview redirect if webviewURL detected
-      if (data.webviewURL && fromWebView !== "true") {
-        replace("/applet/webview", {
-          webviewURL: data.webviewURL,
-          appName: appName,
-          packageName: packageName,
-        })
-        return
-      }
+      // if (data.webviewURL && fromWebView !== "true") {
+      //   replace("/applet/webview", {
+      //     webviewURL: data.webviewURL,
+      //     appName: appName,
+      //     packageName: packageName,
+      //   })
+      //   return
+      // }
     } catch (err) {
       setSettingsLoading(false)
       setHasCachedSettings(false)
