@@ -1,9 +1,9 @@
-import React, {useState, useCallback, useMemo} from "react"
+import React, {useState, useCallback, useMemo, useEffect} from "react"
 import {View, ViewStyle, TextStyle, Dimensions, Platform, TouchableOpacity} from "react-native"
 import {TabView, SceneMap, TabBar} from "react-native-tab-view"
 import {AppsGridView} from "./AppsGridView"
 import {useAppTheme} from "@/utils/useAppTheme"
-import {spacing, ThemedStyle} from "@/theme"
+import {ThemedStyle} from "@/theme"
 import {Text} from "@/components/ignite"
 import {translate} from "@/i18n"
 // import { ScrollView } from "react-native-gesture-handler"
@@ -169,6 +169,8 @@ const AppsCombinedGridViewRoot: React.FC<AppsCombinedGridViewProps> = () => {
     }
   }
 
+  console.log("APPSCOMBINEDGRIDVIEW RE-RENDER")
+
   // Memoize filtered arrays to prevent unnecessary re-renders
   const activeApps = useMemo(() => appStatus.filter(app => app.is_running), [appStatus])
 
@@ -193,7 +195,7 @@ const AppsCombinedGridViewRoot: React.FC<AppsCombinedGridViewProps> = () => {
   }, [appStatus, activeApps.length])
 
   // Track when apps have initially loaded
-  React.useEffect(() => {
+  useEffect(() => {
     if (appStatus.length > 0 && !hasInitiallyLoaded) {
       setHasInitiallyLoaded(true)
 
@@ -215,48 +217,42 @@ const AppsCombinedGridViewRoot: React.FC<AppsCombinedGridViewProps> = () => {
   //   )
   // }
 
-  const ActiveRoute = useMemo(
-    () => () => (
-      <ScrollView
-        showsVerticalScrollIndicator={true}
-        contentContainerStyle={{paddingBottom: spacing.sm, paddingTop: spacing.md}} // Space for tab bar and navbar
-        style={{flex: 1}}>
-        <AppsGridView
-          apps={activeApps}
-          onStartApp={handleStartApp}
-          onStopApp={handleStopApp}
-          onOpenSettings={handleOpenAppSettings}
-          onOpenWebView={handleOpenWebView}
-        />
-      </ScrollView>
-    ),
-    [activeApps, handleStartApp, handleStopApp, handleOpenAppSettings, handleOpenWebView],
+  const ActiveRoute = () => (
+    <ScrollView
+      showsVerticalScrollIndicator={true}
+      contentContainerStyle={{paddingBottom: theme.spacing.sm, paddingTop: theme.spacing.md}} // Space for tab bar and navbar
+      style={{flex: 1}}>
+      <AppsGridView
+        apps={activeApps}
+        onStartApp={handleStartApp}
+        onStopApp={handleStopApp}
+        onOpenSettings={handleOpenAppSettings}
+        onOpenWebView={handleOpenWebView}
+      />
+    </ScrollView>
   )
 
-  const InactiveRoute = useMemo(
-    () => () => (
-      <ScrollView
-        showsVerticalScrollIndicator={true}
-        contentContainerStyle={{paddingBottom: spacing.sm, paddingTop: spacing.md}} // Space for tab bar and navbar
-        style={{flex: 1}}>
-        <AppsGridView
-          apps={inactiveApps}
-          onStartApp={handleStartApp}
-          onStopApp={handleStopApp}
-          onOpenSettings={handleOpenAppSettings}
-          onOpenWebView={handleOpenWebView}
-        />
-        <AppsIncompatibleList />
-      </ScrollView>
-    ),
-    [inactiveApps, handleStartApp, handleStopApp, handleOpenAppSettings, handleOpenWebView],
+  const InactiveRoute = () => (
+    <ScrollView
+      showsVerticalScrollIndicator={true}
+      contentContainerStyle={{paddingBottom: theme.spacing.sm, paddingTop: theme.spacing.md}} // Space for tab bar and navbar
+      style={{flex: 1}}>
+      <AppsGridView
+        apps={inactiveApps}
+        onStartApp={handleStartApp}
+        onStopApp={handleStopApp}
+        onOpenSettings={handleOpenAppSettings}
+        onOpenWebView={handleOpenWebView}
+      />
+      <AppsIncompatibleList />
+    </ScrollView>
   )
 
   const renderScene = useMemo(
     () =>
       SceneMap({
-        active: ActiveRoute,
-        inactive: InactiveRoute,
+        active: React.memo(ActiveRoute),
+        inactive: React.memo(InactiveRoute),
       }),
     [ActiveRoute, InactiveRoute],
   )
@@ -317,7 +313,7 @@ const AppsCombinedGridViewRoot: React.FC<AppsCombinedGridViewProps> = () => {
           </View>
           <ScrollView
             showsVerticalScrollIndicator={true}
-            contentContainerStyle={{paddingBottom: spacing.sm, paddingTop: spacing.md}}
+            contentContainerStyle={{paddingBottom: theme.spacing.sm, paddingTop: theme.spacing.md}}
             style={{flex: 1}}>
             <AppsGridView
               apps={inactiveApps}
@@ -396,60 +392,10 @@ const $tabView: ThemedStyle<ViewStyle> = ({spacing}) => ({
   // paddingHorizontal: spacing.lg,
 })
 
-const $emptyContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
-  flex: 1,
-  justifyContent: "center",
-  alignItems: "center",
-  padding: spacing.xl,
-})
-
-const $emptyText: ThemedStyle<TextStyle> = ({colors}) => ({
-  fontSize: 16,
-  color: colors.textDim,
-  textAlign: "center",
-})
-
-const $tooltipBar: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
-  flexDirection: "row",
-  alignItems: "center",
-  justifyContent: "center",
-  gap: spacing.xs,
-  paddingVertical: spacing.sm,
-  paddingHorizontal: spacing.lg,
-  marginHorizontal: spacing.lg,
-  marginBottom: 0, // Remove margin to merge with content below
-  backgroundColor: colors.background,
-  borderTopLeftRadius: spacing.sm,
-  borderTopRightRadius: spacing.sm,
-  borderBottomLeftRadius: 0,
-  borderBottomRightRadius: 0,
-  borderTopWidth: spacing.xxxs,
-  borderLeftWidth: spacing.xxxs,
-  borderRightWidth: spacing.xxxs,
-  borderBottomWidth: 0,
-  borderColor: colors.border,
-  height: 48, // Same height as tab bar
-})
-
 const $tooltipText: ThemedStyle<TextStyle> = ({colors}) => ({
   fontSize: 15,
   color: colors.textDim,
   fontWeight: "500",
-})
-
-const $mergedContentContainer: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
-  flex: 1,
-  backgroundColor: colors.background,
-  marginHorizontal: spacing.lg,
-  borderBottomLeftRadius: spacing.sm,
-  borderBottomRightRadius: spacing.sm,
-  borderTopLeftRadius: 0,
-  borderTopRightRadius: 0,
-  borderLeftWidth: spacing.xxxs,
-  borderRightWidth: spacing.xxxs,
-  borderBottomWidth: spacing.xxxs,
-  borderTopWidth: 0,
-  borderColor: colors.border,
 })
 
 const $singleContainer: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
@@ -481,38 +427,4 @@ const $headerSection: ThemedStyle<ViewStyle> = ({spacing}) => ({
   height: 48,
   borderBottomWidth: 1,
   borderBottomColor: "rgba(0,0,0,0.05)",
-})
-
-const $tabsWrapper: ThemedStyle<ViewStyle> = ({spacing}) => ({
-  flexDirection: "row",
-  height: 48,
-  borderBottomWidth: 1,
-  borderBottomColor: "rgba(0,0,0,0.05)",
-})
-
-const $tab: ThemedStyle<ViewStyle> = ({spacing}) => ({
-  flex: 1,
-  alignItems: "center",
-  justifyContent: "center",
-  paddingVertical: spacing.sm,
-})
-
-const $activeTab: ThemedStyle<ViewStyle> = ({colors}) => ({
-  borderBottomWidth: 2,
-  borderBottomColor: colors.text,
-})
-
-const $tabLabel: ThemedStyle<TextStyle> = ({colors}) => ({
-  fontSize: 16,
-  fontWeight: "600",
-  color: colors.textDim,
-})
-
-const $activeTabLabel: ThemedStyle<TextStyle> = ({colors}) => ({
-  color: colors.text,
-})
-
-const $disabledTabLabel: ThemedStyle<TextStyle> = ({colors}) => ({
-  color: colors.textDim,
-  opacity: 0.5,
 })
