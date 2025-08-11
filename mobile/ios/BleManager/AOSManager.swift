@@ -1787,6 +1787,7 @@ struct ViewState {
     }
 
     private func handleG1Ready() {
+        CoreCommsService.log("AOS: G1 device ready!")
         isSearching = false
         defaultWearable = "Even Realities G1"
         handleRequestStatus()
@@ -1796,7 +1797,7 @@ struct ViewState {
             try? await Task.sleep(nanoseconds: 1_000_000_000) // 3 seconds
             await self.g1Manager?.setSilentMode(false) // turn off silent mode
             await self.g1Manager?.getBatteryStatus()
-            sendText("// BOOTING MENTRAOS")
+            // sendText("// BOOTING MENTRAOS")
 
             // send loaded settings to glasses:
             self.g1Manager?.RN_getBatteryStatus()
@@ -1810,9 +1811,9 @@ struct ViewState {
             // self.g1Manager?.RN_setDashboardPosition(self.dashboardHeight, self.dashboardDepth)
             // try? await Task.sleep(nanoseconds: 400_000_000)
             //      playStartupSequence()
-            sendText("// MENTRAOS CONNECTED")
-            try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
-            sendText(" ") // clear screen
+            // sendText("// MENTRAOS CONNECTED")
+            // try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
+            // sendText(" ") // clear screen
 
             // enable the mic if it was last on:
             // CoreCommsService.log("ENABLING MIC STATE: \(self.micEnabled)")
