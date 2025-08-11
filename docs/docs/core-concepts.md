@@ -196,6 +196,10 @@ Camera functionality requires smart glasses with camera hardware (e.g., Mentra L
 
 See the [Camera Documentation](/camera/) for complete guides and examples.
 
+## 17. Location
+
+The location module provides battery‑efficient access to device location via the [`LocationManager`](/reference/managers/location-manager) (accessible through `session.location`). Your app can subscribe to continuous updates at different accuracy tiers or request a single fix with `getLatestLocation`. Location data is delivered as [`LocationUpdate`](/reference/interfaces/event-types#locationupdate) events and requires appropriate location permissions.
+
 ---
 
 By understanding these core concepts, you'll be well-equipped to start building powerful and engaging apps for MentraOS smart glasses.

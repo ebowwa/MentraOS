@@ -165,6 +165,56 @@ public class SysControl {
         sendBroadcast(context, nn);
     }
     
+    // WiFi Control Methods
+    public static void enableWifi(Context context) {
+        Intent nn = new Intent("com.xy.xsetting.action");
+        nn.setPackage("com.android.systemui");
+        nn.putExtra("cmd", "setwifi");
+        nn.putExtra("enable", true);
+        context.sendBroadcast(nn);
+        
+        Log.d(TAG, "Sent WiFi enable broadcast");
+    }
+    
+    public static void disableWifi(Context context) {
+        Intent nn = new Intent("com.xy.xsetting.action");
+        nn.setPackage("com.android.systemui");
+        nn.putExtra("cmd", "setwifi");
+        nn.putExtra("enable", false);
+        context.sendBroadcast(nn);
+        
+        Log.d(TAG, "Sent WiFi disable broadcast");
+    }
+    
+    public static void connectToWifi(Context context, String ssid, String password) {
+        if (ssid == null || ssid.isEmpty()) {
+            Log.e(TAG, "Cannot connect to WiFi with empty SSID");
+            return;
+        }
+        
+        Log.d(TAG, "🔧 Attempting WiFi connection to: " + ssid);
+        
+        // Use the exact same pattern that works for scan_wifi
+        Intent nn = new Intent("com.xy.xsetting.action");
+        nn.setPackage("com.android.systemui");
+        nn.putExtra("cmd", "connectwifi");
+        nn.putExtra("ssid", ssid);
+        nn.putExtra("pwd", password);
+        context.sendBroadcast(nn);
+        
+        Log.d(TAG, "✅ Sent WiFi connect broadcast for SSID: " + ssid);
+    }
+    
+    public static void scanWifi(Context context) {
+        // Use the exact same pattern that works
+        Intent nn = new Intent("com.xy.xsetting.action");
+        nn.setPackage("com.android.systemui");
+        nn.putExtra("cmd", "scan_wifi");
+        context.sendBroadcast(nn);
+        
+        Log.d(TAG, "Sent WiFi scan broadcast");
+    }
+    
     // NEW METHODS - OTA/System Updates
     public static void triggerOTA(Context context) {
         Intent nn = new Intent("com.xy.updateota");

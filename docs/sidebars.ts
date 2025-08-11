@@ -104,6 +104,7 @@ const sidebars: SidebarsConfig = {
             "reference/managers/settings-manager",
             "reference/managers/audio-manager",
             "reference/managers/camera",
+            "reference/managers/location-manager",
           ],
         },
         "reference/enums",

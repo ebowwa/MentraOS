@@ -222,9 +222,20 @@ export class CloudflareStreamService {
       );
 
       const response = await this.withRetry(async () => {
-        // Cloudflare Stream API v2 uses empty body for basic stream creation
-        // Metadata can be updated after creation if needed
-        const requestBody = {};
+        // Create live input with proper recording configuration
+        // Recording mode must be "automatic" for live playback to work
+        const requestBody = {
+          recording: {
+            mode: config.enableRecording ? "automatic" : "off",
+            requireSignedURLs: config.requireSignedURLs || false,
+            timeoutSeconds: 0, // Use platform default
+          },
+          // meta: {
+          //   mentraOS: true,
+          //   userId: userId,
+          //   quality: config.quality,
+          // },
+        };
         this.logger.debug({ requestBody }, "📤 Sending request to Cloudflare");
         return await this.api.post("/live_inputs", requestBody);
       });

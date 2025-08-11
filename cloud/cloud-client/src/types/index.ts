@@ -2,7 +2,7 @@
  * Core client configuration and event types
  */
 
-import { Layout } from './sdk-types';
+import { Layout } from "./sdk-types";
 
 /**
  * Main client configuration
@@ -11,7 +11,7 @@ export interface ClientConfig {
   // Required
   email: string;
   serverUrl: string;
-  
+
   // Optional
   coreToken?: string;
   audio?: AudioConfig;
@@ -24,7 +24,7 @@ export interface ClientConfig {
  * Audio streaming configuration
  */
 export interface AudioConfig {
-  format: 'pcm16' | 'wav';
+  format: "pcm16" | "wav";
   sampleRate: 16000 | 48000;
   chunkSize: number;
 }
@@ -52,7 +52,7 @@ export interface BehaviorConfig {
  * Debugging and logging options
  */
 export interface DebugConfig {
-  logLevel: 'debug' | 'info' | 'warn' | 'error';
+  logLevel: "debug" | "info" | "warn" | "error";
   saveMetrics: boolean;
   logWebSocketMessages: boolean;
 }
@@ -61,9 +61,9 @@ export interface DebugConfig {
  * Audio stream interface for cross-platform compatibility
  */
 export interface AudioStream {
-  on(event: 'data', listener: (chunk: Buffer) => void): this;
-  on(event: 'end', listener: () => void): this;
-  on(event: 'error', listener: (error: Error) => void): this;
+  on(event: "data", listener: (chunk: Buffer) => void): this;
+  on(event: "end", listener: () => void): this;
+  on(event: "error", listener: (error: Error) => void): this;
   pipe?: (destination: any) => any;
 }
 

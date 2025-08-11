@@ -578,6 +578,20 @@ _(none)_
 
 ---
 
+### Clear Display
+
+Clears all pixels from the display without turning the display off.
+
+#### 📲 Phone → Glasses
+
+[0x02][PhoneToGlasses { clear_display { msg_id: "clear_disp_001" }}]
+
+#### 👓 Glasses → Phone
+
+_(none)_
+
+---
+
 ### Set Display Brightness
 
 Sets display brightness to a value between 0–100.

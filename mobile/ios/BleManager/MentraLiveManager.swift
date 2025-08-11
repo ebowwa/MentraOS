@@ -1358,6 +1358,15 @@ typealias JSONObject = [String: Any]
         case "sr_hrt":
             if let bodyObj = json["B"] as? [String: Any] {
                 let ready = bodyObj["ready"] as? Int ?? 0
+
+                let percentage = bodyObj["pt"] as? Int ?? 0
+                if percentage > 0, percentage <= 20 {
+                    if !glassesReady {
+                        CoreCommsService.sendPairFailureEvent("errors:pairingBatteryTooLow")
+                        return
+                    }
+                }
+
                 if ready == 1 {
                     CoreCommsService.log("K900 SOC ready")
                     let readyMsg: [String: Any] = [

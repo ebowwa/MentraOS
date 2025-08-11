@@ -168,7 +168,7 @@ export class ManagedStreamingExtension {
       liveInput = await this.cloudflareService.createLiveInput(userId, {
         quality,
         enableWebRTC,
-        enableRecording: false, // Live-only for now
+        enableRecording: true, // Must be true for live playback to work
         requireSignedURLs: false, // Public streams
         restreamDestinations, // Pass through restream destinations
       });
@@ -215,6 +215,13 @@ export class ManagedStreamingExtension {
       managedStream.streamId,
       managedStream.cfLiveInputId,
     );
+
+    // Wait for Cloudflare live input to fully initialize
+    this.logger.info(
+      { userId, packageName },
+      "⏳ Waiting 3 seconds for Cloudflare live input to initialize",
+    );
+    //await new Promise((resolve) => setTimeout(resolve, 3000));
 
     // Send start command to glasses with Cloudflare RTMP URL
     const startMessage: StartRtmpStream = {

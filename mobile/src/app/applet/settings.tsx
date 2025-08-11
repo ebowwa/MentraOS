@@ -43,7 +43,13 @@ import Divider from "@/components/misc/Divider"
 import {InfoRow} from "@/components/settings/InfoRow"
 import {SettingsGroup} from "@/components/settings/SettingsGroup"
 import {showAlert} from "@/utils/AlertUtils"
-import {checkPermissionsUI, PERMISSION_CONFIG, PermissionFeatures, requestPermissionsUI} from "@/utils/PermissionsUtils"
+import {
+  askPermissionsUI,
+  checkPermissionsUI,
+  PERMISSION_CONFIG,
+  PermissionFeatures,
+  requestPermissionsUI,
+} from "@/utils/PermissionsUtils"
 import {translate} from "@/i18n"
 
 export default function AppSettings() {
@@ -130,6 +136,8 @@ export default function AppSettings() {
 
     console.log(`${appInfo.is_running ? "Stopping" : "Starting"} app: ${packageName}`)
 
+    console.log("appInfo", appInfo.is_running)
+
     try {
       if (appInfo.is_running) {
         // Optimistically update UI first
@@ -143,60 +151,19 @@ export default function AppSettings() {
         return
       }
 
-      if ((await checkAppHealthStatus(appInfo.packageName)) !== "healthy") {
+      if (!(await checkAppHealthStatus(appInfo.packageName))) {
         showAlert(translate("errors:appNotOnlineTitle"), translate("errors:appNotOnlineMessage"), [
           {text: translate("common:ok")},
         ])
         return
       }
 
-      // check perms:
-      const neededPermissions = await checkPermissionsUI(appInfo)
-      if (neededPermissions.length > 0) {
-        await showAlert(
-          neededPermissions.length > 1
-            ? translate("home:permissionsRequiredTitle")
-            : translate("home:permissionRequiredTitle"),
-          translate("home:permissionMessage", {
-            permissions: neededPermissions.map(perm => PERMISSION_CONFIG[perm]?.name || perm).join(", "),
-          }),
-          [
-            {
-              text: translate("common:cancel"),
-              onPress: () => {},
-              style: "cancel",
-            },
-            {
-              text: translate("common:next"),
-              onPress: async () => {
-                await requestPermissionsUI(neededPermissions)
-
-                // Check if permissions were actually granted (for non-special permissions)
-                // Special permissions like READ_NOTIFICATIONS on Android require manual action
-                const stillNeededPermissions = await checkPermissionsUI(appInfo)
-
-                // If we still need READ_NOTIFICATIONS, don't auto-retry
-                // The user needs to manually grant it in settings and try again
-                if (
-                  stillNeededPermissions.includes(PermissionFeatures.READ_NOTIFICATIONS) &&
-                  Platform.OS === "android"
-                ) {
-                  // Permission flow is in progress, user needs to complete it manually
-                  return
-                }
-
-                // For other permissions that were granted, proceed with starting the app
-                if (stillNeededPermissions.length === 0) {
-                  handleStartStopApp()
-                }
-              },
-            },
-          ],
-          {
-            iconName: "information-outline",
-            iconColor: theme.colors.textDim,
-          },
-        )
+      // ask for needed perms:
+      const result = await askPermissionsUI(appInfo, theme)
+      if (result === -1) {
+        return
+      } else if (result === 0) {
+        handleStartStopApp() // restart this function
         return
       }
 
@@ -419,10 +386,17 @@ export default function AppSettings() {
 
       // Initialize local state using the "selected" property.
       if (data.settings && Array.isArray(data.settings)) {
+        // Get cached settings to preserve user values for existing settings
+        const cached = await loadSetting(SETTINGS_CACHE_KEY(packageName), null)
+        const cachedState = cached?.settingsState || {}
+
         const initialState: {[key: string]: any} = {}
         data.settings.forEach((setting: any) => {
           if (setting.type !== "group") {
-            initialState[setting.key] = setting.selected
+            // Use cached value if it exists (user has interacted with this setting before)
+            // Otherwise use 'selected' from backend (which includes defaultValue for new settings)
+            initialState[setting.key] =
+              cachedState[setting.key] !== undefined ? cachedState[setting.key] : setting.selected
           }
         })
         setSettingsState(initialState)
@@ -541,6 +515,7 @@ export default function AppSettings() {
             label={setting.label}
             value={settingsState[setting.key]}
             options={setting.options}
+            defaultValue={setting.defaultValue}
             onValueChange={val => handleSettingChange(setting.key, val)}
           />
         )
@@ -551,6 +526,7 @@ export default function AppSettings() {
             label={setting.label}
             value={settingsState[setting.key]}
             options={setting.options}
+            defaultValue={setting.defaultValue}
             onValueChange={val => handleSettingChange(setting.key, val)}
           />
         )
@@ -609,7 +585,7 @@ export default function AppSettings() {
           leftIcon="caretLeft"
           onLeftPress={() => {
             if (serverAppInfo?.webviewURL) {
-              navigate("/applet/webview", {
+              replace("/applet/webview", {
                 webviewURL: serverAppInfo.webviewURL,
                 appName: appName as string,
                 packageName: packageName as string,

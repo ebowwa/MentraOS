@@ -16,6 +16,9 @@ import {
   checkNotificationAccessSpecialPermission,
 } from "../utils/NotificationServiceUtils"
 import {AppInterface, AppPermission} from "@/contexts/AppStatusProvider"
+import {translate} from "@/i18n"
+import showAlert from "./AlertUtils"
+import {Theme} from "@/theme"
 
 // Define permission features with their required permissions
 export const PermissionFeatures: Record<string, string> = {
@@ -754,6 +757,63 @@ export const doesHaveAllPermissions = async (): Promise<boolean> => {
   return true
 }
 
+export const askPermissionsUI = async (app: AppInterface, theme: Theme): Promise<number> => {
+  const neededPermissions = await checkPermissionsUI(app)
+
+  if (neededPermissions.length == 0) {
+    return 1
+  }
+
+  // Create a promise that resolves based on user action
+  return new Promise<number>(resolve => {
+    showAlert(
+      neededPermissions.length > 1
+        ? translate("home:permissionsRequiredTitle")
+        : translate("home:permissionRequiredTitle"),
+      translate("home:permissionMessage", {
+        permissions: neededPermissions.map(perm => PERMISSION_CONFIG[perm]?.name || perm).join(", "),
+      }),
+      [
+        {
+          text: translate("common:cancel"),
+          onPress: () => {
+            resolve(-1)
+          },
+          style: "cancel",
+        },
+        {
+          text: translate("common:next"),
+          onPress: async () => {
+            await requestPermissionsUI(neededPermissions)
+
+            // Check if permissions were actually granted
+            const stillNeededPermissions = await checkPermissionsUI(app)
+
+            // If we still need READ_NOTIFICATIONS, don't auto-retry
+            if (stillNeededPermissions.includes(PermissionFeatures.READ_NOTIFICATIONS) && Platform.OS === "android") {
+              // Permission flow is in progress, user needs to complete it manually
+              resolve(-1) // Return 0 to indicate "in progress" state
+              return
+            }
+
+            // For other permissions that were granted, proceed
+            if (stillNeededPermissions.length === 0) {
+              resolve(1) // Success
+            } else {
+              // Still have missing permissions (other than READ_NOTIFICATIONS)
+              resolve(0) // Failed to get all permissions
+            }
+          },
+        },
+      ],
+      {
+        iconName: "information-outline",
+        iconColor: theme.colors.textDim,
+      },
+    )
+  })
+}
+
 export const checkPermissionsUI = async (app: AppInterface) => {
   let permissions = app.permissions || []
   const neededPermissions: string[] = []
@@ -767,10 +827,6 @@ export const checkPermissionsUI = async (app: AppInterface) => {
       {type: "LOCATION", required: true},
       {type: "BACKGROUND_LOCATION", required: true},
     ] as AppPermission[]
-  }
-
-  if (app.packageName == "cloud.augmentos.notify") {
-    permissions.push({type: "READ_NOTIFICATIONS", required: true, description: "Read notifications"})
   }
 
   for (const permission of permissions) {

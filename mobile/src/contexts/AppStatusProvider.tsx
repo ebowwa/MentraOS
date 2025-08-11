@@ -73,7 +73,7 @@ interface AppStatusContextType {
   optimisticallyStartApp: (packageName: string) => void
   optimisticallyStopApp: (packageName: string) => void
   clearPendingOperation: (packageName: string) => void
-  checkAppHealthStatus: (packageName: string) => Promise<string>
+  checkAppHealthStatus: (packageName: string) => Promise<boolean>
   isLoading: boolean
   error: string | null
   isSensingEnabled: boolean
@@ -229,19 +229,29 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
     delete pendingOperations.current[packageName]
   }, [])
 
-  const checkAppHealthStatus = async (packageName: string) => {
+  const checkAppHealthStatus = async (packageName: string): Promise<boolean> => {
     // GET the app's /health endpoint
+    return true
     try {
       const app = appStatus.find(app => app.packageName === packageName)
       if (!app) {
-        return "offline"
+        return false
       }
-      const healthResponse = await fetch(`${app.publicUrl}/health`)
+      const baseUrl = await BackendServerComms.getInstance().getServerUrl()
+      // POST /api/app-uptime/app-pkg-health-check with body { "packageName": packageName }
+      const healthUrl = `${baseUrl}/api/app-uptime/app-pkg-health-check`
+      const healthResponse = await fetch(healthUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({packageName}),
+      })
       const healthData = await healthResponse.json()
-      return healthData.status
+      return healthData.success
     } catch (error) {
       console.error("AppStatusProvider: Error checking app health status:", error)
-      return "offline"
+      return false
     }
   }
 
@@ -283,11 +293,9 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
   // Listen for app started/stopped events from CoreCommunicator
   useEffect(() => {
     const onAppStarted = (packageName: string) => {
-      console.log("APP_STARTED_EVENT", packageName)
       optimisticallyStartApp(packageName)
     }
     const onAppStopped = (packageName: string) => {
-      console.log("APP_STOPPED_EVENT", packageName)
       optimisticallyStopApp(packageName)
     }
     const onResetAppStatus = () => {

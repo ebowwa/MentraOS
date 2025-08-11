@@ -1,9 +1,8 @@
-import React, {useRef, useCallback, PropsWithChildren, useState, useEffect} from "react"
+import React, {useRef, useCallback, PropsWithChildren, useState, useEffect, useMemo} from "react"
 import {View, Animated, Platform, ViewStyle, ScrollView, TouchableOpacity} from "react-native"
 import {useFocusEffect} from "@react-navigation/native"
 import {Header, Screen} from "@/components/ignite"
-import AppsActiveList from "@/components/misc/AppsActiveList"
-import AppsInactiveList from "@/components/misc/AppsInactiveList"
+import {AppsCombinedGridView} from "@/components/misc/AppsCombinedGridView"
 import AppsIncompatibleList from "@/components/misc/AppsIncompatibleList"
 import {useStatus} from "@/contexts/AugmentOSStatusProvider"
 import {useAppStatus} from "@/contexts/AppStatusProvider"
@@ -21,23 +20,24 @@ import NotificationOn from "assets/icons/component/NotificationOn"
 import {ConnectDeviceButton, ConnectedGlasses, DeviceToolbar} from "@/components/misc/ConnectedDeviceInfo"
 import {Spacer} from "@/components/misc/Spacer"
 import Divider from "@/components/misc/Divider"
-import {checkFeaturePermissions, PermissionFeatures} from "@/utils/PermissionsUtils"
+import {
+  askPermissionsUI,
+  checkFeaturePermissions,
+  checkPermissionsUI,
+  PERMISSION_CONFIG,
+  PermissionFeatures,
+  requestPermissionsUI,
+} from "@/utils/PermissionsUtils"
 import {router} from "expo-router"
 import {OnboardingSpotlight} from "@/components/misc/OnboardingSpotlight"
 import {SETTINGS_KEYS} from "@/consts"
 import {translate} from "@/i18n"
-import showAlert from "@/utils/AlertUtils"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
-
-interface AnimatedSectionProps extends PropsWithChildren {
-  delay?: number
-}
+import {showAlert} from "@/utils/AlertUtils"
 
 export default function Homepage() {
-  const {appStatus} = useAppStatus()
+  const {appStatus, refreshAppStatus} = useAppStatus()
   const {status} = useStatus()
-  const [isSimulatedPuck, setIsSimulatedPuck] = React.useState(false)
-  const [isCheckingVersion, setIsCheckingVersion] = useState(false)
   const [isInitialLoading, setIsInitialLoading] = useState(true)
   const [hasMissingPermissions, setHasMissingPermissions] = useState(false)
   const [showOnboardingSpotlight, setShowOnboardingSpotlight] = useState(false)
@@ -45,11 +45,12 @@ export default function Homepage() {
   const [liveCaptionsPackageName, setLiveCaptionsPackageName] = useState<string | null>(null)
   const liveCaptionsRef = useRef<any>(null)
   const connectButtonRef = useRef<any>(null)
+  const backendComms = BackendServerComms.getInstance()
 
   const fadeAnim = useRef(new Animated.Value(0)).current
   const bellFadeAnim = useRef(new Animated.Value(0)).current
   const {themed, theme} = useAppTheme()
-  const {push} = useNavigationHistory()
+  const {push, replace} = useNavigationHistory()
 
   // Reset loading state when connection status changes
   useEffect(() => {
@@ -103,6 +104,15 @@ export default function Homepage() {
     }, []),
   )
 
+  // propagate any changes in app lists when this screen is mounted:
+  useFocusEffect(
+    useCallback(() => {
+      return async () => {
+        await refreshAppStatus()
+      }
+    }, []),
+  )
+
   // Check onboarding status
   useEffect(() => {
     const checkOnboarding = async () => {
@@ -115,19 +125,22 @@ export default function Homepage() {
           setOnboardingTarget("glasses")
           setShowOnboardingSpotlight(true)
         } else {
-          // Check if Live Captions app exists and is not running
-          const liveCaptionsApp = appStatus.find(
-            app =>
-              app.packageName === "com.augmentos.livecaptions" ||
-              app.packageName === "cloud.augmentos.live-captions" ||
-              app.packageName === "com.mentra.livecaptions",
-          )
+          // // Check if Live Captions app exists and is not running
+          // const liveCaptionsApp = appStatus.find(
+          //   app =>
+          //     app.packageName === "com.augmentos.livecaptions" ||
+          //     app.packageName === "cloud.augmentos.live-captions" ||
+          //     app.packageName === "com.mentra.livecaptions",
+          // )
 
-          if (liveCaptionsApp && !liveCaptionsApp.is_running) {
-            setOnboardingTarget("livecaptions")
-            setLiveCaptionsPackageName(liveCaptionsApp.packageName)
-            setShowOnboardingSpotlight(true)
-          }
+          // if (liveCaptionsApp && !liveCaptionsApp.is_running) {
+          //   setOnboardingTarget("livecaptions")
+          //   setLiveCaptionsPackageName(liveCaptionsApp.packageName)
+          //   setShowOnboardingSpotlight(true)
+          // }
+          // Skip Live Captions spotlight - mark onboarding as complete once glasses are connected                                  │ │
+          setShowOnboardingSpotlight(false)
+          await saveSetting(SETTINGS_KEYS.ONBOARDING_COMPLETED, true)
         }
       }
     }
@@ -206,6 +219,8 @@ export default function Homepage() {
     }, [fadeAnim]),
   )
 
+  console.log("HOMEPAGE RE-RENDER")
+
   return (
     <Screen preset="fixed" style={themed($screen)}>
       <Header
@@ -226,27 +241,16 @@ export default function Homepage() {
       />
 
       <CloudConnection />
-      <ScrollView
-        style={{marginRight: -theme.spacing.md, paddingRight: theme.spacing.md}}
-        contentInsetAdjustmentBehavior="automatic">
-        <SensingDisabledWarning />
-
+      <SensingDisabledWarning />
+      <View>
         <ConnectedGlasses showTitle={false} />
         <DeviceToolbar />
-        <Spacer height={theme.spacing.md} />
-        <View ref={connectButtonRef}>
-          <ConnectDeviceButton />
-        </View>
-        <Spacer height={theme.spacing.lg} />
-        <Divider variant="full" />
-        <Spacer height={theme.spacing.md} />
-
-        <AppsActiveList />
-        <Spacer height={spacing.xl} />
-        <AppsInactiveList key={`apps-list-${appStatus.length}`} liveCaptionsRef={liveCaptionsRef} />
-        <Spacer height={spacing.xl} />
-        <AppsIncompatibleList />
-      </ScrollView>
+      </View>
+      <View ref={connectButtonRef}>
+        <ConnectDeviceButton />
+      </View>
+      <Spacer height={theme.spacing.md} />
+      <AppsCombinedGridView />
 
       <OnboardingSpotlight
         visible={showOnboardingSpotlight}

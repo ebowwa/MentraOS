@@ -1,5 +1,7 @@
 package com.augmentos.asg_client.camera;
 
+import com.augmentos.asg_client.io.media.core.CircularVideoBufferInternal;
+
 import android.annotation.SuppressLint;
 import android.app.Notification;
 import android.app.NotificationChannel;
@@ -223,7 +225,7 @@ public class CameraNeo extends LifecycleService {
             // Check if a photo capture session is active (e.g., cameraDevice is open and not for video)
             // or if video recording is active.
             boolean photoSessionActive = (sInstance.cameraDevice != null && sInstance.imageReader != null && !sInstance.isRecording);
-            return photoSessionActive || sInstance.isRecording;
+            return photoSessionActive || sInstance.isRecording || sInstance.isInBufferMode;
         }
         return false; // Service not running or instance not set
     }
@@ -330,7 +332,7 @@ public class CameraNeo extends LifecycleService {
     /**
      * Save buffer video
      * @param context Application context
-     * @param seconds Seconds to save
+     * @param seconds Number of seconds to save
      * @param requestId Request ID for tracking
      */
     public static void saveBufferVideo(Context context, int seconds, String requestId) {
@@ -353,7 +355,9 @@ public class CameraNeo extends LifecycleService {
                 case ACTION_TAKE_PHOTO:
                     String photoFilePath = intent.getStringExtra(EXTRA_PHOTO_FILE_PATH);
                     String requestedSize = intent.getStringExtra("PHOTO_SIZE");
+                    Log.d(TAG, "Photo file path: " + photoFilePath);
                     if (photoFilePath == null || photoFilePath.isEmpty()) {
+                        Log.d(TAG, "Photo file path is empty, using default");
                         String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
                         photoFilePath = getExternalFilesDir(null) + File.separator + "IMG_" + timeStamp + ".jpg";
                     }
@@ -374,11 +378,11 @@ public class CameraNeo extends LifecycleService {
                     break;
 
                 case ACTION_START_BUFFER:
-                    startBufferRecording();
+                    startBufferMode();
                     break;
 
                 case ACTION_STOP_BUFFER:
-                    stopBufferRecording();
+                    stopBufferMode();
                     break;
 
                 case ACTION_SAVE_BUFFER:
@@ -1055,6 +1059,7 @@ public class CameraNeo extends LifecycleService {
                     return;
                 }
                 surfaces.add(surfaceToUse);
+                recorderSurface = surfaceToUse; // Store for later use
                 previewBuilder = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_RECORD);
                 previewBuilder.addTarget(surfaceToUse);
             } else {
@@ -1124,10 +1129,8 @@ public class CameraNeo extends LifecycleService {
                     cameraCaptureSession = session;
                     if (forVideo) {
                         if (currentMode == RecordingMode.BUFFER) {
-                            // Start buffer recording on current segment
                             startBufferRecordingInternal();
                         } else {
-                            // Start regular video recording
                             startRecordingInternal();
                         }
                     } else {
@@ -1788,5 +1791,136 @@ public class CameraNeo extends LifecycleService {
         }
     }
 
+    // ========== BUFFER MODE METHODS ==========
+
+    /**
+     * Start buffer recording mode
+     */
+    private void startBufferMode() {
+        Log.d(TAG, "Starting buffer mode");
+
+        if (isInBufferMode) {
+            Log.w(TAG, "Already in buffer mode");
+            return;
+        }
+
+        // Initialize buffer manager
+        bufferManager = new CircularVideoBufferInternal(this);
+        bufferManager.setCallback(new CircularVideoBufferInternal.SegmentSwitchCallback() {
+            @Override
+            public void onSegmentSwitch(int newSegmentIndex, Surface newSurface) {
+                Log.d(TAG, "Buffer segment switch to index " + newSegmentIndex);
+                // Handle segment switch - update camera session with new surface
+                if (cameraCaptureSession != null && previewBuilder != null) {
+                    try {
+                        previewBuilder.removeTarget(recorderSurface);
+                        recorderSurface = newSurface;
+                        previewBuilder.addTarget(recorderSurface);
+                        cameraCaptureSession.setRepeatingRequest(previewBuilder.build(), null, backgroundHandler);
+                    } catch (CameraAccessException e) {
+                        Log.e(TAG, "Error switching buffer segment", e);
+                    }
+                }
+            }
+
+            @Override
+            public void onBufferError(String error) {
+                Log.e(TAG, "Buffer error: " + error);
+                if (sBufferCallback != null) {
+                    sBufferCallback.onBufferError(error);
+                }
+            }
+
+            @Override
+            public void onSegmentReady(int segmentIndex, String filePath) {
+                Log.d(TAG, "Buffer segment " + segmentIndex + " ready: " + filePath);
+            }
+        });
+
+        try {
+            // Prepare all MediaRecorder instances
+            bufferManager.prepareAllRecorders();
+
+            // Set mode and open camera
+            currentMode = RecordingMode.BUFFER;
+            isInBufferMode = true;
+
+            // Wake up screen and open camera
+            wakeUpScreen();
+            openCameraInternal(null, true); // true for video mode
+
+            // Initialize segment switch handler
+            segmentSwitchHandler = new Handler(Looper.getMainLooper());
+
+            // Schedule first segment switch
+            scheduleNextSegmentSwitch();
+
+            if (sBufferCallback != null) {
+                sBufferCallback.onBufferStarted();
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to start buffer mode", e);
+            isInBufferMode = false;
+            if (sBufferCallback != null) {
+                sBufferCallback.onBufferError("Failed to start: " + e.getMessage());
+            }
+            stopSelf();
+        }
+    }
+
+    /**
+     * Schedule next segment switch for buffer mode
+     */
+    private void scheduleNextSegmentSwitch() {
+        if (segmentSwitchHandler != null && isInBufferMode) {
+            segmentSwitchHandler.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    if (isInBufferMode && bufferManager != null) {
+                        Log.d(TAG, "Segment timer triggered - switching to next segment");
+                        bufferManager.switchToNextSegment();
+                        // Schedule next switch
+                        scheduleNextSegmentSwitch();
+                    }
+                }
+            }, SEGMENT_DURATION_MS);
+        }
+    }
+
+    /**
+     * Stop buffer recording mode
+     */
+    private void stopBufferMode() {
+        Log.d(TAG, "Stopping buffer mode");
+
+        if (!isInBufferMode) {
+            Log.w(TAG, "Not in buffer mode");
+            return;
+        }
+
+        isInBufferMode = false;
+        currentMode = RecordingMode.SINGLE_VIDEO;
+
+        // Cancel segment switching
+        if (segmentSwitchHandler != null) {
+            segmentSwitchHandler.removeCallbacksAndMessages(null);
+            segmentSwitchHandler = null;
+        }
+
+        // Stop buffer manager
+        if (bufferManager != null) {
+            bufferManager.stopBuffering();
+            bufferManager = null;
+        }
+
+        // Close camera
+        closeCamera();
+
+        if (sBufferCallback != null) {
+            sBufferCallback.onBufferStopped();
+        }
+
+        stopSelf();
+    }
 
 }

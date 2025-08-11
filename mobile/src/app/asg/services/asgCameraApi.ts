@@ -4,6 +4,8 @@
  */
 
 import {PhotoInfo, GalleryResponse, ServerStatus, HealthResponse} from "../types"
+import RNFS from "react-native-fs"
+import {localStorageService} from "./localStorageService"
 
 export class AsgCameraApiClient {
   private baseUrl: string
@@ -22,15 +24,21 @@ export class AsgCameraApiClient {
    * Set the server URL and port
    */
   setServer(serverUrl: string, port?: number) {
-    const newUrl = `http://${serverUrl.replace(/^https?:\/\//, "")}`
+    console.log(`[ASG Camera API] setServer called with serverUrl: ${serverUrl}, port: ${port}`)
     const newPort = port || this.port
+    const newUrl = `http://${serverUrl.replace(/^https?:\/\//, "")}:${newPort}`
 
-    // Only update if the URL or port actually changed
-    if (this.baseUrl !== newUrl || this.port !== newPort) {
+    console.log(`[ASG Camera API] Constructed newUrl: ${newUrl}`)
+    console.log(`[ASG Camera API] Current baseUrl: ${this.baseUrl}`)
+
+    // Only update if the URL actually changed
+    if (this.baseUrl !== newUrl) {
       const oldUrl = this.baseUrl
       this.baseUrl = newUrl
       this.port = newPort
       console.log(`[ASG Camera API] Server changed from ${oldUrl} to ${this.baseUrl}`)
+    } else {
+      console.log(`[ASG Camera API] Server URL unchanged: ${this.baseUrl}`)
     }
   }
 
@@ -65,7 +73,11 @@ export class AsgCameraApiClient {
     const url = `${this.baseUrl}${endpoint}`
     const method = options?.method || "GET"
 
-    console.log(`[ASG Camera API] ${method} ${url}`)
+    console.log(`[ASG Camera API] makeRequest called with endpoint: ${endpoint}`)
+    console.log(`[ASG Camera API] Current baseUrl: ${this.baseUrl}`)
+    console.log(`[ASG Camera API] Full URL: ${url}`)
+    console.log(`[ASG Camera API] Method: ${method}`)
+    console.log(`[ASG Camera API] Retries remaining: ${retries}`)
     console.log(`[ASG Camera API] Request options:`, {
       method,
       headers: options?.headers,
@@ -81,13 +93,19 @@ export class AsgCameraApiClient {
       }
 
       // Prepare headers - don't set Content-Type for GET requests
-      const headers: Record<string, string> = {}
+      const headers: Record<string, string> = {
+        "Accept": "application/json",
+        "User-Agent": "MentraOS-Mobile/1.0",
+      }
       if (method !== "GET") {
         headers["Content-Type"] = "application/json"
       }
       if (options?.headers) {
         Object.assign(headers, options.headers)
       }
+
+      console.log(`[ASG Camera API] Making fetch request to: ${url}`)
+      console.log(`[ASG Camera API] Headers being sent:`, headers)
 
       const response = await fetch(url, {
         headers,
@@ -100,6 +118,7 @@ export class AsgCameraApiClient {
         statusText: response.statusText,
         contentType: response.headers.get("content-type"),
         contentLength: response.headers.get("content-length"),
+        url: response.url,
       })
 
       if (!response.ok) {
@@ -118,28 +137,53 @@ export class AsgCameraApiClient {
 
       // Handle different response types
       const contentType = response.headers.get("content-type")
+      console.log(`[ASG Camera API] Response content-type: ${contentType}`)
 
       if (contentType?.includes("application/json")) {
         const data = await response.json()
-        console.log(`[ASG Camera API] JSON Response:`, data)
+        console.log(`[ASG Camera API] JSON Response received:`, data)
         return data
-      } else if (contentType?.includes("image/")) {
-        // For image responses, return the blob
+      } else if (contentType?.includes("image/") || contentType?.includes("application/octet-stream")) {
+        // For image responses and binary data (including AVIF), return the blob
         const blob = await response.blob()
-        console.log(`[ASG Camera API] Image Response:`, {
+        console.log(`[ASG Camera API] Binary/Image Response received:`, {
           size: blob.size,
           type: blob.type,
         })
+
+        // Quick check if this might be an AVIF file
+        if (contentType?.includes("application/octet-stream") && blob.size > 12) {
+          const arrayBuffer = await blob.arrayBuffer()
+          const bytes = new Uint8Array(arrayBuffer.slice(4, 12))
+          const ftypSignature = String.fromCharCode(...bytes)
+          if (ftypSignature === "ftypavif") {
+            console.log(`[ASG Camera API] Detected AVIF file in response`)
+          }
+          // Return a new blob since we consumed the original
+          return new Blob([arrayBuffer], {type: blob.type}) as T
+        }
+
         return blob as T
       } else {
         // For text responses
         const text = await response.text()
-        console.log(`[ASG Camera API] Text Response:`, text.substring(0, 200) + (text.length > 200 ? "..." : ""))
+        console.log(
+          `[ASG Camera API] Text Response received:`,
+          text.substring(0, 200) + (text.length > 200 ? "..." : ""),
+        )
         return text as T
       }
     } catch (error) {
       const duration = Date.now() - startTime
       console.error(`[ASG Camera API] Error (${endpoint}) after ${duration}ms:`, error)
+      console.error(`[ASG Camera API] Error details:`, {
+        endpoint,
+        url,
+        method,
+        duration,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        errorStack: error instanceof Error ? error.stack : undefined,
+      })
       throw error
     }
   }
@@ -180,21 +224,18 @@ export class AsgCameraApiClient {
    * Get gallery photos from the server
    */
   async getGallery(): Promise<GalleryResponse> {
-    console.log(`[ASG Camera API] Getting gallery...`)
+    console.log(`[ASG Camera API] getGallery called`)
+    console.log(`[ASG Camera API] Current baseUrl: ${this.baseUrl}`)
+    console.log(`[ASG Camera API] Full gallery URL: ${this.baseUrl}/api/gallery`)
 
     // Use browser-like headers since we know the browser works
     try {
-      console.log(`[ASG Camera API] Trying endpoint: /api/gallery`)
+      console.log(`[ASG Camera API] Making direct fetch to gallery endpoint`)
       const response = await fetch(`${this.baseUrl}/api/gallery`, {
         method: "GET",
         headers: {
-          "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-          "Accept-Language": "en-US,en;q=0.5",
-          "Accept-Encoding": "gzip, deflate",
-          "Connection": "keep-alive",
-          "Upgrade-Insecure-Requests": "1",
-          "User-Agent":
-            "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
+          "Accept": "application/json",
+          "User-Agent": "MentraOS-Mobile/1.0",
         },
         signal: AbortSignal.timeout(10000), // 10 second timeout
       })
@@ -258,12 +299,18 @@ export class AsgCameraApiClient {
       const photos = response.data.photos
       console.log(`[ASG Camera API] Found ${photos.length} photos`)
 
-      // Ensure each photo has proper URLs
-      const processedPhotos = photos.map(photo => ({
-        ...photo,
-        url: this.constructPhotoUrl(photo.name),
-        download: this.constructDownloadUrl(photo.name),
-      }))
+      // Ensure each photo has proper URLs and detect AVIF files
+      const processedPhotos = photos.map(photo => {
+        // Check if filename suggests AVIF (no extension or .avif)
+        const mightBeAvif = !photo.name.includes(".") || photo.name.match(/\.(avif|avifs)$/i)
+
+        return {
+          ...photo,
+          url: this.constructPhotoUrl(photo.name),
+          download: this.constructDownloadUrl(photo.name),
+          mime_type: photo.mime_type || (mightBeAvif ? "image/avif" : undefined),
+        }
+      })
 
       console.log(`[ASG Camera API] Processed photos:`, processedPhotos)
       return processedPhotos
@@ -459,6 +506,306 @@ export class AsgCameraApiClient {
         reachable: false,
         error: error instanceof Error ? error.message : "Unknown error",
       }
+    }
+  }
+
+  /**
+   * Sync with server to get changed files since last sync
+   */
+  async syncWithServer(
+    clientId: string,
+    lastSyncTime?: number,
+    includeThumbnails: boolean = false,
+  ): Promise<{
+    status: string
+    data: {
+      client_id: string
+      changed_files: PhotoInfo[]
+      deleted_files: string[]
+      server_time: number
+      total_changed: number
+      total_size: number
+    }
+  }> {
+    const params = new URLSearchParams({
+      client_id: clientId,
+      include_thumbnails: includeThumbnails.toString(),
+    })
+
+    if (lastSyncTime) {
+      params.append("last_sync_time", lastSyncTime.toString())
+    }
+
+    const response = await this.makeRequest(`/api/sync?${params.toString()}`, {
+      method: "GET",
+    })
+
+    return response
+  }
+
+  /**
+   * Batch sync files from server
+   */
+  async batchSyncFiles(
+    files: PhotoInfo[],
+    includeThumbnails: boolean = false,
+  ): Promise<{
+    downloaded: PhotoInfo[]
+    failed: string[]
+    total_size: number
+  }> {
+    const results = {
+      downloaded: [] as PhotoInfo[],
+      failed: [] as string[],
+      total_size: 0,
+    }
+
+    // Process files in small batches to avoid overwhelming the server
+    const batchSize = 3
+    for (let i = 0; i < files.length; i += batchSize) {
+      const batch = files.slice(i, i + batchSize)
+
+      try {
+        const batchPromises = batch.map(async file => {
+          try {
+            const fileData = await this.downloadFile(file.name, includeThumbnails)
+            results.total_size += file.size
+            // Combine file info with downloaded file paths
+            return {
+              ...file,
+              filePath: fileData.filePath,
+              thumbnailPath: fileData.thumbnailPath,
+              mime_type: fileData.mime_type || file.mime_type,
+            }
+          } catch (error) {
+            console.error(`Failed to download ${file.name}:`, error)
+            results.failed.push(file.name)
+            return null
+          }
+        })
+
+        const batchResults = await Promise.all(batchPromises)
+        results.downloaded.push(...(batchResults.filter(Boolean) as PhotoInfo[]))
+
+        // Small delay between batches
+        if (i + batchSize < files.length) {
+          await new Promise(resolve => setTimeout(resolve, 100))
+        }
+      } catch (error) {
+        console.error(`Batch ${i / batchSize + 1} failed:`, error)
+        results.failed.push(...batch.map(f => f.name))
+      }
+    }
+
+    return results
+  }
+
+  /**
+   * Delete files from server after successful sync
+   */
+  async deleteFilesFromServer(fileNames: string[]): Promise<{
+    deleted: string[]
+    failed: string[]
+  }> {
+    if (fileNames.length === 0) {
+      return {deleted: [], failed: []}
+    }
+
+    try {
+      const response = await this.makeRequest("/api/delete-files", {
+        method: "POST",
+        body: JSON.stringify({files: fileNames}),
+      })
+
+      // Parse the response format from the ASG server
+      if (response.data && response.data.results) {
+        const deleted: string[] = []
+        const failed: string[] = []
+
+        for (const result of response.data.results) {
+          if (result.success) {
+            deleted.push(result.file)
+          } else {
+            failed.push(result.file)
+          }
+        }
+
+        console.log(`[ASG Camera API] Delete results: ${deleted.length} deleted, ${failed.length} failed`)
+        return {deleted, failed}
+      }
+
+      return response
+    } catch (error) {
+      console.error("Failed to delete files from server:", error)
+      return {deleted: [], failed: fileNames}
+    }
+  }
+
+  /**
+   * Get sync status from server
+   */
+  async getSyncStatus(): Promise<{
+    total_files: number
+    total_size: number
+    last_modified: number
+  }> {
+    const response = await this.makeRequest("/sync/status", {
+      method: "GET",
+    })
+
+    return response
+  }
+
+  /**
+   * Download a file from the server and save to filesystem
+   */
+  async downloadFile(
+    filename: string,
+    includeThumbnail: boolean = false,
+  ): Promise<{
+    filePath: string
+    thumbnailPath?: string
+    mime_type: string
+  }> {
+    console.log(`[ASG Camera API] Downloading file: ${filename}`)
+
+    try {
+      // Get the local file path where we'll save this
+      const localFilePath = localStorageService.getPhotoFilePath(filename)
+      const localThumbnailPath = includeThumbnail ? localStorageService.getThumbnailFilePath(filename) : undefined
+
+      // Determine if this is a video file based on extension
+      const isVideo = filename.match(/\.(mp4|mov|avi|webm|mkv)$/i)
+
+      // Use /api/download for videos (full file) and /api/photo for images
+      const downloadEndpoint = isVideo ? "download" : "photo"
+      const downloadUrl = `${this.baseUrl}/api/${downloadEndpoint}?file=${encodeURIComponent(filename)}`
+
+      // Download the file directly to filesystem
+      console.log(`[ASG Camera API] Downloading ${isVideo ? "video" : "photo"} from: ${downloadUrl}`)
+      console.log(`[ASG Camera API] Saving to: ${localFilePath}`)
+
+      const downloadResult = await RNFS.downloadFile({
+        fromUrl: downloadUrl,
+        toFile: localFilePath,
+        headers: {
+          "Accept": "*/*",
+          "User-Agent": "MentraOS-Mobile/1.0",
+        },
+        progressDivider: 10,
+        begin: res => {
+          console.log(`[ASG Camera API] Download started for ${filename}, size: ${res.contentLength}`)
+        },
+        progress: res => {
+          const percentage = Math.round((res.bytesWritten / res.contentLength) * 100)
+          if (percentage % 20 === 0) {
+            // Log every 20%
+            console.log(`[ASG Camera API] Download progress ${filename}: ${percentage}%`)
+          }
+        },
+      }).promise
+
+      if (downloadResult.statusCode !== 200) {
+        throw new Error(`Failed to download ${filename}: HTTP ${downloadResult.statusCode}`)
+      }
+
+      console.log(`[ASG Camera API] Successfully downloaded ${filename} to filesystem`)
+
+      // Detect MIME type by checking file signature
+      let mimeType = "application/octet-stream"
+      try {
+        // Read first 20 bytes to check file signature
+        const firstBytes = await RNFS.read(localFilePath, 20, 0, "base64")
+        const decodedBytes = atob(firstBytes)
+
+        // Check for AVIF signature
+        if (decodedBytes.length > 11) {
+          const ftypSignature = decodedBytes.substring(4, 12)
+          if (ftypSignature === "ftypavif") {
+            mimeType = "image/avif"
+            console.log(`[ASG Camera API] Detected AVIF file: ${filename}`)
+          } else if (decodedBytes.substring(0, 2) === "\xFF\xD8") {
+            mimeType = "image/jpeg"
+          } else if (decodedBytes.substring(0, 8) === "\x89PNG\r\n\x1a\n") {
+            mimeType = "image/png"
+          }
+        }
+
+        // Also check by extension
+        if (mimeType === "application/octet-stream") {
+          if (filename.toLowerCase().endsWith(".jpg") || filename.toLowerCase().endsWith(".jpeg")) {
+            mimeType = "image/jpeg"
+          } else if (filename.toLowerCase().endsWith(".png")) {
+            mimeType = "image/png"
+          } else if (filename.toLowerCase().endsWith(".mp4")) {
+            mimeType = "video/mp4"
+          } else if (!filename.includes(".")) {
+            // Files without extension are likely AVIF
+            mimeType = "image/avif"
+          }
+        }
+      } catch (e) {
+        console.warn(`[ASG Camera API] Could not detect MIME type for ${filename}:`, e)
+      }
+
+      // Download thumbnail if requested and it's a video
+      let thumbnailPath: string | undefined
+      if (includeThumbnail && filename.toLowerCase().match(/\.(mp4|mov|avi|mkv|webm)$/)) {
+        try {
+          console.log(`[ASG Camera API] Downloading thumbnail for ${filename}`)
+          console.log(`[ASG Camera API] Using /api/photo endpoint for video thumbnail`)
+
+          // The server's /api/photo endpoint serves thumbnails for video files
+          // It detects video files and automatically generates/serves thumbnails instead of the full video
+          const thumbResult = await RNFS.downloadFile({
+            fromUrl: `${this.baseUrl}/api/photo?file=${encodeURIComponent(filename)}`,
+            toFile: localThumbnailPath!,
+            headers: {
+              "Accept": "image/*",
+              "User-Agent": "MentraOS-Mobile/1.0",
+            },
+            begin: res => {
+              console.log(`[ASG Camera API] Thumbnail download started for ${filename}, size: ${res.contentLength}`)
+            },
+            progress: res => {
+              const percentage = Math.round((res.bytesWritten / res.contentLength) * 100)
+              if (percentage % 25 === 0) {
+                console.log(`[ASG Camera API] Thumbnail download progress ${filename}: ${percentage}%`)
+              }
+            },
+          }).promise
+
+          console.log(
+            `[ASG Camera API] Thumbnail download result for ${filename}: status=${thumbResult.statusCode}, bytesWritten=${thumbResult.bytesWritten}`,
+          )
+
+          if (thumbResult.statusCode === 200) {
+            thumbnailPath = localThumbnailPath
+            console.log(`[ASG Camera API] Successfully downloaded thumbnail to: ${thumbnailPath}`)
+
+            // Verify the file exists
+            const exists = await RNFS.exists(thumbnailPath)
+            console.log(`[ASG Camera API] Thumbnail file exists: ${exists}`)
+          } else {
+            console.warn(`[ASG Camera API] Thumbnail download failed with status: ${thumbResult.statusCode}`)
+          }
+        } catch (error) {
+          console.warn(`[ASG Camera API] Failed to download thumbnail for ${filename}:`, error)
+        }
+      } else {
+        console.log(
+          `[ASG Camera API] Skipping thumbnail download - includeThumbnail: ${includeThumbnail}, filename: ${filename}, is video extension: ${filename.toLowerCase().match(/\.(mp4|mov|avi|mkv|webm)$/) ? "yes" : "no"}`,
+        )
+      }
+
+      return {
+        filePath: localFilePath,
+        thumbnailPath: thumbnailPath,
+        mime_type: mimeType,
+      }
+    } catch (error) {
+      console.error(`[ASG Camera API] Error downloading file ${filename}:`, error)
+      throw error
     }
   }
 }
