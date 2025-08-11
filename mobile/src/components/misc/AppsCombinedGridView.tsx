@@ -155,25 +155,19 @@ const AppsCombinedGridViewRoot: React.FC<AppsCombinedGridViewProps> = () => {
     [optimisticallyStopApp, clearPendingOperation, refreshAppStatus, backendComms],
   )
 
-  const handleOpenAppSettings = useCallback(
-    (app: any) => {
-      push("/applet/settings", {packageName: app.packageName, appName: app.name})
-    },
-    [push],
-  )
+  const handleOpenAppSettings = (app: any) => {
+    push("/applet/settings", {packageName: app.packageName, appName: app.name})
+  }
 
-  const handleOpenWebView = useCallback(
-    (app: any) => {
-      if (app.webviewURL) {
-        replace("/applet/webview", {
-          webviewURL: app.webviewURL,
-          appName: app.name,
-          packageName: app.packageName,
-        })
-      }
-    },
-    [replace],
-  )
+  const handleOpenWebView = (app: any) => {
+    if (app.webviewURL) {
+      push("/applet/webview", {
+        webviewURL: app.webviewURL,
+        appName: app.name,
+        packageName: app.packageName,
+      })
+    }
+  }
 
   // Memoize filtered arrays to prevent unnecessary re-renders
   const activeApps = useMemo(() => appStatus.filter(app => app.is_running), [appStatus])
@@ -296,7 +290,7 @@ const AppsCombinedGridViewRoot: React.FC<AppsCombinedGridViewProps> = () => {
               preventDefault()
             }
           }}
-          getLabelText={({route}) => {
+          getLabelText={({route}: any) => {
             const isDisabled =
               (route.key === "active" && shouldDisableActiveTab) ||
               (route.key === "inactive" && shouldDisableInactiveTab)
