@@ -44,6 +44,7 @@ import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.Insta
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.PairFailureEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.K900ProtocolUtils;
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.BlePhotoUploadService;
+import com.augmentos.smartglassesmanager.cpp.L3cCpp;
 
 import org.greenrobot.eventbus.EventBus;
 import org.json.JSONException;
@@ -104,6 +105,9 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     private static final UUID FILE_READ_UUID = UUID.fromString("000072FF-0000-1000-8000-00805f9b34fb");
     private static final UUID FILE_WRITE_UUID = UUID.fromString("000073FF-0000-1000-8000-00805f9b34fb");
 
+    private static final UUID LC3_READ_UUID = UUID.fromString("6E400002-B5A3-F393-E0A9-E50E24DCCA9E");
+    private static final UUID LC3_WRITE_UUID = UUID.fromString("6E400003-B5A3-F393-E0A9-E50E24DCCA9E");
+
     // Reconnection parameters
     private static final int BASE_RECONNECT_DELAY_MS = 1000; // Start with 1 second
     private static final int MAX_RECONNECT_DELAY_MS = 30000; // Max 30 seconds
@@ -136,6 +140,8 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     private BluetoothDevice connectedDevice;
     private BluetoothGattCharacteristic txCharacteristic;
     private BluetoothGattCharacteristic rxCharacteristic;
+    private BluetoothGattCharacteristic lc3ReadCharacteristic;
+    private BluetoothGattCharacteristic lc3WriteCharacteristic;
     private Handler handler = new Handler(Looper.getMainLooper());
     private ScheduledExecutorService scheduler;
     private boolean isScanning = false;
@@ -260,6 +266,10 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     private final SecureRandom secureRandom = new SecureRandom();
     private final long deviceId = System.currentTimeMillis() ^ new Random().nextLong();
 
+    private byte lastReceivedLc3Sequence = -1;
+    private byte lc3SequenceNumber = 0;
+    private long lc3DecoderPtr = 0;
+
     // Periodic test message for ACK testing
     private static final int TEST_MESSAGE_INTERVAL_MS = 5000; // 5 seconds
     private Handler testMessageHandler = new Handler(Looper.getMainLooper());
@@ -327,6 +337,11 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
 
         // Initialize scheduler for keep-alive and reconnection
         scheduler = Executors.newScheduledThreadPool(1);
+
+        //setup LC3 decoder
+        if (lc3DecoderPtr == 0) {
+            lc3DecoderPtr = L3cCpp.initDecoder();
+        }
     }
 
     @Override
@@ -642,6 +657,12 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
 
                     // Attempt reconnection
                     handleReconnection();
+
+                    //free LC3 decoder
+                    if (lc3DecoderPtr != 0) {
+                        L3cCpp.freeDecoder(lc3DecoderPtr);
+                        lc3DecoderPtr = 0;
+                    }
                 }
             } else {
                 // Connection error
@@ -674,10 +695,12 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 if (service != null) {
                     txCharacteristic = service.getCharacteristic(TX_CHAR_UUID);
                     rxCharacteristic = service.getCharacteristic(RX_CHAR_UUID);
+                    lc3ReadCharacteristic = service.getCharacteristic(LC3_READ_UUID);
+                    lc3WriteCharacteristic = service.getCharacteristic(LC3_WRITE_UUID);
 
-                    if (rxCharacteristic != null && txCharacteristic != null) {
+                    if (rxCharacteristic != null && txCharacteristic != null && lc3ReadCharacteristic != null && lc3WriteCharacteristic != null) {
                         // BLE connection established, but we still need to wait for glasses SOC
-                        Log.d(TAG, "✅ Both TX and RX characteristics found - BLE connection ready");
+                        Log.d(TAG, "✅ Core TX/RX and LC3 TX/RX characteristics found - BLE connection ready");
                         Log.d(TAG, "🔄 Waiting for glasses SOC to become ready...");
 
                         // Keep the state as CONNECTING until the glasses SOC responds
@@ -708,6 +731,12 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                         }
                         if (txCharacteristic == null) {
                             Log.e(TAG, "TX characteristic (peripheral's RX) not found");
+                        }
+                        if (lc3ReadCharacteristic == null) {
+                            Log.e(TAG, "LC3_READ characteristic not found");
+                        }
+                        if (lc3WriteCharacteristic == null) {
+                            Log.e(TAG, "LC3_WRITE characteristic not found");
                         }
                         gatt.disconnect();
                     }
@@ -769,11 +798,18 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
 
             boolean isRxCharacteristic = uuid.equals(RX_CHAR_UUID);
             boolean isTxCharacteristic = uuid.equals(TX_CHAR_UUID);
+            boolean isLc3ReadCharacteristic = uuid.equals(LC3_READ_UUID);
+            boolean isLc3WriteCharacteristic = uuid.equals(LC3_WRITE_UUID);
 
             if (isRxCharacteristic) {
                 Log.d(TAG, "Received data on RX characteristic");
             } else if (isTxCharacteristic) {
                 Log.d(TAG, "Received data on TX characteristic");
+            } else if (isLc3ReadCharacteristic) {
+                Log.d(TAG, "Received data on LC3_READ characteristic");
+                processLc3AudioPacket(characteristic.getValue());
+            } else if (isLc3WriteCharacteristic) {
+                Log.d(TAG, "Received data on LC3_WRITE characteristic");
             } else {
                 Log.w(TAG, "Received data on unknown characteristic: " + uuid);
             }
@@ -964,6 +1000,12 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             } else if (uuid.equals(TX_CHAR_UUID)) {
                 txCharacteristic = characteristic;
                 Log.e(TAG, "Thread-" + threadId + ": ✅ Found and stored TX characteristic");
+            } else if (uuid.equals(LC3_READ_UUID)) {
+                lc3ReadCharacteristic = characteristic;
+                Log.e(TAG, "Thread-" + threadId + ": ✅ Found and stored LC3_READ characteristic");
+            } else if (uuid.equals(LC3_WRITE_UUID)) {
+                lc3WriteCharacteristic = characteristic;
+                Log.e(TAG, "Thread-" + threadId + ": ✅ Found and stored LC3_WRITE characteristic");
             }
 
             // Enable notifications for any characteristic that supports it
@@ -2527,6 +2569,12 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
 
         // Set connection state to disconnected
         connectionEvent(SmartGlassesConnectionState.DISCONNECTED);
+
+        //free LC3 decoder
+        if (lc3DecoderPtr != 0) {
+            L3cCpp.freeDecoder(lc3DecoderPtr);
+            lc3DecoderPtr = 0;
+        }
     }
 
     // Display methods - all stub implementations since Mentra Live has no display
@@ -2628,7 +2676,55 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
 
     @Override
     public void stopScrollingTextViewMode() {
-        Log.d(TAG, "[STUB] Device has no display. Scrolling text view would stop");
+        // Not supported on Mentra Live
+    }
+
+    /**
+     * Enable or disable receiving custom GATT audio from the glasses microphone.
+     * @param enable True to enable, false to disable.
+     */
+    public void enableCustomAudioTx(boolean enable) {
+        try {
+            JSONObject cmd = new JSONObject();
+            cmd.put("C", "enable_custom_audio_tx");
+            cmd.put("B", enable);
+            sendJson(cmd);
+            Log.d(TAG, "Setting custom audio TX (mic) to: " + enable);
+        } catch (JSONException e) {
+            Log.e(TAG, "Error creating enable_custom_audio_tx command", e);
+        }
+    }
+
+    /**
+     * Enable or disable sending custom GATT audio to the glasses speaker.
+     * @param enable True to enable, false to disable.
+     */
+    public void enableCustomAudioRx(boolean enable) {
+        try {
+            JSONObject cmd = new JSONObject();
+            cmd.put("C", "enable_custom_audio_rx");
+            cmd.put("B", enable);
+            sendJson(cmd);
+            Log.d(TAG, "Setting custom audio RX (speaker) to: " + enable);
+        } catch (JSONException e) {
+            Log.e(TAG, "Error creating enable_custom_audio_rx command", e);
+        }
+    }
+
+    /**
+     * Enable or disable the standard HFP audio service on the glasses.
+     * @param enable True to enable, false to disable.
+     */
+    public void enableHfpAudioServer(boolean enable) {
+        try {
+            JSONObject cmd = new JSONObject();
+            cmd.put("C", "enable_hfp_audio_server");
+            cmd.put("B", enable);
+            sendJson(cmd);
+            Log.d(TAG, "Setting HFP audio server to: " + enable);
+        } catch (JSONException e) {
+            Log.e(TAG, "Error creating enable_hfp_audio_server command", e);
+        }
     }
 
     public void requestReadyK900(){
@@ -3254,5 +3350,76 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         } catch (JSONException e) {
             Log.e(TAG, "Failed to create stop video recording command", e);
         }
+    }
+
+    /**
+     * Process incoming LC3 audio packet from the glasses.
+     * Packet Structure:
+     * Byte 0: 0xF1 (Audio data identifier)
+     * Byte 1: Sequence number (0-255)
+     * Bytes 2-201: LC3 encoded audio data (200 bytes)
+     */
+    private void processLc3AudioPacket(byte[] data) {
+        if (data == null || data.length < 2) {
+            Log.w(TAG, "Invalid LC3 audio packet received: too short");
+            return;
+        }
+
+        // Check for audio packet header
+        if (data[0] == (byte) 0xF1) {
+            byte sequenceNumber = data[1];
+            
+            // Basic sequence validation
+            if (lastReceivedLc3Sequence != -1 && (byte)(lastReceivedLc3Sequence + 1) != sequenceNumber) {
+                Log.w(TAG, "LC3 packet sequence mismatch. Expected: " + (lastReceivedLc3Sequence + 1) + ", Got: " + sequenceNumber);
+            }
+            lastReceivedLc3Sequence = sequenceNumber;
+
+            byte[] lc3Data = Arrays.copyOfRange(data, 2, data.length);
+            Log.d(TAG, "Received LC3 audio packet seq=" + sequenceNumber + ", size=" + lc3Data.length);
+
+            // Forward raw LC3 data if a callback is registered
+            if (audioProcessingCallback != null) {
+                audioProcessingCallback.onLC3AudioDataAvailable(lc3Data);
+            }
+
+            // Decode LC3 to PCM and forward if a callback is registered
+            if (lc3DecoderPtr != 0 && audioProcessingCallback != null) {
+                byte[] pcmData = L3cCpp.decodeLC3(lc3DecoderPtr, lc3Data);
+                if (pcmData != null && pcmData.length > 0) {
+                    audioProcessingCallback.onAudioDataAvailable(pcmData);
+                } else {
+                    Log.w(TAG, "LC3 decoding produced null or empty PCM data.");
+                }
+            }
+
+        } else {
+            Log.w(TAG, "Received non-audio packet on LC3 characteristic.");
+        }
+    }
+
+    /**
+     * Sends an LC3 audio packet to the glasses.
+     * @param lc3Data The raw LC3 encoded audio data (e.g., 200 bytes).
+     */
+    public void sendLc3AudioPacket(byte[] lc3Data) {
+        if (lc3WriteCharacteristic == null) {
+            Log.w(TAG, "Cannot send LC3 audio packet, characteristic not available.");
+            return;
+        }
+        if (lc3Data == null || lc3Data.length == 0) {
+            Log.w(TAG, "Cannot send empty LC3 data.");
+            return;
+        }
+
+        // Packet Structure: Header (1) + Sequence (1) + Data (N)
+        byte[] packet = new byte[lc3Data.length + 2];
+        packet[0] = (byte) 0xF1; // Audio data identifier
+        packet[1] = lc3SequenceNumber++; // Sequence number
+
+        System.arraycopy(lc3Data, 0, packet, 2, lc3Data.length);
+
+        // We use queueData to handle rate-limiting and sending
+        queueData(packet);
     }
 }
