@@ -68,9 +68,13 @@ export const AppsGridViewRoot: React.FC<AppsGridViewProps> = ({
   const handleStartStop = () => {
     if (selectedApp) {
       if (selectedApp.is_running) {
-        onStopApp(selectedApp.packageName)
+        if (onStopApp) {
+          onStopApp(selectedApp.packageName)
+        }
       } else {
-        onStartApp(selectedApp.packageName)
+        if (onStartApp) {
+          onStartApp(selectedApp.packageName)
+        }
       }
       handlePopoverClose()
     }
@@ -78,7 +82,9 @@ export const AppsGridViewRoot: React.FC<AppsGridViewProps> = ({
 
   const handleOpenSettings = () => {
     if (selectedApp) {
-      onOpenSettings(selectedApp)
+      if (onOpenSettings) {
+        onOpenSettings(selectedApp)
+      }
       handlePopoverClose()
     }
   }

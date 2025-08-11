@@ -3,7 +3,7 @@ import React from "react"
 import {View, TouchableOpacity} from "react-native"
 import Svg, {G, Path, Defs, ClipPath, Rect} from "react-native-svg"
 import {useAppTheme} from "@/utils/useAppTheme"
-import {useStatus} from "@/contexts/AugmentOSStatusProvider"
+import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import showAlert from "@/utils/AlertUtils"
 import {translate} from "@/i18n"
 interface MicIconProps {
@@ -15,7 +15,7 @@ interface MicIconProps {
 
 const MicIcon = ({color, width = 17, height = 16, withBackground = false}: MicIconProps) => {
   const {themed, theme} = useAppTheme()
-  const {status} = useStatus()
+  const {status} = useCoreStatus()
 
   const iconColor = color || theme.colors.icon
 

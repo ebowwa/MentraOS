@@ -2,7 +2,7 @@ import React, {useState, useEffect, useRef, useCallback} from "react"
 import {View, Text, TouchableOpacity, ScrollView, ViewStyle, TextStyle, BackHandler, Platform} from "react-native"
 import {useRoute} from "@react-navigation/native"
 import Icon from "react-native-vector-icons/FontAwesome"
-import {useStatus} from "@/contexts/AugmentOSStatusProvider"
+import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import coreCommunicator, {CoreCommunicator} from "@/bridge/CoreCommunicator"
 import PairingDeviceInfo from "@/components/misc/PairingDeviceInfo"
 import GlassesTroubleshootingModal from "@/components/misc/GlassesTroubleshootingModal"
@@ -19,7 +19,7 @@ import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
 
 export default function GlassesPairingGuideScreen() {
   const {replace, clearHistory} = useNavigationHistory()
-  const {status} = useStatus()
+  const {status} = useCoreStatus()
   const route = useRoute()
   const {themed} = useAppTheme()
   const {glassesModelName} = route.params as {glassesModelName: string}

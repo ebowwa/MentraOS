@@ -3,7 +3,7 @@ import {View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Animated, V
 import {useFocusEffect} from "@react-navigation/native"
 import {Button, Icon} from "@/components/ignite"
 import coreCommunicator from "@/bridge/CoreCommunicator"
-import {useStatus} from "@/contexts/AugmentOSStatusProvider"
+import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import {
   getGlassesClosedImage,
   getGlassesImage,
@@ -27,7 +27,7 @@ import {showAlert, showBluetoothAlert, showLocationAlert, showLocationServicesAl
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 
 export const ConnectDeviceButton = () => {
-  const {status} = useStatus()
+  const {status} = useCoreStatus()
   const {themed, theme} = useAppTheme()
   const [isCheckingConnectivity, setIsCheckingConnectivity] = useState(false)
   const {push} = useNavigationHistory()
@@ -163,7 +163,7 @@ interface ConnectedGlassesProps {
 }
 
 export const ConnectedGlasses: React.FC<ConnectedGlassesProps> = ({showTitle}) => {
-  const {status} = useStatus()
+  const {status} = useCoreStatus()
   const fadeAnim = useRef(new Animated.Value(0)).current
   const scaleAnim = useRef(new Animated.Value(0.8)).current
   const {themed, theme} = useAppTheme()
@@ -244,7 +244,7 @@ export const ConnectedGlasses: React.FC<ConnectedGlassesProps> = ({showTitle}) =
 }
 
 export function SplitDeviceInfo() {
-  const {status} = useStatus()
+  const {status} = useCoreStatus()
   const {themed, theme} = useAppTheme()
 
   // Show image if we have either connected glasses or a default wearable
@@ -302,7 +302,7 @@ export function SplitDeviceInfo() {
 }
 
 export function DeviceToolbar() {
-  const {status} = useStatus()
+  const {status} = useCoreStatus()
   const {themed, theme} = useAppTheme()
   const {push} = useNavigationHistory()
 

@@ -16,7 +16,7 @@ import {useAppTheme} from "@/utils/useAppTheme"
 import {ThemedStyle} from "@/theme"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {useAuth} from "@/contexts/AuthContext"
-import {useStatus} from "@/contexts/AugmentOSStatusProvider"
+import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import {useAppStatus} from "@/contexts/AppStatusProvider"
 import {DataExportService, UserDataExport} from "@/utils/DataExportService"
 import {translate} from "@/i18n"
@@ -31,7 +31,7 @@ export default function DataExportPage() {
   const [sharing, setSharing] = useState(false)
 
   const {user, session} = useAuth()
-  const {status} = useStatus()
+  const {status} = useCoreStatus()
   const {appStatus} = useAppStatus()
   const {goBack} = useNavigationHistory()
   const {theme, themed} = useAppTheme()

@@ -19,7 +19,7 @@ import {useSafeAreaInsets} from "react-native-safe-area-context"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {spacing, ThemedStyle} from "@/theme"
 import {ViewStyle, TextStyle, ImageStyle} from "react-native"
-import {useStatus} from "@/contexts/AugmentOSStatusProvider"
+import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {PhotoInfo} from "../../types"
 import {asgCameraApi} from "../../services/asgCameraApi"
@@ -38,7 +38,7 @@ interface GalleryScreenProps {
 }
 
 export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps) {
-  const {status} = useStatus()
+  const {status} = useCoreStatus()
   const {goBack} = useNavigationHistory()
   const {theme, themed} = useAppTheme()
   const insets = useSafeAreaInsets()
