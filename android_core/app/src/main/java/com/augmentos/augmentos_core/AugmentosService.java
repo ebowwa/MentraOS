@@ -249,7 +249,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     // WiFi status for glasses that require WiFi (e.g., Mentra Live)
     private boolean glassesNeedWifiCredentials = false;
     private boolean glassesWifiConnected = false;
-    
+
     // Track current foreground service type
     private int currentForegroundServiceType = ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC;
     private String glassesWifiSsid = "";
@@ -340,7 +340,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                         playStartupSequenceOnSmartGlasses();
                         asrPlanner.updateAsrLanguages();
                         ServerComms.getInstance().requestSettingsFromServer();
-                        
+
                         // Upgrade service type to avoid Android 15's 6-hour dataSync timeout
                         upgradeForegroundServiceType();
                     } else if (connectionState == SmartGlassesConnectionState.DISCONNECTED) {
@@ -1760,12 +1760,12 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             }
 
             @Override
-            public void onPhotoRequest(String requestId, String appId, String webhookUrl) {
-                Log.d(TAG, "Photo request received: requestId=" + requestId + ", appId=" + appId + ", webhookUrl=" + webhookUrl);
+            public void onPhotoRequest(String requestId, String appId, String webhookUrl, String size) {
+                Log.d(TAG, "Photo request received: requestId=" + requestId + ", appId=" + appId + ", webhookUrl=" + webhookUrl + ", size=" + size);
 
                 // Forward the request to the smart glasses manager
                 if (smartGlassesManager != null) {
-                    boolean requestSent = smartGlassesManager.requestPhoto(requestId, appId, webhookUrl);
+                    boolean requestSent = smartGlassesManager.requestPhoto(requestId, appId, webhookUrl, size);
                     if (!requestSent) {
                         Log.e(TAG, "Failed to send photo request to glasses");
                     }
@@ -2017,7 +2017,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         JSONObject status = generateStatusJson();
         blePeripheral.sendDataToAugmentOsManager(status.toString());
     }
-    
+
     /**
      * Upgrades the foreground service type to include connectedDevice when glasses are connected.
      * This avoids the 6-hour dataSync timeout on Android 15.
@@ -2026,29 +2026,29 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
             return; // Service types not required before Android Q
         }
-        
+
         // Check if we're already using connectedDevice type
-        int desiredType = ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC | 
+        int desiredType = ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC |
                          ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE;
-        
+
         if (currentForegroundServiceType == desiredType) {
             Log.d(TAG, "Already using connectedDevice service type");
             return;
         }
-        
+
         // Check if we have Bluetooth permissions (required for connectedDevice type)
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) 
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT)
                 != PackageManager.PERMISSION_GRANTED) {
             Log.w(TAG, "Cannot upgrade to connectedDevice type - missing BLUETOOTH_CONNECT permission");
             return;
         }
-        
+
         try {
             // Upgrade the service type by calling startForeground again
-            startForeground(AUGMENTOS_NOTIFICATION_ID, 
-                    buildSharedForegroundNotification(this), 
+            startForeground(AUGMENTOS_NOTIFICATION_ID,
+                    buildSharedForegroundNotification(this),
                     desiredType);
-            
+
             currentForegroundServiceType = desiredType;
             Log.d(TAG, "Successfully upgraded foreground service type to include connectedDevice");
         } catch (Exception e) {
@@ -2379,12 +2379,12 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
 
             Log.d(TAG, "🚨 NOTIFICATION DISMISSED: " + appName + " - " + title);
             Log.d(TAG, "📝 Dismissal details - Text: " + text + ", Key: " + notificationKey);
-            
+
             // Send dismissal to server via ServerComms
             String uuid = java.util.UUID.randomUUID().toString();
             ServerComms.getInstance().sendPhoneNotificationDismissal(uuid, appName, title, text, notificationKey);
             Log.d(TAG, "📡 Sent notification dismissal to server - UUID: " + uuid);
-            
+
         } catch (JSONException e) {
             Log.e(TAG, "Error parsing notification dismissal data", e);
         }
@@ -2566,7 +2566,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         Log.d("AugmentOsService", "Setting button mode: " + mode);
         // Save locally
         SmartGlassesManager.setButtonPressMode(this, mode);
-        
+
         // Send to glasses if connected
         if (smartGlassesManager != null && smartGlassesManagerBound) {
             smartGlassesManager.sendButtonModeSetting(mode);

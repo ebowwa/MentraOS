@@ -59,10 +59,37 @@ public class MediaCaptureService {
     private String currentVideoPath = null;
     private long recordingStartTime = 0;
 
-    // Original very fast: 320x240, 30qual
+    // Default BLE params (used if size unspecified)
     public static final int bleImageTargetWidth = 480;
     public static final int bleImageTargetHeight = 480;
     public static final int bleImageAvifQuality = 40;
+
+    private static class BleParams {
+        final int targetWidth;
+        final int targetHeight;
+        final int avifQuality;
+        final int jpegFallbackQuality;
+
+        BleParams(int targetWidth, int targetHeight, int avifQuality, int jpegFallbackQuality) {
+            this.targetWidth = targetWidth;
+            this.targetHeight = targetHeight;
+            this.avifQuality = avifQuality;
+            this.jpegFallbackQuality = jpegFallbackQuality;
+        }
+    }
+
+    private BleParams resolveBleParams(String requestedSize) {
+        // Conservative bandwidth for BLE; tune as needed
+        switch (requestedSize) {
+            case "small":
+                return new BleParams(400, 400, 35, 25);
+            case "large":
+                return new BleParams(1024, 1024, 45, 40);
+            case "medium":
+            default:
+                return new BleParams(720, 720, 42, 38);
+        }
+    }
 
     // Track which photos should be saved to gallery
     private Map<String, Boolean> photoSaveFlags = new HashMap<>();
@@ -72,6 +99,8 @@ public class MediaCaptureService {
 
     // Track original photo paths for BLE fallback
     private Map<String, String> photoOriginalPaths = new HashMap<>();
+    // Track requested photo size per request for proper fallback handling
+    private Map<String, String> photoRequestedSizes = new HashMap<>();
     private final FileManager fileManager;
 
     /**
@@ -246,7 +275,7 @@ public class MediaCaptureService {
                             // Take photo and upload directly to server
                             String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
                             String photoFilePath = fileManager.getDefaultMediaDirectory() + File.separator + "IMG_" + timeStamp + ".jpg";
-                            takePhotoAndUpload(photoFilePath, requestId, null, save);
+                            takePhotoAndUpload(photoFilePath, requestId, null, save, "medium");
                         } else {
                             Log.d(TAG, "Button press handled by server, no photo needed");
                         }
@@ -614,6 +643,8 @@ public class MediaCaptureService {
     public void takePhotoAndUpload(String photoFilePath, String requestId, String webhookUrl, boolean save, String size) {
         // Store the save flag for this request
         photoSaveFlags.put(requestId, save);
+        // Track requested size for potential fallbacks
+        photoRequestedSizes.put(requestId, size);
         // Notify that we're about to take a photo
         if (mMediaCaptureListener != null) {
             mMediaCaptureListener.onPhotoCapturing(requestId);
@@ -727,6 +758,7 @@ public class MediaCaptureService {
 
                     // Clean up the flag
                     photoSaveFlags.remove(requestId);
+                    photoRequestedSizes.remove(requestId);
 
                     // Notify success
                     if (mMediaCaptureListener != null) {
@@ -746,7 +778,10 @@ public class MediaCaptureService {
                         photoOriginalPaths.remove(requestId);
 
                         // Trigger BLE fallback
-                        takePhotoForBleTransfer(photoFilePath, requestId, bleImgId, photoSaveFlags.get(requestId));
+                        boolean shouldSave = Boolean.TRUE.equals(photoSaveFlags.get(requestId));
+                        String requestedSize = photoRequestedSizes.get(requestId);
+                        if (requestedSize == null || requestedSize.isEmpty()) requestedSize = "medium";
+                        takePhotoForBleTransfer(photoFilePath, requestId, bleImgId, shouldSave, requestedSize);
                         return; // Exit early - BLE transfer will handle cleanup
                     }
 
@@ -772,6 +807,7 @@ public class MediaCaptureService {
                     photoSaveFlags.remove(requestId);
                     photoBleIds.remove(requestId);
                     photoOriginalPaths.remove(requestId);
+                    photoRequestedSizes.remove(requestId);
 
                     if (mMediaCaptureListener != null) {
                         mMediaCaptureListener.onMediaError(requestId, errorMessage, MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
@@ -793,7 +829,10 @@ public class MediaCaptureService {
                     photoOriginalPaths.remove(requestId);
 
                     // Trigger BLE fallback
-                    takePhotoForBleTransfer(photoFilePath, requestId, bleImgId, photoSaveFlags.get(requestId));
+                    boolean shouldSaveFallback1 = Boolean.TRUE.equals(photoSaveFlags.get(requestId));
+                    String requestedSizeFallback1 = photoRequestedSizes.get(requestId);
+                    if (requestedSizeFallback1 == null || requestedSizeFallback1.isEmpty()) requestedSizeFallback1 = "medium";
+                    takePhotoForBleTransfer(photoFilePath, requestId, bleImgId, shouldSaveFallback1, requestedSizeFallback1);
                     return; // Exit early - BLE transfer will handle cleanup
                 }
 
@@ -820,6 +859,7 @@ public class MediaCaptureService {
                 photoSaveFlags.remove(requestId);
                 photoBleIds.remove(requestId);
                 photoOriginalPaths.remove(requestId);
+                photoRequestedSizes.remove(requestId);
 
                 if (mMediaCaptureListener != null) {
                     mMediaCaptureListener.onMediaError(requestId, "Upload error: " + e.getMessage(), MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
@@ -914,7 +954,10 @@ public class MediaCaptureService {
                             photoOriginalPaths.remove(requestId);
 
                             // Trigger BLE fallback
-                            takePhotoForBleTransfer(mediaFilePath, requestId, bleImgId, photoSaveFlags.get(requestId));
+                            boolean shouldSaveFallback2 = Boolean.TRUE.equals(photoSaveFlags.get(requestId));
+                            String requestedSizeFallback2 = photoRequestedSizes.get(requestId);
+                            if (requestedSizeFallback2 == null || requestedSizeFallback2.isEmpty()) requestedSizeFallback2 = "medium";
+                            takePhotoForBleTransfer(mediaFilePath, requestId, bleImgId, shouldSaveFallback2, requestedSizeFallback2);
                             return; // Exit early - BLE transfer will handle cleanup
                         }
 
@@ -1043,6 +1086,7 @@ public class MediaCaptureService {
         photoSaveFlags.put(requestId, save);
         photoBleIds.put(requestId, bleImgId);
         photoOriginalPaths.put(requestId, photoFilePath);
+        photoRequestedSizes.put(requestId, size);
 
         // Check WiFi connectivity
         if (isWiFiConnected()) {
@@ -1066,6 +1110,8 @@ public class MediaCaptureService {
     public void takePhotoForBleTransfer(String photoFilePath, String requestId, String bleImgId, boolean save, String size) {
         // Store the save flag for this request
         photoSaveFlags.put(requestId, save);
+        // Track requested size for BLE compression
+        photoRequestedSizes.put(requestId, size);
         // Notify that we're about to take a photo
         if (mMediaCaptureListener != null) {
             mMediaCaptureListener.onPhotoCapturing(requestId);
@@ -1099,7 +1145,8 @@ public class MediaCaptureService {
                                 mMediaCaptureListener.onMediaError(requestId, errorMessage, MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
                             }
                         }
-                    }
+                    },
+                    size
             );
         } catch (Exception e) {
             Log.e(TAG, "Error taking photo for BLE", e);
@@ -1128,9 +1175,17 @@ public class MediaCaptureService {
                     throw new Exception("Failed to decode image file");
                 }
 
-                // 2. Calculate new dimensions maintaining aspect ratio
-                int targetWidth = bleImageTargetWidth;
-                int targetHeight = bleImageTargetHeight;
+                // 2. Resolve BLE resize and quality parameters based on requested size
+                String requestedSize = photoRequestedSizes.get(requestId);
+                if (requestedSize == null || requestedSize.isEmpty()) {
+                    requestedSize = "medium";
+                }
+
+                BleParams bleParams = resolveBleParams(requestedSize);
+
+                // Calculate new dimensions maintaining aspect ratio, constrained by requested target
+                int targetWidth = bleParams.targetWidth;
+                int targetHeight = bleParams.targetHeight;
                 float aspectRatio = (float) original.getWidth() / original.getHeight();
 
                 if (aspectRatio > targetWidth / (float) targetHeight) {
@@ -1150,7 +1205,7 @@ public class MediaCaptureService {
                     HeifCoder heifCoder = new HeifCoder();
                     compressedData = heifCoder.encodeAvif(
                         resized,
-                            bleImageAvifQuality,  // quality (0-100)
+                            bleParams.avifQuality,  // quality (0-100)
                         PreciseMode.LOSSY   // Use FAST mode for reasonable compression speed
                     );
                     Log.d(TAG, "Successfully encoded as AVIF");
@@ -1158,7 +1213,7 @@ public class MediaCaptureService {
                     Log.w(TAG, "AVIF encoding failed, falling back to JPEG: " + e.getMessage());
                     // Fallback to JPEG if AVIF fails
                     java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
-                    resized.compress(android.graphics.Bitmap.CompressFormat.JPEG, 30, baos);
+                    resized.compress(android.graphics.Bitmap.CompressFormat.JPEG, bleParams.jpegFallbackQuality, baos);
                     compressedData = baos.toByteArray();
                 }
                 resized.recycle();

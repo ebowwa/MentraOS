@@ -1760,7 +1760,7 @@ public class AsgClientServiceBackup extends Service implements NetworkStateListe
                     String timeStamp = new java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.US).format(new java.util.Date());
                     String photoFilePath = getExternalFilesDir(null) + java.io.File.separator + "IMG_" + timeStamp + ".jpg";
 
-                    Log.d(TAG, "Taking photo with requestId: " + requestId + ", transferMethod: " + transferMethod + ", save: " + save);
+                    Log.d(TAG, "Taking photo with requestId: " + requestId + ", transferMethod: " + transferMethod + ", save: " + save + ", size: " + size);
                     Log.d(TAG, "Photo will be saved to: " + photoFilePath);
 
                     if ("ble".equals(transferMethod)) {

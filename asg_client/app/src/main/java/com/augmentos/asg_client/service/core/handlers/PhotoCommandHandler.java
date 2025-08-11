@@ -18,7 +18,7 @@ import java.util.Set;
  */
 public class PhotoCommandHandler extends BaseMediaCommandHandler {
     private static final String TAG = "PhotoCommandHandler";
-    
+
     private final AsgClientServiceManager serviceManager;
 
     public PhotoCommandHandler(Context context, AsgClientServiceManager serviceManager, FileManager fileManager) {
@@ -66,6 +66,7 @@ public class PhotoCommandHandler extends BaseMediaCommandHandler {
             String transferMethod = data.optString("transferMethod", "direct");
             String bleImgId = data.optString("bleImgId", "");
             boolean save = data.optBoolean("save", false);
+            String size = data.optString("size", "medium");
 
             // Generate file path using base class functionality
             String fileName = generateUniqueFilename("IMG_", ".jpg");
@@ -82,20 +83,20 @@ public class PhotoCommandHandler extends BaseMediaCommandHandler {
             }
 
             // Process photo capture based on transfer method
-            boolean success = processPhotoCapture(captureService, photoFilePath, requestId, webhookUrl, bleImgId, save, transferMethod);
+            boolean success = processPhotoCapture(captureService, photoFilePath, requestId, webhookUrl, bleImgId, save, size, transferMethod);
             logCommandResult("take_photo", success, success ? null : "Photo capture failed");
             return success;
-            
+
         } catch (Exception e) {
             Log.e(TAG, "Error handling take photo command", e);
             logCommandResult("take_photo", false, "Exception: " + e.getMessage());
             return false;
         }
     }
-    
+
     /**
      * Process photo capture based on transfer method.
-     * 
+     *
      * @param captureService Media capture service
      * @param photoFilePath Photo file path
      * @param requestId Request ID
@@ -105,23 +106,23 @@ public class PhotoCommandHandler extends BaseMediaCommandHandler {
      * @param transferMethod Transfer method
      * @return true if successful, false otherwise
      */
-    private boolean processPhotoCapture(MediaCaptureService captureService, String photoFilePath, 
-                                      String requestId, String webhookUrl, String bleImgId, 
-                                      boolean save, String transferMethod) {
+    private boolean processPhotoCapture(MediaCaptureService captureService, String photoFilePath,
+                                      String requestId, String webhookUrl, String bleImgId,
+                                      boolean save, String size, String transferMethod) {
         switch (transferMethod) {
             case "ble":
-                captureService.takePhotoForBleTransfer(photoFilePath, requestId, bleImgId, save);
+                captureService.takePhotoForBleTransfer(photoFilePath, requestId, bleImgId, save, size);
                 return true;
             case "auto":
                 if (bleImgId.isEmpty()) {
                     Log.e(TAG, "Auto mode requires bleImgId for fallback");
                     return false;
                 }
-                captureService.takePhotoAutoTransfer(photoFilePath, requestId, webhookUrl, bleImgId, save);
+                captureService.takePhotoAutoTransfer(photoFilePath, requestId, webhookUrl, bleImgId, save, size);
                 return true;
             default:
-                captureService.takePhotoAndUpload(photoFilePath, requestId, webhookUrl, save);
+                captureService.takePhotoAndUpload(photoFilePath, requestId, webhookUrl, save, size);
                 return true;
         }
     }
-} 
+}

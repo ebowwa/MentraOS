@@ -156,14 +156,14 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     private int batteryLevel = 50; // Default until we get actual value
     private boolean isCharging = false;
     private boolean isConnected = false;
-    
+
     // File transfer management
     private ConcurrentHashMap<String, FileTransferSession> activeFileTransfers = new ConcurrentHashMap<>();
     private static final String FILE_SAVE_DIR = "MentraLive_Images";
-    
+
     // BLE photo transfer tracking
     private Map<String, BlePhotoTransfer> blePhotoTransfers = new HashMap<>();
-    
+
     private static class BlePhotoTransfer {
         String bleImgId;
         String requestId;
@@ -172,7 +172,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         long phoneStartTime;  // When phone received the request
         long bleTransferStartTime;  // When BLE transfer actually started
         long glassesCompressionDurationMs;  // How long glasses took to compress
-        
+
         BlePhotoTransfer(String bleImgId, String requestId, String webhookUrl) {
             this.bleImgId = bleImgId;
             this.requestId = requestId;
@@ -182,7 +182,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             this.glassesCompressionDurationMs = 0;
         }
     }
-    
+
     // Inner class to track incoming file transfers
     private static class FileTransferSession {
         String fileName;
@@ -192,7 +192,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         ConcurrentHashMap<Integer, byte[]> receivedPackets;
         long startTime;
         boolean isComplete;
-        
+
         FileTransferSession(String fileName, int fileSize) {
             this.fileName = fileName;
             this.fileSize = fileSize;
@@ -202,31 +202,31 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             this.startTime = System.currentTimeMillis();
             this.isComplete = false;
         }
-        
+
         boolean addPacket(int index, byte[] data) {
             if (index >= 0 && index < totalPackets && !receivedPackets.containsKey(index)) {
                 receivedPackets.put(index, data);
-                
+
                 // Update expected next packet if this was the one we were waiting for
                 while (receivedPackets.containsKey(expectedNextPacket)) {
                     expectedNextPacket++;
                 }
-                
+
                 // Check if complete
                 isComplete = (receivedPackets.size() == totalPackets);
                 return true;
             }
             return false;
         }
-        
+
         byte[] assembleFile() {
             if (!isComplete) {
                 return null;
             }
-            
+
             byte[] fileData = new byte[fileSize];
             int offset = 0;
-            
+
             for (int i = 0; i < totalPackets; i++) {
                 byte[] packet = receivedPackets.get(i);
                 if (packet != null) {
@@ -234,7 +234,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                     offset += packet.length;
                 }
             }
-            
+
             return fileData;
         }
     }
@@ -255,7 +255,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     private static final long ACK_TIMEOUT_MS = 2000; // 2 seconds
     private static final int MAX_RETRY_ATTEMPTS = 3;
     private static final long RETRY_DELAY_MS = 1000; // 1 second base delay
-    
+
     // Esoteric message ID generation
     private final SecureRandom secureRandom = new SecureRandom();
     private final long deviceId = System.currentTimeMillis() ^ new Random().nextLong();
@@ -935,7 +935,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         for (BluetoothGattCharacteristic characteristic : characteristics) {
             UUID uuid = characteristic.getUuid();
             Log.d(TAG, "Thread-" + threadId + ": Examining characteristic: " + uuid);
-            
+
             // Log if this is one of the file transfer characteristics
             if (uuid.equals(FILE_READ_UUID)) {
                 Log.e(TAG, "Thread-" + threadId + ": 📁 Found FILE_READ characteristic (72FF)!");
@@ -1068,7 +1068,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         if (data != null) {
             sendQueue.add(data);
             Log.d(TAG, "📋 Added " + data.length + " to send queue - New queue size: " + sendQueue.size());
-            
+
             // Log all outgoing bytes for testing
             StringBuilder hexBytes = new StringBuilder();
             for (byte b : data) {
@@ -1090,13 +1090,13 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         long timestamp = System.currentTimeMillis();
         long randomComponent = secureRandom.nextLong();
         long counter = messageIdCounter.getAndIncrement();
-        
+
         // Combine timestamp, device ID, random value, and counter in a non-obvious way
         long messageId = timestamp ^ deviceId ^ randomComponent ^ (counter << 32);
-        
+
         // Ensure it's positive (clear the sign bit)
         messageId = Math.abs(messageId);
-        
+
         return messageId;
     }
 
@@ -1144,7 +1144,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             Log.d(TAG, "Not connected, skipping ACK tracking for message " + messageId);
             return;
         }
-        
+
         // Skip ACK tracking for glasses with build number < 5 (older firmware)
         if (glassesBuildNumberInt < 5) {
             Log.d(TAG, "Glasses build number (" + glassesBuildNumberInt + ") < 5, skipping ACK tracking for message " + messageId);
@@ -1181,7 +1181,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         PendingMessage pendingMessage = pendingMessages.get(messageId);
         if (pendingMessage != null) {
             Log.w(TAG, "⏰ ACK timeout for message " + messageId + " (attempt " + pendingMessage.retryCount + ")");
-            
+
             if (pendingMessage.retryCount < MAX_RETRY_ATTEMPTS) {
                 // Retry the message
                 Log.d(TAG, "🔄 Retrying message " + messageId + " (attempt " + (pendingMessage.retryCount + 1) + "/" + MAX_RETRY_ATTEMPTS + ")");
@@ -1269,27 +1269,27 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         // First check if this looks like a K900 protocol formatted message (starts with ##)
         if (size >= 7 && data[0] == 0x23 && data[1] == 0x23) {
             Log.d(TAG, "Thread-" + threadId + ": 🔍 DETECTED K900 PROTOCOL FORMAT (## prefix)");
-            
+
             // Check the command type byte
             byte cmdType = data[2];
-            
+
             // Check if this is a file transfer packet
-            if (cmdType == K900ProtocolUtils.CMD_TYPE_PHOTO || 
+            if (cmdType == K900ProtocolUtils.CMD_TYPE_PHOTO ||
                 cmdType == K900ProtocolUtils.CMD_TYPE_VIDEO ||
                 cmdType == K900ProtocolUtils.CMD_TYPE_AUDIO ||
                 cmdType == K900ProtocolUtils.CMD_TYPE_DATA) {
-                
-                Log.d(TAG, "Thread-" + threadId + ": 📦 DETECTED FILE TRANSFER PACKET (type: 0x" + 
+
+                Log.d(TAG, "Thread-" + threadId + ": 📦 DETECTED FILE TRANSFER PACKET (type: 0x" +
                       String.format("%02X", cmdType) + ")");
-                
+
                 // Debug: Log the raw data
                 StringBuilder hexDump = new StringBuilder();
                 for (int i = 0; i < Math.min(data.length, 64); i++) {
                     hexDump.append(String.format("%02X ", data[i]));
                 }
-                Log.d(TAG, "Thread-" + threadId + ": 📦 Raw file packet data length=" + data.length + 
+                Log.d(TAG, "Thread-" + threadId + ": 📦 Raw file packet data length=" + data.length +
                       ", first 64 bytes: " + hexDump.toString());
-                
+
                 // The data IS the file packet - it starts with ## and contains the full file packet structure
                 K900ProtocolUtils.FilePacketInfo packetInfo = K900ProtocolUtils.extractFilePacket(data);
                 if (packetInfo != null && packetInfo.isValid) {
@@ -1298,7 +1298,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                     Log.e(TAG, "Thread-" + threadId + ": Failed to extract or validate file packet");
                     // BES chip handles ACKs automatically
                 }
-                
+
                 return; // Exit after processing file packet
             }
 
@@ -1452,7 +1452,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             case "rtmp_stream_status":
                 // Process RTMP streaming status update from ASG client
                 Log.d(TAG, "Received RTMP status update from glasses: " + json.toString());
-                
+
                 // Check if this is an error status
                 String status = json.optString("status", "");
                 if ("error".equals(status)) {
@@ -1460,16 +1460,16 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                     Log.e(TAG, "🚨🚨🚨 RTMP STREAM ERROR DETECTED 🚨🚨🚨");
                     Log.e(TAG, "📄 Error details: " + errorDetails);
                     Log.e(TAG, "⏱️ Timestamp: " + System.currentTimeMillis());
-                    
+
                     // Check if it's the timeout error we're investigating
                     if (errorDetails.contains("Stream timed out") || errorDetails.contains("no keep-alive")) {
                         Log.e(TAG, "🔍 RTMP TIMEOUT ERROR - Dumping diagnostic info:");
                         Log.e(TAG, "💓 Last heartbeat counter: " + heartbeatCounter);
                         Log.e(TAG, "⏱️ Current timestamp: " + System.currentTimeMillis());
-                        
+
                         // Dump thread states for debugging
                         dumpThreadStates();
-                        
+
                         // Log BLE connection state
                         Log.e(TAG, "🔌 BLE Connection state:");
                         Log.e(TAG, "   - isConnected: " + isConnected);
@@ -1532,16 +1532,16 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                     Log.d(TAG, "Photo request succeeded - requestId: " + requestId);
                 }
                 break;
-                
+
             case "ble_photo_complete":
                 // Process BLE photo transfer completion
                 String bleRequestId = json.optString("requestId", "");
                 String bleBleImgId = json.optString("bleImgId", "");
                 boolean bleSuccess = json.optBoolean("success", false);
-                
-                Log.d(TAG, "BLE photo transfer complete - requestId: " + bleRequestId + 
+
+                Log.d(TAG, "BLE photo transfer complete - requestId: " + bleRequestId +
                      ", bleImgId: " + bleBleImgId + ", success: " + bleSuccess);
-                
+
                 // Send completion notification back to glasses
                 if (bleSuccess) {
                     sendBleTransferComplete(bleRequestId, bleBleImgId, true);
@@ -1653,7 +1653,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
 
                 // Start the heartbeat mechanism now that glasses are ready
                 startHeartbeat();
-                
+
                 // Send user settings to glasses
                 sendUserSettings();
 
@@ -1680,7 +1680,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 String deviceModel = json.optString("device_model", "");
                 String androidVersion = json.optString("android_version", "");
                 String otaVersionUrl = json.optString("ota_version_url", null);
-                
+
                 // Parse build number as integer for version checks
                 try {
                     glassesBuildNumberInt = Integer.parseInt(buildNumber);
@@ -1704,7 +1704,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             case "ota_download_progress":
                 // Process OTA download progress from ASG client
                 Log.d(TAG, "📥 Received OTA download progress from ASG client: " + json.toString());
-                
+
                 // Extract download progress information
                 String downloadStatus = json.optString("status", "");
                 int downloadProgress = json.optInt("progress", 0);
@@ -1712,12 +1712,12 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 long totalBytes = json.optLong("total_bytes", 0);
                 String downloadErrorMessage = json.optString("error_message", null);
                 long downloadTimestamp = json.optLong("timestamp", System.currentTimeMillis());
-                
-                Log.d(TAG, "📥 OTA Download Progress - Status: " + downloadStatus + 
+
+                Log.d(TAG, "📥 OTA Download Progress - Status: " + downloadStatus +
                       ", Progress: " + downloadProgress + "%" +
                       ", Bytes: " + bytesDownloaded + "/" + totalBytes +
                       (downloadErrorMessage != null ? ", Error: " + downloadErrorMessage : ""));
-                
+
                 // Emit EventBus event for AugmentosService on main thread
                 try {
                     DownloadProgressEvent.DownloadStatus downloadEventStatus;
@@ -1743,7 +1743,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                             Log.w(TAG, "Unknown download status: " + downloadStatus);
                             return;
                     }
-                    
+
                     // Post event on main thread to ensure proper delivery
                     handler.post(() -> {
                         Log.d(TAG, "📡 Posting download progress event on main thread: " + downloadEventStatus);
@@ -1752,7 +1752,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 } catch (Exception e) {
                     Log.e(TAG, "Error creating download progress event", e);
                 }
-                
+
                 // Forward to data observable for cloud communication
                 if (dataObservable != null) {
                     dataObservable.onNext(json);
@@ -1762,17 +1762,17 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             case "ota_installation_progress":
                 // Process OTA installation progress from ASG client
                 Log.d(TAG, "🔧 Received OTA installation progress from ASG client: " + json.toString());
-                
+
                 // Extract installation progress information
                 String installationStatus = json.optString("status", "");
                 String apkPath = json.optString("apk_path", "");
                 String installationErrorMessage = json.optString("error_message", null);
                 long installationTimestamp = json.optLong("timestamp", System.currentTimeMillis());
-                
-                Log.d(TAG, "🔧 OTA Installation Progress - Status: " + installationStatus + 
+
+                Log.d(TAG, "🔧 OTA Installation Progress - Status: " + installationStatus +
                       ", APK: " + apkPath +
                       (installationErrorMessage != null ? ", Error: " + installationErrorMessage : ""));
-                
+
                 // Emit EventBus event for AugmentosService on main thread
                 try {
                     InstallationProgressEvent.InstallationStatus installationEventStatus;
@@ -1794,7 +1794,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                             Log.w(TAG, "Unknown installation status: " + installationStatus);
                             return;
                     }
-                    
+
                     // Post event on main thread to ensure proper delivery
                     handler.post(() -> {
                         Log.d(TAG, "📡 Posting installation progress event on main thread: " + installationEventStatus);
@@ -1803,7 +1803,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 } catch (Exception e) {
                     Log.e(TAG, "Error creating installation progress event", e);
                 }
-                
+
                 // Forward to data observable for cloud communication
                 if (dataObservable != null) {
                     dataObservable.onNext(json);
@@ -1830,9 +1830,9 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             String bleImgId = json.optString("bleImgId", "");
             String requestId = json.optString("requestId", "");
             long compressionDurationMs = json.optLong("compressionDurationMs", 0);
-            
+
             Log.d(TAG, "📸 BLE photo ready notification: bleImgId=" + bleImgId + ", requestId=" + requestId);
-            
+
             // Update the transfer with glasses compression duration
             BlePhotoTransfer transfer = blePhotoTransfers.get(bleImgId);
             if (transfer != null) {
@@ -1846,7 +1846,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             Log.e(TAG, "Error processing ble_photo_ready", e);
         }
     }
-    
+
     private void processK900JsonMessage(JSONObject json) {
         String command = json.optString("C", "");
         Log.d(TAG, "Processing K900 command: " + command);
@@ -1990,7 +1990,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
 
         // Post battery event so the system knows the battery level
         EventBus.getDefault().post(new BatteryLevelEvent(level, charging));
-        
+
         // Send battery status via BLE to connected phone
         // This was necessary for OG beta units
         // Not required for newer beta units
@@ -1998,7 +1998,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         // Commented out to prevent battery status echo loop between phone and glasses
         // sendBatteryStatusOverBle(level, charging);
     }
-    
+
     /**
      * Send battery status to connected phone via BLE
      */
@@ -2010,12 +2010,12 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 batteryStatus.put("level", level);
                 batteryStatus.put("charging", charging);
                 batteryStatus.put("timestamp", System.currentTimeMillis());
-                
+
                 // Convert to string and send via BLE
                 String jsonString = batteryStatus.toString();
                 Log.d(TAG, "🔋 Sending battery status via BLE: " + level + "% " + (charging ? "(charging)" : "(not charging)"));
                 sendDataToGlasses(jsonString, false);
-                
+
             } catch (JSONException e) {
                 Log.e(TAG, "Error creating battery status JSON", e);
             }
@@ -2091,7 +2091,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         heartbeatCounter = 0;
         heartbeatHandler.removeCallbacks(heartbeatRunnable); // Remove any existing callbacks
         heartbeatHandler.postDelayed(heartbeatRunnable, HEARTBEAT_INTERVAL_MS);
-        
+
         // Also start test messages for ACK verification
         // startTestMessages();
     }
@@ -2103,7 +2103,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         Log.d(TAG, "💓 Stopping heartbeat mechanism");
         heartbeatHandler.removeCallbacks(heartbeatRunnable);
         heartbeatCounter = 0;
-        
+
         // Also stop test messages
         // stopTestMessages();
     }
@@ -2125,10 +2125,10 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             testMsg.put("timestamp", System.currentTimeMillis());
             testMsg.put("message", "ACK test message #" + testMessageCounter);
             testMsg.put("deviceId", deviceId); // Include device ID for debugging
-            
+
             Log.d(TAG, "🧪 Sending test message #" + testMessageCounter + " for ACK verification");
             sendJson(testMsg, true); // This will include esoteric mId and ACK tracking
-            
+
         } catch (JSONException e) {
             Log.e(TAG, "Error creating test message", e);
         }
@@ -2163,12 +2163,12 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             for (Map.Entry<Thread, StackTraceElement[]> entry : allThreads.entrySet()) {
                 Thread thread = entry.getKey();
                 StackTraceElement[] stack = entry.getValue();
-                
-                Log.e(TAG, "📌 Thread: " + thread.getName() + 
-                      " (ID: " + thread.getId() + 
-                      ", State: " + thread.getState() + 
+
+                Log.e(TAG, "📌 Thread: " + thread.getName() +
+                      " (ID: " + thread.getId() +
+                      ", State: " + thread.getState() +
                       ", Priority: " + thread.getPriority() + ")");
-                
+
                 // Only print first 5 stack frames to avoid log spam
                 for (int i = 0; i < Math.min(5, stack.length); i++) {
                     Log.e(TAG, "    at " + stack[i].toString());
@@ -2182,7 +2182,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         }
         Log.e(TAG, "📸 THREAD STATE DUMP - END");
     }
-    
+
     /**
      * Check if we have the necessary permissions
      */
@@ -2289,8 +2289,8 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     }
 
     @Override
-    public void requestPhoto(String requestId, String appId, String webhookUrl) {
-        Log.d(TAG, "Requesting photo: " + requestId + " for app: " + appId + " with webhookUrl: " + webhookUrl);
+    public void requestPhoto(String requestId, String appId, String webhookUrl, String size) {
+        Log.d(TAG, "Requesting photo: " + requestId + " for app: " + appId + " with webhookUrl: " + webhookUrl + ", size=" + size);
 
         try {
             JSONObject json = new JSONObject();
@@ -2300,23 +2300,25 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             if (webhookUrl != null && !webhookUrl.isEmpty()) {
                 json.put("webhookUrl", webhookUrl);
             }
-            
+            if (size != null && !size.isEmpty()) {
+                json.put("size", size);
+            }
+
             // Always generate BLE ID for potential fallback
-            // Format: "I" + 9 digit counter/random
             String bleImgId = "I" + String.format("%09d", System.currentTimeMillis() % 1000000000);
             json.put("bleImgId", bleImgId);
-            
+
             // Use auto mode by default - glasses will decide based on connectivity
             json.put("transferMethod", "auto");
-            
+
             // Always prepare for potential BLE transfer
             if (webhookUrl != null && !webhookUrl.isEmpty()) {
                 // Store the transfer info for BLE route
                 blePhotoTransfers.put(bleImgId, new BlePhotoTransfer(bleImgId, requestId, webhookUrl));
             }
-            
+
             Log.d(TAG, "Using auto transfer mode with BLE fallback ID: " + bleImgId);
-            
+
             sendJson(json, true);
         } catch (JSONException e) {
             Log.e(TAG, "Error creating photo request JSON", e);
@@ -2660,8 +2662,8 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             Log.e(TAG, "Error creating video command", e);
         }
     }
-    
-    
+
+
     /**
      * Send data directly to the glasses using the K900 protocol utility.
      * This method uses K900ProtocolUtils.packJsonToK900 to handle C-wrapping and protocol formatting.
@@ -2688,7 +2690,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             Log.e(TAG, "Error creating data JSON", e);
         }
     }
-    
+
     public void sendStartVideoStream(){
         try {
             JSONObject command = new JSONObject();
@@ -2786,7 +2788,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         stats.append("- Next message ID: ").append(messageIdCounter.get()).append("\n");
         stats.append("- ACK timeout: ").append(ACK_TIMEOUT_MS).append("ms\n");
         stats.append("- Max retries: ").append(MAX_RETRY_ATTEMPTS).append("\n");
-        
+
         if (!pendingMessages.isEmpty()) {
             stats.append("- Pending message IDs: ");
             for (Long messageId : pendingMessages.keySet()) {
@@ -2796,22 +2798,22 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 }
             }
         }
-        
+
         return stats.toString();
     }
-    
+
     //---------------------------------------
     // File Transfer Methods
     //---------------------------------------
-    
+
     /**
      * Process a received file packet
      */
     private void processFilePacket(K900ProtocolUtils.FilePacketInfo packetInfo) {
-        Log.d(TAG, "📦 Processing file packet: " + packetInfo.fileName + 
+        Log.d(TAG, "📦 Processing file packet: " + packetInfo.fileName +
               " [" + packetInfo.packIndex + "/" + ((packetInfo.fileSize + K900ProtocolUtils.FILE_PACK_SIZE - 1) / K900ProtocolUtils.FILE_PACK_SIZE - 1) + "]" +
               " (" + packetInfo.packSize + " bytes)");
-        
+
         // Check if this is a BLE photo transfer we're tracking
         // The filename might have an extension (.avif or .jpg), but we track by ID only
         String bleImgId = packetInfo.fileName;
@@ -2819,28 +2821,28 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         if (dotIndex > 0) {
             bleImgId = bleImgId.substring(0, dotIndex);
         }
-        
+
         BlePhotoTransfer photoTransfer = blePhotoTransfers.get(bleImgId);
         if (photoTransfer != null) {
             // This is a BLE photo transfer
             Log.d(TAG, "📦 BLE photo transfer packet for requestId: " + photoTransfer.requestId);
-            
+
             // Get or create session for this transfer
             if (photoTransfer.session == null) {
                 photoTransfer.session = new FileTransferSession(packetInfo.fileName, packetInfo.fileSize);
-                Log.d(TAG, "📦 Started BLE photo transfer: " + packetInfo.fileName + 
+                Log.d(TAG, "📦 Started BLE photo transfer: " + packetInfo.fileName +
                       " (" + packetInfo.fileSize + " bytes, " + photoTransfer.session.totalPackets + " packets)");
             }
-            
+
             // Add packet to session
             boolean added = photoTransfer.session.addPacket(packetInfo.packIndex, packetInfo.data);
-            
+
             if (added && photoTransfer.session.isComplete) {
                 long transferEndTime = System.currentTimeMillis();
                 long totalDuration = transferEndTime - photoTransfer.phoneStartTime;
-                long bleTransferDuration = photoTransfer.bleTransferStartTime > 0 ? 
+                long bleTransferDuration = photoTransfer.bleTransferStartTime > 0 ?
                     (transferEndTime - photoTransfer.bleTransferStartTime) : 0;
-                
+
                 Log.d(TAG, "✅ BLE photo transfer complete: " + packetInfo.fileName);
                 Log.d(TAG, "⏱️ Total duration (request to complete): " + totalDuration + "ms");
                 Log.d(TAG, "⏱️ Glasses compression: " + photoTransfer.glassesCompressionDurationMs + "ms");
@@ -2848,49 +2850,49 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                     Log.d(TAG, "⏱️ BLE transfer duration: " + bleTransferDuration + "ms");
                     Log.d(TAG, "📊 Transfer rate: " + (packetInfo.fileSize * 1000 / bleTransferDuration) + " bytes/sec");
                 }
-                
+
                 // Get complete image data (AVIF or JPEG)
                 byte[] imageData = photoTransfer.session.assembleFile();
                 if (imageData != null) {
                     // Process and upload the photo
                     processAndUploadBlePhoto(photoTransfer, imageData);
                 }
-                
+
                 // Clean up - use the bleImgId without extension
                 blePhotoTransfers.remove(bleImgId);
             }
-            
+
             return; // Exit after handling BLE photo
         }
-        
+
         // Regular file transfer (not a BLE photo)
         FileTransferSession session = activeFileTransfers.get(packetInfo.fileName);
         if (session == null) {
             // New file transfer
             session = new FileTransferSession(packetInfo.fileName, packetInfo.fileSize);
             activeFileTransfers.put(packetInfo.fileName, session);
-            
-            Log.d(TAG, "📦 Started new file transfer: " + packetInfo.fileName + 
+
+            Log.d(TAG, "📦 Started new file transfer: " + packetInfo.fileName +
                   " (" + packetInfo.fileSize + " bytes, " + session.totalPackets + " packets)");
         }
-        
+
         // Add packet to session
         boolean added = session.addPacket(packetInfo.packIndex, packetInfo.data);
-        
+
         if (added) {
             // BES chip handles ACKs automatically
             Log.d(TAG, "📦 Packet " + packetInfo.packIndex + " received successfully (BES will auto-ACK)");
-            
+
             // Check if transfer is complete
             if (session.isComplete) {
                 Log.d(TAG, "📦 File transfer complete: " + packetInfo.fileName);
-                
+
                 // Assemble and save the file
                 byte[] fileData = session.assembleFile();
                 if (fileData != null) {
                     saveReceivedFile(packetInfo.fileName, fileData, packetInfo.fileType);
                 }
-                
+
                 // Remove from active transfers
                 activeFileTransfers.remove(packetInfo.fileName);
             }
@@ -2900,8 +2902,8 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             // BES chip handles ACKs automatically
         }
     }
-    
-    
+
+
     /**
      * Save received file to storage
      */
@@ -2912,11 +2914,11 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             if (!dir.exists()) {
                 dir.mkdirs();
             }
-            
+
             // Generate unique filename with timestamp
             SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US);
             String timestamp = sdf.format(new Date());
-            
+
             // Determine file extension based on type
             String extension = "";
             switch (fileType) {
@@ -2943,31 +2945,31 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                     }
                     break;
             }
-            
+
             // Create unique filename
             String baseFileName = fileName;
             if (baseFileName.contains(".")) {
                 baseFileName = baseFileName.substring(0, baseFileName.lastIndexOf('.'));
             }
             String uniqueFileName = baseFileName + "_" + timestamp + extension;
-            
+
             // Save the file
             File file = new File(dir, uniqueFileName);
             try (FileOutputStream fos = new FileOutputStream(file)) {
                 fos.write(fileData);
                 fos.flush();
-                
+
                 Log.d(TAG, "💾 Saved file: " + file.getAbsolutePath());
-                
+
                 // Notify about the received file
                 notifyFileReceived(file.getAbsolutePath(), fileType);
             }
-            
+
         } catch (Exception e) {
             Log.e(TAG, "Error saving received file: " + fileName, e);
         }
     }
-    
+
     /**
      * Notify listeners about received file
      */
@@ -2979,38 +2981,38 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             event.put("filePath", filePath);
             event.put("fileType", String.format("0x%02X", fileType));
             event.put("timestamp", System.currentTimeMillis());
-            
+
             // Emit event through data observable
             if (dataObservable != null) {
                 dataObservable.onNext(event);
             }
-            
+
             // You could also post an EventBus event here if needed
             // EventBus.getDefault().post(new FileReceivedEvent(filePath, fileType));
-            
+
         } catch (JSONException e) {
             Log.e(TAG, "Error creating file received event", e);
         }
     }
-    
+
     /**
      * Process and upload a BLE photo transfer
      */
     private void processAndUploadBlePhoto(BlePhotoTransfer transfer, byte[] imageData) {
         Log.d(TAG, "Processing BLE photo for upload. RequestId: " + transfer.requestId);
         long uploadStartTime = System.currentTimeMillis();
-        
+
         // Save BLE photo locally for debugging/backup
         try {
             File dir = new File(context.getExternalFilesDir(null), FILE_SAVE_DIR);
             if (!dir.exists()) {
                 dir.mkdirs();
             }
-            
+
             // BLE photos are ALWAYS AVIF format
             String fileName = "BLE_" + transfer.bleImgId + "_" + System.currentTimeMillis() + ".avif";
             File file = new File(dir, fileName);
-            
+
             try (FileOutputStream fos = new FileOutputStream(file)) {
                 fos.write(imageData);
                 Log.d(TAG, "💾 Saved BLE photo locally: " + file.getAbsolutePath());
@@ -3018,10 +3020,10 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         } catch (Exception e) {
             Log.e(TAG, "Error saving BLE photo locally", e);
         }
-        
+
         // Get core token for authentication
         String coreToken = getCoreToken();
-        
+
         // Use BlePhotoUploadService to handle decoding and upload
         BlePhotoUploadService.processAndUploadPhoto(
             imageData,
@@ -3033,13 +3035,13 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 public void onSuccess(String requestId) {
                     long uploadDuration = System.currentTimeMillis() - uploadStartTime;
                     long totalDuration = System.currentTimeMillis() - transfer.phoneStartTime;
-                    
+
                     Log.d(TAG, "✅ BLE photo uploaded successfully via phone relay for requestId: " + requestId);
                     Log.d(TAG, "⏱️ Upload duration: " + uploadDuration + "ms");
                     Log.d(TAG, "⏱️ Total end-to-end duration: " + totalDuration + "ms");
                     //sendPhotoUploadSuccess(requestId);
                 }
-                
+
                 @Override
                 public void onError(String requestId, String error) {
                     long uploadDuration = System.currentTimeMillis() - uploadStartTime;
@@ -3050,7 +3052,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             }
         );
     }
-    
+
     /**
      * Send photo upload success notification to glasses
      */
@@ -3060,13 +3062,13 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             json.put("type", "photo_upload_result");
             json.put("requestId", requestId);
             json.put("success", true);
-            
+
             sendJson(json, true);
         } catch (JSONException e) {
             Log.e(TAG, "Error creating photo upload success message", e);
         }
     }
-    
+
     /**
      * Send photo upload error notification to glasses
      */
@@ -3077,13 +3079,13 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             json.put("requestId", requestId);
             json.put("success", false);
             json.put("error", error);
-            
+
             sendJson(json, true);
         } catch (JSONException e) {
             Log.e(TAG, "Error creating photo upload error message", e);
         }
     }
-    
+
     /**
      * Get the core authentication token
      */
@@ -3091,18 +3093,18 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         SharedPreferences prefs = context.getSharedPreferences(AUTH_PREFS_NAME, Context.MODE_PRIVATE);
         return prefs.getString(KEY_CORE_TOKEN, "");
     }
-    
+
     /**
      * Send BLE transfer completion notification
      */
     private void sendBleTransferComplete(String requestId, String bleImgId, boolean success) {
         try {
             JSONObject json = new JSONObject();
-            json.put("type", "ble_photo_transfer_complete"); 
+            json.put("type", "ble_photo_transfer_complete");
             json.put("requestId", requestId);
             json.put("bleImgId", bleImgId);
             json.put("success", success);
-            
+
             sendJson(json, true);
             Log.d(TAG, "Sent BLE transfer complete notification: " + json.toString());
         } catch (JSONException e) {
@@ -3140,12 +3142,12 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     @Override
     public void startBufferRecording() {
         Log.d(TAG, "Starting buffer recording on glasses");
-        
+
         if (!isConnected) {
             Log.w(TAG, "Cannot start buffer recording - not connected");
             return;
         }
-        
+
         try {
             JSONObject json = new JSONObject();
             json.put("type", "start_buffer_recording");
@@ -3154,19 +3156,19 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             Log.e(TAG, "Error creating start buffer recording message", e);
         }
     }
-    
+
     /**
      * Stop buffer recording on glasses
      */
     @Override
     public void stopBufferRecording() {
         Log.d(TAG, "Stopping buffer recording on glasses");
-        
+
         if (!isConnected) {
             Log.w(TAG, "Cannot stop buffer recording - not connected");
             return;
         }
-        
+
         try {
             JSONObject json = new JSONObject();
             json.put("type", "stop_buffer_recording");
@@ -3175,25 +3177,25 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             Log.e(TAG, "Error creating stop buffer recording message", e);
         }
     }
-    
+
     /**
      * Save buffer video from glasses
      */
     @Override
     public void saveBufferVideo(String requestId, int durationSeconds) {
         Log.d(TAG, "Saving buffer video: requestId=" + requestId + ", duration=" + durationSeconds + " seconds");
-        
+
         if (!isConnected) {
             Log.w(TAG, "Cannot save buffer video - not connected");
             return;
         }
-        
+
         // Validate duration
         if (durationSeconds < 1 || durationSeconds > 30) {
             Log.e(TAG, "Invalid duration: " + durationSeconds + " (must be 1-30 seconds)");
             return;
         }
-        
+
         try {
             JSONObject json = new JSONObject();
             json.put("type", "save_buffer_video");
@@ -3210,7 +3212,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
      */
     private void sendUserSettings() {
         Log.d(TAG, "Sending user settings to glasses");
-        
+
         // Send button mode setting
         String buttonMode = PreferenceManager.getDefaultSharedPreferences(context)
                 .getString("button_press_mode", "photo");
@@ -3220,12 +3222,12 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     @Override
     public void startVideoRecording(String requestId, boolean save) {
         Log.d(TAG, "Starting video recording: requestId=" + requestId + ", save=" + save);
-        
+
         if (!isConnected) {
             Log.w(TAG, "Cannot start video recording - not connected");
             return;
         }
-        
+
         try {
             JSONObject json = new JSONObject();
             json.put("type", "start_video_recording");
@@ -3240,12 +3242,12 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     @Override
     public void stopVideoRecording(String requestId) {
         Log.d(TAG, "Stopping video recording: requestId=" + requestId);
-        
+
         if (!isConnected) {
             Log.w(TAG, "Cannot stop video recording - not connected");
             return;
         }
-        
+
         try {
             JSONObject json = new JSONObject();
             json.put("type", "stop_video_recording");

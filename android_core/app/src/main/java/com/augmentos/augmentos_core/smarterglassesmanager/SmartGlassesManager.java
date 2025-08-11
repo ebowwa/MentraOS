@@ -772,7 +772,7 @@ public class SmartGlassesManager extends Service {
             smartGlassesRepresentative.smartGlassesCommunicator.sendButtonModeSetting(mode);
         }
     }
-    
+
     /**
      * Start buffer recording on smart glasses
      * Continuously records last 30 seconds in a circular buffer
@@ -784,7 +784,7 @@ public class SmartGlassesManager extends Service {
             Log.w(TAG, "Cannot start buffer recording - glasses not connected");
         }
     }
-    
+
     /**
      * Stop buffer recording on smart glasses
      */
@@ -795,7 +795,7 @@ public class SmartGlassesManager extends Service {
             Log.w(TAG, "Cannot stop buffer recording - glasses not connected");
         }
     }
-    
+
     /**
      * Save buffer video from smart glasses
      * @param requestId Unique ID for this save request
@@ -902,17 +902,18 @@ public class SmartGlassesManager extends Service {
      * @param requestId The unique ID for this photo request
      * @param appId The ID of the app requesting the photo
      * @param webhookUrl The webhook URL where the photo should be uploaded directly
+     * @param size Requested photo size (small|medium|large)
      * @return true if request was sent, false if glasses not connected
      */
-    public boolean requestPhoto(String requestId, String appId, String webhookUrl) {
+    public boolean requestPhoto(String requestId, String appId, String webhookUrl, String size) {
         if (smartGlassesRepresentative != null &&
             smartGlassesRepresentative.smartGlassesCommunicator != null &&
             smartGlassesRepresentative.getConnectionState() == SmartGlassesConnectionState.CONNECTED) {
 
-            Log.d(TAG, "Requesting photo from glasses, requestId: " + requestId + ", appId: " + appId + ", webhookUrl: " + webhookUrl);
+            Log.d(TAG, "Requesting photo from glasses, requestId: " + requestId + ", appId: " + appId + ", webhookUrl: " + webhookUrl + ", size=" + size);
 
             // Pass the request to the smart glasses communicator
-            smartGlassesRepresentative.smartGlassesCommunicator.requestPhoto(requestId, appId, webhookUrl);
+            smartGlassesRepresentative.smartGlassesCommunicator.requestPhoto(requestId, appId, webhookUrl, size);
             return true;
         } else {
             Log.e(TAG, "Cannot request photo - glasses not connected");
@@ -1023,7 +1024,7 @@ public class SmartGlassesManager extends Service {
     public String getConnectedSmartGlassesBluetoothName() {
         SmartGlassesDevice connectedDevice = getConnectedSmartGlasses();
         Log.d(TAG, "getConnectedSmartGlassesBluetoothName: connectedDevice = " + (connectedDevice != null ? connectedDevice.deviceModelName : "null"));
-        
+
         if (connectedDevice == null) {
             return null;
         }
@@ -1041,21 +1042,21 @@ public class SmartGlassesManager extends Service {
             Log.d(TAG, "getConnectedSmartGlassesBluetoothName: Mentra Live BT name = " + btName);
             return btName;
         }
-        
+
         // For Even Realities G1 glasses
         if (modelName.equals(new EvenRealitiesG1().deviceModelName)) {
             SharedPreferences prefs = getSharedPreferences("EvenRealitiesPrefs", Context.MODE_PRIVATE);
             String savedDeviceId = prefs.getString("SAVED_G1_ID_KEY", null);
             Log.d(TAG, "getConnectedSmartGlassesBluetoothName: Even Realities G1 device ID = " + savedDeviceId);
-            
+
             // The saved device ID is something like "G1_123", return it as is
             // Could also get left/right names separately if needed:
             // String leftName = prefs.getString("SAVED_G1_LEFT_NAME", null);
             // String rightName = prefs.getString("SAVED_G1_RIGHT_NAME", null);
-            
+
             return savedDeviceId;
         }
-        
+
         // For other glasses types that don't store BT names
         Log.d(TAG, "getConnectedSmartGlassesBluetoothName: No BT name for device type: " + modelName);
         return null;
