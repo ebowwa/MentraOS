@@ -174,15 +174,20 @@ export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps)
 
       console.log(`[GalleryScreen] Download result:`, downloadResult)
 
+      // Get glasses model from status
+      const glassesModel = status.glasses_info?.deviceModelName || status.glasses_info?.glasses_model || undefined
+      console.log(`[GalleryScreen] Using glasses model: ${glassesModel}`)
+
       // Save downloaded files metadata to local storage (files are already saved to filesystem)
       for (const photoInfo of downloadResult.downloaded) {
         const downloadedFile = localStorageService.convertToDownloadedFile(
           photoInfo,
           photoInfo.filePath, // File path from download
           photoInfo.thumbnailPath, // Thumbnail path if exists
+          glassesModel, // Pass glasses model
         )
         await localStorageService.saveDownloadedFile(downloadedFile)
-        console.log(`[GalleryScreen] Saved metadata for ${photoInfo.name}`)
+        console.log(`[GalleryScreen] Saved metadata for ${photoInfo.name} with model: ${glassesModel}`)
       }
 
       // Delete files from server after successful download
@@ -272,20 +277,25 @@ export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps)
       console.log("Sharing photo:", {
         name: photo.name,
         url: photo.url,
+        download: photo.download,
         filePath: photo.filePath,
         mime_type: photo.mime_type,
         is_video: photo.is_video,
       })
 
+      // For videos, use download URL if available (actual video file), not thumbnail
+      const shareUrl = photo.is_video && photo.download ? photo.download : photo.url
+
       // For file:// URLs, extract the path
-      if (photo.url && photo.url.startsWith("file://")) {
-        filePath = photo.url.replace("file://", "")
+      if (shareUrl && shareUrl.startsWith("file://")) {
+        filePath = shareUrl.replace("file://", "")
       } else if (photo.filePath) {
         // If we have a local file path, use that
         filePath = photo.filePath.startsWith("file://") ? photo.filePath.replace("file://", "") : photo.filePath
       } else {
-        // For server photos, we need to download first
-        showAlert("Info", "Please sync this photo first to share it", [{text: translate("common:ok")}])
+        // For server photos/videos, we need to download first
+        const mediaType = photo.is_video ? "video" : "photo"
+        showAlert("Info", `Please sync this ${mediaType} first to share it`, [{text: translate("common:ok")}])
         return
       }
 
@@ -297,14 +307,18 @@ export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps)
 
       console.log("Final file path:", filePath)
 
+      // Create share message with glasses model if available
+      let shareMessage = photo.is_video ? "Check out this video" : "Check out this photo"
+      if (photo.glassesModel) {
+        shareMessage += ` taken with ${photo.glassesModel}`
+      }
+      shareMessage += "!"
+
+      console.log("Share message:", shareMessage)
+
       // Use the shareFile utility that handles platform-specific sharing
       const mimeType = photo.mime_type || (photo.is_video ? "video/mp4" : "image/jpeg")
-      await shareFile(
-        filePath,
-        mimeType,
-        "Share Photo",
-        photo.is_video ? "Check out this video!" : "Check out this photo!",
-      )
+      await shareFile(filePath, mimeType, "Share Photo", shareMessage)
 
       console.log("Share completed successfully")
     } catch (error) {

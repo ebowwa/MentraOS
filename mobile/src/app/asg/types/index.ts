@@ -15,6 +15,8 @@ export interface PhotoInfo {
   // New fields for filesystem storage
   filePath?: string
   thumbnailPath?: string
+  // Glasses model that captured this media
+  glassesModel?: string
 }
 
 export interface GalleryResponse {

@@ -16,6 +16,7 @@ export interface DownloadedFile {
   is_video: boolean
   thumbnailPath?: string // Path to thumbnail file
   downloaded_at: number
+  glassesModel?: string // Model of glasses that captured this media
 }
 
 export interface SyncState {
@@ -226,7 +227,12 @@ export class LocalStorageService {
   /**
    * Convert PhotoInfo to DownloadedFile (assumes files are already saved to filesystem)
    */
-  convertToDownloadedFile(photoInfo: PhotoInfo, filePath: string, thumbnailPath?: string): DownloadedFile {
+  convertToDownloadedFile(
+    photoInfo: PhotoInfo,
+    filePath: string,
+    thumbnailPath?: string,
+    glassesModel?: string,
+  ): DownloadedFile {
     return {
       name: photoInfo.name,
       filePath: filePath,
@@ -236,6 +242,7 @@ export class LocalStorageService {
       is_video: photoInfo.is_video || false,
       thumbnailPath: thumbnailPath,
       downloaded_at: Date.now(),
+      glassesModel: glassesModel || photoInfo.glassesModel,
     }
   }
 
@@ -265,6 +272,7 @@ export class LocalStorageService {
       thumbnail_data: undefined,
       downloaded_at: downloadedFile.downloaded_at,
       filePath: downloadedFile.filePath,
+      glassesModel: downloadedFile.glassesModel,
       thumbnailPath: thumbnailUrl, // Use the file:// URL version for thumbnailPath
     }
   }

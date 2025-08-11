@@ -674,11 +674,19 @@ export class AsgCameraApiClient {
       const localFilePath = localStorageService.getPhotoFilePath(filename)
       const localThumbnailPath = includeThumbnail ? localStorageService.getThumbnailFilePath(filename) : undefined
 
+      // Determine if this is a video file based on extension
+      const isVideo = filename.match(/\.(mp4|mov|avi|webm|mkv)$/i)
+
+      // Use /api/download for videos (full file) and /api/photo for images
+      const downloadEndpoint = isVideo ? "download" : "photo"
+      const downloadUrl = `${this.baseUrl}/api/${downloadEndpoint}?file=${encodeURIComponent(filename)}`
+
       // Download the file directly to filesystem
-      console.log(`[ASG Camera API] Downloading to: ${localFilePath}`)
+      console.log(`[ASG Camera API] Downloading ${isVideo ? "video" : "photo"} from: ${downloadUrl}`)
+      console.log(`[ASG Camera API] Saving to: ${localFilePath}`)
 
       const downloadResult = await RNFS.downloadFile({
-        fromUrl: `${this.baseUrl}/api/photo?file=${encodeURIComponent(filename)}`,
+        fromUrl: downloadUrl,
         toFile: localFilePath,
         headers: {
           "Accept": "*/*",
