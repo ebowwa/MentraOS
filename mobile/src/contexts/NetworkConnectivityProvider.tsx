@@ -1,6 +1,6 @@
 import React, {createContext, useContext, useEffect, useState, ReactNode} from "react"
 import {networkConnectivityService, NetworkStatus} from "@/app/asg/services/networkConnectivityService"
-import {useStatus} from "./AugmentOSStatusProvider"
+import {useCoreStatus} from "./CoreStatusProvider"
 
 interface NetworkConnectivityContextType {
   networkStatus: NetworkStatus
@@ -17,7 +17,7 @@ interface NetworkConnectivityProviderProps {
 }
 
 export function NetworkConnectivityProvider({children}: NetworkConnectivityProviderProps) {
-  const {status} = useStatus()
+  const {status} = useCoreStatus()
   const [networkStatus, setNetworkStatus] = useState<NetworkStatus>(networkConnectivityService.getStatus())
 
   // Get glasses WiFi info from status

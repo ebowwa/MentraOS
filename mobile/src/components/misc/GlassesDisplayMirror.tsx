@@ -1,4 +1,4 @@
-import {useStatus} from "@/contexts/AugmentOSStatusProvider"
+import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import {ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
 import React, {useState, useEffect, useRef} from "react"
@@ -23,7 +23,7 @@ const GlassesDisplayMirror: React.FC<GlassesDisplayMirrorProps> = ({
   const canvasRef = useRef<Canvas>(null)
   const containerRef = useRef<View | null>(null)
   const [containerWidth, setContainerWidth] = useState<number | null>(null)
-  const {status} = useStatus()
+  const {status} = useCoreStatus()
 
   const processBitmap = async () => {
     if (layout?.layoutType !== "bitmap_view" || !layout.data) {
@@ -173,7 +173,7 @@ const GlassesDisplayMirror: React.FC<GlassesDisplayMirrorProps> = ({
     }
   }, [layout, containerWidth])
 
-  if (!layout || !layout.layoutType || layout.text === "") {
+  if (!layout || !layout.layoutType) {
     return (
       <View style={[themed($glassesScreen), containerStyle]}>
         <View style={themed($emptyContainer)}>
@@ -182,6 +182,8 @@ const GlassesDisplayMirror: React.FC<GlassesDisplayMirrorProps> = ({
       </View>
     )
   }
+
+  console.log("layout", layout)
 
   const content = <>{renderLayout(layout, themed($glassesText), canvasRef, containerRef, setContainerWidth)}</>
 

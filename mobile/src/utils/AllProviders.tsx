@@ -3,7 +3,7 @@ import "react-native-reanimated"
 import {withWrappers} from "@/utils/with-wrappers"
 import {Suspense} from "react"
 import {KeyboardProvider} from "react-native-keyboard-controller"
-import {StatusProvider} from "@/contexts/AugmentOSStatusProvider"
+import {CoreStatusProvider} from "@/contexts/CoreStatusProvider"
 import {AppStatusProvider} from "@/contexts/AppStatusProvider"
 import {GestureHandlerRootView} from "react-native-gesture-handler"
 import {AuthProvider} from "@/contexts/AuthContext"
@@ -16,6 +16,7 @@ import {DeeplinkProvider} from "@/contexts/DeeplinkContext"
 import {OtaUpdateProvider} from "@/contexts/OtaUpdateProvider"
 import {PostHogProvider} from "posthog-react-native"
 import Constants from "expo-constants"
+import { NetworkConnectivityProvider } from "@/contexts/NetworkConnectivityProvider"
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync()
@@ -23,7 +24,8 @@ SplashScreen.preventAutoHideAsync()
 export const AllProviders = withWrappers(
   Suspense,
   KeyboardProvider,
-  StatusProvider,
+  CoreStatusProvider,
+  NetworkConnectivityProvider,
   AuthProvider,
   SearchResultsProvider,
   AppStoreWebviewPrefetchProvider,

@@ -1,7 +1,7 @@
 import React, {createContext, useContext, useEffect, useState, ReactNode} from "react"
 import {Alert} from "react-native"
 import {useRouter} from "expo-router"
-import {useStatus} from "@/contexts/AugmentOSStatusProvider"
+import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import {fetchVersionInfo, isUpdateAvailable, getLatestVersionInfo} from "@/utils/otaVersionChecker"
 import {glassesFeatures} from "@/config/glassesFeatures"
 import showAlert from "@/utils/AlertUtils"
@@ -21,7 +21,7 @@ const OtaUpdateContext = createContext<OtaUpdateContextType>({
 export const useOtaUpdate = () => useContext(OtaUpdateContext)
 
 export function OtaUpdateProvider({children}: {children: ReactNode}) {
-  const {status} = useStatus()
+  const {status} = useCoreStatus()
   const router = useRouter()
   const [isChecking, setIsChecking] = useState(false)
   const [hasChecked, setHasChecked] = useState(false)

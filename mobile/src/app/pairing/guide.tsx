@@ -13,7 +13,7 @@ import {
 import {useNavigation, useRoute} from "@react-navigation/native"
 import {useFocusEffect} from "@react-navigation/native"
 import Icon from "react-native-vector-icons/FontAwesome"
-import {useStatus} from "@/contexts/AugmentOSStatusProvider"
+import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import coreCommunicator from "@/bridge/CoreCommunicator"
 import PairingDeviceInfo from "@/components/misc/PairingDeviceInfo"
 import GlassesTroubleshootingModal from "@/components/misc/GlassesTroubleshootingModal"
@@ -30,7 +30,7 @@ import showAlert from "@/utils/AlertUtils"
 
 export default function GlassesPairingGuideScreen() {
   const {goBack, push, replace, clearHistory} = useNavigationHistory()
-  const {status} = useStatus()
+  const {status} = useCoreStatus()
   const route = useRoute()
   const {glassesModelName} = route.params as {glassesModelName: string}
   const [showTroubleshootingModal, setShowTroubleshootingModal] = useState(false)

@@ -7,7 +7,7 @@ import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {ThemedStyle} from "@/theme"
 import {ViewStyle, TextStyle} from "react-native"
-import {useStatus} from "@/contexts/AugmentOSStatusProvider"
+import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import {useCallback} from "react"
 import WifiCredentialsService from "@/utils/WifiCredentialsService"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
@@ -15,7 +15,7 @@ import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 export default function WifiScanScreen() {
   const {deviceModel = "Glasses"} = useLocalSearchParams()
   const {theme, themed} = useAppTheme()
-  const {status} = useStatus()
+  const {status} = useCoreStatus()
 
   const [networks, setNetworks] = useState<string[]>([])
   const [savedNetworks, setSavedNetworks] = useState<string[]>([])

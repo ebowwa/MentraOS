@@ -1,7 +1,7 @@
 import React, {createContext, useContext, useState, ReactNode, useCallback, useEffect, useRef} from "react"
 import BackendServerComms from "../backend_comms/BackendServerComms"
 import {useAuth} from "@/contexts/AuthContext"
-import {useStatus} from "./AugmentOSStatusProvider"
+import {useCoreStatus} from "./CoreStatusProvider"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
 import {router} from "expo-router"
 import {AppState} from "react-native"
@@ -86,7 +86,7 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const {user, logout} = useAuth()
-  const {status} = useStatus()
+  const {status} = useCoreStatus()
 
   // Keep track of active operations to prevent race conditions
   const pendingOperations = useRef<{[packageName: string]: "start" | "stop"}>({})

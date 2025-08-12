@@ -1,6 +1,6 @@
 import React, {useState, useEffect} from "react"
 import {ScrollView, View, ActivityIndicator, Alert} from "react-native"
-import {useStatus} from "@/contexts/AugmentOSStatusProvider"
+import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import coreCommunicator from "@/bridge/CoreCommunicator"
 import {Header, Screen, Text, Button} from "@/components/ignite"
 import {useAppTheme} from "@/utils/useAppTheme"
@@ -16,7 +16,7 @@ import showAlert from "@/utils/AlertUtils"
 const {AOSModule, FileProviderModule} = NativeModules
 
 export default function TranscriptionSettingsScreen() {
-  const {status} = useStatus()
+  const {status} = useCoreStatus()
   const [isEnforceLocalTranscriptionEnabled, setIsEnforceLocalTranscriptionEnabled] = useState(
     status.core_info.enforce_local_transcription,
   )
