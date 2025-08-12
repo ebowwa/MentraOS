@@ -282,11 +282,11 @@ static void show_test_pattern(int pattern_id);
 
 static void show_default_ui(void)
 {
-    BSP_LOGI(TAG, "🖼️ Starting with simple center rectangle test pattern...");
-    // Start with pattern 3 (center rectangle) - simpler pattern
+    BSP_LOGI(TAG, "🖼️ Starting with 'Hello LVGL' text pattern...");
+    // Start with pattern 3 (Hello LVGL text) - simple text display
     show_test_pattern(3);
     
-    BSP_LOGI(TAG, "🖼️ Chess board test pattern complete - should see alternating squares");
+    BSP_LOGI(TAG, "🖼️ Hello LVGL text pattern complete - should see centered text message");
 }
 
 // Test pattern functions
@@ -356,16 +356,25 @@ static void create_vertical_zebra_pattern(lv_obj_t *screen)
 
 static void create_center_rectangle_pattern(lv_obj_t *screen)
 {
-    BSP_LOGI(TAG, "⬜ Creating center rectangle pattern...");
-    // Create a centered white rectangle (50x100)
-    lv_obj_t *center_rect = lv_obj_create(screen);
-    lv_obj_set_size(center_rect, 50, 100);     // 50x100 rectangle
-    lv_obj_set_pos(center_rect, 295, 190);     // Centered position (320-25, 240-50)
-    lv_obj_set_style_bg_color(center_rect, lv_color_white(), 0);
-    lv_obj_set_style_bg_opa(center_rect, LV_OPA_COVER, 0);
-    lv_obj_set_style_border_width(center_rect, 0, 0);
-    lv_obj_set_style_pad_all(center_rect, 0, 0);
-    BSP_LOGI(TAG, "⬜ Center rectangle: 50x100 at (295,190)");
+    BSP_LOGI(TAG, "📝 Creating 'Hello LVGL' text pattern...");
+    
+    // Create a centered "Hello LVGL" text label
+    lv_obj_t *hello_label = lv_label_create(screen);
+    lv_label_set_text(hello_label, "Hello LVGL");
+    
+    // Set text properties
+    lv_obj_set_style_text_color(hello_label, lv_color_white(), 0);  // White text
+    lv_obj_set_style_text_font(hello_label, &lv_font_montserrat_48, 0);  // Large font
+    
+    // Center the text on screen
+    lv_obj_center(hello_label);
+    
+    // Optional: Add background for better visibility
+    lv_obj_set_style_bg_color(hello_label, lv_color_black(), 0);
+    lv_obj_set_style_bg_opa(hello_label, LV_OPA_COVER, 0);
+    lv_obj_set_style_pad_all(hello_label, 10, 0);  // Add some padding
+    
+    BSP_LOGI(TAG, "📝 Hello LVGL text centered on screen");
 }
 
 static int current_pattern = 0;

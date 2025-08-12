@@ -2,6 +2,31 @@
 
 All notable changes to the nRF5340 DK BLE Glasses Protobuf Simulator will be documented in this file.
 
+## [2.2.0] - 2025-08-12
+
+### 📝 TEXT RENDERING MILESTONE - LVGL Font System Fully Operational
+
+#### Added
+- **LVGL Text Display System**
+  - ✅ Successfully implemented "Hello LVGL" text rendering on HLS12VGA projector
+  - ✅ Integrated Montserrat 48pt font for large, readable text display
+  - ✅ Added centered text positioning with automatic alignment
+  - ✅ Implemented text styling with white text on black background
+  - ✅ Added padding and background styling for enhanced text visibility
+
+#### Verified
+- **Complete Text Rendering Pipeline**
+  - 📝 "Hello LVGL" message displaying correctly on 640x480 projector screen
+  - 📝 Font rasterization working through chunked transfer system
+  - 📝 Text positioning and centering functioning properly
+  - 📝 Monochrome display showing excellent text contrast and readability
+  - 📝 Pattern cycling allows switching between text and geometric patterns
+
+#### Technical Achievement
+- **End-to-End Text Pipeline**: LVGL font engine → bitmap generation → chunked transfers → SPI4 communication → HLS12VGA display
+- **Performance**: Large 48pt font rendering stable with no system freezes
+- **Integration**: Text patterns seamlessly integrated with existing pattern cycling system
+
 ## [2.1.0] - 2025-08-12
 
 ### 🚀 BREAKTHROUGH - Full LVGL Display System with Chunked Transfer Solution
