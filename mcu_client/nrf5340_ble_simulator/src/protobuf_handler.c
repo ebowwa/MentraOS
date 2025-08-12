@@ -50,6 +50,7 @@
 #include "proto/mentraos_ble.pb.h"
 #include "mentra_ble_service.h"
 #include "lvgl_interface.h"
+#include "mos_components/mos_lvgl_display/include/mos_lvgl_display.h"  // **NEW: For protobuf text display**
 #include <pb_decode.h>
 #include <pb_encode.h>
 
@@ -892,15 +893,10 @@ void protobuf_process_display_text(const mentraos_ble_DisplayText *display_text)
 	       display_text->text, text_length, display_text->x, display_text->y, 
 	       color_rgb565, display_text->font_code, display_text->size);
 	
-	// *** LVGL INTEGRATION: Display text on dummy display ***
-	// Temporarily disabled for hardware testing
-	// if (lvgl_is_display_ready()) {
-	//	lvgl_display_protobuf_text(display_text->text, color_rgb565, 
-	//	                          display_text->x, display_text->y, display_text->size);
-	// } else {
-	//	printk("⚠️ LVGL: Display not ready\n");
-	// }
-	printk("✅ LVGL: Text message logged (LVGL temporarily disabled for HLS12VGA testing)\n");
+	// *** LVGL INTEGRATION: Display text on protobuf container ***
+	// **NEW: Update auto-scroll container with protobuf text content**
+	display_update_protobuf_text(display_text->text);
+	printk("✅ LVGL: Protobuf text updated in auto-scroll container\n");
 	
 	LOG_INF("=== END DISPLAY TEXT MESSAGE ===");
 }
@@ -988,6 +984,11 @@ void protobuf_process_display_scrolling_text(const mentraos_ble_DisplayScrolling
 	printk("\n[Phone->Glasses SCROLL] Scrolling Text: \"%s\" (len:%zu, area:%ux%u, speed:%ups, align:%s, loop:%s)\n", 
 	       scrolling_text->text, text_length, scrolling_text->width, scrolling_text->height,
 	       scrolling_text->speed, alignment_name, scrolling_text->loop ? "Y" : "N");
+	
+	// *** LVGL INTEGRATION: Display scrolling text in protobuf container ***
+	// **NEW: Both DisplayText and DisplayScrollingText update the same auto-scroll container**
+	display_update_protobuf_text(scrolling_text->text);
+	printk("✅ LVGL: Protobuf scrolling text updated in auto-scroll container\n");
 	
 	LOG_INF("=== END SCROLLING TEXT MESSAGE ===");
 }

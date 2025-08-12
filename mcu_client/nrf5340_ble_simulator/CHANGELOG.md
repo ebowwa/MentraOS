@@ -2,6 +2,62 @@
 
 All notable changes to the nRF5340 DK BLE Glasses Protobuf Simulator will be documented in this file.
 
+## [2.5.0] - 2025-08-12
+
+### 📱 PROTOBUF INTEGRATION - Real-Time Text Message Display System
+
+#### Added
+- **Protobuf Text Container Integration**
+  - 📱 Auto-scroll container now default view (pattern 4) instead of chess pattern
+  - 📱 Real-time protobuf text message display via BLE integration
+  - 📱 Thread-safe `display_update_protobuf_text()` API for external calls
+  - 📱 New `LCD_CMD_UPDATE_PROTOBUF_TEXT` command for message queue processing
+  - 📱 Support for both DisplayText (Tag 30) and DisplayScrollingText (Tag 35)
+
+#### Enhanced
+- **Auto-Scroll Container Functionality**
+  - 🔄 Clear and replace content with each new protobuf message
+  - 🔄 Automatic scroll to bottom to show latest content
+  - 🔄 Initial placeholder: "Waiting for protobuf text messages..."
+  - 🔄 Global references (`protobuf_container`, `protobuf_label`) for dynamic updates
+  - 🔄 Unified display for both static and scrolling text message types
+
+#### Technical Implementation
+- **Thread-Safe Architecture**
+  - 🔧 All protobuf text updates processed through LVGL message queue
+  - 🔧 Proper separation of interrupt handlers and LVGL operations
+  - 🔧 Safe text content clearing and replacement in LVGL thread context
+  - 🔧 Bounds checking and null termination for text content (MAX_TEXT_LEN: 128 chars)
+
+#### Protobuf Protocol Support
+- **Message Types Integrated**
+  - 📩 DisplayText (Tag 30): Static text messages → Auto-scroll container
+  - 📩 DisplayScrollingText (Tag 35): Animated text → Same auto-scroll container
+  - 📩 Enhanced logging: `📱 Protobuf text updated: [text preview]`
+  - 📩 Ready for mobile app BLE communication and real-time updates
+
+#### Performance Notes
+- **Current Observations**
+  - ⚠️ Frame rate observed dropping to 1 FPS during text updates (investigation needed)
+  - ⚠️ Memory usage: 557KB FLASH, 260KB RAM (stable, no increase)
+  - ⚠️ Full text replacement may impact performance with large messages
+
+#### Future Optimizations
+- **Recommended Improvements**
+  - 🚀 Implement incremental text updates (send only new words/sentences)
+  - 🚀 Add clear screen command for efficient content management
+  - 🚀 Define maximum packet length for text messages (current: 128 char limit)
+  - 🚀 Investigate frame rate optimization for better real-time performance
+  - 🚀 Consider text chunking for large message handling
+
+#### Verified
+- **Full System Integration**
+  - 📺 Default view: Auto-scroll container with protobuf integration
+  - 📺 BLE protobuf messages successfully update display content
+  - 📺 Thread-safe operation with no firmware crashes or assertion failures
+  - 📺 Button 4 pattern cycling preserved (cycles through all 5 patterns)
+  - 📺 Mobile app ready: DisplayText and DisplayScrollingText both supported
+
 ## [2.4.2] - 2025-08-12
 
 ### 🧹 CODE OPTIMIZATION - Debug Logging Cleanup & Performance Enhancement

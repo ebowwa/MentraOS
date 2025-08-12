@@ -30,6 +30,7 @@ typedef enum
     LCD_CMD_TEXT,
     LCD_CMD_DATA,
     LCD_CMD_CYCLE_PATTERN,  // **NEW: Pattern cycling command**
+    LCD_CMD_UPDATE_PROTOBUF_TEXT,  // **NEW: Update container with protobuf text**
 } display_cmd_type_t;
 #define MAX_TEXT_LEN 128
 typedef struct
@@ -53,11 +54,17 @@ typedef struct
     uint8_t pattern_id;  // **NEW: Pattern ID for cycling**
 } lcd_pattern_param_t;
 
+typedef struct
+{
+    char text[MAX_TEXT_LEN + 1];  // **NEW: Protobuf text content**
+} lcd_protobuf_text_param_t;
+
 typedef union
 {
     lcd_text_param_t text;
     lcd_open_param_t open;
     lcd_pattern_param_t pattern;  // **NEW: Pattern parameter**
+    lcd_protobuf_text_param_t protobuf_text;  // **NEW: Protobuf text parameter**
     // 其它命令参数结构体可继续扩展
 } display_param_u;
 
@@ -93,6 +100,9 @@ void display_open(void);
 
 // **NEW: Thread-safe pattern cycling function**
 void display_cycle_pattern(void);
+
+// **NEW: Thread-safe protobuf text update function**
+void display_update_protobuf_text(const char *text_content);
 
 void display_close(void);
 

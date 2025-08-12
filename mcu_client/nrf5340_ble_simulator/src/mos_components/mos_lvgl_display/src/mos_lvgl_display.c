@@ -44,6 +44,10 @@ static uint32_t frame_count = 0;
 
 static volatile bool display_onoff = false;
 
+// **NEW: Global references for protobuf text container**
+static lv_obj_t *protobuf_container = NULL;
+static lv_obj_t *protobuf_label = NULL;
+
 static void fps_timer_cb(struct k_timer *timer_id)
 {
     uint32_t fps = frame_count;
@@ -120,6 +124,32 @@ void display_cycle_pattern(void)
         .type = LCD_CMD_CYCLE_PATTERN,
         .p.pattern = {.pattern_id = 0}  // Will be determined by LVGL thread
     };
+    mos_msgq_send(&display_msgq, &cmd, MOS_OS_WAIT_FOREVER);
+}
+
+// **NEW: Thread-safe protobuf text update - sends message to LVGL thread**
+void display_update_protobuf_text(const char *text_content)
+{
+    if (!text_content) {
+        BSP_LOGE(TAG, "Invalid text content pointer");
+        return;
+    }
+    
+    display_cmd_t cmd = {
+        .type = LCD_CMD_UPDATE_PROTOBUF_TEXT,
+        .p = {.protobuf_text = {{0}}}  // Proper initialization with nested braces
+    };
+    
+    // Safely copy text content with bounds checking
+    size_t text_len = strlen(text_content);
+    if (text_len > MAX_TEXT_LEN) {
+        text_len = MAX_TEXT_LEN;
+        BSP_LOGW(TAG, "Protobuf text truncated to %d chars", MAX_TEXT_LEN);
+    }
+    
+    strncpy(cmd.p.protobuf_text.text, text_content, text_len);
+    cmd.p.protobuf_text.text[text_len] = '\0';  // Ensure null termination
+    
     mos_msgq_send(&display_msgq, &cmd, MOS_OS_WAIT_FOREVER);
 }
 
@@ -395,6 +425,9 @@ static void create_scrolling_text_container(lv_obj_t *screen)
     lv_obj_set_size(container, 600, 440);  // 640-40 = 600, 480-40 = 440
     lv_obj_set_pos(container, 20, 20);     // 20px margins from all edges
     
+    // **NEW: Store global reference for protobuf text updates**
+    protobuf_container = container;
+    
     // Configure container scrolling - NO SCROLLBARS, NO BORDERS
     lv_obj_set_scroll_dir(container, LV_DIR_VER);  // Vertical scrolling only
     lv_obj_set_scrollbar_mode(container, LV_SCROLLBAR_MODE_OFF);  // NO SCROLLBARS
@@ -405,42 +438,22 @@ static void create_scrolling_text_container(lv_obj_t *screen)
     lv_obj_set_style_border_width(container, 0, 0);  // NO BORDERS
     lv_obj_set_style_pad_all(container, 5, 0);  // Reduced padding for performance
     
-    // Create label inside container with long text
+    // Create label inside container with protobuf text
     lv_obj_t *label = lv_label_create(container);
     lv_obj_set_width(label, 590);  // Container width minus minimal padding (600-10=590)
     lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);  // Wrap text to fit width
     
-    // Set the long text content - SHORTENED for better performance
-    const char *long_text = 
-        "MentraOS AR Display System\n\n"
-        "Real-time text scrolling demonstration for AR glasses.\n"
-        "This container automatically scrolls to show the latest content.\n\n"
-        
-        "Technical Specs:\n"
-        "• HLS12VGA MicroLED: 640×480\n"
-        "• nRF5340DK: Dual ARM Cortex-M33\n"
-        "• LVGL v8: Thread-safe messaging\n"
-        "• Memory: 579KB FLASH, 260KB RAM\n"
-        "• Performance: Stable 2 FPS\n\n"
-        
-        "Features:\n"
-        "• Auto-scroll to bottom\n"
-        "• No borders or scrollbars\n"
-        "• Optimized for performance\n"
-        "• Professional typography\n"
-        "• Thread-safe operations\n\n"
-        
-        "This text will automatically scroll to show the newest content "
-        "at the bottom, perfect for live updates, notifications, and "
-        "real-time information display in AR applications.\n\n"
-        
-        "Scroll position automatically moves to the latest line when "
-        "new content is added, ensuring users always see the most "
-        "recent information first.\n\n"
-        
-        "✅ Auto-scroll complete - Latest content visible!";
+    // **NEW: Store global reference for protobuf text updates**
+    protobuf_label = label;
     
-    lv_label_set_text(label, long_text);
+    // **NEW: Set initial placeholder text - will be replaced by protobuf messages**
+    const char *initial_text = 
+        "MentraOS AR Display Ready\n\n"
+        "Waiting for protobuf text messages...\n\n"
+        "This container will automatically update with incoming text content from the mobile app.\n\n"
+        "✅ System initialized and ready for messages!";
+    
+    lv_label_set_text(label, initial_text);
     
     // Style the label text - optimized settings
     lv_obj_set_style_text_color(label, lv_color_white(), 0);
@@ -455,7 +468,7 @@ static void create_scrolling_text_container(lv_obj_t *screen)
     lv_obj_scroll_to_y(container, lv_obj_get_scroll_bottom(container), LV_ANIM_OFF);
 }
 
-static int current_pattern = 0;
+static int current_pattern = 4;  // **NEW: Default to auto-scroll container (pattern 4)**
 static const int num_patterns = 5;  // Increased from 4 to 5
 
 static void show_test_pattern(int pattern_id)
@@ -514,6 +527,33 @@ static void show_test_pattern(int pattern_id)
     current_pattern = (current_pattern + 1) % num_patterns;
     BSP_LOGI(TAG, "Pattern #%d", current_pattern);  // Minimal log
     show_test_pattern(current_pattern);
+}
+
+// **NEW: Update protobuf text content in the auto-scroll container**
+static void update_protobuf_text_content(const char *text_content)
+{
+    // **SAFETY: This function must only be called from LVGL thread context**
+    
+    if (!text_content) {
+        BSP_LOGE(TAG, "Invalid text content pointer");
+        return;
+    }
+    
+    // Verify we have valid global references
+    if (!protobuf_container || !protobuf_label) {
+        BSP_LOGE(TAG, "Protobuf container not initialized");
+        return;
+    }
+    
+    // **CLEAR AND UPDATE: Replace existing text with new protobuf content**
+    lv_label_set_text(protobuf_label, text_content);
+    
+    // **AUTO-SCROLL TO BOTTOM: Show latest content**
+    lv_obj_update_layout(protobuf_container);  // Ensure layout is calculated
+    lv_obj_scroll_to_y(protobuf_container, lv_obj_get_scroll_bottom(protobuf_container), LV_ANIM_OFF);
+    
+    BSP_LOGI(TAG, "📱 Protobuf text updated: %.50s%s", 
+             text_content, strlen(text_content) > 50 ? "..." : "");
 }
 
 void lvgl_dispaly_init(void *p1, void *p2, void *p3)
@@ -595,6 +635,10 @@ void lvgl_dispaly_init(void *p1, void *p2, void *p3)
             /* **NEW: Handle pattern cycling safely in LVGL thread** */
             BSP_LOGI(TAG, "LCD_CMD_CYCLE_PATTERN - Thread-safe pattern cycling");
             cycle_test_pattern();  // Now called from LVGL thread context
+            break;
+        case LCD_CMD_UPDATE_PROTOBUF_TEXT:
+            /* **NEW: Handle protobuf text updates safely in LVGL thread** */
+            update_protobuf_text_content(cmd.p.protobuf_text.text);
             break;
         case LCD_CMD_CLOSE:
             if (get_display_onoff())
