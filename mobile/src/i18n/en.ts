@@ -203,6 +203,8 @@ const en = {
     powerSavingMode: "Power Saving Mode",
     powerSavingModeSubtitle: 'Allows the display to fully turn off. May briefly show "Even AI Listening".',
     powerSavingModeSubtitle2: "TODO",
+    newUi: "New UI",
+    newUiSubtitle: "Enable the new home screen UI. (Requires restarting the app)",
   },
   profileSettings: {
     title: "Profile Settings",
@@ -288,6 +290,8 @@ const en = {
     sensingDisabled: "Sensors are disabled. Camera, microphone, and other sensors won't work in apps.",
     microphoneActive: "Microphone Active",
     microphoneActiveMessage: "One or more apps are currently using your glasses microphone.",
+    warning: "Warning",
+    developerSettingsWarning: "These settings may break the app. Use at your own risk.",
   },
   errors: {
     appNotOnlineTitle: "App Not Online",
