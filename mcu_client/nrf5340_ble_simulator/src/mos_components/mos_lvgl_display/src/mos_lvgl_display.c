@@ -398,7 +398,7 @@ static void create_center_rectangle_pattern(lv_obj_t *screen)
 }
 
 static int current_pattern = 0;
-static const int num_patterns = 4;
+static const int num_patterns = 4;  // Back to original 4 patterns
 
 static void show_test_pattern(int pattern_id)
 {
