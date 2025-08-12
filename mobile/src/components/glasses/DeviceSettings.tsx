@@ -10,6 +10,8 @@ import {
   ViewStyle,
   TextStyle,
   Platform,
+  ScrollView,
+  TextInput,
 } from "react-native"
 import {useFocusEffect} from "@react-navigation/native"
 import {Button, Icon} from "@/components/ignite"
@@ -39,6 +41,9 @@ import {isDeveloperBuildOrTestflight} from "@/utils/buildDetection"
 import {SvgXml} from "react-native-svg"
 import OtaProgressSection from "./OtaProgressSection"
 import InfoSection from "@/components/ui/InfoSection"
+import {PillButton} from "@/components/ignite"
+import {MOCK_CONNECTION} from "@/consts"
+import {spacing} from "@/theme"
 
 // Icon components defined directly in this file to avoid path resolution issues
 interface CaseIconProps {
@@ -88,6 +93,12 @@ const GlassesIcon = ({size = 24, color, isOn = false, isDark = false}: GlassesIc
 <path d="M15 15H21.0002V16.5001H15V15Z" fill="${color || (isDark ? "#D3D3D3" : "#232323")}"/>
 </svg>`
   return <SvgXml xml={glassesSvg} width={size} height={size} />
+}
+
+// Interface for BLE command objects
+interface BleCommand {
+  command?: string
+  commandText?: string
 }
 
 export default function DeviceSettings() {
@@ -179,6 +190,14 @@ export default function DeviceSettings() {
   const [autoBrightness, setAutoBrightness] = useState(status?.glasses_settings?.auto_brightness ?? true)
   const [brightness, setBrightness] = useState(status?.glasses_settings?.brightness ?? 50)
 
+  // Mentra Nex BLE test state variables
+  const [text, setText] = useState("Hello World")
+  const [positionX, setPositionX] = useState("0")
+  const [positionY, setPositionY] = useState("0")
+  const [size, setSize] = useState("20")
+  const [commandSender, setCommandSender] = useState<BleCommand | null>(null)
+  const [commandReceiver, setCommandReceiver] = useState<BleCommand | null>(null)
+
   useEffect(() => {
     setBrightness(status?.glasses_settings?.brightness ?? 50)
     setAutoBrightness(status?.glasses_settings?.auto_brightness ?? true)
@@ -189,6 +208,76 @@ export default function DeviceSettings() {
       setButtonMode(status.glasses_settings.button_mode)
     }
   }, [status.glasses_settings?.button_mode])
+
+  // Mentra Nex BLE test event handlers
+  useEffect(() => {
+    const handleCommandFromSender = (sender: BleCommand) => {
+      console.log("handleCommandFromSender:", sender)
+      setCommandSender(sender)
+    }
+
+    const handleCommandFromReceiver = (receiver: BleCommand) => {
+      console.log("handleCommandFromReceiver:", receiver)
+      setCommandReceiver(receiver)
+    }
+
+    if (!MOCK_CONNECTION) {
+      GlobalEventEmitter.on("send_command_to_ble", handleCommandFromSender)
+      GlobalEventEmitter.on("receive_command_from_ble", handleCommandFromReceiver)
+    }
+
+    return () => {
+      if (!MOCK_CONNECTION) {
+        GlobalEventEmitter.removeListener("send_command_to_ble", handleCommandFromSender)
+        GlobalEventEmitter.removeListener("receive_command_from_ble", handleCommandFromReceiver)
+      }
+    }
+  }, [])
+
+  // Mentra Nex BLE test handlers
+  const onSendTextClick = async () => {
+    if (status.core_info.puck_connected && status.glasses_info?.model_name) {
+      if (text === "" || positionX === null || positionY === null || size === null) {
+        showAlert("Please fill all the fields", "Please fill all the fields", [
+          {
+            text: "OK",
+            onPress: () => {},
+          },
+        ])
+        return
+      }
+      await coreCommunicator.sendDisplayText(text, parseInt(positionX, 0), parseInt(positionY, 0), parseInt(size, 10))
+    } else {
+      showAlert("Please connect to the device", "Please connect to the device", [
+        {
+          text: "OK",
+          onPress: () => {},
+        },
+      ])
+      return
+    }
+  }
+
+  const onRestTextClick = async () => {
+    setText("Hello World")
+    setPositionX("0")
+    setPositionY("0")
+    setSize("20")
+  }
+
+  const onSendImageClick = async () => {
+    if (status.core_info.puck_connected && status.glasses_info?.model_name) {
+      await coreCommunicator.sendDisplayImage("test_image.png")
+    } else {
+      showAlert("Please connect to the device", "Please connect to the device", [
+        {
+          text: "OK",
+          onPress: () => {},
+        },
+      ])
+      return
+    }
+  }
 
   const setMic = async (val: string) => {
     if (val === "phone") {
@@ -545,6 +634,191 @@ export default function DeviceSettings() {
         subtitle={translate("settings:dashboardDescription")}
         onPress={() => push("/settings/dashboard")}
       />
+
+      {/* Mentra Nex BLE Test Section - Only show when connected to Mentra Nex */}
+      {status.glasses_info?.model_name === "Mentra Nex" && status.core_info.puck_connected && (
+        <>
+          <View style={themed($settingsGroup)}>
+            <Text style={[themed($subtitle), {marginBottom: theme.spacing.xs}]}>Mentra Nex BLE Test</Text>
+            <Text style={[themed($infoText), {color: theme.colors.textDim, marginBottom: theme.spacing.sm}]}>
+              Test BLE communication with your Mentra Nex glasses
+            </Text>
+
+            {/* Custom Display Text Settings */}
+            <Text style={[themed($subtitle), {color: theme.colors.text, marginBottom: theme.spacing.xs}]}>
+              Custom Display Text Settings
+            </Text>
+            <Text style={[themed($infoText), {color: theme.colors.textDim, marginBottom: theme.spacing.sm}]}>
+              Set the display text for the Mentra Nex with text, x, y and size
+            </Text>
+
+            <TextInput
+              style={[
+                {
+                  borderWidth: 1,
+                  borderRadius: 12,
+                  paddingHorizontal: 12,
+                  paddingVertical: 10,
+                  fontSize: 14,
+                  marginTop: 10,
+                  marginBottom: 10,
+                  backgroundColor: theme.colors.background,
+                  borderColor: theme.colors.inputBorderHighlight,
+                  color: theme.colors.text,
+                },
+              ]}
+              placeholder="text"
+              placeholderTextColor={theme.colors.textDim}
+              value={text}
+              onChangeText={setText}
+              maxLength={100}
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="default"
+              editable={true}
+            />
+            <View style={{flexDirection: "row", gap: 10}}>
+              <TextInput
+                style={[
+                  {
+                    borderWidth: 1,
+                    borderRadius: 12,
+                    paddingHorizontal: 12,
+                    paddingVertical: 10,
+                    fontSize: 14,
+                    marginTop: 10,
+                    marginBottom: 10,
+                    backgroundColor: theme.colors.background,
+                    borderColor: theme.colors.inputBorderHighlight,
+                    color: theme.colors.text,
+                    width: "30%",
+                  },
+                ]}
+                placeholder="x"
+                placeholderTextColor={theme.colors.textDim}
+                value={positionX}
+                onChangeText={setPositionX}
+                autoCapitalize="none"
+                maxLength={3}
+                autoCorrect={false}
+                keyboardType="phone-pad"
+                editable={true}
+              />
+              <TextInput
+                style={[
+                  {
+                    borderWidth: 1,
+                    borderRadius: 12,
+                    paddingHorizontal: 12,
+                    paddingVertical: 10,
+                    fontSize: 14,
+                    marginTop: 10,
+                    marginBottom: 10,
+                    backgroundColor: theme.colors.background,
+                    borderColor: theme.colors.inputBorderHighlight,
+                    color: theme.colors.text,
+                    width: "30%",
+                  },
+                ]}
+                placeholder="y"
+                placeholderTextColor={theme.colors.textDim}
+                value={positionY}
+                maxLength={3}
+                onChangeText={setPositionY}
+                autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType="phone-pad"
+                editable={true}
+              />
+              <TextInput
+                style={[
+                  {
+                    borderWidth: 1,
+                    borderRadius: 12,
+                    paddingHorizontal: 12,
+                    paddingVertical: 10,
+                    fontSize: 14,
+                    marginTop: 10,
+                    marginBottom: 10,
+                    backgroundColor: theme.colors.background,
+                    borderColor: theme.colors.inputBorderHighlight,
+                    color: theme.colors.text,
+                    width: "30%",
+                  },
+                ]}
+                placeholder="size"
+                placeholderTextColor={theme.colors.textDim}
+                value={size}
+                onChangeText={setSize}
+                autoCapitalize="none"
+                autoCorrect={false}
+                maxLength={2}
+                keyboardType="phone-pad"
+                editable={true}
+              />
+            </View>
+            <View style={{flexDirection: "row", justifyContent: "space-between", marginTop: 10}}>
+              <PillButton
+                text="Send Text"
+                variant="primary"
+                onPress={onSendTextClick}
+                disabled={false}
+                buttonStyle={{flex: 1, marginRight: 10}}
+              />
+              <PillButton
+                text="Reset Settings"
+                variant="icon"
+                onPress={onRestTextClick}
+                disabled={false}
+                buttonStyle={{flex: 1}}
+              />
+            </View>
+          </View>
+
+          <View style={themed($settingsGroup)}>
+            <Text style={[themed($subtitle), {marginBottom: theme.spacing.xs}]}>Send Test Image</Text>
+            <Text style={[themed($infoText), {color: theme.colors.textDim, marginBottom: theme.spacing.sm}]}>
+              Send the testing image to BLE
+            </Text>
+            <View style={{flexDirection: "row", justifyContent: "space-between", marginTop: 10}}>
+              <PillButton
+                text="Send Image"
+                variant="primary"
+                onPress={onSendImageClick}
+                disabled={false}
+                buttonStyle={{flex: 1}}
+              />
+            </View>
+          </View>
+
+          <View style={themed($settingsGroup)}>
+            <Text style={[themed($subtitle), {marginBottom: theme.spacing.xs}]}>BLE Command Monitor</Text>
+            <Text style={[themed($infoText), {color: theme.colors.textDim, marginBottom: theme.spacing.sm}]}>
+              Monitor BLE commands sent and received
+            </Text>
+            
+            <Text style={[themed($subtitle), {color: theme.colors.text, marginBottom: theme.spacing.xs}]}>
+              Sent Command:
+            </Text>
+            <Text style={[themed($infoText), {color: theme.colors.textDim, marginBottom: theme.spacing.xs}]}>
+              Command: {commandSender?.command ?? ""}
+            </Text>
+            <Text style={[themed($infoText), {color: theme.colors.textDim, marginBottom: theme.spacing.md}]}>
+              HEX: {commandSender?.commandText ?? ""}
+            </Text>
+
+            <Text style={[themed($subtitle), {color: theme.colors.text, marginBottom: theme.spacing.xs}]}>
+              Received Command:
+            </Text>
+            <Text style={[themed($infoText), {color: theme.colors.textDim, marginBottom: theme.spacing.xs}]}>
+              Command: {commandReceiver?.command ?? ""}
+            </Text>
+            <Text style={[themed($infoText), {color: theme.colors.textDim}]}>
+              HEX: {commandReceiver?.commandText ?? ""}
+            </Text>
+          </View>
+        </>
+      )}
 
       {devMode &&
         status.core_info.default_wearable &&

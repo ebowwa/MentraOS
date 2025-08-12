@@ -858,6 +858,8 @@ export class CoreCommunicator extends EventEmitter {
   }
 
   async sendDisplayText(text: string, x: number, y: number, size: number) {
+    console.log("sendDisplayText", text, x, y, size)
+
     return await this.sendData({
       command: "display_text",
       params: {
