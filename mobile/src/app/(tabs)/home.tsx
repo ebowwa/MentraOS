@@ -150,6 +150,7 @@ export default function Homepage() {
           <DeviceToolbar />
         </View>
         <View ref={connectButtonRef}>
+          <Spacer height={theme.spacing.sm} />
           <ConnectDeviceButton />
         </View>
         <Spacer height={theme.spacing.md} />

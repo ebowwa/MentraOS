@@ -84,14 +84,17 @@ export default function Homepage() {
         contentInsetAdjustmentBehavior="automatic">
         <CloudConnection />
         {status.glasses_info?.model_name && glassesFeatures[status.glasses_info.model_name].display && (
-          <ConnectedSimulatedGlassesInfo />
+          <>
+            <ConnectedSimulatedGlassesInfo />
+            <Spacer height={theme.spacing.sm} />
+          </>
         )}
         {status.glasses_info?.model_name && !glassesFeatures[status.glasses_info.model_name].display && (
           <ConnectedGlasses showTitle={false} />
         )}
         {/* <Spacer height={theme.spacing.md} /> */}
         <ConnectDeviceButton />
-        <Spacer height={theme.spacing.sm} />
+        <Spacer height={theme.spacing.lg} />
         <DeviceSettings />
       </ScrollView>
     </Screen>

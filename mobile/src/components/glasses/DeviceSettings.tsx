@@ -596,7 +596,7 @@ const $settingsGroup: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   backgroundColor: colors.background,
   paddingVertical: 12,
   paddingHorizontal: 16,
-  borderRadius: spacing.md,
+  borderRadius: spacing.sm,
   borderWidth: 2,
   borderColor: colors.border,
 })
