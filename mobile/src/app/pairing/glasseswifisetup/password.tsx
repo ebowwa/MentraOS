@@ -137,7 +137,6 @@ export default function WifiPasswordScreen() {
               text="Cancel"
               style={themed($secondaryButton)}
               pressedStyle={themed($pressedSecondaryButton)}
-              textStyle={themed($buttonText)}
               onPress={() => goBack()}
               preset="reversed"
             />

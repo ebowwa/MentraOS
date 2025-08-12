@@ -69,7 +69,8 @@ export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps)
   const [serverPhotos, setServerPhotos] = useState<PhotoInfo[]>([])
   const [downloadedPhotos, setDownloadedPhotos] = useState<PhotoInfo[]>([])
   const [selectedPhoto, setSelectedPhoto] = useState<PhotoInfo | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
+  const [isLoadingServerPhotos, setIsLoadingServerPhotos] = useState(true) // Start as loading
+  const [isInitialLoad, setIsInitialLoad] = useState(true) // Track if this is the first load
   const [isSyncing, setIsSyncing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [syncProgress, setSyncProgress] = useState<{
@@ -86,10 +87,12 @@ export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps)
       // Don't set error - just don't load server photos
       console.log("[GalleryScreen] Glasses not connected, skipping server photo load")
       setServerPhotos([])
+      setIsLoadingServerPhotos(false)
+      setIsInitialLoad(false)
       return
     }
 
-    setIsLoading(true)
+    setIsLoadingServerPhotos(true)
     setError(null)
 
     try {
@@ -105,7 +108,8 @@ export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps)
       console.error("[GalleryScreen] Failed to load server photos:", err)
       setServerPhotos([])
     } finally {
-      setIsLoading(false)
+      setIsLoadingServerPhotos(false)
+      setIsInitialLoad(false)
     }
   }, [isWifiConnected, glassesWifiIp])
 
@@ -391,7 +395,7 @@ export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps)
     })
     loadPhotos()
     loadDownloadedPhotos()
-  }, [loadPhotos, loadDownloadedPhotos, checkConnectivity])
+  }, [loadPhotos, loadDownloadedPhotos]) // Removed checkConnectivity to prevent re-renders
 
   // Handle back button
   useFocusEffect(
@@ -509,8 +513,19 @@ export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps)
 
   return (
     <View style={themed($screenContainer)}>
-      {/* Network Warning Banner */}
-      {!isGalleryReachable && (
+      {/* Network Status Banner - Loading or Warning */}
+      {isLoadingServerPhotos && isInitialLoad ? (
+        // Show loading indicator during initial connection check
+        <View style={themed($warningBannerContainer)}>
+          <View style={themed($loadingBanner)}>
+            <ActivityIndicator size="small" color={theme.colors.text} style={{marginRight: spacing.sm}} />
+            <View style={themed($warningTextContainer)}>
+              <Text style={themed($loadingTitle)}>Checking glasses connection...</Text>
+            </View>
+          </View>
+        </View>
+      ) : !isGalleryReachable ? (
+        // Show warning banner after connection check fails
         <View style={themed($warningBannerContainer)}>
           <View style={themed($warningBanner)}>
             <MaterialCommunityIcons name="wifi-off" size={20} color={theme.colors.text} />
@@ -534,7 +549,7 @@ export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps)
             </TouchableOpacity>
           </View>
         </View>
-      )}
+      ) : null}
 
       {/* Photo Grid */}
       <View style={themed($galleryContainer)}>
@@ -542,11 +557,7 @@ export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps)
           <View style={themed($errorContainer)}>
             <Text style={themed($errorText)}>{error}</Text>
           </View>
-        ) : isLoading ? (
-          <View style={themed($photoGridContainer)}>
-            <GallerySkeleton itemCount={numColumns * 4} numColumns={numColumns} itemWidth={itemWidth} />
-          </View>
-        ) : allPhotos.length === 0 ? (
+        ) : allPhotos.length === 0 && !isLoadingServerPhotos ? (
           <View style={themed($emptyContainer)}>
             <Text style={themed($emptyText)}>No photos</Text>
           </View>
@@ -883,6 +894,19 @@ const $warningBanner: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   borderRadius: spacing.md,
   borderWidth: 2,
   borderColor: colors.border,
+  minHeight: 68,
+})
+
+const $loadingBanner: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
+  backgroundColor: colors.background,
+  paddingVertical: spacing.sm,
+  paddingHorizontal: spacing.md,
+  flexDirection: "row",
+  alignItems: "center",
+  borderRadius: spacing.md,
+  borderWidth: 2,
+  borderColor: colors.border,
+  minHeight: 68, // Match the warning banner height
 })
 
 const $warningTextContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
@@ -898,6 +922,18 @@ const $warningTitle: ThemedStyle<TextStyle> = ({colors}) => ({
 })
 
 const $warningMessage: ThemedStyle<TextStyle> = ({colors}) => ({
+  fontSize: 13,
+  color: colors.textDim,
+})
+
+const $loadingTitle: ThemedStyle<TextStyle> = ({colors}) => ({
+  fontSize: 14,
+  fontWeight: "600",
+  color: colors.text,
+  marginBottom: 2,
+})
+
+const $loadingMessage: ThemedStyle<TextStyle> = ({colors}) => ({
   fontSize: 13,
   color: colors.textDim,
 })
