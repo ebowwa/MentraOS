@@ -2121,7 +2121,7 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
     }
 
     private func stopReconnectionTimer() {
-        CoreCommsService.log("G1: Stopping reconnection timer")
+        // CoreCommsService.log("G1: Stopping reconnection timer")
         reconnectionTimer?.invalidate()
         reconnectionTimer = nil
     }

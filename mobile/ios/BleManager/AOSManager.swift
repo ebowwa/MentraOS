@@ -637,7 +637,7 @@ struct ViewState {
         CoreCommsService.log("AOS: App started: \(packageName)")
 
         if !defaultWearable.isEmpty, !isSomethingConnected() {
-            handleConnectWearable(modelName: defaultWearable, deviceName: deviceName)
+            handleConnectWearable(deviceName)
         }
     }
 
@@ -1072,12 +1072,10 @@ struct ViewState {
         CoreCommsService.log("AOS: Searching for compatible device names for: \(modelName)")
         if modelName.contains("Simulated") {
             defaultWearable = "Simulated Glasses" // there is no pairing process for simulated glasses
-            preferredMic = "phone"
             handleRequestStatus()
             saveSettings()
         } else if modelName.contains("Audio") {
             defaultWearable = "Audio Wearable" // there is no pairing process for audio wearable
-            preferredMic = "phone"
             handleRequestStatus()
             saveSettings()
         } else if modelName.contains("G1") {
@@ -1347,10 +1345,10 @@ struct ViewState {
                 case .connectWearable:
                     guard let params = params, let modelName = params["model_name"] as? String, let deviceName = params["device_name"] as? String else {
                         CoreCommsService.log("AOS: connect_wearable invalid params")
-                        handleConnectWearable(modelName: defaultWearable, deviceName: "")
+                        handleConnectWearable("")
                         break
                     }
-                    handleConnectWearable(modelName: modelName, deviceName: deviceName)
+                    handleConnectWearable(deviceName, modelName: modelName)
                 case .disconnectWearable:
                     disconnectWearable()
                 case .forgetSmartGlasses:
@@ -1846,11 +1844,16 @@ struct ViewState {
         handleRequestStatus()
     }
 
-    private func handleConnectWearable(modelName: String, deviceName: String) {
-        CoreCommsService.log("AOS: Connecting to wearable: \(modelName)")
+    private func handleConnectWearable(_ deviceName: String, modelName: String? = nil) {
+        CoreCommsService.log("AOS: Connecting to modelName: \(modelName ?? "nil") deviceName: \(deviceName) defaultWearable: \(defaultWearable)")
 
-        if modelName.contains("Virtual") || defaultWearable.contains("Virtual") {
-            // we don't need to search for a virtual device
+        if modelName != nil {
+            defaultWearable = modelName!
+        }
+
+        if defaultWearable.contains("Simulated") {
+            defaultWearable = "Simulated Glasses"
+            handleRequestStatus()
             return
         }
 
@@ -1872,35 +1875,23 @@ struct ViewState {
                 saveSettings()
             }
 
+            if self.deviceName.isEmpty {
+                CoreCommsService.log("AOS: this shouldn't happen (we don't have a deviceName saved, connecting will fail if we aren't already paired)")
+                self.defaultWearable = ""
+                handleRequestStatus()
+                return
+            }
+
             if self.defaultWearable.contains("Live") {
                 initManager(self.defaultWearable)
-                if self.deviceName != "" {
-                    self.liveManager?.connectById(self.deviceName)
-                } else {
-                    CoreCommsService.log("AOS: this shouldn't happen (we don't have a deviceName saved, connecting will fail if we aren't already paired)")
-                    self.defaultWearable = ""
-                    handleRequestStatus()
-                }
+                self.liveManager?.connectById(self.deviceName)
             } else if self.defaultWearable.contains("G1") {
                 initManager(self.defaultWearable)
-                if self.deviceName != "" {
-                    CoreCommsService.log("AOS: pairing by id: \(self.deviceName)")
-                    self.g1Manager?.connectById(self.deviceName)
-                } else {
-                    CoreCommsService.log("AOS: this shouldn't happen (we don't have a deviceName saved, connecting will fail if we aren't already paired)")
-                    self.defaultWearable = ""
-                    handleRequestStatus()
-                }
+                self.g1Manager?.connectById(self.deviceName)
             } else if self.defaultWearable.contains("Mach1") {
                 initManager(self.defaultWearable)
-                if self.deviceName != "" {
-                    CoreCommsService.log("AOS: pairing Mach1 by id: \(self.deviceName)")
-                    self.mach1Manager?.connectById(self.deviceName)
-                } else {
-                    CoreCommsService.log("AOS: this shouldn't happen (we don't have a deviceName saved, connecting will fail if we aren't already paired)")
-                    self.defaultWearable = ""
-                    handleRequestStatus()
-                }
+                CoreCommsService.log("AOS: pairing Mach1 by id: \(self.deviceName)")
+                self.mach1Manager?.connectById(self.deviceName)
             }
         }
 
