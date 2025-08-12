@@ -7,8 +7,8 @@
 / {
 	chosen {
 		nordic,nus-uart = &uart0;
-		/* Temporary: Use dummy display until projector module properly discovered */
-		zephyr,display = &dummy_display;
+		/* Use HLS12VGA projector display */
+		zephyr,display = &hls12vga;
 	};
 	
 	pwmleds {
