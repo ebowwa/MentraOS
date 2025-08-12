@@ -7,49 +7,49 @@ import BackendServerComms from "@/backend_comms/BackendServerComms"
 import {useAuth} from "@/contexts/AuthContext"
 import coreCommunicator from "@/bridge/CoreCommunicator"
 
+import {deepCompare} from "@/utils/debugging"
+
 interface AugmentOSStatusContextType {
   status: AugmentOSMainStatus
   initializeCoreConnection: () => void
   refreshStatus: (data: any) => void
-  screenMirrorItems: {id: string; name: string}[]
   getCoreToken: () => string | null
 }
 
 const AugmentOSStatusContext = createContext<AugmentOSStatusContextType | undefined>(undefined)
 
-export const StatusProvider = ({children}: {children: ReactNode}) => {
+let lastStatus: AugmentOSMainStatus = AugmentOSParser.defaultStatus
+
+export const CoreStatusProvider = ({children}: {children: ReactNode}) => {
   const [status, setStatus] = useState<AugmentOSMainStatus>(() => {
     return AugmentOSParser.parseStatus({})
   })
   const [isInitialized, setIsInitialized] = useState(false)
-  const [screenMirrorItems, setScreenMirrorItems] = useState<{id: string; name: string}[]>([])
+  // Add user as a dependency to trigger re-initialization after login
+  const {user} = useAuth()
 
-  const refreshStatus = useCallback((data: any) => {
+  const refreshStatus = (data: any) => {
     if (!(data && "status" in data)) {
       return
     }
 
     const parsedStatus = AugmentOSParser.parseStatus(data)
 
-    const forceUpdate = parsedStatus.force_update
-
     if (INTENSE_LOGGING) console.log("Parsed status:", parsedStatus)
 
-    setStatus(parsedStatus)
-  }, [])
+    const diff = deepCompare(lastStatus, parsedStatus)
+    if (diff.length === 0) {
+      console.log("STATUS PROVIDER: Status did not change ###############################################")
+      return
+    }
 
-  // Add user as a dependency to trigger re-initialization after login
-  const {user} = useAuth()
+    console.log("STATUS PROVIDER: Status changed:", diff)
+
+    lastStatus = parsedStatus
+    setStatus(parsedStatus)
+  }
 
   useEffect(() => {
-    // // Force a complete reset of status during sign-out/sign-in transition
-    // TODO2.0:
-    // if (!user) {
-    //     console.log('User signed out, resetting status');
-    //     setStatus(AugmentOSParser.defaultStatus);
-    //     return;
-    // }
-
     if (!isInitialized) return
 
     // Log the status provider re-initialization for debugging
@@ -65,35 +65,32 @@ export const StatusProvider = ({children}: {children: ReactNode}) => {
       setStatus(AugmentOSParser.defaultStatus)
     }
 
-    if (!MOCK_CONNECTION) {
-      // First, ensure we're not double-registering by removing any existing listeners
-      coreCommunicator.removeAllListeners("statusUpdateReceived")
-      coreCommunicator.removeAllListeners("dataReceived")
-      GlobalEventEmitter.removeAllListeners("STATUS_PARSE_ERROR")
+    // First, ensure we're not double-registering by removing any existing listeners
+    coreCommunicator.removeAllListeners("statusUpdateReceived")
+    coreCommunicator.removeAllListeners("dataReceived")
+    GlobalEventEmitter.removeAllListeners("STATUS_PARSE_ERROR")
 
-      // Register fresh listeners
-      coreCommunicator.on("statusUpdateReceived", handleStatusUpdateReceived)
-      GlobalEventEmitter.on("STATUS_PARSE_ERROR", handleDeviceDisconnected)
+    // Register fresh listeners
+    coreCommunicator.on("statusUpdateReceived", handleStatusUpdateReceived)
+    GlobalEventEmitter.on("STATUS_PARSE_ERROR", handleDeviceDisconnected)
 
-      console.log("STATUS PROVIDER: Event listeners registered successfully")
+    console.log("STATUS PROVIDER: Event listeners registered successfully")
 
-      // Force a status request to update UI immediately
-      setTimeout(() => {
-        coreCommunicator.sendRequestStatus()
-      }, 1000)
-    }
+    // Force a status request to update UI immediately
+    setTimeout(() => {
+      coreCommunicator.sendRequestStatus()
+    }, 1000)
 
     return () => {
-      if (!MOCK_CONNECTION) {
-        coreCommunicator.removeListener("statusUpdateReceived", handleStatusUpdateReceived)
-        GlobalEventEmitter.removeListener("STATUS_PARSE_ERROR", handleDeviceDisconnected)
-        console.log("STATUS PROVIDER: Event listeners cleaned up")
-      }
+      coreCommunicator.removeListener("statusUpdateReceived", handleStatusUpdateReceived)
+      GlobalEventEmitter.removeListener("STATUS_PARSE_ERROR", handleDeviceDisconnected)
+      console.log("STATUS PROVIDER: Event listeners cleaned up")
     }
-  }, [refreshStatus, isInitialized, user]) // Added user dependency
+  }, [isInitialized, user])
 
   // Initialize the Core communication
   const initializeCoreConnection = React.useCallback(() => {
+    console.log("STATUS PROVIDER: Initializing core connection @@@@@@@@@@@@@@@@@")
     coreCommunicator.initialize()
     setIsInitialized(true)
   }, [])
@@ -107,7 +104,6 @@ export const StatusProvider = ({children}: {children: ReactNode}) => {
     <AugmentOSStatusContext.Provider
       value={{
         initializeCoreConnection,
-        screenMirrorItems,
         status,
         refreshStatus,
         getCoreToken,
@@ -117,7 +113,7 @@ export const StatusProvider = ({children}: {children: ReactNode}) => {
   )
 }
 
-export const useStatus = () => {
+export const useCoreStatus = () => {
   const context = useContext(AugmentOSStatusContext)
   if (!context) {
     throw new Error("useStatus must be used within a StatusProvider")

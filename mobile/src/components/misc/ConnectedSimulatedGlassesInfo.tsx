@@ -1,7 +1,7 @@
 import React, {useEffect, useRef} from "react"
 import {View, Text, StyleSheet, TouchableOpacity, Animated, Linking} from "react-native"
 import coreCommunicator from "@/bridge/CoreCommunicator"
-import {useStatus} from "@/contexts/AugmentOSStatusProvider"
+import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import {useGlassesMirror} from "@/contexts/GlassesMirrorContext"
 import GlassesDisplayMirror from "./GlassesDisplayMirror"
 import {useAppTheme} from "@/utils/useAppTheme"
@@ -14,7 +14,7 @@ import Icon from "react-native-vector-icons/MaterialCommunityIcons"
 export default function ConnectedSimulatedGlassesInfo() {
   const fadeAnim = useRef(new Animated.Value(0)).current
   const scaleAnim = useRef(new Animated.Value(0.8)).current
-  const {status} = useStatus()
+  const {status} = useCoreStatus()
   const {lastEvent} = useGlassesMirror()
   const {themed, theme} = useAppTheme()
   const [permission, requestPermission] = useCameraPermissions()

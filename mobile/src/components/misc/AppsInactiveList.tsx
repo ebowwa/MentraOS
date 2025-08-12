@@ -12,7 +12,7 @@ import {
   Keyboard,
 } from "react-native"
 import {Text} from "@/components/ignite"
-import {useStatus} from "@/contexts/AugmentOSStatusProvider"
+import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import BackendServerComms from "@/backend_comms/BackendServerComms"
 import {loadSetting, saveSetting} from "@/utils/SettingsHelper"
 import {SETTINGS_KEYS} from "@/consts"
@@ -53,7 +53,7 @@ export default function InactiveAppList({
     isSensingEnabled,
     checkAppHealthStatus,
   } = useAppStatus()
-  const {status} = useStatus()
+  const {status} = useCoreStatus()
   const [onboardingModalVisible, setOnboardingModalVisible] = useState(false)
   const [onboardingCompleted, setOnboardingCompleted] = useState(true)
   const [inLiveCaptionsPhase, setInLiveCaptionsPhase] = useState(false)

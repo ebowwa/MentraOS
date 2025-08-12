@@ -21,6 +21,10 @@ const en = {
     retryConnection: "Retry Connection",
     skipUpdate: "Skip Update",
   },
+  simulatedGlasses: {
+    showDashboard: "Show Dashboard",
+    hideDashboard: "Hide Dashboard",
+  },
   connection: {
     connected: "Connected",
     connecting: "Connecting",
