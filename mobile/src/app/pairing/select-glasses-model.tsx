@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from "react"
+import React, {useState, useEffect, useCallback} from "react"
 import {
   View,
   Text,
@@ -24,6 +24,7 @@ import {Button, Header} from "@/components/ignite"
 import {ThemedStyle} from "@/theme"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import Svg, {Defs, Ellipse, LinearGradient, RadialGradient, Rect, Stop} from "react-native-svg"
+import coreCommunicator from "@/bridge/CoreCommunicator"
 
 export default function SelectGlassesModelScreen() {
   const {status} = useCoreStatus()
@@ -54,7 +55,7 @@ export default function SelectGlassesModelScreen() {
 
   // Check onboarding status when screen comes into focus
   useFocusEffect(
-    React.useCallback(() => {
+    useCallback(() => {
       const checkOnboardingStatus = async () => {
         const onboardingCompleted = await loadSetting(SETTINGS_KEYS.ONBOARDING_COMPLETED, true)
         console.log("ONBOARDING COMPLETED IN SELECTGLASSESMODELSCREEN???: " + onboardingCompleted)
@@ -74,6 +75,13 @@ export default function SelectGlassesModelScreen() {
 
       return () => backHandler.remove()
     }, [isOnboarding]),
+  )
+
+  // ensure simulated glasses are connected in case the user tries to go back to the home screen from here:
+  useFocusEffect(
+    useCallback(() => {
+      coreCommunicator.connectSimulatedGlasses()
+    }, []),
   )
 
   const triggerGlassesPairingGuide = async (glassesModelName: string) => {

@@ -487,6 +487,10 @@ export class CoreCommunicator extends EventEmitter {
 
   async sendForgetSmartGlasses() {
     await this.sendData({command: "forget_smart_glasses"})
+  }
+
+  async connectSimulatedGlasses() {
+    await this.sendData({command: "forget_smart_glasses"})
     await this.sendSearchForCompatibleDeviceNames("Simulated Glasses")
     await this.sendConnectWearable("Simulated Glasses", "Simulated Glasses")
   }

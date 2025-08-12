@@ -228,7 +228,7 @@ export default function DeviceSettings() {
         {
           text: translate("common:yes"),
           onPress: () => {
-            coreCommunicator.sendForgetSmartGlasses()
+            coreCommunicator.connectSimulatedGlasses()
           },
         },
       ],

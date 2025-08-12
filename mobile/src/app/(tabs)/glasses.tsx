@@ -92,7 +92,7 @@ export default function Homepage() {
         {status.glasses_info?.model_name && !glassesFeatures[status.glasses_info.model_name].display && (
           <ConnectedGlasses showTitle={false} />
         )}
-        {/* <Spacer height={theme.spacing.md} /> */}
+        {/* <Spacer height={theme.spacing.sm} /> */}
         <ConnectDeviceButton />
         <Spacer height={theme.spacing.lg} />
         <DeviceSettings />
