@@ -29,6 +29,7 @@ typedef enum
     LCD_CMD_CLOSE,
     LCD_CMD_TEXT,
     LCD_CMD_DATA,
+    LCD_CMD_CYCLE_PATTERN,  // **NEW: Pattern cycling command**
 } display_cmd_type_t;
 #define MAX_TEXT_LEN 128
 typedef struct
@@ -46,10 +47,17 @@ typedef struct
     uint8_t brightness;
     uint8_t mirror;
 } lcd_open_param_t;
+
+typedef struct
+{
+    uint8_t pattern_id;  // **NEW: Pattern ID for cycling**
+} lcd_pattern_param_t;
+
 typedef union
 {
     lcd_text_param_t text;
     lcd_open_param_t open;
+    lcd_pattern_param_t pattern;  // **NEW: Pattern parameter**
     // 其它命令参数结构体可继续扩展
 } display_param_u;
 
@@ -82,6 +90,9 @@ void scroll_text_create(lv_obj_t *parent,
 void scroll_text_stop(void);
 
 void display_open(void);
+
+// **NEW: Thread-safe pattern cycling function**
+void display_cycle_pattern(void);
 
 void display_close(void);
 

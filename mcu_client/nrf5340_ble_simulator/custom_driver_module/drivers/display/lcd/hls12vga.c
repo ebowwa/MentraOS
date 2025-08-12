@@ -249,31 +249,31 @@ static int hls12vga_write(const struct device *dev,
 	static uint32_t write_call_count = 0;
 	write_call_count++;
 	
-	BSP_LOGI(TAG, "🎨 hls12vga_write #%d: pos(%d,%d) size(%dx%d) pitch(%d)", 
-		write_call_count, x, y, width, height, pitch);
+	// BSP_LOGI(TAG, "🎨 hls12vga_write #%d: pos(%d,%d) size(%dx%d) pitch(%d)", 
+	//	write_call_count, x, y, width, height, pitch);
 	
-	// Log source buffer details for debugging
-	BSP_LOGI(TAG, "📊 LVGL Buffer Analysis:");
-	BSP_LOGI(TAG, "  - src_stride: %d bytes (packed bits)", (width + 7) / 8);
-	BSP_LOGI(TAG, "  - dst_stride: %d bytes (expanded)", cfg->screen_width);
-	BSP_LOGI(TAG, "  - Total bytes to send: %d", height * cfg->screen_width);
+	// Disable verbose buffer analysis logging
+	// BSP_LOGI(TAG, "📊 LVGL Buffer Analysis:");
+	// BSP_LOGI(TAG, "  - src_stride: %d bytes (packed bits)", (width + 7) / 8);
+	// BSP_LOGI(TAG, "  - dst_stride: %d bytes (expanded)", cfg->screen_width);
+	// BSP_LOGI(TAG, "  - Total bytes to send: %d", height * cfg->screen_width);
 	
-	// Log first few bytes of source data
-	const uint8_t *debug_src = (const uint8_t *)buf;
-	BSP_LOG_BUFFER_HEX(TAG, debug_src, MIN(16, (width + 7) / 8));
+	// Disable hex dump logging
+	// const uint8_t *debug_src = (const uint8_t *)buf;
+	// BSP_LOG_BUFFER_HEX(TAG, debug_src, MIN(16, (width + 7) / 8));
 	
 	// **SAFETY CHECK: Implement chunked transfers for large displays**
 	uint32_t total_pixels = width * height;
 	const uint32_t MAX_PIXELS_PER_CHUNK = 32000;  // 32K pixels max per transfer
 	
 	if (total_pixels > MAX_PIXELS_PER_CHUNK) {
-		BSP_LOGI(TAG, "🔄 Large transfer detected: %d pixels. Implementing chunked transfer...", total_pixels);
+		// BSP_LOGI(TAG, "🔄 Large transfer detected: %d pixels. Implementing chunked transfer...", total_pixels);
 		
 		// Calculate chunk size - process in horizontal strips
 		uint16_t chunk_height = MAX_PIXELS_PER_CHUNK / width;
 		if (chunk_height > height) chunk_height = height;
 		
-		BSP_LOGI(TAG, "📦 Chunk size: %dx%d (%d pixels each)", width, chunk_height, width * chunk_height);
+		// BSP_LOGI(TAG, "📦 Chunk size: %dx%d (%d pixels each)", width, chunk_height, width * chunk_height);
 		
 		// Process in chunks
 		int ret = 0;
@@ -283,7 +283,7 @@ static int hls12vga_write(const struct device *dev,
 				current_chunk_height = height - y_offset;
 			}
 			
-			BSP_LOGI(TAG, "🧩 Processing chunk at y=%d, height=%d", y + y_offset, current_chunk_height);
+			// BSP_LOGI(TAG, "🧩 Processing chunk at y=%d, height=%d", y + y_offset, current_chunk_height);
 			
 			// Create a descriptor for this chunk
 			struct display_buffer_descriptor chunk_desc = {
@@ -308,11 +308,11 @@ static int hls12vga_write(const struct device *dev,
 			k_msleep(1);
 		}
 		
-		BSP_LOGI(TAG, "✅ Chunked transfer completed successfully!");
+		// BSP_LOGI(TAG, "✅ Chunked transfer completed successfully!");
 		return 0;
 	}
 	
-	BSP_LOGI(TAG, "✅ Transfer size OK: %d pixels (direct transfer)", total_pixels);
+	// BSP_LOGI(TAG, "✅ Transfer size OK: %d pixels (direct transfer)", total_pixels);
 	
 	// if (x != 0 || pitch != cfg->screen_width || width != cfg->screen_width || height > MAX_LINES_PER_WRITE)
 	if (y + height > cfg->screen_height)
@@ -376,7 +376,7 @@ static int hls12vga_read(struct device *dev, int x, int y,
 }
 int hls12vga_set_brightness(uint8_t brightness)
 {
-	BSP_LOGI(TAG, "set Brightness: [%d]", brightness);
+	// BSP_LOGI(TAG, "set Brightness: [%d]", brightness);
 	const uint8_t reg_val[] = {1, 4, 7, 10, 14, 18, 22, 27, 32, 40};
 	uint8_t level = 0;
 	uint8_t cmd[3] = {0};
@@ -492,10 +492,10 @@ int hls12vga_clear_screen(bool color_on)
 
 	uint8_t fill_byte = color_on ? 0xFF : 0x00;
 	
-	BSP_LOGI(TAG, "🧹 hls12vga_clear_screen: color_on=%s, fill_byte=0x%02X", 
-		color_on ? "true" : "false", fill_byte);
-	BSP_LOGI(TAG, "  - Screen: %dx%d pixels", width, height);
-	BSP_LOGI(TAG, "  - Total bytes per frame: %d", width * height);
+	// BSP_LOGI(TAG, "🧹 hls12vga_clear_screen: color_on=%s, fill_byte=0x%02X", 
+	//	color_on ? "true" : "false", fill_byte);
+	// BSP_LOGI(TAG, "  - Screen: %dx%d pixels", width, height);
+	// BSP_LOGI(TAG, "  - Total bytes per frame: %d", width * height);
 
 	for (uint16_t y = 0; y < total_lines; y += lines_per_batch)
 	{
@@ -662,7 +662,7 @@ static int hls12vga_init(const struct device *dev)
 	// BSP_LOGI(TAG, "🔧 Blinking test completed - leaving display ON");
 
 	// Clear the display to start fresh for LVGL
-	BSP_LOGI(TAG, "🧹 Clearing display for LVGL (setting to OFF/black)");
+	// BSP_LOGI(TAG, "🧹 Clearing display for LVGL (setting to OFF/black)");
 	hls12vga_clear_screen(false);  // Start with display OFF (black)
 
 	BSP_LOGI(TAG, "Display initialized");

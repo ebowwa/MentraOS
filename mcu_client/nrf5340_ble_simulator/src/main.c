@@ -61,6 +61,9 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 #define KEY_BATTERY_DECREASE DK_BTN2_MSK  // Button 2: Decrease battery
 #define KEY_BATTERY_CHARGING_TOGGLE DK_BTN3_MSK  // Button 3: Toggle charging status
 
+// LVGL pattern cycling button
+#define KEY_LVGL_PATTERN_CYCLE DK_BTN4_MSK  // Button 4: Cycle LVGL test patterns
+
 #define UART_BUF_SIZE 240
 #define UART_WAIT_FOR_BUF_DELAY K_MSEC(50)
 #define UART_WAIT_FOR_RX 50
@@ -658,17 +661,19 @@ void button_changed(uint32_t button_state, uint32_t has_changed)
 	}
 
 	if (buttons & KEY_BATTERY_DECREASE) {
-		LOG_INF("🔋⬇️  Button 2 pressed: Decreasing battery level + Cycling LVGL test pattern");
+		LOG_INF("🔋⬇️  Button 2 pressed: Decreasing battery level");
 		protobuf_decrease_battery_level();
-		// Also cycle through LVGL test patterns
-		cycle_test_pattern();
 	}
 
 	if (buttons & KEY_BATTERY_CHARGING_TOGGLE) {
-		LOG_INF("🔋⚡ Button 3 pressed: Toggling charging status + Cycling LVGL test pattern");
+		LOG_INF("🔋⚡ Button 3 pressed: Toggling charging status");
 		protobuf_toggle_charging_state();
-		// Also cycle through LVGL test patterns
-		cycle_test_pattern();
+	}
+
+	// **NEW: LVGL pattern cycling on dedicated Button 4**
+	if (buttons & KEY_LVGL_PATTERN_CYCLE) {
+		LOG_INF("🎨 Button 4 pressed: Cycling LVGL test pattern");
+		display_cycle_pattern();
 	}
 }
 

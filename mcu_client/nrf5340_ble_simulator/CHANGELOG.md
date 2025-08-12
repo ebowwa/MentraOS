@@ -2,6 +2,52 @@
 
 All notable changes to the nRF5340 DK BLE Glasses Protobuf Simulator will be documented in this file.
 
+## [2.3.0] - 2025-08-12
+
+### 🛡️ CRITICAL STABILITY FIX - Thread-Safe LVGL System & Clean Logging
+
+#### Fixed
+- **CRITICAL: LVGL Threading Assertion Failure Resolved**
+  - 🔧 Fixed ASSERTION FAIL [0] @ lv_refr.c:279 causing firmware freeze
+  - 🔧 Eliminated button interrupt conflicts with LVGL refresh thread
+  - 🔧 Implemented thread-safe message queue pattern cycling system
+  - 🔧 Added LCD_CMD_CYCLE_PATTERN command for safe UI updates
+  - 🔧 Separated battery controls from LVGL operations completely
+
+- **System Stability Improvements**
+  - 🔧 Disabled verbose CUSTOM_HLS12VGA logging for cleaner output
+  - 🔧 Added 1-second debounce protection preventing rapid button cycles
+  - 🔧 Implemented proper LVGL thread-only object manipulation
+  - 🔧 Added display_cycle_pattern() thread-safe public API
+
+#### Changed
+- **Button Configuration Optimized**
+  - 🎮 Button 1: Battery level increase (no LVGL conflicts)
+  - 🎮 Button 2: Battery level decrease (no LVGL conflicts)
+  - 🎮 Button 3: Charging status toggle (no LVGL conflicts)
+  - 🎮 Button 4: **NEW** Dedicated LVGL pattern cycling (thread-safe)
+
+- **LVGL Text System Enhanced**
+  - 🌟 Upgraded to scrolling "Welcome to MentraOS NExFirmware!" message
+  - 🌟 Implemented 1.5-second scroll cycle with proper animation timing
+  - 🌟 Added Montserrat 30pt font with optimized readability
+  - 🌟 Enhanced text styling with padding and rounded corners
+
+#### Verified
+- **Complete System Stability**
+  - 📺 640x480 HLS12VGA projector displaying stable LVGL content at 2 FPS
+  - 📺 Scrolling welcome message working smoothly without interruption
+  - 📺 Battery buttons (1,2,3) functioning without firmware freeze
+  - 📺 Pattern cycling (Button 4) working safely with no assertion failures
+  - 📺 Chunked transfer system handling 307KB displays without crash
+  - 📺 16MHz SPI4 communication maintaining signal integrity
+
+#### Technical Achievement
+- **Root Cause Analysis**: Identified button interrupt → LVGL thread conflicts as source of all stability issues
+- **Threading Architecture**: Proper separation of interrupt handlers and LVGL operations
+- **Performance**: Stable 2 FPS LVGL rendering with 640x480 resolution on monochrome projector
+- **Reliability**: Zero firmware freezes or assertion failures with new button configuration
+
 ## [2.2.0] - 2025-08-12
 
 ### 📝 TEXT RENDERING MILESTONE - LVGL Font System Fully Operational

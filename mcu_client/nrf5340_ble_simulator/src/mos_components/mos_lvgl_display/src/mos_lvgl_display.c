@@ -113,6 +113,16 @@ void display_close(void)
     // mos_msgq_sendsplay_msgq, &cmd, MOS_OS_WAIT_FOREVER);
 }
 
+// **NEW: Thread-safe pattern cycling - sends message to LVGL thread**
+void display_cycle_pattern(void)
+{
+    display_cmd_t cmd = {
+        .type = LCD_CMD_CYCLE_PATTERN,
+        .p.pattern = {.pattern_id = 0}  // Will be determined by LVGL thread
+    };
+    mos_msgq_send(&display_msgq, &cmd, MOS_OS_WAIT_FOREVER);
+}
+
 void display_send_frame(void *data_ptr)
 {
     // display_cmd_t cmd = {.type = LCD_CMD_DATA, .param = data_ptr};
@@ -282,11 +292,11 @@ static void show_test_pattern(int pattern_id);
 
 static void show_default_ui(void)
 {
-    BSP_LOGI(TAG, "🖼️ Starting with 'Hello LVGL' text pattern...");
-    // Start with pattern 3 (Hello LVGL text) - simple text display
+    BSP_LOGI(TAG, "🖼️ Starting with scrolling 'Welcome to MentraOS NExFirmware!' text...");
+    // Start with pattern 3 (scrolling welcome text) - advanced text animation
     show_test_pattern(3);
     
-    BSP_LOGI(TAG, "🖼️ Hello LVGL text pattern complete - should see centered text message");
+    BSP_LOGI(TAG, "🖼️ Scrolling welcome message complete - should see animated text");
 }
 
 // Test pattern functions
@@ -356,25 +366,35 @@ static void create_vertical_zebra_pattern(lv_obj_t *screen)
 
 static void create_center_rectangle_pattern(lv_obj_t *screen)
 {
-    BSP_LOGI(TAG, "📝 Creating 'Hello LVGL' text pattern...");
+    BSP_LOGI(TAG, "🌟 Creating scrolling 'Welcome to MentraOS NExFirmware!' text...");
     
-    // Create a centered "Hello LVGL" text label
-    lv_obj_t *hello_label = lv_label_create(screen);
-    lv_label_set_text(hello_label, "Hello LVGL");
+    // Create a scrolling text label
+    lv_obj_t *scroll_label = lv_label_create(screen);
+    lv_label_set_text(scroll_label, "Welcome to MentraOS NExFirmware!");
     
     // Set text properties
-    lv_obj_set_style_text_color(hello_label, lv_color_white(), 0);  // White text
-    lv_obj_set_style_text_font(hello_label, &lv_font_montserrat_48, 0);  // Large font
+    lv_obj_set_style_text_color(scroll_label, lv_color_white(), 0);  // White text
+    lv_obj_set_style_text_font(scroll_label, &lv_font_montserrat_30, 0);  // Available font
     
-    // Center the text on screen
-    lv_obj_center(hello_label);
+    // Enable long mode for scrolling
+    lv_label_set_long_mode(scroll_label, LV_LABEL_LONG_SCROLL_CIRCULAR);
+    
+    // Set the width to enable scrolling (narrower than text width)
+    lv_obj_set_width(scroll_label, 400);  // 400px width for scrolling
+    
+    // **SPEED UP THE SCROLLING** - Set faster animation time
+    lv_obj_set_style_anim_time(scroll_label, 1500, 0);  // 1.5 seconds for full scroll cycle (much faster!)
+    
+    // Center the label on screen
+    lv_obj_center(scroll_label);
     
     // Optional: Add background for better visibility
-    lv_obj_set_style_bg_color(hello_label, lv_color_black(), 0);
-    lv_obj_set_style_bg_opa(hello_label, LV_OPA_COVER, 0);
-    lv_obj_set_style_pad_all(hello_label, 10, 0);  // Add some padding
+    lv_obj_set_style_bg_color(scroll_label, lv_color_black(), 0);
+    lv_obj_set_style_bg_opa(scroll_label, LV_OPA_COVER, 0);
+    lv_obj_set_style_pad_all(scroll_label, 15, 0);  // Add padding
+    lv_obj_set_style_radius(scroll_label, 5, 0);    // Rounded corners
     
-    BSP_LOGI(TAG, "📝 Hello LVGL text centered on screen");
+    BSP_LOGI(TAG, "🌟 Fast scrolling welcome message configured - 1.5s cycle, width: 400px");
 }
 
 static int current_pattern = 0;
@@ -382,7 +402,11 @@ static const int num_patterns = 4;
 
 static void show_test_pattern(int pattern_id)
 {
-    // Clear all existing objects first
+    BSP_LOGI(TAG, "🖼️ Creating test pattern #%d...", pattern_id);
+    
+    // **SAFE: Now called only from LVGL thread - no locking needed**
+    
+    // Clear all existing objects first - safe in LVGL thread context
     lv_obj_clean(lv_screen_active());
     
     // Get screen and set black background
@@ -413,6 +437,8 @@ static void show_test_pattern(int pattern_id)
     // Force LVGL to render everything immediately
     lv_timer_handler();
     
+    // **SAFE: No unlock needed - running in LVGL thread context**
+    
     // Add delay to ensure display processes the data
     BSP_LOGI(TAG, "⏱️ Waiting 100ms for display to process...");
     k_msleep(100);
@@ -422,6 +448,16 @@ static void show_test_pattern(int pattern_id)
 
 void cycle_test_pattern(void)
 {
+    // **SAFETY: Prevent rapid cycling that could cause conflicts**
+    static int64_t last_cycle_time = 0;
+    int64_t current_time = k_uptime_get();
+    
+    if (current_time - last_cycle_time < 1000) {  // 1 second debounce
+        BSP_LOGI(TAG, "⚠️ Pattern cycling too fast - ignoring (wait 1 second)");
+        return;
+    }
+    last_cycle_time = current_time;
+    
     current_pattern = (current_pattern + 1) % num_patterns;
     BSP_LOGI(TAG, "🔄 Cycling to test pattern #%d", current_pattern);
     show_test_pattern(current_pattern);
@@ -501,6 +537,11 @@ void lvgl_dispaly_init(void *p1, void *p2, void *p3)
             break;
         case LCD_CMD_DATA:
             /* 处理帧数据*/
+            break;
+        case LCD_CMD_CYCLE_PATTERN:
+            /* **NEW: Handle pattern cycling safely in LVGL thread** */
+            BSP_LOGI(TAG, "LCD_CMD_CYCLE_PATTERN - Thread-safe pattern cycling");
+            cycle_test_pattern();  // Now called from LVGL thread context
             break;
         case LCD_CMD_CLOSE:
             if (get_display_onoff())
