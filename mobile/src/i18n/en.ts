@@ -57,6 +57,15 @@ const en = {
     tryAgain: "Try Again",
     pairingFailed: "Pairing Failed",
   },
+  pairingGuides: {
+    // TODO: add pairing guides for each glasses model
+    // evenRealitiesG1: {
+    //   title: "Even Realities G1",
+    //   step1: "Disconnect your G1 from within the Even Realities app, or uninstall the Even Realities app",
+    //   step2: "Place your G1 in the charging case with the lid open.",
+    //   step3: "Connect your G1 to your device.",
+    // },
+  },
   connectivity: {
     bluetoothRequiredTitle: "Bluetooth Required",
     bluetoothRequiredMessage:
