@@ -33,7 +33,7 @@ public class AudioWearableSGC extends SmartGlassesCommunicator {
     public void setFontSizes(){
     }
 
-    public void connectToSmartGlasses(){
+    public void connectToSmartGlasses(SmartGlassesDevice device){
         connectionEvent(SmartGlassesConnectionState.CONNECTED);
     }
 

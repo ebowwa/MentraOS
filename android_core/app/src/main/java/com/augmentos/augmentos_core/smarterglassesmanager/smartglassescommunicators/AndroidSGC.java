@@ -128,7 +128,7 @@ public class AndroidSGC extends SmartGlassesCommunicator {
         SMALL_FONT = 0;
     }
 
-    public void connectToSmartGlasses(){
+    public void connectToSmartGlasses(SmartGlassesDevice device){
         //open the UDP socket to broadcast our IP address
         openSocket();
 

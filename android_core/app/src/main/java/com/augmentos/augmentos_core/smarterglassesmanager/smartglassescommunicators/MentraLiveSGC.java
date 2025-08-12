@@ -2223,7 +2223,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
 
 
     @Override
-    public void connectToSmartGlasses() {
+    public void connectToSmartGlasses(SmartGlassesDevice smartDevice) {
         Log.d(TAG, "Connecting to Mentra Live glasses");
         connectionEvent(SmartGlassesConnectionState.CONNECTING);
 
