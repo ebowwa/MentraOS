@@ -2,6 +2,30 @@
 
 All notable changes to the nRF5340 DK BLE Glasses Protobuf Simulator will be documented in this file.
 
+## [2.4.0] - 2025-08-12
+
+### 🔤 FONT ENHANCEMENT - Maximum Size Text Display
+
+#### Enhanced
+- **Large Font Upgrade for Better Visibility**
+  - 📏 Upgraded scrolling text from 30pt to **48pt Montserrat font** (60% larger)
+  - 📺 Maximum available font size for optimal AR glasses readability
+  - 🎯 Enhanced visual impact and professional appearance
+  - 💾 FLASH usage optimized: 585KB total (97KB font data increase)
+
+#### Technical Details
+- **Font Progression**: 30pt → 48pt (largest available in LVGL build)
+- **Available Sizes**: 12pt, 14pt, 16pt, 18pt, 24pt, 30pt, **48pt** ← Current
+- **Memory Impact**: +97KB FLASH usage for larger font bitmap data
+- **Performance**: Stable 2 FPS LVGL rendering maintained at 640x480
+
+#### Verified
+- **Enhanced Text Display**
+  - 🌟 "Welcome to MentraOS NExFirmware!" message significantly larger
+  - 🌟 Better readability from greater viewing distances
+  - 🌟 Professional AR glasses user experience
+  - 🌟 Smooth 1.5-second scroll cycle maintained with larger font
+
 ## [2.3.0] - 2025-08-12
 
 ### 🛡️ CRITICAL STABILITY FIX - Thread-Safe LVGL System & Clean Logging

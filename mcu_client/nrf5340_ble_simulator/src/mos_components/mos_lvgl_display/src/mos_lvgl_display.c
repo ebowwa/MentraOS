@@ -374,7 +374,7 @@ static void create_center_rectangle_pattern(lv_obj_t *screen)
     
     // Set text properties
     lv_obj_set_style_text_color(scroll_label, lv_color_white(), 0);  // White text
-    lv_obj_set_style_text_font(scroll_label, &lv_font_montserrat_30, 0);  // Available font
+    lv_obj_set_style_text_font(scroll_label, &lv_font_montserrat_48, 0);  // **UPGRADED: Largest font (48pt)**
     
     // Enable long mode for scrolling
     lv_label_set_long_mode(scroll_label, LV_LABEL_LONG_SCROLL_CIRCULAR);
@@ -394,7 +394,7 @@ static void create_center_rectangle_pattern(lv_obj_t *screen)
     lv_obj_set_style_pad_all(scroll_label, 15, 0);  // Add padding
     lv_obj_set_style_radius(scroll_label, 5, 0);    // Rounded corners
     
-    BSP_LOGI(TAG, "🌟 Fast scrolling welcome message configured - 1.5s cycle, width: 400px");
+    BSP_LOGI(TAG, "🌟 Large 48pt scrolling welcome message configured - 1.5s cycle, width: 400px");
 }
 
 static int current_pattern = 0;
