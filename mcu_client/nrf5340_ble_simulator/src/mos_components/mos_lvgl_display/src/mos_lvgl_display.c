@@ -277,38 +277,147 @@ void scroll_text_stop(void)
 // }
 
 /****************************************************/
+// Forward declarations
+static void show_test_pattern(int pattern_id);
+
 static void show_default_ui(void)
 {
-    // 强制 LVGL 下一次做整屏刷新
-    // lv_disp_set_full_refresh(lv_disp_get_default(), true);
-    char *txt = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Pellentesque fringilla, lorem dapibus fringilla feugiat, justo arcu volutpat magna, vitae ultricies metus tortor nec est. Fusce ut tellus arcu. Fusce eu rutrum metus, nec porta felis. Sed sed ligula laoreet, sodales lacus blandit, elementum justo. Sed posuere quam ut pellentesque ullamcorper. In quis consequat magna. Etiam quis turpis nec lorem dictum finibus. Donec mattis enim dolor, consequat lacinia nisi scelerisque id. Nulla euismod, purus sit amet accumsan tempus, lorem lectus euismod dolor, sit amet facilisis nisl quam elementum nisi. Curabitur et massa eget lorem lacinia scelerisque eget vitae felis. Nulla facilisi.\n\n"
-                "Vivamus auctor sit amet ante id rhoncus. Duis a dolor neque. Mauris eu ornare tortor. Vivamus consequat, ipsum a volutpat congue, sem libero laoreet nulla, malesuada efficitur leo orci a est. Donec tincidunt nulla nibh, quis pretium mi fermentum quis. Fusce a mattis libero. Curabitur in felis suscipit, ultrices diam imperdiet, vestibulum arcu. Praesent id faucibus turpis. Pellentesque sed massa tincidunt, interdum purus tempus, pellentesque risus. Fusce feugiat magna eget nisl eleifend efficitur. Mauris ut convallis justo. Integer malesuada rutrum orci non tincidunt.\n\n"
-                "Nullam aliquet leo sit amet volutpat tincidunt. Mauris ac accumsan nibh. Morbi accumsan commodo leo, at hendrerit massa hendrerit et. Aliquam nec sodales ex. Morbi at aliquet sem. Sed at magna ut felis mollis dictum ut ac orci. Nunc id lorem lacus. Vivamus id accumsan dolor, sed suscipit nulla. Pellentesque dictum erat non bibendum tempor. Fusce arcu risus, eleifend in lacus a, iaculis fermentum sapien. Praesent sodales libero vitae massa suscipit tincidunt. Aliquam quis arcu urna. Nunc sit amet mi leo.\n\n";
-    // 清掉旧的所有对象
-    lv_obj_clean(lv_screen_active());
-
-    // ui_create();
-
-    // lv_example_scroll_text();
-    // lvgl_dispaly_text();
-    /*********************************/
-    scroll_text_create(lv_scr_act(),
-                       0, 0,     // x, y
-                       640, 240, // w, h
-                       txt,
-                       &lv_font_montserrat_30,
-                       12000); // 往返周期 4000ms
-
-    // LV_IMG_DECLARE(my_img);   // 由 LVGL 的 img converter 工具生成 C 数组
-    // lv_obj_t *img = lv_img_create(lv_scr_act());
-    // lv_img_set_src(img, &my_img);
-    // lv_obj_align(img, LV_ALIGN_CENTER, 0, 0);
-
-    /********************************************** */
-    // lv_demo_benchmark(); // 测试性能
-    // 立刻执行一次 LVGL 刷新
-    lv_timer_handler();
+    BSP_LOGI(TAG, "🖼️ Starting with simple center rectangle test pattern...");
+    // Start with pattern 3 (center rectangle) - simpler pattern
+    show_test_pattern(3);
+    
+    BSP_LOGI(TAG, "🖼️ Chess board test pattern complete - should see alternating squares");
 }
+
+// Test pattern functions
+static void create_chess_pattern(lv_obj_t *screen)
+{
+    BSP_LOGI(TAG, "🏁 Creating chess board pattern...");
+    const int chess_size = 40;  // 40x40 pixel squares
+    const int chess_cols = 640 / chess_size;  // 16 columns
+    const int chess_rows = 480 / chess_size;  // 12 rows
+    
+    for (int row = 0; row < chess_rows; row++) {
+        for (int col = 0; col < chess_cols; col++) {
+            // Alternate black and white squares
+            bool is_white = (row + col) % 2 == 0;
+            
+            lv_obj_t *square = lv_obj_create(screen);
+            lv_obj_set_size(square, chess_size, chess_size);
+            lv_obj_set_pos(square, col * chess_size, row * chess_size);
+            lv_obj_set_style_bg_color(square, is_white ? lv_color_white() : lv_color_black(), 0);
+            lv_obj_set_style_bg_opa(square, LV_OPA_COVER, 0);
+            lv_obj_set_style_border_width(square, 0, 0);
+            lv_obj_set_style_pad_all(square, 0, 0);
+        }
+    }
+    BSP_LOGI(TAG, "🏁 Chess pattern: %dx%d squares (%dx%d pixels each)", chess_cols, chess_rows, chess_size, chess_size);
+}
+
+static void create_horizontal_zebra_pattern(lv_obj_t *screen)
+{
+    BSP_LOGI(TAG, "🦓 Creating horizontal zebra pattern...");
+    const int stripe_height = 20;  // 20 pixel high stripes
+    const int num_stripes = 480 / stripe_height;  // 24 stripes
+    
+    for (int i = 0; i < num_stripes; i++) {
+        bool is_white = i % 2 == 0;
+        
+        lv_obj_t *stripe = lv_obj_create(screen);
+        lv_obj_set_size(stripe, 640, stripe_height);  // Full width
+        lv_obj_set_pos(stripe, 0, i * stripe_height);
+        lv_obj_set_style_bg_color(stripe, is_white ? lv_color_white() : lv_color_black(), 0);
+        lv_obj_set_style_bg_opa(stripe, LV_OPA_COVER, 0);
+        lv_obj_set_style_border_width(stripe, 0, 0);
+        lv_obj_set_style_pad_all(stripe, 0, 0);
+    }
+    BSP_LOGI(TAG, "🦓 Horizontal zebra: %d stripes (%d pixels high each)", num_stripes, stripe_height);
+}
+
+static void create_vertical_zebra_pattern(lv_obj_t *screen)
+{
+    BSP_LOGI(TAG, "🦓 Creating vertical zebra pattern...");
+    const int stripe_width = 20;  // 20 pixel wide stripes
+    const int num_stripes = 640 / stripe_width;  // 32 stripes
+    
+    for (int i = 0; i < num_stripes; i++) {
+        bool is_white = i % 2 == 0;
+        
+        lv_obj_t *stripe = lv_obj_create(screen);
+        lv_obj_set_size(stripe, stripe_width, 480);  // Full height
+        lv_obj_set_pos(stripe, i * stripe_width, 0);
+        lv_obj_set_style_bg_color(stripe, is_white ? lv_color_white() : lv_color_black(), 0);
+        lv_obj_set_style_bg_opa(stripe, LV_OPA_COVER, 0);
+        lv_obj_set_style_border_width(stripe, 0, 0);
+        lv_obj_set_style_pad_all(stripe, 0, 0);
+    }
+    BSP_LOGI(TAG, "🦓 Vertical zebra: %d stripes (%d pixels wide each)", num_stripes, stripe_width);
+}
+
+static void create_center_rectangle_pattern(lv_obj_t *screen)
+{
+    BSP_LOGI(TAG, "⬜ Creating center rectangle pattern...");
+    // Create a centered white rectangle (50x100)
+    lv_obj_t *center_rect = lv_obj_create(screen);
+    lv_obj_set_size(center_rect, 50, 100);     // 50x100 rectangle
+    lv_obj_set_pos(center_rect, 295, 190);     // Centered position (320-25, 240-50)
+    lv_obj_set_style_bg_color(center_rect, lv_color_white(), 0);
+    lv_obj_set_style_bg_opa(center_rect, LV_OPA_COVER, 0);
+    lv_obj_set_style_border_width(center_rect, 0, 0);
+    lv_obj_set_style_pad_all(center_rect, 0, 0);
+    BSP_LOGI(TAG, "⬜ Center rectangle: 50x100 at (295,190)");
+}
+
+static int current_pattern = 0;
+static const int num_patterns = 4;
+
+static void show_test_pattern(int pattern_id)
+{
+    // Clear all existing objects first
+    lv_obj_clean(lv_screen_active());
+    
+    // Get screen and set black background
+    lv_obj_t *screen = lv_screen_active();
+    lv_obj_set_style_bg_color(screen, lv_color_black(), 0);
+    lv_obj_set_style_bg_opa(screen, LV_OPA_COVER, 0);
+    
+    BSP_LOGI(TAG, "🖼️ Creating test pattern #%d...", pattern_id);
+    
+    switch (pattern_id) {
+        case 0:
+            create_chess_pattern(screen);
+            break;
+        case 1:
+            create_horizontal_zebra_pattern(screen);
+            break;
+        case 2:
+            create_vertical_zebra_pattern(screen);
+            break;
+        case 3:
+            create_center_rectangle_pattern(screen);
+            break;
+        default:
+            BSP_LOGE(TAG, "❌ Unknown pattern ID: %d", pattern_id);
+            return;
+    }
+    
+    // Force LVGL to render everything immediately
+    lv_timer_handler();
+    
+    // Add delay to ensure display processes the data
+    BSP_LOGI(TAG, "⏱️ Waiting 100ms for display to process...");
+    k_msleep(100);
+    
+    BSP_LOGI(TAG, "✅ Test pattern #%d completed", pattern_id);
+}
+
+void cycle_test_pattern(void)
+{
+    current_pattern = (current_pattern + 1) % num_patterns;
+    BSP_LOGI(TAG, "🔄 Cycling to test pattern #%d", current_pattern);
+    show_test_pattern(current_pattern);
+}
+
 void lvgl_dispaly_init(void *p1, void *p2, void *p3)
 {
     // 获取当前应用的字体对象
@@ -377,7 +486,9 @@ void lvgl_dispaly_init(void *p1, void *p2, void *p3)
             hls12vga_clear_screen(false); // 清屏
             state_type = LCD_STATE_ON;
 
+            BSP_LOGI(TAG, "🚀 About to call show_default_ui()...");
             show_default_ui(); // 显示默认图像
+            BSP_LOGI(TAG, "✅ show_default_ui() completed");
             break;
         case LCD_CMD_DATA:
             /* 处理帧数据*/

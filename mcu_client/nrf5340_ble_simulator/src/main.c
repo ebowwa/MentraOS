@@ -337,9 +337,11 @@ static int uart_init(void)
 
 	if (tx) {
 		pos = snprintf(tx->data, sizeof(tx->data),
-			       "nRF5340 BLE Glasses Simulator\r\n"
-			       "Ready for protobuf testing!\r\n"
-			       "=====================================\r\n");
+			       "🚀 v2.2.0-DISPLAY_OPEN_FIX\r\n"
+			       "📊 LVGL Test Pattern\r\n"
+			       " display_open() added!\r\n"
+			       "Ready!\r\n"
+			       "====================\r\n");
 
 		if ((pos < 0) || (pos >= sizeof(tx->data))) {
 			k_free(rx);
@@ -656,13 +658,17 @@ void button_changed(uint32_t button_state, uint32_t has_changed)
 	}
 
 	if (buttons & KEY_BATTERY_DECREASE) {
-		LOG_INF("🔋⬇️  Button 2 pressed: Decreasing battery level");
+		LOG_INF("🔋⬇️  Button 2 pressed: Decreasing battery level + Cycling LVGL test pattern");
 		protobuf_decrease_battery_level();
+		// Also cycle through LVGL test patterns
+		cycle_test_pattern();
 	}
 
 	if (buttons & KEY_BATTERY_CHARGING_TOGGLE) {
-		LOG_INF("🔋⚡ Button 3 pressed: Toggling charging status");
+		LOG_INF("🔋⚡ Button 3 pressed: Toggling charging status + Cycling LVGL test pattern");
 		protobuf_toggle_charging_state();
+		// Also cycle through LVGL test patterns
+		cycle_test_pattern();
 	}
 }
 
@@ -686,6 +692,9 @@ int main(void)
 {
 	int blink_status = 0;
 	int err = 0;
+
+	LOG_INF("🚀🚀🚀 MAIN FUNCTION STARTED - v2.2.0-DISPLAY_OPEN_FIX 🚀🚀🚀");
+	printk("🌟🌟🌟 MAIN FUNCTION PRINTK - v2.2.0-DISPLAY_OPEN_FIX 🌟🌟🌟\n");
 
 	configure_gpio();
 
@@ -742,7 +751,20 @@ int main(void)
 	}
 
         // Initialize LVGL display system with working driver implementation
-        LOG_INF("Initializing LVGL display system...");
+        printk("🔥🔥🔥 About to initialize LVGL display system... 🔥🔥🔥\n");
+        
+        // Start the LVGL display thread first!
+        printk("🧵🧵🧵 Starting LVGL display thread... 🧵🧵🧵\n");
+        lvgl_dispaly_thread();
+        printk("✅✅✅ LVGL display thread started! ✅✅✅\n");
+        
+        // Give the thread a moment to initialize
+        k_msleep(100);
+        
+        // Send LCD_CMD_OPEN to start the LVGL display system
+        printk("📡📡📡 Calling display_open() NOW... 📡📡📡\n");
+        display_open();
+        printk("✅✅✅ display_open() call completed! ✅✅✅\n");
         
         // Add direct HLS12VGA test from main thread
         LOG_INF("🖥️ Testing HLS12VGA display from main thread...");

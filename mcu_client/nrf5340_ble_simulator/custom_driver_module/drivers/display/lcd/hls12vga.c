@@ -246,8 +246,73 @@ static int hls12vga_write(const struct device *dev,
 	const uint16_t pitch = desc->pitch;
 	int ret = 0;
 	
-	BSP_LOGI(TAG, "🎨 hls12vga_write called: pos(%d,%d) size(%dx%d) pitch(%d)", 
-		x, y, width, height, pitch);
+	static uint32_t write_call_count = 0;
+	write_call_count++;
+	
+	BSP_LOGI(TAG, "🎨 hls12vga_write #%d: pos(%d,%d) size(%dx%d) pitch(%d)", 
+		write_call_count, x, y, width, height, pitch);
+	
+	// Log source buffer details for debugging
+	BSP_LOGI(TAG, "📊 LVGL Buffer Analysis:");
+	BSP_LOGI(TAG, "  - src_stride: %d bytes (packed bits)", (width + 7) / 8);
+	BSP_LOGI(TAG, "  - dst_stride: %d bytes (expanded)", cfg->screen_width);
+	BSP_LOGI(TAG, "  - Total bytes to send: %d", height * cfg->screen_width);
+	
+	// Log first few bytes of source data
+	const uint8_t *debug_src = (const uint8_t *)buf;
+	BSP_LOG_BUFFER_HEX(TAG, debug_src, MIN(16, (width + 7) / 8));
+	
+	// **SAFETY CHECK: Implement chunked transfers for large displays**
+	uint32_t total_pixels = width * height;
+	const uint32_t MAX_PIXELS_PER_CHUNK = 32000;  // 32K pixels max per transfer
+	
+	if (total_pixels > MAX_PIXELS_PER_CHUNK) {
+		BSP_LOGI(TAG, "🔄 Large transfer detected: %d pixels. Implementing chunked transfer...", total_pixels);
+		
+		// Calculate chunk size - process in horizontal strips
+		uint16_t chunk_height = MAX_PIXELS_PER_CHUNK / width;
+		if (chunk_height > height) chunk_height = height;
+		
+		BSP_LOGI(TAG, "📦 Chunk size: %dx%d (%d pixels each)", width, chunk_height, width * chunk_height);
+		
+		// Process in chunks
+		int ret = 0;
+		for (uint16_t y_offset = 0; y_offset < height; y_offset += chunk_height) {
+			uint16_t current_chunk_height = chunk_height;
+			if (y_offset + chunk_height > height) {
+				current_chunk_height = height - y_offset;
+			}
+			
+			BSP_LOGI(TAG, "🧩 Processing chunk at y=%d, height=%d", y + y_offset, current_chunk_height);
+			
+			// Create a descriptor for this chunk
+			struct display_buffer_descriptor chunk_desc = {
+				.buf_size = current_chunk_height * ((width + 7) / 8),
+				.width = width,
+				.height = current_chunk_height,
+				.pitch = pitch,
+			};
+			
+			// Calculate source buffer offset for this chunk
+			const uint8_t *src_buffer = (const uint8_t *)buf;
+			const uint8_t *chunk_src = src_buffer + (y_offset * ((width + 7) / 8));
+			
+			// Recursively call ourselves with the smaller chunk
+			ret = hls12vga_write(dev, x, y + y_offset, &chunk_desc, chunk_src);
+			if (ret != 0) {
+				BSP_LOGE(TAG, "❌ Chunk transfer failed at y=%d: %d", y + y_offset, ret);
+				return ret;
+			}
+			
+			// Small delay between chunks to prevent overwhelming the system
+			k_msleep(1);
+		}
+		
+		BSP_LOGI(TAG, "✅ Chunked transfer completed successfully!");
+		return 0;
+	}
+	
+	BSP_LOGI(TAG, "✅ Transfer size OK: %d pixels (direct transfer)", total_pixels);
 	
 	// if (x != 0 || pitch != cfg->screen_width || width != cfg->screen_width || height > MAX_LINES_PER_WRITE)
 	if (y + height > cfg->screen_height)
@@ -426,6 +491,11 @@ int hls12vga_clear_screen(bool color_on)
 	uint16_t total_lines = height;
 
 	uint8_t fill_byte = color_on ? 0xFF : 0x00;
+	
+	BSP_LOGI(TAG, "🧹 hls12vga_clear_screen: color_on=%s, fill_byte=0x%02X", 
+		color_on ? "true" : "false", fill_byte);
+	BSP_LOGI(TAG, "  - Screen: %dx%d pixels", width, height);
+	BSP_LOGI(TAG, "  - Total bytes per frame: %d", width * height);
 
 	for (uint16_t y = 0; y < total_lines; y += lines_per_batch)
 	{
@@ -576,20 +646,24 @@ static int hls12vga_init(const struct device *dev)
 	hls12vga_init_sem_give();
 	data->initialized = true;
 	
-	// Simple blinking test - turn display on/off to verify basic functionality
-	BSP_LOGI(TAG, "🔧 Starting simple blinking test (500ms on/off)...");
-	
-	for (int i = 0; i < 6; i++) {  // 3 full blink cycles
-		BSP_LOGI(TAG, "💡 Blink %d: Display ON", i/2 + 1);
-		hls12vga_clear_screen(true);  // Turn on
-		k_msleep(500);  // 500ms on
-		
-		BSP_LOGI(TAG, "💡 Blink %d: Display OFF", i/2 + 1);
-		hls12vga_clear_screen(false); // Turn off
-		k_msleep(500);  // 500ms off
-	}
-	
-	BSP_LOGI(TAG, "🔧 Blinking test completed - leaving display OFF");
+	// Simple blinking test - DISABLED to test LVGL patterns
+	// BSP_LOGI(TAG, "🔧 Starting simple blinking test (500ms on/off)...");
+	// 
+	// for (int i = 0; i < 6; i++) {  // 3 full blink cycles
+	// 	BSP_LOGI(TAG, "💡 Blink %d: Display OFF", i/2 + 1);
+	// 	hls12vga_clear_screen(false);  // Turn off
+	// 	k_msleep(500);  // 500ms on
+	// 	
+	// 	BSP_LOGI(TAG, "💡 Blink %d: Display ON", i/2 + 1);
+	// 	hls12vga_clear_screen(true); // Turn on
+	// 	k_msleep(500);  // 500ms off
+	// }
+	// 
+	// BSP_LOGI(TAG, "🔧 Blinking test completed - leaving display ON");
+
+	// Clear the display to start fresh for LVGL
+	BSP_LOGI(TAG, "🧹 Clearing display for LVGL (setting to OFF/black)");
+	hls12vga_clear_screen(false);  // Start with display OFF (black)
 
 	BSP_LOGI(TAG, "Display initialized");
 	return 0;

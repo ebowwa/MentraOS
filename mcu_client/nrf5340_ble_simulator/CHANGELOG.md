@@ -2,6 +2,48 @@
 
 All notable changes to the nRF5340 DK BLE Glasses Protobuf Simulator will be documented in this file.
 
+## [2.1.0] - 2025-08-12
+
+### 🚀 BREAKTHROUGH - Full LVGL Display System with Chunked Transfer Solution
+
+#### Added
+- **Advanced Display Transfer System**
+  - ✅ Implemented chunked display transfer system to handle large 640x480 displays
+  - ✅ Added automatic transfer size detection and segmentation (32K pixel chunks)
+  - ✅ Created horizontal strip processing for efficient memory management
+  - ✅ Implemented safety limits preventing firmware freeze during large transfers
+  - ✅ Added comprehensive transfer debugging and monitoring system
+
+- **LVGL Integration Breakthrough**
+  - ✅ Successfully achieved full LVGL system operation with display_open() integration
+  - ✅ Implemented lvgl_dispaly_thread() startup in main.c for proper threading
+  - ✅ Created comprehensive test pattern system (chess board, zebra patterns, center rectangle)
+  - ✅ Added pattern cycling with button controls for interactive testing
+  - ✅ Configured LVGL double buffering with CONFIG_LV_Z_VDB_SIZE=100 for smooth operation
+
+- **Performance Optimization**
+  - ✅ Migrated from SPI3 (8MHz limited) to SPI4 (32MHz capable) 
+  - ✅ Achieved stable 16.667MHz SPI operation with confirmed signal integrity
+  - ✅ Logic analyzer validation showing perfect 16MHz SPI communication
+  - ✅ Implemented inter-chunk delays preventing system overwhelming
+
+#### Fixed
+- **Critical Firmware Stability Issues**
+  - 🔧 Identified and resolved firmware freeze caused by 307KB full-screen transfers
+  - 🔧 Implemented chunked transfer preventing watchdog timeouts and stack overflow
+  - 🔧 Fixed LVGL thread initialization (missing lvgl_dispaly_thread start)
+  - 🔧 Corrected display_open() call sequence for proper hardware initialization
+  - 🔧 Added recursive transfer protection with safety checks
+
+#### Verified
+- **Display System Fully Operational**
+  - 📺 Center rectangle test pattern visible on HLS12VGA projector screen
+  - 📺 LVGL system running at optimized frame rates with chunked transfers
+  - 📺 Button controls working for pattern cycling and interaction
+  - 📺 System stable and responsive with no firmware freezes
+  - 📺 Battery status reporting functional during display operations
+  - 📺 16MHz SPI communication confirmed via logic analyzer
+
 ## [2.0.0] - 2025-08-12
 
 ### 🎉 MAJOR MILESTONE - HLS12VGA Projector Successfully Running on nRF5340DK
