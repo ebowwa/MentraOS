@@ -546,7 +546,7 @@ public class SmartGlassesManager extends Service {
     public static boolean getBypassVadForDebugging(Context context) {
         SharedPreferences sharedPreferences = context.getSharedPreferences("AugmentOSPrefs", Context.MODE_PRIVATE);
         //Log.d("AugmentOSPrefs", "Getting bypass VAD for debugging: " + sharedPreferences.getBoolean(context.getResources().getString(R.string.BYPASS_VAD_FOR_DEBUGGING), false));
-        return sharedPreferences.getBoolean(context.getResources().getString(R.string.BYPASS_VAD_FOR_DEBUGGING), false);
+        return sharedPreferences.getBoolean(context.getResources().getString(R.string.BYPASS_VAD_FOR_DEBUGGING), true);
     }
 
     public static void saveBypassVadForDebugging(Context context, boolean enabled) {

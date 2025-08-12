@@ -10,10 +10,7 @@ import {translate} from "@/i18n"
 import {Spacer} from "@/components/misc/Spacer"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import STTModelManager from "@/services/STTModelManager"
-import {NativeModules} from "react-native"
 import showAlert from "@/utils/AlertUtils"
-
-const {AOSModule, FileProviderModule} = NativeModules
 
 export default function TranscriptionSettingsScreen() {
   const {status} = useCoreStatus()
