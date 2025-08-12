@@ -6,14 +6,15 @@
 };
 
 &pinctrl {
-    spi3_default: spi3_default {
+    /* Reconfigure SPI4 to use our HLS12VGA pins for 32MHz capability */
+    spi4_default: spi4_default {
         group1 {
             psels = <NRF_PSEL(SPIM_SCK,  1, 15)>,  /* P1.15 SCK */
                     <NRF_PSEL(SPIM_MOSI, 1, 13)>,  /* P1.13 MOSI */
                     <NRF_PSEL(SPIM_MISO, 1, 14)>;  /* P1.14 MISO */
         };
     };
-    spi3_sleep: spi3_sleep {
+    spi4_sleep: spi4_sleep {
         group1 {
             psels = <NRF_PSEL(SPIM_SCK,  1, 15)>,
                     <NRF_PSEL(SPIM_MOSI, 1, 13)>,
@@ -35,11 +36,17 @@
     };
 };
 
+/* Disable SPI3 (8MHz limited) */
 &spi3 {
+    status = "disabled";
+};
+
+/* Enable SPI4 with 32MHz capability for HLS12VGA */
+&spi4 {
     compatible = "nordic,nrf-spim";
     status = "okay";
-    pinctrl-0 = <&spi3_default>;
-    pinctrl-1 = <&spi3_sleep>;
+    pinctrl-0 = <&spi4_default>;
+    pinctrl-1 = <&spi4_sleep>;
     pinctrl-names = "default", "sleep";
 
     hls12vga: hls12vga@0 {
