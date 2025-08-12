@@ -12,7 +12,7 @@ import ActionButton from "@/components/ui/ActionButton"
 import {Spacer} from "@/components/misc/Spacer"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {isMentraUser} from "@/utils/isMentraUser"
-import {isDeveloperBuildOrTestflight} from "@/utils/buildDetection"
+import {isAppStoreProductionBuild, isDeveloperBuildOrTestflight} from "@/utils/buildDetection"
 import {loadSetting, saveSetting} from "@/utils/SettingsHelper"
 import {SETTINGS_KEYS} from "@/consts"
 import Toast from "react-native-toast-message"
@@ -40,6 +40,11 @@ export default function SettingsPage() {
   const handleQuickPress = () => {
     push("/settings")
 
+    // Don't allow secret menu on iOS App Store builds
+    if (Platform.OS === "ios" && isAppStoreProductionBuild()) {
+      return
+    }
+
     const currentTime = Date.now()
     const timeDiff = currentTime - lastPressTime.current
     const maxTimeDiff = 2000
@@ -64,6 +69,7 @@ export default function SettingsPage() {
     if (pressCount.current === maxPressCount) {
       showAlert("Developer Mode", "Developer mode enabled!", [{text: translate("common:ok")}])
       saveSetting(SETTINGS_KEYS.DEV_MODE, true)
+      setDevMode(true)
       pressCount.current = 0
     } else if (pressCount.current >= showAlertAtPressCount) {
       const remaining = maxPressCount - pressCount.current

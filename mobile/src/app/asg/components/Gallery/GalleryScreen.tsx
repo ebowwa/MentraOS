@@ -385,9 +385,13 @@ export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps)
 
   // Load data on mount and when dependencies change
   useEffect(() => {
+    // Check connectivity immediately on mount
+    checkConnectivity().then(() => {
+      console.log("[GalleryScreen] Initial connectivity check complete")
+    })
     loadPhotos()
     loadDownloadedPhotos()
-  }, [loadPhotos, loadDownloadedPhotos])
+  }, [loadPhotos, loadDownloadedPhotos, checkConnectivity])
 
   // Handle back button
   useFocusEffect(
@@ -506,13 +510,15 @@ export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps)
   return (
     <View style={themed($screenContainer)}>
       {/* Network Warning Banner */}
-      {!isGalleryReachable && downloadedPhotos.length > 0 && (
+      {!isGalleryReachable && (
         <View style={themed($warningBannerContainer)}>
           <View style={themed($warningBanner)}>
             <MaterialCommunityIcons name="wifi-off" size={20} color={theme.colors.text} />
             <View style={themed($warningTextContainer)}>
               <Text style={themed($warningTitle)}>{getStatusMessage()}</Text>
-              <Text style={themed($warningMessage)}>Showing synced photos only</Text>
+              <Text style={themed($warningMessage)}>
+                {downloadedPhotos.length > 0 ? "Showing synced photos only" : "Cannot connect to glasses"}
+              </Text>
             </View>
             <TouchableOpacity
               style={themed($infoButton)}
