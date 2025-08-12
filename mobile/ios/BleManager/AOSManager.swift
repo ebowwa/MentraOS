@@ -1845,23 +1845,21 @@ struct ViewState {
     }
 
     private func handleConnectWearable(_ deviceName: String, modelName: String? = nil) {
-        CoreCommsService.log("AOS: Connecting to modelName: \(modelName ?? "nil") deviceName: \(deviceName) defaultWearable: \(defaultWearable)")
+        CoreCommsService.log("AOS: Connecting to modelName: \(modelName ?? "nil") deviceName: \(deviceName) defaultWearable: \(defaultWearable) pendingWearable: \(pendingWearable) selfDeviceName: \(self.deviceName)")
 
         if modelName != nil {
-            defaultWearable = modelName!
+            pendingWearable = modelName!
         }
 
-        if defaultWearable.contains("Simulated") {
+        if pendingWearable.contains("Simulated") {
             defaultWearable = "Simulated Glasses"
             handleRequestStatus()
             return
         }
 
-        if defaultWearable.isEmpty {
+        if pendingWearable.isEmpty {
             return
         }
-
-        CoreCommsService.log("AOS: deviceName: \(deviceName) selfDeviceName: \(self.deviceName) defaultWearable: \(defaultWearable)")
 
         Task {
             disconnectWearable()
@@ -1882,15 +1880,12 @@ struct ViewState {
                 return
             }
 
-            if self.defaultWearable.contains("Live") {
-                initManager(self.defaultWearable)
+            initManager(self.pendingWearable)
+            if pendingWearable.contains("Live") {
                 self.liveManager?.connectById(self.deviceName)
-            } else if self.defaultWearable.contains("G1") {
-                initManager(self.defaultWearable)
+            } else if self.pendingWearable.contains("G1") {
                 self.g1Manager?.connectById(self.deviceName)
-            } else if self.defaultWearable.contains("Mach1") {
-                initManager(self.defaultWearable)
-                CoreCommsService.log("AOS: pairing Mach1 by id: \(self.deviceName)")
+            } else if self.pendingWearable.contains("Mach1") {
                 self.mach1Manager?.connectById(self.deviceName)
             }
         }

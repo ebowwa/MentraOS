@@ -279,6 +279,7 @@ export default function PairingPrepScreen() {
       return
     }
 
+    coreCommunicator.sendForgetSmartGlasses()
     push("/pairing/scan", {glassesModelName})
   }
 
