@@ -302,7 +302,6 @@ static void show_default_ui(void)
 // Test pattern functions
 static void create_chess_pattern(lv_obj_t *screen)
 {
-    BSP_LOGI(TAG, "🏁 Creating chess board pattern...");
     const int chess_size = 40;  // 40x40 pixel squares
     const int chess_cols = 640 / chess_size;  // 16 columns
     const int chess_rows = 480 / chess_size;  // 12 rows
@@ -321,12 +320,10 @@ static void create_chess_pattern(lv_obj_t *screen)
             lv_obj_set_style_pad_all(square, 0, 0);
         }
     }
-    BSP_LOGI(TAG, "🏁 Chess pattern: %dx%d squares (%dx%d pixels each)", chess_cols, chess_rows, chess_size, chess_size);
 }
 
 static void create_horizontal_zebra_pattern(lv_obj_t *screen)
 {
-    BSP_LOGI(TAG, "🦓 Creating horizontal zebra pattern...");
     const int stripe_height = 20;  // 20 pixel high stripes
     const int num_stripes = 480 / stripe_height;  // 24 stripes
     
@@ -341,12 +338,10 @@ static void create_horizontal_zebra_pattern(lv_obj_t *screen)
         lv_obj_set_style_border_width(stripe, 0, 0);
         lv_obj_set_style_pad_all(stripe, 0, 0);
     }
-    BSP_LOGI(TAG, "🦓 Horizontal zebra: %d stripes (%d pixels high each)", num_stripes, stripe_height);
 }
 
 static void create_vertical_zebra_pattern(lv_obj_t *screen)
 {
-    BSP_LOGI(TAG, "🦓 Creating vertical zebra pattern...");
     const int stripe_width = 20;  // 20 pixel wide stripes
     const int num_stripes = 640 / stripe_width;  // 32 stripes
     
@@ -361,13 +356,10 @@ static void create_vertical_zebra_pattern(lv_obj_t *screen)
         lv_obj_set_style_border_width(stripe, 0, 0);
         lv_obj_set_style_pad_all(stripe, 0, 0);
     }
-    BSP_LOGI(TAG, "🦓 Vertical zebra: %d stripes (%d pixels wide each)", num_stripes, stripe_width);
 }
 
 static void create_center_rectangle_pattern(lv_obj_t *screen)
 {
-    BSP_LOGI(TAG, "🌟 Creating scrolling 'Welcome to MentraOS NExFirmware!' text...");
-    
     // Create a scrolling text label
     lv_obj_t *scroll_label = lv_label_create(screen);
     lv_label_set_text(scroll_label, "Welcome to MentraOS NExFirmware!");
@@ -393,17 +385,81 @@ static void create_center_rectangle_pattern(lv_obj_t *screen)
     lv_obj_set_style_bg_opa(scroll_label, LV_OPA_COVER, 0);
     lv_obj_set_style_pad_all(scroll_label, 15, 0);  // Add padding
     lv_obj_set_style_radius(scroll_label, 5, 0);    // Rounded corners
+}
+
+static void create_scrolling_text_container(lv_obj_t *screen)
+{
+    // Create scrollable container with 20px margins on all sides
+    // Screen size: 640x480, so container: 600x440 positioned at (20, 20)
+    lv_obj_t *container = lv_obj_create(screen);
+    lv_obj_set_size(container, 600, 440);  // 640-40 = 600, 480-40 = 440
+    lv_obj_set_pos(container, 20, 20);     // 20px margins from all edges
     
-    BSP_LOGI(TAG, "🌟 Large 48pt scrolling welcome message configured - 1.5s cycle, width: 400px");
+    // Configure container scrolling - NO SCROLLBARS, NO BORDERS
+    lv_obj_set_scroll_dir(container, LV_DIR_VER);  // Vertical scrolling only
+    lv_obj_set_scrollbar_mode(container, LV_SCROLLBAR_MODE_OFF);  // NO SCROLLBARS
+    
+    // Style the container - NO BORDERS, minimal styling for performance
+    lv_obj_set_style_bg_color(container, lv_color_black(), 0);
+    lv_obj_set_style_bg_opa(container, LV_OPA_COVER, 0);
+    lv_obj_set_style_border_width(container, 0, 0);  // NO BORDERS
+    lv_obj_set_style_pad_all(container, 5, 0);  // Reduced padding for performance
+    
+    // Create label inside container with long text
+    lv_obj_t *label = lv_label_create(container);
+    lv_obj_set_width(label, 590);  // Container width minus minimal padding (600-10=590)
+    lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);  // Wrap text to fit width
+    
+    // Set the long text content - SHORTENED for better performance
+    const char *long_text = 
+        "MentraOS AR Display System\n\n"
+        "Real-time text scrolling demonstration for AR glasses.\n"
+        "This container automatically scrolls to show the latest content.\n\n"
+        
+        "Technical Specs:\n"
+        "• HLS12VGA MicroLED: 640×480\n"
+        "• nRF5340DK: Dual ARM Cortex-M33\n"
+        "• LVGL v8: Thread-safe messaging\n"
+        "• Memory: 579KB FLASH, 260KB RAM\n"
+        "• Performance: Stable 2 FPS\n\n"
+        
+        "Features:\n"
+        "• Auto-scroll to bottom\n"
+        "• No borders or scrollbars\n"
+        "• Optimized for performance\n"
+        "• Professional typography\n"
+        "• Thread-safe operations\n\n"
+        
+        "This text will automatically scroll to show the newest content "
+        "at the bottom, perfect for live updates, notifications, and "
+        "real-time information display in AR applications.\n\n"
+        
+        "Scroll position automatically moves to the latest line when "
+        "new content is added, ensuring users always see the most "
+        "recent information first.\n\n"
+        
+        "✅ Auto-scroll complete - Latest content visible!";
+    
+    lv_label_set_text(label, long_text);
+    
+    // Style the label text - optimized settings
+    lv_obj_set_style_text_color(label, lv_color_white(), 0);
+    lv_obj_set_style_text_font(label, &lv_font_montserrat_30, 0);
+    lv_obj_set_style_text_line_space(label, 3, 0);  // Reduced line spacing for performance
+    
+    // Position label at top of container
+    lv_obj_align(label, LV_ALIGN_TOP_LEFT, 0, 0);
+    
+    // AUTO-SCROLL TO BOTTOM to show latest content
+    lv_obj_update_layout(container);  // Ensure layout is calculated
+    lv_obj_scroll_to_y(container, lv_obj_get_scroll_bottom(container), LV_ANIM_OFF);
 }
 
 static int current_pattern = 0;
-static const int num_patterns = 4;  // Back to original 4 patterns
+static const int num_patterns = 5;  // Increased from 4 to 5
 
 static void show_test_pattern(int pattern_id)
 {
-    BSP_LOGI(TAG, "🖼️ Creating test pattern #%d...", pattern_id);
-    
     // **SAFE: Now called only from LVGL thread - no locking needed**
     
     // Clear all existing objects first - safe in LVGL thread context
@@ -413,8 +469,6 @@ static void show_test_pattern(int pattern_id)
     lv_obj_t *screen = lv_screen_active();
     lv_obj_set_style_bg_color(screen, lv_color_black(), 0);
     lv_obj_set_style_bg_opa(screen, LV_OPA_COVER, 0);
-    
-    BSP_LOGI(TAG, "🖼️ Creating test pattern #%d...", pattern_id);
     
     switch (pattern_id) {
         case 0:
@@ -429,6 +483,9 @@ static void show_test_pattern(int pattern_id)
         case 3:
             create_center_rectangle_pattern(screen);
             break;
+        case 4:
+            create_scrolling_text_container(screen);
+            break;
         default:
             BSP_LOGE(TAG, "❌ Unknown pattern ID: %d", pattern_id);
             return;
@@ -440,26 +497,22 @@ static void show_test_pattern(int pattern_id)
     // **SAFE: No unlock needed - running in LVGL thread context**
     
     // Add delay to ensure display processes the data
-    BSP_LOGI(TAG, "⏱️ Waiting 100ms for display to process...");
-    k_msleep(100);
     
-    BSP_LOGI(TAG, "✅ Test pattern #%d completed", pattern_id);
-}
-
-void cycle_test_pattern(void)
+    // Small delay for display processing
+    k_msleep(100);
+}void cycle_test_pattern(void)
 {
     // **SAFETY: Prevent rapid cycling that could cause conflicts**
     static int64_t last_cycle_time = 0;
     int64_t current_time = k_uptime_get();
     
     if (current_time - last_cycle_time < 1000) {  // 1 second debounce
-        BSP_LOGI(TAG, "⚠️ Pattern cycling too fast - ignoring (wait 1 second)");
         return;
     }
     last_cycle_time = current_time;
     
     current_pattern = (current_pattern + 1) % num_patterns;
-    BSP_LOGI(TAG, "🔄 Cycling to test pattern #%d", current_pattern);
+    BSP_LOGI(TAG, "Pattern #%d", current_pattern);  // Minimal log
     show_test_pattern(current_pattern);
 }
 

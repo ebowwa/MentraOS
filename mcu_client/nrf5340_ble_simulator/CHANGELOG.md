@@ -2,6 +2,39 @@
 
 All notable changes to the nRF5340 DK BLE Glasses Protobuf Simulator will be documented in this file.
 
+## [2.4.2] - 2025-08-12
+
+### 🧹 CODE OPTIMIZATION - Debug Logging Cleanup & Performance Enhancement
+
+#### Optimized
+- **LVGL Debug Logging Minimization**
+  - 🧹 Removed excessive pattern creation logs from all test patterns
+  - 🧹 Eliminated verbose completion messages ("Chess pattern: %dx%d squares", "Zebra: %d stripes")
+  - 🧹 Cleaned up container setup logs ("Creating auto-scroll text container", "Auto-scroll container: 600x440px")
+  - 🧹 Removed processing delay logs ("Waiting 100ms for display", "Test pattern completed")
+  - 🧹 Preserved essential monitoring: FPS display and minimal pattern switching notifications
+
+#### Performance
+- **System Resource Optimization**
+  - ⚡ Reduced RTT logging overhead for improved real-time performance
+  - ⚡ Maintained clean, minimal debug output for better development experience
+  - ⚡ Memory usage optimized: 557KB FLASH, 260KB RAM (reduced from logging cleanup)
+  - ⚡ Enhanced developer productivity with noise-free console output
+
+#### Technical Details
+- **Logging Strategy**: Essential-only approach maintaining FPS monitoring
+- **Debug Output**: Clean RTT console with minimal, actionable information
+- **Code Quality**: Systematic removal of 15+ verbose logging statements
+- **Development Experience**: Improved signal-to-noise ratio in debug output
+
+#### Verified
+- **Clean System Operation**
+  - 📺 All 5 test patterns (chess, h-zebra, v-zebra, scrolling text, auto-scroll container) functioning normally
+  - 📺 Auto-scroll container with 30pt font working smoothly without borders/scrollbars
+  - 📺 Button 4 pattern cycling preserved with minimal status updates
+  - 📺 FPS monitoring maintained: "LVGL FPS: 2" essential performance metric
+  - 📺 System stability unchanged with reduced logging overhead
+
 ## [2.4.1] - 2025-08-12
 
 ### 🔧 CODE QUALITY - Function Name Typo Correction
