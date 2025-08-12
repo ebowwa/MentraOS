@@ -576,7 +576,7 @@ void lvgl_dispaly_init(void *p1, void *p2, void *p3)
     }
 }
 
-void lvgl_dispaly_thread(void)
+void lvgl_display_thread(void)
 {
     // 启动 LVGL 专用线程
     lvgl_thread_handle = k_thread_create(&lvgl_thread_data,

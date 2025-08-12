@@ -99,6 +99,6 @@ void display_close(void);
 void display_send_frame(void *data_ptr);
 
 // void handle_display_text(const mentraos_ble_DisplayText *txt);
-void lvgl_dispaly_thread(void);
+void lvgl_display_thread(void);
 void cycle_test_pattern(void);  // Cycle through test patterns
 #endif // !_MOS_LVGL_DISPLAY_H_

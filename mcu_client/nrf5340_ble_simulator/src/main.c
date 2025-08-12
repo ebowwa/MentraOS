@@ -760,7 +760,7 @@ int main(void)
         
         // Start the LVGL display thread first!
         printk("🧵🧵🧵 Starting LVGL display thread... 🧵🧵🧵\n");
-        lvgl_dispaly_thread();
+        lvgl_display_thread();
         printk("✅✅✅ LVGL display thread started! ✅✅✅\n");
         
         // Give the thread a moment to initialize

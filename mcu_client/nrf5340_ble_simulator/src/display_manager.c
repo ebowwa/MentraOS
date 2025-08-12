@@ -56,7 +56,7 @@ int display_manager_init(void)
     LOG_INF("🖥️  Initializing display manager");
     
     // Start LVGL display thread first
-    lvgl_dispaly_thread();
+    lvgl_display_thread();
     
     // Give LVGL some time to initialize
     k_msleep(100);
