@@ -278,6 +278,7 @@ export class CoreCommunicator extends EventEmitter {
         GlobalEventEmitter.emit("COMPATIBLE_GLASSES_SEARCH_RESULT", {
           modelName: data.compatible_glasses_search_result.model_name,
           deviceName: data.compatible_glasses_search_result.device_name,
+          deviceAddress: data.compatible_glasses_search_result.device_address,
         })
       } else if ("compatible_glasses_search_stop" in data) {
         GlobalEventEmitter.emit("COMPATIBLE_GLASSES_SEARCH_STOP", {
@@ -302,12 +303,12 @@ export class CoreCommunicator extends EventEmitter {
       }
       switch (data.type) {
         case "app_started":
-          console.log("APP_STARTED_EVENT", data.packageName)
-          GlobalEventEmitter.emit("APP_STARTED_EVENT", data.packageName)
+        console.log("APP_STARTED_EVENT", data.packageName)
+        GlobalEventEmitter.emit("APP_STARTED_EVENT", data.packageName)
           break
         case "app_stopped":
-          console.log("APP_STOPPED_EVENT", data.packageName)
-          GlobalEventEmitter.emit("APP_STOPPED_EVENT", data.packageName)
+        console.log("APP_STOPPED_EVENT", data.packageName)
+        GlobalEventEmitter.emit("APP_STOPPED_EVENT", data.packageName)
           break
         case "audio_play_request":
           await AudioPlayService.handleAudioPlayRequest(data)
@@ -316,7 +317,15 @@ export class CoreCommunicator extends EventEmitter {
           await AudioPlayService.stopAllAudio()
           break
         case "pair_failure":
-          GlobalEventEmitter.emit("PAIR_FAILURE", data.error)
+        GlobalEventEmitter.emit("PAIR_FAILURE", data.error)
+          break
+        case "receive_command_from_ble":
+          console.log("receive_command_from_ble ", data)
+          GlobalEventEmitter.emit("receive_command_from_ble", data.receive_command_from_ble)
+          break
+        case "send_command_to_ble":
+          console.log("send_command_to_ble", data)
+          GlobalEventEmitter.emit("send_command_to_ble", data.send_command_to_ble)
           break
         default:
           console.log("Unknown event type:", data.type)
@@ -530,26 +539,26 @@ export class CoreCommunicator extends EventEmitter {
       return
     }
 
-    console.log("Restarting transcription with new model...")
+      console.log("Restarting transcription with new model...")
 
-    // Toggle mic off
-    await this.sendData({
-      command: "toggle_mic",
-      params: {
-        enabled: false,
-      },
-    })
+      // Toggle mic off
+      await this.sendData({
+        command: "toggle_mic",
+        params: {
+          enabled: false,
+        },
+      })
 
-    // Wait for the change to take effect
-    await new Promise(resolve => setTimeout(resolve, 500))
+      // Wait for the change to take effect
+      await new Promise(resolve => setTimeout(resolve, 500))
 
-    // Toggle mic back on
-    await this.sendData({
-      command: "toggle_mic",
-      params: {
-        enabled: true,
-      },
-    })
+      // Toggle mic back on
+      await this.sendData({
+        command: "toggle_mic",
+        params: {
+          enabled: true,
+        },
+      })
   }
 
   async sendSetPreferredMic(mic: string) {
