@@ -893,12 +893,14 @@ void protobuf_process_display_text(const mentraos_ble_DisplayText *display_text)
 	       color_rgb565, display_text->font_code, display_text->size);
 	
 	// *** LVGL INTEGRATION: Display text on dummy display ***
-	if (lvgl_is_display_ready()) {
-		lvgl_display_protobuf_text(display_text->text, color_rgb565, 
-		                          display_text->x, display_text->y, display_text->size);
-	} else {
-		printk("⚠️ LVGL: Display not ready\n");
-	}
+	// Temporarily disabled for hardware testing
+	// if (lvgl_is_display_ready()) {
+	//	lvgl_display_protobuf_text(display_text->text, color_rgb565, 
+	//	                          display_text->x, display_text->y, display_text->size);
+	// } else {
+	//	printk("⚠️ LVGL: Display not ready\n");
+	// }
+	printk("✅ LVGL: Text message logged (LVGL temporarily disabled for HLS12VGA testing)\n");
 	
 	LOG_INF("=== END DISPLAY TEXT MESSAGE ===");
 }

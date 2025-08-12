@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../../../../Work/Mentra/Carl/k901_nrf5340/K901_NRF5340"
+		}
+	],
+	"settings": {
+		"platformio-ide.autoOpenPlatformIOIniFile": false,
+		"platformio-ide.disablePIOHomeStartup": true
+	}
+}

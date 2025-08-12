@@ -17,7 +17,7 @@ zephyr_library_sources(hls12vga.c)
 # )
 
 # Point to the application's BspLog directory
-set(BSP_LOG_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../../src/BspLog)
+set(BSP_LOG_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../../../src/BspLog)
 if(EXISTS ${BSP_LOG_DIR}/bsp_log.h)
     zephyr_library_include_directories(${BSP_LOG_DIR})
 else()

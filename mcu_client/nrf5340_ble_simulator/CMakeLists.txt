@@ -5,8 +5,8 @@
 
 cmake_minimum_required(VERSION 3.20.0)
 
-# Note: custom driver module registration disabled for dummy display testing
-# set(ZEPHYR_EXTRA_MODULES ${CMAKE_CURRENT_SOURCE_DIR}/custom_driver_module)
+# Note: custom driver module registration enabled for HLS12VGA integration
+set(ZEPHYR_EXTRA_MODULES ${CMAKE_CURRENT_SOURCE_DIR}/custom_driver_module)
 
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(nrf5340_ble_simulator)
@@ -24,6 +24,7 @@ target_sources(app PRIVATE
     src/lvgl_demo.c
     src/BspLog/bsp_log.c
     src/mos_components/mos_sysport/src/bal_os.c
+    src/mos_components/mos_lvgl_display/src/mos_lvgl_display.c
 )
 
 # Add protobuf sources when available
@@ -38,4 +39,6 @@ target_include_directories(app PRIVATE
     src
     src/BspLog
     src/mos_components/mos_sysport/include
+    src/mos_components/mos_lvgl_display/include
+    custom_driver_module/drivers
 )

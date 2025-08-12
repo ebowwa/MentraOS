@@ -16,6 +16,7 @@
 
 #include <zephyr/device.h>
 #include <zephyr/devicetree.h>
+#include <zephyr/drivers/display.h>
 #include <soc.h>
 
 #include <zephyr/bluetooth/bluetooth.h>
@@ -26,7 +27,8 @@
 #include "mentra_ble_service.h"
 #include "protobuf_handler.h"
 #include "bsp_log.h"
-// #include "mos_lvgl_display.h"  // Disabled for brightness testing
+#include "mos_lvgl_display.h"  // Working LVGL display integration
+#include "display/lcd/hls12vga.h"  // Working HLS12VGA driver
 
 #include <dk_buttons_and_leds.h>
 
@@ -739,9 +741,42 @@ int main(void)
 		return 0;
 	}
 
-	// Initialize LVGL display system (disabled for brightness testing)
-	// LOG_INF("Initializing LVGL display system...");
-	// lvgl_dispaly_thread();
+        // Initialize LVGL display system with working driver implementation
+        LOG_INF("Initializing LVGL display system...");
+        
+        // Add direct HLS12VGA test from main thread
+        LOG_INF("🖥️ Testing HLS12VGA display from main thread...");
+        const struct device *test_disp = DEVICE_DT_GET(DT_CHOSEN(zephyr_display));
+        if (device_is_ready(test_disp)) {
+            LOG_INF("✅ HLS12VGA device ready in main: %s", test_disp->name);
+            
+            // Try to turn off blanking
+            int ret = display_blanking_off(test_disp);
+            LOG_INF("📺 Display blanking off result: %d", ret);
+            
+            // Try a simple write operation
+            uint8_t test_data[8] = {0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00};
+            struct display_buffer_descriptor desc = {
+                .buf_size = 8,
+                .width = 4,
+                .height = 1,
+                .pitch = 4,
+            };
+            
+            ret = display_write(test_disp, 0, 0, &desc, test_data);
+            LOG_INF("🎨 Display write result: %d", ret);
+            
+            if (ret == 0) {
+                LOG_INF("🎉 SUCCESS: HLS12VGA write operation completed!");
+            } else {
+                LOG_ERR("❌ FAILED: HLS12VGA write operation failed: %d", ret);
+            }
+        } else {
+            LOG_ERR("❌ HLS12VGA device not ready in main");
+        }
+        
+        // The LVGL demo thread is already defined in lvgl_demo.c - no need to call it here
+        LOG_INF("LVGL demo thread will start automatically");
 
 	k_work_init(&adv_work, adv_work_handler);
 	advertising_start();

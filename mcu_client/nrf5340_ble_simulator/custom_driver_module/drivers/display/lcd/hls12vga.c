@@ -71,9 +71,9 @@ static int write_reg_side(const struct device *dev,
 		.buffers = &buf,
 		.count = 1,
 	};
-	gpio_pin_set_dt(cs, 0);
+	gpio_pin_set_dt(cs, 0);  // CS active (LOW) - select device
 	int err = spi_write_dt(&cfg->spi, &tx_set);
-	gpio_pin_set_dt(cs, 1);
+	gpio_pin_set_dt(cs, 1);  // CS inactive (HIGH) - deselect device
 
 	if (err)
 	{
@@ -168,23 +168,29 @@ static int hls12vga_transmit_all(const struct device *dev, const uint8_t *data, 
 	/* 执行SPI传输（带重试机制）; Execute SPI transmission (with retry mechanism) */
 	for (int i = 0; i <= retries; i++)
 	{
-		gpio_pin_set_dt(&cfg->right_cs, 1);
-		gpio_pin_set_dt(&cfg->left_cs, 0);
+		/* Send to left side */
+		gpio_pin_set_dt(&cfg->left_cs, 0);   // Select left CS (active LOW)
+		gpio_pin_set_dt(&cfg->right_cs, 1);  // Deselect right CS (inactive HIGH)
 		err = spi_write_dt(&cfg->spi, &tx);
-		gpio_pin_set_dt(&cfg->left_cs, 1);
-		if (err == 0)
+		gpio_pin_set_dt(&cfg->left_cs, 1);   // Deselect left CS (inactive HIGH)
+		if (err != 0)
 		{
-			// return 0; /* 成功; Success */
+			k_msleep(1); /* 短暂延迟; Short delay */
+			BSP_LOGI(TAG, "SPI write to left failed (attempt %d/%d): %d", i + 1, retries + 1, err);
+			continue;
 		}
-		gpio_pin_set_dt(&cfg->right_cs, 0);
+
+		/* Send to right side */
+		gpio_pin_set_dt(&cfg->right_cs, 0);  // Select right CS (active LOW)
+		gpio_pin_set_dt(&cfg->left_cs, 1);   // Deselect left CS (inactive HIGH)
 		err = spi_write_dt(&cfg->spi, &tx);
-		gpio_pin_set_dt(&cfg->right_cs, 1);
+		gpio_pin_set_dt(&cfg->right_cs, 1);  // Deselect right CS (inactive HIGH)
 		if (err == 0)
 		{
 			return 0; /* 成功; Success */
 		}
 		k_msleep(1); /* 短暂延迟; Short delay */
-		BSP_LOGI(TAG, "SPI write failed (attempt %d/%d): %d", i + 1, retries + 1, err);
+		BSP_LOGI(TAG, "SPI write to right failed (attempt %d/%d): %d", i + 1, retries + 1, err);
 	}
 	return err;
 }
@@ -239,9 +245,15 @@ static int hls12vga_write(const struct device *dev,
 	const uint16_t height = desc->height;
 	const uint16_t pitch = desc->pitch;
 	int ret = 0;
+	
+	BSP_LOGI(TAG, "🎨 hls12vga_write called: pos(%d,%d) size(%dx%d) pitch(%d)", 
+		x, y, width, height, pitch);
+	
 	// if (x != 0 || pitch != cfg->screen_width || width != cfg->screen_width || height > MAX_LINES_PER_WRITE)
 	if (y + height > cfg->screen_height)
 	{
+		BSP_LOGE(TAG, "❌ Write bounds check failed: y(%d) + height(%d) > screen_height(%d)", 
+			y, height, cfg->screen_height);
 		return -ENOTSUP;
 	}
 
@@ -529,7 +541,7 @@ static int hls12vga_init(const struct device *dev)
 		BSP_LOGE(TAG, "vcom display failed! (%d)", ret);
 		return ret;
 	}
-	ret = gpio_pin_set_dt(&cfg->vcom, 0);
+	ret = gpio_pin_set_dt(&cfg->vcom, 1);  // Enable VCOM (HIGH)
 	if (ret < 0)
 	{
 		BSP_LOGE(TAG, "vcom Enable display failed! (%d)", ret);
@@ -542,7 +554,7 @@ static int hls12vga_init(const struct device *dev)
 		BSP_LOGE(TAG, "v1_8 display failed! (%d)", ret);
 		return ret;
 	}
-	ret = gpio_pin_set_dt(&cfg->v1_8, 0);
+	ret = gpio_pin_set_dt(&cfg->v1_8, 1);  // Enable 1.8V power supply
 	if (ret < 0)
 	{
 		BSP_LOGE(TAG, "v1_8 Enable display failed! (%d)", ret);
@@ -555,7 +567,7 @@ static int hls12vga_init(const struct device *dev)
 		BSP_LOGE(TAG, "v0_9 display failed! (%d)", ret);
 		return ret;
 	}
-	ret = gpio_pin_set_dt(&cfg->v0_9, 0);
+	ret = gpio_pin_set_dt(&cfg->v0_9, 1);  // Enable 0.9V power supply
 	if (ret < 0)
 	{
 		BSP_LOGE(TAG, "v0_9 Enable display failed! (%d)", ret);
@@ -563,6 +575,21 @@ static int hls12vga_init(const struct device *dev)
 	}
 	hls12vga_init_sem_give();
 	data->initialized = true;
+	
+	// Simple blinking test - turn display on/off to verify basic functionality
+	BSP_LOGI(TAG, "🔧 Starting simple blinking test (500ms on/off)...");
+	
+	for (int i = 0; i < 6; i++) {  // 3 full blink cycles
+		BSP_LOGI(TAG, "💡 Blink %d: Display ON", i/2 + 1);
+		hls12vga_clear_screen(true);  // Turn on
+		k_msleep(500);  // 500ms on
+		
+		BSP_LOGI(TAG, "💡 Blink %d: Display OFF", i/2 + 1);
+		hls12vga_clear_screen(false); // Turn off
+		k_msleep(500);  // 500ms off
+	}
+	
+	BSP_LOGI(TAG, "🔧 Blinking test completed - leaving display OFF");
 
 	BSP_LOGI(TAG, "Display initialized");
 	return 0;

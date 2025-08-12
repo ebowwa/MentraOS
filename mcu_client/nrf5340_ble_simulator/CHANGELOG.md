@@ -2,6 +2,42 @@
 
 All notable changes to the nRF5340 DK BLE Glasses Protobuf Simulator will be documented in this file.
 
+## [2.0.0] - 2025-08-12
+
+### 🎉 MAJOR MILESTONE - HLS12VGA Projector Successfully Running on nRF5340DK
+
+#### Added
+- **HLS12VGA MicroLED Projector Integration**
+  - ✅ Successfully ported complete HLS12VGA driver from peripheral_uart_next project
+  - ✅ Implemented semaphore-based initialization system (K_SEM_DEFINE)
+  - ✅ Added MOS LVGL display thread architecture with proper threading
+  - ✅ Configured SPI3 communication with corrected CS timing (P0.28/P0.29 active-low)
+  - ✅ Implemented power management for VCOM (P0.07), V1.8 (P0.06), V0.9 (P0.05) rails
+  - ✅ Added BSP logging system integration for comprehensive debugging
+
+#### Fixed
+- **Critical Hardware Issues Resolved**
+  - 🔧 Fixed VCOM enable pin configuration (HIGH for display operation)
+  - 🔧 Corrected SPI CS timing logic for proper active-low operation  
+  - 🔧 Resolved power rail initialization sequence (all enables set to HIGH)
+  - 🔧 Fixed pixel format from RGB565 to MONO01 for monochrome display
+  - 🔧 Corrected color inversion (0x00=visible, 0xFF=invisible on bright background)
+
+#### Verified
+- **Display Functionality Confirmed**
+  - 📺 Projector powers on and displays full-screen brightness during initialization
+  - 📺 Blinking test pattern working (500ms on/off cycles)
+  - 📺 SPI communication active and functional via logic analyzer
+  - 📺 Line-by-line refresh visible (expected behavior for SPI-based display)
+  - 📺 Proper device tree recognition and driver binding
+
+#### Technical Details
+- **Driver Architecture**: Complete 618-line implementation with semaphore coordination
+- **Display Resolution**: 640×480 monochrome (PIXEL_FORMAT_MONO01)
+- **SPI Configuration**: 3-byte protocol with dual CS support
+- **Power Sequence**: VCOM/V1.8/V0.9 enable → Reset → SPI communication
+- **Threading**: MOS LVGL display thread with 4KB stack, priority 5
+
 ## [1.9.0] - 2025-08-11
 
 ### Added

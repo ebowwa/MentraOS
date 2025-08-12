@@ -1,6 +1,7 @@
 / {
     chosen {
         zephyr,display = &hls12vga;
+        nordic-nus-uart = &uart0;
     };
 };
 
@@ -20,12 +21,23 @@
             low-power-enable;
         };
     };
+    
+    pwm1_default: pwm1_default {
+        group1 {
+            psels = <NRF_PSEL(PWM_OUT0, 0, 13)>;  /* P0.13 */
+        };
+    };
+    pwm1_sleep: pwm1_sleep {
+        group1 {
+            psels = <NRF_PSEL(PWM_OUT0, 0, 13)>;
+            low-power-enable;
+        };
+    };
 };
 
 &spi3 {
     compatible = "nordic,nrf-spim";
     status = "okay";
-    spi-max-frequency = <32000000>;
     pinctrl-0 = <&spi3_default>;
     pinctrl-1 = <&spi3_sleep>;
     pinctrl-names = "default", "sleep";
@@ -36,9 +48,9 @@
         status = "okay";
         spi-max-frequency = <32000000>;
 
-        /* New CS pins away from QSPI lines */
-        left_cs-gpios  = <&gpio1 0 GPIO_ACTIVE_HIGH>;  /* P1.00 */
-        right_cs-gpios = <&gpio1 2 GPIO_ACTIVE_HIGH>;  /* P1.02 */
+        /* Working pinout from peripheral_uart_next (CS pins are ACTIVE_HIGH) */
+        left_cs-gpios  = <&gpio0 28 GPIO_ACTIVE_HIGH>;  /* P0.28 */
+        right_cs-gpios = <&gpio0 29 GPIO_ACTIVE_HIGH>;  /* P0.29 */
 
         /* Power enables and reset */
         v0_9-gpios     = <&gpio0 5 GPIO_ACTIVE_HIGH>;  /* P0.05 */
@@ -49,4 +61,12 @@
         width = <640>;
         height = <480>;
     };
+};
+
+/* Enable PWM1 for protobuf handler */
+&pwm1 {
+    status = "okay";
+    pinctrl-0 = <&pwm1_default>;
+    pinctrl-1 = <&pwm1_sleep>;
+    pinctrl-names = "default", "sleep";
 };
