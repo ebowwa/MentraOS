@@ -135,13 +135,10 @@ export default function SettingsPage() {
 
         <RouteButton label={translate("settings:privacySettings")} onPress={() => push("/settings/privacy")} />
 
-        {/* TODO: Make this show up on iOS once unzipping is fixed there */}
-        {Platform.OS === "android" && (
-          <RouteButton
-            label={translate("settings:transcriptionSettings")}
-            onPress={() => push("/settings/transcription")}
-          />
-        )}
+        <RouteButton
+          label={translate("settings:transcriptionSettings")}
+          onPress={() => push("/settings/transcription")}
+        />
 
         <RouteButton label="Theme Settings" onPress={() => push("/settings/theme")} />
 

@@ -18,53 +18,22 @@ import {spacing} from "@/theme"
 
 export default function DeveloperSettingsScreen() {
   const {status} = useCoreStatus()
-  const [isBypassVADForDebuggingEnabled, setIsBypassVADForDebuggingEnabled] = useState(
-    status.core_info.bypass_vad_for_debugging,
-  )
+  const {theme} = useAppTheme()
+  const {goBack, push} = useNavigationHistory()
+  const {replace} = useNavigationHistory()
+
   const [isBypassAudioEncodingForDebuggingEnabled, setIsBypassAudioEncodingForDebuggingEnabled] = useState(
     status.core_info.bypass_audio_encoding_for_debugging,
   )
-  const [isTestFlightOrDev, setIsTestFlightOrDev] = useState<boolean>(false)
-
-  const {theme} = useAppTheme()
-  const {goBack, push} = useNavigationHistory()
-  // State for custom URL management
   const [customUrlInput, setCustomUrlInput] = useState("")
   const [savedCustomUrl, setSavedCustomUrl] = useState<string | null>(null)
-  const [isSavingUrl, setIsSavingUrl] = useState(false) // Add loading state
+  const [isSavingUrl, setIsSavingUrl] = useState(false)
   const [reconnectOnAppForeground, setReconnectOnAppForeground] = useState(true)
   const [showNewUi, setShowNewUi] = useState(false)
-  const {replace} = useNavigationHistory()
 
   // Triple-tap detection for Asia East button
   const [asiaButtonTapCount, setAsiaButtonTapCount] = useState(0)
   const [asiaButtonLastTapTime, setAsiaButtonLastTapTime] = useState(0)
-
-  // Load saved URL on mount
-  useEffect(() => {
-    const loadSettings = async () => {
-      const url = await loadSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL, null)
-      setSavedCustomUrl(url)
-      setCustomUrlInput(url || "")
-
-      const reconnectOnAppForeground = await loadSetting(SETTINGS_KEYS.RECONNECT_ON_APP_FOREGROUND, true)
-      setReconnectOnAppForeground(reconnectOnAppForeground)
-
-      const newUiSetting = await loadSetting(SETTINGS_KEYS.NEW_UI, false)
-      setShowNewUi(newUiSetting)
-    }
-    loadSettings()
-  }, [])
-
-  useEffect(() => {
-    setIsBypassVADForDebuggingEnabled(status.core_info.bypass_vad_for_debugging)
-  }, [status.core_info.bypass_vad_for_debugging])
-
-  const toggleBypassVadForDebugging = async () => {
-    const newSetting = !isBypassVADForDebuggingEnabled
-    await coreCommunicator.sendToggleBypassVadForDebugging(newSetting)
-    setIsBypassVADForDebuggingEnabled(newSetting)
-  }
 
   const toggleReconnectOnAppForeground = async () => {
     const newSetting = !reconnectOnAppForeground
@@ -201,6 +170,22 @@ export default function DeveloperSettingsScreen() {
     ios_backgroundColor: theme.colors.switchTrackOff,
   }
 
+  // Load saved URL on mount
+  useEffect(() => {
+    const loadSettings = async () => {
+      const url = await loadSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL, null)
+      setSavedCustomUrl(url)
+      setCustomUrlInput(url || "")
+
+      const reconnectOnAppForeground = await loadSetting(SETTINGS_KEYS.RECONNECT_ON_APP_FOREGROUND, true)
+      setReconnectOnAppForeground(reconnectOnAppForeground)
+
+      const newUiSetting = await loadSetting(SETTINGS_KEYS.NEW_UI, false)
+      setShowNewUi(newUiSetting)
+    }
+    loadSettings()
+  }, [])
+
   return (
     <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}}>
       <Header title="Developer Settings" leftIcon="caretLeft" onLeftPress={() => goBack()} />
@@ -224,15 +209,6 @@ export default function DeveloperSettingsScreen() {
       <Spacer height={theme.spacing.md} />
 
       <ScrollView>
-        <ToggleSetting
-          label={translate("settings:bypassVAD")}
-          subtitle={translate("settings:bypassVADSubtitle")}
-          value={isBypassVADForDebuggingEnabled}
-          onValueChange={toggleBypassVadForDebugging}
-        />
-
-        <Spacer height={theme.spacing.md} />
-
         <ToggleSetting
           label={translate("settings:reconnectOnAppForeground")}
           subtitle={translate("settings:reconnectOnAppForegroundSubtitle")}
