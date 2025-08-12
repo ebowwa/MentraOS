@@ -531,9 +531,7 @@ export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps)
             <MaterialCommunityIcons name="wifi-off" size={20} color={theme.colors.text} />
             <View style={themed($warningTextContainer)}>
               <Text style={themed($warningTitle)}>{getStatusMessage()}</Text>
-              <Text style={themed($warningMessage)}>
-                {downloadedPhotos.length > 0 ? "Showing synced photos only" : "Cannot connect to glasses"}
-              </Text>
+              <Text style={themed($warningMessage)}>Showing synced photos only</Text>
             </View>
             <TouchableOpacity
               style={themed($infoButton)}

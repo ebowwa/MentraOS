@@ -4,11 +4,12 @@
  */
 
 import React, {useState, useEffect} from "react"
-import {View, Image, Text, ActivityIndicator} from "react-native"
+import {View, Image, Text, ActivityIndicator, Platform} from "react-native"
 import {ViewStyle, ImageStyle, TextStyle} from "react-native"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {ThemedStyle} from "@/theme"
 import {PhotoInfo} from "../../types"
+import RNFS from "react-native-fs"
 
 interface PhotoImageProps {
   photo: PhotoInfo
@@ -29,6 +30,8 @@ export function PhotoImage({photo, style, showPlaceholder = true}: PhotoImagePro
   const imageUrl = (() => {
     if (photo.is_video) {
       if (photo.thumbnailPath) {
+        // Log the thumbnail path for debugging iOS issues
+        console.log("[PhotoImage] Using video thumbnail path:", photo.thumbnailPath)
         return photo.thumbnailPath
       }
       if (photo.thumbnail_data) {
@@ -38,12 +41,44 @@ export function PhotoImage({photo, style, showPlaceholder = true}: PhotoImagePro
           : `data:image/jpeg;base64,${photo.thumbnail_data}`
       }
     }
+    // Log the URL for debugging iOS issues
+    if (photo.url.startsWith("file://")) {
+      console.log("[PhotoImage] Using local file URL:", photo.url)
+    }
     return photo.url
   })()
 
   useEffect(() => {
-    // Check if this is an AVIF file
-    const checkIfAvif = async () => {
+    // Check if this is an AVIF file and verify file exists for local files
+    const checkFileAndFormat = async () => {
+      // For local files, verify they exist
+      if (imageUrl.startsWith("file://")) {
+        const filePath = imageUrl.replace("file://", "")
+        try {
+          const exists = await RNFS.exists(filePath)
+          if (!exists) {
+            console.error("[PhotoImage] Local file does not exist:", filePath)
+            setHasError(true)
+            setIsLoading(false)
+            return
+          }
+
+          // On iOS, check if we need to handle the file path differently
+          if (Platform.OS === "ios") {
+            console.log("[PhotoImage] iOS file path check:", {
+              originalUrl: imageUrl,
+              filePath: filePath,
+              exists: exists,
+            })
+          }
+        } catch (error) {
+          console.error("[PhotoImage] Error checking file existence:", error)
+          setHasError(true)
+          setIsLoading(false)
+          return
+        }
+      }
+
       // Check by mime type
       if (photo.mime_type === "image/avif") {
         setIsAvif(true)
@@ -75,14 +110,20 @@ export function PhotoImage({photo, style, showPlaceholder = true}: PhotoImagePro
       setIsLoading(false)
     }
 
-    checkIfAvif()
+    checkFileAndFormat()
   }, [photo, imageUrl])
 
   const handleLoadEnd = () => {
     setIsLoading(false)
   }
 
-  const handleError = () => {
+  const handleError = (error: any) => {
+    console.error("[PhotoImage] Error loading image:", {
+      name: photo.name,
+      url: imageUrl,
+      isVideo: photo.is_video,
+      error: error?.nativeEvent?.error || error,
+    })
     setHasError(true)
     setIsLoading(false)
     // Might be AVIF if regular loading failed
@@ -114,6 +155,15 @@ export function PhotoImage({photo, style, showPlaceholder = true}: PhotoImagePro
         <Text style={themed($placeholderSubtext)}>Failed to load</Text>
       </View>
     )
+  }
+
+  // For debugging, log the final URL being used
+  if (imageUrl.startsWith("file://")) {
+    console.log("[PhotoImage] Final image URL:", {
+      platform: Platform.OS,
+      url: imageUrl,
+      name: photo.name,
+    })
   }
 
   return (
