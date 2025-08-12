@@ -8,6 +8,7 @@ import {ThemedStyle} from "@/theme"
 import {translate} from "@/i18n"
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons"
 import EmptyAppsView from "@/components/home/EmptyAppsView"
+import {TreeIcon} from "assets/icons/component/TreeIcon"
 
 interface AppModel {
   name: string
@@ -117,7 +118,13 @@ export const AppsGridViewRoot: React.FC<AppsGridViewProps> = ({
         activeOpacity={0.7}>
         <View style={themed($appContainer)}>
           <AppIcon app={item} isForegroundApp={isForeground} style={themed($appIcon)} />
-          {isActive && <View style={themed($activeIndicator)} />}
+          {/* {isActive && <View style={themed($activeIndicator)} />} */}
+          {isForeground && (
+            <View style={themed($foregroundIndicator)}>
+              {/* <MaterialCommunityIcons name="circle" size={12} color={theme.colors.text} /> */}
+              <TreeIcon size={theme.spacing.md} color={theme.colors.text} />
+            </View>
+          )}
         </View>
         <Text text={item.name} style={themed($appName)} numberOfLines={2} ellipsizeMode="tail" />
       </TouchableOpacity>
@@ -238,14 +245,28 @@ const $appIcon: ThemedStyle<ViewStyle> = ({spacing}) => ({
   overflow: "hidden",
 })
 
-const $activeIndicator: ThemedStyle<ViewStyle> = ({colors}) => ({
+const $activeIndicator: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   position: "absolute",
-  //bottom: 4,
-  right: 4,
-  width: 12,
-  height: 12,
-  borderRadius: 6,
+  left: 0,
+  top: 0,
+  width: spacing.md,
+  height: spacing.md,
+  borderRadius: spacing.md,
   backgroundColor: colors.success,
+  borderWidth: 2,
+  borderColor: colors.background,
+})
+
+const $foregroundIndicator: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
+  position: "absolute",
+  left: -spacing.xxs,
+  bottom: 0,
+  width: spacing.lg,
+  height: spacing.lg,
+  justifyContent: "center",
+  alignItems: "center",
+  borderRadius: spacing.md,
+  backgroundColor: colors.palette.primary400,
   borderWidth: 2,
   borderColor: colors.background,
 })
