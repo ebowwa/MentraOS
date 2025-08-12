@@ -452,12 +452,20 @@ export class CoreCommunicator extends EventEmitter {
     })
   }
 
-  async sendConnectWearable(modelName: string, deviceName: string = "") {
+  async sendConnectWearable(modelName: string, deviceName: string = "", deviceAddress: string) {
+    console.log(
+      "sendConnectWearable modelName:",
+      modelName,
+      " deviceName",
+      deviceName,
+      " deviceAddress " + deviceAddress,
+    )
     return await this.sendData({
       command: "connect_wearable",
       params: {
         model_name: modelName,
         device_name: deviceName,
+        device_address: deviceAddress,
       },
     })
   }
@@ -836,6 +844,27 @@ export class CoreCommunicator extends EventEmitter {
         success: response.success,
         error: response.error,
         duration: response.duration,
+      },
+    })
+  }
+
+  async sendDisplayText(text: string, x: number, y: number, size: number) {
+    return await this.sendData({
+      command: "display_text",
+      params: {
+        text: text,
+        x: x,
+        y: y,
+        size: size,
+      },
+    })
+  }
+
+  async sendDisplayImage(localImageName: string) {
+    return await this.sendData({
+      command: "display_image",
+      params: {
+        localImageName: localImageName,
       },
     })
   }
