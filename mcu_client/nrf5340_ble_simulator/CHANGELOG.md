@@ -2,6 +2,19 @@
 
 All notable changes to the nRF5340 DK BLE Glasses Protobuf Simulator will be documented in this file.
 
+## [2.4.1] - 2025-08-12
+
+### 🔧 CODE QUALITY - Function Name Typo Correction
+
+#### Fixed
+- **Function Name Spelling Correction**
+  - ✅ Fixed: `lvgl_dispaly_thread()` → `lvgl_display_thread()` 
+  - ✅ Updated: Header declaration in `mos_lvgl_display.h`
+  - ✅ Updated: Implementation in `mos_lvgl_display.c`
+  - ✅ Updated: Function calls in `main.c` and `display_manager.c`
+  - ✅ Build: Successful compilation maintaining 585KB FLASH usage
+  - ✅ Quality: Code now cleaner than peripheral_uart_next reference
+
 ## [2.4.0] - 2025-08-12
 
 ### 🔤 FONT ENHANCEMENT - Maximum Size Text Display
