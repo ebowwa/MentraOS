@@ -330,6 +330,9 @@ const en = {
       button: "Let's try this again",
     },
   },
+  errors: {
+    invalidEmail: "Invalid email address.",
+  },
   navigation: {
     home: "Home",
     glasses: "Glasses",

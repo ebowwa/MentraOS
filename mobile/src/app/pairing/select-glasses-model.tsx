@@ -47,9 +47,11 @@ export default function SelectGlassesModelScreen() {
           // Android:
           {modelName: "Simulated Glasses", key: "Simulated Glasses"},
           {modelName: "Even Realities G1", key: "evenrealities_g1"},
-          {modelName: "Mentra Live", key: "mentra_live"},
           {modelName: "Mentra Mach1", key: "mentra_mach1"},
           {modelName: "Vuzix Z100", key: "vuzix-z100"},
+          {modelName: "Mentra Live", key: "mentra_live"},
+          {modelName: "Mentra Nex", key: "mentra_nex"},
+          {modelName: "Audio Wearable", key: "Audio Wearable"},
         ]
 
   // Check onboarding status when screen comes into focus

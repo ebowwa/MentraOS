@@ -29,7 +29,13 @@ export const getModelSpecificTips = (model: string) => {
         "Try resetting your Bluetooth connection",
       ]
     case "Mentra Live":
-      return ["Make sure your Mentra Live is fully charged", "Try restarting your glasses"]
+      return [
+        "Make sure your Mentra Live is fully charged",
+        "Check that your Mentra Live is in pairing mode",
+        "Ensure no other app is currently connected to your glasses",
+        "Try restarting your glasses",
+        "Check that your phone's Bluetooth is enabled",
+      ]
     default:
       return [
         "Make sure your glasses are charged and turned on",

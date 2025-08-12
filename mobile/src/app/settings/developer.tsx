@@ -191,6 +191,11 @@ export default function DeveloperSettingsScreen() {
     ios_backgroundColor: theme.colors.switchTrackOff,
   }
 
+  // Triple-tap handler go to Mentra Nex Settings Page
+  const handleMentraNexSettingsPagePress = () => {
+    push("/settings/mentra-nex-developer")
+  }
+
   return (
     <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}}>
       <Header title="Developer Settings" leftIcon="caretLeft" onLeftPress={() => goBack()} />
@@ -324,6 +329,31 @@ export default function DeveloperSettingsScreen() {
         </View>
 
         {isTestFlightOrDev && <Spacer height={theme.spacing.md} />}
+
+        <Spacer height={theme.spacing.md} />
+
+        <View
+          style={[
+            styles.settingContainer,
+            {
+              backgroundColor: theme.colors.background,
+              borderWidth: theme.spacing.xxxs,
+              borderColor: theme.colors.border,
+            },
+          ]}>
+          <View style={styles.settingTextContainer}>
+            <Text style={[styles.label, {color: theme.colors.text}]}>Mentra Nex BLE Test </Text>
+            <Text style={[styles.value, {color: theme.colors.textDim}]}>Go to Mentra Nex BLE Test Page</Text>
+            <Spacer height={theme.spacing.md} />
+            <PillButton
+              text="Mentra Nex BLE Test"
+              variant="icon"
+              onPress={handleMentraNexSettingsPagePress}
+              buttonStyle={styles.button}
+            />
+            <Spacer height={theme.spacing.md} />
+          </View>
+        </View>
 
         {/* Bypass Audio Encoding for Debugging Toggle
         <View style={styles.settingItem}>
