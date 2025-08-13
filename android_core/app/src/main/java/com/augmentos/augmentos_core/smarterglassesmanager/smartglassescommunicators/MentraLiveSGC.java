@@ -45,6 +45,7 @@ import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.PairF
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.K900ProtocolUtils;
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.BlePhotoUploadService;
 import com.augmentos.smartglassesmanager.cpp.L3cCpp;
+import com.augmentos.augmentos_core.audio.PCMAudioPlayer;
 
 import org.greenrobot.eventbus.EventBus;
 import org.json.JSONException;
@@ -269,6 +270,8 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     private byte lastReceivedLc3Sequence = -1;
     private byte lc3SequenceNumber = 0;
     private long lc3DecoderPtr = 0;
+    private final PCMAudioPlayer pcmAudioPlayer = new PCMAudioPlayer();
+    private boolean audioPlaybackEnabled = true; // Default to enabled
 
     // Periodic test message for ACK testing
     private static final int TEST_MESSAGE_INTERVAL_MS = 5000; // 5 seconds
@@ -2575,6 +2578,11 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             L3cCpp.freeDecoder(lc3DecoderPtr);
             lc3DecoderPtr = 0;
         }
+        
+        // Clean up PCM audio player
+        if (pcmAudioPlayer != null) {
+            pcmAudioPlayer.release();
+        }
     }
 
     // Display methods - all stub implementations since Mentra Live has no display
@@ -2725,6 +2733,113 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         } catch (JSONException e) {
             Log.e(TAG, "Error creating enable_hfp_audio_server command", e);
         }
+    }
+    
+    /**
+     * Enable or disable audio playback through phone speakers when receiving LC3 audio from glasses.
+     * @param enable True to enable audio playback, false to disable.
+     */
+    public void enableAudioPlayback(boolean enable) {
+        audioPlaybackEnabled = enable;
+        if (enable) {
+            Log.d(TAG, "Audio playback enabled - LC3 audio will be played through phone speakers");
+        } else {
+            Log.d(TAG, "Audio playback disabled - LC3 audio will not be played through phone speakers");
+            // Stop any currently playing audio
+            if (pcmAudioPlayer != null) {
+                pcmAudioPlayer.stop();
+            }
+        }
+    }
+
+    /**
+     * Check if audio playback is currently enabled.
+     * @return True if audio playback is enabled, false otherwise.
+     */
+    public boolean isAudioPlaybackEnabled() {
+        return audioPlaybackEnabled;
+    }
+    
+    /**
+     * Set the volume for audio playback.
+     * @param volume Volume level from 0.0f (muted) to 1.0f (full volume).
+     */
+    public void setAudioPlaybackVolume(float volume) {
+        if (pcmAudioPlayer != null) {
+            // Clamp volume to valid range
+            float clampedVolume = Math.max(0.0f, Math.min(1.0f, volume));
+            pcmAudioPlayer.setVolume(clampedVolume);
+            Log.d(TAG, "Audio playback volume set to: " + clampedVolume);
+        }
+    }
+    
+    /**
+     * Get the current audio playback volume.
+     * @return Current volume level from 0.0f to 1.0f.
+     */
+    public float getAudioPlaybackVolume() {
+        // Note: PCMAudioPlayer doesn't have a getVolume method, so we'll return a default
+        // In a real implementation, you might want to track this separately
+        return 1.0f; // Default to full volume
+    }
+    
+    /**
+     * Stop any currently playing audio immediately.
+     */
+    public void stopAudioPlayback() {
+        if (pcmAudioPlayer != null) {
+            pcmAudioPlayer.stop();
+            Log.d(TAG, "Audio playback stopped");
+        }
+    }
+    
+    /**
+     * Check if audio is currently playing.
+     * @return True if audio is currently playing, false otherwise.
+     */
+    public boolean isAudioPlaying() {
+        return pcmAudioPlayer != null && pcmAudioPlayer.isPlaying();
+    }
+    
+    /**
+     * Pause audio playback.
+     */
+    public void pauseAudioPlayback() {
+        if (pcmAudioPlayer != null) {
+            pcmAudioPlayer.pause();
+            Log.d(TAG, "Audio playback paused");
+        }
+    }
+    
+    /**
+     * Resume audio playback.
+     */
+    public void resumeAudioPlayback() {
+        if (pcmAudioPlayer != null) {
+            pcmAudioPlayer.resume();
+            Log.d(TAG, "Audio playback resumed");
+        }
+    }
+    
+    /**
+     * Get audio playback statistics and status information.
+     * @return JSONObject containing audio playback information.
+     */
+    public JSONObject getAudioPlaybackStatus() {
+        JSONObject status = new JSONObject();
+        try {
+            status.put("enabled", audioPlaybackEnabled);
+            status.put("playing", isAudioPlaying());
+            status.put("volume", getAudioPlaybackVolume());
+            status.put("initialized", pcmAudioPlayer != null && pcmAudioPlayer.isInitialized());
+            if (pcmAudioPlayer != null) {
+                status.put("playbackPosition", pcmAudioPlayer.getPlaybackHeadPosition());
+                status.put("audioSessionId", pcmAudioPlayer.getAudioSessionId());
+            }
+        } catch (JSONException e) {
+            Log.e(TAG, "Error creating audio playback status JSON", e);
+        }
+        return status;
     }
 
     public void requestReadyK900(){
@@ -3387,6 +3502,14 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             if (lc3DecoderPtr != 0 && audioProcessingCallback != null) {
                 byte[] pcmData = L3cCpp.decodeLC3(lc3DecoderPtr, lc3Data);
                 if (pcmData != null && pcmData.length > 0) {
+                    // Play the decoded PCM audio through speakers if enabled
+                    if (audioPlaybackEnabled) {
+                        pcmAudioPlayer.playPCMData(pcmData);
+                        Log.d(TAG, "Playing LC3 decoded PCM audio through speakers: " + pcmData.length + " bytes");
+                    } else {
+                        Log.d(TAG, "Audio playback disabled - skipping speaker output for " + pcmData.length + " bytes of PCM data");
+                    }
+                    
                     audioProcessingCallback.onAudioDataAvailable(pcmData);
                 } else {
                     Log.w(TAG, "LC3 decoding produced null or empty PCM data.");
