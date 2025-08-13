@@ -237,6 +237,15 @@ export class CoreCommunicator extends EventEmitter {
 
     try {
       const data = JSON.parse(jsonString)
+
+      // Log if this is a WiFi scan result
+      if ("wifi_scan_results" in data) {
+        console.log("📡 ========= RAW MESSAGE FROM CORE =========")
+        console.log("📡 Raw JSON string:", jsonString)
+        console.log("📡 Parsed data:", data)
+        console.log("📡 ========= END RAW MESSAGE =========")
+      }
+
       this.isConnected = true
       this.emit("dataReceived", data)
       this.parseDataFromCore(data)
@@ -291,10 +300,15 @@ export class CoreCommunicator extends EventEmitter {
           deviceModel: data.device_model,
         })
       } else if ("wifi_scan_results" in data) {
-        console.log("Received WiFi scan results from Core")
+        console.log("🔍 ========= WIFI SCAN RESULTS RECEIVED =========")
+        console.log("🔍 Received WiFi scan results from Core:", data)
+        console.log("🔍 Networks array:", data.wifi_scan_results)
+        console.log("🔍 Networks count:", data.wifi_scan_results?.length || 0)
         GlobalEventEmitter.emit("WIFI_SCAN_RESULTS", {
           networks: data.wifi_scan_results,
         })
+        console.log("🔍 Emitted WIFI_SCAN_RESULTS event to GlobalEventEmitter")
+        console.log("🔍 ========= END WIFI SCAN RESULTS =========")
       }
 
       if (!("type" in data)) {

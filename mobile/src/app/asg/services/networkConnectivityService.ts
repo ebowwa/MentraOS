@@ -94,7 +94,7 @@ class NetworkConnectivityService {
       prevStatus.phoneSSID !== this.currentStatus.phoneSSID
     ) {
       console.log("[NetworkConnectivity] Network changed, checking gallery connectivity")
-      this.checkGalleryConnectivity()
+      this.checkGalleryConnectivity() // Disabled - only check when gallery is open
     }
   }
 
@@ -152,7 +152,7 @@ class NetworkConnectivityService {
       prevStatus.glassesSSID !== this.currentStatus.glassesSSID
     ) {
       console.log("[NetworkConnectivity] Glasses status changed, checking gallery connectivity")
-      this.checkGalleryConnectivity()
+      this.checkGalleryConnectivity() // Disabled - only check when gallery is open
     }
   }
 
