@@ -13,9 +13,10 @@ import Toast from "react-native-toast-message"
 import {View} from "react-native"
 import {Text} from "@/components/ignite"
 import * as Sentry from "@sentry/react-native"
+import Constants from "expo-constants"
 
 Sentry.init({
-  dsn: "https://bb44ccdf95a57a8c58e49dc8fe858e0e@o4509837829079040.ingest.us.sentry.io/4509837865254912",
+  dsn: Constants.expoConfig?.extra?.SENTRY_DSN,
 
   // Adds more context data to events (IP address, cookies, user, etc.)
   // For more information, visit: https://docs.sentry.io/platforms/react-native/data-management/data-collected/
