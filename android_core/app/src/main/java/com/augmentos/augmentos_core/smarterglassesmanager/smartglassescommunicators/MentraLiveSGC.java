@@ -294,6 +294,19 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         }
     }
 
+    // LC3 Audio Logging and Saving
+    private static final boolean LC3_LOGGING_ENABLED = true;
+    private static final boolean LC3_SAVING_ENABLED = true;
+    private static final String LC3_LOG_DIR = "lc3_audio_logs";
+    private FileOutputStream lc3AudioFileStream;
+    private String currentLc3FileName;
+    private int totalLc3PacketsReceived = 0;
+    private int totalLc3BytesReceived = 0;
+    private long firstLc3PacketTime = 0;
+    private long lastLc3PacketTime = 0;
+    private final SimpleDateFormat lc3TimestampFormat = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss", Locale.US);
+    private final SimpleDateFormat lc3PacketTimestampFormat = new SimpleDateFormat("HH:mm:ss.SSS", Locale.US);
+
     public MentraLiveSGC(Context context, SmartGlassesDevice smartGlassesDevice, PublishSubject<JSONObject> dataObservable) {
         super();
         this.context = context;
@@ -661,6 +674,9 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                     // Attempt reconnection
                     handleReconnection();
 
+                    // Close LC3 audio logging
+                    closeLc3Logging();
+                    
                     //free LC3 decoder
                     if (lc3DecoderPtr != 0) {
                         L3cCpp.freeDecoder(lc3DecoderPtr);
@@ -1702,6 +1718,9 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 // Send user settings to glasses
                 sendUserSettings();
 
+                // Initialize LC3 audio logging now that glasses are ready
+                initializeLc3Logging();
+                
                 // Finally, mark the connection as fully established
                 Log.d(TAG, "✅ Glasses connection is now fully established!");
                 connectionEvent(SmartGlassesConnectionState.CONNECTED);
@@ -3483,6 +3502,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         // Check for audio packet header
         if (data[0] == (byte) 0xF1) {
             byte sequenceNumber = data[1];
+            long receiveTime = System.currentTimeMillis();
             
             // Basic sequence validation
             if (lastReceivedLc3Sequence != -1 && (byte)(lastReceivedLc3Sequence + 1) != sequenceNumber) {
@@ -3491,6 +3511,11 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             lastReceivedLc3Sequence = sequenceNumber;
 
             byte[] lc3Data = Arrays.copyOfRange(data, 2, data.length);
+            
+            // Enhanced LC3 packet logging and saving
+            logLc3PacketDetails(lc3Data, sequenceNumber, receiveTime);
+            saveLc3AudioPacket(lc3Data, sequenceNumber);
+            
             Log.d(TAG, "Received LC3 audio packet seq=" + sequenceNumber + ", size=" + lc3Data.length);
 
             // Forward raw LC3 data if a callback is registered
@@ -3545,4 +3570,252 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         // We use queueData to handle rate-limiting and sending
         queueData(packet);
     }
+
+    /**
+     * Initialize LC3 audio logging and file saving
+     */
+    private void initializeLc3Logging() {
+        if (!LC3_LOGGING_ENABLED) {
+            return;
+        }
+
+        try {
+            // Create logs directory
+            File logsDir = new File(context.getExternalFilesDir(null), LC3_LOG_DIR);
+            Log.d(TAG, "🎯 Attempting to create LC3 logs directory: " + logsDir.getAbsolutePath());
+            
+            if (!logsDir.exists()) {
+                boolean created = logsDir.mkdirs();
+                if (created) {
+                    Log.i(TAG, "✅ Successfully created LC3 logs directory: " + logsDir.getAbsolutePath());
+                } else {
+                    Log.e(TAG, "❌ Failed to create LC3 logs directory: " + logsDir.getAbsolutePath());
+                    // Try to get more info about why it failed
+                    File parentDir = logsDir.getParentFile();
+                    if (parentDir != null) {
+                        Log.e(TAG, "📁 Parent directory exists: " + parentDir.exists() + ", writable: " + parentDir.canWrite());
+                    }
+                    return; // Exit early if directory creation fails
+                }
+            } else {
+                Log.i(TAG, "✅ LC3 logs directory already exists: " + logsDir.getAbsolutePath());
+            }
+
+            // Create new audio file with timestamp
+            String timestamp = lc3TimestampFormat.format(new Date());
+            currentLc3FileName = "lc3_audio_" + timestamp + ".raw";
+            File audioFile = new File(logsDir, currentLc3FileName);
+            
+            lc3AudioFileStream = new FileOutputStream(audioFile);
+            
+            // Reset statistics
+            totalLc3PacketsReceived = 0;
+            totalLc3BytesReceived = 0;
+            firstLc3PacketTime = System.currentTimeMillis();
+            lastLc3PacketTime = firstLc3PacketTime;
+            
+            Log.i(TAG, "🎵 LC3 Audio logging initialized - File: " + currentLc3FileName);
+            Log.i(TAG, "📁 LC3 logs directory: " + logsDir.getAbsolutePath());
+            
+        } catch (Exception e) {
+            Log.e(TAG, "❌ Failed to initialize LC3 audio logging", e);
+        }
+    }
+
+    /**
+     * Save LC3 audio packet to file
+     */
+    private void saveLc3AudioPacket(byte[] lc3Data, byte sequenceNumber) {
+        Log.d(TAG, "🎵 Saving LC3 audio packet to file: " + lc3Data.length + " bytes");
+        if (!LC3_SAVING_ENABLED || lc3AudioFileStream == null) {
+            Log.d(TAG, "🎵 LC3 audio saving disabled or file stream not initialized");
+            return;
+        }
+        
+        // Log the current file path for debugging
+        if (currentLc3FileName != null) {
+            File logsDir = new File(context.getExternalFilesDir(null), LC3_LOG_DIR);
+            String fullPath = new File(logsDir, currentLc3FileName).getAbsolutePath();
+            Log.i(TAG, "📁 LC3 Audio file path #####: " + fullPath);
+        } else {
+            Log.i(TAG, "📁 LC3 Audio file path for saving failed %%%%%%%: " + currentLc3FileName);
+        }
+
+
+        try {
+            // Write packet header: [timestamp][sequence][length][data]
+            long timestamp = System.currentTimeMillis();
+            String timeStr = lc3PacketTimestampFormat.format(new Date(timestamp));
+            
+            // Write timestamp and metadata
+            String header = String.format("[%s] SEQ:%d LEN:%d\n", timeStr, sequenceNumber, lc3Data.length);
+            lc3AudioFileStream.write(header.getBytes(StandardCharsets.UTF_8));
+            
+            // Write raw LC3 data
+            lc3AudioFileStream.write(lc3Data);
+            lc3AudioFileStream.write('\n'); // Newline separator
+            
+            lc3AudioFileStream.flush();
+            
+        } catch (Exception e) {
+            Log.e(TAG, "❌ Failed to save LC3 audio packet", e);
+        }
+    }
+
+    /**
+     * Log detailed LC3 packet information
+     */
+    private void logLc3PacketDetails(byte[] data, byte sequenceNumber, long receiveTime) {
+        if (!LC3_LOGGING_ENABLED) {
+            return;
+        }
+
+        // Update statistics
+        totalLc3PacketsReceived++;
+        totalLc3BytesReceived += data.length;
+        lastLc3PacketTime = receiveTime;
+        
+        if (firstLc3PacketTime == 0) {
+            firstLc3PacketTime = receiveTime;
+        }
+
+        // Calculate packet timing
+        long timeSinceFirst = receiveTime - firstLc3PacketTime;
+        long timeSinceLast = receiveTime - lastLc3PacketTime;
+        
+        // Log detailed packet information
+        Log.i(TAG, String.format("🎵 LC3 PACKET #%d RECEIVED:", sequenceNumber));
+        Log.i(TAG, String.format("   📊 Size: %d bytes", data.length));
+        Log.i(TAG, String.format("   ⏰ Time: %s", lc3PacketTimestampFormat.format(new Date(receiveTime))));
+        Log.i(TAG, String.format("   ⏱️  Since first: +%dms", timeSinceFirst));
+        Log.i(TAG, String.format("   ⏱️  Since last: +%dms", timeSinceLast));
+        Log.i(TAG, String.format("   📈 Total packets: %d", totalLc3PacketsReceived));
+        Log.i(TAG, String.format("   📈 Total bytes: %d", totalLc3BytesReceived));
+        
+        // Log first few bytes for debugging
+        if (data.length > 0) {
+            StringBuilder hexDump = new StringBuilder("   🔍 First 16 bytes: ");
+            for (int i = 0; i < Math.min(16, data.length); i++) {
+                hexDump.append(String.format("%02X ", data[i] & 0xFF));
+            }
+            Log.d(TAG, hexDump.toString());
+        }
+        
+        // Log packet statistics every 10 packets
+        if (totalLc3PacketsReceived % 10 == 0) {
+            long duration = lastLc3PacketTime - firstLc3PacketTime;
+            double packetsPerSecond = duration > 0 ? (totalLc3PacketsReceived * 1000.0) / duration : 0;
+            double bytesPerSecond = duration > 0 ? (totalLc3BytesReceived * 1000.0) / duration : 0;
+            
+            Log.i(TAG, String.format("📊 LC3 STATS UPDATE:"));
+            Log.i(TAG, String.format("   🎯 Packets/sec: %.2f", packetsPerSecond));
+            Log.i(TAG, String.format("   🎯 Bytes/sec: %.2f", bytesPerSecond));
+            Log.i(TAG, String.format("   🎯 Average packet size: %.1f bytes", 
+                totalLc3PacketsReceived > 0 ? (double) totalLc3BytesReceived / totalLc3PacketsReceived : 0));
+        }
+    }
+
+    /**
+     * Close LC3 audio logging and save final statistics
+     */
+    private void closeLc3Logging() {
+        if (lc3AudioFileStream != null) {
+            try {
+                // Write final statistics to file
+                if (totalLc3PacketsReceived > 0) {
+                    long duration = lastLc3PacketTime - firstLc3PacketTime;
+                    double packetsPerSecond = duration > 0 ? (totalLc3PacketsReceived * 1000.0) / duration : 0;
+                    double bytesPerSecond = duration > 0 ? (totalLc3BytesReceived * 1000.0) / duration : 0;
+                    
+                    String stats = String.format("\n=== LC3 AUDIO SESSION STATISTICS ===\n");
+                    stats += String.format("Total packets received: %d\n", totalLc3PacketsReceived);
+                    stats += String.format("Total bytes received: %d\n", totalLc3BytesReceived);
+                    stats += String.format("Session duration: %d ms\n", duration);
+                    stats += String.format("Average packets/sec: %.2f\n", packetsPerSecond);
+                    stats += String.format("Average bytes/sec: %.2f\n", bytesPerSecond);
+                    stats += String.format("Average packet size: %.1f bytes\n", 
+                        (double) totalLc3BytesReceived / totalLc3PacketsReceived);
+                    stats += String.format("Session ended: %s\n", 
+                        lc3TimestampFormat.format(new Date()));
+                    stats += "==========================================\n";
+                    
+                    lc3AudioFileStream.write(stats.getBytes(StandardCharsets.UTF_8));
+                }
+                
+                lc3AudioFileStream.close();
+                lc3AudioFileStream = null;
+                
+                Log.i(TAG, "🎵 LC3 Audio logging closed - Final stats written to: " + currentLc3FileName);
+                Log.i(TAG, String.format("📊 Final Statistics: %d packets, %d bytes, %.2f packets/sec", 
+                    totalLc3PacketsReceived, totalLc3BytesReceived,
+                    totalLc3PacketsReceived > 0 ? (totalLc3PacketsReceived * 1000.0) / (lastLc3PacketTime - firstLc3PacketTime) : 0));
+                
+            } catch (Exception e) {
+                Log.e(TAG, "❌ Error closing LC3 audio logging", e);
+            }
+        }
+    }
+
+    /**
+     * Public method to manually initialize LC3 logging (for testing/debugging)
+     */
+    public void manualInitializeLc3Logging() {
+        Log.i(TAG, "🔧 Manual LC3 logging initialization requested");
+        initializeLc3Logging();
+    }
+
+    /**
+     * Get current LC3 logging statistics
+     */
+    public String getLc3LoggingStats() {
+        if (totalLc3PacketsReceived == 0) {
+            return "No LC3 packets received yet";
+        }
+        
+        long duration = lastLc3PacketTime - firstLc3PacketTime;
+        double packetsPerSecond = duration > 0 ? (totalLc3PacketsReceived * 1000.0) / duration : 0;
+        double bytesPerSecond = duration > 0 ? (totalLc3BytesReceived * 1000.0) / duration : 0;
+        
+        return String.format("LC3 Stats: %d packets, %d bytes, %.2f packets/sec, %.2f bytes/sec, avg size: %.1f bytes",
+            totalLc3PacketsReceived, totalLc3BytesReceived, packetsPerSecond, bytesPerSecond,
+            (double) totalLc3BytesReceived / totalLc3PacketsReceived);
+    }
+
+    /**
+     * Get the current LC3 log file path
+     */
+    public String getCurrentLc3LogFilePath() {
+        if (currentLc3FileName == null) {
+            return "No LC3 log file active";
+        }
+        File logsDir = new File(context.getExternalFilesDir(null), LC3_LOG_DIR);
+                 return new File(logsDir, currentLc3FileName).getAbsolutePath();
+     }
+ 
+     /**
+      * List all LC3 log files with their sizes
+      */
+     public String listAllLc3LogFiles() {
+         try {
+             File logsDir = new File(context.getExternalFilesDir(null), LC3_LOG_DIR);
+             if (!logsDir.exists()) {
+                 return "LC3 logs directory does not exist";
+             }
+             
+             File[] files = logsDir.listFiles((dir, name) -> name.endsWith(".raw"));
+             if (files == null || files.length == 0) {
+                 return "No LC3 log files found";
+             }
+             
+             StringBuilder result = new StringBuilder("LC3 Log Files:\n");
+             for (File file : files) {
+                 long sizeKB = file.length() / 1024;
+                 result.append(String.format("  📄 %s (%d KB)\n", file.getName(), sizeKB));
+             }
+             return result.toString();
+             
+         } catch (Exception e) {
+             return "Error listing LC3 log files: " + e.getMessage();
+         }
+     }
 }
