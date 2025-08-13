@@ -305,7 +305,7 @@ public class PhoneMicrophoneManager {
         Log.d(TAG, "Executing mic enable - User prefers phone: " + userPrefersPhoneMic + 
                    ", Glasses have mic: " + glassesHaveMic);
         
-        if (!userPrefersPhoneMic && glassesHaveMic) {
+        if (true || glassesHaveMic) { // HACK: FORCE GLASSES MIC - DISABLE PHONE MIC
             // User prefers glasses mic and glasses have one
             Log.d(TAG, "User prefers glasses mic - switching to glasses mic");
             switchToGlassesMic();
@@ -322,61 +322,61 @@ public class PhoneMicrophoneManager {
      */
     public void switchToScoMode() {
         // Always execute on main thread to prevent Handler threading issues
-        if (Looper.myLooper() != Looper.getMainLooper()) {
-            mainHandler.post(this::switchToScoMode);
-            return;
-        }
+        // if (Looper.myLooper() != Looper.getMainLooper()) {
+        //     mainHandler.post(this::switchToScoMode);
+        //     return;
+        // }
         
-        if (isPhoneCallActive || isExternalAudioActive) {
-            // Can't use SCO during conflicts
-            Log.d(TAG, "Cannot use SCO mode due to active conflicts, falling back to normal mode");
-            switchToNormalMode();
-            return;
-        }
+        // if (isPhoneCallActive || isExternalAudioActive) {
+        //     // Can't use SCO during conflicts
+        //     Log.d(TAG, "Cannot use SCO mode due to active conflicts, falling back to normal mode");
+        //     switchToNormalMode();
+        //     return;
+        // }
         
-        // Clean up existing instance
-        cleanUpCurrentMic();
+        // // Clean up existing instance
+        // cleanUpCurrentMic();
         
-        // If we were using glasses mic, disable it
-        if (currentStatus == MicStatus.GLASSES_MIC && glassesRep != null && glassesRep.smartGlassesCommunicator != null) {
-            Log.d(TAG, "Disabling glasses microphone before switching to phone mic");
-            try {
-                glassesRep.smartGlassesCommunicator.changeSmartGlassesMicrophoneState(false);
-            } catch (Exception e) {
-                Log.e(TAG, "Error disabling glasses mic", e);
-            }
-        }
+        // // If we were using glasses mic, disable it
+        // if (currentStatus == MicStatus.GLASSES_MIC && glassesRep != null && glassesRep.smartGlassesCommunicator != null) {
+        //     Log.d(TAG, "Disabling glasses microphone before switching to phone mic");
+        //     try {
+        //         glassesRep.smartGlassesCommunicator.changeSmartGlassesMicrophoneState(false);
+        //     } catch (Exception e) {
+        //         Log.e(TAG, "Error disabling glasses mic", e);
+        //     }
+        // }
         
-        // Start microphone service for phone mic hardware access
-        startMicrophoneService();
+        // // Start microphone service for phone mic hardware access
+        // startMicrophoneService();
         
-        // Create new microphone with SCO enabled
-        try {
-            // Request audio focus BEFORE creating the AudioRecord
-            if (!requestAudioFocus()) {
-                Log.e(TAG, "Failed to get audio focus - another app may be using microphone");
-                // On Samsung, this might mean Gboard is already trying to use the mic
-                pauseRecording();
-                return;
-            }
+        // // Create new microphone with SCO enabled
+        // try {
+        //     // Request audio focus BEFORE creating the AudioRecord
+        //     if (!requestAudioFocus()) {
+        //         Log.e(TAG, "Failed to get audio focus - another app may be using microphone");
+        //         // On Samsung, this might mean Gboard is already trying to use the mic
+        //         pauseRecording();
+        //         return;
+        //     }
             
-            Log.d(TAG, "Switching to SCO mode");
-            // Create new microphone with SCO enabled - this should forward audio to the speech recognition system
-            micInstance = new MicrophoneLocalAndBluetooth(context, true, audioChunkCallback, this);
-            Log.d(TAG, "✅ Phone SCO mic initialized - audio should now flow to speech recognition");
-            currentStatus = MicStatus.SCO_MODE;
-            lastModeChangeTime = System.currentTimeMillis(); // Track mode change time
-            notifyStatusChange();
-            scoRetries = 0; // Reset retry counter on success
+        //     Log.d(TAG, "Switching to SCO mode");
+        //     // Create new microphone with SCO enabled - this should forward audio to the speech recognition system
+        //     micInstance = new MicrophoneLocalAndBluetooth(context, true, audioChunkCallback, this);
+        //     Log.d(TAG, "✅ Phone SCO mic initialized - audio should now flow to speech recognition");
+        //     currentStatus = MicStatus.SCO_MODE;
+        //     lastModeChangeTime = System.currentTimeMillis(); // Track mode change time
+        //     notifyStatusChange();
+        //     scoRetries = 0; // Reset retry counter on success
             
-            // Start Samsung monitoring if needed
-            startSamsungAudioMonitoring();
-        } catch (Exception e) {
-            Log.e(TAG, "Failed to start SCO mode", e);
-            abandonAudioFocus(); // Release focus on failure
-            stopMicrophoneService(); // Stop service if mic creation failed
-            attemptFallback();
-        }
+        //     // Start Samsung monitoring if needed
+        //     startSamsungAudioMonitoring();
+        // } catch (Exception e) {
+        //     Log.e(TAG, "Failed to start SCO mode", e);
+        //     abandonAudioFocus(); // Release focus on failure
+        //     stopMicrophoneService(); // Stop service if mic creation failed
+        //     attemptFallback();
+        // }
     }
     
     /**

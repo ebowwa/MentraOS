@@ -299,6 +299,9 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
             vadBuffer.offer(sample);
         }
 
+        Log.d(TAG, "Sending PCM audio chunk to backend");
+
+
         if (sendRawPCMToBackend) {
             //BUFFER STUFF
             // Add to rolling buffer regardless of VAD state

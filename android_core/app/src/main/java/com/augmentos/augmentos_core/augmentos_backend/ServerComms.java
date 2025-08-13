@@ -208,6 +208,10 @@ public class ServerComms {
         // Clone only once to avoid unnecessary copies
         byte[] copiedData = audioData.clone();
 
+        Log.d(TAG, "Sending audio chunk to backend");
+        Log.d(TAG, "Audio chunk size: " + audioData.length);
+        Log.d(TAG, "Server URL: " + getServerUrl());
+
         // Add to live queue - if full, just drop (we prioritize newest audio)
         if (!liveAudioQueue.offer(copiedData)) {
             liveAudioQueue.poll(); // Remove oldest

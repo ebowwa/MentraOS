@@ -646,8 +646,8 @@ public class MicrophoneLocalAndBluetooth {
                         // Encode → Decode → Write result as PCM
                         byte[] lc3Data = L3cCpp.encodeLC3(encoderPtr, frameBytes);
 
-                        for (int j = 0; j < lc3Data.length; j += 20) {
-                            byte[] oneFrame = Arrays.copyOfRange(lc3Data, j, j + 20);
+                        for (int j = 0; j < lc3Data.length; j += 40) {
+                            byte[] oneFrame = Arrays.copyOfRange(lc3Data, j, j + 40);
                             byte[] pcm = L3cCpp.decodeLC3(decoderPtr, oneFrame);
 //                            writeToPcmFile(pcm);
 //                            writeToPcmFile(oneFrame);

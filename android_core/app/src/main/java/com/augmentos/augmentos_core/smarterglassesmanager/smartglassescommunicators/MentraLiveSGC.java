@@ -3357,7 +3357,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
      * Packet Structure:
      * Byte 0: 0xF1 (Audio data identifier)
      * Byte 1: Sequence number (0-255)
-     * Bytes 2-201: LC3 encoded audio data (200 bytes)
+     * Bytes 2-401: LC3 encoded audio data (400 bytes - 10 frames × 40 bytes per frame)
      */
     private void processLc3AudioPacket(byte[] data) {
         if (data == null || data.length < 2) {
@@ -3400,7 +3400,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
 
     /**
      * Sends an LC3 audio packet to the glasses.
-     * @param lc3Data The raw LC3 encoded audio data (e.g., 200 bytes).
+     * @param lc3Data The raw LC3 encoded audio data (e.g., 400 bytes - 10 frames × 40 bytes per frame).
      */
     public void sendLc3AudioPacket(byte[] lc3Data) {
         if (lc3WriteCharacteristic == null) {
