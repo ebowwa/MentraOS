@@ -1,5 +1,5 @@
 import {useEffect, useState} from "react"
-import {Stack, SplashScreen, Slot} from "expo-router"
+import {Stack, SplashScreen} from "expo-router"
 
 import {useFonts} from "@expo-google-fonts/space-grotesk"
 import {colors, customFontsToLoad} from "@/theme"
@@ -9,10 +9,32 @@ import {useThemeProvider} from "@/utils/useAppTheme"
 import {AllProviders} from "@/utils/AllProviders"
 import BackgroundGradient from "@/components/misc/BackgroundGradient"
 import MessageBanner from "@/components/misc/MessageBanner"
-import Toast, {SuccessToast, BaseToast, ErrorToast} from "react-native-toast-message"
+import Toast from "react-native-toast-message"
 import {View} from "react-native"
 import {Text} from "@/components/ignite"
-import {Ionicons} from "@expo/vector-icons" // Replace with your project's icon import if different
+import * as Sentry from "@sentry/react-native"
+
+Sentry.init({
+  dsn: "https://bb44ccdf95a57a8c58e49dc8fe858e0e@o4509837829079040.ingest.us.sentry.io/4509837865254912",
+
+  // Adds more context data to events (IP address, cookies, user, etc.)
+  // For more information, visit: https://docs.sentry.io/platforms/react-native/data-management/data-collected/
+  sendDefaultPii: true,
+
+  // Configure Session Replay
+  replaysSessionSampleRate: 0.1,
+  replaysOnErrorSampleRate: 1,
+  integrations: [Sentry.mobileReplayIntegration()],
+
+  // uncomment the line below to enable Spotlight (https://spotlightjs.com)
+  // spotlight: __DEV__,
+
+  beforeSend(event, hint) {
+    // console.log("Sentry.beforeSend", event, hint)
+    console.log("Sentry.beforeSend", hint)
+    return event
+  },
+})
 
 SplashScreen.preventAutoHideAsync()
 
@@ -23,9 +45,7 @@ if (__DEV__) {
   require("src/devtools/ReactotronConfig.ts")
 }
 
-export {ErrorBoundary} from "@/components/ErrorBoundary/ErrorBoundary"
-
-export default function Root() {
+function Root() {
   const [fontsLoaded, fontError] = useFonts(customFontsToLoad)
   const [isI18nInitialized, setIsI18nInitialized] = useState(false)
   const {themeScheme, setThemeContextOverride, ThemeProvider} = useThemeProvider()
@@ -117,3 +137,5 @@ export default function Root() {
     </ThemeProvider>
   )
 }
+
+export default Sentry.wrap(Root)
