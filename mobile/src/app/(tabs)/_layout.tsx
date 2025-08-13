@@ -158,7 +158,7 @@ export default function Layout() {
           // ),
           tabBarIcon: ({focused, color}) => {
             return (
-              <TouchableOpacity onLongPress={handleHomeLongPress}>
+              <TouchableOpacity onLongPress={handleHomeLongPress} onPress={() => replace("/home")}>
                 <HomeIcon size={28} color={focused ? iconFocusedColor : theme.colors.tabBarIconInactive} />
               </TouchableOpacity>
             )
