@@ -1094,20 +1094,10 @@ struct ViewState {
         }
     }
 
-    @objc
-    func crashTest() {
-        let nilValue: String? = nil
-        _ = nilValue! // Force unwrap nil - immediate crash
-    }
-
     private func enableContextualDashboard(_ enabled: Bool) {
         contextualDashboard = enabled
         handleRequestStatus() // to update the UI
         saveSettings()
-
-        if !enabled {
-            crashTest()
-        }
     }
 
     private func setPreferredMic(_ mic: String) {
