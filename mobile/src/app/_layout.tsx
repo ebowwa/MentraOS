@@ -30,11 +30,11 @@ Sentry.init({
   // uncomment the line below to enable Spotlight (https://spotlightjs.com)
   // spotlight: __DEV__,
 
-  beforeSend(event, hint) {
-    // console.log("Sentry.beforeSend", event, hint)
-    console.log("Sentry.beforeSend", hint)
-    return event
-  },
+  // beforeSend(event, hint) {
+  //   // console.log("Sentry.beforeSend", event, hint)
+  //   console.log("Sentry.beforeSend", hint)
+  //   return event
+  // },
 })
 
 SplashScreen.preventAutoHideAsync()
