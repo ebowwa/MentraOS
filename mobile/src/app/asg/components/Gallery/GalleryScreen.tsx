@@ -25,7 +25,7 @@ import {PhotoInfo} from "../../types"
 import {asgCameraApi} from "../../services/asgCameraApi"
 import {localStorageService} from "../../services/localStorageService"
 import {PhotoImage} from "./PhotoImage"
-import {GallerySkeleton} from "./GallerySkeleton"
+//import {GallerySkeleton} from "./GallerySkeleton"
 import {MediaViewer} from "./MediaViewer"
 import showAlert from "@/utils/AlertUtils"
 import {translate} from "@/i18n"
@@ -33,11 +33,7 @@ import {shareFile} from "@/utils/FileUtils"
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons"
 import {useNetworkConnectivity} from "@/contexts/NetworkConnectivityProvider"
 
-interface GalleryScreenProps {
-  deviceModel?: string
-}
-
-export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps) {
+export function GalleryScreen() {
   const {status} = useCoreStatus()
   const {goBack} = useNavigationHistory()
   const {theme, themed} = useAppTheme()
@@ -179,7 +175,8 @@ export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps)
       console.log(`[GalleryScreen] Download result:`, downloadResult)
 
       // Get glasses model from status
-      const glassesModel = status.glasses_info?.deviceModelName || status.glasses_info?.glasses_model || undefined
+      console.log(`[GalleryScreen] Status glasses_info:`, status.glasses_info)
+      const glassesModel = status.glasses_info?.model_name || undefined
       console.log(`[GalleryScreen] Using glasses model: ${glassesModel}`)
 
       // Save downloaded files metadata to local storage (files are already saved to filesystem)
@@ -415,19 +412,27 @@ export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps)
 
   // Add to navigation history
   useEffect(() => {
-    // Navigation history is handled automatically by the context
-  }, [])
+    // Cleanup any interval on unmount
+    return () => {
+      if (connectionCheckInterval) {
+        console.log("[GalleryScreen] Component unmounting, clearing interval")
+        clearInterval(connectionCheckInterval)
+      }
+    }
+  }, [connectionCheckInterval])
 
   // Auto-refresh connection check every 5 seconds if not connected
   useEffect(() => {
     // Set initial connection status
     setLastConnectionStatus(isGalleryReachable)
 
+    let interval: NodeJS.Timeout | null = null
+
     // Only set up auto-refresh if gallery is not reachable
     if (!isGalleryReachable) {
       console.log("[GalleryScreen] Starting auto-refresh timer for connection check")
 
-      const interval = setInterval(async () => {
+      interval = setInterval(async () => {
         console.log("[GalleryScreen] Auto-checking connectivity...")
         const status = await checkConnectivity()
 
@@ -444,17 +449,18 @@ export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps)
 
       setConnectionCheckInterval(interval)
     } else {
-      // Clear interval if connection is good
+      // Clear any existing interval if connection is good
       if (connectionCheckInterval) {
         clearInterval(connectionCheckInterval)
         setConnectionCheckInterval(null)
       }
     }
 
-    // Cleanup interval on unmount or when connection changes
+    // Cleanup interval on unmount - using the local interval variable
     return () => {
-      if (connectionCheckInterval) {
-        clearInterval(connectionCheckInterval)
+      if (interval) {
+        console.log("[GalleryScreen] Cleaning up connection check interval")
+        clearInterval(interval)
       }
     }
   }, [isGalleryReachable, checkConnectivity, loadPhotos, loadDownloadedPhotos])
