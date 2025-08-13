@@ -15,7 +15,7 @@ import showAlert from "@/utils/AlertUtils"
 import Toast from "react-native-toast-message"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {SETTINGS_KEYS} from "@/consts"
-import {saveSetting} from "@/utils/SettingsHelper"
+import {loadSetting, saveSetting} from "@/utils/SettingsHelper"
 import {router, usePathname} from "expo-router"
 
 export default function Layout() {
@@ -82,12 +82,19 @@ export default function Layout() {
     }, maxTimeDiff)
   }
 
-  const userIcon = (focused: boolean) => {
-    return (
-      <TouchableOpacity onPress={handleQuickPress}>
-        <UserIcon size={28} color={focused ? iconFocusedColor : theme.colors.tabBarIconInactive} />
-      </TouchableOpacity>
-    )
+  // enable new home ui if you tap and hold
+  const handleHomeLongPress = async () => {
+    replace("/home")
+    const isNewUi = await loadSetting(SETTINGS_KEYS.NEW_UI, false)
+    saveSetting(SETTINGS_KEYS.NEW_UI, !isNewUi)
+    Toast.show({
+      type: "info",
+      text1: isNewUi ? "New UI disabled" : "New UI enabled",
+      text2: "Restart the app for it to take effect",
+      position: "top",
+      topOffset: 80,
+      visibilityTime: 1000,
+    })
   }
 
   return (
@@ -146,9 +153,16 @@ export default function Layout() {
         options={{
           href: "/home",
           headerShown: false,
-          tabBarIcon: ({focused, color}) => (
-            <HomeIcon size={28} color={focused ? iconFocusedColor : theme.colors.tabBarIconInactive} />
-          ),
+          // tabBarIcon: ({focused, color}) => (
+          //   <HomeIcon size={28} color={focused ? iconFocusedColor : theme.colors.tabBarIconInactive} />
+          // ),
+          tabBarIcon: ({focused, color}) => {
+            return (
+              <TouchableOpacity onLongPress={handleHomeLongPress}>
+                <HomeIcon size={28} color={focused ? iconFocusedColor : theme.colors.tabBarIconInactive} />
+              </TouchableOpacity>
+            )
+          },
           tabBarLabel: translate("navigation:home"),
         }}
       />
@@ -190,7 +204,13 @@ export default function Layout() {
         options={{
           href: "/settings",
           headerShown: false,
-          tabBarIcon: ({focused, color}) => userIcon(focused),
+          tabBarIcon: ({focused, color}) => {
+            return (
+              <TouchableOpacity onPress={handleQuickPress}>
+                <UserIcon size={28} color={focused ? iconFocusedColor : theme.colors.tabBarIconInactive} />
+              </TouchableOpacity>
+            )
+          },
           tabBarLabel: translate("navigation:account"),
           // tabBarButton: ({, color}) => userIcon(focused),
         }}
