@@ -214,6 +214,7 @@ const en = {
     powerSavingModeSubtitle2: "TODO",
     newUi: "New UI",
     newUiSubtitle: "Enable the new home screen UI. (Requires restarting the app)",
+    loggingOutMessage: "We're logging you out...",
   },
   profileSettings: {
     title: "Profile Settings",
@@ -324,6 +325,7 @@ const en = {
     stop: "Stop",
     settings: "Settings",
     openWebView: "Open Web View",
+    version: "Version {{number}}",
   },
   welcomeScreen: {
     postscript:
