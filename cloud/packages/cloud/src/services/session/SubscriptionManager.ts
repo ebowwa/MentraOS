@@ -6,17 +6,16 @@ import {
   createTranscriptionStream,
   SubscriptionRequest,
 } from '@mentra/sdk';
-import { logger as rootLogger } from '../logging/pino-logger';
+import { Logger } from 'pino';
 import UserSession from './UserSession';
 import App from '../../models/app.model';
 import { SimplePermissionChecker } from '../permissions/simple-permission-checker';
 import { User, UserI } from '../../models/user.model';
 import { MongoSanitizer } from '../../utils/mongoSanitizer';
 
-const logger = rootLogger.child({ service: 'SubscriptionManager' });
-
 export class SubscriptionManager {
   private readonly userSession: UserSession;
+  private readonly logger: Logger;
 
   // Map of packageName -> Set of subscriptions
   private subscriptions: Map<string, Set<ExtendedStreamType>> = new Map();
@@ -34,7 +33,8 @@ export class SubscriptionManager {
 
   constructor(userSession: UserSession) {
     this.userSession = userSession;
-    logger.info({ userId: userSession.userId }, 'SubscriptionManager initialized');
+    this.logger = userSession.logger.child({ service: 'SubscriptionManager' });
+    this.logger.info({ userId: userSession.userId }, 'SubscriptionManager initialized');
   }
 
   // ===== Public API =====
@@ -46,7 +46,7 @@ export class SubscriptionManager {
   getAppSubscriptions(packageName: string): ExtendedStreamType[] {
     const subs = this.subscriptions.get(packageName);
     const result = subs ? Array.from(subs) : [];
-    logger.debug({ userId: this.userSession.userId, packageName, subscriptions: result }, 'Retrieved app subscriptions');
+    this.logger.debug({ userId: this.userSession.userId, packageName, subscriptions: result }, 'Retrieved app subscriptions');
     return result;
   }
 
@@ -97,7 +97,7 @@ export class SubscriptionManager {
         }
       }
     }
-    logger.info({ userId: this.userSession.userId, settingKey, subscribed }, 'AugmentOS setting subscription results');
+    this.logger.info({ userId: this.userSession.userId, settingKey, subscribed }, 'AugmentOS setting subscription results');
     return subscribed;
   }
 
@@ -146,7 +146,7 @@ export class SubscriptionManager {
 
   cacheCalendarEvent(event: any): void {
     this.calendarEventsCache.push(event);
-    logger.info({ userId: this.userSession.userId, count: this.calendarEventsCache.length }, 'Cached calendar event');
+    this.logger.info({ userId: this.userSession.userId, count: this.calendarEventsCache.length }, 'Cached calendar event');
   }
 
   getAllCalendarEvents(): any[] {
@@ -183,7 +183,7 @@ export class SubscriptionManager {
 
     // Reconnect grace: ignore empty subs right after reconnect
     if (processed.length === 0 && now - lastReconnect <= this.CONNECT_GRACE_MS) {
-      logger.warn(
+      this.logger.warn(
         { userId: this.userSession.userId, packageName },
         'Ignoring empty subscription update within reconnect grace window',
       );
@@ -199,7 +199,7 @@ export class SubscriptionManager {
           processed,
         );
         if (rejected.length > 0) {
-          logger.warn(
+          this.logger.warn(
             { userId: this.userSession.userId, packageName, rejectedCount: rejected.length },
             'Rejected subscriptions due to missing permissions',
           );
@@ -209,14 +209,15 @@ export class SubscriptionManager {
         processed.push(...allowed);
       }
     } catch (error) {
-      logger.error({ error, packageName }, 'Error validating subscriptions; continuing');
+      const logger = this.logger.child({ packageName });
+      logger.error(error, 'Error validating subscriptions; continuing');
     }
 
     // Update in-memory map
     this.subscriptions.set(packageName, new Set(processed));
     this.addHistory(packageName, { timestamp: new Date(), subscriptions: [...processed], action: 'update' });
 
-    logger.info(
+    this.logger.info(
       {
         userId: this.userSession.userId,
         packageName,
@@ -242,7 +243,7 @@ export class SubscriptionManager {
         action: 'remove',
       });
       this.subscriptions.delete(packageName);
-      logger.info(
+      this.logger.info(
         { userId: this.userSession.userId, packageName },
         'Removed in-memory subscriptions for app',
       );
@@ -264,7 +265,8 @@ export class SubscriptionManager {
         return user;
       }
     } catch (error) {
-      logger.error({ error, packageName }, 'Error removing location subscription from DB');
+      const logger = this.logger.child({ packageName });
+      logger.error(error, 'Error removing location subscription from DB');
     }
     return null;
   }
@@ -315,7 +317,8 @@ export class SubscriptionManager {
       await user.save();
       return user;
     } catch (error) {
-      logger.error({ error, packageName }, 'Error persisting location rate');
+      const logger = this.logger.child({ packageName });
+      logger.error(error, 'Error persisting location rate');
       return null;
     }
   }
@@ -356,7 +359,8 @@ export class SubscriptionManager {
         this.userSession.translationManager.ensureStreamsExist(),
       ]);
     } catch (error) {
-      logger.error({ error, userId: this.userSession.userId }, 'Error syncing managers with subscriptions');
+      const logger = this.logger.child({ userId: this.userSession.userId });
+      logger.error(error, 'Error syncing managers with subscriptions');
     }
   }
 }
