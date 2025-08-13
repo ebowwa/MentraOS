@@ -46,8 +46,8 @@ This document outlines the refactoring plan for the Session Service, which is pa
 Example of how to use the subscription service:
 ```typescript
 // Instead of using userSession.subscriptionManager
-const hasMediaSubscriptions = subscriptionService.hasMediaSubscriptions(userSession.sessionId);
-const subscribedApps = subscriptionService.getSubscribedApps(userSession, streamType);
+const hasMediaSubscriptions = userSession.subscriptionManager.hasPCMTranscriptionSubscriptions().hasMedia;
+const subscribedApps = userSession.subscriptionManager.getSubscribedApps(streamType);
 ```
 
 This approach ensures we maintain compatibility with existing code while refactoring.

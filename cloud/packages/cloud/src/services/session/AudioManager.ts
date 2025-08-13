@@ -9,7 +9,7 @@
 import WebSocket from "ws";
 import { StreamType } from "@mentra/sdk";
 import { Logger } from "pino";
-import subscriptionService from "./subscription.service";
+// import subscriptionService from "./subscription.service";
 import { createLC3Service } from "../lc3/lc3.service";
 import { AudioWriter } from "../debug/audio-writer";
 import UserSession from "./UserSession";
@@ -372,8 +372,7 @@ export class AudioManager {
   private relayAudioToApps(audioData: ArrayBuffer): void {
     try {
       // Get subscribers using subscriptionService instead of subscriptionManager
-      const subscribedPackageNames = subscriptionService.getSubscribedApps(
-        this.userSession,
+      const subscribedPackageNames = this.userSession.subscriptionManager.getSubscribedApps(
         StreamType.AUDIO_CHUNK,
       );
 

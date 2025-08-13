@@ -31,7 +31,7 @@ import {
 import { ProviderSelector } from "./ProviderSelector";
 import { AzureTranscriptionProvider } from "./providers/AzureTranscriptionProvider";
 import { SonioxTranscriptionProvider } from "./providers/SonioxTranscriptionProvider";
-import subscriptionService from "../subscription.service";
+// import subscriptionService from "../subscription.service";
 
 export class TranscriptionManager {
   public readonly logger: Logger;
@@ -1736,8 +1736,7 @@ export class TranscriptionManager {
 
       // Get subscribed apps for all target subscriptions
       for (const targetSub of targetSubscriptions) {
-        const subscribedApps = subscriptionService.getSubscribedApps(
-          this.userSession,
+        const subscribedApps = this.userSession.subscriptionManager.getSubscribedApps(
           targetSub,
         );
         subscribedApps.forEach((app) => allSubscribedApps.add(app));

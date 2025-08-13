@@ -29,7 +29,7 @@ import {
 } from "@mentra/sdk";
 import UserSession from "../session/UserSession";
 import { logger as rootLogger } from "../logging/pino-logger";
-import subscriptionService from "../session/subscription.service";
+// import subscriptionService from "../session/subscription.service";
 import { PosthogService } from "../logging/posthog.service";
 import { sessionService } from "../session/session.service";
 import { User } from "../../models/user.model";
@@ -280,10 +280,7 @@ export class GlassesWebSocketService {
             { service: SERVICE_NAME, message },
             "Calendar event received from glasses",
           );
-          subscriptionService.cacheCalendarEvent(
-            userSession.sessionId,
-            message as CalendarEvent,
-          );
+          userSession.subscriptionManager.cacheCalendarEvent(message as CalendarEvent);
           sessionService.relayMessageToApps(userSession, message);
           break;
 
@@ -420,8 +417,7 @@ export class GlassesWebSocketService {
               const notifiedApps = new Set<string>();
               for (const key of changedKeys) {
                 const subscribedApps =
-                  subscriptionService.getSubscribedAppsForAugmentosSetting(
-                    userSession,
+                  userSession.subscriptionManager.getSubscribedAppsForAugmentosSetting(
                     key,
                   );
                 // userSession.logger.info('Subscribed apps for key:', key, subscribedApps);
