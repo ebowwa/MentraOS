@@ -2,6 +2,48 @@
 
 All notable changes to the nRF5340 DK BLE Glasses Protobuf Simulator will be documented in this file.
 
+## [2.6.0] - 2025-08-14
+
+### 🎨 DIRECT HARDWARE ACCESS - True 8-bit Grayscale Test Patterns
+
+#### Added
+- **Direct HLS12VGA Hardware Pattern Generation**
+  - 🎨 Three new direct SPI access pattern functions bypassing LVGL limitations
+  - 🎨 `hls12vga_draw_horizontal_grayscale_pattern()` - 8 horizontal bands with true grayscale levels
+  - 🎨 `hls12vga_draw_vertical_grayscale_pattern()` - 8 vertical bands for display testing
+  - 🎨 `hls12vga_draw_chess_pattern()` - High-contrast checkerboard pattern for alignment
+  - 🎨 True 8-bit grayscale capability: 0x00, 0x24, 0x49, 0x6D, 0x92, 0xB6, 0xDB, 0xFF
+
+#### Enhanced
+- **Button Control Interface**
+  - ⌨️ Button combination system for easy pattern access
+  - ⌨️ Button 3 + 1: Horizontal grayscale pattern (8 bands × 60px height)
+  - ⌨️ Button 3 + 2: Vertical grayscale pattern (8 bands × 80px width)
+  - ⌨️ Button 3 + 4: Chess pattern (8×8 grid, 80×60px squares)
+  - ⌨️ Enhanced logging with pattern execution confirmation
+
+#### Technical Implementation
+- **Direct SPI Access Architecture**
+  - 🔧 Uses same SPI structure as `hls12vga_clear_screen()` for consistency
+  - 🔧 Direct `hls12vga_transmit_all()` and `hls12vga_write_multiple_rows_cmd()` access
+  - 🔧 Memory-efficient batch processing (10-row chunks) for 640×480 display
+  - 🔧 Thread-safe integration via LCD command message queue system
+  - 🔧 Complete error handling and validation for pattern generation
+
+#### Hardware Integration
+- **HLS12VGA MicroLED Projector Support**
+  - 📺 Authentic 8-bit grayscale testing beyond LVGL 1-bit monochrome limitation
+  - 📺 640×480 full resolution pattern generation
+  - 📺 Direct hardware validation for display calibration and testing
+  - 📺 Seamless integration with existing LVGL display module architecture
+
+#### Development Tools
+- **Pattern Generation Functions**
+  - 🛠️ `display_draw_horizontal_grayscale()` - Thread-safe wrapper
+  - 🛠️ `display_draw_vertical_grayscale()` - Thread-safe wrapper  
+  - 🛠️ `display_draw_chess_pattern()` - Thread-safe wrapper
+  - 🛠️ New LCD commands: `LCD_CMD_GRAYSCALE_HORIZONTAL/VERTICAL/CHESS_PATTERN`
+
 ## [2.5.0] - 2025-08-12
 
 ### 📱 PROTOBUF INTEGRATION - Real-Time Text Message Display System

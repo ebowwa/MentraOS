@@ -64,6 +64,15 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 // LVGL pattern cycling button
 #define KEY_LVGL_PATTERN_CYCLE DK_BTN4_MSK  // Button 4: Cycle LVGL test patterns
 
+// **NEW: Direct HLS12VGA grayscale pattern shortcuts (using combinations)**
+// Hold Button 3 + Button 1: Horizontal grayscale
+// Hold Button 3 + Button 2: Vertical grayscale
+// Hold Button 3 + Button 4: Chess pattern
+#define KEY_GRAYSCALE_MODIFIER DK_BTN3_MSK
+#define KEY_HORIZONTAL_GRAYSCALE (DK_BTN3_MSK | DK_BTN1_MSK)
+#define KEY_VERTICAL_GRAYSCALE (DK_BTN3_MSK | DK_BTN2_MSK)
+#define KEY_CHESS_PATTERN (DK_BTN3_MSK | DK_BTN4_MSK)
+
 #define UART_BUF_SIZE 240
 #define UART_WAIT_FOR_BUF_DELAY K_MSEC(50)
 #define UART_WAIT_FOR_RX 50
@@ -670,8 +679,31 @@ void button_changed(uint32_t button_state, uint32_t has_changed)
 		protobuf_toggle_charging_state();
 	}
 
-	// **NEW: LVGL pattern cycling on dedicated Button 4**
-	if (buttons & KEY_LVGL_PATTERN_CYCLE) {
+	// **NEW: Direct HLS12VGA pattern shortcuts (combination presses)**
+	// Check for pattern combinations when Button 3 is held with another button
+	if ((button_state & KEY_HORIZONTAL_GRAYSCALE) == KEY_HORIZONTAL_GRAYSCALE && 
+	    (has_changed & (DK_BTN1_MSK | DK_BTN3_MSK))) {
+		LOG_INF("🎨 Button combo 3+1: Drawing HLS12VGA horizontal grayscale pattern");
+		display_draw_horizontal_grayscale();
+		return; // Don't process other button presses
+	}
+	
+	if ((button_state & KEY_VERTICAL_GRAYSCALE) == KEY_VERTICAL_GRAYSCALE && 
+	    (has_changed & (DK_BTN2_MSK | DK_BTN3_MSK))) {
+		LOG_INF("🎨 Button combo 3+2: Drawing HLS12VGA vertical grayscale pattern");
+		display_draw_vertical_grayscale();
+		return; // Don't process other button presses
+	}
+	
+	if ((button_state & KEY_CHESS_PATTERN) == KEY_CHESS_PATTERN && 
+	    (has_changed & (DK_BTN4_MSK | DK_BTN3_MSK))) {
+		LOG_INF("🎨 Button combo 3+4: Drawing HLS12VGA chess pattern");
+		display_draw_chess_pattern();
+		return; // Don't process other button presses
+	}
+
+	// **ORIGINAL: LVGL pattern cycling on dedicated Button 4 (when not combined)**
+	if (buttons & KEY_LVGL_PATTERN_CYCLE && !(button_state & KEY_GRAYSCALE_MODIFIER)) {
 		LOG_INF("🎨 Button 4 pressed: Cycling LVGL test pattern");
 		display_cycle_pattern();
 	}
@@ -707,7 +739,16 @@ int main(void)
 	LOG_INF("🔋 Battery level control enabled:");
 	LOG_INF("   📌 Button 1: Increase battery level (+5%%)");
 	LOG_INF("   📌 Button 2: Decrease battery level (-5%%)");
-	LOG_INF("   📊 Current battery level: %u%%", protobuf_get_battery_level());
+	LOG_INF("   � Button 3: Toggle charging status");
+	LOG_INF("   �📊 Current battery level: %u%%", protobuf_get_battery_level());
+
+	// **NEW: Log display pattern controls**
+	LOG_INF("🎨 Display pattern controls enabled:");
+	LOG_INF("   📌 Button 4: Cycle LVGL test patterns");
+	LOG_INF("   📌 Button 3+1: HLS12VGA horizontal grayscale (8-bit)");
+	LOG_INF("   📌 Button 3+2: HLS12VGA vertical grayscale (8-bit)");
+	LOG_INF("   📌 Button 3+4: HLS12VGA chess pattern");
+	LOG_INF("   📊 Direct HLS12VGA access bypasses LVGL limitations");
 
 	// Initialize brightness control
 	LOG_INF("💡 LED 3 brightness control enabled:");

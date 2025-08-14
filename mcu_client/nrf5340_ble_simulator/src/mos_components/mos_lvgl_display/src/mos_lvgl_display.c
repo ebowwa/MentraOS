@@ -153,6 +153,25 @@ void display_update_protobuf_text(const char *text_content)
     mos_msgq_send(&display_msgq, &cmd, MOS_OS_WAIT_FOREVER);
 }
 
+// **NEW: Direct HLS12VGA pattern functions - Thread-safe**
+void display_draw_horizontal_grayscale(void)
+{
+    display_cmd_t cmd = {.type = LCD_CMD_GRAYSCALE_HORIZONTAL};
+    mos_msgq_send(&display_msgq, &cmd, MOS_OS_WAIT_FOREVER);
+}
+
+void display_draw_vertical_grayscale(void)
+{
+    display_cmd_t cmd = {.type = LCD_CMD_GRAYSCALE_VERTICAL};
+    mos_msgq_send(&display_msgq, &cmd, MOS_OS_WAIT_FOREVER);
+}
+
+void display_draw_chess_pattern(void)
+{
+    display_cmd_t cmd = {.type = LCD_CMD_CHESS_PATTERN};
+    mos_msgq_send(&display_msgq, &cmd, MOS_OS_WAIT_FOREVER);
+}
+
 void display_send_frame(void *data_ptr)
 {
     // display_cmd_t cmd = {.type = LCD_CMD_DATA, .param = data_ptr};
@@ -699,6 +718,27 @@ void lvgl_dispaly_init(void *p1, void *p2, void *p3)
             lv_obj_set_pos(lbl, cmd.p.text.x, cmd.p.text.y);
         }
         break;
+        case LCD_CMD_GRAYSCALE_HORIZONTAL:
+            /* **NEW: Handle direct HLS12VGA horizontal grayscale pattern** */
+            BSP_LOGI(TAG, "LCD_CMD_GRAYSCALE_HORIZONTAL - Drawing true 8-bit horizontal grayscale");
+            if (hls12vga_draw_horizontal_grayscale_pattern() != 0) {
+                BSP_LOGE(TAG, "Failed to draw horizontal grayscale pattern");
+            }
+            break;
+        case LCD_CMD_GRAYSCALE_VERTICAL:
+            /* **NEW: Handle direct HLS12VGA vertical grayscale pattern** */
+            BSP_LOGI(TAG, "LCD_CMD_GRAYSCALE_VERTICAL - Drawing true 8-bit vertical grayscale");
+            if (hls12vga_draw_vertical_grayscale_pattern() != 0) {
+                BSP_LOGE(TAG, "Failed to draw vertical grayscale pattern");
+            }
+            break;
+        case LCD_CMD_CHESS_PATTERN:
+            /* **NEW: Handle direct HLS12VGA chess pattern** */
+            BSP_LOGI(TAG, "LCD_CMD_CHESS_PATTERN - Drawing chess board pattern");
+            if (hls12vga_draw_chess_pattern() != 0) {
+                BSP_LOGE(TAG, "Failed to draw chess pattern");
+            }
+            break;
         default:
             break;
         }
