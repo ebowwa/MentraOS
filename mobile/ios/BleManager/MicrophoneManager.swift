@@ -274,9 +274,9 @@ class OnboardMicrophoneManager {
                 mode: .voiceChat,
                 options: [.allowBluetoothHFP, .allowBluetoothA2DP]
             )
-          
+
             if #available(iOS 18.2, *) {
-              try audioSession?.setPrefersEchoCancelledInput(true)
+                try audioSession?.setPrefersEchoCancelledInput(true)
             }
 
             // Set preferred input if available
