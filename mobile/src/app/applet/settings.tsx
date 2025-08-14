@@ -517,6 +517,7 @@ export default function AppSettings() {
             options={setting.options}
             defaultValue={setting.defaultValue}
             onValueChange={val => handleSettingChange(setting.key, val)}
+            layout="vertical"
           />
         )
       case "select_with_search":
