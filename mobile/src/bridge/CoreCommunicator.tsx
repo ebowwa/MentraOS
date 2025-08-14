@@ -12,6 +12,7 @@ import BleManager from "react-native-ble-manager"
 import BackendServerComms from "@/backend_comms/BackendServerComms"
 import AudioPlayService, {AudioPlayResponse} from "@/services/AudioPlayService"
 import {translate} from "@/i18n"
+import AugmentOSParser from "@/utils/AugmentOSStatusParser"
 
 const {CoreCommsService, AOSModule} = NativeModules
 const eventEmitter = new NativeEventEmitter(CoreCommsService)
@@ -23,6 +24,11 @@ export class CoreCommunicator extends EventEmitter {
   private reconnectionTimer: NodeJS.Timeout | null = null
   private isConnected: boolean = false
   private lastMessage: string = ""
+
+  // Private constructor to enforce singleton pattern
+  private constructor() {
+    super()
+  }
 
   // Utility methods for checking permissions and device capabilities
   async isBluetoothEnabled(): Promise<boolean> {
@@ -142,11 +148,6 @@ export class CoreCommunicator extends EventEmitter {
 
     console.log("All requirements met")
     return {isReady: true}
-  }
-
-  // Private constructor to enforce singleton pattern
-  private constructor() {
-    super()
   }
 
   /**
@@ -338,7 +339,7 @@ export class CoreCommunicator extends EventEmitter {
       }
     } catch (e) {
       console.error("Error parsing data from Core:", e)
-      GlobalEventEmitter.emit("STATUS_PARSE_ERROR")
+      this.emit("statusUpdateReceived", AugmentOSParser.defaultStatus)
     }
   }
 

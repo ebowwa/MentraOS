@@ -21,15 +21,8 @@ import {OnboardingSpotlight} from "@/components/misc/OnboardingSpotlight"
 import {translate} from "@/i18n"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {loadSetting} from "@/utils/SettingsHelper"
-import {isMentraUser} from "@/utils/isMentraUser"
 import {SETTINGS_KEYS} from "@/consts"
-import {isDeveloperBuildOrTestflight} from "@/utils/buildDetection"
-import {useAuth} from "@/contexts/AuthContext"
 import {AppsCombinedGridView} from "@/components/misc/AppsCombinedGridView"
-
-interface AnimatedSectionProps extends PropsWithChildren {
-  delay?: number
-}
 
 export default function Homepage() {
   const {refreshAppStatus} = useAppStatus()

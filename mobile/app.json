@@ -125,10 +125,24 @@
           },
           "ios": {
             "extraPods": [
-              {"name": "SDWebImage", "modular_headers": true},
-              {"name": "SDWebImageSVGCoder", "modular_headers": true}
+              {
+                "name": "SDWebImage",
+                "modular_headers": true
+              },
+              {
+                "name": "SDWebImageSVGCoder",
+                "modular_headers": true
+              }
             ]
           }
+        }
+      ],
+      [
+        "@sentry/react-native/expo",
+        {
+          "url": "https://sentry.io/",
+          "project": "mentra-os",
+          "organization": "mentra-labs"
         }
       ]
     ],
