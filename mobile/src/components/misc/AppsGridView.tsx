@@ -126,7 +126,12 @@ export const AppsGridViewRoot: React.FC<AppsGridViewProps> = ({
             </View>
           )}
         </View>
-        <Text text={item.name} style={themed($appName)} numberOfLines={2} ellipsizeMode="tail" />
+        <Text
+          text={item.name}
+          style={themed($appName)}
+          numberOfLines={item.name.split(" ").length > 1 ? 2 : 1}
+          // ellipsizeMode=""
+        />
       </TouchableOpacity>
     )
   }
@@ -223,14 +228,14 @@ const $gridContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
 
 const $row: ThemedStyle<ViewStyle> = ({spacing}) => ({
   justifyContent: "space-evenly",
-  // Remove padding since container already has it
 })
 
 const $gridItem: ThemedStyle<ViewStyle> = ({spacing}) => ({
-  // Calculate width more accurately: screen width - container margins - container padding - small buffer
-  width: (SCREEN_WIDTH - spacing.lg * 2 - spacing.sm * 2 - spacing.xs * 4) / GRID_COLUMNS,
+  // width: (SCREEN_WIDTH - spacing.lg * 2 - spacing.sm * 2 - spacing.xs * 4) / GRID_COLUMNS,
+  // width: (SCREEN_WIDTH - spacing.lg * 4) / GRID_COLUMNS,
+  width: (SCREEN_WIDTH - (spacing.lg * 2 + spacing.md * 2)) / GRID_COLUMNS,
   alignItems: "center",
-  marginBottom: spacing.sm,
+  marginBottom: spacing.lg,
 })
 
 const $appContainer: ThemedStyle<ViewStyle> = () => ({
@@ -238,8 +243,8 @@ const $appContainer: ThemedStyle<ViewStyle> = () => ({
 })
 
 const $appIcon: ThemedStyle<ViewStyle> = ({spacing}) => ({
-  width: 60, // Slightly smaller
-  height: 60,
+  width: 56, // Slightly smaller
+  height: 56,
   borderRadius: 30, // Half of width/height for perfect circle
   marginBottom: spacing.xs,
   overflow: "hidden",
