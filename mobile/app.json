@@ -74,6 +74,9 @@
           "UIInterfaceOrientationPortrait",
           "UIInterfaceOrientationPortraitUpsideDown"
         ]
+      },
+      "config": {
+        "usesNonExemptEncryption": false
       }
     },
     "plugins": [

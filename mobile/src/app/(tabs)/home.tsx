@@ -142,6 +142,7 @@ export default function Homepage() {
           <ConnectedGlasses showTitle={false} />
           <DeviceToolbar />
         </View>
+        <Spacer height={theme.spacing.lg} />
         <View ref={connectButtonRef}>
           <ConnectDeviceButton />
         </View>
