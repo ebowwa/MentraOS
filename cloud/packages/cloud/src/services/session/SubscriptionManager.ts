@@ -29,7 +29,15 @@ export class SubscriptionManager {
 
   // Track app reconnect timestamps for empty-subscription grace handling
   private lastAppReconnectAt: Map<string, number> = new Map();
-  private readonly CONNECT_GRACE_MS = 3000; // 3 seconds
+  private readonly CONNECT_GRACE_MS = 8000; // 8 seconds for slower reconnects
+
+  // Per-app update serialization (mutex/queue)
+  private updateChainsByApp: Map<string, Promise<unknown>> = new Map();
+
+  // Cached aggregates for O(1) reads
+  private pcmSubscriptionCount: number = 0;
+  private transcriptionLikeSubscriptionCount: number = 0; // transcription/translation incl. language streams
+  private languageStreamCounts: Map<ExtendedStreamType, number> = new Map();
 
   constructor(userSession: UserSession) {
     this.userSession = userSession;
@@ -102,45 +110,17 @@ export class SubscriptionManager {
   }
 
   getMinimalLanguageSubscriptions(): ExtendedStreamType[] {
-    const languageSet = new Set<ExtendedStreamType>();
-    for (const subs of this.subscriptions.values()) {
-      for (const sub of subs) {
-        if (isLanguageStream(sub)) {
-          languageSet.add(sub);
-        }
-      }
+    const result: ExtendedStreamType[] = [];
+    for (const [langStream, count] of this.languageStreamCounts.entries()) {
+      if (count > 0) result.push(langStream);
     }
-    return Array.from(languageSet);
+    return result;
   }
 
   hasPCMTranscriptionSubscriptions(): { hasMedia: boolean; hasPCM: boolean; hasTranscription: boolean } {
-    let hasMedia = false;
-    let hasPCM = false;
-    let hasTranscription = false;
-    for (const subs of this.subscriptions.values()) {
-      for (const sub of subs) {
-        if (sub === StreamType.AUDIO_CHUNK) {
-          hasPCM = true;
-          hasMedia = true;
-        } else if (
-          sub === StreamType.TRANSLATION ||
-          sub === StreamType.TRANSCRIPTION
-        ) {
-          hasTranscription = true;
-          hasMedia = true;
-        } else {
-          const langInfo = parseLanguageStream(sub as string);
-          if (
-            langInfo &&
-            (langInfo.type === StreamType.TRANSLATION ||
-              langInfo.type === StreamType.TRANSCRIPTION)
-          ) {
-            hasTranscription = true;
-            hasMedia = true;
-          }
-        }
-      }
-    }
+    const hasPCM = this.pcmSubscriptionCount > 0;
+    const hasTranscription = this.transcriptionLikeSubscriptionCount > 0;
+    const hasMedia = hasPCM || hasTranscription;
     return { hasMedia, hasPCM, hasTranscription };
   }
 
@@ -157,81 +137,95 @@ export class SubscriptionManager {
     packageName: string,
     subscriptions: SubscriptionRequest[],
   ): Promise<UserI | null> {
-    const now = Date.now();
-    const lastReconnect = this.lastAppReconnectAt.get(packageName) || 0;
+    // Serialize per-app updates via promise chaining
+    const previous = this.updateChainsByApp.get(packageName) || Promise.resolve();
+    let resultUser: UserI | null = null;
 
-    // Process incoming subscriptions array (strings and special location objects)
-    const streamSubscriptions: ExtendedStreamType[] = [];
-    let locationRate: string | null = null;
-    for (const sub of subscriptions) {
-      if (
-        typeof sub === 'object' &&
-        sub !== null &&
-        'stream' in sub &&
-        (sub as any).stream === StreamType.LOCATION_STREAM
-      ) {
-        locationRate = (sub as any).rate || null;
-        streamSubscriptions.push(StreamType.LOCATION_STREAM);
-      } else if (typeof sub === 'string') {
-        streamSubscriptions.push(sub as ExtendedStreamType);
-      }
-    }
+    const chained = previous.then(async () => {
+      const now = Date.now();
+      const lastReconnect = this.lastAppReconnectAt.get(packageName) || 0;
 
-    const processed: ExtendedStreamType[] = streamSubscriptions.map((sub) =>
-      sub === StreamType.TRANSCRIPTION ? createTranscriptionStream('en-US') : sub,
-    );
-
-    // Reconnect grace: ignore empty subs right after reconnect
-    if (processed.length === 0 && now - lastReconnect <= this.CONNECT_GRACE_MS) {
-      this.logger.warn(
-        { userId: this.userSession.userId, packageName },
-        'Ignoring empty subscription update within reconnect grace window',
-      );
-      return await this.persistLocationRate(packageName, locationRate);
-    }
-
-    // Validate permissions (best-effort)
-    try {
-      const app = await App.findOne({ packageName });
-      if (app) {
-        const { allowed, rejected } = SimplePermissionChecker.filterSubscriptions(
-          app,
-          processed,
-        );
-        if (rejected.length > 0) {
-          this.logger.warn(
-            { userId: this.userSession.userId, packageName, rejectedCount: rejected.length },
-            'Rejected subscriptions due to missing permissions',
-          );
+      // Process incoming subscriptions array (strings and special location objects)
+      const streamSubscriptions: ExtendedStreamType[] = [];
+      let locationRate: string | null = null;
+      for (const sub of subscriptions) {
+        if (
+          typeof sub === 'object' &&
+          sub !== null &&
+          'stream' in sub &&
+          (sub as any).stream === StreamType.LOCATION_STREAM
+        ) {
+          locationRate = (sub as any).rate || null;
+          streamSubscriptions.push(StreamType.LOCATION_STREAM);
+        } else if (typeof sub === 'string') {
+          streamSubscriptions.push(sub as ExtendedStreamType);
         }
-        // use allowed if any rejected
-        processed.length = 0;
-        processed.push(...allowed);
       }
-    } catch (error) {
-      const logger = this.logger.child({ packageName });
-      logger.error(error, 'Error validating subscriptions; continuing');
-    }
 
-    // Update in-memory map
-    this.subscriptions.set(packageName, new Set(processed));
-    this.addHistory(packageName, { timestamp: new Date(), subscriptions: [...processed], action: 'update' });
+      const processed: ExtendedStreamType[] = streamSubscriptions.map((sub) =>
+        sub === StreamType.TRANSCRIPTION ? createTranscriptionStream('en-US') : sub,
+      );
 
-    this.logger.info(
-      {
-        userId: this.userSession.userId,
-        packageName,
-        processedSubscriptions: processed,
-      },
-      'Updated subscriptions successfully',
-    );
+      // Reconnect grace: ignore empty subs right after reconnect
+      if (processed.length === 0 && now - lastReconnect <= this.CONNECT_GRACE_MS) {
+        this.logger.warn(
+          { userId: this.userSession.userId, packageName },
+          'Ignoring empty subscription update within reconnect grace window',
+        );
+        resultUser = await this.persistLocationRate(packageName, locationRate);
+        return; // Skip applying empty update
+      }
 
-    // Sync managers and mic
-    await this.syncManagers();
-    this.userSession.microphoneManager?.handleSubscriptionChange();
+      // Validate permissions (best-effort)
+      let allowedProcessed: ExtendedStreamType[] = processed;
+      try {
+        const app = await App.findOne({ packageName });
+        if (app) {
+          const { allowed, rejected } = SimplePermissionChecker.filterSubscriptions(
+            app,
+            processed,
+          );
+          if (rejected.length > 0) {
+            this.logger.warn(
+              { userId: this.userSession.userId, packageName, rejectedCount: rejected.length },
+              'Rejected subscriptions due to missing permissions',
+            );
+          }
+          allowedProcessed = allowed;
+        }
+      } catch (error) {
+        const logger = this.logger.child({ packageName });
+        logger.error(error, 'Error validating subscriptions; continuing');
+      }
 
-    // Persist location rate setting for this app
-    return await this.persistLocationRate(packageName, locationRate);
+      // Compute delta and update maps atomically
+      const oldSet = this.subscriptions.get(packageName) || new Set<ExtendedStreamType>();
+      const newSet = new Set<ExtendedStreamType>(allowedProcessed);
+      this.applyDelta(packageName, oldSet, newSet);
+      this.subscriptions.set(packageName, newSet);
+      this.addHistory(packageName, { timestamp: new Date(), subscriptions: [...newSet], action: 'update' });
+
+      this.logger.info(
+        {
+          userId: this.userSession.userId,
+          packageName,
+          processedSubscriptions: [...newSet],
+        },
+        'Updated subscriptions successfully',
+      );
+
+      // Sync managers and mic
+      await this.syncManagers();
+      this.userSession.microphoneManager?.handleSubscriptionChange();
+
+      // Persist location rate setting for this app
+      resultUser = await this.persistLocationRate(packageName, locationRate);
+    });
+
+    // Store chain and return when this link finishes
+    this.updateChainsByApp.set(packageName, chained.catch(() => {}));
+    await chained;
+    return resultUser;
   }
 
   async removeSubscriptions(packageName: string): Promise<UserI | null> {
@@ -242,6 +236,8 @@ export class SubscriptionManager {
         subscriptions: Array.from(existing),
         action: 'remove',
       });
+      // apply delta to aggregates and clear
+      this.applyDelta(packageName, existing, new Set<ExtendedStreamType>());
       this.subscriptions.delete(packageName);
       this.logger.info(
         { userId: this.userSession.userId, packageName },
@@ -361,6 +357,61 @@ export class SubscriptionManager {
     } catch (error) {
       const logger = this.logger.child({ userId: this.userSession.userId });
       logger.error(error, 'Error syncing managers with subscriptions');
+    }
+  }
+
+  /**
+   * Apply delta between old and new subscription sets to cached aggregates
+   */
+  private applyDelta(
+    packageName: string,
+    oldSet: Set<ExtendedStreamType>,
+    newSet: Set<ExtendedStreamType>,
+  ): void {
+    // Removals
+    for (const sub of oldSet) {
+      if (!newSet.has(sub)) {
+        this.applySingle(sub, /*isAdd*/ false);
+      }
+    }
+    // Additions
+    for (const sub of newSet) {
+      if (!oldSet.has(sub)) {
+        this.applySingle(sub, /*isAdd*/ true);
+      }
+    }
+  }
+
+  /**
+   * Apply a single subscription add/remove to cached aggregates
+   */
+  private applySingle(sub: ExtendedStreamType, isAdd: boolean): void {
+    // PCM stream
+    if (sub === StreamType.AUDIO_CHUNK) {
+      this.pcmSubscriptionCount += isAdd ? 1 : -1;
+      if (this.pcmSubscriptionCount < 0) this.pcmSubscriptionCount = 0;
+      return;
+    }
+
+    // Direct transcription/translation
+    if (sub === StreamType.TRANSCRIPTION || sub === StreamType.TRANSLATION) {
+      this.transcriptionLikeSubscriptionCount += isAdd ? 1 : -1;
+      if (this.transcriptionLikeSubscriptionCount < 0) this.transcriptionLikeSubscriptionCount = 0;
+      return;
+    }
+
+    // Language-specific streams
+    if (isLanguageStream(sub)) {
+      const langInfo = parseLanguageStream(sub as string);
+      if (langInfo && (langInfo.type === StreamType.TRANSCRIPTION || langInfo.type === StreamType.TRANSLATION)) {
+        this.transcriptionLikeSubscriptionCount += isAdd ? 1 : -1;
+        if (this.transcriptionLikeSubscriptionCount < 0) this.transcriptionLikeSubscriptionCount = 0;
+      }
+      const prev = this.languageStreamCounts.get(sub) || 0;
+      const next = prev + (isAdd ? 1 : -1);
+      if (next <= 0) this.languageStreamCounts.delete(sub);
+      else this.languageStreamCounts.set(sub, next);
+      return;
     }
   }
 }

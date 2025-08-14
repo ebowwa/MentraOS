@@ -204,6 +204,7 @@ export class AppWebSocketService {
       // Process based on message type
       switch (message.type) {
         case AppToCloudMessageType.SUBSCRIPTION_UPDATE:
+          // Ensure we await the subscription update handling to avoid race conditions
           await this.handleSubscriptionUpdate(appWebsocket, userSession, message);
           break;
 
@@ -443,17 +444,14 @@ export class AppWebSocketService {
       });
 
     try {
-      // Update session-scoped subscriptions; location service will be updated from return
-      userSession.subscriptionManager
-        .updateSubscriptions(message.packageName, message.subscriptions)
-        .then(updatedUser => {
-          if (updatedUser) {
-            locationService.handleSubscriptionChange(updatedUser, userSession);
-          }
-        })
-        .catch(error => {
-          userSession.logger.error({ error }, 'Error during background subscription processing.');
-        });
+      // Update session-scoped subscriptions and await completion to prevent races
+      const updatedUser = await userSession.subscriptionManager.updateSubscriptions(
+        message.packageName,
+        message.subscriptions,
+      );
+      if (updatedUser) {
+        locationService.handleSubscriptionChange(updatedUser, userSession);
+      }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       userSession.logger.error({
