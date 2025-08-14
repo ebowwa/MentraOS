@@ -23,6 +23,7 @@ import VideoManager from "./VideoManager";
 import PhotoManager from "./PhotoManager";
 import { GlassesErrorCode } from "../websocket/websocket-glasses.service";
 import SessionStorage from "./SessionStorage";
+import { memoryLeakDetector } from "../debug/MemoryLeakDetector";
 import { PosthogService } from "../logging/posthog.service";
 import { TranscriptionManager } from "./transcription/TranscriptionManager";
 import { TranslationManager } from "./translation/TranslationManager";
@@ -128,6 +129,9 @@ export class UserSession {
     // Register in session storage
     SessionStorage.getInstance().set(userId, this);
     this.logger.info(`✅ User session created and registered for ${userId}`);
+
+    // Register for leak detection
+    memoryLeakDetector.register(this, `UserSession:${userId}`);
   }
 
   /**
@@ -577,6 +581,9 @@ export class UserSession {
       },
       `🗑️ Session disposed and removed from storage for ${this.userId}`,
     );
+
+    // Mark disposed for leak detection
+    memoryLeakDetector.markDisposed(`UserSession:${this.userId}`);
   }
 
   /**

@@ -810,6 +810,39 @@ export class TranscriptionManager {
     this.logger.info("TranscriptionManager disposed");
   }
 
+  /**
+   * Memory stats used by MemoryTelemetryService
+   */
+  public getMemoryStats(): {
+    vadBufferChunks: number;
+    vadBufferBytes: number;
+    transcriptLanguages: number;
+    transcriptSegments: number;
+  } {
+    const vadBufferChunks = this.vadAudioBuffer.length;
+    let vadBufferBytes = 0;
+    for (const chunk of this.vadAudioBuffer) {
+      if (typeof Buffer !== "undefined" && Buffer.isBuffer(chunk)) {
+        vadBufferBytes += (chunk as unknown as Buffer).length;
+      } else if (chunk instanceof ArrayBuffer) {
+        vadBufferBytes += chunk.byteLength;
+      } else if (ArrayBuffer.isView(chunk)) {
+        vadBufferBytes += (chunk as ArrayBufferView).byteLength;
+      }
+    }
+
+    // Count transcript segments across languages
+    const transcriptLanguages = this.transcriptHistory.languageSegments.size +
+      (this.transcriptHistory.segments.length > 0 && !this.transcriptHistory.languageSegments.has("en-US") ? 1 : 0);
+    const transcriptSegments = this.transcriptHistory.segments.length +
+      Array.from(this.transcriptHistory.languageSegments.values()).reduce(
+        (sum, arr) => sum + arr.length,
+        0,
+      );
+
+    return { vadBufferChunks, vadBufferBytes, transcriptLanguages, transcriptSegments };
+  }
+
   // ===== PRIVATE METHODS =====
 
   /**
