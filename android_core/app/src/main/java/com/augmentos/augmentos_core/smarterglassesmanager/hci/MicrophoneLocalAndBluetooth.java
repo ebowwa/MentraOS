@@ -688,6 +688,51 @@ public class MicrophoneLocalAndBluetooth {
         AVAILABLE, UNAVAILABLE
     }
 
+    /**
+     * Check if recording is currently active and healthy
+     * Used by MicrophoneLifecycleManager to detect background failures
+     */
+    public boolean isRecordingActive() {
+        // Check multiple indicators of health:
+        // 1. Recording flag is set
+        // 2. Recorder exists and is initialized
+        // 3. Recording thread is alive
+        // 4. AudioRecord is in recording state
+        
+        if (!recordingInProgress.get()) {
+            return false;
+        }
+        
+        if (recorder == null) {
+            return false;
+        }
+        
+        try {
+            // Check if AudioRecord is in a valid state
+            if (recorder.getState() != AudioRecord.STATE_INITIALIZED) {
+                Log.w(TAG, "AudioRecord not in initialized state");
+                return false;
+            }
+            
+            // Check if actually recording
+            if (recorder.getRecordingState() != AudioRecord.RECORDSTATE_RECORDING) {
+                Log.w(TAG, "AudioRecord not in recording state");
+                return false;
+            }
+            
+            // Check if recording thread is alive
+            if (recordingThread == null || !recordingThread.isAlive()) {
+                Log.w(TAG, "Recording thread is not alive");
+                return false;
+            }
+            
+            return true;
+        } catch (Exception e) {
+            Log.e(TAG, "Error checking recording health", e);
+            return false;
+        }
+    }
+
     public synchronized void destroy() {
         Log.d(TAG, "Destroying local microphone...");
 

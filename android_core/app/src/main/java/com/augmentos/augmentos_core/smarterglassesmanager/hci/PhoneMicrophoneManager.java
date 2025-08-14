@@ -111,6 +111,9 @@ public class PhoneMicrophoneManager {
     // Handler for running operations on the main thread
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     
+    // Lifecycle management for handling background/foreground transitions
+    private MicrophoneLifecycleManager lifecycleManager;
+    
     // FGS management - only needed when using phone microphone hardware
     private boolean isMicrophoneServiceRunning = false;
     private boolean isMicrophoneServiceStarting = false;
@@ -145,6 +148,9 @@ public class PhoneMicrophoneManager {
         this.phoneMicListener = phoneMicListener;
         
         Log.d(TAG, "Initializing PhoneMicrophoneManager");
+        
+        // Initialize lifecycle manager to handle background/foreground transitions
+        lifecycleManager = new MicrophoneLifecycleManager(context, this);
         
         // Create a chunk callback that forwards data through the SmartGlassesRepresentative's receiveChunk
         this.audioChunkCallback = new AudioChunkCallback() {
@@ -363,6 +369,12 @@ public class PhoneMicrophoneManager {
             Log.d(TAG, "Switching to SCO mode");
             // Create new microphone with SCO enabled - this should forward audio to the speech recognition system
             micInstance = new MicrophoneLocalAndBluetooth(context, true, audioChunkCallback, this);
+            
+            // Notify lifecycle manager about the new mic instance for health monitoring
+            if (lifecycleManager != null) {
+                lifecycleManager.setActiveMicInstance(micInstance);
+            }
+            
             Log.d(TAG, "✅ Phone SCO mic initialized - audio should now flow to speech recognition");
             currentStatus = MicStatus.SCO_MODE;
             lastModeChangeTime = System.currentTimeMillis(); // Track mode change time
@@ -425,6 +437,12 @@ public class PhoneMicrophoneManager {
             Log.d(TAG, "Switching to normal phone microphone mode");
             // Create new microphone with SCO disabled
             micInstance = new MicrophoneLocalAndBluetooth(context, false, audioChunkCallback, this);
+            
+            // Notify lifecycle manager about the new mic instance for health monitoring
+            if (lifecycleManager != null) {
+                lifecycleManager.setActiveMicInstance(micInstance);
+            }
+            
             Log.d(TAG, "✅ Normal phone mic initialized - audio should now flow to speech recognition");
             
             currentStatus = MicStatus.NORMAL_MODE;
@@ -614,6 +632,11 @@ public class PhoneMicrophoneManager {
             } finally {
                 // Always clear the reference even if destroy fails
                 micInstance = null;
+                
+                // Clear reference in lifecycle manager
+                if (lifecycleManager != null) {
+                    lifecycleManager.setActiveMicInstance(null);
+                }
             }
         }
         
@@ -828,6 +851,12 @@ public class PhoneMicrophoneManager {
                     case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT:
                         // Another app needs audio - this is how Samsung signals mic conflicts!
                         Log.d(TAG, "🎤 Lost audio focus - another app needs microphone");
+                        
+                        // Notify lifecycle manager that this is an audio focus loss
+                        if (lifecycleManager != null) {
+                            lifecycleManager.onAudioFocusLost();
+                        }
+                        
                         if (currentStatus == MicStatus.SCO_MODE || currentStatus == MicStatus.NORMAL_MODE) {
                             // Switch to glasses mic or pause
                             if (glassesRep != null && glassesRep.smartGlassesDevice != null && 
@@ -851,6 +880,12 @@ public class PhoneMicrophoneManager {
                         // We got focus back!
                         Log.d(TAG, "🎤 Regained audio focus - can resume recording");
                         hasAudioFocus = true;
+                        
+                        // Notify lifecycle manager that focus is regained
+                        if (lifecycleManager != null) {
+                            lifecycleManager.onAudioFocusGained();
+                        }
+                        
                         // Resume preferred mic mode if we were paused
                         if (currentStatus == MicStatus.PAUSED) {
                             mainHandler.postDelayed(() -> {
@@ -1291,6 +1326,12 @@ public class PhoneMicrophoneManager {
         Log.d(TAG, "Destroying PhoneMicrophoneManager");
         
         cleanUpCurrentMic();
+        
+        // Clean up lifecycle manager
+        if (lifecycleManager != null) {
+            lifecycleManager.cleanup();
+            lifecycleManager = null;
+        }
         
         // Stop microphone service and reset all flags
         stopMicrophoneService();
