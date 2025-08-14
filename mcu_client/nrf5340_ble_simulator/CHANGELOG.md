@@ -2,6 +2,51 @@
 
 All notable changes to the nRF5340 DK BLE Glasses Protobuf Simulator will be documented in this file.
 
+## [2.7.0] - 2025-08-14
+
+### 🔄 INFINITE SMOOTH SCROLLING & SPI PERFORMANCE OPTIMIZATION
+
+#### Added
+- **Infinite Horizontal Text Scrolling**
+  - 🎬 Replaced "jumping" circular scrolling with smooth infinite animation
+  - 🎬 Welcome text now scrolls continuously from right to left in a loop
+  - 🎬 8-second animation cycle with linear motion path
+  - 🎬 Custom animation callbacks for seamless infinite repetition
+  - 🎬 No pauses or "jumps" - true continuous scrolling experience
+
+#### Enhanced  
+- **SPI Performance Optimization**
+  - ⚡ Enhanced SPI drive mode: `NRF_DRIVE_E0E1` for stronger signal integrity
+  - ⚡ Board overlay configuration: `nordic,drive-mode = <NRF_DRIVE_E0E1>`
+  - ⚡ SPI4 pinctrl enhanced for higher frequency operation
+  - ⚡ Real-time SPI transfer monitoring every 100th transfer
+  - ⚡ Comprehensive performance logging: speed in MB/s and effective MHz
+
+- **LVGL Performance Tuning**
+  - 🚀 Optimized tick rates: 2ms intervals for smoother animations
+  - 🚀 Reduced message timeouts: 1ms for faster responsiveness
+  - 🚀 Enhanced FPS monitoring and reporting
+  - 🚀 Target performance: 5 FPS LVGL refresh rate
+
+#### Technical Implementation
+- **Animation System Overhaul**
+  - 🔧 Global animation variables: `scrolling_welcome_label`, `welcome_scroll_anim`
+  - 🔧 Custom animation callbacks: `welcome_scroll_anim_cb()`, `welcome_scroll_ready_cb()`
+  - 🔧 Automatic restart mechanism for infinite loop scrolling
+  - 🔧 Label positioning: starts at 640px, moves to -600px for complete traverse
+
+#### Performance Monitoring
+- **SPI Speed Analysis**  
+  - 📊 Real-time transfer timing measurement
+  - 📊 Bytes per second calculation and MHz effective speed reporting
+  - 📊 Comparative analysis: K901 project (33MHz) vs Simulator (8MHz target)
+  - 📊 Debug logs for SPI frequency optimization
+
+#### In Progress - SPI Speed Investigation
+- **Current Status**: SPI SCK speed measuring ~8MHz average despite optimizations
+- **Target**: Achieve K901-equivalent 33MHz SPI operation
+- **Debug Areas**: Drive strength, frequency configuration, hardware limitations
+
 ## [2.6.0] - 2025-08-14
 
 ### 🎨 DIRECT HARDWARE ACCESS - True 8-bit Grayscale Test Patterns

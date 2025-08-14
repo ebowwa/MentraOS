@@ -38,7 +38,7 @@ static K_SEM_DEFINE(lvgl_display_sem, 0, 1);
 #define DISPLAY_CMD_QSZ 16
 K_MSGQ_DEFINE(display_msgq, sizeof(display_cmd_t), DISPLAY_CMD_QSZ, 4);
 
-#define LVGL_TICK_MS 5
+#define LVGL_TICK_MS 2  // Reduced from 5ms to 2ms for better FPS (K901 optimization)
 static struct k_timer fps_timer;
 static uint32_t frame_count = 0;
 
@@ -52,7 +52,10 @@ static void fps_timer_cb(struct k_timer *timer_id)
 {
     uint32_t fps = frame_count;
     frame_count = 0;
-    BSP_LOGI(TAG, "LVGL FPS: %d", fps);
+    BSP_LOGI(TAG, "📈 LVGL Performance Monitor:");
+    BSP_LOGI(TAG, "  - Current FPS: %d (Target: ~5 FPS like K901)", fps);
+    BSP_LOGI(TAG, "  - LVGL Tick Rate: %d ms (K901 optimized)", LVGL_TICK_MS);
+    BSP_LOGI(TAG, "  - Message Queue Timeout: 1ms (K901 fast response)");
 }
 
 void lv_example_scroll_text(void)
@@ -407,33 +410,76 @@ static void create_vertical_zebra_pattern(lv_obj_t *screen)
     }
 }
 
+// Global variables for smooth scrolling animation
+static lv_obj_t *scrolling_welcome_label = NULL;
+static lv_anim_t welcome_scroll_anim;
+
+// Animation callback for smooth horizontal scrolling
+static void welcome_scroll_anim_cb(void *var, int32_t v)
+{
+    lv_obj_set_x((lv_obj_t *)var, v);
+}
+
+// Animation ready callback to restart the scroll
+static void welcome_scroll_ready_cb(lv_anim_t *a)
+{
+    if (scrolling_welcome_label == NULL) return;
+    
+    // Restart the animation for infinite loop
+    lv_anim_init(&welcome_scroll_anim);
+    lv_anim_set_var(&welcome_scroll_anim, scrolling_welcome_label);
+    lv_anim_set_exec_cb(&welcome_scroll_anim, welcome_scroll_anim_cb);
+    lv_anim_set_time(&welcome_scroll_anim, 8000);  // 8 seconds for full traverse
+    lv_anim_set_repeat_count(&welcome_scroll_anim, LV_ANIM_REPEAT_INFINITE);
+    lv_anim_set_path_cb(&welcome_scroll_anim, lv_anim_path_linear);
+    lv_anim_set_ready_cb(&welcome_scroll_anim, welcome_scroll_ready_cb);
+    
+    // Start from right edge, move to left edge
+    lv_anim_set_values(&welcome_scroll_anim, 640, -600);  // Start at 640px, end at -600px
+    
+    lv_anim_start(&welcome_scroll_anim);
+}
+
 static void create_center_rectangle_pattern(lv_obj_t *screen)
 {
     // Create a scrolling text label
-    lv_obj_t *scroll_label = lv_label_create(screen);
-    lv_label_set_text(scroll_label, "Welcome to MentraOS NExFirmware!");
+    scrolling_welcome_label = lv_label_create(screen);
+    lv_label_set_text(scrolling_welcome_label, "Welcome to MentraOS NExFirmware!");
     
     // Set text properties
-    lv_obj_set_style_text_color(scroll_label, lv_color_white(), 0);  // White text
-    lv_obj_set_style_text_font(scroll_label, &lv_font_montserrat_48, 0);  // **UPGRADED: Largest font (48pt)**
+    lv_obj_set_style_text_color(scrolling_welcome_label, lv_color_white(), 0);  // White text
+    lv_obj_set_style_text_font(scrolling_welcome_label, &lv_font_montserrat_48, 0);  // **UPGRADED: Largest font (48pt)**
     
-    // Enable long mode for scrolling
-    lv_label_set_long_mode(scroll_label, LV_LABEL_LONG_SCROLL_CIRCULAR);
+    // **NEW: Use normal mode, no built-in scrolling**
+    lv_label_set_long_mode(scrolling_welcome_label, LV_LABEL_LONG_CLIP);
     
-    // Set the width to enable scrolling (narrower than text width)
-    lv_obj_set_width(scroll_label, 400);  // 400px width for scrolling
+    // Set fixed width to contain the text
+    lv_obj_set_width(scrolling_welcome_label, 600);  // Wide enough to contain full text
     
-    // **SPEED UP THE SCROLLING** - Set faster animation time
-    lv_obj_set_style_anim_time(scroll_label, 1500, 0);  // 1.5 seconds for full scroll cycle (much faster!)
-    
-    // Center the label on screen
-    lv_obj_center(scroll_label);
+    // Center vertically, but position will be animated horizontally
+    lv_obj_set_y(scrolling_welcome_label, (480 - lv_obj_get_height(scrolling_welcome_label)) / 2);
     
     // Optional: Add background for better visibility
-    lv_obj_set_style_bg_color(scroll_label, lv_color_black(), 0);
-    lv_obj_set_style_bg_opa(scroll_label, LV_OPA_COVER, 0);
-    lv_obj_set_style_pad_all(scroll_label, 15, 0);  // Add padding
-    lv_obj_set_style_radius(scroll_label, 5, 0);    // Rounded corners
+    lv_obj_set_style_bg_color(scrolling_welcome_label, lv_color_black(), 0);
+    lv_obj_set_style_bg_opa(scrolling_welcome_label, LV_OPA_COVER, 0);
+    lv_obj_set_style_pad_all(scrolling_welcome_label, 15, 0);  // Add padding
+    lv_obj_set_style_radius(scrolling_welcome_label, 5, 0);    // Rounded corners
+    
+    // **NEW: Start infinite smooth horizontal scrolling animation**
+    lv_anim_init(&welcome_scroll_anim);
+    lv_anim_set_var(&welcome_scroll_anim, scrolling_welcome_label);
+    lv_anim_set_exec_cb(&welcome_scroll_anim, welcome_scroll_anim_cb);
+    lv_anim_set_time(&welcome_scroll_anim, 8000);  // 8 seconds for full traverse
+    lv_anim_set_repeat_count(&welcome_scroll_anim, LV_ANIM_REPEAT_INFINITE);
+    lv_anim_set_path_cb(&welcome_scroll_anim, lv_anim_path_linear);
+    lv_anim_set_ready_cb(&welcome_scroll_anim, welcome_scroll_ready_cb);
+    
+    // Start from right edge of screen, move to left edge
+    lv_anim_set_values(&welcome_scroll_anim, 640, -600);  // Start at 640px (right edge), end at -600px (left edge)
+    
+    lv_anim_start(&welcome_scroll_anim);
+    
+    BSP_LOGI(TAG, "🔄 Started infinite smooth horizontal scrolling animation for welcome text");
 }
 
 static void create_scrolling_text_container(lv_obj_t *screen)
@@ -616,8 +662,8 @@ void lvgl_dispaly_init(void *p1, void *p2, void *p3)
         {
             lv_timer_handler();
         }
-        /* 2) 尝试读命令——最多等 LVGL_TICK_MS */
-        int err = mos_msgq_receive(&display_msgq, &cmd, LVGL_TICK_MS);
+        /* 2) 尝试读命令——减少等待时间以提高FPS (K901 optimization) */
+        int err = mos_msgq_receive(&display_msgq, &cmd, 1);  // Reduced from LVGL_TICK_MS to 1ms for better responsiveness
         if (err != 0)
         {
             /* 超时或队列空，没有新命令，直接下一次循环 */

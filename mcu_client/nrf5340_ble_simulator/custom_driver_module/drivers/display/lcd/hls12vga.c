@@ -154,6 +154,12 @@ static int hls12vga_transmit_all(const struct device *dev, const uint8_t *data, 
 	{
 		return -EINVAL;
 	}
+	
+	// **NEW: Add SPI speed measurement for debugging**
+	static uint32_t transfer_count = 0;
+	int64_t start_time = k_uptime_get();
+	transfer_count++;
+	
 	int err = -1;
 	const hls12vga_config *cfg = dev->config;
 	struct spi_buf tx_buf = {
@@ -187,6 +193,18 @@ static int hls12vga_transmit_all(const struct device *dev, const uint8_t *data, 
 		gpio_pin_set_dt(&cfg->right_cs, 1);  // Deselect right CS (inactive HIGH)
 		if (err == 0)
 		{
+			// **NEW: Calculate and log SPI transfer performance**
+			int64_t end_time = k_uptime_get();
+			int64_t transfer_time_ms = end_time - start_time;
+			uint32_t bytes_per_sec = (transfer_time_ms > 0) ? (size * 1000) / transfer_time_ms : 0;
+			float effective_speed_mhz = (float)(size * 8) / (transfer_time_ms * 1000.0f);  // bits per microsecond = MHz
+			
+			// Log every 100th transfer to avoid spam
+			if (transfer_count % 100 == 0) {
+				BSP_LOGI(TAG, "📊 SPI Transfer #%d: %zu bytes in %lld ms (%.2f MB/s, %.2f MHz effective)", 
+					transfer_count, size, transfer_time_ms, (float)bytes_per_sec / 1000000.0f, effective_speed_mhz);
+			}
+			
 			return 0; /* 成功; Success */
 		}
 		k_msleep(1); /* 短暂延迟; Short delay */
@@ -712,6 +730,15 @@ static int hls12vga_init(const struct device *dev)
 	hls12vga_config *cfg = (hls12vga_config *)dev->config;
 	hls12vga_data *data = (hls12vga_data *)dev->data;
 	int ret;
+	
+	// **NEW: Log SPI configuration for debugging**
+	BSP_LOGI(TAG, "🚀 HLS12VGA SPI Configuration:");
+	BSP_LOGI(TAG, "  - Device: %s", cfg->spi.bus->name);
+	BSP_LOGI(TAG, "  - Max Frequency: %d Hz (%.2f MHz)", 
+		cfg->spi.config.frequency, (float)cfg->spi.config.frequency / 1000000.0f);
+	BSP_LOGI(TAG, "  - Operation Mode: 0x%08X", cfg->spi.config.operation);
+	BSP_LOGI(TAG, "  - Slave ID: %d", cfg->spi.config.slave);
+	
 	if (!spi_is_ready_dt(&cfg->spi))
 	{
 		BSP_LOGE(TAG, "custom_hls12vga_init SPI device not ready");
