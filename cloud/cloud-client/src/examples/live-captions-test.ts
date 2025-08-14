@@ -54,6 +54,7 @@ let didHearAlphabet = {};
 export async function runLiveCaptionsTestOnce(
   timeToListenInSeconds: number = 60,
   whenLetterIsHeard: (letter: string) => void = () => {},
+  audioFilePath: string = AUDIO_FILE_PATH,
 ): Promise<boolean> {
   let missedAny: boolean | null = null;
   console.log("🎯 Live Captions TPA Test Starting...\n");
@@ -124,12 +125,12 @@ export async function runLiveCaptionsTestOnce(
     }
 
     // Step 6: Stream audio file for transcription
-    console.log(`🎤 Streaming audio file: ${AUDIO_FILE_PATH}`);
+    console.log(`🎤 Streaming audio file: ${audioFilePath}`);
     console.log("📝 Listening for transcription results...\n");
 
     while (Date.now() - startTime < timeToListenInSeconds * 1000) {
       didHearAlphabet = {};
-      await client.startSpeakingFromFile(AUDIO_FILE_PATH);
+      await client.startSpeakingFromFile(audioFilePath);
       console.log("✅ Audio streaming completed\n");
       await sleep(2000);
 
@@ -245,7 +246,11 @@ function sleep(ms: number): Promise<void> {
 // Run the test
 if (require.main === module) {
   // Preserve CLI behavior
-  runLiveCaptionsTestOnce(60)
+  runLiveCaptionsTestOnce(
+    60,
+    undefined,
+    resolve(__dirname, "../audio/nato.wav"),
+  )
     .then((ok) => process.exit(ok ? 0 : 1))
     .catch((err) => {
       console.error(err);
