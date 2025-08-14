@@ -271,9 +271,13 @@ class OnboardMicrophoneManager {
         do {
             try audioSession?.setCategory(
                 .playAndRecord,
-                mode: .default,
-                options: [.allowBluetooth, .defaultToSpeaker]
+                mode: .voiceChat,
+                options: [.allowBluetoothHFP, .allowBluetoothA2DP]
             )
+          
+            if #available(iOS 18.2, *) {
+              try audioSession?.setPrefersEchoCancelledInput(true)
+            }
 
             // Set preferred input if available
             if let availableInputs = audioSession?.availableInputs, !availableInputs.isEmpty {
