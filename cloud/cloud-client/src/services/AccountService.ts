@@ -3,7 +3,7 @@
  * This bypasses the need for Supabase account creation and token exchange
  */
 
-import jwt from 'jsonwebtoken';
+import jwt from "jsonwebtoken";
 
 export interface AccountCredentials {
   email: string;
@@ -22,10 +22,12 @@ export class AccountService {
   private jwtSecret: string;
 
   constructor(jwtSecret?: string) {
-    this.jwtSecret = jwtSecret || process.env.AUGMENTOS_AUTH_JWT_SECRET || '';
-    
+    this.jwtSecret = jwtSecret || process.env.AUGMENTOS_AUTH_JWT_SECRET || "";
+
     if (!this.jwtSecret) {
-      throw new Error('AUGMENTOS_AUTH_JWT_SECRET is required for AccountService');
+      throw new Error(
+        "AUGMENTOS_AUTH_JWT_SECRET is required for AccountService",
+      );
     }
   }
 
@@ -39,13 +41,13 @@ export class AccountService {
       sub?: string;
       organizations?: any[];
       defaultOrg?: any;
-    } = {}
+    } = {},
   ): string {
     const payload: CoreTokenPayload = {
       sub: options.sub || this.generateSubId(),
       email: email.toLowerCase(),
       organizations: options.organizations || [],
-      defaultOrg: options.defaultOrg || null
+      defaultOrg: options.defaultOrg || null,
     };
 
     return jwt.sign(payload, this.jwtSecret);
@@ -56,10 +58,10 @@ export class AccountService {
    */
   createTestAccount(email: string): AccountCredentials {
     const coreToken = this.generateCoreToken(email);
-    
+
     return {
       email: email.toLowerCase(),
-      coreToken
+      coreToken,
     };
   }
 
@@ -68,12 +70,12 @@ export class AccountService {
    */
   createTestAccounts(
     emailTemplate: string, // e.g., 'test-{id}@example.com'
-    count: number
+    count: number,
   ): AccountCredentials[] {
     const accounts: AccountCredentials[] = [];
 
     for (let i = 0; i < count; i++) {
-      const email = emailTemplate.replace('{id}', i.toString());
+      const email = emailTemplate.replace("{id}", i.toString());
       accounts.push(this.createTestAccount(email));
     }
 
@@ -88,7 +90,7 @@ export class AccountService {
       const decoded = jwt.verify(token, this.jwtSecret) as CoreTokenPayload;
       return decoded;
     } catch (error) {
-      console.error('Failed to verify core token:', error);
+      console.error("Failed to verify core token:", error);
       return null;
     }
   }
@@ -98,20 +100,22 @@ export class AccountService {
    */
   getDefaultTestAccount(): AccountCredentials {
     const defaultTestToken = process.env.JOE_MAMA_USER_JWT;
-    
+
     if (!defaultTestToken) {
-      throw new Error('Default test user token not found in environment variables');
+      throw new Error(
+        "Default test user token not found in environment variables",
+      );
     }
 
     // Verify the token and extract email
     const decoded = this.verifyCoreToken(defaultTestToken);
     if (!decoded) {
-      throw new Error('Invalid default test user token');
+      throw new Error("Invalid default test user token");
     }
 
     return {
       email: decoded.email,
-      coreToken: defaultTestToken
+      coreToken: defaultTestToken,
     };
   }
 
