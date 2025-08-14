@@ -5,12 +5,10 @@ on:
     types: [synchronize]
     branches:
       - main
-      - dev # remove after testing
 
 jobs:
   test_live_captions:
-    if: ${{ (github.head_ref == 'dev' && github.base_ref == 'main') || github.base_ref == 'dev' }}
-    # change to github.head_ref == 'dev' && github.base_ref == 'main' after testing
+    if: ${{ github.head_ref == 'dev' && github.base_ref == 'main' }}
     name: Cloud Client Live Captions (dev -> main)
     runs-on: ubuntu-latest
     env:
