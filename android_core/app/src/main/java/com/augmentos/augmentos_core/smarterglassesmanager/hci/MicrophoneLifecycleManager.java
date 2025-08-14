@@ -233,16 +233,15 @@ public class MicrophoneLifecycleManager implements LifecycleObserver {
     private boolean checkAudioRecordHealth() {
         // If we have a reference to the active mic instance, check it directly
         if (activeMicInstance != null) {
-            return activeMicInstance.isRecordingActive();
+            boolean isHealthy = activeMicInstance.isRecordingActive();
+            if (!isHealthy) {
+                Log.w(TAG, "MicrophoneLocalAndBluetooth reports unhealthy recording state");
+            }
+            return isHealthy;
         }
         
         // Otherwise, we can only check the status
-        // In a real implementation, you might want to check:
-        // - If audio callbacks are still being received
-        // - If the AudioRecord state is still valid
-        // - If audio focus is still held
-        
-        // For now, assume it's healthy if we haven't received error callbacks
+        Log.d(TAG, "No mic instance reference - assuming healthy");
         return true;
     }
     

@@ -61,6 +61,10 @@ public class MicrophoneLocalAndBluetooth {
 
     // Flag to track receiver registration status
     private boolean isReceiverRegistered = false;
+    
+    // Track last time we received audio data for health monitoring
+    private volatile long lastAudioDataReceivedTime = 0;
+    private static final long AUDIO_DATA_TIMEOUT_MS = 1000; // 1 second without data = unhealthy
 
     private final BroadcastReceiver bluetoothStateReceiver = new BroadcastReceiver() {
         private BluetoothState bluetoothState = BluetoothState.UNAVAILABLE;
@@ -358,6 +362,9 @@ public class MicrophoneLocalAndBluetooth {
             recorder.startRecording();
 
             recordingInProgress.set(true);
+            
+            // Initialize the last data received time
+            lastAudioDataReceivedTime = System.currentTimeMillis();
 
             recordingThread = new Thread(new RecordingRunnable(), "Recording Thread");
             recordingThread.setDaemon(true); // Make it a daemon thread so it doesn't prevent JVM shutdown
@@ -620,6 +627,11 @@ public class MicrophoneLocalAndBluetooth {
                         Log.d(TAG, "Error reading from AudioRecord"); //: " + getBufferReadFailureReason(result));
                         break;
                     }
+                    
+                    // Update last data received time for health monitoring
+                    if (result > 0) {
+                        lastAudioDataReceivedTime = System.currentTimeMillis();
+                    }
 
                     // Callback
                     b_buffer.order(ByteOrder.LITTLE_ENDIAN);
@@ -698,6 +710,7 @@ public class MicrophoneLocalAndBluetooth {
         // 2. Recorder exists and is initialized
         // 3. Recording thread is alive
         // 4. AudioRecord is in recording state
+        // 5. We're actually receiving audio data (most important!)
         
         if (!recordingInProgress.get()) {
             return false;
@@ -723,6 +736,14 @@ public class MicrophoneLocalAndBluetooth {
             // Check if recording thread is alive
             if (recordingThread == null || !recordingThread.isAlive()) {
                 Log.w(TAG, "Recording thread is not alive");
+                return false;
+            }
+            
+            // MOST IMPORTANT: Check if we're actually receiving audio data
+            // If we haven't received data in the last second, something is wrong
+            long timeSinceLastData = System.currentTimeMillis() - lastAudioDataReceivedTime;
+            if (lastAudioDataReceivedTime > 0 && timeSinceLastData > AUDIO_DATA_TIMEOUT_MS) {
+                Log.w(TAG, "No audio data received for " + timeSinceLastData + "ms - recording is unhealthy!");
                 return false;
             }
             
