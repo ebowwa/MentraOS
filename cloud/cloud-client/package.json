@@ -34,6 +34,7 @@
     "test:azure-stress": "bun run src/examples/azure-rate-limit-stress-test.ts",
     "test:azure-quick": "bun run src/examples/azure-rate-limit-quick-test.ts",
     "test:live-captions": "bun run src/examples/live-captions-test.ts",
+    "test:mira": "bun run src/examples/mira-test.ts",
     "monitor:live-captions": "bun run src/examples/live-captions-monitor.ts",
     "lint": "eslint src/**/*.ts",
     "typecheck": "tsc --noEmit",
