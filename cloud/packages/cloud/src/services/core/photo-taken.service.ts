@@ -3,7 +3,7 @@
 import { logger as rootLogger } from "../logging";
 // import { ExtendedUserSession } from "./session.service";
 import { UserSession } from "../session/UserSession";
-import { subscriptionService } from "../session/subscription.service";
+// import { subscriptionService } from "../session/subscription.service";
 import { StreamType, CloudToAppMessageType } from "@mentra/sdk";
 import fs from 'fs';
 import path from 'path';
@@ -56,7 +56,7 @@ class PhotoTakenService {
    */
   broadcastPhotoTaken(userSession: UserSession, photoData: Buffer<ArrayBufferLike>, mimeType: string): void {
     // Get all Apps subscribed to PHOTO_TAKEN
-    const subscribedApps = subscriptionService.getSubscribedApps(userSession, StreamType.PHOTO_TAKEN);
+    const subscribedApps = userSession.subscriptionManager.getSubscribedApps(StreamType.PHOTO_TAKEN);
 
     if (subscribedApps.length === 0) {
       logger.debug(`No Apps subscribed to PHOTO_TAKEN for user ${userSession.userId}`);

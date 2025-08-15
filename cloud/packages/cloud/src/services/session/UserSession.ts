@@ -23,6 +23,7 @@ import VideoManager from "./VideoManager";
 import PhotoManager from "./PhotoManager";
 import { GlassesErrorCode } from "../websocket/websocket-glasses.service";
 import SessionStorage from "./SessionStorage";
+import { memoryLeakDetector } from "../debug/MemoryLeakDetector";
 import { PosthogService } from "../logging/posthog.service";
 import { TranscriptionManager } from "./transcription/TranscriptionManager";
 import { TranslationManager } from "./translation/TranslationManager";
@@ -30,6 +31,7 @@ import { ManagedStreamingExtension } from "../streaming/ManagedStreamingExtensio
 import { getCapabilitiesForModel } from "../../config/hardware-capabilities";
 import { HardwareCompatibilityService } from "./HardwareCompatibilityService";
 import appService from "../core/app.service";
+import SubscriptionManager from "./SubscriptionManager";
 
 export const LOG_PING_PONG = false; // Set to true to enable detailed ping/pong logging
 /**
@@ -75,6 +77,7 @@ export class UserSession {
   public audioManager: AudioManager;
   public transcriptionManager: TranscriptionManager;
   public translationManager: TranslationManager;
+  public subscriptionManager: SubscriptionManager;
 
   public videoManager: VideoManager;
   public photoManager: PhotoManager;
@@ -108,6 +111,8 @@ export class UserSession {
     this.audioManager = new AudioManager(this);
     this.dashboardManager = new DashboardManager(this);
     this.displayManager = new DisplayManager(this);
+    // Initialize subscription manager BEFORE any manager that uses it
+    this.subscriptionManager = new SubscriptionManager(this);
     this.microphoneManager = new MicrophoneManager(this);
     this.transcriptionManager = new TranscriptionManager(this);
     this.translationManager = new TranslationManager(this);
@@ -124,6 +129,9 @@ export class UserSession {
     // Register in session storage
     SessionStorage.getInstance().set(userId, this);
     this.logger.info(`✅ User session created and registered for ${userId}`);
+
+    // Register for leak detection
+    memoryLeakDetector.register(this, `UserSession:${userId}`);
   }
 
   /**
@@ -529,6 +537,7 @@ export class UserSession {
     if (this.dashboardManager) this.dashboardManager.dispose();
     if (this.transcriptionManager) this.transcriptionManager.dispose();
     if (this.translationManager) this.translationManager.dispose();
+    if (this.subscriptionManager) this.subscriptionManager.dispose();
     // if (this.heartbeatManager) this.heartbeatManager.dispose();
     if (this.videoManager) this.videoManager.dispose();
     if (this.photoManager) this.photoManager.dispose();
@@ -572,6 +581,9 @@ export class UserSession {
       },
       `🗑️ Session disposed and removed from storage for ${this.userId}`,
     );
+
+    // Mark disposed for leak detection
+    memoryLeakDetector.markDisposed(`UserSession:${this.userId}`);
   }
 
   /**
