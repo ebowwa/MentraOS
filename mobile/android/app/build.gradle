@@ -112,7 +112,7 @@ android {
         applicationId 'com.mentra.mentra'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 39
+        versionCode 40
         versionName "2.2.4"
     }
     signingConfigs {
