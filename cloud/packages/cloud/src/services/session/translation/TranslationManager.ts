@@ -13,7 +13,7 @@ import {
 } from "@mentra/sdk";
 import UserSession from "../UserSession";
 import { PosthogService } from "../../logging/posthog.service";
-import subscriptionService from "../subscription.service";
+// import subscriptionService from "../subscription.service";
 import {
   TranslationConfig,
   TranslationProvider,
@@ -756,8 +756,7 @@ export class TranslationManager {
   ): Promise<void> {
     try {
       // Get subscribed apps
-      const subscribedApps = subscriptionService.getSubscribedApps(
-        this.userSession,
+      const subscribedApps = this.userSession.subscriptionManager.getSubscribedApps(
         subscription,
       );
 

@@ -29,7 +29,7 @@ router.post('/button-press', validateGlassesAuth, async (req: Request, res: Resp
 
     // Check if any Apps are subscribed to button events
     const subscribedApps = userSession
-      ? subscriptionService.getSubscribedApps(userSession, StreamType.BUTTON_PRESS)
+      ? userSession.subscriptionManager.getSubscribedApps(StreamType.BUTTON_PRESS)
       : [];
 
     if (subscribedApps.length === 0) {
