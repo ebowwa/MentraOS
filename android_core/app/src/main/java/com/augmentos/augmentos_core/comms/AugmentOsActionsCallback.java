@@ -50,7 +50,7 @@ public interface AugmentOsActionsCallback {
 
     void onDisplayTextNotified(String text, int size, int x, int y);
 
-    void onDisplayImageNotified(String localImageName);
+    void onDisplayImageNotified(String imageType, String imageSize);
 
     void clearDisplay();
 

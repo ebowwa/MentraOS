@@ -547,7 +547,7 @@ public class SmartGlassesRepresentative implements PhoneMicListener {
     public void onDisplayImageNotified(DisplayImageEvent displayImageEvent) {
         Log.d(TAG, "onDisplayImageNotified called");
         if (smartGlassesCommunicator != null) {
-            smartGlassesCommunicator.onDisplayImageNotified(displayImageEvent);
+            smartGlassesCommunicator.onDisplayImageNotified(displayImageEvent.imageType, displayImageEvent.imageSize);
         }
     }
 

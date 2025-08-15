@@ -821,6 +821,7 @@ public class AndroidSGC extends SmartGlassesCommunicator {
         Log.d(TAG, "[STUB] Android glasses display cleared (no actual display)");
     }
 
+
     public void showNaturalLanguageCommandScreen(String prompt, String naturalLanguageArgs){
         try {
             JSONObject commandFoundEvent = new JSONObject();

@@ -55,6 +55,9 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Paint;
 import android.os.Handler;
 import android.os.Message;
 import android.os.Handler.Callback;
@@ -64,8 +67,6 @@ import android.util.SparseArray;
 
 import androidx.preference.PreferenceManager;
 
-import java.io.IOException;
-import java.io.InputStream;
 import java.util.concurrent.BlockingQueue;
 
 import org.json.JSONException;
@@ -121,6 +122,9 @@ import java.util.Map;
 import java.util.HashMap;
 
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesSerialNumberEvent;
+
+import java.io.IOException;
+import java.io.InputStream;
 
 public final class MentraNexSGC extends SmartGlassesCommunicator {
     private final String TAG = "WearableAi_MentraNexSGC";
@@ -1400,7 +1404,7 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
         Log.d(TAG, "displayBitmap ");
         try {
             byte[] bmpBytes = BitmapJavaUtils.convertBitmapTo1BitBmpBytes(bmp, false);
-            displayBitmapImage(bmpBytes);
+            displayBitmapImageForNexGlasses(bmpBytes, bmp.getWidth(), bmp.getHeight());
         } catch (Exception e) {
             Log.e(TAG, e.getMessage());
         }
@@ -2199,39 +2203,29 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
         return generateProtobufCommandBytes(phoneToGlasses);
     }
 
-    // send a tast image and display
-    private void startSendingDisplayImageTest() {
-        if (isImageSendProgressing) {
-            return;
-        }
-        isImageSendProgressing = true;
-        // byte[] exitCommand = new byte[] { (byte) 0x18 };
-        // sendDataSequentially(exitCommand, false);
-        Log.d(TAG, "startSendingDisplayImageTest");
-
-        byte[] theClearBitmapOrSomething = loadEmptyBmpFromAssets();
-        Bitmap bmp = BitmapJavaUtils.bytesToBitmap(theClearBitmapOrSomething);
-        try {
-            byte[] bmpBytes = BitmapJavaUtils.convertBitmapTo1BitBmpBytes(bmp, false);
-            displayBitmapImageForNexGlasses(bmpBytes);
-        } catch (Exception e) {
-            Log.e(TAG, "Error displaying clear bitmap: " + e.getMessage());
-        }
-    }
-
-    private byte[] createStartSendingImageChunksCommand(String streamId, int totalChunks) {
+    private byte[] createStartSendingImageChunksCommand(String streamId, int totalChunks, int width, int height) {
         Log.d(TAG, "=== SENDING IMAGE DISPLAY COMMAND TO GLASSES ===");
         Log.d(TAG, "Image Stream ID: " + streamId);
         Log.d(TAG, "Total Chunks: " + totalChunks);
-        Log.d(TAG, "Image Position: X=" + 20 + ", Y=" + 30);
-        Log.d(TAG, "Image Dimensions: " + 30 + "x" + 100);
-        Log.d(TAG, "Image Encoding: 222");
+        Log.d(TAG, "Image Position: X=" + 0 + ", Y=" + 0);
+        Log.d(TAG, "Image Dimensions: " + width + "x" + height);
+        Log.d(TAG, "Image Encoding: raw");
         
-        DisplayImage displayImage = DisplayImage.newBuilder().setStreamId(streamId).setTotalChunks(totalChunks).setX(20)
-                .setY(30).setWidth(30).setHeight(100).setEncoding("222").build();
+        DisplayImage displayImage = DisplayImage.newBuilder()
+                .setStreamId(streamId)
+                .setTotalChunks(totalChunks)
+                .setX(0)
+                .setY(0)
+                .setWidth(width)
+                .setHeight(height)
+                .setEncoding("raw")
+                .build();
 
-        // Create the PhoneToGlasses using its builder and set the DisplayText
-        PhoneToGlasses phoneToGlasses = PhoneToGlasses.newBuilder().setDisplayImage(displayImage).build();
+        // Create the PhoneToGlasses using its builder and set the DisplayImage with msg_id
+        PhoneToGlasses phoneToGlasses = PhoneToGlasses.newBuilder()
+                .setMsgId("img_start_1")
+                .setDisplayImage(displayImage)
+                .build();
 
         return generateProtobufCommandBytes(phoneToGlasses);
     }
@@ -2609,12 +2603,12 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
     }
 
     @Override
-    public void onDisplayImageNotified(DisplayImageEvent displayImageEvent) {
+    public void onDisplayImageNotified(String imageType, String imageSize) {
         if (!isConnected()) {
             Log.d(TAG, "Not connected to glasses");
             return;
         }
-        startSendingDisplayImageTest();
+        startSendingDisplayImageTest(imageType, imageSize);
     }
 
     @Override
@@ -2699,24 +2693,24 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
     }
 
     // for NexGlasses
-    public void displayBitmapImageForNexGlasses(byte[] bmpData) {
-        Log.d(TAG, "Starting BMP display process");
+    public void displayBitmapImageForNexGlasses(byte[] bmpData, int width, int height) {
+        Log.d(TAG, "Starting BMP display process for " + width + "x" + height + " image");
 
         try {
             if (bmpData == null || bmpData.length == 0) {
                 Log.e(TAG, "Invalid BMP data provided");
                 return;
             }
+
             Log.d(TAG, "Processing BMP data, size: " + bmpData.length + " bytes");
 
-            // send the image start command first with the stream id
+            // Generate proper 2-byte hex stream ID (e.g., "002A") as per protobuf specification
             final int totalChunks = (int) Math.ceil((double) bmpData.length / BMP_CHUNK_SIZE);
-            final char streamId = (char) random.nextInt();
-            final String streamIdText = "streamId" + streamId;
-            byte[] startImageSendingBytes = createStartSendingImageChunksCommand(streamIdText, totalChunks);
+            final String streamId = String.format("%04X", random.nextInt(0x10000)); // Fixed: 4-digit hex format
+            byte[] startImageSendingBytes = createStartSendingImageChunksCommand(streamId, totalChunks, width, height);
             sendDataSequentially(startImageSendingBytes);
-            // Send all chunks
-            // Split into chunks and send
+
+            // Send all chunks with proper stream ID parsing
             List<byte[]> chunks = createBmpChunksForNexGlasses(streamId, bmpData, totalChunks);
 
             // sendBmpChunks(chunks);
@@ -2786,23 +2780,23 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
     }
 
     // for NexGlasses
-    private List<byte[]> createBmpChunksForNexGlasses(char streamId, byte[] bmpData, int totalChunks) {
+    private List<byte[]> createBmpChunksForNexGlasses(String streamId, byte[] bmpData, int totalChunks) {
         List<byte[]> chunks = new ArrayList<>();
-        // int totalChunks = (int) Math.ceil((double) bmpData.length / BMP_CHUNK_SIZE);
         Log.d(TAG, "Creating " + totalChunks + " chunks from " + bmpData.length + " bytes");
-        int start;
-        int end;
-        byte[] chunk;
-        byte[] header;
+        
+        // Parse hex stream ID to bytes (e.g., "002A" -> 0x00, 0x2A)
+        int streamIdInt = Integer.parseInt(streamId, 16);
+        
         for (int i = 0; i < totalChunks; i++) {
-            start = i * BMP_CHUNK_SIZE;
-            end = Math.min(start + BMP_CHUNK_SIZE, bmpData.length);
-            chunk = Arrays.copyOfRange(bmpData, start, end);
-            header = new byte[4 + chunk.length];
-            header[0] = PACKET_TYPE_IMAGE; // Command
-            header[1] = (byte) ((streamId >> 8) & 0xFF); // Sequence
-            header[2] = (byte) (streamId & 0xFF); // Sequence
-            header[3] = (byte) (i & 0xFF); // Sequence
+            int start = i * BMP_CHUNK_SIZE;
+            int end = Math.min(start + BMP_CHUNK_SIZE, bmpData.length);
+            byte[] chunk = Arrays.copyOfRange(bmpData, start, end);
+            
+            byte[] header = new byte[4 + chunk.length];
+            header[0] = PACKET_TYPE_IMAGE; // 0xB0
+            header[1] = (byte) ((streamIdInt >> 8) & 0xFF); // Stream ID high byte
+            header[2] = (byte) (streamIdInt & 0xFF); // Stream ID low byte  
+            header[3] = (byte) (i & 0xFF); // Chunk index
             System.arraycopy(chunk, 0, header, 4, chunk.length);
             chunks.add(header);
         }
@@ -3321,6 +3315,102 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
 
         public void setText(String text) {
             this.text = text;
+        }
+    }
+
+    // send a test image and display
+    private void startSendingDisplayImageTest(String imageType, String imageSize) {
+        if (isImageSendProgressing) {
+            return;
+        }
+        isImageSendProgressing = true;
+        Log.d(TAG, "startSendingDisplayImageTest - Type: " + imageType + ", Size: " + imageSize);
+
+        try {
+            // Parse the size dimensions
+            String[] dimensions = imageSize.split("x");
+            int width = Integer.parseInt(dimensions[0]);
+            int height = Integer.parseInt(dimensions[1]);
+            
+            // Generate the test image based on type and size
+            byte[] bmpData = generateTestImage(imageType, width, height);
+            if (bmpData != null) {
+                displayBitmapImageForNexGlasses(bmpData, width, height);
+            } else {
+                Log.e(TAG, "Failed to generate test image");
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error generating test image: " + e.getMessage());
+        } finally {
+            isImageSendProgressing = false;
+        }
+    }
+
+    /**
+     * Generates a test bitmap image based on the specified type and size
+     */
+    private byte[] generateTestImage(String imageType, int width, int height) {
+        try {
+            // Create a 1-bit bitmap (black and white)
+            Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+            
+            // Fill with white background
+            bitmap.eraseColor(Color.WHITE);
+            
+            // Create canvas for drawing
+            Canvas canvas = new Canvas(bitmap);
+            Paint paint = new Paint();
+            paint.setColor(Color.BLACK);
+            paint.setStyle(Paint.Style.FILL);
+            
+            switch (imageType) {
+                case "pattern":
+                    // Create a diagonal stripe pattern
+                    for (int i = 0; i < Math.max(width, height); i += 4) {
+                        canvas.drawLine(i, 0, i + 2, height, paint);
+                    }
+                    break;
+                    
+                case "gradient":
+                    // Create a gradient from top to bottom
+                    for (int y = 0; y < height; y++) {
+                        int alpha = (int) (255 * (1.0 - (double) y / height));
+                        paint.setAlpha(alpha);
+                        canvas.drawLine(0, y, width, y, paint);
+                    }
+                    break;
+                    
+                case "checkerboard":
+                    // Create a checkerboard pattern
+                    int squareSize = Math.max(1, Math.min(width, height) / 8);
+                    for (int y = 0; y < height; y += squareSize) {
+                        for (int x = 0; x < width; x += squareSize) {
+                            if (((x / squareSize) + (y / squareSize)) % 2 == 0) {
+                                canvas.drawRect(x, y, x + squareSize, y + squareSize, paint);
+                            }
+                        }
+                    }
+                    break;
+                    
+                case "solid":
+                    // Create a solid black image
+                    canvas.drawRect(0, 0, width, height, paint);
+                    break;
+                    
+                default:
+                    // Default to pattern
+                    for (int i = 0; i < Math.max(width, height); i += 4) {
+                        canvas.drawLine(i, 0, i + 2, height, paint);
+                    }
+                    break;
+            }
+            
+            // Convert to 1-bit BMP format
+            return BitmapJavaUtils.convertBitmapTo1BitBmpBytes(bitmap, false);
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Error generating test image: " + e.getMessage());
+            return null;
         }
     }
 }

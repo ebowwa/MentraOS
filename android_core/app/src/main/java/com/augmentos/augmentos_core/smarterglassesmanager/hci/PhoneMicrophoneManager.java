@@ -15,6 +15,7 @@ import android.media.AudioManager;
 import android.media.AudioRecord;
 import android.media.AudioRecordingConfiguration;
 import android.os.Build;
+import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
 import android.telephony.PhoneStateListener;
@@ -25,8 +26,15 @@ import com.augmentos.augmentos_core.enums.SpeechRequiredDataType;
 import com.augmentos.augmentos_core.microphone.MicrophoneService;
 import com.augmentos.augmentos_core.smarterglassesmanager.speechrecognition.SpeechRecSwitchSystem;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 
 import androidx.annotation.RequiresApi;
 import androidx.core.content.ContextCompat;
@@ -34,10 +42,9 @@ import androidx.core.content.ContextCompat;
 import com.augmentos.augmentos_core.smarterglassesmanager.SmartGlassesManager;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.MicModeChangedEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.smartglassesconnection.SmartGlassesRepresentative;
+import com.augmentos.smartglassesmanager.cpp.L3cCpp;
 
 import org.greenrobot.eventbus.EventBus;
-
-import java.nio.ByteBuffer;
 
 /**
  * Dynamic microphone manager that prioritizes SCO mode but gracefully handles conflicts.
@@ -117,6 +124,19 @@ public class PhoneMicrophoneManager {
     private long lastServiceStateChangeTime = 0;
     private static final long SERVICE_STATE_CHANGE_DEBOUNCE_MS = 1000; // 1 second minimum between service state changes
     
+    // 30-second audio recording system
+    private static final long RECORDING_INTERVAL_MS = 30000; // 30 seconds
+    private static final String RECORDING_DIR = "phone_mic_recordings";
+    private List<ByteBuffer> audioBuffer = new ArrayList<>();
+    private long recordingStartTime = 0;
+    private Handler recordingHandler = new Handler(Looper.getMainLooper());
+    private Runnable recordingRunnable;
+    
+    // LC3 encoder/decoder for testing
+    private long lc3EncoderPtr = 0;
+    private long lc3DecoderPtr = 0;
+    private boolean lc3Initialized = false;
+    
     /**
      * Creates a new PhoneMicrophoneManager that handles dynamic switching between microphone modes.
      * 
@@ -150,6 +170,9 @@ public class PhoneMicrophoneManager {
         this.audioChunkCallback = new AudioChunkCallback() {
             @Override
             public void onSuccess(ByteBuffer data) {
+                // Buffer audio data for 30-second recording
+                bufferAudioData(data);
+                
                 if (glassesRep != null) {
                     // Use the existing receiveChunk method to handle PCM -> LC3 conversion and callbacks
                     glassesRep.receiveChunk(data);
@@ -172,13 +195,16 @@ public class PhoneMicrophoneManager {
                 handleMissingPermissions();
                 return;
             }
-            
-            // Initialize managers
-            initCallDetection();
-            initAudioConflictDetection();
-            
-            // Start with preferred mode
-            startPreferredMicMode();
+
+        // Initialize managers
+        initCallDetection();
+        initAudioConflictDetection();
+
+        // Initialize LC3 encoder/decoder
+        initLC3Codec();
+
+        // Start with preferred mode
+        startPreferredMicMode();
         } catch (SecurityException se) {
             Log.e(TAG, "Security exception during initialization: " + se.getMessage());
             handleMissingPermissions();
@@ -371,6 +397,9 @@ public class PhoneMicrophoneManager {
             
             // Start Samsung monitoring if needed
             startSamsungAudioMonitoring();
+            
+            // Reset 30-second recording system for phone mic
+            resetRecordingSystem();
         } catch (Exception e) {
             Log.e(TAG, "Failed to start SCO mode", e);
             abandonAudioFocus(); // Release focus on failure
@@ -433,6 +462,9 @@ public class PhoneMicrophoneManager {
             
             // Start Samsung monitoring if needed
             startSamsungAudioMonitoring();
+            
+            // Reset 30-second recording system for phone mic
+            resetRecordingSystem();
         } catch (Exception e) {
             Log.e(TAG, "Failed to start normal mode", e);
             abandonAudioFocus(); // Release focus on failure
@@ -467,6 +499,9 @@ public class PhoneMicrophoneManager {
         
         // Stop Samsung monitoring when switching away from phone mic
         stopSamsungAudioMonitoring();
+        
+        // Stop 30-second recording system when switching to glasses mic
+        stopRecordingSystem();
         
         try {
             Log.d(TAG, "Switching to glasses onboard microphone");
@@ -577,6 +612,9 @@ public class PhoneMicrophoneManager {
                 Log.e(TAG, "Error stopping SCO audio", e);
             }
         }
+        
+        // Stop 30-second recording system
+        stopRecordingSystem();
         
         // Update status
         currentStatus = MicStatus.PAUSED;
@@ -1334,8 +1372,59 @@ public class PhoneMicrophoneManager {
             }
         }
         
+        // Stop 30-second recording system
+        stopRecordingSystem();
+        
         // Clear tracked audio client IDs
         ourAudioClientIds.clear();
+        
+        // Clean up LC3 codec
+        cleanupLC3Codec();
+    }
+    
+    /**
+     * Initializes the LC3 encoder and decoder
+     */
+    private void initLC3Codec() {
+        try {
+            Log.d(TAG, "🔧 Initializing LC3 codec for dual recording...");
+            
+            // Initialize LC3 encoder and decoder
+            lc3EncoderPtr = L3cCpp.initEncoder();
+            lc3DecoderPtr = L3cCpp.initDecoder();
+            
+            if (lc3EncoderPtr != 0 && lc3DecoderPtr != 0) {
+                lc3Initialized = true;
+                Log.d(TAG, "✅ LC3 codec initialized successfully");
+            } else {
+                lc3Initialized = false;
+                Log.e(TAG, "❌ Failed to initialize LC3 codec");
+            }
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to initialize LC3 codec", e);
+            lc3Initialized = false;
+        }
+    }
+    
+    /**
+     * Cleans up LC3 encoder and decoder resources
+     */
+    private void cleanupLC3Codec() {
+        try {
+            if (lc3EncoderPtr != 0) {
+                L3cCpp.freeEncoder(lc3EncoderPtr);
+                lc3EncoderPtr = 0;
+            }
+            if (lc3DecoderPtr != 0) {
+                L3cCpp.freeDecoder(lc3DecoderPtr);
+                lc3DecoderPtr = 0;
+            }
+            lc3Initialized = false;
+            Log.d(TAG, "🧹 LC3 codec resources cleaned up");
+        } catch (Exception e) {
+            Log.e(TAG, "Error cleaning up LC3 codec", e);
+        }
     }
     
     /**
@@ -1394,5 +1483,373 @@ public class PhoneMicrophoneManager {
 
     public void setRequiredData(List<SpeechRequiredDataType> requiredData) {
         this.requiredData = requiredData;
+    }
+    
+    // ===== 30-SECOND AUDIO RECORDING SYSTEM =====
+    
+    /**
+     * Buffers audio data for 30-second recording chunks
+     */
+    private void bufferAudioData(ByteBuffer data) {
+        // Only record when using phone mic (SCO or NORMAL mode)
+        if (currentStatus != MicStatus.SCO_MODE && currentStatus != MicStatus.NORMAL_MODE) {
+            return;
+        }
+        
+        // Start recording timer if this is the first chunk
+        if (recordingStartTime == 0) {
+            recordingStartTime = System.currentTimeMillis();
+            startRecordingTimer();
+            Log.d(TAG, "🎤 Started 30-second audio recording timer");
+            Log.d(TAG, "📁 Recordings will be saved to: " + getRecordingsDirectoryPath());
+        }
+        
+        // Create a deep copy of the buffer to avoid position/limit issues
+        ByteBuffer copy = ByteBuffer.allocate(data.remaining());
+        copy.put(data.duplicate());
+        copy.flip(); // Reset position to 0 for reading
+        
+        // Add audio data to buffer
+        audioBuffer.add(copy);
+        
+        // Debug logging (only for first few chunks to avoid spam)
+        if (audioBuffer.size() <= 3) {
+            Log.d(TAG, "🔍 Buffered chunk " + audioBuffer.size() + ": " + copy.remaining() + " bytes");
+        }
+    }
+    
+    /**
+     * Starts the 30-second recording timer
+     */
+    private void startRecordingTimer() {
+        if (recordingRunnable != null) {
+            recordingHandler.removeCallbacks(recordingRunnable);
+        }
+        
+        recordingRunnable = new Runnable() {
+            @Override
+            public void run() {
+                saveAudioRecording();
+                // Reset for next 30-second cycle
+                recordingStartTime = System.currentTimeMillis();
+                startRecordingTimer();
+            }
+        };
+        
+        recordingHandler.postDelayed(recordingRunnable, RECORDING_INTERVAL_MS);
+    }
+    
+    /**
+     * Saves the buffered audio data to both PCM and LC3 encoded/decoded WAV files
+     */
+    private void saveAudioRecording() {
+        if (audioBuffer.isEmpty()) {
+            Log.w(TAG, "No audio data to save");
+            return;
+        }
+        
+        try {
+            // Create recordings directory
+            File recordingsDir = new File(context.getExternalFilesDir(null), RECORDING_DIR);
+            if (!recordingsDir.exists()) {
+                recordingsDir.mkdirs();
+            }
+            
+            // Calculate actual total data size
+            int totalDataSize = 0;
+            for (ByteBuffer buffer : audioBuffer) {
+                totalDataSize += buffer.remaining();
+            }
+            
+            // Generate filename with timestamp
+            String timestamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
+            String filename = "phone_mic_" + timestamp + ".wav";
+            String encodedFilename = "phone_mic_" + timestamp + "_encoded_decoded.wav";
+            
+            // Save original PCM WAV file
+            File audioFile = new File(recordingsDir, filename);
+            savePcmWavFile(audioFile, totalDataSize);
+            
+            // Save LC3 encoded/decoded WAV file
+            File encodedFile = new File(recordingsDir, encodedFilename);
+            saveLC3EncodedDecodedWavFile(encodedFile);
+            
+            // Calculate duration for logging
+            float durationSeconds = (float) totalDataSize / (16000 * 2); // 16kHz, 16-bit (2 bytes per sample)
+            int expectedChunks = (int) Math.ceil(30.0 / 0.128); // Expected chunks for 30 seconds at 128ms per chunk
+            
+            // Get full filepaths for logging
+            String fullPath = audioFile.getAbsolutePath();
+            String encodedFullPath = encodedFile.getAbsolutePath();
+            
+            Log.d(TAG, "💾 Saved dual audio recordings:");
+            Log.d(TAG, "   📁 PCM: " + filename + " (" + audioBuffer.size() + "/" + expectedChunks + " chunks, " + 
+                      audioFile.length() + " bytes, " + String.format("%.1f", durationSeconds) + " seconds)");
+            Log.d(TAG, "   📁 LC3: " + encodedFilename + " (" + encodedFile.length() + " bytes)");
+            Log.d(TAG, "   📁 PCM path: " + fullPath);
+            Log.d(TAG, "   📁 LC3 path: " + encodedFullPath);
+            
+            // Clear buffer for next recording cycle
+            audioBuffer.clear();
+            
+        } catch (IOException e) {
+            Log.e(TAG, "Failed to save audio recording", e);
+        }
+    }
+    
+    /**
+     * Saves the original PCM data as a WAV file
+     */
+    private void savePcmWavFile(File audioFile, int totalDataSize) throws IOException {
+        FileOutputStream fos = new FileOutputStream(audioFile);
+        
+        // Write WAV header with correct data size
+        writeWavHeader(fos, totalDataSize);
+        
+        // Write audio data
+        for (ByteBuffer buffer : audioBuffer) {
+            byte[] array = new byte[buffer.remaining()];
+            buffer.duplicate().get(array); // Use duplicate to preserve buffer position
+            fos.write(array);
+        }
+        fos.close();
+    }
+    
+    /**
+     * Saves the LC3 encoded/decoded data as a WAV file
+     */
+    private void saveLC3EncodedDecodedWavFile(File encodedFile) throws IOException {
+        if (!lc3Initialized) {
+            Log.w(TAG, "LC3 codec not initialized, skipping encoded file");
+            return;
+        }
+        
+        try {
+            // Process audio through LC3 encoder/decoder
+            List<byte[]> processedAudio = processAudioThroughLC3();
+            
+            if (processedAudio.isEmpty()) {
+                Log.w(TAG, "No processed audio data available");
+                return;
+            }
+            
+            // Calculate total size of processed audio
+            int totalProcessedSize = 0;
+            for (byte[] audio : processedAudio) {
+                totalProcessedSize += audio.length;
+            }
+            
+            FileOutputStream fos = new FileOutputStream(encodedFile);
+            
+            // Write WAV header
+            writeWavHeader(fos, totalProcessedSize);
+            
+            // Write processed audio data
+            for (byte[] audio : processedAudio) {
+                fos.write(audio);
+            }
+            fos.close();
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to save LC3 encoded/decoded file", e);
+        }
+    }
+    
+    /**
+     * Processes audio data through LC3 encoder and decoder
+     */
+    private List<byte[]> processAudioThroughLC3() {
+        List<byte[]> processedAudio = new ArrayList<>();
+        
+        try {
+            // LC3 frame parameters
+            final int SAMPLE_RATE_HZ = 16000;
+            final int FRAME_DURATION_US = 10000; // 10 ms
+            final int SAMPLES_PER_FRAME = SAMPLE_RATE_HZ / (1_000_000 / FRAME_DURATION_US); // 160 samples
+            final int BYTES_PER_FRAME = SAMPLES_PER_FRAME * 2; // 16-bit = 2 bytes/sample = 320 bytes
+            
+            Log.d(TAG, "🔧 Processing " + audioBuffer.size() + " chunks through LC3 codec...");
+            
+            // Process each audio chunk
+            for (int chunkIndex = 0; chunkIndex < audioBuffer.size(); chunkIndex++) {
+                ByteBuffer buffer = audioBuffer.get(chunkIndex);
+                byte[] pcmData = new byte[buffer.remaining()];
+                buffer.duplicate().get(pcmData);
+                
+                // Process in LC3 frames
+                int offset = 0;
+                int framesProcessed = 0;
+                while (offset + BYTES_PER_FRAME <= pcmData.length) {
+                    byte[] frame = new byte[BYTES_PER_FRAME];
+                    System.arraycopy(pcmData, offset, frame, 0, BYTES_PER_FRAME);
+                    
+                    // Encode to LC3
+                    byte[] lc3Data = encodeLC3Frame(frame);
+                    
+                    // Decode back to PCM
+                    byte[] decodedFrame = decodeLC3Frame(lc3Data);
+                    
+                    if (decodedFrame != null) {
+                        processedAudio.add(decodedFrame);
+                        framesProcessed++;
+                    }
+                    
+                    offset += BYTES_PER_FRAME;
+                }
+                
+                if (chunkIndex < 3) { // Log first 3 chunks for debugging
+                    Log.d(TAG, "🔍 Chunk " + chunkIndex + ": " + framesProcessed + " frames processed");
+                }
+            }
+            
+            Log.d(TAG, "✅ LC3 processing complete: " + processedAudio.size() + " frames generated");
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Error processing audio through LC3", e);
+        }
+        
+        return processedAudio;
+    }
+    
+    /**
+     * Encodes a PCM frame to LC3 format
+     */
+    private byte[] encodeLC3Frame(byte[] pcmFrame) {
+        try {
+            if (lc3EncoderPtr != 0) {
+                // Encode PCM frame to LC3
+                byte[] lc3Data = L3cCpp.encodeLC3(lc3EncoderPtr, pcmFrame);
+                return lc3Data;
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error encoding LC3 frame", e);
+        }
+        return pcmFrame; // Fallback to original frame
+    }
+    
+    /**
+     * Decodes an LC3 frame back to PCM format
+     */
+    private byte[] decodeLC3Frame(byte[] lc3Frame) {
+        try {
+            if (lc3DecoderPtr != 0) {
+                // Decode LC3 frame back to PCM
+                byte[] pcmData = L3cCpp.decodeLC3(lc3DecoderPtr, lc3Frame);
+                return pcmData;
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error decoding LC3 frame", e);
+        }
+        return lc3Frame; // Fallback to original frame
+    }
+    
+    /**
+     * Writes WAV header to the output stream
+     */
+    private void writeWavHeader(FileOutputStream fos, int dataSize) throws IOException {
+        // WAV header constants
+        final int SAMPLE_RATE = 16000;
+        final int CHANNELS = 1;
+        final int BITS_PER_SAMPLE = 16;
+        final int BYTE_RATE = SAMPLE_RATE * CHANNELS * BITS_PER_SAMPLE / 8;
+        final int BLOCK_ALIGN = CHANNELS * BITS_PER_SAMPLE / 8;
+        
+        // Calculate total file size
+        int totalSize = 36 + dataSize;
+        
+        // Write WAV header
+        writeString(fos, "RIFF");                    // ChunkID
+        writeInt(fos, totalSize);                    // ChunkSize
+        writeString(fos, "WAVE");                    // Format
+        writeString(fos, "fmt ");                    // Subchunk1ID
+        writeInt(fos, 16);                          // Subchunk1Size (PCM = 16)
+        writeShort(fos, 1);                         // AudioFormat (PCM = 1)
+        writeShort(fos, CHANNELS);                  // NumChannels
+        writeInt(fos, SAMPLE_RATE);                 // SampleRate
+        writeInt(fos, BYTE_RATE);                   // ByteRate
+        writeShort(fos, BLOCK_ALIGN);               // BlockAlign
+        writeShort(fos, BITS_PER_SAMPLE);           // BitsPerSample
+        writeString(fos, "data");                   // Subchunk2ID
+        writeInt(fos, dataSize);                    // Subchunk2Size
+    }
+    
+    /**
+     * Writes a string to the output stream
+     */
+    private void writeString(FileOutputStream fos, String value) throws IOException {
+        fos.write(value.getBytes());
+    }
+    
+    /**
+     * Writes a 32-bit integer to the output stream (little-endian)
+     */
+    private void writeInt(FileOutputStream fos, int value) throws IOException {
+        fos.write(value & 0xFF);
+        fos.write((value >> 8) & 0xFF);
+        fos.write((value >> 16) & 0xFF);
+        fos.write((value >> 24) & 0xFF);
+    }
+    
+    /**
+     * Writes a 16-bit short to the output stream (little-endian)
+     */
+    private void writeShort(FileOutputStream fos, int value) throws IOException {
+        fos.write(value & 0xFF);
+        fos.write((value >> 8) & 0xFF);
+    }
+    
+    /**
+     * Stops the recording system and saves any remaining audio
+     */
+    private void stopRecordingSystem() {
+        if (recordingRunnable != null) {
+            recordingHandler.removeCallbacks(recordingRunnable);
+            recordingRunnable = null;
+        }
+        
+        // Save any remaining audio data
+        if (!audioBuffer.isEmpty()) {
+            saveAudioRecording();
+        }
+        
+        recordingStartTime = 0;
+        audioBuffer.clear();
+        Log.d(TAG, "🛑 Stopped 30-second audio recording system");
+    }
+    
+    /**
+     * Resets the recording system for phone mic usage
+     */
+    private void resetRecordingSystem() {
+        // Clear any existing recording state
+        if (recordingRunnable != null) {
+            recordingHandler.removeCallbacks(recordingRunnable);
+            recordingRunnable = null;
+        }
+        
+        // Reset recording state
+        recordingStartTime = 0;
+        audioBuffer.clear();
+        Log.d(TAG, "🔄 Reset 30-second audio recording system for phone mic");
+    }
+    
+    /**
+     * Gets the recordings directory path for external access
+     */
+    public String getRecordingsDirectoryPath() {
+        File recordingsDir = new File(context.getExternalFilesDir(null), RECORDING_DIR);
+        return recordingsDir.getAbsolutePath();
+    }
+    
+    /**
+     * Manually triggers saving of current audio buffer (for testing/debugging)
+     */
+    public void manualSaveRecording() {
+        if (!audioBuffer.isEmpty()) {
+            Log.d(TAG, "🔧 Manual recording save triggered");
+            saveAudioRecording();
+        } else {
+            Log.w(TAG, "No audio data available for manual save");
+        }
     }
 }

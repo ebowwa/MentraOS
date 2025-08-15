@@ -3127,9 +3127,9 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     }
 
     @Override
-    public void onDisplayImageNotified(String localImageName) {
-        Log.d(TAG, "onDisplayImageNotified localImageName: " + localImageName);
-        EventBus.getDefault().post(new DisplayImageEvent(localImageName));
+    public void onDisplayImageNotified(String imageType, String imageSize) {
+        Log.d(TAG, "onDisplayImageNotified imageType: " + imageType + ", imageSize: " + imageSize);
+        EventBus.getDefault().post(new DisplayImageEvent(imageType, imageSize));
     }
 
     @Override

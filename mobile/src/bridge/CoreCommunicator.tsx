@@ -886,11 +886,12 @@ export class CoreCommunicator extends EventEmitter {
     })
   }
 
-  async sendDisplayImage(localImageName: string) {
+  async sendDisplayImage(imageType: string, imageSize: string) {
     return await this.sendData({
       command: "display_image",
       params: {
-        localImageName: localImageName,
+        imageType: imageType,
+        imageSize: imageSize,
       },
     })
   }

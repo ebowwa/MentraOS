@@ -272,8 +272,9 @@ public class AugmentOsManagerMessageParser {
             break;
             case "display_image": {
                 final JSONObject paramsObject = commandObject.getJSONObject("params");
-                String localImageName = paramsObject.getString("localImageName");
-                callback.onDisplayImageNotified(localImageName);
+                String imageType = paramsObject.getString("imageType");
+                String imageSize = paramsObject.getString("imageSize");
+                callback.onDisplayImageNotified(imageType, imageSize);
             }
             break;
             case "clear_display": {

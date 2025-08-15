@@ -89,7 +89,7 @@ public abstract class SmartGlassesCommunicator {
 
     }
 
-    public void onDisplayImageNotified(DisplayImageEvent displayImageEvent) {
+    public void onDisplayImageNotified(String imageType, String imageSize) {
 
     }
 

@@ -13,6 +13,7 @@ import {
   ScrollView,
   TextInput,
 } from "react-native"
+
 import {useFocusEffect} from "@react-navigation/native"
 import {Button, Icon} from "@/components/ignite"
 import coreCommunicator from "@/bridge/CoreCommunicator"
@@ -93,6 +94,97 @@ const GlassesIcon = ({size = 24, color, isOn = false, isDark = false}: GlassesIc
 <path d="M15 15H21.0002V16.5001H15V15Z" fill="${color || (isDark ? "#D3D3D3" : "#232323")}"/>
 </svg>`
   return <SvgXml xml={glassesSvg} width={size} height={size} />
+}
+
+// Pattern Preview Component
+interface PatternPreviewProps {
+  imageType: string
+  imageSize: string
+  isDark?: boolean
+}
+
+const PatternPreview = ({imageType, imageSize, isDark = false}: PatternPreviewProps) => {
+  const previewSize = 80
+  const primaryColor = isDark ? "#FFFFFF" : "#000000"
+  const secondaryColor = isDark ? "#666666" : "#CCCCCC"
+
+  const renderPattern = () => {
+    switch (imageType) {
+      case "pattern":
+        // Horizontal stripe pattern
+        return (
+          <View style={{width: previewSize, height: previewSize}}>
+            {Array.from({length: 4}, (_, i) => (
+              <View
+                key={i}
+                style={{
+                  height: previewSize / 4,
+                  backgroundColor: i % 2 === 0 ? primaryColor : secondaryColor,
+                }}
+              />
+            ))}
+          </View>
+        )
+
+      case "gradient":
+        // Simple two-tone gradient
+        return (
+          <View style={{width: previewSize, height: previewSize, flexDirection: "row"}}>
+            <View style={{flex: 1, backgroundColor: primaryColor}} />
+            <View style={{flex: 1, backgroundColor: secondaryColor}} />
+          </View>
+        )
+
+      case "checkerboard":
+        const squareSize = previewSize / 8
+        return (
+          <View style={{width: previewSize, height: previewSize}}>
+            {Array.from({length: 8}, (_, row) => (
+              <View key={row} style={{flexDirection: "row"}}>
+                {Array.from({length: 8}, (_, col) => {
+                  const isEven = (row + col) % 2 === 0
+                  return (
+                    <View
+                      key={col}
+                      style={{
+                        width: squareSize,
+                        height: squareSize,
+                        backgroundColor: isEven ? primaryColor : secondaryColor,
+                      }}
+                    />
+                  )
+                })}
+              </View>
+            ))}
+          </View>
+        )
+
+      case "solid":
+      default:
+        return (
+          <View
+            style={{
+              width: previewSize,
+              height: previewSize,
+              backgroundColor: primaryColor,
+            }}
+          />
+        )
+    }
+  }
+
+  return (
+    <View
+      style={{
+        borderWidth: 1,
+        borderColor: isDark ? "#444444" : "#CCCCCC",
+        borderRadius: 8,
+        overflow: "hidden",
+        backgroundColor: isDark ? "#1A1A1A" : "#FFFFFF",
+      }}>
+      {renderPattern()}
+    </View>
+  )
 }
 
 // Interface for BLE command objects
@@ -195,6 +287,8 @@ export default function DeviceSettings() {
   const [positionX, setPositionX] = useState("0")
   const [positionY, setPositionY] = useState("0")
   const [size, setSize] = useState("20")
+  const [selectedImageSize, setSelectedImageSize] = useState("32x32")
+  const [selectedImageType, setSelectedImageType] = useState("solid")
   const [commandSender, setCommandSender] = useState<BleCommand | null>(null)
   const [commandReceiver, setCommandReceiver] = useState<BleCommand | null>(null)
 
@@ -267,7 +361,7 @@ export default function DeviceSettings() {
 
   const onSendImageClick = async () => {
     if (status.core_info.puck_connected && status.glasses_info?.model_name) {
-      await coreCommunicator.sendDisplayImage("test_image.png")
+      await coreCommunicator.sendDisplayImage(selectedImageType, selectedImageSize)
     } else {
       showAlert("Please connect to the device", "Please connect to the device", [
         {
@@ -792,16 +886,70 @@ export default function DeviceSettings() {
           <View style={themed($settingsGroup)}>
             <Text style={[themed($subtitle), {marginBottom: theme.spacing.xs}]}>Send Test Image</Text>
             <Text style={[themed($infoText), {color: theme.colors.textDim, marginBottom: theme.spacing.sm}]}>
-              Send the testing image to BLE
+              Send a test bitmap image to BLE with selected size
             </Text>
-            <View style={{flexDirection: "row", justifyContent: "space-between", marginTop: 10}}>
-              <PillButton
-                text="Send Image"
-                variant="primary"
-                onPress={onSendImageClick}
-                disabled={false}
-                buttonStyle={{flex: 1}}
-              />
+
+            {/* Size Selection */}
+            <View style={{marginBottom: theme.spacing.sm}}>
+              <Text style={[themed($subtitle), {marginBottom: theme.spacing.xs}]}>Image Size:</Text>
+              <View style={{flexDirection: "row", flexWrap: "wrap", gap: 8}}>
+                {[
+                  {label: "8×8", value: "8x8"},
+                  {label: "16×16", value: "16x16"},
+                  {label: "32×32", value: "32x32"},
+                  {label: "160×160", value: "160x160"},
+                  {label: "240×240", value: "240x240"},
+                ].map(size => (
+                  <PillButton
+                    key={size.value}
+                    text={size.label}
+                    variant={selectedImageSize === size.value ? "primary" : "secondary"}
+                    onPress={() => setSelectedImageSize(size.value)}
+                    buttonStyle={{minWidth: 60}}
+                  />
+                ))}
+              </View>
+            </View>
+
+            {/* Image Selection */}
+            <View style={{marginBottom: theme.spacing.sm}}>
+              <Text style={[themed($subtitle), {marginBottom: theme.spacing.xs}]}>Test Image:</Text>
+              <View style={{flexDirection: "row", flexWrap: "wrap", gap: 8}}>
+                {[
+                  {label: "Pattern", value: "pattern"},
+                  {label: "Gradient", value: "gradient"},
+                  {label: "Checkerboard", value: "checkerboard"},
+                  {label: "Solid Color", value: "solid"},
+                ].map(image => (
+                  <PillButton
+                    key={image.value}
+                    text={image.label}
+                    variant={selectedImageType === image.value ? "primary" : "secondary"}
+                    onPress={() => setSelectedImageType(image.value)}
+                    buttonStyle={{minWidth: 80}}
+                  />
+                ))}
+              </View>
+            </View>
+
+            {/* Pattern Preview and Send Button */}
+            <View style={{marginTop: theme.spacing.sm}}>
+              <Text style={[themed($subtitle), {marginBottom: theme.spacing.xs}]}>Preview:</Text>
+              <View style={{flexDirection: "row", alignItems: "center", gap: theme.spacing.md}}>
+                <View style={{alignItems: "center", gap: theme.spacing.xs}}>
+                  <PatternPreview imageType={selectedImageType} imageSize={selectedImageSize} isDark={theme.isDark} />
+                  <Text style={[themed($infoText), {color: theme.colors.textDim, fontSize: 12}]}>
+                    {selectedImageSize}
+                  </Text>
+                </View>
+                <PillButton
+                  text="Send Image"
+                  variant="primary"
+                  onPress={onSendImageClick}
+                  disabled={false}
+                  buttonStyle={{flex: 1}}
+                />
+              </View>
             </View>
           </View>
 
