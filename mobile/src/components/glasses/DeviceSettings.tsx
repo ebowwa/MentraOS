@@ -126,15 +126,6 @@ const PatternPreview = ({imageType, imageSize, isDark = false}: PatternPreviewPr
           </View>
         )
 
-      case "gradient":
-        // Simple two-tone gradient
-        return (
-          <View style={{width: previewSize, height: previewSize, flexDirection: "row"}}>
-            <View style={{flex: 1, backgroundColor: primaryColor}} />
-            <View style={{flex: 1, backgroundColor: secondaryColor}} />
-          </View>
-        )
-
       case "checkerboard":
         const squareSize = previewSize / 8
         return (
@@ -917,7 +908,6 @@ export default function DeviceSettings() {
               <View style={{flexDirection: "row", flexWrap: "wrap", gap: 8}}>
                 {[
                   {label: "Pattern", value: "pattern"},
-                  {label: "Gradient", value: "gradient"},
                   {label: "Checkerboard", value: "checkerboard"},
                   {label: "Solid Color", value: "solid"},
                 ].map(image => (
@@ -954,6 +944,22 @@ export default function DeviceSettings() {
           </View>
 
           <View style={themed($settingsGroup)}>
+            <Text style={[themed($subtitle), {marginBottom: theme.spacing.xs}]}>Clear Display</Text>
+            <Text style={[themed($infoText), {color: theme.colors.textDim, marginBottom: theme.spacing.sm}]}>
+              Clear all content (text or images) from the display
+            </Text>
+            <View style={{flexDirection: "row", justifyContent: "space-between", marginTop: 10}}>
+              <PillButton
+                text="Clear Display"
+                variant="secondary"
+                onPress={onClearDisplayClick}
+                disabled={false}
+                buttonStyle={{flex: 1}}
+              />
+            </View>
+          </View>
+
+          <View style={themed($settingsGroup)}>
             <Text style={[themed($subtitle), {marginBottom: theme.spacing.xs}]}>BLE Command Monitor</Text>
             <Text style={[themed($infoText), {color: theme.colors.textDim, marginBottom: theme.spacing.sm}]}>
               Monitor BLE commands sent and received
@@ -978,22 +984,6 @@ export default function DeviceSettings() {
             <Text style={[themed($infoText), {color: theme.colors.textDim}]}>
               HEX: {commandReceiver?.commandText ?? ""}
             </Text>
-          </View>
-
-          <View style={themed($settingsGroup)}>
-            <Text style={[themed($subtitle), {marginBottom: theme.spacing.xs}]}>Clear Display</Text>
-            <Text style={[themed($infoText), {color: theme.colors.textDim, marginBottom: theme.spacing.sm}]}>
-              Clear all content (text or images) from the display
-            </Text>
-            <View style={{flexDirection: "row", justifyContent: "space-between", marginTop: 10}}>
-              <PillButton
-                text="Clear Display"
-                variant="secondary"
-                onPress={onClearDisplayClick}
-                disabled={false}
-                buttonStyle={{flex: 1}}
-              />
-            </View>
           </View>
         </>
       )}
