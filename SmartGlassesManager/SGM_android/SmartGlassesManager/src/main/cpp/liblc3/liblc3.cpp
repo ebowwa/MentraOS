@@ -116,7 +116,7 @@ Java_com_augmentos_smartglassesmanager_cpp_L3cCpp_encodeLC3(JNIEnv *env, jclass 
 
 extern "C" JNIEXPORT jbyteArray JNICALL
 Java_com_augmentos_smartglassesmanager_cpp_L3cCpp_decodeLC3(JNIEnv *env, jclass clazz, jlong decPtr, jbyteArray lc3Data) {
-    jbyte *lc3Bytes = env->GetByteArrayElements(lc3Data, nullptr)
+    jbyte *lc3Bytes = env->GetByteArrayElements(lc3Data, nullptr);
     int lc3Length = env->GetArrayLength(lc3Data);
 
     int dtUs = 10000;
