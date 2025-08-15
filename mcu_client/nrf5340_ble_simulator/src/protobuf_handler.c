@@ -14,7 +14,7 @@
  * Tag 16: PingRequest              - Connectivity test request → Response: PongResponse (TODO)
  * Tag 30: DisplayText              - Display static text message (No response)
  * Tag 35: DisplayScrollingText     - Display animated scrolling text (No response)
- * Tag 37: BrightnessConfig         - Set display brightness level (No response)
+ * Tag 37: BrightnessConfig         - Set display brightness level (LED3 + Projector, No response)
  * Tag 38: AutoBrightnessConfig     - Configure automatic brightness adjustment (No response)
  * Tag 99: ClearDisplay             - Clear display content (TEMPORARY TAG - update when protobuf definition ready)
  * 
@@ -48,6 +48,7 @@
 
 #include "protobuf_handler.h"
 #include "proto/mentraos_ble.pb.h"
+#include "../custom_driver_module/drivers/display/lcd/hls12vga.h"
 #include "mentra_ble_service.h"
 #include "lvgl_interface.h"
 #include "mos_components/mos_lvgl_display/include/mos_lvgl_display.h"  // **NEW: For protobuf text display**
@@ -77,6 +78,9 @@ void protobuf_analyze_message(const uint8_t *data, uint16_t len)
 		LOG_WRN("Received empty data - ignoring");
 		return;
 	}
+
+	LOG_INF("🚨🚨🚨 BLE MESSAGE RECEIVED! 🚨🚨🚨");
+	printk("🚨🚨🚨 BLE MESSAGE RECEIVED via PRINTK! 🚨🚨🚨\n");
 
 	LOG_INF("=== BLE DATA RECEIVED ===");
 	LOG_INF("Received BLE data (%u bytes):", len);
@@ -743,6 +747,12 @@ void protobuf_set_brightness_level(uint32_t level)
 	
 	current_brightness_level = level;
 	
+	// Debug PWM device status
+	LOG_INF("PWM Device Debug:");
+	LOG_INF("  - PWM Device: %p", (void*)pwm_dev);
+	LOG_INF("  - Device Ready: %s", device_is_ready(pwm_dev) ? "YES" : "NO");
+	LOG_INF("  - Device Name: %s", pwm_dev ? pwm_dev->name : "NULL");
+	
 	// Update LED 3 brightness via PWM
 	if (device_is_ready(pwm_dev)) {
 		// Convert percentage to PWM duty cycle (0-100% -> 0-100% duty cycle)
@@ -753,15 +763,37 @@ void protobuf_set_brightness_level(uint32_t level)
 		uint32_t period_ns = 20 * 1000 * 1000;  // 20ms in nanoseconds
 		uint32_t duty_ns = (period_ns * duty_cycle_percent) / 100;
 		
+		LOG_INF("PWM Parameters:");
+		LOG_INF("  - Channel: 0");
+		LOG_INF("  - Period: %u ns", period_ns);
+		LOG_INF("  - Duty: %u ns (%u%%)", duty_ns, duty_cycle_percent);
+		LOG_INF("  - Polarity: INVERTED");
+		
 		int ret = pwm_set(pwm_dev, 0, period_ns, duty_ns, PWM_POLARITY_INVERTED);
 		
 		if (ret == 0) {
-			LOG_INF("LED 3 brightness set to %u%% (duty: %u%%)", level, duty_cycle_percent);
+			LOG_INF("✅ LED 3 brightness set to %u%% (duty: %u%%)", level, duty_cycle_percent);
 		} else {
-			LOG_ERR("Failed to set LED 3 PWM: %d", ret);
+			LOG_ERR("❌ Failed to set LED 3 PWM: %d", ret);
 		}
 	} else {
-		LOG_WRN("PWM LED 3 device not ready");
+		LOG_WRN("⚠️  PWM LED 3 device not ready");
+		if (pwm_dev == NULL) {
+			LOG_ERR("❌ PWM device is NULL - check device tree configuration");
+		}
+	}
+	
+	// Update display projector brightness (0-100% -> 0-9 levels)
+	// Map 0-100% to 0-9 brightness levels for the projector
+	uint8_t projector_level = (level * 9) / 100;  // Linear mapping: 0%->0, 100%->9
+	
+	LOG_INF("Setting projector brightness: %u%% -> level %u (0-9)", level, projector_level);
+	
+	int ret = hls12vga_set_brightness(projector_level);
+	if (ret == 0) {
+		LOG_INF("✅ Display projector brightness set to level %u/9", projector_level);
+	} else {
+		LOG_ERR("❌ Failed to set display projector brightness: %d", ret);
 	}
 }
 
@@ -802,17 +834,18 @@ void protobuf_process_brightness_config(const mentraos_ble_BrightnessConfig *bri
 	LOG_INF("  - PWM Duty Cycle: %u%% (%u ns)", clamped_level, duty_ns);
 	LOG_INF("  - PWM Polarity: INVERTED (higher duty = brighter)");
 	LOG_INF("  - Target LED: LED3 (GPIO P0.31)");
+	LOG_INF("  - Projector Brightness: %u%% -> level %u/9", clamped_level, (clamped_level * 9) / 100);
 	
 	// Protocol compliance
 	LOG_INF("Protocol Compliance:");
 	LOG_INF("  - Message Type: PhoneToGlasses::BrightnessConfig");
 	LOG_INF("  - Field 1 present: YES");
 	LOG_INF("  - Value type: uint32");
-	LOG_INF("  - Implementation: Hardware PWM control + Auto brightness disable");
+	LOG_INF("  - Implementation: Hardware PWM control (LED3) + Projector brightness (HLS12VGA) + Auto brightness disable");
 	
 	// Print to UART
-	printk("\n[Phone->Glasses BRIGHTNESS] Brightness: %u%% -> %u%% (PWM: %u%%, Auto: %s->OFF)\n", 
-	       current_brightness_level, clamped_level, clamped_level, auto_brightness_enabled ? "ON" : "OFF");
+	printk("\n[Phone->Glasses BRIGHTNESS] %u%% -> LED3: %u%%, Projector: %u/9, Auto: %s->OFF\n", 
+	       current_brightness_level, clamped_level, (clamped_level * 9) / 100, auto_brightness_enabled ? "ON" : "OFF");
 	
 	// Clamp and set the new brightness level (this will disable auto brightness)
 	protobuf_set_brightness_level(new_level);

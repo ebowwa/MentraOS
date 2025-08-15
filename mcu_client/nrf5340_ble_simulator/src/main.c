@@ -38,9 +38,29 @@
 #include <string.h>
 
 #include <zephyr/logging/log.h>
+#include <nrfx_clock.h>
 
 #define LOG_MODULE_NAME peripheral_uart
 LOG_MODULE_REGISTER(LOG_MODULE_NAME);
+
+static int hfclock_config_and_start(void)
+{
+	int ret;
+	/* Use this to turn on 128 MHz clock for cpu_app */
+	ret = nrfx_clock_divider_set(NRF_CLOCK_DOMAIN_HFCLK, NRF_CLOCK_HFCLK_DIV_1);
+	ret -= NRFX_ERROR_BASE_NUM;
+	if (ret)
+	{
+		return ret;
+	}
+	nrfx_clock_hfclk_start();
+	while (!nrfx_clock_hfclk_is_running())
+	{
+	}
+	return 0;
+}
+// 初始化高频时钟128Mhz运行模式
+SYS_INIT(hfclock_config_and_start, POST_KERNEL, 0);
 
 #define STACKSIZE 2048
 #define PRIORITY 7
