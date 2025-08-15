@@ -894,29 +894,45 @@ public class PhoneMicrophoneManager {
                 switch (focusChange) {
                     case AudioManager.AUDIOFOCUS_LOSS:
                     case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT:
-                        // Another app needs audio - this is how Samsung signals mic conflicts!
-                        Log.d(TAG, "🎤 Lost audio focus - another app needs microphone");
+                        // Lost audio focus - but need to check if it's for recording or just playback
+                        Log.d(TAG, "Audio focus lost - checking if another app is actually recording...");
                         
                         // Notify lifecycle manager that this is an audio focus loss
                         if (lifecycleManager != null) {
                             lifecycleManager.onAudioFocusLost();
                         }
                         
-                        if (currentStatus == MicStatus.SCO_MODE || currentStatus == MicStatus.NORMAL_MODE) {
-                            // Mark that we're using fallback due to conflict
-                            usingFallbackDueToConflict = true;
-                            
-                            // Switch to glasses mic or pause
-                            if (glassesRep != null && glassesRep.smartGlassesDevice != null && 
-                                glassesRep.smartGlassesDevice.getHasInMic()) {
-                                Log.d(TAG, "Switching to glasses mic as FALLBACK due to audio focus loss");
-                                switchToGlassesMic();
-                            } else {
-                                Log.d(TAG, "Pausing recording due to audio focus loss");
-                                pauseRecording();
-                            }
-                        }
                         hasAudioFocus = false;
+                        
+                        // Delay briefly to see if another app actually starts recording
+                        // This helps distinguish between music playback (Spotify) and actual mic usage (Gboard)
+                        mainHandler.postDelayed(() -> {
+                            // The isExternalAudioActive flag is updated by our monitoring systems
+                            // (AudioRecordingCallback on API 29+ and Samsung monitoring)
+                            // Check if external app is actually using the microphone
+                            if (isExternalAudioActive) {
+                                Log.d(TAG, "🎤 Another app is ACTUALLY recording - switching to fallback");
+                                
+                                if (currentStatus == MicStatus.SCO_MODE || currentStatus == MicStatus.NORMAL_MODE) {
+                                    // Mark that we're using fallback due to conflict
+                                    usingFallbackDueToConflict = true;
+                                    
+                                    // Switch to glasses mic or pause
+                                    if (glassesRep != null && glassesRep.smartGlassesDevice != null && 
+                                        glassesRep.smartGlassesDevice.getHasInMic()) {
+                                        Log.d(TAG, "Switching to glasses mic as FALLBACK due to actual mic conflict");
+                                        switchToGlassesMic();
+                                    } else {
+                                        Log.d(TAG, "Pausing recording due to actual mic conflict");
+                                        pauseRecording();
+                                    }
+                                }
+                            } else {
+                                Log.d(TAG, "📱 Audio focus lost to playback app (like Spotify) - keeping phone mic active");
+                                // Don't switch mics for music playback
+                                // Keep recording with phone mic
+                            }
+                        }, 500); // 500ms delay to let other app start recording
                         break;
                         
                     case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK:
@@ -926,7 +942,7 @@ public class PhoneMicrophoneManager {
                         
                     case AudioManager.AUDIOFOCUS_GAIN:
                         // We got focus back!
-                        Log.d(TAG, "🎤 Regained audio focus - can resume recording");
+                        Log.d(TAG, "🎤 Regained audio focus");
                         hasAudioFocus = true;
                         
                         // Notify lifecycle manager that focus is regained
@@ -934,10 +950,13 @@ public class PhoneMicrophoneManager {
                             lifecycleManager.onAudioFocusGained();
                         }
                         
-                        // If we were using a fallback, return to desired mic
+                        // The isExternalAudioActive flag is already being monitored by our systems
+                        // No need to explicitly check here
+                        
+                        // If we were using a fallback due to actual mic conflict, return to desired mic
                         if (usingFallbackDueToConflict && currentStatus == MicStatus.GLASSES_MIC) {
                             mainHandler.postDelayed(() -> {
-                                if (hasAudioFocus && !isPhoneCallActive && usingFallbackDueToConflict) {
+                                if (hasAudioFocus && !isPhoneCallActive && !isExternalAudioActive && usingFallbackDueToConflict) {
                                     Log.d(TAG, "Returning to DESIRED mic (" + desiredMicStatus + ") after regaining audio focus");
                                     usingFallbackDueToConflict = false;
                                     
@@ -950,11 +969,15 @@ public class PhoneMicrophoneManager {
                         // Resume if we were paused
                         else if (currentStatus == MicStatus.PAUSED) {
                             mainHandler.postDelayed(() -> {
-                                if (hasAudioFocus && !isPhoneCallActive) {
+                                if (hasAudioFocus && !isPhoneCallActive && !isExternalAudioActive) {
                                     Log.d(TAG, "Resuming recording after audio focus gain");
                                     startPreferredMicMode();
                                 }
                             }, 500); // Small delay to let the other app fully release
+                        }
+                        // If we kept the phone mic active during playback, just log it
+                        else if ((currentStatus == MicStatus.SCO_MODE || currentStatus == MicStatus.NORMAL_MODE) && !usingFallbackDueToConflict) {
+                            Log.d(TAG, "Audio focus regained - phone mic was kept active, continuing normally");
                         }
                         break;
                 }
@@ -1335,7 +1358,7 @@ public class PhoneMicrophoneManager {
                     .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
                     .build();
                     
-            audioFocusRequest = new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
+            audioFocusRequest = new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT)
                     .setAudioAttributes(audioAttributes)
                     .setOnAudioFocusChangeListener(audioFocusListener, mainHandler)
                     .setAcceptsDelayedFocusGain(false) // We need focus immediately for recording
@@ -1346,7 +1369,7 @@ public class PhoneMicrophoneManager {
             // Pre-Android 8.0
             result = audioManager.requestAudioFocus(audioFocusListener,
                     AudioManager.STREAM_VOICE_CALL,
-                    AudioManager.AUDIOFOCUS_GAIN);
+                    AudioManager.AUDIOFOCUS_GAIN_TRANSIENT);
         }
         
         hasAudioFocus = (result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED);
