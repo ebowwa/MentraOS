@@ -297,8 +297,8 @@ export class AppSession {
       this.sessionId ?? undefined,
       async (streams: string[]) => {
         this.logger.debug(
-          `[AppSession] subscribeFn called for streams:`,
-          streams,
+          { streams: JSON.stringify(streams) },
+          `[AppSession] subscribeFn called for streams`,
         );
         streams.forEach((stream) => {
           if (!this.subscriptions.has(stream as ExtendedStreamType)) {
@@ -313,8 +313,8 @@ export class AppSession {
           }
         });
         this.logger.debug(
-          `[AppSession] Current subscriptions after subscribeFn:`,
-          Array.from(this.subscriptions),
+          { subscriptions: JSON.stringify(Array.from(this.subscriptions)) },
+          `[AppSession] Current subscriptions after subscribeFn`,
         );
         if (this.ws?.readyState === 1) {
           this.updateSubscriptions();
@@ -1141,8 +1141,8 @@ export class AppSession {
               this.settingsData = this.getDefaultSettings();
             } catch (error) {
               this.logger.warn(
-                "Failed to load default settings from config:",
                 error,
+                "Failed to load default settings from config:",
               );
             }
           }
@@ -1152,13 +1152,13 @@ export class AppSession {
 
           // Handle MentraOS system settings if provided
           this.logger.debug(
-            `[AppSession] CONNECTION_ACK mentraosSettings:`,
-            message.mentraosSettings,
+            { mentraosSettings: JSON.stringify(message.mentraosSettings) },
+            `[AppSession] CONNECTION_ACK mentraosSettings}`,
           );
           if (message.mentraosSettings) {
             this.logger.info(
-              `[AppSession] Calling updatementraosSettings with:`,
-              message.mentraosSettings,
+              { mentraosSettings: JSON.stringify(message.mentraosSettings) },
+              `[AppSession] Calling updatementraosSettings with`,
             );
             this.settings.updateMentraosSettings(message.mentraosSettings);
           } else {
@@ -1384,12 +1384,15 @@ export class AppSession {
           this.events.emit("error", new Error(errorMessage));
         } else if (message.type === "permission_error") {
           // Handle permission errors from cloud
-          this.logger.warn("Permission error received:", {
-            message: message.message,
-            details: message.details,
-            detailsCount: message.details?.length || 0,
-            rejectedStreams: message.details?.map((d) => d.stream) || [],
-          });
+          this.logger.warn(
+            {
+              message: message.message,
+              details: message.details,
+              detailsCount: message.details?.length || 0,
+              rejectedStreams: message.details?.map((d) => d.stream) || [],
+            },
+            "Permission error received:",
+          );
 
           // Emit permission error event for application handling
           this.events.emit("permission_error", {
@@ -1594,8 +1597,8 @@ export class AppSession {
    */
   private updateSubscriptions(): void {
     this.logger.info(
-      `[AppSession] updateSubscriptions: sending subscriptions to cloud:`,
-      Array.from(this.subscriptions),
+      { subscriptions: JSON.stringify(Array.from(this.subscriptions)) },
+      `[AppSession] updateSubscriptions: sending subscriptions to cloud`,
     );
 
     // [MODIFIED] builds the array of SubscriptionRequest objects to send to the cloud
@@ -1778,7 +1781,7 @@ export class AppSession {
       });
       return response.data.instructions || null;
     } catch (err) {
-      this.logger.error("Error fetching instructions from backend:", err);
+      this.logger.error(err, `Error fetching instructions from backend`);
       return null;
     }
   }

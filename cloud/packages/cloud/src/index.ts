@@ -4,7 +4,9 @@
  */
 // Load environment variables first
 import dotenv from "dotenv";
-dotenv.config();
+import path from "path";
+// Look for .env file in the project root
+dotenv.config({ path: path.resolve(__dirname, "../../../.env") });
 
 import express from "express";
 import { Server } from "http";
@@ -18,6 +20,7 @@ import pinoHttp from "pino-http";
 import { DebugService } from "./services/debug/debug-service";
 import { sessionService } from "./services/session/session.service";
 import { websocketService } from "./services/websocket/websocket.service";
+import * as AppUptimeService from "./services/core/app-uptime.service";
 
 // Import routes
 import appRoutes from "./routes/apps.routes";
@@ -38,14 +41,18 @@ import permissionsRoutes from "./routes/permissions.routes";
 import accountRoutes from "./routes/account.routes";
 import organizationRoutes from "./routes/organization.routes";
 import onboardingRoutes from "./routes/onboarding.routes";
-import rtmpRelayRoutes from "./routes/rtmp-relay.routes";
+// import rtmpRelayRoutes from "./routes/rtmp-relay.routes";
+import appUptimeRoutes from "./routes/app-uptime.routes";
+import streamsRoutes from "./routes/streams.routes";
+
 // import appCommunicationRoutes from './routes/app-communication.routes';
 
-import path from "path";
+// import path from "path";
 
 // Load configuration from environment
 import * as mongoConnection from "./connections/mongodb.connection";
 import { logger as rootLogger } from "./services/logging/pino-logger";
+import { memoryTelemetryService } from "./services/debug/MemoryTelemetryService";
 const logger = rootLogger.child({ service: "index" });
 
 // Initialize MongoDB connection
@@ -234,7 +241,10 @@ app.use(audioRoutes);
 app.use("/api/user-data", userDataRoutes);
 app.use("/api/account", accountRoutes);
 app.use("/api/onboarding", onboardingRoutes);
-app.use("/api/rtmp-relay", rtmpRelayRoutes);
+// app.use("/api/rtmp-relay", rtmpRelayRoutes);
+app.use("/api/app-uptime", appUptimeRoutes);
+app.use("/api/streams", streamsRoutes);
+
 // app.use('/api/app-communication', appCommunicationRoutes);
 // app.use('/api/tpa-communication', appCommunicationRoutes); // TODO: Remove this once the old apps are fully updated in the wild (the old mobile clients will hit the old urls)
 
@@ -327,6 +337,13 @@ app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 // Initialize WebSocket service
 // Initialize WebSocket servers
 websocketService.setupWebSocketServers(server);
+
+// Start memory telemetry
+memoryTelemetryService.start();
+
+if (process.env.UPTIME_SERVICE_RUNNING === "true") {
+  AppUptimeService.startUptimeScheduler(); // start app uptime service scheduler
+}
 
 // Start the server
 try {

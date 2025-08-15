@@ -1,7 +1,9 @@
 "on":
   push:
     branches:
-      - translation-manager
+      - subscription-manager
+    paths:
+      - "cloud/**"
 name: 🚀 [debug] Porter.run Deploy
 jobs:
   porter-deploy:

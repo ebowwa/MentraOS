@@ -27,6 +27,7 @@ export default function AppWebView() {
   const [finalUrl, setFinalUrl] = useState<string | null>(null)
   const [isLoadingToken, setIsLoadingToken] = useState(true)
   const [tokenError, setTokenError] = useState<string | null>(null)
+  const [retryTrigger, setRetryTrigger] = useState(0) // Trigger for retrying token generation
   const {replace, goBack, push, navigate, clearHistoryAndGoHome} = useNavigationHistory()
 
   if (typeof webviewURL !== "string" || typeof appName !== "string" || typeof packageName !== "string") {
@@ -38,8 +39,7 @@ export default function AppWebView() {
     useCallback(() => {
       const onBackPress = () => {
         // Always go back to home when back is pressed
-        // replace("/(tabs)/home")
-        goBack()
+        clearHistoryAndGoHome()
         return true
       }
 
@@ -106,6 +106,7 @@ export default function AppWebView() {
   // Fetch temporary token on mount
   useEffect(() => {
     const generateTokenAndSetUrl = async () => {
+      console.log("WEBVIEW: generateTokenAndSetUrl()")
       setIsLoadingToken(true)
       setTokenError(null)
 
@@ -149,29 +150,53 @@ export default function AppWebView() {
       } catch (error: any) {
         console.error("Error generating webview token:", error)
         setTokenError(`Failed to prepare secure access: ${error.message}`)
-        showAlert(
-          "Authentication Error",
-          `Could not securely connect to ${appName}. Please try again later. Details: ${error.message}`,
-          [{text: "OK", onPress: () => goBack()}], // Option to go back
-        )
+        showAlert("Authentication Error", `Could not securely connect to ${appName}. Please try again later.`, [
+          {text: "OK", onPress: () => goBack()},
+        ])
       } finally {
         setIsLoadingToken(false)
       }
     }
 
     generateTokenAndSetUrl()
-  }, [packageName, webviewURL, appName]) // Dependencies
+  }, [packageName, webviewURL, appName, retryTrigger]) // Dependencies
 
   // Handle WebView loading events
   const handleLoadStart = () => setIsLoading(true)
-  const handleLoadEnd = () => setIsLoading(false)
+  const handleLoadEnd = () => {
+    setIsLoading(false)
+    setHasError(false)
+  }
   const handleError = (syntheticEvent: any) => {
     // Use any for syntheticEvent
     const {nativeEvent} = syntheticEvent
     console.warn("WebView error: ", nativeEvent)
     setIsLoading(false)
     setHasError(true)
-    setTokenError(`Failed to load ${appName}: ${nativeEvent.description}`) // Show WebView load error
+
+    // Parse error message to show user-friendly text
+    const errorDesc = nativeEvent.description || ""
+    let friendlyMessage = `Unable to load ${appName}`
+
+    if (
+      errorDesc.includes("ERR_INTERNET_DISCONNECTED") ||
+      errorDesc.includes("ERR_NETWORK_CHANGED") ||
+      errorDesc.includes("ERR_CONNECTION_FAILED") ||
+      errorDesc.includes("ERR_NAME_NOT_RESOLVED")
+    ) {
+      friendlyMessage = "No internet connection. Please check your network settings and try again."
+    } else if (errorDesc.includes("ERR_CONNECTION_TIMED_OUT") || errorDesc.includes("ERR_TIMED_OUT")) {
+      friendlyMessage = "Connection timed out. Please check your internet connection and try again."
+    } else if (errorDesc.includes("ERR_CONNECTION_REFUSED")) {
+      friendlyMessage = `Unable to connect to ${appName}. Please try again later.`
+    } else if (errorDesc.includes("ERR_SSL") || errorDesc.includes("ERR_CERT")) {
+      friendlyMessage = "Security error. Please check your device's date and time settings."
+    } else if (errorDesc) {
+      // For any other errors, just show a generic message without the technical error
+      friendlyMessage = `Unable to load ${appName}. Please try again.`
+    }
+
+    setTokenError(friendlyMessage)
   }
 
   // Render loading state while fetching token
@@ -184,15 +209,17 @@ export default function AppWebView() {
   }
 
   // Render error state if token generation failed
-  if (tokenError) {
+  if (tokenError && !isLoadingToken) {
     return (
       <View style={[styles.container, {backgroundColor: theme2.backgroundColor}]}>
         <InternetConnectionFallbackComponent
           retry={() => {
-            /* Implement retry logic if desired, e.g., refetch token */
+            // Reset state and retry token generation
+            setTokenError(null)
+            setRetryTrigger(prev => prev + 1) // Trigger useEffect to retry
           }}
+          message={tokenError}
         />
-        <Text style={[styles.errorText, {color: theme2.textColor}]}>{tokenError}</Text>
       </View>
     )
   }
@@ -204,13 +231,13 @@ export default function AppWebView() {
         <InternetConnectionFallbackComponent
           retry={() => {
             setHasError(false)
-            // Optionally re-trigger token generation or just reload
+            setTokenError(null)
             if (webViewRef.current) {
               webViewRef.current.reload()
             }
           }}
+          message={tokenError || `Unable to load ${appName}. Please check your connection and try again.`}
         />
-        <Text style={[styles.errorText, {color: theme2.textColor}]}>{tokenError || `Failed to load ${appName}`}</Text>
       </View>
     )
   }

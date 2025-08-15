@@ -21,6 +21,10 @@ const en = {
     retryConnection: "Retry Connection",
     skipUpdate: "Skip Update",
   },
+  simulatedGlasses: {
+    showDashboard: "Show Dashboard",
+    hideDashboard: "Hide Dashboard",
+  },
   connection: {
     connected: "Connected",
     connecting: "Connecting",
@@ -49,6 +53,18 @@ const en = {
     scanningForGlasses2: "Ensure your glasses are in range.",
     preorderNow: "PREORDER NOW",
     preorderNowShipMessage: "Ships September 2025",
+    goHome: "Go Home",
+    tryAgain: "Try Again",
+    pairingFailed: "Pairing Failed",
+  },
+  pairingGuides: {
+    // TODO: add pairing guides for each glasses model
+    // evenRealitiesG1: {
+    //   title: "Even Realities G1",
+    //   step1: "Disconnect your G1 from within the Even Realities app, or uninstall the Even Realities app",
+    //   step2: "Place your G1 in the charging case with the lid open.",
+    //   step3: "Connect your G1 to your device.",
+    // },
   },
   connectivity: {
     bluetoothRequiredTitle: "Bluetooth Required",
@@ -84,6 +100,7 @@ const en = {
     apps: "Apps",
     inactiveApps: "Inactive Apps",
     tapToStart: "TAP TO START",
+    tapToActivate: "Tap an app to activate it",
     completeOnboardingTitle: "Complete Onboarding",
     completeOnboardingMessage: "Please tap the Live Captions app to complete the onboarding process.",
     tryLiveCaptionsTitle: "Try Live Captions!",
@@ -105,6 +122,14 @@ const en = {
     appWillRunWhenConnected: "This app will start running once your glasses are connected.",
     connectGlassesToStart: "Connect your glasses to get started",
     tapToStartLiveCaptions: "Tap to start the Live Captions app",
+    hardwareIncompatible: "Hardware Incompatible",
+    hardwareIncompatibleMessage:
+      "{{app}} requires hardware that is not available on your connected glasses: {{missing}}",
+    incompatibleApps: "Incompatible Apps",
+    incompatibleAppsDescription: "These apps require hardware features not available on your connected glasses",
+    incompatible: "Incompatible",
+    noAppsInstalled: "No apps installed",
+    swipeToView: "Swipe to view {{target}}",
   },
   glasses: {
     title: "Glasses",
@@ -187,6 +212,9 @@ const en = {
     powerSavingMode: "Power Saving Mode",
     powerSavingModeSubtitle: 'Allows the display to fully turn off. May briefly show "Even AI Listening".',
     powerSavingModeSubtitle2: "TODO",
+    newUi: "New UI",
+    newUiSubtitle: "Enable the new home screen UI. (Requires restarting the app)",
+    loggingOutMessage: "We're logging you out...",
   },
   profileSettings: {
     title: "Profile Settings",
@@ -272,6 +300,13 @@ const en = {
     sensingDisabled: "Sensors are disabled. Camera, microphone, and other sensors won't work in apps.",
     microphoneActive: "Microphone Active",
     microphoneActiveMessage: "One or more apps are currently using your glasses microphone.",
+    warning: "Warning",
+    developerSettingsWarning: "These settings may break the app. Use at your own risk.",
+  },
+  errors: {
+    appNotOnlineTitle: "App Not Online",
+    appNotOnlineMessage: "This app is not online. Please try again later.",
+    pairingBatteryTooLow: "The battery on your glasses is too low to pair. Please charge your glasses and try again.",
   },
   common: {
     ok: "OK",
@@ -286,6 +321,11 @@ const en = {
     continue: "Continue",
     next: "Next",
     request: "Request",
+    start: "Start",
+    stop: "Stop",
+    settings: "Settings",
+    openWebView: "Open Web View",
+    version: "Version {{number}}",
   },
   welcomeScreen: {
     postscript:
@@ -308,9 +348,6 @@ const en = {
       content: "No data found yet. Try clicking the button to refresh or reload the app.",
       button: "Let's try this again",
     },
-  },
-  errors: {
-    invalidEmail: "Invalid email address.",
   },
   navigation: {
     home: "Home",

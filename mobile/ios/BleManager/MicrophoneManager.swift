@@ -10,7 +10,10 @@ import Combine
 import Foundation
 
 protocol MicCallback {
-    func onRouteChange(reason: AVAudioSession.RouteChangeReason, availableInputs: [AVAudioSessionPortDescription])
+    func onRouteChange(
+        reason: AVAudioSession.RouteChangeReason,
+        availableInputs: [AVAudioSessionPortDescription]
+    )
     func onInterruption(began: Bool)
 }
 
@@ -19,8 +22,6 @@ class OnboardMicrophoneManager {
 
     /// Publisher for voice data
     private let voiceDataSubject = PassthroughSubject<Data, Never>()
-    private var audioRecording = [Data]()
-    private var audioPlayer: AVAudioPlayer?
 
     private var micCallback: MicCallback?
 
@@ -103,24 +104,26 @@ class OnboardMicrophoneManager {
     /// Manually set AirPods or another specific device as preferred input
     func setPreferredInputDevice(named deviceName: String) -> Bool {
         guard let availableInputs = AVAudioSession.sharedInstance().availableInputs else {
-            print("No available inputs found")
+            CoreCommsService.log("No available inputs found")
             return false
         }
 
         // Find input containing the specified name (case insensitive)
-        guard let preferredInput = availableInputs.first(where: {
-            $0.portName.range(of: deviceName, options: .caseInsensitive) != nil
-        }) else {
-            print("No input device found containing name: \(deviceName)")
+        guard
+            let preferredInput = availableInputs.first(where: {
+                $0.portName.range(of: deviceName, options: .caseInsensitive) != nil
+            })
+        else {
+            CoreCommsService.log("No input device found containing name: \(deviceName)")
             return false
         }
 
         do {
             try AVAudioSession.sharedInstance().setPreferredInput(preferredInput)
-            print("Successfully set preferred input to: \(preferredInput.portName)")
+            CoreCommsService.log("Successfully set preferred input to: \(preferredInput.portName)")
             return true
         } catch {
-            print("Failed to set preferred input: \(error)")
+            CoreCommsService.log("Failed to set preferred input: \(error)")
             return false
         }
     }
@@ -135,19 +138,19 @@ class OnboardMicrophoneManager {
 
         switch type {
         case .began:
-            print("Audio session interrupted - another app took control")
+            CoreCommsService.log("Audio session interrupted - another app took control")
             // Phone call started, pause recording
             if isRecording {
-//              stopRecording()
+                //              stopRecording()
                 micCallback?.onInterruption(began: true)
             }
         case .ended:
-            print("Audio session interruption ended")
+            CoreCommsService.log("Audio session interruption ended")
             if let optionsValue = userInfo[AVAudioSessionInterruptionOptionKey] as? UInt {
                 let options = AVAudioSession.InterruptionOptions(rawValue: optionsValue)
                 if options.contains(.shouldResume) {
                     // Safe to resume recording
-//                  _ = startRecording()
+                    //                  _ = startRecording()
                     micCallback?.onInterruption(began: false)
                 }
             }
@@ -165,7 +168,7 @@ class OnboardMicrophoneManager {
             return
         }
 
-        print("handleRouteChange: \(reason) @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
+        CoreCommsService.log("handleRouteChange: \(reason) @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
         micCallback?.onRouteChange(reason: reason, availableInputs: audioSession?.availableInputs ?? [])
 
         // // If we're recording and the audio route changed (e.g., AirPods connected/disconnected)
@@ -194,7 +197,8 @@ class OnboardMicrophoneManager {
             routeDescription += "- No input ports\n"
         } else {
             for (index, port) in currentRoute.inputs.enumerated() {
-                routeDescription += "- Input \(index + 1): \(port.portName) (type: \(port.portType.rawValue))\n"
+                routeDescription +=
+                    "- Input \(index + 1): \(port.portName) (type: \(port.portType.rawValue))\n"
             }
         }
 
@@ -203,14 +207,15 @@ class OnboardMicrophoneManager {
             routeDescription += "- No output ports"
         } else {
             for (index, port) in currentRoute.outputs.enumerated() {
-                routeDescription += "- Output \(index + 1): \(port.portName) (type: \(port.portType.rawValue))"
+                routeDescription +=
+                    "- Output \(index + 1): \(port.portName) (type: \(port.portType.rawValue))"
                 if index < currentRoute.outputs.count - 1 {
                     routeDescription += "\n"
                 }
             }
         }
 
-        print(routeDescription)
+        CoreCommsService.log(routeDescription)
     }
 
     // MARK: - Private Helpers
@@ -223,7 +228,7 @@ class OnboardMicrophoneManager {
 
         // Safely get int16 data (won't be nil if buffer is in Int16 format)
         guard let int16Data = buffer.int16ChannelData else {
-            print("Error: Buffer does not contain int16 data")
+            CoreCommsService.log("Error: Buffer does not contain int16 data")
             return Data()
         }
 
@@ -242,78 +247,95 @@ class OnboardMicrophoneManager {
 
     /// Start recording from the available microphone (built-in, Bluetooth, AirPods, etc.)
     func startRecording() -> Bool {
-        // Don't restart if already recording
+        // Ensure we're not already recording
         if isRecording {
+            CoreCommsService.log("MIC: Microphone is already ON!")
             return true
         }
 
-        audioRecording.removeAll()
+        // Clean up any existing engine
+        if let existingEngine = audioEngine {
+            existingEngine.stop()
+//      existingEngine.inputNode.removeTap(onBus: 0)
+            audioEngine = nil
+        }
 
         // Check permissions first
         guard checkPermissions() else {
-            print("Microphone permissions not granted")
+            CoreCommsService.log("MIC: Microphone permissions not granted")
             return false
         }
 
-        // Initialize audio session
+        // Set up audio session BEFORE creating the engine
         audioSession = AVAudioSession.sharedInstance()
         do {
-            // First deactivate the session to reset any previous state
-            try audioSession?.setActive(false, options: .notifyOthersOnDeactivation)
+            try audioSession?.setCategory(
+                .playAndRecord,
+                mode: .default,
+                options: [.allowBluetooth, .defaultToSpeaker]
+            )
 
-            // Use playAndRecord instead of record category, as this has better compatibility with iOS 16+
-            // and works with Bluetooth headsets more reliably
-            try audioSession?.setCategory(.playAndRecord, mode: .default, options: [.allowBluetooth, .defaultToSpeaker])
-
-            // Find and prefer AirPods if available
+            // Set preferred input if available
             if let availableInputs = audioSession?.availableInputs, !availableInputs.isEmpty {
-                print("Available audio inputs:")
+                let preferredInput =
+                    availableInputs.first { input in
+                        input.portType == .bluetoothHFP || input.portType == .bluetoothA2DP
+                    } ?? availableInputs.first
 
-                // Log all available inputs for debugging
-                for (index, input) in availableInputs.enumerated() {
-                    print("[\(index)] \(input.portName) (type: \(input.portType.rawValue))")
-                }
-
-                // Try to find AirPods or other Bluetooth headphones
-                let preferredInput = availableInputs.first { input in
-                    input.portType == .bluetoothHFP ||
-                        input.portType == .bluetoothA2DP
-                } ?? availableInputs.first // Fallback to first available input if no AirPods found
-
-                // Set the preferred input
                 try audioSession?.setPreferredInput(preferredInput)
-                print("Set preferred input to: \(preferredInput?.portName ?? "None")")
             }
 
-            // Now activate the session
+            // Activate the session BEFORE creating the engine
             try audioSession?.setActive(true, options: .notifyOthersOnDeactivation)
-
-            // Log the current audio route to see which device is being used
-            logCurrentAudioRoute()
         } catch {
-            print("Failed to set up audio session: \(error)")
+            CoreCommsService.log("MIC: Failed to set up audio session: \(error)")
             return false
         }
 
-        // Initialize audio engine and input node
+        // NOW create the audio engine
         audioEngine = AVAudioEngine()
-        guard let inputNode = audioEngine?.inputNode else {
-            print("Failed to get audio input node")
+
+        // Safely get the input node
+        guard let engine = audioEngine else {
+            CoreCommsService.log("MIC: Failed to create audio engine")
+            return false
+        }
+
+        // The engine must have an input node, but let's be safe
+        let inputNode = engine.inputNode
+
+        // Verify the node is valid before accessing its properties
+        guard inputNode.engine != nil else {
+            CoreCommsService.log("MIC: Input node is not properly attached to engine")
+            audioEngine = nil
+            return false
+        }
+
+        // Check if the node has inputs available
+        guard inputNode.numberOfInputs > 0 else {
+            CoreCommsService.log("MIC: Input node has no available inputs")
+            audioEngine = nil
             return false
         }
 
         // Get the native input format - typically 48kHz floating point samples
         let inputFormat = inputNode.inputFormat(forBus: 0)
-        print("Input format: \(inputFormat)")
+        CoreCommsService.log("MIC: Input format: \(inputFormat)")
 
         // Set up a converter node if you need 16-bit PCM
-        let converter = AVAudioConverter(from: inputFormat, to: AVAudioFormat(commonFormat: .pcmFormatInt16,
-                                                                              sampleRate: 16000,
-                                                                              channels: 1,
-                                                                              interleaved: true)!)
+        let converter = AVAudioConverter(
+            from: inputFormat,
+            to: AVAudioFormat(
+                commonFormat: .pcmFormatInt16,
+                sampleRate: 16000,
+                channels: 1,
+                interleaved: true
+            )!
+        )
 
         guard let converter = converter else {
-            print("converter is nil")
+            CoreCommsService.log("MIC: converter is nil")
+            audioEngine = nil
             return false
         }
 
@@ -324,19 +346,28 @@ class OnboardMicrophoneManager {
 
             // Calculate the correct output buffer capacity based on sample rate conversion
             // For downsampling from inputFormat.sampleRate to 16000 Hz
-            let outputCapacity = AVAudioFrameCount(Double(frameCount) * (16000.0 / inputFormat.sampleRate))
+            let outputCapacity = AVAudioFrameCount(
+                Double(frameCount) * (16000.0 / inputFormat.sampleRate)
+            )
 
             // Create a 16-bit PCM data buffer with adjusted capacity
-            let convertedBuffer = AVAudioPCMBuffer(pcmFormat: converter.outputFormat, frameCapacity: outputCapacity)!
+            let convertedBuffer = AVAudioPCMBuffer(
+                pcmFormat: converter.outputFormat,
+                frameCapacity: outputCapacity
+            )!
 
             var error: NSError? = nil
-            let status = converter.convert(to: convertedBuffer, error: &error, withInputFrom: { _, outStatus in
-                outStatus.pointee = .haveData
-                return buffer
-            })
+            let status = converter.convert(
+                to: convertedBuffer,
+                error: &error,
+                withInputFrom: { _, outStatus in
+                    outStatus.pointee = .haveData
+                    return buffer
+                }
+            )
 
             guard status == .haveData && error == nil else {
-                print("Error converting audio buffer: \(error?.localizedDescription ?? "unknown")")
+                CoreCommsService.log("MIC: Error converting audio buffer: \(error?.localizedDescription ?? "unknown")")
                 return
             }
 
@@ -350,10 +381,10 @@ class OnboardMicrophoneManager {
         do {
             try audioEngine?.start()
             isRecording = true
-            print("Started recording from: \(getActiveInputDevice() ?? "Unknown device")")
+            CoreCommsService.log("MIC: Started recording from: \(getActiveInputDevice() ?? "Unknown device")")
             return true
         } catch {
-            print("Failed to start audio engine: \(error)")
+            CoreCommsService.log("MIC: Failed to start audio engine: \(error)")
             return false
         }
     }
@@ -366,9 +397,9 @@ class OnboardMicrophoneManager {
 
     /// Stop recording from the microphone
     func stopRecording() {
-        guard isRecording else {
-            return
-        }
+        // guard isRecording else {
+        //     return
+        // }
 
         // Remove the tap and stop the engine
         audioEngine?.inputNode.removeTap(onBus: 0)
@@ -380,87 +411,7 @@ class OnboardMicrophoneManager {
         audioSession = nil
         isRecording = false
 
-        print("Stopped recording")
-        // play back the audio (for testing only):
-//    playbackRecordedAudio()
-    }
-
-    /// Play back the recorded audio data
-    private func playbackRecordedAudio() {
-        guard !audioRecording.isEmpty else {
-            print("No audio data to play back")
-            return
-        }
-
-        // Combine all audio chunks into a single data object
-        let combinedData = audioRecording.reduce(Data()) { $0 + $1 }
-
-        do {
-            // Reset audio session for playback
-            let playbackSession = AVAudioSession.sharedInstance()
-            try playbackSession.setCategory(.playback, mode: .default)
-            try playbackSession.setActive(true)
-
-            // Create a temporary WAV file with proper headers
-            let tempDirectoryURL = FileManager.default.temporaryDirectory
-            let tempFileURL = tempDirectoryURL.appendingPathComponent("temp_recording.wav")
-
-            // Create WAV file with appropriate headers
-            createWavFile(with: combinedData, at: tempFileURL)
-
-            // Create audio player from the WAV file
-            audioPlayer = try AVAudioPlayer(contentsOf: tempFileURL)
-            audioPlayer?.prepareToPlay()
-            audioPlayer?.play()
-
-            print("Playing back recorded audio, data size: \(combinedData.count) bytes")
-        } catch {
-            print("Audio playback error: \(error.localizedDescription)")
-        }
-    }
-
-    /// Create a WAV file with the proper headers for the recorded PCM data
-    private func createWavFile(with pcmData: Data, at url: URL) {
-        // WAV header parameters
-        let sampleRate: UInt32 = 16000
-        let numChannels: UInt16 = 1
-        let bitsPerSample: UInt16 = 16
-
-        // Create WAV header
-        var header = Data()
-
-        // RIFF chunk descriptor
-        header.append("RIFF".data(using: .ascii)!)
-        let fileSize = UInt32(pcmData.count + 36) // File size minus 8 bytes for RIFF and fileSize
-        header.append(withUnsafeBytes(of: fileSize.littleEndian) { Data($0) })
-        header.append("WAVE".data(using: .ascii)!)
-
-        // fmt sub-chunk
-        header.append("fmt ".data(using: .ascii)!)
-        var subchunk1Size: UInt32 = 16 // Size of the fmt sub-chunk
-        header.append(withUnsafeBytes(of: subchunk1Size.littleEndian) { Data($0) })
-        var audioFormat: UInt16 = 1 // PCM = 1
-        header.append(withUnsafeBytes(of: audioFormat.littleEndian) { Data($0) })
-        header.append(withUnsafeBytes(of: numChannels.littleEndian) { Data($0) })
-        header.append(withUnsafeBytes(of: sampleRate.littleEndian) { Data($0) })
-
-        let byteRate = UInt32(sampleRate * UInt32(numChannels) * UInt32(bitsPerSample) / 8)
-        header.append(withUnsafeBytes(of: byteRate.littleEndian) { Data($0) })
-
-        let blockAlign = UInt16(numChannels * bitsPerSample / 8)
-        header.append(withUnsafeBytes(of: blockAlign.littleEndian) { Data($0) })
-        header.append(withUnsafeBytes(of: bitsPerSample.littleEndian) { Data($0) })
-
-        // data sub-chunk
-        header.append("data".data(using: .ascii)!)
-        let subchunk2Size = UInt32(pcmData.count)
-        header.append(withUnsafeBytes(of: subchunk2Size.littleEndian) { Data($0) })
-
-        // Combine header with PCM data
-        let wavData = header + pcmData
-
-        // Write WAV file
-        try? wavData.write(to: url)
+        CoreCommsService.log("MIC: Stopped recording")
     }
 
     // MARK: - Cleanup

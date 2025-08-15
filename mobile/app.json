@@ -17,13 +17,13 @@
     "android": {
       "icon": "./assets/app-icons/ic_launcher.png",
       "package": "com.mentra.mentra",
-      "versionCode": 39,
+      "versionCode": 40,
       "adaptiveIcon": {
         "foregroundImage": "./assets/app-icons/ic_launcher_foreground.png",
         "backgroundImage": "./assets/app-icons/ic_launcher.png"
       },
       "allowBackup": false,
-      "permissions": [],
+      "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_WIFI_STATE", "ACCESS_NETWORK_STATE"],
       "intentFilters": [
         {
           "action": "VIEW",
@@ -56,13 +56,27 @@
         "NSCalendarUsageDescription": "MentraOS accesses your calendar to display upcoming events and reminders directly on your smart glasses. For example, the app can show 'Meeting with John at 3 PM in Conference Room A' or remind you '15 minutes until dentist appointment' on your glasses display.",
         "NSPhotoLibraryUsageDescription": "This app needs access to your photo library to provide you with photo based information on your glasses.",
         "NSUserNotificationUsageDescription": "This app needs access to your notifications to provide you with notifications.",
+        "NSLocalNetworkUsageDescription": "MentraOS needs to access your local network to connect to Mentra Live glasses for viewing photos and media stored on the device.",
+        "NSBonjourServices": ["_mentra-live._tcp", "_http._tcp"],
+        "NSAppTransportSecurity": {
+          "NSAllowsLocalNetworking": true,
+          "NSAllowsArbitraryLoads": true,
+          "NSExceptionDomains": {
+            "localhost": {
+              "NSExceptionAllowsInsecureHTTPLoads": true
+            }
+          }
+        },
         "UIBackgroundModes": ["bluetooth-central", "audio", "location"],
-        "NSLocationAlwaysAndWhenInUseUsageDescription": "MentraOS requires background location access to deliver continuous updates for apps like navigation and running, even when the app isn’t in the foreground.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "MentraOS requires background location access to deliver continuous updates for apps like navigation and running, even when the app isn't in the foreground.",
         "UIRequiresFullScreen": true,
         "UISupportedInterfaceOrientations": [
           "UIInterfaceOrientationPortrait",
           "UIInterfaceOrientationPortraitUpsideDown"
         ]
+      },
+      "config": {
+        "usesNonExemptEncryption": false
       }
     },
     "plugins": [
@@ -114,10 +128,24 @@
           },
           "ios": {
             "extraPods": [
-              {"name": "SDWebImage", "modular_headers": true},
-              {"name": "SDWebImageSVGCoder", "modular_headers": true}
+              {
+                "name": "SDWebImage",
+                "modular_headers": true
+              },
+              {
+                "name": "SDWebImageSVGCoder",
+                "modular_headers": true
+              }
             ]
           }
+        }
+      ],
+      [
+        "@sentry/react-native/expo",
+        {
+          "url": "https://sentry.io/",
+          "project": "mentra-os",
+          "organization": "mentra-labs"
         }
       ]
     ],

@@ -1,50 +1,36 @@
 // YourAppsList.tsx
-import React, {useCallback, useEffect, useRef, useState} from "react"
+import React, {useEffect, useRef, useState} from "react"
 import {
   View,
   StyleSheet,
   TouchableOpacity,
-  ScrollView,
   Animated,
   Platform,
   ViewStyle,
   TextStyle,
-  ActivityIndicator,
   Easing,
   Keyboard,
 } from "react-native"
 import {Text} from "@/components/ignite"
-import MessageModal from "./MessageModal"
-import {useStatus} from "@/contexts/AugmentOSStatusProvider"
+import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import BackendServerComms from "@/backend_comms/BackendServerComms"
 import {loadSetting, saveSetting} from "@/utils/SettingsHelper"
 import {SETTINGS_KEYS} from "@/consts"
-import Icon from "react-native-vector-icons/MaterialCommunityIcons"
-import {useFocusEffect, useNavigation} from "@react-navigation/native"
-import AppIcon from "./AppIcon"
-import {NavigationProps} from "./types"
-import {AppInterface, AppPermission, useAppStatus} from "@/contexts/AppStatusProvider"
-import {requestFeaturePermissions} from "@/utils/PermissionsUtils"
-import {checkFeaturePermissions} from "@/utils/PermissionsUtils"
+import {useFocusEffect} from "@react-navigation/native"
+import {useAppStatus} from "@/contexts/AppStatusProvider"
+import {askPermissionsUI} from "@/utils/PermissionsUtils"
 import {PermissionFeatures} from "@/utils/PermissionsUtils"
 import showAlert from "@/utils/AlertUtils"
 import {PERMISSION_CONFIG} from "@/utils/PermissionsUtils"
-import ChevronRight from "assets/icons/component/ChevronRight"
 import {translate} from "@/i18n"
 import {useAppTheme} from "@/utils/useAppTheme"
-import {router} from "expo-router"
-import EmptyAppsView from "../home/EmptyAppsView"
 import {AppListItem} from "./AppListItem"
-import {Spacer} from "./Spacer"
-import Divider from "./Divider"
-import {spacing, ThemedStyle} from "@/theme"
+import {Spacer} from "@/components/misc/Spacer"
+import Divider from "@/components/misc/Divider"
+import {ThemedStyle} from "@/theme"
 import {TreeIcon} from "assets/icons/component/TreeIcon"
-import AppsHeader from "./AppsHeader"
-import {
-  checkAndRequestNotificationAccessSpecialPermission,
-  checkNotificationAccessSpecialPermission,
-} from "@/utils/NotificationServiceUtils"
-import {AppListStoreLink} from "./AppListStoreLink"
+import AppsHeader from "@/components/misc/AppsHeader"
+import {AppListStoreLink} from "@/components/misc/AppListStoreLink"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 
 export default function InactiveAppList({
@@ -65,8 +51,9 @@ export default function InactiveAppList({
     optimisticallyStopApp,
     clearPendingOperation,
     isSensingEnabled,
+    checkAppHealthStatus,
   } = useAppStatus()
-  const {status} = useStatus()
+  const {status} = useCoreStatus()
   const [onboardingModalVisible, setOnboardingModalVisible] = useState(false)
   const [onboardingCompleted, setOnboardingCompleted] = useState(true)
   const [inLiveCaptionsPhase, setInLiveCaptionsPhase] = useState(false)
@@ -162,91 +149,6 @@ export default function InactiveAppList({
     }, 100)
   }
 
-  const checkPermissions = async (app: AppInterface) => {
-    let permissions = app.permissions || []
-    const neededPermissions: string[] = []
-
-    if (permissions.length == 1 && permissions[0].type == "ALL") {
-      permissions = [
-        {type: "MICROPHONE", required: true},
-        {type: "CALENDAR", required: true},
-        {type: "POST_NOTIFICATIONS", required: true},
-        {type: "READ_NOTIFICATIONS", required: true},
-        {type: "LOCATION", required: true},
-        {type: "BACKGROUND_LOCATION", required: true},
-      ] as AppPermission[]
-    }
-
-    if (app.packageName == "cloud.augmentos.notify") {
-      permissions.push({type: "READ_NOTIFICATIONS", required: true, description: "Read notifications"})
-    }
-
-    for (const permission of permissions) {
-      if (!(permission["required"] ?? true)) {
-        continue
-      }
-      switch (permission.type) {
-        case "MICROPHONE":
-          const hasMicrophone = await checkFeaturePermissions(PermissionFeatures.MICROPHONE)
-          if (!hasMicrophone) {
-            neededPermissions.push(PermissionFeatures.MICROPHONE)
-          }
-          break
-        case "CAMERA":
-          const hasCamera = await checkFeaturePermissions(PermissionFeatures.GLASSES_CAMERA)
-          if (!hasCamera) {
-            neededPermissions.push(PermissionFeatures.GLASSES_CAMERA)
-          }
-          break
-        case "CALENDAR":
-          const hasCalendar = await checkFeaturePermissions(PermissionFeatures.CALENDAR)
-          if (!hasCalendar) {
-            neededPermissions.push(PermissionFeatures.CALENDAR)
-          }
-          break
-        case "LOCATION":
-          const hasLocation = await checkFeaturePermissions(PermissionFeatures.LOCATION)
-          if (!hasLocation) {
-            neededPermissions.push(PermissionFeatures.LOCATION)
-          }
-          break
-        case "BACKGROUND_LOCATION":
-          const hasBackgroundLocation = await checkFeaturePermissions(PermissionFeatures.BACKGROUND_LOCATION)
-          if (!hasBackgroundLocation) {
-            neededPermissions.push(PermissionFeatures.BACKGROUND_LOCATION)
-          }
-          break
-        case "POST_NOTIFICATIONS":
-          const hasNotificationPermission = await checkFeaturePermissions(PermissionFeatures.POST_NOTIFICATIONS)
-          if (!hasNotificationPermission) {
-            neededPermissions.push(PermissionFeatures.POST_NOTIFICATIONS)
-          }
-          break
-        case "READ_NOTIFICATIONS":
-          if (Platform.OS == "ios") {
-            break
-          }
-          const hasNotificationAccess = await checkNotificationAccessSpecialPermission()
-          if (!hasNotificationAccess) {
-            neededPermissions.push(PermissionFeatures.READ_NOTIFICATIONS)
-          }
-          break
-      }
-    }
-
-    return neededPermissions
-  }
-
-  const requestPermissions = async (permissions: string[]) => {
-    for (const permission of permissions) {
-      await requestFeaturePermissions(permission)
-    }
-
-    if (permissions.includes(PermissionFeatures.READ_NOTIFICATIONS) && Platform.OS === "android") {
-      await checkAndRequestNotificationAccessSpecialPermission()
-    }
-  }
-
   function checkIsForegroundAppStart(packageName: string, isForeground: boolean): Promise<boolean> {
     if (!isForeground) {
       return Promise.resolve(true)
@@ -276,6 +178,7 @@ export default function InactiveAppList({
       )
     })
   }
+
   const startApp = async (packageName: string) => {
     if (!onboardingCompleted) {
       if (packageName !== "com.augmentos.livecaptions" && packageName !== "com.mentra.livecaptions") {
@@ -295,56 +198,25 @@ export default function InactiveAppList({
     }
 
     // Find the app we're trying to start
-    const appToStart = appStatus.find(app => app.packageName === packageName)
-    if (!appToStart) {
+    const appInfo = appStatus.find(app => app.packageName === packageName)
+    if (!appInfo) {
       console.error("App not found:", packageName)
       return
     }
 
-    // check perms:
-    const neededPermissions = await checkPermissions(appToStart)
-    if (neededPermissions.length > 0) {
-      await showAlert(
-        neededPermissions.length > 1
-          ? translate("home:permissionsRequiredTitle")
-          : translate("home:permissionRequiredTitle"),
-        translate("home:permissionMessage", {
-          permissions: neededPermissions.map(perm => PERMISSION_CONFIG[perm]?.name || perm).join(", "),
-        }),
-        [
-          {
-            text: translate("common:cancel"),
-            onPress: () => {},
-            style: "cancel",
-          },
-          {
-            text: translate("common:next"),
-            onPress: async () => {
-              await requestPermissions(neededPermissions)
+    if (!(await checkAppHealthStatus(appInfo.packageName))) {
+      showAlert(translate("errors:appNotOnlineTitle"), translate("errors:appNotOnlineMessage"), [
+        {text: translate("common:ok")},
+      ])
+      return
+    }
 
-              // Check if permissions were actually granted (for non-special permissions)
-              // Special permissions like READ_NOTIFICATIONS on Android require manual action
-              const stillNeededPermissions = await checkPermissions(appToStart)
-
-              // If we still need READ_NOTIFICATIONS, don't auto-retry
-              // The user needs to manually grant it in settings and try again
-              if (stillNeededPermissions.includes(PermissionFeatures.READ_NOTIFICATIONS) && Platform.OS === "android") {
-                // Permission flow is in progress, user needs to complete it manually
-                return
-              }
-
-              // For other permissions that were granted, proceed with starting the app
-              if (stillNeededPermissions.length === 0) {
-                startApp(packageName)
-              }
-            },
-          },
-        ],
-        {
-          iconName: "information-outline",
-          iconColor: theme.colors.textDim,
-        },
-      )
+    // ask for needed perms:
+    const result = await askPermissionsUI(appInfo, theme)
+    if (result === -1) {
+      return
+    } else if (result === 0) {
+      startApp(appInfo.packageName) // restart this function
       return
     }
 
@@ -393,8 +265,8 @@ export default function InactiveAppList({
     optimisticallyStartApp(packageName)
 
     // Check if it's a standard app
-    if (appToStart?.appType === "standard") {
-      console.log("% appToStart", appToStart)
+    if (appInfo?.appType === "standard") {
+      console.log("% appToStart", appInfo)
       // Find any running standard apps
       const runningStandardApps = getRunningStandardApps(packageName)
 
@@ -442,9 +314,29 @@ export default function InactiveAppList({
           )
         }, 500)
       }
-    } catch (error) {
+    } catch (error: any) {
       // Revert the app state when there's an error starting the app
       console.error("start app error:", error)
+
+      // Check if this is a hardware compatibility error
+      if (error?.response?.data?.error?.stage === "HARDWARE_CHECK") {
+        showAlert(
+          translate("home:hardwareIncompatible"),
+          error.response.data.error.message ||
+            translate("home:hardwareIncompatibleMessage", {
+              app: appInfo.name,
+              missing: "required hardware",
+            }),
+          [{text: translate("common:ok")}],
+          {
+            iconName: "alert-circle-outline",
+            iconColor: theme.colors.error,
+          },
+        )
+      } else {
+        // Handle other types of errors with generic error handling
+        console.error("Generic app start error:", error)
+      }
 
       // Clear the pending operation for this app
       clearPendingOperation(packageName)
@@ -456,21 +348,20 @@ export default function InactiveAppList({
   }
 
   const getRunningStandardApps = (packageName: string) => {
-    return appStatus.filter(
-      app =>
-        app.is_running &&
-        (app.appType == "standard" || app["tpaType"] == "standard") &&
-        app.packageName !== packageName,
-    )
+    return appStatus.filter(app => app.is_running && app.appType == "standard" && app.packageName !== packageName)
   }
   const openAppSettings = (app: any) => {
     console.log("%%% opening app settings", app)
     push("/applet/settings", {packageName: app.packageName, appName: app.name})
   }
 
-  // Filter out duplicate apps and running apps
+  // Filter out duplicate apps, running apps, and incompatible apps
   let availableApps = appStatus.filter(app => {
     if (app.is_running) {
+      return false
+    }
+    // Filter out incompatible apps (they will be shown in a separate section)
+    if (app.compatibility && !app.compatibility.isCompatible) {
       return false
     }
     // Check if this is the first occurrence of this package name
@@ -513,9 +404,14 @@ export default function InactiveAppList({
     Object.fromEntries(appStatus.map(app => [app.packageName, new Animated.Value(0)])),
   ).current
 
-  // Animate all availableApps' opacities to 1 on mount or change
+  // Ensure every available app has an Animated.Value and animate to 1 on mount/change
   useEffect(() => {
     availableApps.forEach(app => {
+      // Lazily create Animated.Value if it doesn't exist yet (e.g. newly fetched app)
+      if (!(app.packageName in opacities)) {
+        opacities[app.packageName] = new Animated.Value(0)
+      }
+
       Animated.timing(opacities[app.packageName], {
         toValue: 1,
         duration: 300,
@@ -549,10 +445,10 @@ export default function InactiveAppList({
             <AppListItem
               app={app}
               // @ts-ignore
-              is_foreground={app.appType == "standard" || app["tpaType"] == "standard"}
+              is_foreground={app.appType == "standard"}
               isActive={false}
               onTogglePress={async () => {
-                const isForegroundApp = app.appType == "standard" || app["tpaType"] == "standard"
+                const isForegroundApp = app.appType == "standard"
                 const res = await checkIsForegroundAppStart(app.packageName, isForegroundApp)
                 if (res) {
                   // Don't animate here - let startApp handle all UI updates

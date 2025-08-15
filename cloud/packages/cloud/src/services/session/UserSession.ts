@@ -23,11 +23,15 @@ import VideoManager from "./VideoManager";
 import PhotoManager from "./PhotoManager";
 import { GlassesErrorCode } from "../websocket/websocket-glasses.service";
 import SessionStorage from "./SessionStorage";
+import { memoryLeakDetector } from "../debug/MemoryLeakDetector";
 import { PosthogService } from "../logging/posthog.service";
 import { TranscriptionManager } from "./transcription/TranscriptionManager";
 import { TranslationManager } from "./translation/TranslationManager";
 import { ManagedStreamingExtension } from "../streaming/ManagedStreamingExtension";
 import { getCapabilitiesForModel } from "../../config/hardware-capabilities";
+import { HardwareCompatibilityService } from "./HardwareCompatibilityService";
+import appService from "../core/app.service";
+import SubscriptionManager from "./SubscriptionManager";
 
 export const LOG_PING_PONG = false; // Set to true to enable detailed ping/pong logging
 /**
@@ -73,6 +77,7 @@ export class UserSession {
   public audioManager: AudioManager;
   public transcriptionManager: TranscriptionManager;
   public translationManager: TranslationManager;
+  public subscriptionManager: SubscriptionManager;
 
   public videoManager: VideoManager;
   public photoManager: PhotoManager;
@@ -106,6 +111,8 @@ export class UserSession {
     this.audioManager = new AudioManager(this);
     this.dashboardManager = new DashboardManager(this);
     this.displayManager = new DisplayManager(this);
+    // Initialize subscription manager BEFORE any manager that uses it
+    this.subscriptionManager = new SubscriptionManager(this);
     this.microphoneManager = new MicrophoneManager(this);
     this.transcriptionManager = new TranscriptionManager(this);
     this.translationManager = new TranslationManager(this);
@@ -122,6 +129,9 @@ export class UserSession {
     // Register in session storage
     SessionStorage.getInstance().set(userId, this);
     this.logger.info(`✅ User session created and registered for ${userId}`);
+
+    // Register for leak detection
+    memoryLeakDetector.register(this, `UserSession:${userId}`);
   }
 
   /**
@@ -204,7 +214,7 @@ export class UserSession {
    * Update the current glasses model and refresh capabilities
    * Called when model information is received from the manager
    */
-  updateGlassesModel(modelName: string): void {
+  async updateGlassesModel(modelName: string): Promise<void> {
     if (this.currentGlassesModel === modelName) {
       this.logger.debug(
         `[UserSession:updateGlassesModel] Model unchanged: ${modelName}`,
@@ -245,6 +255,9 @@ export class UserSession {
 
     // Send capabilities update to all connected apps
     this.sendCapabilitiesUpdateToApps();
+
+    // Stop any running apps that are now incompatible with the new capabilities
+    await this.stopIncompatibleApps();
   }
 
   /**
@@ -285,6 +298,118 @@ export class UserSession {
       this.logger.error(
         { error },
         `[UserSession:sendCapabilitiesUpdateToApps] Error sending capabilities update to apps`,
+      );
+    }
+  }
+
+  /**
+   * Stop any running apps that are incompatible with the current capabilities
+   * Called after capabilities are updated due to device model changes
+   * @private
+   */
+  private async stopIncompatibleApps(): Promise<void> {
+    try {
+      if (!this.capabilities) {
+        this.logger.debug(
+          "[UserSession:stopIncompatibleApps] No capabilities available, skipping compatibility check",
+        );
+        return;
+      }
+
+      const runningAppPackages = Array.from(this.runningApps);
+
+      if (runningAppPackages.length === 0) {
+        this.logger.debug(
+          "[UserSession:stopIncompatibleApps] No running apps to check for compatibility",
+        );
+        return;
+      }
+
+      this.logger.info(
+        `[UserSession:stopIncompatibleApps] Checking compatibility for ${runningAppPackages.length} running apps with new capabilities`,
+      );
+
+      const incompatibleApps: string[] = [];
+
+      // Check each running app for compatibility
+      for (const packageName of runningAppPackages) {
+        try {
+          // Get app details to check hardware requirements
+          const app = await appService.getApp(packageName);
+          if (!app) {
+            this.logger.warn(
+              `[UserSession:stopIncompatibleApps] Could not find app details for ${packageName}, keeping it running`,
+            );
+            continue;
+          }
+
+          // Check compatibility with new capabilities
+          const compatibilityResult =
+            HardwareCompatibilityService.checkCompatibility(
+              app,
+              this.capabilities,
+            );
+
+          if (!compatibilityResult.isCompatible) {
+            incompatibleApps.push(packageName);
+
+            this.logger.warn(
+              {
+                packageName,
+                missingHardware: compatibilityResult.missingRequired,
+                capabilities: this.capabilities,
+                modelName: this.currentGlassesModel,
+              },
+              `[UserSession:stopIncompatibleApps] App ${packageName} is now incompatible with ${this.currentGlassesModel} - missing required hardware: ${compatibilityResult.missingRequired.map((req) => req.type).join(", ")}`,
+            );
+          }
+        } catch (error) {
+          this.logger.error(
+            { error, packageName },
+            `[UserSession:stopIncompatibleApps] Error checking compatibility for app ${packageName}`,
+          );
+        }
+      }
+
+      // Stop all incompatible apps
+      if (incompatibleApps.length > 0) {
+        this.logger.info(
+          {
+            incompatibleApps,
+            modelName: this.currentGlassesModel,
+          },
+          `[UserSession:stopIncompatibleApps] Stopping ${incompatibleApps.length} incompatible apps due to device change to ${this.currentGlassesModel}`,
+        );
+
+        const stopPromises = incompatibleApps.map(async (packageName) => {
+          try {
+            await this.appManager.stopApp(packageName);
+            this.logger.info(
+              `[UserSession:stopIncompatibleApps] Successfully stopped incompatible app ${packageName}`,
+            );
+          } catch (error) {
+            this.logger.error(
+              { error, packageName },
+              `[UserSession:stopIncompatibleApps] Failed to stop incompatible app ${packageName}`,
+            );
+          }
+        });
+
+        // Wait for all apps to be stopped
+        await Promise.allSettled(stopPromises);
+
+        this.logger.info(
+          `[UserSession:stopIncompatibleApps] Completed stopping incompatible apps. Device change to ${this.currentGlassesModel} processed.`,
+        );
+      } else {
+        this.logger.info(
+          `[UserSession:stopIncompatibleApps] All running apps are compatible with ${this.currentGlassesModel}`,
+        );
+      }
+    } catch (error) {
+      this.logger.error(
+        { error },
+        "[UserSession:stopIncompatibleApps] Error during incompatible app cleanup",
       );
     }
   }
@@ -412,6 +537,7 @@ export class UserSession {
     if (this.dashboardManager) this.dashboardManager.dispose();
     if (this.transcriptionManager) this.transcriptionManager.dispose();
     if (this.translationManager) this.translationManager.dispose();
+    if (this.subscriptionManager) this.subscriptionManager.dispose();
     // if (this.heartbeatManager) this.heartbeatManager.dispose();
     if (this.videoManager) this.videoManager.dispose();
     if (this.photoManager) this.photoManager.dispose();
@@ -455,6 +581,9 @@ export class UserSession {
       },
       `🗑️ Session disposed and removed from storage for ${this.userId}`,
     );
+
+    // Mark disposed for leak detection
+    memoryLeakDetector.markDisposed(`UserSession:${this.userId}`);
   }
 
   /**

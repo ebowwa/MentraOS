@@ -11,6 +11,8 @@ import {check, PERMISSIONS, RESULTS} from "react-native-permissions"
 import BleManager from "react-native-ble-manager"
 import BackendServerComms from "@/backend_comms/BackendServerComms"
 import AudioPlayService, {AudioPlayResponse} from "@/services/AudioPlayService"
+import {translate} from "@/i18n"
+import AugmentOSParser from "@/utils/AugmentOSStatusParser"
 
 const {CoreCommsService, AOSModule} = NativeModules
 const eventEmitter = new NativeEventEmitter(CoreCommsService)
@@ -21,6 +23,12 @@ export class CoreCommunicator extends EventEmitter {
   private validationInProgress: Promise<boolean> | null = null
   private reconnectionTimer: NodeJS.Timeout | null = null
   private isConnected: boolean = false
+  private lastMessage: string = ""
+
+  // Private constructor to enforce singleton pattern
+  private constructor() {
+    super()
+  }
 
   // Utility methods for checking permissions and device capabilities
   async isBluetoothEnabled(): Promise<boolean> {
@@ -142,11 +150,6 @@ export class CoreCommunicator extends EventEmitter {
     return {isReady: true}
   }
 
-  // Private constructor to enforce singleton pattern
-  private constructor() {
-    super()
-  }
-
   /**
    * Gets the singleton instance of CoreCommunicator
    */
@@ -226,8 +229,24 @@ export class CoreCommunicator extends EventEmitter {
       return
     }
 
+    // console.log("RECEIVED MESSAGE FROM CORE")
+    if (this.lastMessage === jsonString) {
+      console.log("DUPLICATE MESSAGE FROM CORE")
+      return
+    }
+    this.lastMessage = jsonString
+
     try {
       const data = JSON.parse(jsonString)
+
+      // Log if this is a WiFi scan result
+      if ("wifi_scan_results" in data) {
+        console.log("📡 ========= RAW MESSAGE FROM CORE =========")
+        console.log("📡 Raw JSON string:", jsonString)
+        console.log("📡 Parsed data:", data)
+        console.log("📡 ========= END RAW MESSAGE =========")
+      }
+
       this.isConnected = true
       this.emit("dataReceived", data)
       this.parseDataFromCore(data)
@@ -240,13 +259,16 @@ export class CoreCommunicator extends EventEmitter {
   /**
    * Parses various types of data received from Core
    */
-  private parseDataFromCore(data: any) {
+  private async parseDataFromCore(data: any) {
     if (!data) return
 
     try {
       if ("status" in data) {
         this.emit("statusUpdateReceived", data)
-      } else if ("glasses_wifi_status_change" in data) {
+        return
+      }
+
+      if ("glasses_wifi_status_change" in data) {
         // console.log("Received glasses_wifi_status_change event from Core", data.glasses_wifi_status_change)
         GlobalEventEmitter.emit("GLASSES_WIFI_STATUS_CHANGE", {
           connected: data.glasses_wifi_status_change.connected,
@@ -259,7 +281,7 @@ export class CoreCommunicator extends EventEmitter {
         // Heartbeat response - nothing to do
       } else if ("notify_manager" in data) {
         GlobalEventEmitter.emit("SHOW_BANNER", {
-          message: data.notify_manager.message,
+          message: translate(data.notify_manager.message),
           type: data.notify_manager.type,
         })
       } else if ("compatible_glasses_search_result" in data) {
@@ -279,36 +301,45 @@ export class CoreCommunicator extends EventEmitter {
           deviceModel: data.device_model,
         })
       } else if ("wifi_scan_results" in data) {
-        console.log("Received WiFi scan results from Core")
+        console.log("🔍 ========= WIFI SCAN RESULTS RECEIVED =========")
+        console.log("🔍 Received WiFi scan results from Core:", data)
+        console.log("🔍 Networks array:", data.wifi_scan_results)
+        console.log("🔍 Networks count:", data.wifi_scan_results?.length || 0)
         GlobalEventEmitter.emit("WIFI_SCAN_RESULTS", {
           networks: data.wifi_scan_results,
         })
-      } else if (data.type === "app_started" && data.packageName) {
-        console.log("APP_STARTED_EVENT", data.packageName)
-        GlobalEventEmitter.emit("APP_STARTED_EVENT", data.packageName)
-      } else if (data.type === "app_stopped" && data.packageName) {
-        console.log("APP_STOPPED_EVENT", data.packageName)
-        GlobalEventEmitter.emit("APP_STOPPED_EVENT", data.packageName)
-      } else if (data.type === "audio_play_request") {
-        AudioPlayService.handleAudioPlayRequest(data)
-          .then(() => {
-            // Audio play request completed successfully
-          })
-          .catch(error => {
-            console.error("Failed to handle audio play request:", error)
-          })
-      } else if (data.type === "audio_stop_request") {
-        AudioPlayService.stopAllAudio()
-          .then(() => {
-            console.log("Audio stop request processed successfully")
-          })
-          .catch(error => {
-            console.error("Failed to handle audio stop request:", error)
-          })
+        console.log("🔍 Emitted WIFI_SCAN_RESULTS event to GlobalEventEmitter")
+        console.log("🔍 ========= END WIFI SCAN RESULTS =========")
+      }
+
+      if (!("type" in data)) {
+        return
+      }
+      switch (data.type) {
+        case "app_started":
+          console.log("APP_STARTED_EVENT", data.packageName)
+          GlobalEventEmitter.emit("APP_STARTED_EVENT", data.packageName)
+          break
+        case "app_stopped":
+          console.log("APP_STOPPED_EVENT", data.packageName)
+          GlobalEventEmitter.emit("APP_STOPPED_EVENT", data.packageName)
+          break
+        case "audio_play_request":
+          await AudioPlayService.handleAudioPlayRequest(data)
+          break
+        case "audio_stop_request":
+          await AudioPlayService.stopAllAudio()
+          break
+        case "pair_failure":
+          GlobalEventEmitter.emit("PAIR_FAILURE", data.error)
+          break
+        default:
+          console.log("Unknown event type:", data.type)
+          break
       }
     } catch (e) {
       console.error("Error parsing data from Core:", e)
-      GlobalEventEmitter.emit("STATUS_PARSE_ERROR")
+      this.emit("statusUpdateReceived", AugmentOSParser.defaultStatus)
     }
   }
 
@@ -500,33 +531,32 @@ export class CoreCommunicator extends EventEmitter {
     })
   }
 
-  async restartTranscription() {
-    // Get current status to check if mic is enabled
-    await this.requestStatus()
-    const currentStatus = await this.validateResponseFromCore()
-
-    if (currentStatus?.core_info?.is_mic_enabled_for_frontend) {
-      console.log("Restarting transcription with new model...")
-
-      // Toggle mic off
-      await this.sendData({
-        command: "toggle_mic",
-        params: {
-          enabled: false,
-        },
-      })
-
-      // Wait for the change to take effect
-      await new Promise(resolve => setTimeout(resolve, 500))
-
-      // Toggle mic back on
-      await this.sendData({
-        command: "toggle_mic",
-        params: {
-          enabled: true,
-        },
-      })
+  async restartTranscription(isMicCurrentlyEnabled: boolean = true) {
+    if (!isMicCurrentlyEnabled) {
+      console.log("Mic is not enabled, skipping transcription restart")
+      return
     }
+
+    console.log("Restarting transcription with new model...")
+
+    // Toggle mic off
+    await this.sendData({
+      command: "toggle_mic",
+      params: {
+        enabled: false,
+      },
+    })
+
+    // Wait for the change to take effect
+    await new Promise(resolve => setTimeout(resolve, 500))
+
+    // Toggle mic back on
+    await this.sendData({
+      command: "toggle_mic",
+      params: {
+        enabled: true,
+      },
+    })
   }
 
   async sendSetPreferredMic(mic: string) {

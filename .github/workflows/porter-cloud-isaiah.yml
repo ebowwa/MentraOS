@@ -1,7 +1,9 @@
 "on":
   push:
     branches:
-      - translation-manager
+      - mic-keep-alive
+    paths:
+      - "cloud/**"
 name: Deploy cloud-isaiah
 jobs:
   porter-deploy:

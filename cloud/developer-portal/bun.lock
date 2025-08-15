@@ -8,7 +8,7 @@
         "@dnd-kit/sortable": "^10.0.0",
         "@dnd-kit/utilities": "^3.2.2",
         "@hookform/resolvers": "^5.0.1",
-        "@mentra/sdk": "^2.1.8",
+        "@mentra/sdk": "^2.1.16",
         "@radix-ui/react-accordion": "^1.2.4",
         "@radix-ui/react-alert-dialog": "^1.1.7",
         "@radix-ui/react-aspect-ratio": "^1.1.3",
@@ -271,7 +271,7 @@
 
     "@logtail/types": ["@logtail/types@0.5.3", "", {}, "sha512-5uKf1xQ7wRqSW0lYIwDpXdXcFHxPKH5EM22MoEjwTpd8suymOYuEdx9qCCHCYey4uOhPq7x6OkZf86bTO83JsA=="],
 
-    "@mentra/sdk": ["@mentra/sdk@2.1.13", "", { "dependencies": { "@logtail/pino": "^0.5.4", "axios": "^1.8.1", "cookie-parser": "^1.4.7", "dotenv": "^16.4.0", "express": "^4.18.2", "jimp": "^1.6.0", "jsonwebtoken": "^8.5.1", "jsrsasign": "^11.1.0", "multer": "^2.0.1", "pino": "^9.6.0", "pino-pretty": "^13.0.0", "ws": "^8.18.2" } }, "sha512-DV8nRG3+cEWHcpzdrtEun3B3EYK4d2ZP+Ip9mNizp68//w1d5zqQnTmgMGKAVcj6BcyFSzQmHc2wHF2k2MJAow=="],
+    "@mentra/sdk": ["@mentra/sdk@2.1.16", "", { "dependencies": { "@logtail/pino": "^0.5.4", "axios": "^1.8.1", "cookie-parser": "^1.4.7", "dotenv": "^16.4.0", "express": "^4.18.2", "jimp": "^1.6.0", "jsonwebtoken": "^8.5.1", "jsrsasign": "^11.1.0", "multer": "^2.0.1", "pino": "^9.6.0", "pino-pretty": "^13.0.0", "ws": "^8.18.2" } }, "sha512-aUJL+ZQ9viEuIuh4Uu36dzL+avpAfUgnqNgLgiMMaNsW+luP2tB/LqjAalm/i64lMDDLIfgYsNWrJ8grYzFH+w=="],
 
     "@msgpack/msgpack": ["@msgpack/msgpack@2.8.0", "", {}, "sha512-h9u4u/jiIRKbq25PM+zymTyW6bhTzELvOoUd+AvYriWOAKpLGnIamaET3pnHYoI5iYphAHBI4ayx0MehR+VVPQ=="],
 

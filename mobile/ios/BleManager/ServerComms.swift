@@ -13,7 +13,7 @@ protocol ServerCommsCallback {
     func onAppStateChange(_ apps: [ThirdPartyCloudApp] /* , _ whatToStream: [String] */ )
     func onConnectionError(_ error: String)
     func onAuthError()
-    func onMicrophoneStateChange(_ isEnabled: Bool, _ requiredData: [SpeechRequiredDataType])
+    func onMicrophoneStateChange(_ isEnabled: Bool, _ requiredData: [SpeechRequiredDataType], _ bypassVad: Bool) // NEW: Added bypassVad parameter
     func onDisplayEvent(_ event: [String: Any])
     func onRequestSingle(_ dataType: String)
     func onStatusUpdate(_ status: [String: Any])
@@ -505,8 +505,9 @@ class ServerComms {
             }
 
         case "microphone_state_change":
-            CoreCommsService.log("ServerComms: microphone_state_change: \(msg)")
+            // CoreCommsService.log("ServerComms: microphone_state_change: \(msg)")
             let isMicrophoneEnabled = msg["isMicrophoneEnabled"] as? Bool ?? true
+            let bypassVad = msg["bypassVad"] as? Bool ?? false // NEW: Extract bypassVad field
 
             var requiredDataStrings: [String] = []
             if let requiredDataArray = msg["requiredData"] as? [String] {
@@ -524,10 +525,10 @@ class ServerComms {
                 requiredData.append(.PCM)
             }
 
-            CoreCommsService.log("ServerComms: requiredData = \(requiredDataStrings)")
+            CoreCommsService.log("ServerComms: requiredData = \(requiredDataStrings), bypassVad = \(bypassVad)")
 
             if let callback = serverCommsCallback {
-                callback.onMicrophoneStateChange(isMicrophoneEnabled, requiredData)
+                callback.onMicrophoneStateChange(isMicrophoneEnabled, requiredData, bypassVad) // NEW: Pass bypassVad
             }
 
         case "display_event":

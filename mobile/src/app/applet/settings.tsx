@@ -22,7 +22,7 @@ import SelectSetting from "@/components/settings/SelectSetting"
 import MultiSelectSetting from "@/components/settings/MultiSelectSetting"
 import TitleValueSetting from "@/components/settings/TitleValueSetting"
 import LoadingOverlay from "@/components/misc/LoadingOverlay"
-import {useStatus} from "@/contexts/AugmentOSStatusProvider"
+import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import BackendServerComms from "@/backend_comms/BackendServerComms"
 import FontAwesome from "react-native-vector-icons/FontAwesome"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
@@ -43,6 +43,14 @@ import Divider from "@/components/misc/Divider"
 import {InfoRow} from "@/components/settings/InfoRow"
 import {SettingsGroup} from "@/components/settings/SettingsGroup"
 import {showAlert} from "@/utils/AlertUtils"
+import {
+  askPermissionsUI,
+  checkPermissionsUI,
+  PERMISSION_CONFIG,
+  PermissionFeatures,
+  requestPermissionsUI,
+} from "@/utils/PermissionsUtils"
+import {translate} from "@/i18n"
 
 export default function AppSettings() {
   const {packageName, appName: appNameParam, fromWebView} = useLocalSearchParams()
@@ -63,19 +71,21 @@ export default function AppSettings() {
     outputRange: [0, 0, 1],
     extrapolate: "clamp",
   })
-  if (!packageName || typeof packageName !== "string") {
-    console.error("No packageName found in params")
-    return null
-  }
 
   // State to hold the complete configuration from the server.
   const [serverAppInfo, setServerAppInfo] = useState<any>(null)
   // Local state to track current values for each setting.
   const [settingsState, setSettingsState] = useState<{[key: string]: any}>({})
   // Get app info from status
-  const {status} = useStatus()
-  const {appStatus, refreshAppStatus, optimisticallyStartApp, optimisticallyStopApp, clearPendingOperation} =
-    useAppStatus()
+  const {status} = useCoreStatus()
+  const {
+    appStatus,
+    refreshAppStatus,
+    optimisticallyStartApp,
+    optimisticallyStopApp,
+    clearPendingOperation,
+    checkAppHealthStatus,
+  } = useAppStatus()
   const appInfo = useMemo(() => {
     return appStatus.find(app => app.packageName === packageName) || null
   }, [appStatus, packageName])
@@ -84,17 +94,22 @@ export default function AppSettings() {
   const [settingsLoading, setSettingsLoading] = useState(true)
   const [hasCachedSettings, setHasCachedSettings] = useState(false)
 
+  if (!packageName || typeof packageName !== "string") {
+    console.error("No packageName found in params")
+    return null
+  }
+
   // IMMEDIATE TACTICAL BYPASS: Check for webviewURL in app status data and redirect instantly
-  useEffect(() => {
-    if (appInfo?.webviewURL && fromWebView !== "true") {
-      console.log("TACTICAL BYPASS: webviewURL detected in app status, executing immediate redirect")
-      replace("/applet/webview", {
-        webviewURL: appInfo.webviewURL,
-        appName: appName,
-        packageName: packageName,
-      })
-    }
-  }, [appInfo, fromWebView, appName, packageName, replace])
+  // useEffect(() => {
+  //   if (appInfo?.webviewURL && fromWebView !== "true") {
+  //     console.log("TACTICAL BYPASS: webviewURL detected in app status, executing immediate redirect")
+  //     replace("/applet/webview", {
+  //       webviewURL: appInfo.webviewURL,
+  //       appName: appName,
+  //       packageName: packageName,
+  //     })
+  //   }
+  // }, [appInfo, fromWebView, appName, packageName, replace])
 
   // propagate any changes in app lists when this screen is unmounted:
   useFocusEffect(
@@ -121,6 +136,8 @@ export default function AppSettings() {
 
     console.log(`${appInfo.is_running ? "Stopping" : "Starting"} app: ${packageName}`)
 
+    console.log("appInfo", appInfo.is_running)
+
     try {
       if (appInfo.is_running) {
         // Optimistically update UI first
@@ -131,38 +148,55 @@ export default function AppSettings() {
 
         // Clear the pending operation since it completed successfully
         clearPendingOperation(packageName)
-      } else {
-        // Optimistically update UI first
-        optimisticallyStartApp(packageName)
+        return
+      }
 
-        // Check if it's a standard app
-        if (appInfo.appType === "standard") {
-          // Find any running standard apps
-          const runningStandardApps = appStatus.filter(
-            app => app.is_running && app.appType === "standard" && app.packageName !== packageName,
-          )
+      if (!(await checkAppHealthStatus(appInfo.packageName))) {
+        showAlert(translate("errors:appNotOnlineTitle"), translate("errors:appNotOnlineMessage"), [
+          {text: translate("common:ok")},
+        ])
+        return
+      }
 
-          // If there's any running standard app, stop it first
-          for (const runningApp of runningStandardApps) {
-            // Optimistically update UI
-            optimisticallyStopApp(runningApp.packageName)
+      // ask for needed perms:
+      const result = await askPermissionsUI(appInfo, theme)
+      if (result === -1) {
+        return
+      } else if (result === 0) {
+        handleStartStopApp() // restart this function
+        return
+      }
 
-            try {
-              await backendServerComms.stopApp(runningApp.packageName)
-              clearPendingOperation(runningApp.packageName)
-            } catch (error) {
-              console.error("Stop app error:", error)
-              refreshAppStatus()
-            }
+      // Optimistically update UI first
+      optimisticallyStartApp(packageName)
+
+      // Check if it's a standard app
+      if (appInfo.appType === "standard") {
+        // Find any running standard apps
+        const runningStandardApps = appStatus.filter(
+          app => app.is_running && app.appType === "standard" && app.packageName !== packageName,
+        )
+
+        // If there's any running standard app, stop it first
+        for (const runningApp of runningStandardApps) {
+          // Optimistically update UI
+          optimisticallyStopApp(runningApp.packageName)
+
+          try {
+            await backendServerComms.stopApp(runningApp.packageName)
+            clearPendingOperation(runningApp.packageName)
+          } catch (error) {
+            console.error("Stop app error:", error)
+            refreshAppStatus()
           }
         }
-
-        // Then request the server to start the app
-        await backendServerComms.startApp(packageName)
-
-        // Clear the pending operation since it completed successfully
-        clearPendingOperation(packageName)
       }
+
+      // Then request the server to start the app
+      await backendServerComms.startApp(packageName)
+
+      // Clear the pending operation since it completed successfully
+      clearPendingOperation(packageName)
     } catch (error) {
       // Clear the pending operation for this app
       clearPendingOperation(packageName)
@@ -290,14 +324,14 @@ export default function AppSettings() {
         }
 
         // TACTICAL BYPASS: If webviewURL exists in cached data, execute immediate redirect
-        if (cached.serverAppInfo?.webviewURL && fromWebView !== "true") {
-          replace("/applet/webview", {
-            webviewURL: cached.serverAppInfo.webviewURL,
-            appName: appName,
-            packageName: packageName,
-          })
-          return
-        }
+        // if (cached.serverAppInfo?.webviewURL && fromWebView !== "true") {
+        //   replace("/applet/webview", {
+        //     webviewURL: cached.serverAppInfo.webviewURL,
+        //     appName: appName,
+        //     packageName: packageName,
+        //   })
+        //   return
+        // }
       } else {
         setHasCachedSettings(false)
         setSettingsLoading(true)
@@ -352,10 +386,17 @@ export default function AppSettings() {
 
       // Initialize local state using the "selected" property.
       if (data.settings && Array.isArray(data.settings)) {
+        // Get cached settings to preserve user values for existing settings
+        const cached = await loadSetting(SETTINGS_CACHE_KEY(packageName), null)
+        const cachedState = cached?.settingsState || {}
+
         const initialState: {[key: string]: any} = {}
         data.settings.forEach((setting: any) => {
           if (setting.type !== "group") {
-            initialState[setting.key] = setting.selected
+            // Use cached value if it exists (user has interacted with this setting before)
+            // Otherwise use 'selected' from backend (which includes defaultValue for new settings)
+            initialState[setting.key] =
+              cachedState[setting.key] !== undefined ? cachedState[setting.key] : setting.selected
           }
         })
         setSettingsState(initialState)
@@ -371,14 +412,14 @@ export default function AppSettings() {
       setSettingsLoading(false)
 
       // TACTICAL BYPASS: Execute immediate webview redirect if webviewURL detected
-      if (data.webviewURL && fromWebView !== "true") {
-        replace("/applet/webview", {
-          webviewURL: data.webviewURL,
-          appName: appName,
-          packageName: packageName,
-        })
-        return
-      }
+      // if (data.webviewURL && fromWebView !== "true") {
+      //   replace("/applet/webview", {
+      //     webviewURL: data.webviewURL,
+      //     appName: appName,
+      //     packageName: packageName,
+      //   })
+      //   return
+      // }
     } catch (err) {
       setSettingsLoading(false)
       setHasCachedSettings(false)
@@ -474,6 +515,7 @@ export default function AppSettings() {
             label={setting.label}
             value={settingsState[setting.key]}
             options={setting.options}
+            defaultValue={setting.defaultValue}
             onValueChange={val => handleSettingChange(setting.key, val)}
           />
         )
@@ -484,6 +526,7 @@ export default function AppSettings() {
             label={setting.label}
             value={settingsState[setting.key]}
             options={setting.options}
+            defaultValue={setting.defaultValue}
             onValueChange={val => handleSettingChange(setting.key, val)}
           />
         )
@@ -542,7 +585,7 @@ export default function AppSettings() {
           leftIcon="caretLeft"
           onLeftPress={() => {
             if (serverAppInfo?.webviewURL) {
-              navigate("/applet/webview", {
+              replace("/applet/webview", {
                 webviewURL: serverAppInfo.webviewURL,
                 appName: appName as string,
                 packageName: packageName as string,

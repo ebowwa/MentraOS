@@ -113,6 +113,7 @@ import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.Glass
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.DownloadProgressEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.InstallationProgressEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesSerialNumberEvent;
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.PairFailureEvent;
 
 public class AugmentosService extends LifecycleService implements AugmentOsActionsCallback {
     public static final String TAG = "AugmentOSService";
@@ -972,7 +973,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             // Send to the manager app
             if (blePeripheral != null) {
                 blePeripheral.sendDataToAugmentOsManager(wifiScanResultObj.toString());
-                blePeripheral.sendNotifyManager("Found " + event.networks.size() + " WiFi networks", "success");
+                //blePeripheral.sendNotifyManager("Found " + event.networks.size() + " WiFi networks", "success");
             }
         } catch (JSONException e) {
             Log.e(TAG, "Error creating WiFi scan results JSON", e);
@@ -1725,9 +1726,9 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             }
 
             @Override
-            public void onMicrophoneStateChange(boolean microphoneEnabled, List<SpeechRequiredDataType> requiredData) {
+            public void onMicrophoneStateChange(boolean microphoneEnabled, List<SpeechRequiredDataType> requiredData, boolean bypassVad) {
                 if (smartGlassesManager != null && SmartGlassesManager.getSensingEnabled(getApplicationContext())) {
-                    smartGlassesManager.changeMicrophoneState(microphoneEnabled, requiredData);
+                    smartGlassesManager.changeMicrophoneState(microphoneEnabled, requiredData, bypassVad);
                 }
             }
 
@@ -2226,7 +2227,8 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     public void setForceCoreOnboardMic(boolean toForceCoreOnboardMic) {
         SmartGlassesManager.saveForceCoreOnboardMic(this, toForceCoreOnboardMic);
         if(smartGlassesManager != null && smartGlassesManager.getConnectedSmartGlasses() != null) {
-            blePeripheral.sendNotifyManager(this.getResources().getString(R.string.SETTING_WILL_APPLY_ON_NEXT_GLASSES_CONNECTION), "success");
+            Log.d(TAG, "force core onboard mic set while sgm running");
+            //blePeripheral.sendNotifyManager(this.getResources().getString(R.string.SETTING_WILL_APPLY_ON_NEXT_GLASSES_CONNECTION), "success");
         }
         sendStatusToBackend();
         sendStatusToAugmentOsManager();
@@ -2236,7 +2238,8 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     public void setSensingEnabled(boolean sensingEnabled) {
         SmartGlassesManager.saveSensingEnabled(this, sensingEnabled);
         if(smartGlassesManager != null && smartGlassesManager.getConnectedSmartGlasses() != null) {
-            blePeripheral.sendNotifyManager(this.getResources().getString(R.string.SETTING_WILL_APPLY_ON_NEXT_GLASSES_CONNECTION), "success");
+            Log.d(TAG, "enable/disable sensing set while sgm running");
+            //blePeripheral.sendNotifyManager(this.getResources().getString(R.string.SETTING_WILL_APPLY_ON_NEXT_GLASSES_CONNECTION), "success");
         }
         sendStatusToBackend();
         sendStatusToAugmentOsManager();
@@ -2500,7 +2503,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         );
 
         // Notify manager app
-        blePeripheral.sendNotifyManager("WiFi credentials sent to glasses", "success");
+        //blePeripheral.sendNotifyManager("WiFi credentials sent to glasses", "success");
 
         sendStatusToAugmentOsManager();
 
@@ -2532,7 +2535,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         smartGlassesManager.requestWifiScan();
 
         // Notify manager app
-        blePeripheral.sendNotifyManager("Scanning for WiFi networks...", "info");
+        //blePeripheral.sendNotifyManager("Scanning for WiFi networks...", "info");
     }
 
     @Override
@@ -2881,6 +2884,22 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         this.glassesOtaVersionUrl = event.getOtaVersionUrl();
         Log.d("AugmentOsService", "Glasses version info: " + glassesAppVersion + " " + glassesBuildNumber + " " + glassesDeviceModel + " " + glassesAndroidVersion + " OTA URL: " + glassesOtaVersionUrl);
         sendStatusToAugmentOsManager();
+    }
+
+    // Event handler for pairing failure
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void onPairFailureEvent(PairFailureEvent event) {
+        Log.d(TAG, "Pairing failure: " + event.getError());
+        if (blePeripheral != null) {
+            try {
+                JSONObject msg = new JSONObject();
+                msg.put("type", "pair_failure");
+                msg.put("error", event.getError());
+                blePeripheral.sendDataToAugmentOsManager(msg.toString());
+            } catch (JSONException e) {
+                Log.e(TAG, "Error sending pair failure notification to manager", e);
+            }
+        }
     }
 
 

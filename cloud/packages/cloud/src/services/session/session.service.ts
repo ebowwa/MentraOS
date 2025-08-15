@@ -18,7 +18,7 @@ import {
 import { Logger } from 'pino';
 import { logger as rootLogger } from '../logging/pino-logger';
 import { DebugService } from '../debug/debug-service';
-import subscriptionService from './subscription.service';
+// import subscriptionService from './subscription.service';
 import { User } from '../../models/user.model';
 import UserSession from './UserSession';
 import { getCapabilitiesForModel } from '../../config/hardware-capabilities';
@@ -136,20 +136,19 @@ export class SessionService {
 
       // For each running app, get its subscriptions
       for (const packageName of userSession.runningApps) {
-        appSubscriptions[packageName] = subscriptionService.getAppSubscriptions(
-          userId,
+        appSubscriptions[packageName] = userSession.subscriptionManager.getAppSubscriptions(
           packageName
         );
       }
 
       // Calculate streams that need to be active
       // const requiresAudio = subscriptionService.hasMediaSubscriptions(userId);
-      const hasPCMTranscriptionSubscriptions = subscriptionService.hasPCMTranscriptionSubscriptions(userId);
+      const hasPCMTranscriptionSubscriptions = userSession.subscriptionManager.hasPCMTranscriptionSubscriptions();
       const requiresAudio = hasPCMTranscriptionSubscriptions.hasMedia;
       const requiredData = userSession.microphoneManager.calculateRequiredData(hasPCMTranscriptionSubscriptions.hasPCM, hasPCMTranscriptionSubscriptions.hasTranscription);
       userSession.microphoneManager.updateState(requiresAudio, requiredData); // TODO(isaiah): Feels like an odd place to put it, but it works for now.
 
-      const minimumTranscriptionLanguages = subscriptionService.getMinimalLanguageSubscriptions(userId);
+      const minimumTranscriptionLanguages = userSession.subscriptionManager.getMinimalLanguageSubscriptions();
 
       // Transform to client-friendly format
       return {
@@ -275,7 +274,7 @@ export class SessionService {
   relayMessageToApps(userSession: UserSession, data: GlassesToCloudMessage): void {
     try {
       // Get all Apps subscribed to this stream type
-      const subscribedPackageNames = subscriptionService.getSubscribedApps(userSession, data.type);
+      const subscribedPackageNames = userSession.subscriptionManager.getSubscribedApps(data.type as any);
 
       if (subscribedPackageNames.length === 0) {
         return; // No subscribers, nothing to do

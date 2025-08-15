@@ -1,7 +1,7 @@
 import React, {createContext, useContext, useState, ReactNode, useCallback, useEffect, useRef} from "react"
 import BackendServerComms from "../backend_comms/BackendServerComms"
 import {useAuth} from "@/contexts/AuthContext"
-import {useStatus} from "./AugmentOSStatusProvider"
+import {useCoreStatus} from "./CoreStatusProvider"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
 import {router} from "expo-router"
 import {AppState} from "react-native"
@@ -53,6 +53,18 @@ export interface AppInterface {
   permissions: AppPermission[]
   is_running?: boolean
   is_foreground?: boolean
+  compatibility?: {
+    isCompatible: boolean
+    missingRequired: Array<{
+      type: string
+      description?: string
+    }>
+    missingOptional: Array<{
+      type: string
+      description?: string
+    }>
+    message: string
+  }
 }
 
 interface AppStatusContextType {
@@ -61,6 +73,7 @@ interface AppStatusContextType {
   optimisticallyStartApp: (packageName: string) => void
   optimisticallyStopApp: (packageName: string) => void
   clearPendingOperation: (packageName: string) => void
+  checkAppHealthStatus: (packageName: string) => Promise<boolean>
   isLoading: boolean
   error: string | null
   isSensingEnabled: boolean
@@ -73,13 +86,16 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const {user, logout} = useAuth()
-  const {status} = useStatus()
+  const {status} = useCoreStatus()
 
   // Keep track of active operations to prevent race conditions
   const pendingOperations = useRef<{[packageName: string]: "start" | "stop"}>({})
 
   // Track when the last refresh was performed
   const lastRefreshTime = useRef<number>(0)
+
+  // Track previous glasses connection to detect changes
+  const previousGlassesModel = useRef<string | null>(null)
 
   const refreshAppStatus = useCallback(async () => {
     console.log("AppStatusProvider: refreshAppStatus called - user exists:", !!user, "user email:", user?.email)
@@ -213,19 +229,73 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
     delete pendingOperations.current[packageName]
   }, [])
 
+  const checkAppHealthStatus = async (packageName: string): Promise<boolean> => {
+    // GET the app's /health endpoint
+    return true
+    try {
+      const app = appStatus.find(app => app.packageName === packageName)
+      if (!app) {
+        return false
+      }
+      const baseUrl = await BackendServerComms.getInstance().getServerUrl()
+      // POST /api/app-uptime/app-pkg-health-check with body { "packageName": packageName }
+      const healthUrl = `${baseUrl}/api/app-uptime/app-pkg-health-check`
+      const healthResponse = await fetch(healthUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({packageName}),
+      })
+      const healthData = await healthResponse.json()
+      return healthData.success
+    } catch (error) {
+      console.error("AppStatusProvider: Error checking app health status:", error)
+      return false
+    }
+  }
+
   // Initial fetch and refresh on user change or status change
   useEffect(() => {
     refreshAppStatus()
   }, [user, status.core_info.cloud_connection_status])
 
+  // Monitor glasses connection changes and refresh apps when glasses change
+  useEffect(() => {
+    const currentGlassesModel = status.glasses_info?.model_name || null
+
+    // Only check for changes after initial load (previousGlassesModel has been set at least once)
+    if (previousGlassesModel.current !== undefined) {
+      // Check if glasses connection changed
+      if (previousGlassesModel.current !== currentGlassesModel) {
+        console.log(
+          "AppStatusProvider: Glasses connection changed from",
+          previousGlassesModel.current || "none",
+          "to",
+          currentGlassesModel || "none",
+          "- refreshing app list",
+        )
+
+        // Only refresh if we have a user and the change is meaningful
+        if (user && (previousGlassesModel.current !== null || currentGlassesModel !== null)) {
+          // Add error handling for refresh
+          refreshAppStatus().catch(error => {
+            console.error("AppStatusProvider: Error refreshing apps after glasses change:", error)
+          })
+        }
+      }
+    }
+
+    // Update the previous glasses model for next comparison
+    previousGlassesModel.current = currentGlassesModel
+  }, [status.glasses_info?.model_name, user, refreshAppStatus])
+
   // Listen for app started/stopped events from CoreCommunicator
   useEffect(() => {
     const onAppStarted = (packageName: string) => {
-      console.log("APP_STARTED_EVENT", packageName)
       optimisticallyStartApp(packageName)
     }
     const onAppStopped = (packageName: string) => {
-      console.log("APP_STOPPED_EVENT", packageName)
       optimisticallyStopApp(packageName)
     }
     const onResetAppStatus = () => {
@@ -289,7 +359,7 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
     return () => {
       appStateSubscription.remove()
     }
-  }, [])
+  }, []) // subscribe only once
 
   return (
     <AppStatusContext.Provider
@@ -301,6 +371,7 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
         clearPendingOperation,
         isLoading,
         error,
+        checkAppHealthStatus,
         isSensingEnabled: status.core_info.sensing_enabled,
       }}>
       {children}

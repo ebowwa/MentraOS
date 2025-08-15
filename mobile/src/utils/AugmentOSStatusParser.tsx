@@ -99,7 +99,6 @@ export interface AugmentOSMainStatus {
   wifi: WifiConnection | null
   gsm: GSMConnection | null
   auth: CoreAuthInfo
-  force_update: boolean
   ota_progress?: OtaProgress
 }
 
@@ -118,7 +117,7 @@ export class AugmentOSParser {
       preferred_mic: "glasses",
       is_mic_enabled_for_frontend: false,
       contextual_dashboard_enabled: false,
-      bypass_vad_for_debugging: false,
+      bypass_vad_for_debugging: true,
       enforce_local_transcription: false,
       bypass_audio_encoding_for_debugging: false,
       default_wearable: null,
@@ -142,7 +141,6 @@ export class AugmentOSParser {
       core_token_status: "",
       last_verification_timestamp: 0,
     },
-    force_update: false,
   }
 
   static mockStatus: AugmentOSMainStatus = {
@@ -159,7 +157,7 @@ export class AugmentOSParser {
       force_core_onboard_mic: false,
       is_mic_enabled_for_frontend: false,
       contextual_dashboard_enabled: true,
-      bypass_vad_for_debugging: false,
+      bypass_vad_for_debugging: true,
       enforce_local_transcription: false,
       bypass_audio_encoding_for_debugging: false,
       default_wearable: "evenrealities_g1",
@@ -197,7 +195,6 @@ export class AugmentOSParser {
       core_token_status: "",
       last_verification_timestamp: 0,
     },
-    force_update: false,
   }
 
   static parseStatus(data: any): AugmentOSMainStatus {
@@ -227,7 +224,7 @@ export class AugmentOSParser {
           force_core_onboard_mic: status.core_info.force_core_onboard_mic ?? false,
           preferred_mic: status.core_info.preferred_mic ?? "glasses",
           contextual_dashboard_enabled: status.core_info.contextual_dashboard_enabled ?? true,
-          bypass_vad_for_debugging: status.core_info.bypass_vad_for_debugging ?? false,
+          bypass_vad_for_debugging: status.core_info.bypass_vad_for_debugging ?? true,
           enforce_local_transcription: status.core_info.enforce_local_transcription ?? false,
           bypass_audio_encoding_for_debugging: status.core_info.bypass_audio_encoding_for_debugging ?? false,
           default_wearable:
@@ -255,7 +252,7 @@ export class AugmentOSParser {
               glasses_build_number: glassesInfo.glasses_build_number,
               glasses_device_model: glassesInfo.glasses_device_model,
               glasses_android_version: glassesInfo.glasses_android_version,
-              glasses_ota_version_url: glassesInfo.glasses_ota_version_url,
+              glasses_ota_version_url: glassesInfo.glasses_ota_version_url || "https://dev.augmentos.org/version.json",
               glasses_serial_number: glassesInfo.glasses_serial_number,
               glasses_style: glassesInfo.glasses_style,
               glasses_color: glassesInfo.glasses_color,
@@ -277,7 +274,6 @@ export class AugmentOSParser {
           core_token_status: authInfo.core_token_status,
           last_verification_timestamp: authInfo.last_verification_timestamp,
         },
-        force_update: false, // status.force_update ?? false
         // TODO: Hardcoding this false fixes a bug that
         // causes us to jump back to the home screen whenever
         // a setting is changed. I don't know why this works.

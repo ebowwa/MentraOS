@@ -546,7 +546,7 @@ public class SmartGlassesManager extends Service {
     public static boolean getBypassVadForDebugging(Context context) {
         SharedPreferences sharedPreferences = context.getSharedPreferences("AugmentOSPrefs", Context.MODE_PRIVATE);
         //Log.d("AugmentOSPrefs", "Getting bypass VAD for debugging: " + sharedPreferences.getBoolean(context.getResources().getString(R.string.BYPASS_VAD_FOR_DEBUGGING), false));
-        return sharedPreferences.getBoolean(context.getResources().getString(R.string.BYPASS_VAD_FOR_DEBUGGING), false);
+        return sharedPreferences.getBoolean(context.getResources().getString(R.string.BYPASS_VAD_FOR_DEBUGGING), true);
     }
 
     public static void saveBypassVadForDebugging(Context context, boolean enabled) {
@@ -834,8 +834,8 @@ public class SmartGlassesManager extends Service {
         }
     }
 
-    public void changeMicrophoneState(boolean isMicrophoneEnabled, List<SpeechRequiredDataType> requiredData) {
-        Log.d(TAG, "Changing microphone state to " + isMicrophoneEnabled);
+    public void changeMicrophoneState(boolean isMicrophoneEnabled, List<SpeechRequiredDataType> requiredData, boolean bypassVad) {
+        Log.d(TAG, "Changing microphone state to " + isMicrophoneEnabled + " bypassVad=" + bypassVad);
 
         if (smartGlassesRepresentative == null) {
             Log.d(TAG, "Cannot change microphone state: smartGlassesRepresentative is null");
@@ -853,8 +853,9 @@ public class SmartGlassesManager extends Service {
         // PhoneMicrophoneManager handles all the complexity of choosing the right mic
         smartGlassesRepresentative.changeBluetoothMicState(isMicrophoneEnabled);
 
-        // Tell speech rec system about the state change
+        // Tell speech rec system about the state change and bypass setting
         speechRecSwitchSystem.microphoneStateChanged(isMicrophoneEnabled, requiredData);
+        speechRecSwitchSystem.setBypassVadForPCM(bypassVad); // NEW: Set PCM bypass
     }
 
     // applyMicrophoneState method removed - all mic logic now handled by PhoneMicrophoneManager

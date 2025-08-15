@@ -1,0 +1,329 @@
+---
+title: "Hardware Modules"
+description: "Access camera, audio, location, and other hardware features"
+---
+
+## Overview
+
+Hardware modules provide access to glasses and phone capabilities. Always check `session.capabilities` before using hardware features.
+
+## Camera Module
+
+Access the glasses camera through `session.camera`:
+
+### Request Photo
+
+```typescript
+// Simple photo capture
+const photo = await session.camera.requestPhoto();
+console.log(`Photo type: ${photo.mimeType}`);
+// photo.photoData is an ArrayBuffer
+
+// With metadata
+const photo = await session.camera.requestPhoto({
+  metadata: { 
+    purpose: 'document-scan',
+    timestamp: Date.now()
+  }
+});
+```
+
+### Video Streaming
+
+```typescript
+// RTMP streaming
+const result = await session.camera.startStream({
+  rtmpUrl: 'rtmp://your-server.com/live/stream-key'
+});
+
+if (result.success) {
+  console.log(`Streaming started: ${result.streamId}`);
+}
+
+// Stop streaming
+await session.camera.stopStream();
+
+// Managed streaming (creates URLs for viewers)
+const managed = await session.camera.startManagedStream({
+  title: 'Live Tour',
+  description: 'Walking through the museum'
+});
+
+console.log(`HLS URL: ${managed.hlsUrl}`);
+console.log(`DASH URL: ${managed.dashUrl}`);
+```
+
+### Stream Status
+
+```typescript
+session.camera.onStreamStatus((status) => {
+  console.log(`Stream status: ${status.state}`);
+  if (status.error) {
+    console.error(`Stream error: ${status.error}`);
+  }
+});
+```
+
+## Audio Module
+
+Play audio on glasses through `session.audio`:
+
+### Play Audio File
+
+```typescript
+// Play from URL
+await session.audio.play('https://example.com/sound.mp3');
+
+// With options
+await session.audio.play('https://example.com/sound.mp3', {
+  volume: 0.8  // 0-1
+});
+
+// Stop playback
+await session.audio.stop();
+```
+
+### Text-to-Speech
+
+```typescript
+// Simple TTS
+await session.audio.speak('Hello world');
+
+// With options
+await session.audio.speak('Hola mundo', {
+  language: 'es-ES',
+  voice: 'female'
+});
+```
+
+## Location Module
+
+Access device location through `session.location`:
+
+### Continuous Updates
+
+```typescript
+// Subscribe to location updates
+const cleanup = await session.location.subscribeToStream({
+  accuracy: 'high',  // 'high' | 'medium' | 'low'
+  updateInterval: 5000  // milliseconds
+}, (location) => {
+  console.log(`Location: ${location.lat}, ${location.lng}`);
+  if (location.accuracy) {
+    console.log(`Accuracy: ${location.accuracy} meters`);
+  }
+});
+
+// Later: unsubscribe
+await session.location.unsubscribeFromStream();
+```
+
+### One-time Location
+
+```typescript
+// Get current location once
+const location = await session.location.getLatestLocation({
+  accuracy: 'high'
+});
+
+console.log(`Current location: ${location.lat}, ${location.lng}`);
+```
+
+## Dashboard Module
+
+Control the always-visible dashboard through `session.dashboard`:
+
+### Update Content
+
+```typescript
+// Write to dashboard
+await session.dashboard.write({
+  text: '3 new messages'
+});
+
+// Target specific views
+await session.dashboard.write({
+  text: 'Navigation: 0.5 mi'
+}, {
+  targets: ['dashboard', 'always_on']
+});
+```
+
+### Dashboard Mode
+
+```typescript
+// Listen for mode changes
+session.dashboard.onModeChange((mode) => {
+  console.log(`Dashboard enabled: ${mode.enabled}`);
+  console.log(`Always on: ${mode.alwaysOn}`);
+});
+
+// For system apps only:
+const content = await session.dashboard.systemDashboard.read();
+```
+
+## Settings Module
+
+Manage app settings through `session.settings`:
+
+### Read Settings
+
+```typescript
+// Get single setting
+const theme = await session.settings.get('theme', 'light');
+
+// Check if setting exists
+const hasTheme = await session.settings.has('theme');
+```
+
+### Listen for Changes
+
+```typescript
+// Specific setting
+session.settings.on('theme', (newValue) => {
+  console.log(`Theme changed to: ${newValue}`);
+  applyTheme(newValue);
+});
+
+// Any setting change
+session.settings.onChange((key, newValue) => {
+  console.log(`${key} changed to ${newValue}`);
+});
+```
+
+## Capability Checking
+
+Always check capabilities before using hardware:
+
+```typescript
+async function capturePhoto(session: AppSession) {
+  if (!session.capabilities.hasCamera) {
+    await session.layouts.showTextWall('Camera not available');
+    return null;
+  }
+  
+  try {
+    const photo = await session.camera.requestPhoto();
+    return photo;
+  } catch (error) {
+    console.error('Photo capture failed:', error);
+    await session.layouts.showTextWall('Failed to capture photo');
+    return null;
+  }
+}
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Handle hardware failures gracefully">
+    ```typescript
+    try {
+      const location = await session.location.getLatestLocation();
+      processLocation(location);
+    } catch (error) {
+      console.error('Location error:', error);
+      // Use fallback or cached location
+      useFallbackLocation();
+    }
+    ```
+  </Accordion>
+  
+  <Accordion title="Request permissions appropriately">
+    Hardware access requires permissions. Request only what you need:
+    ```typescript
+    // Only subscribe to location if needed
+    if (userWantsNavigation) {
+      await session.location.subscribeToStream({}, handleLocation);
+    }
+    ```
+  </Accordion>
+  
+  <Accordion title="Clean up resources">
+    ```typescript
+    // Store cleanup functions
+    const cleanups = [];
+    
+    // Add location subscription
+    const locationCleanup = await session.location.subscribeToStream(
+      {}, 
+      handleLocation
+    );
+    cleanups.push(locationCleanup);
+    
+    // Clean up when done
+    session.events.onDisconnected(() => {
+      cleanups.forEach(cleanup => cleanup());
+    });
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Common Patterns
+
+### Photo with Feedback
+
+```typescript
+async function takePhotoWithFeedback(session: AppSession) {
+  // Show capturing message
+  await session.layouts.showTextWall('Capturing photo...');
+  
+  try {
+    const photo = await session.camera.requestPhoto();
+    
+    // Show success
+    await session.layouts.showTextWall('✓ Photo captured', {
+      durationMs: 2000
+    });
+    
+    return photo;
+  } catch (error) {
+    // Show error
+    await session.layouts.showTextWall('✗ Photo failed', {
+      durationMs: 2000
+    });
+    throw error;
+  }
+}
+```
+
+### Location-based Features
+
+```typescript
+class LocationTracker {
+  private lastLocation: any;
+  private totalDistance = 0;
+  
+  constructor(private session: AppSession) {}
+  
+  async start() {
+    await this.session.location.subscribeToStream({
+      accuracy: 'high',
+      updateInterval: 5000
+    }, (location) => {
+      if (this.lastLocation) {
+        // Calculate distance
+        const distance = this.calculateDistance(
+          this.lastLocation, 
+          location
+        );
+        this.totalDistance += distance;
+        
+        // Update display
+        this.session.layouts.showReferenceCard({
+          title: 'Distance Tracker',
+          text: `Total: ${this.totalDistance.toFixed(2)} km`
+        });
+      }
+      
+      this.lastLocation = location;
+    });
+  }
+  
+  private calculateDistance(loc1: any, loc2: any): number {
+    // Haversine formula for distance between coordinates
+    // ... implementation
+    return distance;
+  }
+}
+```

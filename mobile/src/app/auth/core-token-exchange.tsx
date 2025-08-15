@@ -1,6 +1,6 @@
 import React, {useEffect, useState, useRef} from "react"
 import {View, Text, ActivityIndicator, StyleSheet, Platform, TouchableOpacity, Animated, TextStyle} from "react-native"
-import {useStatus} from "@/contexts/AugmentOSStatusProvider"
+import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import {useNavigation} from "@react-navigation/native"
 import {useAuth} from "@/contexts/AuthContext"
 import coreCommunicator from "@/bridge/CoreCommunicator"
@@ -18,7 +18,7 @@ import {useDeeplink} from "@/contexts/DeeplinkContext"
 import {router} from "expo-router"
 
 export default function CoreTokenExchange() {
-  const {status} = useStatus()
+  const {status} = useCoreStatus()
   const {user, session, loading: authLoading} = useAuth()
   const [connectionError, setConnectionError] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -34,7 +34,7 @@ export default function CoreTokenExchange() {
 
   const loadPendingRouteOrHome = async () => {
     const pendingRoute = getPendingRoute()
-    console.log("@@@@@@@@@@@@@LOADING PENDING ROUTE OR HOME @@@@@@@@@@@@@@@", pendingRoute)
+    console.log("@@@@@@@@@@@@@ LOADING PENDING ROUTE OR HOME @@@@@@@@@@@@@@@", pendingRoute)
     if (pendingRoute) {
       setPendingRoute(null)
       setTimeout(() => {
@@ -45,7 +45,7 @@ export default function CoreTokenExchange() {
       setTimeout(() => {
         router.dismissAll()
         replace("/(tabs)/home")
-      }, 1000)
+      }, 100)
     }
   }
 

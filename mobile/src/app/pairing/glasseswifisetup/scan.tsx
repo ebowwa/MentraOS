@@ -1,26 +1,26 @@
-import React, {useState, useEffect} from "react"
+import React, {useState, useEffect, useRef} from "react"
 import {View, Text, FlatList, TouchableOpacity, ActivityIndicator, BackHandler} from "react-native"
 import {useLocalSearchParams, router, useFocusEffect} from "expo-router"
-import {Screen, Header} from "@/components/ignite"
+import {Screen, Header, Button} from "@/components/ignite"
 import coreCommunicator from "@/bridge/CoreCommunicator"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {ThemedStyle} from "@/theme"
 import {ViewStyle, TextStyle} from "react-native"
-import {useStatus} from "@/contexts/AugmentOSStatusProvider"
+import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import {useCallback} from "react"
-import ActionButton from "@/components/ui/ActionButton"
 import WifiCredentialsService from "@/utils/WifiCredentialsService"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 
 export default function WifiScanScreen() {
   const {deviceModel = "Glasses"} = useLocalSearchParams()
   const {theme, themed} = useAppTheme()
-  const {status} = useStatus()
+  const {status} = useCoreStatus()
 
   const [networks, setNetworks] = useState<string[]>([])
   const [savedNetworks, setSavedNetworks] = useState<string[]>([])
   const [isScanning, setIsScanning] = useState(true)
+  const scanTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   const {push, goBack} = useNavigationHistory()
 
@@ -53,15 +53,41 @@ export default function WifiScanScreen() {
     startScan()
 
     const handleWifiScanResults = (data: {networks: string[]}) => {
-      console.log("WiFi scan results received:", data.networks)
-      setNetworks(data.networks)
+      console.log("🎯 ========= SCAN.TSX RECEIVED WIFI RESULTS =========")
+      console.log("🎯 Data received:", data)
+      console.log("🎯 Networks array:", data.networks)
+      console.log("🎯 Networks count:", data.networks?.length || 0)
+
+      // Clear the timeout since we got results
+      if (scanTimeoutRef.current) {
+        console.log("🎯 Clearing scan timeout - results received")
+        clearTimeout(scanTimeoutRef.current)
+        scanTimeoutRef.current = null
+      }
+
+      // Append new networks to existing list instead of replacing
+      setNetworks(prevNetworks => {
+        console.log("🎯 Previous networks:", prevNetworks)
+        // Create a Set to avoid duplicates
+        const existingSet = new Set(prevNetworks)
+        data.networks.forEach(network => existingSet.add(network))
+        const newNetworks = Array.from(existingSet)
+        console.log("🎯 Updated networks list:", newNetworks)
+        return newNetworks
+      })
       setIsScanning(false)
+      console.log("🎯 ========= END SCAN.TSX WIFI RESULTS =========")
     }
 
     GlobalEventEmitter.on("WIFI_SCAN_RESULTS", handleWifiScanResults)
 
     return () => {
       GlobalEventEmitter.removeListener("WIFI_SCAN_RESULTS", handleWifiScanResults)
+      // Clean up timeout on unmount
+      if (scanTimeoutRef.current) {
+        clearTimeout(scanTimeoutRef.current)
+        scanTimeoutRef.current = null
+      }
     }
   }, [])
 
@@ -69,10 +95,34 @@ export default function WifiScanScreen() {
     setIsScanning(true)
     setNetworks([])
 
+    // Clear any existing timeout
+    if (scanTimeoutRef.current) {
+      clearTimeout(scanTimeoutRef.current)
+    }
+
+    // Set a timeout for scan results
+    scanTimeoutRef.current = setTimeout(() => {
+      console.log("⏱️⏱️⏱️⏱️⏱️⏱️⏱️⏱️⏱️⏱️⏱️⏱️⏱️⏱️⏱️⏱️⏱️⏱️⏱️⏱️")
+      console.log("⏱️ WIFI SCAN TIMEOUT - NO RESULTS AFTER 15 SECONDS ⏱️")
+      console.log("⏱️ RETRYING SCAN AUTOMATICALLY...")
+      console.log("⏱️⏱️⏱️⏱️⏱️⏱️⏱️⏱️⏱️⏱️⏱️⏱️⏱️⏱️⏱️⏱️⏱️⏱️⏱️⏱️")
+
+      // Don't stop scanning, just retry silently
+      coreCommunicator.requestWifiScan().catch(error => {
+        console.error("⏱️ RETRY FAILED:", error)
+      })
+
+      scanTimeoutRef.current = null
+    }, 15000) // 15 second timeout
+
     try {
       await coreCommunicator.requestWifiScan()
     } catch (error) {
       console.error("Error scanning for WiFi networks:", error)
+      if (scanTimeoutRef.current) {
+        clearTimeout(scanTimeoutRef.current)
+        scanTimeoutRef.current = null
+      }
       setIsScanning(false)
       GlobalEventEmitter.emit("SHOW_BANNER", {
         message: "Failed to scan for WiFi networks",
@@ -147,12 +197,12 @@ export default function WifiScanScreen() {
               style={themed($networksList)}
               contentContainerStyle={themed($listContent)}
             />
-            <ActionButton label="Scan Again" onPress={startScan} variant="secondary" />
+            <Button text="Scan Again" onPress={startScan} style={themed($scanButton)} />
           </>
         ) : (
           <View style={themed($emptyContainer)}>
             <Text style={themed($emptyText)}>No networks found</Text>
-            <ActionButton label="Try Again" onPress={startScan} />
+            <Button text="Try Again" onPress={startScan} style={themed($tryAgainButton)} />
           </View>
         )}
       </View>
@@ -321,3 +371,9 @@ const $emptyText: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
   marginBottom: spacing.lg,
   textAlign: "center",
 })
+
+const $scanButton: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  marginTop: spacing.md,
+})
+
+const $tryAgainButton: ThemedStyle<ViewStyle> = () => ({})

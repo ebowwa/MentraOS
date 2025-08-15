@@ -1,7 +1,7 @@
 import { User, UserI } from '../../models/user.model';
 import { sessionService } from '../session/session.service';
 import UserSession from '../session/UserSession';
-import subscriptionService from '../session/subscription.service';
+// import subscriptionService from '../session/subscription.service';
 import { logger as rootLogger } from '../logging/pino-logger';
 import WebSocket from 'ws';
 import { CloudToGlassesMessageType, LocationUpdate, SetLocationTier, RequestSingleLocation, DataStream, CloudToAppMessageType, StreamType } from '@mentra/sdk';

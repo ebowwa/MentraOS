@@ -14,7 +14,7 @@ public interface ServerCommsCallback {
     void onAuthError();
     void onConnectionStatusChange(WebSocketManager.IncomingMessageHandler.WebSocketStatus status);
     void onRequestSingle(String dataType);
-    void onMicrophoneStateChange(boolean isEnabled, List<SpeechRequiredDataType> requiredData);
+    void onMicrophoneStateChange(boolean isEnabled, List<SpeechRequiredDataType> requiredData, boolean bypassVad);
 
     /**
      * Called when the server requests a photo to be taken

@@ -1,4 +1,4 @@
-import {useStatus} from "@/contexts/AugmentOSStatusProvider"
+import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import {ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
 import React, {useState, useEffect, useRef} from "react"
@@ -23,6 +23,7 @@ const GlassesDisplayMirror: React.FC<GlassesDisplayMirrorProps> = ({
   const canvasRef = useRef<Canvas>(null)
   const containerRef = useRef<View | null>(null)
   const [containerWidth, setContainerWidth] = useState<number | null>(null)
+  const {status} = useCoreStatus()
 
   const processBitmap = async () => {
     if (layout?.layoutType !== "bitmap_view" || !layout.data) {
@@ -89,6 +90,86 @@ const GlassesDisplayMirror: React.FC<GlassesDisplayMirrorProps> = ({
     })
   }
 
+  const parseText = (text: string) => {
+    // if text contains $GBATT$, replace with battery level
+    if (text.includes("$GBATT$")) {
+      const batteryLevel = status.glasses_info?.battery_level
+      if (batteryLevel) {
+        return text.replace("$GBATT$", batteryLevel.toString() + "%")
+      }
+    }
+    return text
+  }
+
+  /**
+   * Render logic for each layoutType
+   */
+  const renderLayout = (
+    layout: any,
+    textStyle?: TextStyle,
+    canvasRef?: React.RefObject<Canvas>,
+    containerRef?: React.RefObject<View | null>,
+    setContainerWidth?: (width: number) => void,
+  ) => {
+    switch (layout.layoutType) {
+      case "reference_card": {
+        const {title, text} = layout
+        return (
+          <>
+            <Text style={[styles.cardTitle, textStyle]}>{title}</Text>
+            <Text style={[styles.cardContent, textStyle]}>{text}</Text>
+          </>
+        )
+      }
+      case "text_wall":
+      case "text_line": {
+        let {text} = layout
+        text = parseText(text)
+        return <Text style={[styles.cardContent, textStyle]}>{text || text === "" ? text : ""}</Text>
+      }
+      case "double_text_wall": {
+        let {topText, bottomText} = layout
+        topText = parseText(topText)
+        bottomText = parseText(bottomText)
+        return (
+          <View style={{flexDirection: "row", gap: 2}}>
+            <Text style={[styles.cardContent, textStyle, {width: "50%"}]} numberOfLines={4}>
+              {topText || topText === "" ? topText : ""}
+            </Text>
+            <Text style={[styles.cardContent, textStyle, {width: "50%"}]} numberOfLines={4}>
+              {bottomText || bottomText === "" ? bottomText : ""}
+            </Text>
+          </View>
+        )
+      }
+      case "text_rows": {
+        const rows = layout.text || []
+        return rows.map((row: string, index: number) => (
+          <Text key={index} style={[styles.cardContent, textStyle]}>
+            {parseText(row)}
+          </Text>
+        ))
+      }
+      case "bitmap_view": {
+        return (
+          <View
+            ref={containerRef}
+            style={{flex: 1, width: "100%", height: "100%", justifyContent: "center"}}
+            onLayout={event => {
+              const {width} = event.nativeEvent.layout
+              if (setContainerWidth) {
+                setContainerWidth(width)
+              }
+            }}>
+            <Canvas ref={canvasRef} style={{width: "100%", alignItems: "center"}} />
+          </View>
+        )
+      }
+      default:
+        return <Text style={[styles.cardContent, textStyle]}>Unknown layout type: {layout.layoutType}</Text>
+    }
+  }
+
   // Process bitmap data when layout or container width changes
   useEffect(() => {
     if (containerWidth) {
@@ -96,7 +177,7 @@ const GlassesDisplayMirror: React.FC<GlassesDisplayMirrorProps> = ({
     }
   }, [layout, containerWidth])
 
-  if (!layout || !layout.layoutType || layout.text === "") {
+  if (!layout || !layout.layoutType) {
     return (
       <View style={[themed($glassesScreen), containerStyle]}>
         <View style={themed($emptyContainer)}>
@@ -106,6 +187,8 @@ const GlassesDisplayMirror: React.FC<GlassesDisplayMirrorProps> = ({
     )
   }
 
+  console.log("layout", layout)
+
   const content = <>{renderLayout(layout, themed($glassesText), canvasRef, containerRef, setContainerWidth)}</>
 
   if (fullscreen) {
@@ -113,83 +196,6 @@ const GlassesDisplayMirror: React.FC<GlassesDisplayMirrorProps> = ({
   }
 
   return <View style={[themed($glassesScreen), containerStyle]}>{content}</View>
-}
-
-function parseText(text: string) {
-  const {status} = useStatus()
-  // if text contains $GBATT$, replace with battery level
-  if (text.includes("$GBATT$")) {
-    const batteryLevel = status.glasses_info?.battery_level
-    if (batteryLevel) {
-      return text.replace("$GBATT$", batteryLevel.toString() + "%")
-    }
-  }
-  return text
-}
-
-/**
- * Render logic for each layoutType
- */
-function renderLayout(
-  layout: any,
-  textStyle?: TextStyle,
-  canvasRef?: React.RefObject<Canvas>,
-  containerRef?: React.RefObject<View | null>,
-  setContainerWidth?: (width: number) => void,
-) {
-  switch (layout.layoutType) {
-    case "reference_card": {
-      const {title, text} = layout
-      return (
-        <>
-          <Text style={[styles.cardTitle, textStyle]}>{title}</Text>
-          <Text style={[styles.cardContent, textStyle]}>{text}</Text>
-        </>
-      )
-    }
-    case "text_wall":
-    case "text_line": {
-      let {text} = layout
-      text = parseText(text)
-      return <Text style={[styles.cardContent, textStyle]}>{text || text === "" ? text : ""}</Text>
-    }
-    case "double_text_wall": {
-      let {topText, bottomText} = layout
-      topText = parseText(topText)
-      bottomText = parseText(bottomText)
-      return (
-        <View style={{flexDirection: "row", gap: 2}}>
-          <Text style={[styles.cardContent, textStyle]}>{topText || topText === "" ? topText : ""}</Text>
-          <Text style={[styles.cardContent, textStyle]}>{bottomText || bottomText === "" ? bottomText : ""}</Text>
-        </View>
-      )
-    }
-    case "text_rows": {
-      const rows = layout.text || []
-      return rows.map((row: string, index: number) => (
-        <Text key={index} style={[styles.cardContent, textStyle]}>
-          {parseText(row)}
-        </Text>
-      ))
-    }
-    case "bitmap_view": {
-      return (
-        <View
-          ref={containerRef}
-          style={{flex: 1, width: "100%", height: "100%", justifyContent: "center"}}
-          onLayout={event => {
-            const {width} = event.nativeEvent.layout
-            if (setContainerWidth) {
-              setContainerWidth(width)
-            }
-          }}>
-          <Canvas ref={canvasRef} style={{width: "100%", alignItems: "center"}} />
-        </View>
-      )
-    }
-    default:
-      return <Text style={[styles.cardContent, textStyle]}>Unknown layout type: {layout.layoutType}</Text>
-  }
 }
 
 const $glassesScreen: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({

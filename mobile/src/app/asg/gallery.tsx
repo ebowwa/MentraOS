@@ -1,14 +1,13 @@
 import React, {useCallback} from "react"
 import {GalleryScreen} from "./components/Gallery/GalleryScreen"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
-import {useFocusEffect, useLocalSearchParams} from "expo-router"
+import {useFocusEffect} from "expo-router"
 import {BackHandler, View, ViewStyle} from "react-native"
 import {Header} from "@/components/ignite"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {ThemedStyle} from "@/theme"
 
 export default function AsgGallery() {
-  const {deviceModel = "Glasses"} = useLocalSearchParams()
   const {theme, themed} = useAppTheme()
   const {goBack} = useNavigationHistory()
 
@@ -27,10 +26,8 @@ export default function AsgGallery() {
 
   return (
     <View style={themed($screenContainer)}>
-      <Header title="Photo Gallery" leftIcon="caretLeft" onLeftPress={handleGoBack} />
-      <View style={themed($container)}>
-        <GalleryScreen deviceModel={deviceModel as string} />
-      </View>
+      <Header title="Glasses Gallery" leftIcon="caretLeft" onLeftPress={handleGoBack} />
+      <GalleryScreen />
     </View>
   )
 }

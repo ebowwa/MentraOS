@@ -50,7 +50,6 @@ struct ViewState {
     //  private var cachedWhatToStream = [String]()
     private var defaultWearable: String = ""
     private var deviceName: String = ""
-    private var somethingConnected: Bool = false
     private var shouldEnableMic: Bool = false
     private var contextualDashboard = true
     private var headUpAngle = 30
@@ -64,7 +63,8 @@ struct ViewState {
     private var isSearching: Bool = false
     private var isUpdatingScreen: Bool = false
     private var alwaysOnStatusBar: Bool = false
-    private var bypassVad: Bool = false
+    private var bypassVad: Bool = true
+    private var bypassVadForPCM: Bool = false // NEW: PCM subscription bypass
     private var enforceLocalTranscription: Bool = false
     private var bypassAudioEncoding: Bool = false
     private var onboardMicUnavailable: Bool = false
@@ -150,11 +150,6 @@ struct ViewState {
 
         // Set up voice data handling
         setupVoiceDataHandling()
-
-        // configure on board mic:
-        //    setupOnboardMicrophoneIfNeeded()
-
-        // initManagerCallbacks()
 
         // Subscribe to WebSocket status changes
         serverComms.wsManager.status
@@ -252,7 +247,8 @@ struct ViewState {
                     return
                 }
 
-                if self.bypassVad {
+                if self.bypassVad || self.bypassVadForPCM {
+                    CoreCommsService.log("AOS: Glasses mic VAD bypassed - bypassVad=\(self.bypassVad), bypassVadForPCM=\(self.bypassVadForPCM)")
                     checkSetVadStatus(speaking: true)
                     // first send out whatever's in the vadBuffer (if there is anything):
                     emptyVadBuffer()
@@ -477,7 +473,7 @@ struct ViewState {
                     return
                 }
 
-                if self.bypassVad {
+                if self.bypassVad || self.bypassVadForPCM {
                     //          let pcmConverter = PcmConverter()
                     //          let lc3Data = pcmConverter.encode(pcmData) as Data
                     //          checkSetVadStatus(speaking: true)
@@ -539,8 +535,12 @@ struct ViewState {
 
     // MARK: - ServerCommsCallback Implementation
 
-    func onMicrophoneStateChange(_ isEnabled: Bool, _ requiredData: [SpeechRequiredDataType]) {
-        CoreCommsService.log("AOS: @@@@@@@@ changing microphone state to: \(isEnabled) with requiredData: \(requiredData) @@@@@@@@@@@@@@@@")
+    func onMicrophoneStateChange(_ isEnabled: Bool, _ requiredData: [SpeechRequiredDataType], _ bypassVad: Bool) {
+        CoreCommsService.log("AOS: @@@@@@@@ changing microphone state to: \(isEnabled) with requiredData: \(requiredData) bypassVad=\(bypassVad) @@@@@@@@@@@@@@@@")
+
+        // NEW: Set PCM-specific bypass based on cloud command
+        bypassVadForPCM = bypassVad
+        CoreCommsService.log("AOS: bypassVadForPCM set to: \(bypassVadForPCM)")
 
         if requiredData.contains(.PCM), requiredData.contains(.TRANSCRIPTION) {
             shouldSendPcmData = true
@@ -569,15 +569,12 @@ struct ViewState {
 
         // in any case, clear the vadBuffer:
         vadBuffer.removeAll()
-        micEnabled = isEnabled
+        micEnabled = isEnabled || shouldSendPcmData
 
         // Handle microphone state change if needed
         Task {
             // Only enable microphone if sensing is also enabled
             var actuallyEnabled = isEnabled && self.sensingEnabled
-            if !self.somethingConnected {
-                actuallyEnabled = false
-            }
 
             let glassesHasMic = getGlassesHasMic()
 
@@ -604,16 +601,24 @@ struct ViewState {
                 }
 
                 if !useGlassesMic, !useOnboardMic {
-                    CoreCommsService.log("no mic to use!!!!!!")
+                    CoreCommsService.log("AOS: no mic to use! falling back to glasses mic!!!!! (this should not happen)")
+                    useGlassesMic = true
                 }
             }
 
             useGlassesMic = actuallyEnabled && useGlassesMic
             useOnboardMic = actuallyEnabled && useOnboardMic
 
-            CoreCommsService.log("AOS: user enabled microphone: \(isEnabled) sensingEnabled: \(self.sensingEnabled) useOnboardMic: \(useOnboardMic) useGlassesMic: \(useGlassesMic) glassesHasMic: \(glassesHasMic) preferredMic: \(self.preferredMic) somethingConnected: \(self.somethingConnected) onboardMicUnavailable: \(self.onboardMicUnavailable)")
+            CoreCommsService.log("AOS: useGlassesMic: \(useGlassesMic) useOnboardMic: \(useOnboardMic) actuallyEnabled: \(actuallyEnabled)")
+            CoreCommsService.log("AOS: isEnabled: \(isEnabled) sensingEnabled: \(self.sensingEnabled) glassesHasMic: \(glassesHasMic)")
+            CoreCommsService.log("AOS: useGlassesMic: \(useGlassesMic) useOnboardMic: \(useOnboardMic)")
+            CoreCommsService.log("AOS: preferredMic: \(self.preferredMic) onboardMicUnavailable: \(self.onboardMicUnavailable)")
+            CoreCommsService.log("AOS: actuallyEnabled: \(actuallyEnabled)")
 
-            if self.somethingConnected {
+            // CoreCommsService.log("AOS: user enabled microphone: \(isEnabled) sensingEnabled: \(self.sensingEnabled) useOnboardMic: \(useOnboardMic) useGlassesMic: \(useGlassesMic) glassesHasMic: \(glassesHasMic) preferredMic: \(self.preferredMic) somethingConnected: \(self.somethingConnected) onboardMicUnavailable: \(self.onboardMicUnavailable)")
+
+            // if a g1 is connected, set the mic enabled:
+            if g1Manager?.g1Ready ?? false {
                 await self.g1Manager?.setMicEnabled(enabled: useGlassesMic)
             }
 
@@ -626,41 +631,18 @@ struct ViewState {
     func onAppStarted(_ packageName: String) {
         // tell the server what pair of glasses we're using:
         serverComms.sendGlassesConnectionState(modelName: defaultWearable, status: "CONNECTED")
+        CoreCommsService.sendAppStartedEvent(packageName)
 
-        CoreCommsService.log("App started: \(packageName) - checking for auto-reconnection")
+        CoreCommsService.log("AOS: App started: \(packageName)")
 
-        // Check if glasses are disconnected but there is a saved pair, initiate connection
-        if !somethingConnected, !defaultWearable.isEmpty {
-            CoreCommsService.log("Found preferred wearable: \(defaultWearable)")
-
-            if !defaultWearable.isEmpty {
-                CoreCommsService.log("Auto-connecting to glasses due to app start: \(defaultWearable)")
-
-                // Always run on main thread to avoid threading issues
-                DispatchQueue.main.async { [weak self] in
-                    guard let self = self else { return }
-
-                    // Attempt to connect using saved device name
-                    if !self.deviceName.isEmpty {
-                        self.handleConnectWearable(modelName: self.defaultWearable, deviceName: self.deviceName)
-
-                    } else {
-                        CoreCommsService.log("No saved device name found for auto-connection")
-                    }
-                }
-            } else {
-                CoreCommsService.log("No preferred wearable found for auto-connection")
-            }
-        } else if defaultWearable.isEmpty {
-            CoreCommsService.log("No preferred wearable set, cannot auto-connect")
-        } else {
-            CoreCommsService.log("Glasses already connected or connecting, skipping auto-reconnection. Connected: \(somethingConnected)")
+        if !defaultWearable.isEmpty, !isSomethingConnected() {
+            handleConnectWearable(modelName: defaultWearable, deviceName: deviceName)
         }
     }
 
     func onAppStopped(_ packageName: String) {
         CoreCommsService.log("AOS: App stopped: \(packageName)")
-        // Handle app stopped if needed
+        CoreCommsService.sendAppStoppedEvent(packageName)
     }
 
     func onJsonMessage(_ message: [String: Any]) {
@@ -790,7 +772,7 @@ struct ViewState {
                 return
             }
 
-            if !self.somethingConnected {
+            if !self.isSomethingConnected() {
                 return
             }
 
@@ -995,10 +977,10 @@ struct ViewState {
         CoreCommsService.log("AOS: Interruption: \(began)")
         if began {
             onboardMicUnavailable = true
-            onMicrophoneStateChange(micEnabled, currentRequiredData)
+            onMicrophoneStateChange(micEnabled, currentRequiredData, bypassVadForPCM)
         } else {
             onboardMicUnavailable = false
-            onMicrophoneStateChange(micEnabled, currentRequiredData)
+            onMicrophoneStateChange(micEnabled, currentRequiredData, bypassVadForPCM)
         }
     }
 
@@ -1064,7 +1046,6 @@ struct ViewState {
         sendText(" ") // clear the screen
         Task {
             connectTask?.cancel()
-            self.somethingConnected = false
             self.g1Manager?.disconnect()
             self.liveManager?.disconnect()
             self.mach1Manager?.disconnect()
@@ -1121,7 +1102,7 @@ struct ViewState {
 
     private func setPreferredMic(_ mic: String) {
         preferredMic = mic
-        onMicrophoneStateChange(micEnabled, currentRequiredData)
+        onMicrophoneStateChange(micEnabled, currentRequiredData, bypassVadForPCM)
         handleRequestStatus() // to update the UI
         saveSettings()
     }
@@ -1200,7 +1181,7 @@ struct ViewState {
     private func enableSensing(_ enabled: Bool) {
         sensingEnabled = enabled
         // Update microphone state when sensing is toggled
-        onMicrophoneStateChange(micEnabled, currentRequiredData)
+        onMicrophoneStateChange(micEnabled, currentRequiredData, bypassVadForPCM)
         handleRequestStatus() // to update the UI
         saveSettings()
     }
@@ -1578,7 +1559,6 @@ struct ViewState {
         let mach1Connected = mach1Manager?.ready ?? false
         let simulatedConnected = defaultWearable == "Simulated Glasses"
         let isGlassesConnected = g1Connected || liveConnected || mach1Connected || simulatedConnected
-        somethingConnected = isGlassesConnected
         if isGlassesConnected {
             isSearching = false
         }
@@ -1651,7 +1631,7 @@ struct ViewState {
             "is_searching": isSearching,
             // only on if recording from glasses:
             // TODO: this isn't robust:
-            "is_mic_enabled_for_frontend": micEnabled && (preferredMic == "glasses") && somethingConnected,
+            "is_mic_enabled_for_frontend": micEnabled && (preferredMic == "glasses") && isSomethingConnected(),
             "sensing_enabled": sensingEnabled,
             "power_saving_mode": powerSavingMode,
             "always_on_status_bar": alwaysOnStatusBar,
@@ -1661,6 +1641,7 @@ struct ViewState {
             "core_token": coreToken,
             "puck_connected": true,
             "metric_system_enabled": metricSystemEnabled,
+            "contextual_dashboard_enabled": contextualDashboard,
         ]
 
         // hardcoded list of apps:
@@ -1761,6 +1742,22 @@ struct ViewState {
         }
     }
 
+    private func isSomethingConnected() -> Bool {
+        if g1Manager?.g1Ready ?? false {
+            return true
+        }
+        if liveManager?.connectionState == .connected {
+            return true
+        }
+        if mach1Manager?.ready ?? false {
+            return true
+        }
+        if defaultWearable.contains("Simulated") {
+            return true
+        }
+        return false
+    }
+
     private func handleDeviceReady() {
         // send to the server our battery status:
         serverComms.sendBatteryStatus(level: batteryLevel, charging: false)
@@ -1779,13 +1776,19 @@ struct ViewState {
         isSearching = false
         defaultWearable = "Even Realities G1"
         handleRequestStatus()
+
+        let shouldSendBootingMessage = true
+
         // load settings and send the animation:
         Task {
             // give the glasses some extra time to finish booting:
             try? await Task.sleep(nanoseconds: 1_000_000_000) // 3 seconds
             await self.g1Manager?.setSilentMode(false) // turn off silent mode
             await self.g1Manager?.getBatteryStatus()
-            sendText("// BOOTING MENTRAOS")
+
+            if shouldSendBootingMessage {
+                sendText("// BOOTING MENTRAOS")
+            }
 
             // send loaded settings to glasses:
             self.g1Manager?.RN_getBatteryStatus()
@@ -1799,9 +1802,11 @@ struct ViewState {
             // self.g1Manager?.RN_setDashboardPosition(self.dashboardHeight, self.dashboardDepth)
             // try? await Task.sleep(nanoseconds: 400_000_000)
             //      playStartupSequence()
-            sendText("// MENTRAOS CONNECTED")
-            try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
-            sendText(" ") // clear screen
+            if shouldSendBootingMessage {
+                sendText("// MENTRAOS CONNECTED")
+                try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
+                sendText(" ") // clear screen
+            }
 
             // enable the mic if it was last on:
             // CoreCommsService.log("ENABLING MIC STATE: \(self.micEnabled)")
@@ -1835,7 +1840,7 @@ struct ViewState {
 
     private func handleDeviceDisconnected() {
         CoreCommsService.log("AOS: Device disconnected")
-        onMicrophoneStateChange(false, []) // technically shouldn't be necessary
+        onMicrophoneStateChange(false, [], false)
         serverComms.sendGlassesConnectionState(modelName: defaultWearable, status: "DISCONNECTED")
         handleRequestStatus()
     }
@@ -1939,6 +1944,7 @@ struct ViewState {
         static let preferredMic = "preferredMic"
         static let metricSystemEnabled = "metricSystemEnabled"
         static let enforceLocalTranscription = "enforceLocalTranscription"
+        static let buttonPressMode = "buttonPressMode"
     }
 
     func onStatusUpdate(_ status: [String: Any]) {
@@ -2096,40 +2102,30 @@ struct ViewState {
 
     private func loadSettings() async {
         // set default settings here:
-        sensingEnabled = true
-        powerSavingMode = false
-        contextualDashboard = true
-        bypassVad = false
-        enforceLocalTranscription = false
-        preferredMic = "glasses"
-        buttonPressMode = UserDefaults.standard.string(forKey: "button_press_mode") ?? "photo"
-        brightness = 50
-        headUpAngle = 30
-        metricSystemEnabled = false
-        autoBrightness = true
-        powerSavingMode = false
-        dashboardHeight = 4
-        dashboardDepth = 5
-        alwaysOnStatusBar = false
-        bypassAudioEncoding = false
-
+        UserDefaults.standard.register(defaults: [SettingsKeys.defaultWearable: ""])
+        UserDefaults.standard.register(defaults: [SettingsKeys.deviceName: ""])
+        UserDefaults.standard.register(defaults: [SettingsKeys.preferredMic: "phone"])
+        UserDefaults.standard.register(defaults: [SettingsKeys.contextualDashboard: true])
+        UserDefaults.standard.register(defaults: [SettingsKeys.autoBrightness: true])
         UserDefaults.standard.register(defaults: [SettingsKeys.sensingEnabled: true])
         UserDefaults.standard.register(defaults: [SettingsKeys.powerSavingMode: false])
-        UserDefaults.standard.register(defaults: [SettingsKeys.contextualDashboard: true])
-        UserDefaults.standard.register(defaults: [SettingsKeys.bypassVad: false])
-        UserDefaults.standard.register(defaults: [SettingsKeys.preferredMic: "glasses"])
-        UserDefaults.standard.register(defaults: [SettingsKeys.brightness: 50])
+        UserDefaults.standard.register(defaults: [SettingsKeys.dashboardHeight: 4])
+        UserDefaults.standard.register(defaults: [SettingsKeys.dashboardDepth: 5])
+        UserDefaults.standard.register(defaults: [SettingsKeys.alwaysOnStatusBar: false])
+        UserDefaults.standard.register(defaults: [SettingsKeys.bypassVad: true])
+        UserDefaults.standard.register(defaults: [SettingsKeys.bypassAudioEncoding: false])
         UserDefaults.standard.register(defaults: [SettingsKeys.headUpAngle: 30])
+        UserDefaults.standard.register(defaults: [SettingsKeys.brightness: 50])
         UserDefaults.standard.register(defaults: [SettingsKeys.metricSystemEnabled: false])
-        UserDefaults.standard.register(defaults: [SettingsKeys.autoBrightness: true])
         UserDefaults.standard.register(defaults: [SettingsKeys.enforceLocalTranscription: false])
+        UserDefaults.standard.register(defaults: [SettingsKeys.buttonPressMode: "photo"])
 
         let defaults = UserDefaults.standard
 
         // Load each setting with appropriate type handling
-        defaultWearable = defaults.string(forKey: SettingsKeys.defaultWearable) ?? ""
-        deviceName = defaults.string(forKey: SettingsKeys.deviceName) ?? ""
-        preferredMic = defaults.string(forKey: SettingsKeys.preferredMic) ?? "glasses"
+        defaultWearable = defaults.string(forKey: SettingsKeys.defaultWearable)!
+        deviceName = defaults.string(forKey: SettingsKeys.deviceName)!
+        preferredMic = defaults.string(forKey: SettingsKeys.preferredMic)!
         contextualDashboard = defaults.bool(forKey: SettingsKeys.contextualDashboard)
         autoBrightness = defaults.bool(forKey: SettingsKeys.autoBrightness)
         sensingEnabled = defaults.bool(forKey: SettingsKeys.sensingEnabled)
@@ -2143,6 +2139,7 @@ struct ViewState {
         brightness = defaults.integer(forKey: SettingsKeys.brightness)
         metricSystemEnabled = defaults.bool(forKey: SettingsKeys.metricSystemEnabled)
         enforceLocalTranscription = defaults.bool(forKey: SettingsKeys.enforceLocalTranscription)
+        buttonPressMode = defaults.string(forKey: SettingsKeys.buttonPressMode)!
 
         // TODO: load settings from the server
 
