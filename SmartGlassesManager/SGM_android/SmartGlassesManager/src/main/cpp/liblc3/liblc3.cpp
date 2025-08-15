@@ -5,7 +5,7 @@
 #include "include/lc3.h"
 #include <android/log.h>
 
-#define LOG_TAG "LC3JNI"
+#define LOG_TAG "_test_"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 
 extern "C" JNIEXPORT jlong JNICALL
@@ -15,7 +15,6 @@ Java_com_augmentos_smartglassesmanager_cpp_L3cCpp_initEncoder(JNIEnv *env, jclas
     unsigned encoderSize = lc3_encoder_size(dtUs, srHz);
     void* encMem = malloc(encoderSize);
     if (!encMem) return 0;
-
     lc3_encoder_t encoder = lc3_setup_encoder(dtUs, srHz, 0, encMem);
     if (!encoder) {
         free(encMem);
@@ -65,7 +64,7 @@ Java_com_augmentos_smartglassesmanager_cpp_L3cCpp_encodeLC3(JNIEnv *env, jclass 
     int srHz = 16000;
     uint16_t samplesPerFrame = lc3_frame_samples(dtUs, srHz);
     uint16_t bytesPerFrame = samplesPerFrame * 2;
-    uint16_t encodedFrameSize = 40;
+    uint16_t encodedFrameSize = 20;
 
     int frameCount = pcmLength / bytesPerFrame;
     int outputSize = frameCount * encodedFrameSize;
@@ -111,6 +110,21 @@ Java_com_augmentos_smartglassesmanager_cpp_L3cCpp_encodeLC3(JNIEnv *env, jclass 
     return resultArray;
 }
 
+void copy_16bit_to_two_32bits(int32_t *dst_buf, int16_t *src_buf, int32_t src_len)
+{
+    for (int i = (int)(src_len - 1); i >= 0; i--)
+    {
+        dst_buf[i*2 + 0] = dst_buf[i*2 + 1] = (int32_t)(src_buf[i] << 15);
+    }
+}
+
+void copy_16bit_to_32bits(int16_t *dst_buf, int16_t *src_buf, int32_t src_len)
+{
+    for (int i = (int)(src_len - 1); i >= 0; i--)
+    {
+        dst_buf[i*2 + 0] = dst_buf[i*2 + 1] = src_buf[i];
+    }
+}
 extern "C" JNIEXPORT jbyteArray JNICALL
 Java_com_augmentos_smartglassesmanager_cpp_L3cCpp_decodeLC3(JNIEnv *env, jclass clazz, jlong decPtr, jbyteArray lc3Data) {
     jbyte *lc3Bytes = env->GetByteArrayElements(lc3Data, nullptr);
@@ -124,6 +138,7 @@ Java_com_augmentos_smartglassesmanager_cpp_L3cCpp_decodeLC3(JNIEnv *env, jclass 
     uint16_t encodedFrameSize = 40;
 
     int outSize = (lc3Length / encodedFrameSize) * bytesPerFrame;
+    //LOGI("decode lc3Length=%d, bytesPerFrame=%d, outSize=%d", lc3Length, bytesPerFrame, outSize);
     unsigned char* outArray = (unsigned char*)malloc(outSize);
     int16_t* outBuf = (int16_t*)malloc(bytesPerFrame);  // ✅ correct type
 
@@ -146,3 +161,4 @@ Java_com_augmentos_smartglassesmanager_cpp_L3cCpp_decodeLC3(JNIEnv *env, jclass 
     free(outBuf);
     return resultArray;
 }
+

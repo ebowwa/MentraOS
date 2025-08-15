@@ -45,7 +45,7 @@ import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.PairF
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.K900ProtocolUtils;
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.BlePhotoUploadService;
 import com.augmentos.smartglassesmanager.cpp.L3cCpp;
-import com.augmentos.augmentos_core.audio.PCMAudioPlayer;
+import com.augmentos.augmentos_core.audio.Lc3Player;
 
 import org.greenrobot.eventbus.EventBus;
 import org.json.JSONException;
@@ -270,7 +270,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     private byte lastReceivedLc3Sequence = -1;
     private byte lc3SequenceNumber = 0;
     private long lc3DecoderPtr = 0;
-    private final PCMAudioPlayer pcmAudioPlayer = new PCMAudioPlayer();
+    private Lc3Player lc3AudioPlayer;
     private boolean audioPlaybackEnabled = true; // Default to enabled
 
     // Periodic test message for ACK testing
@@ -354,10 +354,10 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         // Initialize scheduler for keep-alive and reconnection
         scheduler = Executors.newScheduledThreadPool(1);
 
-        //setup LC3 decoder
-        if (lc3DecoderPtr == 0) {
-            lc3DecoderPtr = L3cCpp.initDecoder();
-        }
+        //setup LC3 player
+        lc3AudioPlayer = new Lc3Player(context);
+        lc3AudioPlayer.init();
+        lc3AudioPlayer.startPlay();
     }
 
     @Override
@@ -677,10 +677,9 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                     // Close LC3 audio logging
                     closeLc3Logging();
                     
-                    //free LC3 decoder
-                    if (lc3DecoderPtr != 0) {
-                        L3cCpp.freeDecoder(lc3DecoderPtr);
-                        lc3DecoderPtr = 0;
+                    //stop LC3 player
+                    if (lc3AudioPlayer != null) {
+                        lc3AudioPlayer.stopPlay();
                     }
                 }
             } else {
@@ -2592,15 +2591,9 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         // Set connection state to disconnected
         connectionEvent(SmartGlassesConnectionState.DISCONNECTED);
 
-        //free LC3 decoder
-        if (lc3DecoderPtr != 0) {
-            L3cCpp.freeDecoder(lc3DecoderPtr);
-            lc3DecoderPtr = 0;
-        }
-        
-        // Clean up PCM audio player
-        if (pcmAudioPlayer != null) {
-            pcmAudioPlayer.release();
+        // Clean up LC3 audio player
+        if (lc3AudioPlayer != null) {
+            lc3AudioPlayer.stopPlay();
         }
     }
 
@@ -2762,12 +2755,10 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         audioPlaybackEnabled = enable;
         if (enable) {
             Log.d(TAG, "Audio playback enabled - LC3 audio will be played through phone speakers");
+            // Note: LC3Player is already started during initialization
         } else {
             Log.d(TAG, "Audio playback disabled - LC3 audio will not be played through phone speakers");
-            // Stop any currently playing audio
-            if (pcmAudioPlayer != null) {
-                pcmAudioPlayer.stop();
-            }
+            // Note: We keep LC3Player running but just stop feeding it data
         }
     }
 
@@ -2784,11 +2775,11 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
      * @param volume Volume level from 0.0f (muted) to 1.0f (full volume).
      */
     public void setAudioPlaybackVolume(float volume) {
-        if (pcmAudioPlayer != null) {
+        if (lc3AudioPlayer != null) {
             // Clamp volume to valid range
             float clampedVolume = Math.max(0.0f, Math.min(1.0f, volume));
-            pcmAudioPlayer.setVolume(clampedVolume);
-            Log.d(TAG, "Audio playback volume set to: " + clampedVolume);
+            // Note: LC3Player doesn't have setVolume method, using system volume
+            Log.d(TAG, "Audio playback volume request: " + clampedVolume + " (handled by system volume)");
         }
     }
     
@@ -2797,7 +2788,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
      * @return Current volume level from 0.0f to 1.0f.
      */
     public float getAudioPlaybackVolume() {
-        // Note: PCMAudioPlayer doesn't have a getVolume method, so we'll return a default
+        // Note: LC3Player doesn't have a getVolume method, so we'll return a default
         // In a real implementation, you might want to track this separately
         return 1.0f; // Default to full volume
     }
@@ -2806,8 +2797,8 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
      * Stop any currently playing audio immediately.
      */
     public void stopAudioPlayback() {
-        if (pcmAudioPlayer != null) {
-            pcmAudioPlayer.stop();
+        if (lc3AudioPlayer != null) {
+            lc3AudioPlayer.stopPlay();
             Log.d(TAG, "Audio playback stopped");
         }
     }
@@ -2817,15 +2808,15 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
      * @return True if audio is currently playing, false otherwise.
      */
     public boolean isAudioPlaying() {
-        return pcmAudioPlayer != null && pcmAudioPlayer.isPlaying();
+        return lc3AudioPlayer != null && audioPlaybackEnabled;
     }
     
     /**
      * Pause audio playback.
      */
     public void pauseAudioPlayback() {
-        if (pcmAudioPlayer != null) {
-            pcmAudioPlayer.pause();
+        if (lc3AudioPlayer != null) {
+            lc3AudioPlayer.stopPlay();
             Log.d(TAG, "Audio playback paused");
         }
     }
@@ -2834,8 +2825,8 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
      * Resume audio playback.
      */
     public void resumeAudioPlayback() {
-        if (pcmAudioPlayer != null) {
-            pcmAudioPlayer.resume();
+        if (lc3AudioPlayer != null) {
+            lc3AudioPlayer.startPlay();
             Log.d(TAG, "Audio playback resumed");
         }
     }
@@ -2850,11 +2841,8 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             status.put("enabled", audioPlaybackEnabled);
             status.put("playing", isAudioPlaying());
             status.put("volume", getAudioPlaybackVolume());
-            status.put("initialized", pcmAudioPlayer != null && pcmAudioPlayer.isInitialized());
-            if (pcmAudioPlayer != null) {
-                status.put("playbackPosition", pcmAudioPlayer.getPlaybackHeadPosition());
-                status.put("audioSessionId", pcmAudioPlayer.getAudioSessionId());
-            }
+            status.put("initialized", lc3AudioPlayer != null);
+            status.put("playerType", "LC3Player");
         } catch (JSONException e) {
             Log.e(TAG, "Error creating audio playback status JSON", e);
         }
@@ -3523,22 +3511,14 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 audioProcessingCallback.onLC3AudioDataAvailable(lc3Data);
             }
 
-            // Decode LC3 to PCM and forward if a callback is registered
-            if (lc3DecoderPtr != 0 && audioProcessingCallback != null) {
-                byte[] pcmData = L3cCpp.decodeLC3(lc3DecoderPtr, lc3Data);
-                if (pcmData != null && pcmData.length > 0) {
-                    // Play the decoded PCM audio through speakers if enabled
-                    if (audioPlaybackEnabled) {
-                        pcmAudioPlayer.playPCMData(pcmData);
-                        Log.d(TAG, "Playing LC3 decoded PCM audio through speakers: " + pcmData.length + " bytes");
-                    } else {
-                        Log.d(TAG, "Audio playback disabled - skipping speaker output for " + pcmData.length + " bytes of PCM data");
-                    }
-                    
-                    audioProcessingCallback.onAudioDataAvailable(pcmData);
-                } else {
-                    Log.w(TAG, "LC3 decoding produced null or empty PCM data.");
-                }
+            // Play LC3 audio directly through LC3 player if enabled
+            if (audioPlaybackEnabled && lc3AudioPlayer != null) {
+                // The data array already contains the full packet with F1 header and sequence
+                // Just pass it directly to the LC3 player
+                lc3AudioPlayer.write(data, 0, data.length);
+                Log.d(TAG, "Playing LC3 audio directly through LC3 player: " + data.length + " bytes");
+            } else {
+                Log.d(TAG, "Audio playback disabled - skipping LC3 audio output");
             }
 
         } else {
