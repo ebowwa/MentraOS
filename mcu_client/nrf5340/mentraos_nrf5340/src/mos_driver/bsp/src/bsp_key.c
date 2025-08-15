@@ -1,7 +1,7 @@
 /*
  * @Author       : Cole
  * @Date         : 2025-07-31 10:40:40
- * @LastEditTime : 2025-07-31 17:07:18
+ * @LastEditTime : 2025-08-07 11:36:25
  * @FilePath     : bsp_key.c
  * @Description  :
  *
@@ -40,6 +40,7 @@ void gpio_key1_int_isr_enable(void)
         return MOS_OS_ERROR;
     }
 }
+
 int bsp_key_init(void)
 {
     BSP_LOGI(TAG, "BSP Key Init");

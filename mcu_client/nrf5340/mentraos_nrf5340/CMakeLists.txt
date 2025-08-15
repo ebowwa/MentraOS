@@ -45,7 +45,7 @@ add_subdirectory(src/mos_components/mos_sysport)
 add_subdirectory(src/mos_components/mos_lvgl_display)
 add_subdirectory(src/mos_components/mos_battery)
 add_subdirectory(src/mos_components/mos_pdm)
-# add_subdirectory(src/mos_components/mos_proto)
+
 
 target_sources_ifdef(CONFIG_LV_USE_DEMO_BENCHMARK app PRIVATE
     ${LVGL_DIR}/demos/benchmark/assets/img_benchmark_avatar.c

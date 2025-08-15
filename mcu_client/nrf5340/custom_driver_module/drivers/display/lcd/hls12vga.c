@@ -563,7 +563,6 @@ static int hls12vga_init(const struct device *dev)
 	}
 	hls12vga_init_sem_give();
 	data->initialized = true;
-
 	BSP_LOGI(TAG, "Display initialized");
 	return 0;
 }

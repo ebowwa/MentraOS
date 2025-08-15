@@ -49,7 +49,18 @@ config LV_Z_DEMO_BENCHMARK
 	select LV_USE_DEMO_WIDGETS
 	help
 	  Build benchmarking demo application.
-
+	  
+config USER_STEREO_1RX_L_1RX_R
+	bool "encode fifo enable"
+	default y
+	
+config USER_STEREO_2RX_L
+	bool "encode fifo enable"
+	default n
+	
+config USER_STEREO_2RX_LR
+	bool "encode fifo enable"
+	default n
 endmenu
 
 

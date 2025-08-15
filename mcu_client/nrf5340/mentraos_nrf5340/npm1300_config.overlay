@@ -73,10 +73,11 @@
 
         npm1300_ek_charger: charger {
             compatible = "nordic,npm1300-charger";
-            term-microvolt = <4250000>;
-            term-warm-microvolt = <3600000>;// 充电终止电压
+            term-microvolt = <4250000>;// 充电终止电压
+            term-warm-microvolt = <3600000>;
             // term-current-percent = <10>;
-            current-microamp = <800000>;// 限制充电电流(uA)
+            // current-microamp = <800000>;// 限制充电电流(uA)
+            current-microamp = <300000>;// 限制充电电流(uA)
             // current-microamp = <150000>;// 限制充电电流(uA)
             // trickle-microvolt = <2900000>;
             dischg-limit-microamp = <200000>; // 限制放电电流(uA)

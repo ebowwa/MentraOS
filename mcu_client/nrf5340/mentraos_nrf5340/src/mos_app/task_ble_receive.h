@@ -26,6 +26,6 @@ typedef void (*image_cb_t)(uint16_t stream_id, uint8_t idx, const uint8_t *image
 
 
 
-
+int ble_send_data(const uint8_t *data, uint16_t len);
 
 #endif // __TASK_BLE_RECEIVE_H__

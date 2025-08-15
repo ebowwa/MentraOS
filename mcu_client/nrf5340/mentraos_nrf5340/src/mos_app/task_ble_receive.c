@@ -1,7 +1,7 @@
 /*
  * @Author       : Cole
  * @Date         : 2025-07-31 10:40:40
- * @LastEditTime : 2025-08-01 17:16:01
+ * @LastEditTime : 2025-08-02 15:30:15
  * @FilePath     : task_ble_receive.c
  * @Description  :
  *
@@ -50,14 +50,15 @@ static image_cb_t g_image_cb = NULL;
  */
 int ble_send_data(const uint8_t *data, uint16_t len)
 {
-    if ((!data || len == 0)) //|| !get_ble_connected_status())
+    if ((!data || len == 0) || !get_ble_connected_status())
+    // if ((!data || len == 0))
     {
         BSP_LOGE(TAG, "Invalid data or length || ble not connected");
         return -1;
     }
     BSP_LOGI(TAG, "<--Sending data to BLE-->: len=%d", len);
     // BSP_LOGI(TAG, "Data: %s", data);
-    BSP_LOG_BUFFER_HEXDUMP(TAG, data, len, 0);
+    // BSP_LOG_BUFFER_HEXDUMP(TAG, data, len, 0);
     uint16_t offset = 0;
     uint16_t mtu = get_ble_payload_mtu();
     while (offset < len)
@@ -79,7 +80,7 @@ int ble_send_data(const uint8_t *data, uint16_t len)
             return -1;
         }
         offset += chunk_len;
-        k_msleep(2); // delay 2ms to avoid flooding the BLE interface
+        k_msleep(1); // delay 2ms to avoid flooding the BLE interface
     }
 
     return 0;
@@ -326,14 +327,14 @@ void ble_thread_entry(void *p1, void *p2, void *p3)
         BSP_LOG_BUFFER_HEXDUMP(TAG, cache_buf, buflen, 0);
         unsigned int offset = 0;
 #if 0 // test
-      uint8_t buff1[] = {
-          0x02, 0xf2, 0x01, 0x24, 0x0a, 0x16, 0x48, 0x65,
-          0x6c, 0x6c, 0x6f, 0x20, 0x77, 0x6f, 0x72, 0x6c,
-          0x64, 0x20, 0x31, 0x35, 0x34, 0x33, 0x38, 0x38,
-          0x35, 0x35, 0x35, 0x37, 0x10, 0x90, 0x4e, 0x18,
-          0x14, 0x20, 0x14, 0x28, 0x84, 0x02, 0x30, 0x14};
-      memcpy(cache_buf, buff1, sizeof(buff1));
-      buflen = sizeof(buff1);
+        uint8_t buff1[] = {
+            0x02, 0xf2, 0x01, 0x24, 0x0a, 0x16, 0x48, 0x65,
+            0x6c, 0x6c, 0x6f, 0x20, 0x77, 0x6f, 0x72, 0x6c,
+            0x64, 0x20, 0x31, 0x35, 0x34, 0x33, 0x38, 0x38,
+            0x35, 0x35, 0x35, 0x37, 0x10, 0x90, 0x4e, 0x18,
+            0x14, 0x20, 0x14, 0x28, 0x84, 0x02, 0x30, 0x14};
+        memcpy(cache_buf, buff1, sizeof(buff1));
+        buflen = sizeof(buff1);
 #endif
         while (offset < buflen)
         {

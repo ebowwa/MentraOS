@@ -1,7 +1,7 @@
 /*** 
  * @Author       : Cole
  * @Date         : 2025-07-31 11:52:00
- * @LastEditTime : 2025-07-31 16:44:22
+ * @LastEditTime : 2025-08-06 15:04:19
  * @FilePath     : mos_pdm.h
  * @Description  : 
  * @
@@ -13,7 +13,7 @@
 #ifndef _MOS_PDM_H_
 #define _MOS_PDM_H_
 
-#define CONFIG_USER_ENCODE_OPUS 1
+#define CONFIG_USER_ENCODE_LC3 1
 #define CONFIG_NRFX_PDM 		1
 
 //=========================================================================================================
