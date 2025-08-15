@@ -63,7 +63,7 @@ struct ViewState {
     private var isSearching: Bool = false
     private var isUpdatingScreen: Bool = false
     private var alwaysOnStatusBar: Bool = false
-    private var bypassVad: Bool = false
+    private var bypassVad: Bool = true
     private var bypassVadForPCM: Bool = false // NEW: PCM subscription bypass
     private var enforceLocalTranscription: Bool = false
     private var bypassAudioEncoding: Bool = false
@@ -1944,6 +1944,7 @@ struct ViewState {
         static let preferredMic = "preferredMic"
         static let metricSystemEnabled = "metricSystemEnabled"
         static let enforceLocalTranscription = "enforceLocalTranscription"
+        static let buttonPressMode = "buttonPressMode"
     }
 
     func onStatusUpdate(_ status: [String: Any]) {
@@ -2101,40 +2102,30 @@ struct ViewState {
 
     private func loadSettings() async {
         // set default settings here:
-        sensingEnabled = true
-        powerSavingMode = false
-        contextualDashboard = true
-        bypassVad = false
-        enforceLocalTranscription = false
-        preferredMic = "glasses"
-        buttonPressMode = UserDefaults.standard.string(forKey: "button_press_mode") ?? "photo"
-        brightness = 50
-        headUpAngle = 30
-        metricSystemEnabled = false
-        autoBrightness = true
-        powerSavingMode = false
-        dashboardHeight = 4
-        dashboardDepth = 5
-        alwaysOnStatusBar = false
-        bypassAudioEncoding = false
-
+        UserDefaults.standard.register(defaults: [SettingsKeys.defaultWearable: ""])
+        UserDefaults.standard.register(defaults: [SettingsKeys.deviceName: ""])
+        UserDefaults.standard.register(defaults: [SettingsKeys.preferredMic: "phone"])
+        UserDefaults.standard.register(defaults: [SettingsKeys.contextualDashboard: true])
+        UserDefaults.standard.register(defaults: [SettingsKeys.autoBrightness: true])
         UserDefaults.standard.register(defaults: [SettingsKeys.sensingEnabled: true])
         UserDefaults.standard.register(defaults: [SettingsKeys.powerSavingMode: false])
-        UserDefaults.standard.register(defaults: [SettingsKeys.contextualDashboard: true])
-        UserDefaults.standard.register(defaults: [SettingsKeys.bypassVad: false])
-        UserDefaults.standard.register(defaults: [SettingsKeys.preferredMic: "glasses"])
-        UserDefaults.standard.register(defaults: [SettingsKeys.brightness: 50])
+        UserDefaults.standard.register(defaults: [SettingsKeys.dashboardHeight: 4])
+        UserDefaults.standard.register(defaults: [SettingsKeys.dashboardDepth: 5])
+        UserDefaults.standard.register(defaults: [SettingsKeys.alwaysOnStatusBar: false])
+        UserDefaults.standard.register(defaults: [SettingsKeys.bypassVad: true])
+        UserDefaults.standard.register(defaults: [SettingsKeys.bypassAudioEncoding: false])
         UserDefaults.standard.register(defaults: [SettingsKeys.headUpAngle: 30])
+        UserDefaults.standard.register(defaults: [SettingsKeys.brightness: 50])
         UserDefaults.standard.register(defaults: [SettingsKeys.metricSystemEnabled: false])
-        UserDefaults.standard.register(defaults: [SettingsKeys.autoBrightness: true])
         UserDefaults.standard.register(defaults: [SettingsKeys.enforceLocalTranscription: false])
+        UserDefaults.standard.register(defaults: [SettingsKeys.buttonPressMode: "photo"])
 
         let defaults = UserDefaults.standard
 
         // Load each setting with appropriate type handling
-        defaultWearable = defaults.string(forKey: SettingsKeys.defaultWearable) ?? ""
-        deviceName = defaults.string(forKey: SettingsKeys.deviceName) ?? ""
-        preferredMic = defaults.string(forKey: SettingsKeys.preferredMic) ?? "glasses"
+        defaultWearable = defaults.string(forKey: SettingsKeys.defaultWearable)!
+        deviceName = defaults.string(forKey: SettingsKeys.deviceName)!
+        preferredMic = defaults.string(forKey: SettingsKeys.preferredMic)!
         contextualDashboard = defaults.bool(forKey: SettingsKeys.contextualDashboard)
         autoBrightness = defaults.bool(forKey: SettingsKeys.autoBrightness)
         sensingEnabled = defaults.bool(forKey: SettingsKeys.sensingEnabled)
@@ -2148,6 +2139,7 @@ struct ViewState {
         brightness = defaults.integer(forKey: SettingsKeys.brightness)
         metricSystemEnabled = defaults.bool(forKey: SettingsKeys.metricSystemEnabled)
         enforceLocalTranscription = defaults.bool(forKey: SettingsKeys.enforceLocalTranscription)
+        buttonPressMode = defaults.string(forKey: SettingsKeys.buttonPressMode)!
 
         // TODO: load settings from the server
 

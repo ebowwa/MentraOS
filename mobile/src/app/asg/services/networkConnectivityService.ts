@@ -94,7 +94,7 @@ class NetworkConnectivityService {
       prevStatus.phoneSSID !== this.currentStatus.phoneSSID
     ) {
       console.log("[NetworkConnectivity] Network changed, checking gallery connectivity")
-      this.checkGalleryConnectivity()
+      this.checkGalleryConnectivity() // Disabled - only check when gallery is open
     }
   }
 
@@ -152,7 +152,7 @@ class NetworkConnectivityService {
       prevStatus.glassesSSID !== this.currentStatus.glassesSSID
     ) {
       console.log("[NetworkConnectivity] Glasses status changed, checking gallery connectivity")
-      this.checkGalleryConnectivity()
+      this.checkGalleryConnectivity() // Disabled - only check when gallery is open
     }
   }
 
@@ -169,9 +169,18 @@ class NetworkConnectivityService {
     this.checkInProgress = true
 
     try {
-      // Only check if glasses are connected and we have an IP
-      if (!this.currentStatus.glassesConnected || !this.glassesIp) {
-        console.log("[NetworkConnectivity] Glasses not connected or no IP, marking unreachable")
+      // Mark as unreachable if glasses are not connected OR we don't have an IP
+      if (!this.currentStatus.glassesConnected) {
+        console.log("[NetworkConnectivity] Glasses not connected to WiFi, marking unreachable")
+        this.currentStatus.galleryReachable = false
+        this.currentStatus.lastCheckTime = Date.now()
+        this.notifyListeners()
+        return
+      }
+
+      if (!this.glassesIp) {
+        console.log("[NetworkConnectivity] No glasses IP available, marking unreachable")
+        // Even if glasses claim to be connected, without IP we can't reach them
         this.currentStatus.galleryReachable = false
         this.currentStatus.lastCheckTime = Date.now()
         this.notifyListeners()
@@ -285,7 +294,12 @@ class NetworkConnectivityService {
    */
   getStatusMessage(): string {
     if (!this.currentStatus.glassesConnected) {
-      return "Glasses not on WiFi"
+      return "Glasses not connected to WiFi"
+    }
+
+    // Check if we have glasses IP
+    if (this.currentStatus.glassesConnected && !this.glassesIp) {
+      return "Cannot connect to glasses"
     }
 
     if (this.currentStatus.isHotspot) {
@@ -310,7 +324,7 @@ class NetworkConnectivityService {
       }
     }
 
-    return "Cannot reach glasses"
+    return "Cannot connect to glasses"
   }
 
   /**

@@ -42,6 +42,7 @@ message PhoneToGlasses {
     CommitDisplay commit = 43;
     DisplayDistanceConfig display_distance = 44;
     DisplayHeightConfig display_height = 45;
+    ClearDisplay clear_display = 46;
     
     // User Input
     ImuEnabledConfig imu_enabled = 50;
@@ -274,6 +275,8 @@ message DrawCircle {
 }
 
 message CommitDisplay {}
+
+message ClearDisplay {}
 
 message DisplayDistanceConfig {
   uint32 distance_cm = 1;

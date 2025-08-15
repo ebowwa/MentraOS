@@ -1,7 +1,8 @@
 import {useAppTheme} from "@/utils/useAppTheme"
 import React from "react"
-import {View, Text, StyleSheet, TouchableOpacity, ScrollView, Modal} from "react-native"
+import {View, Text, TouchableOpacity, ScrollView, Modal, ViewStyle, TextStyle} from "react-native"
 import MaterialIcons from "react-native-vector-icons/MaterialIcons"
+import {ThemedStyle} from "@/theme"
 
 interface TroubleshootingModalProps {
   isVisible: boolean
@@ -48,47 +49,33 @@ export const getModelSpecificTips = (model: string) => {
 
 const GlassesTroubleshootingModal: React.FC<TroubleshootingModalProps> = ({isVisible, onClose, glassesModelName}) => {
   const {themed, theme} = useAppTheme()
-  const isDarkTheme = theme.isDark
-
-  const themeColors = {
-    background: isDarkTheme ? "#2d2d2d" : "#ffffff",
-    text: isDarkTheme ? "#ffffff" : "#000000",
-    border: isDarkTheme ? "#555555" : "#cccccc",
-    buttonBackground: isDarkTheme ? "#3b82f6" : "#007BFF",
-    tipBackground: isDarkTheme ? "#404040" : "#f0f0f0",
-    overlay: "rgba(0,0,0,0.7)",
-  }
 
   const tips = getModelSpecificTips(glassesModelName)
 
   return (
     <Modal visible={isVisible} animationType="slide" transparent>
-      <View style={[styles.modalContainer, {backgroundColor: themeColors.overlay}]}>
-        <View style={[styles.modalContent, {backgroundColor: themeColors.background}]}>
-          <View style={styles.modalHeader}>
-            <Text style={[styles.modalHeaderText, {color: themeColors.text}]}>Troubleshooting {glassesModelName}</Text>
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <MaterialIcons name="close" size={24} color={themeColors.text} />
+      <View style={themed($modalContainer)}>
+        <View style={themed($modalContent)}>
+          <View style={themed($modalHeader)}>
+            <Text style={themed($modalHeaderText)}>Troubleshooting {glassesModelName}</Text>
+            <TouchableOpacity onPress={onClose} style={themed($closeButton)}>
+              <MaterialIcons name="close" size={24} color={theme.colors.text} />
             </TouchableOpacity>
           </View>
 
-          <Text style={[styles.modalSubText, {color: themeColors.text}]}>
-            Having trouble pairing your glasses? Try these tips:
-          </Text>
+          <Text style={themed($modalSubText)}>Having trouble pairing your glasses? Try these tips:</Text>
 
-          <ScrollView style={styles.tipsContainer}>
+          <ScrollView style={themed($tipsContainer)}>
             {tips.map((tip, index) => (
-              <View key={index} style={[styles.tipItem, {backgroundColor: themeColors.tipBackground}]}>
-                <Text style={[styles.tipNumber, {color: themeColors.buttonBackground}]}>{index + 1}</Text>
-                <Text style={[styles.tipText, {color: themeColors.text}]}>{tip}</Text>
+              <View key={index} style={themed($tipItem)}>
+                <Text style={themed($tipNumber)}>{index + 1}</Text>
+                <Text style={themed($tipText)}>{tip}</Text>
               </View>
             ))}
           </ScrollView>
 
-          <TouchableOpacity
-            style={[styles.closeModalButton, {backgroundColor: themeColors.buttonBackground}]}
-            onPress={onClose}>
-            <Text style={styles.closeModalButtonText}>Got it, thanks!</Text>
+          <TouchableOpacity style={themed($closeModalButton)} onPress={onClose}>
+            <Text style={themed($closeModalButtonText)}>Got it, thanks!</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -96,81 +83,98 @@ const GlassesTroubleshootingModal: React.FC<TroubleshootingModalProps> = ({isVis
   )
 }
 
-const styles = StyleSheet.create({
-  closeButton: {
-    padding: 5,
+const $modalContainer: ThemedStyle<ViewStyle> = () => ({
+  alignItems: "center",
+  flex: 1,
+  justifyContent: "center",
+  backgroundColor: "rgba(0,0,0,0.7)",
+})
+
+const $modalContent: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
+  borderRadius: 16,
+  elevation: 5,
+  maxHeight: "80%",
+  padding: spacing.lg,
+  shadowColor: "#000",
+  shadowOffset: {
+    width: 0,
+    height: 2,
   },
-  closeModalButton: {
-    alignItems: "center",
-    borderRadius: 8,
-    justifyContent: "center",
-    padding: 15,
-  },
-  closeModalButtonText: {
-    color: "#FFFFFF",
-    fontFamily: "Montserrat-Bold",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  modalContainer: {
-    alignItems: "center",
-    flex: 1,
-    justifyContent: "center",
-  },
-  modalContent: {
-    borderRadius: 16,
-    elevation: 5,
-    maxHeight: "80%",
-    padding: 20,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-    width: "85%",
-  },
-  modalHeader: {
-    alignItems: "center",
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 15,
-  },
-  modalHeaderText: {
-    flex: 1,
-    fontFamily: "Montserrat-Bold",
-    fontSize: 20,
-    fontWeight: "bold",
-  },
-  modalSubText: {
-    fontFamily: "Montserrat-Regular",
-    fontSize: 16,
-    marginBottom: 15,
-  },
-  tipItem: {
-    alignItems: "flex-start",
-    borderRadius: 8,
-    flexDirection: "row",
-    marginBottom: 10,
-    padding: 12,
-  },
-  tipNumber: {
-    fontFamily: "Montserrat-Bold",
-    fontSize: 16,
-    fontWeight: "bold",
-    marginRight: 10,
-    minWidth: 20,
-  },
-  tipText: {
-    flex: 1,
-    fontFamily: "Montserrat-Regular",
-    fontSize: 15,
-  },
-  tipsContainer: {
-    marginBottom: 20,
-    maxHeight: 350,
-  },
+  shadowOpacity: 0.3,
+  shadowRadius: 10,
+  width: "85%",
+  backgroundColor: colors.background,
+})
+
+const $modalHeader: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  alignItems: "center",
+  flexDirection: "row",
+  justifyContent: "space-between",
+  marginBottom: spacing.md,
+})
+
+const $modalHeaderText: ThemedStyle<TextStyle> = ({colors}) => ({
+  flex: 1,
+  fontFamily: "Montserrat-Bold",
+  fontSize: 20,
+  fontWeight: "bold",
+  color: colors.text,
+})
+
+const $modalSubText: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
+  fontFamily: "Montserrat-Regular",
+  fontSize: 16,
+  marginBottom: spacing.md,
+  color: colors.text,
+})
+
+const $tipItem: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
+  alignItems: "flex-start",
+  borderRadius: 8,
+  flexDirection: "row",
+  marginBottom: spacing.sm,
+  padding: spacing.sm,
+  backgroundColor: colors.palette.neutral200,
+})
+
+const $tipNumber: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
+  fontFamily: "Montserrat-Bold",
+  fontSize: 16,
+  fontWeight: "bold",
+  marginRight: spacing.sm,
+  minWidth: 20,
+  color: colors.palette.primary500,
+})
+
+const $tipText: ThemedStyle<TextStyle> = ({colors}) => ({
+  flex: 1,
+  fontFamily: "Montserrat-Regular",
+  fontSize: 15,
+  color: colors.text,
+})
+
+const $tipsContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  marginBottom: spacing.lg,
+  maxHeight: 350,
+})
+
+const $closeButton: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  padding: spacing.xs,
+})
+
+const $closeModalButton: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
+  alignItems: "center",
+  borderRadius: 8,
+  justifyContent: "center",
+  padding: spacing.md,
+  backgroundColor: colors.palette.primary500,
+})
+
+const $closeModalButtonText: ThemedStyle<TextStyle> = () => ({
+  color: "#FFFFFF",
+  fontFamily: "Montserrat-Bold",
+  fontSize: 16,
+  fontWeight: "bold",
 })
 
 export default GlassesTroubleshootingModal

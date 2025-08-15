@@ -57,6 +57,15 @@ const en = {
     tryAgain: "Try Again",
     pairingFailed: "Pairing Failed",
   },
+  pairingGuides: {
+    // TODO: add pairing guides for each glasses model
+    // evenRealitiesG1: {
+    //   title: "Even Realities G1",
+    //   step1: "Disconnect your G1 from within the Even Realities app, or uninstall the Even Realities app",
+    //   step2: "Place your G1 in the charging case with the lid open.",
+    //   step3: "Connect your G1 to your device.",
+    // },
+  },
   connectivity: {
     bluetoothRequiredTitle: "Bluetooth Required",
     bluetoothRequiredMessage:
@@ -203,6 +212,9 @@ const en = {
     powerSavingMode: "Power Saving Mode",
     powerSavingModeSubtitle: 'Allows the display to fully turn off. May briefly show "Even AI Listening".',
     powerSavingModeSubtitle2: "TODO",
+    newUi: "New UI",
+    newUiSubtitle: "Enable the new home screen UI. (Requires restarting the app)",
+    loggingOutMessage: "We're logging you out...",
   },
   profileSettings: {
     title: "Profile Settings",
@@ -288,6 +300,8 @@ const en = {
     sensingDisabled: "Sensors are disabled. Camera, microphone, and other sensors won't work in apps.",
     microphoneActive: "Microphone Active",
     microphoneActiveMessage: "One or more apps are currently using your glasses microphone.",
+    warning: "Warning",
+    developerSettingsWarning: "These settings may break the app. Use at your own risk.",
   },
   errors: {
     appNotOnlineTitle: "App Not Online",
@@ -311,6 +325,7 @@ const en = {
     stop: "Stop",
     settings: "Settings",
     openWebView: "Open Web View",
+    version: "Version {{number}}",
   },
   welcomeScreen: {
     postscript:
