@@ -5,6 +5,7 @@ import {Header, Screen} from "@/components/ignite"
 import AppsActiveList from "@/components/misc/AppsActiveList"
 import AppsInactiveList from "@/components/misc/AppsInactiveList"
 import AppsIncompatibleList from "@/components/misc/AppsIncompatibleList"
+import AppsIncompatibleListOld from "@/components/misc/AppsIncompatibleListOld"
 import {useAppStatus} from "@/contexts/AppStatusProvider"
 import CloudConnection from "@/components/misc/CloudConnection"
 import SensingDisabledWarning from "@/components/misc/SensingDisabledWarning"
@@ -201,8 +202,8 @@ export default function Homepage() {
         <AppsActiveList />
         <Spacer height={spacing.xl} />
         <AppsInactiveList liveCaptionsRef={liveCaptionsRef} />
-        <Spacer height={spacing.xl} />
-        <AppsIncompatibleList />
+        <Spacer height={spacing.md} />
+        <AppsIncompatibleListOld />
       </ScrollView>
 
       <OnboardingSpotlight
