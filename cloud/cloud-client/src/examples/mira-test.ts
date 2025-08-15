@@ -172,7 +172,10 @@ export async function runMiraTestOnce(
       waitedSeconds++;
     }
     if (!didSeeTime) {
-      onFailure("Did not see time.  Display was: " + timeDisplay);
+      onFailure(
+        `Did not see time.  Expected: ${expectedTime}.  Display was: ` +
+          timeDisplay,
+      );
     } else {
       result.didSeeTime = true;
     }
