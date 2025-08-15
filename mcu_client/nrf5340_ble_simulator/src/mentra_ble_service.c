@@ -41,8 +41,14 @@ static void rx_ccc_cfg_changed(const struct bt_gatt_attr *attr, uint16_t value)
 
 	bool notif_enabled = (value == BT_GATT_CCC_NOTIFY);
 
-	LOG_INF("RX Characteristic notifications %s", 
-		notif_enabled ? "enabled" : "disabled");
+	LOG_INF("🔔 RX Characteristic notifications %s", 
+		notif_enabled ? "✅ ENABLED" : "❌ DISABLED");
+	
+	if (notif_enabled) {
+		LOG_INF("📱➡️👓 Phone can now receive data from glasses!");
+	} else {
+		LOG_INF("📱❌👓 Phone cannot receive data - notifications disabled!");
+	}
 }
 
 /* Mentra BLE Service Declaration */
@@ -81,8 +87,11 @@ int mentra_ble_send(struct bt_conn *conn, const uint8_t *data, uint16_t len)
 
 	if (conn) {
 		if (bt_gatt_is_subscribed(conn, attr, BT_GATT_CCC_NOTIFY)) {
+			LOG_INF("✅ Client subscribed to notifications - sending data (%u bytes)", len);
 			return bt_gatt_notify_cb(conn, &params);
 		} else {
+			LOG_ERR("❌ Client NOT subscribed to notifications - cannot send data!");
+			LOG_ERR("This is why protobuf messages fail on first connection!");
 			return -EINVAL;
 		}
 	} else {

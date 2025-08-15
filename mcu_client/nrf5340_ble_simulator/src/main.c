@@ -581,12 +581,15 @@ static void bt_receive_cb(struct bt_conn *conn, const uint8_t *const data,
 	int echo_len = protobuf_generate_echo_response(data, len, echo_buffer, sizeof(echo_buffer));
 	
 	if (echo_len > 0) {
+		LOG_INF("🔄 Attempting to send echo response (%d bytes)...", echo_len);
 		int err = mentra_ble_send(conn, echo_buffer, echo_len);
 		if (err) {
-			LOG_ERR("Failed to send echo response: %d", err);
+			LOG_ERR("❌ Failed to send echo response: %d (likely notification subscription issue)", err);
 		} else {
-			LOG_INF("Sent echo response: %s", echo_buffer);
+			LOG_INF("✅ Sent echo response successfully: %s", echo_buffer);
 		}
+	} else {
+		LOG_WRN("⚠️ No echo response generated (echo_len = %d)", echo_len);
 	}
 
 	// Also forward to UART for debugging
@@ -692,17 +695,8 @@ void button_changed(uint32_t button_state, uint32_t has_changed)
 
 	// **NEW: LVGL pattern cycling on dedicated Button 4**
 	if (buttons & KEY_LVGL_PATTERN_CYCLE) {
-		LOG_INF("🎨 Button 4 pressed: Testing protobuf message reception");
-		
-		// Test fake protobuf message: DisplayText "Hello from Button 4!"
-		uint8_t test_message[] = {
-			0x02,  // Protobuf header
-			0x1A, 0x17,  // Field 3 (display_text), length 23
-			0x0A, 0x15, 'H', 'e', 'l', 'l', 'o', ' ', 'f', 'r', 'o', 'm', ' ', 'B', 'u', 't', 't', 'o', 'n', ' ', '4', '!'  // text field
-		};
-		
-		LOG_INF("🧪 Simulating protobuf message reception...");
-		protobuf_analyze_message(test_message, sizeof(test_message));
+		LOG_INF("🎨 Button 4 pressed: Cycling LVGL test pattern");
+		display_cycle_pattern();
 	}
 }
 

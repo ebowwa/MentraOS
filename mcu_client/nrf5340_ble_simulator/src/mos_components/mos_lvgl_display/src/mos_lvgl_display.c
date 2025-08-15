@@ -52,7 +52,7 @@ static void fps_timer_cb(struct k_timer *timer_id)
 {
     uint32_t fps = frame_count;
     frame_count = 0;
-    // BSP_LOGI(TAG, "LVGL FPS: %d", fps);  // Temporarily disabled to see protobuf logs
+    BSP_LOGI(TAG, "LVGL FPS: %d", fps);
 }
 
 void lv_example_scroll_text(void)
