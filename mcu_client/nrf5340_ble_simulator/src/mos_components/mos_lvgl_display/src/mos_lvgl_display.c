@@ -52,7 +52,7 @@ static void fps_timer_cb(struct k_timer *timer_id)
 {
     uint32_t fps = frame_count;
     frame_count = 0;
-    BSP_LOGI(TAG, "LVGL FPS: %d", fps);
+    // BSP_LOGI(TAG, "LVGL FPS: %d", fps);  // Temporarily disabled to see protobuf logs
 }
 
 void lv_example_scroll_text(void)
@@ -611,59 +611,22 @@ void lvgl_dispaly_init(void *p1, void *p2, void *p3)
             // state_type = LCD_STATE_OFF;
             break;
         case LCD_CMD_OPEN:
-            BSP_LOGI(TAG, "LCD_CMD_OPEN - Enhanced initialization sequence");
-            
-            // **ENHANCED: Step 1 - Power-on with extended delays**
+            BSP_LOGI(TAG, "LCD_CMD_OPEN");
             hls12vga_power_on();
-            k_msleep(100);  // Extended post-power delay for stability
-            
-            // **ENHANCED: Step 2 - Enable display first**  
-            hls12vga_open_display(); // 开启显示
-            k_msleep(50);   // Allow display to stabilize before configuration
-            
-            // **ENHANCED: Step 3 - Configure settings with error checking**
             set_display_onoff(true);
-            
-            // Set brightness with error checking
-            BSP_LOGI(TAG, "🔆 Setting brightness to level 9...");
-            // Note: hls12vga_set_brightness doesn't return error code currently
-            hls12vga_set_brightness(9); 
-            k_msleep(10);  // Brief delay between settings
-            
-            // **ROBUST MIRROR SETTING: Retry logic for reliability**
-            BSP_LOGI(TAG, "🪞 Setting horizontal mirror (0x08) with retry logic...");
-            int mirror_attempts = 0;
-            int max_mirror_retries = 3;
-            bool mirror_success = false;
-            
-            for (mirror_attempts = 0; mirror_attempts < max_mirror_retries; mirror_attempts++) {
-                // hls12vga_set_mirror returns error code 
-                int mirror_err = hls12vga_set_mirror(0x08);  // 0x08 = Horizontal mirror
-                
-                if (mirror_err == 0) {
-                    BSP_LOGI(TAG, "✅ Mirror setting successful (attempt %d)", mirror_attempts + 1);
-                    mirror_success = true;
-                    k_msleep(20);  // Allow setting to take effect
-                    break;
-                } else {
-                    BSP_LOGW(TAG, "⚠️ Mirror setting failed (attempt %d/%d): err=%d", 
-                             mirror_attempts + 1, max_mirror_retries, mirror_err);
-                    k_msleep(50);  // Wait before retry
-                }
-            }
-            
-            if (!mirror_success) {
-                BSP_LOGE(TAG, "❌ CRITICAL: Mirror setting failed after %d attempts!", max_mirror_retries);
-                BSP_LOGE(TAG, "❌ Display may appear incorrectly oriented");
-            }
-            
-            // **ENHANCED: Step 4 - Final initialization**
+            hls12vga_set_brightness(9); // 设置亮度
+            hls12vga_set_mirror(0x08);  // 0x10 垂直镜像 0x00 正常显示 0x08 水平镜像 0x18 水平+垂直镜像
+            // hls12vga_set_brightness(cmd.p.open.brightness);
+            // hls12vga_set_mirror(cmd.p.open.mirror);
+            mos_delay_ms(2);
+            hls12vga_open_display(); // 开启显示
+            // hls12vga_set_shift(MOVE_DEFAULT, 0);
             hls12vga_clear_screen(false); // 清屏
             state_type = LCD_STATE_ON;
 
             BSP_LOGI(TAG, "🚀 About to call show_default_ui()...");
             show_default_ui(); // 显示默认图像
-            BSP_LOGI(TAG, "✅ Enhanced display initialization completed");
+            BSP_LOGI(TAG, "✅ show_default_ui() completed");
             break;
         case LCD_CMD_DATA:
             /* 处理帧数据*/
