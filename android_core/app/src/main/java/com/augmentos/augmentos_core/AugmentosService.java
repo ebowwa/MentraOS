@@ -3133,6 +3133,16 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     }
 
     @Override
+    public void clearDisplay() {
+        Log.d(TAG, "clearDisplay called");
+        if (smartGlassesManager != null) {
+            smartGlassesManager.clearDisplay();
+        } else {
+            Log.e(TAG, "SmartGlassesManager is null, cannot clear display");
+        }
+    }
+
+    @Override
     public void startBufferRecording() {
         Log.d(TAG, "Starting buffer recording on smart glasses");
         if (smartGlassesManager != null) {

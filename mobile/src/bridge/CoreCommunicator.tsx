@@ -895,6 +895,13 @@ export class CoreCommunicator extends EventEmitter {
     })
   }
 
+  async sendClearDisplay() {
+    console.log("sendClearDisplay")
+    return await this.sendData({
+      command: "clear_display",
+    })
+  }
+
   // Buffer recording commands
   async sendStartBufferRecording() {
     return await this.sendData({

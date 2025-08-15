@@ -276,6 +276,10 @@ public class AugmentOsManagerMessageParser {
                 callback.onDisplayImageNotified(localImageName);
             }
             break;
+            case "clear_display": {
+                callback.clearDisplay();
+            }
+            break;
             default:
                 Log.w(TAG, "Unknown command: " + command);
         }

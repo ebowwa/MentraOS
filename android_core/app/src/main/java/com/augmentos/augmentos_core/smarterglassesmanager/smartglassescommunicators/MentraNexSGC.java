@@ -2626,6 +2626,30 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
         Log.d(TAG, "displayCustomContent content: " + content);
     }
 
+    @Override
+    public void clearDisplay() {
+        if (!isConnected()) {
+            Log.d(TAG, "Not connected to glasses");
+            return;
+        }
+        Log.d(TAG, "=== SENDING CLEAR DISPLAY COMMAND TO GLASSES ===");
+        
+        // Create the clear display protobuf message
+        mentraos.ble.MentraosBle.ClearDisplay clearDisplay = mentraos.ble.MentraosBle.ClearDisplay.newBuilder()
+                .setMsgId("clear_disp_001")
+                .build();
+
+        PhoneToGlasses phoneToGlasses = PhoneToGlasses.newBuilder()
+                .setClearDisplay(clearDisplay)
+                .build();
+
+        byte[] cmdBytes = generateProtobufCommandBytes(phoneToGlasses);
+        sendDataSequentially(cmdBytes, 10);
+
+        Log.d(TAG, "Sent clear display command");
+        lastThingDisplayedWasAnImage = false;
+    }
+
     private void sendChunks(List<byte[]> chunks) {
         // Send each chunk with a delay between sends
         for (byte[] chunk : chunks) {

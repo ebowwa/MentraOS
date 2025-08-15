@@ -2602,6 +2602,15 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     }
 
     @Override
+    public void clearDisplay() {
+        if (!isConnected()) {
+            Log.d(TAG, "Not connected to glasses");
+            return;
+        }
+        Log.w(TAG, "MentraLiveSGC does not support clearDisplay");
+    }
+
+    @Override
     public void displayReferenceCardImage(String title, String body, String imgUrl) {
         Log.d(TAG, "[STUB] Device has no display. Reference card with image would show: " + title);
     }

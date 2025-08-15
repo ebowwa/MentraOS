@@ -878,6 +878,15 @@ public class SmartGlassesManager extends Service {
         sendHomeScreen();
     }
 
+    public void clearDisplay() {
+        Log.d(TAG, "clearDisplay called");
+        if (smartGlassesRepresentative != null && smartGlassesRepresentative.smartGlassesCommunicator != null) {
+            smartGlassesRepresentative.smartGlassesCommunicator.clearDisplay();
+        } else {
+            Log.e(TAG, "Cannot clear display: smartGlassesRepresentative or communicator is null");
+        }
+    }
+
     /**
      * Getter for SmartGlassesRepresentative instance
      * Allows external access for immediate microphone switching

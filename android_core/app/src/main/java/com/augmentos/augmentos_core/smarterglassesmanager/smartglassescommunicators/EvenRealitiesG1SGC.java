@@ -2906,6 +2906,18 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
         Log.d(TAG, "DISPLAY CUSTOM CONTENT");
     }
 
+    @Override
+    public void clearDisplay() {
+        if (!isConnected()) {
+            Log.d(TAG, "Not connected to glasses");
+            return;
+        }
+        Log.d(TAG, "=== SENDING CLEAR DISPLAY COMMAND TO G1 GLASSES ===");
+        
+        // For G1 glasses, we can use the existing clearG1Screen method
+        clearG1Screen();
+    }
+
     private void sendChunks(List<byte[]> chunks){
         // Send each chunk with a delay between sends
         for (byte[] chunk : chunks) {

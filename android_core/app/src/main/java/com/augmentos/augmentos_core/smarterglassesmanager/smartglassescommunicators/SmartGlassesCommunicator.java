@@ -78,6 +78,8 @@ public abstract class SmartGlassesCommunicator {
 
     public abstract void displayCustomContent(String json);
 
+    public abstract void clearDisplay();
+
     //home screen
     public abstract void showHomeScreen();
 

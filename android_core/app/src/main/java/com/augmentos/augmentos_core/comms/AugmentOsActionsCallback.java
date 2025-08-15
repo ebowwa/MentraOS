@@ -52,6 +52,8 @@ public interface AugmentOsActionsCallback {
 
     void onDisplayImageNotified(String localImageName);
 
+    void clearDisplay();
+
     void handleNotificationDismissal(JSONObject dismissalData);
     void startBufferRecording();
     void stopBufferRecording();

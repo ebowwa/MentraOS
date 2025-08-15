@@ -279,6 +279,20 @@ export default function DeviceSettings() {
     }
   }
 
+  const onClearDisplayClick = async () => {
+    if (status.core_info.puck_connected && status.glasses_info?.model_name) {
+      await coreCommunicator.sendClearDisplay()
+    } else {
+      showAlert("Please connect to the device", "Please connect to the device", [
+        {
+          text: "OK",
+          onPress: () => {},
+        },
+      ])
+      return
+    }
+  }
+
   const setMic = async (val: string) => {
     if (val === "phone") {
       // We're potentially about to enable the mic, so request permission
@@ -796,7 +810,7 @@ export default function DeviceSettings() {
             <Text style={[themed($infoText), {color: theme.colors.textDim, marginBottom: theme.spacing.sm}]}>
               Monitor BLE commands sent and received
             </Text>
-            
+
             <Text style={[themed($subtitle), {color: theme.colors.text, marginBottom: theme.spacing.xs}]}>
               Sent Command:
             </Text>
@@ -816,6 +830,22 @@ export default function DeviceSettings() {
             <Text style={[themed($infoText), {color: theme.colors.textDim}]}>
               HEX: {commandReceiver?.commandText ?? ""}
             </Text>
+          </View>
+
+          <View style={themed($settingsGroup)}>
+            <Text style={[themed($subtitle), {marginBottom: theme.spacing.xs}]}>Clear Display</Text>
+            <Text style={[themed($infoText), {color: theme.colors.textDim, marginBottom: theme.spacing.sm}]}>
+              Clear all content (text or images) from the display
+            </Text>
+            <View style={{flexDirection: "row", justifyContent: "space-between", marginTop: 10}}>
+              <PillButton
+                text="Clear Display"
+                variant="secondary"
+                onPress={onClearDisplayClick}
+                disabled={false}
+                buttonStyle={{flex: 1}}
+              />
+            </View>
           </View>
         </>
       )}

@@ -94,6 +94,19 @@ public class SelfSGC extends SmartGlassesCommunicator {
     }
 
     @Override
+    public void clearDisplay() {
+        if (!isConnected()) {
+            Log.d(TAG, "Not connected to glasses");
+            return;
+        }
+        Log.d(TAG, "=== SENDING CLEAR DISPLAY COMMAND TO SELF GLASSES ===");
+        
+        // For Self glasses, we can send a message to indicate display cleared
+        // This is a stub implementation since Self glasses have limited display capabilities
+        Log.d(TAG, "[STUB] Self glasses display cleared (no actual display)");
+    }
+
+    @Override
     public void showHomeScreen() {
 
     }

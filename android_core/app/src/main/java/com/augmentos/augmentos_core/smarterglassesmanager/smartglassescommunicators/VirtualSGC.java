@@ -103,6 +103,9 @@ public class VirtualSGC extends SmartGlassesCommunicator {
     public void displayCustomContent(String json) {}
 
     @Override
+    public void clearDisplay() {}
+
+    @Override
     public void findCompatibleDeviceNames() {
         EventBus.getDefault().post(new GlassesBluetoothSearchDiscoverEvent(smartGlassesDevice.deviceModelName, "NOTREQUIREDSKIP"));
         this.destroy();
