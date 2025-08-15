@@ -207,6 +207,11 @@ public class AugmentOsManagerMessageParser {
                     String mic = commandObject.getJSONObject("params").getString("mic");
                     callback.setPreferredMic(mic);
                     break;
+
+                case "restart_transcriber":
+                    callback.restartTranscriber();
+                    break;
+
                 case "set_button_mode":
                     String mode = commandObject.getJSONObject("params").getString("mode");
                     callback.setButtonMode(mode);

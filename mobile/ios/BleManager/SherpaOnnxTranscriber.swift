@@ -99,8 +99,8 @@ class SherpaOnnxTranscriber {
                     // Create model config with CTC
                     var modelConfig = sherpaOnnxOnlineModelConfig(
                         tokens: tokensPath,
+                        numThreads: 1,
                         nemoCtc: nemoCtc,
-                        numThreads: 1
                     )
 
                     // Configure recognizer
@@ -426,6 +426,16 @@ class SherpaOnnxTranscriber {
         }
 
         CoreCommsService.log("✅ SherpaOnnxTranscriber shutdown complete")
+    }
+
+    /**
+     * Restarts the transcriber after a model change.
+     * Shuts down existing resources, clears buffers, and reinitializes the recognizer.
+     */
+    func restart() {
+        CoreCommsService.log("♻️ Restarting SherpaOnnxTranscriber...")
+        shutdown()
+        initialize()
     }
 
     /**

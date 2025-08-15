@@ -1276,6 +1276,7 @@ struct ViewState {
             case searchForCompatibleDeviceNames = "search_for_compatible_device_names"
             case enableContextualDashboard = "enable_contextual_dashboard"
             case setPreferredMic = "set_preferred_mic"
+            case restartTranscriber = "restart_transcriber"
             case setButtonMode = "set_button_mode"
             case ping
             case forgetSmartGlasses = "forget_smart_glasses"
@@ -1372,6 +1373,9 @@ struct ViewState {
                         break
                     }
                     setPreferredMic(mic)
+                case .restartTranscriber:
+                    CoreCommsService.log("AOS: Restarting SherpaOnnxTranscriber via command")
+                    transcriber?.restart()
                 case .setButtonMode:
                     guard let params = params, let mode = params["mode"] as? String else {
                         CoreCommsService.log("AOS: set_button_mode invalid params")

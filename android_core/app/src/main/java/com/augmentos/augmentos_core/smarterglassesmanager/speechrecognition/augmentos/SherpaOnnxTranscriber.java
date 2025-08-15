@@ -303,6 +303,16 @@ public class SherpaOnnxTranscriber {
     }
 
     /**
+     * Restart the transcriber after model change.
+     * It shuts down existing resources, reinitializes the model, and restarts processing.
+     */
+    public void restart() {
+        Log.i(TAG, "Restarting Sherpa-ONNX transcriber");
+        shutdown();
+        init();
+    }
+
+    /**
      * Register a listener to receive partial and final transcription updates.
      */
     public void setTranscriptListener(TranscriptListener listener) {
