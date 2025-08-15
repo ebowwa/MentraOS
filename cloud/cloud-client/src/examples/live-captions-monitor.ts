@@ -28,6 +28,7 @@ let totalRuns = 0;
 let consecutiveFailures = 0;
 let lastResult: boolean | null = null;
 let didHearAlphabet = {};
+let lastFailures: string | null = null;
 
 function msToHuman(ms: number): string {
   const sec = Math.floor(ms / 1000);
@@ -68,6 +69,7 @@ app.get("/health", (_req: Request, res: Response) => {
     consecutiveFailures,
     lastResult,
     heardThisRun,
+    lastFailures,
   };
 
   res.status(status === "healthy" ? 200 : 503).json(payload);
@@ -82,13 +84,17 @@ async function sleep(ms: number): Promise<void> {
 }
 
 async function loop(): Promise<void> {
-   
   while (true) {
     didHearAlphabet = {};
     const ok = await runLiveCaptionsTestOnce(
       DEFAULT_LISTEN_SECONDS,
       (letter) => {
         (didHearAlphabet as any)[letter] = true;
+      },
+      (failures) => {
+        console.error(failures);
+        lastFailures = failures;
+        lastIssueAt = new Date();
       },
     );
     totalRuns += 1;
@@ -98,7 +104,6 @@ async function loop(): Promise<void> {
       lastSuccessAt = new Date();
     } else {
       consecutiveFailures += 1;
-      lastIssueAt = new Date();
     }
     await sleep(SLEEP_BETWEEN_RUNS_MS);
   }

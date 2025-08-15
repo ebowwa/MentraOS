@@ -54,6 +54,7 @@ let didHearAlphabet = {};
 export async function runLiveCaptionsTestOnce(
   timeToListenInSeconds: number = 60,
   whenLetterIsHeard: (letter: string) => void = () => {},
+  onFailure: (error: string) => void = () => {},
   audioFilePath: string = AUDIO_FILE_PATH,
 ): Promise<boolean> {
   let missedAny: boolean | null = null;
@@ -135,9 +136,11 @@ export async function runLiveCaptionsTestOnce(
       await sleep(2000);
 
       let heardAll = true;
+      let failures = "";
       for (const letter of natoAlphabet) {
         if (!(didHearAlphabet as any)[letter]) {
           console.error(`❌ Did not hear ${letter}`);
+          failures += `Did not hear ${letter}\n`;
           missedAny = true;
           heardAll = false;
         }
@@ -147,6 +150,8 @@ export async function runLiveCaptionsTestOnce(
         if (missedAny === null) {
           missedAny = false;
         }
+      } else {
+        onFailure(failures);
       }
     }
 
@@ -249,6 +254,10 @@ if (require.main === module) {
   runLiveCaptionsTestOnce(
     60,
     undefined,
+    (failures) => {
+      console.error(failures);
+      process.exit(1);
+    },
     resolve(__dirname, "../audio/nato.wav"),
   )
     .then((ok) => process.exit(ok ? 0 : 1))
