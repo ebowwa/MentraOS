@@ -140,11 +140,11 @@ export async function runMiraTestOnce(
     await client.stopSpeaking();
     await sleep(2000);
 
-    // Current hour in San Francisco (America/Los_Angeles), 24-hour clock (0-23), DST-aware
+    // Current hour in San Francisco (America/Los_Angeles), 12-hour clock (1-12), DST-aware
     const currentPacificTimeHours: number = parseInt(
       new Intl.DateTimeFormat("en-US", {
         timeZone: "America/Los_Angeles",
-        hour: "2-digit",
+        hour: "numeric",
         hour12: true,
       }).format(new Date()),
       10,
@@ -152,14 +152,14 @@ export async function runMiraTestOnce(
     const currentPacificTimeMinutes: number = parseInt(
       new Intl.DateTimeFormat("en-US", {
         timeZone: "America/Los_Angeles",
-        minute: "2-digit",
+        minute: "numeric",
       }).format(new Date()),
       10,
     );
     let didSeeTime = false;
     let timeDisplay = "";
     let waitedSeconds = 0;
-    const expectedTime = `${currentPacificTimeHours}:${currentPacificTimeMinutes}`;
+    const expectedTime = `${currentPacificTimeHours}:${currentPacificTimeMinutes.toString().padStart(2, "0")}`;
     while (waitedSeconds < 10 || currentDisplay.trim() !== "") {
       if (currentDisplay.trim() !== "") {
         timeDisplay = currentDisplay;
