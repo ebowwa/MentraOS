@@ -92,14 +92,14 @@ class SherpaOnnxTranscriber {
                     CoreCommsService.log("Detected CTC model at \(customPath)")
 
                     // Create CTC model config using Zipformer2Ctc
-                    var zipformer2Ctc = sherpaOnnxOnlineZipformer2CtcModelConfig(
+                    var nemoCtc = sherpaOnnxOnlineNemoCtcModelConfig(
                         model: ctcModelPath
                     )
 
                     // Create model config with CTC
                     var modelConfig = sherpaOnnxOnlineModelConfig(
                         tokens: tokensPath,
-                        zipformer2Ctc: zipformer2Ctc,
+                        nemoCtc: nemoCtc,
                         numThreads: 1
                     )
 
