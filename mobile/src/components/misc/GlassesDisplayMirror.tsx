@@ -133,8 +133,12 @@ const GlassesDisplayMirror: React.FC<GlassesDisplayMirrorProps> = ({
         bottomText = parseText(bottomText)
         return (
           <View style={{flexDirection: "row", gap: 2}}>
-            <Text style={[styles.cardContent, textStyle]}>{topText || topText === "" ? topText : ""}</Text>
-            <Text style={[styles.cardContent, textStyle]}>{bottomText || bottomText === "" ? bottomText : ""}</Text>
+            <Text style={[styles.cardContent, textStyle, {width: "50%"}]} numberOfLines={4}>
+              {topText || topText === "" ? topText : ""}
+            </Text>
+            <Text style={[styles.cardContent, textStyle, {width: "50%"}]} numberOfLines={4}>
+              {bottomText || bottomText === "" ? bottomText : ""}
+            </Text>
           </View>
         )
       }
