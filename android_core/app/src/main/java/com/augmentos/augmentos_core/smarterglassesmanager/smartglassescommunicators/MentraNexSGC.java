@@ -171,9 +171,10 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
     private BluetoothGatt mainGlassGatt;
     private BluetoothGattCharacteristic mainWriteChar;
     private BluetoothGattCharacteristic mainNotifyChar;
-    private final int MTU_512 = 247;
-    private final int MTU_256 = 247;
+    private final int MTU_247 = 247; // Maximum MTU we'll use
+    private final int MTU_DEFAULT = 23; // Default BLE MTU
     private int currentMTU = 0;
+    private int deviceMaxMTU = 0; // Discovered maximum MTU capability
 
     private volatile boolean isImageSendProgressing = false;
     private List<byte[]> currentImageChunks = new ArrayList<>();
@@ -522,19 +523,44 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
             @Override
             public void onMtuChanged(BluetoothGatt gatt, int mtu, int status) {
                 final boolean statusBool = status == BluetoothGatt.GATT_SUCCESS;
-                Log.d(TAG, "onMtuChanged: " + statusBool + "  " + mtu);
+                Log.d(TAG, "🔄 MTU Negotiation Result: Success=" + statusBool + ", MTU=" + mtu + ", Status=" + status);
+                
                 if (statusBool) {
+                    // Store the successfully negotiated MTU
                     currentMTU = mtu;
+                    deviceMaxMTU = mtu; // Record what device actually supports
+                    Log.d(TAG, "🎯 MTU Successfully Negotiated: " + mtu + " bytes");
+                    
+                    // Calculate optimal chunk sizes based on negotiated MTU
                     MAX_CHUNK_SIZE = currentMTU - 10;
-                    // BMP has more cofig bytes
-                    BMP_CHUNK_SIZE = currentMTU - 20;
+                    BMP_CHUNK_SIZE = currentMTU - 20; // BMP has more config bytes
+                    
+                    Log.d(TAG, "✅ MTU Configuration Complete:");
+                    Log.d(TAG, "   📊 Final MTU: " + currentMTU + " bytes");
+                    Log.d(TAG, "   📦 Data Chunk Size: " + MAX_CHUNK_SIZE + " bytes");
+                    Log.d(TAG, "   🖼️ Image Chunk Size: " + BMP_CHUNK_SIZE + " bytes");
+                    Log.d(TAG, "   🔧 Device Maximum: " + deviceMaxMTU + " bytes");
+                    
                 } else {
-                    if (mtu == MTU_512) {
-                        gatt.requestMtu(MTU_256);
+                    Log.w(TAG, "❌ MTU Request Failed - Status: " + status + ", Requested: " + mtu);
+                    
+                    // Simple fallback strategy: 247 → 23
+                    if (mtu == MTU_247) {
+                        Log.d(TAG, "🔄 247 bytes failed, trying default: " + MTU_DEFAULT + " bytes...");
+                        Log.d(TAG, "📤 Requesting MTU: " + MTU_DEFAULT + " bytes (fallback)");
+                        gatt.requestMtu(MTU_DEFAULT);
+                    } else {
+                        Log.w(TAG, "⚠️ All MTU requests failed, using defaults");
+                        currentMTU = MTU_DEFAULT;
+                        deviceMaxMTU = MTU_DEFAULT;
+                        MAX_CHUNK_SIZE = MAX_CHUNK_SIZE_DEFAULT;
+                        BMP_CHUNK_SIZE = MAX_CHUNK_SIZE_DEFAULT;
+                        
+                        Log.d(TAG, "📋 Fallback Configuration:");
+                        Log.d(TAG, "   📊 Default MTU: " + MTU_DEFAULT + " bytes");
+                        Log.d(TAG, "   📦 Data Chunk Size: " + MAX_CHUNK_SIZE + " bytes");
+                        Log.d(TAG, "   🖼️ Image Chunk Size: " + BMP_CHUNK_SIZE + " bytes");
                     }
-                    currentMTU = 0;
-                    MAX_CHUNK_SIZE = MAX_CHUNK_SIZE_DEFAULT;
-                    BMP_CHUNK_SIZE = MAX_CHUNK_SIZE_DEFAULT;
                 }
             }
 
@@ -550,8 +576,11 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
     }
 
     private void initNexGlasses(BluetoothGatt gatt) {
-        gatt.requestMtu(MTU_512); // Request a higher MTU size
-        Log.d(TAG, "Requested MTU size: 512");
+        // Start MTU discovery with our maximum target
+        Log.d(TAG, "🔍 MTU Discovery: Requesting maximum MTU size: " + MTU_247);
+        Log.d(TAG, "🎯 Target: Use " + MTU_247 + " bytes max, or " + MTU_DEFAULT + " bytes default");
+        Log.d(TAG, "📤 Requesting MTU: " + MTU_247 + " bytes");
+        gatt.requestMtu(MTU_247); // Request our maximum MTU
 
         BluetoothGattService uartService = gatt.getService(MAIN_SERVICE_UUID);
 
