@@ -101,24 +101,26 @@ interface PatternPreviewProps {
   imageType: string
   imageSize: string
   isDark?: boolean
+  showDualLayout?: boolean
 }
 
-const PatternPreview = ({imageType, imageSize, isDark = false}: PatternPreviewProps) => {
+const PatternPreview = ({imageType, imageSize, isDark = false, showDualLayout = false}: PatternPreviewProps) => {
   const previewSize = 80
-  const primaryColor = isDark ? "#FFFFFF" : "#000000"
-  const secondaryColor = isDark ? "#666666" : "#CCCCCC"
+  const primaryColor = isDark ? "#000000" : "#FFFFFF"
+  const secondaryColor = isDark ? "#CCCCCC" : "#666666"
 
-  const renderPattern = () => {
+  const renderPattern = (width: number, height: number) => {
     switch (imageType) {
       case "pattern":
         // Horizontal stripe pattern
+        const stripeCount = Math.max(4, Math.floor(height / 10))
         return (
-          <View style={{width: previewSize, height: previewSize}}>
-            {Array.from({length: 4}, (_, i) => (
+          <View style={{width, height}}>
+            {Array.from({length: stripeCount}, (_, i) => (
               <View
                 key={i}
                 style={{
-                  height: previewSize / 4,
+                  height: height / stripeCount,
                   backgroundColor: i % 2 === 0 ? primaryColor : secondaryColor,
                 }}
               />
@@ -127,12 +129,14 @@ const PatternPreview = ({imageType, imageSize, isDark = false}: PatternPreviewPr
         )
 
       case "checkerboard":
-        const squareSize = previewSize / 8
+        const squareSize = Math.max(width / 8, height / 8)
+        const cols = Math.floor(width / squareSize)
+        const rows = Math.floor(height / squareSize)
         return (
-          <View style={{width: previewSize, height: previewSize}}>
-            {Array.from({length: 8}, (_, row) => (
+          <View style={{width, height}}>
+            {Array.from({length: rows}, (_, row) => (
               <View key={row} style={{flexDirection: "row"}}>
-                {Array.from({length: 8}, (_, col) => {
+                {Array.from({length: cols}, (_, col) => {
                   const isEven = (row + col) % 2 === 0
                   return (
                     <View
@@ -155,8 +159,8 @@ const PatternPreview = ({imageType, imageSize, isDark = false}: PatternPreviewPr
         return (
           <View
             style={{
-              width: previewSize,
-              height: previewSize,
+              width,
+              height,
               backgroundColor: primaryColor,
             }}
           />
@@ -164,6 +168,147 @@ const PatternPreview = ({imageType, imageSize, isDark = false}: PatternPreviewPr
     }
   }
 
+  if (showDualLayout) {
+    // Parse dimensions from imageSize string
+    const [originalWidth, originalHeight] = imageSize.split("x").map(Number)
+
+    // Proper sizing to match reference
+    const originalDisplaySize = Math.min(150, Math.max(80, originalWidth || 80))
+
+    // Display version should maintain 600x440 aspect ratio (1.36:1)
+    const displayWidth = 300 // Wide rectangle like in reference
+    const displayHeight = 220 // 600/440 = 1.36 ratio, so 300/220 ≈ 1.36
+
+    return (
+      <View
+        style={{
+          alignItems: "center",
+          paddingVertical: 20,
+          paddingHorizontal: 16,
+          backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.02)",
+          borderRadius: 12,
+          marginVertical: 8,
+        }}>
+        {/* Header */}
+        <Text
+          style={{
+            fontSize: 16,
+            fontWeight: "600",
+            color: isDark ? "#FFFFFF" : "#000000",
+            textAlign: "center",
+            marginBottom: 20,
+            letterSpacing: 0.5,
+          }}>
+          /// MentraOS Connected \\\
+        </Text>
+
+        {/* Status Line */}
+        <Text
+          style={{
+            fontSize: 14,
+            color: isDark ? "#CCCCCC" : "#666666",
+            marginBottom: 16,
+            textAlign: "center",
+          }}>
+          Received Image: {imageSize} (Display: 600x440)
+        </Text>
+
+        {/* Original Image Section */}
+        <View style={{alignItems: "center", marginBottom: 20}}>
+          <Text
+            style={{
+              fontSize: 13,
+              color: isDark ? "#CCCCCC" : "#666666",
+              marginBottom: 12,
+              fontWeight: "500",
+            }}>
+            Original: {imageSize}
+          </Text>
+          <View
+            style={{
+              borderWidth: 2,
+              borderColor: isDark ? "#555555" : "#DDDDDD",
+              borderRadius: 12,
+              overflow: "hidden",
+              backgroundColor: isDark ? "#2A2A2A" : "#FFFFFF",
+              padding: 12,
+              shadowColor: "#000",
+              shadowOffset: {width: 0, height: 2},
+              shadowOpacity: 0.1,
+              shadowRadius: 4,
+              elevation: 3,
+            }}>
+            {renderPattern(originalDisplaySize, originalDisplaySize)}
+          </View>
+        </View>
+
+        {/* Display Version Section */}
+        <View style={{alignItems: "center"}}>
+          <Text
+            style={{
+              fontSize: 13,
+              color: isDark ? "#CCCCCC" : "#666666",
+              marginBottom: 12,
+              fontWeight: "500",
+            }}>
+            Display Version (600x440):
+          </Text>
+          <View
+            style={{
+              borderWidth: 2,
+              borderColor: isDark ? "#555555" : "#DDDDDD",
+              borderRadius: 12,
+              overflow: "hidden",
+              backgroundColor: isDark ? "#2A2A2A" : "#FFFFFF",
+              padding: 8,
+              shadowColor: "#000",
+              shadowOffset: {width: 0, height: 2},
+              shadowOpacity: 0.1,
+              shadowRadius: 4,
+              elevation: 3,
+              width: displayWidth + 16,
+              height: displayHeight + 16,
+            }}>
+            {/* Full 600x440 display area */}
+            <View
+              style={{
+                width: displayWidth,
+                height: displayHeight,
+                backgroundColor: "#FFFFFF",
+                position: "relative",
+              }}>
+              {/* Original image size within the display */}
+              <View
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  width: (originalWidth || previewSize) * (displayWidth / 600),
+                  height: (originalHeight || previewSize) * (displayHeight / 440),
+                }}>
+                {renderPattern(
+                  (originalWidth || previewSize) * (displayWidth / 600),
+                  (originalHeight || previewSize) * (displayHeight / 440),
+                )}
+              </View>
+            </View>
+          </View>
+          <Text
+            style={{
+              fontSize: 12,
+              color: isDark ? "#999999" : "#888888",
+              marginTop: 12,
+              textAlign: "center",
+              fontWeight: "400",
+            }}>
+            Display: 600x440 pixels
+          </Text>
+        </View>
+      </View>
+    )
+  }
+
+  // Original single preview layout
   return (
     <View
       style={{
@@ -173,7 +318,7 @@ const PatternPreview = ({imageType, imageSize, isDark = false}: PatternPreviewPr
         overflow: "hidden",
         backgroundColor: isDark ? "#1A1A1A" : "#FFFFFF",
       }}>
-      {renderPattern()}
+      {renderPattern(previewSize, previewSize)}
     </View>
   )
 }
@@ -283,6 +428,10 @@ export default function DeviceSettings() {
   const [commandSender, setCommandSender] = useState<BleCommand | null>(null)
   const [commandReceiver, setCommandReceiver] = useState<BleCommand | null>(null)
 
+  // Heartbeat Console state variables
+  const [lastHeartbeatSent, setLastHeartbeatSent] = useState<number | null>(null)
+  const [lastHeartbeatReceived, setLastHeartbeatReceived] = useState<number | null>(null)
+
   useEffect(() => {
     setBrightness(status?.glasses_settings?.brightness ?? 50)
     setAutoBrightness(status?.glasses_settings?.auto_brightness ?? true)
@@ -306,15 +455,29 @@ export default function DeviceSettings() {
       setCommandReceiver(receiver)
     }
 
+    const handleHeartbeatSent = (data: {timestamp: number}) => {
+      console.log("handleHeartbeatSent:", data)
+      setLastHeartbeatSent(data.timestamp)
+    }
+
+    const handleHeartbeatReceived = (data: {timestamp: number}) => {
+      console.log("handleHeartbeatReceived:", data)
+      setLastHeartbeatReceived(data.timestamp)
+    }
+
     if (!MOCK_CONNECTION) {
       GlobalEventEmitter.on("send_command_to_ble", handleCommandFromSender)
       GlobalEventEmitter.on("receive_command_from_ble", handleCommandFromReceiver)
+      GlobalEventEmitter.on("heartbeat_sent", handleHeartbeatSent)
+      GlobalEventEmitter.on("heartbeat_received", handleHeartbeatReceived)
     }
 
     return () => {
       if (!MOCK_CONNECTION) {
         GlobalEventEmitter.removeListener("send_command_to_ble", handleCommandFromSender)
         GlobalEventEmitter.removeListener("receive_command_from_ble", handleCommandFromReceiver)
+        GlobalEventEmitter.removeListener("heartbeat_sent", handleHeartbeatSent)
+        GlobalEventEmitter.removeListener("heartbeat_received", handleHeartbeatReceived)
       }
     }
   }, [])
@@ -440,6 +603,22 @@ export default function DeviceSettings() {
   // Check if we need to show any helper text
   const needsGlassesPaired = !status.core_info.default_wearable
   const hasDisplay = status.core_info.default_wearable && glassesFeatures[status.core_info.default_wearable]?.display
+
+  // Helper function to format timestamps
+  const formatTimestamp = (timestamp: number | null): string => {
+    if (!timestamp) return "Never"
+    const date = new Date(timestamp)
+    return date.toLocaleTimeString() // + "." + date.getMilliseconds().toString().padStart(3, '0')
+  }
+
+  // Helper function to calculate time difference
+  const getTimeDifference = (timestamp: number | null): string => {
+    if (!timestamp) return ""
+    const diff = Date.now() - timestamp
+    if (diff < 1000) return `${diff}ms ago`
+    if (diff < 60000) return `${Math.floor(diff / 1000)}s ago`
+    return `${Math.floor(diff / 60000)}m ago`
+  }
 
   // Check if no glasses are paired at all
   if (!status.core_info.default_wearable) {
@@ -925,19 +1104,19 @@ export default function DeviceSettings() {
             {/* Pattern Preview and Send Button */}
             <View style={{marginTop: theme.spacing.sm}}>
               <Text style={[themed($subtitle), {marginBottom: theme.spacing.xs}]}>Preview:</Text>
-              <View style={{flexDirection: "row", alignItems: "center", gap: theme.spacing.md}}>
-                <View style={{alignItems: "center", gap: theme.spacing.xs}}>
-                  <PatternPreview imageType={selectedImageType} imageSize={selectedImageSize} isDark={theme.isDark} />
-                  <Text style={[themed($infoText), {color: theme.colors.textDim, fontSize: 12}]}>
-                    {selectedImageSize}
-                  </Text>
-                </View>
+              <View style={{alignItems: "center", gap: theme.spacing.md}}>
+                <PatternPreview
+                  imageType={selectedImageType}
+                  imageSize={selectedImageSize}
+                  isDark={theme.isDark}
+                  showDualLayout={true}
+                />
                 <PillButton
                   text="Send Image"
                   variant="primary"
                   onPress={onSendImageClick}
                   disabled={false}
-                  buttonStyle={{flex: 1}}
+                  buttonStyle={{width: "80%"}}
                 />
               </View>
             </View>
@@ -984,6 +1163,59 @@ export default function DeviceSettings() {
             <Text style={[themed($infoText), {color: theme.colors.textDim}]}>
               HEX: {commandReceiver?.commandText ?? ""}
             </Text>
+          </View>
+
+          <View style={themed($settingsGroup)}>
+            <Text style={[themed($subtitle), {marginBottom: theme.spacing.xs}]}>💓 Ping-Pong Console</Text>
+            <Text style={[themed($infoText), {color: theme.colors.textDim, marginBottom: theme.spacing.sm}]}>
+              Monitor ping-pong communication with Mentra Nex glasses
+            </Text>
+
+            <Text style={[themed($subtitle), {color: theme.colors.text, marginBottom: theme.spacing.xs}]}>
+              🏓 Last Pong Sent:
+            </Text>
+            <Text style={[themed($infoText), {color: theme.colors.textDim, marginBottom: theme.spacing.xs}]}>
+              Time: {formatTimestamp(lastHeartbeatSent)}
+            </Text>
+            {/* <Text style={[themed($infoText), {color: theme.colors.textDim, marginBottom: theme.spacing.md}]}>
+              {lastHeartbeatSent && getTimeDifference(lastHeartbeatSent)}
+            </Text> */}
+
+            <Text style={[themed($subtitle), {color: theme.colors.text, marginBottom: theme.spacing.xs}]}>
+              🏓 Last Ping Received:
+            </Text>
+            <Text style={[themed($infoText), {color: theme.colors.textDim, marginBottom: theme.spacing.xs}]}>
+              Time: {formatTimestamp(lastHeartbeatReceived)}
+            </Text>
+            {/* <Text style={[themed($infoText), {color: theme.colors.textDim, marginBottom: theme.spacing.md}]}>
+              {lastHeartbeatReceived && getTimeDifference(lastHeartbeatReceived)}
+            </Text> */}
+
+            <Text style={[themed($subtitle), {color: theme.colors.text, marginBottom: theme.spacing.xs}]}>
+              Ping-Pong Health:
+            </Text>
+            <Text
+              style={[
+                themed($infoText),
+                {
+                  color:
+                    lastHeartbeatReceived && Date.now() - lastHeartbeatReceived < 45000
+                      ? theme.colors.palette.primary500
+                      : theme.colors.error,
+                  marginBottom: theme.spacing.xs,
+                },
+              ]}>
+              {lastHeartbeatReceived
+                ? Date.now() - lastHeartbeatReceived < 45000
+                  ? "🟢 Active (Receiving Pings)"
+                  : "🔴 Ping Timeout"
+                : "⚪ No Pings Received"}
+            </Text>
+            {lastHeartbeatSent && lastHeartbeatReceived && (
+              <Text style={[themed($infoText), {color: theme.colors.textDim, marginBottom: theme.spacing.xs}]}>
+                Response Time: {Math.abs(lastHeartbeatSent - lastHeartbeatReceived)}ms
+              </Text>
+            )}
           </View>
         </>
       )}

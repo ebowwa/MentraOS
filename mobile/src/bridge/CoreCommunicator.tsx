@@ -279,6 +279,16 @@ export class CoreCommunicator extends EventEmitter {
         GlobalEventEmitter.emit("GLASSES_DISPLAY_EVENT", data.glasses_display_event)
       } else if ("ping" in data) {
         // Heartbeat response - nothing to do
+      } else if ("heartbeat_sent" in data) {
+        console.log("💓 Received heartbeat_sent event from Core", data.heartbeat_sent)
+        GlobalEventEmitter.emit("heartbeat_sent", {
+          timestamp: data.heartbeat_sent.timestamp,
+        })
+      } else if ("heartbeat_received" in data) {
+        console.log("💓 Received heartbeat_received event from Core", data.heartbeat_received)
+        GlobalEventEmitter.emit("heartbeat_received", {
+          timestamp: data.heartbeat_received.timestamp,
+        })
       } else if ("notify_manager" in data) {
         GlobalEventEmitter.emit("SHOW_BANNER", {
           message: translate(data.notify_manager.message),
