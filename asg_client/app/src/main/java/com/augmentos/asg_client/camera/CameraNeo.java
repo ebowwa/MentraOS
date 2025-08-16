@@ -57,8 +57,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Queue;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.Executor;
@@ -162,6 +164,20 @@ public class CameraNeo extends LifecycleService {
 
     // Static callback for photo capture
     private static PhotoCaptureCallback sPhotoCallback;
+    
+    // Photo request queue for rapid capture
+    private static class PhotoRequest {
+        String filePath;
+        String size;
+        PhotoCaptureCallback callback;
+        
+        PhotoRequest(String filePath, String size, PhotoCaptureCallback callback) {
+            this.filePath = filePath;
+            this.size = size;
+            this.callback = callback;
+        }
+    }
+    private final Queue<PhotoRequest> photoRequestQueue = new LinkedList<>();
 
     // For compatibility with CameraRecordingService
     private static String lastPhotoPath;
@@ -302,7 +318,16 @@ public class CameraNeo extends LifecycleService {
         Intent intent = new Intent(context, CameraNeo.class);
         intent.setAction(ACTION_TAKE_PHOTO);
         intent.putExtra(EXTRA_PHOTO_FILE_PATH, filePath);
-        context.startForegroundService(intent);
+        
+        // Check if service is already running with camera kept alive
+        if (sInstance != null && sInstance.isCameraKeptAlive && sInstance.cameraDevice != null) {
+            Log.d(TAG, "Reusing existing camera service for rapid capture");
+            // Service is already running with camera open, just send the intent
+            context.startService(intent);
+        } else {
+            // Need to start the service fresh
+            context.startForegroundService(intent);
+        }
     }
 
     public static void takePictureWithCallback(Context context, String filePath, PhotoCaptureCallback callback, String size) {
@@ -312,7 +337,16 @@ public class CameraNeo extends LifecycleService {
         intent.setAction(ACTION_TAKE_PHOTO);
         intent.putExtra(EXTRA_PHOTO_FILE_PATH, filePath);
         intent.putExtra("PHOTO_SIZE", size);
-        context.startForegroundService(intent);
+        
+        // Check if service is already running with camera kept alive
+        if (sInstance != null && sInstance.isCameraKeptAlive && sInstance.cameraDevice != null) {
+            Log.d(TAG, "Reusing existing camera service for rapid capture with size: " + size);
+            // Service is already running with camera open, just send the intent
+            context.startService(intent);
+        } else {
+            // Need to start the service fresh
+            context.startForegroundService(intent);
+        }
     }
 
     /**
@@ -476,7 +510,15 @@ public class CameraNeo extends LifecycleService {
         
         // Check if camera is already open and kept alive AND size hasn't changed
         if (isCameraKeptAlive && cameraDevice != null && !sizeChanged) {
-            Log.d(TAG, "Camera is already open (kept alive), taking photo immediately with same size");
+            Log.d(TAG, "Camera is already open (kept alive), processing photo request");
+            
+            // Check if camera is currently busy taking a photo
+            if (shotState != ShotState.IDLE) {
+                Log.d(TAG, "Camera is busy (state: " + shotState + "), queuing photo request");
+                // Queue this request to be processed after current photo completes
+                photoRequestQueue.offer(new PhotoRequest(filePath, pendingRequestedSize, sPhotoCallback));
+                return;
+            }
             
             // Cancel the keep-alive timer since we're taking a new photo
             cancelKeepAliveTimer();
@@ -912,7 +954,8 @@ public class CameraNeo extends LifecycleService {
             imageReader.setOnImageAvailableListener(reader -> {
                 // Only process images when we're actually shooting, not during precapture metering
                 if (shotState != ShotState.SHOOTING) {
-                    Log.d(TAG, "ImageReader triggered during " + shotState + " state, ignoring (this is normal during AE metering)");
+                    // Suppress logging to prevent logcat overflow
+                    // Only log errors or important state changes
                     // Consume the image to prevent backing up the queue
                     try (Image image = reader.acquireLatestImage()) {
                         // Just consume and discard
@@ -956,18 +999,24 @@ public class CameraNeo extends LifecycleService {
                     // Reset state
                     shotState = ShotState.IDLE;
 
-                    // Start keep-alive timer instead of immediately closing
-                    startKeepAliveTimer();
+                    // Check if there are queued photo requests
+                    processQueuedPhotoRequests();
                 } catch (Exception e) {
                     Log.e(TAG, "Error handling image data", e);
                     notifyPhotoError("Error processing photo: " + e.getMessage());
                     shotState = ShotState.IDLE;
-                    // On error, close immediately without keep-alive
-                    cancelKeepAliveTimer();
-                    pendingPhotoPath = null;
-                    pendingRequestedSize = null;
-                    closeCamera();
-                    stopSelf();
+                    
+                    // Check if there are queued photo requests even after error
+                    if (!photoRequestQueue.isEmpty()) {
+                        processQueuedPhotoRequests();
+                    } else {
+                        // On error with no queued requests, close immediately without keep-alive
+                        cancelKeepAliveTimer();
+                        pendingPhotoPath = null;
+                        pendingRequestedSize = null;
+                        closeCamera();
+                        stopSelf();
+                    }
                 }
             }, backgroundHandler);
 
@@ -1541,6 +1590,39 @@ public class CameraNeo extends LifecycleService {
     }
     
     /**
+     * Process any queued photo requests after completing current photo
+     */
+    private void processQueuedPhotoRequests() {
+        if (!photoRequestQueue.isEmpty() && shotState == ShotState.IDLE) {
+            PhotoRequest nextRequest = photoRequestQueue.poll();
+            if (nextRequest != null) {
+                Log.d(TAG, "Processing queued photo request: " + nextRequest.filePath);
+                
+                // Update the callback for this request
+                sPhotoCallback = nextRequest.callback;
+                
+                // Cancel any pending keep-alive timer
+                cancelKeepAliveTimer();
+                
+                // Process the queued request
+                pendingPhotoPath = nextRequest.filePath;
+                pendingRequestedSize = nextRequest.size;
+                
+                // Start new capture sequence
+                shotState = ShotState.WAITING_AE;
+                if (backgroundHandler != null) {
+                    backgroundHandler.post(() -> startPrecaptureSequence());
+                } else {
+                    startPrecaptureSequence();
+                }
+            }
+        } else if (photoRequestQueue.isEmpty()) {
+            // No more requests, start keep-alive timer
+            startKeepAliveTimer();
+        }
+    }
+    
+    /**
      * Cancel the keep-alive timer
      */
     private void cancelKeepAliveTimer() {
@@ -1812,9 +1894,8 @@ public class CameraNeo extends LifecycleService {
                                      @NonNull TotalCaptureResult result) {
 
             Integer aeState = result.get(CaptureResult.CONTROL_AE_STATE);
-            Log.d(TAG, "AE Callback - Current shotState: " + shotState + ", AE_STATE: " +
-                 (aeState != null ? getAeStateName(aeState) : "null") +
-                 (hasAutoFocus ? " (autofocus automatic)" : ""));
+            // Suppress verbose AE logging to prevent logcat overflow
+            // Only log important state transitions
 
             if (aeState == null) {
                 Log.w(TAG, "AE_STATE is null, proceeding with capture anyway");
@@ -1839,12 +1920,12 @@ public class CameraNeo extends LifecycleService {
                              (timeout ? " - timeout)" : ")") + ", capturing photo...");
                         capturePhoto();
                     } else {
-                        Log.d(TAG, "AE still converging - AE: " + getAeStateName(aeState));
+                        // Suppress convergence logging - too verbose
                     }
                     break;
 
                 case SHOOTING:
-                    Log.d(TAG, "Photo capture in progress...");
+                    // Photo capture in progress - suppressed log
                     break;
 
                 case IDLE:
@@ -1920,7 +2001,7 @@ public class CameraNeo extends LifecycleService {
                 public void onCaptureCompleted(@NonNull CameraCaptureSession session,
                                              @NonNull CaptureRequest request,
                                              @NonNull TotalCaptureResult result) {
-                    Log.d(TAG, "Photo capture completed successfully");
+                    Log.i(TAG, "Photo capture completed successfully");  // Keep as INFO level
                     // Image processing will happen in ImageReader callback
                 }
 

@@ -57,6 +57,7 @@ public class CommandProcessor {
     private final CommandProtocolDetector protocolDetector;
     private final K900CommandHandler k900CommandHandler;
     private final ResponseSender responseSender;
+    private final ChunkReassembler chunkReassembler;
 
     public CommandProcessor(Context context, ICommunicationManager communicationManager, IStateManager stateManager, IMediaManager streamingManager, IResponseBuilder responseBuilder, IConfigurationManager configurationManager, AsgClientServiceManager serviceManager, FileManager fileManager) {
         Log.d(TAG, "🔧 Initializing CommandProcessor with dependencies");
@@ -76,6 +77,11 @@ public class CommandProcessor {
         this.protocolDetector = new CommandProtocolDetector();
         this.k900CommandHandler = new K900CommandHandler(serviceManager, stateManager, communicationManager);
         this.responseSender = new ResponseSender(serviceManager);
+        this.chunkReassembler = new ChunkReassembler();
+        
+        // Add chunked message support to protocol detector
+        this.protocolDetector.addChunkedMessageSupport(chunkReassembler);
+        Log.d(TAG, "✅ Chunked message support initialized");
 
         // Register command handlers
         initializeCommandHandlers();
@@ -87,7 +93,7 @@ public class CommandProcessor {
      * Follows Single Responsibility Principle by delegating to specialized components.
      */
     public void processCommand(byte[] data) {
-        Log.d(TAG, "🚀 processCommand() called with data length: " + (data != null ? data.length : "null"));
+        // Suppress verbose logging to prevent logcat overflow
 
         if (data == null || data.length == 0) {
             Log.w(TAG, "⚠️ Received null or empty data - skipping processing");
@@ -95,7 +101,7 @@ public class CommandProcessor {
         }
 
         try {
-            Log.d(TAG, "📝 Parsing JSON from byte data");
+            // Parsing JSON from byte data
             // Parse JSON from byte data
             JSONObject jsonObject = commandParser.parseToJson(data);
             if (jsonObject == null) {
@@ -103,14 +109,14 @@ public class CommandProcessor {
                 return;
             }
 
-            Log.d(TAG, "📋 Successfully parsed JSON: " + jsonObject.toString());
+            // Successfully parsed JSON
             // Process the parsed JSON command
             processJsonCommand(jsonObject);
         } catch (Exception e) {
             Log.e(TAG, "💥 Error processing command from byte data", e);
         }
 
-        Log.d(TAG, "🏁 processCommand() completed");
+        // processCommand() completed
     }
 
     /**
@@ -118,11 +124,11 @@ public class CommandProcessor {
      * Follows Open/Closed Principle by using registry pattern.
      */
     private void processJsonCommand(JSONObject json) {
-        Log.d(TAG, "🔄 processJsonCommand() started");
+        // processJsonCommand() started
 
         try {
             // Extract command data
-            Log.d(TAG, "🔍 Extracting command data from JSON");
+            // Extracting command data from JSON
             CommandData commandData = extractCommandData(json);
             if (commandData == null) {
                 Log.w(TAG, "⚠️ No command data extracted - processing complete");
@@ -140,21 +146,21 @@ public class CommandProcessor {
             Log.e(TAG, "💥 Error processing JSON command", e);
         }
 
-        Log.d(TAG, "🏁 processJsonCommand() completed");
+        // processJsonCommand() completed
     }
 
     /**
      * Extract and validate command data from JSON using improved protocol detector.
      */
     private CommandData extractCommandData(JSONObject json) {
-        Log.d(TAG, "🔍 extractCommandData() started");
+        // extractCommandData() started
 
         try {
             // Use protocol detector to identify and extract command data
-            Log.d(TAG, "🔬 Detecting protocol type");
+            // Detecting protocol type
             CommandProtocolDetector.ProtocolDetectionResult result = protocolDetector.detectProtocol(json);
 
-            Log.d(TAG, "📊 Protocol detection result - Type: " + result.protocolType().getDisplayName() + ", Valid: " + result.isValid());
+            // Protocol detection result
 
             if (!result.isValid()) {
                 Log.w(TAG, "❌ Invalid protocol detected: " + result.protocolType().getDisplayName());
@@ -166,14 +172,14 @@ public class CommandProcessor {
                     Log.i(TAG, "🎯 Processing K900 protocol command");
                     // Handle K900 format using dedicated handler
                     k900CommandHandler.processK900Command(json);
-                    Log.d(TAG, "✅ K900 command processed successfully");
+                    // K900 command processed successfully
                     return null; // K900 commands are handled directly
 
                 case JSON_COMMAND:
                     Log.i(TAG, "📋 Processing standard JSON command");
                     // Standard JSON command processing
                     CommandData commandData = new CommandData(result.commandType(), result.extractedData(), result.messageId());
-                    Log.d(TAG, "✅ Command data created successfully: " + commandData.type());
+                    // Command data created successfully
                     return commandData;
 
                 case UNKNOWN:

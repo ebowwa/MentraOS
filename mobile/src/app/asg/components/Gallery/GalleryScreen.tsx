@@ -137,7 +137,7 @@ export function GalleryScreen() {
         setIsLoadingMore(false)
       }
     },
-    [isWifiConnected, glassesWifiIp, serverPhotos],
+    [isWifiConnected, glassesWifiIp], // Removed serverPhotos from dependencies to prevent infinite loop
   )
 
   // Load downloaded photos
@@ -327,13 +327,23 @@ export function GalleryScreen() {
       } else {
         // For server photos/videos, we need to download first
         const mediaType = photo.is_video ? "video" : "photo"
-        showAlert("Info", `Please sync this ${mediaType} first to share it`, [{text: translate("common:ok")}])
+        // Close the media viewer first so the alert appears on top
+        setSelectedPhoto(null)
+        // Small delay to ensure modal closes before showing alert
+        setTimeout(() => {
+          showAlert("Info", `Please sync this ${mediaType} first to share it`, [{text: translate("common:ok")}])
+        }, 100)
         return
       }
 
       if (!filePath) {
         console.error("No valid file path found")
-        showAlert("Error", "Unable to share this photo", [{text: translate("common:ok")}])
+        // Close the media viewer first so the alert appears on top
+        setSelectedPhoto(null)
+        // Small delay to ensure modal closes before showing alert
+        setTimeout(() => {
+          showAlert("Error", "Unable to share this photo", [{text: translate("common:ok")}])
+        }, 100)
         return
       }
 
@@ -356,14 +366,24 @@ export function GalleryScreen() {
     } catch (error) {
       // Check if it's a file provider error
       if (error instanceof Error && error.message?.includes("FileProvider")) {
-        showAlert(
-          "Sharing Not Available",
-          "File sharing will work after the next app build. For now, you can find your photos in the AugmentOS folder.",
-          [{text: translate("common:ok")}],
-        )
+        // Close the media viewer first so the alert appears on top
+        setSelectedPhoto(null)
+        // Small delay to ensure modal closes before showing alert
+        setTimeout(() => {
+          showAlert(
+            "Sharing Not Available",
+            "File sharing will work after the next app build. For now, you can find your photos in the AugmentOS folder.",
+            [{text: translate("common:ok")}],
+          )
+        }, 100)
       } else {
         console.error("Error sharing photo:", error)
-        showAlert("Error", "Failed to share photo", [{text: translate("common:ok")}])
+        // Close the media viewer first so the alert appears on top
+        setSelectedPhoto(null)
+        // Small delay to ensure modal closes before showing alert
+        setTimeout(() => {
+          showAlert("Error", "Failed to share photo", [{text: translate("common:ok")}])
+        }, 100)
       }
     }
   }
@@ -415,7 +435,7 @@ export function GalleryScreen() {
     ])
   }
 
-  // Load data on mount and when dependencies change
+  // Load data on mount and when connection changes
   useEffect(() => {
     // Check connectivity immediately on mount
     checkConnectivity().then(() => {
@@ -423,7 +443,7 @@ export function GalleryScreen() {
     })
     loadPhotos(false)
     loadDownloadedPhotos()
-  }, [loadPhotos, loadDownloadedPhotos]) // Removed checkConnectivity to prevent re-renders
+  }, [isWifiConnected, glassesWifiIp]) // Only reload when connection status changes
 
   // Handle back button
   useFocusEffect(
@@ -454,9 +474,6 @@ export function GalleryScreen() {
 
   // Auto-refresh connection check every 5 seconds if not connected
   useEffect(() => {
-    // Set initial connection status
-    setLastConnectionStatus(isGalleryReachable)
-
     let interval: NodeJS.Timeout | null = null
 
     // Only set up auto-refresh if gallery is not reachable
@@ -477,24 +494,21 @@ export function GalleryScreen() {
           setLastConnectionStatus(false)
         }
       }, 5000) // Check every 5 seconds
-
-      setConnectionCheckInterval(interval)
     } else {
-      // Clear any existing interval if connection is good
-      if (connectionCheckInterval) {
-        clearInterval(connectionCheckInterval)
-        setConnectionCheckInterval(null)
+      // Update connection status when gallery becomes reachable
+      if (!lastConnectionStatus) {
+        setLastConnectionStatus(true)
       }
     }
 
-    // Cleanup interval on unmount - using the local interval variable
+    // Cleanup interval on unmount
     return () => {
       if (interval) {
         console.log("[GalleryScreen] Cleaning up connection check interval")
         clearInterval(interval)
       }
     }
-  }, [isGalleryReachable, checkConnectivity, loadPhotos, loadDownloadedPhotos])
+  }, [isGalleryReachable, lastConnectionStatus]) // Only depend on connection states, not functions
 
   // Combine photos: server photos first, then downloaded photos, both sorted newest first
   const allPhotos = useMemo(() => {

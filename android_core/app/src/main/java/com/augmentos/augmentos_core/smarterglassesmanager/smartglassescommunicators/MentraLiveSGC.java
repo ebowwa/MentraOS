@@ -45,6 +45,7 @@ import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.PairF
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.ImuDataEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.ImuGestureEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.K900ProtocolUtils;
+import com.augmentos.augmentos_core.smarterglassesmanager.utils.MessageChunker;
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.BlePhotoUploadService;
 
 import org.greenrobot.eventbus.EventBus;
@@ -1121,8 +1122,30 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                     String jsonStr = json.toString();
                     Log.d(TAG, "📤 Sending JSON with esoteric message ID " + messageId + ": " + jsonStr);
 
-                    // Track the message for ACK
-                    trackMessageForAck(messageId, jsonStr);
+                    // Check if this message will be chunked to determine timeout
+                    long ackTimeout = ACK_TIMEOUT_MS;
+                    try {
+                        // Create a test C-wrapped version to check size
+                        JSONObject testWrapper = new JSONObject();
+                        testWrapper.put("C", jsonStr);
+                        if (wakeup) {
+                            testWrapper.put("W", 1);
+                        }
+                        String testWrappedJson = testWrapper.toString();
+                        
+                        if (MessageChunker.needsChunking(testWrappedJson)) {
+                            // Calculate dynamic timeout for chunked message
+                            int estimatedChunks = (int) Math.ceil(jsonStr.length() / 300.0);
+                            ackTimeout = ACK_TIMEOUT_MS + (estimatedChunks * 50L) + 2000L;
+                            Log.d(TAG, "Message will be chunked into ~" + estimatedChunks + " chunks, using dynamic timeout: " + ackTimeout + "ms");
+                        }
+                    } catch (JSONException e) {
+                        // If we can't determine, use default timeout
+                        Log.w(TAG, "Could not determine if message needs chunking, using default timeout");
+                    }
+
+                    // Track the message for ACK with appropriate timeout
+                    trackMessageForAck(messageId, jsonStr, ackTimeout);
 
                     // Send the data
                     sendDataToGlasses(jsonStr, wakeup);
@@ -1143,6 +1166,13 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
      * Track a message for ACK response
      */
     private void trackMessageForAck(long messageId, String messageData) {
+        trackMessageForAck(messageId, messageData, ACK_TIMEOUT_MS);
+    }
+    
+    /**
+     * Track a message for ACK response with custom timeout
+     */
+    private void trackMessageForAck(long messageId, String messageData, long timeoutMs) {
         if (!isConnected) {
             Log.d(TAG, "Not connected, skipping ACK tracking for message " + messageId);
             return;
@@ -1166,15 +1196,15 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         PendingMessage pendingMessage = new PendingMessage(messageData, System.currentTimeMillis(), 0, retryRunnable);
         pendingMessages.put(messageId, pendingMessage);
 
-        // Schedule ACK timeout
+        // Schedule ACK timeout with custom timeout
         handler.postDelayed(new Runnable() {
             @Override
             public void run() {
                 checkMessageAck(messageId);
             }
-        }, ACK_TIMEOUT_MS);
+        }, timeoutMs);
 
-        Log.d(TAG, "📋 Tracking message " + messageId + " for ACK (timeout: " + ACK_TIMEOUT_MS + "ms)");
+        Log.d(TAG, "📋 Tracking message " + messageId + " for ACK (timeout: " + timeoutMs + "ms)");
     }
 
     /**
@@ -2898,6 +2928,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     /**
      * Send data directly to the glasses using the K900 protocol utility.
      * This method uses K900ProtocolUtils.packJsonToK900 to handle C-wrapping and protocol formatting.
+     * Large messages are automatically chunked if they exceed the 400-byte threshold.
      *
      * @param data The string data to be sent to the glasses
      */
@@ -2908,14 +2939,64 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         }
 
         try {
-            // Use K900ProtocolUtils to handle C-wrapping and protocol formatting
-            Log.d(TAG, "Sending data to glasses: " + data);
-
-            // Pack the data using the centralized utility
-            byte[] packedData = K900ProtocolUtils.packJsonToK900(data, wakeup);
-
-            // Queue the data for sending
-            queueData(packedData);
+            // First check if the message needs chunking
+            // Create a test C-wrapped version to check size
+            JSONObject testWrapper = new JSONObject();
+            testWrapper.put("C", data);
+            if (wakeup) {
+                testWrapper.put("W", 1);
+            }
+            String testWrappedJson = testWrapper.toString();
+            
+            // Check if chunking is needed
+            if (MessageChunker.needsChunking(testWrappedJson)) {
+                Log.d(TAG, "Message exceeds threshold, chunking required");
+                
+                // Extract message ID if present for ACK tracking
+                long messageId = -1;
+                try {
+                    JSONObject originalJson = new JSONObject(data);
+                    messageId = originalJson.optLong("mId", -1);
+                } catch (JSONException e) {
+                    // Not a JSON message or no mId, that's okay
+                }
+                
+                // Create chunks
+                List<JSONObject> chunks = MessageChunker.createChunks(data, messageId);
+                Log.d(TAG, "Sending " + chunks.size() + " chunks");
+                
+                // Send each chunk
+                for (int i = 0; i < chunks.size(); i++) {
+                    JSONObject chunk = chunks.get(i);
+                    String chunkStr = chunk.toString();
+                    
+                    // Pack each chunk using the normal K900 protocol
+                    byte[] packedData = K900ProtocolUtils.packJsonToK900(chunkStr, wakeup && i == 0); // Only wakeup on first chunk
+                    
+                    // Queue the chunk for sending
+                    queueData(packedData);
+                    
+                    // Add small delay between chunks to avoid overwhelming the connection
+                    if (i < chunks.size() - 1) {
+                        try {
+                            Thread.sleep(50); // 50ms delay between chunks
+                        } catch (InterruptedException e) {
+                            Log.w(TAG, "Interrupted during chunk delay");
+                        }
+                    }
+                }
+                
+                Log.d(TAG, "All chunks queued for transmission");
+            } else {
+                // Normal single message transmission
+                Log.d(TAG, "Sending data to glasses: " + data);
+                
+                // Pack the data using the centralized utility
+                byte[] packedData = K900ProtocolUtils.packJsonToK900(data, wakeup);
+                
+                // Queue the data for sending
+                queueData(packedData);
+            }
 
         } catch (Exception e) {
             Log.e(TAG, "Error creating data JSON", e);

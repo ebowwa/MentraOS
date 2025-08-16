@@ -1,6 +1,8 @@
 package com.augmentos.asg_client.io.media.core;
 
 import android.content.Context;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
@@ -288,7 +290,7 @@ public class MediaCaptureService {
                             // Take photo and upload directly to server
                             String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
                             String photoFilePath = fileManager.getDefaultMediaDirectory() + File.separator + "IMG_" + timeStamp + ".jpg";
-                            takePhotoAndUpload(photoFilePath, requestId, null, save, "medium");
+                            takePhotoAndUpload(photoFilePath, requestId, null, save, "medium", false);
                         } else {
                             Log.d(TAG, "Button press handled by server, no photo needed");
                         }
@@ -408,7 +410,7 @@ public class MediaCaptureService {
         String requestId = "local_video_" + timeStamp;
         String videoFilePath = fileManager.getDefaultMediaDirectory() + File.separator + "VID_" + timeStamp + ".mp4";
 
-        startVideoRecording(videoFilePath, requestId, null);
+        startVideoRecording(videoFilePath, requestId, false);
     }
 
     /**
@@ -703,10 +705,16 @@ public class MediaCaptureService {
 
         String photoFilePath = fileManager.getDefaultMediaDirectory() + File.separator + "IMG_" + timeStamp + ".jpg";
 
-        Log.d(TAG, "Taking photo locally at: " + photoFilePath + " with size: " + size);
+        Log.d(TAG, "Taking photo locally at: " + photoFilePath + " with size: " + size + ", LED: " + enableLed);
 
         // Generate a temporary requestId
         String requestId = "local_" + timeStamp;
+
+        // Turn on LED if enabled and supported
+        if (enableLed && hardwareManager.supportsRecordingLed()) {
+            Log.d(TAG, "📸 Turning on camera LED for photo flash");
+            hardwareManager.setRecordingLedOn();
+        }
 
         // For offline mode, take photo and queue it for later upload
         CameraNeo.takePictureWithCallback(
@@ -716,6 +724,15 @@ public class MediaCaptureService {
                     @Override
                     public void onPhotoCaptured(String filePath) {
                         Log.d(TAG, "Offline photo captured successfully at: " + filePath);
+                        
+                        // Turn off LED after photo capture (with 1 second delay for flash effect)
+                        if (enableLed && hardwareManager.supportsRecordingLed()) {
+                            new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                                Log.d(TAG, "📸 Turning off camera LED after photo flash");
+                                hardwareManager.setRecordingLedOff();
+                            }, 1000); // 1 second delay
+                        }
+                        
                         // Notify through standard capture listener if set up
                         if (mMediaCaptureListener != null) {
                             mMediaCaptureListener.onPhotoCaptured(requestId, filePath);
@@ -726,6 +743,12 @@ public class MediaCaptureService {
                     @Override
                     public void onPhotoError(String errorMessage) {
                         Log.e(TAG, "Failed to capture offline photo: " + errorMessage);
+
+                        // Turn off LED on error
+                        if (enableLed && hardwareManager.supportsRecordingLed()) {
+                            Log.d(TAG, "📸 Turning off camera LED after photo error");
+                            hardwareManager.setRecordingLedOff();
+                        }
 
                         if (mMediaCaptureListener != null) {
                             mMediaCaptureListener.onMediaError(requestId, errorMessage, MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
@@ -753,6 +776,12 @@ public class MediaCaptureService {
             mMediaCaptureListener.onPhotoCapturing(requestId);
         }
 
+        // Turn on LED if enabled and supported
+        if (enableLed && hardwareManager.supportsRecordingLed()) {
+            Log.d(TAG, "📸 Turning on camera LED for photo flash");
+            hardwareManager.setRecordingLedOn();
+        }
+
         try {
             // Use CameraNeo for photo capture
             CameraNeo.takePictureWithCallback(
@@ -762,6 +791,14 @@ public class MediaCaptureService {
                         @Override
                         public void onPhotoCaptured(String filePath) {
                             Log.d(TAG, "Photo captured successfully at: " + filePath);
+
+                            // Turn off LED after photo capture (with 1 second delay for flash effect)
+                            if (enableLed && hardwareManager.supportsRecordingLed()) {
+                                new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                                    Log.d(TAG, "📸 Turning off camera LED after photo flash");
+                                    hardwareManager.setRecordingLedOff();
+                                }, 1000); // 1 second delay
+                            }
 
                             // Notify that we've captured the photo
                             if (mMediaCaptureListener != null) {
@@ -779,6 +816,13 @@ public class MediaCaptureService {
                         @Override
                         public void onPhotoError(String errorMessage) {
                             Log.e(TAG, "Failed to capture photo: " + errorMessage);
+                            
+                            // Turn off LED on error
+                            if (enableLed && hardwareManager.supportsRecordingLed()) {
+                                Log.d(TAG, "📸 Turning off camera LED after photo error");
+                                hardwareManager.setRecordingLedOff();
+                            }
+                            
                             sendMediaErrorResponse(requestId, errorMessage, MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
 
                             if (mMediaCaptureListener != null) {
@@ -884,7 +928,7 @@ public class MediaCaptureService {
                         boolean shouldSave = Boolean.TRUE.equals(photoSaveFlags.get(requestId));
                         String requestedSize = photoRequestedSizes.get(requestId);
                         if (requestedSize == null || requestedSize.isEmpty()) requestedSize = "medium";
-                        takePhotoForBleTransfer(photoFilePath, requestId, bleImgId, shouldSave, requestedSize);
+                        takePhotoForBleTransfer(photoFilePath, requestId, bleImgId, shouldSave, requestedSize, false);
                         return; // Exit early - BLE transfer will handle cleanup
                     }
 
@@ -935,7 +979,7 @@ public class MediaCaptureService {
                     boolean shouldSaveFallback1 = Boolean.TRUE.equals(photoSaveFlags.get(requestId));
                     String requestedSizeFallback1 = photoRequestedSizes.get(requestId);
                     if (requestedSizeFallback1 == null || requestedSizeFallback1.isEmpty()) requestedSizeFallback1 = "medium";
-                    takePhotoForBleTransfer(photoFilePath, requestId, bleImgId, shouldSaveFallback1, requestedSizeFallback1);
+                    takePhotoForBleTransfer(photoFilePath, requestId, bleImgId, shouldSaveFallback1, requestedSizeFallback1, false);
                     return; // Exit early - BLE transfer will handle cleanup
                 }
 
@@ -1060,7 +1104,7 @@ public class MediaCaptureService {
                             boolean shouldSaveFallback2 = Boolean.TRUE.equals(photoSaveFlags.get(requestId));
                             String requestedSizeFallback2 = photoRequestedSizes.get(requestId);
                             if (requestedSizeFallback2 == null || requestedSizeFallback2.isEmpty()) requestedSizeFallback2 = "medium";
-                            takePhotoForBleTransfer(mediaFilePath, requestId, bleImgId, shouldSaveFallback2, requestedSizeFallback2);
+                            takePhotoForBleTransfer(mediaFilePath, requestId, bleImgId, shouldSaveFallback2, requestedSizeFallback2, false);
                             return; // Exit early - BLE transfer will handle cleanup
                         }
 
@@ -1195,11 +1239,11 @@ public class MediaCaptureService {
         if (isWiFiConnected()) {
             Log.d(TAG, "📶 WiFi connected, attempting direct upload for " + requestId);
             // Try WiFi upload (with automatic BLE fallback on failure)
-            takePhotoAndUpload(photoFilePath, requestId, webhookUrl, save, size);
+            takePhotoAndUpload(photoFilePath, requestId, webhookUrl, save, size, enableLed);
         } else {
             Log.d(TAG, "📵 No WiFi connection, using BLE transfer for " + requestId);
             // No WiFi, go straight to BLE
-            takePhotoForBleTransfer(photoFilePath, requestId, bleImgId, save, size);
+            takePhotoForBleTransfer(photoFilePath, requestId, bleImgId, save, size, enableLed);
         }
     }
 
@@ -1220,6 +1264,12 @@ public class MediaCaptureService {
             mMediaCaptureListener.onPhotoCapturing(requestId);
         }
 
+        // Turn on LED if enabled and supported
+        if (enableLed && hardwareManager.supportsRecordingLed()) {
+            Log.d(TAG, "📸 Turning on camera LED for photo flash");
+            hardwareManager.setRecordingLedOn();
+        }
+
         try {
             // Use CameraNeo for photo capture
             CameraNeo.takePictureWithCallback(
@@ -1229,6 +1279,14 @@ public class MediaCaptureService {
                         @Override
                         public void onPhotoCaptured(String filePath) {
                             Log.d(TAG, "Photo captured successfully for BLE transfer: " + filePath);
+
+                            // Turn off LED after photo capture (with 1 second delay for flash effect)
+                            if (enableLed && hardwareManager.supportsRecordingLed()) {
+                                new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                                    Log.d(TAG, "📸 Turning off camera LED after photo flash");
+                                    hardwareManager.setRecordingLedOff();
+                                }, 1000); // 1 second delay
+                            }
 
                             // Notify that we've captured the photo
                             if (mMediaCaptureListener != null) {
@@ -1242,6 +1300,13 @@ public class MediaCaptureService {
                         @Override
                         public void onPhotoError(String errorMessage) {
                             Log.e(TAG, "Failed to capture photo for BLE: " + errorMessage);
+                            
+                            // Turn off LED on error
+                            if (enableLed && hardwareManager.supportsRecordingLed()) {
+                                Log.d(TAG, "📸 Turning off camera LED after photo error");
+                                hardwareManager.setRecordingLedOff();
+                            }
+                            
                             sendMediaErrorResponse(requestId, errorMessage, MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
 
                             if (mMediaCaptureListener != null) {

@@ -1766,7 +1766,7 @@ public class AsgClientServiceBackup extends Service implements NetworkStateListe
                     if ("ble".equals(transferMethod)) {
                         // Take photo, compress with AVIF, and send via BLE
                         Log.d(TAG, "Using BLE transfer with ID: " + bleImgId);
-                        mMediaCaptureService.takePhotoForBleTransfer(photoFilePath, requestId, bleImgId, save, size);
+                        mMediaCaptureService.takePhotoForBleTransfer(photoFilePath, requestId, bleImgId, save, size, false);
                     } else if ("auto".equals(transferMethod)) {
                         // Auto mode: Try WiFi first, fallback to BLE if needed
                         Log.d(TAG, "Using auto transfer mode with BLE fallback ID: " + bleImgId);
@@ -1774,10 +1774,10 @@ public class AsgClientServiceBackup extends Service implements NetworkStateListe
                             Log.e(TAG, "Auto mode requires bleImgId for fallback");
                             return;
                         }
-                        mMediaCaptureService.takePhotoAutoTransfer(photoFilePath, requestId, webhookUrl, bleImgId, save, size);
+                        mMediaCaptureService.takePhotoAutoTransfer(photoFilePath, requestId, webhookUrl, bleImgId, save, size, false);
                     } else {
                         // Existing direct upload path (WiFi only, no fallback)
-                        mMediaCaptureService.takePhotoAndUpload(photoFilePath, requestId, webhookUrl, save, size);
+                        mMediaCaptureService.takePhotoAndUpload(photoFilePath, requestId, webhookUrl, save, size, false);
                     }
                     break;
 
@@ -1808,7 +1808,7 @@ public class AsgClientServiceBackup extends Service implements NetworkStateListe
                     Log.d(TAG, "Starting video recording with requestId: " + videoRequestId + ", save: " + videoSave);
 
                     // Start video recording with the new command method
-                    captureService.handleStartVideoCommand(videoRequestId, videoSave);
+                    captureService.handleStartVideoCommand(videoRequestId, videoSave, false);
 
                     // Send success response
                     sendVideoRecordingStatusResponse(true, "recording_started", null);
