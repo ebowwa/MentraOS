@@ -11,7 +11,7 @@ import mentraos.ble.MentraosBle.PhoneToGlasses;
 //import mentraos.ble.MentraosBle.PhoneToGlasses.PayloadCase;
 import mentraos.ble.MentraosBle.GlassesToPhone;
 import mentraos.ble.MentraosBle.GlassesToPhone.PayloadCase;
-import mentraos.ble.MentraosBle.PingRequest;
+// import mentraos.ble.MentraosBle.PingRequest; // No longer used - phone receives pings instead of sending them
 import mentraos.ble.MentraosBle.DisplayImage;
 import mentraos.ble.MentraosBle.BatteryStatus;
 import mentraos.ble.MentraosBle.ChargingState;
@@ -103,6 +103,8 @@ import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.Glass
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesHeadUpEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.BleCommandReceiver;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.BleCommandSender;
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.HeartbeatSentEvent;
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.HeartbeatReceivedEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses.SmartGlassesDevice;
 import com.augmentos.augmentos_core.smarterglassesmanager.speechrecognition.augmentos.SpeechRecAugmentos;
 import com.augmentos.augmentos_core.R;
@@ -126,6 +128,14 @@ import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.Glass
 import java.io.IOException;
 import java.io.InputStream;
 
+/**
+ * MentraNexSGC - Smart Glasses Communicator for Mentra Nex Glasses
+ * 
+ * Heartbeat System: This implementation now follows the protobuf specification where:
+ * - Glasses send PING messages to the phone
+ * - Phone responds with PONG messages
+ * - Phone no longer sends periodic PING messages
+ */
 public final class MentraNexSGC extends SmartGlassesCommunicator {
     private final String TAG = "WearableAi_MentraNexSGC";
     public final String SHARED_PREFS_NAME = "NexGlassesPrefs";
@@ -135,8 +145,13 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
 
     private boolean isDebugMode = false;
 
+    // Count of pings received from glasses (used for battery query timing)
     private int heartbeatCount = 0;
     private int micBeatCount = 0;
+    
+    // Heartbeat timing tracking
+    private long lastHeartbeatSentTime = 0;
+    private long lastHeartbeatReceivedTime = 0;
     private BluetoothAdapter bluetoothAdapter;
 
     private boolean isKilled = false;//
@@ -156,8 +171,8 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
     private BluetoothGatt mainGlassGatt;
     private BluetoothGattCharacteristic mainWriteChar;
     private BluetoothGattCharacteristic mainNotifyChar;
-    private final int MTU_512 = 512;
-    private final int MTU_256 = 256;
+    private final int MTU_512 = 247;
+    private final int MTU_256 = 247;
     private int currentMTU = 0;
 
     private volatile boolean isImageSendProgressing = false;
@@ -219,8 +234,9 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
                 }
                 break;
                 case MAIN_TASK_HANDLER_CODE_HEART_BEAT:
-                    sendHeartbeat();
-                    mainTaskHandler.sendEmptyMessageDelayed(MAIN_TASK_HANDLER_CODE_HEART_BEAT, HEARTBEAT_INTERVAL_MS);
+                    // Note: Heartbeat is now handled by receiving ping from glasses
+                    // This case is kept for backward compatibility but no longer used
+                    Log.d(TAG, "Heartbeat handler called - no longer sending periodic pings");
                     break;
                 default:
                     break;
@@ -240,7 +256,8 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
     private final int DELAY_BETWEEN_SENDS_MS = 5; // not using now
     private final int DELAY_BETWEEN_CHUNKS_SEND = 5; // super small just in case
     private final int DELAY_BETWEEN_ACTIONS_SEND = 250; // not using now
-    private final int HEARTBEAT_INTERVAL_MS = 15000;
+    // Note: HEARTBEAT_INTERVAL_MS is no longer used since phone receives pings instead of sending them
+    // private final int HEARTBEAT_INTERVAL_MS = 15000;
     private final int MICBEAT_INTERVAL_MS = (1000 * 60) * 30; // micbeat every 30 minutes
     private int caseBatteryLevel = -1;
     private boolean caseCharging = false;
@@ -252,7 +269,7 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
     private final int BASE_RECONNECT_DELAY_MS = 3000; // Start with 3 seconds
     private final int MAX_RECONNECT_DELAY_MS = 60000;
 
-    // heartbeat sender
+    // heartbeat monitoring (passive - waiting for ping from glasses)
     private Handler findCompatibleDevicesHandler;
     private boolean isScanningForCompatibleDevices = false;
     private boolean isScanning = false;
@@ -389,10 +406,9 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
                         Log.d(TAG, "Called forceSideDisconnection().");
                         currentMTU = 0;
                         // Stop any periodic transmissions
-                        stopHeartbeat();
                         stopMicBeat();
                         sendQueue.clear();
-                        Log.d(TAG, "Stopped heartbeat and mic beat; cleared sendQueue.");
+                        Log.d(TAG, "Stopped heartbeat monitoring and mic beat; cleared sendQueue.");
                         updateConnectionState();
                         Log.d(TAG, "Updated connection state after disconnection.");
                         if (gatt.getDevice() != null) {
@@ -410,14 +426,13 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
                     MAX_CHUNK_SIZE = MAX_CHUNK_SIZE_DEFAULT;
                     BMP_CHUNK_SIZE = MAX_CHUNK_SIZE_DEFAULT;
                     Log.d(TAG, "Unexpected connection state encountered for " + " glass: " + newState);
-                    stopHeartbeat();
                     stopMicBeat();
                     sendQueue.clear();
 
                     // Mark both sides as not ready (you could also clear both if one disconnects)
                     mainServicesWaiter.setTrue();
 
-                    Log.d(TAG, "Stopped heartbeat and mic beat; cleared sendQueue due to connection failure.");
+                    Log.d(TAG, "Stopped heartbeat monitoring and mic beat; cleared sendQueue due to connection failure.");
 
                     Log.d(TAG, " glass connection failed with status: " + status);
                     isMainConnected = false;
@@ -579,9 +594,6 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
 
                 // enable our AugmentOS notification key
                 sendWhiteListCommand(10);
-
-                // start heartbeat
-                startHeartbeat(10000);
 
                 // start mic beat
                 // startMicBeat(30000);
@@ -1282,9 +1294,6 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
         // disable the microphone
         setMicEnabled(false, 0);
 
-        // stop sending heartbeat
-        stopHeartbeat();
-
         // stop sending micbeat
         stopMicBeat();
 
@@ -1590,11 +1599,15 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
     }
 
     // Heartbeat methods for Nex Glasses
-    private byte[] constructHeartbeatForNexGlasses() {
-        // Create the PhoneToGlasses using its builder and set the pingNewBuilder
-        PingRequest pingNewBuilder = PingRequest.newBuilder().build();
+    // Note: Glasses send ping, phone responds with pong
+    private byte[] constructPongResponse() {
+        Log.d(TAG, "Constructing pong response to glasses ping");
+        
+        // Create the PongResponse message
+        PongResponse pongResponse = PongResponse.newBuilder().build();
 
-        PhoneToGlasses phoneToGlasses = PhoneToGlasses.newBuilder().setPing(pingNewBuilder).build();
+        // Create the PhoneToGlasses message with the pong response
+        PhoneToGlasses phoneToGlasses = PhoneToGlasses.newBuilder().setPong(pongResponse).build();
 
         return generateProtobufCommandBytes(phoneToGlasses);
     }
@@ -1607,14 +1620,6 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
 
         return generateProtobufCommandBytes(phoneToGlasses);
 
-    }
-
-    private void startHeartbeat(int delay) {
-        Log.d(TAG, "Starting heartbeat");
-        if (heartbeatCount > 0) {
-            stopHeartbeat();
-        }
-        mainTaskHandler.sendEmptyMessageDelayed(MAIN_TASK_HANDLER_CODE_HEART_BEAT, delay);
     }
 
     // periodically send a mic ON request so it never turns off
@@ -1744,10 +1749,6 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
         }, delay);
     }
 
-    private void stopHeartbeat() {
-        mainTaskHandler.removeMessages(MAIN_TASK_HANDLER_CODE_HEART_BEAT);
-    }
-
     private void stopMicBeat() {
         setMicEnabled(false, 10);
         if (micBeatHandler != null) {
@@ -1758,18 +1759,33 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
         }
     }
 
-    private void sendHeartbeat() {
-        // for Mentra Nex Glasses
-        Log.d(TAG, "=== SENDING HEARTBEAT TO GLASSES ===");
-        byte[] heartbeatPacket = constructHeartbeatForNexGlasses();
+    private void sendPongResponse() {
+        // Respond to ping from glasses with pong
+        lastHeartbeatReceivedTime = System.currentTimeMillis();
+        Log.d(TAG, "=== SENDING PONG RESPONSE TO GLASSES === (Time: " + lastHeartbeatReceivedTime + ")");
+        
+        byte[] pongPacket = constructPongResponse();
 
-        sendDataSequentially(heartbeatPacket, 100);
+        // Send the pong response
+        if (pongPacket != null) {
+            sendDataSequentially(pongPacket, 100);
+            Log.d(TAG, "Pong response sent successfully");
+            
+            // Notify mobile app about pong sent
+            notifyHeartbeatSent(System.currentTimeMillis());
+        } else {
+            Log.e(TAG, "Failed to construct pong response packet");
+        }
 
+        // Still query battery periodically (every 10 pings received)
         if (batteryMain == -1 || heartbeatCount % 10 == 0) {
             mainTaskHandler.sendEmptyMessageDelayed(MAIN_TASK_HANDLER_CODE_BATTERY_QUERY, 500);
         }
 
         heartbeatCount++;
+        
+        // Notify mobile app about heartbeat received
+        notifyHeartbeatReceived(lastHeartbeatReceivedTime);
     }
 
     private void queryBatteryStatus() {
@@ -1852,7 +1868,7 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
         Log.d(TAG, "=== SENDING DASHBOARD POSITION COMMAND TO GLASSES ===");
         Log.d(TAG, "Dashboard Position - Height: " + height + " (0-8), Depth: " + depth + " (1-9)");
 
-        DisplayHeightConfig displayHeightConfig = DisplayHeightConfig.newBuilder().setHeight(height).setDepth(depth)
+        DisplayHeightConfig displayHeightConfig = DisplayHeightConfig.newBuilder().setHeight(height)
                 .build();
         PhoneToGlasses phoneToGlasses = PhoneToGlasses.newBuilder().setDisplayHeight(displayHeightConfig).build();
 
@@ -2630,10 +2646,10 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
         
         // Create the clear display protobuf message
         mentraos.ble.MentraosBle.ClearDisplay clearDisplay = mentraos.ble.MentraosBle.ClearDisplay.newBuilder()
-                .setMsgId("clear_disp_001")
                 .build();
 
         PhoneToGlasses phoneToGlasses = PhoneToGlasses.newBuilder()
+                .setMsgId("clear_disp_001")
                 .setClearDisplay(clearDisplay)
                 .build();
 
@@ -3137,6 +3153,13 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
                     Log.d(TAG, "headUpAngleResponse: " + headUpAngleResponse.toString());
                 }
                 break;
+                case PING: {
+                    lastHeartbeatReceivedTime = System.currentTimeMillis();
+                    Log.d(TAG, "=== RECEIVED PING FROM GLASSES === (Time: " + lastHeartbeatReceivedTime + ")");
+                    // Respond to ping with pong
+                    sendPongResponse();
+                }
+                break;
                 case VAD_EVENT: {
                     // final VadEvent vadEvent = glassesToPhone.getVadEvent();
                     // EventBus.getDefault().post(new VadEvent(vadEvent.getVad()));
@@ -3365,9 +3388,10 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
             
             switch (imageType) {
                 case "pattern":
-                    // Create a diagonal stripe pattern
-                    for (int i = 0; i < Math.max(width, height); i += 4) {
-                        canvas.drawLine(i, 0, i + 2, height, paint);
+                    // Create continuous horizontal lines pattern
+                    for (int y = 0; y < height; y += 4) {
+                        canvas.drawLine(0, y, width, y, paint);
+                        canvas.drawLine(0, y + 1, width, y + 1, paint);
                     }
                     break;
                     
@@ -3412,5 +3436,36 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
             Log.e(TAG, "Error generating test image: " + e.getMessage());
             return null;
         }
+    }
+    
+    /**
+     * Notify mobile app about heartbeat sent (now used when sending pong responses)
+     */
+    private void notifyHeartbeatSent(long timestamp) {
+        lastHeartbeatSentTime = timestamp;
+        // Send heartbeat event to mobile app via EventBus
+        EventBus.getDefault().post(new HeartbeatSentEvent(timestamp));
+    }
+    
+    /**
+     * Notify mobile app about heartbeat received
+     */
+    private void notifyHeartbeatReceived(long timestamp) {
+        // Send heartbeat event to mobile app via EventBus
+        EventBus.getDefault().post(new HeartbeatReceivedEvent(timestamp));
+    }
+    
+    /**
+     * Get last heartbeat sent timestamp (pong response time)
+     */
+    public long getLastHeartbeatSentTime() {
+        return lastHeartbeatSentTime;
+    }
+    
+    /**
+     * Get last heartbeat received timestamp
+     */
+    public long getLastHeartbeatReceivedTime() {
+        return lastHeartbeatReceivedTime;
     }
 }
