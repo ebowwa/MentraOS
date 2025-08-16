@@ -1,7 +1,7 @@
 /*
  * @Author       : Cole
  * @Date         : 2025-08-05 18:00:04
- * @LastEditTime : 2025-08-13 17:43:52
+ * @LastEditTime : 2025-08-16 18:12:24
  * @FilePath     : bspal_audio_i2s.c
  * @Description  :
  *
@@ -47,12 +47,18 @@ static nrfx_i2s_config_t cfg = {
     .mode = NRF_I2S_MODE_MASTER,
     .format = NRF_I2S_FORMAT_I2S,
     .alignment = NRF_I2S_ALIGN_LEFT,
-    .ratio = NRF_I2S_RATIO_96X,
-    .mck_setup = NRF_I2S_MCK_32MDIV21,
     .sample_width = NRF_I2S_SWIDTH_16BIT,
     .channels = NRF_I2S_CHANNELS_STEREO,
-    .clksrc = NRF_I2S_CLKSRC_PCLK32M,
     .enable_bypass = false,
+
+    // .ratio = NRF_I2S_RATIO_96X,
+    // .mck_setup = NRF_I2S_MCK_32MDIV21,
+    // .clksrc = NRF_I2S_CLKSRC_PCLK32M,
+    
+    .clksrc    = NRF_I2S_CLKSRC_ACLK,    // 用音频时钟
+    .mck_setup = NRF_I2S_MCK_32MDIV8,    // 对 ACLK 等价于 ACLK/8 = 12.288M/8 = 1.536 MHz
+    .ratio     = NRF_I2S_RATIO_96X,      // LRCK = 1.536M / 96 = 16 kHz 精准对齐
+
 };
 
 nrfx_i2s_buffers_t const i2s_req_buffer[2] = {
@@ -124,7 +130,8 @@ void audio_i2s_init(void)
     NRF_CLOCK->TASKS_HFCLKAUDIOSTART = 1;
 
     /* Wait for ACLK to start */
-    while (!NRF_CLOCK_EVENT_HFCLKAUDIOSTARTED)
+    // while (!NRF_CLOCK_EVENT_HFCLKAUDIOSTARTED)
+    while (NRF_CLOCK->EVENTS_HFCLKAUDIOSTARTED == 0)
     {
         k_sleep(K_MSEC(1));
     }
@@ -141,15 +148,7 @@ void audio_i2s_init(void)
     state = AUDIO_I2S_STATE_IDLE;
     BSP_LOGI(TAG, "Audio I2S initialized OK!!!");
 }
-/**
- * @brief Function to fill the I2S PCM data buffer.
- * This function is called to fill the I2S PCM data buffer with audio data.
- * It handles different configurations for stereo and mono audio playback.
- * @param i2c_pcm_data Pointer to the PCM data to be played.
- * @param i2c_pcm_size Size of the PCM data in samples.
- * @param i2s_pcm_ch Channel number for the I2S playback.
- *                   1 for left channel, 2 for right channel.
- */
+
 void i2s_pcm_player(void *i2c_pcm_data, int16_t i2c_pcm_size, uint8_t i2s_pcm_ch)
 {
 // 测试1块板子，1个麦克风，左右声道都播放此麦克风声音声道

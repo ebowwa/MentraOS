@@ -1,14 +1,13 @@
-/***
+/*** 
  * @Author       : Cole
- * @Date         : 2025-07-16 10:50:32
- * @LastEditTime : 2025-08-06 20:17:12
+ * @Date         : 2025-08-15 17:43:14
+ * @LastEditTime : 2025-08-16 16:16:00
  * @FilePath     : bspal_audio_i2s.h
- * @Description  :
+ * @Description  : 
  * @
- * @ Copyright (c) MentraOS Contributors 2025
+ * @ Copyright (c) MentraOS Contributors 2025 
  * @ SPDX-License-Identifier: Apache-2.0
  */
-
 #ifndef _BSPAL_AUDIO_I2S_H_
 #define _BSPAL_AUDIO_I2S_H_
 
@@ -22,8 +21,7 @@
  * 39845.888 = 2^16 * ((12 * 12.288 / 32M) - 4)
  * 39846 = 0x9BA6
  */
-#define HFCLKAUDIO_12_288_MHZ 0x9BAE
-// #define HFCLKAUDIO_12_288_MHZ 0x9BA6
+#define HFCLKAUDIO_12_288_MHZ 0x9BA6
 #define HFCLKAUDIO_12_165_MHZ 0x8FD8
 #define HFCLKAUDIO_12_411_MHZ 0xA774
 /**

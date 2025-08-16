@@ -1,7 +1,7 @@
 /*
  * @Author       : Cole
  * @Date         : 2025-07-31 10:40:40
- * @LastEditTime : 2025-08-13 18:01:00
+ * @LastEditTime : 2025-08-16 16:16:25
  * @FilePath     : mos_pdm.c
  * @Description  :
  *
@@ -49,7 +49,8 @@ static inline bool fifo_push(const int16_t *src)
 
 static inline bool fifo_pop(int16_t *dst)
 {
-    if (fifo_tail == fifo_head) return false;
+    if (fifo_tail == fifo_head)
+        return false;
     memcpy(dst, pcm_fifo[fifo_tail], sizeof(int16_t) * PDM_PCM_REQ_BUFFER_SIZE);
     fifo_tail = (fifo_tail + 1) % PCM_FIFO_FRAMES;
     return true;
@@ -89,11 +90,8 @@ void pdm_init(void)
     pdm_config.clk_pin           = PDM_CLK;
     pdm_config.din_pin           = PDM_DIN;
     pdm_config.edge              = NRF_PDM_EDGE_LEFTRISING;
-
-    pdm_config.clock_freq = NRF_PDM_FREQ_1032K;
-    pdm_config.ratio      = NRF_PDM_RATIO_64X;
-    // pdm_config.clock_freq = NRF_PDM_FREQ_1280K;
-    // pdm_config.ratio = NRF_PDM_RATIO_80X;
+    pdm_config.clock_freq        = NRF_PDM_FREQ_1280K;
+    pdm_config.ratio             = NRF_PDM_RATIO_80X;
 
     pdm_config.gain_l = NRF_PDM_GAIN_DEFAULT;
     pdm_config.gain_r = NRF_PDM_GAIN_DEFAULT;

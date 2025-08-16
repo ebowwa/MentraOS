@@ -47,7 +47,6 @@ uint8_t stream_id = 0;  // 0=MIC, 1=TTS
 // 1000000) #define PDM_PCM_REQ_BUFFER_SIZE     LC3_PCM_SAMPLES_PER_FRAME
 #define LC3_FRAME_LEN (LC3_BITRATE * LC3_FRAME_SIZE_US / 8 / 1000000)
 
-
 int user_sw_codec_lc3_init(void)
 {
     int ret;
