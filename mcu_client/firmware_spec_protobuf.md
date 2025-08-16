@@ -287,9 +287,9 @@ Configure the head-up detection angle (in degrees).
 
 Verify that connection is still alive.
 
-| Phone → Glasses                                         | Glasses → Phone                       |
-| ------------------------------------------------------- | ------------------------------------- |
-| `[0x02][PhoneToGlasses { ping { msg_id: "ping_001" }}]` | `[0x02][GlassesToPhone { pong {} }}]` |
+| Glasses → Phone                                         | Phone → Glasses                      |
+| ------------------------------------------------------- | ------------------------------------ |
+| `[0x02][GlassesToPhone { ping { msg_id: "ping_001" }}]` | `[0x02][PhoneToGlasses { pong {} }]` |
 
 ---
 
