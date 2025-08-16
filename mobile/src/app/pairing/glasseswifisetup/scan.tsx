@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from "react"
+import React, {useState, useEffect, useRef} from "react"
 import {View, Text, FlatList, TouchableOpacity, ActivityIndicator, BackHandler} from "react-native"
 import {useLocalSearchParams, router, useFocusEffect} from "expo-router"
 import {Screen, Header, Button} from "@/components/ignite"
@@ -20,6 +20,7 @@ export default function WifiScanScreen() {
   const [networks, setNetworks] = useState<string[]>([])
   const [savedNetworks, setSavedNetworks] = useState<string[]>([])
   const [isScanning, setIsScanning] = useState(true)
+  const scanTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   const {push, goBack} = useNavigationHistory()
 
@@ -52,15 +53,41 @@ export default function WifiScanScreen() {
     startScan()
 
     const handleWifiScanResults = (data: {networks: string[]}) => {
-      console.log("WiFi scan results received:", data.networks)
-      setNetworks(data.networks)
+      console.log("🎯 ========= SCAN.TSX RECEIVED WIFI RESULTS =========")
+      console.log("🎯 Data received:", data)
+      console.log("🎯 Networks array:", data.networks)
+      console.log("🎯 Networks count:", data.networks?.length || 0)
+
+      // Clear the timeout since we got results
+      if (scanTimeoutRef.current) {
+        console.log("🎯 Clearing scan timeout - results received")
+        clearTimeout(scanTimeoutRef.current)
+        scanTimeoutRef.current = null
+      }
+
+      // Append new networks to existing list instead of replacing
+      setNetworks(prevNetworks => {
+        console.log("🎯 Previous networks:", prevNetworks)
+        // Create a Set to avoid duplicates
+        const existingSet = new Set(prevNetworks)
+        data.networks.forEach(network => existingSet.add(network))
+        const newNetworks = Array.from(existingSet)
+        console.log("🎯 Updated networks list:", newNetworks)
+        return newNetworks
+      })
       setIsScanning(false)
+      console.log("🎯 ========= END SCAN.TSX WIFI RESULTS =========")
     }
 
     GlobalEventEmitter.on("WIFI_SCAN_RESULTS", handleWifiScanResults)
 
     return () => {
       GlobalEventEmitter.removeListener("WIFI_SCAN_RESULTS", handleWifiScanResults)
+      // Clean up timeout on unmount
+      if (scanTimeoutRef.current) {
+        clearTimeout(scanTimeoutRef.current)
+        scanTimeoutRef.current = null
+      }
     }
   }, [])
 
@@ -68,10 +95,34 @@ export default function WifiScanScreen() {
     setIsScanning(true)
     setNetworks([])
 
+    // Clear any existing timeout
+    if (scanTimeoutRef.current) {
+      clearTimeout(scanTimeoutRef.current)
+    }
+
+    // Set a timeout for scan results
+    scanTimeoutRef.current = setTimeout(() => {
+      console.log("⏱️⏱️⏱️⏱️⏱️⏱️⏱️⏱️⏱️⏱️⏱️⏱️⏱️⏱️⏱️⏱️⏱️⏱️⏱️⏱️")
+      console.log("⏱️ WIFI SCAN TIMEOUT - NO RESULTS AFTER 15 SECONDS ⏱️")
+      console.log("⏱️ RETRYING SCAN AUTOMATICALLY...")
+      console.log("⏱️⏱️⏱️⏱️⏱️⏱️⏱️⏱️⏱️⏱️⏱️⏱️⏱️⏱️⏱️⏱️⏱️⏱️⏱️⏱️")
+
+      // Don't stop scanning, just retry silently
+      coreCommunicator.requestWifiScan().catch(error => {
+        console.error("⏱️ RETRY FAILED:", error)
+      })
+
+      scanTimeoutRef.current = null
+    }, 15000) // 15 second timeout
+
     try {
       await coreCommunicator.requestWifiScan()
     } catch (error) {
       console.error("Error scanning for WiFi networks:", error)
+      if (scanTimeoutRef.current) {
+        clearTimeout(scanTimeoutRef.current)
+        scanTimeoutRef.current = null
+      }
       setIsScanning(false)
       GlobalEventEmitter.emit("SHOW_BANNER", {
         message: "Failed to scan for WiFi networks",

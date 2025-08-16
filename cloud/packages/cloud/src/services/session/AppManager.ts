@@ -18,7 +18,7 @@ import {
   AppType,
 } from "@mentra/sdk";
 import { Logger } from "pino";
-import subscriptionService from "./subscription.service";
+// import subscriptionService from "./subscription.service";
 import appService from "../core/app.service";
 import * as developerService from "../core/developer.service";
 import { PosthogService } from "../logging/posthog.service";
@@ -767,10 +767,10 @@ export class AppManager {
 
       // Remove subscriptions.
       try {
-        const updatedUser = await subscriptionService.removeSubscriptions(
-          this.userSession,
-          packageName,
-        );
+        const updatedUser =
+          await this.userSession.subscriptionManager.removeSubscriptions(
+            packageName,
+          );
         if (updatedUser) {
           // After removing subscriptions, re-arbitrate the location tier.
           await locationService.handleSubscriptionChange(

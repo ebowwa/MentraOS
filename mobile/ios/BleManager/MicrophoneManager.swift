@@ -397,9 +397,9 @@ class OnboardMicrophoneManager {
 
     /// Stop recording from the microphone
     func stopRecording() {
-        guard isRecording else {
-            return
-        }
+        // guard isRecording else {
+        //     return
+        // }
 
         // Remove the tap and stop the engine
         audioEngine?.inputNode.removeTap(onBus: 0)

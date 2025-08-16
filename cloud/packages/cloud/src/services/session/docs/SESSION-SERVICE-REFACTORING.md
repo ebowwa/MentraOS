@@ -44,10 +44,13 @@ This document outlines the refactoring plan for the Session Service, which is pa
 **Regarding Subscription Management**: While the session interface shows a `subscriptionManager` property, our implementation should continue to use the existing `subscriptionService` instead. The `SubscriptionManager` is not fully implemented yet, and introducing it at this stage would be risky. We should stick with the proven `subscriptionService` to ensure stability during this refactoring.
 
 Example of how to use the subscription service:
+
 ```typescript
 // Instead of using userSession.subscriptionManager
-const hasMediaSubscriptions = subscriptionService.hasMediaSubscriptions(userSession.sessionId);
-const subscribedApps = subscriptionService.getSubscribedApps(userSession, streamType);
+const hasMediaSubscriptions =
+  userSession.subscriptionManager.hasPCMTranscriptionSubscriptions().hasMedia;
+const subscribedApps =
+  userSession.subscriptionManager.getSubscribedApps(streamType);
 ```
 
 This approach ensures we maintain compatibility with existing code while refactoring.
@@ -139,8 +142,11 @@ All existing functions from the original session.service.ts will be preserved wi
 The improved error handling architecture will follow the pattern established in the WebSocket refactoring:
 
 1. **Function-level try/catch**:
+
 ```typescript
-async function handleSomething(userSession: ExtendedUserSession): Promise<void> {
+async function handleSomething(
+  userSession: ExtendedUserSession,
+): Promise<void> {
   try {
     // Function-specific logic
   } catch (error) {
@@ -148,8 +154,8 @@ async function handleSomething(userSession: ExtendedUserSession): Promise<void> 
       error: {
         name: error.name,
         message: error.message,
-        stack: error.stack
-      }
+        stack: error.stack,
+      },
     });
     // Handle error appropriately, do not propagate
   }
@@ -157,11 +163,13 @@ async function handleSomething(userSession: ExtendedUserSession): Promise<void> 
 ```
 
 2. **Consistent Error Logging**:
+
 - Use structured logging with context
 - Include appropriate details without sensitive information
 - Use consistent log levels
 
 3. **Error Recovery**:
+
 - Services should recover gracefully from errors
 - Avoid terminating sessions due to non-critical errors
 - Implement appropriate fallbacks
@@ -214,9 +222,9 @@ Our migration strategy emphasizes safety and maintainability:
 
 ## Risks and Mitigations
 
-| Risk | Description | Mitigation |
-|------|-------------|------------|
-| Regression | Loss of existing functionality | Comprehensive testing, no modifications to original code |
-| Incomplete Migration | Missing some functionality | Thorough analysis of both services before implementation |
-| Performance Impact | New architecture could affect performance | Performance testing with both implementations |
-| Backward Compatibility | Breaking changes | Keep original implementation available during transition |
+| Risk                   | Description                               | Mitigation                                               |
+| ---------------------- | ----------------------------------------- | -------------------------------------------------------- |
+| Regression             | Loss of existing functionality            | Comprehensive testing, no modifications to original code |
+| Incomplete Migration   | Missing some functionality                | Thorough analysis of both services before implementation |
+| Performance Impact     | New architecture could affect performance | Performance testing with both implementations            |
+| Backward Compatibility | Breaking changes                          | Keep original implementation available during transition |

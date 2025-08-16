@@ -1,22 +1,29 @@
-import React, {useRef, useCallback, useState, useEffect} from "react"
-import {View, Animated, Platform, ViewStyle, TouchableOpacity} from "react-native"
+import React, {useRef, useCallback, PropsWithChildren, useState, useEffect} from "react"
+import {View, Animated, Platform, ViewStyle, ScrollView, TouchableOpacity} from "react-native"
 import {useFocusEffect} from "@react-navigation/native"
 import {Header, Screen} from "@/components/ignite"
-import {AppsCombinedGridView} from "@/components/misc/AppsCombinedGridView"
+import AppsActiveList from "@/components/misc/AppsActiveList"
+import AppsInactiveList from "@/components/misc/AppsInactiveList"
+import AppsIncompatibleList from "@/components/misc/AppsIncompatibleList"
+import AppsIncompatibleListOld from "@/components/misc/AppsIncompatibleListOld"
 import {useAppStatus} from "@/contexts/AppStatusProvider"
 import CloudConnection from "@/components/misc/CloudConnection"
 import SensingDisabledWarning from "@/components/misc/SensingDisabledWarning"
 import NonProdWarning from "@/components/misc/NonProdWarning"
-import {ThemedStyle} from "@/theme"
+import {spacing, ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
 import MicIcon from "assets/icons/component/MicIcon"
 import NotificationOn from "assets/icons/component/NotificationOn"
 import {ConnectDeviceButton, ConnectedGlasses, DeviceToolbar} from "@/components/misc/ConnectedDeviceInfo"
 import {Spacer} from "@/components/misc/Spacer"
+import Divider from "@/components/misc/Divider"
 import {checkFeaturePermissions, PermissionFeatures} from "@/utils/PermissionsUtils"
 import {OnboardingSpotlight} from "@/components/misc/OnboardingSpotlight"
 import {translate} from "@/i18n"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
+import {loadSetting} from "@/utils/SettingsHelper"
+import {SETTINGS_KEYS} from "@/consts"
+import {AppsCombinedGridView} from "@/components/misc/AppsCombinedGridView"
 
 export default function Homepage() {
   const {refreshAppStatus} = useAppStatus()
@@ -29,6 +36,16 @@ export default function Homepage() {
   const bellFadeAnim = useRef(new Animated.Value(0)).current
   const {themed, theme} = useAppTheme()
   const {push} = useNavigationHistory()
+
+  const [showNewUi, setShowNewUi] = useState(false)
+
+  useEffect(() => {
+    const check = async () => {
+      const newUiSetting = await loadSetting(SETTINGS_KEYS.NEW_UI, false)
+      setShowNewUi(newUiSetting)
+    }
+    check()
+  }, [])
 
   const checkPermissions = async () => {
     const hasCalendar = await checkFeaturePermissions(PermissionFeatures.CALENDAR)
@@ -48,6 +65,10 @@ export default function Homepage() {
         useNativeDriver: true,
       }).start()
     }
+  }
+
+  const handleBellPress = () => {
+    push("/settings/privacy")
   }
 
   // Check for missing permissions
@@ -72,12 +93,7 @@ export default function Homepage() {
     }, []),
   )
 
-  const handleBellPress = () => {
-    push("/settings/privacy")
-  }
-
   // Simple animated wrapper so we do not duplicate logic
-
   useFocusEffect(
     useCallback(() => {
       // Reset animations when screen is about to focus
@@ -101,7 +117,52 @@ export default function Homepage() {
     }, [fadeAnim]),
   )
 
-  console.log("HOMEPAGE RE-RENDER")
+  if (showNewUi) {
+    return (
+      <Screen preset="fixed" style={themed($screen)}>
+        <Header
+          leftTx="home:title"
+          RightActionComponent={
+            <View style={themed($headerRight)}>
+              {hasMissingPermissions && (
+                <Animated.View style={{opacity: bellFadeAnim}}>
+                  <TouchableOpacity onPress={handleBellPress}>
+                    <NotificationOn />
+                  </TouchableOpacity>
+                </Animated.View>
+              )}
+              <MicIcon width={24} height={24} />
+              <NonProdWarning />
+            </View>
+          }
+        />
+
+        <CloudConnection />
+        <SensingDisabledWarning />
+        <View>
+          <ConnectedGlasses showTitle={false} />
+          <DeviceToolbar />
+        </View>
+        <Spacer height={theme.spacing.lg} />
+        <View ref={connectButtonRef}>
+          <ConnectDeviceButton />
+        </View>
+        <Spacer height={theme.spacing.md} />
+        <AppsCombinedGridView />
+
+        <OnboardingSpotlight
+          targetRef={onboardingTarget === "glasses" ? connectButtonRef : liveCaptionsRef}
+          setOnboardingTarget={setOnboardingTarget}
+          onboardingTarget={onboardingTarget}
+          message={
+            onboardingTarget === "glasses"
+              ? translate("home:connectGlassesToStart")
+              : translate("home:tapToStartLiveCaptions")
+          }
+        />
+      </Screen>
+    )
+  }
 
   return (
     <Screen preset="fixed" style={themed($screen)}>
@@ -123,16 +184,27 @@ export default function Homepage() {
       />
 
       <CloudConnection />
-      <SensingDisabledWarning />
-      <View>
+      <ScrollView
+        style={{marginRight: -theme.spacing.md, paddingRight: theme.spacing.md}}
+        contentInsetAdjustmentBehavior="automatic">
+        <SensingDisabledWarning />
+
         <ConnectedGlasses showTitle={false} />
         <DeviceToolbar />
-      </View>
-      <View ref={connectButtonRef}>
-        <ConnectDeviceButton />
-      </View>
-      <Spacer height={theme.spacing.md} />
-      <AppsCombinedGridView />
+        <Spacer height={theme.spacing.md} />
+        <View ref={connectButtonRef}>
+          <ConnectDeviceButton />
+        </View>
+        <Spacer height={theme.spacing.lg} />
+        <Divider variant="full" />
+        <Spacer height={theme.spacing.md} />
+
+        <AppsActiveList />
+        <Spacer height={spacing.xl} />
+        <AppsInactiveList liveCaptionsRef={liveCaptionsRef} />
+        <Spacer height={spacing.md} />
+        <AppsIncompatibleListOld />
+      </ScrollView>
 
       <OnboardingSpotlight
         targetRef={onboardingTarget === "glasses" ? connectButtonRef : liveCaptionsRef}

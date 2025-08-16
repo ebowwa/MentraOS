@@ -94,6 +94,13 @@ def releaseKeyPassword = project.hasProperty("MENTRAOS_UPLOAD_KEY_PASSWORD") ? p
 def releaseKeyAlias = project.hasProperty("MENTRAOS_UPLOAD_KEY_ALIAS") ? project.property("MENTRAOS_UPLOAD_KEY_ALIAS") : "upload"
 
 
+// Only apply Sentry if auth token is available
+def sentryAuthToken = System.getenv("SENTRY_AUTH_TOKEN")
+if (sentryAuthToken != null && !sentryAuthToken.isEmpty()) {
+    apply from: new File(["node", "--print", "require.resolve('@sentry/react-native/package.json')"].execute().text.trim(), "../sentry.gradle")
+} else {
+    logger.warn("Sentry auth token not found. Skipping source map uploads for release builds.")
+}
 android {
     ndkVersion rootProject.ext.ndkVersion
 
@@ -105,8 +112,8 @@ android {
         applicationId 'com.mentra.mentra'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 39
-        versionName "2.2.4"
+        versionCode 41
+        versionName "2.2.5"
     }
     signingConfigs {
         debug {

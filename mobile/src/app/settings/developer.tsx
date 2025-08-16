@@ -1,5 +1,5 @@
 import React, {useState, useEffect} from "react"
-import {View, Text, StyleSheet, Switch, TouchableOpacity, Platform, ScrollView, TextInput} from "react-native"
+import {View, StyleSheet, Platform, ScrollView, TextInput} from "react-native"
 import Icon from "react-native-vector-icons/MaterialCommunityIcons"
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import coreCommunicator from "@/bridge/CoreCommunicator"
@@ -8,7 +8,7 @@ import {SETTINGS_KEYS} from "@/consts"
 import axios from "axios"
 import showAlert from "@/utils/AlertUtils"
 import {useAppTheme} from "@/utils/useAppTheme"
-import {Header, Screen, PillButton} from "@/components/ignite"
+import {Header, Screen, PillButton, Text} from "@/components/ignite"
 import {router} from "expo-router"
 import {Spacer} from "@/components/misc/Spacer"
 import ToggleSetting from "@/components/settings/ToggleSetting"
@@ -18,49 +18,22 @@ import {spacing} from "@/theme"
 
 export default function DeveloperSettingsScreen() {
   const {status} = useCoreStatus()
-  const [isBypassVADForDebuggingEnabled, setIsBypassVADForDebuggingEnabled] = useState(
-    status.core_info.bypass_vad_for_debugging,
-  )
+  const {theme} = useAppTheme()
+  const {goBack, push} = useNavigationHistory()
+  const {replace} = useNavigationHistory()
+
   const [isBypassAudioEncodingForDebuggingEnabled, setIsBypassAudioEncodingForDebuggingEnabled] = useState(
     status.core_info.bypass_audio_encoding_for_debugging,
   )
-  const [isTestFlightOrDev, setIsTestFlightOrDev] = useState<boolean>(false)
-
-  const {theme} = useAppTheme()
-  const {goBack, push} = useNavigationHistory()
-  // State for custom URL management
   const [customUrlInput, setCustomUrlInput] = useState("")
   const [savedCustomUrl, setSavedCustomUrl] = useState<string | null>(null)
-  const [isSavingUrl, setIsSavingUrl] = useState(false) // Add loading state
+  const [isSavingUrl, setIsSavingUrl] = useState(false)
   const [reconnectOnAppForeground, setReconnectOnAppForeground] = useState(true)
-  const {replace} = useNavigationHistory()
+  const [showNewUi, setShowNewUi] = useState(false)
 
   // Triple-tap detection for Asia East button
   const [asiaButtonTapCount, setAsiaButtonTapCount] = useState(0)
   const [asiaButtonLastTapTime, setAsiaButtonLastTapTime] = useState(0)
-
-  // Load saved URL on mount
-  useEffect(() => {
-    const loadSettings = async () => {
-      const url = await loadSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL, null)
-      setSavedCustomUrl(url)
-      setCustomUrlInput(url || "")
-
-      const reconnectOnAppForeground = await loadSetting(SETTINGS_KEYS.RECONNECT_ON_APP_FOREGROUND, true)
-      setReconnectOnAppForeground(reconnectOnAppForeground)
-    }
-    loadSettings()
-  }, [])
-
-  useEffect(() => {
-    setIsBypassVADForDebuggingEnabled(status.core_info.bypass_vad_for_debugging)
-  }, [status.core_info.bypass_vad_for_debugging])
-
-  const toggleBypassVadForDebugging = async () => {
-    const newSetting = !isBypassVADForDebuggingEnabled
-    await coreCommunicator.sendToggleBypassVadForDebugging(newSetting)
-    setIsBypassVADForDebuggingEnabled(newSetting)
-  }
 
   const toggleReconnectOnAppForeground = async () => {
     const newSetting = !reconnectOnAppForeground
@@ -72,6 +45,12 @@ export default function DeveloperSettingsScreen() {
     const newSetting = !isBypassAudioEncodingForDebuggingEnabled
     await coreCommunicator.sendToggleBypassAudioEncodingForDebugging(newSetting)
     setIsBypassAudioEncodingForDebuggingEnabled(newSetting)
+  }
+
+  const toggleNewUi = async () => {
+    const newSetting = !showNewUi
+    await saveSetting(SETTINGS_KEYS.NEW_UI, newSetting)
+    setShowNewUi(newSetting)
   }
 
   // Modified handler for Custom URL
@@ -191,6 +170,22 @@ export default function DeveloperSettingsScreen() {
     ios_backgroundColor: theme.colors.switchTrackOff,
   }
 
+  // Load saved URL on mount
+  useEffect(() => {
+    const loadSettings = async () => {
+      const url = await loadSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL, null)
+      setSavedCustomUrl(url)
+      setCustomUrlInput(url || "")
+
+      const reconnectOnAppForeground = await loadSetting(SETTINGS_KEYS.RECONNECT_ON_APP_FOREGROUND, true)
+      setReconnectOnAppForeground(reconnectOnAppForeground)
+
+      const newUiSetting = await loadSetting(SETTINGS_KEYS.NEW_UI, false)
+      setShowNewUi(newUiSetting)
+    }
+    loadSettings()
+  }, [])
+
   return (
     <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}}>
       <Header title="Developer Settings" leftIcon="caretLeft" onLeftPress={() => goBack()} />
@@ -206,30 +201,28 @@ export default function DeveloperSettingsScreen() {
         ]}>
         <View style={styles.warningContent}>
           <Icon name="alert" size={16} color={theme.colors.text} />
-          <Text style={[styles.warningTitle, {color: theme.colors.text}]}>Warning</Text>
+          <Text tx="warning:warning" style={[styles.warningTitle, {color: theme.colors.text}]} />
         </View>
-        <Text style={[styles.warningSubtitle, {color: theme.colors.text}]}>
-          These may break the app. Use at your own risk.
-        </Text>
+        <Text tx="warning:developerSettingsWarning" style={[styles.warningSubtitle, {color: theme.colors.text}]} />
       </View>
 
       <Spacer height={theme.spacing.md} />
 
       <ScrollView>
         <ToggleSetting
-          label={translate("settings:bypassVAD")}
-          subtitle={translate("settings:bypassVADSubtitle")}
-          value={isBypassVADForDebuggingEnabled}
-          onValueChange={toggleBypassVadForDebugging}
+          label={translate("settings:reconnectOnAppForeground")}
+          subtitle={translate("settings:reconnectOnAppForegroundSubtitle")}
+          value={reconnectOnAppForeground}
+          onValueChange={toggleReconnectOnAppForeground}
         />
 
         <Spacer height={theme.spacing.md} />
 
         <ToggleSetting
-          label={translate("settings:reconnectOnAppForeground")}
-          subtitle={translate("settings:reconnectOnAppForegroundSubtitle")}
-          value={reconnectOnAppForeground}
-          onValueChange={toggleReconnectOnAppForeground}
+          label={translate("settings:newUi")}
+          subtitle={translate("settings:newUiSubtitle")}
+          value={showNewUi}
+          onValueChange={toggleNewUi}
         />
 
         <Spacer height={theme.spacing.md} />
@@ -323,7 +316,7 @@ export default function DeveloperSettingsScreen() {
           </View>
         </View>
 
-        {isTestFlightOrDev && <Spacer height={theme.spacing.md} />}
+        <Spacer height={theme.spacing.md} />
 
         {/* Bypass Audio Encoding for Debugging Toggle
         <View style={styles.settingItem}>

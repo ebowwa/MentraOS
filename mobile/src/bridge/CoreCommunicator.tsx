@@ -12,6 +12,7 @@ import BleManager from "react-native-ble-manager"
 import BackendServerComms from "@/backend_comms/BackendServerComms"
 import AudioPlayService, {AudioPlayResponse} from "@/services/AudioPlayService"
 import {translate} from "@/i18n"
+import AugmentOSParser from "@/utils/AugmentOSStatusParser"
 
 const {CoreCommsService, AOSModule} = NativeModules
 const eventEmitter = new NativeEventEmitter(CoreCommsService)
@@ -23,6 +24,11 @@ export class CoreCommunicator extends EventEmitter {
   private reconnectionTimer: NodeJS.Timeout | null = null
   private isConnected: boolean = false
   private lastMessage: string = ""
+
+  // Private constructor to enforce singleton pattern
+  private constructor() {
+    super()
+  }
 
   // Utility methods for checking permissions and device capabilities
   async isBluetoothEnabled(): Promise<boolean> {
@@ -144,11 +150,6 @@ export class CoreCommunicator extends EventEmitter {
     return {isReady: true}
   }
 
-  // Private constructor to enforce singleton pattern
-  private constructor() {
-    super()
-  }
-
   /**
    * Gets the singleton instance of CoreCommunicator
    */
@@ -237,6 +238,15 @@ export class CoreCommunicator extends EventEmitter {
 
     try {
       const data = JSON.parse(jsonString)
+
+      // Log if this is a WiFi scan result
+      if ("wifi_scan_results" in data) {
+        console.log("📡 ========= RAW MESSAGE FROM CORE =========")
+        console.log("📡 Raw JSON string:", jsonString)
+        console.log("📡 Parsed data:", data)
+        console.log("📡 ========= END RAW MESSAGE =========")
+      }
+
       this.isConnected = true
       this.emit("dataReceived", data)
       this.parseDataFromCore(data)
@@ -291,10 +301,15 @@ export class CoreCommunicator extends EventEmitter {
           deviceModel: data.device_model,
         })
       } else if ("wifi_scan_results" in data) {
-        console.log("Received WiFi scan results from Core")
+        console.log("🔍 ========= WIFI SCAN RESULTS RECEIVED =========")
+        console.log("🔍 Received WiFi scan results from Core:", data)
+        console.log("🔍 Networks array:", data.wifi_scan_results)
+        console.log("🔍 Networks count:", data.wifi_scan_results?.length || 0)
         GlobalEventEmitter.emit("WIFI_SCAN_RESULTS", {
           networks: data.wifi_scan_results,
         })
+        console.log("🔍 Emitted WIFI_SCAN_RESULTS event to GlobalEventEmitter")
+        console.log("🔍 ========= END WIFI SCAN RESULTS =========")
       }
 
       if (!("type" in data)) {
@@ -324,7 +339,7 @@ export class CoreCommunicator extends EventEmitter {
       }
     } catch (e) {
       console.error("Error parsing data from Core:", e)
-      GlobalEventEmitter.emit("STATUS_PARSE_ERROR")
+      this.emit("statusUpdateReceived", AugmentOSParser.defaultStatus)
     }
   }
 
