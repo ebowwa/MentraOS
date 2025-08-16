@@ -2564,9 +2564,8 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     @Override
     public void restartTranscriber() {
         Log.d("AugmentOsService", "Restarting transcriber");
-        if (ServerComms.getInstance().speechRecAugmentos != null) {
-            ServerComms.getInstance().speechRecAugmentos.restartTranscriber();
-        }
+        ServerComms.getInstance().restartTranscriber();
+
     }
 
     @Override

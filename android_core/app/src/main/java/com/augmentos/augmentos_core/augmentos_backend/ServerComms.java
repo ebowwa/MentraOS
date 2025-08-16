@@ -259,6 +259,12 @@ public class ServerComms {
         isProcessingBuffer = false;
     }
 
+    public void restartTranscriber() {
+        if (speechRecAugmentos != null) {
+            speechRecAugmentos.restartTranscriber();
+        }
+    }
+
     // ------------------------------------------------------------------------
     // PCM RECORDING METHODS (ADDED)
     // ------------------------------------------------------------------------
