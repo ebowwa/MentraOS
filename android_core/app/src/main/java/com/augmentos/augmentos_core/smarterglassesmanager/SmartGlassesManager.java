@@ -543,6 +543,42 @@ public class SmartGlassesManager extends Service {
                 .apply();
     }
 
+    public static String getButtonPhotoSize(Context context) {
+        return PreferenceManager.getDefaultSharedPreferences(context)
+                .getString("button_photo_size", "medium");
+    }
+
+    public static void setButtonPhotoSize(Context context, String size) {
+        PreferenceManager.getDefaultSharedPreferences(context)
+                .edit()
+                .putString("button_photo_size", size)
+                .apply();
+    }
+
+    public static void setButtonVideoSettings(Context context, int width, int height, int fps) {
+        PreferenceManager.getDefaultSharedPreferences(context)
+                .edit()
+                .putInt("button_video_width", width)
+                .putInt("button_video_height", height)
+                .putInt("button_video_fps", fps)
+                .apply();
+    }
+
+    public static int getButtonVideoWidth(Context context) {
+        return PreferenceManager.getDefaultSharedPreferences(context)
+                .getInt("button_video_width", 1280);
+    }
+
+    public static int getButtonVideoHeight(Context context) {
+        return PreferenceManager.getDefaultSharedPreferences(context)
+                .getInt("button_video_height", 720);
+    }
+
+    public static int getButtonVideoFps(Context context) {
+        return PreferenceManager.getDefaultSharedPreferences(context)
+                .getInt("button_video_fps", 30);
+    }
+
     public static boolean getBypassVadForDebugging(Context context) {
         SharedPreferences sharedPreferences = context.getSharedPreferences("AugmentOSPrefs", Context.MODE_PRIVATE);
         //Log.d("AugmentOSPrefs", "Getting bypass VAD for debugging: " + sharedPreferences.getBoolean(context.getResources().getString(R.string.BYPASS_VAD_FOR_DEBUGGING), false));
@@ -752,6 +788,18 @@ public class SmartGlassesManager extends Service {
     public void setFontSize(SmartGlassesFontSize fontSize) {
         if (smartGlassesRepresentative != null && smartGlassesRepresentative.smartGlassesCommunicator != null) {
             smartGlassesRepresentative.smartGlassesCommunicator.setFontSize(fontSize);
+        }
+    }
+
+    public void sendButtonPhotoSettings(String size) {
+        if (smartGlassesRepresentative != null && smartGlassesRepresentative.smartGlassesCommunicator != null) {
+            smartGlassesRepresentative.smartGlassesCommunicator.sendButtonPhotoSettings(size);
+        }
+    }
+
+    public void sendButtonVideoRecordingSettings(int width, int height, int fps) {
+        if (smartGlassesRepresentative != null && smartGlassesRepresentative.smartGlassesCommunicator != null) {
+            smartGlassesRepresentative.smartGlassesCommunicator.sendButtonVideoRecordingSettings(width, height, fps);
         }
     }
 

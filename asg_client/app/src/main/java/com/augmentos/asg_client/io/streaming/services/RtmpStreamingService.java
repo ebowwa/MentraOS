@@ -661,6 +661,9 @@ public class RtmpStreamingService extends Service {
                 StreamingReporting.reportCameraBusyError(RtmpStreamingService.this, "start_streaming");
                 return;
             }
+            
+            // Close kept-alive camera if it exists to free resources for streaming
+            CameraNeo.closeKeptAliveCamera();
 
             if (mRtmpUrl == null || mRtmpUrl.isEmpty()) {
                 String error = "RTMP URL not set";

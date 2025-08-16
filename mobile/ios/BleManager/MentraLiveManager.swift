@@ -1447,6 +1447,9 @@ typealias JSONObject = [String: Any]
         requestVersionInfo()
         sendCoreTokenToAsgClient()
 
+        // Send user settings to glasses
+        sendUserSettings()
+
         // Start heartbeat
         startHeartbeat()
 
@@ -2325,6 +2328,9 @@ extension MentraLiveManager {
 
         // Send button video recording settings
         sendButtonVideoRecordingSettings()
+
+        // Send button photo settings
+        sendButtonPhotoSettings()
     }
 
     func sendButtonVideoRecordingSettings() {
@@ -2351,6 +2357,23 @@ extension MentraLiveManager {
                 "height": finalHeight,
                 "fps": finalFps,
             ],
+        ]
+        sendJson(json)
+    }
+
+    func sendButtonPhotoSettings() {
+        let size = UserDefaults.standard.string(forKey: "button_photo_size") ?? "medium"
+
+        CoreCommsService.log("Sending button photo setting: \(size)")
+
+        guard connectionState == .connected else {
+            CoreCommsService.log("Cannot send button photo settings - not connected")
+            return
+        }
+
+        let json: [String: Any] = [
+            "type": "button_photo_setting",
+            "size": size,
         ]
         sendJson(json)
     }

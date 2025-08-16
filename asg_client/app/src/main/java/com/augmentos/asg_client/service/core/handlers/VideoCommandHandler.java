@@ -224,6 +224,9 @@ public class VideoCommandHandler extends BaseMediaCommandHandler {
                 return false;
             }
             
+            // Close kept-alive camera if it exists to free resources for buffer recording
+            CameraNeo.closeKeptAliveCamera();
+            
             Log.d(TAG, "Starting buffer recording");
             captureService.startBufferRecording();
             streamingManager.sendBufferStatusResponse(true, "buffer_started", null);

@@ -395,7 +395,7 @@ public class MediaCaptureService {
         String requestId = "local_video_" + timeStamp;
         String videoFilePath = fileManager.getDefaultMediaDirectory() + File.separator + "VID_" + timeStamp + ".mp4";
 
-        startVideoRecording(videoFilePath, requestId, settings);
+        startVideoRecording(videoFilePath, requestId, null);
     }
 
     /**
@@ -414,6 +414,9 @@ public class MediaCaptureService {
             Log.e(TAG, "External storage is not available for video capture");
             return;
         }
+
+        // Close kept-alive camera if it exists to free resources for video recording
+        CameraNeo.closeKeptAliveCamera();
 
         // Save info for the current recording session
         currentVideoId = requestId;
@@ -546,6 +549,9 @@ public class MediaCaptureService {
             }
             return;
         }
+        
+        // Close kept-alive camera if it exists to free resources for buffer recording
+        CameraNeo.closeKeptAliveCamera();
 
         Log.d(TAG, "Starting buffer recording via CameraNeo");
 
@@ -623,8 +629,17 @@ public class MediaCaptureService {
 
     /**
      * Takes a photo locally when offline or when server communication fails
+     * Uses default medium size
      */
     public void takePhotoLocally() {
+        takePhotoLocally("medium");
+    }
+    
+    /**
+     * Takes a photo locally with specified size
+     * @param size Photo size ("small", "medium", or "large")
+     */
+    public void takePhotoLocally(String size) {
         // Check storage availability before taking photo
         if (!isExternalStorageAvailable()) {
             Log.e(TAG, "External storage is not available for photo capture");
@@ -637,7 +652,7 @@ public class MediaCaptureService {
 
         String photoFilePath = fileManager.getDefaultMediaDirectory() + File.separator + "IMG_" + timeStamp + ".jpg";
 
-        Log.d(TAG, "Taking photo locally at: " + photoFilePath);
+        Log.d(TAG, "Taking photo locally at: " + photoFilePath + " with size: " + size);
 
         // Generate a temporary requestId
         String requestId = "local_" + timeStamp;
@@ -665,7 +680,8 @@ public class MediaCaptureService {
                             mMediaCaptureListener.onMediaError(requestId, errorMessage, MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
                         }
                     }
-                }
+                },
+                size
         );
     }
 

@@ -214,7 +214,9 @@ public class K900CommandHandler {
             captureService.startVideoRecording(videoSettings);
         } else {
             Log.d(TAG, "📸 Taking photo locally (PHOTO mode, short press)");
-            captureService.takePhotoLocally();
+            // Get saved photo size for button press
+            String photoSize = serviceManager.getAsgSettings().getButtonPhotoSize();
+            captureService.takePhotoLocally(photoSize);
         }
     }
 
@@ -245,7 +247,9 @@ public class K900CommandHandler {
             MediaCaptureService captureService = serviceManager.getMediaCaptureService();
             if (captureService != null) {
                 Log.d(TAG, "📸 Taking photo locally (BOTH mode, short press)");
-                captureService.takePhotoLocally();
+                // Get saved photo size for button press
+                String photoSize = serviceManager.getAsgSettings().getButtonPhotoSize();
+                captureService.takePhotoLocally(photoSize);
             }
         }
     }

@@ -2539,6 +2539,34 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     }
 
     @Override
+    public void sendButtonPhotoSettings(String size) {
+        // Send photo size settings to glasses
+        JSONObject command = new JSONObject();
+        try {
+            command.put("command", "set_button_photo_size");
+            command.put("size", size);
+            sendJson(command);
+        } catch (Exception e) {
+            Log.e(TAG, "Error sending button photo settings", e);
+        }
+    }
+
+    @Override
+    public void sendButtonVideoRecordingSettings(int width, int height, int fps) {
+        // Send video settings to glasses
+        JSONObject command = new JSONObject();
+        try {
+            command.put("command", "set_button_video_settings");
+            command.put("width", width);
+            command.put("height", height);
+            command.put("fps", fps);
+            sendJson(command);
+        } catch (Exception e) {
+            Log.e(TAG, "Error sending button video settings", e);
+        }
+    }
+
+    @Override
     public void displayTextWall(String text) {
         Log.d(TAG, "[STUB] Device has no display. Text wall would show: " + text);
     }
@@ -3220,6 +3248,9 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         
         // Send button video recording settings
         sendButtonVideoRecordingSettings();
+        
+        // Send button photo settings
+        sendButtonPhotoSettings();
     }
 
     /**
@@ -3249,6 +3280,30 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             sendJson(json);
         } catch (JSONException e) {
             Log.e(TAG, "Error creating button video recording settings message", e);
+        }
+    }
+    
+    /**
+     * Send button photo settings to glasses
+     */
+    public void sendButtonPhotoSettings() {
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
+        String size = prefs.getString("button_photo_size", "medium");
+        
+        Log.d(TAG, "Sending button photo setting: " + size);
+        
+        if (!isConnected) {
+            Log.w(TAG, "Cannot send button photo settings - not connected");
+            return;
+        }
+        
+        try {
+            JSONObject json = new JSONObject();
+            json.put("type", "button_photo_setting");
+            json.put("size", size);
+            sendJson(json);
+        } catch (JSONException e) {
+            Log.e(TAG, "Error creating button photo settings message", e);
         }
     }
     

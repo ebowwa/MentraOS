@@ -512,6 +512,15 @@ export default function DeviceSettings() {
         </View>
       )}
 
+      {/* Camera Settings button for glasses with configurable button */}
+      {status.glasses_info?.model_name && glassesFeatures[status.glasses_info.model_name]?.configurableButton && (
+        <RouteButton
+          label={translate("settings:cameraSettings")}
+          subtitle={translate("settings:cameraSettingsDescription")}
+          onPress={() => push("/settings/camera")}
+        />
+      )}
+
       {/* Only show WiFi settings if connected glasses support WiFi */}
       {status.glasses_info?.model_name && glassesFeatures[status.glasses_info.model_name]?.wifi && (
         <RouteButton

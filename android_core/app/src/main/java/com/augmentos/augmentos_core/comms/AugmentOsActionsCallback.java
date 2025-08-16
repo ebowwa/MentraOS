@@ -39,6 +39,8 @@ public interface AugmentOsActionsCallback {
     void requestWifiScan();
     void setPreferredMic(String mic);
     void setButtonMode(String mode);
+    void setButtonPhotoSize(String size);
+    void setButtonVideoSettings(int width, int height, int fps);
     void setServerUrl(String url);
     void onAudioPlayRequest(JSONObject audioRequest);
     void onAudioPlayResponse(JSONObject audioResponse);

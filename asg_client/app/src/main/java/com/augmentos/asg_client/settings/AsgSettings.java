@@ -4,6 +4,8 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.util.Log;
 
+import java.util.Arrays;
+
 /**
  * Settings manager for ASG Client
  * Handles persistent storage of user preferences
@@ -15,6 +17,7 @@ public class AsgSettings {
     private static final String KEY_BUTTON_VIDEO_WIDTH = "button_video_width";
     private static final String KEY_BUTTON_VIDEO_HEIGHT = "button_video_height";
     private static final String KEY_BUTTON_VIDEO_FPS = "button_video_fps";
+    private static final String KEY_BUTTON_PHOTO_SIZE = "button_photo_size";
     
     public enum ButtonPressMode {
         PHOTO("photo"),      // Take photo only
@@ -143,5 +146,30 @@ public class AsgSettings {
     public void setButtonVideoSettings(int width, int height, int fps) {
         VideoSettings settings = new VideoSettings(width, height, fps);
         setButtonVideoSettings(settings);
+    }
+    
+    /**
+     * Get the photo size setting for button-initiated photos
+     * @return Photo size ("small", "medium", or "large")
+     */
+    public String getButtonPhotoSize() {
+        String size = prefs.getString(KEY_BUTTON_PHOTO_SIZE, "medium");
+        Log.d(TAG, "Retrieved button photo size: " + size);
+        return size;
+    }
+    
+    /**
+     * Set the photo size setting for button-initiated photos
+     * @param size Photo size ("small", "medium", or "large")
+     */
+    public void setButtonPhotoSize(String size) {
+        // Validate size
+        if (!Arrays.asList("small", "medium", "large").contains(size)) {
+            Log.w(TAG, "Invalid photo size: " + size + ", using medium");
+            size = "medium";
+        }
+        Log.d(TAG, "Setting button photo size to: " + size);
+        // Using commit() for immediate persistence
+        prefs.edit().putString(KEY_BUTTON_PHOTO_SIZE, size).commit();
     }
 }

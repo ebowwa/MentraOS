@@ -68,6 +68,14 @@ public abstract class SmartGlassesCommunicator {
     public abstract void showHomeScreen();
 
     public abstract void setFontSize(SmartGlassesFontSize fontSize);
+    
+    public void sendButtonPhotoSettings(String size) {
+        Log.d("SmartGlassesCommunicator", "Default implementation - button photo settings: " + size);
+    }
+    
+    public void sendButtonVideoRecordingSettings(int width, int height, int fps) {
+        Log.d("SmartGlassesCommunicator", "Default implementation - button video settings: " + width + "x" + height + "@" + fps + "fps");
+    }
 
     //fonts
     public int LARGE_FONT;

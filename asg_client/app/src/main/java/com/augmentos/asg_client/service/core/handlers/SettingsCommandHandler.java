@@ -33,7 +33,7 @@ public class SettingsCommandHandler implements ICommandHandler {
 
     @Override
     public Set<String> getSupportedCommandTypes() {
-        return Set.of("set_photo_mode", "button_mode_setting", "button_video_recording_setting");
+        return Set.of("set_photo_mode", "button_mode_setting", "button_video_recording_setting", "button_photo_setting");
     }
 
     @Override
@@ -46,6 +46,8 @@ public class SettingsCommandHandler implements ICommandHandler {
                     return handleButtonModeSetting(data);
                 case "button_video_recording_setting":
                     return handleButtonVideoRecordingSetting(data);
+                case "button_photo_setting":
+                    return handleButtonPhotoSetting(data);
                 default:
                     Log.e(TAG, "Unsupported settings command: " + commandType);
                     return false;
@@ -126,6 +128,30 @@ public class SettingsCommandHandler implements ICommandHandler {
             }
         } catch (Exception e) {
             Log.e(TAG, "Error handling button video recording setting", e);
+            return false;
+        }
+    }
+    
+    /**
+     * Handle button photo setting command
+     */
+    public boolean handleButtonPhotoSetting(JSONObject data) {
+        try {
+            String size = data.optString("size", "medium");
+            
+            Log.d(TAG, "📱 Received button photo setting: " + size);
+            
+            AsgSettings asgSettings = serviceManager.getAsgSettings();
+            if (asgSettings != null) {
+                asgSettings.setButtonPhotoSize(size);
+                Log.d(TAG, "✅ Button photo size saved: " + size);
+                return true;
+            } else {
+                Log.e(TAG, "Settings not available");
+                return false;
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error handling button photo setting", e);
             return false;
         }
     }

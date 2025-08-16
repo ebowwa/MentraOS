@@ -1564,6 +1564,15 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             }
             glassesSettings.put("head_up_angle", headUpAngle);
             glassesSettings.put("button_mode", SmartGlassesManager.getButtonPressMode(this));
+            glassesSettings.put("button_photo_size", SmartGlassesManager.getButtonPhotoSize(this));
+            
+            // Add button video settings as an object
+            JSONObject buttonVideoSettings = new JSONObject();
+            buttonVideoSettings.put("width", SmartGlassesManager.getButtonVideoWidth(this));
+            buttonVideoSettings.put("height", SmartGlassesManager.getButtonVideoHeight(this));
+            buttonVideoSettings.put("fps", SmartGlassesManager.getButtonVideoFps(this));
+            glassesSettings.put("button_video_settings", buttonVideoSettings);
+            
             status.put("glasses_settings", glassesSettings);
 
             // Adding OTA progress information
@@ -2570,6 +2579,30 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         // Send to glasses if connected
         if (smartGlassesManager != null && smartGlassesManagerBound) {
             smartGlassesManager.sendButtonModeSetting(mode);
+        }
+    }
+
+    @Override
+    public void setButtonPhotoSize(String size) {
+        Log.d("AugmentOsService", "Setting button photo size: " + size);
+        // Save locally
+        SmartGlassesManager.setButtonPhotoSize(this, size);
+
+        // Send to glasses if connected
+        if (smartGlassesManager != null && smartGlassesManagerBound) {
+            smartGlassesManager.sendButtonPhotoSettings(size);
+        }
+    }
+
+    @Override
+    public void setButtonVideoSettings(int width, int height, int fps) {
+        Log.d("AugmentOsService", "Setting button video settings: " + width + "x" + height + "@" + fps);
+        // Save locally
+        SmartGlassesManager.setButtonVideoSettings(this, width, height, fps);
+
+        // Send to glasses if connected
+        if (smartGlassesManager != null && smartGlassesManagerBound) {
+            smartGlassesManager.sendButtonVideoRecordingSettings(width, height, fps);
         }
     }
 
