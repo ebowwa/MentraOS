@@ -1322,6 +1322,11 @@ typealias JSONObject = [String: Any]
         case "pong":
             CoreCommsService.log("💓 Received pong response - connection healthy")
 
+        case "imu_response", "imu_stream_response", "imu_gesture_response",
+             "imu_gesture_subscribed", "imu_ack", "imu_error":
+            // Handle IMU-related responses
+            handleImuResponse(json)
+
         case "keep_alive_ack":
             emitKeepAliveAck(json)
 
@@ -1820,6 +1825,170 @@ typealias JSONObject = [String: Any]
         ]
 
         sendJson(json)
+    }
+
+    // MARK: - IMU Methods
+
+    /**
+     * Request a single IMU reading from the glasses
+     * Power-optimized: sensors turn on briefly then off
+     */
+    @objc func requestImuSingle() {
+        CoreCommsService.log("Requesting single IMU reading")
+        let json: [String: Any] = ["type": "imu_single"]
+        sendJson(json)
+    }
+
+    /**
+     * Start IMU streaming from the glasses
+     * @param rateHz Sampling rate in Hz (1-100)
+     * @param batchMs Batching period in milliseconds (0-1000)
+     */
+    @objc func startImuStream(rateHz: Int, batchMs: Int) {
+        CoreCommsService.log("Starting IMU stream: \(rateHz)Hz, batch: \(batchMs)ms")
+        let json: [String: Any] = [
+            "type": "imu_stream_start",
+            "rate_hz": rateHz,
+            "batch_ms": batchMs,
+        ]
+        sendJson(json)
+    }
+
+    /**
+     * Stop IMU streaming from the glasses
+     */
+    @objc func stopImuStream() {
+        CoreCommsService.log("Stopping IMU stream")
+        let json: [String: Any] = ["type": "imu_stream_stop"]
+        sendJson(json)
+    }
+
+    /**
+     * Subscribe to gesture detection on the glasses
+     * Power-optimized: uses accelerometer-only at low rate
+     * @param gestures Array of gestures to detect ("head_up", "head_down", "nod_yes", "shake_no")
+     */
+    @objc func subscribeToImuGestures(_ gestures: [String]) {
+        CoreCommsService.log("Subscribing to IMU gestures: \(gestures)")
+        let json: [String: Any] = [
+            "type": "imu_subscribe_gesture",
+            "gestures": gestures,
+        ]
+        sendJson(json)
+    }
+
+    /**
+     * Unsubscribe from all gesture detection
+     */
+    @objc func unsubscribeFromImuGestures() {
+        CoreCommsService.log("Unsubscribing from IMU gestures")
+        let json: [String: Any] = ["type": "imu_unsubscribe_gesture"]
+        sendJson(json)
+    }
+
+    /**
+     * Handle IMU response from glasses
+     */
+    private func handleImuResponse(_ json: [String: Any]) {
+        guard let type = json["type"] as? String else {
+            CoreCommsService.log("IMU response missing type")
+            return
+        }
+
+        switch type {
+        case "imu_response":
+            // Single IMU reading
+            handleSingleImuData(json)
+
+        case "imu_stream_response":
+            // Stream of IMU readings
+            handleStreamImuData(json)
+
+        case "imu_gesture_response":
+            // Gesture detected
+            handleImuGesture(json)
+
+        case "imu_gesture_subscribed":
+            // Gesture subscription confirmed
+            if let gestures = json["gestures"] as? [String] {
+                CoreCommsService.log("IMU gesture subscription confirmed: \(gestures)")
+            }
+
+        case "imu_ack":
+            // Command acknowledgment
+            if let message = json["message"] as? String {
+                CoreCommsService.log("IMU command acknowledged: \(message)")
+            }
+
+        case "imu_error":
+            // Error response
+            if let error = json["error"] as? String {
+                CoreCommsService.log("IMU error: \(error)")
+            }
+
+        default:
+            CoreCommsService.log("Unknown IMU response type: \(type)")
+        }
+    }
+
+    private func handleSingleImuData(_ json: [String: Any]) {
+        guard let accel = json["accel"] as? [Double],
+              let gyro = json["gyro"] as? [Double],
+              let mag = json["mag"] as? [Double],
+              let quat = json["quat"] as? [Double],
+              let euler = json["euler"] as? [Double]
+        else {
+            CoreCommsService.log("Invalid IMU data format")
+            return
+        }
+
+        CoreCommsService.log(String(format: "IMU Single Reading - Accel: [%.2f, %.2f, %.2f], Euler: [%.1f°, %.1f°, %.1f°]",
+                                    accel[0], accel[1], accel[2],
+                                    euler[0], euler[1], euler[2]))
+
+        // Emit event for other components
+        let eventBody: [String: Any] = [
+            "imu_data": [
+                "accel": accel,
+                "gyro": gyro,
+                "mag": mag,
+                "quat": quat,
+                "euler": euler,
+                "timestamp": Date().timeIntervalSince1970 * 1000,
+            ],
+        ]
+        emitEvent("ImuDataEvent", body: eventBody)
+    }
+
+    private func handleStreamImuData(_ json: [String: Any]) {
+        guard let readings = json["readings"] as? [[String: Any]] else {
+            CoreCommsService.log("Invalid IMU stream data format")
+            return
+        }
+
+        for reading in readings {
+            handleSingleImuData(reading)
+        }
+    }
+
+    private func handleImuGesture(_ json: [String: Any]) {
+        guard let gesture = json["gesture"] as? String else {
+            CoreCommsService.log("Invalid IMU gesture format")
+            return
+        }
+
+        let timestamp = json["timestamp"] as? Double ?? Date().timeIntervalSince1970 * 1000
+
+        CoreCommsService.log("IMU Gesture detected: \(gesture)")
+
+        // Emit event for other components
+        let eventBody: [String: Any] = [
+            "imu_gesture": [
+                "gesture": gesture,
+                "timestamp": timestamp,
+            ],
+        ]
+        emitEvent("ImuGestureEvent", body: eventBody)
     }
 
     // MARK: - Update Methods
@@ -2331,6 +2500,9 @@ extension MentraLiveManager {
 
         // Send button photo settings
         sendButtonPhotoSettings()
+
+        // Send button camera LED setting
+        sendButtonCameraLedSetting()
     }
 
     func sendButtonVideoRecordingSettings() {
@@ -2374,6 +2546,23 @@ extension MentraLiveManager {
         let json: [String: Any] = [
             "type": "button_photo_setting",
             "size": size,
+        ]
+        sendJson(json)
+    }
+
+    func sendButtonCameraLedSetting() {
+        let enabled = UserDefaults.standard.bool(forKey: "button_camera_led")
+
+        CoreCommsService.log("Sending button camera LED setting: \(enabled)")
+
+        guard connectionState == .connected else {
+            CoreCommsService.log("Cannot send button camera LED setting - not connected")
+            return
+        }
+
+        let json: [String: Any] = [
+            "type": "button_camera_led",
+            "enabled": enabled,
         ]
         sendJson(json)
     }

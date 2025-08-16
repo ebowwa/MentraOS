@@ -1565,6 +1565,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             glassesSettings.put("head_up_angle", headUpAngle);
             glassesSettings.put("button_mode", SmartGlassesManager.getButtonPressMode(this));
             glassesSettings.put("button_photo_size", SmartGlassesManager.getButtonPhotoSize(this));
+            glassesSettings.put("button_camera_led", SmartGlassesManager.getButtonCameraLed(this));
             
             // Add button video settings as an object
             JSONObject buttonVideoSettings = new JSONObject();
@@ -2603,6 +2604,18 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         // Send to glasses if connected
         if (smartGlassesManager != null && smartGlassesManagerBound) {
             smartGlassesManager.sendButtonVideoRecordingSettings(width, height, fps);
+        }
+    }
+
+    @Override
+    public void setButtonCameraLed(boolean enabled) {
+        Log.d("AugmentOsService", "Setting button camera LED: " + enabled);
+        // Save locally
+        SmartGlassesManager.setButtonCameraLed(this, enabled);
+
+        // Send to glasses if connected
+        if (smartGlassesManager != null && smartGlassesManagerBound) {
+            smartGlassesManager.sendButtonCameraLedSetting(enabled);
         }
     }
 

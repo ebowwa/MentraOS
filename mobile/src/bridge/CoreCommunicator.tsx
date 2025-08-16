@@ -597,6 +597,15 @@ export class CoreCommunicator extends EventEmitter {
     })
   }
 
+  async sendSetButtonCameraLed(enabled: boolean) {
+    return await this.sendData({
+      command: "set_button_camera_led",
+      params: {
+        enabled: enabled,
+      },
+    })
+  }
+
   async sendToggleContextualDashboard(enabled: boolean) {
     return await this.sendData({
       command: "enable_contextual_dashboard",

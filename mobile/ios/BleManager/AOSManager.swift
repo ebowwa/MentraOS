@@ -1125,7 +1125,7 @@ struct ViewState {
 
         // Forward to glasses if Mentra Live
         if let mentraLiveManager = liveManager {
-            mentraLiveManager.sendButtonPhotoSettings(size)
+            mentraLiveManager.sendButtonPhotoSettings()
         }
 
         handleRequestStatus() // to update the UI
@@ -1139,7 +1139,19 @@ struct ViewState {
 
         // Forward to glasses if Mentra Live
         if let mentraLiveManager = liveManager {
-            mentraLiveManager.sendButtonVideoRecordingSettings(width: width, height: height, fps: fps)
+            mentraLiveManager.sendButtonVideoRecordingSettings()
+        }
+
+        handleRequestStatus() // to update the UI
+        saveSettings()
+    }
+
+    private func setButtonCameraLed(_ enabled: Bool) {
+        UserDefaults.standard.set(enabled, forKey: "button_camera_led")
+
+        // Forward to glasses if Mentra Live
+        if let mentraLiveManager = liveManager {
+            mentraLiveManager.sendButtonCameraLedSetting()
         }
 
         handleRequestStatus() // to update the UI
@@ -1305,6 +1317,7 @@ struct ViewState {
             case setButtonMode = "set_button_mode"
             case setButtonPhotoSize = "set_button_photo_size"
             case setButtonVideoSettings = "set_button_video_settings"
+            case setButtonCameraLed = "set_button_camera_led"
             case ping
             case forgetSmartGlasses = "forget_smart_glasses"
             case startApp = "start_app"
@@ -1422,6 +1435,12 @@ struct ViewState {
                         break
                     }
                     setButtonVideoSettings(width: width, height: height, fps: fps)
+                case .setButtonCameraLed:
+                    guard let params = params, let enabled = params["enabled"] as? Bool else {
+                        CoreCommsService.log("AOS: set_button_camera_led invalid params")
+                        break
+                    }
+                    setButtonCameraLed(enabled)
                 case .startApp:
                     guard let params = params, let target = params["target"] as? String else {
                         CoreCommsService.log("AOS: start_app invalid params")
@@ -1661,6 +1680,7 @@ struct ViewState {
             "head_up_angle": headUpAngle,
             "button_mode": buttonPressMode,
             "button_photo_size": UserDefaults.standard.string(forKey: "button_photo_size") ?? "medium",
+            "button_camera_led": UserDefaults.standard.bool(forKey: "button_camera_led"),
             "button_video_settings": [
                 "width": UserDefaults.standard.integer(forKey: "button_video_width") != 0 ? UserDefaults.standard.integer(forKey: "button_video_width") : 1280,
                 "height": UserDefaults.standard.integer(forKey: "button_video_height") != 0 ? UserDefaults.standard.integer(forKey: "button_video_height") : 720,

@@ -31,11 +31,13 @@ export default function CameraSettingsScreen() {
   const [loading, setLoading] = useState(false)
   const [photoSize, setPhotoSize] = useState<PhotoSize>("medium")
   const [videoResolution, setVideoResolution] = useState<VideoResolution>("720p")
+  const [ledEnabled, setLedEnabled] = useState(true)
 
   useEffect(() => {
     // Load current settings from status
     if (status.glasses_settings) {
       setPhotoSize((status.glasses_settings.button_photo_size as PhotoSize) || "medium")
+      setLedEnabled(status.glasses_settings.button_camera_led !== false) // Default true if not set
 
       // Convert video settings to resolution string
       const videoSettings = status.glasses_settings.button_video_settings
@@ -84,6 +86,25 @@ export default function CameraSettingsScreen() {
       Alert.alert("Success", "Video resolution updated")
     } catch (error) {
       Alert.alert("Error", "Failed to update video resolution")
+      console.error(error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleLedToggle = async (enabled: boolean) => {
+    if (!status.core_info.puck_connected || !status.glasses_info?.model_name) {
+      Alert.alert("Not Connected", "Please connect your glasses first")
+      return
+    }
+
+    try {
+      setLoading(true)
+      await coreCommunicator.sendSetButtonCameraLed(enabled)
+      setLedEnabled(enabled)
+      Alert.alert("Success", `Recording LED ${enabled ? "enabled" : "disabled"}`)
+    } catch (error) {
+      Alert.alert("Error", "Failed to update LED setting")
       console.error(error)
     } finally {
       setLoading(false)
@@ -169,6 +190,19 @@ export default function CameraSettingsScreen() {
               </TouchableOpacity>
             ))}
           </View>
+        </View>
+
+        <View style={themed($section)}>
+          <Text style={themed($sectionTitle)}>Recording LED</Text>
+          <Text style={themed($description)}>Control the recording LED when using camera button</Text>
+          <TouchableOpacity style={themed($optionRow)} onPress={() => handleLedToggle(!ledEnabled)} disabled={loading}>
+            <Text style={themed($optionText)}>Recording LED</Text>
+            <MaterialCommunityIcons
+              name={ledEnabled ? "toggle-switch" : "toggle-switch-off"}
+              size={40}
+              color={ledEnabled ? theme.colors.checkmark : theme.colors.textDim}
+            />
+          </TouchableOpacity>
         </View>
 
         {!status.core_info.puck_connected && (

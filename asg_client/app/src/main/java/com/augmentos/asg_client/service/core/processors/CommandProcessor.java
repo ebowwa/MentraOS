@@ -5,6 +5,7 @@ import android.util.Log;
 
 import com.augmentos.asg_client.io.file.core.FileManager;
 import com.augmentos.asg_client.service.core.handlers.K900CommandHandler;
+import com.augmentos.asg_client.service.core.handlers.MicrophoneCommandHandler;
 import com.augmentos.asg_client.service.legacy.managers.AsgClientServiceManager;
 import com.augmentos.asg_client.service.core.handlers.OtaCommandHandler;
 import com.augmentos.asg_client.service.core.handlers.SettingsCommandHandler;
@@ -23,6 +24,7 @@ import com.augmentos.asg_client.service.core.handlers.PingCommandHandler;
 import com.augmentos.asg_client.service.core.handlers.RtmpCommandHandler;
 import com.augmentos.asg_client.service.core.handlers.WifiCommandHandler;
 import com.augmentos.asg_client.service.core.handlers.BatteryCommandHandler;
+import com.augmentos.asg_client.service.core.handlers.ImuCommandHandler;
 
 import org.json.JSONObject;
 
@@ -278,6 +280,9 @@ public class CommandProcessor {
 
             commandHandlerRegistry.registerHandler(new OtaCommandHandler());
             Log.d(TAG, "✅ Registered OtaCommandHandler");
+
+            commandHandlerRegistry.registerHandler(new ImuCommandHandler(context, responseSender));
+            Log.d(TAG, "✅ Registered ImuCommandHandler");
 
             Log.i(TAG, "✅ Successfully registered " + commandHandlerRegistry.getHandlerCount() + " command handlers");
 

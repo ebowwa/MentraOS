@@ -114,12 +114,13 @@ public class VideoCommandHandler extends BaseMediaCommandHandler {
 
             // Start recording with settings
             boolean save = data.optBoolean("save", false);
+            boolean enableLed = data.optBoolean("enable_led", false); // Default false for phone commands
             String requestId = data.optString("requestId", "video_" + System.currentTimeMillis());
             
             if (videoSettings != null) {
-                captureService.handleStartVideoCommand(requestId, save, videoSettings);
+                captureService.handleStartVideoCommand(requestId, save, videoSettings, enableLed);
             } else {
-                captureService.handleStartVideoCommand(requestId, save); // Use default settings
+                captureService.handleStartVideoCommand(requestId, save, enableLed); // Use default settings
             }
             
             logCommandResult("start_video_recording", true, null);

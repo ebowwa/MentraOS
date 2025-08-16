@@ -564,6 +564,18 @@ public class SmartGlassesManager extends Service {
                 .apply();
     }
 
+    public static void setButtonCameraLed(Context context, boolean enabled) {
+        PreferenceManager.getDefaultSharedPreferences(context)
+                .edit()
+                .putBoolean("button_camera_led", enabled)
+                .apply();
+    }
+
+    public static boolean getButtonCameraLed(Context context) {
+        return PreferenceManager.getDefaultSharedPreferences(context)
+                .getBoolean("button_camera_led", true); // Default to true
+    }
+
     public static int getButtonVideoWidth(Context context) {
         return PreferenceManager.getDefaultSharedPreferences(context)
                 .getInt("button_video_width", 1280);
@@ -800,6 +812,12 @@ public class SmartGlassesManager extends Service {
     public void sendButtonVideoRecordingSettings(int width, int height, int fps) {
         if (smartGlassesRepresentative != null && smartGlassesRepresentative.smartGlassesCommunicator != null) {
             smartGlassesRepresentative.smartGlassesCommunicator.sendButtonVideoRecordingSettings(width, height, fps);
+        }
+    }
+
+    public void sendButtonCameraLedSetting(boolean enabled) {
+        if (smartGlassesRepresentative != null && smartGlassesRepresentative.smartGlassesCommunicator != null) {
+            smartGlassesRepresentative.smartGlassesCommunicator.sendButtonCameraLedSetting(enabled);
         }
     }
 

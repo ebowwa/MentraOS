@@ -33,7 +33,8 @@ public class SettingsCommandHandler implements ICommandHandler {
 
     @Override
     public Set<String> getSupportedCommandTypes() {
-        return Set.of("set_photo_mode", "button_mode_setting", "button_video_recording_setting", "button_photo_setting");
+        return Set.of("set_photo_mode", "button_mode_setting", "button_video_recording_setting", 
+                      "button_photo_setting", "button_camera_led");
     }
 
     @Override
@@ -48,6 +49,8 @@ public class SettingsCommandHandler implements ICommandHandler {
                     return handleButtonVideoRecordingSetting(data);
                 case "button_photo_setting":
                     return handleButtonPhotoSetting(data);
+                case "button_camera_led":
+                    return handleButtonCameraLedSetting(data);
                 default:
                     Log.e(TAG, "Unsupported settings command: " + commandType);
                     return false;
@@ -152,6 +155,30 @@ public class SettingsCommandHandler implements ICommandHandler {
             }
         } catch (Exception e) {
             Log.e(TAG, "Error handling button photo setting", e);
+            return false;
+        }
+    }
+    
+    /**
+     * Handle button camera LED setting command
+     */
+    public boolean handleButtonCameraLedSetting(JSONObject data) {
+        try {
+            boolean enabled = data.optBoolean("enabled", true);
+            
+            Log.d(TAG, "📱 Received button camera LED setting: " + enabled);
+            
+            AsgSettings asgSettings = serviceManager.getAsgSettings();
+            if (asgSettings != null) {
+                asgSettings.setButtonCameraLedEnabled(enabled);
+                Log.d(TAG, "✅ Button camera LED setting saved: " + enabled);
+                return true;
+            } else {
+                Log.e(TAG, "Settings not available");
+                return false;
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error handling button camera LED setting", e);
             return false;
         }
     }

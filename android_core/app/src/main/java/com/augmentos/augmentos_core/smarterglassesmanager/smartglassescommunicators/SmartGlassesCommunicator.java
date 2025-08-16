@@ -77,6 +77,10 @@ public abstract class SmartGlassesCommunicator {
         Log.d("SmartGlassesCommunicator", "Default implementation - button video settings: " + width + "x" + height + "@" + fps + "fps");
     }
 
+    public void sendButtonCameraLedSetting(boolean enabled) {
+        Log.d("SmartGlassesCommunicator", "Default implementation - button camera LED: " + enabled);
+    }
+
     //fonts
     public int LARGE_FONT;
     public int MEDIUM_FONT;

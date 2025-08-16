@@ -207,16 +207,19 @@ public class K900CommandHandler {
             return;
         }
 
+        // Get LED setting
+        boolean ledEnabled = serviceManager.getAsgSettings().getButtonCameraLedEnabled();
+        
         if (isLongPress) {
-            Log.d(TAG, "📹 Starting video recording (PHOTO mode, long press)");
+            Log.d(TAG, "📹 Starting video recording (PHOTO mode, long press) with LED: " + ledEnabled);
             // Get saved video settings for button press
             VideoSettings videoSettings = serviceManager.getAsgSettings().getButtonVideoSettings();
-            captureService.startVideoRecording(videoSettings);
+            captureService.startVideoRecording(videoSettings, ledEnabled);
         } else {
-            Log.d(TAG, "📸 Taking photo locally (PHOTO mode, short press)");
+            Log.d(TAG, "📸 Taking photo locally (PHOTO mode, short press) with LED: " + ledEnabled);
             // Get saved photo size for button press
             String photoSize = serviceManager.getAsgSettings().getButtonPhotoSize();
-            captureService.takePhotoLocally(photoSize);
+            captureService.takePhotoLocally(photoSize, ledEnabled);
         }
     }
 
@@ -235,21 +238,24 @@ public class K900CommandHandler {
         Log.d(TAG, "🔄 Sending button press to apps AND taking photo/video (BOTH mode)");
         sendButtonPressToPhone(isLongPress);
 
+        // Get LED setting
+        boolean ledEnabled = serviceManager.getAsgSettings().getButtonCameraLedEnabled();
+        
         if (isLongPress) {
             MediaCaptureService captureService = serviceManager.getMediaCaptureService();
             if (captureService != null) {
-                Log.d(TAG, "📹 Starting video recording (BOTH mode, long press)");
+                Log.d(TAG, "📹 Starting video recording (BOTH mode, long press) with LED: " + ledEnabled);
                 // Get saved video settings for button press
                 VideoSettings videoSettings = serviceManager.getAsgSettings().getButtonVideoSettings();
-                captureService.startVideoRecording(videoSettings);
+                captureService.startVideoRecording(videoSettings, ledEnabled);
             }
         } else {
             MediaCaptureService captureService = serviceManager.getMediaCaptureService();
             if (captureService != null) {
-                Log.d(TAG, "📸 Taking photo locally (BOTH mode, short press)");
+                Log.d(TAG, "📸 Taking photo locally (BOTH mode, short press) with LED: " + ledEnabled);
                 // Get saved photo size for button press
                 String photoSize = serviceManager.getAsgSettings().getButtonPhotoSize();
-                captureService.takePhotoLocally(photoSize);
+                captureService.takePhotoLocally(photoSize, ledEnabled);
             }
         }
     }

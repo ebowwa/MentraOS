@@ -225,6 +225,11 @@ public class AugmentOsManagerMessageParser {
                     callback.setButtonVideoSettings(videoWidth, videoHeight, videoFps);
                     break;
 
+                case "set_button_camera_led":
+                    boolean ledEnabled = commandObject.getJSONObject("params").getBoolean("enabled");
+                    callback.setButtonCameraLed(ledEnabled);
+                    break;
+
                 case "audio_play_response":
                     JSONObject audioResponse = commandObject.getJSONObject("params");
                     callback.onAudioPlayResponse(audioResponse);

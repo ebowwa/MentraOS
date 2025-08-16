@@ -18,6 +18,7 @@ public class AsgSettings {
     private static final String KEY_BUTTON_VIDEO_HEIGHT = "button_video_height";
     private static final String KEY_BUTTON_VIDEO_FPS = "button_video_fps";
     private static final String KEY_BUTTON_PHOTO_SIZE = "button_photo_size";
+    private static final String KEY_BUTTON_CAMERA_LED = "button_camera_led";
     
     public enum ButtonPressMode {
         PHOTO("photo"),      // Take photo only
@@ -171,5 +172,25 @@ public class AsgSettings {
         Log.d(TAG, "Setting button photo size to: " + size);
         // Using commit() for immediate persistence
         prefs.edit().putString(KEY_BUTTON_PHOTO_SIZE, size).commit();
+    }
+    
+    /**
+     * Get the camera LED setting for button-initiated recordings
+     * @return true if LED should be enabled, false otherwise
+     */
+    public boolean getButtonCameraLedEnabled() {
+        boolean enabled = prefs.getBoolean(KEY_BUTTON_CAMERA_LED, true); // Default to true
+        Log.d(TAG, "Retrieved button camera LED setting: " + enabled);
+        return enabled;
+    }
+    
+    /**
+     * Set the camera LED setting for button-initiated recordings
+     * @param enabled true to enable LED, false to disable
+     */
+    public void setButtonCameraLedEnabled(boolean enabled) {
+        Log.d(TAG, "Setting button camera LED to: " + enabled);
+        // Using commit() for immediate persistence
+        prefs.edit().putBoolean(KEY_BUTTON_CAMERA_LED, enabled).commit();
     }
 }

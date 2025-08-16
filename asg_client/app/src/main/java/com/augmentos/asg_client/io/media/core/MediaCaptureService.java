@@ -14,6 +14,8 @@ import com.augmentos.asg_client.io.media.managers.MediaUploadQueueManager;
 import com.augmentos.asg_client.io.media.interfaces.ServiceCallbackInterface;
 import com.augmentos.asg_client.camera.CameraNeo;
 import com.augmentos.asg_client.settings.VideoSettings;
+import com.augmentos.asg_client.io.hardware.interfaces.IHardwareManager;
+import com.augmentos.asg_client.io.hardware.core.HardwareManagerFactory;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -53,12 +55,14 @@ public class MediaCaptureService {
     private MediaCaptureListener mMediaCaptureListener;
     private ServiceCallbackInterface mServiceCallback;
     private CircularVideoBuffer mVideoBuffer;
+    private final IHardwareManager hardwareManager;
 
     // Track current video recording
     private boolean isRecordingVideo = false;
     private String currentVideoId = null;
     private String currentVideoPath = null;
     private long recordingStartTime = 0;
+    private boolean currentVideoLedEnabled = false; // Track if LED was enabled for current recording
 
     // Default BLE params (used if size unspecified)
     public static final int bleImageTargetWidth = 480;
@@ -140,6 +144,11 @@ public class MediaCaptureService {
         mContext = context.getApplicationContext();
         mMediaQueueManager = mediaQueueManager;
         this.fileManager = fileManager;
+        
+        // Initialize hardware manager
+        hardwareManager = HardwareManagerFactory.getInstance(context);
+        Log.d(TAG, "Hardware manager initialized: " + hardwareManager.getDeviceModel());
+        
         // Initialize video buffer
         mVideoBuffer = new CircularVideoBuffer(context);
         mVideoBuffer.setCallback(new CircularVideoBuffer.BufferCallback() {
@@ -171,6 +180,9 @@ public class MediaCaptureService {
             @Override
             public void onBufferError(String error) {
                 Log.e(TAG, "Buffer error: " + error);
+                // Turn off LED on buffer error
+                hardwareManager.setRecordingLedOff();
+                Log.d(TAG, "Recording LED turned OFF (buffer error)");
                 if (mMediaCaptureListener != null) {
                     mMediaCaptureListener.onMediaError("buffer", error, MediaUploadQueueManager.MEDIA_TYPE_VIDEO);
                 }
@@ -312,8 +324,9 @@ public class MediaCaptureService {
     /**
      * Start video recording with specific settings
      * @param settings Video settings (resolution, fps)
+     * @param enableLed Whether to enable recording LED
      */
-    public void startVideoRecording(VideoSettings settings) {
+    public void startVideoRecording(VideoSettings settings, boolean enableLed) {
         if (isRecordingVideo) {
             Log.d(TAG, "Stopping video recording");
             stopVideoRecording();
@@ -323,7 +336,7 @@ public class MediaCaptureService {
             String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
             String requestId = "local_video_" + timeStamp;
             String videoFilePath = fileManager.getDefaultMediaDirectory() + File.separator + "VID_" + timeStamp + ".mp4";
-            startVideoRecording(videoFilePath, requestId, settings);
+            startVideoRecording(videoFilePath, requestId, settings, enableLed);
         }
     }
 
@@ -333,8 +346,8 @@ public class MediaCaptureService {
      * @param requestId Unique request ID for tracking
      * @param save Whether to keep the video on device after upload
      */
-    public void handleStartVideoCommand(String requestId, boolean save) {
-        handleStartVideoCommand(requestId, save, null);
+    public void handleStartVideoCommand(String requestId, boolean save, boolean enableLed) {
+        handleStartVideoCommand(requestId, save, null, enableLed);
     }
     
     /**
@@ -343,7 +356,7 @@ public class MediaCaptureService {
      * @param save Whether to keep the video on device after upload
      * @param settings Video settings (resolution, fps) or null for defaults
      */
-    public void handleStartVideoCommand(String requestId, boolean save, VideoSettings settings) {
+    public void handleStartVideoCommand(String requestId, boolean save, VideoSettings settings, boolean enableLed) {
         // Check if already recording
         if (isRecordingVideo) {
             Log.w(TAG, "Already recording video, ignoring start command");
@@ -358,7 +371,7 @@ public class MediaCaptureService {
                             String videoFilePath = fileManager.getDefaultMediaDirectory() + File.separator + "VID_" + timeStamp + "_" + requestId + ".mp4";
 
         // Start video recording with the provided requestId
-        startVideoRecording(videoFilePath, requestId);
+        startVideoRecording(videoFilePath, requestId, enableLed);
     }
 
     /**
@@ -401,14 +414,14 @@ public class MediaCaptureService {
     /**
      * Start video recording with specific parameters
      */
-    private void startVideoRecording(String videoFilePath, String requestId) {
-        startVideoRecording(videoFilePath, requestId, null);
+    private void startVideoRecording(String videoFilePath, String requestId, boolean enableLed) {
+        startVideoRecording(videoFilePath, requestId, null, enableLed);
     }
     
     /**
      * Start video recording with specific parameters and settings
      */
-    private void startVideoRecording(String videoFilePath, String requestId, VideoSettings settings) {
+    private void startVideoRecording(String videoFilePath, String requestId, VideoSettings settings, boolean enableLed) {
         // Check storage availability before recording
         if (!isExternalStorageAvailable()) {
             Log.e(TAG, "External storage is not available for video capture");
@@ -421,6 +434,7 @@ public class MediaCaptureService {
         // Save info for the current recording session
         currentVideoId = requestId;
         currentVideoPath = videoFilePath;
+        currentVideoLedEnabled = enableLed; // Track LED state for this recording
 
         try {
             // Start video recording using CameraNeo
@@ -430,6 +444,12 @@ public class MediaCaptureService {
                     Log.d(TAG, "Video recording started with ID: " + videoId);
                     isRecordingVideo = true;
                     recordingStartTime = System.currentTimeMillis();
+                    
+                    // Turn on recording LED if enabled
+                    if (enableLed && hardwareManager.supportsRecordingLed()) {
+                        hardwareManager.setRecordingLedOn();
+                        Log.d(TAG, "Recording LED turned ON");
+                    }
 
                     // Notify listener
                     if (mMediaCaptureListener != null) {
@@ -441,6 +461,12 @@ public class MediaCaptureService {
                 public void onRecordingStopped(String videoId, String filePath) {
                     Log.d(TAG, "Video recording stopped: " + videoId + ", file: " + filePath);
                     isRecordingVideo = false;
+                    
+                    // Turn off recording LED if it was enabled
+                    if (enableLed && hardwareManager.supportsRecordingLed()) {
+                        hardwareManager.setRecordingLedOff();
+                        Log.d(TAG, "Recording LED turned OFF");
+                    }
 
                     // Notify listener
                     if (mMediaCaptureListener != null) {
@@ -459,6 +485,12 @@ public class MediaCaptureService {
                 public void onRecordingError(String videoId, String errorMessage) {
                     Log.e(TAG, "Video recording error: " + videoId + ", error: " + errorMessage);
                     isRecordingVideo = false;
+                    
+                    // Turn off recording LED on error if it was enabled
+                    if (enableLed && hardwareManager.supportsRecordingLed()) {
+                        hardwareManager.setRecordingLedOff();
+                        Log.d(TAG, "Recording LED turned OFF (due to error)");
+                    }
 
                     // Notify listener
                     if (mMediaCaptureListener != null) {
@@ -515,6 +547,12 @@ public class MediaCaptureService {
             isRecordingVideo = false;
             currentVideoId = null;
             currentVideoPath = null;
+            
+            // Ensure LED is turned off even if stop fails (if it was enabled)
+            if (currentVideoLedEnabled && hardwareManager.supportsRecordingLed()) {
+                hardwareManager.setRecordingLedOff();
+                Log.d(TAG, "Recording LED turned OFF (stop error recovery)");
+            }
         }
     }
 
@@ -560,11 +598,17 @@ public class MediaCaptureService {
             @Override
             public void onBufferStarted() {
                 Log.d(TAG, "Buffer recording started");
+                // Start blinking LED for buffer recording mode
+                hardwareManager.setRecordingLedBlinking(1000, 2000); // On for 1s, off for 2s
+                Log.d(TAG, "Recording LED set to BLINKING mode (buffer recording)");
             }
 
             @Override
             public void onBufferStopped() {
                 Log.d(TAG, "Buffer recording stopped");
+                // Turn off LED when buffer recording stops
+                hardwareManager.setRecordingLedOff();
+                Log.d(TAG, "Recording LED turned OFF (buffer stopped)");
             }
 
             @Override
@@ -578,6 +622,9 @@ public class MediaCaptureService {
             @Override
             public void onBufferError(String error) {
                 Log.e(TAG, "Buffer error: " + error);
+                // Turn off LED on buffer error
+                hardwareManager.setRecordingLedOff();
+                Log.d(TAG, "Recording LED turned OFF (buffer error)");
                 if (mMediaCaptureListener != null) {
                     mMediaCaptureListener.onMediaError("buffer", error, MediaUploadQueueManager.MEDIA_TYPE_VIDEO);
                 }
@@ -591,6 +638,9 @@ public class MediaCaptureService {
     public void stopBufferRecording() {
         Log.d(TAG, "Stopping buffer recording via CameraNeo");
         CameraNeo.stopBufferRecording(mContext);
+        // Ensure LED is turned off when manually stopping buffer
+        hardwareManager.setRecordingLedOff();
+        Log.d(TAG, "Recording LED turned OFF (manual buffer stop)");
     }
 
     /**
@@ -632,14 +682,15 @@ public class MediaCaptureService {
      * Uses default medium size
      */
     public void takePhotoLocally() {
-        takePhotoLocally("medium");
+        takePhotoLocally("medium", false);
     }
     
     /**
      * Takes a photo locally with specified size
      * @param size Photo size ("small", "medium", or "large")
+     * @param enableLed Whether to enable camera LED flash
      */
-    public void takePhotoLocally(String size) {
+    public void takePhotoLocally(String size, boolean enableLed) {
         // Check storage availability before taking photo
         if (!isExternalStorageAvailable()) {
             Log.e(TAG, "External storage is not available for photo capture");
@@ -692,7 +743,7 @@ public class MediaCaptureService {
      * @param webhookUrl Optional webhook URL for direct upload to app
      * @param save Whether to keep the photo on device after upload
      */
-    public void takePhotoAndUpload(String photoFilePath, String requestId, String webhookUrl, boolean save, String size) {
+    public void takePhotoAndUpload(String photoFilePath, String requestId, String webhookUrl, boolean save, String size, boolean enableLed) {
         // Store the save flag for this request
         photoSaveFlags.put(requestId, save);
         // Track requested size for potential fallbacks
@@ -1133,7 +1184,7 @@ public class MediaCaptureService {
      * @param bleImgId BLE image ID for fallback
      * @param save Whether to keep the photo on device
      */
-    public void takePhotoAutoTransfer(String photoFilePath, String requestId, String webhookUrl, String bleImgId, boolean save, String size) {
+    public void takePhotoAutoTransfer(String photoFilePath, String requestId, String webhookUrl, String bleImgId, boolean save, String size, boolean enableLed) {
         // Store the save flag and BLE ID for this request
         photoSaveFlags.put(requestId, save);
         photoBleIds.put(requestId, bleImgId);
@@ -1159,7 +1210,7 @@ public class MediaCaptureService {
      * @param bleImgId BLE image ID to use as filename
      * @param save Whether to keep the original photo on device
      */
-    public void takePhotoForBleTransfer(String photoFilePath, String requestId, String bleImgId, boolean save, String size) {
+    public void takePhotoForBleTransfer(String photoFilePath, String requestId, String bleImgId, boolean save, String size, boolean enableLed) {
         // Store the save flag for this request
         photoSaveFlags.put(requestId, save);
         // Track requested size for BLE compression

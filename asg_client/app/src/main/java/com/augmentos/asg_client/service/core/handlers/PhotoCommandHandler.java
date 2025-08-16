@@ -67,6 +67,7 @@ public class PhotoCommandHandler extends BaseMediaCommandHandler {
             String bleImgId = data.optString("bleImgId", "");
             boolean save = data.optBoolean("save", false);
             String size = data.optString("size", "medium");
+            boolean enableLed = data.optBoolean("enable_led", false); // Default false for phone commands
 
             // Generate file path using base class functionality
             String fileName = generateUniqueFilename("IMG_", ".jpg");
@@ -83,7 +84,8 @@ public class PhotoCommandHandler extends BaseMediaCommandHandler {
             }
 
             // Process photo capture based on transfer method
-            boolean success = processPhotoCapture(captureService, photoFilePath, requestId, webhookUrl, bleImgId, save, size, transferMethod);
+            boolean success = processPhotoCapture(captureService, photoFilePath, requestId, webhookUrl, 
+                                                 bleImgId, save, size, transferMethod, enableLed);
             logCommandResult("take_photo", success, success ? null : "Photo capture failed");
             return success;
 
@@ -108,20 +110,20 @@ public class PhotoCommandHandler extends BaseMediaCommandHandler {
      */
     private boolean processPhotoCapture(MediaCaptureService captureService, String photoFilePath,
                                       String requestId, String webhookUrl, String bleImgId,
-                                      boolean save, String size, String transferMethod) {
+                                      boolean save, String size, String transferMethod, boolean enableLed) {
         switch (transferMethod) {
             case "ble":
-                captureService.takePhotoForBleTransfer(photoFilePath, requestId, bleImgId, save, size);
+                captureService.takePhotoForBleTransfer(photoFilePath, requestId, bleImgId, save, size, enableLed);
                 return true;
             case "auto":
                 if (bleImgId.isEmpty()) {
                     Log.e(TAG, "Auto mode requires bleImgId for fallback");
                     return false;
                 }
-                captureService.takePhotoAutoTransfer(photoFilePath, requestId, webhookUrl, bleImgId, save, size);
+                captureService.takePhotoAutoTransfer(photoFilePath, requestId, webhookUrl, bleImgId, save, size, enableLed);
                 return true;
             default:
-                captureService.takePhotoAndUpload(photoFilePath, requestId, webhookUrl, save, size);
+                captureService.takePhotoAndUpload(photoFilePath, requestId, webhookUrl, save, size, enableLed);
                 return true;
         }
     }

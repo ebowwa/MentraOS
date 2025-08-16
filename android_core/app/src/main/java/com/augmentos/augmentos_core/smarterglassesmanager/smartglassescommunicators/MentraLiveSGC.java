@@ -42,10 +42,13 @@ import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.Glass
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.DownloadProgressEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.InstallationProgressEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.PairFailureEvent;
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.ImuDataEvent;
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.ImuGestureEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.K900ProtocolUtils;
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.BlePhotoUploadService;
 
 import org.greenrobot.eventbus.EventBus;
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -1497,6 +1500,16 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 Log.d(TAG, "💓 Received pong response - connection healthy");
                 break;
 
+            case "imu_response":
+            case "imu_stream_response":
+            case "imu_gesture_response":
+            case "imu_gesture_subscribed":
+            case "imu_ack":
+            case "imu_error":
+                // Handle IMU-related responses
+                handleImuResponse(json);
+                break;
+
             case "wifi_status":
                 // Process WiFi status information
                 boolean wifiConnected = json.optBoolean("connected", false);
@@ -2567,6 +2580,19 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     }
 
     @Override
+    public void sendButtonCameraLedSetting(boolean enabled) {
+        // Send LED setting to glasses
+        JSONObject command = new JSONObject();
+        try {
+            command.put("type", "button_camera_led");
+            command.put("enabled", enabled);
+            sendJson(command);
+        } catch (Exception e) {
+            Log.e(TAG, "Error sending button camera LED setting", e);
+        }
+    }
+
+    @Override
     public void displayTextWall(String text) {
         Log.d(TAG, "[STUB] Device has no display. Text wall would show: " + text);
     }
@@ -2691,6 +2717,183 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         }
     }
 
+
+    //---------------------------------------
+    // IMU Methods
+    //---------------------------------------
+
+    /**
+     * Request a single IMU reading from the glasses
+     * Power-optimized: sensors turn on briefly then off
+     */
+    public void requestImuSingle() {
+        Log.d(TAG, "Requesting single IMU reading");
+        try {
+            JSONObject json = new JSONObject();
+            json.put("type", "imu_single");
+            sendJson(json, false);
+        } catch (JSONException e) {
+            Log.e(TAG, "Error creating IMU single request", e);
+        }
+    }
+
+    /**
+     * Start IMU streaming from the glasses
+     * @param rateHz Sampling rate in Hz (1-100)
+     * @param batchMs Batching period in milliseconds (0-1000)
+     */
+    public void startImuStream(int rateHz, long batchMs) {
+        Log.d(TAG, "Starting IMU stream: " + rateHz + "Hz, batch: " + batchMs + "ms");
+        try {
+            JSONObject json = new JSONObject();
+            json.put("type", "imu_stream_start");
+            json.put("rate_hz", rateHz);
+            json.put("batch_ms", batchMs);
+            sendJson(json, false);
+        } catch (JSONException e) {
+            Log.e(TAG, "Error creating IMU stream start request", e);
+        }
+    }
+
+    /**
+     * Stop IMU streaming from the glasses
+     */
+    public void stopImuStream() {
+        Log.d(TAG, "Stopping IMU stream");
+        try {
+            JSONObject json = new JSONObject();
+            json.put("type", "imu_stream_stop");
+            sendJson(json, false);
+        } catch (JSONException e) {
+            Log.e(TAG, "Error creating IMU stream stop request", e);
+        }
+    }
+
+    /**
+     * Subscribe to gesture detection on the glasses
+     * Power-optimized: uses accelerometer-only at low rate
+     * @param gestures List of gestures to detect ("head_up", "head_down", "nod_yes", "shake_no")
+     */
+    public void subscribeToImuGestures(List<String> gestures) {
+        Log.d(TAG, "Subscribing to IMU gestures: " + gestures);
+        try {
+            JSONObject json = new JSONObject();
+            json.put("type", "imu_subscribe_gesture");
+            json.put("gestures", new JSONArray(gestures));
+            sendJson(json, false);
+        } catch (JSONException e) {
+            Log.e(TAG, "Error creating IMU gesture subscription", e);
+        }
+    }
+
+    /**
+     * Unsubscribe from all gesture detection
+     */
+    public void unsubscribeFromImuGestures() {
+        Log.d(TAG, "Unsubscribing from IMU gestures");
+        try {
+            JSONObject json = new JSONObject();
+            json.put("type", "imu_unsubscribe_gesture");
+            sendJson(json, false);
+        } catch (JSONException e) {
+            Log.e(TAG, "Error creating IMU gesture unsubscription", e);
+        }
+    }
+
+    /**
+     * Handle IMU response from glasses
+     */
+    private void handleImuResponse(JSONObject json) {
+        try {
+            String type = json.getString("type");
+            
+            switch(type) {
+                case "imu_response":
+                    // Single IMU reading
+                    handleSingleImuData(json);
+                    break;
+                    
+                case "imu_stream_response":
+                    // Stream of IMU readings
+                    handleStreamImuData(json);
+                    break;
+                    
+                case "imu_gesture_response":
+                    // Gesture detected
+                    handleImuGesture(json);
+                    break;
+                    
+                case "imu_gesture_subscribed":
+                    // Gesture subscription confirmed
+                    Log.d(TAG, "IMU gesture subscription confirmed: " + json.optJSONArray("gestures"));
+                    break;
+                    
+                case "imu_ack":
+                    // Command acknowledgment
+                    Log.d(TAG, "IMU command acknowledged: " + json.optString("message"));
+                    break;
+                    
+                case "imu_error":
+                    // Error response
+                    Log.e(TAG, "IMU error: " + json.optString("error"));
+                    break;
+                    
+                default:
+                    Log.w(TAG, "Unknown IMU response type: " + type);
+            }
+        } catch (JSONException e) {
+            Log.e(TAG, "Error handling IMU response", e);
+        }
+    }
+
+    private void handleSingleImuData(JSONObject json) {
+        try {
+            // Extract IMU data
+            JSONArray accel = json.getJSONArray("accel");
+            JSONArray gyro = json.getJSONArray("gyro");
+            JSONArray mag = json.getJSONArray("mag");
+            JSONArray quat = json.getJSONArray("quat");
+            JSONArray euler = json.getJSONArray("euler");
+            
+            Log.d(TAG, String.format("IMU Single Reading - Accel: [%.2f, %.2f, %.2f], Euler: [%.1f°, %.1f°, %.1f°]",
+                accel.getDouble(0), accel.getDouble(1), accel.getDouble(2),
+                euler.getDouble(0), euler.getDouble(1), euler.getDouble(2)));
+            
+            // Post event for other components
+            EventBus.getDefault().post(new ImuDataEvent(
+                accel, gyro, mag, quat, euler, System.currentTimeMillis()
+            ));
+        } catch (JSONException e) {
+            Log.e(TAG, "Error parsing single IMU data", e);
+        }
+    }
+
+    private void handleStreamImuData(JSONObject json) {
+        try {
+            JSONArray readings = json.getJSONArray("readings");
+            
+            for (int i = 0; i < readings.length(); i++) {
+                JSONObject reading = readings.getJSONObject(i);
+                handleSingleImuData(reading);
+            }
+        } catch (JSONException e) {
+            Log.e(TAG, "Error parsing stream IMU data", e);
+        }
+    }
+
+    private void handleImuGesture(JSONObject json) {
+        try {
+            String gesture = json.getString("gesture");
+            long timestamp = json.optLong("timestamp", System.currentTimeMillis());
+            
+            Log.d(TAG, "IMU Gesture detected: " + gesture);
+            
+            // Post event for other components
+            EventBus.getDefault().post(new ImuGestureEvent(gesture, timestamp));
+        } catch (JSONException e) {
+            Log.e(TAG, "Error parsing IMU gesture", e);
+        }
+    }
 
     /**
      * Send data directly to the glasses using the K900 protocol utility.
@@ -3251,6 +3454,9 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         
         // Send button photo settings
         sendButtonPhotoSettings();
+        
+        // Send button camera LED setting
+        sendButtonCameraLedSetting();
     }
 
     /**
@@ -3304,6 +3510,30 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             sendJson(json);
         } catch (JSONException e) {
             Log.e(TAG, "Error creating button photo settings message", e);
+        }
+    }
+
+    /**
+     * Send button camera LED setting to glasses
+     */
+    public void sendButtonCameraLedSetting() {
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
+        boolean enabled = prefs.getBoolean("button_camera_led", true);
+        
+        Log.d(TAG, "Sending button camera LED setting: " + enabled);
+        
+        if (!isConnected) {
+            Log.w(TAG, "Cannot send button camera LED setting - not connected");
+            return;
+        }
+        
+        try {
+            JSONObject json = new JSONObject();
+            json.put("type", "button_camera_led");
+            json.put("enabled", enabled);
+            sendJson(json);
+        } catch (JSONException e) {
+            Log.e(TAG, "Error creating button camera LED settings message", e);
         }
     }
     
