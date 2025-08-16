@@ -52,7 +52,7 @@ const en = {
     scanningForGlassesModel: "Scanning for {{model}}",
     scanningForGlasses2: "Ensure your glasses are in range.",
     preorderNow: "PREORDER NOW",
-    preorderNowShipMessage: "Ships September 2025",
+    preorderNowShipMessage: "Ships Q4 2025",
     goHome: "Go Home",
     tryAgain: "Try Again",
     pairingFailed: "Pairing Failed",

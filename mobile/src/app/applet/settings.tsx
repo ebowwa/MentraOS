@@ -32,6 +32,7 @@ import SelectWithSearchSetting from "@/components/settings/SelectWithSearchSetti
 import NumberSetting from "@/components/settings/NumberSetting"
 import TimeSetting from "@/components/settings/TimeSetting"
 import {saveSetting, loadSetting} from "@/utils/SettingsHelper"
+import {SETTINGS_KEYS} from "@/consts"
 import SettingsSkeleton from "@/components/misc/SettingsSkeleton"
 import {router, useFocusEffect, useLocalSearchParams} from "expo-router"
 import {useAppTheme} from "@/utils/useAppTheme"
@@ -99,17 +100,28 @@ export default function AppSettings() {
     return null
   }
 
-  // IMMEDIATE TACTICAL BYPASS: Check for webviewURL in app status data and redirect instantly
-  // useEffect(() => {
-  //   if (appInfo?.webviewURL && fromWebView !== "true") {
-  //     console.log("TACTICAL BYPASS: webviewURL detected in app status, executing immediate redirect")
-  //     replace("/applet/webview", {
-  //       webviewURL: appInfo.webviewURL,
-  //       appName: appName,
-  //       packageName: packageName,
-  //     })
-  //   }
-  // }, [appInfo, fromWebView, appName, packageName, replace])
+  // Check if we're in old UI mode
+  const [isOldUI, setIsOldUI] = useState(false)
+
+  useEffect(() => {
+    const checkUIMode = async () => {
+      const newUiSetting = await loadSetting(SETTINGS_KEYS.NEW_UI, false)
+      setIsOldUI(!newUiSetting) // Old UI is when NEW_UI is false
+    }
+    checkUIMode()
+  }, [])
+
+  // IMMEDIATE TACTICAL BYPASS: Check for webviewURL in app status data and redirect instantly (OLD UI ONLY)
+  useEffect(() => {
+    if (isOldUI && appInfo?.webviewURL && fromWebView !== "true") {
+      console.log("OLD UI: webviewURL detected in app status, executing immediate redirect")
+      replace("/applet/webview", {
+        webviewURL: appInfo.webviewURL,
+        appName: appName,
+        packageName: packageName,
+      })
+    }
+  }, [appInfo, fromWebView, appName, packageName, replace, isOldUI])
 
   // propagate any changes in app lists when this screen is unmounted:
   useFocusEffect(
@@ -595,22 +607,22 @@ export default function AppSettings() {
             }
             goBack()
           }}
-          // RightActionComponent={
-          //   serverAppInfo?.webviewURL ? (
-          //     <TouchableOpacity
-          //       style={{marginRight: 8}}
-          //       onPress={() => {
-          // navigate("/applet/webview", {
-          //   webviewURL: serverAppInfo.webviewURL,
-          //   appName: appName as string,
-          //   packageName: packageName as string,
-          //   fromSettings: "true",
-          // })
-          //       }}>
-          //       <FontAwesome name="globe" size={22} color={theme.colors.text} />
-          //     </TouchableOpacity>
-          //   ) : undefined
-          // }
+          RightActionComponent={
+            isOldUI && serverAppInfo?.webviewURL ? (
+              <TouchableOpacity
+                style={{marginRight: 8}}
+                onPress={() => {
+                  replace("/applet/webview", {
+                    webviewURL: serverAppInfo.webviewURL,
+                    appName: appName as string,
+                    packageName: packageName as string,
+                    fromSettings: "true",
+                  })
+                }}>
+                <FontAwesome name="globe" size={22} color={theme.colors.text} />
+              </TouchableOpacity>
+            ) : undefined
+          }
         />
         <Animated.View
           style={{

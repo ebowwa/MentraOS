@@ -3,6 +3,11 @@ import { Router, Request, Response } from 'express';
 import { validateAdminEmail } from '../middleware/admin-auth.middleware';
 import App, { AppI } from '../models/app.model';
 import { logger as rootLogger } from '../services/logging/pino-logger';
+import os from 'os';
+import path from 'path';
+import fs from 'fs';
+import * as inspector from 'node:inspector';
+import { memoryTelemetryService } from '../services/debug/MemoryTelemetryService';
 import { Organization } from '../models/organization.model';
 import { LeanDocument, Types } from 'mongoose';
 const logger = rootLogger.child({ service: 'admin.routes' });
@@ -351,5 +356,64 @@ router.get('/apps/submitted', validateAdminEmail, getSubmittedApps);
 router.get('/apps/:packageName', validateAdminEmail, getAppDetail);
 router.post('/apps/:packageName/approve', validateAdminEmail, approveApp);
 router.post('/apps/:packageName/reject', validateAdminEmail, rejectApp);
+
+/**
+ * Get a point-in-time memory telemetry snapshot
+ */
+router.get('/memory/now', validateAdminEmail, (req: Request, res: Response) => {
+  try {
+    const snapshot = memoryTelemetryService.getCurrentStats();
+    res.json(snapshot);
+  } catch (error) {
+    logger.error('Error generating memory telemetry snapshot:', error);
+    res.status(500).json({ error: 'Failed to generate memory telemetry snapshot' });
+  }
+});
+
+/**
+ * Trigger a heap snapshot and write it to a temp file
+ */
+router.post('/memory/heap-snapshot', validateAdminEmail, async (req: Request, res: Response) => {
+  const filename = `heap-${Date.now()}.heapsnapshot`;
+  const filePath = path.join(os.tmpdir(), filename);
+
+  try {
+    await takeHeapSnapshot(filePath);
+    res.json({
+      message: 'Heap snapshot created',
+      filePath,
+    });
+  } catch (error) {
+    logger.error('Error taking heap snapshot:', error);
+    res.status(500).json({ error: 'Failed to take heap snapshot' });
+  }
+});
+
+async function takeHeapSnapshot(filePath: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const session = new inspector.Session();
+    try {
+      session.connect();
+      const writeStream = fs.createWriteStream(filePath);
+      session.post('HeapProfiler.enable');
+      session.on('HeapProfiler.addHeapSnapshotChunk', (m: any) => {
+        writeStream.write(m.params.chunk);
+      });
+      session.post('HeapProfiler.takeHeapSnapshot', { reportProgress: false }, (err) => {
+        writeStream.end();
+        session.post('HeapProfiler.disable');
+        session.disconnect();
+        if (err) {
+          reject(err);
+        } else {
+          resolve();
+        }
+      });
+    } catch (error) {
+      try { session.disconnect(); } catch {}
+      reject(error);
+    }
+  });
+}
 
 export default router;

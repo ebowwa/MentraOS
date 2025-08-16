@@ -1,7 +1,7 @@
 import express from 'express';
 import sessionService from '../services/session/session.service';
 import { StreamType } from '@mentra/sdk';
-import subscriptionService from '../services/session/subscription.service';
+// import subscriptionService from '../services/session/subscription.service';
 import { CloudToAppMessageType } from '@mentra/sdk';
 import jwt from 'jsonwebtoken';
 
@@ -43,7 +43,7 @@ router.post('/set-datetime', (req, res) => {
     console.log('User session updated', userSession.userDatetime);
 
     // Relay custom_message to all Apps subscribed to custom_message
-    const subscribedApps = subscriptionService.getSubscribedApps(userSession, StreamType.CUSTOM_MESSAGE);
+    const subscribedApps = userSession.subscriptionManager.getSubscribedApps(StreamType.CUSTOM_MESSAGE);
 
     console.log('4343 Subscribed apps', subscribedApps);
     const customMessage = {

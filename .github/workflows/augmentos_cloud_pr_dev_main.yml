@@ -7,9 +7,9 @@ on:
       - main
 
 jobs:
-  test_live_captions:
+  test_live_captions_mira_translation:
     if: ${{ github.head_ref == 'dev' && github.base_ref == 'main' }}
-    name: Cloud Client Live Captions (dev -> main)
+    name: Live Captions, Mira, and Translation tests
     runs-on: ubuntu-latest
     env:
       NODE_ENV: development
@@ -47,3 +47,11 @@ jobs:
       - name: Run live captions tests
         working-directory: cloud/cloud-client
         run: bun run test:live-captions
+
+      - name: Run mira tests
+        working-directory: cloud/cloud-client
+        run: bun run test:mira
+
+      - name: Run translation tests
+        working-directory: cloud/cloud-client
+        run: bun run test:translation

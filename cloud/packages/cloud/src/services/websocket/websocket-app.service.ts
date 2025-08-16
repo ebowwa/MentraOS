@@ -33,13 +33,14 @@ import {
 import UserSession from '../session/UserSession';
 import * as developerService from '../core/developer.service';
 import { sessionService } from '../session/session.service';
-import subscriptionService from '../session/subscription.service';
+// import subscriptionService from '../session/subscription.service';
 import { logger as rootLogger } from '../logging/pino-logger';
 import photoRequestService from '../core/photo-request.service';
 import e from 'express';
 import { locationService } from '../core/location.service';
 import { SimplePermissionChecker } from '../permissions/simple-permission-checker';
 import App from '../../models/app.model';
+import { User } from '../../models/user.model';
 
 const SERVICE_NAME = 'websocket-app.service';
 const logger = rootLogger.child({ service: SERVICE_NAME });
@@ -135,6 +136,8 @@ export class AppWebSocketService {
           apiKey: appJwtPayload.apiKey
         };
         await userSession.appManager.handleAppInit(ws, initMessage);
+        // Mark app reconnect for subscription grace handling
+        userSession.subscriptionManager.markAppReconnected(appJwtPayload.packageName);
       }
     } catch (error) {
       logger.error(error, 'Error processing App connection request');
@@ -167,6 +170,7 @@ export class AppWebSocketService {
             return;
           }
           await userSession.appManager.handleAppInit(ws, initMessage);
+          userSession.subscriptionManager.markAppReconnected(initMessage.packageName);
         }
 
         else {
@@ -200,6 +204,7 @@ export class AppWebSocketService {
       // Process based on message type
       switch (message.type) {
         case AppToCloudMessageType.SUBSCRIPTION_UPDATE:
+          // Ensure we await the subscription update handling to avoid race conditions
           await this.handleSubscriptionUpdate(appWebsocket, userSession, message);
           break;
 
@@ -422,41 +427,32 @@ export class AppWebSocketService {
       `Received subscription update from App: ${packageName}`
     );
 
-    // Get the minimal language subscriptions before update
-    const previousLanguageSubscriptions = subscriptionService.getMinimalLanguageSubscriptions(userSession.userId);
+    // Get the minimal language subscriptions before update (session-scoped)
+    const previousLanguageSubscriptions = userSession.subscriptionManager.getMinimalLanguageSubscriptions();
 
     // Check if the app is newly subscribing to calendar events
     const isNewCalendarSubscription =
-      !subscriptionService.hasSubscription(userSession.userId, message.packageName, StreamType.CALENDAR_EVENT) &&
+      !userSession.subscriptionManager.hasSubscription(message.packageName, StreamType.CALENDAR_EVENT) &&
       message.subscriptions.some(sub => (typeof sub === 'string' && sub === StreamType.CALENDAR_EVENT));
 
     // Check if the app is newly subscribing to location updates
     const isNewLocationSubscription =
-      !subscriptionService.hasSubscription(userSession.userId, message.packageName, StreamType.LOCATION_UPDATE) &&
+      !userSession.subscriptionManager.hasSubscription(message.packageName, StreamType.LOCATION_UPDATE) &&
       message.subscriptions.some(sub => {
         if (typeof sub === 'string') return sub === StreamType.LOCATION_UPDATE;
         return sub.stream === StreamType.LOCATION_STREAM || sub.stream === StreamType.LOCATION_UPDATE;
       });
 
     try {
-      // This is now a non-blocking call. We use .then() to chain the next action
-      // without holding up the initial connection handshake.
-      subscriptionService.updateSubscriptions(
-        userSession,
+      // Update session-scoped subscriptions and await completion to prevent races
+      const updatedUser = await userSession.subscriptionManager.updateSubscriptions(
         message.packageName,
-        message.subscriptions
-      ).then(updatedUser => {
-        if (updatedUser) {
-          // Pass the updated user object directly to avoid a race condition.
-          locationService.handleSubscriptionChange(updatedUser, userSession);
-        }
-      }).catch(error => {
-        // Since this runs in the background, we can't send a response to the client.
-        // We just log the error.
-        userSession.logger.error({ error }, "Error during background subscription processing.");
-      });
+        message.subscriptions,
+      );
+      if (updatedUser) {
+        locationService.handleSubscriptionChange(updatedUser, userSession);
+      }
     } catch (error) {
-      // This will only catch synchronous errors from the initial call.
       const errorMessage = error instanceof Error ? error.message : String(error);
       userSession.logger.error({
         service: SERVICE_NAME,
@@ -469,16 +465,14 @@ export class AppWebSocketService {
         packageName,
         subscriptions: message.subscriptions,
         userId: userSession.userId,
-        logKey: '##SUBSCRIPTION_ERROR##' // Add a unique key for easy searching
+        logKey: '##SUBSCRIPTION_ERROR##'
       }, `##SUBSCRIPTION_ERROR##: Failed to update subscriptions for App ${packageName}, which will cause a disconnect.`);
-
-      // Send error response to App instead of crashing the service
       this.sendError(appWebsocket, AppErrorCode.MALFORMED_MESSAGE, `Invalid subscription type: ${errorMessage}`);
-      return; // Exit early to prevent further processing
+      return;
     }
 
     // Get the new minimal language subscriptions after update
-    const newLanguageSubscriptions = subscriptionService.getMinimalLanguageSubscriptions(userSession.userId);
+    const newLanguageSubscriptions = userSession.subscriptionManager.getMinimalLanguageSubscriptions();
 
     // Check if language subscriptions have changed
     const languageSubscriptionsChanged =
@@ -529,7 +523,7 @@ export class AppWebSocketService {
     // Send cached calendar event if app just subscribed to calendar events
     if (isNewCalendarSubscription) {
       userSession.logger.info({ service: SERVICE_NAME, isNewCalendarSubscription, packageName }, `isNewCalendarSubscription: ${isNewCalendarSubscription} for app ${packageName}`);
-      const allCalendarEvents = subscriptionService.getAllCalendarEvents(userSession.userId);
+      const allCalendarEvents = userSession.subscriptionManager.getAllCalendarEvents();
       if (allCalendarEvents.length > 0) {
         userSession.logger.debug({ service: SERVICE_NAME, allCalendarEvents }, `Sending ${allCalendarEvents.length} cached calendar events to newly subscribed app ${message.packageName}`);
 
@@ -551,8 +545,9 @@ export class AppWebSocketService {
     // Send cached location if app just subscribed to location updates
     if (isNewLocationSubscription) {
       userSession.logger.info({ service: SERVICE_NAME, isNewLocationSubscription, packageName }, `isNewLocationSubscription: ${isNewLocationSubscription} for app ${packageName}`);
-      const lastLocation = subscriptionService.getLastLocation(userSession.userId);
-      if (lastLocation) {
+      const user = await User.findOne({ email: userSession.userId });
+      const lastLocation = user?.location;
+      if (lastLocation && lastLocation.lat != null && lastLocation.lng != null) {
         userSession.logger.info(`Sending cached location to newly subscribed app ${message.packageName}`);
         const appSessionId = `${userSession.userId}-${message.packageName}`;
 
@@ -560,8 +555,8 @@ export class AppWebSocketService {
           const locationUpdate: LocationUpdate = {
             type: GlassesToCloudMessageType.LOCATION_UPDATE,
             sessionId: appSessionId,
-            lat: lastLocation.latitude,
-            lng: lastLocation.longitude,
+            lat: lastLocation.lat,
+            lng: lastLocation.lng,
             timestamp: new Date()
           };
 
@@ -578,7 +573,7 @@ export class AppWebSocketService {
     }
 
     // Send cached userDatetime if app just subscribed to custom_message
-    const isNewCustomMessageSubscription = message.subscriptions.includes(StreamType.CUSTOM_MESSAGE);
+    const isNewCustomMessageSubscription = message.subscriptions.includes(StreamType.CUSTOM_MESSAGE as any);
 
     if (isNewCustomMessageSubscription && userSession.userDatetime) {
       userSession.logger.info(`Sending cached userDatetime to app ${message.packageName} on custom_message subscription`);

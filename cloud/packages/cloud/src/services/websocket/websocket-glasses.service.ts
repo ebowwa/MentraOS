@@ -29,7 +29,7 @@ import {
 } from "@mentra/sdk";
 import UserSession from "../session/UserSession";
 import { logger as rootLogger } from "../logging/pino-logger";
-import subscriptionService from "../session/subscription.service";
+// import subscriptionService from "../session/subscription.service";
 import { PosthogService } from "../logging/posthog.service";
 import { sessionService } from "../session/session.service";
 import { User } from "../../models/user.model";
@@ -72,7 +72,7 @@ export enum GlassesErrorCode {
  */
 export class GlassesWebSocketService {
   private static instance: GlassesWebSocketService;
-  private constructor() {}
+  private constructor() { }
 
   /**
    * Get singleton instance
@@ -124,11 +124,12 @@ export class GlassesWebSocketService {
       );
 
       // Handle incoming messages
-      ws.on("message", async (data: WebSocket.Data, isBinary) => {
+      ws.on("message", (data: WebSocket.Data, isBinary) => {
         try {
           // Handle binary message (audio data)
           if (isBinary) {
-            await this.handleBinaryMessage(userSession, data);
+            // await this.handleBinaryMessage(userSession, data);
+            userSession.audioManager.processAudioData(data);
             return;
           }
 
@@ -142,12 +143,29 @@ export class GlassesWebSocketService {
               `Received connection init message from glasses: ${JSON.stringify(connectionInitMessage)}`,
             );
             // If this is a reconnection, we can skip the initialization logic
-            await this.handleConnectionInit(userSession, reconnection);
+            this.handleConnectionInit(userSession, reconnection)
+              .then(() => {
+                userSession.logger.info(`✅ Connection reinitialized for user: ${userSession.userId}`);
+              })
+              .catch((error) => {
+                userSession.logger.error(`❌ Failed to reinitialize connection for user: ${userSession.userId}`, error);
+              });
             return;
           }
 
           // Process the message
-          await this.handleGlassesMessage(userSession, message);
+          this.handleGlassesMessage(userSession, message)
+            .then(() => {
+              userSession.logger.info(
+                `✅ Successfully processed message of type: ${message.type} for user: ${userId}`,
+              );
+            })
+            .catch((error) => {
+              userSession.logger.error(
+                `❌ Error processing message of type: ${message.type} for user: ${userId}`,
+                error,
+              );
+            });
         } catch (error) {
           userSession.logger.error(error, "Error processing glasses message:");
         }
@@ -188,26 +206,6 @@ export class GlassesWebSocketService {
     }
   }
 
-  /**
-   * Handle binary message (audio data)
-   *
-   * @param userSession User session
-   * @param data Binary audio data
-   */
-  private async handleBinaryMessage(
-    userSession: UserSession,
-    data: WebSocket.Data,
-  ): Promise<void> {
-    try {
-      // Process audio data
-      // userSession.logger.debug({ service: SERVICE_NAME, data }, `Handling binary message for user: ${userSession.userId}`);
-      userSession.audioManager.processAudioData(data);
-      // userSession.logger.debug({ service: SERVICE_NAME }, `Processed binary message for user: ${userSession.userId}`);
-      // await sessionService.(userSession, data);
-    } catch (error) {
-      userSession.logger.error("Error handling binary message:", error);
-    }
-  }
 
   /**
    * Handle glasses message
@@ -280,10 +278,7 @@ export class GlassesWebSocketService {
             { service: SERVICE_NAME, message },
             "Calendar event received from glasses",
           );
-          subscriptionService.cacheCalendarEvent(
-            userSession.sessionId,
-            message as CalendarEvent,
-          );
+          userSession.subscriptionManager.cacheCalendarEvent(message as CalendarEvent);
           sessionService.relayMessageToApps(userSession, message);
           break;
 
@@ -420,8 +415,7 @@ export class GlassesWebSocketService {
               const notifiedApps = new Set<string>();
               for (const key of changedKeys) {
                 const subscribedApps =
-                  subscriptionService.getSubscribedAppsForAugmentosSetting(
-                    userSession,
+                  userSession.subscriptionManager.getSubscribedAppsForAugmentosSetting(
                     key,
                   );
                 // userSession.logger.info('Subscribed apps for key:', key, subscribedApps);

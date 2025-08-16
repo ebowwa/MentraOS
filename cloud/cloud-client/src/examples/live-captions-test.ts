@@ -82,8 +82,8 @@ export async function runLiveCaptionsTestOnce(
   const startTime = Date.now();
 
   try {
-    // Step 1: Connect to AugmentOS Cloud
-    console.log("📡 Connecting to AugmentOS Cloud...");
+    // Step 1: Connect to MentraOS Cloud
+    console.log("📡 Connecting to MentraOS Cloud...");
     await client.connect();
     console.log("✅ Connected successfully\n");
 

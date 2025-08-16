@@ -9,7 +9,7 @@
 import WebSocket from "ws";
 import { StreamType } from "@mentra/sdk";
 import { Logger } from "pino";
-import subscriptionService from "./subscription.service";
+// import subscriptionService from "./subscription.service";
 import { createLC3Service } from "../lc3/lc3.service";
 import { AudioWriter } from "../debug/audio-writer";
 import UserSession from "./UserSession";
@@ -108,50 +108,28 @@ export class AudioManager {
    * @param isLC3 Whether the audio is LC3 encoded
    * @returns Processed audio data
    */
-  async processAudioData(
-    audioData: ArrayBuffer | any,
-    isLC3 = this.IS_LC3,
-  ): Promise<ArrayBuffer | void> {
+  processAudioData(audioData: ArrayBuffer | any, isLC3 = this.IS_LC3) {
     try {
       // Update the last audio timestamp
       this.userSession.lastAudioTimestamp = Date.now();
 
-      // Notify MicrophoneManager that we received audio
-      this.userSession.microphoneManager.onAudioReceived();
-
-      // Add to recent audio buffer
-      // this.addToRecentBuffer(audioData);
-
-      // Lazy initialize the audio writer if needed
-      // this.initializeAudioWriterIfNeeded();
-
-      // Write raw LC3 audio for debugging if applicable
-      // if (this.DEBUG_AUDIO && isLC3 && audioData) {
-      //   await this.audioWriter?.writeLC3(audioData);
-      // }
-
-      // Process the audio data
-      // let processedAudioData = await this.processAudioInternal(audioData, isLC3);
-      const processedAudioData = audioData;
-
       // Send to transcription and translation services
-      if (processedAudioData) {
+      if (audioData) {
+        // Relay to Apps if there are subscribers
+        this.relayAudioToApps(audioData);
+
         // Feed to TranscriptionManager
-        this.userSession.transcriptionManager.feedAudio(processedAudioData);
+        this.userSession.transcriptionManager.feedAudio(audioData);
 
         // Feed to TranslationManager (separate from transcription)
-        this.userSession.translationManager.feedAudio(processedAudioData);
+        this.userSession.translationManager.feedAudio(audioData);
 
-        // Relay to Apps if there are subscribers
-        // Note: Using subscriptionService instead of subscriptionManager
-        // if (subscriptionService.hasMediaSubscriptions(this.userSession.sessionId)) {
-        this.relayAudioToApps(processedAudioData);
-        // }
+        // Notify MicrophoneManager that we received audio
+        this.userSession.microphoneManager.onAudioReceived();
       }
-
-      return processedAudioData;
+      return audioData;
     } catch (error) {
-      this.logger.error({ error }, `Error processing audio data`);
+      this.logger.error(error, `Error processing audio data`);
       return undefined;
     }
   }
@@ -372,8 +350,7 @@ export class AudioManager {
   private relayAudioToApps(audioData: ArrayBuffer): void {
     try {
       // Get subscribers using subscriptionService instead of subscriptionManager
-      const subscribedPackageNames = subscriptionService.getSubscribedApps(
-        this.userSession,
+      const subscribedPackageNames = this.userSession.subscriptionManager.getSubscribedApps(
         StreamType.AUDIO_CHUNK,
       );
 
