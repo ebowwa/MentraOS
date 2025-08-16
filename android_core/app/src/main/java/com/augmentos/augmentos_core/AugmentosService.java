@@ -3061,6 +3061,38 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         }
     }
 
+    // Event handler for heartbeat sent
+    @org.greenrobot.eventbus.Subscribe(threadMode = org.greenrobot.eventbus.ThreadMode.MAIN)
+    public void onHeartbeatSentEvent(com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.HeartbeatSentEvent event) {
+        Log.d(TAG, "💓 Heartbeat sent at: " + event.timestamp);
+        
+        if (blePeripheral != null) {
+            try {
+                JSONObject data = new JSONObject();
+                data.put("heartbeat_sent", new JSONObject().put("timestamp", event.timestamp));
+                blePeripheral.sendDataToAugmentOsManager(data.toString());
+            } catch (Exception e) {
+                Log.e(TAG, "Error sending heartbeat sent event to manager", e);
+            }
+        }
+    }
+
+    // Event handler for heartbeat received
+    @org.greenrobot.eventbus.Subscribe(threadMode = org.greenrobot.eventbus.ThreadMode.MAIN)
+    public void onHeartbeatReceivedEvent(com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.HeartbeatReceivedEvent event) {
+        Log.d(TAG, "💓 Heartbeat received at: " + event.timestamp);
+        
+        if (blePeripheral != null) {
+            try {
+                JSONObject data = new JSONObject();
+                data.put("heartbeat_received", new JSONObject().put("timestamp", event.timestamp));
+                blePeripheral.sendDataToAugmentOsManager(data.toString());
+            } catch (Exception e) {
+                Log.e(TAG, "Error sending heartbeat received event to manager", e);
+            }
+        }
+    }
+
     /**
      * Clear OTA progress data to hide the progress section
      */
