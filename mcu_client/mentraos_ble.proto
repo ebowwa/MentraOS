@@ -284,6 +284,7 @@ message DisplayDistanceConfig {
 
 message DisplayHeightConfig {
   uint32 height = 1;
+  uint32 depth = 2;
 }
 
 message ImageTransferComplete {
