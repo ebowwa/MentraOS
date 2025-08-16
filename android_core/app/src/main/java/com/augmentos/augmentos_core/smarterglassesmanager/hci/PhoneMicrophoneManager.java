@@ -1718,7 +1718,7 @@ public class PhoneMicrophoneManager {
             
             // Save original PCM WAV file
             File audioFile = new File(recordingsDir, filename);
-            savePcmWavFile(audioFile, totalDataSize);
+            // savePcmWavFile(audioFile, totalDataSize);
             
             // Save LC3 encoded/decoded WAV file
             File encodedFile = new File(recordingsDir, encodedFilename);
