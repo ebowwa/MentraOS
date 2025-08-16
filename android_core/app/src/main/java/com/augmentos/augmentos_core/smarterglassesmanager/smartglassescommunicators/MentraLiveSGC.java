@@ -3217,12 +3217,58 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         String buttonMode = PreferenceManager.getDefaultSharedPreferences(context)
                 .getString("button_press_mode", "photo");
         sendButtonModeSetting(buttonMode);
+        
+        // Send button video recording settings
+        sendButtonVideoRecordingSettings();
     }
 
+    /**
+     * Send button video recording settings to glasses
+     */
+    public void sendButtonVideoRecordingSettings() {
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
+        int width = prefs.getInt("button_video_width", 1280);
+        int height = prefs.getInt("button_video_height", 720);
+        int fps = prefs.getInt("button_video_fps", 30);
+        
+        Log.d(TAG, "Sending button video recording settings: " + width + "x" + height + "@" + fps + "fps");
+        
+        if (!isConnected) {
+            Log.w(TAG, "Cannot send button video recording settings - not connected");
+            return;
+        }
+        
+        try {
+            JSONObject json = new JSONObject();
+            json.put("type", "button_video_recording_setting");
+            JSONObject settings = new JSONObject();
+            settings.put("width", width);
+            settings.put("height", height);
+            settings.put("fps", fps);
+            json.put("settings", settings);
+            sendJson(json);
+        } catch (JSONException e) {
+            Log.e(TAG, "Error creating button video recording settings message", e);
+        }
+    }
+    
     @Override
     public void startVideoRecording(String requestId, boolean save) {
-        Log.d(TAG, "Starting video recording: requestId=" + requestId + ", save=" + save);
-
+        startVideoRecording(requestId, save, 0, 0, 0); // Use defaults
+    }
+    
+    /**
+     * Start video recording with optional resolution settings
+     * @param requestId Request ID for tracking
+     * @param save Whether to save the video
+     * @param width Video width (0 for default)
+     * @param height Video height (0 for default)
+     * @param fps Video frame rate (0 for default)
+     */
+    public void startVideoRecording(String requestId, boolean save, int width, int height, int fps) {
+        Log.d(TAG, "Starting video recording: requestId=" + requestId + ", save=" + save + 
+                   ", resolution=" + width + "x" + height + "@" + fps + "fps");
+        
         if (!isConnected) {
             Log.w(TAG, "Cannot start video recording - not connected");
             return;
@@ -3233,6 +3279,16 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             json.put("type", "start_video_recording");
             json.put("requestId", requestId);
             json.put("save", save);
+            
+            // Add video settings if provided
+            if (width > 0 && height > 0) {
+                JSONObject settings = new JSONObject();
+                settings.put("width", width);
+                settings.put("height", height);
+                settings.put("fps", fps > 0 ? fps : 30);
+                json.put("settings", settings);
+            }
+            
             sendJson(json, true); // Wake up glasses for this command
         } catch (JSONException e) {
             Log.e(TAG, "Failed to create start video recording command", e);

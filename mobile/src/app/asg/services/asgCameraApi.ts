@@ -221,17 +221,25 @@ export class AsgCameraApiClient {
   }
 
   /**
-   * Get gallery photos from the server
+   * Get gallery photos from the server with optional pagination
    */
-  async getGallery(): Promise<GalleryResponse> {
-    console.log(`[ASG Camera API] getGallery called`)
+  async getGallery(limit?: number, offset?: number): Promise<GalleryResponse> {
+    console.log(`[ASG Camera API] getGallery called with limit=${limit}, offset=${offset}`)
     console.log(`[ASG Camera API] Current baseUrl: ${this.baseUrl}`)
-    console.log(`[ASG Camera API] Full gallery URL: ${this.baseUrl}/api/gallery`)
+
+    // Build URL with optional query parameters
+    let galleryUrl = `${this.baseUrl}/api/gallery`
+    const params = new URLSearchParams()
+    if (limit !== undefined) params.append("limit", limit.toString())
+    if (offset !== undefined) params.append("offset", offset.toString())
+    if (params.toString()) galleryUrl += `?${params.toString()}`
+
+    console.log(`[ASG Camera API] Full gallery URL: ${galleryUrl}`)
 
     // Use browser-like headers since we know the browser works
     try {
       console.log(`[ASG Camera API] Making direct fetch to gallery endpoint`)
-      const response = await fetch(`${this.baseUrl}/api/gallery`, {
+      const response = await fetch(galleryUrl, {
         method: "GET",
         headers: {
           "Accept": "application/json",
@@ -259,7 +267,7 @@ export class AsgCameraApiClient {
 
       // Handle the exact response format we see from browser
       if (data && data.status === "success" && data.data?.photos) {
-        console.log(`[ASG Camera API] Found ${data.data.photos.length} photos`)
+        console.log(`[ASG Camera API] Found ${data.data.photos.length} photos (total: ${data.data.total_count})`)
 
         // Map photos to ensure proper URL construction
         const photos = data.data.photos.map((photo: any) => ({
@@ -270,7 +278,14 @@ export class AsgCameraApiClient {
 
         return {
           status: "success",
-          data: {photos},
+          data: {
+            photos,
+            total_count: data.data.total_count,
+            returned_count: data.data.returned_count,
+            has_more: data.data.has_more,
+            offset: data.data.offset,
+            limit: data.data.limit,
+          },
         }
       } else {
         console.log(`[ASG Camera API] Invalid response structure:`, data)
@@ -285,19 +300,26 @@ export class AsgCameraApiClient {
   /**
    * Get the gallery photos array with proper URL construction
    */
-  async getGalleryPhotos(): Promise<PhotoInfo[]> {
-    console.log(`[ASG Camera API] Getting gallery photos...`)
+  async getGalleryPhotos(
+    limit?: number,
+    offset?: number,
+  ): Promise<{
+    photos: PhotoInfo[]
+    hasMore: boolean
+    totalCount: number
+  }> {
+    console.log(`[ASG Camera API] Getting gallery photos with limit=${limit}, offset=${offset}...`)
     try {
-      const response = await this.getGallery()
+      const response = await this.getGallery(limit, offset)
       console.log(`[ASG Camera API] Gallery response:`, response)
 
       if (!response.data || !response.data.photos) {
         console.warn(`[ASG Camera API] Invalid gallery response structure:`, response)
-        return []
+        return {photos: [], hasMore: false, totalCount: 0}
       }
 
       const photos = response.data.photos
-      console.log(`[ASG Camera API] Found ${photos.length} photos`)
+      console.log(`[ASG Camera API] Found ${photos.length} photos (total: ${response.data.total_count})`)
 
       // Ensure each photo has proper URLs and detect AVIF files
       const processedPhotos = photos.map(photo => {
@@ -313,7 +335,11 @@ export class AsgCameraApiClient {
       })
 
       console.log(`[ASG Camera API] Processed photos:`, processedPhotos)
-      return processedPhotos
+      return {
+        photos: processedPhotos,
+        hasMore: response.data.has_more || false,
+        totalCount: response.data.total_count || photos.length,
+      }
     } catch (error) {
       console.error(`[ASG Camera API] Error getting gallery photos:`, error)
       throw error

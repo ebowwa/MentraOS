@@ -4,6 +4,7 @@ import android.util.Log;
 
 import com.augmentos.asg_client.io.media.core.MediaCaptureService;
 import com.augmentos.asg_client.settings.AsgSettings;
+import com.augmentos.asg_client.settings.VideoSettings;
 import com.augmentos.asg_client.service.legacy.managers.AsgClientServiceManager;
 import com.augmentos.asg_client.service.communication.interfaces.ICommunicationManager;
 import com.augmentos.asg_client.service.system.interfaces.IStateManager;
@@ -207,8 +208,10 @@ public class K900CommandHandler {
         }
 
         if (isLongPress) {
-            Log.d(TAG, "📹 Video recording not yet implemented (PHOTO mode, long press)");
-            captureService.handleVideoButtonPress();
+            Log.d(TAG, "📹 Starting video recording (PHOTO mode, long press)");
+            // Get saved video settings for button press
+            VideoSettings videoSettings = serviceManager.getAsgSettings().getButtonVideoSettings();
+            captureService.startVideoRecording(videoSettings);
         } else {
             Log.d(TAG, "📸 Taking photo locally (PHOTO mode, short press)");
             captureService.takePhotoLocally();
@@ -231,8 +234,13 @@ public class K900CommandHandler {
         sendButtonPressToPhone(isLongPress);
 
         if (isLongPress) {
-            Log.d(TAG, "📹 Video recording not yet implemented (BOTH mode, long press)");
-            // TODO: Implement video recording
+            MediaCaptureService captureService = serviceManager.getMediaCaptureService();
+            if (captureService != null) {
+                Log.d(TAG, "📹 Starting video recording (BOTH mode, long press)");
+                // Get saved video settings for button press
+                VideoSettings videoSettings = serviceManager.getAsgSettings().getButtonVideoSettings();
+                captureService.startVideoRecording(videoSettings);
+            }
         } else {
             MediaCaptureService captureService = serviceManager.getMediaCaptureService();
             if (captureService != null) {

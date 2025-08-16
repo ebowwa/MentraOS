@@ -77,37 +77,68 @@ export function GalleryScreen() {
   const [connectionCheckInterval, setConnectionCheckInterval] = useState<NodeJS.Timeout | null>(null)
   const [lastConnectionStatus, setLastConnectionStatus] = useState(false)
 
-  // Load photos from server
-  const loadPhotos = useCallback(async () => {
-    if (!isWifiConnected || !glassesWifiIp) {
-      // Don't set error - just don't load server photos
-      console.log("[GalleryScreen] Glasses not connected, skipping server photo load")
-      setServerPhotos([])
-      setIsLoadingServerPhotos(false)
-      setIsInitialLoad(false)
-      return
-    }
+  // Pagination state
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
+  const [hasMoreServerPhotos, setHasMoreServerPhotos] = useState(false)
+  const [totalServerPhotos, setTotalServerPhotos] = useState(0)
+  const PAGE_SIZE = 20 // Load 20 photos at a time
 
-    setIsLoadingServerPhotos(true)
-    setError(null)
+  // Load initial photos from server (first page)
+  const loadPhotos = useCallback(
+    async (loadMore = false) => {
+      if (!isWifiConnected || !glassesWifiIp) {
+        // Don't set error - just don't load server photos
+        console.log("[GalleryScreen] Glasses not connected, skipping server photo load")
+        setServerPhotos([])
+        setIsLoadingServerPhotos(false)
+        setIsInitialLoad(false)
+        setHasMoreServerPhotos(false)
+        return
+      }
 
-    try {
-      // Set the server URL to the glasses WiFi IP
-      asgCameraApi.setServer(glassesWifiIp, 8089)
-      console.log(`[GalleryScreen] Set server URL to: ${glassesWifiIp}:8089`)
+      // If loading more, set loading more state; otherwise set initial loading state
+      if (loadMore) {
+        setIsLoadingMore(true)
+      } else {
+        setIsLoadingServerPhotos(true)
+        setError(null)
+      }
 
-      const photos = await asgCameraApi.getGalleryPhotos()
-      setServerPhotos(photos)
-      setError(null) // Clear any previous errors on success
-    } catch (err) {
-      // Don't show error in main area - warning banner will handle it
-      console.error("[GalleryScreen] Failed to load server photos:", err)
-      setServerPhotos([])
-    } finally {
-      setIsLoadingServerPhotos(false)
-      setIsInitialLoad(false)
-    }
-  }, [isWifiConnected, glassesWifiIp])
+      try {
+        // Set the server URL to the glasses WiFi IP
+        asgCameraApi.setServer(glassesWifiIp, 8089)
+        console.log(`[GalleryScreen] Set server URL to: ${glassesWifiIp}:8089`)
+
+        // Calculate offset based on current photos if loading more
+        const offset = loadMore ? serverPhotos.length : 0
+
+        const result = await asgCameraApi.getGalleryPhotos(PAGE_SIZE, offset)
+
+        if (loadMore) {
+          // Append to existing photos
+          setServerPhotos(prev => [...prev, ...result.photos])
+        } else {
+          // Replace photos (initial load or refresh)
+          setServerPhotos(result.photos)
+        }
+
+        setHasMoreServerPhotos(result.hasMore)
+        setTotalServerPhotos(result.totalCount)
+        setError(null) // Clear any previous errors on success
+      } catch (err) {
+        // Don't show error in main area - warning banner will handle it
+        console.error("[GalleryScreen] Failed to load server photos:", err)
+        if (!loadMore) {
+          setServerPhotos([])
+        }
+      } finally {
+        setIsLoadingServerPhotos(false)
+        setIsInitialLoad(false)
+        setIsLoadingMore(false)
+      }
+    },
+    [isWifiConnected, glassesWifiIp, serverPhotos],
+  )
 
   // Load downloaded photos
   const loadDownloadedPhotos = useCallback(async () => {
@@ -146,7 +177,7 @@ export function GalleryScreen() {
       const syncState = await localStorageService.getSyncState()
       console.log(`[GalleryScreen] Sync state:`, syncState)
 
-      // Get changed files from server
+      // Get changed files from server - this endpoint returns ALL changed files, not paginated
       const syncResponse = await asgCameraApi.syncWithServer(
         syncState.client_id,
         syncState.last_sync_time,
@@ -204,8 +235,8 @@ export function GalleryScreen() {
         total_size: syncState.total_size + downloadResult.total_size,
       })
 
-      // Reload photos
-      await Promise.all([loadPhotos(), loadDownloadedPhotos()])
+      // Reload photos (fresh load, not append)
+      await Promise.all([loadPhotos(false), loadDownloadedPhotos()])
 
       // showAlert(
       //   "Sync Complete",
@@ -239,7 +270,7 @@ export function GalleryScreen() {
 
       await asgCameraApi.takePicture()
       showAlert("Success", "Picture taken successfully!", [{text: translate("common:ok")}])
-      loadPhotos() // Reload photos
+      loadPhotos(false) // Reload photos
     } catch (err) {
       let errorMessage = "Cannot connect to your glasses. Please check your network connection."
       if (err instanceof Error) {
@@ -353,7 +384,7 @@ export function GalleryScreen() {
           try {
             await asgCameraApi.deleteFilesFromServer([photo.name])
             showAlert("Success", "Photo deleted successfully!", [{text: translate("common:ok")}])
-            loadPhotos() // Reload photos
+            loadPhotos(false) // Reload photos
           } catch (err) {
             showAlert("Error", err instanceof Error ? err.message : "Failed to delete photo", [
               {text: translate("common:ok")},
@@ -390,7 +421,7 @@ export function GalleryScreen() {
     checkConnectivity().then(() => {
       console.log("[GalleryScreen] Initial connectivity check complete")
     })
-    loadPhotos()
+    loadPhotos(false)
     loadDownloadedPhotos()
   }, [loadPhotos, loadDownloadedPhotos]) // Removed checkConnectivity to prevent re-renders
 
@@ -439,7 +470,7 @@ export function GalleryScreen() {
         // If connection is restored, reload photos
         if (status.galleryReachable && !lastConnectionStatus) {
           console.log("[GalleryScreen] Connection restored! Reloading photos...")
-          loadPhotos()
+          loadPhotos(false)
           loadDownloadedPhotos()
           setLastConnectionStatus(true)
         } else if (!status.galleryReachable) {
@@ -511,11 +542,11 @@ export function GalleryScreen() {
     if (hasVideos && hasPhotos) {
       return "Photos & Videos"
     } else if (hasVideos) {
-      return serverPhotos.length === 1 ? "Video" : "Videos"
+      return totalServerPhotos === 1 ? "Video" : "Videos"
     } else {
-      return serverPhotos.length === 1 ? "Photo" : "Photos"
+      return totalServerPhotos === 1 ? "Photo" : "Photos"
     }
-  }, [serverPhotos])
+  }, [serverPhotos, totalServerPhotos])
 
   return (
     <View style={themed($screenContainer)}>
@@ -599,12 +630,38 @@ export function GalleryScreen() {
             ]} // Extra padding when sync button is shown
             columnWrapperStyle={numColumns > 1 ? themed($columnWrapper) : undefined}
             ItemSeparatorComponent={() => <View style={{height: spacing.lg}} />}
+            // Performance optimizations
+            initialNumToRender={10}
+            maxToRenderPerBatch={10}
+            windowSize={10}
+            removeClippedSubviews={true}
+            updateCellsBatchingPeriod={50}
+            // Pagination for server photos
+            onEndReached={() => {
+              // Only load more if we have server photos, more to load, and not already loading
+              if (hasMoreServerPhotos && !isLoadingMore && isWifiConnected) {
+                console.log("[GalleryScreen] Loading more server photos...")
+                loadPhotos(true)
+              }
+            }}
+            onEndReachedThreshold={0.5}
+            ListFooterComponent={() => {
+              if (isLoadingMore) {
+                return (
+                  <View style={themed($loadingMoreContainer)}>
+                    <ActivityIndicator size="small" color={theme.colors.text} />
+                    <Text style={themed($loadingMoreText)}>Loading more photos...</Text>
+                  </View>
+                )
+              }
+              return null
+            }}
           />
         )}
       </View>
 
       {/* Sync Button - Fixed at bottom, only show if there are server photos */}
-      {serverPhotos.length > 0 && (
+      {totalServerPhotos > 0 && (
         <TouchableOpacity
           style={[themed($syncButtonFixed), isSyncing && themed($syncButtonFixedDisabled)]}
           onPress={handleSync}
@@ -629,12 +686,12 @@ export function GalleryScreen() {
               <View style={themed($syncButtonRow)}>
                 <ActivityIndicator size="small" color={theme.colors.textAlt} style={{marginRight: spacing.xs}} />
                 <Text style={themed($syncButtonText)}>
-                  Syncing {serverPhotos.length} {syncContentType}...
+                  Syncing {totalServerPhotos} {syncContentType}...
                 </Text>
               </View>
             ) : (
               <Text style={themed($syncButtonText)}>
-                Sync {serverPhotos.length} {syncContentType}
+                Sync {totalServerPhotos} {syncContentType}
               </Text>
             )}
           </View>
@@ -1030,4 +1087,18 @@ const $serverBadge: ThemedStyle<ViewStyle> = ({spacing}) => ({
   shadowOpacity: 0.3,
   shadowRadius: 2,
   elevation: 3,
+})
+
+const $loadingMoreContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  flexDirection: "row",
+  alignItems: "center",
+  justifyContent: "center",
+  paddingVertical: spacing.md,
+  paddingBottom: spacing.xl,
+})
+
+const $loadingMoreText: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
+  fontSize: 14,
+  color: colors.textDim,
+  marginLeft: spacing.sm,
 })

@@ -7,6 +7,7 @@ import com.augmentos.asg_client.service.communication.interfaces.IResponseBuilde
 import com.augmentos.asg_client.service.legacy.interfaces.ICommandHandler;
 import com.augmentos.asg_client.service.legacy.managers.AsgClientServiceManager;
 import com.augmentos.asg_client.settings.AsgSettings;
+import com.augmentos.asg_client.settings.VideoSettings;
 import org.json.JSONObject;
 
 import java.util.Set;
@@ -32,7 +33,7 @@ public class SettingsCommandHandler implements ICommandHandler {
 
     @Override
     public Set<String> getSupportedCommandTypes() {
-        return Set.of("set_photo_mode", "button_mode_setting");
+        return Set.of("set_photo_mode", "button_mode_setting", "button_video_recording_setting");
     }
 
     @Override
@@ -43,6 +44,8 @@ public class SettingsCommandHandler implements ICommandHandler {
                     return handleSetPhotoMode(data);
                 case "button_mode_setting":
                     return handleButtonModeSetting(data);
+                case "button_video_recording_setting":
+                    return handleButtonVideoRecordingSetting(data);
                 default:
                     Log.e(TAG, "Unsupported settings command: " + commandType);
                     return false;
@@ -85,6 +88,44 @@ public class SettingsCommandHandler implements ICommandHandler {
             }
         } catch (Exception e) {
             Log.e(TAG, "Error handling button mode setting", e);
+            return false;
+        }
+    }
+    
+    /**
+     * Handle button video recording setting command
+     */
+    public boolean handleButtonVideoRecordingSetting(JSONObject data) {
+        try {
+            JSONObject settings = data.optJSONObject("settings");
+            if (settings == null) {
+                Log.e(TAG, "Missing settings object in button_video_recording_setting");
+                return false;
+            }
+            
+            int width = settings.optInt("width", 1280);
+            int height = settings.optInt("height", 720);
+            int fps = settings.optInt("fps", 30);
+            
+            Log.d(TAG, "📱 Received button video recording settings: " + width + "x" + height + "@" + fps + "fps");
+            
+            AsgSettings asgSettings = serviceManager.getAsgSettings();
+            if (asgSettings != null) {
+                VideoSettings videoSettings = new VideoSettings(width, height, fps);
+                if (videoSettings.isValid()) {
+                    asgSettings.setButtonVideoSettings(videoSettings);
+                    Log.d(TAG, "✅ Button video recording settings saved");
+                    return true;
+                } else {
+                    Log.e(TAG, "Invalid video settings: " + videoSettings);
+                    return false;
+                }
+            } else {
+                Log.e(TAG, "Settings not available");
+                return false;
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error handling button video recording setting", e);
             return false;
         }
     }

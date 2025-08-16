@@ -13,6 +13,7 @@ import com.augmentos.asg_client.io.media.upload.MediaUploadService;
 import com.augmentos.asg_client.io.media.managers.MediaUploadQueueManager;
 import com.augmentos.asg_client.io.media.interfaces.ServiceCallbackInterface;
 import com.augmentos.asg_client.camera.CameraNeo;
+import com.augmentos.asg_client.settings.VideoSettings;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -307,6 +308,24 @@ public class MediaCaptureService {
             startVideoRecording();
         }
     }
+    
+    /**
+     * Start video recording with specific settings
+     * @param settings Video settings (resolution, fps)
+     */
+    public void startVideoRecording(VideoSettings settings) {
+        if (isRecordingVideo) {
+            Log.d(TAG, "Stopping video recording");
+            stopVideoRecording();
+        } else {
+            Log.d(TAG, "Starting video recording with settings: " + settings);
+            // Generate IDs for local recording
+            String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
+            String requestId = "local_video_" + timeStamp;
+            String videoFilePath = fileManager.getDefaultMediaDirectory() + File.separator + "VID_" + timeStamp + ".mp4";
+            startVideoRecording(videoFilePath, requestId, settings);
+        }
+    }
 
     /**
      * Handle start video recording command from phone
@@ -315,6 +334,16 @@ public class MediaCaptureService {
      * @param save Whether to keep the video on device after upload
      */
     public void handleStartVideoCommand(String requestId, boolean save) {
+        handleStartVideoCommand(requestId, save, null);
+    }
+    
+    /**
+     * Handle start video recording command from phone with settings
+     * @param requestId Unique request ID for tracking
+     * @param save Whether to keep the video on device after upload
+     * @param settings Video settings (resolution, fps) or null for defaults
+     */
+    public void handleStartVideoCommand(String requestId, boolean save, VideoSettings settings) {
         // Check if already recording
         if (isRecordingVideo) {
             Log.w(TAG, "Already recording video, ignoring start command");
@@ -366,13 +395,20 @@ public class MediaCaptureService {
         String requestId = "local_video_" + timeStamp;
         String videoFilePath = fileManager.getDefaultMediaDirectory() + File.separator + "VID_" + timeStamp + ".mp4";
 
-        startVideoRecording(videoFilePath, requestId);
+        startVideoRecording(videoFilePath, requestId, settings);
     }
 
     /**
      * Start video recording with specific parameters
      */
     private void startVideoRecording(String videoFilePath, String requestId) {
+        startVideoRecording(videoFilePath, requestId, null);
+    }
+    
+    /**
+     * Start video recording with specific parameters and settings
+     */
+    private void startVideoRecording(String videoFilePath, String requestId, VideoSettings settings) {
         // Check storage availability before recording
         if (!isExternalStorageAvailable()) {
             Log.e(TAG, "External storage is not available for video capture");
@@ -385,7 +421,7 @@ public class MediaCaptureService {
 
         try {
             // Start video recording using CameraNeo
-            CameraNeo.startVideoRecording(mContext, requestId, videoFilePath, new CameraNeo.VideoRecordingCallback() {
+            CameraNeo.startVideoRecording(mContext, requestId, videoFilePath, settings, new CameraNeo.VideoRecordingCallback() {
                 @Override
                 public void onRecordingStarted(String videoId) {
                     Log.d(TAG, "Video recording started with ID: " + videoId);

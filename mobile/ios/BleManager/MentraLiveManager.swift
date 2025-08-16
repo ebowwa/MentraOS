@@ -2322,21 +2322,65 @@ extension MentraLiveManager {
         // Send button mode setting
         let buttonMode = UserDefaults.standard.string(forKey: "button_press_mode") ?? "photo"
         sendButtonModeSetting(buttonMode)
+
+        // Send button video recording settings
+        sendButtonVideoRecordingSettings()
+    }
+
+    func sendButtonVideoRecordingSettings() {
+        let width = UserDefaults.standard.integer(forKey: "button_video_width")
+        let height = UserDefaults.standard.integer(forKey: "button_video_height")
+        let fps = UserDefaults.standard.integer(forKey: "button_video_fps")
+
+        // Use defaults if not set
+        let finalWidth = width > 0 ? width : 1280
+        let finalHeight = height > 0 ? height : 720
+        let finalFps = fps > 0 ? fps : 30
+
+        CoreCommsService.log("Sending button video recording settings: \(finalWidth)x\(finalHeight)@\(finalFps)fps")
+
+        guard connectionState == .connected else {
+            CoreCommsService.log("Cannot send button video recording settings - not connected")
+            return
+        }
+
+        let json: [String: Any] = [
+            "type": "button_video_recording_setting",
+            "settings": [
+                "width": finalWidth,
+                "height": finalHeight,
+                "fps": finalFps,
+            ],
+        ]
+        sendJson(json)
     }
 
     func startVideoRecording(requestId: String, save: Bool) {
-        CoreCommsService.log("Starting video recording on glasses: requestId=\(requestId), save=\(save)")
+        startVideoRecording(requestId: requestId, save: save, width: 0, height: 0, fps: 0)
+    }
+
+    func startVideoRecording(requestId: String, save: Bool, width: Int, height: Int, fps: Int) {
+        CoreCommsService.log("Starting video recording on glasses: requestId=\(requestId), save=\(save), resolution=\(width)x\(height)@\(fps)fps")
 
         guard connectionState == .connected else {
             CoreCommsService.log("Cannot start video recording - not connected")
             return
         }
 
-        let json: [String: Any] = [
+        var json: [String: Any] = [
             "type": "start_video_recording",
             "request_id": requestId,
             "save": save,
         ]
+
+        // Add video settings if provided
+        if width > 0, height > 0 {
+            json["settings"] = [
+                "width": width,
+                "height": height,
+                "fps": fps > 0 ? fps : 30,
+            ]
+        }
         sendJson(json)
     }
 
