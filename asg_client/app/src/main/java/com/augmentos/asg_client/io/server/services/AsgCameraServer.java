@@ -116,7 +116,7 @@ public class AsgCameraServer extends AsgServer {
                 return serveLatestPhoto();
             case "/api/gallery":
                 logger.debug(TAG, "📚 Serving photo gallery");
-                return serveGallery();
+                return serveGallery(session);
             case "/api/photo":
                 logger.debug(TAG, "🖼️ Serving specific photo");
                 return servePhoto(session);
@@ -246,16 +246,60 @@ public class AsgCameraServer extends AsgServer {
      */
     private Response serveGallery() {
         logger.debug(TAG, "📚 Gallery request started");
-
+        return serveGalleryWithParams(null);
+    }
+    
+    /**
+     * Serve gallery listing with pagination support.
+     */
+    private Response serveGallery(IHTTPSession session) {
+        logger.debug(TAG, "📚 Gallery request started with params");
+        return serveGalleryWithParams(session);
+    }
+    
+    /**
+     * Internal method to serve gallery with optional pagination parameters.
+     */
+    private Response serveGalleryWithParams(IHTTPSession session) {
         long startTime = System.currentTimeMillis();
         long timeoutMs = 5000; // 5 second timeout for gallery requests
+
+        // Parse pagination parameters
+        int limit = 0;  // 0 means no limit (return all)
+        int offset = 0;
+        
+        if (session != null) {
+            Map<String, String> params = session.getParms();
+            String limitParam = params.get("limit");
+            String offsetParam = params.get("offset");
+            
+            if (limitParam != null && !limitParam.isEmpty()) {
+                try {
+                    limit = Integer.parseInt(limitParam);
+                    limit = Math.max(0, Math.min(limit, 100)); // Cap at 100 items per request
+                    logger.debug(TAG, "📚 Pagination limit: " + limit);
+                } catch (NumberFormatException e) {
+                    logger.warn(TAG, "📚 Invalid limit parameter: " + limitParam);
+                }
+            }
+            
+            if (offsetParam != null && !offsetParam.isEmpty()) {
+                try {
+                    offset = Integer.parseInt(offsetParam);
+                    offset = Math.max(0, offset);
+                    logger.debug(TAG, "📚 Pagination offset: " + offset);
+                } catch (NumberFormatException e) {
+                    logger.warn(TAG, "📚 Invalid offset parameter: " + offsetParam);
+                }
+            }
+        }
 
         try {
             // Get all photos using FileManager with timeout
             List<FileMetadata> photoMetadataList = fileManager.listFiles(fileManager.getDefaultPackageName());
 
             long fetchTime = System.currentTimeMillis() - startTime;
-            logger.debug(TAG, "📚 Found " + photoMetadataList.size() + " photos in " + fetchTime + "ms");
+            logger.debug(TAG, "📚 Found " + photoMetadataList.size() + " total photos in " + fetchTime + "ms");
 
             if (photoMetadataList.isEmpty()) {
                 logger.debug(TAG, "📚 No photos found, returning empty gallery");
@@ -263,6 +307,7 @@ public class AsgCameraServer extends AsgServer {
                 data.put("photos", new ArrayList<>());
                 data.put("total_count", 0);
                 data.put("total_size", 0);
+                data.put("has_more", false);
                 return createSuccessResponse(data);
             }
 
@@ -272,11 +317,31 @@ public class AsgCameraServer extends AsgServer {
                 return createErrorResponse(Response.Status.REQUEST_TIMEOUT, "Gallery request timeout");
             }
 
+            // Sort by modification time (newest first) BEFORE pagination
+            photoMetadataList.sort((a, b) -> Long.compare(b.getLastModified(), a.getLastModified()));
+            
+            // Apply pagination
+            int totalCount = photoMetadataList.size();
+            int endIndex = (limit > 0) ? Math.min(offset + limit, totalCount) : totalCount;
+            int actualOffset = Math.min(offset, totalCount);
+            
+            List<FileMetadata> paginatedList = photoMetadataList.subList(actualOffset, endIndex);
+            boolean hasMore = endIndex < totalCount;
+            
+            logger.debug(TAG, "📚 Returning photos " + actualOffset + " to " + endIndex + " of " + totalCount);
+
             List<Map<String, Object>> photos = new ArrayList<>();
             SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US);
             long totalSize = 0;
+            long paginatedSize = 0;
 
-            for (FileMetadata photoMetadata : photoMetadataList) {
+            // Calculate total size (for all photos)
+            for (FileMetadata metadata : photoMetadataList) {
+                totalSize += metadata.getFileSize();
+            }
+
+            // Process only the paginated subset
+            for (FileMetadata photoMetadata : paginatedList) {
                 // Check timeout during processing
                 if (System.currentTimeMillis() - startTime > timeoutMs) {
                     logger.warn(TAG, "📚 Gallery processing timeout after " + (System.currentTimeMillis() - startTime) + "ms");
@@ -295,36 +360,26 @@ public class AsgCameraServer extends AsgServer {
                 if (isVideoFile(photoMetadata.getFileName())) {
                     photoInfo.put("is_video", true);
                     photoInfo.put("thumbnail_url", "/api/photo?file=" + photoMetadata.getFileName());
-                    logger.debug(TAG, "📚 Added video info for: " + photoMetadata.getFileName());
                 } else {
                     photoInfo.put("is_video", false);
-                    logger.debug(TAG, "📚 Added image info for: " + photoMetadata.getFileName());
                 }
                 
                 photos.add(photoInfo);
-                totalSize += photoMetadata.getFileSize();
+                paginatedSize += photoMetadata.getFileSize();
             }
 
-            // Sort by modification time (newest first)
-            photos.sort((a, b) -> {
-                String timeAStr = (String) a.get("modified");
-                String timeBStr = (String) b.get("modified");
-                try {
-                    Date dateA = sdf.parse(timeAStr);
-                    Date dateB = sdf.parse(timeBStr);
-                    return Long.compare(dateB.getTime(), dateA.getTime());
-                } catch (Exception e) {
-                    return 0; // Keep original order if parsing fails
-                }
-            });
-
             long totalTime = System.currentTimeMillis() - startTime;
-            logger.debug(TAG, "📚 Gallery served successfully with " + photos.size() + " photos in " + totalTime + "ms");
+            logger.debug(TAG, "📚 Gallery served successfully with " + photos.size() + " photos (of " + totalCount + " total) in " + totalTime + "ms");
 
             Map<String, Object> data = new HashMap<>();
             data.put("photos", photos);
-            data.put("total_count", photos.size());
-            data.put("total_size", totalSize);
+            data.put("total_count", totalCount);  // Total number of all photos
+            data.put("returned_count", photos.size());  // Number returned in this response
+            data.put("total_size", totalSize);  // Total size of all photos
+            data.put("returned_size", paginatedSize);  // Size of returned photos
+            data.put("offset", actualOffset);
+            data.put("limit", limit);
+            data.put("has_more", hasMore);
             data.put("package_name", fileManager.getDefaultPackageName());
             data.put("processing_time_ms", totalTime);
             return createSuccessResponse(data);

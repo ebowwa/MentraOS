@@ -12,6 +12,9 @@ public class AsgSettings {
     private static final String TAG = "AugmentOS_AsgSettings";
     private static final String PREFS_NAME = "asg_settings";
     private static final String KEY_BUTTON_MODE = "button_press_mode";
+    private static final String KEY_BUTTON_VIDEO_WIDTH = "button_video_width";
+    private static final String KEY_BUTTON_VIDEO_HEIGHT = "button_video_height";
+    private static final String KEY_BUTTON_VIDEO_FPS = "button_video_fps";
     
     public enum ButtonPressMode {
         PHOTO("photo"),      // Take photo only
@@ -94,5 +97,51 @@ public class AsgSettings {
      */
     public boolean isFirstRun() {
         return !prefs.contains(KEY_BUTTON_MODE);
+    }
+    
+    /**
+     * Get the video recording settings for button-initiated recording
+     * @return VideoSettings with the saved resolution and fps
+     */
+    public VideoSettings getButtonVideoSettings() {
+        int width = prefs.getInt(KEY_BUTTON_VIDEO_WIDTH, 1280);
+        int height = prefs.getInt(KEY_BUTTON_VIDEO_HEIGHT, 720);
+        int fps = prefs.getInt(KEY_BUTTON_VIDEO_FPS, 30);
+        VideoSettings settings = new VideoSettings(width, height, fps);
+        Log.d(TAG, "Retrieved button video settings: " + settings);
+        return settings;
+    }
+    
+    /**
+     * Set the video recording settings for button-initiated recording
+     * @param settings VideoSettings to save
+     */
+    public void setButtonVideoSettings(VideoSettings settings) {
+        if (settings == null) {
+            Log.w(TAG, "Attempted to set null video settings, ignoring");
+            return;
+        }
+        if (!settings.isValid()) {
+            Log.w(TAG, "Attempted to set invalid video settings: " + settings + ", ignoring");
+            return;
+        }
+        Log.d(TAG, "Setting button video settings to: " + settings);
+        // Using commit() for immediate persistence
+        prefs.edit()
+            .putInt(KEY_BUTTON_VIDEO_WIDTH, settings.width)
+            .putInt(KEY_BUTTON_VIDEO_HEIGHT, settings.height)
+            .putInt(KEY_BUTTON_VIDEO_FPS, settings.fps)
+            .commit();
+    }
+    
+    /**
+     * Set button video settings from width, height, and fps values
+     * @param width Video width
+     * @param height Video height  
+     * @param fps Video frame rate
+     */
+    public void setButtonVideoSettings(int width, int height, int fps) {
+        VideoSettings settings = new VideoSettings(width, height, fps);
+        setButtonVideoSettings(settings);
     }
 }

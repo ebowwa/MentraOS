@@ -36,6 +36,8 @@ import android.util.Range;
 import android.util.Rational;
 import android.util.Size;
 import android.view.Surface;
+
+import com.augmentos.asg_client.settings.VideoSettings;
 import android.view.WindowManager;
 
 import com.augmentos.asg_client.utils.WakeLockManager;
@@ -87,6 +89,12 @@ public class CameraNeo extends LifecycleService {
     // Auto-exposure settings for better photo quality - now dynamic
     private static final int JPEG_QUALITY = 90; // High quality JPEG
     private static final int JPEG_ORIENTATION = 270; // Standard orientation
+    
+    // Camera keep-alive settings
+    private static final long CAMERA_KEEP_ALIVE_MS = 3000; // Keep camera open for 3 seconds after photo
+    private Timer cameraKeepAliveTimer;
+    private boolean isCameraKeptAlive = false;
+    private String pendingPhotoPath = null;
 
     // Camera characteristics for dynamic auto-exposure and autofocus
     private int[] availableAeModes;
@@ -133,6 +141,7 @@ public class CameraNeo extends LifecycleService {
     public static final String ACTION_STOP_VIDEO_RECORDING = "com.augmentos.camera.ACTION_STOP_VIDEO_RECORDING";
     public static final String EXTRA_VIDEO_FILE_PATH = "com.augmentos.camera.EXTRA_VIDEO_FILE_PATH";
     public static final String EXTRA_VIDEO_ID = "com.augmentos.camera.EXTRA_VIDEO_ID";
+    public static final String EXTRA_VIDEO_SETTINGS = "com.augmentos.camera.EXTRA_VIDEO_SETTINGS";
     
     // Buffer recording actions
     public static final String ACTION_START_BUFFER = "com.augmentos.camera.ACTION_START_BUFFER";
@@ -163,6 +172,7 @@ public class CameraNeo extends LifecycleService {
     private long recordingStartTime;
     private Timer recordingTimer;
     private Size videoSize; // To store selected video size
+    private VideoSettings pendingVideoSettings; // Settings for next recording
     
     // Buffer recording components
     private enum RecordingMode {
@@ -271,12 +281,30 @@ public class CameraNeo extends LifecycleService {
      * @param callback Callback for recording events
      */
     public static void startVideoRecording(Context context, String videoId, String filePath, VideoRecordingCallback callback) {
+        startVideoRecording(context, videoId, filePath, null, callback);
+    }
+    
+    /**
+     * Start video recording with custom settings
+     *
+     * @param context  Application context
+     * @param videoId  Unique ID for this video recording session
+     * @param filePath File path to save the video
+     * @param settings Video settings (resolution, fps) or null for defaults
+     * @param callback Callback for recording events
+     */
+    public static void startVideoRecording(Context context, String videoId, String filePath, VideoSettings settings, VideoRecordingCallback callback) {
         sVideoCallback = callback;
 
         Intent intent = new Intent(context, CameraNeo.class);
         intent.setAction(ACTION_START_VIDEO_RECORDING);
         intent.putExtra(EXTRA_VIDEO_ID, videoId);
         intent.putExtra(EXTRA_VIDEO_FILE_PATH, filePath);
+        if (settings != null) {
+            intent.putExtra(EXTRA_VIDEO_SETTINGS + "_width", settings.width);
+            intent.putExtra(EXTRA_VIDEO_SETTINGS + "_height", settings.height);
+            intent.putExtra(EXTRA_VIDEO_SETTINGS + "_fps", settings.fps);
+        }
         context.startForegroundService(intent);
     }
 
@@ -356,6 +384,16 @@ public class CameraNeo extends LifecycleService {
                         String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
                         currentVideoPath = getExternalFilesDir(null) + File.separator + "VID_" + timeStamp + ".mp4";
                     }
+                    // Extract video settings if provided
+                    int width = intent.getIntExtra(EXTRA_VIDEO_SETTINGS + "_width", 0);
+                    int height = intent.getIntExtra(EXTRA_VIDEO_SETTINGS + "_height", 0);
+                    int fps = intent.getIntExtra(EXTRA_VIDEO_SETTINGS + "_fps", 0);
+                    if (width > 0 && height > 0 && fps > 0) {
+                        pendingVideoSettings = new VideoSettings(width, height, fps);
+                        Log.d(TAG, "Using custom video settings: " + pendingVideoSettings);
+                    } else {
+                        pendingVideoSettings = null; // Will use defaults
+                    }
                     setupCameraAndStartRecording(currentVideoId, currentVideoPath);
                     break;
                 case ACTION_STOP_VIDEO_RECORDING:
@@ -379,8 +417,33 @@ public class CameraNeo extends LifecycleService {
     }
 
     private void setupCameraAndTakePicture(String filePath) {
-        wakeUpScreen();
-        openCameraInternal(filePath, false); // false indicates not for video
+        // Check if camera is already open and kept alive
+        if (isCameraKeptAlive && cameraDevice != null) {
+            Log.d(TAG, "Camera is already open (kept alive), taking photo immediately");
+            
+            // Cancel the keep-alive timer since we're taking a new photo
+            cancelKeepAliveTimer();
+            
+            // Update the pending photo path for the new capture
+            pendingPhotoPath = filePath;
+            
+            // Camera is already open with AE likely converged, trigger new capture
+            // Start from WAITING_AE to ensure proper capture sequence
+            shotState = ShotState.WAITING_AE;
+            
+            // Use background handler to ensure proper thread
+            if (backgroundHandler != null) {
+                backgroundHandler.post(() -> {
+                    startAeConvergenceSequence();
+                });
+            } else {
+                startAeConvergenceSequence();
+            }
+        } else {
+            // Normal flow - open camera from scratch
+            wakeUpScreen();
+            openCameraInternal(filePath, false); // false indicates not for video
+        }
     }
 
     private void setupCameraAndStartRecording(String videoId, String filePath) {
@@ -738,9 +801,18 @@ public class CameraNeo extends LifecycleService {
                     Log.d(TAG, "  " + size.getWidth() + "x" + size.getHeight());
                 }
 
-                // Default to 720p if available, otherwise find closest
-                int targetVideoWidth = 1280;
-                int targetVideoHeight = 720;
+                // Use pending video settings if available, otherwise default to 720p
+                int targetVideoWidth;
+                int targetVideoHeight;
+                if (pendingVideoSettings != null && pendingVideoSettings.isValid()) {
+                    targetVideoWidth = pendingVideoSettings.width;
+                    targetVideoHeight = pendingVideoSettings.height;
+                    Log.d(TAG, "Using requested video settings: " + pendingVideoSettings);
+                } else {
+                    targetVideoWidth = 1280;
+                    targetVideoHeight = 720;
+                    Log.d(TAG, "Using default video settings: 1280x720@30fps");
+                }
                 videoSize = chooseOptimalSize(videoSizes, targetVideoWidth, targetVideoHeight);
                 Log.d(TAG, "Selected video size: " + videoSize.getWidth() + "x" + videoSize.getHeight());
 
@@ -774,6 +846,7 @@ public class CameraNeo extends LifecycleService {
                         Log.e(TAG, "Acquired image is null");
                         notifyPhotoError("Failed to acquire image data");
                         shotState = ShotState.IDLE;
+                        cancelKeepAliveTimer();
                         closeCamera();
                         stopSelf();
                         return;
@@ -783,27 +856,33 @@ public class CameraNeo extends LifecycleService {
                     byte[] bytes = new byte[buffer.remaining()];
                     buffer.get(bytes);
 
+                    // Use pending photo path if camera was kept alive, otherwise use the original path
+                    String targetPath = (isCameraKeptAlive && pendingPhotoPath != null) ? pendingPhotoPath : filePath;
+                    
                     // Save the image data to the file
-                    boolean success = saveImageDataToFile(bytes, filePath);
+                    boolean success = saveImageDataToFile(bytes, targetPath);
 
                     if (success) {
-                        lastPhotoPath = filePath;
-                        notifyPhotoCaptured(filePath);
-                        Log.d(TAG, "Photo saved successfully: " + filePath);
+                        lastPhotoPath = targetPath;
+                        notifyPhotoCaptured(targetPath);
+                        Log.d(TAG, "Photo saved successfully: " + targetPath);
+                        // Clear pending photo path after successful capture
+                        pendingPhotoPath = null;
                     } else {
                         notifyPhotoError("Failed to save image");
                     }
 
-                    // Reset state and clean up resources
+                    // Reset state
                     shotState = ShotState.IDLE;
 
-                    // Clean up resources and stop service
-                    closeCamera();
-                    stopSelf();
+                    // Start keep-alive timer instead of immediately closing
+                    startKeepAliveTimer();
                 } catch (Exception e) {
                     Log.e(TAG, "Error handling image data", e);
                     notifyPhotoError("Error processing photo: " + e.getMessage());
                     shotState = ShotState.IDLE;
+                    // On error, close immediately without keep-alive
+                    cancelKeepAliveTimer();
                     closeCamera();
                     stopSelf();
                 }
@@ -872,10 +951,18 @@ public class CameraNeo extends LifecycleService {
             mediaRecorder.setOutputFile(filePath);
 
             // Set video encoding parameters
-            mediaRecorder.setVideoEncodingBitRate(3000000); // 3Mbps - reduced from 10Mbps for smaller file sizes
-            mediaRecorder.setVideoFrameRate(30);
+            // Use higher bitrate for 1080p
+            int bitRate = (videoSize.getWidth() >= 1920) ? 5000000 : 3000000; // 5Mbps for 1080p, 3Mbps for 720p
+            mediaRecorder.setVideoEncodingBitRate(bitRate);
+            
+            // Use fps from settings if available
+            int frameRate = (pendingVideoSettings != null) ? pendingVideoSettings.fps : 30;
+            mediaRecorder.setVideoFrameRate(frameRate);
             mediaRecorder.setVideoSize(videoSize.getWidth(), videoSize.getHeight());
             mediaRecorder.setVideoEncoder(MediaRecorder.VideoEncoder.H264);
+            
+            Log.d(TAG, "MediaRecorder configured: " + videoSize.getWidth() + "x" + videoSize.getHeight() + 
+                      "@" + frameRate + "fps, bitrate: " + bitRate);
 
             // Set audio encoding parameters
             mediaRecorder.setAudioEncodingBitRate(128000);
@@ -1142,6 +1229,8 @@ public class CameraNeo extends LifecycleService {
             mediaRecorder.start();
             isRecording = true;
             recordingStartTime = System.currentTimeMillis();
+            // Clear pending settings after use
+            pendingVideoSettings = null;
             if (sVideoCallback != null) {
                 sVideoCallback.onRecordingStarted(currentVideoId);
             }
@@ -1249,6 +1338,8 @@ public class CameraNeo extends LifecycleService {
     @Override
     public void onDestroy() {
         super.onDestroy();
+        // Cancel keep-alive timer if it's running
+        cancelKeepAliveTimer();
         if (isRecording) {
             stopCurrentVideoRecording(currentVideoId);
         }
@@ -1321,11 +1412,59 @@ public class CameraNeo extends LifecycleService {
                 recorderSurface.release();
                 recorderSurface = null;
             }
+            // Reset keep-alive flag when camera is actually closed
+            isCameraKeptAlive = false;
             releaseWakeLocks();
         } catch (InterruptedException e) {
             Log.e(TAG, "Interrupted while closing camera", e);
         } finally {
             cameraOpenCloseLock.release();
+        }
+    }
+    
+    /**
+     * Start the keep-alive timer to keep camera open for rapid successive shots
+     */
+    private void startKeepAliveTimer() {
+        Log.d(TAG, "Starting camera keep-alive timer for " + CAMERA_KEEP_ALIVE_MS + "ms");
+        
+        // Cancel any existing timer first
+        cancelKeepAliveTimer();
+        
+        // Mark camera as kept alive
+        isCameraKeptAlive = true;
+        
+        // Create new timer
+        cameraKeepAliveTimer = new Timer();
+        cameraKeepAliveTimer.schedule(new TimerTask() {
+            @Override
+            public void run() {
+                Log.d(TAG, "Camera keep-alive timer expired, closing camera");
+                // Run on background handler to ensure proper thread
+                if (backgroundHandler != null) {
+                    backgroundHandler.post(() -> {
+                        isCameraKeptAlive = false;
+                        closeCamera();
+                        stopSelf();
+                    });
+                } else {
+                    // Fallback if handler is not available
+                    isCameraKeptAlive = false;
+                    closeCamera();
+                    stopSelf();
+                }
+            }
+        }, CAMERA_KEEP_ALIVE_MS);
+    }
+    
+    /**
+     * Cancel the keep-alive timer
+     */
+    private void cancelKeepAliveTimer() {
+        if (cameraKeepAliveTimer != null) {
+            Log.d(TAG, "Cancelling camera keep-alive timer");
+            cameraKeepAliveTimer.cancel();
+            cameraKeepAliveTimer = null;
         }
     }
 
@@ -1544,6 +1683,7 @@ public class CameraNeo extends LifecycleService {
         } catch (CameraAccessException e) {
             Log.e(TAG, "Error starting preview with AE monitoring", e);
             notifyPhotoError("Error starting preview: " + e.getMessage());
+            cancelKeepAliveTimer();
             closeCamera();
             stopSelf();
         }
@@ -1572,6 +1712,7 @@ public class CameraNeo extends LifecycleService {
             Log.e(TAG, "Error starting AE convergence", e);
             notifyPhotoError("Error starting AE convergence: " + e.getMessage());
             shotState = ShotState.IDLE;
+            cancelKeepAliveTimer();
             closeCamera();
             stopSelf();
         }
@@ -1637,6 +1778,7 @@ public class CameraNeo extends LifecycleService {
             Log.e(TAG, "Capture failed during AE sequence: " + failure.getReason());
             notifyPhotoError("AE sequence failed: " + failure.getReason());
             shotState = ShotState.IDLE;
+            cancelKeepAliveTimer();
             closeCamera();
             stopSelf();
         }
@@ -1706,6 +1848,7 @@ public class CameraNeo extends LifecycleService {
                     Log.e(TAG, "Photo capture failed: " + failure.getReason());
                     notifyPhotoError("Photo capture failed: " + failure.getReason());
                     shotState = ShotState.IDLE;
+                    cancelKeepAliveTimer();
                     closeCamera();
                     stopSelf();
                 }
@@ -1715,6 +1858,7 @@ public class CameraNeo extends LifecycleService {
             Log.e(TAG, "Error during photo capture", e);
             notifyPhotoError("Error capturing photo: " + e.getMessage());
             shotState = ShotState.IDLE;
+            cancelKeepAliveTimer();
             closeCamera();
             stopSelf();
         }
