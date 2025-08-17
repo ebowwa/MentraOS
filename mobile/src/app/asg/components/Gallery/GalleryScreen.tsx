@@ -2,7 +2,7 @@
  * Main gallery screen component
  */
 
-import React, {useCallback, useState, useEffect, useMemo} from "react"
+import React, {useCallback, useState, useEffect, useMemo, useRef} from "react"
 import {
   View,
   Text,
@@ -13,6 +13,7 @@ import {
   Dimensions,
   ScrollView,
   FlatList,
+  ViewToken,
 } from "react-native"
 import {useLocalSearchParams, useFocusEffect} from "expo-router"
 import {useSafeAreaInsets} from "react-native-safe-area-context"
@@ -25,8 +26,11 @@ import {PhotoInfo} from "../../types"
 import {asgCameraApi} from "../../services/asgCameraApi"
 import {localStorageService} from "../../services/localStorageService"
 import {PhotoImage} from "./PhotoImage"
-//import {GallerySkeleton} from "./GallerySkeleton"
 import {MediaViewer} from "./MediaViewer"
+import {createShimmerPlaceholder} from "react-native-shimmer-placeholder"
+import LinearGradient from "expo-linear-gradient"
+
+const ShimmerPlaceholder = createShimmerPlaceholder(LinearGradient)
 import showAlert from "@/utils/AlertUtils"
 import {translate} from "@/i18n"
 import {shareFile} from "@/utils/FileUtils"
@@ -61,12 +65,13 @@ export function GalleryScreen() {
   const {networkStatus, isGalleryReachable, shouldShowWarning, getStatusMessage, checkConnectivity} =
     useNetworkConnectivity()
 
-  // State management
-  const [serverPhotos, setServerPhotos] = useState<PhotoInfo[]>([])
+  // State management - using Map for O(1) lookups
+  const [totalServerCount, setTotalServerCount] = useState(0)
+  const [loadedServerPhotos, setLoadedServerPhotos] = useState<Map<number, PhotoInfo>>(new Map())
   const [downloadedPhotos, setDownloadedPhotos] = useState<PhotoInfo[]>([])
   const [selectedPhoto, setSelectedPhoto] = useState<PhotoInfo | null>(null)
-  const [isLoadingServerPhotos, setIsLoadingServerPhotos] = useState(true) // Start as loading
-  const [isInitialLoad, setIsInitialLoad] = useState(true) // Track if this is the first load
+  const [isLoadingServerPhotos, setIsLoadingServerPhotos] = useState(true)
+  const [isInitialLoad, setIsInitialLoad] = useState(true)
   const [isSyncing, setIsSyncing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [syncProgress, setSyncProgress] = useState<{
@@ -77,67 +82,98 @@ export function GalleryScreen() {
   const [connectionCheckInterval, setConnectionCheckInterval] = useState<NodeJS.Timeout | null>(null)
   const [lastConnectionStatus, setLastConnectionStatus] = useState(false)
 
-  // Pagination state
-  const [isLoadingMore, setIsLoadingMore] = useState(false)
-  const [hasMoreServerPhotos, setHasMoreServerPhotos] = useState(false)
-  const [totalServerPhotos, setTotalServerPhotos] = useState(0)
-  const PAGE_SIZE = 20 // Load 20 photos at a time
+  // Track loaded ranges to avoid duplicate requests
+  const loadedRanges = useRef<Set<string>>(new Set())
+  const loadingRanges = useRef<Set<string>>(new Set())
+  const PAGE_SIZE = 20
 
-  // Load initial photos from server (first page)
-  const loadPhotos = useCallback(
-    async (loadMore = false) => {
-      if (!isWifiConnected || !glassesWifiIp) {
-        // Don't set error - just don't load server photos
-        console.log("[GalleryScreen] Glasses not connected, skipping server photo load")
-        setServerPhotos([])
-        setIsLoadingServerPhotos(false)
-        setIsInitialLoad(false)
-        setHasMoreServerPhotos(false)
+  // Initial load - get total count and first batch
+  const loadInitialPhotos = useCallback(async () => {
+    if (!isWifiConnected || !glassesWifiIp) {
+      console.log("[GalleryScreen] Glasses not connected")
+      setTotalServerCount(0)
+      setIsLoadingServerPhotos(false)
+      setIsInitialLoad(false)
+      return
+    }
+
+    setIsLoadingServerPhotos(true)
+    setError(null)
+
+    try {
+      asgCameraApi.setServer(glassesWifiIp, 8089)
+
+      // Get first page to know total count
+      const result = await asgCameraApi.getGalleryPhotos(PAGE_SIZE, 0)
+
+      setTotalServerCount(result.totalCount)
+
+      // Store loaded photos in map
+      const newMap = new Map<number, PhotoInfo>()
+      result.photos.forEach((photo, index) => {
+        newMap.set(index, photo)
+      })
+      setLoadedServerPhotos(newMap)
+
+      // Mark this range as loaded
+      loadedRanges.current.add("0-19")
+    } catch (err) {
+      console.error("[GalleryScreen] Failed to load initial photos:", err)
+      setTotalServerCount(0)
+    } finally {
+      setIsLoadingServerPhotos(false)
+      setIsInitialLoad(false)
+    }
+  }, [isWifiConnected, glassesWifiIp])
+
+  // Load photos for specific indices (for lazy loading)
+  const loadPhotosForIndices = useCallback(
+    async (indices: number[]) => {
+      if (!isWifiConnected || !glassesWifiIp || indices.length === 0) return
+
+      // Filter out already loaded indices
+      const unloadedIndices = indices.filter(i => !loadedServerPhotos.has(i))
+      if (unloadedIndices.length === 0) return
+
+      // Find contiguous ranges to load
+      const sortedIndices = [...unloadedIndices].sort((a, b) => a - b)
+      const minIndex = sortedIndices[0]
+      const maxIndex = sortedIndices[sortedIndices.length - 1]
+
+      // Create range key
+      const rangeKey = `${minIndex}-${maxIndex}`
+
+      // Skip if already loading or loaded this range
+      if (loadingRanges.current.has(rangeKey) || loadedRanges.current.has(rangeKey)) {
         return
       }
 
-      // If loading more, set loading more state; otherwise set initial loading state
-      if (loadMore) {
-        setIsLoadingMore(true)
-      } else {
-        setIsLoadingServerPhotos(true)
-        setError(null)
-      }
+      loadingRanges.current.add(rangeKey)
 
       try {
-        // Set the server URL to the glasses WiFi IP
         asgCameraApi.setServer(glassesWifiIp, 8089)
-        console.log(`[GalleryScreen] Set server URL to: ${glassesWifiIp}:8089`)
 
-        // Calculate offset based on current photos if loading more
-        const offset = loadMore ? serverPhotos.length : 0
+        // Load the range
+        const limit = maxIndex - minIndex + 1
+        const result = await asgCameraApi.getGalleryPhotos(limit, minIndex)
 
-        const result = await asgCameraApi.getGalleryPhotos(PAGE_SIZE, offset)
+        // Update loaded photos map
+        setLoadedServerPhotos(prev => {
+          const newMap = new Map(prev)
+          result.photos.forEach((photo, i) => {
+            newMap.set(minIndex + i, photo)
+          })
+          return newMap
+        })
 
-        if (loadMore) {
-          // Append to existing photos
-          setServerPhotos(prev => [...prev, ...result.photos])
-        } else {
-          // Replace photos (initial load or refresh)
-          setServerPhotos(result.photos)
-        }
-
-        setHasMoreServerPhotos(result.hasMore)
-        setTotalServerPhotos(result.totalCount)
-        setError(null) // Clear any previous errors on success
+        loadedRanges.current.add(rangeKey)
       } catch (err) {
-        // Don't show error in main area - warning banner will handle it
-        console.error("[GalleryScreen] Failed to load server photos:", err)
-        if (!loadMore) {
-          setServerPhotos([])
-        }
+        console.error(`[GalleryScreen] Failed to load range ${rangeKey}:`, err)
       } finally {
-        setIsLoadingServerPhotos(false)
-        setIsInitialLoad(false)
-        setIsLoadingMore(false)
+        loadingRanges.current.delete(rangeKey)
       }
     },
-    [isWifiConnected, glassesWifiIp], // Removed serverPhotos from dependencies to prevent infinite loop
+    [isWifiConnected, glassesWifiIp, loadedServerPhotos],
   )
 
   // Load downloaded photos
@@ -245,8 +281,8 @@ export function GalleryScreen() {
         total_size: syncState.total_size + downloadResult.total_size,
       })
 
-      // Reload photos (fresh load, not append)
-      await Promise.all([loadPhotos(false), loadDownloadedPhotos()])
+      // Reload photos
+      await Promise.all([loadInitialPhotos(), loadDownloadedPhotos()])
 
       // showAlert(
       //   "Sync Complete",
@@ -280,7 +316,7 @@ export function GalleryScreen() {
 
       await asgCameraApi.takePicture()
       showAlert("Success", "Picture taken successfully!", [{text: translate("common:ok")}])
-      loadPhotos(false) // Reload photos
+      loadInitialPhotos() // Reload photos
     } catch (err) {
       let errorMessage = "Cannot connect to your glasses. Please check your network connection."
       if (err instanceof Error) {
@@ -295,15 +331,17 @@ export function GalleryScreen() {
   }
 
   // Handle photo selection
-  const handlePhotoPress = (photo: PhotoInfo & {isOnServer?: boolean}) => {
+  const handlePhotoPress = (item: GalleryItem) => {
+    if (!item.photo) return // Skip placeholders
+
     // Check if it's a video that's still on the glasses (not synced)
-    if (photo.is_video && photo.isOnServer) {
+    if (item.photo.is_video && item.isOnServer) {
       showAlert("Video Not Downloaded", "Please sync this video to your device to watch it", [
         {text: translate("common:ok")},
       ])
       return
     }
-    setSelectedPhoto(photo)
+    setSelectedPhoto(item.photo)
   }
 
   // Handle photo sharing
@@ -414,7 +452,7 @@ export function GalleryScreen() {
           try {
             await asgCameraApi.deleteFilesFromServer([photo.name])
             showAlert("Success", "Photo deleted successfully!", [{text: translate("common:ok")}])
-            loadPhotos(false) // Reload photos
+            loadInitialPhotos() // Reload photos
           } catch (err) {
             showAlert("Error", err instanceof Error ? err.message : "Failed to delete photo", [
               {text: translate("common:ok")},
@@ -451,7 +489,7 @@ export function GalleryScreen() {
     checkConnectivity().then(() => {
       console.log("[GalleryScreen] Initial connectivity check complete")
     })
-    loadPhotos(false)
+    loadInitialPhotos()
     loadDownloadedPhotos()
   }, [isWifiConnected, glassesWifiIp]) // Only reload when connection status changes
 
@@ -497,7 +535,7 @@ export function GalleryScreen() {
         // If connection is restored, reload photos
         if (status.galleryReachable && !lastConnectionStatus) {
           console.log("[GalleryScreen] Connection restored! Reloading photos...")
-          loadPhotos(false)
+          loadInitialPhotos()
           loadDownloadedPhotos()
           setLastConnectionStatus(true)
         } else if (!status.galleryReachable) {
@@ -520,57 +558,89 @@ export function GalleryScreen() {
     }
   }, [isGalleryReachable, lastConnectionStatus]) // Only depend on connection states, not functions
 
-  // Combine photos: server photos first, then downloaded photos, both sorted newest first
+  // Gallery item type for mixed content
+  interface GalleryItem {
+    id: string
+    type: "server" | "local" | "placeholder"
+    index: number
+    photo?: PhotoInfo
+    isOnServer?: boolean
+  }
+
+  // Combine photos with placeholders - fixed size list!
   const allPhotos = useMemo(() => {
-    const serverPhotoMap = new Map(serverPhotos.map(p => [p.name, {...p, isOnServer: true}]))
-    const downloadedPhotoMap = new Map(downloadedPhotos.map(p => [p.name, {...p, isOnServer: false}]))
+    const items: GalleryItem[] = []
 
-    // Collect server photos and downloaded-only photos
-    const serverPhotosList: (PhotoInfo & {isOnServer: boolean})[] = []
-    const downloadedOnlyList: (PhotoInfo & {isOnServer: boolean})[] = []
-
-    // Add server photos
-    serverPhotoMap.forEach(photo => {
-      serverPhotosList.push(photo)
-    })
-
-    // Add downloaded photos that aren't on server
-    downloadedPhotoMap.forEach((photo, name) => {
-      if (!serverPhotoMap.has(name)) {
-        downloadedOnlyList.push(photo)
-      }
-    })
-
-    // Sort both lists by modified date (newest first)
-    // Convert modified string to timestamp for proper sorting
-    serverPhotosList.sort((a, b) => {
-      const aTime = typeof a.modified === "string" ? new Date(a.modified).getTime() : a.modified
-      const bTime = typeof b.modified === "string" ? new Date(b.modified).getTime() : b.modified
-      return bTime - aTime
-    })
-    downloadedOnlyList.sort((a, b) => {
-      const aTime = typeof a.modified === "string" ? new Date(a.modified).getTime() : a.modified
-      const bTime = typeof b.modified === "string" ? new Date(b.modified).getTime() : b.modified
-      return bTime - aTime
-    })
-
-    // Combine: server photos first (newest to oldest), then downloaded photos (newest to oldest)
-    return [...serverPhotosList, ...downloadedOnlyList]
-  }, [serverPhotos, downloadedPhotos])
-
-  // Determine content type for sync button text
-  const syncContentType = useMemo(() => {
-    const hasVideos = serverPhotos.some(p => p.is_video)
-    const hasPhotos = serverPhotos.some(p => !p.is_video)
-
-    if (hasVideos && hasPhotos) {
-      return "Photos & Videos"
-    } else if (hasVideos) {
-      return totalServerPhotos === 1 ? "Video" : "Videos"
-    } else {
-      return totalServerPhotos === 1 ? "Photo" : "Photos"
+    // Create items for ALL server photos (loaded or placeholder)
+    // Server photos maintain their order from the API (should be newest first)
+    for (let i = 0; i < totalServerCount; i++) {
+      const photo = loadedServerPhotos.get(i)
+      items.push({
+        id: `server-${i}`,
+        type: photo ? "server" : "placeholder",
+        index: i,
+        photo: photo,
+        isOnServer: true,
+      })
     }
-  }, [serverPhotos, totalServerPhotos])
+
+    // Get names of all loaded server photos for deduplication
+    const serverPhotoNames = new Set<string>()
+    loadedServerPhotos.forEach(photo => {
+      serverPhotoNames.add(photo.name)
+    })
+
+    // Add downloaded-only photos at the end, sorted by newest first
+    const downloadedOnly = downloadedPhotos.filter(p => !serverPhotoNames.has(p.name))
+
+    // Sort downloaded photos by modified date (newest first)
+    downloadedOnly.sort((a, b) => {
+      const aTime = typeof a.modified === "string" ? new Date(a.modified).getTime() : a.modified
+      const bTime = typeof b.modified === "string" ? new Date(b.modified).getTime() : b.modified
+      return bTime - aTime
+    })
+
+    downloadedOnly.forEach((photo, i) => {
+      items.push({
+        id: `local-${photo.name}`,
+        type: "local",
+        index: totalServerCount + i,
+        photo: photo,
+        isOnServer: false,
+      })
+    })
+
+    return items
+  }, [totalServerCount, loadedServerPhotos, downloadedPhotos])
+
+  // Viewability tracking for lazy loading
+  const onViewableItemsChanged = useRef(({viewableItems}: {viewableItems: ViewToken[]}) => {
+    // Get indices of placeholder items that are visible
+    const placeholderIndices = viewableItems
+      .filter(item => item.item && item.item.type === "placeholder")
+      .map(item => item.item.index)
+
+    if (placeholderIndices.length > 0) {
+      // Add buffer of 5 items before and after
+      const minIndex = Math.max(0, Math.min(...placeholderIndices) - 5)
+      const maxIndex = Math.min(totalServerCount - 1, Math.max(...placeholderIndices) + 5)
+
+      const indicesToLoad = []
+      for (let i = minIndex; i <= maxIndex; i++) {
+        indicesToLoad.push(i)
+      }
+
+      loadPhotosForIndices(indicesToLoad)
+    }
+  }).current
+
+  const viewabilityConfig = useRef({
+    itemVisiblePercentThreshold: 10,
+    minimumViewTime: 100,
+  }).current
+
+  // Count server photos for sync button
+  const serverPhotosToSync = Array.from(loadedServerPhotos.values()).length
 
   return (
     <View style={themed($screenContainer)}>
@@ -625,32 +695,53 @@ export function GalleryScreen() {
             data={allPhotos}
             numColumns={numColumns}
             key={numColumns} // Force re-render when columns change
-            renderItem={({item: photo}) => (
-              <TouchableOpacity
-                style={[themed($photoItem), {width: itemWidth}]}
-                onPress={() => handlePhotoPress(photo)}
-                onLongPress={() =>
-                  "isOnServer" in photo && photo.isOnServer
-                    ? handleDeletePhoto(photo)
-                    : handleDeleteDownloadedPhoto(photo)
-                }>
-                <PhotoImage photo={photo} style={[themed($photoImage), {width: itemWidth, height: itemWidth * 0.8}]} />
-                {"isOnServer" in photo && photo.isOnServer && (
-                  <View style={themed($serverBadge)}>
-                    <MaterialCommunityIcons name="glasses" size={14} color="white" />
+            renderItem={({item}) => {
+              if (item.photo) {
+                // Render actual photo
+                return (
+                  <TouchableOpacity
+                    style={[themed($photoItem), {width: itemWidth}]}
+                    onPress={() => handlePhotoPress(item)}
+                    onLongPress={() =>
+                      item.isOnServer ? handleDeletePhoto(item.photo) : handleDeleteDownloadedPhoto(item.photo)
+                    }>
+                    <PhotoImage
+                      photo={item.photo}
+                      style={[themed($photoImage), {width: itemWidth, height: itemWidth * 0.8}]}
+                    />
+                    {item.isOnServer && (
+                      <View style={themed($serverBadge)}>
+                        <MaterialCommunityIcons name="glasses" size={14} color="white" />
+                      </View>
+                    )}
+                    {item.photo.is_video && (
+                      <View style={themed($videoIndicator)}>
+                        <MaterialCommunityIcons name="video" size={14} color="white" />
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                )
+              } else {
+                // Render skeleton placeholder
+                return (
+                  <View style={[themed($photoItem), {width: itemWidth}]}>
+                    <ShimmerPlaceholder
+                      shimmerColors={[theme.colors.border, theme.colors.background, theme.colors.border]}
+                      shimmerStyle={{
+                        width: itemWidth,
+                        height: itemWidth * 0.8,
+                        borderRadius: 8,
+                      }}
+                      duration={1500}
+                    />
                   </View>
-                )}
-                {photo.is_video && (
-                  <View style={themed($videoIndicator)}>
-                    <MaterialCommunityIcons name="video" size={14} color="white" />
-                  </View>
-                )}
-              </TouchableOpacity>
-            )}
-            keyExtractor={(item, index) => `${item.name}-${index}`}
+                )
+              }
+            }}
+            keyExtractor={item => item.id}
             contentContainerStyle={[
               themed($photoGridContent),
-              {paddingBottom: serverPhotos.length > 0 ? 100 : spacing.lg},
+              {paddingBottom: serverPhotosToSync > 0 ? 100 : spacing.lg},
             ]} // Extra padding when sync button is shown
             columnWrapperStyle={numColumns > 1 ? themed($columnWrapper) : undefined}
             ItemSeparatorComponent={() => <View style={{height: spacing.lg}} />}
@@ -660,32 +751,15 @@ export function GalleryScreen() {
             windowSize={10}
             removeClippedSubviews={true}
             updateCellsBatchingPeriod={50}
-            // Pagination for server photos
-            onEndReached={() => {
-              // Only load more if we have server photos, more to load, and not already loading
-              if (hasMoreServerPhotos && !isLoadingMore && isWifiConnected) {
-                console.log("[GalleryScreen] Loading more server photos...")
-                loadPhotos(true)
-              }
-            }}
-            onEndReachedThreshold={0.5}
-            ListFooterComponent={() => {
-              if (isLoadingMore) {
-                return (
-                  <View style={themed($loadingMoreContainer)}>
-                    <ActivityIndicator size="small" color={theme.colors.text} />
-                    <Text style={themed($loadingMoreText)}>Loading more photos...</Text>
-                  </View>
-                )
-              }
-              return null
-            }}
+            // Viewability for lazy loading
+            onViewableItemsChanged={onViewableItemsChanged}
+            viewabilityConfig={viewabilityConfig}
           />
         )}
       </View>
 
       {/* Sync Button - Fixed at bottom, only show if there are server photos */}
-      {totalServerPhotos > 0 && (
+      {serverPhotosToSync > 0 && (
         <TouchableOpacity
           style={[themed($syncButtonFixed), isSyncing && themed($syncButtonFixedDisabled)]}
           onPress={handleSync}
@@ -695,11 +769,11 @@ export function GalleryScreen() {
             {isSyncing && syncProgress ? (
               <>
                 <Text style={themed($syncButtonText)}>
-                  Downloading {syncProgress.current}/{syncProgress.total}
+                  Syncing {syncProgress.current}/{syncProgress.total} items...
                 </Text>
-                <Text style={themed($syncButtonSubtext)} numberOfLines={1}>
+                {/* <Text style={themed($syncButtonSubtext)} numberOfLines={1}>
                   {syncProgress.message}
-                </Text>
+                </Text> */}
                 <View style={themed($syncButtonProgressBar)}>
                   <View
                     style={[
@@ -712,14 +786,10 @@ export function GalleryScreen() {
             ) : isSyncing ? (
               <View style={themed($syncButtonRow)}>
                 <ActivityIndicator size="small" color={theme.colors.textAlt} style={{marginRight: spacing.xs}} />
-                <Text style={themed($syncButtonText)}>
-                  Syncing {totalServerPhotos} {syncContentType}...
-                </Text>
+                <Text style={themed($syncButtonText)}>Syncing {serverPhotosToSync} items...</Text>
               </View>
             ) : (
-              <Text style={themed($syncButtonText)}>
-                Sync {totalServerPhotos} {syncContentType}
-              </Text>
+              <Text style={themed($syncButtonText)}>Sync {serverPhotosToSync} items from glasses</Text>
             )}
           </View>
         </TouchableOpacity>
