@@ -639,8 +639,8 @@ export function GalleryScreen() {
     minimumViewTime: 100,
   }).current
 
-  // Count server photos for sync button
-  const serverPhotosToSync = Array.from(loadedServerPhotos.values()).length
+  // Count server photos for sync button - use total count, not just loaded photos
+  const serverPhotosToSync = totalServerCount
 
   return (
     <View style={themed($screenContainer)}>

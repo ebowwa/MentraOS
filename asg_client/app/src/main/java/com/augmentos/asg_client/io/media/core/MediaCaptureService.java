@@ -716,10 +716,11 @@ public class MediaCaptureService {
             hardwareManager.setRecordingLedOn();
         }
 
-        // For offline mode, take photo and queue it for later upload
-        CameraNeo.takePictureWithCallback(
+        // Use the new enqueuePhotoRequest for thread-safe rapid capture
+        CameraNeo.enqueuePhotoRequest(
                 mContext,
                 photoFilePath,
+                size,
                 new CameraNeo.PhotoCaptureCallback() {
                     @Override
                     public void onPhotoCaptured(String filePath) {
@@ -754,8 +755,7 @@ public class MediaCaptureService {
                             mMediaCaptureListener.onMediaError(requestId, errorMessage, MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
                         }
                     }
-                },
-                size
+                }
         );
     }
 
@@ -783,10 +783,11 @@ public class MediaCaptureService {
         }
 
         try {
-            // Use CameraNeo for photo capture
-            CameraNeo.takePictureWithCallback(
+            // Use the new enqueuePhotoRequest for thread-safe rapid capture
+            CameraNeo.enqueuePhotoRequest(
                     mContext,
                     photoFilePath,
+                    size,
                     new CameraNeo.PhotoCaptureCallback() {
                         @Override
                         public void onPhotoCaptured(String filePath) {
@@ -829,8 +830,7 @@ public class MediaCaptureService {
                                 mMediaCaptureListener.onMediaError(requestId, errorMessage, MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
                             }
                         }
-                    },
-                    size
+                    }
             );
         } catch (Exception e) {
             Log.e(TAG, "Error taking photo", e);

@@ -57,9 +57,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Queue;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -72,6 +74,33 @@ public class CameraNeo extends LifecycleService {
     private static final String TAG = "CameraNeo";
     private static final String CHANNEL_ID = "CameraNeoServiceChannel";
     private static final int NOTIFICATION_ID = 1;
+
+    // =======================================================================
+    // STATIC STATE MANAGEMENT FOR TRUE SINGLETON PATTERN
+    // =======================================================================
+    
+    // Static state flags - set IMMEDIATELY to prevent race conditions
+    private static volatile boolean isServiceStarting = false;
+    private static volatile boolean isServiceRunning = false;
+    private static volatile boolean isCameraReady = false;
+    private static final Object SERVICE_LOCK = new Object();
+    
+    // Global request queue - survives service lifecycle
+    private static final Queue<PhotoRequest> globalRequestQueue = new LinkedList<>();
+    
+    // Callback registry - maintains callbacks across requests
+    private static final Map<String, PhotoCaptureCallback> callbackRegistry = new HashMap<>();
+    
+    // Service state for debugging
+    private static enum ServiceState { 
+        IDLE,        // No service exists
+        STARTING,    // Service created but camera not initialized  
+        RUNNING,     // Camera initialized and ready
+        STOPPING     // Service is shutting down
+    }
+    private static volatile ServiceState serviceState = ServiceState.IDLE;
+    
+    // =======================================================================
 
     // Camera variables
     private CameraDevice cameraDevice = null;
@@ -167,16 +196,24 @@ public class CameraNeo extends LifecycleService {
     
     // Photo request queue for rapid capture
     private static class PhotoRequest {
+        String requestId;
         String filePath;
         String size;
         PhotoCaptureCallback callback;
+        long timestamp;
+        int retryCount;
         
         PhotoRequest(String filePath, String size, PhotoCaptureCallback callback) {
+            this.requestId = "photo_" + System.currentTimeMillis() + "_" + filePath.hashCode();
             this.filePath = filePath;
             this.size = size;
             this.callback = callback;
+            this.timestamp = System.currentTimeMillis();
+            this.retryCount = 0;
         }
     }
+    // Instance-level queue is deprecated - use globalRequestQueue instead
+    @Deprecated
     private final Queue<PhotoRequest> photoRequestQueue = new LinkedList<>();
 
     // For compatibility with CameraRecordingService
@@ -298,55 +335,100 @@ public class CameraNeo extends LifecycleService {
     @Override
     public void onCreate() {
         super.onCreate();
-        Log.d(TAG, "CameraNeo Camera2 service created");
+        synchronized (SERVICE_LOCK) {
+            Log.d(TAG, "CameraNeo Camera2 service created - Setting state to RUNNING");
+            isServiceStarting = false;
+            isServiceRunning = true;
+            serviceState = ServiceState.RUNNING;
+            sInstance = this;
+        }
         createNotificationChannel();
         showNotification("Camera Service", "Service is running");
         startBackgroundThread();
-        sInstance = this; // Set static instance
     }
 
     /**
-     * Take a picture and get notified through callback when complete
-     *
+     * Primary entry point for photo requests - uses global queue to prevent race conditions
+     * This method immediately queues the request and ensures only one service instance exists
+     * 
      * @param context Application context
      * @param filePath File path to save the photo
+     * @param size Photo size (small/medium/large)
      * @param callback Callback to be notified when photo is captured
      */
-    public static void takePictureWithCallback(Context context, String filePath, PhotoCaptureCallback callback) {
-        sPhotoCallback = callback;
-
-        Intent intent = new Intent(context, CameraNeo.class);
-        intent.setAction(ACTION_TAKE_PHOTO);
-        intent.putExtra(EXTRA_PHOTO_FILE_PATH, filePath);
-        
-        // Check if service is already running with camera kept alive
-        if (sInstance != null && sInstance.isCameraKeptAlive && sInstance.cameraDevice != null) {
-            Log.d(TAG, "Reusing existing camera service for rapid capture");
-            // Service is already running with camera open, just send the intent
-            context.startService(intent);
-        } else {
-            // Need to start the service fresh
-            context.startForegroundService(intent);
+    public static void enqueuePhotoRequest(Context context, String filePath, String size, PhotoCaptureCallback callback) {
+        synchronized (SERVICE_LOCK) {
+            // Create and queue the request immediately
+            PhotoRequest request = new PhotoRequest(filePath, size, callback);
+            globalRequestQueue.offer(request);
+            
+            // Store callback in registry for later retrieval
+            if (callback != null) {
+                callbackRegistry.put(request.requestId, callback);
+            }
+            
+            Log.d(TAG, "📸 Enqueued photo request: " + request.requestId + 
+                      " | Queue size: " + globalRequestQueue.size() + 
+                      " | Service state: " + serviceState);
+            
+            // Check current service state and act accordingly
+            if (isServiceRunning && isCameraReady && sInstance != null) {
+                // Fast path - camera is ready, check if idle
+                if (sInstance.shotState == ShotState.IDLE) {
+                    Log.d(TAG, "Camera ready and idle - processing request immediately");
+                    // Don't call processNextPhotoRequest as it might try to reopen camera
+                    // Instead, directly process the request we just queued
+                    PhotoRequest queuedRequest = globalRequestQueue.poll();
+                    if (queuedRequest != null) {
+                        sInstance.sPhotoCallback = queuedRequest.callback;
+                        sInstance.pendingPhotoPath = queuedRequest.filePath;
+                        sInstance.pendingRequestedSize = queuedRequest.size;
+                        sInstance.shotState = ShotState.WAITING_AE;
+                        
+                        if (sInstance.backgroundHandler != null) {
+                            sInstance.backgroundHandler.post(sInstance::startPrecaptureSequence);
+                        } else {
+                            sInstance.startPrecaptureSequence();
+                        }
+                    }
+                } else {
+                    Log.d(TAG, "Camera ready but busy (state: " + sInstance.shotState + ") - request queued");
+                }
+            } else if (isServiceStarting) {
+                // Service is already starting, request will be processed when ready
+                Log.d(TAG, "Service is starting - request will be processed when camera ready");
+            } else {
+                // Need to start the service
+                Log.d(TAG, "Starting service to process photo request");
+                isServiceStarting = true;
+                serviceState = ServiceState.STARTING;
+                
+                Intent intent = new Intent(context, CameraNeo.class);
+                intent.setAction(ACTION_TAKE_PHOTO);
+                intent.putExtra("USE_GLOBAL_QUEUE", true);
+                context.startForegroundService(intent);
+            }
         }
     }
 
-    public static void takePictureWithCallback(Context context, String filePath, PhotoCaptureCallback callback, String size) {
-        sPhotoCallback = callback;
+    /**
+     * Legacy method - redirects to enqueuePhotoRequest for backward compatibility
+     * 
+     * @deprecated Use enqueuePhotoRequest instead
+     */
+    @Deprecated
+    public static void takePictureWithCallback(Context context, String filePath, PhotoCaptureCallback callback) {
+        enqueuePhotoRequest(context, filePath, null, callback);
+    }
 
-        Intent intent = new Intent(context, CameraNeo.class);
-        intent.setAction(ACTION_TAKE_PHOTO);
-        intent.putExtra(EXTRA_PHOTO_FILE_PATH, filePath);
-        intent.putExtra("PHOTO_SIZE", size);
-        
-        // Check if service is already running with camera kept alive
-        if (sInstance != null && sInstance.isCameraKeptAlive && sInstance.cameraDevice != null) {
-            Log.d(TAG, "Reusing existing camera service for rapid capture with size: " + size);
-            // Service is already running with camera open, just send the intent
-            context.startService(intent);
-        } else {
-            // Need to start the service fresh
-            context.startForegroundService(intent);
-        }
+    /**
+     * Legacy method with size parameter - redirects to enqueuePhotoRequest
+     * 
+     * @deprecated Use enqueuePhotoRequest instead
+     */
+    @Deprecated
+    public static void takePictureWithCallback(Context context, String filePath, PhotoCaptureCallback callback, String size) {
+        enqueuePhotoRequest(context, filePath, size, callback);
     }
 
     /**
@@ -444,15 +526,25 @@ public class CameraNeo extends LifecycleService {
 
             switch (action) {
                 case ACTION_TAKE_PHOTO:
-                    String photoFilePath = intent.getStringExtra(EXTRA_PHOTO_FILE_PATH);
-                    String requestedSize = intent.getStringExtra("PHOTO_SIZE");
-                    Log.d(TAG, "Photo file path: " + photoFilePath);
-                    if (photoFilePath == null || photoFilePath.isEmpty()) {
-                        Log.d(TAG, "Photo file path is empty, using default");
-                        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
-                        photoFilePath = getExternalFilesDir(null) + File.separator + "IMG_" + timeStamp + ".jpg";
+                    // Check if we should use the global queue
+                    boolean useGlobalQueue = intent.getBooleanExtra("USE_GLOBAL_QUEUE", false);
+                    
+                    if (useGlobalQueue) {
+                        // Process from global queue
+                        Log.d(TAG, "Processing photo requests from global queue");
+                        processAllQueuedPhotoRequests();
+                    } else {
+                        // Legacy path - still supported but deprecated
+                        String photoFilePath = intent.getStringExtra(EXTRA_PHOTO_FILE_PATH);
+                        String requestedSize = intent.getStringExtra("PHOTO_SIZE");
+                        Log.d(TAG, "Legacy photo request - path: " + photoFilePath);
+                        if (photoFilePath == null || photoFilePath.isEmpty()) {
+                            Log.d(TAG, "Photo file path is empty, using default");
+                            String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
+                            photoFilePath = getExternalFilesDir(null) + File.separator + "IMG_" + timeStamp + ".jpg";
+                        }
+                        setupCameraAndTakePicture(photoFilePath, requestedSize);
                     }
-                    setupCameraAndTakePicture(photoFilePath, requestedSize);
                     break;
                 case ACTION_START_VIDEO_RECORDING:
                     currentVideoId = intent.getStringExtra(EXTRA_VIDEO_ID);
@@ -497,6 +589,127 @@ public class CameraNeo extends LifecycleService {
     }
 
     private String pendingRequestedSize;
+    
+    /**
+     * Process all queued photo requests from the global queue
+     * This is called when the service starts with USE_GLOBAL_QUEUE flag
+     */
+    private void processAllQueuedPhotoRequests() {
+        synchronized (SERVICE_LOCK) {
+            if (globalRequestQueue.isEmpty()) {
+                Log.d(TAG, "No photo requests in global queue");
+                return;
+            }
+            
+            Log.d(TAG, "Processing " + globalRequestQueue.size() + " queued photo requests");
+            
+            // Process the first request to open camera
+            PhotoRequest firstRequest = globalRequestQueue.peek();
+            if (firstRequest != null) {
+                // Open camera with the first request
+                setupCameraForPhotoRequest(firstRequest);
+            }
+        }
+    }
+    
+    /**
+     * Process the next photo request from the global queue
+     * Called after each photo is captured successfully
+     */
+    private void processNextPhotoRequest() {
+        synchronized (SERVICE_LOCK) {
+            // Get next request from queue
+            PhotoRequest request = globalRequestQueue.poll();
+            if (request == null) {
+                Log.d(TAG, "No more photo requests in queue");
+                // Start keep-alive timer for rapid capture
+                startKeepAliveTimer();
+                return;
+            }
+            
+            Log.d(TAG, "Processing photo request: " + request.requestId);
+            
+            // Retrieve callback from registry
+            if (request.callback == null && callbackRegistry.containsKey(request.requestId)) {
+                request.callback = callbackRegistry.get(request.requestId);
+            }
+            
+            // Set the current callback
+            sPhotoCallback = request.callback;
+            
+            // If camera is already open and ready, just take the photo
+            // Don't try to open it again!
+            if (cameraDevice != null && cameraCaptureSession != null) {
+                Log.d(TAG, "Camera already open, taking next photo from queue");
+                pendingRequestedSize = request.size;
+                pendingPhotoPath = request.filePath;
+                
+                // Check if we're already processing a photo
+                if (shotState == ShotState.IDLE) {
+                    // Start capture sequence
+                    shotState = ShotState.WAITING_AE;
+                    if (backgroundHandler != null) {
+                        backgroundHandler.post(this::startPrecaptureSequence);
+                    } else {
+                        startPrecaptureSequence();
+                    }
+                } else {
+                    // Camera is busy, re-queue the request
+                    Log.d(TAG, "Camera busy (state: " + shotState + "), re-queuing request");
+                    globalRequestQueue.offer(request);
+                }
+            } else {
+                // Camera not ready, need to open it
+                setupCameraForPhotoRequest(request);
+            }
+        }
+    }
+    
+    /**
+     * Setup camera for a specific photo request
+     */
+    private void setupCameraForPhotoRequest(PhotoRequest request) {
+        if (request == null) return;
+        
+        // Store the requested size
+        pendingRequestedSize = request.size;
+        sPhotoCallback = request.callback;
+        
+        // Check if camera is already open and kept alive
+        if (isCameraKeptAlive && cameraDevice != null) {
+            Log.d(TAG, "Camera already open, taking photo immediately");
+            
+            // Check if size has changed
+            boolean sizeChanged = false;
+            if (pendingRequestedSize != null && request.size != null) {
+                sizeChanged = !pendingRequestedSize.equals(request.size);
+            }
+            
+            if (sizeChanged) {
+                Log.d(TAG, "Photo size changed, reopening camera");
+                cancelKeepAliveTimer();
+                closeCamera();
+                openCameraInternal(request.filePath, false);
+            } else {
+                // Cancel keep-alive timer and take photo
+                cancelKeepAliveTimer();
+                pendingPhotoPath = request.filePath;
+                
+                // Start capture sequence
+                shotState = ShotState.WAITING_AE;
+                if (backgroundHandler != null) {
+                    backgroundHandler.post(this::startPrecaptureSequence);
+                } else {
+                    startPrecaptureSequence();
+                }
+            }
+        } else {
+            // Open camera from scratch
+            Log.d(TAG, "Opening camera for photo capture");
+            wakeUpScreen();
+            openCameraInternal(request.filePath, false);
+        }
+    }
     
     private void setupCameraAndTakePicture(String filePath, String requestedSize) {
         // Check if size has changed from the current configuration
@@ -1156,6 +1369,13 @@ public class CameraNeo extends LifecycleService {
             Log.d(TAG, "Camera device opened successfully");
             cameraOpenCloseLock.release();
             cameraDevice = camera;
+            
+            // Mark camera as ready
+            synchronized (SERVICE_LOCK) {
+                isCameraReady = true;
+                Log.d(TAG, "Camera marked as ready - processing any queued requests");
+            }
+            
             createCameraSessionInternal(false); // false for photo
         }
 
@@ -1313,6 +1533,31 @@ public class CameraNeo extends LifecycleService {
                             startRecordingInternal();
                         }
                     } else {
+                        // Mark camera as fully ready
+                        synchronized (SERVICE_LOCK) {
+                            isCameraReady = true;
+                            Log.d(TAG, "Camera session configured and ready");
+                        }
+                        
+                        // Check if we have any pending global queue requests to process
+                        synchronized (SERVICE_LOCK) {
+                            if (!globalRequestQueue.isEmpty()) {
+                                Log.d(TAG, "Camera ready, processing " + globalRequestQueue.size() + " queued requests");
+                                // Don't call processNextPhotoRequest here as it might try to reopen camera
+                                // Instead, start the preview and then trigger the first photo
+                                PhotoRequest firstRequest = globalRequestQueue.peek();
+                                if (firstRequest != null) {
+                                    // Set up for the first queued photo
+                                    if (firstRequest.callback == null && callbackRegistry.containsKey(firstRequest.requestId)) {
+                                        firstRequest.callback = callbackRegistry.get(firstRequest.requestId);
+                                    }
+                                    sPhotoCallback = firstRequest.callback;
+                                    pendingPhotoPath = firstRequest.filePath;
+                                    pendingRequestedSize = firstRequest.size;
+                                }
+                            }
+                        }
+                        
                         // Start proper preview for photos with AE state monitoring
                         startPreviewWithAeMonitoring();
                     }
@@ -1470,15 +1715,35 @@ public class CameraNeo extends LifecycleService {
     @Override
     public void onDestroy() {
         super.onDestroy();
-        // Cancel keep-alive timer if it's running
-        cancelKeepAliveTimer();
-        if (isRecording) {
-            stopCurrentVideoRecording(currentVideoId);
+        synchronized (SERVICE_LOCK) {
+            Log.d(TAG, "CameraNeo service destroying - Setting state to IDLE");
+            serviceState = ServiceState.STOPPING;
+            
+            // Cancel keep-alive timer if it's running
+            cancelKeepAliveTimer();
+            if (isRecording) {
+                stopCurrentVideoRecording(currentVideoId);
+            }
+            closeCamera();
+            stopBackgroundThread();
+            releaseWakeLocks();
+            
+            // Update static state
+            isServiceRunning = false;
+            isServiceStarting = false;
+            isCameraReady = false;
+            serviceState = ServiceState.IDLE;
+            sInstance = null;
+            
+            // Process any remaining queued requests with error callbacks
+            while (!globalRequestQueue.isEmpty()) {
+                PhotoRequest request = globalRequestQueue.poll();
+                if (request != null && request.callback != null) {
+                    Log.w(TAG, "Service destroyed with pending request: " + request.requestId);
+                    request.callback.onPhotoError("Camera service terminated unexpectedly");
+                }
+            }
         }
-        closeCamera();
-        stopBackgroundThread();
-        releaseWakeLocks();
-        sInstance = null;
     }
 
     private void notifyPhotoCaptured(String filePath) {
@@ -1593,10 +1858,53 @@ public class CameraNeo extends LifecycleService {
      * Process any queued photo requests after completing current photo
      */
     private void processQueuedPhotoRequests() {
+        // First check the global queue (primary)
+        synchronized (SERVICE_LOCK) {
+            if (!globalRequestQueue.isEmpty() && shotState == ShotState.IDLE) {
+                PhotoRequest nextRequest = globalRequestQueue.poll();
+                if (nextRequest != null) {
+                    Log.d(TAG, "Processing queued photo from GLOBAL queue: " + nextRequest.filePath);
+                    
+                    // Retrieve callback from registry if needed
+                    if (nextRequest.callback == null && callbackRegistry.containsKey(nextRequest.requestId)) {
+                        nextRequest.callback = callbackRegistry.remove(nextRequest.requestId);
+                    }
+                    
+                    // Update the callback for this request
+                    sPhotoCallback = nextRequest.callback;
+                    
+                    // Cancel any pending keep-alive timer
+                    cancelKeepAliveTimer();
+                    
+                    // Process the queued request
+                    pendingPhotoPath = nextRequest.filePath;
+                    pendingRequestedSize = nextRequest.size;
+                    
+                    // IMPORTANT: Only start capture if camera is ready
+                    // Don't try to open camera again if it's already open
+                    if (cameraDevice != null && cameraCaptureSession != null) {
+                        // Start new capture sequence
+                        shotState = ShotState.WAITING_AE;
+                        if (backgroundHandler != null) {
+                            backgroundHandler.post(() -> startPrecaptureSequence());
+                        } else {
+                            startPrecaptureSequence();
+                        }
+                    } else {
+                        // Camera not ready yet, re-queue the request
+                        Log.d(TAG, "Camera not ready yet, re-queuing request");
+                        globalRequestQueue.offer(nextRequest);
+                    }
+                    return;
+                }
+            }
+        }
+        
+        // Fallback to instance queue for legacy compatibility
         if (!photoRequestQueue.isEmpty() && shotState == ShotState.IDLE) {
             PhotoRequest nextRequest = photoRequestQueue.poll();
             if (nextRequest != null) {
-                Log.d(TAG, "Processing queued photo request: " + nextRequest.filePath);
+                Log.d(TAG, "Processing queued photo from INSTANCE queue: " + nextRequest.filePath);
                 
                 // Update the callback for this request
                 sPhotoCallback = nextRequest.callback;
@@ -1616,8 +1924,8 @@ public class CameraNeo extends LifecycleService {
                     startPrecaptureSequence();
                 }
             }
-        } else if (photoRequestQueue.isEmpty()) {
-            // No more requests, start keep-alive timer
+        } else if (photoRequestQueue.isEmpty() && globalRequestQueue.isEmpty()) {
+            // No more requests in either queue, start keep-alive timer
             startKeepAliveTimer();
         }
     }
