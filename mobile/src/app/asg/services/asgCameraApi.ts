@@ -570,11 +570,12 @@ export class AsgCameraApiClient {
   }
 
   /**
-   * Batch sync files from server
+   * Batch sync files from server with controlled concurrency
    */
   async batchSyncFiles(
     files: PhotoInfo[],
     includeThumbnails: boolean = false,
+    onProgress?: (current: number, total: number, fileName: string) => void,
   ): Promise<{
     downloaded: PhotoInfo[]
     failed: string[]
@@ -586,40 +587,41 @@ export class AsgCameraApiClient {
       total_size: 0,
     }
 
-    // Process files in small batches to avoid overwhelming the server
-    const batchSize = 3
-    for (let i = 0; i < files.length; i += batchSize) {
-      const batch = files.slice(i, i + batchSize)
+    // Process files sequentially to avoid overwhelming the network
+    // This is more reliable, especially on slower connections
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i]
+
+      // Report progress if callback provided
+      if (onProgress) {
+        onProgress(i + 1, files.length, file.name)
+      }
 
       try {
-        const batchPromises = batch.map(async file => {
-          try {
-            const fileData = await this.downloadFile(file.name, includeThumbnails)
-            results.total_size += file.size
-            // Combine file info with downloaded file paths
-            return {
-              ...file,
-              filePath: fileData.filePath,
-              thumbnailPath: fileData.thumbnailPath,
-              mime_type: fileData.mime_type || file.mime_type,
-            }
-          } catch (error) {
-            console.error(`Failed to download ${file.name}:`, error)
-            results.failed.push(file.name)
-            return null
-          }
-        })
+        console.log(`[ASG Camera API] Downloading file ${i + 1}/${files.length}: ${file.name}`)
 
-        const batchResults = await Promise.all(batchPromises)
-        results.downloaded.push(...(batchResults.filter(Boolean) as PhotoInfo[]))
+        const fileData = await this.downloadFile(file.name, includeThumbnails)
+        results.total_size += file.size
 
-        // Small delay between batches
-        if (i + batchSize < files.length) {
-          await new Promise(resolve => setTimeout(resolve, 100))
+        // Combine file info with downloaded file paths
+        const downloadedFile = {
+          ...file,
+          filePath: fileData.filePath,
+          thumbnailPath: fileData.thumbnailPath,
+          mime_type: fileData.mime_type || file.mime_type,
+        }
+
+        results.downloaded.push(downloadedFile)
+        console.log(`[ASG Camera API] Successfully downloaded: ${file.name}`)
+
+        // Small delay between downloads to avoid overwhelming the server
+        // Shorter delay than before since we're already sequential
+        if (i < files.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 50))
         }
       } catch (error) {
-        console.error(`Batch ${i / batchSize + 1} failed:`, error)
-        results.failed.push(...batch.map(f => f.name))
+        console.error(`[ASG Camera API] Failed to download ${file.name}:`, error)
+        results.failed.push(file.name)
       }
     }
 

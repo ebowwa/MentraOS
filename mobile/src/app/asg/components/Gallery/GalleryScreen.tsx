@@ -200,8 +200,18 @@ export function GalleryScreen() {
         message: "Downloading files...",
       })
 
-      // Download files in batches
-      const downloadResult = await asgCameraApi.batchSyncFiles(syncData.changed_files, true)
+      // Download files sequentially with progress tracking
+      const downloadResult = await asgCameraApi.batchSyncFiles(
+        syncData.changed_files,
+        true,
+        (current, total, fileName) => {
+          setSyncProgress({
+            current,
+            total,
+            message: `Downloading ${fileName}...`,
+          })
+        },
+      )
 
       console.log(`[GalleryScreen] Download result:`, downloadResult)
 
@@ -685,7 +695,10 @@ export function GalleryScreen() {
             {isSyncing && syncProgress ? (
               <>
                 <Text style={themed($syncButtonText)}>
-                  Syncing {syncProgress.total - syncProgress.current} {syncContentType}...
+                  Downloading {syncProgress.current}/{syncProgress.total}
+                </Text>
+                <Text style={themed($syncButtonSubtext)} numberOfLines={1}>
+                  {syncProgress.message}
                 </Text>
                 <View style={themed($syncButtonProgressBar)}>
                   <View
