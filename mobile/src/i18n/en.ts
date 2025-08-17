@@ -185,6 +185,8 @@ const en = {
     transcriptionSettings: "Transcription Settings",
     dashboardSettings: "Dashboard Settings",
     dashboardDescription: "Configure the contextual dashboard and HeadUp settings",
+    cameraSettings: "Camera Settings",
+    cameraSettingsDescription: "Configure photo and video resolution for button capture",
     screenSettings: "Display Position Settings",
     screenDescription: "Adjust depth and height of the display content.",
     glassesWifiSettings: "Glasses WiFi Settings",
@@ -325,7 +327,7 @@ const en = {
     stop: "Stop",
     settings: "Settings",
     openWebView: "Open Web View",
-    version: "Version {{number}}",
+    version: "MentraOS v{{number}}",
   },
   welcomeScreen: {
     postscript:

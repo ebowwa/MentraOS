@@ -259,7 +259,7 @@ public class AsgClientServiceBackup extends Service implements NetworkStateListe
             } else {
                 startService(otaIntent);
             }
-            
+
             /* ORIGINAL CODE - Will restore for production
             Log.d(TAG, "Starting OTA Updater MainActivity after delay");
             Intent otaIntent = new Intent();
@@ -1212,14 +1212,14 @@ public class AsgClientServiceBackup extends Service implements NetworkStateListe
             BatteryStatusEvent batteryEvent = new BatteryStatusEvent(level, charging, timestamp);
             EventBus.getDefault().post(batteryEvent);
             Log.d(TAG, "📡 Posted battery status to internal OTA service: " + level + "% " + (charging ? "(charging)" : "(not charging)"));
-            
+
             /* ORIGINAL CODE - Will restore for production
             Intent batteryIntent = new Intent(AsgConstants.ACTION_GLASSES_BATTERY_STATUS);
             batteryIntent.setPackage("com.augmentos.otaupdater");
             batteryIntent.putExtra("battery_level", level);
             batteryIntent.putExtra("charging", charging);
             batteryIntent.putExtra("timestamp", timestamp);
-            
+
             sendBroadcast(batteryIntent);
             Log.d(TAG, "📡 Broadcasted battery status to OTA updater: " + level + "% " + (charging ? "(charging)" : "(not charging)"));
             */
@@ -1749,6 +1749,7 @@ public class AsgClientServiceBackup extends Service implements NetworkStateListe
                     String transferMethod = dataToProcess.optString("transferMethod", "direct"); // Defaults to direct
                     String bleImgId = dataToProcess.optString("bleImgId", "");
                     boolean save = dataToProcess.optBoolean("save", false); // Default to false
+                    String size = dataToProcess.optString("size", "medium"); // Desired photo size
 
                     if (requestId.isEmpty()) {
                         Log.e(TAG, "Cannot take photo - missing requestId");
@@ -1759,13 +1760,13 @@ public class AsgClientServiceBackup extends Service implements NetworkStateListe
                     String timeStamp = new java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.US).format(new java.util.Date());
                     String photoFilePath = getExternalFilesDir(null) + java.io.File.separator + "IMG_" + timeStamp + ".jpg";
 
-                    Log.d(TAG, "Taking photo with requestId: " + requestId + ", transferMethod: " + transferMethod + ", save: " + save);
+                    Log.d(TAG, "Taking photo with requestId: " + requestId + ", transferMethod: " + transferMethod + ", save: " + save + ", size: " + size);
                     Log.d(TAG, "Photo will be saved to: " + photoFilePath);
 
                     if ("ble".equals(transferMethod)) {
                         // Take photo, compress with AVIF, and send via BLE
                         Log.d(TAG, "Using BLE transfer with ID: " + bleImgId);
-                        mMediaCaptureService.takePhotoForBleTransfer(photoFilePath, requestId, bleImgId, save);
+                        mMediaCaptureService.takePhotoForBleTransfer(photoFilePath, requestId, bleImgId, save, size, false);
                     } else if ("auto".equals(transferMethod)) {
                         // Auto mode: Try WiFi first, fallback to BLE if needed
                         Log.d(TAG, "Using auto transfer mode with BLE fallback ID: " + bleImgId);
@@ -1773,10 +1774,10 @@ public class AsgClientServiceBackup extends Service implements NetworkStateListe
                             Log.e(TAG, "Auto mode requires bleImgId for fallback");
                             return;
                         }
-                        mMediaCaptureService.takePhotoAutoTransfer(photoFilePath, requestId, webhookUrl, bleImgId, save);
+                        mMediaCaptureService.takePhotoAutoTransfer(photoFilePath, requestId, webhookUrl, bleImgId, save, size, false);
                     } else {
                         // Existing direct upload path (WiFi only, no fallback)
-                        mMediaCaptureService.takePhotoAndUpload(photoFilePath, requestId, webhookUrl, save);
+                        mMediaCaptureService.takePhotoAndUpload(photoFilePath, requestId, webhookUrl, save, size, false);
                     }
                     break;
 
@@ -1807,7 +1808,7 @@ public class AsgClientServiceBackup extends Service implements NetworkStateListe
                     Log.d(TAG, "Starting video recording with requestId: " + videoRequestId + ", save: " + videoSave);
 
                     // Start video recording with the new command method
-                    captureService.handleStartVideoCommand(videoRequestId, videoSave);
+                    captureService.handleStartVideoCommand(videoRequestId, videoSave, false);
 
                     // Send success response
                     sendVideoRecordingStatusResponse(true, "recording_started", null);
@@ -1815,13 +1816,13 @@ public class AsgClientServiceBackup extends Service implements NetworkStateListe
 
                 case "stop_video_recording":
                     String stopRequestId = dataToProcess.optString("requestId", "");
-                    
+
                     if (stopRequestId.isEmpty()) {
                         Log.e(TAG, "Cannot stop video recording - missing requestId");
                         sendVideoRecordingStatusResponse(false, "missing_request_id", null);
                         return;
                     }
-                    
+
                     captureService = getMediaCaptureService();
                     if (captureService == null) {
                         Log.e(TAG, "Media capture service is not initialized");
@@ -1845,19 +1846,19 @@ public class AsgClientServiceBackup extends Service implements NetworkStateListe
                         sendBufferStatusResponse(false, "service_unavailable", null);
                         return;
                     }
-                    
+
                     // Check if camera is already in use
                     if (com.augmentos.asg_client.camera.CameraNeo.isCameraInUse()) {
                         Log.d(TAG, "Camera already in use, cannot start buffer recording");
                         sendBufferStatusResponse(false, "camera_busy", null);
                         return;
                     }
-                    
+
                     Log.d(TAG, "Starting buffer recording");
                     captureService.startBufferRecording();
                     sendBufferStatusResponse(true, "buffer_started", null);
                     break;
-                    
+
                 case "stop_buffer_recording":
                     captureService = getMediaCaptureService();
                     if (captureService == null) {
@@ -1865,40 +1866,40 @@ public class AsgClientServiceBackup extends Service implements NetworkStateListe
                         sendBufferStatusResponse(false, "service_unavailable", null);
                         return;
                     }
-                    
+
                     Log.d(TAG, "Stopping buffer recording");
                     captureService.stopBufferRecording();
                     sendBufferStatusResponse(true, "buffer_stopped", null);
                     break;
-                    
+
                 case "save_buffer_video":
                     String bufferRequestId = dataToProcess.optString("requestId", "");
                     int secondsToSave = dataToProcess.optInt("duration", 30); // Default to 30 seconds
-                    
+
                     if (bufferRequestId.isEmpty()) {
                         Log.e(TAG, "Cannot save buffer - missing requestId");
                         sendBufferStatusResponse(false, "missing_request_id", null);
                         return;
                     }
-                    
+
                     captureService = getMediaCaptureService();
                     if (captureService == null) {
                         Log.e(TAG, "Media capture service is not initialized");
                         sendBufferStatusResponse(false, "service_unavailable", null);
                         return;
                     }
-                    
+
                     if (!captureService.isBuffering()) {
                         Log.e(TAG, "Cannot save buffer - not currently buffering");
                         sendBufferStatusResponse(false, "not_buffering", null);
                         return;
                     }
-                    
+
                     Log.d(TAG, "Saving last " + secondsToSave + " seconds of buffer, requestId: " + bufferRequestId);
                     captureService.saveBufferVideo(secondsToSave, bufferRequestId);
                     sendBufferStatusResponse(true, "buffer_saving", null);
                     break;
-                    
+
                 case "get_buffer_status":
                     captureService = getMediaCaptureService();
                     if (captureService == null) {
@@ -1906,7 +1907,7 @@ public class AsgClientServiceBackup extends Service implements NetworkStateListe
                         sendBufferStatusResponse(false, "service_unavailable", null);
                         return;
                     }
-                    
+
                     JSONObject bufferStatus = captureService.getBufferStatus();
                     sendBufferStatusResponse(true, "status", bufferStatus);
                     break;
@@ -2990,10 +2991,10 @@ public class AsgClientServiceBackup extends Service implements NetworkStateListe
             }
         }
     }
-    
+
     /**
      * Send a buffer status response
-     * 
+     *
      * @param success Whether the operation was successful
      * @param status Status message
      * @param details Additional details (can be null)
@@ -3005,7 +3006,7 @@ public class AsgClientServiceBackup extends Service implements NetworkStateListe
                 response.put("type", "buffer_status");
                 response.put("success", success);
                 response.put("status", status);
-                
+
                 if (details != null) {
                     // Merge the details object fields into the response
                     Iterator<String> keys = details.keys();
@@ -3014,11 +3015,11 @@ public class AsgClientServiceBackup extends Service implements NetworkStateListe
                         response.put(key, details.get(key));
                     }
                 }
-                
+
                 // Convert to string
                 String jsonString = response.toString();
                 Log.d(TAG, "Sending buffer status: " + jsonString);
-                
+
                 // Send the JSON response
                 bluetoothManager.sendData(jsonString.getBytes(StandardCharsets.UTF_8));
             } catch (JSONException e) {

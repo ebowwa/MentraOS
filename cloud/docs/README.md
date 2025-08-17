@@ -9,11 +9,13 @@ MentraOS Cloud is the backend infrastructure that connects smart glasses to thir
 ## Local Development
 
 Install Mintlify CLI:
+
 ```bash
 bun install -g mintlify
 ```
 
 Run the docs locally:
+
 ```bash
 mint dev
 ```

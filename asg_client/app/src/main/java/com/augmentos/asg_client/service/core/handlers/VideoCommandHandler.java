@@ -8,6 +8,7 @@ import com.augmentos.asg_client.io.media.core.MediaCaptureService;
 import com.augmentos.asg_client.io.file.core.FileManager;
 import com.augmentos.asg_client.service.legacy.managers.AsgClientServiceManager;
 import com.augmentos.asg_client.service.media.interfaces.IMediaManager;
+import com.augmentos.asg_client.settings.VideoSettings;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -92,7 +93,36 @@ public class VideoCommandHandler extends BaseMediaCommandHandler {
                 return true;
             }
 
-            captureService.handleVideoButtonPress();
+            // Parse video settings if provided
+            VideoSettings videoSettings = null;
+            JSONObject settings = data.optJSONObject("settings");
+            if (settings != null) {
+                int width = settings.optInt("width", 0);
+                int height = settings.optInt("height", 0);
+                int fps = settings.optInt("fps", 30);
+                
+                if (width > 0 && height > 0) {
+                    videoSettings = new VideoSettings(width, height, fps);
+                    if (!videoSettings.isValid()) {
+                        Log.w(TAG, "Invalid video settings provided, using defaults: " + videoSettings);
+                        videoSettings = null;
+                    } else {
+                        Log.d(TAG, "Using custom video settings: " + videoSettings);
+                    }
+                }
+            }
+
+            // Start recording with settings
+            boolean save = data.optBoolean("save", false);
+            boolean enableLed = data.optBoolean("enable_led", false); // Default false for phone commands
+            String requestId = data.optString("requestId", "video_" + System.currentTimeMillis());
+            
+            if (videoSettings != null) {
+                captureService.handleStartVideoCommand(requestId, save, videoSettings, enableLed);
+            } else {
+                captureService.handleStartVideoCommand(requestId, save, enableLed); // Use default settings
+            }
+            
             logCommandResult("start_video_recording", true, null);
             streamingManager.sendVideoRecordingStatusResponse(true, "recording_started", null);
             return true;
@@ -194,6 +224,9 @@ public class VideoCommandHandler extends BaseMediaCommandHandler {
                 streamingManager.sendBufferStatusResponse(false, "camera_busy", null);
                 return false;
             }
+            
+            // Close kept-alive camera if it exists to free resources for buffer recording
+            CameraNeo.closeKeptAliveCamera();
             
             Log.d(TAG, "Starting buffer recording");
             captureService.startBufferRecording();

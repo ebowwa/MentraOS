@@ -650,9 +650,9 @@ struct ViewState {
         liveManager?.sendJson(message)
     }
 
-    func onPhotoRequest(_ requestId: String, _ appId: String, _ webhookUrl: String) {
-        CoreCommsService.log("AOS: onPhotoRequest: \(requestId), \(appId), \(webhookUrl)")
-        liveManager?.requestPhoto(requestId, appId: appId, webhookUrl: webhookUrl.isEmpty ? nil : webhookUrl)
+    func onPhotoRequest(_ requestId: String, _ appId: String, _ webhookUrl: String, _ size: String) {
+        CoreCommsService.log("AOS: onPhotoRequest: \(requestId), \(appId), \(webhookUrl), size=\(size)")
+        liveManager?.requestPhoto(requestId, appId: appId, webhookUrl: webhookUrl.isEmpty ? nil : webhookUrl, size: size)
     }
 
     func onRtmpStreamStartRequest(_ message: [String: Any]) {
@@ -1120,6 +1120,44 @@ struct ViewState {
         saveSettings()
     }
 
+    private func setButtonPhotoSize(_ size: String) {
+        UserDefaults.standard.set(size, forKey: "button_photo_size")
+
+        // Forward to glasses if Mentra Live
+        if let mentraLiveManager = liveManager {
+            mentraLiveManager.sendButtonPhotoSettings()
+        }
+
+        handleRequestStatus() // to update the UI
+        saveSettings()
+    }
+
+    private func setButtonVideoSettings(width: Int, height: Int, fps: Int) {
+        UserDefaults.standard.set(width, forKey: "button_video_width")
+        UserDefaults.standard.set(height, forKey: "button_video_height")
+        UserDefaults.standard.set(fps, forKey: "button_video_fps")
+
+        // Forward to glasses if Mentra Live
+        if let mentraLiveManager = liveManager {
+            mentraLiveManager.sendButtonVideoRecordingSettings()
+        }
+
+        handleRequestStatus() // to update the UI
+        saveSettings()
+    }
+
+    private func setButtonCameraLed(_ enabled: Bool) {
+        UserDefaults.standard.set(enabled, forKey: "button_camera_led")
+
+        // Forward to glasses if Mentra Live
+        if let mentraLiveManager = liveManager {
+            mentraLiveManager.sendButtonCameraLedSetting()
+        }
+
+        handleRequestStatus() // to update the UI
+        saveSettings()
+    }
+
     private func startApp(_ target: String) {
         CoreCommsService.log("AOS: Starting app: \(target)")
         serverComms.startApp(packageName: target)
@@ -1277,6 +1315,9 @@ struct ViewState {
             case enableContextualDashboard = "enable_contextual_dashboard"
             case setPreferredMic = "set_preferred_mic"
             case setButtonMode = "set_button_mode"
+            case setButtonPhotoSize = "set_button_photo_size"
+            case setButtonVideoSettings = "set_button_video_settings"
+            case setButtonCameraLed = "set_button_camera_led"
             case ping
             case forgetSmartGlasses = "forget_smart_glasses"
             case startApp = "start_app"
@@ -1378,6 +1419,28 @@ struct ViewState {
                         break
                     }
                     setButtonMode(mode)
+                case .setButtonPhotoSize:
+                    guard let params = params, let size = params["size"] as? String else {
+                        CoreCommsService.log("AOS: set_button_photo_size invalid params")
+                        break
+                    }
+                    setButtonPhotoSize(size)
+                case .setButtonVideoSettings:
+                    guard let params = params,
+                          let width = params["width"] as? Int,
+                          let height = params["height"] as? Int,
+                          let fps = params["fps"] as? Int
+                    else {
+                        CoreCommsService.log("AOS: set_button_video_settings invalid params")
+                        break
+                    }
+                    setButtonVideoSettings(width: width, height: height, fps: fps)
+                case .setButtonCameraLed:
+                    guard let params = params, let enabled = params["enabled"] as? Bool else {
+                        CoreCommsService.log("AOS: set_button_camera_led invalid params")
+                        break
+                    }
+                    setButtonCameraLed(enabled)
                 case .startApp:
                     guard let params = params, let target = params["target"] as? String else {
                         CoreCommsService.log("AOS: start_app invalid params")
@@ -1616,6 +1679,13 @@ struct ViewState {
             "dashboard_depth": dashboardDepth,
             "head_up_angle": headUpAngle,
             "button_mode": buttonPressMode,
+            "button_photo_size": UserDefaults.standard.string(forKey: "button_photo_size") ?? "medium",
+            "button_camera_led": UserDefaults.standard.bool(forKey: "button_camera_led"),
+            "button_video_settings": [
+                "width": UserDefaults.standard.integer(forKey: "button_video_width") != 0 ? UserDefaults.standard.integer(forKey: "button_video_width") : 1280,
+                "height": UserDefaults.standard.integer(forKey: "button_video_height") != 0 ? UserDefaults.standard.integer(forKey: "button_video_height") : 720,
+                "fps": UserDefaults.standard.integer(forKey: "button_video_fps") != 0 ? UserDefaults.standard.integer(forKey: "button_video_fps") : 30,
+            ],
         ]
 
         let cloudConnectionStatus = serverComms.isWebSocketConnected() ? "CONNECTED" : "DISCONNECTED"

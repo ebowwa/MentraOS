@@ -577,6 +577,35 @@ export class CoreCommunicator extends EventEmitter {
     })
   }
 
+  async sendSetButtonPhotoSize(size: string) {
+    return await this.sendData({
+      command: "set_button_photo_size",
+      params: {
+        size: size,
+      },
+    })
+  }
+
+  async sendSetButtonVideoSettings(width: number, height: number, fps: number) {
+    return await this.sendData({
+      command: "set_button_video_settings",
+      params: {
+        width: width,
+        height: height,
+        fps: fps,
+      },
+    })
+  }
+
+  async sendSetButtonCameraLed(enabled: boolean) {
+    return await this.sendData({
+      command: "set_button_camera_led",
+      params: {
+        enabled: enabled,
+      },
+    })
+  }
+
   async sendToggleContextualDashboard(enabled: boolean) {
     return await this.sendData({
       command: "enable_contextual_dashboard",

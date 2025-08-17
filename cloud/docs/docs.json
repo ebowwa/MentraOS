@@ -15,10 +15,7 @@
         "groups": [
           {
             "group": "Getting Started",
-            "pages": [
-              "index",
-              "development/local-setup"
-            ]
+            "pages": ["index", "development/local-setup"]
           },
           {
             "group": "Cloud Overview",
@@ -91,9 +88,7 @@
           },
           {
             "group": "Development",
-            "pages": [
-              "development/local-setup"
-            ]
+            "pages": ["development/local-setup"]
           }
         ]
       },
@@ -102,9 +97,7 @@
         "groups": [
           {
             "group": "Overview",
-            "pages": [
-              "api-reference/introduction"
-            ]
+            "pages": ["api-reference/introduction"]
           },
           {
             "group": "WebSocket Endpoints",
@@ -171,14 +164,14 @@
   },
   "contextual": {
     "options": [
-     "copy",
-     "view",
-     "chatgpt",
-     "claude",
-     "perplexity",
-     "cursor",
-     "vscode"
-   ]
+      "copy",
+      "view",
+      "chatgpt",
+      "claude",
+      "perplexity",
+      "cursor",
+      "vscode"
+    ]
   },
   "footer": {
     "socials": {

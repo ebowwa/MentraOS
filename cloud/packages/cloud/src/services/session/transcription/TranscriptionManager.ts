@@ -832,15 +832,25 @@ export class TranscriptionManager {
     }
 
     // Count transcript segments across languages
-    const transcriptLanguages = this.transcriptHistory.languageSegments.size +
-      (this.transcriptHistory.segments.length > 0 && !this.transcriptHistory.languageSegments.has("en-US") ? 1 : 0);
-    const transcriptSegments = this.transcriptHistory.segments.length +
+    const transcriptLanguages =
+      this.transcriptHistory.languageSegments.size +
+      (this.transcriptHistory.segments.length > 0 &&
+      !this.transcriptHistory.languageSegments.has("en-US")
+        ? 1
+        : 0);
+    const transcriptSegments =
+      this.transcriptHistory.segments.length +
       Array.from(this.transcriptHistory.languageSegments.values()).reduce(
         (sum, arr) => sum + arr.length,
         0,
       );
 
-    return { vadBufferChunks, vadBufferBytes, transcriptLanguages, transcriptSegments };
+    return {
+      vadBufferChunks,
+      vadBufferBytes,
+      transcriptLanguages,
+      transcriptSegments,
+    };
   }
 
   // ===== PRIVATE METHODS =====
@@ -1769,9 +1779,8 @@ export class TranscriptionManager {
 
       // Get subscribed apps for all target subscriptions
       for (const targetSub of targetSubscriptions) {
-        const subscribedApps = this.userSession.subscriptionManager.getSubscribedApps(
-          targetSub,
-        );
+        const subscribedApps =
+          this.userSession.subscriptionManager.getSubscribedApps(targetSub);
         subscribedApps.forEach((app) => allSubscribedApps.add(app));
       }
 

@@ -72,7 +72,7 @@ export enum GlassesErrorCode {
  */
 export class GlassesWebSocketService {
   private static instance: GlassesWebSocketService;
-  private constructor() { }
+  private constructor() {}
 
   /**
    * Get singleton instance
@@ -145,10 +145,15 @@ export class GlassesWebSocketService {
             // If this is a reconnection, we can skip the initialization logic
             this.handleConnectionInit(userSession, reconnection)
               .then(() => {
-                userSession.logger.info(`✅ Connection reinitialized for user: ${userSession.userId}`);
+                userSession.logger.info(
+                  `✅ Connection reinitialized for user: ${userSession.userId}`,
+                );
               })
               .catch((error) => {
-                userSession.logger.error(`❌ Failed to reinitialize connection for user: ${userSession.userId}`, error);
+                userSession.logger.error(
+                  `❌ Failed to reinitialize connection for user: ${userSession.userId}`,
+                  error,
+                );
               });
             return;
           }
@@ -205,7 +210,6 @@ export class GlassesWebSocketService {
       );
     }
   }
-
 
   /**
    * Handle glasses message
@@ -278,7 +282,9 @@ export class GlassesWebSocketService {
             { service: SERVICE_NAME, message },
             "Calendar event received from glasses",
           );
-          userSession.subscriptionManager.cacheCalendarEvent(message as CalendarEvent);
+          userSession.subscriptionManager.cacheCalendarEvent(
+            message as CalendarEvent,
+          );
           sessionService.relayMessageToApps(userSession, message);
           break;
 

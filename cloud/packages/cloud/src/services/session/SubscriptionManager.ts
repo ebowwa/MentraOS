@@ -5,13 +5,13 @@ import {
   parseLanguageStream,
   createTranscriptionStream,
   SubscriptionRequest,
-} from '@mentra/sdk';
-import { Logger } from 'pino';
-import UserSession from './UserSession';
-import App from '../../models/app.model';
-import { SimplePermissionChecker } from '../permissions/simple-permission-checker';
-import { User, UserI } from '../../models/user.model';
-import { MongoSanitizer } from '../../utils/mongoSanitizer';
+} from "@mentra/sdk";
+import { Logger } from "pino";
+import UserSession from "./UserSession";
+import App from "../../models/app.model";
+import { SimplePermissionChecker } from "../permissions/simple-permission-checker";
+import { User, UserI } from "../../models/user.model";
+import { MongoSanitizer } from "../../utils/mongoSanitizer";
 
 export class SubscriptionManager {
   private readonly userSession: UserSession;
@@ -21,8 +21,14 @@ export class SubscriptionManager {
   private subscriptions: Map<string, Set<ExtendedStreamType>> = new Map();
 
   // History per app for debugging/restore
-  private history: Map<string, { timestamp: Date; subscriptions: ExtendedStreamType[]; action: 'add' | 'remove' | 'update' }[]> =
-    new Map();
+  private history: Map<
+    string,
+    {
+      timestamp: Date;
+      subscriptions: ExtendedStreamType[];
+      action: "add" | "remove" | "update";
+    }[]
+  > = new Map();
 
   // Calendar cache (session-scoped)
   private calendarEventsCache: Array<any> = [];
@@ -41,8 +47,11 @@ export class SubscriptionManager {
 
   constructor(userSession: UserSession) {
     this.userSession = userSession;
-    this.logger = userSession.logger.child({ service: 'SubscriptionManager' });
-    this.logger.info({ userId: userSession.userId }, 'SubscriptionManager initialized');
+    this.logger = userSession.logger.child({ service: "SubscriptionManager" });
+    this.logger.info(
+      { userId: userSession.userId },
+      "SubscriptionManager initialized",
+    );
   }
 
   // ===== Public API =====
@@ -54,7 +63,10 @@ export class SubscriptionManager {
   getAppSubscriptions(packageName: string): ExtendedStreamType[] {
     const subs = this.subscriptions.get(packageName);
     const result = subs ? Array.from(subs) : [];
-    this.logger.debug({ userId: this.userSession.userId, packageName, subscriptions: result }, 'Retrieved app subscriptions');
+    this.logger.debug(
+      { userId: this.userSession.userId, packageName, subscriptions: result },
+      "Retrieved app subscriptions",
+    );
     return result;
   }
 
@@ -99,13 +111,20 @@ export class SubscriptionManager {
     const target = `augmentos:${settingKey}`;
     for (const [packageName, subs] of this.subscriptions.entries()) {
       for (const sub of subs) {
-        if (sub === target || sub === ('augmentos:*' as any) || sub === ('augmentos:all' as any)) {
+        if (
+          sub === target ||
+          sub === ("augmentos:*" as any) ||
+          sub === ("augmentos:all" as any)
+        ) {
           subscribed.push(packageName);
           break;
         }
       }
     }
-    this.logger.info({ userId: this.userSession.userId, settingKey, subscribed }, 'AugmentOS setting subscription results');
+    this.logger.info(
+      { userId: this.userSession.userId, settingKey, subscribed },
+      "AugmentOS setting subscription results",
+    );
     return subscribed;
   }
 
@@ -117,7 +136,11 @@ export class SubscriptionManager {
     return result;
   }
 
-  hasPCMTranscriptionSubscriptions(): { hasMedia: boolean; hasPCM: boolean; hasTranscription: boolean } {
+  hasPCMTranscriptionSubscriptions(): {
+    hasMedia: boolean;
+    hasPCM: boolean;
+    hasTranscription: boolean;
+  } {
     const hasPCM = this.pcmSubscriptionCount > 0;
     const hasTranscription = this.transcriptionLikeSubscriptionCount > 0;
     const hasMedia = hasPCM || hasTranscription;
@@ -126,7 +149,13 @@ export class SubscriptionManager {
 
   cacheCalendarEvent(event: any): void {
     this.calendarEventsCache.push(event);
-    this.logger.info({ userId: this.userSession.userId, count: this.calendarEventsCache.length }, 'Cached calendar event');
+    this.logger.info(
+      {
+        userId: this.userSession.userId,
+        count: this.calendarEventsCache.length,
+      },
+      "Cached calendar event",
+    );
   }
 
   getAllCalendarEvents(): any[] {
@@ -138,7 +167,8 @@ export class SubscriptionManager {
     subscriptions: SubscriptionRequest[],
   ): Promise<UserI | null> {
     // Serialize per-app updates via promise chaining
-    const previous = this.updateChainsByApp.get(packageName) || Promise.resolve();
+    const previous =
+      this.updateChainsByApp.get(packageName) || Promise.resolve();
     let resultUser: UserI | null = null;
 
     const chained = previous.then(async () => {
@@ -150,27 +180,32 @@ export class SubscriptionManager {
       let locationRate: string | null = null;
       for (const sub of subscriptions) {
         if (
-          typeof sub === 'object' &&
+          typeof sub === "object" &&
           sub !== null &&
-          'stream' in sub &&
+          "stream" in sub &&
           (sub as any).stream === StreamType.LOCATION_STREAM
         ) {
           locationRate = (sub as any).rate || null;
           streamSubscriptions.push(StreamType.LOCATION_STREAM);
-        } else if (typeof sub === 'string') {
+        } else if (typeof sub === "string") {
           streamSubscriptions.push(sub as ExtendedStreamType);
         }
       }
 
       const processed: ExtendedStreamType[] = streamSubscriptions.map((sub) =>
-        sub === StreamType.TRANSCRIPTION ? createTranscriptionStream('en-US') : sub,
+        sub === StreamType.TRANSCRIPTION
+          ? createTranscriptionStream("en-US")
+          : sub,
       );
 
       // Reconnect grace: ignore empty subs right after reconnect
-      if (processed.length === 0 && now - lastReconnect <= this.CONNECT_GRACE_MS) {
+      if (
+        processed.length === 0 &&
+        now - lastReconnect <= this.CONNECT_GRACE_MS
+      ) {
         this.logger.warn(
           { userId: this.userSession.userId, packageName },
-          'Ignoring empty subscription update within reconnect grace window',
+          "Ignoring empty subscription update within reconnect grace window",
         );
         resultUser = await this.persistLocationRate(packageName, locationRate);
         return; // Skip applying empty update
@@ -181,29 +216,36 @@ export class SubscriptionManager {
       try {
         const app = await App.findOne({ packageName });
         if (app) {
-          const { allowed, rejected } = SimplePermissionChecker.filterSubscriptions(
-            app,
-            processed,
-          );
+          const { allowed, rejected } =
+            SimplePermissionChecker.filterSubscriptions(app, processed);
           if (rejected.length > 0) {
             this.logger.warn(
-              { userId: this.userSession.userId, packageName, rejectedCount: rejected.length },
-              'Rejected subscriptions due to missing permissions',
+              {
+                userId: this.userSession.userId,
+                packageName,
+                rejectedCount: rejected.length,
+              },
+              "Rejected subscriptions due to missing permissions",
             );
           }
           allowedProcessed = allowed;
         }
       } catch (error) {
         const logger = this.logger.child({ packageName });
-        logger.error(error, 'Error validating subscriptions; continuing');
+        logger.error(error, "Error validating subscriptions; continuing");
       }
 
       // Compute delta and update maps atomically
-      const oldSet = this.subscriptions.get(packageName) || new Set<ExtendedStreamType>();
+      const oldSet =
+        this.subscriptions.get(packageName) || new Set<ExtendedStreamType>();
       const newSet = new Set<ExtendedStreamType>(allowedProcessed);
       this.applyDelta(packageName, oldSet, newSet);
       this.subscriptions.set(packageName, newSet);
-      this.addHistory(packageName, { timestamp: new Date(), subscriptions: [...newSet], action: 'update' });
+      this.addHistory(packageName, {
+        timestamp: new Date(),
+        subscriptions: [...newSet],
+        action: "update",
+      });
 
       this.logger.info(
         {
@@ -211,7 +253,7 @@ export class SubscriptionManager {
           packageName,
           processedSubscriptions: [...newSet],
         },
-        'Updated subscriptions successfully',
+        "Updated subscriptions successfully",
       );
 
       // Sync managers and mic
@@ -223,7 +265,10 @@ export class SubscriptionManager {
     });
 
     // Store chain and return when this link finishes
-    this.updateChainsByApp.set(packageName, chained.catch(() => {}));
+    this.updateChainsByApp.set(
+      packageName,
+      chained.catch(() => {}),
+    );
     await chained;
     return resultUser;
   }
@@ -234,14 +279,14 @@ export class SubscriptionManager {
       this.addHistory(packageName, {
         timestamp: new Date(),
         subscriptions: Array.from(existing),
-        action: 'remove',
+        action: "remove",
       });
       // apply delta to aggregates and clear
       this.applyDelta(packageName, existing, new Set<ExtendedStreamType>());
       this.subscriptions.delete(packageName);
       this.logger.info(
         { userId: this.userSession.userId, packageName },
-        'Removed in-memory subscriptions for app',
+        "Removed in-memory subscriptions for app",
       );
     }
 
@@ -255,14 +300,14 @@ export class SubscriptionManager {
         const sanitizedPackage = MongoSanitizer.sanitizeKey(packageName);
         if (user.locationSubscriptions?.has(sanitizedPackage)) {
           user.locationSubscriptions.delete(sanitizedPackage);
-          user.markModified('locationSubscriptions');
+          user.markModified("locationSubscriptions");
           await user.save();
         }
         return user;
       }
     } catch (error) {
       const logger = this.logger.child({ packageName });
-      logger.error(error, 'Error removing location subscription from DB');
+      logger.error(error, "Error removing location subscription from DB");
     }
     return null;
   }
@@ -282,7 +327,11 @@ export class SubscriptionManager {
 
   private addHistory(
     packageName: string,
-    entry: { timestamp: Date; subscriptions: ExtendedStreamType[]; action: 'add' | 'remove' | 'update' },
+    entry: {
+      timestamp: Date;
+      subscriptions: ExtendedStreamType[];
+      action: "add" | "remove" | "update";
+    },
   ): void {
     const list = this.history.get(packageName) || [];
     list.push(entry);
@@ -303,18 +352,20 @@ export class SubscriptionManager {
         user.locationSubscriptions = new Map();
       }
       if (locationRate) {
-        user.locationSubscriptions.set(sanitizedPackageName, { rate: locationRate });
+        user.locationSubscriptions.set(sanitizedPackageName, {
+          rate: locationRate,
+        });
       } else {
         if (user.locationSubscriptions.has(sanitizedPackageName)) {
           user.locationSubscriptions.delete(sanitizedPackageName);
         }
       }
-      user.markModified('locationSubscriptions');
+      user.markModified("locationSubscriptions");
       await user.save();
       return user;
     } catch (error) {
       const logger = this.logger.child({ packageName });
-      logger.error(error, 'Error persisting location rate');
+      logger.error(error, "Error persisting location rate");
       return null;
     }
   }
@@ -323,7 +374,11 @@ export class SubscriptionManager {
     const subs: ExtendedStreamType[] = [];
     for (const set of this.subscriptions.values()) {
       for (const sub of set) {
-        if (typeof sub === 'string' && sub.includes('transcription') && !sub.includes('translation')) {
+        if (
+          typeof sub === "string" &&
+          sub.includes("transcription") &&
+          !sub.includes("translation")
+        ) {
           subs.push(sub);
         }
       }
@@ -335,7 +390,7 @@ export class SubscriptionManager {
     const subs: ExtendedStreamType[] = [];
     for (const set of this.subscriptions.values()) {
       for (const sub of set) {
-        if (typeof sub === 'string' && sub.includes('translation')) {
+        if (typeof sub === "string" && sub.includes("translation")) {
           subs.push(sub);
         }
       }
@@ -346,9 +401,13 @@ export class SubscriptionManager {
   private async syncManagers(): Promise<void> {
     try {
       const transcriptionSubs = this.getTranscriptionSubscriptions();
-      await this.userSession.transcriptionManager.updateSubscriptions(transcriptionSubs);
+      await this.userSession.transcriptionManager.updateSubscriptions(
+        transcriptionSubs,
+      );
       const translationSubs = this.getTranslationSubscriptions();
-      await this.userSession.translationManager.updateSubscriptions(translationSubs);
+      await this.userSession.translationManager.updateSubscriptions(
+        translationSubs,
+      );
 
       await Promise.all([
         this.userSession.transcriptionManager.ensureStreamsExist(),
@@ -356,7 +415,7 @@ export class SubscriptionManager {
       ]);
     } catch (error) {
       const logger = this.logger.child({ userId: this.userSession.userId });
-      logger.error(error, 'Error syncing managers with subscriptions');
+      logger.error(error, "Error syncing managers with subscriptions");
     }
   }
 
@@ -396,16 +455,22 @@ export class SubscriptionManager {
     // Direct transcription/translation
     if (sub === StreamType.TRANSCRIPTION || sub === StreamType.TRANSLATION) {
       this.transcriptionLikeSubscriptionCount += isAdd ? 1 : -1;
-      if (this.transcriptionLikeSubscriptionCount < 0) this.transcriptionLikeSubscriptionCount = 0;
+      if (this.transcriptionLikeSubscriptionCount < 0)
+        this.transcriptionLikeSubscriptionCount = 0;
       return;
     }
 
     // Language-specific streams
     if (isLanguageStream(sub)) {
       const langInfo = parseLanguageStream(sub as string);
-      if (langInfo && (langInfo.type === StreamType.TRANSCRIPTION || langInfo.type === StreamType.TRANSLATION)) {
+      if (
+        langInfo &&
+        (langInfo.type === StreamType.TRANSCRIPTION ||
+          langInfo.type === StreamType.TRANSLATION)
+      ) {
         this.transcriptionLikeSubscriptionCount += isAdd ? 1 : -1;
-        if (this.transcriptionLikeSubscriptionCount < 0) this.transcriptionLikeSubscriptionCount = 0;
+        if (this.transcriptionLikeSubscriptionCount < 0)
+          this.transcriptionLikeSubscriptionCount = 0;
       }
       const prev = this.languageStreamCounts.get(sub) || 0;
       const next = prev + (isAdd ? 1 : -1);

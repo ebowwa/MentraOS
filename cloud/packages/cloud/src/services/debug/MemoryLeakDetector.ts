@@ -45,7 +45,10 @@ class MemoryLeakDetector {
   markDisposed(tag: string): void {
     const now = Date.now();
     this.disposedAtByTag.set(tag, now);
-    this.logger.debug({ tag }, "Marked object as disposed; awaiting GC finalization");
+    this.logger.debug(
+      { tag },
+      "Marked object as disposed; awaiting GC finalization",
+    );
 
     // Schedule a check; if not finalized by then, warn
     setTimeout(() => {

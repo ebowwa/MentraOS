@@ -5,11 +5,11 @@ import { logger as rootLogger } from "../logging";
 import { UserSession } from "../session/UserSession";
 // import { subscriptionService } from "../session/subscription.service";
 import { StreamType, CloudToAppMessageType } from "@mentra/sdk";
-import fs from 'fs';
-import path from 'path';
-import { v4 as uuidv4 } from 'uuid';
+import fs from "fs";
+import path from "path";
+import { v4 as uuidv4 } from "uuid";
 
-const logger = rootLogger.child({ service: 'photo-taken.service' });
+const logger = rootLogger.child({ service: "photo-taken.service" });
 
 /**
  * Service for handling photo taken subscriptions and broadcasting
@@ -17,25 +17,28 @@ const logger = rootLogger.child({ service: 'photo-taken.service' });
 class PhotoTakenService {
   private getPhotoExtension(mimeType: string): string {
     const mimeToExt: { [key: string]: string } = {
-      'image/jpeg': '.jpg',
-      'image/jpg': '.jpg',
-      'image/png': '.png',
-      'image/gif': '.gif',
-      'image/webp': '.webp',
-      'image/heic': '.heic',
-      'image/heif': '.heif'
+      "image/jpeg": ".jpg",
+      "image/jpg": ".jpg",
+      "image/png": ".png",
+      "image/gif": ".gif",
+      "image/webp": ".webp",
+      "image/heic": ".heic",
+      "image/heif": ".heif",
     };
-    return mimeToExt[mimeType] || '.jpg'; // Default to .jpg if mime type not recognized
+    return mimeToExt[mimeType] || ".jpg"; // Default to .jpg if mime type not recognized
   }
 
   // NOTE(isaiah): we should not be saving anything to disk ever. TODO(isaiah): Let's use cloudflare R2.
-  private savePhoto(photoData: Buffer<ArrayBufferLike>, mimeType: string): string {
-    const uploadDir = path.join(__dirname, '../../../uploads/photos');
+  private savePhoto(
+    photoData: Buffer<ArrayBufferLike>,
+    mimeType: string,
+  ): string {
+    const uploadDir = path.join(__dirname, "../../../uploads/photos");
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
     }
 
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
     const extension = this.getPhotoExtension(mimeType);
     const filename = `${timestamp}_${uuidv4()}${extension}`;
     const filepath = path.join(uploadDir, filename);
@@ -54,23 +57,33 @@ class PhotoTakenService {
    * @param photoData The photo data as ArrayBuffer
    * @param mimeType The MIME type of the photo
    */
-  broadcastPhotoTaken(userSession: UserSession, photoData: Buffer<ArrayBufferLike>, mimeType: string): void {
+  broadcastPhotoTaken(
+    userSession: UserSession,
+    photoData: Buffer<ArrayBufferLike>,
+    mimeType: string,
+  ): void {
     // Get all Apps subscribed to PHOTO_TAKEN
-    const subscribedApps = userSession.subscriptionManager.getSubscribedApps(StreamType.PHOTO_TAKEN);
+    const subscribedApps = userSession.subscriptionManager.getSubscribedApps(
+      StreamType.PHOTO_TAKEN,
+    );
 
     if (subscribedApps.length === 0) {
-      logger.debug(`No Apps subscribed to PHOTO_TAKEN for user ${userSession.userId}`);
+      logger.debug(
+        `No Apps subscribed to PHOTO_TAKEN for user ${userSession.userId}`,
+      );
       return;
     }
 
-    logger.info(`Broadcasting photo to ${subscribedApps.length} Apps for user ${userSession.userId}`);
+    logger.info(
+      `Broadcasting photo to ${subscribedApps.length} Apps for user ${userSession.userId}`,
+    );
 
     // Save the photo first
     const filename = this.savePhoto(photoData, mimeType);
     logger.info(`Photo saved as ${filename}`);
 
     // Convert ArrayBuffer to base64 string
-    const base64Data = photoData.toString('base64');
+    const base64Data = photoData.toString("base64");
 
     // Create the photo taken message
     const message = {
@@ -80,8 +93,8 @@ class PhotoTakenService {
         photoData: base64Data,
         mimeType,
         timestamp: new Date(),
-        filename
-      }
+        filename,
+      },
     };
 
     // Send to each subscribed App
