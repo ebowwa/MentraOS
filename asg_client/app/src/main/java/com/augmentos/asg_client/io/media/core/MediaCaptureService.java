@@ -31,6 +31,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Random;
 
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
@@ -288,8 +289,9 @@ public class MediaCaptureService {
                             Log.d(TAG, "Server requesting photo with requestId: " + requestId + ", save: " + save);
 
                             // Take photo and upload directly to server
-                            String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
-                            String photoFilePath = fileManager.getDefaultMediaDirectory() + File.separator + "IMG_" + timeStamp + ".jpg";
+                            String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.US).format(new Date());
+                            int randomSuffix = (int)(Math.random() * 1000);
+                            String photoFilePath = fileManager.getDefaultMediaDirectory() + File.separator + "IMG_" + timeStamp + "_" + randomSuffix + ".jpg";
                             takePhotoAndUpload(photoFilePath, requestId, null, save, "medium", false);
                         } else {
                             Log.d(TAG, "Button press handled by server, no photo needed");
@@ -335,9 +337,10 @@ public class MediaCaptureService {
         } else {
             Log.d(TAG, "Starting video recording with settings: " + settings);
             // Generate IDs for local recording
-            String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
-            String requestId = "local_video_" + timeStamp;
-            String videoFilePath = fileManager.getDefaultMediaDirectory() + File.separator + "VID_" + timeStamp + ".mp4";
+            String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.US).format(new Date());
+            int randomSuffix = (int)(Math.random() * 1000);
+            String requestId = "local_video_" + timeStamp + "_" + randomSuffix;
+            String videoFilePath = fileManager.getDefaultMediaDirectory() + File.separator + "VID_" + timeStamp + "_" + randomSuffix + ".mp4";
             startVideoRecording(videoFilePath, requestId, settings, enableLed);
         }
     }
@@ -369,8 +372,9 @@ public class MediaCaptureService {
         }
 
                             // Generate filename with requestId
-                            String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
-                            String videoFilePath = fileManager.getDefaultMediaDirectory() + File.separator + "VID_" + timeStamp + "_" + requestId + ".mp4";
+                            String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.US).format(new Date());
+                            int randomSuffix = (int)(Math.random() * 1000);
+                            String videoFilePath = fileManager.getDefaultMediaDirectory() + File.separator + "VID_" + timeStamp + "_" + randomSuffix + "_" + requestId + ".mp4";
 
         // Start video recording with the provided requestId
         startVideoRecording(videoFilePath, requestId, enableLed);
@@ -406,9 +410,10 @@ public class MediaCaptureService {
      */
     private void startVideoRecording() {
         // Generate IDs for local recording
-        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
-        String requestId = "local_video_" + timeStamp;
-        String videoFilePath = fileManager.getDefaultMediaDirectory() + File.separator + "VID_" + timeStamp + ".mp4";
+        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.US).format(new Date());
+        int randomSuffix = (int)(Math.random() * 1000);
+        String requestId = "local_video_" + timeStamp + "_" + randomSuffix;
+        String videoFilePath = fileManager.getDefaultMediaDirectory() + File.separator + "VID_" + timeStamp + "_" + randomSuffix + ".mp4";
 
         startVideoRecording(videoFilePath, requestId, false);
     }
@@ -699,11 +704,11 @@ public class MediaCaptureService {
             return;
         }
 
-        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
+        // Add milliseconds and a random component to ensure uniqueness even in rapid capture
+        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.US).format(new Date());
+        int randomSuffix = (int)(Math.random() * 1000);
 
-
-
-        String photoFilePath = fileManager.getDefaultMediaDirectory() + File.separator + "IMG_" + timeStamp + ".jpg";
+        String photoFilePath = fileManager.getDefaultMediaDirectory() + File.separator + "IMG_" + timeStamp + "_" + randomSuffix + ".jpg";
 
         Log.d(TAG, "Taking photo locally at: " + photoFilePath + " with size: " + size + ", LED: " + enableLed);
 

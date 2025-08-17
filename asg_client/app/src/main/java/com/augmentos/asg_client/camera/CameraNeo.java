@@ -1192,8 +1192,8 @@ public class CameraNeo extends LifecycleService {
                     byte[] bytes = new byte[buffer.remaining()];
                     buffer.get(bytes);
 
-                    // Use pending photo path if camera was kept alive, otherwise use the original path
-                    String targetPath = (isCameraKeptAlive && pendingPhotoPath != null) ? pendingPhotoPath : filePath;
+                    // Use pending photo path if available (from queued requests), otherwise use the original path
+                    String targetPath = (pendingPhotoPath != null) ? pendingPhotoPath : filePath;
                     
                     // Save the image data to the file
                     boolean success = saveImageDataToFile(bytes, targetPath);
