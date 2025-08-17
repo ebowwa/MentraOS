@@ -1,6 +1,8 @@
 package com.augmentos.asg_client.camera;
 
 import com.augmentos.asg_client.io.media.core.CircularVideoBufferInternal;
+import com.augmentos.asg_client.io.hardware.interfaces.IHardwareManager;
+import com.augmentos.asg_client.io.hardware.core.HardwareManagerFactory;
 
 import android.annotation.SuppressLint;
 import android.app.Notification;
@@ -130,6 +132,10 @@ public class CameraNeo extends LifecycleService {
     private Timer cameraKeepAliveTimer;
     private boolean isCameraKeptAlive = false;
     private String pendingPhotoPath = null;
+    
+    // LED control - tied to camera lifecycle
+    private static volatile boolean pendingLedEnabled = false;  // LED state for current/pending requests
+    private IHardwareManager hardwareManager;
 
     // Camera characteristics for dynamic auto-exposure and autofocus
     private int[] availableAeModes;
@@ -200,13 +206,15 @@ public class CameraNeo extends LifecycleService {
         String filePath;
         String size;
         PhotoCaptureCallback callback;
+        boolean enableLed;  // Whether to use LED flash for this photo
         long timestamp;
         int retryCount;
         
-        PhotoRequest(String filePath, String size, PhotoCaptureCallback callback) {
+        PhotoRequest(String filePath, String size, boolean enableLed, PhotoCaptureCallback callback) {
             this.requestId = "photo_" + System.currentTimeMillis() + "_" + filePath.hashCode();
             this.filePath = filePath;
             this.size = size;
+            this.enableLed = enableLed;
             this.callback = callback;
             this.timestamp = System.currentTimeMillis();
             this.retryCount = 0;
@@ -342,6 +350,8 @@ public class CameraNeo extends LifecycleService {
             serviceState = ServiceState.RUNNING;
             sInstance = this;
         }
+        // Initialize hardware manager for LED control
+        hardwareManager = HardwareManagerFactory.getInstance(this);
         createNotificationChannel();
         showNotification("Camera Service", "Service is running");
         startBackgroundThread();
@@ -354,12 +364,13 @@ public class CameraNeo extends LifecycleService {
      * @param context Application context
      * @param filePath File path to save the photo
      * @param size Photo size (small/medium/large)
+     * @param enableLed Whether to enable LED flash for this photo
      * @param callback Callback to be notified when photo is captured
      */
-    public static void enqueuePhotoRequest(Context context, String filePath, String size, PhotoCaptureCallback callback) {
+    public static void enqueuePhotoRequest(Context context, String filePath, String size, boolean enableLed, PhotoCaptureCallback callback) {
         synchronized (SERVICE_LOCK) {
             // Create and queue the request immediately
-            PhotoRequest request = new PhotoRequest(filePath, size, callback);
+            PhotoRequest request = new PhotoRequest(filePath, size, enableLed, callback);
             globalRequestQueue.offer(request);
             
             // Store callback in registry for later retrieval
@@ -418,7 +429,7 @@ public class CameraNeo extends LifecycleService {
      */
     @Deprecated
     public static void takePictureWithCallback(Context context, String filePath, PhotoCaptureCallback callback) {
-        enqueuePhotoRequest(context, filePath, null, callback);
+        enqueuePhotoRequest(context, filePath, null, false, callback);
     }
 
     /**
@@ -428,7 +439,7 @@ public class CameraNeo extends LifecycleService {
      */
     @Deprecated
     public static void takePictureWithCallback(Context context, String filePath, PhotoCaptureCallback callback, String size) {
-        enqueuePhotoRequest(context, filePath, size, callback);
+        enqueuePhotoRequest(context, filePath, size, false, callback);
     }
 
     /**
@@ -671,9 +682,14 @@ public class CameraNeo extends LifecycleService {
     private void setupCameraForPhotoRequest(PhotoRequest request) {
         if (request == null) return;
         
-        // Store the requested size
+        // Store the requested size and LED state
         pendingRequestedSize = request.size;
         sPhotoCallback = request.callback;
+        
+        // Update LED state if any request needs LED
+        if (request.enableLed) {
+            pendingLedEnabled = true;
+        }
         
         // Check if camera is already open and kept alive
         if (isCameraKeptAlive && cameraDevice != null) {
@@ -729,7 +745,7 @@ public class CameraNeo extends LifecycleService {
             if (shotState != ShotState.IDLE) {
                 Log.d(TAG, "Camera is busy (state: " + shotState + "), queuing photo request");
                 // Queue this request to be processed after current photo completes
-                photoRequestQueue.offer(new PhotoRequest(filePath, pendingRequestedSize, sPhotoCallback));
+                photoRequestQueue.offer(new PhotoRequest(filePath, pendingRequestedSize, false, sPhotoCallback));
                 return;
             }
             
@@ -1370,6 +1386,12 @@ public class CameraNeo extends LifecycleService {
             cameraOpenCloseLock.release();
             cameraDevice = camera;
             
+            // Turn on LED if enabled for photo flash
+            if (pendingLedEnabled && hardwareManager != null && hardwareManager.supportsRecordingLed()) {
+                Log.d(TAG, "📸 Turning on camera LED (camera opened)");
+                hardwareManager.setRecordingLedOn();
+            }
+            
             // Mark camera as ready
             synchronized (SERVICE_LOCK) {
                 isCameraReady = true;
@@ -1811,6 +1833,14 @@ public class CameraNeo extends LifecycleService {
             }
             // Reset keep-alive flag when camera is actually closed
             isCameraKeptAlive = false;
+            
+            // Turn off LED when camera closes
+            if (pendingLedEnabled && hardwareManager != null && hardwareManager.supportsRecordingLed()) {
+                Log.d(TAG, "📸 Turning off camera LED (camera closed)");
+                hardwareManager.setRecordingLedOff();
+                pendingLedEnabled = false;  // Reset LED state
+            }
+            
             releaseWakeLocks();
         } catch (InterruptedException e) {
             Log.e(TAG, "Interrupted while closing camera", e);
@@ -1879,6 +1909,11 @@ public class CameraNeo extends LifecycleService {
                     // Process the queued request
                     pendingPhotoPath = nextRequest.filePath;
                     pendingRequestedSize = nextRequest.size;
+                    
+                    // Update LED state if this request needs LED
+                    if (nextRequest.enableLed) {
+                        pendingLedEnabled = true;
+                    }
                     
                     // IMPORTANT: Only start capture if camera is ready
                     // Don't try to open camera again if it's already open

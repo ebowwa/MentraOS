@@ -327,7 +327,7 @@ const en = {
     stop: "Stop",
     settings: "Settings",
     openWebView: "Open Web View",
-    version: "Version {{number}}",
+    version: "MentraOS v{{number}}",
   },
   welcomeScreen: {
     postscript:

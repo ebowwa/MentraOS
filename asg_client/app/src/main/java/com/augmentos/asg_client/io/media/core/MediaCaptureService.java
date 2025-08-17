@@ -715,29 +715,21 @@ public class MediaCaptureService {
         // Generate a temporary requestId
         String requestId = "local_" + timeStamp;
 
-        // Turn on LED if enabled and supported
-        if (enableLed && hardwareManager.supportsRecordingLed()) {
-            Log.d(TAG, "📸 Turning on camera LED for photo flash");
-            hardwareManager.setRecordingLedOn();
-        }
+        // LED control is now handled by CameraNeo tied to camera lifecycle
+        // This prevents LED flickering during rapid photo capture
 
         // Use the new enqueuePhotoRequest for thread-safe rapid capture
         CameraNeo.enqueuePhotoRequest(
                 mContext,
                 photoFilePath,
                 size,
+                enableLed,
                 new CameraNeo.PhotoCaptureCallback() {
                     @Override
                     public void onPhotoCaptured(String filePath) {
                         Log.d(TAG, "Offline photo captured successfully at: " + filePath);
                         
-                        // Turn off LED after photo capture (with 1 second delay for flash effect)
-                        if (enableLed && hardwareManager.supportsRecordingLed()) {
-                            new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                                Log.d(TAG, "📸 Turning off camera LED after photo flash");
-                                hardwareManager.setRecordingLedOff();
-                            }, 1000); // 1 second delay
-                        }
+                        // LED is now managed by CameraNeo and will turn off when camera closes
                         
                         // Notify through standard capture listener if set up
                         if (mMediaCaptureListener != null) {
@@ -750,11 +742,7 @@ public class MediaCaptureService {
                     public void onPhotoError(String errorMessage) {
                         Log.e(TAG, "Failed to capture offline photo: " + errorMessage);
 
-                        // Turn off LED on error
-                        if (enableLed && hardwareManager.supportsRecordingLed()) {
-                            Log.d(TAG, "📸 Turning off camera LED after photo error");
-                            hardwareManager.setRecordingLedOff();
-                        }
+                        // LED is now managed by CameraNeo and will turn off when camera closes
 
                         if (mMediaCaptureListener != null) {
                             mMediaCaptureListener.onMediaError(requestId, errorMessage, MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
@@ -781,11 +769,7 @@ public class MediaCaptureService {
             mMediaCaptureListener.onPhotoCapturing(requestId);
         }
 
-        // Turn on LED if enabled and supported
-        if (enableLed && hardwareManager.supportsRecordingLed()) {
-            Log.d(TAG, "📸 Turning on camera LED for photo flash");
-            hardwareManager.setRecordingLedOn();
-        }
+        // LED control is now handled by CameraNeo tied to camera lifecycle
 
         try {
             // Use the new enqueuePhotoRequest for thread-safe rapid capture
@@ -793,18 +777,13 @@ public class MediaCaptureService {
                     mContext,
                     photoFilePath,
                     size,
+                    enableLed,
                     new CameraNeo.PhotoCaptureCallback() {
                         @Override
                         public void onPhotoCaptured(String filePath) {
                             Log.d(TAG, "Photo captured successfully at: " + filePath);
 
-                            // Turn off LED after photo capture (with 1 second delay for flash effect)
-                            if (enableLed && hardwareManager.supportsRecordingLed()) {
-                                new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                                    Log.d(TAG, "📸 Turning off camera LED after photo flash");
-                                    hardwareManager.setRecordingLedOff();
-                                }, 1000); // 1 second delay
-                            }
+                            // LED is now managed by CameraNeo and will turn off when camera closes
 
                             // Notify that we've captured the photo
                             if (mMediaCaptureListener != null) {
@@ -823,11 +802,7 @@ public class MediaCaptureService {
                         public void onPhotoError(String errorMessage) {
                             Log.e(TAG, "Failed to capture photo: " + errorMessage);
                             
-                            // Turn off LED on error
-                            if (enableLed && hardwareManager.supportsRecordingLed()) {
-                                Log.d(TAG, "📸 Turning off camera LED after photo error");
-                                hardwareManager.setRecordingLedOff();
-                            }
+                            // LED is now managed by CameraNeo and will turn off when camera closes
                             
                             sendMediaErrorResponse(requestId, errorMessage, MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
 
@@ -1269,11 +1244,7 @@ public class MediaCaptureService {
             mMediaCaptureListener.onPhotoCapturing(requestId);
         }
 
-        // Turn on LED if enabled and supported
-        if (enableLed && hardwareManager.supportsRecordingLed()) {
-            Log.d(TAG, "📸 Turning on camera LED for photo flash");
-            hardwareManager.setRecordingLedOn();
-        }
+        // LED control is now handled by CameraNeo tied to camera lifecycle
 
         try {
             // Use CameraNeo for photo capture
@@ -1285,13 +1256,7 @@ public class MediaCaptureService {
                         public void onPhotoCaptured(String filePath) {
                             Log.d(TAG, "Photo captured successfully for BLE transfer: " + filePath);
 
-                            // Turn off LED after photo capture (with 1 second delay for flash effect)
-                            if (enableLed && hardwareManager.supportsRecordingLed()) {
-                                new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                                    Log.d(TAG, "📸 Turning off camera LED after photo flash");
-                                    hardwareManager.setRecordingLedOff();
-                                }, 1000); // 1 second delay
-                            }
+                            // LED is now managed by CameraNeo and will turn off when camera closes
 
                             // Notify that we've captured the photo
                             if (mMediaCaptureListener != null) {
@@ -1306,11 +1271,7 @@ public class MediaCaptureService {
                         public void onPhotoError(String errorMessage) {
                             Log.e(TAG, "Failed to capture photo for BLE: " + errorMessage);
                             
-                            // Turn off LED on error
-                            if (enableLed && hardwareManager.supportsRecordingLed()) {
-                                Log.d(TAG, "📸 Turning off camera LED after photo error");
-                                hardwareManager.setRecordingLedOff();
-                            }
+                            // LED is now managed by CameraNeo and will turn off when camera closes
                             
                             sendMediaErrorResponse(requestId, errorMessage, MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
 
