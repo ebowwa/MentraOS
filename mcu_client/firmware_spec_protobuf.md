@@ -338,7 +338,7 @@ Request whether the glasses microphone is currently enabled.
 
 ### Enable or Disable VAD
 
-Enable or disable Voice Activity Detection.
+Enable or disable the glasses Voice Activity Detection.
 
 #### 📲 Phone → Glasses
 
@@ -349,6 +349,31 @@ Enable or disable Voice Activity Detection.
 #### 👓 Glasses → Phone
 
 _(none)_
+
+---
+
+### Get VAD Status
+
+Request whether the glasses Voice Activity Detection is currently enabled.
+
+#### 📲 Phone → Glasses
+
+```
+[0x02][PhoneToGlasses { request_vad_status {
+  msg_id: "vad_status_001"
+}}]
+```
+
+#### 👓 Glasses → Phone
+
+```
+[0x02][GlassesToPhone { vad_status {
+  enabled: true
+}}]
+```
+
+* `enabled: true` → VAD is currently on
+* `enabled: false` → VAD is currently off
 
 ---
 
