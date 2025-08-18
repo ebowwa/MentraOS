@@ -2,6 +2,93 @@
 
 All notable changes to the nRF5340 DK BLE Glasses Protobuf Simulator will be documented in this file.
 
+## [2.7.0] - 2025-08-14
+
+### 🔄 INFINITE SMOOTH SCROLLING & SPI PERFORMANCE OPTIMIZATION
+
+#### Added
+- **Infinite Horizontal Text Scrolling**
+  - 🎬 Replaced "jumping" circular scrolling with smooth infinite animation
+  - 🎬 Welcome text now scrolls continuously from right to left in a loop
+  - 🎬 8-second animation cycle with linear motion path
+  - 🎬 Custom animation callbacks for seamless infinite repetition
+  - 🎬 No pauses or "jumps" - true continuous scrolling experience
+
+#### Enhanced  
+- **SPI Performance Optimization**
+  - ⚡ Enhanced SPI drive mode: `NRF_DRIVE_E0E1` for stronger signal integrity
+  - ⚡ Board overlay configuration: `nordic,drive-mode = <NRF_DRIVE_E0E1>`
+  - ⚡ SPI4 pinctrl enhanced for higher frequency operation
+  - ⚡ Real-time SPI transfer monitoring every 100th transfer
+  - ⚡ Comprehensive performance logging: speed in MB/s and effective MHz
+
+- **LVGL Performance Tuning**
+  - 🚀 Optimized tick rates: 2ms intervals for smoother animations
+  - 🚀 Reduced message timeouts: 1ms for faster responsiveness
+  - 🚀 Enhanced FPS monitoring and reporting
+  - 🚀 Target performance: 5 FPS LVGL refresh rate
+
+#### Technical Implementation
+- **Animation System Overhaul**
+  - 🔧 Global animation variables: `scrolling_welcome_label`, `welcome_scroll_anim`
+  - 🔧 Custom animation callbacks: `welcome_scroll_anim_cb()`, `welcome_scroll_ready_cb()`
+  - 🔧 Automatic restart mechanism for infinite loop scrolling
+  - 🔧 Label positioning: starts at 640px, moves to -600px for complete traverse
+
+#### Performance Monitoring
+- **SPI Speed Analysis**  
+  - 📊 Real-time transfer timing measurement
+  - 📊 Bytes per second calculation and MHz effective speed reporting
+  - 📊 Comparative analysis: K901 project (33MHz) vs Simulator (8MHz target)
+  - 📊 Debug logs for SPI frequency optimization
+
+#### In Progress - SPI Speed Investigation
+- **Current Status**: SPI SCK speed measuring ~8MHz average despite optimizations
+- **Target**: Achieve K901-equivalent 33MHz SPI operation
+- **Debug Areas**: Drive strength, frequency configuration, hardware limitations
+
+## [2.6.0] - 2025-08-14
+
+### 🎨 DIRECT HARDWARE ACCESS - True 8-bit Grayscale Test Patterns
+
+#### Added
+- **Direct HLS12VGA Hardware Pattern Generation**
+  - 🎨 Three new direct SPI access pattern functions bypassing LVGL limitations
+  - 🎨 `hls12vga_draw_horizontal_grayscale_pattern()` - 8 horizontal bands with true grayscale levels
+  - 🎨 `hls12vga_draw_vertical_grayscale_pattern()` - 8 vertical bands for display testing
+  - 🎨 `hls12vga_draw_chess_pattern()` - High-contrast checkerboard pattern for alignment
+  - 🎨 True 8-bit grayscale capability: 0x00, 0x24, 0x49, 0x6D, 0x92, 0xB6, 0xDB, 0xFF
+
+#### Enhanced
+- **Button Control Interface**
+  - ⌨️ Button combination system for easy pattern access
+  - ⌨️ Button 3 + 1: Horizontal grayscale pattern (8 bands × 60px height)
+  - ⌨️ Button 3 + 2: Vertical grayscale pattern (8 bands × 80px width)
+  - ⌨️ Button 3 + 4: Chess pattern (8×8 grid, 80×60px squares)
+  - ⌨️ Enhanced logging with pattern execution confirmation
+
+#### Technical Implementation
+- **Direct SPI Access Architecture**
+  - 🔧 Uses same SPI structure as `hls12vga_clear_screen()` for consistency
+  - 🔧 Direct `hls12vga_transmit_all()` and `hls12vga_write_multiple_rows_cmd()` access
+  - 🔧 Memory-efficient batch processing (10-row chunks) for 640×480 display
+  - 🔧 Thread-safe integration via LCD command message queue system
+  - 🔧 Complete error handling and validation for pattern generation
+
+#### Hardware Integration
+- **HLS12VGA MicroLED Projector Support**
+  - 📺 Authentic 8-bit grayscale testing beyond LVGL 1-bit monochrome limitation
+  - 📺 640×480 full resolution pattern generation
+  - 📺 Direct hardware validation for display calibration and testing
+  - 📺 Seamless integration with existing LVGL display module architecture
+
+#### Development Tools
+- **Pattern Generation Functions**
+  - 🛠️ `display_draw_horizontal_grayscale()` - Thread-safe wrapper
+  - 🛠️ `display_draw_vertical_grayscale()` - Thread-safe wrapper  
+  - 🛠️ `display_draw_chess_pattern()` - Thread-safe wrapper
+  - 🛠️ New LCD commands: `LCD_CMD_GRAYSCALE_HORIZONTAL/VERTICAL/CHESS_PATTERN`
+
 ## [2.5.0] - 2025-08-12
 
 ### 📱 PROTOBUF INTEGRATION - Real-Time Text Message Display System

@@ -154,6 +154,12 @@ static int hls12vga_transmit_all(const struct device *dev, const uint8_t *data, 
 	{
 		return -EINVAL;
 	}
+	
+	// **NEW: Add SPI speed measurement for debugging**
+	static uint32_t transfer_count = 0;
+	int64_t start_time = k_uptime_get();
+	transfer_count++;
+	
 	int err = -1;
 	const hls12vga_config *cfg = dev->config;
 	struct spi_buf tx_buf = {
@@ -187,6 +193,18 @@ static int hls12vga_transmit_all(const struct device *dev, const uint8_t *data, 
 		gpio_pin_set_dt(&cfg->right_cs, 1);  // Deselect right CS (inactive HIGH)
 		if (err == 0)
 		{
+			// **NEW: Calculate and log SPI transfer performance**
+			int64_t end_time = k_uptime_get();
+			int64_t transfer_time_ms = end_time - start_time;
+			uint32_t bytes_per_sec = (transfer_time_ms > 0) ? (size * 1000) / transfer_time_ms : 0;
+			float effective_speed_mhz = (float)(size * 8) / (transfer_time_ms * 1000.0f);  // bits per microsecond = MHz
+			
+			// Log every 100th transfer to avoid spam
+			if (transfer_count % 100 == 0) {
+				BSP_LOGI(TAG, "📊 SPI Transfer #%d: %zu bytes in %lld ms (%.2f MB/s, %.2f MHz effective)", 
+					transfer_count, size, transfer_time_ms, (float)bytes_per_sec / 1000000.0f, effective_speed_mhz);
+			}
+			
 			return 0; /* 成功; Success */
 		}
 		k_msleep(1); /* 短暂延迟; Short delay */
@@ -518,6 +536,186 @@ int hls12vga_clear_screen(bool color_on)
 	}
 	return 0;
 }
+
+// **NEW: Direct HLS12VGA Grayscale Test Patterns**
+// These functions bypass LVGL and directly access the HLS12VGA hardware for true 8-bit grayscale testing
+
+/**
+ * @brief Draw horizontal grayscale pattern with true 8-bit levels
+ * @return 0 on success, negative on error
+ */
+int hls12vga_draw_horizontal_grayscale_pattern(void)
+{
+	if (!dev_hls12vga) {
+		BSP_LOGE(TAG, "HLS12VGA device not initialized");
+		return -ENODEV;
+	}
+
+	const hls12vga_config *cfg = dev_hls12vga->config;
+	hls12vga_data *data = dev_hls12vga->data;
+	
+	const uint16_t width = SCREEN_WIDTH;
+	const uint16_t height = SCREEN_HEIGHT;
+	
+	// 8 grayscale levels: 0x00, 0x24, 0x49, 0x6D, 0x92, 0xB6, 0xDB, 0xFF
+	const uint8_t gray_levels[8] = {0x00, 0x24, 0x49, 0x6D, 0x92, 0xB6, 0xDB, 0xFF};
+	const uint16_t stripe_width = width / 8;  // 80 pixels per stripe
+	
+	uint8_t *tx_buf = data->tx_buf_bulk;
+	uint16_t lines_per_batch = MAX_LINES_PER_WRITE;
+	
+	BSP_LOGI(TAG, "🎨 Drawing horizontal grayscale pattern (8 levels, %d pixels per stripe)", stripe_width);
+	
+	for (uint16_t y = 0; y < height; y += lines_per_batch) {
+		uint16_t batch_lines = MIN(lines_per_batch, height - y);
+		
+		// Build data command header
+		hls12vga_write_multiple_rows_cmd(dev_hls12vga, y, y + batch_lines - 1);
+		tx_buf[0] = HLS12VGA_LCD_DATA_REG;
+		tx_buf[1] = (HLS12VGA_LCD_CMD_REG >> 16) & 0xFF;
+		tx_buf[2] = (HLS12VGA_LCD_CMD_REG >> 8) & 0xFF;
+		tx_buf[3] = HLS12VGA_LCD_CMD_REG & 0xFF;
+		
+		// Fill data for this batch of lines
+		for (uint16_t line = 0; line < batch_lines; line++) {
+			uint8_t *line_start = &tx_buf[4 + line * width];
+			
+			// Fill each stripe with its corresponding gray level
+			for (int stripe = 0; stripe < 8; stripe++) {
+				uint16_t start_x = stripe * stripe_width;
+				uint16_t end_x = (stripe == 7) ? width : (stripe + 1) * stripe_width; // Handle remainder
+				
+				memset(&line_start[start_x], gray_levels[stripe], end_x - start_x);
+			}
+		}
+		
+		int ret = hls12vga_transmit_all(dev_hls12vga, tx_buf, 4 + batch_lines * width, 1);
+		if (ret != 0) {
+			BSP_LOGE(TAG, "hls12vga_transmit_all failed! (%d)", ret);
+			return ret;
+		}
+	}
+	
+	BSP_LOGI(TAG, "✅ Horizontal grayscale pattern completed");
+	return 0;
+}
+
+/**
+ * @brief Draw vertical grayscale pattern with true 8-bit levels  
+ * @return 0 on success, negative on error
+ */
+int hls12vga_draw_vertical_grayscale_pattern(void)
+{
+	if (!dev_hls12vga) {
+		BSP_LOGE(TAG, "HLS12VGA device not initialized");
+		return -ENODEV;
+	}
+
+	const hls12vga_config *cfg = dev_hls12vga->config;
+	hls12vga_data *data = dev_hls12vga->data;
+	
+	const uint16_t width = SCREEN_WIDTH;
+	const uint16_t height = SCREEN_HEIGHT;
+	
+	// 8 grayscale levels: 0x00, 0x24, 0x49, 0x6D, 0x92, 0xB6, 0xDB, 0xFF
+	const uint8_t gray_levels[8] = {0x00, 0x24, 0x49, 0x6D, 0x92, 0xB6, 0xDB, 0xFF};
+	const uint16_t stripe_height = height / 8;  // 60 lines per stripe
+	
+	uint8_t *tx_buf = data->tx_buf_bulk;
+	uint16_t lines_per_batch = MAX_LINES_PER_WRITE;
+	
+	BSP_LOGI(TAG, "🎨 Drawing vertical grayscale pattern (8 levels, %d lines per stripe)", stripe_height);
+	
+	for (uint16_t y = 0; y < height; y += lines_per_batch) {
+		uint16_t batch_lines = MIN(lines_per_batch, height - y);
+		
+		// Build data command header
+		hls12vga_write_multiple_rows_cmd(dev_hls12vga, y, y + batch_lines - 1);
+		tx_buf[0] = HLS12VGA_LCD_DATA_REG;
+		tx_buf[1] = (HLS12VGA_LCD_CMD_REG >> 16) & 0xFF;
+		tx_buf[2] = (HLS12VGA_LCD_CMD_REG >> 8) & 0xFF;
+		tx_buf[3] = HLS12VGA_LCD_CMD_REG & 0xFF;
+		
+		// Fill data for this batch of lines
+		for (uint16_t line = 0; line < batch_lines; line++) {
+			uint16_t current_y = y + line;
+			uint8_t gray_level = gray_levels[current_y / stripe_height];
+			
+			// Handle the last stripe which might have different height due to remainder
+			if (current_y / stripe_height >= 8) {
+				gray_level = gray_levels[7]; // Use last gray level for remainder
+			}
+			
+			memset(&tx_buf[4 + line * width], gray_level, width);
+		}
+		
+		int ret = hls12vga_transmit_all(dev_hls12vga, tx_buf, 4 + batch_lines * width, 1);
+		if (ret != 0) {
+			BSP_LOGE(TAG, "hls12vga_transmit_all failed! (%d)", ret);
+			return ret;
+		}
+	}
+	
+	BSP_LOGI(TAG, "✅ Vertical grayscale pattern completed");
+	return 0;
+}
+
+/**
+ * @brief Draw chess pattern for display testing
+ * @return 0 on success, negative on error
+ */
+int hls12vga_draw_chess_pattern(void)
+{
+	if (!dev_hls12vga) {
+		BSP_LOGE(TAG, "HLS12VGA device not initialized");
+		return -ENODEV;
+	}
+
+	const hls12vga_config *cfg = dev_hls12vga->config;
+	hls12vga_data *data = dev_hls12vga->data;
+	
+	const uint16_t width = SCREEN_WIDTH;
+	const uint16_t height = SCREEN_HEIGHT;
+	const uint16_t square_size = 40;  // 40x40 pixel squares
+	
+	uint8_t *tx_buf = data->tx_buf_bulk;
+	uint16_t lines_per_batch = MAX_LINES_PER_WRITE;
+	
+	BSP_LOGI(TAG, "🎨 Drawing chess pattern (%dx%d squares)", square_size, square_size);
+	
+	for (uint16_t y = 0; y < height; y += lines_per_batch) {
+		uint16_t batch_lines = MIN(lines_per_batch, height - y);
+		
+		// Build data command header
+		hls12vga_write_multiple_rows_cmd(dev_hls12vga, y, y + batch_lines - 1);
+		tx_buf[0] = HLS12VGA_LCD_DATA_REG;
+		tx_buf[1] = (HLS12VGA_LCD_CMD_REG >> 16) & 0xFF;
+		tx_buf[2] = (HLS12VGA_LCD_CMD_REG >> 8) & 0xFF;
+		tx_buf[3] = HLS12VGA_LCD_CMD_REG & 0xFF;
+		
+		// Fill data for this batch of lines
+		for (uint16_t line = 0; line < batch_lines; line++) {
+			uint16_t current_y = y + line;
+			uint16_t row = current_y / square_size;
+			
+			for (uint16_t x = 0; x < width; x++) {
+				uint16_t col = x / square_size;
+				bool is_white = (row + col) % 2 == 0;
+				tx_buf[4 + line * width + x] = is_white ? 0xFF : 0x00;
+			}
+		}
+		
+		int ret = hls12vga_transmit_all(dev_hls12vga, tx_buf, 4 + batch_lines * width, 1);
+		if (ret != 0) {
+			BSP_LOGE(TAG, "hls12vga_transmit_all failed! (%d)", ret);
+			return ret;
+		}
+	}
+	
+	BSP_LOGI(TAG, "✅ Chess pattern completed");
+	return 0;
+}
+
 void hls12vga_open_display(void)
 {
 	const hls12vga_config *cfg = dev_hls12vga->config;
@@ -532,6 +730,15 @@ static int hls12vga_init(const struct device *dev)
 	hls12vga_config *cfg = (hls12vga_config *)dev->config;
 	hls12vga_data *data = (hls12vga_data *)dev->data;
 	int ret;
+	
+	// **NEW: Log SPI configuration for debugging**
+	BSP_LOGI(TAG, "🚀 HLS12VGA SPI Configuration:");
+	BSP_LOGI(TAG, "  - Device: %s", cfg->spi.bus->name);
+	BSP_LOGI(TAG, "  - Max Frequency: %d Hz (%.2f MHz)", 
+		cfg->spi.config.frequency, (float)cfg->spi.config.frequency / 1000000.0f);
+	BSP_LOGI(TAG, "  - Operation Mode: 0x%08X", cfg->spi.config.operation);
+	BSP_LOGI(TAG, "  - Slave ID: %d", cfg->spi.config.slave);
+	
 	if (!spi_is_ready_dt(&cfg->spi))
 	{
 		BSP_LOGE(TAG, "custom_hls12vga_init SPI device not ready");

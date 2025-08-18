@@ -90,4 +90,12 @@ void hls12vga_open_display(void);
 void hls12vga_init_sem_give(void);
 
 int hls12vga_init_sem_take(void);
+
+// **NEW: Direct HLS12VGA Grayscale Test Patterns**
+int hls12vga_draw_horizontal_grayscale_pattern(void);
+
+int hls12vga_draw_vertical_grayscale_pattern(void);
+
+int hls12vga_draw_chess_pattern(void);
+
 #endif /* _HLS12VGA_H_ */

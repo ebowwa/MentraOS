@@ -21,6 +21,7 @@
             psels = <NRF_PSEL(SPIM_SCK,  1, 15)>,  /* P1.15 SCK */
                     <NRF_PSEL(SPIM_MOSI, 1, 13)>,  /* P1.13 MOSI */
                     <NRF_PSEL(SPIM_MISO, 1, 14)>;  /* P1.14 MISO */
+            nordic,drive-mode = <NRF_DRIVE_E0E1>;  /* Enhanced drive strength for better signal integrity */
         };
     };
     spi4_sleep: spi4_sleep {
@@ -29,6 +30,7 @@
                     <NRF_PSEL(SPIM_MOSI, 1, 13)>,
                     <NRF_PSEL(SPIM_MISO, 1, 14)>;
             low-power-enable;
+            nordic,drive-mode = <NRF_DRIVE_E0E1>;  /* Enhanced drive strength for sleep mode too */
         };
     };
     
