@@ -327,6 +327,7 @@ const PatternPreview = ({imageType, imageSize, isDark = false, showDualLayout = 
 interface BleCommand {
   command?: string
   commandText?: string
+  timestamp?: number
 }
 
 export default function DeviceSettings() {
@@ -431,6 +432,10 @@ export default function DeviceSettings() {
   // Heartbeat Console state variables
   const [lastHeartbeatSent, setLastHeartbeatSent] = useState<number | null>(null)
   const [lastHeartbeatReceived, setLastHeartbeatReceived] = useState<number | null>(null)
+
+  // BLE Command display state variables
+  const [showFullSenderCommand, setShowFullSenderCommand] = useState(false)
+  const [showFullReceiverCommand, setShowFullReceiverCommand] = useState(false)
 
   useEffect(() => {
     setBrightness(status?.glasses_settings?.brightness ?? 50)
@@ -1145,24 +1150,86 @@ export default function DeviceSettings() {
             </Text>
 
             <Text style={[themed($subtitle), {color: theme.colors.text, marginBottom: theme.spacing.xs}]}>
-              Sent Command:
+              Last Sent Command:
             </Text>
-            <Text style={[themed($infoText), {color: theme.colors.textDim, marginBottom: theme.spacing.xs}]}>
-              Command: {commandSender?.command ?? ""}
-            </Text>
-            <Text style={[themed($infoText), {color: theme.colors.textDim, marginBottom: theme.spacing.md}]}>
-              HEX: {commandSender?.commandText ?? ""}
-            </Text>
+            {commandSender ? (
+              <>
+                <Text style={[themed($infoText), {color: theme.colors.textDim, marginBottom: theme.spacing.xs}]}>
+                  Command: {commandSender.command}
+                </Text>
+                <View style={{flexDirection: "row", alignItems: "flex-start", marginBottom: theme.spacing.xs}}>
+                  <Text style={[themed($infoText), {color: theme.colors.textDim, flex: 1}]}>
+                    HEX:{" "}
+                    {showFullSenderCommand || !commandSender.commandText || commandSender.commandText.length <= 50
+                      ? commandSender.commandText
+                      : commandSender.commandText.substring(0, 50) + "..."}
+                  </Text>
+                  {commandSender.commandText && commandSender.commandText.length > 50 && (
+                    <TouchableOpacity
+                      onPress={() => setShowFullSenderCommand(!showFullSenderCommand)}
+                      style={{marginLeft: 8, paddingVertical: 2}}>
+                      <Text style={{color: theme.colors.palette.primary500, fontSize: 12, fontWeight: "500"}}>
+                        {showFullSenderCommand ? "Less" : "More"}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+                {commandSender.timestamp && (
+                  <Text
+                    style={[
+                      themed($infoText),
+                      {color: theme.colors.textDim, marginBottom: theme.spacing.md, fontSize: 12},
+                    ]}>
+                    Time: {new Date(commandSender.timestamp).toLocaleTimeString()}
+                  </Text>
+                )}
+              </>
+            ) : (
+              <Text
+                style={[
+                  themed($infoText),
+                  {color: theme.colors.textDim, marginBottom: theme.spacing.md, fontStyle: "italic"},
+                ]}>
+                No commands sent yet
+              </Text>
+            )}
 
             <Text style={[themed($subtitle), {color: theme.colors.text, marginBottom: theme.spacing.xs}]}>
-              Received Command:
+              Last Received Command:
             </Text>
-            <Text style={[themed($infoText), {color: theme.colors.textDim, marginBottom: theme.spacing.xs}]}>
-              Command: {commandReceiver?.command ?? ""}
-            </Text>
-            <Text style={[themed($infoText), {color: theme.colors.textDim}]}>
-              HEX: {commandReceiver?.commandText ?? ""}
-            </Text>
+            {commandReceiver ? (
+              <>
+                <Text style={[themed($infoText), {color: theme.colors.textDim, marginBottom: theme.spacing.xs}]}>
+                  Command: {commandReceiver.command}
+                </Text>
+                <View style={{flexDirection: "row", alignItems: "flex-start", marginBottom: theme.spacing.xs}}>
+                  <Text style={[themed($infoText), {color: theme.colors.textDim, flex: 1}]}>
+                    HEX:{" "}
+                    {showFullReceiverCommand || !commandReceiver.commandText || commandReceiver.commandText.length <= 50
+                      ? commandReceiver.commandText
+                      : commandReceiver.commandText.substring(0, 50) + "..."}
+                  </Text>
+                  {commandReceiver.commandText && commandReceiver.commandText.length > 50 && (
+                    <TouchableOpacity
+                      onPress={() => setShowFullReceiverCommand(!showFullReceiverCommand)}
+                      style={{marginLeft: 8, paddingVertical: 2}}>
+                      <Text style={{color: theme.colors.palette.primary500, fontSize: 12, fontWeight: "500"}}>
+                        {showFullReceiverCommand ? "Less" : "More"}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+                {commandReceiver.timestamp && (
+                  <Text style={[themed($infoText), {color: theme.colors.textDim, fontSize: 12}]}>
+                    Time: {new Date(commandReceiver.timestamp).toLocaleTimeString()}
+                  </Text>
+                )}
+              </>
+            ) : (
+              <Text style={[themed($infoText), {color: theme.colors.textDim, fontStyle: "italic"}]}>
+                No commands received yet
+              </Text>
+            )}
           </View>
 
           <View style={themed($settingsGroup)}>

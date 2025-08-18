@@ -542,30 +542,34 @@ public class AugmentosBlePeripheral {
 
     public void sendBleCommandReceiverEventToManager(BleCommandReceiver event) {
         Log.d(TAG, "sendBleCommandReceiverEventToManager");
-        JSONObject data = new JSONObject();
+        JSONObject payload = new JSONObject();
         JSONObject messageObj = new JSONObject();
         try {
             messageObj.put("command", event.command);
             messageObj.put("commandText", event.commandText);
-            data.put("receive_command_from_ble", messageObj);
+            payload.put("receive_command_from_ble", messageObj);
+            payload.put("type", "receive_command_from_ble");
         } catch (JSONException e) {
             throw new RuntimeException(e);
         }
-        sendDataToAugmentOsManager(data.toString());
+        sendDataToAugmentOsManager(payload.toString());
     }
 
     public void sendBleCommandSenderEventToManager(BleCommandSender event) {
-        Log.d(TAG, "sendBleCommandSenderEventToManager");
-        JSONObject data = new JSONObject();
+        // Commander, mission objective: pack the outgoing data with a "type" key for clear identification in the field.
+        JSONObject payload = new JSONObject();
         JSONObject messageObj = new JSONObject();
         try {
             messageObj.put("command", event.command);
             messageObj.put("commandText", event.commandText);
-            data.put("send_command_to_ble", messageObj);
+            payload.put("send_command_to_ble", messageObj);
+            payload.put("type", "send_command_to_ble");
+
+            Log.d(TAG, "sendBleCommandSenderEventToManager: " + payload.toString());
+            sendDataToAugmentOsManager(payload.toString());
         } catch (JSONException e) {
             throw new RuntimeException(e);
         }
-        sendDataToAugmentOsManager(data.toString());
     }
 
     @SuppressLint("MissingPermission")

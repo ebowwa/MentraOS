@@ -143,7 +143,7 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
     private final String NEX_MAIN_DEVICE_ADDRESS = "NEX_MAIN_DEVICE_ADDRESS";
     private final String SAVED_NEX_ID_KEY = "SAVED_Nex_ID_KEY";
 
-    private boolean isDebugMode = false;
+    private boolean isDebugMode = true;
 
     // Count of pings received from glasses (used for battery query timing)
     private int heartbeatCount = 0;
