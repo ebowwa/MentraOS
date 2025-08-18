@@ -26,6 +26,7 @@
 
 #include "mentra_ble_service.h"
 #include "protobuf_handler.h"
+#include "pdm_audio_stream.h"
 #include "bsp_log.h"
 #include "mos_lvgl_display.h"  // Working LVGL display integration
 #include "display/lcd/hls12vga.h"  // Working HLS12VGA driver
@@ -818,6 +819,17 @@ int main(void)
 	if (err) {
 		LOG_ERR("Failed to initialize Mentra BLE service (err: %d)", err);
 		return 0;
+	}
+
+	// Initialize PDM audio streaming system
+	LOG_INF("🎤 Initializing PDM audio streaming system...");
+	err = pdm_audio_stream_init();
+	if (err) {
+		LOG_ERR("Failed to initialize PDM audio streaming (err: %d)", err);
+		// Continue without audio streaming capability
+	} else {
+		LOG_INF("✅ PDM audio streaming system ready");
+		LOG_INF("📱 Mobile app can enable/disable microphone via MicStateConfig (Tag 20)");
 	}
 
         // Initialize LVGL display system with working driver implementation

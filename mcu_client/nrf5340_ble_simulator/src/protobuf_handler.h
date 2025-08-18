@@ -170,6 +170,13 @@ void protobuf_process_brightness_config(const mentraos_ble_BrightnessConfig *bri
 void protobuf_process_auto_brightness_config(const mentraos_ble_AutoBrightnessConfig *auto_brightness_config);
 
 /**
+ * @brief Process microphone state configuration message
+ *
+ * @param mic_state Pointer to microphone state configuration message
+ */
+void protobuf_process_mic_state_config(const mentraos_ble_MicStateConfig *mic_state);
+
+/**
  * @brief Process display text message
  *
  * @param display_text Pointer to display text message

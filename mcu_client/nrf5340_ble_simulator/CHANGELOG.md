@@ -2,6 +2,36 @@
 
 All notable changes to the nRF5340 DK BLE Glasses Protobuf Simulator will be documented in this file.
 
+## [2.10.0] - 2025-08-19
+
+### 🎤 PDM MICROPHONE & LC3 AUDIO STREAMING FOUNDATION
+
+#### Added
+- **🎯 MicStateConfig Protobuf Support (Tag 20)**
+  - ✅ **Complete protobuf handler** for microphone enable/disable from phone app
+  - ✅ **Verified phone app communication** - receives and processes MicStateConfig messages
+  - ✅ **PDM audio streaming framework** with BLE transmission infrastructure
+  - 🔧 **Mock audio streaming** at sustainable BLE data rates (21 bytes/sec)
+
+#### Fixed
+- **🚨 CRITICAL: BLE Stack Overload Prevention**
+  - 🔍 **Root Cause**: Audio streaming was sending 321-byte packets every 10ms (~32KB/s)
+  - 🔍 **Symptom**: System freeze when microphone enabled via phone app
+  - ✅ **Solution**: Reduced to 21-byte packets every 1 second with error handling
+  - ✅ **Result**: Stable protobuf communication, no system freeze on mic enable/disable
+  - 🎯 **BLE Capacity**: Properly respects Nordic BLE stack throughput limitations
+
+#### Technical Details
+- **PDM Configuration**: Ready for 16kHz sample rate, 16-bit depth
+- **BLE Protocol**: Audio chunks via 0xA0 message type to mobile app
+- **Error Handling**: Exponential backoff for failed BLE transmissions
+- **Testing Status**: ✅ Protobuf working, ⏳ Actual PDM capture pending implementation
+
+#### Next Steps
+- 🎵 Implement actual PDM microphone capture (currently mock data)
+- 🎵 Add LC3 encoding for compressed audio transmission
+- 🎵 Optimize BLE streaming rates for real-time audio
+
 ## [2.9.0] - 2025-08-19
 
 ### 🔘 BUTTON MAPPING OPTIMIZATION & SPI CONFLICT RESOLUTION

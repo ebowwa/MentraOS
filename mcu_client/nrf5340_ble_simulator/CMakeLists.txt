@@ -21,6 +21,7 @@ target_sources(app PRIVATE
     src/main.c
     src/protobuf_handler.c
     src/mentra_ble_service.c
+    src/pdm_audio_stream.c
     src/lvgl_demo.c
     src/BspLog/bsp_log.c
     src/mos_components/mos_sysport/src/bal_os.c

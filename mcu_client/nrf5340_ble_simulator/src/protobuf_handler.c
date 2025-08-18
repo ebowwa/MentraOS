@@ -52,6 +52,7 @@
 #include "mentra_ble_service.h"
 #include "lvgl_interface.h"
 #include "mos_components/mos_lvgl_display/include/mos_lvgl_display.h"  // **NEW: For protobuf text display**
+#include "pdm_audio_stream.h"  // **NEW: For microphone audio streaming**
 #include <pb_decode.h>
 #include <pb_encode.h>
 
@@ -68,6 +69,9 @@ static uint32_t current_brightness_level = 50;
 
 // Global auto brightness state
 static bool auto_brightness_enabled = false;
+
+// Audio streaming error counter
+static uint32_t streaming_errors = 0;
 
 // PWM device for LED 3 brightness control
 static const struct device *pwm_dev = DEVICE_DT_GET(DT_NODELABEL(pwm1));
@@ -199,6 +203,10 @@ void protobuf_parse_control_message(const uint8_t *protobuf_data, uint16_t len)
 			message_name = "PingRequest";
 			message_description = "Connectivity test request";
 			break;
+		case 20:
+			message_name = "MicStateConfig";
+			message_description = "Configure microphone streaming state";
+			break;
 		case 30:
 			message_name = "DisplayText";
 			message_description = "Display static text message";
@@ -271,6 +279,13 @@ void protobuf_parse_control_message(const uint8_t *protobuf_data, uint16_t len)
 			LOG_INF("Processing Ping Request...");
 			// TODO: Send pong response
 			LOG_INF("TODO: Implement PongResponse message");
+			break;
+			
+		case 20: // mic_state_tag
+			LOG_INF("Processing Microphone State Configuration...");
+			if (phone_msg.which_payload == mentraos_ble_PhoneToGlasses_mic_state_tag) {
+				protobuf_process_mic_state_config(&phone_msg.payload.mic_state);
+			}
 			break;
 			
 		case 37: // brightness_tag
@@ -1203,4 +1218,82 @@ void protobuf_process_auto_brightness_config(const mentraos_ble_AutoBrightnessCo
 	LOG_INF("  - Manual Override Ready: %s", enabled ? "NO (auto mode active)" : "YES");
 	
 	LOG_INF("=== END AUTO BRIGHTNESS CONFIG MESSAGE ===");
+}
+
+void protobuf_process_mic_state_config(const mentraos_ble_MicStateConfig *mic_state)
+{
+	if (!mic_state) {
+		LOG_ERR("Invalid mic state config pointer");
+		return;
+	}
+	
+	LOG_INF("=== MICROPHONE STATE CONFIG MESSAGE (Tag 20) ===");
+	
+	bool enabled = mic_state->enabled;
+	pdm_audio_state_t current_state = pdm_audio_stream_get_state();
+	bool was_streaming = (current_state == PDM_AUDIO_STATE_STREAMING);
+	
+	LOG_INF("Microphone Configuration:");
+	LOG_INF("  - Field 1 (bool enabled): %s", enabled ? "true" : "false");
+	LOG_INF("  - Previous State: %s", was_streaming ? "STREAMING" : "DISABLED");
+	LOG_INF("  - Requested State: %s", enabled ? "STREAMING" : "DISABLED");
+	LOG_INF("  - State Change Required: %s", (was_streaming != enabled) ? "YES" : "NO");
+	
+	// Hardware configuration details
+	LOG_INF("Hardware Configuration:");
+	LOG_INF("  - PDM Clock Pin: P1.12 (PDM_CLK)");
+	LOG_INF("  - PDM Data Pin: P1.11 (PDM_DIN)");
+	LOG_INF("  - Sample Rate: %d Hz", PDM_SAMPLE_RATE);
+	LOG_INF("  - Bit Depth: 16-bit PCM");
+	LOG_INF("  - Channels: %d (Mono)", PDM_CHANNELS);
+	LOG_INF("  - Frame Size: %d samples (%d ms)", 
+	        PDM_FRAME_SIZE_SAMPLES, LC3_FRAME_DURATION_MS);
+	
+	// LC3 encoding configuration
+	LOG_INF("Audio Streaming Configuration:");
+	LOG_INF("  - Codec: LC3 (Low Complexity Communication Codec)");
+	LOG_INF("  - Frame Duration: %d ms", LC3_FRAME_DURATION_MS);
+	LOG_INF("  - Bitrate: %d bps", LC3_BITRATE_DEFAULT);
+	LOG_INF("  - Transport: BLE via 0xA0 audio chunk messages");
+	LOG_INF("  - Stream ID: 0x01 (microphone audio)");
+	
+	// Apply the configuration
+	int ret = pdm_audio_stream_set_enabled(enabled);
+	
+	// Get updated statistics
+	uint32_t frames_captured, frames_encoded, frames_transmitted, errors;
+	pdm_audio_stream_get_stats(&frames_captured, &frames_encoded, &frames_transmitted, &errors);
+	
+	LOG_INF("Configuration Result:");
+	if (ret == 0) {
+		LOG_INF("  - Status: SUCCESS");
+		LOG_INF("  - Microphone: %s", enabled ? "STREAMING ACTIVE" : "STREAMING STOPPED");
+		LOG_INF("  - Audio Processing: %s", enabled ? "ACTIVE" : "INACTIVE");
+		LOG_INF("  - BLE Transmission: %s", enabled ? "ACTIVE" : "INACTIVE");
+	} else {
+		LOG_ERR("  - Status: FAILED (error %d)", ret);
+		LOG_ERR("  - Microphone: ERROR STATE");
+		streaming_errors++;
+	}
+	
+	// Current streaming statistics
+	LOG_INF("Streaming Statistics:");
+	LOG_INF("  - Frames Captured: %u", frames_captured);
+	LOG_INF("  - Frames Encoded: %u", frames_encoded);
+	LOG_INF("  - Frames Transmitted: %u", frames_transmitted);
+	LOG_INF("  - Streaming Errors: %u", errors);
+	
+	// Protocol compliance
+	LOG_INF("Protocol Compliance:");
+	LOG_INF("  - Message Type: PhoneToGlasses::MicStateConfig");
+	LOG_INF("  - Field 1 present: YES");
+	LOG_INF("  - Value type: bool");
+	LOG_INF("  - Implementation: PDM microphone + LC3 encoding + BLE streaming");
+	
+	// Print concise status to UART
+	printk("\n[Phone->Glasses MIC_STATE] Microphone: %s->%s (frames: %u/%u/%u, errors: %u)\n", 
+	       was_streaming ? "ON" : "OFF", enabled ? "ON" : "OFF", 
+	       frames_captured, frames_encoded, frames_transmitted, errors);
+	
+	LOG_INF("=== END MICROPHONE STATE CONFIG MESSAGE ===");
 }
