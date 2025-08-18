@@ -19,7 +19,12 @@ All notable changes to the nRF5340 DK BLE Glasses Protobuf Simulator will be doc
   - 🔋 **Button 1**: Cycle battery level 0→20→40→60→80→100→0% + toggle charging state
   - 📺 **Button 2**: Toggle between welcome screen and scrolling text container  
   - 🎨 **Button 1+2**: Cycle LVGL test patterns (replaces old Button 4 function)
-  - ⚠️  **Buttons 3&4**: Disabled due to SPI4 pin conflicts (P0.08 SCK, P0.09 MOSI)
+  - ⚠️  **Buttons 3+4**: Completely disabled to prevent SPI interference on P0.08/P0.09
+- **⚡ SPI4M HIGH-SPEED CONFIGURATION ENABLED**
+  - 📈 **Upgraded from SPI3 (8 MHz) to SPI4M (32 MHz target)**
+  - 📍 **SPI4 Pin Mapping**: SCK=P0.08, MOSI=P0.09, MISO=P0.10, CS1=P1.04, CS2=P1.05
+  - 🎯 **Expected Performance**: ~33 MHz actual (with 128 MHz HFCLK override)
+  - 🔄 **Resolves**: Previous 8 MHz SPI3 limitation, matches MentraOS implementation
 
 #### Removed
 - ❌ All Button 3 and Button 4 individual/combination functions disabled
