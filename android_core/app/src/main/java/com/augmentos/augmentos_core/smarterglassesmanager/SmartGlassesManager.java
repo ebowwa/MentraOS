@@ -34,6 +34,7 @@ import com.augmentos.augmentos_core.smarterglassesmanager.smartglassesconnection
 import com.augmentos.augmentos_core.smarterglassesmanager.speechrecognition.ASR_FRAMEWORKS;
 import com.augmentos.augmentos_core.smarterglassesmanager.speechrecognition.SpeechRecSwitchSystem;
 import com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses.AudioWearable;
+import com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses.BrilliantLabsFrame;
 import com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses.EvenRealitiesG1;
 import com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses.InmoAirOne;
 import com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses.MentraMach1;
@@ -1070,7 +1071,8 @@ public class SmartGlassesManager extends Service {
                         new InmoAirOne(),
                         new TCLRayNeoXTwo(),
                         new AudioWearable(),
-                        new VirtualWearable()
+                        new VirtualWearable(),
+                        new BrilliantLabsFrame()
                 )
         );
 

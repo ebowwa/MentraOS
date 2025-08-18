@@ -40,6 +40,7 @@ struct ViewState {
     @objc var g1Manager: ERG1Manager?
     @objc var liveManager: MentraLiveManager?
     @objc var mach1Manager: Mach1Manager?
+    @objc var frameManager: FrameManager?
     var micManager: OnboardMicrophoneManager!
     var serverComms: ServerComms!
 
@@ -168,6 +169,8 @@ struct ViewState {
             liveManager = MentraLiveManager()
         } else if wearable.contains("Mach1"), mach1Manager == nil {
             mach1Manager = Mach1Manager()
+        } else if wearable.contains("Frame") || wearable.contains("Brilliant Labs"), frameManager == nil {
+            frameManager = FrameManager.shared
         }
         initManagerCallbacks()
     }
@@ -301,6 +304,29 @@ struct ViewState {
                 }
             }
             .store(in: &cancellables)
+        }
+
+        if frameManager != nil {
+            frameManager!.onConnectionStateChanged = { [weak self] in
+                guard let self = self else { return }
+                let isConnected = self.frameManager?.connectionState == "CONNECTED"
+                CoreCommsService.log("Frame glasses connection changed to: \(isConnected ? "Connected" : "Disconnected")")
+                if isConnected {
+                    handleDeviceReady()
+                } else {
+                    handleDeviceDisconnected()
+                    handleRequestStatus()
+                }
+            }
+
+            // Listen to battery level changes if Frame supports it
+            frameManager!.$batteryLevel.sink { [weak self] (level: Int) in
+                guard let self = self else { return }
+                guard level >= 0 else { return }
+                self.batteryLevel = level
+                self.serverComms.sendBatteryStatus(level: self.batteryLevel, charging: false)
+                handleRequestStatus()
+            }.store(in: &cancellables)
         }
 
         if liveManager != nil {
@@ -986,6 +1012,7 @@ struct ViewState {
 
     private func clearDisplay() {
         mach1Manager?.clearDisplay()
+        frameManager?.blankScreen()
 
         if defaultWearable.contains("G1") {
             g1Manager?.sendTextWall(" ")
@@ -1021,6 +1048,7 @@ struct ViewState {
 
         g1Manager?.sendTextWall(text)
         mach1Manager?.sendTextWall(text)
+        frameManager?.displayTextWall(text)
     }
 
     // command functions:

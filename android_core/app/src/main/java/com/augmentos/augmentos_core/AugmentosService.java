@@ -2158,6 +2158,12 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                 mentraPrefs.edit().putString("LastConnectedDeviceName", deviceName).apply();
                 Log.d("AugmentOsService", "Saved Mentra Live device name: " + deviceName);
             }
+            else if (modelName.equals("Brilliant Labs Frame")) {
+                // Save Frame device name in its preferences
+                SharedPreferences framePrefs = getSharedPreferences("FramePrefs", Context.MODE_PRIVATE);
+                framePrefs.edit().putString("LastFrameDeviceName", deviceName).apply();
+                Log.d("AugmentOsService", "Saved Frame device name: " + deviceName);
+            }
         }
 
         executeOnceSmartGlassesManagerReady(() -> {
@@ -2191,6 +2197,9 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         // Clear MentraLive device name preference
         SharedPreferences mentraPrefs = getSharedPreferences("MentraLivePrefs", Context.MODE_PRIVATE);
         mentraPrefs.edit().remove("LastConnectedDeviceName").apply();
+
+        SharedPreferences framePrefs = getSharedPreferences("FramePrefs", Context.MODE_PRIVATE);
+        framePrefs.edit().remove("LastFrameDeviceName").apply();
         Log.d("AugmentOsService", "Cleared MentraLive stored device name");
 
         brightnessLevel = null;
