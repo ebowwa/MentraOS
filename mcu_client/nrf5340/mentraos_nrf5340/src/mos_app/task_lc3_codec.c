@@ -1,7 +1,7 @@
 /*
  * @Author       : Cole
  * @Date         : 2025-08-04 09:33:44
- * @LastEditTime : 2025-08-18 17:27:31
+ * @LastEditTime : 2025-08-18 17:53:24
  * @FilePath     : task_lc3_codec.c
  * @Description  :
  *
@@ -143,7 +143,7 @@ void task_lc3_codec_init(void *p1, void *p2, void *p3)
                 BSP_LOGI(TAG, "LC3 encoding successful, bytes written: %d", encoded_bytes_written_l);
                 // BSP_LOG_BUFFER_HEX(TAG, lc3_frame_buffer[frame_count],  encoded_bytes_written_l);
                 /************************************************** */
-#if 0                                                                     // test lc3 decode
+#if 1                                                                     // test lc3 decode
                 ret = sw_codec_lc3_dec_run(lc3_frame_buffer[frame_count],  // 当前帧数据
                                            encoded_bytes_written_l,        // 当前帧数据长度
                                            PDM_PCM_REQ_BUFFER_SIZE * 2,    // lc3 解码数据缓冲区大小

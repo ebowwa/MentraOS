@@ -1,7 +1,7 @@
 /*
  * @Author       : Cole
  * @Date         : 2025-08-05 18:00:04
- * @LastEditTime : 2025-08-16 18:12:24
+ * @LastEditTime : 2025-08-18 09:41:37
  * @FilePath     : bspal_audio_i2s.c
  * @Description  :
  *
@@ -78,8 +78,7 @@ static uint32_t *volatile mp_block_to_fill = NULL;
 static void i2s_buffer_req_evt_handle(nrfx_i2s_buffers_t const *p_released, uint32_t status)
 {
     uint32_t err_code;
-    if (!(status & NRFX_I2S_STATUS_NEXT_BUFFERS_NEEDED))  // If no next buffers
-                                                          // are needed, return
+    if (!(status & NRFX_I2S_STATUS_NEXT_BUFFERS_NEEDED))  // If no next buffers 
     {
         BSP_LOGE(TAG, "i2s_buffer_req_evt_handle: No next buffers needed, status = %lu", status);
         return;
