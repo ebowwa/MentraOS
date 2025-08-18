@@ -5,6 +5,9 @@
 		},
 		{
 			"path": "../../../../Work/Mentra/Carl/k901_nrf5340/K901_NRF5340"
+		},
+		{
+			"path": "../../../MentraOS_TESTS/mcu_client/nrf5340/mentraos_nrf5340"
 		}
 	],
 	"settings": {

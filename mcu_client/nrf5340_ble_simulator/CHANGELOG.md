@@ -2,6 +2,22 @@
 
 All notable changes to the nRF5340 DK BLE Glasses Protobuf Simulator will be documented in this file.
 
+## [2.8.0] - 2025-08-18
+
+### 🔧 HARDWARE PIN OPTIMIZATION & BUG FIXES
+
+#### Fixed
+- **CS Pin Conflict Resolution**
+  - 🔧 Moved CS1 (left_cs) from P0.11 to P1.04 to avoid Arduino connector conflicts  
+  - 🔧 Moved CS2 (right_cs) from P0.12 to P1.05 to avoid Arduino connector conflicts
+  - 🔧 Unified device tree overlay configuration across secure/non-secure variants
+  - 🔧 SPI pins now: SCK=P0.8, MOSI=P0.9, MISO=P0.10, CS1=P1.04, CS2=P1.05
+  - 🔧 Resolves hardware pin conflicts that could affect signal integrity
+
+#### Known Issues
+- 🔍 SPI frequency operating at 8 MHz instead of target 32 MHz - investigation needed
+- 🔍 Display patterns auto-cycling randomly without button press - button handling investigation needed
+
 ## [2.7.0] - 2025-08-14
 
 ### 🔄 INFINITE SMOOTH SCROLLING & SPI PERFORMANCE OPTIMIZATION
