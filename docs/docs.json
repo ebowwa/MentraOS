@@ -1,0 +1,146 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "MentraOS",
+  "colors": {
+    "primary": "#0EA5E9",
+    "light": "#38BDF8",
+    "dark": "#0284C7"
+  },
+  "favicon": "/static/img/favicon.ico",
+  "navigation": {
+    "pages": ["index"],
+    "groups": [
+      {
+        "group": "Getting Started",
+        "pages": [
+          "quickstart",
+          "example-apps",
+          "getting-started",
+          "voice-activation",
+          "railway-deployment",
+          "ubuntu-deployment"
+        ]
+      },
+      {
+        "group": "Core Concepts",
+        "pages": [
+          "core-concepts",
+          "app-lifecycle",
+          "events",
+          "permissions",
+          "layouts",
+          "settings",
+          "audio",
+          "tools",
+          "capabilities",
+          {
+            "group": "Camera",
+            "pages": ["camera/README", "camera/photo-capture", "camera/rtmp-streaming"]
+          },
+          "webview-auth-overview",
+          "react-webviews",
+          "dashboard"
+        ]
+      },
+      {
+        "group": "SDK Reference",
+        "pages": [
+          "reference/index",
+          "reference/app-server",
+          "reference/app-session",
+          {
+            "group": "Managers",
+            "pages": [
+              "reference/managers/event-manager",
+              "reference/managers/layout-manager",
+              "reference/managers/settings-manager",
+              "reference/managers/audio-manager",
+              "reference/managers/camera",
+              "reference/managers/location-manager"
+            ]
+          },
+          "reference/enums",
+          {
+            "group": "Interfaces",
+            "pages": [
+              "reference/interfaces/config-types",
+              "reference/interfaces/event-types",
+              "reference/interfaces/layout-types",
+              "reference/interfaces/capabilities",
+              "reference/interfaces/webhook-types",
+              "reference/interfaces/message-types",
+              "reference/interfaces/tool-types",
+              "reference/interfaces/setting-types"
+            ]
+          },
+          "reference/dashboard-api",
+          "reference/utilities"
+        ]
+      },
+      {
+        "group": "Contributing",
+        "pages": [
+          "contributing",
+          "contributing/mentraos-manager-guidelines",
+          "contributing/mentraos-asg-client-guidelines",
+          "contributing/add-new-glasses-support",
+          {
+            "group": "ASG Client",
+            "pages": [
+              "asg-client/README",
+              "asg-client/architecture",
+              "asg-client/mentra-live",
+              "asg-client/button-system",
+              "asg-client/rtmp-streaming"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "anchors": [
+    {
+      "anchor": "GitHub",
+      "href": "https://github.com/Mentra-Community/MentraOS",
+      "icon": "github"
+    },
+    {
+      "anchor": "Discord",
+      "href": "https://discord.gg/5ukNvkEAqT",
+      "icon": "discord"
+    },
+    {
+      "anchor": "SDK Package",
+      "href": "https://www.npmjs.com/package/@mentraos/sdk",
+      "icon": "npm"
+    }
+  ],
+  "logo": {
+    "light": "/static/img/mentra-logo-small.png",
+    "dark": "/static/img/mentra-logo-small.png"
+  },
+  "navbar": {
+    "links": [
+      {
+        "label": "Support",
+        "href": "https://discord.gg/5ukNvkEAqT"
+      }
+    ],
+    "primary": {
+      "type": "button",
+      "label": "Developer Portal",
+      "href": "https://console.mentra.glass"
+    }
+  },
+  "contextual": {
+    "options": ["copy", "view", "chatgpt", "claude", "perplexity", "cursor", "vscode"]
+  },
+  "footer": {
+    "socials": {
+      "x": "https://x.com/mentraos",
+      "github": "https://github.com/Mentra-Community",
+      "discord": "https://discord.gg/5ukNvkEAqT"
+    }
+  }
+}
