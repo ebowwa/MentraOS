@@ -1,7 +1,7 @@
 /*
  * @Author       : Cole
  * @Date         : 2025-07-31 10:40:40
- * @LastEditTime : 2025-08-04 14:48:01
+ * @LastEditTime : 2025-08-18 15:53:32
  * @FilePath     : mos_lvgl_display.c
  * @Description  :
  *
@@ -285,12 +285,12 @@ static void show_default_ui(void)
     // lv_example_scroll_text();
     // lvgl_dispaly_text();
     /*********************************/
-    scroll_text_create(lv_scr_act(),
-                       0, 120,   // x, y
-                       640, 240, // w, h
-                       txt,
-                       &lv_font_montserrat_30,
-                       30000); // 往返周期 4000ms; ping-pong cycle 4000ms
+    // scroll_text_create(lv_scr_act(),
+    //                    0, 120,   // x, y
+    //                    640, 240, // w, h
+    //                    txt,
+    //                    &lv_font_montserrat_30,
+    //                    30000); // 往返周期 4000ms; ping-pong cycle 4000ms
     // scroll_text_create(lv_scr_act(),
     //                    95, 120,  // x, y
     //                    450, 240, // w, h

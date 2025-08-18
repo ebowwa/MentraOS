@@ -1,7 +1,7 @@
 /*
  * @Author       : Cole
  * @Date         : 2025-08-04 09:33:44
- * @LastEditTime : 2025-08-13 19:16:47
+ * @LastEditTime : 2025-08-18 17:27:31
  * @FilePath     : task_lc3_codec.c
  * @Description  :
  *
@@ -27,13 +27,13 @@ K_THREAD_STACK_DEFINE(task_lc3_codec_stack_area, TASK_LC3_CODEC_THREAD_STACK_SIZ
 static struct k_thread task_lc3_codec_thread_data;
 k_tid_t                task_lc3_codec_thread_handle;
 
-#define LC3_FRAME_SIZE_US 10000  // 帧长度，单位为微秒（us）。用于指定 LC3 编解码器每帧的持续时间
-#define PCM_SAMPLE_RATE   16000  // PCM 采样率，单位为 Hz
-#define PCM_BIT_DEPTH     16     // PCM 位深度，单位为 bit
-#define LC3_BITRATE       32000  // LC3 编码器比特率，单位为 bps
-#define LC3_NUM_CHANNELS  1      // 2      // LC3 编码器通道数，立体声为 2
-#define AUDIO_CH_L        0      // 左声道
-#define AUDIO_CH_R        1      // 右声道
+#define LC3_FRAME_SIZE_US 10000  // 帧长度，单位为微秒（us）。用于指定 LC3 编解码器每帧的持续时间;Frame length, measured in microseconds (us). This is used to specify the duration of each frame for the LC3 codec.
+#define PCM_SAMPLE_RATE   16000  // PCM 采样率，单位为 Hz;PCM sampling rate, measured in Hz
+#define PCM_BIT_DEPTH     16     // PCM 位深度，单位为 bit;PCM bit depth, measured in bits
+#define LC3_BITRATE       32000  // LC3 编码器比特率，单位为 bps;LC3 encoder bitrate, measured in bits per second (bps)
+#define LC3_NUM_CHANNELS  1      // 2      // LC3 编码器通道数，立体声为 2;LC3 encoder number of channels, stereo is 2
+#define AUDIO_CH_L        0      // 左声道;left channel
+#define AUDIO_CH_R        1      // 右声道;right channel
 static uint16_t pcm_bytes_req_enc;
 
 #define BLE_AUDIO_HDR 0xA0
@@ -41,7 +41,7 @@ uint8_t stream_id = 0;  // 0=MIC, 1=TTS
 #define BLE_AUDIO_HDR_LEN 1
 #define STREAM_ID_LEN     1
 
-#define MAX_FRAMES_PER_PACKET 3  // 8 // 每个 BLE 包最多包含的 LC3 帧数
+#define MAX_FRAMES_PER_PACKET 5  // 8 // 每个 BLE 包最多包含的 LC3 帧数;Maximum number of LC3 frames per BLE packet
 
 // #define LC3_PCM_SAMPLES_PER_FRAME   (PCM_SAMPLE_RATE * LC3_FRAME_SIZE_US /
 // 1000000) #define PDM_PCM_REQ_BUFFER_SIZE     LC3_PCM_SAMPLES_PER_FRAME
@@ -143,7 +143,7 @@ void task_lc3_codec_init(void *p1, void *p2, void *p3)
                 BSP_LOGI(TAG, "LC3 encoding successful, bytes written: %d", encoded_bytes_written_l);
                 // BSP_LOG_BUFFER_HEX(TAG, lc3_frame_buffer[frame_count],  encoded_bytes_written_l);
                 /************************************************** */
-#if 1                                                                      // test lc3 decode
+#if 0                                                                     // test lc3 decode
                 ret = sw_codec_lc3_dec_run(lc3_frame_buffer[frame_count],  // 当前帧数据
                                            encoded_bytes_written_l,        // 当前帧数据长度
                                            PDM_PCM_REQ_BUFFER_SIZE * 2,    // lc3 解码数据缓冲区大小
