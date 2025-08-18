@@ -3,9 +3,9 @@
   "theme": "mint",
   "name": "MentraOS",
   "colors": {
-    "primary": "#0EA5E9",
-    "light": "#38BDF8",
-    "dark": "#0284C7"
+    "primary": "#63E291",
+    "light": "#c4fbd8",
+    "dark": "#398254"
   },
   "favicon": "/static/img/favicon.ico",
   "navigation": {
@@ -118,7 +118,7 @@
   ],
   "logo": {
     "light": "/static/img/mentra-logo-small.png",
-    "dark": "/static/img/mentra-logo-small.png"
+    "dark": "/static/img/mentra-logo-small-dark.png"
   },
   "navbar": {
     "links": [
