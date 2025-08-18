@@ -307,7 +307,15 @@ Turn onboard microphone on or off.
 
 #### 👓 Glasses → Phone
 
-_(none)_
+```
+[0x02][GlassesToPhone { mic_state_set {
+  msg_id: "mic_001"
+  success: true
+}}]
+```
+
+* `success: true` → microphone state was updated
+* `success: false` → operation failed
 
 ---
 
