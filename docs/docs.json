@@ -3,8 +3,8 @@
   "theme": "mint",
   "name": "MentraOS",
   "colors": {
-    "primary": "#63E291",
-    "light": "#c4fbd8",
+    "primary": "#40915e",
+    "light": "#5bce84",
     "dark": "#398254"
   },
   "favicon": "/static/img/favicon.ico",
