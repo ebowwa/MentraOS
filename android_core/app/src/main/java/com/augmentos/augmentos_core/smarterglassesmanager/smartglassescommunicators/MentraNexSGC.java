@@ -91,7 +91,7 @@ import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.Displ
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.BitmapJavaUtils;
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.G1FontLoader;
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.SmartGlassesConnectionState;
-import com.augmentos.augmentos_core.audio.PCMAudioPlayer;
+import com.augmentos.augmentos_core.audio.Lc3Player;
 import com.google.gson.Gson;
 import com.augmentos.smartglassesmanager.cpp.L3cCpp;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.BatteryLevelEvent;
@@ -137,6 +137,7 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
 
     private int heartbeatCount = 0;
     private int micBeatCount = 0;
+    private int lastReceivedLc3Sequence = -1;
     private BluetoothAdapter bluetoothAdapter;
 
     private boolean isKilled = false;//
@@ -315,7 +316,7 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
 
     private final Gson gson = new Gson();
 
-    private final PCMAudioPlayer pcmAudioPlayer = new PCMAudioPlayer();
+    private Lc3Player lc3AudioPlayer;
 
     public MentraNexSGC(Context context, SmartGlassesDevice smartGlassesDevice) {
         super();
@@ -338,6 +339,11 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
             lc3DecoderPtr = L3cCpp.initDecoder();
             Log.d(TAG, "initDecoder lc3DecoderPtr：" + lc3DecoderPtr);
         }
+        
+        // Initialize LC3 audio player
+        lc3AudioPlayer = new Lc3Player(context);
+        lc3AudioPlayer.init();
+        lc3AudioPlayer.startPlay();
         // setup fonts
         fontLoader = new G1FontLoader(context);
         // SpeechRecAugmentos.getInstance(context);
@@ -1299,6 +1305,13 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
             mainGlassGatt.close();
             mainGlassGatt = null;
         }
+        
+        // Cleanup LC3 audio player
+        if (lc3AudioPlayer != null) {
+            lc3AudioPlayer.stopPlay();
+            lc3AudioPlayer = null;
+            Log.d(TAG, "LC3 audio player stopped and cleaned up");
+        }
 
         if (mainTaskHandler != null) {
             mainTaskHandler.removeCallbacksAndMessages(null);
@@ -1590,14 +1603,14 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
     }
 
     // Heartbeat methods for Nex Glasses
-    private byte[] constructHeartbeatForNexGlasses() {
-        // Create the PhoneToGlasses using its builder and set the pingNewBuilder
-        PingRequest pingNewBuilder = PingRequest.newBuilder().build();
+    // private byte[] constructHeartbeatForNexGlasses() {
+    //     // Create the PhoneToGlasses using its builder and set the pingNewBuilder
+    //     PingRequest pingNewBuilder = PingRequest.newBuilder().build();
 
-        PhoneToGlasses phoneToGlasses = PhoneToGlasses.newBuilder().setPing(pingNewBuilder).build();
+    //     PhoneToGlasses phoneToGlasses = PhoneToGlasses.newBuilder().setPing(pingNewBuilder).build();
 
-        return generateProtobufCommandBytes(phoneToGlasses);
-    }
+    //     return generateProtobufCommandBytes(phoneToGlasses);
+    // }
 
     private byte[] constructBatteryLevelQuery() {
         BatteryStateRequest batteryStateRequest = BatteryStateRequest.newBuilder().build();
@@ -1761,9 +1774,9 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
     private void sendHeartbeat() {
         // for Mentra Nex Glasses
         Log.d(TAG, "=== SENDING HEARTBEAT TO GLASSES ===");
-        byte[] heartbeatPacket = constructHeartbeatForNexGlasses();
+        // byte[] heartbeatPacket = constructHeartbeatForNexGlasses();
 
-        sendDataSequentially(heartbeatPacket, 100);
+        // sendDataSequentially(heartbeatPacket, 100);
 
         if (batteryMain == -1 || heartbeatCount % 10 == 0) {
             mainTaskHandler.sendEmptyMessageDelayed(MAIN_TASK_HANDLER_CODE_BATTERY_QUERY, 500);
@@ -1852,7 +1865,7 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
         Log.d(TAG, "=== SENDING DASHBOARD POSITION COMMAND TO GLASSES ===");
         Log.d(TAG, "Dashboard Position - Height: " + height + " (0-8), Depth: " + depth + " (1-9)");
 
-        DisplayHeightConfig displayHeightConfig = DisplayHeightConfig.newBuilder().setHeight(height).setDepth(depth)
+        DisplayHeightConfig displayHeightConfig = DisplayHeightConfig.newBuilder().setHeight(height)
                 .build();
         PhoneToGlasses phoneToGlasses = PhoneToGlasses.newBuilder().setDisplayHeight(displayHeightConfig).build();
 
@@ -2629,16 +2642,16 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
         Log.d(TAG, "=== SENDING CLEAR DISPLAY COMMAND TO GLASSES ===");
         
         // Create the clear display protobuf message
-        mentraos.ble.MentraosBle.ClearDisplay clearDisplay = mentraos.ble.MentraosBle.ClearDisplay.newBuilder()
-                .setMsgId("clear_disp_001")
-                .build();
+        // mentraos.ble.MentraosBle.ClearDisplay clearDisplay = mentraos.ble.MentraosBle.ClearDisplay.newBuilder()
+        //         .setMsgId("clear_disp_001")
+        //         .build();
 
-        PhoneToGlasses phoneToGlasses = PhoneToGlasses.newBuilder()
-                .setClearDisplay(clearDisplay)
-                .build();
+        // PhoneToGlasses phoneToGlasses = PhoneToGlasses.newBuilder()
+        //         .setClearDisplay(clearDisplay)
+        //         .build();
 
-        byte[] cmdBytes = generateProtobufCommandBytes(phoneToGlasses);
-        sendDataSequentially(cmdBytes, 10);
+        // byte[] cmdBytes = generateProtobufCommandBytes(phoneToGlasses);
+        // sendDataSequentially(cmdBytes, 10);
 
         Log.d(TAG, "Sent clear display command");
         lastThingDisplayedWasAnImage = false;
@@ -2993,40 +3006,47 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
                 }
                 break;
                 case PACKET_TYPE_AUDIO: {
-                    // if (shouldUseGlassesMic) {
-                    final int streamId = data[1] & 0xFF; // Sequence number
-                    // eg. LC3 to PCM
-                    final byte[] lc3Data = Arrays.copyOfRange(data, 2, dataLen);
-                    // Log.d(TAG, "Lc3 Audio data received. audioProcessingCallback: " +
-                    // audioProcessingCallback);
-                    Log.d(TAG, "Lc3 Audio data received. lc3 size: " + lc3Data.length);
-                    // Log.d(TAG, "Lc3 Audio data received. lc3 Data: " + bytesToHex(lc3Data));
-                    // decode the LC3 audio
-                    if (lc3DecoderPtr != 0) {
-                        final byte[] pcmData = L3cCpp.decodeLC3(lc3DecoderPtr, lc3Data);
-                        // send the PCM out
-                        Log.d(TAG, "pcmData size:" + pcmData.length);
-                        // Log.d(TAG, "pcmData hex:" + bytesToHex(pcmData));
-                        pcmAudioPlayer.playPCMData(pcmData);
-                        if (audioProcessingCallback != null) {
-                            if (pcmData != null && pcmData.length > 0) {
-                                // Log.d(TAG, "set onAudioDataAvailable pcmData");
-                                audioProcessingCallback.onAudioDataAvailable(pcmData);
-                            }
-                        } else {
-                            // If we get here, it means the callback wasn't properly registered
-                            Log.e(TAG, "Audio processing callback is null - callback registration failed!");
+                    // Check for audio packet header
+                    if (data[0] == (byte) 0xA0) {
+                        byte sequenceNumber = data[1];
+                        long receiveTime = System.currentTimeMillis();
+                        
+                        // Basic sequence validation
+                        if (lastReceivedLc3Sequence != -1 && (byte)(lastReceivedLc3Sequence + 1) != sequenceNumber) {
+                            Log.w(TAG, "LC3 packet sequence mismatch. Expected: " + (lastReceivedLc3Sequence + 1) + ", Got: " + sequenceNumber);
                         }
-                        // }
-                        // server does not support lc3
-                        // send through the LC3
-                        // Log.d(TAG, "set onAudioDataAvailable Lc3 data");
-                        // audioProcessingCallback.onLC3AudioDataAvailable(lc3);
+                        lastReceivedLc3Sequence = sequenceNumber;
+
+                        final byte[] lc3Data = Arrays.copyOfRange(data, 2, dataLen);
+                        
+                        Log.d(TAG, "Received LC3 audio packet seq=" + sequenceNumber + ", size=" + lc3Data.length);
+
+                        // Play LC3 audio directly through LC3 player
+                        if (lc3AudioPlayer != null) {
+                            // Use the original packet format that LC3 player expects
+                            // The original 'data' packet already has the right structure
+                            lc3AudioPlayer.write(data, 0, dataLen);
+                            Log.d(TAG, "Playing LC3 audio directly through LC3 player: " + dataLen + " bytes");
+                        } else {
+                            Log.d(TAG, "LC3 player not available - skipping LC3 audio output");
+                        }
+                    
+                        // Still decode for callback compatibility
+                        if (lc3DecoderPtr != 0) {
+                            final byte[] pcmData = L3cCpp.decodeLC3(lc3DecoderPtr, lc3Data);
+                            Log.d(TAG, "pcmData size:" + pcmData.length);
+                            if (audioProcessingCallback != null) {
+                                if (pcmData != null && pcmData.length > 0) {
+                                    // Log.d(TAG, "set onAudioDataAvailable pcmData");
+                                    audioProcessingCallback.onAudioDataAvailable(pcmData);
+                                }
+                            } else {
+                                // If we get here, it means the callback wasn't properly registered
+                                Log.e(TAG, "Audio processing callback is null - callback registration failed!");
+                            }
+                        }
                     }
                 }
-                break;
-                case PACKET_TYPE_IMAGE:
-                    break;
             }
         }
     }
