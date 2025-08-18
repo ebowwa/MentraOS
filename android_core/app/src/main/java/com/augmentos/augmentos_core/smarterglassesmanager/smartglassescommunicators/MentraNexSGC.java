@@ -289,6 +289,7 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
     private final Handler micEnableHandler = new Handler();
     private boolean micEnabledAlready = false;
     private boolean isMicrophoneEnabled = true; // Track current microphone state
+    private boolean microphoneStateBeforeDisconnection = false; // Remember state for reconnection
 
     // notification period sender
     private Handler notificationHandler = new Handler();
@@ -398,6 +399,11 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
                     } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
                         Log.d(TAG, " glass disconnected, stopping heartbeats");
                         Log.d(TAG, "Entering STATE_DISCONNECTED branch for side: ");
+                        
+                        // Save current microphone state before disconnection
+                        microphoneStateBeforeDisconnection = isMicrophoneEnabled;
+                        Log.d(TAG, "Saved microphone state before disconnection: " + microphoneStateBeforeDisconnection);
+                        
                         // Mark both sides as not ready (you could also clear both if one disconnects)
                         MAX_CHUNK_SIZE = MAX_CHUNK_SIZE_DEFAULT;
                         BMP_CHUNK_SIZE = MAX_CHUNK_SIZE_DEFAULT;
@@ -423,6 +429,10 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
                         }
                     }
                 } else {
+                    // Save current microphone state before connection failure
+                    microphoneStateBeforeDisconnection = isMicrophoneEnabled;
+                    Log.d(TAG, "Saved microphone state before connection failure: " + microphoneStateBeforeDisconnection);
+                    
                     currentMTU = 0;
                     MAX_CHUNK_SIZE = MAX_CHUNK_SIZE_DEFAULT;
                     BMP_CHUNK_SIZE = MAX_CHUNK_SIZE_DEFAULT;
@@ -618,8 +628,15 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
                 // .postDelayed(() -> sendBrightnessCommand(brightnessValue,
                 // shouldUseAutoBrightness), 10);
 
-                // Maybe start MIC streaming
-                setMicEnabled(false, 10); // Disable the MIC
+                // Restore previous microphone state or disable if this is the first connection
+                boolean shouldRestoreMic = microphoneStateBeforeDisconnection;
+                Log.d(TAG, "Restoring microphone state to: " + shouldRestoreMic + 
+                          " (previous state: " + microphoneStateBeforeDisconnection + ")");
+                if (shouldRestoreMic) {
+                    startMicBeat((int) MICBEAT_INTERVAL_MS);
+                } else {
+                    stopMicBeat();
+                }
 
                 // enable our AugmentOS notification key
                 sendWhiteListCommand(10);
@@ -1320,10 +1337,11 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
         // stop BLE scanning
         stopScan();
 
-        // disable the microphone
-        setMicEnabled(false, 0);
+        // Save current microphone state before destroying (for potential future reconnection)
+        microphoneStateBeforeDisconnection = isMicrophoneEnabled;
+        Log.d(TAG, "Saved microphone state during destroy: " + microphoneStateBeforeDisconnection);
 
-        // stop sending micbeat
+        // disable the microphone and stop sending micbeat
         stopMicBeat();
 
         // Stop periodic notifications
@@ -2947,11 +2965,9 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
 
         if (isMicrophoneEnabled) {
             Log.d(TAG, "Microphone enabled, starting audio input handling");
-            setMicEnabled(true, 10);
             startMicBeat((int) MICBEAT_INTERVAL_MS);
         } else {
             Log.d(TAG, "Microphone disabled, stopping audio input handling");
-            setMicEnabled(false, 10);
             stopMicBeat();
         }
     }
