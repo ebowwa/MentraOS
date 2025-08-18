@@ -311,6 +311,31 @@ _(none)_
 
 ---
 
+### Get Microphone Status
+
+Request whether the glasses microphone is currently enabled.
+
+#### 📲 Phone → Glasses
+
+```
+[0x02][PhoneToGlasses { request_mic_status {
+  msg_id: "mic_status_001"
+}}]
+```
+
+#### 👓 Glasses → Phone
+
+```
+[0x02][GlassesToPhone { mic_status {
+  enabled: true
+}}]
+```
+
+* `enabled: true` → microphone is currently on
+* `enabled: false` → microphone is currently off
+
+---
+
 ### Enable or Disable VAD
 
 Enable or disable Voice Activity Detection.
