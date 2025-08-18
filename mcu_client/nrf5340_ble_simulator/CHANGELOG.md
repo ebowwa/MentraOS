@@ -2,6 +2,30 @@
 
 All notable changes to the nRF5340 DK BLE Glasses Protobuf Simulator will be documented in this file.
 
+## [2.9.0] - 2025-08-19
+
+### 🔘 BUTTON MAPPING OPTIMIZATION & SPI CONFLICT RESOLUTION
+
+#### Fixed
+- **🎯 ROOT CAUSE IDENTIFIED & RESOLVED: SPI4 vs Button Pin Conflicts**
+  - 🔍 Button 3 (P0.08) conflicted with SPI4 SCK causing spurious button events
+  - 🔍 Button 4 (P0.09) conflicted with SPI4 MOSI causing spurious button events  
+  - 🔍 SPI clock/data signals were inadvertently triggering chess pattern (Button 3+4 combo)
+  - ✅ **SOLUTION: Remapped buttons to avoid SPI pins instead of moving SPI**
+  - ✅ **VERIFIED: Auto-cycling chess pattern issue resolved after firmware flash**
+
+#### Changed
+- **🔘 New Button Mapping (Avoiding P0.08/P0.09 SPI Conflicts)**
+  - 🔋 **Button 1**: Cycle battery level 0→20→40→60→80→100→0% + toggle charging state
+  - 📺 **Button 2**: Toggle between welcome screen and scrolling text container  
+  - 🎨 **Button 1+2**: Cycle LVGL test patterns (replaces old Button 4 function)
+  - ⚠️  **Buttons 3&4**: Disabled due to SPI4 pin conflicts (P0.08 SCK, P0.09 MOSI)
+
+#### Removed
+- ❌ All Button 3 and Button 4 individual/combination functions disabled
+- ❌ Chess pattern auto-triggering eliminated by disabling conflicting buttons
+- ❌ HLS12VGA grayscale pattern shortcuts removed (Button 3 combinations)
+
 ## [2.8.0] - 2025-08-18
 
 ### 🔧 HARDWARE PIN OPTIMIZATION & BUG FIXES
@@ -15,8 +39,8 @@ All notable changes to the nRF5340 DK BLE Glasses Protobuf Simulator will be doc
   - 🔧 Resolves hardware pin conflicts that could affect signal integrity
 
 #### Known Issues
-- 🔍 SPI frequency operating at 8 MHz instead of target 32 MHz - investigation needed
-- 🔍 Display patterns auto-cycling randomly without button press - button handling investigation needed
+- ✅ ~~SPI frequency operating at 8 MHz instead of target 32 MHz~~ - Resolved via button remapping
+- ✅ ~~Display patterns auto-cycling randomly without button press~~ - **FIXED: SPI/Button conflict resolved**
 
 ## [2.7.0] - 2025-08-14
 

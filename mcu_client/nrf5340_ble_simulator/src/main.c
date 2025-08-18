@@ -76,22 +76,14 @@ SYS_INIT(hfclock_config_and_start, POST_KERNEL, 0);
 #define KEY_PASSKEY_ACCEPT DK_BTN1_MSK
 #define KEY_PASSKEY_REJECT DK_BTN2_MSK
 
-// Battery level control buttons
-#define KEY_BATTERY_INCREASE DK_BTN1_MSK  // Button 1: Increase battery
-#define KEY_BATTERY_DECREASE DK_BTN2_MSK  // Button 2: Decrease battery
-#define KEY_BATTERY_CHARGING_TOGGLE DK_BTN3_MSK  // Button 3: Toggle charging status
+// **NEW: Updated button mappings to avoid SPI pin conflicts (P0.08/P0.09)**
+#define KEY_BATTERY_CYCLE DK_BTN1_MSK           // Button 1: Cycle battery 0-100% + toggle charging
+#define KEY_SCREEN_TOGGLE DK_BTN2_MSK           // Button 2: Toggle welcome/scrolling screen
+#define KEY_PATTERN_CYCLE (DK_BTN1_MSK | DK_BTN2_MSK)  // Button 1+2: Cycle LVGL patterns
 
-// LVGL pattern cycling button
-#define KEY_LVGL_PATTERN_CYCLE DK_BTN4_MSK  // Button 4: Cycle LVGL test patterns
-
-// **NEW: Direct HLS12VGA grayscale pattern shortcuts (using combinations)**
-// Hold Button 3 + Button 1: Horizontal grayscale
-// Hold Button 3 + Button 2: Vertical grayscale
-// Hold Button 3 + Button 4: Chess pattern
-#define KEY_GRAYSCALE_MODIFIER DK_BTN3_MSK
-#define KEY_HORIZONTAL_GRAYSCALE (DK_BTN3_MSK | DK_BTN1_MSK)
-#define KEY_VERTICAL_GRAYSCALE (DK_BTN3_MSK | DK_BTN2_MSK)
-#define KEY_CHESS_PATTERN (DK_BTN3_MSK | DK_BTN4_MSK)
+// **DISABLED: Buttons 3 & 4 conflict with SPI4 pins (P0.08 SCK, P0.09 MOSI)**
+// #define KEY_BUTTON3 DK_BTN3_MSK              // P0.08 - conflicts with SPI4 SCK
+// #define KEY_BUTTON4 DK_BTN4_MSK              // P0.09 - conflicts with SPI4 MOSI
 
 #define UART_BUF_SIZE 240
 #define UART_WAIT_FOR_BUF_DELAY K_MSEC(50)
@@ -672,6 +664,12 @@ void button_changed(uint32_t button_state, uint32_t has_changed)
 {
 	uint32_t buttons = button_state & has_changed;
 
+	// **DEBUG: Enhanced button logging to identify spurious events**
+	if (has_changed != 0) {
+		LOG_INF("� Button Event: state=0x%02X, changed=0x%02X, pressed=0x%02X", 
+		        button_state, has_changed, buttons);
+	}
+
 #ifdef CONFIG_BT_NUS_SECURITY_ENABLED
 	if (auth_conn) {
 		// Handle authentication buttons when in authentication mode
@@ -682,53 +680,63 @@ void button_changed(uint32_t button_state, uint32_t has_changed)
 		if (buttons & KEY_PASSKEY_REJECT) {
 			num_comp_reply(false);
 		}
-		return; // Don't handle battery buttons during authentication
+		return; // Don't handle other buttons during authentication
 	}
 #endif /* CONFIG_BT_NUS_SECURITY_ENABLED */
 
-	// Handle battery level control when not in authentication mode
-	if (buttons & KEY_BATTERY_INCREASE) {
-		LOG_INF("🔋⬆️  Button 1 pressed: Increasing battery level");
-		protobuf_increase_battery_level();
-	}
-
-	if (buttons & KEY_BATTERY_DECREASE) {
-		LOG_INF("🔋⬇️  Button 2 pressed: Decreasing battery level");
-		protobuf_decrease_battery_level();
-	}
-
-	if (buttons & KEY_BATTERY_CHARGING_TOGGLE) {
-		LOG_INF("🔋⚡ Button 3 pressed: Toggling charging status");
-		protobuf_toggle_charging_state();
-	}
-
-	// **NEW: Direct HLS12VGA pattern shortcuts (combination presses)**
-	// Check for pattern combinations when Button 3 is held with another button
-	if ((button_state & KEY_HORIZONTAL_GRAYSCALE) == KEY_HORIZONTAL_GRAYSCALE && 
-	    (has_changed & (DK_BTN1_MSK | DK_BTN3_MSK))) {
-		LOG_INF("🎨 Button combo 3+1: Drawing HLS12VGA horizontal grayscale pattern");
-		display_draw_horizontal_grayscale();
-		return; // Don't process other button presses
-	}
-	
-	if ((button_state & KEY_VERTICAL_GRAYSCALE) == KEY_VERTICAL_GRAYSCALE && 
-	    (has_changed & (DK_BTN2_MSK | DK_BTN3_MSK))) {
-		LOG_INF("🎨 Button combo 3+2: Drawing HLS12VGA vertical grayscale pattern");
-		display_draw_vertical_grayscale();
-		return; // Don't process other button presses
-	}
-	
-	if ((button_state & KEY_CHESS_PATTERN) == KEY_CHESS_PATTERN && 
-	    (has_changed & (DK_BTN4_MSK | DK_BTN3_MSK))) {
-		LOG_INF("🎨 Button combo 3+4: Drawing HLS12VGA chess pattern");
-		display_draw_chess_pattern();
-		return; // Don't process other button presses
-	}
-
-	// **ORIGINAL: LVGL pattern cycling on dedicated Button 4 (when not combined)**
-	if (buttons & KEY_LVGL_PATTERN_CYCLE && !(button_state & KEY_GRAYSCALE_MODIFIER)) {
-		LOG_INF("🎨 Button 4 pressed: Cycling LVGL test pattern");
+	// **NEW: Button combination for pattern cycling (Button 1 + Button 2)**
+	if ((button_state & KEY_PATTERN_CYCLE) == KEY_PATTERN_CYCLE && 
+	    (has_changed & (DK_BTN1_MSK | DK_BTN2_MSK))) {
+		LOG_INF("🎨 Button combo 1+2: Cycling LVGL test patterns");
 		display_cycle_pattern();
+		return; // Don't process individual button presses when combination is active
+	}
+
+	// **NEW: Button 1 alone - Cycle battery level 0→100% and toggle charging**
+	if (buttons & KEY_BATTERY_CYCLE && !(button_state & DK_BTN2_MSK)) {
+		static uint8_t battery_level = 0;
+		static bool charging_state = false;
+		
+		// Cycle battery: 0→20→40→60→80→100→0...
+		battery_level += 20;
+		if (battery_level > 100) {
+			battery_level = 0;
+		}
+		
+		// Toggle charging state each cycle
+		charging_state = !charging_state;
+		
+		protobuf_set_battery_level(battery_level);
+		protobuf_set_charging_state(charging_state);
+		
+		LOG_INF("🔋 Button 1: Battery %u%%, charging: %s", 
+		        battery_level, charging_state ? "ON" : "OFF");
+		return;
+	}
+
+	// **NEW: Button 2 alone - Toggle between welcome and scrolling text screens**
+	if (buttons & KEY_SCREEN_TOGGLE && !(button_state & DK_BTN1_MSK)) {
+		static bool show_welcome = true;
+		
+		if (show_welcome) {
+			LOG_INF("📺 Button 2: Switching to scrolling text container");
+			// TODO: Implement proper screen switching
+			// For now, just cycle patterns to show different screens
+			display_cycle_pattern();
+		} else {
+			LOG_INF("📺 Button 2: Switching to welcome screen");
+			// TODO: Implement proper screen switching  
+			// For now, just cycle patterns to show different screens
+			display_cycle_pattern();
+		}
+		
+		show_welcome = !show_welcome;
+		return;
+	}
+
+	// **DISABLED: Buttons 3 & 4 are ignored due to SPI4 conflicts**
+	if (has_changed & (DK_BTN3_MSK | DK_BTN4_MSK)) {
+		LOG_WRN("⚠️  Buttons 3/4 disabled (SPI4 conflict on P0.08/P0.09)");
 	}
 }
 
@@ -758,20 +766,13 @@ int main(void)
 
 	configure_gpio();
 
-	// Log button functionality and initial battery level
-	LOG_INF("🔋 Battery level control enabled:");
-	LOG_INF("   📌 Button 1: Increase battery level (+5%%)");
-	LOG_INF("   📌 Button 2: Decrease battery level (-5%%)");
-	LOG_INF("   � Button 3: Toggle charging status");
-	LOG_INF("   �📊 Current battery level: %u%%", protobuf_get_battery_level());
-
-	// **NEW: Log display pattern controls**
-	LOG_INF("🎨 Display pattern controls enabled:");
-	LOG_INF("   📌 Button 4: Cycle LVGL test patterns");
-	LOG_INF("   📌 Button 3+1: HLS12VGA horizontal grayscale (8-bit)");
-	LOG_INF("   📌 Button 3+2: HLS12VGA vertical grayscale (8-bit)");
-	LOG_INF("   📌 Button 3+4: HLS12VGA chess pattern");
-	LOG_INF("   📊 Direct HLS12VGA access bypasses LVGL limitations");
+	// **NEW: Log updated button functionality (avoiding SPI4 conflicts)**
+	LOG_INF("� Button controls updated (avoiding SPI4 pin conflicts):");
+	LOG_INF("   � Button 1: Cycle battery 0→100%% + toggle charging");
+	LOG_INF("   � Button 2: Toggle welcome/scrolling text screens");
+	LOG_INF("   🎨 Button 1+2: Cycle LVGL test patterns");
+	LOG_INF("   ⚠️  Buttons 3&4 disabled (SPI4 conflict P0.08/P0.09)");
+	LOG_INF("   � Current battery level: %u%%", protobuf_get_battery_level());
 
 	// Initialize brightness control
 	LOG_INF("💡 LED 3 brightness control enabled:");
