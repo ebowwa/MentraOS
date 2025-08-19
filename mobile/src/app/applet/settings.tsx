@@ -22,7 +22,7 @@ import SelectSetting from "@/components/settings/SelectSetting"
 import MultiSelectSetting from "@/components/settings/MultiSelectSetting"
 import TitleValueSetting from "@/components/settings/TitleValueSetting"
 import LoadingOverlay from "@/components/misc/LoadingOverlay"
-import {useStatus} from "@/contexts/AugmentOSStatusProvider"
+import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import BackendServerComms from "@/backend_comms/BackendServerComms"
 import FontAwesome from "react-native-vector-icons/FontAwesome"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
@@ -32,6 +32,7 @@ import SelectWithSearchSetting from "@/components/settings/SelectWithSearchSetti
 import NumberSetting from "@/components/settings/NumberSetting"
 import TimeSetting from "@/components/settings/TimeSetting"
 import {saveSetting, loadSetting} from "@/utils/SettingsHelper"
+import {SETTINGS_KEYS} from "@/consts"
 import SettingsSkeleton from "@/components/misc/SettingsSkeleton"
 import {router, useFocusEffect, useLocalSearchParams} from "expo-router"
 import {useAppTheme} from "@/utils/useAppTheme"
@@ -45,7 +46,6 @@ import {SettingsGroup} from "@/components/settings/SettingsGroup"
 import {showAlert} from "@/utils/AlertUtils"
 import {
   askPermissionsUI,
-  canStartAppUI,
   checkPermissionsUI,
   PERMISSION_CONFIG,
   PermissionFeatures,
@@ -78,7 +78,7 @@ export default function AppSettings() {
   // Local state to track current values for each setting.
   const [settingsState, setSettingsState] = useState<{[key: string]: any}>({})
   // Get app info from status
-  const {status} = useStatus()
+  const {status} = useCoreStatus()
   const {
     appStatus,
     refreshAppStatus,
@@ -100,17 +100,28 @@ export default function AppSettings() {
     return null
   }
 
-  // IMMEDIATE TACTICAL BYPASS: Check for webviewURL in app status data and redirect instantly
+  // Check if we're in old UI mode
+  const [isOldUI, setIsOldUI] = useState(false)
+
   useEffect(() => {
-    if (appInfo?.webviewURL && fromWebView !== "true") {
-      console.log("TACTICAL BYPASS: webviewURL detected in app status, executing immediate redirect")
+    const checkUIMode = async () => {
+      const newUiSetting = await loadSetting(SETTINGS_KEYS.NEW_UI, false)
+      setIsOldUI(!newUiSetting) // Old UI is when NEW_UI is false
+    }
+    checkUIMode()
+  }, [])
+
+  // IMMEDIATE TACTICAL BYPASS: Check for webviewURL in app status data and redirect instantly (OLD UI ONLY)
+  useEffect(() => {
+    if (isOldUI && appInfo?.webviewURL && fromWebView !== "true") {
+      console.log("OLD UI: webviewURL detected in app status, executing immediate redirect")
       replace("/applet/webview", {
         webviewURL: appInfo.webviewURL,
         appName: appName,
         packageName: packageName,
       })
     }
-  }, [appInfo, fromWebView, appName, packageName, replace])
+  }, [appInfo, fromWebView, appName, packageName, replace, isOldUI])
 
   // propagate any changes in app lists when this screen is unmounted:
   useFocusEffect(
@@ -152,13 +163,12 @@ export default function AppSettings() {
         return
       }
 
-      // const healthStatus = await checkAppHealthStatus(appInfo.packageName)
-      // if (healthStatus !== "healthy") {
-      //   showAlert(translate("errors:appNotOnlineTitle"), translate("errors:appNotOnlineMessage"), [
-      //     {text: translate("common:ok")},
-      //   ])
-      //   return
-      // }
+      if (!(await checkAppHealthStatus(appInfo.packageName))) {
+        showAlert(translate("errors:appNotOnlineTitle"), translate("errors:appNotOnlineMessage"), [
+          {text: translate("common:ok")},
+        ])
+        return
+      }
 
       // ask for needed perms:
       const result = await askPermissionsUI(appInfo, theme)
@@ -326,14 +336,14 @@ export default function AppSettings() {
         }
 
         // TACTICAL BYPASS: If webviewURL exists in cached data, execute immediate redirect
-        if (cached.serverAppInfo?.webviewURL && fromWebView !== "true") {
-          replace("/applet/webview", {
-            webviewURL: cached.serverAppInfo.webviewURL,
-            appName: appName,
-            packageName: packageName,
-          })
-          return
-        }
+        // if (cached.serverAppInfo?.webviewURL && fromWebView !== "true") {
+        //   replace("/applet/webview", {
+        //     webviewURL: cached.serverAppInfo.webviewURL,
+        //     appName: appName,
+        //     packageName: packageName,
+        //   })
+        //   return
+        // }
       } else {
         setHasCachedSettings(false)
         setSettingsLoading(true)
@@ -388,10 +398,17 @@ export default function AppSettings() {
 
       // Initialize local state using the "selected" property.
       if (data.settings && Array.isArray(data.settings)) {
+        // Get cached settings to preserve user values for existing settings
+        const cached = await loadSetting(SETTINGS_CACHE_KEY(packageName), null)
+        const cachedState = cached?.settingsState || {}
+
         const initialState: {[key: string]: any} = {}
         data.settings.forEach((setting: any) => {
           if (setting.type !== "group") {
-            initialState[setting.key] = setting.selected
+            // Use cached value if it exists (user has interacted with this setting before)
+            // Otherwise use 'selected' from backend (which includes defaultValue for new settings)
+            initialState[setting.key] =
+              cachedState[setting.key] !== undefined ? cachedState[setting.key] : setting.selected
           }
         })
         setSettingsState(initialState)
@@ -407,14 +424,14 @@ export default function AppSettings() {
       setSettingsLoading(false)
 
       // TACTICAL BYPASS: Execute immediate webview redirect if webviewURL detected
-      if (data.webviewURL && fromWebView !== "true") {
-        replace("/applet/webview", {
-          webviewURL: data.webviewURL,
-          appName: appName,
-          packageName: packageName,
-        })
-        return
-      }
+      // if (data.webviewURL && fromWebView !== "true") {
+      //   replace("/applet/webview", {
+      //     webviewURL: data.webviewURL,
+      //     appName: appName,
+      //     packageName: packageName,
+      //   })
+      //   return
+      // }
     } catch (err) {
       setSettingsLoading(false)
       setHasCachedSettings(false)
@@ -510,6 +527,7 @@ export default function AppSettings() {
             label={setting.label}
             value={settingsState[setting.key]}
             options={setting.options}
+            defaultValue={setting.defaultValue}
             onValueChange={val => handleSettingChange(setting.key, val)}
           />
         )
@@ -520,6 +538,7 @@ export default function AppSettings() {
             label={setting.label}
             value={settingsState[setting.key]}
             options={setting.options}
+            defaultValue={setting.defaultValue}
             onValueChange={val => handleSettingChange(setting.key, val)}
           />
         )
@@ -578,7 +597,7 @@ export default function AppSettings() {
           leftIcon="caretLeft"
           onLeftPress={() => {
             if (serverAppInfo?.webviewURL) {
-              navigate("/applet/webview", {
+              replace("/applet/webview", {
                 webviewURL: serverAppInfo.webviewURL,
                 appName: appName as string,
                 packageName: packageName as string,
@@ -588,22 +607,22 @@ export default function AppSettings() {
             }
             goBack()
           }}
-          // RightActionComponent={
-          //   serverAppInfo?.webviewURL ? (
-          //     <TouchableOpacity
-          //       style={{marginRight: 8}}
-          //       onPress={() => {
-          // navigate("/applet/webview", {
-          //   webviewURL: serverAppInfo.webviewURL,
-          //   appName: appName as string,
-          //   packageName: packageName as string,
-          //   fromSettings: "true",
-          // })
-          //       }}>
-          //       <FontAwesome name="globe" size={22} color={theme.colors.text} />
-          //     </TouchableOpacity>
-          //   ) : undefined
-          // }
+          RightActionComponent={
+            isOldUI && serverAppInfo?.webviewURL ? (
+              <TouchableOpacity
+                style={{marginRight: 8}}
+                onPress={() => {
+                  replace("/applet/webview", {
+                    webviewURL: serverAppInfo.webviewURL,
+                    appName: appName as string,
+                    packageName: packageName as string,
+                    fromSettings: "true",
+                  })
+                }}>
+                <FontAwesome name="globe" size={22} color={theme.colors.text} />
+              </TouchableOpacity>
+            ) : undefined
+          }
         />
         <Animated.View
           style={{

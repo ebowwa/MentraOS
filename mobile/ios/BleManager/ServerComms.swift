@@ -20,7 +20,7 @@ protocol ServerCommsCallback {
     func onAppStarted(_ packageName: String)
     func onAppStopped(_ packageName: String)
     func onJsonMessage(_ message: [String: Any])
-    func onPhotoRequest(_ requestId: String, _ packageName: String, _ webhookUrl: String)
+    func onPhotoRequest(_ requestId: String, _ packageName: String, _ webhookUrl: String, _ size: String)
     func onRtmpStreamStartRequest(_ message: [String: Any])
     func onRtmpStreamStop()
     func onRtmpStreamKeepAlive(_ message: [String: Any])
@@ -505,7 +505,7 @@ class ServerComms {
             }
 
         case "microphone_state_change":
-            CoreCommsService.log("ServerComms: microphone_state_change: \(msg)")
+            // CoreCommsService.log("ServerComms: microphone_state_change: \(msg)")
             let isMicrophoneEnabled = msg["isMicrophoneEnabled"] as? Bool ?? true
             let bypassVad = msg["bypassVad"] as? Bool ?? false // NEW: Extract bypassVad field
 
@@ -605,9 +605,10 @@ class ServerComms {
             let requestId = msg["requestId"] as? String ?? ""
             let packageName = msg["packageName"] as? String ?? ""
             let webhookUrl = msg["webhookUrl"] as? String ?? ""
-            CoreCommsService.log("Received photo_request, requestId: \(requestId), packageName: \(packageName), webhookUrl: \(webhookUrl)")
+            let size = (msg["size"] as? String) ?? "medium"
+            CoreCommsService.log("Received photo_request, requestId: \(requestId), packageName: \(packageName), webhookUrl: \(webhookUrl), size: \(size)")
             if !requestId.isEmpty, !packageName.isEmpty {
-                serverCommsCallback?.onPhotoRequest(requestId, packageName, webhookUrl)
+                serverCommsCallback?.onPhotoRequest(requestId, packageName, webhookUrl, size)
             } else {
                 CoreCommsService.log("Invalid photo request: missing requestId or packageName")
             }

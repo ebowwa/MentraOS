@@ -3,12 +3,12 @@ import React from "react"
 import {View, Text, StyleSheet, TouchableOpacity} from "react-native"
 import Icon from "react-native-vector-icons/MaterialCommunityIcons"
 import {router} from "expo-router"
-import {useStatus} from "@/contexts/AugmentOSStatusProvider"
+import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import {translate} from "@/i18n"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 
 const SensingDisabledWarning: React.FC = () => {
-  const {status} = useStatus()
+  const {status} = useCoreStatus()
   const {push} = useNavigationHistory()
 
   if (status.core_info.sensing_enabled) {

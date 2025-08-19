@@ -38,6 +38,13 @@ export interface PhotoRequestOptions {
   saveToGallery?: boolean;
   /** Custom webhook URL to override the TPA's default webhookUrl */
   customWebhookUrl?: string;
+  /**
+   * Desired photo size.
+   * - small: lowest resolution, faster capture/transfer
+   * - medium: balanced default
+   * - large: highest available resolution on device
+   */
+  size?: "small" | "medium" | "large";
 }
 
 /**
@@ -177,6 +184,7 @@ export class CameraModule {
           timestamp: new Date(),
           saveToGallery: options?.saveToGallery || false,
           customWebhookUrl: options?.customWebhookUrl,
+          size: options?.size || "medium",
         };
 
         // Send request to cloud

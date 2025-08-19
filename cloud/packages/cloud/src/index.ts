@@ -52,6 +52,7 @@ import streamsRoutes from "./routes/streams.routes";
 // Load configuration from environment
 import * as mongoConnection from "./connections/mongodb.connection";
 import { logger as rootLogger } from "./services/logging/pino-logger";
+import { memoryTelemetryService } from "./services/debug/MemoryTelemetryService";
 const logger = rootLogger.child({ service: "index" });
 
 // Initialize MongoDB connection
@@ -336,6 +337,9 @@ app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 // Initialize WebSocket service
 // Initialize WebSocket servers
 websocketService.setupWebSocketServers(server);
+
+// Start memory telemetry
+memoryTelemetryService.start();
 
 if (process.env.UPTIME_SERVICE_RUNNING === "true") {
   AppUptimeService.startUptimeScheduler(); // start app uptime service scheduler

@@ -12,13 +12,13 @@ import {
   Keyboard,
 } from "react-native"
 import {Text} from "@/components/ignite"
-import {useStatus} from "@/contexts/AugmentOSStatusProvider"
+import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import BackendServerComms from "@/backend_comms/BackendServerComms"
 import {loadSetting, saveSetting} from "@/utils/SettingsHelper"
 import {SETTINGS_KEYS} from "@/consts"
 import {useFocusEffect} from "@react-navigation/native"
 import {useAppStatus} from "@/contexts/AppStatusProvider"
-import {askPermissionsUI, canStartAppUI, checkPermissionsUI, requestPermissionsUI} from "@/utils/PermissionsUtils"
+import {askPermissionsUI} from "@/utils/PermissionsUtils"
 import {PermissionFeatures} from "@/utils/PermissionsUtils"
 import showAlert from "@/utils/AlertUtils"
 import {PERMISSION_CONFIG} from "@/utils/PermissionsUtils"
@@ -53,7 +53,7 @@ export default function InactiveAppList({
     isSensingEnabled,
     checkAppHealthStatus,
   } = useAppStatus()
-  const {status} = useStatus()
+  const {status} = useCoreStatus()
   const [onboardingModalVisible, setOnboardingModalVisible] = useState(false)
   const [onboardingCompleted, setOnboardingCompleted] = useState(true)
   const [inLiveCaptionsPhase, setInLiveCaptionsPhase] = useState(false)
@@ -204,12 +204,12 @@ export default function InactiveAppList({
       return
     }
 
-    // if ((await checkAppHealthStatus(appInfo.packageName)) !== "healthy") {
-    //   showAlert(translate("errors:appNotOnlineTitle"), translate("errors:appNotOnlineMessage"), [
-    //     {text: translate("common:ok")},
-    //   ])
-    //   return
-    // }
+    if (!(await checkAppHealthStatus(appInfo.packageName))) {
+      showAlert(translate("errors:appNotOnlineTitle"), translate("errors:appNotOnlineMessage"), [
+        {text: translate("common:ok")},
+      ])
+      return
+    }
 
     // ask for needed perms:
     const result = await askPermissionsUI(appInfo, theme)
@@ -265,8 +265,8 @@ export default function InactiveAppList({
     optimisticallyStartApp(packageName)
 
     // Check if it's a standard app
-    if (appToStart?.appType === "standard") {
-      console.log("% appToStart", appToStart)
+    if (appInfo?.appType === "standard") {
+      console.log("% appToStart", appInfo)
       // Find any running standard apps
       const runningStandardApps = getRunningStandardApps(packageName)
 
@@ -324,7 +324,7 @@ export default function InactiveAppList({
           translate("home:hardwareIncompatible"),
           error.response.data.error.message ||
             translate("home:hardwareIncompatibleMessage", {
-              app: appToStart.name,
+              app: appInfo.name,
               missing: "required hardware",
             }),
           [{text: translate("common:ok")}],

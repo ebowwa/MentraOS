@@ -1,8 +1,11 @@
 package com.augmentos.asg_client.di;
 
 import android.content.Context;
+import android.util.Log;
 
 import com.augmentos.asg_client.reporting.core.IReportProvider;
+import com.augmentos.asg_client.reporting.core.ReportManager;
+import com.augmentos.asg_client.reporting.providers.CrashlyticsReportProvider;
 import com.augmentos.asg_client.reporting.providers.SentryReportProvider;
 import com.augmentos.asg_client.reporting.providers.ConsoleReportProvider;
 
@@ -15,29 +18,26 @@ import java.util.List;
  * Follows Open/Closed Principle - easy to add new providers
  */
 public class ReportingModule {
-    
-    /**
-     * Create all reporting providers
-     * Each provider handles its own initialization
-     * Follows Open/Closed Principle - easy to add new providers
-     */
-    public static List<IReportProvider> createProviders(Context context) {
-        List<IReportProvider> providers = new ArrayList<>();
-        
-        // Add Sentry provider for production monitoring
-        providers.add(new SentryReportProvider());
-        
+
+    private static final String TAG = "ReportingModule";
+
+
+    public static void initialize(Context context) {
+        Log.i(TAG, "Initializing reporting system...");
+
+        ReportManager manager = ReportManager.getInstance(context);
+
+        manager.addProvider(new SentryReportProvider());
+        //Example: manager.addProvider(new CrashlyticsReportProvider());
+
         // Add Console provider for development debugging
         if (isDebugBuild()) {
-            providers.add(new ConsoleReportProvider());
+            manager.addProvider(new ConsoleReportProvider());
         }
-        
-        // Future providers can be added here without modifying existing code
-        // providers.add(new CrashlyticsReportProvider());
-        // providers.add(new FirebaseReportProvider());
-        
-        return providers;
+
+        Log.i(TAG, "Reporting system initialized successfully");
     }
+
     
     /**
      * Check if this is a debug build

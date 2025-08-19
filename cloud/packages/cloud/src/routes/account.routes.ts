@@ -285,7 +285,7 @@ router.put(
 /**
  * Delete account immediately
  * POST /api/account/request-deletion
- * 
+ *
  * This endpoint immediately deletes the user account without email verification
  * since the mobile app already has a 3-step confirmation process
  */

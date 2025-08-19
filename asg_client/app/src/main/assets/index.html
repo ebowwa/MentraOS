@@ -203,6 +203,7 @@
         box-shadow: var(--shadow);
         transition: all 0.3s ease;
         cursor: pointer;
+        position: relative;
       }
 
       .photo-card:hover {
@@ -215,6 +216,43 @@
         height: 150px;
         object-fit: cover;
         background: #f8f9fa;
+      }
+
+      .video-indicator {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: rgba(0, 0, 0, 0.7);
+        color: white;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 0.7rem;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+
+      .video-indicator svg {
+        width: 12px;
+        height: 12px;
+      }
+
+      .file-type-badge {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        background: rgba(52, 152, 219, 0.9);
+        color: white;
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-size: 0.6rem;
+        font-weight: 600;
+        text-transform: uppercase;
+      }
+
+      .file-type-badge.video {
+        background: rgba(231, 76, 60, 0.9);
       }
 
       .photo-info {
@@ -322,6 +360,34 @@
         object-fit: contain;
       }
 
+      .modal-content {
+        position: relative;
+      }
+
+      .video-thumbnail-note {
+        position: absolute;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(0, 0, 0, 0.8);
+        color: white;
+        padding: 10px 20px;
+        border-radius: 20px;
+        font-size: 0.9rem;
+        text-align: center;
+        z-index: 10;
+      }
+
+      .video-thumbnail-note a {
+        color: #3498db;
+        text-decoration: none;
+        font-weight: bold;
+      }
+
+      .video-thumbnail-note a:hover {
+        text-decoration: underline;
+      }
+
       .modal-close {
         position: absolute;
         top: 15px;
@@ -384,6 +450,101 @@
           padding: 15px;
         }
       }
+
+      /* API Documentation Styles */
+      .api-documentation {
+        background: var(--card-background);
+        border-radius: var(--border-radius);
+        padding: 25px;
+        box-shadow: var(--shadow);
+        margin-top: 30px;
+      }
+
+      .api-documentation h2 {
+        color: var(--primary-color);
+        margin-bottom: 20px;
+        font-weight: 600;
+        text-align: center;
+      }
+
+      .api-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 20px;
+      }
+
+      .api-endpoint {
+        background: var(--background-color);
+        border-radius: var(--border-radius);
+        padding: 20px;
+        border-left: 4px solid var(--primary-color);
+      }
+
+      .api-endpoint h3 {
+        color: var(--text-color);
+        margin-bottom: 10px;
+        font-weight: 600;
+      }
+
+      .api-endpoint code {
+        background: var(--text-color);
+        color: white;
+        padding: 8px 12px;
+        border-radius: 6px;
+        font-family: "Courier New", monospace;
+        font-size: 0.9rem;
+        display: block;
+        margin: 10px 0;
+        word-break: break-all;
+      }
+
+      .api-endpoint p {
+        color: var(--text-color);
+        margin-bottom: 15px;
+        line-height: 1.5;
+      }
+
+      .api-example {
+        background: #f8f9fa;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 15px;
+        margin-top: 15px;
+      }
+
+      .api-example strong {
+        color: var(--text-color);
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+      }
+
+      .api-example pre {
+        background: var(--text-color);
+        color: white;
+        padding: 12px;
+        border-radius: 6px;
+        font-family: "Courier New", monospace;
+        font-size: 0.8rem;
+        overflow-x: auto;
+        white-space: pre-wrap;
+        word-break: break-word;
+        margin: 8px 0;
+      }
+
+      @media (max-width: 768px) {
+        .api-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .api-endpoint {
+          padding: 15px;
+        }
+
+        .api-example pre {
+          font-size: 0.7rem;
+        }
+      }
     </style>
   </head>
   <body>
@@ -414,7 +575,7 @@
 
         <div class="gallery-panel">
           <div class="gallery-header">
-            <h2>🖼️ Photo Gallery</h2>
+            <h2>🖼️ Media Gallery</h2>
             <button class="refresh-button" onclick="loadGallery()">🔄 Refresh</button>
           </div>
           <div id="galleryGrid" class="gallery-grid">
@@ -424,9 +585,121 @@
                 <circle cx="8.5" cy="8.5" r="1.5"></circle>
                 <polyline points="21,15 16,10 5,21"></polyline>
               </svg>
-              <div>No photos yet</div>
-              <div style="font-size: 0.9rem; margin-top: 10px">Take your first photo to get started!</div>
+              <div>No media files yet</div>
+              <div style="font-size: 0.9rem; margin-top: 10px">Take your first photo or video to get started!</div>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- API Documentation Section -->
+      <div class="api-documentation">
+        <h2>🔧 API Documentation</h2>
+        <div class="api-grid">
+          <div class="api-endpoint">
+            <h3>📸 Take Picture</h3>
+            <code>GET /api/take-picture</code>
+            <p>Triggers photo capture on the device</p>
+          </div>
+
+          <div class="api-endpoint">
+            <h3>🖼️ Latest Photo</h3>
+            <code>GET /api/latest-photo</code>
+            <p>Returns the most recently captured photo</p>
+          </div>
+
+          <div class="api-endpoint">
+            <h3>📚 Media Gallery</h3>
+            <code>GET /api/gallery</code>
+            <p>Returns list of all photos and videos with metadata</p>
+            <div class="api-example">
+              <strong>Response includes video information:</strong>
+              <pre>
+{
+  "photos": [
+    {
+      "name": "photo1.jpg",
+      "is_video": false,
+      "thumbnail_url": "/api/photo?file=photo1.jpg"
+    },
+    {
+      "name": "video1.mp4",
+      "is_video": true,
+      "thumbnail_url": "/api/photo?file=video1.mp4"
+    }
+  ]
+}</pre
+              >
+            </div>
+          </div>
+
+          <div class="api-endpoint">
+            <h3>🖼️ Specific Photo/Video</h3>
+            <code>GET /api/photo?file=filename.jpg</code>
+            <p>Returns a specific photo or video thumbnail by filename</p>
+            <div class="api-example">
+              <strong>Video files return thumbnails:</strong>
+              <pre>
+GET /api/photo?file=video1.mp4
+→ Returns JPEG thumbnail image</pre
+              >
+            </div>
+          </div>
+
+          <div class="api-endpoint">
+            <h3>⬇️ Download Media</h3>
+            <code>GET /api/download?file=filename.jpg</code>
+            <p>Downloads a specific photo or video file</p>
+          </div>
+
+          <div class="api-endpoint">
+            <h3>🧹 Cleanup Old Files</h3>
+            <code>GET /api/cleanup?max_age_hours=24</code>
+            <p>Deletes files older than specified hours (default: 24)</p>
+          </div>
+
+          <div class="api-endpoint">
+            <h3>🗑️ Delete Specific Files</h3>
+            <code>POST /api/delete-files</code>
+            <p>Deletes specific files by name</p>
+            <div class="api-example">
+              <strong>Request Body:</strong>
+              <pre>
+{
+  "files": ["photo1.jpg", "photo2.jpg", "photo3.jpg"]
+}</pre
+              >
+              <strong>Response:</strong>
+              <pre>
+{
+  "message": "File deletion completed",
+  "total_files": 3,
+  "successful_deletions": 2,
+  "failed_deletions": 1,
+  "total_deleted_size": 2048576,
+  "results": [
+    {
+      "file": "photo1.jpg",
+      "success": true,
+      "message": "File deleted successfully",
+      "size": 1024288
+    }
+  ]
+}</pre
+              >
+            </div>
+          </div>
+
+          <div class="api-endpoint">
+            <h3>📊 Server Status</h3>
+            <code>GET /api/status</code>
+            <p>Returns server status and file management metrics</p>
+          </div>
+
+          <div class="api-endpoint">
+            <h3>❤️ Health Check</h3>
+            <code>GET /api/health</code>
+            <p>Returns server health status</p>
           </div>
         </div>
       </div>
@@ -557,27 +830,51 @@
                             <circle cx="8.5" cy="8.5" r="1.5"></circle>
                             <polyline points="21,15 16,10 5,21"></polyline>
                         </svg>
-                        <div>No photos yet</div>
-                        <div style="font-size: 0.9rem; margin-top: 10px;">Take your first photo to get started!</div>
+                        <div>No media files yet</div>
+                        <div style="font-size: 0.9rem; margin-top: 10px;">Take your first photo or video to get started!</div>
                     </div>
                 `
           return
         }
 
         galleryGrid.innerHTML = photos
-          .map(
-            (photo, index) => `
+          .map((photo, index) => {
+            const isVideo = photo.is_video || false
+            const fileExtension = photo.name.split(".").pop().toLowerCase()
+            const isVideoByExtension = ["mp4", "avi", "mov", "wmv", "flv", "webm", "mkv", "3gp"].includes(fileExtension)
+            const isVideoFile = isVideo || isVideoByExtension
+
+            return `
                 <div class="photo-card" onclick="viewPhoto('${photo.name}', ${index})">
                     <img class="photo-image" src="/api/photo?file=${encodeURIComponent(photo.name)}"
                          alt="${photo.name}" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjE1MCIgdmlld0JveD0iMCAwIDIwMCAxNTAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMTUwIiBmaWxsPSIjRjhGOUZBIi8+CjxwYXRoIGQ9Ik04MCA3NUgxMjBWNzVIMTIwSDgwWiIgZmlsbD0iI0Q5RENEQyIvPgo8L3N2Zz4K'">
+                    
+                    ${
+                      isVideoFile
+                        ? `
+                      <div class="video-indicator">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <polygon points="5,3 19,12 5,21"></polygon>
+                        </svg>
+                        Video
+                      </div>
+                    `
+                        : ""
+                    }
+                    
+                    <div class="file-type-badge ${isVideoFile ? "video" : ""}">
+                      ${isVideoFile ? "Video" : "Image"}
+                    </div>
+                    
                     <div class="photo-info">
                         <div class="photo-name">${photo.name}</div>
                         <div class="photo-meta">
                             ${formatFileSize(photo.size)} • ${photo.modified}
+                            ${isVideoFile ? " • 🎥 Video file" : ""}
                         </div>
                         <div class="photo-actions">
                             <button class="action-button view-button" onclick="event.stopPropagation(); viewPhoto('${photo.name}', ${index})">
-                                👁️ View
+                                ${isVideoFile ? "🎥 Play" : "👁️ View"}
                             </button>
                             <button class="action-button download-button" onclick="event.stopPropagation(); downloadPhoto('${photo.name}')">
                                 ⬇️ Download
@@ -585,17 +882,42 @@
                         </div>
                     </div>
                 </div>
-            `,
-          )
+            `
+          })
           .join("")
       }
 
-      // View a photo in modal
+      // View a photo or video in modal
       function viewPhoto(filename, index) {
         const modal = document.getElementById("photoModal")
         const modalImage = document.getElementById("modalImage")
 
-        modalImage.src = `/api/photo?file=${encodeURIComponent(filename)}`
+        const isVideo = currentGallery[index] && (currentGallery[index].is_video || false)
+        const fileExtension = filename.split(".").pop().toLowerCase()
+        const isVideoByExtension = ["mp4", "avi", "mov", "wmv", "flv", "webm", "mkv", "3gp"].includes(fileExtension)
+        const isVideoFile = isVideo || isVideoByExtension
+
+        if (isVideoFile) {
+          // For videos, show thumbnail but provide download option
+          modalImage.src = `/api/photo?file=${encodeURIComponent(filename)}`
+          modalImage.alt = `Video thumbnail: ${filename}`
+
+          // Add a note that this is a video thumbnail
+          const videoNote = document.createElement("div")
+          videoNote.className = "video-thumbnail-note"
+          videoNote.innerHTML = `
+            🎥 Video thumbnail • 
+            <a href="/api/download?file=${encodeURIComponent(filename)}">
+              Download Video
+            </a>
+          `
+          modal.querySelector(".modal-content").appendChild(videoNote)
+        } else {
+          // For images, show the actual image
+          modalImage.src = `/api/photo?file=${encodeURIComponent(filename)}`
+          modalImage.alt = `Photo: ${filename}`
+        }
+
         modal.style.display = "block"
 
         // Close modal when clicking outside
@@ -610,9 +932,13 @@
       function closeModal() {
         const modal = document.getElementById("photoModal")
         modal.style.display = "none"
+
+        // Remove any video notes that were added
+        const videoNotes = modal.querySelectorAll(".video-thumbnail-note")
+        videoNotes.forEach(note => note.remove())
       }
 
-      // Download a photo
+      // Download a photo or video
       async function downloadPhoto(filename) {
         try {
           const response = await fetch(`/api/download?file=${encodeURIComponent(filename)}`)
@@ -628,13 +954,15 @@
             window.URL.revokeObjectURL(url)
             document.body.removeChild(a)
 
-            showToast(`Downloaded ${filename}`, "success")
+            const fileExtension = filename.split(".").pop().toLowerCase()
+            const isVideo = ["mp4", "avi", "mov", "wmv", "flv", "webm", "mkv", "3gp"].includes(fileExtension)
+            showToast(`Downloaded ${isVideo ? "video" : "photo"}: ${filename}`, "success")
           } else {
             throw new Error("Download failed")
           }
         } catch (error) {
-          console.error("Error downloading photo:", error)
-          showToast("Failed to download photo", "error")
+          console.error("Error downloading file:", error)
+          showToast("Failed to download file", "error")
         }
       }
 

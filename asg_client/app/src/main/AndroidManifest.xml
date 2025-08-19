@@ -3,52 +3,54 @@
     xmlns:tools="http://schemas.android.com/tools"
     package="com.augmentos.asg_client">
 
-  <uses-feature
-      android:name="android.hardware.telephony"
-      android:required="false" />
+    <uses-feature
+        android:name="android.hardware.telephony"
+        android:required="false" />
     <uses-feature
         android:name="android.hardware.camera"
         android:required="true" />
 
-  <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
-  <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
-  <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
-  <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
-  <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
-  <uses-permission android:name="android.permission.INTERNET"/>
-  <uses-permission android:name="android.permission.READ_PHONE_STATE" />
-  <uses-permission android:name="android.permission.RECORD_AUDIO"/>
-  <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
-<!--  <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>-->
-  <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
-  <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
-  <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" tools:ignore="ScopedStorage" />
-  <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <!--  <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>-->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission
+        android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
+        tools:ignore="ScopedStorage" />
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
-  <uses-permission android:name="android.permission.BLUETOOTH" />
-  <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
-  <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
-  <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
-  <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
+    <uses-permission android:name="android.permission.BLUETOOTH" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
 
-  <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
-  <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
-  <uses-permission android:name="android.permission.CAMERA" />
-  <uses-permission android:name="android.hardware.camera.full" />
-  <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.hardware.camera.full" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
 
-  <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
-  <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
 
-  <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
-  
-  <!-- Screen wake permissions -->
-  <uses-permission android:name="android.permission.WAKE_LOCK" />
-  <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+
+    <!-- Screen wake permissions -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
     <!-- BACKGROUND CAMERA FOR GLASSES -->
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
@@ -57,149 +59,160 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CAMERA" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
-  <!-- Add camera background permission -->
-  <uses-permission android:name="android.permission.CAMERA_BACKGROUND" />
+    <!-- Add camera background permission -->
+    <uses-permission android:name="android.permission.CAMERA_BACKGROUND" />
 
 
     <!-- Application node is not neccessary for libraries -->
-  <application
-      android:name=".AsgClientApplication"
-      android:usesCleartextTraffic="true"
-      >
-<!--      android:usesCleartextTraffic="true"-->
-<!--      android:icon="@mipmap/ic_launcher"-->
-<!--      android:label="@string/app_name"-->
-<!--      android:roundIcon="@mipmap/ic_launcher_round"-->
-<!--      android:supportsRtl="true"-->
-<!--      android:theme="@style/AppTheme">-->
+    <application
+        android:name=".AsgClientApplication"
+        android:usesCleartextTraffic="true">
+        <!--      android:usesCleartextTraffic="true"-->
+        <!--      android:icon="@mipmap/ic_launcher"-->
+        <!--      android:label="@string/app_name"-->
+        <!--      android:roundIcon="@mipmap/ic_launcher_round"-->
+        <!--      android:supportsRtl="true"-->
+        <!--      android:theme="@style/AppTheme">-->
 
 
-    <receiver
-        android:name=".AsgClientBootReceiver"
-        android:enabled="true"
-        android:exported="true"
-        android:directBootAware="true">
-      <intent-filter>
-        <action android:name="android.intent.action.BOOT_COMPLETED" />
-        <action android:name="android.intent.action.QUICKBOOT_POWERON" />
-        <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
-        <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
-      </intent-filter>
-    </receiver>
-    
-    <!-- Transparent bootstrap activity that starts the service -->
-    <activity
-        android:name=".BootstrapActivity"
-        android:theme="@android:style/Theme.Translucent.NoTitleBar"
-        android:excludeFromRecents="true"
-        android:taskAffinity=""
-        android:exported="false" />
+        <receiver
+            android:name=".AsgClientBootReceiver"
+            android:directBootAware="true"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+                <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
 
-    <!-- Receiver for handling restart requests from OTA updater -->
-    <receiver
-        android:name=".AsgClientRestartReceiver"
-        android:enabled="true"
-        android:exported="true">
-      <intent-filter>
-        <action android:name="com.augmentos.asg_client.ACTION_RESTART_SERVICE" />
-      </intent-filter>
-    </receiver>
+        <!-- Transparent bootstrap activity that starts the service -->
+        <activity
+            android:name=".BootstrapActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
 
-    <service
-        android:name=".AsgClientService"
-        android:enabled="true"
-        android:exported="true"
-        android:foregroundServiceType="camera|microphone">
-        <intent-filter>
-            <action android:name="com.augmentos.asg_client.ACTION_RESTART_SERVICE" />
-        </intent-filter>
-    </service>
+        <!-- Receiver for handling restart requests from OTA updater -->
+        <receiver
+            android:name=".AsgClientRestartReceiver"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.augmentos.asg_client.ACTION_RESTART_SERVICE" />
+            </intent-filter>
+        </receiver>
 
-    <service
-        android:name=".camera.CameraNeo"
-        android:enabled="true"
-        android:exported="true"
-        android:foregroundServiceType="camera|microphone" />
+        <service
+            android:name=".service.core.AsgClientService"
+            android:enabled="true"
+            android:exported="true"
+            android:foregroundServiceType="camera|microphone">
+            <intent-filter>
+                <action android:name="com.augmentos.asg_client.ACTION_RESTART_SERVICE" />
+            </intent-filter>
+        </service>
 
-    <service
-        android:name=".streaming.RtmpStreamingService"
-        android:enabled="true"
-        android:exported="true"
-        android:foregroundServiceType="camera|microphone" />
+        <service
+            android:name=".camera.CameraNeo"
+            android:enabled="true"
+            android:exported="true"
+            android:foregroundServiceType="camera|microphone" />
 
-    <service
-        android:name=".ota.OtaService"
-        android:enabled="true"
-        android:exported="false"
-        android:foregroundServiceType="dataSync" />
+        <service
+            android:name=".io.streaming.services.RtmpStreamingService"
+            android:enabled="true"
+            android:exported="true"
+            android:foregroundServiceType="camera|microphone" />
 
-      <activity
-        android:name="com.augmentos.asg_client.MainActivity"
-        android:exported="true"
-        android:theme="@style/AppTheme">
-              <intent-filter>
-        <action android:name="android.intent.action.MAIN"/>
-        <category android:name="android.intent.category.LAUNCHER"/>
-        <category android:name="android.intent.category.HOME"/>
-        <category android:name="android.intent.category.DEFAULT"/>
-      </intent-filter>
-      <intent-filter>
-        <action android:name="android.intent.action.VIEW" />
+        <service
+            android:name=".io.ota.services.OtaService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
 
-        <category android:name="android.intent.category.DEFAULT" />
-        <category android:name="android.intent.category.BROWSABLE" />
+        <activity
+            android:name="com.augmentos.asg_client.MainActivity"
+            android:exported="true"
+            android:theme="@style/AppTheme">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
 
-        <data
-            android:scheme="augmentos"
-            android:host="open" />
-      </intent-filter>
-    </activity>
+                <category android:name="android.intent.category.LAUNCHER" />
+                <category android:name="android.intent.category.HOME" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
 
-    <provider
-        android:name="androidx.core.content.FileProvider"
-        android:authorities="${applicationId}.provider"
-        android:exported="false"
-        android:grantUriPermissions="true">
-      <meta-data
-          android:name="android.support.FILE_PROVIDER_PATHS"
-          android:resource="@xml/file_provider" />
-    </provider>
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
 
-    <!-- Service health monitoring is handled by AsgClientService -->
+                <data
+                    android:host="open"
+                    android:scheme="augmentos" />
+            </intent-filter>
+        </activity>
 
-  
-    <!-- Sentry configuration - DSN will be set programmatically for security -->
-    <!-- Disable auto-init to prevent crashes when DSN is not configured -->
-    <meta-data android:name="io.sentry.auto-init" android:value="false" />
-    <!-- Add data like request headers, user ip address and device name, see https://docs.sentry.io/platforms/android/data-management/data-collected/ for more info -->
-    <meta-data android:name="io.sentry.send-default-pii" android:value="true" />
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.provider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_provider" />
+        </provider>
 
-    <!-- enable automatic breadcrumbs for user interactions (clicks, swipes, scrolls) -->
-    <meta-data android:name="io.sentry.traces.user-interaction.enable" android:value="true" />
-    <!-- enable screenshot for crashes (could contain sensitive/PII data) -->
-    <meta-data android:name="io.sentry.attach-screenshot" android:value="true" />
-    <!-- enable view hierarchy for crashes -->
-    <meta-data android:name="io.sentry.attach-view-hierarchy" android:value="true" />
+        <!-- Service health monitoring is handled by AsgClientService -->
 
-    <!-- enable the performance API by setting a sample-rate, adjust in production env -->
-    <meta-data android:name="io.sentry.traces.sample-rate" android:value="1.0" />
-</application>
 
-  <queries>
-    <intent>
-      <action android:name="android.intent.action.TTS_SERVICE" />
-    </intent>
-  </queries>
+        <!-- Sentry configuration - DSN will be set programmatically for security -->
+        <!-- Add data like request headers, user ip address and device name, see https://docs.sentry.io/platforms/android/data-management/data-collected/ for more info -->
+        <meta-data
+            android:name="io.sentry.send-default-pii"
+            android:value="true" />
 
-  <queries>
-    <intent>
-      <action android:name="AUGMENTOS_INTENT" />
-    </intent>
-  </queries>
+        <!-- enable automatic breadcrumbs for user interactions (clicks, swipes, scrolls) -->
+        <meta-data
+            android:name="io.sentry.traces.user-interaction.enable"
+            android:value="true" />
+        <!-- enable screenshot for crashes (could contain sensitive/PII data) -->
+        <meta-data
+            android:name="io.sentry.attach-screenshot"
+            android:value="true" />
+        <!-- enable view hierarchy for crashes -->
+        <meta-data
+            android:name="io.sentry.attach-view-hierarchy"
+            android:value="true" />
 
-  <queries>
-    <package android:name="com.augmentos.augmentos" />
-    <package android:name="com.augmentos.otaupdater" />
-  </queries>
+        <!-- enable the performance API by setting a sample-rate, adjust in production env -->
+        <meta-data
+            android:name="io.sentry.traces.sample-rate"
+            android:value="1.0" />
+
+        <meta-data android:name="io.sentry.auto-init" android:value="false" />
+
+    </application>
+
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.TTS_SERVICE" />
+        </intent>
+    </queries>
+
+    <queries>
+        <intent>
+            <action android:name="AUGMENTOS_INTENT" />
+        </intent>
+    </queries>
+
+    <queries>
+        <package android:name="com.augmentos.augmentos" />
+        <package android:name="com.augmentos.otaupdater" />
+    </queries>
 
 </manifest>

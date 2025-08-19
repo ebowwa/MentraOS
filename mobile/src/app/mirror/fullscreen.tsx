@@ -1,6 +1,6 @@
 import Icon from "react-native-vector-icons/MaterialIcons"
 
-import {useStatus} from "@/contexts/AugmentOSStatusProvider"
+import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import {useGlassesMirror} from "@/contexts/GlassesMirrorContext"
 import showAlert from "@/utils/AlertUtils"
 import {useAppTheme} from "@/utils/useAppTheme"
@@ -23,7 +23,7 @@ const requestMicrophonePermission = async () => {
 }
 
 export default function GlassesMirrorFullscreen() {
-  const {status} = useStatus()
+  const {status} = useCoreStatus()
   const {lastEvent} = useGlassesMirror() // From context
   const {theme} = useAppTheme()
   const insets = useSafeAreaInsets()

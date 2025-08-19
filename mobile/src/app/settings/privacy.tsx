@@ -12,7 +12,7 @@ import {
   ViewStyle,
   TextStyle,
 } from "react-native"
-import {useStatus} from "@/contexts/AugmentOSStatusProvider"
+import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import coreCommunicator from "@/bridge/CoreCommunicator"
 import {requestFeaturePermissions, PermissionFeatures, checkFeaturePermissions} from "@/utils/PermissionsUtils"
 import {
@@ -31,7 +31,7 @@ import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import PermissionButton from "@/components/settings/PermButton"
 
 export default function PrivacySettingsScreen() {
-  const {status} = useStatus()
+  const {status} = useCoreStatus()
   const [isSensingEnabled, setIsSensingEnabled] = React.useState(status.core_info.sensing_enabled)
   const [forceCoreOnboardMic, setForceCoreOnboardMic] = React.useState(status.core_info.force_core_onboard_mic)
   const [isContextualDashboardEnabled, setIsContextualDashboardEnabled] = React.useState(

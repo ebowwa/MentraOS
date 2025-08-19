@@ -96,3 +96,5 @@ expo-env.d.ts
 
 # pnpm
 pnpm-lock.yaml
+
+.env.local

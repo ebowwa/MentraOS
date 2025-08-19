@@ -221,7 +221,7 @@ export class ManagedStreamingExtension {
       { userId, packageName },
       "⏳ Waiting 3 seconds for Cloudflare live input to initialize",
     );
-    await new Promise((resolve) => setTimeout(resolve, 3000));
+    //await new Promise((resolve) => setTimeout(resolve, 3000));
 
     // Send start command to glasses with Cloudflare RTMP URL
     const startMessage: StartRtmpStream = {

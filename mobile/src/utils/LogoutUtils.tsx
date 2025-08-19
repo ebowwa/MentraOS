@@ -216,10 +216,6 @@ export class LogoutUtils {
     try {
       // Remove all core communicator event listeners
       coreCommunicator.removeAllListeners("statusUpdateReceived")
-      coreCommunicator.removeAllListeners("dataReceived")
-
-      // Remove global event listeners
-      GlobalEventEmitter.removeAllListeners("STATUS_PARSE_ERROR")
 
       // Emit a logout event for any components that need to reset
       GlobalEventEmitter.emit("USER_LOGGED_OUT")

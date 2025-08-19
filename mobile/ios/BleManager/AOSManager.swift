@@ -50,7 +50,6 @@ struct ViewState {
     //  private var cachedWhatToStream = [String]()
     private var defaultWearable: String = ""
     private var deviceName: String = ""
-    private var somethingConnected: Bool = false
     private var shouldEnableMic: Bool = false
     private var contextualDashboard = true
     private var headUpAngle = 30
@@ -64,7 +63,7 @@ struct ViewState {
     private var isSearching: Bool = false
     private var isUpdatingScreen: Bool = false
     private var alwaysOnStatusBar: Bool = false
-    private var bypassVad: Bool = false
+    private var bypassVad: Bool = true
     private var bypassVadForPCM: Bool = false // NEW: PCM subscription bypass
     private var enforceLocalTranscription: Bool = false
     private var bypassAudioEncoding: Bool = false
@@ -576,9 +575,6 @@ struct ViewState {
         Task {
             // Only enable microphone if sensing is also enabled
             var actuallyEnabled = isEnabled && self.sensingEnabled
-            if !self.somethingConnected {
-                actuallyEnabled = false
-            }
 
             let glassesHasMic = getGlassesHasMic()
 
@@ -617,11 +613,12 @@ struct ViewState {
             CoreCommsService.log("AOS: isEnabled: \(isEnabled) sensingEnabled: \(self.sensingEnabled) glassesHasMic: \(glassesHasMic)")
             CoreCommsService.log("AOS: useGlassesMic: \(useGlassesMic) useOnboardMic: \(useOnboardMic)")
             CoreCommsService.log("AOS: preferredMic: \(self.preferredMic) onboardMicUnavailable: \(self.onboardMicUnavailable)")
-            CoreCommsService.log("AOS: somethingConnected: \(self.somethingConnected)")
+            CoreCommsService.log("AOS: actuallyEnabled: \(actuallyEnabled)")
 
             // CoreCommsService.log("AOS: user enabled microphone: \(isEnabled) sensingEnabled: \(self.sensingEnabled) useOnboardMic: \(useOnboardMic) useGlassesMic: \(useGlassesMic) glassesHasMic: \(glassesHasMic) preferredMic: \(self.preferredMic) somethingConnected: \(self.somethingConnected) onboardMicUnavailable: \(self.onboardMicUnavailable)")
 
-            if self.somethingConnected {
+            // if a g1 is connected, set the mic enabled:
+            if g1Manager?.g1Ready ?? false {
                 await self.g1Manager?.setMicEnabled(enabled: useGlassesMic)
             }
 
@@ -638,32 +635,8 @@ struct ViewState {
 
         CoreCommsService.log("AOS: App started: \(packageName)")
 
-        // Check if glasses are disconnected but there is a saved pair, initiate connection
-        if !somethingConnected, !defaultWearable.isEmpty {
-            CoreCommsService.log("Found preferred wearable: \(defaultWearable)")
-
-            if !defaultWearable.isEmpty {
-                CoreCommsService.log("Auto-connecting to glasses due to app start: \(defaultWearable)")
-
-                // Always run on main thread to avoid threading issues
-                DispatchQueue.main.async { [weak self] in
-                    guard let self = self else { return }
-
-                    // Attempt to connect using saved device name
-                    if !self.deviceName.isEmpty {
-                        self.handleConnectWearable(modelName: self.defaultWearable, deviceName: self.deviceName)
-
-                    } else {
-                        CoreCommsService.log("No saved device name found for auto-connection")
-                    }
-                }
-            } else {
-                CoreCommsService.log("No preferred wearable found for auto-connection")
-            }
-        } else if defaultWearable.isEmpty {
-            CoreCommsService.log("No preferred wearable set, cannot auto-connect")
-        } else {
-            CoreCommsService.log("Glasses already connected or connecting, skipping auto-reconnection. Connected: \(somethingConnected)")
+        if !defaultWearable.isEmpty, !isSomethingConnected() {
+            handleConnectWearable(modelName: defaultWearable, deviceName: deviceName)
         }
     }
 
@@ -677,9 +650,9 @@ struct ViewState {
         liveManager?.sendJson(message)
     }
 
-    func onPhotoRequest(_ requestId: String, _ packageName: String, _ webhookUrl: String) {
-        CoreCommsService.log("AOS: onPhotoRequest: \(requestId), \(packageName), \(webhookUrl)")
-        liveManager?.requestPhoto(requestId, packageName: packageName, webhookUrl: webhookUrl.isEmpty ? nil : webhookUrl)
+    func onPhotoRequest(_ requestId: String, _ packageName: String, _ webhookUrl: String, _ size: String) {
+        CoreCommsService.log("AOS: onPhotoRequest: \(requestId), \(packageName), \(webhookUrl), size=\(size)")
+        liveManager?.requestPhoto(requestId, packageName: packageName, webhookUrl: webhookUrl.isEmpty ? nil : webhookUrl, size: size)
     }
 
     func onRtmpStreamStartRequest(_ message: [String: Any]) {
@@ -799,7 +772,7 @@ struct ViewState {
                 return
             }
 
-            if !self.somethingConnected {
+            if !self.isSomethingConnected() {
                 return
             }
 
@@ -1073,7 +1046,6 @@ struct ViewState {
         sendText(" ") // clear the screen
         Task {
             connectTask?.cancel()
-            self.somethingConnected = false
             self.g1Manager?.disconnect()
             self.liveManager?.disconnect()
             self.mach1Manager?.disconnect()
@@ -1142,6 +1114,44 @@ struct ViewState {
         // Forward to glasses if Mentra Live
         if let mentraLiveManager = liveManager {
             mentraLiveManager.sendButtonModeSetting(mode)
+        }
+
+        handleRequestStatus() // to update the UI
+        saveSettings()
+    }
+
+    private func setButtonPhotoSize(_ size: String) {
+        UserDefaults.standard.set(size, forKey: "button_photo_size")
+
+        // Forward to glasses if Mentra Live
+        if let mentraLiveManager = liveManager {
+            mentraLiveManager.sendButtonPhotoSettings()
+        }
+
+        handleRequestStatus() // to update the UI
+        saveSettings()
+    }
+
+    private func setButtonVideoSettings(width: Int, height: Int, fps: Int) {
+        UserDefaults.standard.set(width, forKey: "button_video_width")
+        UserDefaults.standard.set(height, forKey: "button_video_height")
+        UserDefaults.standard.set(fps, forKey: "button_video_fps")
+
+        // Forward to glasses if Mentra Live
+        if let mentraLiveManager = liveManager {
+            mentraLiveManager.sendButtonVideoRecordingSettings()
+        }
+
+        handleRequestStatus() // to update the UI
+        saveSettings()
+    }
+
+    private func setButtonCameraLed(_ enabled: Bool) {
+        UserDefaults.standard.set(enabled, forKey: "button_camera_led")
+
+        // Forward to glasses if Mentra Live
+        if let mentraLiveManager = liveManager {
+            mentraLiveManager.sendButtonCameraLedSetting()
         }
 
         handleRequestStatus() // to update the UI
@@ -1305,6 +1315,9 @@ struct ViewState {
             case enableContextualDashboard = "enable_contextual_dashboard"
             case setPreferredMic = "set_preferred_mic"
             case setButtonMode = "set_button_mode"
+            case setButtonPhotoSize = "set_button_photo_size"
+            case setButtonVideoSettings = "set_button_video_settings"
+            case setButtonCameraLed = "set_button_camera_led"
             case ping
             case forgetSmartGlasses = "forget_smart_glasses"
             case startApp = "start_app"
@@ -1406,6 +1419,28 @@ struct ViewState {
                         break
                     }
                     setButtonMode(mode)
+                case .setButtonPhotoSize:
+                    guard let params = params, let size = params["size"] as? String else {
+                        CoreCommsService.log("AOS: set_button_photo_size invalid params")
+                        break
+                    }
+                    setButtonPhotoSize(size)
+                case .setButtonVideoSettings:
+                    guard let params = params,
+                          let width = params["width"] as? Int,
+                          let height = params["height"] as? Int,
+                          let fps = params["fps"] as? Int
+                    else {
+                        CoreCommsService.log("AOS: set_button_video_settings invalid params")
+                        break
+                    }
+                    setButtonVideoSettings(width: width, height: height, fps: fps)
+                case .setButtonCameraLed:
+                    guard let params = params, let enabled = params["enabled"] as? Bool else {
+                        CoreCommsService.log("AOS: set_button_camera_led invalid params")
+                        break
+                    }
+                    setButtonCameraLed(enabled)
                 case .startApp:
                     guard let params = params, let target = params["target"] as? String else {
                         CoreCommsService.log("AOS: start_app invalid params")
@@ -1587,7 +1622,6 @@ struct ViewState {
         let mach1Connected = mach1Manager?.ready ?? false
         let simulatedConnected = defaultWearable == "Simulated Glasses"
         let isGlassesConnected = g1Connected || liveConnected || mach1Connected || simulatedConnected
-        somethingConnected = isGlassesConnected
         if isGlassesConnected {
             isSearching = false
         }
@@ -1645,6 +1679,13 @@ struct ViewState {
             "dashboard_depth": dashboardDepth,
             "head_up_angle": headUpAngle,
             "button_mode": buttonPressMode,
+            "button_photo_size": UserDefaults.standard.string(forKey: "button_photo_size") ?? "medium",
+            "button_camera_led": UserDefaults.standard.bool(forKey: "button_camera_led"),
+            "button_video_settings": [
+                "width": UserDefaults.standard.integer(forKey: "button_video_width") != 0 ? UserDefaults.standard.integer(forKey: "button_video_width") : 1280,
+                "height": UserDefaults.standard.integer(forKey: "button_video_height") != 0 ? UserDefaults.standard.integer(forKey: "button_video_height") : 720,
+                "fps": UserDefaults.standard.integer(forKey: "button_video_fps") != 0 ? UserDefaults.standard.integer(forKey: "button_video_fps") : 30,
+            ],
         ]
 
         let cloudConnectionStatus = serverComms.isWebSocketConnected() ? "CONNECTED" : "DISCONNECTED"
@@ -1660,7 +1701,7 @@ struct ViewState {
             "is_searching": isSearching,
             // only on if recording from glasses:
             // TODO: this isn't robust:
-            "is_mic_enabled_for_frontend": micEnabled && (preferredMic == "glasses") && somethingConnected,
+            "is_mic_enabled_for_frontend": micEnabled && (preferredMic == "glasses") && isSomethingConnected(),
             "sensing_enabled": sensingEnabled,
             "power_saving_mode": powerSavingMode,
             "always_on_status_bar": alwaysOnStatusBar,
@@ -1771,6 +1812,22 @@ struct ViewState {
         }
     }
 
+    private func isSomethingConnected() -> Bool {
+        if g1Manager?.g1Ready ?? false {
+            return true
+        }
+        if liveManager?.connectionState == .connected {
+            return true
+        }
+        if mach1Manager?.ready ?? false {
+            return true
+        }
+        if defaultWearable.contains("Simulated") {
+            return true
+        }
+        return false
+    }
+
     private func handleDeviceReady() {
         // send to the server our battery status:
         serverComms.sendBatteryStatus(level: batteryLevel, charging: false)
@@ -1789,13 +1846,19 @@ struct ViewState {
         isSearching = false
         defaultWearable = "Even Realities G1"
         handleRequestStatus()
+
+        let shouldSendBootingMessage = true
+
         // load settings and send the animation:
         Task {
             // give the glasses some extra time to finish booting:
             try? await Task.sleep(nanoseconds: 1_000_000_000) // 3 seconds
             await self.g1Manager?.setSilentMode(false) // turn off silent mode
             await self.g1Manager?.getBatteryStatus()
-            sendText("// BOOTING MENTRAOS")
+
+            if shouldSendBootingMessage {
+                sendText("// BOOTING MENTRAOS")
+            }
 
             // send loaded settings to glasses:
             self.g1Manager?.RN_getBatteryStatus()
@@ -1809,9 +1872,11 @@ struct ViewState {
             // self.g1Manager?.RN_setDashboardPosition(self.dashboardHeight, self.dashboardDepth)
             // try? await Task.sleep(nanoseconds: 400_000_000)
             //      playStartupSequence()
-            sendText("// MENTRAOS CONNECTED")
-            try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
-            sendText(" ") // clear screen
+            if shouldSendBootingMessage {
+                sendText("// MENTRAOS CONNECTED")
+                try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
+                sendText(" ") // clear screen
+            }
 
             // enable the mic if it was last on:
             // CoreCommsService.log("ENABLING MIC STATE: \(self.micEnabled)")
@@ -1949,6 +2014,7 @@ struct ViewState {
         static let preferredMic = "preferredMic"
         static let metricSystemEnabled = "metricSystemEnabled"
         static let enforceLocalTranscription = "enforceLocalTranscription"
+        static let buttonPressMode = "buttonPressMode"
     }
 
     func onStatusUpdate(_ status: [String: Any]) {
@@ -2106,40 +2172,30 @@ struct ViewState {
 
     private func loadSettings() async {
         // set default settings here:
-        sensingEnabled = true
-        powerSavingMode = false
-        contextualDashboard = true
-        bypassVad = false
-        enforceLocalTranscription = false
-        preferredMic = "glasses"
-        buttonPressMode = UserDefaults.standard.string(forKey: "button_press_mode") ?? "photo"
-        brightness = 50
-        headUpAngle = 30
-        metricSystemEnabled = false
-        autoBrightness = true
-        powerSavingMode = false
-        dashboardHeight = 4
-        dashboardDepth = 5
-        alwaysOnStatusBar = false
-        bypassAudioEncoding = false
-
+        UserDefaults.standard.register(defaults: [SettingsKeys.defaultWearable: ""])
+        UserDefaults.standard.register(defaults: [SettingsKeys.deviceName: ""])
+        UserDefaults.standard.register(defaults: [SettingsKeys.preferredMic: "phone"])
+        UserDefaults.standard.register(defaults: [SettingsKeys.contextualDashboard: true])
+        UserDefaults.standard.register(defaults: [SettingsKeys.autoBrightness: true])
         UserDefaults.standard.register(defaults: [SettingsKeys.sensingEnabled: true])
         UserDefaults.standard.register(defaults: [SettingsKeys.powerSavingMode: false])
-        UserDefaults.standard.register(defaults: [SettingsKeys.contextualDashboard: true])
-        UserDefaults.standard.register(defaults: [SettingsKeys.bypassVad: false])
-        UserDefaults.standard.register(defaults: [SettingsKeys.preferredMic: "glasses"])
-        UserDefaults.standard.register(defaults: [SettingsKeys.brightness: 50])
+        UserDefaults.standard.register(defaults: [SettingsKeys.dashboardHeight: 4])
+        UserDefaults.standard.register(defaults: [SettingsKeys.dashboardDepth: 5])
+        UserDefaults.standard.register(defaults: [SettingsKeys.alwaysOnStatusBar: false])
+        UserDefaults.standard.register(defaults: [SettingsKeys.bypassVad: true])
+        UserDefaults.standard.register(defaults: [SettingsKeys.bypassAudioEncoding: false])
         UserDefaults.standard.register(defaults: [SettingsKeys.headUpAngle: 30])
+        UserDefaults.standard.register(defaults: [SettingsKeys.brightness: 50])
         UserDefaults.standard.register(defaults: [SettingsKeys.metricSystemEnabled: false])
-        UserDefaults.standard.register(defaults: [SettingsKeys.autoBrightness: true])
         UserDefaults.standard.register(defaults: [SettingsKeys.enforceLocalTranscription: false])
+        UserDefaults.standard.register(defaults: [SettingsKeys.buttonPressMode: "photo"])
 
         let defaults = UserDefaults.standard
 
         // Load each setting with appropriate type handling
-        defaultWearable = defaults.string(forKey: SettingsKeys.defaultWearable) ?? ""
-        deviceName = defaults.string(forKey: SettingsKeys.deviceName) ?? ""
-        preferredMic = defaults.string(forKey: SettingsKeys.preferredMic) ?? "glasses"
+        defaultWearable = defaults.string(forKey: SettingsKeys.defaultWearable)!
+        deviceName = defaults.string(forKey: SettingsKeys.deviceName)!
+        preferredMic = defaults.string(forKey: SettingsKeys.preferredMic)!
         contextualDashboard = defaults.bool(forKey: SettingsKeys.contextualDashboard)
         autoBrightness = defaults.bool(forKey: SettingsKeys.autoBrightness)
         sensingEnabled = defaults.bool(forKey: SettingsKeys.sensingEnabled)
@@ -2153,6 +2209,7 @@ struct ViewState {
         brightness = defaults.integer(forKey: SettingsKeys.brightness)
         metricSystemEnabled = defaults.bool(forKey: SettingsKeys.metricSystemEnabled)
         enforceLocalTranscription = defaults.bool(forKey: SettingsKeys.enforceLocalTranscription)
+        buttonPressMode = defaults.string(forKey: SettingsKeys.buttonPressMode)!
 
         // TODO: load settings from the server
 

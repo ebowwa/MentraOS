@@ -22,8 +22,9 @@ public interface ServerCommsCallback {
      * @param requestId Unique ID for this photo request
      * @param packageName ID of the app requesting the photo
      * @param webhookUrl The webhook URL associated with the photo request
+     * @param size Requested photo size (small|medium|large)
      */
-    void onPhotoRequest(String requestId, String packageName, String webhookUrl);
+    void onPhotoRequest(String requestId, String packageName, String webhookUrl, String size);
 
     /**
      * Called when the server requests an RTMP stream

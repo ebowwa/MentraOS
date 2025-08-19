@@ -29,6 +29,8 @@ public class SentryReportProvider implements IReportProvider {
     
     @Override
     public boolean initialize(Context context) {
+        Log.i(TAG, "Initializing Sentry report provider...");
+        
         if (isInitialized) {
             Log.w(TAG, "Sentry already initialized");
             return true;
@@ -36,8 +38,10 @@ public class SentryReportProvider implements IReportProvider {
         
         try {
             // Check if Sentry is properly configured
+            Log.d(TAG, "Validating Sentry configuration...");
             if (!SentryConfig.isValidConfiguration()) {
                 Log.w(TAG, "Sentry configuration is invalid - skipping initialization");
+                SentryConfig.logConfigurationStatus();
                 return false;
             }
             
