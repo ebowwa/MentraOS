@@ -1072,7 +1072,13 @@ public class PhoneMicrophoneManager {
         };
         
         try {
-            context.registerReceiver(audioStateReceiver, filter);
+            // Use RECEIVER_NOT_EXPORTED since this is internal app functionality
+            // API 26+ requires explicit export flags for security
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                context.registerReceiver(audioStateReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
+            } else {
+                context.registerReceiver(audioStateReceiver, filter);
+            }
             isReceiverRegistered = true;
         } catch (Exception e) {
             Log.e(TAG, "Failed to register audio state receiver", e);
@@ -1196,7 +1202,13 @@ public class PhoneMicrophoneManager {
                 }
             };
             
-            context.registerReceiver(gboardReceiver, mediaFilter);
+            // Use RECEIVER_NOT_EXPORTED since this is internal app functionality
+            // API 26+ requires explicit export flags for security
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                context.registerReceiver(gboardReceiver, mediaFilter, Context.RECEIVER_NOT_EXPORTED);
+            } else {
+                context.registerReceiver(gboardReceiver, mediaFilter);
+            }
         } catch (Exception e) {
             Log.e(TAG, "Error registering for Gboard detection", e);
         }
