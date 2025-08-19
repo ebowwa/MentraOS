@@ -17,6 +17,7 @@
     "dev:setup-network": "docker network create augmentos-network-dev",
     "dev:clean": "docker compose -f docker-compose.dev.yml -p dev down -v && docker system prune -f",
     "ngrok:isaiah": "ngrok http --url=isaiah.augmentos.cloud 8002",
+    "ngrok:aryan": " ngrok http --url=aryan-cloud.ngrok.app 8002",
     "prod": "docker compose -f docker-compose.yml -p prod up -d",
     "prod:stop": "docker compose -f docker-compose.yml -p prod down",
     "prod:deploy": "bun run prod:stop && bun run prod",
