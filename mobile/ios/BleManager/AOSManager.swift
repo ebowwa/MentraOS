@@ -40,8 +40,8 @@ struct ViewState {
     @objc var g1Manager: ERG1Manager?
     @objc var liveManager: MentraLiveManager?
     @objc var mach1Manager: Mach1Manager?
-    var micManager: OnboardMicrophoneManager!
     var serverComms: ServerComms!
+    var micManager = OnboardMicrophoneManager()
 
     private var lastStatusObj: [String: Any] = [:]
 
@@ -143,7 +143,6 @@ struct ViewState {
 
     func setup() {
         CoreCommsService.log("AOS: setup()")
-        micManager = OnboardMicrophoneManager()
         serverComms.locationManager.setup()
         serverComms.mediaManager.setup()
 
@@ -695,14 +694,20 @@ struct ViewState {
             if isEnabled {
                 // Just check permissions - we no longer request them directly from Swift
                 // Permissions should already be granted via React Native UI flow
-                if !(micManager?.checkPermissions() ?? false) {
+                if !(micManager.checkPermissions()) {
                     CoreCommsService.log("Microphone permissions not granted. Cannot enable microphone.")
                     return
                 }
 
-                micManager?.startRecording()
+                let success = micManager.startRecording()
+                if !success {
+                    // fallback to glasses mic if possible:
+                    if getGlassesHasMic() {
+                        enableGlassesMic(true)
+                    }
+                }
             } else {
-                micManager?.stopRecording()
+                micManager.stopRecording()
             }
         }
     }
@@ -1603,6 +1608,10 @@ struct ViewState {
             return false
         }
         return false
+    }
+
+    private func enableGlassesMic(_: Bool) async {
+        await g1Manager?.setMicEnabled(enabled: true)
     }
 
     private func handleRequestStatus() {
