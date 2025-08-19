@@ -1,7 +1,7 @@
 /*
  * @Author       : Cole
  * @Date         : 2025-08-04 09:33:44
- * @LastEditTime : 2025-08-18 17:53:24
+ * @LastEditTime : 2025-08-19 15:28:28
  * @FilePath     : task_lc3_codec.c
  * @Description  :
  *
@@ -114,7 +114,7 @@ void task_lc3_codec_init(void *p1, void *p2, void *p3)
     // static uint8_t audio_encoded_l[PDM_PCM_REQ_BUFFER_SIZE];
     static uint16_t encoded_bytes_written_l;
     static uint16_t decoded_bytes_written_l;
-    uint8_t         lc3_frame_buffer[MAX_FRAMES_PER_PACKET][LC3_FRAME_LEN];  // 最多8帧/包
+    uint8_t         lc3_frame_buffer[MAX_FRAMES_PER_PACKET][LC3_FRAME_LEN];  
     uint8_t         frame_count = 0;
     uint8_t         max_frames_per_packet;
 
@@ -128,12 +128,12 @@ void task_lc3_codec_init(void *p1, void *p2, void *p3)
     {
         if (!get_pdm_sample(pcm_req_buffer, PDM_PCM_REQ_BUFFER_SIZE))
         {
-            ret = sw_codec_lc3_enc_run(pcm_req_buffer,          // 当前帧数据
-                                       sizeof(pcm_req_buffer),  // 当前帧数据长度
+            ret = sw_codec_lc3_enc_run(pcm_req_buffer,          
+                                       sizeof(pcm_req_buffer),  
                                        LC3_USE_BITRATE_FROM_INIT, AUDIO_CH_L,
-                                       LC3_FRAME_LEN,  // LC3 帧数据缓冲区大小
+                                       LC3_FRAME_LEN,  
                                        lc3_frame_buffer[frame_count],
-                                       &encoded_bytes_written_l);  // 实际编码输出的字节数
+                                       &encoded_bytes_written_l);  
             if (ret < 0)
             {
                 BSP_LOGE(TAG, "LC3 encoding failed with error: %d", ret);
@@ -143,13 +143,13 @@ void task_lc3_codec_init(void *p1, void *p2, void *p3)
                 BSP_LOGI(TAG, "LC3 encoding successful, bytes written: %d", encoded_bytes_written_l);
                 // BSP_LOG_BUFFER_HEX(TAG, lc3_frame_buffer[frame_count],  encoded_bytes_written_l);
                 /************************************************** */
-#if 1                                                                     // test lc3 decode
-                ret = sw_codec_lc3_dec_run(lc3_frame_buffer[frame_count],  // 当前帧数据
-                                           encoded_bytes_written_l,        // 当前帧数据长度
-                                           PDM_PCM_REQ_BUFFER_SIZE * 2,    // lc3 解码数据缓冲区大小
-                                           AUDIO_CH_L,                     // 音频通道
-                                           pcm_req_buffer1,                // PCM数据缓冲区
-                                           &decoded_bytes_written_l,       // 解码后数据长度
+#if 0   // test lc3 decode
+                ret = sw_codec_lc3_dec_run(lc3_frame_buffer[frame_count],  
+                                           encoded_bytes_written_l,       
+                                           PDM_PCM_REQ_BUFFER_SIZE * 2,    
+                                           AUDIO_CH_L,                     
+                                           pcm_req_buffer1,               
+                                           &decoded_bytes_written_l,      
                                            false);
                 if (ret < 0)
                 {
@@ -158,17 +158,7 @@ void task_lc3_codec_init(void *p1, void *p2, void *p3)
                 else
                 {
                     BSP_LOGI(TAG, "LC3 decoding successful, bytes written: %d", decoded_bytes_written_l);
-                    // static uint32_t silence_frames_left = 300;  // 3s / 10ms = 300 帧 // 测试静音
-                    // if (silence_frames_left > 0)
-                    // {
-                    //     // 每帧 160 个 int16（16kHz × 10ms）
-                    //     static int16_t zero160[PDM_PCM_REQ_BUFFER_SIZE] = {0};
-                    //     i2s_pcm_player((void *)zero160, PDM_PCM_REQ_BUFFER_SIZE, 0);
-                    //     silence_frames_left--;
-                    // }
-                    // else
                     {
-                        // 恢复正常播放
                         i2s_pcm_player((void *)pcm_req_buffer1, decoded_bytes_written_l / 2, 0);
                     }
                 }

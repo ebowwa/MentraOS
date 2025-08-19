@@ -1,11 +1,11 @@
-/***
+/*** 
  * @Author       : Cole
- * @Date         : 2025-07-31 11:52:17
- * @LastEditTime : 2025-07-31 17:01:42
+ * @Date         : 2025-08-18 19:27:06
+ * @LastEditTime : 2025-08-19 13:48:25
  * @FilePath     : bsp_icm42688p.h
- * @Description  :
+ * @Description  :/
  * @
- * @ Copyright (c) MentraOS Contributors 2025
+ * @ Copyright (c) MentraOS Contributors 2025 
  * @ SPDX-License-Identifier: Apache-2.0
  */
 
@@ -16,14 +16,14 @@
 #include <zephyr/devicetree.h>
 #include <zephyr/drivers/i2c.h>
 
-#define ICM42688P_I2C_ADDR      0x68U   /* SA0 接地 */
+#define ICM42688P_I2C_ADDR      0x68U   
 #define REG_WHO_AM_I            0x75U
 #define ICM42688P_WHO_AM_I_ID   0x47U
-#define REG_PWR_MGMT0           0x4EU   /* 电源管理 */
-#define REG_GYRO_CONFIG0        0x4FU   /* 陀螺仪配置 */
-#define REG_ACCEL_CONFIG0       0x50U   /* 加速度计配置 */
-#define REG_ACCEL_DATA_X1       0x1FU   /* 加速度 X MSB */
-#define REG_GYRO_DATA_X1        0x25U   /* 陀螺仪 X MSB */
+#define REG_PWR_MGMT0           0x4EU   
+#define REG_GYRO_CONFIG0        0x4FU  
+#define REG_ACCEL_CONFIG0       0x50U   
+#define REG_ACCEL_DATA_X1       0x1FU   
+#define REG_GYRO_DATA_X1        0x25U   
 
 extern struct device *i2c_dev_icm42688p; // I2C device
 

@@ -42,7 +42,7 @@ void bspal_icm42688p_parameter_config(void)
     /* configure：GYRO_MODE = 11 (LN), ACCEL_MODE = 11 (LN) → 0b0000 1111 = 0x0F */
     icm42688p_write_reg(REG_PWR_MGMT0, 0x0F);
     // wait for LN mode stable
-    mos_delay_ms(50); // 陀螺仪切换到 LN 模式需要 ≥45 ms 稳定 :contentReference[oaicite:4]{index=4}
+    mos_delay_ms(50); // 陀螺仪切换到 LN 模式需要 ≥45 ms 稳定 ；The gyroscope needs to be stable for at least 45 ms after switching to LN mode
 
     /* ACCEL_CONFIG0: ACCEL_UI_FS_SEL=000 (±16g), ACCEL_ODR=0110 (1 kHz) */
     icm42688p_write_reg(REG_ACCEL_CONFIG0, 0x06);

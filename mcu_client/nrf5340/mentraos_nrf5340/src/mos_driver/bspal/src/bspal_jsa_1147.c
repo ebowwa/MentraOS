@@ -1,7 +1,7 @@
 /*
  * @Author       : Cole
  * @Date         : 2025-07-31 10:40:40
- * @LastEditTime : 2025-07-31 17:13:47
+ * @LastEditTime : 2025-08-19 13:58:44
  * @FilePath     : bspal_jsa_1147.c
  * @Description  :
  *
@@ -71,6 +71,7 @@ int bspal_jsa_1147_init(void)
 {
 
     // /* 配置adc 增益
+    // config adc gain
     // 0x0: x1 (Default)
     // 0x1: x2
     // 0x2: x4
@@ -136,7 +137,7 @@ void jsa_1147_test(void)
     }
     else
     {
-        BSP_LOGI(TAG, "ERROR: 读取 ALS 失败");
+        BSP_LOGI(TAG, "ERROR: read ALS err!!!");
     }
     // k_sleep(K_SECONDS(1));
 }

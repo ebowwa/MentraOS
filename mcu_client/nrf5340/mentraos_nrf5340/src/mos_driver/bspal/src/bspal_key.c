@@ -48,13 +48,13 @@ static void click_timeout(struct k_timer *t)
     switch (click_cnt)
     {
     case 1:
-        BSP_LOGI(TAG, "Single click"); // 单击
+        BSP_LOGI(TAG, "Single click"); 
         break;
     case 2:
-        BSP_LOGI(TAG, "Double click"); // 双击
+        BSP_LOGI(TAG, "Double click"); 
         break;
     case 3:
-        BSP_LOGI(TAG, "Triple click"); // 三击
+        BSP_LOGI(TAG, "Triple click"); 
         break;
     default:
         BSP_LOGI(TAG, "%d-click", click_cnt);
@@ -64,7 +64,7 @@ static void click_timeout(struct k_timer *t)
     click_cnt = 0; // 重置多击计数; Reset multi-click count
 }
 
-/*—— 去抖定时到期 ——*/
+
 static void debounce_timeout(struct k_timer *t)
 {
     bool level = gpio_key1_read();

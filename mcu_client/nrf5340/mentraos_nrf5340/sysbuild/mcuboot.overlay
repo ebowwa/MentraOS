@@ -29,8 +29,8 @@
 	status = "disabled";
 };
 &gpio_fwd {
-	// status = "disabled";// 将管脚控制权保留在应用核
-	/delete-node/ uart;// 将管脚控制权保留在应用核
+	// status = "disabled";// 将管脚控制权保留在应用核;Keep the control of the pins within the application core
+	/delete-node/ uart;// 将管脚控制权保留在应用核; Keep the control of the pins within the application core
 };
 
 &i2c1 {

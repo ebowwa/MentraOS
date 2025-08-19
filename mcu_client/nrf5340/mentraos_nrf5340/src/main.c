@@ -481,8 +481,7 @@ static int hfclock_config_and_start(void)
     }
     return 0;
 }
-// 初始化高频时钟128Mhz运行模式
-// Initialize the high frequency clock 128 mhz operation mode
+// 初始化高频时钟128Mhz运行模式; Initialize high-frequency clock 128Mhz operation mode
 SYS_INIT(hfclock_config_and_start, POST_KERNEL, 0);
 
 int main(void)

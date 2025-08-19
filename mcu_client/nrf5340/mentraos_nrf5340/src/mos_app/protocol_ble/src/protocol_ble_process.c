@@ -1,7 +1,7 @@
 /*
  * @Author       : Cole
  * @Date         : 2025-07-31 10:40:40
- * @LastEditTime : 2025-08-01 17:17:17
+ * @LastEditTime : 2025-08-19 14:14:30
  * @FilePath     : protocol_ble_process.c
  * @Description  :
  *
@@ -84,7 +84,7 @@ void protocol_ble_process_init(void *p1, void *p2, void *p3)
             image_cache_insert(msg.stream_id, msg.image_buffer, msg.length, &msg.meta.display);
         }
 
-        /* 处理完毕，释放底层 stream 资源 */
+      
         image_stream *stream = image_stream_get(msg.stream_id);
         if (stream)
         {

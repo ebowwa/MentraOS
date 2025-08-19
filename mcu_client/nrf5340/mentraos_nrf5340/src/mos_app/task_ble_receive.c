@@ -1,7 +1,7 @@
 /*
  * @Author       : Cole
  * @Date         : 2025-07-31 10:40:40
- * @LastEditTime : 2025-08-02 15:30:15
+ * @LastEditTime : 2025-08-19 14:15:07
  * @FilePath     : task_ble_receive.c
  * @Description  :
  *
@@ -149,19 +149,6 @@ static bool decode_string(pb_istream_t *stream, const pb_field_t *field, void **
 
 void my_protobuf_handler(const uint8_t *data, size_t len)
 {
-    // mentraos_ble_DisplayText msg = mentraos_ble_DisplayText_init_zero;
-    // msg.text.funcs.decode = decode_string;
-    // msg.text.arg = text_buf; // 这里传入 text_buf 的地址
-
-    // BSP_LOGI(TAG, "Received protobuf data, len=%d", len);
-    // BSP_LOG_BUFFER_HEXDUMP(TAG, data, len, 0);
-
-    // pb_istream_t stream = pb_istream_from_buffer(data, len);
-    // if (!pb_decode(&stream, mentraos_ble_DisplayText_fields, &msg))
-    // {
-    //     BSP_LOGE(TAG, "Protobuf decode failed: %s", PB_GET_ERROR(&stream));
-    //     return;
-    // }
 
     mentraos_ble_PhoneToGlasses msg = mentraos_ble_PhoneToGlasses_init_zero;
     msg.payload.display_text.text.funcs.decode = decode_string;
@@ -177,7 +164,7 @@ void my_protobuf_handler(const uint8_t *data, size_t len)
     {
     case mentraos_ble_PhoneToGlasses_display_text_tag:
     {
-        // fallback: 直接试DisplayText
+  
         mentraos_ble_DisplayText dt = mentraos_ble_DisplayText_init_zero;
         dt.text.funcs.decode = decode_string;
         dt.text.arg = text_buf;

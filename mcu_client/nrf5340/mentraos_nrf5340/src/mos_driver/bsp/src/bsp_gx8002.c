@@ -1,7 +1,7 @@
 /*
  * @Author       : Cole
  * @Date         : 2025-07-31 10:40:40
- * @LastEditTime : 2025-08-01 16:06:08
+ * @LastEditTime : 2025-08-19 14:51:51
  * @FilePath     : bsp_gx8002.c
  * @Description  :
  *
@@ -9,34 +9,36 @@
  *  SPDX-License-Identifier: Apache-2.0
  */
 
+#include "bsp_gx8002.h"
+
+#include <zephyr/device.h>
 #include <zephyr/devicetree.h>
 #include <zephyr/drivers/gpio.h>
-#include <zephyr/device.h>
 #include <zephyr/drivers/i2c.h>
-#include "task_interrupt.h"
+
 #include "bal_os.h"
-#include "bsp_gx8002.h"
+#include "task_interrupt.h"
 
 #define TAG "BSP_GX8002"
 
-#define GX8002_I2C_SOFT_MODE 1 // 0:硬件I2C 1:软件I2C; 0:Hardware I2C 1:Software I2C`
+#define GX8002_I2C_SOFT_MODE 1  // 0:硬件I2C 1:软件I2C; 0:Hardware I2C 1:Software I2C
 
-const struct gpio_dt_spec es_power_en = GPIO_DT_SPEC_GET(DT_PATH(zephyr_user), es_power_en_gpios); // 1.8v power
-const struct gpio_dt_spec mic_pwr_en = GPIO_DT_SPEC_GET(DT_PATH(zephyr_user), mic_pwr_en_gpios);   // 0.9v power
+const struct gpio_dt_spec es_power_en = GPIO_DT_SPEC_GET(DT_PATH(zephyr_user), es_power_en_gpios);  // 1.8v power
+const struct gpio_dt_spec mic_pwr_en  = GPIO_DT_SPEC_GET(DT_PATH(zephyr_user), mic_pwr_en_gpios);   // 0.9v power
 // const struct gpio_dt_spec gx8002_int4 = GPIO_DT_SPEC_GET(DT_PATH(zephyr_user), gx8002_int4_gpios);
 struct gpio_dt_spec gx8002_int4 = GPIO_DT_SPEC_GET(DT_PATH(zephyr_user), gx8002_int4_gpios);
 
 static struct gpio_callback gx8002_int_cb_data;
-int bsp_gx8002_interrupt_init(void); // 中断初始化;Interrupt initialization
+int bsp_gx8002_interrupt_init(void);  // 中断初始化; Interrupt initialization
 
 #if GX8002_I2C_SOFT_MODE
 const struct gpio_dt_spec gx8002_i2c_sda = GPIO_DT_SPEC_GET(DT_PATH(zephyr_user), gx8002_sda_gpios);
 const struct gpio_dt_spec gx8002_i2c_scl = GPIO_DT_SPEC_GET(DT_PATH(zephyr_user), gx8002_scl_gpios);
 
-#define GX8002_SW_I2C_DELAY_US 6    // 根据总线速率微调; Adjust according to bus speed
-#define GX8002_SW_I2C_TIMEOUT 1000U // ACK 等待最大循环; Maximum loop to wait for ACK
+#define GX8002_SW_I2C_DELAY_US 6      // 根据总线速率微调; Adjust according to bus speed
+#define GX8002_SW_I2C_TIMEOUT  1000U  // ACK 等待最大循环; Maximum loop to wait for ACK
 
-/* --- GPIO 配置 & 操作 --- */
+/* --- GPIO 配置 & 操作 --- ; GPIO configuration & operation --- */
 static int gx8002_sda_out(void)
 {
     return gpio_pin_configure_dt(&gx8002_i2c_sda, GPIO_OUTPUT);
@@ -95,12 +97,12 @@ void gx8002_i2c_stop(void)
     mos_busy_wait(GX8002_SW_I2C_DELAY_US);
 }
 
-/* 发送一字节并等待 ACK */
+/* 发送一字节并等待 ACK; Send one byte and wait for ACK */
 int gx8002_write_byte(uint8_t b)
 {
     gx8002_sda_out();
     mos_busy_wait(GX8002_SW_I2C_DELAY_US);
-    // 发送 8 bit;send 8 bits
+    // 发送 8 bit; send 8 bits
     for (int i = 7; i >= 0; i--)
     {
         gx8002_scl_low();
@@ -187,7 +189,7 @@ int gx8002_i2c_write_reg(uint8_t reg, uint8_t val)
 {
     int ret;
     gx8002_i2c_start();
-    ret = gx8002_write_byte((GX8002_I2C_ADDR << 1) | 0x00); /* 写模式 */
+    ret = gx8002_write_byte((GX8002_I2C_ADDR << 1) | 0x00); /* 写模式; Write mode */
     if (ret)
         goto out;
     ret = gx8002_write_byte(reg);
@@ -227,7 +229,7 @@ out:
 int gx8002_get_version(void)
 {
     uint8_t version[4] = {0};
-    uint8_t reg = 0xA0;
+    uint8_t reg        = 0xA0;
 
     /* 1 发送版本查询命令 ; Send version query command */
     gx8002_i2c_write_reg(0xC4, 0x68);
@@ -339,12 +341,12 @@ int bsp_gx8002_init(void)
     return err;
 }
 #else
-struct device *i2c_dev_gx8002; // I2C device
+struct device *i2c_dev_gx8002;  // I2C device
 
 void gx8002_get_version(void)
 {
-    uint8_t version[4] = {0};
-    uint8_t reg = 0xA0;
+    uint8_t version[4]       = {0};
+    uint8_t reg              = 0xA0;
     uint8_t write_version[2] = {0xC4, 0x68};
 
     int rc = i2c_write(i2c_dev_gx8002, write_version, sizeof(write_version), GX8002_I2C_ADDR);
@@ -352,10 +354,9 @@ void gx8002_get_version(void)
     {
         BSP_LOGE(TAG, "I2C write reg 0x%02X failed: %d", GX8002_I2C_ADDR, rc);
     }
- 
+
     mos_delay_ms(200);
 
-  
     for (int i = 0; i < 4; i++)
     {
         int rc = i2c_write(i2c_dev_gx8002, &reg, 1, GX8002_I2C_ADDR);
@@ -371,7 +372,6 @@ void gx8002_get_version(void)
         reg += 4;
     }
 
-    
     BSP_LOGI(TAG, "GX8002 Version: %02X.%02X.%02X.%02X", version[0], version[1], version[2], version[3]);
 }
 int bsp_gx8002_init(void)
@@ -437,11 +437,10 @@ int bsp_gx8002_init(void)
 void gx8002_int_isr_enable(void)
 {
     int ret;
-    ret = gpio_pin_interrupt_configure_dt(&gx8002_int4, GPIO_INT_EDGE_FALLING); // 下边缘触发; Falling edge trigger
+    ret = gpio_pin_interrupt_configure_dt(&gx8002_int4, GPIO_INT_EDGE_FALLING);  // 下边缘触发; Falling edge trigger
     if (ret != 0)
     {
-        BSP_LOGE(TAG, "Error %d: failed to configure interrupt on pin %d",
-                 ret, gx8002_int4.pin);
+        BSP_LOGE(TAG, "Error %d: failed to configure interrupt on pin %d", ret, gx8002_int4.pin);
         return MOS_OS_ERROR;
     }
 }
@@ -451,15 +450,13 @@ int bsp_gx8002_interrupt_init(void)
     ret = gpio_pin_configure_dt(&gx8002_int4, (GPIO_INPUT | GPIO_PULL_UP));
     if (ret != 0)
     {
-        BSP_LOGE(TAG, "Error %d: failed to configure pin %d",
-                 ret, gx8002_int4.pin);
+        BSP_LOGE(TAG, "Error %d: failed to configure pin %d", ret, gx8002_int4.pin);
         return MOS_OS_ERROR;
     }
-    ret = gpio_pin_interrupt_configure_dt(&gx8002_int4, GPIO_INT_EDGE_FALLING); // 下边缘触发; Falling edge trigger
+    ret = gpio_pin_interrupt_configure_dt(&gx8002_int4, GPIO_INT_EDGE_FALLING);  // 下边缘触发; Falling edge trigger
     if (ret != 0)
     {
-        BSP_LOGE(TAG, "Error %d: failed to configure interrupt on pin %d",
-                 ret, gx8002_int4.pin);
+        BSP_LOGE(TAG, "Error %d: failed to configure interrupt on pin %d", ret, gx8002_int4.pin);
         return MOS_OS_ERROR;
     }
     gpio_init_callback(&gx8002_int_cb_data, gx8002_int_isr, BIT(gx8002_int4.pin));
