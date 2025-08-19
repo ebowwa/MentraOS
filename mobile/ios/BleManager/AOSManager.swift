@@ -534,11 +534,9 @@ struct ViewState {
     // MARK: - ServerCommsCallback Implementation
 
     func onMicrophoneStateChange(_ isEnabled: Bool, _ requiredData: [SpeechRequiredDataType], _ bypassVad: Bool) {
-        CoreCommsService.log("AOS: @@@@@@@@ changing microphone state to: \(isEnabled) with requiredData: \(requiredData) bypassVad=\(bypassVad) @@@@@@@@@@@@@@@@")
+        CoreCommsService.log("AOS: MIC: @@@@@@@@ changing microphone state to: \(isEnabled) with requiredData: \(requiredData) bypassVad=\(bypassVad) enforceLocalTranscription=\(enforceLocalTranscription) @@@@@@@@@@@@@@@@")
 
-        // NEW: Set PCM-specific bypass based on cloud command
         bypassVadForPCM = bypassVad
-        CoreCommsService.log("AOS: bypassVadForPCM set to: \(bypassVadForPCM)")
 
         if requiredData.contains(.PCM), requiredData.contains(.TRANSCRIPTION) {
             shouldSendPcmData = true
@@ -551,7 +549,6 @@ struct ViewState {
             shouldSendPcmData = false
         } else if requiredData.contains(.PCM_OR_TRANSCRIPTION) {
             // TODO: Later add bandwidth based logic
-            CoreCommsService.log("AOS: enforceLocalTranscription=\(enforceLocalTranscription)")
             if enforceLocalTranscription {
                 shouldSendTranscript = true
                 shouldSendPcmData = false
@@ -563,7 +560,7 @@ struct ViewState {
 
         currentRequiredData = requiredData
 
-        CoreCommsService.log("AOS: shouldSendPcmData=\(shouldSendPcmData), shouldSendTranscript=\(shouldSendTranscript)")
+        CoreCommsService.log("AOS: MIC: shouldSendPcmData=\(shouldSendPcmData), shouldSendTranscript=\(shouldSendTranscript)")
 
         // in any case, clear the vadBuffer:
         vadBuffer.removeAll()
