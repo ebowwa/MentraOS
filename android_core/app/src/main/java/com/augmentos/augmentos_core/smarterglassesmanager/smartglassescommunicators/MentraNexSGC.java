@@ -144,6 +144,7 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
     private final String SAVED_NEX_ID_KEY = "SAVED_Nex_ID_KEY";
 
     private boolean isDebugMode = true;
+    private boolean isLc3AudioEnabled = true;
 
     // Count of pings received from glasses (used for battery query timing)
     private int heartbeatCount = 0;
@@ -366,9 +367,11 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
         // SpeechRecAugmentos.getInstance(context).changeBypassVadForDebuggingState(true);
 
         // Initialize LC3 audio player
-        // lc3AudioPlayer = new Lc3Player(context);
-        // lc3AudioPlayer.init();
-        // lc3AudioPlayer.startPlay();
+        lc3AudioPlayer = new Lc3Player(context);
+        lc3AudioPlayer.init();
+        if (isLc3AudioEnabled) {
+            lc3AudioPlayer.startPlay();
+        }
     }
 
     private final BluetoothGattCallback mainGattCallback = createGattCallback();
@@ -3089,11 +3092,13 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
                         Log.d(TAG, "Received LC3 audio packet seq=" + sequenceNumber + ", size=" + lc3Data.length);
 
                         // Play LC3 audio directly through LC3 player
-                        if (lc3AudioPlayer != null) {
+                        if (lc3AudioPlayer != null && isLc3AudioEnabled) {
                             // Use the original packet format that LC3 player expects
                             // The original 'data' packet already has the right structure
                             lc3AudioPlayer.write(data, 0, dataLen);
                             Log.d(TAG, "Playing LC3 audio directly through LC3 player: " + dataLen + " bytes");
+                        } else if (!isLc3AudioEnabled) {
+                            Log.d(TAG, "LC3 audio disabled - skipping LC3 audio output");
                         } else {
                             Log.d(TAG, "LC3 player not available - skipping LC3 audio output");
                         }
@@ -3338,6 +3343,37 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
 
     private Boolean isDebug(Context context) {
         return BuildConfig.DEBUG;
+    }
+
+    public void setLc3AudioEnabled(boolean enabled) {
+        Log.d(TAG, "setLc3AudioEnabled: " + enabled);
+        this.isLc3AudioEnabled = enabled;
+        
+        if (lc3AudioPlayer != null) {
+            if (enabled) {
+                // Start LC3 audio player
+                try {
+                    lc3AudioPlayer.startPlay();
+                    Log.d(TAG, "LC3 audio player started");
+                } catch (Exception e) {
+                    Log.e(TAG, "Failed to start LC3 audio player", e);
+                }
+            } else {
+                // Stop LC3 audio player
+                try {
+                    lc3AudioPlayer.stopPlay();
+                    Log.d(TAG, "LC3 audio player stopped");
+                    // Re-initialize for next use
+                    lc3AudioPlayer.init();
+                } catch (Exception e) {
+                    Log.e(TAG, "Failed to stop LC3 audio player", e);
+                }
+            }
+        }
+    }
+
+    public boolean isLc3AudioEnabled() {
+        return isLc3AudioEnabled;
     }
 
     private class DisplayTextJson {

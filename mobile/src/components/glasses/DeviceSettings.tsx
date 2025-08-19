@@ -433,6 +433,9 @@ export default function DeviceSettings() {
   const [lastHeartbeatSent, setLastHeartbeatSent] = useState<number | null>(null)
   const [lastHeartbeatReceived, setLastHeartbeatReceived] = useState<number | null>(null)
 
+  // LC3 Audio Control state
+  const [lc3AudioEnabled, setLc3AudioEnabled] = useState(true)
+
   // BLE Command display state variables
   const [showFullSenderCommand, setShowFullSenderCommand] = useState(false)
   const [showFullReceiverCommand, setShowFullReceiverCommand] = useState(false)
@@ -543,6 +546,13 @@ export default function DeviceSettings() {
         },
       ])
       return
+    }
+  }
+
+  const onLc3AudioToggle = async (enabled: boolean) => {
+    setLc3AudioEnabled(enabled)
+    if (status.core_info.puck_connected && status.glasses_info?.model_name) {
+      await coreCommunicator.setLc3AudioEnabled(enabled)
     }
   }
 
@@ -1230,6 +1240,26 @@ export default function DeviceSettings() {
                 No commands received yet
               </Text>
             )}
+          </View>
+
+          <View style={themed($settingsGroup)}>
+            <Text style={[themed($subtitle), {marginBottom: theme.spacing.xs}]}>🔊 LC3 Audio Control</Text>
+            <Text style={[themed($infoText), {color: theme.colors.textDim, marginBottom: theme.spacing.sm}]}>
+              Enable or disable LC3 audio playback from glasses
+            </Text>
+
+            <ToggleSetting
+              label="LC3 Audio Playback"
+              subtitle="Play audio received from glasses through LC3 codec"
+              value={lc3AudioEnabled}
+              onValueChange={onLc3AudioToggle}
+              containerStyle={{
+                paddingHorizontal: 0,
+                paddingTop: 0,
+                paddingBottom: 0,
+                borderWidth: 0,
+              }}
+            />
           </View>
 
           <View style={themed($settingsGroup)}>

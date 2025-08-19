@@ -281,6 +281,11 @@ public class AugmentOsManagerMessageParser {
                 callback.clearDisplay();
             }
             break;
+            case "set_lc3_audio_enabled": {
+                boolean enabled = commandObject.getBoolean("enabled");
+                callback.setLc3AudioEnabled(enabled);
+            }
+            break;
             default:
                 Log.w(TAG, "Unknown command: " + command);
         }

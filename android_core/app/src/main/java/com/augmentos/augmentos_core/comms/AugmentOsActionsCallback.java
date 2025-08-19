@@ -54,6 +54,8 @@ public interface AugmentOsActionsCallback {
 
     void clearDisplay();
 
+    void setLc3AudioEnabled(boolean enabled);
+
     void handleNotificationDismissal(JSONObject dismissalData);
     void startBufferRecording();
     void stopBufferRecording();

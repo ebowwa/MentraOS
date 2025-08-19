@@ -913,6 +913,14 @@ export class CoreCommunicator extends EventEmitter {
     })
   }
 
+  async setLc3AudioEnabled(enabled: boolean) {
+    console.log("setLc3AudioEnabled", enabled)
+    return await this.sendData({
+      command: "set_lc3_audio_enabled",
+      enabled: enabled,
+    })
+  }
+
   // Buffer recording commands
   async sendStartBufferRecording() {
     return await this.sendData({

@@ -71,6 +71,7 @@ import com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses.Smart
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.BitmapJavaUtils;
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.SmartGlassesConnectionState;
 import com.augmentos.augmentos_core.smarterglassesmanager.SmartGlassesManager;
+import com.augmentos.augmentos_core.smarterglassesmanager.smartglassescommunicators.MentraNexSGC;
 import com.augmentos.augmentoslib.ThirdPartyEdgeApp;
 import com.augmentos.augmentos_core.comms.AugmentOsActionsCallback;
 import com.augmentos.augmentos_core.comms.AugmentosBlePeripheral;
@@ -3171,6 +3172,19 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             smartGlassesManager.clearDisplay();
         } else {
             Log.e(TAG, "SmartGlassesManager is null, cannot clear display");
+        }
+    }
+
+    @Override
+    public void setLc3AudioEnabled(boolean enabled) {
+        Log.d(TAG, "setLc3AudioEnabled called: " + enabled);
+        if (smartGlassesManager != null && 
+            smartGlassesManager.getSmartGlassesRepresentative() != null &&
+            smartGlassesManager.getSmartGlassesRepresentative().smartGlassesCommunicator != null &&
+            smartGlassesManager.getSmartGlassesRepresentative().smartGlassesCommunicator instanceof MentraNexSGC) {
+            ((MentraNexSGC) smartGlassesManager.getSmartGlassesRepresentative().smartGlassesCommunicator).setLc3AudioEnabled(enabled);
+        } else {
+            Log.e(TAG, "SmartGlassesManager is null or not connected to MentraNexSGC, cannot control LC3 audio");
         }
     }
 
