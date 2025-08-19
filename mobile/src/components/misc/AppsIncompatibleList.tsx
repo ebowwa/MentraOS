@@ -26,13 +26,6 @@ export default function IncompatibleAppsList() {
 
     // Check if app has compatibility info and is marked as incompatible
     const isIncompatible = app.compatibility && !app.compatibility.isCompatible
-    if (isIncompatible) {
-      console.log("🚫 INCOMPATIBLE APP DETECTED:", app.name, {
-        packageName: app.packageName,
-        compatibility: app.compatibility,
-        missingRequired: app.compatibility?.missingRequired,
-      })
-    }
     return isIncompatible
   })
 

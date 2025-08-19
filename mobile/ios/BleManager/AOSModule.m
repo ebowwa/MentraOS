@@ -52,8 +52,12 @@ RCT_EXPORT_MODULE(AOSModule);
 // Stop scanning for devices
 RCT_EXPORT_METHOD(stopScan:(RCTResponseSenderBlock)successCallback errorCallback:(RCTResponseSenderBlock)errorCallback) {
     @try {
-        // Call the Swift stopScan method
-        [self.aosManager.g1Manager RN_stopScan];
+        // Call the Swift stopScan method - check which manager is active
+        if (self.aosManager.g1Manager) {
+            [self.aosManager.g1Manager RN_stopScan];
+        } else if (self.aosManager.frameManager) {
+            [self.aosManager.frameManager RN_stopScan];
+        }
         
         if (successCallback) {
             successCallback(@[@"Scanning stopped"]);
@@ -72,7 +76,15 @@ RCT_EXPORT_METHOD(
   (RCTPromiseResolveBlock)resolve
   rejecter:(RCTPromiseRejectBlock)reject
 ) {
-  if ([self.aosManager.g1Manager RN_connectGlasses]) {
+  BOOL connected = NO;
+  
+  if (self.aosManager.g1Manager) {
+    connected = [self.aosManager.g1Manager RN_connectGlasses];
+  } else if (self.aosManager.frameManager) {
+    connected = [self.aosManager.frameManager RN_connect];
+  }
+  
+  if (connected) {
     resolve(@"connected");
   } else {
     reject(@"0", @"glasses_not_paired", nil);
@@ -98,7 +110,11 @@ RCT_EXPORT_METHOD(
 )
 {
   @try {
-    [self.aosManager.g1Manager RN_sendText:text];
+    if (self.aosManager.g1Manager) {
+      [self.aosManager.g1Manager RN_sendText:text];
+    } else if (self.aosManager.frameManager) {
+      [self.aosManager.frameManager RN_sendText:text];
+    }
     resolve(@[@"Sent text"]);
   }
   @catch(NSException *exception) {

@@ -220,7 +220,8 @@ export class MicrophoneManager {
    * This is called when subscriptions change to avoid repeated expensive lookups
    */
   private updateCachedSubscriptionState(): void {
-    const state = this.session.subscriptionManager.hasPCMTranscriptionSubscriptions();
+    const state =
+      this.session.subscriptionManager.hasPCMTranscriptionSubscriptions();
     this.cachedSubscriptionState = {
       hasPCM: state.hasPCM,
       hasTranscription: state.hasTranscription,

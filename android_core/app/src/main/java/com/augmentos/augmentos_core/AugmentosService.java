@@ -249,7 +249,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     // WiFi status for glasses that require WiFi (e.g., Mentra Live)
     private boolean glassesNeedWifiCredentials = false;
     private boolean glassesWifiConnected = false;
-    
+
     // Track current foreground service type
     private int currentForegroundServiceType = ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC;
     private String glassesWifiSsid = "";
@@ -340,7 +340,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                         playStartupSequenceOnSmartGlasses();
                         asrPlanner.updateAsrLanguages();
                         ServerComms.getInstance().requestSettingsFromServer();
-                        
+
                         // Upgrade service type to avoid Android 15's 6-hour dataSync timeout
                         upgradeForegroundServiceType();
                     } else if (connectionState == SmartGlassesConnectionState.DISCONNECTED) {
@@ -1570,6 +1570,16 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             }
             glassesSettings.put("head_up_angle", headUpAngle);
             glassesSettings.put("button_mode", SmartGlassesManager.getButtonPressMode(this));
+            glassesSettings.put("button_photo_size", SmartGlassesManager.getButtonPhotoSize(this));
+            glassesSettings.put("button_camera_led", SmartGlassesManager.getButtonCameraLed(this));
+            
+            // Add button video settings as an object
+            JSONObject buttonVideoSettings = new JSONObject();
+            buttonVideoSettings.put("width", SmartGlassesManager.getButtonVideoWidth(this));
+            buttonVideoSettings.put("height", SmartGlassesManager.getButtonVideoHeight(this));
+            buttonVideoSettings.put("fps", SmartGlassesManager.getButtonVideoFps(this));
+            glassesSettings.put("button_video_settings", buttonVideoSettings);
+            
             status.put("glasses_settings", glassesSettings);
 
             // Adding OTA progress information
@@ -1766,12 +1776,12 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             }
 
             @Override
-            public void onPhotoRequest(String requestId, String appId, String webhookUrl) {
-                Log.d(TAG, "Photo request received: requestId=" + requestId + ", appId=" + appId + ", webhookUrl=" + webhookUrl);
+            public void onPhotoRequest(String requestId, String appId, String webhookUrl, String size) {
+                Log.d(TAG, "Photo request received: requestId=" + requestId + ", appId=" + appId + ", webhookUrl=" + webhookUrl + ", size=" + size);
 
                 // Forward the request to the smart glasses manager
                 if (smartGlassesManager != null) {
-                    boolean requestSent = smartGlassesManager.requestPhoto(requestId, appId, webhookUrl);
+                    boolean requestSent = smartGlassesManager.requestPhoto(requestId, appId, webhookUrl, size);
                     if (!requestSent) {
                         Log.e(TAG, "Failed to send photo request to glasses");
                     }
@@ -2023,7 +2033,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         JSONObject status = generateStatusJson();
         blePeripheral.sendDataToAugmentOsManager(status.toString());
     }
-    
+
     /**
      * Upgrades the foreground service type to include connectedDevice when glasses are connected.
      * This avoids the 6-hour dataSync timeout on Android 15.
@@ -2032,29 +2042,29 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
             return; // Service types not required before Android Q
         }
-        
+
         // Check if we're already using connectedDevice type
-        int desiredType = ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC | 
+        int desiredType = ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC |
                          ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE;
-        
+
         if (currentForegroundServiceType == desiredType) {
             Log.d(TAG, "Already using connectedDevice service type");
             return;
         }
-        
+
         // Check if we have Bluetooth permissions (required for connectedDevice type)
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) 
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT)
                 != PackageManager.PERMISSION_GRANTED) {
             Log.w(TAG, "Cannot upgrade to connectedDevice type - missing BLUETOOTH_CONNECT permission");
             return;
         }
-        
+
         try {
             // Upgrade the service type by calling startForeground again
-            startForeground(AUGMENTOS_NOTIFICATION_ID, 
-                    buildSharedForegroundNotification(this), 
+            startForeground(AUGMENTOS_NOTIFICATION_ID,
+                    buildSharedForegroundNotification(this),
                     desiredType);
-            
+
             currentForegroundServiceType = desiredType;
             Log.d(TAG, "Successfully upgraded foreground service type to include connectedDevice");
         } catch (Exception e) {
@@ -2154,6 +2164,12 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                 mentraPrefs.edit().putString("LastConnectedDeviceName", deviceName).apply();
                 Log.d("AugmentOsService", "Saved Mentra Live device name: " + deviceName);
             }
+            else if (modelName.equals("Brilliant Labs Frame")) {
+                // Save Frame device name in its preferences
+                SharedPreferences framePrefs = getSharedPreferences("FramePrefs", Context.MODE_PRIVATE);
+                framePrefs.edit().putString("LastFrameDeviceName", deviceName).apply();
+                Log.d("AugmentOsService", "Saved Frame device name: " + deviceName);
+            }
         }
 
         executeOnceSmartGlassesManagerReady(() -> {
@@ -2187,6 +2203,9 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         // Clear MentraLive device name preference
         SharedPreferences mentraPrefs = getSharedPreferences("MentraLivePrefs", Context.MODE_PRIVATE);
         mentraPrefs.edit().remove("LastConnectedDeviceName").apply();
+
+        SharedPreferences framePrefs = getSharedPreferences("FramePrefs", Context.MODE_PRIVATE);
+        framePrefs.edit().remove("LastFrameDeviceName").apply();
         Log.d("AugmentOsService", "Cleared MentraLive stored device name");
 
         brightnessLevel = null;
@@ -2385,12 +2404,12 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
 
             Log.d(TAG, "🚨 NOTIFICATION DISMISSED: " + appName + " - " + title);
             Log.d(TAG, "📝 Dismissal details - Text: " + text + ", Key: " + notificationKey);
-            
+
             // Send dismissal to server via ServerComms
             String uuid = java.util.UUID.randomUUID().toString();
             ServerComms.getInstance().sendPhoneNotificationDismissal(uuid, appName, title, text, notificationKey);
             Log.d(TAG, "📡 Sent notification dismissal to server - UUID: " + uuid);
-            
+
         } catch (JSONException e) {
             Log.e(TAG, "Error parsing notification dismissal data", e);
         }
@@ -2572,10 +2591,46 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         Log.d("AugmentOsService", "Setting button mode: " + mode);
         // Save locally
         SmartGlassesManager.setButtonPressMode(this, mode);
-        
+
         // Send to glasses if connected
         if (smartGlassesManager != null && smartGlassesManagerBound) {
             smartGlassesManager.sendButtonModeSetting(mode);
+        }
+    }
+
+    @Override
+    public void setButtonPhotoSize(String size) {
+        Log.d("AugmentOsService", "Setting button photo size: " + size);
+        // Save locally
+        SmartGlassesManager.setButtonPhotoSize(this, size);
+
+        // Send to glasses if connected
+        if (smartGlassesManager != null && smartGlassesManagerBound) {
+            smartGlassesManager.sendButtonPhotoSettings(size);
+        }
+    }
+
+    @Override
+    public void setButtonVideoSettings(int width, int height, int fps) {
+        Log.d("AugmentOsService", "Setting button video settings: " + width + "x" + height + "@" + fps);
+        // Save locally
+        SmartGlassesManager.setButtonVideoSettings(this, width, height, fps);
+
+        // Send to glasses if connected
+        if (smartGlassesManager != null && smartGlassesManagerBound) {
+            smartGlassesManager.sendButtonVideoRecordingSettings(width, height, fps);
+        }
+    }
+
+    @Override
+    public void setButtonCameraLed(boolean enabled) {
+        Log.d("AugmentOsService", "Setting button camera LED: " + enabled);
+        // Save locally
+        SmartGlassesManager.setButtonCameraLed(this, enabled);
+
+        // Send to glasses if connected
+        if (smartGlassesManager != null && smartGlassesManagerBound) {
+            smartGlassesManager.sendButtonCameraLedSetting(enabled);
         }
     }
 

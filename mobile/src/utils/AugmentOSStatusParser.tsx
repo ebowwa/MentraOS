@@ -43,6 +43,12 @@ export interface Glasses {
   bluetooth_name?: string
 }
 
+export interface ButtonVideoSettings {
+  width: number
+  height: number
+  fps: number
+}
+
 interface GlassesSettings {
   brightness: number
   auto_brightness: boolean
@@ -50,6 +56,8 @@ interface GlassesSettings {
   dashboard_height: number
   dashboard_depth: number
   button_mode?: string
+  button_photo_size?: string // 'small' | 'medium' | 'large'
+  button_video_settings?: ButtonVideoSettings
 }
 
 interface WifiConnection {
@@ -133,6 +141,12 @@ export class AugmentOSParser {
       dashboard_depth: 5,
       head_up_angle: 30,
       button_mode: "photo",
+      button_photo_size: "medium",
+      button_video_settings: {
+        width: 1280,
+        height: 720,
+        fps: 30,
+      },
     },
     wifi: {is_connected: false, ssid: "", signal_strength: 0},
     gsm: {is_connected: false, carrier: "", signal_strength: 0},
@@ -187,6 +201,12 @@ export class AugmentOSParser {
       dashboard_depth: 5,
       head_up_angle: 20,
       button_mode: "photo",
+      button_photo_size: "medium",
+      button_video_settings: {
+        width: 1280,
+        height: 720,
+        fps: 30,
+      },
     },
     wifi: {is_connected: true, ssid: "TP-LINK69", signal_strength: 100},
     gsm: {is_connected: false, carrier: "", signal_strength: 0},
@@ -266,6 +286,12 @@ export class AugmentOSParser {
           dashboard_depth: status.glasses_settings.dashboard_depth ?? 5,
           head_up_angle: status.glasses_settings.head_up_angle ?? 30,
           button_mode: status.glasses_settings.button_mode ?? "photo",
+          button_photo_size: status.glasses_settings.button_photo_size ?? "medium",
+          button_video_settings: status.glasses_settings.button_video_settings ?? {
+            width: 1280,
+            height: 720,
+            fps: 30,
+          },
         },
         wifi: status.wifi ?? AugmentOSParser.defaultStatus.wifi,
         gsm: status.gsm ?? AugmentOSParser.defaultStatus.gsm,

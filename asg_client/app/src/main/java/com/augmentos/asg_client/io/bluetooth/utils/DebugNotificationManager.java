@@ -22,11 +22,11 @@ public class DebugNotificationManager {
     private static final int NOTIFICATION_ID_DEVICE_TYPE = 22348;
     private static final int NOTIFICATION_ID_MTU = 22349;
     private static final int NOTIFICATION_ID_ADVERTISING = 22350;
+    private static final int NOTIFICATION_ID_GENERAL = 22351; // Fixed ID for general notifications
     private static final String CHANNEL_ID = "asg_bluetooth_debug_channel";
     
     private final Context context;
     private final NotificationManager notificationManager;
-    private int notificationCount = 0;
     
     /**
      * Create a new DebugNotificationManager
@@ -60,7 +60,16 @@ public class DebugNotificationManager {
     public void showDeviceTypeNotification(boolean isConnected) {
         String title = "Device Type";
         String message = isConnected ? "Device connected" : "Device disconnected";
-        showNotification(title, message);
+        
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
+                .setSmallIcon(android.R.drawable.ic_dialog_info)
+                .setContentTitle(title)
+                .setContentText(message)
+                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .setAutoCancel(true);
+        
+        // Use dedicated device type notification ID
+        notificationManager.notify(NOTIFICATION_ID_DEVICE_TYPE, builder.build());
     }
     
     /**
@@ -74,7 +83,9 @@ public class DebugNotificationManager {
                 .setPriority(NotificationCompat.PRIORITY_LOW)
                 .setAutoCancel(true);
         
-        notificationManager.notify(NOTIFICATION_ID_BASE + notificationCount++, builder.build());
+        // Use a fixed notification ID to prevent accumulating notifications
+        // This will replace any existing general notification
+        notificationManager.notify(NOTIFICATION_ID_GENERAL, builder.build());
     }
     
     /**
@@ -83,7 +94,16 @@ public class DebugNotificationManager {
     public void showAdvertisingNotification(String deviceName) {
         String title = "Bluetooth Advertising";
         String message = "Advertising as: " + deviceName;
-        showNotification(title, message);
+        
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
+                .setSmallIcon(android.R.drawable.ic_dialog_info)
+                .setContentTitle(title)
+                .setContentText(message)
+                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .setAutoCancel(true);
+        
+        // Use dedicated advertising notification ID
+        notificationManager.notify(NOTIFICATION_ID_ADVERTISING, builder.build());
     }
     
     /**
@@ -99,7 +119,16 @@ public class DebugNotificationManager {
     public void showBluetoothStateNotification(boolean isConnected) {
         String title = "Bluetooth State";
         String message = isConnected ? "Bluetooth connected" : "Bluetooth disconnected";
-        showNotification(title, message);
+        
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
+                .setSmallIcon(android.R.drawable.ic_dialog_info)
+                .setContentTitle(title)
+                .setContentText(message)
+                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .setAutoCancel(true);
+        
+        // Use dedicated bluetooth state notification ID
+        notificationManager.notify(NOTIFICATION_ID_BT_STATE, builder.build());
     }
     
     /**

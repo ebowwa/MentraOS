@@ -221,17 +221,25 @@ export class AsgCameraApiClient {
   }
 
   /**
-   * Get gallery photos from the server
+   * Get gallery photos from the server with optional pagination
    */
-  async getGallery(): Promise<GalleryResponse> {
-    console.log(`[ASG Camera API] getGallery called`)
+  async getGallery(limit?: number, offset?: number): Promise<GalleryResponse> {
+    console.log(`[ASG Camera API] getGallery called with limit=${limit}, offset=${offset}`)
     console.log(`[ASG Camera API] Current baseUrl: ${this.baseUrl}`)
-    console.log(`[ASG Camera API] Full gallery URL: ${this.baseUrl}/api/gallery`)
+
+    // Build URL with optional query parameters
+    let galleryUrl = `${this.baseUrl}/api/gallery`
+    const params = new URLSearchParams()
+    if (limit !== undefined) params.append("limit", limit.toString())
+    if (offset !== undefined) params.append("offset", offset.toString())
+    if (params.toString()) galleryUrl += `?${params.toString()}`
+
+    console.log(`[ASG Camera API] Full gallery URL: ${galleryUrl}`)
 
     // Use browser-like headers since we know the browser works
     try {
       console.log(`[ASG Camera API] Making direct fetch to gallery endpoint`)
-      const response = await fetch(`${this.baseUrl}/api/gallery`, {
+      const response = await fetch(galleryUrl, {
         method: "GET",
         headers: {
           "Accept": "application/json",
@@ -259,7 +267,7 @@ export class AsgCameraApiClient {
 
       // Handle the exact response format we see from browser
       if (data && data.status === "success" && data.data?.photos) {
-        console.log(`[ASG Camera API] Found ${data.data.photos.length} photos`)
+        console.log(`[ASG Camera API] Found ${data.data.photos.length} photos (total: ${data.data.total_count})`)
 
         // Map photos to ensure proper URL construction
         const photos = data.data.photos.map((photo: any) => ({
@@ -270,7 +278,14 @@ export class AsgCameraApiClient {
 
         return {
           status: "success",
-          data: {photos},
+          data: {
+            photos,
+            total_count: data.data.total_count,
+            returned_count: data.data.returned_count,
+            has_more: data.data.has_more,
+            offset: data.data.offset,
+            limit: data.data.limit,
+          },
         }
       } else {
         console.log(`[ASG Camera API] Invalid response structure:`, data)
@@ -285,19 +300,26 @@ export class AsgCameraApiClient {
   /**
    * Get the gallery photos array with proper URL construction
    */
-  async getGalleryPhotos(): Promise<PhotoInfo[]> {
-    console.log(`[ASG Camera API] Getting gallery photos...`)
+  async getGalleryPhotos(
+    limit?: number,
+    offset?: number,
+  ): Promise<{
+    photos: PhotoInfo[]
+    hasMore: boolean
+    totalCount: number
+  }> {
+    console.log(`[ASG Camera API] Getting gallery photos with limit=${limit}, offset=${offset}...`)
     try {
-      const response = await this.getGallery()
+      const response = await this.getGallery(limit, offset)
       console.log(`[ASG Camera API] Gallery response:`, response)
 
       if (!response.data || !response.data.photos) {
         console.warn(`[ASG Camera API] Invalid gallery response structure:`, response)
-        return []
+        return {photos: [], hasMore: false, totalCount: 0}
       }
 
       const photos = response.data.photos
-      console.log(`[ASG Camera API] Found ${photos.length} photos`)
+      console.log(`[ASG Camera API] Found ${photos.length} photos (total: ${response.data.total_count})`)
 
       // Ensure each photo has proper URLs and detect AVIF files
       const processedPhotos = photos.map(photo => {
@@ -313,7 +335,11 @@ export class AsgCameraApiClient {
       })
 
       console.log(`[ASG Camera API] Processed photos:`, processedPhotos)
-      return processedPhotos
+      return {
+        photos: processedPhotos,
+        hasMore: response.data.has_more || false,
+        totalCount: response.data.total_count || photos.length,
+      }
     } catch (error) {
       console.error(`[ASG Camera API] Error getting gallery photos:`, error)
       throw error
@@ -544,11 +570,12 @@ export class AsgCameraApiClient {
   }
 
   /**
-   * Batch sync files from server
+   * Batch sync files from server with controlled concurrency
    */
   async batchSyncFiles(
     files: PhotoInfo[],
     includeThumbnails: boolean = false,
+    onProgress?: (current: number, total: number, fileName: string) => void,
   ): Promise<{
     downloaded: PhotoInfo[]
     failed: string[]
@@ -560,40 +587,41 @@ export class AsgCameraApiClient {
       total_size: 0,
     }
 
-    // Process files in small batches to avoid overwhelming the server
-    const batchSize = 3
-    for (let i = 0; i < files.length; i += batchSize) {
-      const batch = files.slice(i, i + batchSize)
+    // Process files sequentially to avoid overwhelming the network
+    // This is more reliable, especially on slower connections
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i]
+
+      // Report progress if callback provided
+      if (onProgress) {
+        onProgress(i + 1, files.length, file.name)
+      }
 
       try {
-        const batchPromises = batch.map(async file => {
-          try {
-            const fileData = await this.downloadFile(file.name, includeThumbnails)
-            results.total_size += file.size
-            // Combine file info with downloaded file paths
-            return {
-              ...file,
-              filePath: fileData.filePath,
-              thumbnailPath: fileData.thumbnailPath,
-              mime_type: fileData.mime_type || file.mime_type,
-            }
-          } catch (error) {
-            console.error(`Failed to download ${file.name}:`, error)
-            results.failed.push(file.name)
-            return null
-          }
-        })
+        console.log(`[ASG Camera API] Downloading file ${i + 1}/${files.length}: ${file.name}`)
 
-        const batchResults = await Promise.all(batchPromises)
-        results.downloaded.push(...(batchResults.filter(Boolean) as PhotoInfo[]))
+        const fileData = await this.downloadFile(file.name, includeThumbnails)
+        results.total_size += file.size
 
-        // Small delay between batches
-        if (i + batchSize < files.length) {
-          await new Promise(resolve => setTimeout(resolve, 100))
+        // Combine file info with downloaded file paths
+        const downloadedFile = {
+          ...file,
+          filePath: fileData.filePath,
+          thumbnailPath: fileData.thumbnailPath,
+          mime_type: fileData.mime_type || file.mime_type,
+        }
+
+        results.downloaded.push(downloadedFile)
+        console.log(`[ASG Camera API] Successfully downloaded: ${file.name}`)
+
+        // Small delay between downloads to avoid overwhelming the server
+        // Shorter delay than before since we're already sequential
+        if (i < files.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 50))
         }
       } catch (error) {
-        console.error(`Batch ${i / batchSize + 1} failed:`, error)
-        results.failed.push(...batch.map(f => f.name))
+        console.error(`[ASG Camera API] Failed to download ${file.name}:`, error)
+        results.failed.push(file.name)
       }
     }
 

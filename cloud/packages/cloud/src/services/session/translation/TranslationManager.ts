@@ -756,9 +756,8 @@ export class TranslationManager {
   ): Promise<void> {
     try {
       // Get subscribed apps
-      const subscribedApps = this.userSession.subscriptionManager.getSubscribedApps(
-        subscription,
-      );
+      const subscribedApps =
+        this.userSession.subscriptionManager.getSubscribedApps(subscription);
 
       this.logger.debug(
         {

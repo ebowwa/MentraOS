@@ -729,7 +729,7 @@ public class ServerComms {
                     requiredData.add(SpeechRequiredDataType.PCM);
                 }
 
-                Log.d(TAG, "Received microphone_state_change message. enabled=" + isMicrophoneEnabled + 
+                Log.d(TAG, "Received microphone_state_change message. enabled=" + isMicrophoneEnabled +
                       " requiredData=" + requiredData + " bypassVad=" + bypassVad);
                 if (serverCommsCallback != null)
                     serverCommsCallback.onMicrophoneStateChange(isMicrophoneEnabled, requiredData, bypassVad); // NEW: Pass bypassVad
@@ -739,9 +739,10 @@ public class ServerComms {
                 String requestId = msg.optString("requestId");
                 String appId = msg.optString("appId");
                 String webhookUrl = msg.optString("webhookUrl", "");
-                Log.d(TAG, "Received photo_request, requestId: " + requestId + ", appId: " + appId + ", webhookUrl: " + webhookUrl);
+                String size = msg.optString("size", "medium");
+                Log.d(TAG, "Received photo_request, requestId: " + requestId + ", appId: " + appId + ", webhookUrl: " + webhookUrl + ", size: " + size);
                 if (serverCommsCallback != null && !requestId.isEmpty() && !appId.isEmpty()) {
-                    serverCommsCallback.onPhotoRequest(requestId, appId, webhookUrl);
+                    serverCommsCallback.onPhotoRequest(requestId, appId, webhookUrl, size);
                 } else {
                     Log.e(TAG, "Invalid photo request: missing requestId or appId");
                 }
