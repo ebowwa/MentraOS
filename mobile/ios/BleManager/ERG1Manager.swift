@@ -827,7 +827,7 @@ enum GlassesError: Error {
                 let chunk = chunks[i]
 
                 let firstFewBytes = String(Data(chunk).hexEncodedString().prefix(16))
-                CoreCommsService.log("SEND (\(side)) \(firstFewBytes)")
+                // CoreCommsService.log("SEND (\(side)) \(firstFewBytes)")
                 await sendCommandToSideWithoutResponse(chunk, side: side)
                 try? await Task.sleep(nanoseconds: UInt64(cmd.chunkTimeMs) * 1_000_000) // 8ms
             }
@@ -850,7 +850,7 @@ enum GlassesError: Error {
             }
 
             let firstFewBytes = String(Data(lastChunk).hexEncodedString().prefix(16))
-            CoreCommsService.log("SEND (\(side)) \(firstFewBytes)")
+            // CoreCommsService.log("SEND (\(side)) \(firstFewBytes)")
 
 //      if (lastChunk[0] == 0x4E) {
 //        sequenceNumber = Int(lastChunk[1])
@@ -965,7 +965,7 @@ enum GlassesError: Error {
         let side = peripheral == leftPeripheral ? "L" : "R"
         let key = sequenceNumber == -1 ? side : "\(side)-\(sequenceNumber)"
 
-        CoreCommsService.log("G1: ACK received for \(key)")
+        // CoreCommsService.log("G1: ACK received for \(key)")
 
         // Resume any pending ACK continuation for this side (thread-safe)
         var continuation: CheckedContinuation<Bool, Never>?
@@ -993,7 +993,7 @@ enum GlassesError: Error {
 
         let side = peripheral == leftPeripheral ? "L" : "R"
         let s = peripheral == leftPeripheral ? "L" : "R"
-        CoreCommsService.log("G1: RECV (\(s)) \(data.hexEncodedString())")
+        // CoreCommsService.log("G1: RECV (\(s)) \(data.hexEncodedString())")
 
         switch Commands(rawValue: command) {
         case .BLE_REQ_INIT:

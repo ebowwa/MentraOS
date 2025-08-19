@@ -201,7 +201,7 @@ class OnboardMicrophoneManager {
             }
         }
 
-        CoreCommsService.log(routeDescription)
+        // CoreCommsService.log(routeDescription)
     }
 
     // MARK: - Private Helpers
@@ -258,7 +258,7 @@ class OnboardMicrophoneManager {
             try audioSession?.setCategory(
                 .playAndRecord,
                 mode: .default,
-                options: [.allowBluetooth, .defaultToSpeaker]
+                options: [.allowBluetooth, .defaultToSpeaker, .mixWithOthers]
             )
 
             // Set preferred input if available
@@ -321,7 +321,7 @@ class OnboardMicrophoneManager {
 
         guard let converter = converter else {
             CoreCommsService.log("MIC: converter is nil")
-            audioEngine = nil
+            // audioEngine = nil
             return false
         }
 

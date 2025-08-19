@@ -107,7 +107,7 @@ struct ViewState {
     private var shouldSendTranscript = false
 
     override init() {
-        CoreCommsService.log(">>>>> AOSManager init")
+        CoreCommsService.log("AOS: init()")
         vad = SileroVADStrategy()
         serverComms = ServerComms.getInstance()
         super.init()
@@ -142,6 +142,7 @@ struct ViewState {
     // MARK: - Public Methods (for React Native)
 
     func setup() {
+        CoreCommsService.log("AOS: setup()")
         micManager = OnboardMicrophoneManager()
         serverComms.locationManager.setup()
         serverComms.mediaManager.setup()
@@ -560,7 +561,7 @@ struct ViewState {
 
         currentRequiredData = requiredData
 
-        CoreCommsService.log("AOS: MIC: shouldSendPcmData=\(shouldSendPcmData), shouldSendTranscript=\(shouldSendTranscript)")
+        // CoreCommsService.log("AOS: MIC: shouldSendPcmData=\(shouldSendPcmData), shouldSendTranscript=\(shouldSendTranscript)")
 
         // in any case, clear the vadBuffer:
         vadBuffer.removeAll()
@@ -604,12 +605,12 @@ struct ViewState {
             useGlassesMic = actuallyEnabled && useGlassesMic
             useOnboardMic = actuallyEnabled && useOnboardMic
 
-            CoreCommsService.log(
-                "AOS: MIC: isEnabled: \(isEnabled) sensingEnabled: \(self.sensingEnabled) useOnboardMic: \(useOnboardMic) " +
-                    "useGlassesMic: \(useGlassesMic) glassesHasMic: \(glassesHasMic) preferredMic: \(self.preferredMic) " +
-                    "somethingConnected: \(isSomethingConnected()) onboardMicUnavailable: \(self.onboardMicUnavailable)" +
-                    "actuallyEnabled: \(actuallyEnabled)"
-            )
+            // CoreCommsService.log(
+            //     "AOS: MIC: isEnabled: \(isEnabled) sensingEnabled: \(self.sensingEnabled) useOnboardMic: \(useOnboardMic) " +
+            //         "useGlassesMic: \(useGlassesMic) glassesHasMic: \(glassesHasMic) preferredMic: \(self.preferredMic) " +
+            //         "somethingConnected: \(isSomethingConnected()) onboardMicUnavailable: \(self.onboardMicUnavailable)" +
+            //         "actuallyEnabled: \(actuallyEnabled)"
+            // )
 
             // if a g1 is connected, set the mic enabled:
             if g1Manager?.g1Ready ?? false {

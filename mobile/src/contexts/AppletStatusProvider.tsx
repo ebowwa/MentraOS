@@ -182,7 +182,7 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
           console.log("AppStatusProvider: Applet status did not change ###############################################")
           return
         }
-        console.log("AppletStatusProvider: Applet status changed:", diff)
+        // console.log("AppletStatusProvider: Applet status changed:", diff)
 
         setAppStatus(updatedAppsData)
       }
