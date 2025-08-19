@@ -5,7 +5,7 @@
 #include "include/lc3.h"
 #include <android/log.h>
 
-#define LOG_TAG "_test_"
+#define LOG_TAG "LC3JNI"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 
 extern "C" JNIEXPORT jlong JNICALL
