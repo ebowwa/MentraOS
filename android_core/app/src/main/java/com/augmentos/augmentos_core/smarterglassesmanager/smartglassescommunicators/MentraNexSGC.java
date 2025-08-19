@@ -541,13 +541,18 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
             @Override
             public void onMtuChanged(BluetoothGatt gatt, int mtu, int status) {
                 final boolean statusBool = status == BluetoothGatt.GATT_SUCCESS;
-                Log.d(TAG, "🔄 MTU Negotiation Result: Success=" + statusBool + ", MTU=" + mtu + ", Status=" + status);
+                Log.d(TAG, "🔄 MTU Negotiation Result: Success=" + statusBool + ", Device MTU=" + mtu + ", Status=" + status);
                 
                 if (statusBool) {
-                    // Store the successfully negotiated MTU
-                    currentMTU = mtu;
+                    // Store device capability and calculate actual negotiated MTU
                     deviceMaxMTU = mtu; // Record what device actually supports
-                    Log.d(TAG, "🎯 MTU Successfully Negotiated: " + mtu + " bytes");
+                    // The actual negotiated MTU is the minimum of our request and device capability
+                    currentMTU = Math.min(MTU_247, mtu);
+                    
+                    Log.d(TAG, "🎯 MTU Negotiation Complete:");
+                    Log.d(TAG, "   📱 App Requested: " + MTU_247 + " bytes");
+                    Log.d(TAG, "   📡 Device Supports: " + deviceMaxMTU + " bytes");
+                    Log.d(TAG, "   🤝 Negotiated MTU: " + currentMTU + " bytes");
                     
                     // Calculate optimal chunk sizes based on negotiated MTU
                     MAX_CHUNK_SIZE = currentMTU - 10;
