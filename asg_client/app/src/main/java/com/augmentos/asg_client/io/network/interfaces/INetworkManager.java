@@ -79,6 +79,12 @@ public interface INetworkManager {
     List<String> scanWifiNetworks();
     
     /**
+     * Scan for available WiFi networks with streaming results
+     * @param callback Callback to receive networks as they're discovered
+     */
+    void scanWifiNetworks(IWifiScanCallback callback);
+    
+    /**
      * Get the local IP address of the device on the current network
      * @return the local IP address as a string, or empty string if not available
      */

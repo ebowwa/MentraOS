@@ -14,6 +14,7 @@ import android.util.Log;
 
 import com.augmentos.asg_client.NetworkUtils;
 import com.augmentos.asg_client.io.network.interfaces.INetworkManager;
+import com.augmentos.asg_client.io.network.interfaces.IWifiScanCallback;
 import com.augmentos.asg_client.io.network.interfaces.NetworkStateListener;
 
 import java.util.ArrayList;
@@ -340,6 +341,163 @@ public abstract class BaseNetworkManager implements INetworkManager {
             Log.e(TAG, "Error scanning for WiFi networks", e);
             return networks;
         }
+    }
+
+    @Override
+    public void scanWifiNetworks(IWifiScanCallback callback) {
+        Log.d(TAG, "📡 ========================================");
+        Log.d(TAG, "📡 BASE STREAMING WIFI SCAN STARTED");
+        Log.d(TAG, "📡 ========================================");
+        
+        final List<String> allFoundNetworks = new ArrayList<>();
+        
+        try {
+            // Ensure WiFi is enabled before scanning
+            if (!ensureWifiEnabled()) {
+                Log.e(TAG, "Cannot scan for WiFi networks - WiFi could not be enabled");
+                callback.onScanError("WiFi could not be enabled");
+                return;
+            }
+            
+            // Get WiFi manager for scanning
+            WifiManager wifiManager = (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
+            if (wifiManager == null) {
+                Log.e(TAG, "WiFi manager is null");
+                callback.onScanError("WiFi manager unavailable");
+                return;
+            }
+            
+            // Standard Android WiFi scanning with streaming
+            try {
+                final AtomicBoolean scanCompleted = new AtomicBoolean(false);
+                final CountDownLatch scanLatch = new CountDownLatch(1);
+                
+                // Create a receiver for scan results
+                BroadcastReceiver wifiScanReceiver = new BroadcastReceiver() {
+                    @Override
+                    public void onReceive(Context context, Intent intent) {
+                        if (WifiManager.SCAN_RESULTS_AVAILABLE_ACTION.equals(intent.getAction())) {
+                            if (scanCompleted.compareAndSet(false, true)) {
+                                boolean success = intent.getBooleanExtra(WifiManager.EXTRA_RESULTS_UPDATED, false);
+                                Log.d(TAG, "Base streaming scan completed, success=" + success);
+                                
+                                try {
+                                    List<ScanResult> scanResults = wifiManager.getScanResults();
+                                    if (scanResults != null) {
+                                        List<String> newNetworks = new ArrayList<>();
+                                        for (ScanResult result : scanResults) {
+                                            String ssid = result.SSID;
+                                            if (ssid != null && !ssid.isEmpty() && !allFoundNetworks.contains(ssid)) {
+                                                allFoundNetworks.add(ssid);
+                                                newNetworks.add(ssid);
+                                                Log.d(TAG, "Found network: " + ssid);
+                                            }
+                                        }
+                                        
+                                        // Stream all networks found in this scan
+                                        if (!newNetworks.isEmpty()) {
+                                            Log.d(TAG, "📡 Streaming " + newNetworks.size() + " new networks to callback");
+                                            callback.onNetworksFound(newNetworks);
+                                        }
+                                    }
+                                } catch (SecurityException se) {
+                                    Log.e(TAG, "No permission to access scan results", se);
+                                } catch (Exception e) {
+                                    Log.e(TAG, "Error processing scan results", e);
+                                }
+                                
+                                scanLatch.countDown();
+                            }
+                        }
+                    }
+                };
+                
+                // Register the receiver
+                IntentFilter intentFilter = new IntentFilter(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION);
+                context.registerReceiver(wifiScanReceiver, intentFilter);
+                
+                // Start the scan
+                boolean scanStarted = wifiManager.startScan();
+                Log.d(TAG, "Base WiFi scan started, success=" + scanStarted);
+                
+                if (!scanStarted) {
+                    Log.e(TAG, "Failed to start WiFi scan");
+                    
+                    // Try to get previous scan results
+                    try {
+                        List<ScanResult> scanResults = wifiManager.getScanResults();
+                        if (scanResults != null && !scanResults.isEmpty()) {
+                            List<String> networks = new ArrayList<>();
+                            for (ScanResult result : scanResults) {
+                                String ssid = result.SSID;
+                                if (ssid != null && !ssid.isEmpty()) {
+                                    networks.add(ssid);
+                                    Log.d(TAG, "Found network from previous scan: " + ssid);
+                                }
+                            }
+                            
+                            // Stream results from previous scan
+                            if (!networks.isEmpty()) {
+                                callback.onNetworksFound(networks);
+                                allFoundNetworks.addAll(networks);
+                            }
+                        }
+                    } catch (SecurityException se) {
+                        Log.e(TAG, "No permission to access previous scan results", se);
+                    } catch (Exception e) {
+                        Log.e(TAG, "Error getting previous scan results", e);
+                    }
+                    
+                    // Unregister the receiver
+                    try {
+                        context.unregisterReceiver(wifiScanReceiver);
+                    } catch (Exception e) {
+                        Log.e(TAG, "Error unregistering scan receiver", e);
+                    }
+                    
+                    callback.onScanComplete(allFoundNetworks.size());
+                    return;
+                }
+                
+                // Wait for the scan to complete
+                try {
+                    boolean completed = scanLatch.await(15, TimeUnit.SECONDS);
+                    Log.d(TAG, "Base scan await completed=" + completed + ", scanComplete=" + scanCompleted.get());
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    Log.e(TAG, "Interrupted waiting for scan results", e);
+                }
+                
+                // Unregister the receiver
+                try {
+                    context.unregisterReceiver(wifiScanReceiver);
+                } catch (Exception e) {
+                    Log.e(TAG, "Error unregistering scan receiver", e);
+                }
+                
+                // Add the current network if not already in the list
+                String currentSsid = getCurrentWifiSsid();
+                if (!currentSsid.isEmpty() && !allFoundNetworks.contains(currentSsid)) {
+                    allFoundNetworks.add(currentSsid);
+                    List<String> currentNetwork = new ArrayList<>();
+                    currentNetwork.add(currentSsid);
+                    callback.onNetworksFound(currentNetwork);
+                    Log.d(TAG, "Added current network to scan results: " + currentSsid);
+                }
+                
+                callback.onScanComplete(allFoundNetworks.size());
+                
+            } catch (Exception e) {
+                Log.e(TAG, "Error in base streaming WiFi scan", e);
+                callback.onScanError("Scan failed: " + e.getMessage());
+            }
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Error in base streaming WiFi scan", e);
+            callback.onScanError("Scan failed: " + e.getMessage());
+        }
+        
+        Log.d(TAG, "📡 Base streaming scan completed with " + allFoundNetworks.size() + " total networks");
     }
 
     /**

@@ -271,7 +271,12 @@ class STTModelManager {
       if (nativeModule.extractTarBz2) {
         console.log(`Calling native extractTarBz2 for ${Platform.OS}...`)
         try {
+          // Simulate progress updates during extraction
+          onExtractionProgress?.({percentage: 25})
+
           await nativeModule.extractTarBz2(tempPath, finalPath)
+
+          onExtractionProgress?.({percentage: 90})
           console.log("Native extraction completed")
         } catch (extractError) {
           console.error("Native extraction failed:", extractError)

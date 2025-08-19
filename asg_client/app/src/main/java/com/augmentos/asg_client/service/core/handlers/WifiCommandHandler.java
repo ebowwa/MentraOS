@@ -2,6 +2,7 @@ package com.augmentos.asg_client.service.core.handlers;
 
 import android.util.Log;
 import com.augmentos.asg_client.io.network.interfaces.INetworkManager;
+import com.augmentos.asg_client.io.network.interfaces.IWifiScanCallback;
 import com.augmentos.asg_client.service.communication.interfaces.ICommunicationManager;
 import com.augmentos.asg_client.service.legacy.interfaces.ICommandHandler;
 import com.augmentos.asg_client.service.legacy.managers.AsgClientServiceManager;
@@ -111,8 +112,28 @@ public class WifiCommandHandler implements ICommandHandler {
             if (networkManager != null) {
                 new Thread(() -> {
                     try {
-                        List<String> networks = networkManager.scanWifiNetworks();
-                        communicationManager.sendWifiScanResultsOverBle(networks);
+                        // Use streaming WiFi scan with callback for immediate results
+                        networkManager.scanWifiNetworks(new IWifiScanCallback() {
+                            @Override
+                            public void onNetworksFound(List<String> networks) {
+                                Log.d(TAG, "📡 Streaming " + networks.size() + " WiFi networks to phone");
+                                // Send each batch of networks immediately as they're found
+                                communicationManager.sendWifiScanResultsOverBle(networks);
+                            }
+                            
+                            @Override
+                            public void onScanComplete(int totalNetworksFound) {
+                                Log.d(TAG, "📡 WiFi scan completed, total networks found: " + totalNetworksFound);
+                                // Could optionally send a completion signal here if needed
+                            }
+                            
+                            @Override
+                            public void onScanError(String error) {
+                                Log.e(TAG, "📡 WiFi scan error: " + error);
+                                // Send empty list on error to indicate scan failure
+                                communicationManager.sendWifiScanResultsOverBle(new ArrayList<>());
+                            }
+                        });
                     } catch (Exception e) {
                         Log.e(TAG, "Error scanning for WiFi networks", e);
                         communicationManager.sendWifiScanResultsOverBle(new ArrayList<>());

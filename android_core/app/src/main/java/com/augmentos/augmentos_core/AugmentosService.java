@@ -828,11 +828,17 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             }
         }
 
-        // Create the intent for when notification is tapped
+        // Create the intent for when notification is tapped - launch MentraOS Manager app
+        Intent launchIntent = context.getPackageManager().getLaunchIntentForPackage(AugmentOSManagerPackageName);
+        if (launchIntent == null) {
+            // Fallback to MainActivity if MentraOS Manager is not installed
+            launchIntent = new Intent(context, MainActivity.class);
+        }
+        
         PendingIntent pendingIntent = PendingIntent.getActivity(
                 context,
                 0,
-                new Intent(context, MainActivity.class),
+                launchIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE
         );
 

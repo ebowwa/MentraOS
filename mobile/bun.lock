@@ -48,7 +48,6 @@
         "react-native-canvas": "^0.1.40",
         "react-native-circular-progress": "^1.4.1",
         "react-native-config": "^1.5.5",
-        "react-native-create-thumbnail": "^2.1.1",
         "react-native-drawer-layout": "^4.1.11",
         "react-native-elements": "^3.4.3",
         "react-native-fs": "^2.20.0",
@@ -2058,8 +2057,6 @@
     "react-native-circular-progress": ["react-native-circular-progress@1.4.1", "", { "dependencies": { "prop-types": "^15.8.1" }, "peerDependencies": { "react": ">=16.0.0", "react-native": ">=0.50.0", "react-native-svg": ">=7.0.0" } }, "sha512-HEzvI0WPuWvsCgWE3Ff2HBTMgAEQB2GvTFw0KHyD/t1STAlDDRiolu0mEGhVvihKR3jJu3v3V4qzvSklY/7XzQ=="],
 
     "react-native-config": ["react-native-config@1.5.5", "", { "peerDependencies": { "react-native-windows": ">=0.61" }, "optionalPeers": ["react-native-windows"] }, "sha512-dGdLnBU0cd5xL5bF0ROTmHYbsstZnQKOEPfglvZi1vStvAjpld14X25K6mY3KGPTMWAzx6TbjKeq5dR+ILuMMA=="],
-
-    "react-native-create-thumbnail": ["react-native-create-thumbnail@2.1.1", "", { "peerDependencies": { "react-native": ">=0.59.0" } }, "sha512-3rawLi0mZiKfPh53C3mbrI9EVVzLWLYiDynUdpAe/I36XbSSFupxP9+g10/rrhhTNX8NSg/4zAC8Z7P9epnt+g=="],
 
     "react-native-drawer-layout": ["react-native-drawer-layout@4.1.11", "", { "dependencies": { "use-latest-callback": "^0.2.4" }, "peerDependencies": { "react": ">= 18.2.0", "react-native": "*", "react-native-gesture-handler": ">= 2.0.0", "react-native-reanimated": ">= 2.0.0" } }, "sha512-31gilubSKPLToy31/bb0hhgOOenHYJq4JC7g/JkIEqBqSWzoCgiOlccDHlBRG+MV37UtXZnJN2spj3VusdCd4A=="],
 

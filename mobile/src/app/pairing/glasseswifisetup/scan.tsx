@@ -21,6 +21,8 @@ export default function WifiScanScreen() {
   const [savedNetworks, setSavedNetworks] = useState<string[]>([])
   const [isScanning, setIsScanning] = useState(true)
   const scanTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const [currentScanSession, setCurrentScanSession] = useState<number>(Date.now())
+  const [receivedResultsForCurrentSession, setReceivedResultsForCurrentSession] = useState<boolean>(false)
 
   const {push, goBack} = useNavigationHistory()
 
@@ -65,16 +67,32 @@ export default function WifiScanScreen() {
         scanTimeoutRef.current = null
       }
 
-      // Append new networks to existing list instead of replacing
+      // Handle network results - replace on first result of new session, append on subsequent
       setNetworks(prevNetworks => {
         console.log("🎯 Previous networks:", prevNetworks)
-        // Create a Set to avoid duplicates
-        const existingSet = new Set(prevNetworks)
+        console.log("🎯 Received results for current session:", receivedResultsForCurrentSession)
+
+        let baseNetworks: string[]
+        if (receivedResultsForCurrentSession) {
+          // This is additional results from the same scan session - append
+          console.log("🎯 Appending to existing networks from current session")
+          baseNetworks = prevNetworks
+        } else {
+          // This is the first result of a new scan session - replace
+          console.log("🎯 Starting fresh with new scan session results")
+          baseNetworks = []
+        }
+
+        // Create a Set to avoid duplicates when adding new networks
+        const existingSet = new Set(baseNetworks)
         data.networks.forEach(network => existingSet.add(network))
         const newNetworks = Array.from(existingSet)
         console.log("🎯 Updated networks list:", newNetworks)
         return newNetworks
       })
+
+      // Mark that we've received results for the current session
+      setReceivedResultsForCurrentSession(true)
       setIsScanning(false)
       console.log("🎯 ========= END SCAN.TSX WIFI RESULTS =========")
     }
@@ -93,7 +111,12 @@ export default function WifiScanScreen() {
 
   const startScan = async () => {
     setIsScanning(true)
-    setNetworks([])
+    // Start a new scan session - results from this session will replace previous networks
+    setCurrentScanSession(Date.now())
+    setReceivedResultsForCurrentSession(false)
+
+    // Don't clear networks immediately - let the user see existing results while scanning
+    // Networks will be refreshed when new results arrive
 
     // Clear any existing timeout
     if (scanTimeoutRef.current) {
