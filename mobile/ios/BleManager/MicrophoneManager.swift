@@ -9,21 +9,11 @@ import AVFoundation
 import Combine
 import Foundation
 
-protocol MicCallback {
-    func onRouteChange(
-        reason: AVAudioSession.RouteChangeReason,
-        availableInputs: [AVAudioSessionPortDescription]
-    )
-    func onInterruption(began: Bool)
-}
-
 class OnboardMicrophoneManager {
     // MARK: - Properties
 
     /// Publisher for voice data
     private let voiceDataSubject = PassthroughSubject<Data, Never>()
-
-    private var micCallback: MicCallback?
 
     /// Public access to voice data stream
     var voiceData: AnyPublisher<Data, Never> {
@@ -63,10 +53,6 @@ class OnboardMicrophoneManager {
     }
 
     // MARK: - Public Methods
-
-    func setMicCallback(_ callback: MicCallback) {
-        micCallback = callback
-    }
 
     /// Check (but don't request) microphone permissions
     /// Permissions are requested by React Native UI, not directly by Swift
@@ -142,7 +128,7 @@ class OnboardMicrophoneManager {
             // Phone call started, pause recording
             if isRecording {
                 //              stopRecording()
-                micCallback?.onInterruption(began: true)
+                AOSManager.getInstance().onInterruption(began: true)
             }
         case .ended:
             CoreCommsService.log("Audio session interruption ended")
@@ -151,7 +137,7 @@ class OnboardMicrophoneManager {
                 if options.contains(.shouldResume) {
                     // Safe to resume recording
                     //                  _ = startRecording()
-                    micCallback?.onInterruption(began: false)
+                    AOSManager.getInstance().onInterruption(began: false)
                 }
             }
         @unknown default:
@@ -169,7 +155,7 @@ class OnboardMicrophoneManager {
         }
 
         CoreCommsService.log("handleRouteChange: \(reason) @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
-        micCallback?.onRouteChange(reason: reason, availableInputs: audioSession?.availableInputs ?? [])
+        AOSManager.getInstance().onRouteChange(reason: reason, availableInputs: audioSession?.availableInputs ?? [])
 
         // // If we're recording and the audio route changed (e.g., AirPods connected/disconnected)
         // if isRecording {

@@ -1413,7 +1413,7 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - Yoga
-  - react-native-keyboard-controller (1.18.2):
+  - react-native-keyboard-controller (1.17.5):
     - DoubleConversion
     - glog
     - hermes-engine
@@ -1426,7 +1426,7 @@ PODS:
     - React-featureflags
     - React-graphics
     - React-ImageManager
-    - react-native-keyboard-controller/common (= 1.18.2)
+    - react-native-keyboard-controller/common (= 1.17.5)
     - React-NativeModulesApple
     - React-RCTFabric
     - React-rendererdebug
@@ -1435,7 +1435,7 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - Yoga
-  - react-native-keyboard-controller/common (1.18.2):
+  - react-native-keyboard-controller/common (1.17.5):
     - DoubleConversion
     - glog
     - hermes-engine
@@ -2098,7 +2098,7 @@ PODS:
     - Yoga
   - RNInAppBrowser (3.7.0):
     - React-Core
-  - RNPermissions (5.4.2):
+  - RNPermissions (5.4.1):
     - DoubleConversion
     - glog
     - hermes-engine
@@ -2813,7 +2813,7 @@ SPEC CHECKSUMS:
   react-native-config: 644074ab88db883fcfaa584f03520ec29589d7df
   react-native-create-thumbnail: 733160dca9a548262e1030e7fcdae90a93d203ca
   react-native-image-picker: c5da8aa14fdffbd4d77338c352f52a8d85fcacec
-  react-native-keyboard-controller: c7b394ca5fa3bca2264d4bd37bd4ab1aeb62a991
+  react-native-keyboard-controller: b3d68f377e97666bf539ee7d8d6d77ac7a50f9ca
   react-native-mmkv: 5c69dce0d439e1791a884f6b166e76fc7fadaca6
   react-native-netinfo: cec9c4e86083cb5b6aba0e0711f563e2fbbff187
   react-native-pager-view: 9517b214fb7321493339fbcf53a30abd54fea07b
@@ -2855,7 +2855,7 @@ SPEC CHECKSUMS:
   RNFS: 89de7d7f4c0f6bafa05343c578f61118c8282ed8
   RNGestureHandler: fffddeb8af59709c6d8de11b6461a6af63cad532
   RNInAppBrowser: 6d3eb68d471b9834335c664704719b8be1bfdb20
-  RNPermissions: 166b6880aa94483ac566c35f3d7ec9b999239e7e
+  RNPermissions: 66e7065dd1826bf37f8d180248b2cb2c4ae26aca
   RNReanimated: 2e5069649cbab2c946652d3b97589b2ae0526220
   RNScreens: c7c659490e59cb0887cb098a9c9e9431392c05b2
   RNSentry: 39b6ae6ce58dafc766ae3704c50a420d79e6a999
