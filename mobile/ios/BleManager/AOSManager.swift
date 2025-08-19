@@ -607,29 +607,12 @@ struct ViewState {
             useGlassesMic = actuallyEnabled && useGlassesMic
             useOnboardMic = actuallyEnabled && useOnboardMic
 
-            let g1Ready = ERG1Manager.getInstance().g1Ready
-
             CoreCommsService.log(
                 "AOS: MIC: isEnabled: \(isEnabled) sensingEnabled: \(self.sensingEnabled) useOnboardMic: \(useOnboardMic) " +
                     "useGlassesMic: \(useGlassesMic) glassesHasMic: \(glassesHasMic) preferredMic: \(self.preferredMic) " +
                     "somethingConnected: \(isSomethingConnected()) onboardMicUnavailable: \(self.onboardMicUnavailable)" +
-                    "actuallyEnabled: \(actuallyEnabled) g1Ready: \(g1Ready)"
+                    "actuallyEnabled: \(actuallyEnabled)"
             )
-
-            //            if (g1Manager == nil && g1Ready) {
-            //              CoreCommsService.log("@@@@@@@@@@@@@@@@@@@@@ this shouldn't happen #########################################")
-            //              g1Manager = ERG1Manager.getInstance()
-            //            }
-
-            //          CoreCommsService.log(
-            //              "AOS: MIC: isEnabled: \(isEnabled) sensingEnabled: \(self.sensingEnabled) useOnboardMic: \(useOnboardMic) "
-            //          )
-            //
-            //          CoreCommsService.log(
-            //              "useGlassesMic: \(useGlassesMic) glassesHasMic: \(glassesHasMic) preferredMic: \(self.preferredMic) " +
-            //              "somethingConnected: \(isSomethingConnected()) onboardMicUnavailable: \(self.onboardMicUnavailable)" +
-            //              "actuallyEnabled: \(actuallyEnabled) g1Ready: \(g1Ready)"
-            //          )
 
             // if a g1 is connected, set the mic enabled:
             if g1Manager?.g1Ready ?? false {
