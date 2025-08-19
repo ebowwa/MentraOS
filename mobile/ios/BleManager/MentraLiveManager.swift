@@ -911,8 +911,8 @@ typealias JSONObject = [String: Any]
             centralManager?.cancelPeripheralConnection(peripheral)
         }
 
-        connectionState = .disconnected
         stopAllTimers()
+        connectionState = .disconnected
     }
 
     @objc func setMicrophoneEnabled(_ enabled: Bool) {

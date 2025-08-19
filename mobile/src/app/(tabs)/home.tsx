@@ -6,7 +6,7 @@ import AppsActiveList from "@/components/misc/AppsActiveList"
 import AppsInactiveList from "@/components/misc/AppsInactiveList"
 import AppsIncompatibleList from "@/components/misc/AppsIncompatibleList"
 import AppsIncompatibleListOld from "@/components/misc/AppsIncompatibleListOld"
-import {useAppStatus} from "@/contexts/AppStatusProvider"
+import {useAppStatus} from "@/contexts/AppletStatusProvider"
 import CloudConnection from "@/components/misc/CloudConnection"
 import SensingDisabledWarning from "@/components/misc/SensingDisabledWarning"
 import NonProdWarning from "@/components/misc/NonProdWarning"
@@ -39,14 +39,6 @@ export default function Homepage() {
 
   const [showNewUi, setShowNewUi] = useState(false)
 
-  useEffect(() => {
-    const check = async () => {
-      const newUiSetting = await loadSetting(SETTINGS_KEYS.NEW_UI, false)
-      setShowNewUi(newUiSetting)
-    }
-    check()
-  }, [])
-
   const checkPermissions = async () => {
     const hasCalendar = await checkFeaturePermissions(PermissionFeatures.CALENDAR)
     const hasNotifications =
@@ -71,6 +63,14 @@ export default function Homepage() {
     push("/settings/privacy")
   }
 
+  useEffect(() => {
+    const check = async () => {
+      const newUiSetting = await loadSetting(SETTINGS_KEYS.NEW_UI, false)
+      setShowNewUi(newUiSetting)
+    }
+    check()
+  }, [])
+
   // Check for missing permissions
   useEffect(() => {
     checkPermissions().catch(error => {
@@ -78,20 +78,21 @@ export default function Homepage() {
     })
   }, [])
 
+  // check for permissions when the screen is focused:
   useFocusEffect(
     useCallback(() => {
       checkPermissions()
+      refreshAppStatus()
     }, []),
   )
 
   // propagate any changes in app lists when this screen is mounted:
-  useFocusEffect(
-    useCallback(() => {
-      return async () => {
-        await refreshAppStatus()
-      }
-    }, []),
-  )
+  // useFocusEffect(
+  //   useCallback(() => {
+  //     checkPermissions()
+  //     refreshAppStatus()
+  //   }, []),
+  // )
 
   // Simple animated wrapper so we do not duplicate logic
   useFocusEffect(

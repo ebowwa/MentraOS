@@ -25,7 +25,10 @@ class OnboardMicrophoneManager {
     private var audioSession: AVAudioSession?
 
     /// Recording state
-    private(set) var isRecording = false
+    var isRecording: Bool {
+        guard let audioEngine = audioEngine else { return false }
+        return audioEngine.isRunning
+    }
 
     private var cancellables = Set<AnyCancellable>()
 
@@ -127,7 +130,6 @@ class OnboardMicrophoneManager {
             CoreCommsService.log("Audio session interrupted - another app took control")
             // Phone call started, pause recording
             if isRecording {
-                //              stopRecording()
                 AOSManager.getInstance().onInterruption(began: true)
             }
         case .ended:
@@ -135,8 +137,6 @@ class OnboardMicrophoneManager {
             if let optionsValue = userInfo[AVAudioSessionInterruptionOptionKey] as? UInt {
                 let options = AVAudioSession.InterruptionOptions(rawValue: optionsValue)
                 if options.contains(.shouldResume) {
-                    // Safe to resume recording
-                    //                  _ = startRecording()
                     AOSManager.getInstance().onInterruption(began: false)
                 }
             }
@@ -366,7 +366,6 @@ class OnboardMicrophoneManager {
         // Start the audio engine
         do {
             try audioEngine?.start()
-            isRecording = true
             CoreCommsService.log("MIC: Started recording from: \(getActiveInputDevice() ?? "Unknown device")")
             return true
         } catch {
@@ -383,9 +382,9 @@ class OnboardMicrophoneManager {
 
     /// Stop recording from the microphone
     func stopRecording() {
-        // guard isRecording else {
-        //     return
-        // }
+        guard isRecording else {
+            return
+        }
 
         // Remove the tap and stop the engine
         audioEngine?.inputNode.removeTap(onBus: 0)
@@ -395,7 +394,6 @@ class OnboardMicrophoneManager {
         try? audioSession?.setActive(false)
         audioEngine = nil
         audioSession = nil
-        isRecording = false
 
         CoreCommsService.log("MIC: Stopped recording")
     }

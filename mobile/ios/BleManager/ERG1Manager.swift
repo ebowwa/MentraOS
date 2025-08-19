@@ -875,7 +875,7 @@ enum GlassesError: Error {
 
             if success {
                 stopReconnectionTimer()
-                setReadiness(left: true, right: true)
+                // setReadiness(left: true, right: true)
             }
         }
     }
