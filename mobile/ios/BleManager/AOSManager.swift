@@ -703,7 +703,7 @@ struct ViewState {
                 if !success {
                     // fallback to glasses mic if possible:
                     if getGlassesHasMic() {
-                        enableGlassesMic(true)
+                        await enableGlassesMic(true)
                     }
                 }
             } else {
