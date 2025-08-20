@@ -10,7 +10,6 @@
  */
 
 #include <stdio.h>
-#include <string.h>
 #include <zephyr/types.h>
 #include <zephyr/kernel.h>
 #include <zephyr/sys/byteorder.h>
@@ -34,93 +33,6 @@ static K_SEM_DEFINE(hls12vga_init_sem, 0, 1);
 #define LVGL_TICK_MS 5
 // The maximum number of rows written each time can be adjusted according to config lv z vdb size;
 #define MAX_LINES_PER_WRITE 48 // 每次写入的最大行数，依据CONFIG_LV_Z_VDB_SIZE可调整;
-
-// Gray mode and module detection
-typedef enum { MODULE_UNKNOWN = 0, MODULE_A6, MODULE_A6M } hls12vga_module_t;
-static hls12vga_module_t s_module = MODULE_UNKNOWN;
-static bool s_use_gray16 = false; // when true, pack 4bpp and set panel gray16
-
-static int write_reg_bank(const struct device *dev, uint8_t bank, uint8_t reg, const uint8_t *param, uint16_t len)
-{
-	const hls12vga_config *cfg = dev->config;
-	uint8_t hdr[2];
-	hdr[0] = (bank == 0) ? 0x78 : 0x7A; // bank0 or bank1 write
-	hdr[1] = reg;
-	struct spi_buf bufs[2] = {
-		{.buf = hdr, .len = sizeof(hdr)},
-		{.buf = (void *)param, .len = len},
-	};
-	struct spi_buf_set tx = {.buffers = bufs, .count = 2};
-	int err;
-	// left
-	gpio_pin_set_dt(&cfg->left_cs, 0);
-	gpio_pin_set_dt(&cfg->right_cs, 1);
-	err = spi_write_dt(&cfg->spi, &tx);
-	gpio_pin_set_dt(&cfg->left_cs, 1);
-	if (err) return err;
-	// right
-	gpio_pin_set_dt(&cfg->right_cs, 0);
-	gpio_pin_set_dt(&cfg->left_cs, 1);
-	err = spi_write_dt(&cfg->spi, &tx);
-	gpio_pin_set_dt(&cfg->right_cs, 1);
-	return err;
-}
-
-static int read_reg_bank(const struct device *dev, uint8_t bank, uint8_t reg, uint8_t *data, uint16_t len)
-{
-	const hls12vga_config *cfg = dev->config;
-	uint8_t hdr[2];
-	hdr[0] = (bank == 0) ? 0x79 : 0x7B; // bank0 or bank1 read
-	hdr[1] = reg;
-	// Build a combined transceive: send 2-byte header then clock out len dummy bytes, capturing response
-	uint8_t dummy[8];
-	if (len > sizeof(dummy)) {
-		// For this driver we only read small registers (<=1). Guard anyway.
-		return -EINVAL;
-	}
-	memset(dummy, 0, len);
-	uint8_t rxbuf[10];
-	memset(rxbuf, 0, sizeof(rxbuf));
-	struct spi_buf txb[2] = {
-		{.buf = hdr, .len = sizeof(hdr)},
-		{.buf = dummy, .len = len},
-	};
-	struct spi_buf_set tx = {.buffers = txb, .count = 2};
-	struct spi_buf rxb[2] = {
-		{.buf = rxbuf, .len = sizeof(hdr)},
-		{.buf = rxbuf + sizeof(hdr), .len = len},
-	};
-	struct spi_buf_set rx = {.buffers = rxb, .count = 2};
-	int err;
-	// left (read one side is enough for detect/limits)
-	gpio_pin_set_dt(&cfg->left_cs, 0);
-	gpio_pin_set_dt(&cfg->right_cs, 1);
-	err = spi_transceive_dt(&cfg->spi, &tx, &rx);
-	gpio_pin_set_dt(&cfg->left_cs, 1);
-	if (err == 0) {
-		memcpy(data, rxbuf + sizeof(hdr), len);
-	}
-	return err;
-}
-
-static int hls12vga_set_gray_mode_internal(hls12vga_module_t module, bool gray16)
-{
-	int err = 0;
-	if (module == MODULE_A6) {
-		uint8_t val = gray16 ? 0x04 : 0x02; // 4bpp or 8bpp
-		err = write_reg_bank(dev_hls12vga, 0, 0x00, &val, 1);
-	} else if (module == MODULE_A6M) {
-		// A6M sequence requires writes to 0xBE and others; pick gray mode in 0xBE
-		uint8_t be = gray16 ? 0x84 : 0x82;
-		err = write_reg_bank(dev_hls12vga, 0, 0xBE, &be, 1);
-		if (err) return err;
-		uint8_t v;
-		v = 0x80; err = write_reg_bank(dev_hls12vga, 0, 0x60, &v, 1); if (err) return err; k_busy_wait(6);
-		v = 0x18; err = write_reg_bank(dev_hls12vga, 0, 0xE0, &v, 1); if (err) return err; k_busy_wait(6);
-		v = 0x08; err = write_reg_bank(dev_hls12vga, 0, 0xE3, &v, 1); if (err) return err; k_busy_wait(6);
-	}
-	return err;
-}
 void hls12vga_init_sem_give(void)
 {
 	k_sem_give(&hls12vga_init_sem);
@@ -430,41 +342,30 @@ static int hls12vga_write(const struct device *dev,
 
 	const uint8_t *src = (const uint8_t *)buf;
 	uint8_t *dst = data->tx_buf_bulk + 4;
-	if (!s_use_gray16) {
-		const uint16_t src_stride = (width + 7) / 8; // 1bpp input
-		const uint16_t dst_stride = cfg->screen_width; // 8bpp output
-		for (uint16_t row = 0; row < height; row++) {
-			const uint8_t *src_row = src + row * src_stride;
-			uint8_t *dst_row = dst + row * dst_stride;
-			for (uint16_t col = 0; col < width; col++) {
-				uint8_t byte = src_row[col / 8];
-				uint8_t bit = (byte >> (7 - (col % 8))) & 0x01;
-				dst_row[col] = bit ? BACKGROUND_COLOR : COLOR_BRIGHT;
-			}
-		}
-	} else {
-		// Gray16 mode: pack two 4-bit pixels per byte
-		const uint16_t src_stride = (width + 7) / 8; // input is still LVGL 1bpp
-		const uint16_t dst_stride = (cfg->screen_width + 1) / 2; // bytes per line at 4bpp
-		for (uint16_t row = 0; row < height; row++) {
-			const uint8_t *src_row = src + row * src_stride;
-			uint8_t *dst_row = dst + row * dst_stride;
-			uint16_t di = 0;
-			for (uint16_t col = 0; col < width; ) {
-				// Map bit to 4-bit gray: 0 -> 0xF (bright), 1 -> 0x0 (dark)
-				uint8_t byte0 = src_row[col / 8];
-				uint8_t bit0 = (byte0 >> (7 - (col % 8))) & 0x01;
-				uint8_t pix0 = bit0 ? 0x0 : 0xF;
-				col++;
-				uint8_t pix1 = 0;
-				if (col < width) {
-					uint8_t byte1 = src_row[col / 8];
-					uint8_t bit1 = (byte1 >> (7 - (col % 8))) & 0x01;
-					pix1 = bit1 ? 0x0 : 0xF;
-					col++;
-				}
-				dst_row[di++] = (pix0 << 4) | (pix1 & 0x0F);
-			}
+	const uint16_t src_stride = (width + 7) / 8;
+	const uint16_t dst_stride = cfg->screen_width;
+
+	// BSP_LOG_BUFFER_HEX(TAG, src, src_stride); // PIXEL_FORMAT_MONO10 原始数据默认背景色是0x00
+	// 每像素1bit展开为 0x00 / 0xFF
+	for (uint16_t row = 0; row < height; row++)
+	{
+		// LVGL缓冲区起始地址 + 偏移量 * 每行字节数（1b = 1像素）
+		// Expand LVGL buffer to 0x00 / 0xFF (1b = 1 pixel)
+		const uint8_t *src_row = src + row * src_stride;
+		// 缓冲区起始地址 + 偏移量 * 每行字节数（1B = 1 像素）
+		// Buffer starting address + offset * bytes per row (1B = 1 pixel)
+		uint8_t *dst_row = dst + row * dst_stride;
+		for (uint16_t col = 0; col < width; col++) // 处理一行数据像素点; Process pixel points in a row of data
+		{
+			// 读取LVGL源数据字节(1b = 1像素)展开为0x00/0xFF（1B = 1像素）
+			// Read LVGL source data byte (1b = 1 pixel) expanded to 0x00/0xFF (1B = 1 pixel)
+			uint8_t byte = src_row[col / 8];
+			// 读取1bit数据 按照MSB位序读取
+			// Read 1bit data, read according to MSB bit order
+			uint8_t bit = (byte >> (7 - (col % 8))) & 0x01;
+			// 亮：0xFF，暗：0x00 ; Bright: 0xFF, Dark: 0x00
+			dst_row[col] = bit ? BACKGROUND_COLOR : COLOR_BRIGHT;
+			// dst_row[col] = bit ? COLOR_BRIGHT : BACKGROUND_COLOR;
 		}
 	}
 	hls12vga_write_multiple_rows_cmd(dev, y, y + height - 1);
@@ -475,13 +376,7 @@ static int hls12vga_write(const struct device *dev,
 	tx_buf[2] = (HLS12VGA_LCD_CMD_REG >> 8) & 0xFF;
 	tx_buf[3] = HLS12VGA_LCD_CMD_REG & 0xFF;
 
-	uint32_t payload_bytes = 0;
-	if (!s_use_gray16) {
-		payload_bytes = height * cfg->screen_width; // 8bpp expanded
-	} else {
-		payload_bytes = height * ((cfg->screen_width + 1) / 2); // 4bpp packed
-	}
-	ret = hls12vga_transmit_all(dev, tx_buf, 4 + payload_bytes, 1);
+	ret = hls12vga_transmit_all(dev, tx_buf, 4 + height * dst_stride, 1);
 	if (ret != 0)
 	{
 		BSP_LOGE(TAG, "SPI transmit failed: %d", ret);
@@ -513,15 +408,9 @@ int hls12vga_set_brightness(uint8_t brightness)
 		level = reg_val[brightness % 10];
 	}
 	cmd[0] = LCD_WRITE_ADDRESS;
-	// Use demo’s per-module brightness regs if detection is available
-	if (s_module == MODULE_A6M) {
-		uint8_t val = level;
-		write_reg_bank(dev_hls12vga, 0, 0xE2, &val, 1);
-	} else {
-		cmd[1] = HLS12VGA_LCD_SB_REG; // 0x23
-		cmd[2] = level;
-		hls12vga_transmit_all(dev_hls12vga, cmd, sizeof(cmd), 1);
-	}
+	cmd[1] = HLS12VGA_LCD_SB_REG;
+	cmd[2] = level;
+	hls12vga_transmit_all(dev_hls12vga, cmd, sizeof(cmd), 1);
 	return 0;
 }
 /**
@@ -541,15 +430,6 @@ int hls12vga_set_mirror(const uint8_t value)
 	cmd[2] = value;
 	int err = hls12vga_transmit_all(dev_hls12vga, cmd, sizeof(cmd), 1);
 	return err;
-}
-
-int hls12vga_set_gray_mode(bool enable_gray16)
-{
-	s_use_gray16 = enable_gray16;
-	// Force A6M module as per project hardware
-	s_module = MODULE_A6M;
-	BSP_LOGI(TAG, "Module set: A6M-G (forced)");
-	return hls12vga_set_gray_mode_internal(s_module, s_use_gray16);
 }
 static void *hls12vga_get_framebuffer(struct device *dev)
 {
@@ -646,17 +526,8 @@ int hls12vga_clear_screen(bool color_on)
 		tx_buf[2] = (HLS12VGA_LCD_CMD_REG >> 8) & 0xFF;
 		tx_buf[3] = HLS12VGA_LCD_CMD_REG & 0xFF;
 
-		if (!s_use_gray16) {
-			memset(&tx_buf[4], fill_byte, batch_lines * width);
-		} else {
-			// In Gray16, a "bright" pixel is nibble 0xF; pack two per byte
-			uint8_t nibble = color_on ? 0xF : 0x0;
-			uint8_t packed = (nibble << 4) | nibble;
-			memset(&tx_buf[4], packed, batch_lines * ((width + 1) / 2));
-		}
-		uint32_t payload = !s_use_gray16 ? (batch_lines * width)
-										 : (batch_lines * ((width + 1) / 2));
-		int ret = hls12vga_transmit_all(dev_hls12vga, tx_buf, 4 + payload, 1);
+		memset(&tx_buf[4], fill_byte, batch_lines * width);
+		int ret = hls12vga_transmit_all(dev_hls12vga, tx_buf, 4 + batch_lines * width, 1);
 		if (ret != 0)
 		{
 			BSP_LOGI(TAG, "hls12vga_transmit_all failed! (%d)", ret);
@@ -705,47 +576,23 @@ int hls12vga_draw_horizontal_grayscale_pattern(void)
 		tx_buf[2] = (HLS12VGA_LCD_CMD_REG >> 8) & 0xFF;
 		tx_buf[3] = HLS12VGA_LCD_CMD_REG & 0xFF;
 		
-		// Fill data for this batch of lines (respect Gray16 packing)
-		if (!s_use_gray16) {
-			for (uint16_t line = 0; line < batch_lines; line++) {
-				uint8_t *line_start = &tx_buf[4 + line * width];
-				for (int stripe = 0; stripe < 8; stripe++) {
-					uint16_t start_x = stripe * stripe_width;
-					uint16_t end_x = (stripe == 7) ? width : (stripe + 1) * stripe_width;
-					memset(&line_start[start_x], gray_levels[stripe], end_x - start_x);
-				}
+		// Fill data for this batch of lines
+		for (uint16_t line = 0; line < batch_lines; line++) {
+			uint8_t *line_start = &tx_buf[4 + line * width];
+			
+			// Fill each stripe with its corresponding gray level
+			for (int stripe = 0; stripe < 8; stripe++) {
+				uint16_t start_x = stripe * stripe_width;
+				uint16_t end_x = (stripe == 7) ? width : (stripe + 1) * stripe_width; // Handle remainder
+				
+				memset(&line_start[start_x], gray_levels[stripe], end_x - start_x);
 			}
-			int ret = hls12vga_transmit_all(dev_hls12vga, tx_buf, 4 + batch_lines * width, 1);
-			if (ret != 0) {
-				BSP_LOGE(TAG, "hls12vga_transmit_all failed! (%d)", ret);
-				return ret;
-			}
-		} else {
-			uint16_t bytes_per_line = (width + 1) / 2;
-			for (uint16_t line = 0; line < batch_lines; line++) {
-				uint8_t *line_start = &tx_buf[4 + line * bytes_per_line];
-				uint16_t di = 0;
-				for (uint16_t x = 0; x < width; ) {
-					// Determine stripe for two pixels
-					uint8_t g0 = gray_levels[(x / stripe_width) > 7 ? 7 : (x / stripe_width)];
-					uint8_t g1;
-					if (x + 1 < width) {
-						g1 = gray_levels[((x + 1) / stripe_width) > 7 ? 7 : ((x + 1) / stripe_width)];
-					} else {
-						g1 = g0;
-					}
-					// Quantize to 4-bit nibbles
-					uint8_t n0 = g0 >> 4;
-					uint8_t n1 = g1 >> 4;
-					line_start[di++] = (n0 << 4) | (n1 & 0x0F);
-					x += 2;
-				}
-			}
-			int ret = hls12vga_transmit_all(dev_hls12vga, tx_buf, 4 + batch_lines * bytes_per_line, 1);
-			if (ret != 0) {
-				BSP_LOGE(TAG, "hls12vga_transmit_all failed! (%d)", ret);
-				return ret;
-			}
+		}
+		
+		int ret = hls12vga_transmit_all(dev_hls12vga, tx_buf, 4 + batch_lines * width, 1);
+		if (ret != 0) {
+			BSP_LOGE(TAG, "hls12vga_transmit_all failed! (%d)", ret);
+			return ret;
 		}
 	}
 	
@@ -789,38 +636,24 @@ int hls12vga_draw_vertical_grayscale_pattern(void)
 		tx_buf[2] = (HLS12VGA_LCD_CMD_REG >> 8) & 0xFF;
 		tx_buf[3] = HLS12VGA_LCD_CMD_REG & 0xFF;
 		
-		if (!s_use_gray16) {
-			for (uint16_t line = 0; line < batch_lines; line++) {
-				uint16_t current_y = y + line;
-				uint8_t gray_level = gray_levels[current_y / stripe_height];
-				if (current_y / stripe_height >= 8) {
-					gray_level = gray_levels[7];
-				}
-				memset(&tx_buf[4 + line * width], gray_level, width);
+		// Fill data for this batch of lines
+		for (uint16_t line = 0; line < batch_lines; line++) {
+			uint16_t current_y = y + line;
+			uint8_t gray_level = gray_levels[current_y / stripe_height];
+			
+			// Handle the last stripe which might have different height due to remainder
+			if (current_y / stripe_height >= 8) {
+				gray_level = gray_levels[7]; // Use last gray level for remainder
 			}
-			int ret = hls12vga_transmit_all(dev_hls12vga, tx_buf, 4 + batch_lines * width, 1);
-			if (ret != 0) {
-				BSP_LOGE(TAG, "hls12vga_transmit_all failed! (%d)", ret);
-				return ret;
-			}
-		} else {
-			uint16_t bytes_per_line = (width + 1) / 2;
-			for (uint16_t line = 0; line < batch_lines; line++) {
-				uint16_t current_y = y + line;
-				uint8_t gray_level = gray_levels[current_y / stripe_height];
-				if (current_y / stripe_height >= 8) {
-					gray_level = gray_levels[7];
-				}
-				uint8_t nib = gray_level >> 4;
-				uint8_t packed = (nib << 4) | nib;
-				memset(&tx_buf[4 + line * bytes_per_line], packed, bytes_per_line);
-			}
-			int ret = hls12vga_transmit_all(dev_hls12vga, tx_buf, 4 + batch_lines * bytes_per_line, 1);
-			if (ret != 0) {
-				BSP_LOGE(TAG, "hls12vga_transmit_all failed! (%d)", ret);
-				return ret;
-			}
-	}
+			
+			memset(&tx_buf[4 + line * width], gray_level, width);
+		}
+		
+		int ret = hls12vga_transmit_all(dev_hls12vga, tx_buf, 4 + batch_lines * width, 1);
+		if (ret != 0) {
+			BSP_LOGE(TAG, "hls12vga_transmit_all failed! (%d)", ret);
+			return ret;
+		}
 	}
 	
 	BSP_LOGI(TAG, "✅ Vertical grayscale pattern completed");
@@ -1034,12 +867,6 @@ static int hls12vga_init(const struct device *dev)
 	// }
 	// 
 	// BSP_LOGI(TAG, "🔧 Blinking test completed - leaving display ON");
-
-	// Force A6M module for this hardware
-	s_module = MODULE_A6M;
-	BSP_LOGI(TAG, "Module set during init: A6M-G (forced)");
-	s_use_gray16 = false;
-	(void)hls12vga_set_gray_mode_internal(s_module, s_use_gray16);
 
 	// Clear the display to start fresh for LVGL
 	// BSP_LOGI(TAG, "🧹 Clearing display for LVGL (setting to OFF/black)");
