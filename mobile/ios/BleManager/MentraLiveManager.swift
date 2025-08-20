@@ -915,8 +915,8 @@ typealias JSONObject = [String: Any]
             centralManager?.cancelPeripheralConnection(peripheral)
         }
 
-        connectionState = .disconnected
         stopAllTimers()
+        connectionState = .disconnected
     }
 
     @objc func setMicrophoneEnabled(_ enabled: Bool) {
@@ -1820,37 +1820,37 @@ typealias JSONObject = [String: Any]
                 let testWrappedJson = String(data: testData, encoding: .utf8) ?? ""
 
                 // Check if chunking is needed
-                if MessageChunker.needsChunking(testWrappedJson) {
-                    CoreCommsService.log("Message exceeds threshold, chunking required")
-
-                    // Create chunks
-                    let chunks = MessageChunker.createChunks(originalJson: jsonString, messageId: messageId)
-                    CoreCommsService.log("Sending \(chunks.count) chunks")
-
-                    // Send each chunk
-                    for (index, chunk) in chunks.enumerated() {
-                        let chunkData = try JSONSerialization.data(withJSONObject: chunk)
-                        if let chunkStr = String(data: chunkData, encoding: .utf8) {
-                            // Pack each chunk using the normal K900 protocol
-                            let packedData = packJson(chunkStr, wakeUp: wakeUp && index == 0) ?? Data() // Only wakeup on first chunk
-
-                            // Queue the chunk for sending
-                            queueSend(packedData, id: "chunk_\(index)_\(String(globalMessageId - 1))")
-
-                            // Add small delay between chunks to avoid overwhelming the connection
-                            if index < chunks.count - 1 {
-                                Thread.sleep(forTimeInterval: 0.05) // 50ms delay between chunks
-                            }
-                        }
-                    }
-
-                    CoreCommsService.log("All chunks queued for transmission")
-                } else {
-                    // Normal single message transmission
-                    CoreCommsService.log("Sending data to glasses: \(jsonString)")
-                    let packedData = packJson(jsonString, wakeUp: wakeUp) ?? Data()
-                    queueSend(packedData, id: String(globalMessageId - 1))
-                }
+//                if MessageChunker.needsChunking(testWrappedJson) {
+//                    CoreCommsService.log("Message exceeds threshold, chunking required")
+//
+//                    // Create chunks
+//                    let chunks = MessageChunker.createChunks(originalJson: jsonString, messageId: messageId)
+//                    CoreCommsService.log("Sending \(chunks.count) chunks")
+//
+//                    // Send each chunk
+//                    for (index, chunk) in chunks.enumerated() {
+//                        let chunkData = try JSONSerialization.data(withJSONObject: chunk)
+//                        if let chunkStr = String(data: chunkData, encoding: .utf8) {
+//                            // Pack each chunk using the normal K900 protocol
+//                            let packedData = packJson(chunkStr, wakeUp: wakeUp && index == 0) ?? Data() // Only wakeup on first chunk
+//
+//                            // Queue the chunk for sending
+//                            queueSend(packedData, id: "chunk_\(index)_\(String(globalMessageId - 1))")
+//
+//                            // Add small delay between chunks to avoid overwhelming the connection
+//                            if index < chunks.count - 1 {
+//                                Thread.sleep(forTimeInterval: 0.05) // 50ms delay between chunks
+//                            }
+//                        }
+//                    }
+//
+//                    CoreCommsService.log("All chunks queued for transmission")
+//                } else {
+                // Normal single message transmission
+                CoreCommsService.log("Sending data to glasses: \(jsonString)")
+                let packedData = packJson(jsonString, wakeUp: wakeUp) ?? Data()
+                queueSend(packedData, id: String(globalMessageId - 1))
+//                }
             }
         } catch {
             CoreCommsService.log("Error creating JSON: \(error)")

@@ -9,21 +9,11 @@ import AVFoundation
 import Combine
 import Foundation
 
-protocol MicCallback {
-    func onRouteChange(
-        reason: AVAudioSession.RouteChangeReason,
-        availableInputs: [AVAudioSessionPortDescription]
-    )
-    func onInterruption(began: Bool)
-}
-
 class OnboardMicrophoneManager {
     // MARK: - Properties
 
     /// Publisher for voice data
     private let voiceDataSubject = PassthroughSubject<Data, Never>()
-
-    private var micCallback: MicCallback?
 
     /// Public access to voice data stream
     var voiceData: AnyPublisher<Data, Never> {
@@ -35,7 +25,10 @@ class OnboardMicrophoneManager {
     private var audioSession: AVAudioSession?
 
     /// Recording state
-    private(set) var isRecording = false
+    var isRecording: Bool {
+        guard let audioEngine = audioEngine else { return false }
+        return audioEngine.isRunning
+    }
 
     private var cancellables = Set<AnyCancellable>()
 
@@ -63,10 +56,6 @@ class OnboardMicrophoneManager {
     }
 
     // MARK: - Public Methods
-
-    func setMicCallback(_ callback: MicCallback) {
-        micCallback = callback
-    }
 
     /// Check (but don't request) microphone permissions
     /// Permissions are requested by React Native UI, not directly by Swift
@@ -141,17 +130,14 @@ class OnboardMicrophoneManager {
             CoreCommsService.log("Audio session interrupted - another app took control")
             // Phone call started, pause recording
             if isRecording {
-                //              stopRecording()
-                micCallback?.onInterruption(began: true)
+                AOSManager.getInstance().onInterruption(began: true)
             }
         case .ended:
             CoreCommsService.log("Audio session interruption ended")
             if let optionsValue = userInfo[AVAudioSessionInterruptionOptionKey] as? UInt {
                 let options = AVAudioSession.InterruptionOptions(rawValue: optionsValue)
                 if options.contains(.shouldResume) {
-                    // Safe to resume recording
-                    //                  _ = startRecording()
-                    micCallback?.onInterruption(began: false)
+                    AOSManager.getInstance().onInterruption(began: false)
                 }
             }
         @unknown default:
@@ -169,7 +155,7 @@ class OnboardMicrophoneManager {
         }
 
         CoreCommsService.log("handleRouteChange: \(reason) @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
-        micCallback?.onRouteChange(reason: reason, availableInputs: audioSession?.availableInputs ?? [])
+        AOSManager.getInstance().onRouteChange(reason: reason, availableInputs: audioSession?.availableInputs ?? [])
 
         // // If we're recording and the audio route changed (e.g., AirPods connected/disconnected)
         // if isRecording {
@@ -215,7 +201,7 @@ class OnboardMicrophoneManager {
             }
         }
 
-        CoreCommsService.log(routeDescription)
+        // CoreCommsService.log(routeDescription)
     }
 
     // MARK: - Private Helpers
@@ -272,7 +258,7 @@ class OnboardMicrophoneManager {
             try audioSession?.setCategory(
                 .playAndRecord,
                 mode: .default,
-                options: [.allowBluetooth, .defaultToSpeaker]
+                options: [.allowBluetooth, .defaultToSpeaker, .mixWithOthers]
             )
 
             // Set preferred input if available
@@ -335,7 +321,7 @@ class OnboardMicrophoneManager {
 
         guard let converter = converter else {
             CoreCommsService.log("MIC: converter is nil")
-            audioEngine = nil
+            // audioEngine = nil
             return false
         }
 
@@ -380,7 +366,6 @@ class OnboardMicrophoneManager {
         // Start the audio engine
         do {
             try audioEngine?.start()
-            isRecording = true
             CoreCommsService.log("MIC: Started recording from: \(getActiveInputDevice() ?? "Unknown device")")
             return true
         } catch {
@@ -397,9 +382,9 @@ class OnboardMicrophoneManager {
 
     /// Stop recording from the microphone
     func stopRecording() {
-        // guard isRecording else {
-        //     return
-        // }
+        guard isRecording else {
+            return
+        }
 
         // Remove the tap and stop the engine
         audioEngine?.inputNode.removeTap(onBus: 0)
@@ -409,7 +394,6 @@ class OnboardMicrophoneManager {
         try? audioSession?.setActive(false)
         audioEngine = nil
         audioSession = nil
-        isRecording = false
 
         CoreCommsService.log("MIC: Stopped recording")
     }

@@ -45,8 +45,6 @@ export const AppsGridViewRoot: React.FC<AppsGridViewProps> = ({
   onStopApp,
   onOpenSettings,
   onOpenWebView,
-  title,
-  isIncompatible = false,
 }) => {
   const {themed, theme} = useAppTheme()
   const [selectedApp, setSelectedApp] = useState<AppModel | null>(null)

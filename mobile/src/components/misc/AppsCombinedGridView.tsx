@@ -1,22 +1,18 @@
 import React, {useState, useCallback, useMemo, useEffect} from "react"
-import {View, ViewStyle, TextStyle, Dimensions, Platform, TouchableOpacity} from "react-native"
+import {View, ViewStyle, TextStyle, Dimensions, Platform} from "react-native"
 import {TabView, SceneMap, TabBar} from "react-native-tab-view"
 import {AppsGridView} from "./AppsGridView"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {ThemedStyle} from "@/theme"
 import {Text} from "@/components/ignite"
 import {translate} from "@/i18n"
-// import { ScrollView } from "react-native-gesture-handler"
 import {ScrollView} from "react-native"
-import {useAppStatus} from "@/contexts/AppStatusProvider"
+import {useAppStatus} from "@/contexts/AppletStatusProvider"
 import BackendServerComms from "@/backend_comms/BackendServerComms"
 import showAlert from "@/utils/AlertUtils"
 import {askPermissionsUI} from "@/utils/PermissionsUtils"
-import {saveSetting} from "@/utils/SettingsHelper"
-import {SETTINGS_KEYS} from "@/consts"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import AppsIncompatibleList from "@/components/misc/AppsIncompatibleList"
-import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons"
 
 interface AppModel {
   name: string
@@ -85,78 +81,16 @@ const AppsCombinedGridViewRoot: React.FC<AppsCombinedGridViewProps> = () => {
       }
 
       // Optimistically update UI
-      optimisticallyStartApp(packageName)
-
-      // Handle foreground apps
-      if (appInfo?.appType === "standard") {
-        const runningStandardApps = appStatus.filter(
-          app => app.is_running && app.appType === "standard" && app.packageName !== packageName,
-        )
-
-        for (const runningApp of runningStandardApps) {
-          optimisticallyStopApp(runningApp.packageName)
-          try {
-            await backendComms.stopApp(runningApp.packageName)
-            clearPendingOperation(runningApp.packageName)
-          } catch (error) {
-            console.error("Stop app error:", error)
-            refreshAppStatus()
-          }
-        }
-      }
-
-      try {
-        await backendComms.startApp(packageName)
-        clearPendingOperation(packageName)
-        await saveSetting(SETTINGS_KEYS.HAS_EVER_ACTIVATED_APP, true)
-      } catch (error: any) {
-        console.error("Start app error:", error)
-
-        if (error?.response?.data?.error?.stage === "HARDWARE_CHECK") {
-          showAlert(
-            translate("home:hardwareIncompatible"),
-            error.response.data.error.message ||
-              translate("home:hardwareIncompatibleMessage", {
-                app: appInfo.name,
-                missing: "required hardware",
-              }),
-            [{text: translate("common:ok")}],
-            {
-              iconName: "alert-circle-outline",
-              iconColor: theme.colors.error,
-            },
-          )
-        }
-
-        clearPendingOperation(packageName)
-        refreshAppStatus()
-      }
+      optimisticallyStartApp(packageName, appInfo.appType)
     },
-    [
-      appStatus,
-      checkAppHealthStatus,
-      optimisticallyStartApp,
-      optimisticallyStopApp,
-      clearPendingOperation,
-      refreshAppStatus,
-      backendComms,
-      theme,
-    ],
+    [appStatus],
   )
 
   const handleStopApp = useCallback(
     async (packageName: string) => {
       optimisticallyStopApp(packageName)
-
-      try {
-        await backendComms.stopApp(packageName)
-        clearPendingOperation(packageName)
-      } catch (error) {
-        refreshAppStatus()
-        console.error("Stop app error:", error)
-      }
     },
-    [optimisticallyStopApp, clearPendingOperation, refreshAppStatus, backendComms],
+    [optimisticallyStopApp],
   )
 
   const handleOpenAppSettings = (app: any) => {

@@ -20,7 +20,7 @@ import {SETTINGS_KEYS} from "@/consts"
 import {loadSetting, saveSetting} from "@/utils/SettingsHelper"
 import BackendServerComms from "@/backend_comms/BackendServerComms"
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
-import {useAppStatus} from "@/contexts/AppStatusProvider"
+import {useAppStatus} from "@/contexts/AppletStatusProvider"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import showAlert from "@/utils/AlertUtils"
 

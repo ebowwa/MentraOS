@@ -11,7 +11,7 @@ import {
 } from "@/components/misc/ConnectedDeviceInfo"
 import ConnectedSimulatedGlassesInfo from "@/components/misc/ConnectedSimulatedGlassesInfo"
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
-import {useAppStatus} from "@/contexts/AppStatusProvider"
+import {useAppStatus} from "@/contexts/AppletStatusProvider"
 // import {ScrollView} from 'react-native-gesture-handler';
 import BackendServerComms from "@/backend_comms/BackendServerComms"
 import semver from "semver"

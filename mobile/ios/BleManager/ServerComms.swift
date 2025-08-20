@@ -8,35 +8,11 @@
 import Combine
 import Foundation
 
-protocol ServerCommsCallback {
-    func onConnectionAck()
-    func onAppStateChange(_ apps: [ThirdPartyCloudApp] /* , _ whatToStream: [String] */ )
-    func onConnectionError(_ error: String)
-    func onAuthError()
-    func onMicrophoneStateChange(_ isEnabled: Bool, _ requiredData: [SpeechRequiredDataType], _ bypassVad: Bool) // NEW: Added bypassVad parameter
-    func onDisplayEvent(_ event: [String: Any])
-    func onRequestSingle(_ dataType: String)
-    func onStatusUpdate(_ status: [String: Any])
-    func onAppStarted(_ packageName: String)
-    func onAppStopped(_ packageName: String)
-    func onJsonMessage(_ message: [String: Any])
-    func onPhotoRequest(_ requestId: String, _ appId: String, _ webhookUrl: String, _ size: String)
-    func onRtmpStreamStartRequest(_ message: [String: Any])
-    func onRtmpStreamStop()
-    func onRtmpStreamKeepAlive(_ message: [String: Any])
-    func onStartBufferRecording()
-    func onStopBufferRecording()
-    func onSaveBufferVideo(_ requestId: String, _ durationSeconds: Int)
-    func onStartVideoRecording(_ requestId: String, _ save: Bool)
-    func onStopVideoRecording(_ requestId: String)
-}
-
 class ServerComms {
     private static var instance: ServerComms?
 
     let wsManager = WebSocketManager()
     private var speechRecCallback: (([String: Any]) -> Void)?
-    private var serverCommsCallback: ServerCommsCallback?
     private var coreToken: String = ""
     var userid: String = ""
     private var serverUrl: String = ""
@@ -127,10 +103,6 @@ class ServerComms {
             wsManager.disconnect()
             connectWebSocket()
         }
-    }
-
-    func setServerCommsCallback(_ callback: ServerCommsCallback) {
-        serverCommsCallback = callback
     }
 
     func setSpeechRecCallback(_ callback: @escaping ([String: Any]) -> Void) {
@@ -483,26 +455,19 @@ class ServerComms {
         switch type {
         case "connection_ack":
             startAudioSenderThread()
-            if let callback = serverCommsCallback {
-                callback.onAppStateChange(parseAppList(msg) /* , parseWhatToStream(msg) */ )
-                callback.onConnectionAck()
-            }
+            AOSManager.getInstance().onAppStateChange(parseAppList(msg) /* , parseWhatToStream(msg) */ )
+            AOSManager.getInstance().onConnectionAck()
 
         case "app_state_change":
-            if let callback = serverCommsCallback {
-                callback.onAppStateChange(parseAppList(msg) /* , parseWhatToStream(msg) */ )
-            }
+            AOSManager.getInstance().onAppStateChange(parseAppList(msg) /* , parseWhatToStream(msg) */ )
 
         case "connection_error":
             let errorMsg = msg["message"] as? String ?? "Unknown error"
-            if let callback = serverCommsCallback {
-                callback.onConnectionError(errorMsg)
-            }
+
+            AOSManager.getInstance().onConnectionError(errorMsg)
 
         case "auth_error":
-            if let callback = serverCommsCallback {
-                callback.onAuthError()
-            }
+            AOSManager.getInstance().onAuthError()
 
         case "microphone_state_change":
             // CoreCommsService.log("ServerComms: microphone_state_change: \(msg)")
@@ -527,15 +492,11 @@ class ServerComms {
 
             CoreCommsService.log("ServerComms: requiredData = \(requiredDataStrings), bypassVad = \(bypassVad)")
 
-            if let callback = serverCommsCallback {
-                callback.onMicrophoneStateChange(isMicrophoneEnabled, requiredData, bypassVad) // NEW: Pass bypassVad
-            }
+            AOSManager.getInstance().onMicrophoneStateChange(isMicrophoneEnabled, requiredData, bypassVad) // NEW: Pass bypassVad
 
         case "display_event":
             if let view = msg["view"] as? String {
-                if let callback = serverCommsCallback {
-                    callback.onDisplayEvent(msg)
-                }
+                AOSManager.getInstance().onDisplayEvent(msg)
             }
 
         case "audio_play_request":
@@ -545,8 +506,8 @@ class ServerComms {
             handleAudioStopRequest()
 
         case "request_single":
-            if let dataType = msg["data_type"] as? String, let callback = serverCommsCallback {
-                callback.onRequestSingle(dataType)
+            if let dataType = msg["data_type"] as? String {
+                AOSManager.getInstance().onRequestSingle(dataType)
             }
 
         case "interim", "final":
@@ -562,18 +523,21 @@ class ServerComms {
 
         case "settings_update":
             CoreCommsService.log("ServerComms: Received settings update from WebSocket")
-            if let status = msg["status"] as? [String: Any], let callback = serverCommsCallback {
-                callback.onStatusUpdate(status)
+            guard let status = msg["status"] as? [String: Any] else {
+                CoreCommsService.log("ServerComms: Received settings update but no status")
+                return
             }
-            // Log.d(TAG, "Received settings update from WebSocket");
-            // try {
-            //     JSONObject settings = msg.optJSONObject("settings");
-            //     if (settings != null && serverCommsCallback != null) {
-            //         serverCommsCallback.onSettingsUpdate(settings);
-            //     }
-            // } catch (Exception e) {
-            //     Log.e(TAG, "Error handling settings update", e);
-            // }
+            AOSManager.getInstance().onStatusUpdate(status)
+
+      // Log.d(TAG, "Received settings update from WebSocket");
+      // try {
+      //     JSONObject settings = msg.optJSONObject("settings");
+      //     if (settings != null && serverCommsCallback != null) {
+      //         serverCommsCallback.onSettingsUpdate(settings);
+      //     }
+      // } catch (Exception e) {
+      //     Log.e(TAG, "Error handling settings update", e);
+      // }
 
         case "set_location_tier":
             print("DEBUG set_location_tier: \(msg)")
@@ -590,15 +554,15 @@ class ServerComms {
             }
 
         case "app_started":
-            if let packageName = msg["packageName"] as? String, let callback = serverCommsCallback {
+            if let packageName = msg["packageName"] as? String {
                 CoreCommsService.log("ServerComms: Received app_started message for package: \(packageName)")
-                callback.onAppStarted(packageName)
+                AOSManager.getInstance().onAppStarted(packageName)
             }
 
         case "app_stopped":
-            if let packageName = msg["packageName"] as? String, let callback = serverCommsCallback {
+            if let packageName = msg["packageName"] as? String {
                 CoreCommsService.log("ServerComms: Received app_stopped message for package: \(packageName)")
-                callback.onAppStopped(packageName)
+                AOSManager.getInstance().onAppStopped(packageName)
             }
 
         case "photo_request":
@@ -608,7 +572,7 @@ class ServerComms {
             let size = (msg["size"] as? String) ?? "medium"
             CoreCommsService.log("Received photo_request, requestId: \(requestId), appId: \(appId), webhookUrl: \(webhookUrl), size: \(size)")
             if !requestId.isEmpty, !appId.isEmpty {
-                serverCommsCallback?.onPhotoRequest(requestId, appId, webhookUrl, size)
+                AOSManager.getInstance().onPhotoRequest(requestId, appId, webhookUrl, size)
             } else {
                 CoreCommsService.log("Invalid photo request: missing requestId or appId")
             }
@@ -616,43 +580,43 @@ class ServerComms {
         case "start_rtmp_stream":
             let rtmpUrl = msg["rtmpUrl"] as? String ?? ""
             if !rtmpUrl.isEmpty {
-                serverCommsCallback?.onRtmpStreamStartRequest(msg)
+                AOSManager.getInstance().onRtmpStreamStartRequest(msg)
             } else {
                 CoreCommsService.log("Invalid RTMP stream request: missing rtmpUrl or callback")
             }
 
         case "stop_rtmp_stream":
             CoreCommsService.log("Received STOP_RTMP_STREAM")
-            serverCommsCallback?.onRtmpStreamStop()
+            AOSManager.getInstance().onRtmpStreamStop()
 
         case "keep_rtmp_stream_alive":
             CoreCommsService.log("ServerComms: Received KEEP_RTMP_STREAM_ALIVE: \(msg)")
-            serverCommsCallback?.onRtmpStreamKeepAlive(msg)
+            AOSManager.getInstance().onRtmpStreamKeepAlive(msg)
 
         case "start_buffer_recording":
             CoreCommsService.log("ServerComms: Received START_BUFFER_RECORDING")
-            serverCommsCallback?.onStartBufferRecording()
+            AOSManager.getInstance().onStartBufferRecording()
 
         case "stop_buffer_recording":
             CoreCommsService.log("ServerComms: Received STOP_BUFFER_RECORDING")
-            serverCommsCallback?.onStopBufferRecording()
+            AOSManager.getInstance().onStopBufferRecording()
 
         case "save_buffer_video":
             CoreCommsService.log("ServerComms: Received SAVE_BUFFER_VIDEO: \(msg)")
             let requestId = msg["requestId"] as? String ?? "buffer_\(Int(Date().timeIntervalSince1970 * 1000))"
             let durationSeconds = msg["durationSeconds"] as? Int ?? 30
-            serverCommsCallback?.onSaveBufferVideo(requestId, durationSeconds)
+            AOSManager.getInstance().onSaveBufferVideo(requestId, durationSeconds)
 
         case "start_video_recording":
             CoreCommsService.log("ServerComms: Received START_VIDEO_RECORDING: \(msg)")
             let requestId = msg["requestId"] as? String ?? "video_\(Int(Date().timeIntervalSince1970 * 1000))"
             let save = msg["save"] as? Bool ?? true
-            serverCommsCallback?.onStartVideoRecording(requestId, save)
+            AOSManager.getInstance().onStartVideoRecording(requestId, save)
 
         case "stop_video_recording":
             CoreCommsService.log("ServerComms: Received STOP_VIDEO_RECORDING: \(msg)")
             let requestId = msg["requestId"] as? String ?? ""
-            serverCommsCallback?.onStopVideoRecording(requestId)
+            AOSManager.getInstance().onStopVideoRecording(requestId)
 
         default:
             CoreCommsService.log("ServerComms: Unknown message type: \(type) / full: \(msg)")

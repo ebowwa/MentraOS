@@ -24,10 +24,10 @@ struct ViewState {
 }
 
 // This class handles logic for managing devices and connections to AugmentOS servers
-@objc(AOSManager) class AOSManager: NSObject, ServerCommsCallback, MicCallback, SherpaOnnxTranscriber.TranscriptDelegate {
+@objc(AOSManager) class AOSManager: NSObject, SherpaOnnxTranscriber.TranscriptDelegate {
     private static var instance: AOSManager?
 
-    static func getInstance() -> AOSManager {
+    @objc static func getInstance() -> AOSManager {
         if instance == nil {
             instance = AOSManager()
         }
@@ -41,8 +41,8 @@ struct ViewState {
     @objc var liveManager: MentraLiveManager?
     @objc var mach1Manager: Mach1Manager?
     @objc var frameManager: FrameManager?
-    var micManager: OnboardMicrophoneManager!
     var serverComms: ServerComms!
+    var micManager = OnboardMicrophoneManager()
 
     private var lastStatusObj: [String: Any] = [:]
 
@@ -50,6 +50,7 @@ struct ViewState {
     private var cachedThirdPartyAppList: [ThirdPartyCloudApp] = []
     //  private var cachedWhatToStream = [String]()
     private var defaultWearable: String = ""
+    private var pendingWearable: String = ""
     private var deviceName: String = ""
     private var shouldEnableMic: Bool = false
     private var contextualDashboard = true
@@ -107,6 +108,7 @@ struct ViewState {
     private var shouldSendTranscript = false
 
     override init() {
+        CoreCommsService.log("AOS: init()")
         vad = SileroVADStrategy()
         serverComms = ServerComms.getInstance()
         super.init()
@@ -141,13 +143,9 @@ struct ViewState {
     // MARK: - Public Methods (for React Native)
 
     func setup() {
-        micManager = OnboardMicrophoneManager()
+        CoreCommsService.log("AOS: setup()")
         serverComms.locationManager.setup()
         serverComms.mediaManager.setup()
-
-        // Set up the ServerComms callback
-        serverComms.setServerCommsCallback(self)
-        micManager.setMicCallback(self)
 
         // Set up voice data handling
         setupVoiceDataHandling()
@@ -164,7 +162,7 @@ struct ViewState {
     func initManager(_ wearable: String) {
         CoreCommsService.log("Initializing manager for wearable: \(wearable)")
         if wearable.contains("G1"), g1Manager == nil {
-            g1Manager = ERG1Manager.shared
+            g1Manager = ERG1Manager.getInstance()
         } else if wearable.contains("Live"), liveManager == nil {
             liveManager = MentraLiveManager()
         } else if wearable.contains("Mach1"), mach1Manager == nil {
@@ -540,7 +538,7 @@ struct ViewState {
                     checkSetVadStatus(speaking: true)
                     // first send out whatever's in the vadBuffer (if there is anything):
                     emptyVadBuffer()
-//          self.serverComms.sendAudioChunk(lc3Data)
+                    //          self.serverComms.sendAudioChunk(lc3Data)
                     if self.shouldSendPcmData {
                         self.serverComms.sendAudioChunk(pcmData)
                     }
@@ -562,11 +560,9 @@ struct ViewState {
     // MARK: - ServerCommsCallback Implementation
 
     func onMicrophoneStateChange(_ isEnabled: Bool, _ requiredData: [SpeechRequiredDataType], _ bypassVad: Bool) {
-        CoreCommsService.log("AOS: @@@@@@@@ changing microphone state to: \(isEnabled) with requiredData: \(requiredData) bypassVad=\(bypassVad) @@@@@@@@@@@@@@@@")
+        CoreCommsService.log("AOS: MIC: @@@@@@@@ changing microphone state to: \(isEnabled) with requiredData: \(requiredData) bypassVad=\(bypassVad) enforceLocalTranscription=\(enforceLocalTranscription) @@@@@@@@@@@@@@@@")
 
-        // NEW: Set PCM-specific bypass based on cloud command
         bypassVadForPCM = bypassVad
-        CoreCommsService.log("AOS: bypassVadForPCM set to: \(bypassVadForPCM)")
 
         if requiredData.contains(.PCM), requiredData.contains(.TRANSCRIPTION) {
             shouldSendPcmData = true
@@ -579,7 +575,6 @@ struct ViewState {
             shouldSendPcmData = false
         } else if requiredData.contains(.PCM_OR_TRANSCRIPTION) {
             // TODO: Later add bandwidth based logic
-            CoreCommsService.log("AOS: enforceLocalTranscription=\(enforceLocalTranscription)")
             if enforceLocalTranscription {
                 shouldSendTranscript = true
                 shouldSendPcmData = false
@@ -591,7 +586,7 @@ struct ViewState {
 
         currentRequiredData = requiredData
 
-        CoreCommsService.log("AOS: shouldSendPcmData=\(shouldSendPcmData), shouldSendTranscript=\(shouldSendTranscript)")
+        // CoreCommsService.log("AOS: MIC: shouldSendPcmData=\(shouldSendPcmData), shouldSendTranscript=\(shouldSendTranscript)")
 
         // in any case, clear the vadBuffer:
         vadBuffer.removeAll()
@@ -635,13 +630,12 @@ struct ViewState {
             useGlassesMic = actuallyEnabled && useGlassesMic
             useOnboardMic = actuallyEnabled && useOnboardMic
 
-            CoreCommsService.log("AOS: useGlassesMic: \(useGlassesMic) useOnboardMic: \(useOnboardMic) actuallyEnabled: \(actuallyEnabled)")
-            CoreCommsService.log("AOS: isEnabled: \(isEnabled) sensingEnabled: \(self.sensingEnabled) glassesHasMic: \(glassesHasMic)")
-            CoreCommsService.log("AOS: useGlassesMic: \(useGlassesMic) useOnboardMic: \(useOnboardMic)")
-            CoreCommsService.log("AOS: preferredMic: \(self.preferredMic) onboardMicUnavailable: \(self.onboardMicUnavailable)")
-            CoreCommsService.log("AOS: actuallyEnabled: \(actuallyEnabled)")
-
-            // CoreCommsService.log("AOS: user enabled microphone: \(isEnabled) sensingEnabled: \(self.sensingEnabled) useOnboardMic: \(useOnboardMic) useGlassesMic: \(useGlassesMic) glassesHasMic: \(glassesHasMic) preferredMic: \(self.preferredMic) somethingConnected: \(self.somethingConnected) onboardMicUnavailable: \(self.onboardMicUnavailable)")
+            // CoreCommsService.log(
+            //     "AOS: MIC: isEnabled: \(isEnabled) sensingEnabled: \(self.sensingEnabled) useOnboardMic: \(useOnboardMic) " +
+            //         "useGlassesMic: \(useGlassesMic) glassesHasMic: \(glassesHasMic) preferredMic: \(self.preferredMic) " +
+            //         "somethingConnected: \(isSomethingConnected()) onboardMicUnavailable: \(self.onboardMicUnavailable)" +
+            //         "actuallyEnabled: \(actuallyEnabled)"
+            // )
 
             // if a g1 is connected, set the mic enabled:
             if g1Manager?.g1Ready ?? false {
@@ -662,7 +656,7 @@ struct ViewState {
         CoreCommsService.log("AOS: App started: \(packageName)")
 
         if !defaultWearable.isEmpty, !isSomethingConnected() {
-            handleConnectWearable(modelName: defaultWearable, deviceName: deviceName)
+            handleConnectWearable(deviceName)
         }
     }
 
@@ -721,20 +715,25 @@ struct ViewState {
         liveManager?.stopVideoRecording(requestId: requestId)
     }
 
-    // TODO: ios this name is a bit misleading:
     func setOnboardMicEnabled(_ isEnabled: Bool) {
         Task {
             if isEnabled {
                 // Just check permissions - we no longer request them directly from Swift
                 // Permissions should already be granted via React Native UI flow
-                if !(micManager?.checkPermissions() ?? false) {
+                if !(micManager.checkPermissions()) {
                     CoreCommsService.log("Microphone permissions not granted. Cannot enable microphone.")
                     return
                 }
 
-                micManager?.startRecording()
+                let success = micManager.startRecording()
+                if !success {
+                    // fallback to glasses mic if possible:
+                    if getGlassesHasMic() {
+                        enableGlassesMic(true)
+                    }
+                }
             } else {
-                micManager?.stopRecording()
+                micManager.stopRecording()
             }
         }
     }
@@ -970,8 +969,9 @@ struct ViewState {
         handleRequestStatus()
     }
 
-    func onRouteChange(reason: AVAudioSession.RouteChangeReason, availableInputs _: [AVAudioSessionPortDescription]) {
-        CoreCommsService.log("AOS: onRouteChange: \(reason)")
+    func onRouteChange(reason: AVAudioSession.RouteChangeReason, availableInputs: [AVAudioSessionPortDescription]) {
+        CoreCommsService.log("AOS: onRouteChange: reason: \(reason)")
+        CoreCommsService.log("AOS: onRouteChange: inputs: \(availableInputs)")
 
         // CoreCommsService.log the available inputs and see if any are an onboard mic:
         // for input in availableInputs {
@@ -987,27 +987,25 @@ struct ViewState {
         //   self.onboardMicUnavailable = false
         // }
 
-        switch reason {
-        case .newDeviceAvailable:
-            micManager?.stopRecording()
-            micManager?.startRecording()
-        case .oldDeviceUnavailable:
-            micManager?.stopRecording()
-            micManager?.startRecording()
-        default:
-            break
-        }
+        //        switch reason {
+        //        case .newDeviceAvailable:
+        //            micManager?.stopRecording()
+        //            micManager?.startRecording()
+        //        case .oldDeviceUnavailable:
+        //            micManager?.stopRecording()
+        //            micManager?.startRecording()
+        //        default:
+        //            break
+        //        }
+
+        onMicrophoneStateChange(micEnabled, currentRequiredData, bypassVadForPCM)
     }
 
     func onInterruption(began: Bool) {
         CoreCommsService.log("AOS: Interruption: \(began)")
-        if began {
-            onboardMicUnavailable = true
-            onMicrophoneStateChange(micEnabled, currentRequiredData, bypassVadForPCM)
-        } else {
-            onboardMicUnavailable = false
-            onMicrophoneStateChange(micEnabled, currentRequiredData, bypassVadForPCM)
-        }
+
+        onboardMicUnavailable = began
+        onMicrophoneStateChange(micEnabled, currentRequiredData, bypassVadForPCM)
     }
 
     private func clearDisplay() {
@@ -1087,7 +1085,7 @@ struct ViewState {
         defaultWearable = ""
         deviceName = ""
         g1Manager?.forget()
-//    self.liveManager?.forget()
+        //    self.liveManager?.forget()
         mach1Manager?.forget()
         // self.g1Manager = nil
         // self.liveManager = nil
@@ -1098,26 +1096,24 @@ struct ViewState {
     func handleSearchForCompatibleDeviceNames(_ modelName: String) {
         CoreCommsService.log("AOS: Searching for compatible device names for: \(modelName)")
         if modelName.contains("Simulated") {
-            defaultWearable = "Simulated Glasses"
-            preferredMic = "phone"
+            defaultWearable = "Simulated Glasses" // there is no pairing process for simulated glasses
             handleRequestStatus()
             saveSettings()
         } else if modelName.contains("Audio") {
-            defaultWearable = "Audio Wearable"
-            preferredMic = "phone"
+            defaultWearable = "Audio Wearable" // there is no pairing process for audio wearable
             handleRequestStatus()
             saveSettings()
         } else if modelName.contains("G1") {
-            defaultWearable = "Even Realities G1"
-            initManager(defaultWearable)
+            pendingWearable = "Even Realities G1"
+            initManager(pendingWearable)
             g1Manager?.findCompatibleDevices()
         } else if modelName.contains("Live") {
-            defaultWearable = "Mentra Live"
-            initManager(defaultWearable)
+            pendingWearable = "Mentra Live"
+            initManager(pendingWearable)
             liveManager?.findCompatibleDevices()
         } else if modelName.contains("Mach1") || modelName.contains("Z100") {
-            defaultWearable = "Mach1"
-            initManager(defaultWearable)
+            pendingWearable = "Mach1"
+            initManager(pendingWearable)
             mach1Manager?.findCompatibleDevices()
         }
     }
@@ -1421,10 +1417,10 @@ struct ViewState {
                 case .connectWearable:
                     guard let params = params, let modelName = params["model_name"] as? String, let deviceName = params["device_name"] as? String else {
                         CoreCommsService.log("AOS: connect_wearable invalid params")
-                        handleConnectWearable(modelName: defaultWearable, deviceName: "")
+                        handleConnectWearable("")
                         break
                     }
-                    handleConnectWearable(modelName: modelName, deviceName: deviceName)
+                    handleConnectWearable(deviceName, modelName: modelName)
                 case .disconnectWearable:
                     disconnectWearable()
                 case .forgetSmartGlasses:
@@ -1652,6 +1648,10 @@ struct ViewState {
             return false
         }
         return false
+    }
+
+    private func enableGlassesMic(_: Bool) async {
+        await g1Manager?.setMicEnabled(enabled: true)
     }
 
     private func handleRequestStatus() {
@@ -1886,9 +1886,9 @@ struct ViewState {
         serverComms.sendBatteryStatus(level: batteryLevel, charging: false)
         serverComms.sendGlassesConnectionState(modelName: defaultWearable, status: "CONNECTED")
 
-        if defaultWearable.contains("Live") {
+        if pendingWearable.contains("Live") {
             handleLiveReady()
-        } else if defaultWearable.contains("G1") {
+        } else if pendingWearable.contains("G1") {
             handleG1Ready()
         } else if defaultWearable.contains("Mach1") {
             handleMach1Ready()
@@ -1968,19 +1968,26 @@ struct ViewState {
         handleRequestStatus()
     }
 
-    private func handleConnectWearable(modelName: String, deviceName: String) {
-        CoreCommsService.log("AOS: Connecting to wearable: \(modelName)")
+    private func handleConnectWearable(_ deviceName: String, modelName: String? = nil) {
+        CoreCommsService.log("AOS: Connecting to modelName: \(modelName ?? "nil") deviceName: \(deviceName) defaultWearable: \(defaultWearable) pendingWearable: \(pendingWearable) selfDeviceName: \(self.deviceName)")
 
-        if modelName.contains("Virtual") || defaultWearable.contains("Virtual") {
-            // we don't need to search for a virtual device
+        if modelName != nil {
+            pendingWearable = modelName!
+        }
+
+        if pendingWearable.contains("Simulated") {
+            defaultWearable = "Simulated Glasses"
+            handleRequestStatus()
             return
         }
 
-        if defaultWearable.isEmpty {
+        if pendingWearable.isEmpty, defaultWearable.isEmpty {
             return
         }
 
-        CoreCommsService.log("AOS: deviceName: \(deviceName) selfDeviceName: \(self.deviceName) defaultWearable: \(defaultWearable)")
+        if pendingWearable.isEmpty, !defaultWearable.isEmpty {
+            pendingWearable = defaultWearable
+        }
 
         Task {
             disconnectWearable()
@@ -1994,35 +2001,13 @@ struct ViewState {
                 saveSettings()
             }
 
-            if self.defaultWearable.contains("Live") {
-                initManager(self.defaultWearable)
-                if self.deviceName != "" {
-                    self.liveManager?.connectById(self.deviceName)
-                } else {
-                    CoreCommsService.log("AOS: this shouldn't happen (we don't have a deviceName saved, connecting will fail if we aren't already paired)")
-                    self.defaultWearable = ""
-                    handleRequestStatus()
-                }
-            } else if self.defaultWearable.contains("G1") {
-                initManager(self.defaultWearable)
-                if self.deviceName != "" {
-                    CoreCommsService.log("AOS: pairing by id: \(self.deviceName)")
-                    self.g1Manager?.connectById(self.deviceName)
-                } else {
-                    CoreCommsService.log("AOS: this shouldn't happen (we don't have a deviceName saved, connecting will fail if we aren't already paired)")
-                    self.defaultWearable = ""
-                    handleRequestStatus()
-                }
-            } else if self.defaultWearable.contains("Mach1") {
-                initManager(self.defaultWearable)
-                if self.deviceName != "" {
-                    CoreCommsService.log("AOS: pairing Mach1 by id: \(self.deviceName)")
-                    self.mach1Manager?.connectById(self.deviceName)
-                } else {
-                    CoreCommsService.log("AOS: this shouldn't happen (we don't have a deviceName saved, connecting will fail if we aren't already paired)")
-                    self.defaultWearable = ""
-                    handleRequestStatus()
-                }
+            initManager(self.pendingWearable)
+            if pendingWearable.contains("Live") {
+                self.liveManager?.connectById(self.deviceName)
+            } else if self.pendingWearable.contains("G1") {
+                self.g1Manager?.connectById(self.deviceName)
+            } else if self.pendingWearable.contains("Mach1") {
+                self.mach1Manager?.connectById(self.deviceName)
             }
         }
 

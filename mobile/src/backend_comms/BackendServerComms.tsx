@@ -4,7 +4,7 @@ import Constants from "expo-constants"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
 import {loadSetting} from "@/utils/SettingsHelper"
 import {SETTINGS_KEYS} from "@/consts"
-import {AppInterface} from "@/contexts/AppStatusProvider"
+import {AppInterface} from "@/contexts/AppletStatusProvider"
 
 interface Callback {
   onSuccess: (data: any) => void

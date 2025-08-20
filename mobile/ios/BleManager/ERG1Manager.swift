@@ -114,6 +114,15 @@ enum GlassesError: Error {
     // TODO: we probably don't need this
     @objc static func requiresMainQueueSetup() -> Bool { return true }
 
+    private static var instance: ERG1Manager?
+
+    static func getInstance() -> ERG1Manager {
+        if instance == nil {
+            instance = ERG1Manager()
+        }
+        return instance!
+    }
+
     // Duplicate BMP prevention with timeout
     private var isDisplayingBMP = false
     private var lastBMPStartTime = Date()
@@ -265,8 +274,6 @@ enum GlassesError: Error {
             }
         }
     }
-
-    static let shared = ERG1Manager()
 
     override private init() {
         super.init()
@@ -690,7 +697,7 @@ enum GlassesError: Error {
             }
         }
 
-        // CoreCommsService.log("g1Ready set to \(leftReady) \(rightReady) \(leftReady && rightReady)")
+//         CoreCommsService.log("g1Ready set to \(leftReady) \(rightReady) \(leftReady && rightReady) left: \(left), right: \(right)")
         g1Ready = leftReady && rightReady
         if g1Ready {
             stopReconnectionTimer()
@@ -820,7 +827,7 @@ enum GlassesError: Error {
                 let chunk = chunks[i]
 
                 let firstFewBytes = String(Data(chunk).hexEncodedString().prefix(16))
-                CoreCommsService.log("SEND (\(side)) \(firstFewBytes)")
+                // CoreCommsService.log("SEND (\(side)) \(firstFewBytes)")
                 await sendCommandToSideWithoutResponse(chunk, side: side)
                 try? await Task.sleep(nanoseconds: UInt64(cmd.chunkTimeMs) * 1_000_000) // 8ms
             }
@@ -843,7 +850,7 @@ enum GlassesError: Error {
             }
 
             let firstFewBytes = String(Data(lastChunk).hexEncodedString().prefix(16))
-            CoreCommsService.log("SEND (\(side)) \(firstFewBytes)")
+            // CoreCommsService.log("SEND (\(side)) \(firstFewBytes)")
 
 //      if (lastChunk[0] == 0x4E) {
 //        sequenceNumber = Int(lastChunk[1])
@@ -868,6 +875,7 @@ enum GlassesError: Error {
 
             if success {
                 stopReconnectionTimer()
+                // setReadiness(left: true, right: true)
             }
         }
     }
@@ -957,7 +965,7 @@ enum GlassesError: Error {
         let side = peripheral == leftPeripheral ? "L" : "R"
         let key = sequenceNumber == -1 ? side : "\(side)-\(sequenceNumber)"
 
-        CoreCommsService.log("G1: ACK received for \(key)")
+        // CoreCommsService.log("G1: ACK received for \(key)")
 
         // Resume any pending ACK continuation for this side (thread-safe)
         var continuation: CheckedContinuation<Bool, Never>?
@@ -985,7 +993,7 @@ enum GlassesError: Error {
 
         let side = peripheral == leftPeripheral ? "L" : "R"
         let s = peripheral == leftPeripheral ? "L" : "R"
-        CoreCommsService.log("G1: RECV (\(s)) \(data.hexEncodedString())")
+        // CoreCommsService.log("G1: RECV (\(s)) \(data.hexEncodedString())")
 
         switch Commands(rawValue: command) {
         case .BLE_REQ_INIT:
@@ -1576,6 +1584,7 @@ extension ERG1Manager {
     }
 
     func setMicEnabled(enabled: Bool) async -> Bool {
+        CoreCommsService.log("G1: setMicEnabled()")
         var micOnData = Data()
         micOnData.append(Commands.BLE_REQ_MIC_ON.rawValue)
         if enabled {
@@ -2121,7 +2130,7 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
     }
 
     private func stopReconnectionTimer() {
-        CoreCommsService.log("G1: Stopping reconnection timer")
+        // CoreCommsService.log("G1: Stopping reconnection timer")
         reconnectionTimer?.invalidate()
         reconnectionTimer = nil
     }
