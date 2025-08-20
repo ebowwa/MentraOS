@@ -157,6 +157,30 @@ export class GlassesWebSocketService {
               });
             return;
           }
+          // Handle LiveKit init handshake (client requests LiveKit info)
+          if (message.type === GlassesToCloudMessageType.LIVEKIT_INIT) {
+            const livekitInitMessage = message as any; // Cast to get mode
+            const mode = livekitInitMessage.mode || 'publish'; // Default to publish for backward compatibility
+            
+            userSession.liveKitManager
+              .handleLiveKitInit(mode)
+              .then((info) => {
+                if (!info) return;
+                const livekitInfo: CloudToGlassesMessage = {
+                  type: CloudToGlassesMessageType.LIVEKIT_INFO,
+                  url: info.url,
+                  roomName: info.roomName,
+                  token: info.token,
+                  timestamp: new Date(),
+                } as any;
+                ws.send(JSON.stringify(livekitInfo));
+                userSession.logger.info({ url: info.url, roomName: info.roomName, feature: 'livekit' }, 'Sent LIVEKIT_INFO (on LIVEKIT_INIT)');
+              })
+              .catch((e) => {
+                userSession.logger.warn({ e, feature: 'livekit' }, 'Failed LIVEKIT_INIT handling');
+              });
+            return;
+          }
 
           // Process the message
           this.handleGlassesMessage(userSession, message)
@@ -188,6 +212,8 @@ export class GlassesWebSocketService {
 
       // Handle connection initialization
       this.handleConnectionInit(userSession, reconnection);
+
+      // NOTE: Do not auto-send LIVEKIT_INFO here to avoid unnecessary room usage.
 
       // Track connection in analytics
       PosthogService.trackEvent("glasses_connection", userId, {

@@ -125,7 +125,7 @@ export async function runLiveCaptionsTestOnce(
       throw new Error("Live Captions app did not start properly");
     }
 
-    // Step 6: Stream audio file for transcription
+    // Step 6: Stream audio file for transcription (WebSocket PCM)
     console.log(`🎤 Streaming audio file: ${audioFilePath}`);
     console.log("📝 Listening for transcription results...\n");
 

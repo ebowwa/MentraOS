@@ -7,6 +7,8 @@
 
 export { MentraClient } from './MentraClient';
 export { AccountService } from './services/AccountService';
+export { LiveKitManager } from './managers/LiveKitManager';
+export type { LiveKitManagerOptions } from './managers/LiveKitManager';
 export type { 
   ClientConfig,
   AudioConfig,

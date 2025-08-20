@@ -24,7 +24,8 @@ export type CloudToGlassesMessageType =
   | 'display_event'
   | 'app_state_change'
   | 'microphone_state_change'
-  | 'settings_update';
+  | 'settings_update'
+  | 'livekit_info';
 
 // Layout types
 export enum LayoutType {

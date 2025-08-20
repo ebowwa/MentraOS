@@ -1,0 +1,344 @@
+import { Logger } from 'pino';
+import { logger as rootLogger } from '../logging/pino-logger';
+import UserSession from './UserSession';
+import { AccessToken } from 'livekit-server-sdk';
+import {
+  AudioStream,
+  Participant,
+  RemoteParticipant,
+  RemoteTrack,
+  RemoteTrackPublication,
+  Room,
+  RoomEvent,
+  Track,
+  TrackKind,
+  TrackPublication,
+  dispose,
+} from '@livekit/rtc-node';
+
+
+import dotenv from 'dotenv';
+dotenv.config();
+
+export class LiveKitManager {
+  private readonly logger: Logger;
+  private readonly session: UserSession;
+  private readonly apiKey: string;
+  private readonly apiSecret: string;
+  private readonly livekitUrl: string;
+  private room: any | null = null;
+  private sinks: any[] = [];
+  private subscriberRunning = false;
+  private receivedFrameCount = 0;
+  private trackToProcess: string | undefined = undefined;
+
+  constructor(session: UserSession) {
+    this.session = session;
+    const startMs = (session as any).startTime instanceof Date ? (session as any).startTime.getTime() : Date.now();
+    const lkTraceId = `livekit:${session.userId}:${startMs}`;
+    this.logger = rootLogger.child({ service: 'LiveKitManager', userId: session.userId, feature: 'livekit', lkTraceId });
+    this.apiKey = process.env.LIVEKIT_API_KEY || '';
+    this.apiSecret = process.env.LIVEKIT_API_SECRET || '';
+    this.livekitUrl = process.env.LIVEKIT_URL || '';
+    this.logger.info({ apiKey: this.apiKey, apiSecret: this.apiSecret, livekitUrl: this.livekitUrl }, "⚡️ LiveKitManager initialized");
+    if (!this.apiKey || !this.apiSecret || !this.livekitUrl) {
+      this.logger.warn('LIVEKIT env vars are not fully configured');
+    }
+  }
+
+  getRoomName(): string {
+    return this.session.userId;
+  }
+
+  getUrl(): string {
+    return this.livekitUrl;
+  }
+
+  async mintClientPublishToken(): Promise<string | null> {
+    if (!this.apiKey || !this.apiSecret) return null;
+    try {
+      const at = new AccessToken(this.apiKey, this.apiSecret, { identity: this.session.userId, ttl: 300 });
+      at.addGrant({ roomJoin: true, canPublish: true, canSubscribe: false, room: this.getRoomName() } as any);
+      const token = await at.toJwt();
+      this.logger.info({ roomName: this.getRoomName(), token }, 'Minted client publish token');
+      return token;
+    } catch (error) {
+      this.logger.error(error , 'Failed to mint client publish token');
+      return null;
+    }
+  }
+
+  /**
+   * Handle LIVEKIT_INIT by preparing subscriber and returning connection info.
+   */
+  async handleLiveKitInit(mode: 'publish' | 'subscribe' = 'publish'): Promise<{ url: string; roomName: string; token: string } | null> {
+    const url = this.getUrl();
+    const roomName = this.getRoomName();
+    
+    // Mint appropriate token based on mode
+    const token = mode === 'subscribe' 
+      ? await this.mintClientSubscribeToken()
+      : await this.mintClientPublishToken();
+      
+    if (!url || !roomName || !token) {
+      this.logger.warn({ hasUrl: Boolean(url), hasRoom: Boolean(roomName), hasToken: Boolean(token), mode, feature: 'livekit' }, 'LIVEKIT_INFO not ready (missing url/room/token)');
+      return null;
+    }
+    
+    // Only start server-side subscriber if client is publishing
+    if (mode === 'publish') {
+      try {
+        await this.startSubscriber();
+      } catch (e) {
+        this.logger.warn({ e, feature: 'livekit' }, 'Failed to start LiveKit subscriber in handleLiveKitInit');
+      }
+    }
+    
+    this.logger.info({ mode, roomName }, 'Returning LiveKit info for mode');
+    return { url, roomName, token };
+  }
+
+  async mintClientSubscribeToken(): Promise<string | null> {
+    if (!this.apiKey || !this.apiSecret) return null;
+    try {
+      const at = new AccessToken(this.apiKey, this.apiSecret, { identity: this.session.userId, ttl: 300 });
+      at.addGrant({ roomJoin: true, canPublish: false, canSubscribe: true, room: this.getRoomName() } as any);
+      const token = await at.toJwt();
+      this.logger.info({ roomName: this.getRoomName(), token }, 'Minted client subscribe token');
+      return token;
+    } catch (error) {
+      this.logger.error(error , 'Failed to mint client subscribe token');
+      return null;
+    }
+  }
+
+  async mintAgentSubscribeToken(): Promise<string | null> {
+    if (!this.apiKey || !this.apiSecret) return null;
+    try {
+      const at = new AccessToken(this.apiKey, this.apiSecret, { identity: `cloud-agent:${this.session.userId}`, ttl: 600 });
+      at.addGrant({ roomJoin: true, canPublish: false, canSubscribe: true, room: this.getRoomName() } as any);
+      const token = await at.toJwt();
+      this.logger.info({ roomName: this.getRoomName(), token }, 'Minted agent subscribe token');
+      return token;
+    } catch (error) {
+      this.logger.error(error , 'Failed to mint agent subscribe token');
+      return null;
+    }
+  }
+
+  /**
+   * Start a LiveKit subscriber agent for this user session.
+   * Subscribes to remote audio and forwards PCM to transcription manager.
+   */
+  async startSubscriber(): Promise<void> {
+    this.logger.info('startSubscriber invoked');
+    if (this.subscriberRunning) {
+      this.logger.debug('LiveKit subscriber already running');
+      return;
+    }
+    const subscribeToken = await this.mintAgentSubscribeToken();
+    const url = this.getUrl();
+    const roomName = this.getRoomName();
+    if (!subscribeToken || !url) {
+      this.logger.warn({ hasToken: Boolean(subscribeToken), hasUrl: Boolean(url), roomName }, 'Cannot start LiveKit subscriber (missing url or token)');
+      return;
+    }
+
+    this.logger.info({ url, roomName, tokenLength: subscribeToken.length }, 'Attempting to connect to LiveKit');
+
+    try {
+      // Lazy import livekit-client & wrtc
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      // const livekit = require('livekit-client');
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      // const wrtc = require('wrtc');
+
+      this.room = new Room();
+
+      this.logger.info({ url, roomName }, 'Attempting to connect LiveKit subscriber...');
+      
+      await this.room.connect(url, subscribeToken, {
+        autoSubscribe: true,
+        dynacast: true,
+        adaptiveStream: true,
+        timeout: 5000, // 30 second timeout
+        disconnectOnPageHidden: false,
+        expWebAudioMix: false,
+      });
+      this.subscriberRunning = true;
+      this.logger.info({ roomName, url }, 'LiveKit subscriber connected');
+
+      this.room.on(RoomEvent.TrackSubscribed, async (track: RemoteTrack, publication: RemoteTrackPublication, participant: RemoteParticipant) => {
+        try {
+          this.logger.info({ participant: participant.identity, kind: track.kind, trackSid: track.sid }, 'Subscribed to remote track');
+          // if (track.kind !== 'audio') return;
+          if (track.kind !== TrackKind.KIND_AUDIO) return this.logger.debug({ participant: participant.identity, kind: track.kind, trackSid: track.sid }, 'Ignored non-audio track');
+          // const mediaTrack = (track as AudioStreamTrack).mediaStreamTrack;
+          // const mediaTrack = track
+          // if (!mediaTrack) return;
+          const stream = new AudioStream(track);
+          this.trackToProcess = track.sid;
+
+          for await (const frame of stream) {
+            if (!this.trackToProcess) {
+              return;
+            }
+
+            // if (writer == null) {
+            //   // create file on first frame
+            //   // also guard when track is unsubscribed
+            //   writer = fs.createWriteStream('output.wav');
+            //   writeWavHeader(writer, frame);
+            // }
+
+            // if (writer) {
+            const buf = Buffer.from(frame.data.buffer);
+            this.session.audioManager.processAudioData(buf, /* isLC3 */ false);
+
+            // Debug: log every 50 frames to confirm audio flow
+            this.receivedFrameCount++;
+
+            if (this.receivedFrameCount % 50 === 0) {
+              this.logger.debug({
+                samplesIn: frame.samplesPerChannel * frame.channels,
+                sampleRateIn: frame.sampleRate,
+                channelCount: frame.channels,
+                framesIn: frame.samplesPerChannel,
+                bytesOut: buf.byteLength,
+                framesReceived: this.receivedFrameCount,
+              }, 'LiveKit audio sink received frames');
+            }
+            // writer.write(buf);
+          }
+          // }
+
+          // const RTCAudioSink = wrtc?.nonstandard?.RTCAudioSink;
+          // if (!RTCAudioSink) {
+          //   this.logger.error('RTCAudioSink not available from wrtc');
+          //   return;
+          // }
+          // const sink = new RTCAudioSink(mediaTrack);
+          // this.sinks.push(sink);
+          // this.logger.info({ participant: participant?.identity, publicationTrackSid: publication?.trackSid }, 'Attached RTCAudioSink to remote audio track');
+
+          // sink.ondata = (data: any) => {
+          //   try {
+          //     // data: { samples: Int16Array|Float32Array, sampleRate, bitsPerSample, channelCount, numberOfFrames }
+          //     const pcm16 = this.ensureInt16Mono(data);
+          //     const targetRate = 16000;
+          //     const resampled = data.sampleRate === targetRate
+          //       ? pcm16
+          //       : this.resampleLinear(pcm16, data.sampleRate, targetRate);
+          //     const ab = resampled.buffer.slice(
+          //       resampled.byteOffset,
+          //       resampled.byteOffset + resampled.byteLength,
+          //     ) as ArrayBuffer;
+          //     // Route through AudioManager to preserve relaying and manager semantics
+          //     this.session.audioManager.processAudioData(ab, /* isLC3 */ false);
+
+          //     // Debug: log every 50 frames to confirm audio flow
+          //     this.receivedFrameCount++;
+          //     if (this.receivedFrameCount % 50 === 0) {
+          //       this.logger.debug({
+          //         samplesIn: (data.samples && (data.samples.length || (data.numberOfFrames || 0))) || undefined,
+          //         sampleRateIn: data.sampleRate,
+          //         channelCount: data.channelCount,
+          //         framesIn: data.numberOfFrames,
+          //         bytesOut: resampled.byteLength,
+          //         framesReceived: this.receivedFrameCount,
+          //       }, 'LiveKit audio sink received frames');
+          //     }
+          //   } catch (err) {
+          //     this.logger.warn({ err }, 'Error processing audio sink data');
+          //   }
+          // };
+        } catch (e) {
+          this.logger.error(e , 'Failed to attach audio sink');
+        }
+      });
+
+      this.room.on(RoomEvent.TrackUnsubscribed, (_: RemoteTrack, publication: RemoteTrackPublication, participant: RemoteParticipant) => {
+        console.log('unsubscribed from track', publication.sid, participant.identity);
+        if (publication.sid === this.trackToProcess) {
+          this.trackToProcess = undefined;
+        }
+      });
+
+      this.room.on(RoomEvent.Disconnected, () => {
+        this.logger.warn('LiveKit subscriber disconnected');
+        this.stopSubscriber();
+      });
+    } catch (error) {
+      this.logger.error(error , 'Error starting LiveKit subscriber');
+    }
+  }
+
+  stopSubscriber(): void {
+    try {
+      for (const sink of this.sinks) {
+        try {
+          if (sink?.stop) sink.stop();
+        } catch { }
+      }
+      this.sinks = [];
+      if (this.room) {
+        try { this.room.disconnect(); } catch { }
+      }
+    } finally {
+      this.room = null;
+      this.subscriberRunning = false;
+      this.logger.info('LiveKit subscriber stopped');
+    }
+  }
+
+  private ensureInt16Mono(data: any): Int16Array {
+    const channelCount = data.channelCount || 1;
+    const bitsPerSample = data.bitsPerSample || 16;
+    const samples = data.samples;
+    if (bitsPerSample === 16 && channelCount === 1 && samples instanceof Int16Array) {
+      return samples;
+    }
+    // Convert Float32 to Int16
+    let mono: Int16Array;
+    if (channelCount === 1) {
+      if (samples instanceof Float32Array) {
+        mono = new Int16Array(samples.length);
+        for (let i = 0; i < samples.length; i++) mono[i] = Math.max(-32768, Math.min(32767, Math.round(samples[i] * 32767)));
+      } else {
+        mono = samples as Int16Array;
+      }
+    } else {
+      // Average stereo to mono
+      const totalFrames = data.numberOfFrames || (samples.length / channelCount);
+      mono = new Int16Array(totalFrames);
+      for (let i = 0; i < totalFrames; i++) {
+        const left = samples[i * channelCount];
+        const right = samples[i * channelCount + 1];
+        const fl = typeof left === 'number' ? left : Number(left);
+        const fr = typeof right === 'number' ? right : Number(right);
+        const avg = (fl + fr) / 2;
+        mono[i] = Math.max(-32768, Math.min(32767, Math.round(avg * 32767)));
+      }
+    }
+    return mono;
+  }
+
+  private resampleLinear(pcm: Int16Array, fromRate: number, toRate: number): Int16Array {
+    if (fromRate === toRate) return pcm;
+    const ratio = fromRate / toRate;
+    const outSamples = Math.round(pcm.length / ratio);
+    const out = new Int16Array(outSamples);
+    for (let i = 0; i < outSamples; i++) {
+      const srcIndex = i * ratio;
+      const i1 = Math.floor(srcIndex);
+      const i2 = Math.min(i1 + 1, pcm.length - 1);
+      const s1 = pcm[i1];
+      const s2 = pcm[i2];
+      const frac = srcIndex - Math.floor(srcIndex);
+      out[i] = Math.round(s1 + (s2 - s1) * frac);
+    }
+    return out;
+  }
+}
+
+export default LiveKitManager;

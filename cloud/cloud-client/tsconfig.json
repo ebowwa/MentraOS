@@ -17,7 +17,7 @@
     "allowImportingTsExtensions": false,
     "noEmit": false,
     "lib": ["ES2022", "DOM"],
-    "types": ["bun-types", "node"]
+    "types": ["node"]
   },
   "include": [
     "src/**/*"

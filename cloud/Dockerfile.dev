@@ -1,5 +1,8 @@
 FROM oven/bun:latest
 
+# Install ca-certificates for SSL/TLS connections
+RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
+
 ENV NODE_ENV=development
 ENV CONTAINER_ENVIRONMENT=true
 

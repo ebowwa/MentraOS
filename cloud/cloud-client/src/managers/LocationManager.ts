@@ -25,12 +25,12 @@ export class LocationManager extends EventEmitter {
     this.isRunning = true;
     
     // Start periodic location updates if we have a current location
-    if (this.currentLocation && this.config.locationUpdateInterval > 0) {
+    if (this.currentLocation && (this.config.locationUpdateInterval ?? 0) > 0) {
       this.updateInterval = setInterval(() => {
         if (this.currentLocation) {
           this.emit('location_update', this.currentLocation.lat, this.currentLocation.lng);
         }
-      }, this.config.locationUpdateInterval);
+      }, this.config.locationUpdateInterval ?? 5000);
     }
   }
 
@@ -56,7 +56,7 @@ export class LocationManager extends EventEmitter {
     this.currentLocation = { lat, lng };
     
     // If this is the first location and we're running, start periodic updates
-    if (!previousLocation && this.isRunning && this.config.locationUpdateInterval > 0) {
+    if (!previousLocation && this.isRunning && (this.config.locationUpdateInterval ?? 0) > 0) {
       this.start(); // Restart to set up interval
     }
     

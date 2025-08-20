@@ -25,7 +25,7 @@ export interface ClientConfig {
  */
 export interface AudioConfig {
   format: "pcm16" | "wav";
-  sampleRate: 16000 | 48000;
+  sampleRate: number;
   chunkSize: number;
 }
 
@@ -42,9 +42,9 @@ export interface DeviceConfig {
  * Client behavior settings
  */
 export interface BehaviorConfig {
-  statusUpdateInterval: number;
-  locationUpdateInterval: number;
-  reconnectOnDisconnect: boolean;
+  statusUpdateInterval?: number;
+  locationUpdateInterval?: number;
+  reconnectOnDisconnect?: boolean;
   disableStatusUpdates?: boolean;
 }
 
@@ -52,9 +52,9 @@ export interface BehaviorConfig {
  * Debugging and logging options
  */
 export interface DebugConfig {
-  logLevel: "debug" | "info" | "warn" | "error";
-  saveMetrics: boolean;
-  logWebSocketMessages: boolean;
+  logLevel?: "debug" | "info" | "warn" | "error";
+  saveMetrics?: boolean;
+  logWebSocketMessages?: boolean;
 }
 
 /**

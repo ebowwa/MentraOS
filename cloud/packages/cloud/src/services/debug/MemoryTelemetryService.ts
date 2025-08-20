@@ -3,6 +3,7 @@ import { Logger } from "pino";
 import SessionStorage from "../session/SessionStorage";
 import { logger as rootLogger } from "../logging/pino-logger";
 import UserSession from "../session/UserSession";
+const ENABLED = process.env.MEMORY_TELEMETRY_ENABLED === "true" || false;
 
 export interface SessionMemoryStats {
   userId: string;
@@ -68,6 +69,10 @@ export class MemoryTelemetryService {
   }
 
   start(): void {
+    if (!ENABLED) {
+      this.logger.info("Memory telemetry is disabled");
+      return;
+    }
     if (this.interval) return;
     this.interval = setInterval(() => {
       try {

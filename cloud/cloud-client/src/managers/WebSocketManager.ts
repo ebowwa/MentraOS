@@ -115,6 +115,14 @@ export class WebSocketManager extends EventEmitter {
   // Message Sending Methods
   //===========================================================
 
+  sendLiveKitInit(mode: 'publish' | 'subscribe' = 'publish'): void {
+    this.sendMessage({
+      type: 'livekit_init',
+      mode,
+      timestamp: new Date(),
+    });
+  }
+
   sendVad(status: boolean): void {
     this.sendMessage({
       type: "vad",
@@ -166,25 +174,53 @@ export class WebSocketManager extends EventEmitter {
   }
 
   sendCoreStatusUpdate(): void {
-    const statusData = {
-      battery: this.config.device?.batteryLevel || 85,
-      brightness: this.config.device?.brightness || 50,
+    // Build a payload compatible with the cloud's CORE_STATUS_UPDATE handler
+    // Shape expected by server:
+    // {
+    //   type: 'core_status_update',
+    //   status: {
+    //     status: {
+    //       core_info: { ... },
+    //       connected_glasses: { model_name: string },
+    //       glasses_settings: { brightness, auto_brightness, dashboard_height, dashboard_depth, head_up_angle }
+    //     }
+    //   }
+    // }
+
+    const battery = this.config.device?.batteryLevel ?? 85;
+    const brightness = this.config.device?.brightness ?? 50;
+    const modelName = this.config.device?.model || "Even Realities G1";
+
+    const statusPayload = {
+      status: {
+        core_info: {
+          force_core_onboard_mic: false,
+          contextual_dashboard_enabled: true,
+          metric_system_enabled: false,
+          sensing_enabled: true,
+          always_on_status_bar_enabled: false,
+          bypass_vad_for_debugging: false,
+          bypass_audio_encoding_for_debugging: false,
+          enforce_local_transcription: false,
+          // optional diagnostics
+          battery,
+        },
+        connected_glasses: {
+          model_name: modelName,
+        },
+        glasses_settings: {
+          brightness,
+          auto_brightness: false,
+          dashboard_height: 4,
+          dashboard_depth: 5,
+          head_up_angle: 20,
+        },
+      },
     };
 
     this.sendMessage({
       type: "core_status_update",
-      status: JSON.stringify(statusData),
-      details: {
-        coreInfo: {
-          version: "1.0.0",
-          micEnabled: true,
-        },
-        glassesInfo: {
-          model: this.config.device?.model || "Even Realities G1",
-          battery: statusData.battery,
-          connected: true,
-        },
-      },
+      status: statusPayload,
       timestamp: new Date(),
     });
   }
@@ -286,6 +322,15 @@ export class WebSocketManager extends EventEmitter {
         });
         break;
 
+      case 'livekit_info':
+        this.emit('livekit_info', {
+          url: message.url,
+          roomName: message.roomName,
+          token: message.token,
+          timestamp: new Date(message.timestamp ?? Date.now()),
+        });
+        break;
+
       default:
         if (this.config.debug?.logLevel === "debug") {
           console.log(
@@ -297,16 +342,18 @@ export class WebSocketManager extends EventEmitter {
   }
 
   private startStatusUpdates(): void {
-    // Skip status updates if disabled
+    // If disabled, send a single status snapshot and exit
     if (this.config.behavior?.disableStatusUpdates) {
+      if (this.isConnected()) {
+        this.sendCoreStatusUpdate();
+      }
       if (this.config.debug?.logLevel === "debug") {
-        console.log("[WebSocketManager] Status updates disabled");
+        console.log("[WebSocketManager] Sent one-time core status update (periodic disabled)");
       }
       return;
     }
 
     const interval = this.config.behavior?.statusUpdateInterval || 10000;
-
     setInterval(() => {
       if (this.isConnected()) {
         this.sendCoreStatusUpdate();

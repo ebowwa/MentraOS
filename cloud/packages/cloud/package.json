@@ -48,8 +48,9 @@
     "typescript": "^5.8.3"
   },
   "dependencies": {
-    "@mentra/sdk": "workspace:*",
+    "@livekit/rtc-node": "^0.13.18",
     "@logtail/pino": "^0.5.4",
+    "@mentra/sdk": "workspace:*",
     "@sentry/bun": "^9.1.0",
     "@sentry/cli": "^2.42.1",
     "@supabase/supabase-js": "^2.49.1",
@@ -62,6 +63,7 @@
     "helmet": "^4.6.0",
     "jose": "^6.0.11",
     "jsonwebtoken": "^9.0.1",
+    "livekit-server-sdk": "^2.13.2",
     "microsoft-cognitiveservices-speech-sdk": "^1.44.1",
     "moment": "^2.29.4",
     "mongodb": "^6.13.0",

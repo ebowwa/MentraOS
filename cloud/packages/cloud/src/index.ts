@@ -44,6 +44,7 @@ import onboardingRoutes from "./routes/onboarding.routes";
 // import rtmpRelayRoutes from "./routes/rtmp-relay.routes";
 import appUptimeRoutes from "./routes/app-uptime.routes";
 import streamsRoutes from "./routes/streams.routes";
+import livekitRoutes from "./routes/livekit.routes";
 
 // import appCommunicationRoutes from './routes/app-communication.routes';
 
@@ -244,6 +245,7 @@ app.use("/api/onboarding", onboardingRoutes);
 // app.use("/api/rtmp-relay", rtmpRelayRoutes);
 app.use("/api/app-uptime", appUptimeRoutes);
 app.use("/api/streams", streamsRoutes);
+app.use("/api", livekitRoutes);
 
 // app.use('/api/app-communication', appCommunicationRoutes);
 // app.use('/api/tpa-communication', appCommunicationRoutes); // TODO: Remove this once the old apps are fully updated in the wild (the old mobile clients will hit the old urls)

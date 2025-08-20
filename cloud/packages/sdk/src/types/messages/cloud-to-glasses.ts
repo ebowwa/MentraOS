@@ -106,6 +106,16 @@ export interface SettingsUpdate extends BaseMessage {
   };
 }
 
+/**
+ * LiveKit info for client to connect & publish
+ */
+export interface LiveKitInfo extends BaseMessage {
+  type: CloudToGlassesMessageType.LIVEKIT_INFO;
+  url: string;
+  roomName: string;
+  token: string;
+}
+
 //===========================================================
 // RTMP Streaming Commands
 //===========================================================
@@ -210,7 +220,8 @@ export type CloudToGlassesMessage =
   | StopRtmpStream
   | KeepRtmpStreamAlive
   | SetLocationTier
-  | RequestSingleLocation;
+  | RequestSingleLocation
+  | LiveKitInfo;
 
 //===========================================================
 // Type guards

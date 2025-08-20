@@ -22,6 +22,7 @@ import { AudioManager } from "./managers/AudioManager";
 import { AppManager } from "./managers/AppManager";
 import { LocationManager } from "./managers/LocationManager";
 import { DisplayManager } from "./managers/DisplayManager";
+import { LiveKitManager, LiveKitManagerOptions } from "./managers/LiveKitManager";
 
 /**
  * Main client class providing clean public API for AugmentOS cloud interaction
@@ -35,6 +36,8 @@ export class MentraClient extends EventEmitter {
   private displayManager: DisplayManager;
   private connected = false;
   private coreToken?: string;
+  private liveKitManager?: LiveKitManager;
+  private useLiveKitAudio = false;
 
   constructor(config: ClientConfig) {
     super();
@@ -75,6 +78,7 @@ export class MentraClient extends EventEmitter {
     this.appManager = new AppManager();
     this.locationManager = new LocationManager(this.config.behavior!);
     this.displayManager = new DisplayManager();
+    this.liveKitManager = new LiveKitManager();
 
     // Setup event forwarding from managers
     this.setupEventForwarding();
@@ -162,7 +166,17 @@ export class MentraClient extends EventEmitter {
 
     // Stream the file and wait for completion
     await this.audioManager.streamAudioFile(filePath, (chunk) => {
-      this.wsManager.sendAudioChunk(chunk);
+      if (this.useLiveKitAudio && this.liveKitManager) {
+        try {
+          // 16k PCM expected by our file streamer
+          this.liveKitManager.sendPcmChunk(chunk as Buffer, 16000);
+        } catch (err) {
+          // Fallback to WS on error
+          this.wsManager.sendAudioChunk(chunk);
+        }
+      } else {
+        this.wsManager.sendAudioChunk(chunk);
+      }
     });
 
     if (sendVad) {
@@ -183,7 +197,15 @@ export class MentraClient extends EventEmitter {
 
     // Start streaming audio chunks
     this.audioManager.streamFromSource(stream, (chunk) => {
-      this.wsManager.sendAudioChunk(chunk);
+      if (this.useLiveKitAudio && this.liveKitManager) {
+        try {
+          this.liveKitManager.sendPcmChunk(chunk as Buffer, 16000);
+        } catch (err) {
+          this.wsManager.sendAudioChunk(chunk);
+        }
+      } else {
+        this.wsManager.sendAudioChunk(chunk);
+      }
     });
   }
 
@@ -412,11 +434,48 @@ export class MentraClient extends EventEmitter {
       this.emit("error", error);
     });
 
+    // LiveKit forwarding
+    if (this.liveKitManager) {
+      this.liveKitManager.attachToWebSocket(this.wsManager as any);
+      this.liveKitManager.on('info', (info) => this.emit('livekit_info', info));
+      this.liveKitManager.on('connected', (e) => this.emit('livekit_connected', e));
+      this.liveKitManager.on('published', () => this.emit('livekit_published'));
+      this.liveKitManager.on('warning', (w) => this.emit('livekit_warning', w));
+      this.liveKitManager.on('error', (err) => this.emit('livekit_error', err));
+    }
     // Forward location updates from LocationManager
     this.locationManager.on("location_update", (lat: number, lng: number) => {
       if (this.connected) {
         this.wsManager.sendLocationUpdate(lat, lng);
       }
     });
+  }
+
+  //===========================================================
+  // LiveKit Methods
+  //===========================================================
+
+  enableLiveKit(options?: LiveKitManagerOptions): void {
+    if (!this.liveKitManager) {
+      this.liveKitManager = new LiveKitManager(options);
+      this.liveKitManager.attachToWebSocket(this.wsManager as any);
+    } else if (options) {
+      // Recreate with new options if provided
+      this.liveKitManager.removeAllListeners();
+      this.liveKitManager = new LiveKitManager(options);
+      this.liveKitManager.attachToWebSocket(this.wsManager as any);
+    }
+    this.useLiveKitAudio = Boolean(options?.useForAudio);
+  }
+
+  requestLiveKitInit(mode: 'publish' | 'subscribe' = 'publish'): void {
+    this.ensureConnected();
+    this.wsManager.sendLiveKitInit(mode);
+  }
+
+  async liveKitConnectAndPublish(): Promise<void> {
+    this.ensureConnected();
+    if (!this.liveKitManager) throw new Error('LiveKitManager not initialized');
+    await this.liveKitManager.connectAndPublish();
   }
 }
