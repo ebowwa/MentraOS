@@ -2,6 +2,34 @@
 
 All notable changes to the nRF5340 DK BLE Glasses Protobuf Simulator will be documented in this file.
 
+## [2.11.0] - 2025-08-20
+
+### 🔄 REVERT TO DISPLAY OPTIMIZATION FOCUS
+
+#### Strategy Shift
+- **🎯 Reverting from audio implementation** to focus on display driver optimization
+- **✅ Phase 1 BLE Infrastructure Complete** - MTU 517, protobuf handlers, audio framework ready
+- **🔀 Switching Priority**: Display performance optimization takes precedence
+- **📦 Audio Code**: All LC3/I2S/PDM implementations preserved in src/ for future Phase 2
+
+#### BLE Infrastructure - Phase 1 Complete ✅
+- **✅ MTU Upgraded**: From 247 to 517 bytes for high-throughput data
+- **✅ MicStateConfig Handler**: Tag 20 protobuf processing with mobile app communication
+- **✅ Audio Chunk Parser**: 0xA0 header processing framework ready
+- **✅ SPI4M Optimization**: 33MHz verified speed for display performance
+- **✅ Button Conflict Resolution**: Remapped buttons to avoid SPI4 interference
+
+#### Audio Research & Implementation (Preserved)
+- **📚 MentraOS Analysis Complete**: LC3 codec, PDM mic, I2S output thoroughly studied
+- **🏗️ Audio Framework Ready**: Full implementation available in src/ directory
+- **🎵 Test Implementations**: I2S audio tests, PDM loopback, MentraOS integration
+- **⏸️ Audio Paused**: Implementation complete but priority shifted to display
+
+#### Next Phase: Display Driver Optimization
+- **🎯 Focus**: Optimizing SPI4M display performance beyond 33MHz
+- **📊 Target**: Enhanced frame rates, reduced latency, improved visual experience
+- **🔧 Approach**: Advanced SPI timing, DMA optimization, display controller tuning
+
 ## [2.10.0] - 2025-08-19
 
 ### 🎤 PDM MICROPHONE & LC3 AUDIO STREAMING FOUNDATION
