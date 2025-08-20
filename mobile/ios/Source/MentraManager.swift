@@ -2332,7 +2332,7 @@ struct ViewState {
             return true
     }
 
-    func validateSTTModel(path: String) -> Bool {
+    func validateSTTModel(_ path: String) -> Bool {
         do {
             let fileManager = FileManager.default
 
