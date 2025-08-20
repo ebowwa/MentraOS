@@ -247,6 +247,15 @@ public abstract class SmartGlassesCommunicator {
         // Default implementation does nothing
         Log.d("SmartGlassesCommunicator", "WiFi credential setting not implemented for this device");
     }
+    
+    /**
+     * Query gallery status from the smart glasses
+     * Default implementation does nothing - specific communicators should override
+     */
+    public void queryGalleryStatus() {
+        // Default implementation does nothing
+        Log.d("SmartGlassesCommunicator", "Gallery status query not implemented for this device");
+    }
 
     /**
      * Sends hotspot state command to the smart glasses

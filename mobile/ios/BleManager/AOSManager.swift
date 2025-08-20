@@ -1315,6 +1315,11 @@ struct ViewState {
         liveManager?.sendHotspotState(enabled)
     }
 
+    private func queryGalleryStatus() {
+        CoreCommsService.log("AOS: 📸 Querying gallery status from glasses")
+        liveManager?.queryGalleryStatus()
+    }
+
     private func showDashboard() {
         Task {
             await self.g1Manager?.RN_showDashboard()
@@ -1369,6 +1374,7 @@ struct ViewState {
             case requestWifiScan = "request_wifi_scan"
             case sendWifiCredentials = "send_wifi_credentials"
             case setHotspotState = "set_hotspot_state"
+            case queryGalleryStatus = "query_gallery_status"
             case simulateHeadPosition = "simulate_head_position"
             case simulateButtonPress = "simulate_button_press"
             case startBufferRecording = "start_buffer_recording"
@@ -1569,6 +1575,9 @@ struct ViewState {
                         break
                     }
                     setGlassesHotspotState(enabled)
+                case .queryGalleryStatus:
+                    CoreCommsService.log("AOS: Querying gallery status")
+                    queryGalleryStatus()
                 case .simulateHeadPosition:
                     guard let params = params, let position = params["position"] as? String else {
                         CoreCommsService.log("AOS: simulate_head_position invalid params")

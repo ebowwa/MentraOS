@@ -61,6 +61,7 @@ import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.Glass
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesWifiScanResultEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesWifiStatusChange;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesHotspotStatusChange;
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesGalleryStatusEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.HeadUpAngleEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.KeepAliveAckEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.MicModeChangedEvent;
@@ -1015,6 +1016,31 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
 
         // Also update the general status
         sendStatusToAugmentOsManager();
+    }
+
+    @Subscribe
+    public void onGlassesGalleryStatusEvent(GlassesGalleryStatusEvent event) {
+        Log.d(TAG, "📸 Received gallery status from glasses: " + event.photoCount + " photos, " + 
+              event.videoCount + " videos, total: " + event.totalCount);
+        
+        // Send gallery status to manager app via dedicated message
+        try {
+            JSONObject galleryStatusData = new JSONObject();
+            galleryStatusData.put("photos", event.photoCount);
+            galleryStatusData.put("videos", event.videoCount);
+            galleryStatusData.put("total", event.totalCount);
+            galleryStatusData.put("total_size", event.totalSize);
+            galleryStatusData.put("has_content", event.hasContent);
+            
+            JSONObject wrapper = new JSONObject();
+            wrapper.put("glasses_gallery_status", galleryStatusData);
+            
+            if (blePeripheral != null) {
+                blePeripheral.sendDataToAugmentOsManager(wrapper.toString());
+            }
+        } catch (JSONException e) {
+            Log.e(TAG, "📸 Error sending gallery status to manager", e);
+        }
     }
 
     @Subscribe
@@ -2656,6 +2682,25 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
 
         // Notify manager app
         //blePeripheral.sendNotifyManager("Scanning for WiFi networks...", "info");
+    }
+    
+    @Override
+    public void queryGalleryStatus() {
+        Log.d(TAG, "📸 Querying gallery status from glasses");
+        
+        if (smartGlassesManager == null || smartGlassesManager.getConnectedSmartGlasses() == null) {
+            Log.e(TAG, "📸 No glasses connected to query gallery status");
+            return;
+        }
+        
+        String deviceModel = smartGlassesManager.getConnectedSmartGlasses().deviceModelName;
+        if (deviceModel == null || !deviceModel.contains("Mentra Live")) {
+            Log.w(TAG, "📸 Connected glasses do not support gallery status query");
+            return;
+        }
+        
+        // Send the query request to the glasses
+        smartGlassesManager.queryGalleryStatus();
     }
 
     @Override

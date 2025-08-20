@@ -827,6 +827,12 @@ public class SmartGlassesManager extends Service {
             smartGlassesRepresentative.smartGlassesCommunicator.requestWifiScan();
         }
     }
+    
+    public void queryGalleryStatus() {
+        if (smartGlassesRepresentative != null && smartGlassesRepresentative.smartGlassesCommunicator != null) {
+            smartGlassesRepresentative.smartGlassesCommunicator.queryGalleryStatus();
+        }
+    }
 
     public void sendWifiCredentials(String ssid, String password) {
         if (smartGlassesRepresentative != null && smartGlassesRepresentative.smartGlassesCommunicator != null) {

@@ -163,7 +163,7 @@ private void sendHotspotStatusToPhone(INetworkManager networkManager) {
     if (networkManager.isHotspotEnabled()) {
         hotspotStatus.put("hotspot_ssid", networkManager.getHotspotSsid());
         hotspotStatus.put("hotspot_password", networkManager.getHotspotPassword());
-        hotspotStatus.put("hotspot_ip", networkManager.getLocalIpAddress());
+        hotspotStatus.put("hotspot_gateway_ip", networkManager.getLocalIpAddress());
     }
 
     communicationManager.sendJsonOverBle(hotspotStatus);
@@ -191,7 +191,7 @@ public class GlassesHotspotStatusChange {
     public final boolean isHotspotEnabled;
     public final String hotspotSsid;
     public final String hotspotPassword;
-    public final String hotspotIp;
+    public final String hotspotGatewayIp;
 
     /**
      * Create a new GlassesHotspotStatusChange
@@ -200,18 +200,18 @@ public class GlassesHotspotStatusChange {
      * @param isHotspotEnabled Current hotspot state
      * @param hotspotSsid Current hotspot SSID if enabled
      * @param hotspotPassword Current hotspot password if enabled
-     * @param hotspotIp Local IP address of the glasses hotspot
+     * @param hotspotGatewayIp Local IP address of the glasses hotspot
      */
     public GlassesHotspotStatusChange(String deviceModel,
                                      boolean isHotspotEnabled,
                                      String hotspotSsid,
                                      String hotspotPassword,
-                                     String hotspotIp) {
+                                     String hotspotGatewayIp) {
         this.deviceModel = deviceModel;
         this.isHotspotEnabled = isHotspotEnabled;
         this.hotspotSsid = hotspotSsid != null ? hotspotSsid : "";
         this.hotspotPassword = hotspotPassword != null ? hotspotPassword : "";
-        this.hotspotIp = hotspotIp != null ? hotspotIp : "";
+        this.hotspotGatewayIp = hotspotGatewayIp != null ? hotspotGatewayIp : "";
     }
 }
 ```
@@ -232,10 +232,10 @@ case "hotspot_status_update":
     boolean hotspotEnabled = json.optBoolean("hotspot_enabled", false);
     String hotspotSsid = json.optString("hotspot_ssid", "");
     String hotspotPassword = json.optString("hotspot_password", "");
-    String hotspotIp = json.optString("hotspot_ip", "");
+    String hotspotGatewayIp = json.optString("hotspot_gateway_ip", "");
 
     Log.d(TAG, "## Received hotspot status: enabled=" + hotspotEnabled +
-          ", SSID=" + hotspotSsid + ", IP=" + hotspotIp);
+          ", SSID=" + hotspotSsid + ", IP=" + hotspotGatewayIp);
 
     // Post EventBus event (exactly like WiFi status)
     EventBus.getDefault().post(new GlassesHotspotStatusChange(
@@ -243,7 +243,7 @@ case "hotspot_status_update":
             hotspotEnabled,
             hotspotSsid,
             hotspotPassword,
-            hotspotIp));
+            hotspotGatewayIp));
     break;
 ```
 
@@ -261,7 +261,7 @@ import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.Glass
 private boolean glassesHotspotEnabled = false;
 private String glassesHotspotSsid = "";
 private String glassesHotspotPassword = "";
-private String glassesHotspotIp = "";
+private String glassesHotspotGatewayIp = "";
 
 // Add EventBus subscription method (exactly like onGlassesNeedWifiCredentialsEvent)
 @Subscribe
@@ -269,7 +269,7 @@ public void onGlassesHotspotStatusChange(GlassesHotspotStatusChange event) {
     glassesHotspotEnabled = event.isHotspotEnabled;
     glassesHotspotSsid = event.hotspotSsid;
     glassesHotspotPassword = event.hotspotPassword;
-    glassesHotspotIp = event.hotspotIp;
+    glassesHotspotGatewayIp = event.hotspotGatewayIp;
 
     Log.d(TAG, "Received GlassesHotspotStatusChange: device=" + event.deviceModel +
           ", enabled=" + event.isHotspotEnabled + ", ssid=" + event.hotspotSsid);
@@ -289,7 +289,7 @@ if (usesWifi) {
     if (glassesHotspotEnabled) {
         connectedGlasses.put("glasses_hotspot_ssid", glassesHotspotSsid);
         connectedGlasses.put("glasses_hotspot_password", glassesHotspotPassword);
-        connectedGlasses.put("glasses_hotspot_ip", glassesHotspotIp);
+        connectedGlasses.put("glasses_", glassesHotspotGatewayIp);
     }
 }
 
@@ -298,7 +298,7 @@ if (usesWifi) {
 glassesHotspotEnabled = false;
 glassesHotspotSsid = "";
 glassesHotspotPassword = "";
-glassesHotspotIp = "";
+glassesHotspotGatewayIp = "";
 ```
 
 ### 2.4 Network Manager Interface Updates (ASG Client)
@@ -399,7 +399,7 @@ const {status} = useCoreStatus()
 const isHotspotEnabled = status.glasses_info?.glasses_hotspot_enabled
 const hotspotSsid = status.glasses_info?.glasses_hotspot_ssid
 const hotspotPassword = status.glasses_info?.glasses_hotspot_password
-const hotspotIp = status.glasses_info?.glasses_hotspot_ip
+const hotspotGatewayIp = status.glasses_info?.glasses_
 
 // Send hotspot command using existing infrastructure
 const handleRequestHotspot = async () => {
@@ -436,12 +436,12 @@ The gallery will automatically reload once connected.`,
     )
 
     // Update camera API to use hotspot IP
-    if (hotspotIp) {
-      asgCameraApi.setServer(hotspotIp, 8089)
+    if (hotspotGatewayIp) {
+      asgCameraApi.setServer(hotspotGatewayIp, 8089)
       loadInitialPhotos()
     }
   }
-}, [isHotspotEnabled, hotspotSsid, hotspotPassword, hotspotIp])
+}, [isHotspotEnabled, hotspotSsid, hotspotPassword, hotspotGatewayIp])
 
 // Stop hotspot when leaving gallery
 const handleStopHotspot = () => {

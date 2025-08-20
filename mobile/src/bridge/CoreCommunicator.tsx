@@ -283,6 +283,14 @@ export class CoreCommunicator extends EventEmitter {
           password: data.glasses_hotspot_status_change.password,
           local_ip: data.glasses_hotspot_status_change.local_ip,
         })
+      } else if ("glasses_gallery_status" in data) {
+        console.log("Received glasses_gallery_status event from Core", data.glasses_gallery_status)
+        GlobalEventEmitter.emit("GLASSES_GALLERY_STATUS", {
+          photos: data.glasses_gallery_status.photos,
+          videos: data.glasses_gallery_status.videos,
+          total: data.glasses_gallery_status.total,
+          has_content: data.glasses_gallery_status.has_content,
+        })
       } else if ("glasses_display_event" in data) {
         GlobalEventEmitter.emit("GLASSES_DISPLAY_EVENT", data.glasses_display_event)
       } else if ("ping" in data) {
@@ -933,6 +941,12 @@ export class CoreCommunicator extends EventEmitter {
       command: command,
       params: params || {},
     })
+  }
+
+  async queryGalleryStatus() {
+    console.log("[CoreCommunicator] Querying gallery status from glasses...")
+    // Just send the command, the response will come through the event system
+    return this.sendCommand("query_gallery_status")
   }
 }
 

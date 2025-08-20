@@ -29,6 +29,7 @@ import androidx.preference.PreferenceManager;
 
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.BatteryLevelEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.ButtonPressEvent;
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesGalleryStatusEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesBluetoothSearchDiscoverEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesBluetoothSearchStopEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesWifiScanResultEvent;
@@ -1678,6 +1679,27 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                         pressType,
                         timestamp));
                 break;
+                
+            case "gallery_status":
+                // Process gallery status response
+                int photoCount = json.optInt("photos", 0);
+                int videoCount = json.optInt("videos", 0);
+                int totalCount = json.optInt("total", 0);
+                long totalSize = json.optLong("total_size", 0);
+                boolean hasContent = json.optBoolean("has_content", false);
+                
+                Log.d(TAG, "📸 Received gallery status: " + photoCount + " photos, " + 
+                      videoCount + " videos, total size: " + totalSize + " bytes");
+                
+                // Post gallery status event to EventBus
+                EventBus.getDefault().post(new GlassesGalleryStatusEvent(
+                        smartGlassesDevice.deviceModelName,
+                        photoCount,
+                        videoCount,
+                        totalCount,
+                        totalSize,
+                        hasContent));
+                break;
 
             case "sensor_data":
                 // Process sensor data
@@ -2113,6 +2135,21 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             Log.d(TAG, "Sending WiFi scan request to glasses");
         } catch (JSONException e) {
             Log.e(TAG, "Error creating WiFi scan request", e);
+        }
+    }
+    
+    /**
+     * Query gallery status from the glasses
+     */
+    @Override
+    public void queryGalleryStatus() {
+        try {
+            JSONObject json = new JSONObject();
+            json.put("type", "query_gallery_status");
+            sendJson(json, true);
+            Log.d(TAG, "📸 Sending gallery status query to glasses");
+        } catch (JSONException e) {
+            Log.e(TAG, "📸 Error creating gallery status query", e);
         }
     }
 

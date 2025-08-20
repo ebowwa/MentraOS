@@ -208,6 +208,11 @@ public class AugmentOsManagerMessageParser {
                 case "request_wifi_scan":
                     callback.requestWifiScan();
                     break;
+                    
+                case "query_gallery_status":
+                    Log.d(TAG, "📸 GOT A COMMAND TO QUERY GALLERY STATUS");
+                    callback.queryGalleryStatus();
+                    break;
 
                 case "set_preferred_mic":
                     String mic = commandObject.getJSONObject("params").getString("mic");

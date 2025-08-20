@@ -171,47 +171,27 @@ public class K900NetworkManager extends BaseNetworkManager {
             context.sendBroadcast(intent);
             Log.d(TAG, "🔥 ✅ K900 hotspot enable intent sent");
             
-            // Give the system a moment to process the intent
-            new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                // Read the SSID directly from Settings.Global
-                try {
-                    String ssid = Settings.Global.getString(context.getContentResolver(), "xy_ssid");
+            // Read the SSID directly from Settings.Global (no delay needed - it's already there)
+            try {
+                String ssid = Settings.Global.getString(context.getContentResolver(), "xy_ssid");
+                
+                if (ssid != null && !ssid.isEmpty()) {
+                    Log.d(TAG, "🔥 ✅ Got K900 hotspot SSID from Settings.Global: " + ssid);
                     
-                    if (ssid != null && !ssid.isEmpty()) {
-                        Log.d(TAG, "🔥 ✅ Got K900 hotspot SSID from Settings.Global: " + ssid);
-                        
-                        // Update state with detected SSID and known password
-                        updateHotspotState(true, ssid, K900_HOTSPOT_PASSWORD);
-                        notifyHotspotStateChanged(true);
-                        
-                        notificationManager.showHotspotStateNotification(true);
-                        notificationManager.showDebugNotification(
-                                "K900 Hotspot Active", 
-                                ssid + " | " + K900_HOTSPOT_PASSWORD);
-                        
-                        Log.i(TAG, "🔥 ✅ K900 hotspot active: " + ssid);
-                    } else {
-                        Log.e(TAG, "🔥 ❌ Failed to read K900 SSID from Settings.Global");
-                        
-                        // Turn off the hotspot since we can't get credentials
-                        Intent disableIntent = new Intent();
-                        disableIntent.setAction("com.xy.xsetting.action");
-                        disableIntent.setPackage("com.android.systemui");
-                        disableIntent.putExtra("cmd", "ap_start");
-                        disableIntent.putExtra("enable", false);
-                        context.sendBroadcast(disableIntent);
-                        
-                        clearHotspotState();
-                        notifyHotspotStateChanged(false);
-                        
-                        notificationManager.showDebugNotification(
-                                "Hotspot Failed", 
-                                "Could not read hotspot SSID. Hotspot disabled.");
-                    }
-                } catch (Exception e) {
-                    Log.e(TAG, "🔥 💥 Error reading K900 SSID from Settings.Global", e);
+                    // Update state with detected SSID and known password
+                    updateHotspotState(true, ssid, K900_HOTSPOT_PASSWORD);
+                    notifyHotspotStateChanged(true);
                     
-                    // Turn off the hotspot on error
+                    notificationManager.showHotspotStateNotification(true);
+                    notificationManager.showDebugNotification(
+                            "K900 Hotspot Active", 
+                            ssid + " | " + K900_HOTSPOT_PASSWORD);
+                    
+                    Log.i(TAG, "🔥 ✅ K900 hotspot active: " + ssid);
+                } else {
+                    Log.e(TAG, "🔥 ❌ Failed to read K900 SSID from Settings.Global");
+                    
+                    // Turn off the hotspot since we can't get credentials
                     Intent disableIntent = new Intent();
                     disableIntent.setAction("com.xy.xsetting.action");
                     disableIntent.setPackage("com.android.systemui");
@@ -223,10 +203,27 @@ public class K900NetworkManager extends BaseNetworkManager {
                     notifyHotspotStateChanged(false);
                     
                     notificationManager.showDebugNotification(
-                            "Hotspot Error", 
-                            "Failed to read SSID: " + e.getMessage());
+                            "Hotspot Failed", 
+                            "Could not read hotspot SSID. Hotspot disabled.");
                 }
-            }, 400); // Wait 1.5 seconds for hotspot to initialize
+            } catch (Exception e) {
+                Log.e(TAG, "🔥 💥 Error reading K900 SSID from Settings.Global", e);
+                
+                // Turn off the hotspot on error
+                Intent disableIntent = new Intent();
+                disableIntent.setAction("com.xy.xsetting.action");
+                disableIntent.setPackage("com.android.systemui");
+                disableIntent.putExtra("cmd", "ap_start");
+                disableIntent.putExtra("enable", false);
+                context.sendBroadcast(disableIntent);
+                
+                clearHotspotState();
+                notifyHotspotStateChanged(false);
+                
+                notificationManager.showDebugNotification(
+                        "Hotspot Error", 
+                        "Failed to read SSID: " + e.getMessage());
+            }
             
             Log.i(TAG, "🔥 ✅ K900 hotspot start initiated");
         } catch (Exception e) {

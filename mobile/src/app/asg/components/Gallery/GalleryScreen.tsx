@@ -123,6 +123,12 @@ export function GalleryScreen() {
   const [lastConnectionStatus, setLastConnectionStatus] = useState(false)
   const [isRequestingHotspot, setIsRequestingHotspot] = useState(false)
   const [galleryOpenedHotspot, setGalleryOpenedHotspot] = useState(false)
+  const [glassesGalleryStatus, setGlassesGalleryStatus] = useState<{
+    photos: number
+    videos: number
+    total: number
+    has_content: boolean
+  } | null>(null)
 
   // Track loaded ranges to avoid duplicate requests
   const loadedRanges = useRef<Set<string>>(new Set())
@@ -566,30 +572,39 @@ export function GalleryScreen() {
     ])
   }
 
-  // Load data on mount
+  // Query gallery status from glasses
+  const queryGlassesGalleryStatus = () => {
+    console.log("[GalleryScreen] Querying glasses gallery status...")
+    coreCommunicator
+      .queryGalleryStatus()
+      .catch(error => console.error("[GalleryScreen] Failed to send gallery status query:", error))
+  }
+
+  // STEP 1: On mount - load local photos and query gallery status
   useEffect(() => {
-    console.log("[GalleryScreen] Component mounted, loading all photos")
-    checkConnectivity().then(() => {
-      console.log("[GalleryScreen] Initial connectivity check complete")
-    })
-    loadInitialPhotos()
-    loadDownloadedPhotos() // Load local photos only on mount
+    console.log("[GalleryScreen] Component mounted, starting smart gallery flow")
+
+    // Always load local photos first
+    loadDownloadedPhotos()
+
+    // Query gallery status via BLE - this starts the whole flow
+    queryGlassesGalleryStatus()
+
+    // If already on same WiFi network, try loading photos
+    if (isWifiConnected && glassesWifiIp) {
+      console.log("[GalleryScreen] Already on same WiFi, loading photos")
+      loadInitialPhotos()
+    }
   }, []) // Only run on mount
 
-  // Reload ONLY server photos when connection changes
+  // STEP 5: When gallery becomes reachable, start sync
   useEffect(() => {
-    // Skip on initial mount (handled above)
-    if (isInitialLoad) return
-
-    console.log("[GalleryScreen] Connection changed, reloading server photos only")
-    loadInitialPhotos() // Only server photos, not local
-  }, [
-    connectionInfo.isWifiConnected,
-    connectionInfo.glassesWifiIp,
-    connectionInfo.isHotspotEnabled,
-    connectionInfo.hotspotGatewayIp,
-    isInitialLoad,
-  ])
+    // Only reload photos when on same WiFi (not hotspot - that's handled by SSID matching)
+    if (isWifiConnected && glassesWifiIp && !isInitialLoad) {
+      console.log("[GalleryScreen] WiFi connection established, loading photos")
+      loadInitialPhotos()
+    }
+  }, [isWifiConnected, glassesWifiIp, isInitialLoad])
 
   // Handle back button
   useFocusEffect(
@@ -618,25 +633,25 @@ export function GalleryScreen() {
     }
   }, [connectionCheckInterval])
 
-  // Auto-refresh connection check every 5 seconds if not connected
+  // Auto-refresh connection check every 5 seconds once we have a connection
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null
 
-    // Only set up auto-refresh if gallery is not reachable
-    if (!isGalleryReachable) {
-      console.log("[GalleryScreen] Starting auto-refresh timer for connection check")
+    // Only check connectivity if we have a potential connection (WiFi or hotspot)
+    if ((isWifiConnected || isHotspotEnabled) && !isGalleryReachable) {
+      console.log("[GalleryScreen] Have connection but gallery not reachable, starting connectivity checks")
 
       interval = setInterval(async () => {
-        console.log("[GalleryScreen] Auto-checking connectivity...")
+        console.log("[GalleryScreen] Checking if gallery server is reachable...")
         const status = await checkConnectivity()
 
         // Just update connection status - photos will reload via connection useEffect
         if (status.galleryReachable && !lastConnectionStatus) {
-          console.log("[GalleryScreen] Connection restored! (Photos will reload via connection effect)")
+          console.log("[GalleryScreen] Gallery server is now reachable!")
           setLastConnectionStatus(true)
-          // Don't call loadInitialPhotos() here - let the connection useEffect handle it
+          // Photos will reload via the connection change effect
         } else if (!status.galleryReachable && lastConnectionStatus) {
-          console.log("[GalleryScreen] Connection lost!")
+          console.log("[GalleryScreen] Gallery server no longer reachable")
           setLastConnectionStatus(false)
         }
       }, 5000) // Check every 5 seconds
@@ -654,7 +669,7 @@ export function GalleryScreen() {
         clearInterval(interval)
       }
     }
-  }, [isGalleryReachable, lastConnectionStatus]) // Only depend on connection states, not functions
+  }, [isWifiConnected, isHotspotEnabled, isGalleryReachable, lastConnectionStatus]) // Monitor connection states
 
   // Helper functions for hotspot connection
   const showManualAlert = (ssid: string, password: string) => {
@@ -709,16 +724,42 @@ The gallery will automatically reload once connected.`,
     connectToHotspot(ssid, password, ip)
   }
 
-  // Listen for immediate hotspot status changes via GlobalEventEmitter
+  // STEP 2: Listen for gallery status and start hotspot if needed
+  useEffect(() => {
+    const handleGalleryStatus = (data: any) => {
+      console.log("[GalleryScreen] Received GLASSES_GALLERY_STATUS event:", data)
+      setGlassesGalleryStatus({
+        photos: data.photos || 0,
+        videos: data.videos || 0,
+        total: data.total || 0,
+        has_content: data.has_content || false,
+      })
+
+      // If there's content and no connection, start hotspot
+      if (data.has_content && !isWifiConnected && !isHotspotEnabled && !isRequestingHotspot) {
+        console.log("[GalleryScreen] Has content but no connection, requesting hotspot...")
+        handleRequestHotspot()
+      }
+    }
+
+    GlobalEventEmitter.addListener("GLASSES_GALLERY_STATUS", handleGalleryStatus)
+
+    return () => {
+      GlobalEventEmitter.removeListener("GLASSES_GALLERY_STATUS", handleGalleryStatus)
+    }
+  }, [isWifiConnected, isHotspotEnabled, isRequestingHotspot])
+
+  // STEP 3: Listen for hotspot ready and connect to it
   useEffect(() => {
     const handleHotspotStatusChange = (eventData: any) => {
       console.log("[GalleryScreen] Received GLASSES_HOTSPOT_STATUS_CHANGE event:", eventData)
 
-      if (eventData.enabled && eventData.ssid && eventData.password) {
-        console.log("[GalleryScreen] Hotspot enabled via event, triggering network suggestion...")
+      if (eventData.enabled && eventData.ssid && eventData.password && galleryOpenedHotspot) {
+        console.log("[GalleryScreen] Hotspot enabled, attempting to connect phone to WiFi...")
 
-        // Trigger network suggestion/connection immediately
-        triggerHotspotConnection(eventData.ssid, eventData.password, eventData.local_ip)
+        // Store hotspot info for SSID matching
+        // Attempt to connect phone to hotspot WiFi
+        connectToHotspot(eventData.ssid, eventData.password, eventData.local_ip)
       }
     }
 
@@ -727,21 +768,28 @@ The gallery will automatically reload once connected.`,
     return () => {
       GlobalEventEmitter.removeListener("GLASSES_HOTSPOT_STATUS_CHANGE", handleHotspotStatusChange)
     }
-  }, [])
+  }, [galleryOpenedHotspot])
 
-  // Handle hotspot status changes - automatically connect to WiFi
+  // STEP 4: Monitor phone SSID - when it matches hotspot SSID, we're connected
   useEffect(() => {
-    if (isHotspotEnabled && hotspotSsid && hotspotPassword) {
-      console.log("[GalleryScreen] Hotspot is ready via status object, attempting automatic WiFi connection...")
+    // Get phone's current SSID from network status
+    const phoneSSID = networkStatus.phoneSSID
 
-      triggerHotspotConnection(hotspotSsid, hotspotPassword, hotspotGatewayIp)
+    // Check if phone is now connected to the glasses hotspot
+    if (phoneSSID && hotspotSsid && phoneSSID === hotspotSsid && hotspotGatewayIp) {
+      console.log("[GalleryScreen] Phone connected to glasses hotspot! SSID match confirmed")
+      console.log("[GalleryScreen] Phone SSID:", phoneSSID, "Hotspot SSID:", hotspotSsid)
+
+      // Update API server to use hotspot gateway IP
+      asgCameraApi.setServer(hotspotGatewayIp, 8089)
+
+      // Now that we're connected, load photos
+      setTimeout(() => {
+        console.log("[GalleryScreen] Loading photos via hotspot connection...")
+        loadInitialPhotos()
+      }, 1000) // Brief delay for network stabilization
     }
-  }, [
-    connectionInfo.isHotspotEnabled,
-    connectionInfo.hotspotSsid,
-    connectionInfo.hotspotPassword,
-    connectionInfo.hotspotGatewayIp,
-  ])
+  }, [networkStatus.phoneSSID, hotspotSsid, hotspotGatewayIp])
 
   // Trigger sync when gallery server becomes reachable (any connection type)
   useEffect(() => {
@@ -772,22 +820,9 @@ The gallery will automatically reload once connected.`,
     }
   }, [isSyncing, galleryOpenedHotspot, isHotspotEnabled])
 
-  // Automatically start hotspot when gallery is not reachable
-  useEffect(() => {
-    // Automatically start hotspot if:
-    // 1. Gallery is not reachable
-    // 2. Hotspot is not already enabled
-    // 3. We've completed the initial connectivity check
-    // 4. We're not currently requesting hotspot
-    if (!isGalleryReachable && !isHotspotEnabled && !isInitialLoad && !isRequestingHotspot) {
-      console.log("[GalleryScreen] Gallery not reachable, automatically starting hotspot...")
-      const timeoutId = setTimeout(() => {
-        handleRequestHotspot()
-      }, 2000) // Wait 2 seconds to allow connection check to complete
+  // Remove this effect - hotspot is now started from gallery status event handler
 
-      return () => clearTimeout(timeoutId)
-    }
-  }, [isGalleryReachable, connectionInfo.isHotspotEnabled, isInitialLoad, isRequestingHotspot])
+  // Remove this effect - connection is now handled by hotspot status event
 
   // Auto-close hotspot when leaving gallery (only if gallery opened it)
   useEffect(() => {

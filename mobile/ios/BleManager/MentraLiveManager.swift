@@ -1324,6 +1324,16 @@ typealias JSONObject = [String: Any]
         case "rtmp_stream_status":
             emitRtmpStreamStatus(json)
 
+        case "gallery_status":
+            let photoCount = json["photos"] as? Int ?? 0
+            let videoCount = json["videos"] as? Int ?? 0
+            let totalCount = json["total"] as? Int ?? 0
+            let totalSize = json["total_size"] as? Int64 ?? 0
+            let hasContent = json["has_content"] as? Bool ?? false
+            handleGalleryStatus(photoCount: photoCount, videoCount: videoCount,
+                                totalCount: totalCount, totalSize: totalSize,
+                                hasContent: hasContent)
+
         case "button_press":
             handleButtonPress(json)
 
@@ -1455,6 +1465,16 @@ typealias JSONObject = [String: Any]
         let json: [String: Any] = [
             "type": "set_hotspot_state",
             "enabled": enabled,
+        ]
+
+        sendJson(json, wakeUp: true)
+    }
+
+    func queryGalleryStatus() {
+        CoreCommsService.log("LiveManager: 📸 Querying gallery status from glasses")
+
+        let json: [String: Any] = [
+            "type": "query_gallery_status",
         ]
 
         sendJson(json, wakeUp: true)
@@ -2093,6 +2113,21 @@ typealias JSONObject = [String: Any]
         hotspotPassword = password
         hotspotGatewayIp = ip // This is the gateway IP from glasses
         emitHotspotStatusChange()
+    }
+
+    private func handleGalleryStatus(photoCount: Int, videoCount: Int, totalCount: Int,
+                                     totalSize: Int64, hasContent: Bool)
+    {
+        CoreCommsService.log("📸 Received gallery status - photos: \(photoCount), videos: \(videoCount), total size: \(totalSize) bytes")
+
+        // Emit gallery status event through GlobalEventEmitter
+        GlobalEventEmitter.shared.sendEvent(withName: "GLASSES_GALLERY_STATUS", body: [
+            "photos": photoCount,
+            "videos": videoCount,
+            "total": totalCount,
+            "total_size": totalSize,
+            "has_content": hasContent,
+        ])
     }
 
     // MARK: - Timers
