@@ -233,7 +233,4 @@ export interface WebSocketError {
   details?: unknown;
 }
 
-import { Request } from "express";
-export interface AuthenticatedRequest extends Request {
-  authUserId?: string;
-}
+export { AuthenticatedRequest } from "./types/index";

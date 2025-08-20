@@ -224,5 +224,5 @@ import { AppSession } from "src/app/session";
 
 export interface AuthenticatedRequest extends Request {
   authUserId?: string;
-  activeSession: AppSession;
+  activeSession: AppSession | null;
 }
