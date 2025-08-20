@@ -23,7 +23,7 @@
         "backgroundImage": "./assets/app-icons/ic_launcher.png"
       },
       "allowBackup": false,
-      "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_WIFI_STATE", "ACCESS_NETWORK_STATE"],
+      "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_WIFI_STATE", "ACCESS_NETWORK_STATE", "CHANGE_WIFI_STATE"],
       "intentFilters": [
         {
           "action": "VIEW",
@@ -77,6 +77,9 @@
       },
       "config": {
         "usesNonExemptEncryption": false
+      },
+      "entitlements": {
+        "com.apple.developer.networking.wifi-info": true
       }
     },
     "plugins": [

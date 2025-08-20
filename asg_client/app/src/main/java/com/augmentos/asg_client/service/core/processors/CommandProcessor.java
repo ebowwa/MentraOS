@@ -254,7 +254,7 @@ public class CommandProcessor {
         try {
             Log.d(TAG, "📝 Registering command handlers...");
 
-            commandHandlerRegistry.registerHandler(new PhoneReadyCommandHandler(communicationManager, stateManager, responseBuilder));
+            commandHandlerRegistry.registerHandler(new PhoneReadyCommandHandler(communicationManager, stateManager, responseBuilder, serviceManager));
             Log.d(TAG, "✅ Registered PhoneReadyCommandHandler");
 
             commandHandlerRegistry.registerHandler(new AuthTokenCommandHandler(communicationManager, configurationManager));

@@ -30,8 +30,6 @@ export function PhotoImage({photo, style, showPlaceholder = true}: PhotoImagePro
   const imageUrl = (() => {
     if (photo.is_video) {
       if (photo.thumbnailPath) {
-        // Log the thumbnail path for debugging iOS issues
-        console.log("[PhotoImage] Using video thumbnail path:", photo.thumbnailPath)
         return photo.thumbnailPath
       }
       if (photo.thumbnail_data) {
@@ -40,10 +38,6 @@ export function PhotoImage({photo, style, showPlaceholder = true}: PhotoImagePro
           ? photo.thumbnail_data
           : `data:image/jpeg;base64,${photo.thumbnail_data}`
       }
-    }
-    // Log the URL for debugging iOS issues
-    if (photo.url.startsWith("file://")) {
-      console.log("[PhotoImage] Using local file URL:", photo.url)
     }
     return photo.url
   })()
@@ -63,14 +57,7 @@ export function PhotoImage({photo, style, showPlaceholder = true}: PhotoImagePro
             return
           }
 
-          // On iOS, check if we need to handle the file path differently
-          if (Platform.OS === "ios") {
-            console.log("[PhotoImage] iOS file path check:", {
-              originalUrl: imageUrl,
-              filePath: filePath,
-              exists: exists,
-            })
-          }
+          // File exists, continue with loading
         } catch (error) {
           console.error("[PhotoImage] Error checking file existence:", error)
           setHasError(true)
@@ -157,14 +144,7 @@ export function PhotoImage({photo, style, showPlaceholder = true}: PhotoImagePro
     )
   }
 
-  // For debugging, log the final URL being used
-  if (imageUrl.startsWith("file://")) {
-    console.log("[PhotoImage] Final image URL:", {
-      platform: Platform.OS,
-      url: imageUrl,
-      name: photo.name,
-    })
-  }
+  // URL determined and ready to use
 
   return (
     <View style={style}>

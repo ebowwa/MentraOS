@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.NetworkCapabilities;
@@ -16,6 +17,7 @@ import com.augmentos.asg_client.NetworkUtils;
 import com.augmentos.asg_client.io.network.interfaces.INetworkManager;
 import com.augmentos.asg_client.io.network.interfaces.IWifiScanCallback;
 import com.augmentos.asg_client.io.network.interfaces.NetworkStateListener;
+import com.augmentos.asg_client.io.network.models.NetworkInfo;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -30,10 +32,24 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 public abstract class BaseNetworkManager implements INetworkManager {
     private static final String TAG = "BaseNetworkManager";
+    
+    // Constants for device-persistent hotspot credentials
+    private static final String PREFS_NAME = "MentraOSNetworkManager";
+    private static final String PREF_DEVICE_ID = "device_hotspot_id";
+    private static final String HOTSPOT_SSID_PREFIX = "MentraOS_";
+    private static final String HOTSPOT_PASSWORD = "12345678";
 
     protected final Context context;
     protected final List<NetworkStateListener> listeners = new ArrayList<>();
+    
+    // Hotspot state tracking - shared across all network manager implementations
     protected boolean isHotspotEnabled = false;
+    protected String currentHotspotSsid = "";
+    protected String currentHotspotPassword = "";
+    
+    // Device-persistent hotspot credentials
+    private String deviceHotspotSsid = null;
+    private final String deviceHotspotPassword = HOTSPOT_PASSWORD;
 
     /**
      * Create a new BaseNetworkManager
@@ -42,6 +58,60 @@ public abstract class BaseNetworkManager implements INetworkManager {
      */
     public BaseNetworkManager(Context context) {
         this.context = context.getApplicationContext();
+        initializeDeviceCredentials();
+    }
+    
+    /**
+     * Initialize device-persistent hotspot credentials
+     * Generates a unique 5-character ID for this device if not already generated
+     */
+    private void initializeDeviceCredentials() {
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        String deviceId = prefs.getString(PREF_DEVICE_ID, null);
+        
+        if (deviceId == null) {
+            // Generate a new random 5-character ID
+            deviceId = generateDeviceId();
+            prefs.edit().putString(PREF_DEVICE_ID, deviceId).apply();
+            Log.d(TAG, "Generated new device hotspot ID: " + deviceId);
+        } else {
+            Log.d(TAG, "Using existing device hotspot ID: " + deviceId);
+        }
+        
+        deviceHotspotSsid = HOTSPOT_SSID_PREFIX + deviceId;
+        Log.i(TAG, "Device hotspot credentials initialized: SSID=" + deviceHotspotSsid);
+    }
+    
+    /**
+     * Generate a random 5-character alphanumeric ID
+     * @return The generated ID
+     */
+    private String generateDeviceId() {
+        String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+        StringBuilder id = new StringBuilder();
+        java.util.Random random = new java.util.Random();
+        
+        for (int i = 0; i < 5; i++) {
+            id.append(chars.charAt(random.nextInt(chars.length())));
+        }
+        
+        return id.toString();
+    }
+    
+    /**
+     * Get the device-persistent hotspot SSID
+     * @return The hotspot SSID in format MentraOS_XXXXX
+     */
+    protected String getDeviceHotspotSsid() {
+        return deviceHotspotSsid;
+    }
+    
+    /**
+     * Get the device-persistent hotspot password
+     * @return The hotspot password (always "12345678")
+     */
+    protected String getDeviceHotspotPassword() {
+        return deviceHotspotPassword;
     }
 
     @Override
@@ -181,6 +251,7 @@ public abstract class BaseNetworkManager implements INetworkManager {
     @Override
     public void initialize() {
         Log.d(TAG, "Initializing BaseNetworkManager");
+        Log.d(TAG, "Device hotspot SSID: " + deviceHotspotSsid);
         // Base implementation - subclasses should override if needed
     }
 
@@ -349,7 +420,7 @@ public abstract class BaseNetworkManager implements INetworkManager {
         Log.d(TAG, "📡 BASE STREAMING WIFI SCAN STARTED");
         Log.d(TAG, "📡 ========================================");
         
-        final List<String> allFoundNetworks = new ArrayList<>();
+        final List<String> allFoundNetworkSsids = new ArrayList<>();
         
         try {
             // Ensure WiFi is enabled before scanning
@@ -384,20 +455,23 @@ public abstract class BaseNetworkManager implements INetworkManager {
                                 try {
                                     List<ScanResult> scanResults = wifiManager.getScanResults();
                                     if (scanResults != null) {
-                                        List<String> newNetworks = new ArrayList<>();
+                                        List<NetworkInfo> newNetworks = new ArrayList<>();
                                         for (ScanResult result : scanResults) {
                                             String ssid = result.SSID;
-                                            if (ssid != null && !ssid.isEmpty() && !allFoundNetworks.contains(ssid)) {
-                                                allFoundNetworks.add(ssid);
-                                                newNetworks.add(ssid);
-                                                Log.d(TAG, "Found network: " + ssid);
+                                            if (ssid != null && !ssid.isEmpty() && !allFoundNetworkSsids.contains(ssid)) {
+                                                NetworkInfo networkInfo = NetworkInfo.fromScanResult(result);
+                                                if (networkInfo != null) {
+                                                    allFoundNetworkSsids.add(ssid);
+                                                    newNetworks.add(networkInfo);
+                                                    Log.d(TAG, "Found network: " + networkInfo.toString());
+                                                }
                                             }
                                         }
                                         
                                         // Stream all networks found in this scan
                                         if (!newNetworks.isEmpty()) {
                                             Log.d(TAG, "📡 Streaming " + newNetworks.size() + " new networks to callback");
-                                            callback.onNetworksFound(newNetworks);
+                                            callback.onNetworksFoundEnhanced(newNetworks);
                                         }
                                     }
                                 } catch (SecurityException se) {
@@ -427,19 +501,22 @@ public abstract class BaseNetworkManager implements INetworkManager {
                     try {
                         List<ScanResult> scanResults = wifiManager.getScanResults();
                         if (scanResults != null && !scanResults.isEmpty()) {
-                            List<String> networks = new ArrayList<>();
+                            List<NetworkInfo> networks = new ArrayList<>();
                             for (ScanResult result : scanResults) {
                                 String ssid = result.SSID;
                                 if (ssid != null && !ssid.isEmpty()) {
-                                    networks.add(ssid);
-                                    Log.d(TAG, "Found network from previous scan: " + ssid);
+                                    NetworkInfo networkInfo = NetworkInfo.fromScanResult(result);
+                                    if (networkInfo != null) {
+                                        networks.add(networkInfo);
+                                        allFoundNetworkSsids.add(ssid);
+                                        Log.d(TAG, "Found network from previous scan: " + networkInfo.toString());
+                                    }
                                 }
                             }
                             
                             // Stream results from previous scan
                             if (!networks.isEmpty()) {
-                                callback.onNetworksFound(networks);
-                                allFoundNetworks.addAll(networks);
+                                callback.onNetworksFoundEnhanced(networks);
                             }
                         }
                     } catch (SecurityException se) {
@@ -455,7 +532,7 @@ public abstract class BaseNetworkManager implements INetworkManager {
                         Log.e(TAG, "Error unregistering scan receiver", e);
                     }
                     
-                    callback.onScanComplete(allFoundNetworks.size());
+                    callback.onScanComplete(allFoundNetworkSsids.size());
                     return;
                 }
                 
@@ -477,15 +554,17 @@ public abstract class BaseNetworkManager implements INetworkManager {
                 
                 // Add the current network if not already in the list
                 String currentSsid = getCurrentWifiSsid();
-                if (!currentSsid.isEmpty() && !allFoundNetworks.contains(currentSsid)) {
-                    allFoundNetworks.add(currentSsid);
-                    List<String> currentNetwork = new ArrayList<>();
-                    currentNetwork.add(currentSsid);
-                    callback.onNetworksFound(currentNetwork);
-                    Log.d(TAG, "Added current network to scan results: " + currentSsid);
+                if (!currentSsid.isEmpty() && !allFoundNetworkSsids.contains(currentSsid)) {
+                    allFoundNetworkSsids.add(currentSsid);
+                    // Create current network info (assume connected networks don't require password)
+                    NetworkInfo currentNetwork = new NetworkInfo(currentSsid, false, -50); // Assume good signal if connected
+                    List<NetworkInfo> currentNetworkList = new ArrayList<>();
+                    currentNetworkList.add(currentNetwork);
+                    callback.onNetworksFoundEnhanced(currentNetworkList);
+                    Log.d(TAG, "Added current network to scan results: " + currentNetwork.toString());
                 }
                 
-                callback.onScanComplete(allFoundNetworks.size());
+                callback.onScanComplete(allFoundNetworkSsids.size());
                 
             } catch (Exception e) {
                 Log.e(TAG, "Error in base streaming WiFi scan", e);
@@ -497,7 +576,7 @@ public abstract class BaseNetworkManager implements INetworkManager {
             callback.onScanError("Scan failed: " + e.getMessage());
         }
         
-        Log.d(TAG, "📡 Base streaming scan completed with " + allFoundNetworks.size() + " total networks");
+        Log.d(TAG, "📡 Base streaming scan completed with " + allFoundNetworkSsids.size() + " total networks");
     }
 
     /**
@@ -603,9 +682,45 @@ public abstract class BaseNetworkManager implements INetworkManager {
         return NetworkUtils.getBestIpAddress(context);
     }
 
+    // Hotspot state management methods - shared across all implementations
+    @Override
+    public boolean isHotspotEnabled() {
+        return isHotspotEnabled;
+    }
+    
+    @Override
+    public String getHotspotSsid() {
+        return currentHotspotSsid;
+    }
+    
+    @Override
+    public String getHotspotPassword() {
+        return currentHotspotPassword;
+    }
+    
+    /**
+     * Update hotspot state - to be called by subclasses when hotspot state changes
+     */
+    protected void updateHotspotState(boolean enabled, String ssid, String password) {
+        this.isHotspotEnabled = enabled;
+        this.currentHotspotSsid = ssid != null ? ssid : "";
+        this.currentHotspotPassword = password != null ? password : "";
+        
+        Log.d(TAG, "Hotspot state updated: enabled=" + enabled + ", ssid=" + ssid);
+    }
+    
+    /**
+     * Clear hotspot state - to be called by subclasses on shutdown or error
+     */
+    protected void clearHotspotState() {
+        updateHotspotState(false, "", "");
+    }
+
     @Override
     public void shutdown() {
         Log.d(TAG, "Shutting down BaseNetworkManager");
+        // Clear hotspot state on shutdown
+        clearHotspotState();
         listeners.clear();
     }
 } 

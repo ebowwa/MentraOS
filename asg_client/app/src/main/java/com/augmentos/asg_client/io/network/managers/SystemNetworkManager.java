@@ -172,16 +172,22 @@ public class SystemNetworkManager extends BaseNetworkManager {
     }
     
     @Override
-    public void startHotspot(String ssid, String password) {
+    public void startHotspot() {
+        // Get device-persistent credentials
+        String ssid = getDeviceHotspotSsid();
+        String password = getDeviceHotspotPassword();
+        
         Log.d(TAG, "Starting system hotspot with SSID: " + ssid);
         
         try {
             boolean success = enableHotspotInternal(ssid, password);
             if (success) {
+                // Update state with actual credentials
+                updateHotspotState(true, ssid, password);
                 notificationManager.showHotspotStateNotification(true);
                 notifyHotspotStateChanged(true);
                 startServer();
-                Log.i(TAG, "System hotspot started successfully");
+                Log.i(TAG, "System hotspot started successfully with SSID: " + ssid);
             } else {
                 notificationManager.showDebugNotification(
                         "Hotspot Error", 
@@ -750,7 +756,7 @@ public class SystemNetworkManager extends BaseNetworkManager {
         Log.d(TAG, "📡 SYSTEM STREAMING WIFI SCAN STARTED");
         Log.d(TAG, "📡 =========================================");
         
-        final List<String> allFoundNetworks = new ArrayList<>();
+        final List<String> allFoundNetworkSsids = new ArrayList<>();
         
         try {
             if (!wifiManager.isWifiEnabled()) {
@@ -777,8 +783,8 @@ public class SystemNetworkManager extends BaseNetworkManager {
                                     List<String> newNetworks = new ArrayList<>();
                                     for (ScanResult result : scanResults) {
                                         String ssid = result.SSID;
-                                        if (ssid != null && !ssid.isEmpty() && !allFoundNetworks.contains(ssid)) {
-                                            allFoundNetworks.add(ssid);
+                                        if (ssid != null && !ssid.isEmpty() && !allFoundNetworkSsids.contains(ssid)) {
+                                            allFoundNetworkSsids.add(ssid);
                                             newNetworks.add(ssid);
                                             Log.d(TAG, "Found network: " + ssid);
                                         }
@@ -829,7 +835,7 @@ public class SystemNetworkManager extends BaseNetworkManager {
                         // Stream results from previous scan
                         if (!networks.isEmpty()) {
                             callback.onNetworksFound(networks);
-                            allFoundNetworks.addAll(networks);
+                            allFoundNetworkSsids.addAll(networks);
                         }
                     }
                 } catch (SecurityException se) {
@@ -845,7 +851,7 @@ public class SystemNetworkManager extends BaseNetworkManager {
                     Log.e(TAG, "Error unregistering scan receiver", e);
                 }
                 
-                callback.onScanComplete(allFoundNetworks.size());
+                callback.onScanComplete(allFoundNetworkSsids.size());
                 return;
             }
             
@@ -867,22 +873,22 @@ public class SystemNetworkManager extends BaseNetworkManager {
             
             // Add the current network if not already in the list
             String currentSsid = getCurrentWifiSsid();
-            if (!currentSsid.isEmpty() && !allFoundNetworks.contains(currentSsid)) {
-                allFoundNetworks.add(currentSsid);
+            if (!currentSsid.isEmpty() && !allFoundNetworkSsids.contains(currentSsid)) {
+                allFoundNetworkSsids.add(currentSsid);
                 List<String> currentNetwork = new ArrayList<>();
                 currentNetwork.add(currentSsid);
                 callback.onNetworksFound(currentNetwork);
                 Log.d(TAG, "Added current network to scan results: " + currentSsid);
             }
             
-            callback.onScanComplete(allFoundNetworks.size());
+            callback.onScanComplete(allFoundNetworkSsids.size());
             
         } catch (Exception e) {
             Log.e(TAG, "Error in system streaming WiFi scan", e);
             callback.onScanError("Scan failed: " + e.getMessage());
         }
         
-        Log.d(TAG, "📡 System streaming scan completed with " + allFoundNetworks.size() + " total networks");
+        Log.d(TAG, "📡 System streaming scan completed with " + allFoundNetworkSsids.size() + " total networks");
     }
     
     @Override

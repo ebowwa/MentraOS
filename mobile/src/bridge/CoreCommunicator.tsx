@@ -275,6 +275,14 @@ export class CoreCommunicator extends EventEmitter {
           ssid: data.glasses_wifi_status_change.ssid,
           local_ip: data.glasses_wifi_status_change.local_ip,
         })
+      } else if ("glasses_hotspot_status_change" in data) {
+        // console.log("Received glasses_hotspot_status_change event from Core", data.glasses_hotspot_status_change)
+        GlobalEventEmitter.emit("GLASSES_HOTSPOT_STATUS_CHANGE", {
+          enabled: data.glasses_hotspot_status_change.enabled,
+          ssid: data.glasses_hotspot_status_change.ssid,
+          password: data.glasses_hotspot_status_change.password,
+          local_ip: data.glasses_hotspot_status_change.local_ip,
+        })
       } else if ("glasses_display_event" in data) {
         GlobalEventEmitter.emit("GLASSES_DISPLAY_EVENT", data.glasses_display_event)
       } else if ("ping" in data) {
@@ -303,12 +311,24 @@ export class CoreCommunicator extends EventEmitter {
       } else if ("wifi_scan_results" in data) {
         console.log("🔍 ========= WIFI SCAN RESULTS RECEIVED =========")
         console.log("🔍 Received WiFi scan results from Core:", data)
-        console.log("🔍 Networks array:", data.wifi_scan_results)
-        console.log("🔍 Networks count:", data.wifi_scan_results?.length || 0)
-        GlobalEventEmitter.emit("WIFI_SCAN_RESULTS", {
-          networks: data.wifi_scan_results,
-        })
-        console.log("🔍 Emitted WIFI_SCAN_RESULTS event to GlobalEventEmitter")
+
+        // Check for enhanced format first (from iOS)
+        if ("wifi_scan_results_enhanced" in data) {
+          console.log("🔍 Enhanced networks array:", data.wifi_scan_results_enhanced)
+          console.log("🔍 Enhanced networks count:", data.wifi_scan_results_enhanced?.length || 0)
+          GlobalEventEmitter.emit("WIFI_SCAN_RESULTS", {
+            networks: data.wifi_scan_results, // Legacy format for backwards compatibility
+            networksEnhanced: data.wifi_scan_results_enhanced, // Enhanced format with security info
+          })
+          console.log("🔍 Emitted enhanced WIFI_SCAN_RESULTS event to GlobalEventEmitter")
+        } else {
+          console.log("🔍 Networks array:", data.wifi_scan_results)
+          console.log("🔍 Networks count:", data.wifi_scan_results?.length || 0)
+          GlobalEventEmitter.emit("WIFI_SCAN_RESULTS", {
+            networks: data.wifi_scan_results,
+          })
+          console.log("🔍 Emitted legacy WIFI_SCAN_RESULTS event to GlobalEventEmitter")
+        }
         console.log("🔍 ========= END WIFI SCAN RESULTS =========")
       }
 
@@ -924,6 +944,13 @@ export class CoreCommunicator extends EventEmitter {
       params: {
         request_id: requestId,
       },
+    })
+  }
+
+  async sendCommand(command: string, params?: any) {
+    return await this.sendData({
+      command: command,
+      params: params || {},
     })
   }
 }

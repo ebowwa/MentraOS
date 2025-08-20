@@ -36,6 +36,7 @@ public interface AugmentOsActionsCallback {
     void updateGlassesHeight(int height);
     void updateGlassesDepth(int depth);
     void setGlassesWifiCredentials(String ssid, String password);
+    void setGlassesHotspotState(boolean enabled);
     void requestWifiScan();
     void setPreferredMic(String mic);
     void setButtonMode(String mode);

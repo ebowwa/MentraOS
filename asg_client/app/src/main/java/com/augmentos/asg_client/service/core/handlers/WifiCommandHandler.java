@@ -3,6 +3,7 @@ package com.augmentos.asg_client.service.core.handlers;
 import android.util.Log;
 import com.augmentos.asg_client.io.network.interfaces.INetworkManager;
 import com.augmentos.asg_client.io.network.interfaces.IWifiScanCallback;
+import com.augmentos.asg_client.io.network.models.NetworkInfo;
 import com.augmentos.asg_client.service.communication.interfaces.ICommunicationManager;
 import com.augmentos.asg_client.service.legacy.interfaces.ICommandHandler;
 import com.augmentos.asg_client.service.legacy.managers.AsgClientServiceManager;
@@ -115,10 +116,10 @@ public class WifiCommandHandler implements ICommandHandler {
                         // Use streaming WiFi scan with callback for immediate results
                         networkManager.scanWifiNetworks(new IWifiScanCallback() {
                             @Override
-                            public void onNetworksFound(List<String> networks) {
-                                Log.d(TAG, "📡 Streaming " + networks.size() + " WiFi networks to phone");
+                            public void onNetworksFoundEnhanced(List<NetworkInfo> networks) {
+                                Log.d(TAG, "📡 Streaming " + networks.size() + " enhanced WiFi networks to phone");
                                 // Send each batch of networks immediately as they're found
-                                communicationManager.sendWifiScanResultsOverBle(networks);
+                                communicationManager.sendWifiScanResultsOverBleEnhanced(networks);
                             }
                             
                             @Override
@@ -131,12 +132,12 @@ public class WifiCommandHandler implements ICommandHandler {
                             public void onScanError(String error) {
                                 Log.e(TAG, "📡 WiFi scan error: " + error);
                                 // Send empty list on error to indicate scan failure
-                                communicationManager.sendWifiScanResultsOverBle(new ArrayList<>());
+                                communicationManager.sendWifiScanResultsOverBleEnhanced(new ArrayList<>());
                             }
                         });
                     } catch (Exception e) {
                         Log.e(TAG, "Error scanning for WiFi networks", e);
-                        communicationManager.sendWifiScanResultsOverBle(new ArrayList<>());
+                        communicationManager.sendWifiScanResultsOverBleEnhanced(new ArrayList<>());
                     }
                 }).start();
                 return true;
@@ -158,17 +159,49 @@ public class WifiCommandHandler implements ICommandHandler {
             boolean hotspotEnabled = data.optBoolean("enabled", false);
             INetworkManager networkManager = serviceManager.getNetworkManager();
             
+            if (networkManager == null) {
+                Log.e(TAG, "Network manager not available for hotspot command");
+                return false;
+            }
+            
             if (hotspotEnabled) {
-                String hotspotSsid = data.optString("ssid", "");
-                String hotspotPassword = data.optString("password", "");
-                networkManager.startHotspot(hotspotSsid, hotspotPassword);
+                // Note: SSID and password are now device-persistent and generated internally
+                // The phone can no longer specify custom credentials
+                networkManager.startHotspot();
             } else {
                 networkManager.stopHotspot();
             }
+            
+            // Send hotspot status to phone via BLE
+            sendHotspotStatusToPhone(networkManager);
+            
             return true;
         } catch (Exception e) {
             Log.e(TAG, "Error handling hotspot state command", e);
             return false;
         }
     }
+    
+    /**
+     * Send hotspot status to phone via BLE
+     */
+    private void sendHotspotStatusToPhone(INetworkManager networkManager) {
+        try {
+            JSONObject hotspotStatus = new JSONObject();
+            hotspotStatus.put("type", "hotspot_status_update");
+            hotspotStatus.put("hotspot_enabled", networkManager.isHotspotEnabled());
+            
+            if (networkManager.isHotspotEnabled()) {
+                hotspotStatus.put("hotspot_ssid", networkManager.getHotspotSsid());
+                hotspotStatus.put("hotspot_password", networkManager.getHotspotPassword());
+                hotspotStatus.put("hotspot_ip", networkManager.getLocalIpAddress());
+            }
+            
+            boolean sent = communicationManager.sendBluetoothResponse(hotspotStatus);
+            Log.d(TAG, "🔥 " + (sent ? "✅ Hotspot status sent successfully" : "❌ Failed to send hotspot status") + ", enabled=" + networkManager.isHotspotEnabled());
+        } catch (Exception e) {
+            Log.e(TAG, "Error sending hotspot status to phone", e);
+        }
+    }
+    
 } 

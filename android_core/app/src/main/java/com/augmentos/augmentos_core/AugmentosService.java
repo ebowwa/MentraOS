@@ -60,6 +60,7 @@ import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.Glass
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesDisplayPowerEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesWifiScanResultEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesWifiStatusChange;
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesHotspotStatusChange;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.HeadUpAngleEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.KeepAliveAckEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.MicModeChangedEvent;
@@ -255,6 +256,12 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     private String glassesWifiSsid = "";
     private String glassesWifiLocalIp = "";
 
+    // Hotspot status for glasses that support hotspot functionality
+    private boolean glassesHotspotEnabled = false;
+    private String glassesHotspotSsid = "";
+    private String glassesHotspotPassword = "";
+    private String glassesHotspotIp = "";
+
     // WiFi scan results
     private List<String> wifiNetworks = new ArrayList<>();
     private String preferredMic;
@@ -350,6 +357,12 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                         glassesWifiConnected = false;
                         glassesWifiSsid = "";
                         glassesWifiLocalIp = "";
+                        
+                        // Reset hotspot status when glasses disconnect
+                        glassesHotspotEnabled = false;
+                        glassesHotspotSsid = "";
+                        glassesHotspotPassword = "";
+                        glassesHotspotIp = "";
                     }
 
                     sendStatusToAugmentOsManager();
@@ -942,6 +955,32 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         }
     }
 
+    /**
+     * Send a dedicated hotspot status change event to the AugmentOS manager
+     * @param isEnabled Whether the glasses hotspot is enabled
+     * @param ssid The SSID of the hotspot (if enabled)
+     * @param password The password of the hotspot (if enabled)
+     * @param localIp The local IP of the hotspot (if enabled)
+     */
+    private void sendHotspotStatusChangeEvent(boolean isEnabled, String ssid, String password, String localIp) {
+        try {
+            JSONObject hotspotStatusEvent = new JSONObject();
+            JSONObject hotspotStatus = new JSONObject();
+            hotspotStatus.put("enabled", isEnabled);
+            hotspotStatus.put("ssid", ssid != null ? ssid : "");
+            hotspotStatus.put("password", password != null ? password : "");
+            hotspotStatus.put("local_ip", localIp != null ? localIp : "");
+            hotspotStatusEvent.put("glasses_hotspot_status_change", hotspotStatus);
+
+            if (blePeripheral != null) {
+                blePeripheral.sendDataToAugmentOsManager(hotspotStatusEvent.toString());
+                Log.d(TAG, "Sent hotspot status change event: enabled=" + isEnabled + ", ssid=" + ssid);
+            }
+        } catch (JSONException e) {
+            Log.e(TAG, "Error creating hotspot status change event JSON", e);
+        }
+    }
+
     @Subscribe
     public void onGlassesNeedWifiCredentialsEvent(GlassesWifiStatusChange event) {
         glassesWifiConnected = event.isWifiConnected;
@@ -956,6 +995,23 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
 
         // Send the dedicated WiFi status change event
         sendWifiStatusChangeEvent(glassesWifiConnected, glassesWifiSsid, glassesWifiLocalIp);
+
+        // Also update the general status
+        sendStatusToAugmentOsManager();
+    }
+
+    @Subscribe
+    public void onGlassesHotspotStatusChange(GlassesHotspotStatusChange event) {
+        glassesHotspotEnabled = event.isHotspotEnabled;
+        glassesHotspotSsid = event.hotspotSsid;
+        glassesHotspotPassword = event.hotspotPassword;
+        glassesHotspotIp = event.hotspotIp;
+
+        Log.d(TAG, "Received GlassesHotspotStatusChange: device=" + event.deviceModel +
+              ", enabled=" + event.isHotspotEnabled + ", ssid=" + event.hotspotSsid);
+
+        // Send the dedicated hotspot status change event
+        sendHotspotStatusChangeEvent(glassesHotspotEnabled, glassesHotspotSsid, glassesHotspotPassword, glassesHotspotIp);
 
         // Also update the general status
         sendStatusToAugmentOsManager();
@@ -1536,6 +1592,14 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                     connectedGlasses.put("glasses_wifi_connected", glassesWifiConnected);
                     connectedGlasses.put("glasses_wifi_ssid", glassesWifiSsid);
                     connectedGlasses.put("glasses_wifi_local_ip", glassesWifiLocalIp);
+                    
+                    // Add hotspot status information
+                    connectedGlasses.put("glasses_hotspot_enabled", glassesHotspotEnabled);
+                    if (glassesHotspotEnabled) {
+                        connectedGlasses.put("glasses_hotspot_ssid", glassesHotspotSsid);
+                        connectedGlasses.put("glasses_hotspot_password", glassesHotspotPassword);
+                        connectedGlasses.put("glasses_hotspot_ip", glassesHotspotIp);
+                    }
                 }
 
                 // Add ASG client version information for Mentra Live glasses
@@ -1615,18 +1679,16 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
 
             status.put("ota_progress", otaProgress);
 
-            // Adding wifi status
+            // Adding wifi status (excluding signal_strength to prevent unnecessary updates)
             JSONObject wifi = new JSONObject();
             wifi.put("is_connected", wifiStatusHelper.isWifiConnected());
             wifi.put("ssid", wifiStatusHelper.getSSID());
-            wifi.put("signal_strength", wifiStatusHelper.getSignalStrength());
             status.put("wifi", wifi);
 
-            // Adding gsm status
+            // Adding gsm status (excluding signal_strength to prevent unnecessary updates)
             JSONObject gsm = new JSONObject();
             gsm.put("is_connected", gsmStatusHelper.isConnected());
             gsm.put("carrier", gsmStatusHelper.getNetworkType());
-            gsm.put("signal_strength", gsmStatusHelper.getSignalStrength());
             status.put("gsm", gsm);
 
             // Adding apps array
@@ -2185,6 +2247,12 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         // Reset WiFi status
         glassesWifiConnected = false;
         glassesWifiSsid = "";
+        
+        // Reset hotspot status
+        glassesHotspotEnabled = false;
+        glassesHotspotSsid = "";
+        glassesHotspotPassword = "";
+        glassesHotspotIp = "";
 
         // Reset state AND completely stop the service to get a clean state
         if (smartGlassesManager != null) {
@@ -2219,6 +2287,12 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         // Reset WiFi status
         glassesWifiConnected = false;
         glassesWifiSsid = "";
+        
+        // Reset hotspot status
+        glassesHotspotEnabled = false;
+        glassesHotspotSsid = "";
+        glassesHotspotPassword = "";
+        glassesHotspotIp = "";
 
 
         // Reset instead of stopping
@@ -2535,6 +2609,27 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     }
 
     @Override
+    public void setGlassesHotspotState(boolean enabled) {
+        Log.d(TAG, "🔥 Setting glasses hotspot state: " + enabled);
+
+        if (smartGlassesManager == null || smartGlassesManager.getConnectedSmartGlasses() == null) {
+            blePeripheral.sendNotifyManager("No glasses connected to set hotspot state", "error");
+            return;
+        }
+
+        String deviceModel = smartGlassesManager.getConnectedSmartGlasses().deviceModelName;
+        if (deviceModel == null || !deviceModel.contains("Mentra Live")) {
+            blePeripheral.sendNotifyManager("Connected glasses do not support hotspot", "error");
+            return;
+        }
+
+        // Send hotspot state to glasses
+        smartGlassesManager.sendHotspotState(enabled);
+
+        sendStatusToAugmentOsManager();
+    }
+
+    @Override
     public void requestWifiScan() {
         Log.d(TAG, "Requesting WiFi scan from glasses");
 
@@ -2780,6 +2875,12 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         // Reset WiFi status
         glassesWifiConnected = false;
         glassesWifiSsid = "";
+        
+        // Reset hotspot status
+        glassesHotspotEnabled = false;
+        glassesHotspotSsid = "";
+        glassesHotspotPassword = "";
+        glassesHotspotIp = "";
 
         // Disconnect websockets
         if (webSocketLifecycleManager != null) {

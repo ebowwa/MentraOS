@@ -4,9 +4,11 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 
+import com.augmentos.asg_client.io.network.interfaces.INetworkManager;
 import com.augmentos.asg_client.service.communication.interfaces.ICommunicationManager;
 import com.augmentos.asg_client.service.communication.interfaces.IResponseBuilder;
 import com.augmentos.asg_client.service.legacy.interfaces.ICommandHandler;
+import com.augmentos.asg_client.service.legacy.managers.AsgClientServiceManager;
 import com.augmentos.asg_client.service.system.interfaces.IStateManager;
 
 import org.json.JSONObject;
@@ -23,13 +25,16 @@ public class PhoneReadyCommandHandler implements ICommandHandler {
     private final ICommunicationManager communicationManager;
     private final IStateManager stateManager;
     private final IResponseBuilder responseBuilder;
+    private final AsgClientServiceManager serviceManager;
 
     public PhoneReadyCommandHandler(ICommunicationManager communicationManager, 
                                   IStateManager stateManager,
-                                  IResponseBuilder responseBuilder) {
+                                  IResponseBuilder responseBuilder,
+                                  AsgClientServiceManager serviceManager) {
         this.communicationManager = communicationManager;
         this.stateManager = stateManager;
         this.responseBuilder = responseBuilder;
+        this.serviceManager = serviceManager;
     }
 
     @Override
@@ -82,12 +87,53 @@ public class PhoneReadyCommandHandler implements ICommandHandler {
                 } else {
                     Log.d(TAG, "📱 ❌ WiFi not connected, skipping status send");
                 }
+                
+                // Auto-send hotspot status after glasses_ready
+                Log.d(TAG, "📱 🔥 Sending hotspot status...");
+                sendHotspotStatusToPhone();
             }, 500);
             
             return sent;
         } catch (Exception e) {
             Log.e(TAG, "📱 💥 Error handling phone ready command", e);
             return false;
+        }
+    }
+    
+    /**
+     * Send current hotspot status to phone via BLE
+     */
+    private void sendHotspotStatusToPhone() {
+        try {
+            // Get network manager from service manager
+            INetworkManager networkManager = serviceManager != null ? serviceManager.getNetworkManager() : null;
+            
+            if (networkManager == null) {
+                Log.w(TAG, "📱 🔥 Network manager not available for hotspot status");
+                return;
+            }
+            
+            // Build hotspot status JSON following same format as WifiCommandHandler
+            JSONObject hotspotStatus = new JSONObject();
+            hotspotStatus.put("type", "hotspot_status_update");
+            hotspotStatus.put("hotspot_enabled", networkManager.isHotspotEnabled());
+            
+            if (networkManager.isHotspotEnabled()) {
+                hotspotStatus.put("hotspot_ssid", networkManager.getHotspotSsid());
+                hotspotStatus.put("hotspot_password", networkManager.getHotspotPassword());
+                hotspotStatus.put("hotspot_ip", networkManager.getLocalIpAddress());
+            } else {
+                hotspotStatus.put("hotspot_ssid", "");
+                hotspotStatus.put("hotspot_password", "");
+                hotspotStatus.put("hotspot_ip", "");
+            }
+            
+            Log.d(TAG, "📱 🔥 Sending hotspot status JSON: " + hotspotStatus.toString());
+            boolean sent = communicationManager.sendBluetoothResponse(hotspotStatus);
+            Log.d(TAG, "📱 🔥 " + (sent ? "✅ Hotspot status sent successfully" : "❌ Failed to send hotspot status") + ", enabled=" + networkManager.isHotspotEnabled());
+            
+        } catch (Exception e) {
+            Log.e(TAG, "📱 🔥 Error sending hotspot status to phone", e);
         }
     }
 } 

@@ -834,6 +834,12 @@ public class SmartGlassesManager extends Service {
         }
     }
 
+    public void sendHotspotState(boolean enabled) {
+        if (smartGlassesRepresentative != null && smartGlassesRepresentative.smartGlassesCommunicator != null) {
+            smartGlassesRepresentative.smartGlassesCommunicator.sendHotspotState(enabled);
+        }
+    }
+
     public void sendButtonModeSetting(String mode) {
         if (smartGlassesRepresentative != null && smartGlassesRepresentative.smartGlassesCommunicator != null) {
             smartGlassesRepresentative.smartGlassesCommunicator.sendButtonModeSetting(mode);

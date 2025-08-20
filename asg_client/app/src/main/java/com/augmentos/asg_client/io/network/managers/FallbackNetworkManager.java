@@ -159,59 +159,42 @@ public class FallbackNetworkManager extends BaseNetworkManager {
     }
     
     @Override
-    public void startHotspot(String ssid, String password) {
-        Log.d(TAG, "Starting fallback hotspot with SSID: " + ssid);
+    public void startHotspot() {
+        // Get device-persistent credentials
+        String ssid = getDeviceHotspotSsid();
+        String password = getDeviceHotspotPassword();
         
-        if (isK900Device) {
-            // Use K900-specific hotspot functionality
-            try {
-                Intent intent = new Intent(K900_BROADCAST_ACTION);
-                intent.putExtra("command", "start_hotspot");
-                intent.putExtra("ssid", ssid != null ? ssid : DEFAULT_HOTSPOT_SSID);
-                intent.putExtra("password", password != null ? password : DEFAULT_HOTSPOT_PASSWORD);
-                context.sendBroadcast(intent);
-                
-                notificationManager.showHotspotStateNotification(true);
-                notifyHotspotStateChanged(true);
-                
-                Log.i(TAG, "K900 hotspot start command sent");
-            } catch (Exception e) {
-                Log.e(TAG, "Error starting K900 hotspot", e);
-                notificationManager.showDebugNotification(
-                        "Hotspot Error", 
-                        "Failed to start K900 hotspot: " + e.getMessage());
-            }
-        } else {
-            // Fallback to manual hotspot setup
-            promptEnableHotspot();
-        }
+        Log.d(TAG, "Cannot start hotspot without system permissions");
+        
+        // Just show notification since we don't have system permissions
+        notificationManager.showDebugNotification(
+                "Manual Hotspot Required", 
+                "Please manually enable hotspot with SSID: " + ssid + " Password: " + password);
+        
+        // Still update our state optimistically
+        updateHotspotState(true, ssid, password);
+        notifyHotspotStateChanged(true);
+        
+        // Open system settings for manual configuration
+        promptEnableHotspot();
     }
     
     @Override
     public void stopHotspot() {
-        Log.d(TAG, "Stopping fallback hotspot");
+        Log.d(TAG, "Cannot stop hotspot without system permissions");
         
-        if (isK900Device) {
-            // Use K900-specific hotspot functionality
-            try {
-                Intent intent = new Intent(K900_BROADCAST_ACTION);
-                intent.putExtra("command", "stop_hotspot");
-                context.sendBroadcast(intent);
-                
-                notificationManager.showHotspotStateNotification(false);
-                notifyHotspotStateChanged(false);
-                
-                Log.i(TAG, "K900 hotspot stop command sent");
-            } catch (Exception e) {
-                Log.e(TAG, "Error stopping K900 hotspot", e);
-                notificationManager.showDebugNotification(
-                        "Hotspot Error", 
-                        "Failed to stop K900 hotspot: " + e.getMessage());
-            }
-        } else {
-            // Fallback to manual hotspot setup
-            promptEnableHotspot();
-        }
+        // Just show notification since we don't have system permissions
+        notificationManager.showDebugNotification(
+                "Manual Hotspot Stop Required", 
+                "Please manually disable hotspot in system settings");
+        
+        // Clear our state
+        clearHotspotState();
+        notificationManager.showHotspotStateNotification(false);
+        notifyHotspotStateChanged(false);
+        
+        // Open system settings for manual configuration
+        promptEnableHotspot();
     }
     
     @Override
@@ -455,7 +438,7 @@ public class FallbackNetworkManager extends BaseNetworkManager {
         Log.d(TAG, "📡 FALLBACK STREAMING WIFI SCAN STARTED");
         Log.d(TAG, "📡 =========================================");
         
-        final List<String> allFoundNetworks = new ArrayList<>();
+        final List<String> allFoundNetworkSsids = new ArrayList<>();
         
         if (isK900Device) {
             // Use K900-specific streaming scanning
@@ -471,8 +454,8 @@ public class FallbackNetworkManager extends BaseNetworkManager {
                             if (wifiList != null) {
                                 List<String> newNetworks = new ArrayList<>();
                                 for (String ssid : wifiList) {
-                                    if (ssid != null && !ssid.isEmpty() && !allFoundNetworks.contains(ssid)) {
-                                        allFoundNetworks.add(ssid);
+                                    if (ssid != null && !ssid.isEmpty() && !allFoundNetworkSsids.contains(ssid)) {
+                                        allFoundNetworkSsids.add(ssid);
                                         newNetworks.add(ssid);
                                         Log.d(TAG, "Found K900 scan network: " + ssid);
                                     }
@@ -518,7 +501,7 @@ public class FallbackNetworkManager extends BaseNetworkManager {
                     Log.e(TAG, "Error unregistering K900 scan receiver", e);
                 }
                 
-                callback.onScanComplete(allFoundNetworks.size());
+                callback.onScanComplete(allFoundNetworkSsids.size());
                 
             } catch (Exception e) {
                 Log.e(TAG, "Error in K900 streaming WiFi scan", e);
@@ -551,8 +534,8 @@ public class FallbackNetworkManager extends BaseNetworkManager {
                                         List<String> newNetworks = new ArrayList<>();
                                         for (ScanResult result : scanResults) {
                                             String ssid = result.SSID;
-                                            if (ssid != null && !ssid.isEmpty() && !allFoundNetworks.contains(ssid)) {
-                                                allFoundNetworks.add(ssid);
+                                            if (ssid != null && !ssid.isEmpty() && !allFoundNetworkSsids.contains(ssid)) {
+                                                allFoundNetworkSsids.add(ssid);
                                                 newNetworks.add(ssid);
                                                 Log.d(TAG, "Found network: " + ssid);
                                             }
@@ -602,7 +585,7 @@ public class FallbackNetworkManager extends BaseNetworkManager {
                             // Stream results from previous scan
                             if (!networks.isEmpty()) {
                                 callback.onNetworksFound(networks);
-                                allFoundNetworks.addAll(networks);
+                                allFoundNetworkSsids.addAll(networks);
                             }
                         }
                     } catch (SecurityException se) {
@@ -613,7 +596,7 @@ public class FallbackNetworkManager extends BaseNetworkManager {
                     
                     // Unregister the receiver
                     unregisterWifiScanReceiver();
-                    callback.onScanComplete(allFoundNetworks.size());
+                    callback.onScanComplete(allFoundNetworkSsids.size());
                     return;
                 }
                 
@@ -629,7 +612,7 @@ public class FallbackNetworkManager extends BaseNetworkManager {
                 // Unregister the receiver
                 unregisterWifiScanReceiver();
                 
-                callback.onScanComplete(allFoundNetworks.size());
+                callback.onScanComplete(allFoundNetworkSsids.size());
                 
             } catch (Exception e) {
                 Log.e(TAG, "Error in standard streaming WiFi scan", e);
@@ -637,7 +620,7 @@ public class FallbackNetworkManager extends BaseNetworkManager {
             }
         }
         
-        Log.d(TAG, "📡 Fallback streaming scan completed with " + allFoundNetworks.size() + " total networks");
+        Log.d(TAG, "📡 Fallback streaming scan completed with " + allFoundNetworkSsids.size() + " total networks");
     }
     
     private void unregisterWifiScanReceiver() {

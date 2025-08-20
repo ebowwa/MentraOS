@@ -822,6 +822,10 @@ typealias JSONObject = [String: Any]
     @Published var isWifiConnected: Bool = false
     @Published var wifiSsid: String = ""
     @Published var wifiLocalIp: String = ""
+    @Published var isHotspotEnabled: Bool = false
+    @Published var hotspotSsid: String = ""
+    @Published var hotspotPassword: String = ""
+    @Published var hotspotLocalIp: String = ""
 
     // Queue Management
     private let commandQueue = CommandQueue()
@@ -1307,6 +1311,13 @@ typealias JSONObject = [String: Any]
             let ip = json["local_ip"] as? String ?? ""
             updateWifiStatus(connected: connected, ssid: ssid, ip: ip)
 
+        case "hotspot_status_update":
+            let enabled = json["hotspot_enabled"] as? Bool ?? false
+            let ssid = json["hotspot_ssid"] as? String ?? ""
+            let password = json["hotspot_password"] as? String ?? ""
+            let ip = json["hotspot_ip"] as? String ?? ""
+            updateHotspotStatus(enabled: enabled, ssid: ssid, password: password, ip: ip)
+
         case "wifi_scan_result":
             handleWifiScanResult(json)
 
@@ -1438,6 +1449,17 @@ typealias JSONObject = [String: Any]
         sendJson(json, wakeUp: true)
     }
 
+    func sendHotspotState(_ enabled: Bool) {
+        CoreCommsService.log("LiveManager: 🔥 Sending hotspot state: \(enabled)")
+
+        let json: [String: Any] = [
+            "type": "set_hotspot_state",
+            "enabled": enabled,
+        ]
+
+        sendJson(json, wakeUp: true)
+    }
+
     // MARK: - Message Handlers
 
     private func handleGlassesReady() {
@@ -1464,15 +1486,32 @@ typealias JSONObject = [String: Any]
 
     private func handleWifiScanResult(_ json: [String: Any]) {
         var networks: [String] = []
+        var enhancedNetworks: [[String: Any]] = []
 
-        if let networksArray = json["networks"] as? [String] {
+        // First, check for enhanced format (networks_neo)
+        if let networksNeoArray = json["networks_neo"] as? [[String: Any]] {
+            enhancedNetworks = networksNeoArray
+            // Extract SSIDs for backwards compatibility
+            networks = networksNeoArray.compactMap { networkInfo in
+                networkInfo["ssid"] as? String
+            }
+            CoreCommsService.log("Received enhanced WiFi scan results: \(enhancedNetworks.count) networks with security info")
+        }
+        // Fall back to legacy format
+        else if let networksArray = json["networks"] as? [String] {
             networks = networksArray
+            CoreCommsService.log("Received legacy WiFi scan results: \(networks.count) networks found")
         } else if let networksString = json["networks"] as? String {
             networks = networksString.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+            CoreCommsService.log("Received legacy WiFi scan results (string format): \(networks.count) networks found")
         }
 
-        CoreCommsService.log("Received WiFi scan results: \(networks.count) networks found")
-        emitWifiScanResult(networks)
+        // Emit with enhanced data if available, otherwise legacy format
+        if !enhancedNetworks.isEmpty {
+            emitWifiScanResultEnhanced(enhancedNetworks, legacyNetworks: networks)
+        } else {
+            emitWifiScanResult(networks)
+        }
     }
 
     private func handleButtonPress(_ json: [String: Any]) {
@@ -2045,6 +2084,21 @@ typealias JSONObject = [String: Any]
         wifiSsid = ssid
         wifiLocalIp = ip
         emitWifiStatusChange()
+
+        // Trigger immediate status update to match Android behavior
+        aosManager?.triggerStatusUpdate()
+    }
+
+    private func updateHotspotStatus(enabled: Bool, ssid: String, password: String, ip: String) {
+        CoreCommsService.log("🔥 Updating hotspot status - enabled: \(enabled), ssid: \(ssid)")
+        isHotspotEnabled = enabled
+        hotspotSsid = ssid
+        hotspotPassword = password
+        hotspotLocalIp = ip
+        emitHotspotStatusChange()
+
+        // Trigger immediate status update to match Android behavior
+        aosManager?.triggerStatusUpdate()
     }
 
     // MARK: - Timers
@@ -2207,8 +2261,26 @@ typealias JSONObject = [String: Any]
         emitEvent("CoreMessageEvent", body: eventBody)
     }
 
+    private func emitHotspotStatusChange() {
+        let eventBody = ["glasses_hotspot_status_change": [
+            "enabled": isHotspotEnabled,
+            "ssid": hotspotSsid,
+            "password": hotspotPassword,
+            "local_ip": hotspotLocalIp,
+        ]]
+        emitEvent("CoreMessageEvent", body: eventBody)
+    }
+
     private func emitWifiScanResult(_ networks: [String]) {
         let eventBody = ["wifi_scan_results": networks]
+        emitEvent("CoreMessageEvent", body: eventBody)
+    }
+
+    private func emitWifiScanResultEnhanced(_ enhancedNetworks: [[String: Any]], legacyNetworks: [String]) {
+        let eventBody: [String: Any] = [
+            "wifi_scan_results": legacyNetworks, // Backwards compatibility
+            "wifi_scan_results_enhanced": enhancedNetworks, // Enhanced format with security info
+        ]
         emitEvent("CoreMessageEvent", body: eventBody)
     }
 

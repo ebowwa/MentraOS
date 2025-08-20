@@ -34,6 +34,7 @@ import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.Glass
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesWifiScanResultEvent;
 //import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.SmartGlassesBatteryEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesWifiStatusChange;
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesHotspotStatusChange;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.KeepAliveAckEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.RtmpStreamStatusEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses.SmartGlassesDevice;
@@ -1559,6 +1560,25 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
 
                 break;
 
+            case "hotspot_status_update":
+                // Process hotspot status information (same pattern as "wifi_status")
+                boolean hotspotEnabled = json.optBoolean("hotspot_enabled", false);
+                String hotspotSsid = json.optString("hotspot_ssid", "");
+                String hotspotPassword = json.optString("hotspot_password", "");
+                String hotspotIp = json.optString("hotspot_ip", "");
+
+                Log.d(TAG, "## Received hotspot status: enabled=" + hotspotEnabled + 
+                      ", SSID=" + hotspotSsid + ", IP=" + hotspotIp);
+                
+                // Post EventBus event (exactly like WiFi status)
+                EventBus.getDefault().post(new GlassesHotspotStatusChange(
+                        smartGlassesDevice.deviceModelName,
+                        hotspotEnabled,
+                        hotspotSsid,
+                        hotspotPassword,
+                        hotspotIp));
+                break;
+
             case "photo_response":
                 // Process photo response (success or failure)
                 String requestId = json.optString("requestId", "");
@@ -2586,7 +2606,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         // Send photo size settings to glasses
         JSONObject command = new JSONObject();
         try {
-            command.put("command", "set_button_photo_size");
+            command.put("type", "set_button_photo_size");
             command.put("size", size);
             sendJson(command);
         } catch (Exception e) {
@@ -2599,7 +2619,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         // Send video settings to glasses
         JSONObject command = new JSONObject();
         try {
-            command.put("command", "set_button_video_settings");
+            command.put("type", "set_button_video_settings");
             command.put("width", width);
             command.put("height", height);
             command.put("fps", fps);
@@ -3048,6 +3068,21 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             sendJson(wifiCommand, true);
         } catch (JSONException e) {
             Log.e(TAG, "Error creating WiFi credentials JSON", e);
+        }
+    }
+
+    @Override
+    public void sendHotspotState(boolean enabled) {
+        Log.d(TAG, "🔥 Sending hotspot state to glasses - enabled: " + enabled);
+        try {
+            // Send hotspot state command to the ASG client
+            JSONObject hotspotCommand = new JSONObject();
+            hotspotCommand.put("type", "set_hotspot_state");
+            hotspotCommand.put("enabled", enabled);
+            sendJson(hotspotCommand, true);
+            Log.d(TAG, "🔥 ✅ Hotspot state command sent successfully");
+        } catch (JSONException e) {
+            Log.e(TAG, "🔥 💥 Error creating hotspot state JSON", e);
         }
     }
 

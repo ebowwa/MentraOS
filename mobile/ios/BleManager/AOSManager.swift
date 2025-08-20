@@ -1314,6 +1314,11 @@ struct ViewState {
         liveManager?.sendWifiCredentials(ssid, password: password)
     }
 
+    private func setGlassesHotspotState(_ enabled: Bool) {
+        CoreCommsService.log("AOS: 🔥 Setting glasses hotspot state: \(enabled)")
+        liveManager?.sendHotspotState(enabled)
+    }
+
     private func showDashboard() {
         Task {
             await self.g1Manager?.RN_showDashboard()
@@ -1366,6 +1371,7 @@ struct ViewState {
             case showDashboard = "show_dashboard"
             case requestWifiScan = "request_wifi_scan"
             case sendWifiCredentials = "send_wifi_credentials"
+            case setHotspotState = "set_hotspot_state"
             case simulateHeadPosition = "simulate_head_position"
             case simulateButtonPress = "simulate_button_press"
             case startBufferRecording = "start_buffer_recording"
@@ -1557,6 +1563,12 @@ struct ViewState {
                         break
                     }
                     sendWifiCredentials(ssid, password)
+                case .setHotspotState:
+                    guard let params = params, let enabled = params["enabled"] as? Bool else {
+                        CoreCommsService.log("AOS: set_hotspot_state invalid params")
+                        break
+                    }
+                    setGlassesHotspotState(enabled)
                 case .simulateHeadPosition:
                     guard let params = params, let position = params["position"] as? String else {
                         CoreCommsService.log("AOS: simulate_head_position invalid params")
@@ -1693,6 +1705,14 @@ struct ViewState {
                 connectedGlasses["glasses_wifi_connected"] = glassesWifiConnected
                 connectedGlasses["glasses_wifi_local_ip"] = liveManager?.wifiLocalIp
             }
+
+            // Add hotspot information
+            connectedGlasses["glasses_hotspot_enabled"] = liveManager?.isHotspotEnabled ?? false
+            if let hotspotSsid = liveManager?.hotspotSsid, !hotspotSsid.isEmpty {
+                connectedGlasses["glasses_hotspot_ssid"] = hotspotSsid
+                connectedGlasses["glasses_hotspot_password"] = liveManager?.hotspotPassword ?? ""
+                connectedGlasses["glasses_hotspot_ip"] = liveManager?.hotspotLocalIp ?? ""
+            }
         }
 
         // Add Bluetooth device name if available
@@ -1787,6 +1807,11 @@ struct ViewState {
             CoreCommsService.log("AOS: Error converting to JSON: \(error)")
         }
         saveSettings()
+    }
+
+    func triggerStatusUpdate() {
+        CoreCommsService.log("🔄 Triggering immediate status update")
+        handleRequestStatus()
     }
 
     private func playStartupSequence() {
