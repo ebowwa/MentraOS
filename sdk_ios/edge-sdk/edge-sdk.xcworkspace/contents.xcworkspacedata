@@ -5,9 +5,6 @@
       location = "group:edge-sdk.xcodeproj">
    </FileRef>
    <FileRef
-      location = "group:edge-sdk">
-   </FileRef>
-   <FileRef
       location = "group:Pods/Pods.xcodeproj">
    </FileRef>
 </Workspace>

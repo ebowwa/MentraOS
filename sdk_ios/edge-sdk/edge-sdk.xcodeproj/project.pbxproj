@@ -28,21 +28,18 @@
 		BFF91F27A22912E16EB6340D /* Pods-edge-sdk.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-edge-sdk.release.xcconfig"; path = "Target Support Files/Pods-edge-sdk/Pods-edge-sdk.release.xcconfig"; sourceTree = "<group>"; };
 		C503394A2E56468D006A0718 /* edge_sdk.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = edge_sdk.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		C50339552E56468D006A0718 /* edge-sdkTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "edge-sdkTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		C5033BBC2E5663ED006A0718 /* CoreObjC.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = CoreObjC.xcodeproj; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		C503394C2E56468D006A0718 /* edge-sdk */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-			);
-			path = "edge-sdk";
-			sourceTree = "<group>";
-		};
 		C50339592E56468D006A0718 /* edge-sdkTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-			);
 			path = "edge-sdkTests";
+			sourceTree = "<group>";
+		};
+		C5033B992E565A50006A0718 /* edge-sdk */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "edge-sdk";
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -74,14 +71,13 @@
 				3019FAC24A5F929EA1F9ECA5 /* Pods-edge-sdk.debug.xcconfig */,
 				BFF91F27A22912E16EB6340D /* Pods-edge-sdk.release.xcconfig */,
 			);
-			name = Pods;
 			path = Pods;
 			sourceTree = "<group>";
 		};
 		C50339402E56468D006A0718 = {
 			isa = PBXGroup;
 			children = (
-				C503394C2E56468D006A0718 /* edge-sdk */,
+				C5033B992E565A50006A0718 /* edge-sdk */,
 				C50339592E56468D006A0718 /* edge-sdkTests */,
 				C50339F12E56533C006A0718 /* Frameworks */,
 				C503394B2E56468D006A0718 /* Products */,
@@ -104,6 +100,13 @@
 				9906BB01D0F0C92385762215 /* libPods-edge-sdk.a */,
 			);
 			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		C5033C202E5663EE006A0718 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Products;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -135,7 +138,7 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				C503394C2E56468D006A0718 /* edge-sdk */,
+				C5033B992E565A50006A0718 /* edge-sdk */,
 			);
 			name = "edge-sdk";
 			packageProductDependencies = (
@@ -199,6 +202,12 @@
 			preferredProjectObjectVersion = 77;
 			productRefGroup = C503394B2E56468D006A0718 /* Products */;
 			projectDirPath = "";
+			projectReferences = (
+				{
+					ProductGroup = C5033C202E5663EE006A0718 /* Products */;
+					ProjectRef = C5033BBC2E5663ED006A0718 /* CoreObjC.xcodeproj */;
+				},
+			);
 			projectRoot = "";
 			targets = (
 				C50339492E56468D006A0718 /* edge-sdk */,
@@ -233,9 +242,13 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-edge-sdk/Pods-edge-sdk-resources-${CONFIGURATION}-input-files.xcfilelist",
 			);
+			inputPaths = (
+			);
 			name = "[CP] Copy Pods Resources";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-edge-sdk/Pods-edge-sdk-resources-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -424,8 +437,10 @@
 			baseConfigurationReference = 3019FAC24A5F929EA1F9ECA5 /* Pods-edge-sdk.debug.xcconfig */;
 			buildSettings = {
 				BUILD_LIBRARY_FOR_DISTRIBUTION = YES;
+				CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEFINES_MODULE = YES;
 				DEVELOPMENT_TEAM = T5XXXL6N36;
 				DYLIB_COMPATIBILITY_VERSION = 1;
 				DYLIB_CURRENT_VERSION = 1;
@@ -450,6 +465,7 @@
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_INSTALL_MODULE = YES;
 				SWIFT_INSTALL_OBJC_HEADER = NO;
+				SWIFT_OBJC_BRIDGING_HEADER = "";
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -461,8 +477,10 @@
 			baseConfigurationReference = BFF91F27A22912E16EB6340D /* Pods-edge-sdk.release.xcconfig */;
 			buildSettings = {
 				BUILD_LIBRARY_FOR_DISTRIBUTION = YES;
+				CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEFINES_MODULE = YES;
 				DEVELOPMENT_TEAM = T5XXXL6N36;
 				DYLIB_COMPATIBILITY_VERSION = 1;
 				DYLIB_CURRENT_VERSION = 1;
@@ -487,6 +505,7 @@
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_INSTALL_MODULE = YES;
 				SWIFT_INSTALL_OBJC_HEADER = NO;
+				SWIFT_OBJC_BRIDGING_HEADER = "";
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";

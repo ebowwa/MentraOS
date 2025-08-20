@@ -7,17 +7,16 @@
 
 import Foundation
 
-@objc(CoreCommsService)
 class CoreCommsService {
 //    static var emitter: RCTEventEmitter!
 
-    override init() {
-        super.init()
-        CoreCommsService.emitter = self
-    }
+//    override init() {
+//        super.init()
+//        CoreCommsService.emitter = self
+//    }
 
-    @objc
-    override static func requiresMainQueueSetup() -> Bool {
+    
+    static func requiresMainQueueSetup() -> Bool {
         return false
     }
 
@@ -55,8 +54,12 @@ class CoreCommsService {
 //        let jsonString = String(data: jsonData, encoding: .utf8)
 //        emitter.sendEvent(withName: "CoreMessageEvent", body: jsonString!)
     }
+    
+    static func sendEvent(withName: String, body: String) {
+        print(withName, body)
+    }
 
-    override func supportedEvents() -> [String] {
+    func supportedEvents() -> [String] {
         // add more as needed
         return ["onReady", "onPending", "onFailure", "onConnectionStateChanged", "CoreMessageIntentEvent", "CoreMessageEvent", "WIFI_SCAN_RESULTS"]
     }

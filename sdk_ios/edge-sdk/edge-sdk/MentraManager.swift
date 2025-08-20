@@ -23,8 +23,8 @@ struct ViewState {
 }
 
 // This class handles logic for managing devices and connections to AugmentOS servers
-public class MentraManager: NSObject, SherpaOnnxTranscriber.TranscriptDelegate {
-    private static var instance: AOSManager?
+public class MentraManager: NSObject/*, SherpaOnnxTranscriber.TranscriptDelegate */{
+    private static var instance: MentraManager?
 
     @objc static func getInstance() -> MentraManager {
         if instance == nil {
@@ -100,7 +100,7 @@ public class MentraManager: NSObject, SherpaOnnxTranscriber.TranscriptDelegate {
     private var vadBuffer = [Data]()
     private var isSpeaking = false
 
-    private var transcriber: SherpaOnnxTranscriber?
+//    private var transcriber: SherpaOnnxTranscriber?
 
     private var shouldSendPcmData = true
     private var shouldSendTranscript = false
@@ -116,17 +116,17 @@ public class MentraManager: NSObject, SherpaOnnxTranscriber.TranscriptDelegate {
            let window = windowScene.windows.first,
            let rootViewController = window.rootViewController
         {
-            transcriber = SherpaOnnxTranscriber(context: rootViewController)
+//            transcriber = SherpaOnnxTranscriber(context: rootViewController)
         } else {
             CoreCommsService.log("Failed to create SherpaOnnxTranscriber - no root view controller found")
         }
 
         // Initialize the transcriber
-        if let transcriber = transcriber {
-            transcriber.initialize()
-            transcriber.transcriptDelegate = self
-            CoreCommsService.log("SherpaOnnxTranscriber fully initialized")
-        }
+//        if let transcriber = transcriber {
+//            transcriber.initialize()
+//            transcriber.transcriptDelegate = self
+//            CoreCommsService.log("SherpaOnnxTranscriber fully initialized")
+//        }
 
         Task {
             await loadSettings()
@@ -483,7 +483,7 @@ public class MentraManager: NSObject, SherpaOnnxTranscriber.TranscriptDelegate {
 
                     // Also send to local transcriber when bypassing VAD
                     if self.shouldSendTranscript {
-                        self.transcriber?.acceptAudio(pcm16le: pcmData)
+//                        self.transcriber?.acceptAudio(pcm16le: pcmData)
                     }
                     return
                 }
@@ -518,7 +518,7 @@ public class MentraManager: NSObject, SherpaOnnxTranscriber.TranscriptDelegate {
 
                     // Send to local transcriber when speech is detected
                     if self.shouldSendTranscript {
-                        self.transcriber?.acceptAudio(pcm16le: pcmData)
+//                        self.transcriber?.acceptAudio(pcm16le: pcmData)
                     }
                 } else {
                     checkSetVadStatus(speaking: false)
@@ -762,7 +762,7 @@ public class MentraManager: NSObject, SherpaOnnxTranscriber.TranscriptDelegate {
 
             let eventStr = currentViewState.eventStr
             if eventStr != "" {
-                CoreCommsService.emitter.sendEvent(withName: "CoreMessageEvent", body: eventStr)
+                CoreCommsService.sendEvent(withName: "CoreMessageEvent", body: eventStr)
             }
 
             if self.defaultWearable.contains("Simulated") || self.defaultWearable.isEmpty {
@@ -1752,7 +1752,7 @@ public class MentraManager: NSObject, SherpaOnnxTranscriber.TranscriptDelegate {
         do {
             let jsonData = try JSONSerialization.data(withJSONObject: wrapperObj, options: [])
             if let jsonString = String(data: jsonData, encoding: .utf8) {
-                CoreCommsService.emitter.sendEvent(withName: "CoreMessageEvent", body: jsonString)
+                CoreCommsService.sendEvent(withName: "CoreMessageEvent", body: jsonString)
             }
         } catch {
             CoreCommsService.log("AOS: Error converting to JSON: \(error)")
@@ -2228,8 +2228,8 @@ public class MentraManager: NSObject, SherpaOnnxTranscriber.TranscriptDelegate {
 
     @objc func cleanup() {
         // Clean up transcriber resources
-        transcriber?.shutdown()
-        transcriber = nil
+//        transcriber?.shutdown()
+//        transcriber = nil
 
         cancellables.removeAll()
         saveSettings()

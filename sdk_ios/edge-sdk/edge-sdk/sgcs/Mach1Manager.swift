@@ -250,7 +250,7 @@ class Mach1Manager: UltraliteBaseViewController {
         do {
             let jsonData = try JSONSerialization.data(withJSONObject: eventBody, options: [])
             if let jsonString = String(data: jsonData, encoding: .utf8) {
-                CoreCommsService.emitter.sendEvent(withName: "CoreMessageEvent", body: jsonString)
+                CoreCommsService.sendEvent(withName: "CoreMessageEvent", body: jsonString)
             }
         } catch {
             CoreCommsService.log("Error converting to JSON: \(error)")
@@ -336,7 +336,7 @@ class Mach1Manager: UltraliteBaseViewController {
 
         guard let device = UltraliteManager.shared.currentDevice else {
             CoreCommsService.log("MACH1: No current device")
-            AOSManager.getInstance().forgetSmartGlasses()
+            MentraManager.getInstance().forgetSmartGlasses()
             return false
         }
 

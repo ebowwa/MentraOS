@@ -455,19 +455,19 @@ class ServerComms {
         switch type {
         case "connection_ack":
             startAudioSenderThread()
-            AOSManager.getInstance().onAppStateChange(parseAppList(msg) /* , parseWhatToStream(msg) */ )
-            AOSManager.getInstance().onConnectionAck()
+            MentraManager.getInstance().onAppStateChange(parseAppList(msg) /* , parseWhatToStream(msg) */ )
+            MentraManager.getInstance().onConnectionAck()
 
         case "app_state_change":
-            AOSManager.getInstance().onAppStateChange(parseAppList(msg) /* , parseWhatToStream(msg) */ )
+            MentraManager.getInstance().onAppStateChange(parseAppList(msg) /* , parseWhatToStream(msg) */ )
 
         case "connection_error":
             let errorMsg = msg["message"] as? String ?? "Unknown error"
 
-            AOSManager.getInstance().onConnectionError(errorMsg)
+            MentraManager.getInstance().onConnectionError(errorMsg)
 
         case "auth_error":
-            AOSManager.getInstance().onAuthError()
+            MentraManager.getInstance().onAuthError()
 
         case "microphone_state_change":
             // CoreCommsService.log("ServerComms: microphone_state_change: \(msg)")
@@ -492,11 +492,11 @@ class ServerComms {
 
             CoreCommsService.log("ServerComms: requiredData = \(requiredDataStrings), bypassVad = \(bypassVad)")
 
-            AOSManager.getInstance().onMicrophoneStateChange(isMicrophoneEnabled, requiredData, bypassVad) // NEW: Pass bypassVad
+            MentraManager.getInstance().onMicrophoneStateChange(isMicrophoneEnabled, requiredData, bypassVad) // NEW: Pass bypassVad
 
         case "display_event":
             if let view = msg["view"] as? String {
-                AOSManager.getInstance().onDisplayEvent(msg)
+                MentraManager.getInstance().onDisplayEvent(msg)
             }
 
         case "audio_play_request":
@@ -507,7 +507,7 @@ class ServerComms {
 
         case "request_single":
             if let dataType = msg["data_type"] as? String {
-                AOSManager.getInstance().onRequestSingle(dataType)
+                MentraManager.getInstance().onRequestSingle(dataType)
             }
 
         case "interim", "final":
@@ -527,7 +527,7 @@ class ServerComms {
                 CoreCommsService.log("ServerComms: Received settings update but no status")
                 return
             }
-            AOSManager.getInstance().onStatusUpdate(status)
+            MentraManager.getInstance().onStatusUpdate(status)
 
       // Log.d(TAG, "Received settings update from WebSocket");
       // try {
@@ -556,13 +556,13 @@ class ServerComms {
         case "app_started":
             if let packageName = msg["packageName"] as? String {
                 CoreCommsService.log("ServerComms: Received app_started message for package: \(packageName)")
-                AOSManager.getInstance().onAppStarted(packageName)
+                MentraManager.getInstance().onAppStarted(packageName)
             }
 
         case "app_stopped":
             if let packageName = msg["packageName"] as? String {
                 CoreCommsService.log("ServerComms: Received app_stopped message for package: \(packageName)")
-                AOSManager.getInstance().onAppStopped(packageName)
+                MentraManager.getInstance().onAppStopped(packageName)
             }
 
         case "photo_request":
@@ -572,7 +572,7 @@ class ServerComms {
             let size = (msg["size"] as? String) ?? "medium"
             CoreCommsService.log("Received photo_request, requestId: \(requestId), appId: \(appId), webhookUrl: \(webhookUrl), size: \(size)")
             if !requestId.isEmpty, !appId.isEmpty {
-                AOSManager.getInstance().onPhotoRequest(requestId, appId, webhookUrl, size)
+                MentraManager.getInstance().onPhotoRequest(requestId, appId, webhookUrl, size)
             } else {
                 CoreCommsService.log("Invalid photo request: missing requestId or appId")
             }
@@ -580,43 +580,43 @@ class ServerComms {
         case "start_rtmp_stream":
             let rtmpUrl = msg["rtmpUrl"] as? String ?? ""
             if !rtmpUrl.isEmpty {
-                AOSManager.getInstance().onRtmpStreamStartRequest(msg)
+                MentraManager.getInstance().onRtmpStreamStartRequest(msg)
             } else {
                 CoreCommsService.log("Invalid RTMP stream request: missing rtmpUrl or callback")
             }
 
         case "stop_rtmp_stream":
             CoreCommsService.log("Received STOP_RTMP_STREAM")
-            AOSManager.getInstance().onRtmpStreamStop()
+            MentraManager.getInstance().onRtmpStreamStop()
 
         case "keep_rtmp_stream_alive":
             CoreCommsService.log("ServerComms: Received KEEP_RTMP_STREAM_ALIVE: \(msg)")
-            AOSManager.getInstance().onRtmpStreamKeepAlive(msg)
+            MentraManager.getInstance().onRtmpStreamKeepAlive(msg)
 
         case "start_buffer_recording":
             CoreCommsService.log("ServerComms: Received START_BUFFER_RECORDING")
-            AOSManager.getInstance().onStartBufferRecording()
+            MentraManager.getInstance().onStartBufferRecording()
 
         case "stop_buffer_recording":
             CoreCommsService.log("ServerComms: Received STOP_BUFFER_RECORDING")
-            AOSManager.getInstance().onStopBufferRecording()
+            MentraManager.getInstance().onStopBufferRecording()
 
         case "save_buffer_video":
             CoreCommsService.log("ServerComms: Received SAVE_BUFFER_VIDEO: \(msg)")
             let requestId = msg["requestId"] as? String ?? "buffer_\(Int(Date().timeIntervalSince1970 * 1000))"
             let durationSeconds = msg["durationSeconds"] as? Int ?? 30
-            AOSManager.getInstance().onSaveBufferVideo(requestId, durationSeconds)
+            MentraManager.getInstance().onSaveBufferVideo(requestId, durationSeconds)
 
         case "start_video_recording":
             CoreCommsService.log("ServerComms: Received START_VIDEO_RECORDING: \(msg)")
             let requestId = msg["requestId"] as? String ?? "video_\(Int(Date().timeIntervalSince1970 * 1000))"
             let save = msg["save"] as? Bool ?? true
-            AOSManager.getInstance().onStartVideoRecording(requestId, save)
+            MentraManager.getInstance().onStartVideoRecording(requestId, save)
 
         case "stop_video_recording":
             CoreCommsService.log("ServerComms: Received STOP_VIDEO_RECORDING: \(msg)")
             let requestId = msg["requestId"] as? String ?? ""
-            AOSManager.getInstance().onStopVideoRecording(requestId)
+            MentraManager.getInstance().onStopVideoRecording(requestId)
 
         default:
             CoreCommsService.log("ServerComms: Unknown message type: \(type) / full: \(msg)")
@@ -781,11 +781,16 @@ class ServerComms {
             let secure = url.scheme == "https"
             return "\(secure ? "https" : "http")://\(host):\(port)"
         }
+        
+        return "https://api.mentra.glass:443"
 
         // Fallback to environment configuration
-        let host = RNCConfig.env(for: "MENTRAOS_HOST")!
-        let port = RNCConfig.env(for: "MENTRAOS_PORT")!
-        let secure = RNCConfig.env(for: "MENTRAOS_SECURE")!
+//        let host = RNCConfig.env(for: "MENTRAOS_HOST")!
+//        let port = RNCConfig.env(for: "MENTRAOS_PORT")!
+//        let secure = RNCConfig.env(for: "MENTRAOS_SECURE")!
+        let host = "api.mentra.glass"
+        let port = "443"
+        let secure = "true"
         let secureServer = secure.contains("true")
         return "\(secureServer ? "https" : "http")://\(host):\(port)"
     }
@@ -800,9 +805,13 @@ class ServerComms {
             let wsUrl = "\(secure ? "wss" : "ws")://\(host):\(port)/glasses-ws"
             return wsUrl
         }
-        let host = RNCConfig.env(for: "MENTRAOS_HOST")!
-        let port = RNCConfig.env(for: "MENTRAOS_PORT")!
-        let secure = RNCConfig.env(for: "MENTRAOS_SECURE")!
+//        let host = RNCConfig.env(for: "MENTRAOS_HOST")!
+//        let port = RNCConfig.env(for: "MENTRAOS_PORT")!
+//        let secure = RNCConfig.env(for: "MENTRAOS_SECURE")!
+        let host = "api.mentra.glass"
+        let port = "443"
+        let secure = "true"
+        
         let secureServer = secure.contains("true")
         let url = "\(secureServer ? "wss" : "ws")://\(host):\(port)/glasses-ws"
         CoreCommsService.log("ServerComms: getServerUrl(): \(url)")

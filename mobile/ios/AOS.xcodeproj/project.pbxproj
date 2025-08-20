@@ -666,7 +666,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "# Check if Sentry auth token is available\nif [ -z \"$SENTRY_AUTH_TOKEN\" ]; then\n  echo \"warning: Sentry auth token not found. Skipping debug symbols upload.\"\n  echo \"To enable Sentry uploads, set SENTRY_AUTH_TOKEN environment variable.\"\n  exit 0\nfi\n\n# Run Sentry upload script only if auth token exists\n/bin/sh ../node_modules/@sentry/react-native/scripts/sentry-xcode-debug-files.sh";
+			shellScript = "# Check if Sentry auth token is available\nif [ -z \"$SENTRY_AUTH_TOKEN\" ]; then\n  echo \"warning: Sentry auth token not found. Skipping debug symbols upload.\"\n  echo \"To enable Sentry uploads, set SENTRY_AUTH_TOKEN environment variable.\"\n  exit 0\nfi\n\n# Run Sentry upload script only if auth token exists\n/bin/sh ../node_modules/@sentry/react-native/scripts/sentry-xcode-debug-files.sh\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
