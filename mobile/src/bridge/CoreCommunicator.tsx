@@ -551,31 +551,12 @@ export class CoreCommunicator extends EventEmitter {
     })
   }
 
-  async restartTranscription(isMicCurrentlyEnabled: boolean = true) {
-    if (!isMicCurrentlyEnabled) {
-      console.log("Mic is not enabled, skipping transcription restart")
-      return
-    }
-
+  async restartTranscription() {
     console.log("Restarting transcription with new model...")
 
-    // Toggle mic off
+    // Send restart command to native side
     await this.sendData({
-      command: "toggle_mic",
-      params: {
-        enabled: false,
-      },
-    })
-
-    // Wait for the change to take effect
-    await new Promise(resolve => setTimeout(resolve, 500))
-
-    // Toggle mic back on
-    await this.sendData({
-      command: "toggle_mic",
-      params: {
-        enabled: true,
-      },
+      command: "restart_transcriber",
     })
   }
 

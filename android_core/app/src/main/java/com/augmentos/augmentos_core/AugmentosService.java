@@ -2682,6 +2682,13 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     }
 
     @Override
+    public void restartTranscriber() {
+        Log.d("AugmentOsService", "Restarting transcriber");
+        ServerComms.getInstance().restartTranscriber();
+
+    }
+
+    @Override
     public void setButtonMode(String mode) {
         Log.d("AugmentOsService", "Setting button mode: " + mode);
         // Save locally

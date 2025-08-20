@@ -55,4 +55,5 @@ public interface AugmentOsActionsCallback {
     void saveBufferVideo(String requestId, int durationSeconds);
     void startVideoRecording(String requestId, boolean save);
     void stopVideoRecording(String requestId);
+    void restartTranscriber();
 }

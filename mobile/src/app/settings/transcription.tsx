@@ -112,15 +112,8 @@ export default function TranscriptionSettingsScreen() {
     if (info.downloaded) {
       try {
         await STTModelManager.activateModel(modelId)
-
-        // Auto-restart transcription if mic is active
-        if (status.core_info.is_mic_enabled_for_frontend) {
-          showAlert("Restarting Transcription", "Switching to new model...", [{text: "OK"}])
-          // TODO: Make this work correctly
-          //await coreCommunicator.restartTranscription(true)
-        } else {
-          showAlert("Model Activated", `Switched to ${info.name}`, [{text: "OK"}])
-        }
+        showAlert("Restarting Transcription", "Switching to new model...", [{text: "OK"}])
+        await coreCommunicator.restartTranscription()
       } catch (error: any) {
         showAlert("Error", error.message || "Failed to activate model", [{text: "OK"}])
       }
@@ -242,7 +235,7 @@ export default function TranscriptionSettingsScreen() {
           onValueChange={toggleBypassVadForDebugging}
         />
 
-        {Platform.OS === "android" && (
+        {(
           <>
             <Spacer height={theme.spacing.md} />
 
