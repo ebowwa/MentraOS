@@ -1,5 +1,5 @@
 //
-//  CoreCommsService.swift
+//  Core.swift
 //  AOS
 //
 //  Created by Matthew Fosse on 3/4/25.
@@ -27,9 +27,9 @@ class Core: RCTEventEmitter {
         let msg = "SWIFT:\(message)"
         emitter.sendEvent(withName: "CoreMessageEvent", body: msg)
     }
-  
+
     static func emit(withName: String, body: String) {
-      self.emitter.sendEvent(withName: withName, body: body)
+        emitter.sendEvent(withName: withName, body: body)
     }
 
     static func showBanner(type: String, message: String) {

@@ -1807,10 +1807,10 @@ typealias JSONObject = [String: Any]
 
                     Core.log("All chunks queued for transmission")
                 } else {
-                // Normal single message transmission
-                Core.log("Sending data to glasses: \(jsonString)")
-                let packedData = packJson(jsonString, wakeUp: wakeUp) ?? Data()
-                queueSend(packedData, id: String(globalMessageId - 1))
+                    // Normal single message transmission
+                    Core.log("Sending data to glasses: \(jsonString)")
+                    let packedData = packJson(jsonString, wakeUp: wakeUp) ?? Data()
+                    queueSend(packedData, id: String(globalMessageId - 1))
                 }
             }
         } catch {
@@ -1983,8 +1983,8 @@ typealias JSONObject = [String: Any]
         }
 
         Core.log(String(format: "IMU Single Reading - Accel: [%.2f, %.2f, %.2f], Euler: [%.1f°, %.1f°, %.1f°]",
-                                    accel[0], accel[1], accel[2],
-                                    euler[0], euler[1], euler[2]))
+                        accel[0], accel[1], accel[2],
+                        euler[0], euler[1], euler[2]))
 
         // Emit event for other components
         let eventBody: [String: Any] = [

@@ -66,23 +66,6 @@ RCT_EXPORT_METHOD(
 }
 
 // STT Model Management Methods
-RCT_EXPORT_METHOD(
-  setSTTModelPath:
-  (NSString *)path
-  resolver:(RCTPromiseResolveBlock)resolve
-  rejecter:(RCTPromiseRejectBlock)reject
-)
-{
-  @try {
-    // Store the model path for SherpaOnnxTranscriber to use
-    [[NSUserDefaults standardUserDefaults] setObject:path forKey:@"STTModelPath"];
-    [[NSUserDefaults standardUserDefaults] synchronize];
-    resolve(@(YES));
-  }
-  @catch(NSException *exception) {
-    reject(@"STT_ERROR", exception.description, nil);
-  }
-}
 
 RCT_EXPORT_METHOD(
   isSTTModelAvailable:

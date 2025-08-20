@@ -27,26 +27,12 @@ class SherpaOnnxTranscriber {
     // Parent context
     private weak var context: UIViewController?
 
-    // Delegate to receive transcription events
-    weak var transcriptDelegate: TranscriptDelegate?
-
     // Session start time for relative timestamps
     private var transcriptionSessionStart: Date
 
     // Dynamic model path support
     private static var customModelPath: String? {
         return UserDefaults.standard.string(forKey: "STTModelPath")
-    }
-
-    /**
-     * Protocol to receive transcription results from Sherpa-ONNX.
-     */
-    protocol TranscriptDelegate: AnyObject {
-        /// Called with live partial transcription (not final yet).
-        func didReceivePartialTranscription(_ text: String)
-
-        /// Called when an utterance ends and final text is available.
-        func didReceiveFinalTranscription(_ text: String)
     }
 
     /**
@@ -241,9 +227,9 @@ class SherpaOnnxTranscriber {
         // Forward to delegate if set
         DispatchQueue.main.async { [weak self] in
             if isFinal {
-                self?.transcriptDelegate?.didReceiveFinalTranscription(text)
+                MentraManager.getInstance().didReceiveFinalTranscription(text)
             } else {
-                self?.transcriptDelegate?.didReceivePartialTranscription(text)
+                MentraManager.getInstance().didReceivePartialTranscription(text)
             }
         }
     }

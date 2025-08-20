@@ -2,6 +2,7 @@ import RNFS from "react-native-fs"
 import {Platform} from "react-native"
 import {NativeModules} from "react-native"
 import {TarBz2Extractor} from "./TarBz2Extractor"
+import coreCommunicator from "@/bridge/CoreCommunicator"
 
 const {BridgeModule, FileProviderModule} = NativeModules
 
@@ -336,7 +337,12 @@ class STTModelManager {
   }
 
   private async setNativeModelPath(path: string): Promise<void> {
-    const nativeModule = Platform.OS === "ios" ? BridgeModule : FileProviderModule
+    if (Platform.OS === "ios") {
+      coreCommunicator.setSttModelPath(path)
+      return
+    }
+    
+    const nativeModule = FileProviderModule
     if (nativeModule.setSTTModelPath) {
       await nativeModule.setSTTModelPath(path)
     }
