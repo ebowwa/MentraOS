@@ -18,19 +18,22 @@ import org.json.JSONObject;
  * Follows Single Responsibility Principle by handling only streaming concerns.
  */
 public class MediaManager implements IMediaManager {
-    
+
     private static final String TAG = "StreamingManager";
-    
+
     private final Context context;
     private final AsgClientServiceManager serviceManager;
     private final StreamingStatusCallback streamingStatusCallback;
-    
+
     public MediaManager(Context context, AsgClientServiceManager serviceManager) {
         this.context = context;
         this.serviceManager = serviceManager;
         this.streamingStatusCallback = createStreamingStatusCallback();
+
+        // Register the callback with the RTMP streaming service
+        RtmpStreamingService.setStreamingStatusCallback(streamingStatusCallback);
     }
-    
+
     @Override
     public void startRtmpStreaming() {
         try {
@@ -47,7 +50,7 @@ public class MediaManager implements IMediaManager {
             Log.e(TAG, "Error starting RTMP streaming service", e);
         }
     }
-    
+
     @Override
     public void stopRtmpStreaming() {
         try {
@@ -57,17 +60,19 @@ public class MediaManager implements IMediaManager {
             Log.e(TAG, "Error stopping RTMP streaming", e);
         }
     }
-    
-    @Override
+
+        @Override
     public void sendRtmpStatusResponse(boolean success, String status, String details) {
-        if (serviceManager != null && serviceManager.getBluetoothManager() != null && 
+        if (serviceManager != null && serviceManager.getBluetoothManager() != null &&
             serviceManager.getBluetoothManager().isConnected()) {
             try {
+                // Create properly formatted message for cloud
                 JSONObject response = new JSONObject();
-                response.put("type", "rtmp_status");
-                response.put("success", success);
+                response.put("type", "rtmp_stream_status");
                 response.put("status", status);
-                response.put("details", details);
+                if (details != null) {
+                    response.put("errorDetails", details);
+                }
                 response.put("timestamp", System.currentTimeMillis());
 
                 String jsonString = response.toString();
@@ -81,19 +86,19 @@ public class MediaManager implements IMediaManager {
             Log.w(TAG, "Cannot send RTMP status response - not connected to BLE device");
         }
     }
-    
-    @Override
+
+        @Override
     public void sendRtmpStatusResponse(boolean success, JSONObject statusObject) {
-        if (serviceManager != null && serviceManager.getBluetoothManager() != null && 
+        if (serviceManager != null && serviceManager.getBluetoothManager() != null &&
             serviceManager.getBluetoothManager().isConnected()) {
             try {
-                JSONObject response = new JSONObject();
-                response.put("type", "rtmp_status");
-                response.put("success", success);
-                response.put("data", statusObject);
-                response.put("timestamp", System.currentTimeMillis());
+                // The statusObject already contains the type and all necessary fields
+                // Just add timestamp if not already present
+                if (!statusObject.has("timestamp")) {
+                    statusObject.put("timestamp", System.currentTimeMillis());
+                }
 
-                String jsonString = response.toString();
+                String jsonString = statusObject.toString();
                 Log.d(TAG, "📤 Sending RTMP status response: " + jsonString);
                 serviceManager.getBluetoothManager().sendData(jsonString.getBytes());
 
@@ -104,10 +109,10 @@ public class MediaManager implements IMediaManager {
             Log.w(TAG, "Cannot send RTMP status response - not connected to BLE device");
         }
     }
-    
+
     @Override
     public void sendVideoRecordingStatusResponse(boolean success, String status, String details) {
-        if (serviceManager != null && serviceManager.getBluetoothManager() != null && 
+        if (serviceManager != null && serviceManager.getBluetoothManager() != null &&
             serviceManager.getBluetoothManager().isConnected()) {
             try {
                 JSONObject response = new JSONObject();
@@ -128,10 +133,10 @@ public class MediaManager implements IMediaManager {
             Log.w(TAG, "Cannot send video recording status response - not connected to BLE device");
         }
     }
-    
+
     @Override
     public void sendVideoRecordingStatusResponse(boolean success, JSONObject statusObject) {
-        if (serviceManager != null && serviceManager.getBluetoothManager() != null && 
+        if (serviceManager != null && serviceManager.getBluetoothManager() != null &&
             serviceManager.getBluetoothManager().isConnected()) {
             try {
                 JSONObject response = new JSONObject();
@@ -151,10 +156,10 @@ public class MediaManager implements IMediaManager {
             Log.w(TAG, "Cannot send video recording status response - not connected to BLE device");
         }
     }
-    
+
     @Override
     public void sendBufferStatusResponse(boolean success, String status, String details) {
-        if (serviceManager != null && serviceManager.getBluetoothManager() != null && 
+        if (serviceManager != null && serviceManager.getBluetoothManager() != null &&
             serviceManager.getBluetoothManager().isConnected()) {
             try {
                 JSONObject response = new JSONObject();
@@ -180,13 +185,13 @@ public class MediaManager implements IMediaManager {
 
     @Override
     public void sendBufferStatusResponse(boolean success, JSONObject statusObject) {
-        if (serviceManager != null && serviceManager.getBluetoothManager() != null && 
+        if (serviceManager != null && serviceManager.getBluetoothManager() != null &&
             serviceManager.getBluetoothManager().isConnected()) {
             try {
                 JSONObject response = new JSONObject();
                 response.put("type", "buffer_status");
                 response.put("success", success);
-                
+
                 // Merge the status object fields into the response
                 if (statusObject != null) {
                     java.util.Iterator<String> keys = statusObject.keys();
@@ -213,10 +218,19 @@ public class MediaManager implements IMediaManager {
     public StreamingStatusCallback getStreamingStatusCallback() {
         return streamingStatusCallback;
     }
-    
+
+    /**
+     * Clean up resources when the MediaManager is being destroyed
+     */
+    public void cleanup() {
+        // Unregister the callback from the RTMP streaming service
+        RtmpStreamingService.setStreamingStatusCallback(null);
+        Log.d(TAG, "MediaManager cleanup completed - callback unregistered");
+    }
+
     @Override
     public void sendKeepAliveAck(String streamId, String ackId) {
-        if (serviceManager != null && serviceManager.getBluetoothManager() != null && 
+        if (serviceManager != null && serviceManager.getBluetoothManager() != null &&
             serviceManager.getBluetoothManager().isConnected()) {
             try {
                 JSONObject response = new JSONObject();
@@ -233,10 +247,29 @@ public class MediaManager implements IMediaManager {
                 Log.e(TAG, "Error creating keep-alive ACK response", e);
             }
         } else {
-            Log.w(TAG, "Cannot send keep-alive ACK - not connected to BLE device");
+            Log.w(TAG, "Cannot send keep-alive ACK - not connected to BLE device (streamId=" + streamId + ", ackId=" + ackId + ")");
+            // Retry once after a short delay to tolerate transient BLE gaps
+            new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+                if (serviceManager != null && serviceManager.getBluetoothManager() != null && serviceManager.getBluetoothManager().isConnected()) {
+                    try {
+                        JSONObject response = new JSONObject();
+                        response.put("type", "keep_alive_ack");
+                        response.put("streamId", streamId);
+                        response.put("ackId", ackId);
+                        response.put("timestamp", System.currentTimeMillis());
+                        String jsonString = response.toString();
+                        Log.d(TAG, "📤 Retrying keep-alive ACK send after BLE reconnect: " + jsonString);
+                        serviceManager.getBluetoothManager().sendData(jsonString.getBytes());
+                    } catch (JSONException e) {
+                        Log.e(TAG, "Error creating keep-alive ACK response on retry", e);
+                    }
+                } else {
+                    Log.w(TAG, "Retry failed - BLE still not connected (streamId=" + streamId + ", ackId=" + ackId + ")");
+                }
+            }, 1500);
         }
     }
-    
+
     /**
      * Create streaming status callback
      */
@@ -374,4 +407,4 @@ public class MediaManager implements IMediaManager {
             }
         };
     }
-} 
+}

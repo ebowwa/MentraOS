@@ -156,9 +156,12 @@ public class ServiceContainer {
     public void cleanup() {
         Log.d("ServiceContainer", "Cleaning up service container");
 
+        // Clean up streaming manager first (unregisters callbacks)
+        streamingManager.cleanup();
+
         // Clean up lifecycle manager
         lifecycleManager.cleanup();
 
         Log.d("ServiceContainer", "Service container cleanup completed");
     }
-} 
+}
