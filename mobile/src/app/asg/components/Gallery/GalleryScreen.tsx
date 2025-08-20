@@ -697,26 +697,9 @@ The gallery will automatically reload once connected.`,
 
   // Extract hotspot connection logic into reusable function
   const triggerHotspotConnection = (ssid: string, password: string, ip: string) => {
-    console.log("[GalleryScreen] Triggering hotspot connection for SSID:", ssid)
+    console.log("[GalleryScreen] Triggering automatic hotspot connection for SSID:", ssid)
 
-    // DEBUG: Show alert when hotspot status changes to verify the flow is working
-    showAlert(
-      "DEBUG: Hotspot Status Update",
-      `Hotspot is now ready! 
-      
-SSID: ${ssid}
-Password: ${password}
-IP: ${ip}
-
-About to attempt automatic WiFi connection...`,
-      [
-        {text: "Try Auto Connect", onPress: () => connectToHotspot(ssid, password, ip)},
-        {text: "Manual Only", onPress: () => showManualAlert(ssid, password)},
-        {text: "Cancel"},
-      ],
-    )
-
-    // Automatically attempt connection
+    // Automatically attempt connection without debug alert
     connectToHotspot(ssid, password, ip)
   }
 

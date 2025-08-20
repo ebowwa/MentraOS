@@ -2084,9 +2084,6 @@ typealias JSONObject = [String: Any]
         wifiSsid = ssid
         wifiLocalIp = ip
         emitWifiStatusChange()
-
-        // Trigger immediate status update to match Android behavior
-        aosManager?.triggerStatusUpdate()
     }
 
     private func updateHotspotStatus(enabled: Bool, ssid: String, password: String, ip: String) {
@@ -2096,9 +2093,6 @@ typealias JSONObject = [String: Any]
         hotspotPassword = password
         hotspotLocalIp = ip
         emitHotspotStatusChange()
-
-        // Trigger immediate status update to match Android behavior
-        aosManager?.triggerStatusUpdate()
     }
 
     // MARK: - Timers
