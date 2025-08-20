@@ -1,7 +1,7 @@
 /*
  * @Author       : Cole
  * @Date         : 2025-07-31 10:40:40
- * @LastEditTime : 2025-08-19 19:47:08
+ * @LastEditTime : 2025-08-20 10:22:00
  * @FilePath     : bspal_jsa_1147.c
  * @Description  :
  *
@@ -16,7 +16,7 @@
 #include <zephyr/logging/log.h>
 #define LOG_MODULE_NAME BSPAL_JSA_1147
 LOG_MODULE_REGISTER(LOG_MODULE_NAME);
-#define TAG "BSPAL_JSA_1147"
+
 
 static int jsa_1147_read_als(uint32_t *pcount)
 {

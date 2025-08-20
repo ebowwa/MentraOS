@@ -70,8 +70,7 @@ void test_icm42688p(void)
         }
 
         /* 2) 高精度打印：四位小数显示 g，三位小数显示 m/s²；四位小数显示 deg/s */
-        /* 2) High-precision printing: four decimal places display g, three decimal places display m/s²; four decimal
-         * places display deg/s */
+        /* 2) High-precision printing: four decimal places display g, three decimal places display m/s²; four decimal places display deg/s */
         LOG_INF("ACC: X=%.4f g(%.3f m/s²)  Y=%.4f g(%.3f m/s²)  Z=%.4f g(%.3f m/s²)", icm42688p_data.acc_g[0],
                 icm42688p_data.acc_ms2[0], icm42688p_data.acc_g[1], icm42688p_data.acc_ms2[1], icm42688p_data.acc_g[2],
                 icm42688p_data.acc_ms2[2]);

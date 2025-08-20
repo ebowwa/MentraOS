@@ -593,6 +593,5 @@ static DEVICE_API(display, hls12vga_api) = {
     DEVICE_DT_INST_DEFINE(inst, hls12vga_init, NULL, &hls12vga_data_##inst, &hls12vga_config_##inst, POST_KERNEL,  \
                           CONFIG_DISPLAY_INIT_PRIORITY, &hls12vga_api);
 
-/* 为每个状态为"okay"的设备树节点创建实例; Create instance for each device tree node with status "okay"
- * Create an instance for each device tree node with status "okay" */
+/* 为每个状态为"okay"的设备树节点创建实例; Create instance for each device tree node with status "okay" */
 DT_INST_FOREACH_STATUS_OKAY(CUSTOM_HLS12VGA_DEFINE)

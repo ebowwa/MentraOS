@@ -192,16 +192,17 @@ int gx8002_reset(void)
 int gx8002_read_voice_event(void)
 {
     /*
-    小度小度 101
-    天猫精灵 102
-    接听电话 103
-    挂掉电话 115
-    挂断电话 104
-    暂停播放 107
-    停止播放 108
-    播放音乐 105
-    增大音量 109
-    减小音量 106
+    Voice Command Event IDs:
+    小度小度 101     - "Xiao Du Xiao Du" (voice assistant wake-up)
+    天猫精灵 102     - "Tmall Genie" (voice assistant wake-up)
+    接听电话 103     - "Answer call"
+    挂掉电话 115     - "Hang up call"
+    挂断电话 104     - "End call"
+    暂停播放 107     - "Pause playback"
+    停止播放 108     - "Stop playback"
+    播放音乐 105     - "Play music"
+    增大音量 109     - "Increase volume"
+    减小音量 106     - "Decrease volume"
      */
     int     ret;
     uint8_t event_id = 0;

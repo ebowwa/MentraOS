@@ -1,7 +1,7 @@
 /*
  * @Author       : Cole
  * @Date         : 2025-07-31 10:40:40
- * @LastEditTime : 2025-08-19 17:46:24
+ * @LastEditTime : 2025-08-20 10:13:25
  * @FilePath     : task_ble_receive.c
  * @Description  :
  *
@@ -22,7 +22,6 @@
 #include "mos_crc.h"
 #include "mos_lvgl_display.h"
 
-#define TAG             "TASK_BLE_RECEIVE"
 #define TASK_NAME       "TASK_BLE"
 #define LOG_MODULE_NAME TASK_BLE_RECEIVE
 LOG_MODULE_REGISTER(LOG_MODULE_NAME);
@@ -120,7 +119,6 @@ void ble_receive_fragment(const uint8_t *data, uint32_t len)
 void restart_adv_with_new_interval(uint16_t min_interval_ms, uint16_t max_interval_ms)
 {
     LOG_INF("Restart advertising with new interval: %d ms - %d ms", min_interval_ms, max_interval_ms);
-
     ble_interval_set(min_interval_ms, max_interval_ms);
     int err = bt_le_adv_stop();
     if (err != 0)

@@ -12,8 +12,8 @@
 #ifndef _BSP_ICT_15318_H_
 #define _BSP_ICT_15318_H_
 
-#define ICT_15318_REG_MANU_ID 0x00  // Manufacturer ID 寄存器地址
-#define ICT_15318_REG_CHIP_ID 0x01  // Chip ID 寄存器地址
+#define ICT_15318_REG_MANU_ID 0x00  // Manufacturer ID 寄存器地址; Manufacturer ID register address
+#define ICT_15318_REG_CHIP_ID 0x01  // Chip ID 寄存器地址; Chip ID register address
 #define ICT_15318_I2C_ADDR    0x1E
 
 int bsp_ict_15318_iic_init(void);

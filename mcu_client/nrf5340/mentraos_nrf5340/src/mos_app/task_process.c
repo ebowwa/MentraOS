@@ -1,7 +1,7 @@
 /*
  * @Author       : Cole
  * @Date         : 2025-07-31 10:40:40
- * @LastEditTime : 2025-08-19 17:52:00
+ * @LastEditTime : 2025-08-20 10:20:16
  * @FilePath     : task_process.c
  * @Description  :
  *
@@ -34,7 +34,6 @@ K_THREAD_STACK_DEFINE(task_process_stack_area, TASK_PROCESS_THREAD_STACK_SIZE);
 static struct k_thread task_process_thread_data;
 k_tid_t                task_process_thread_handle;
 
-#define TAG       "TASK_PROCESS"
 #define TASK_NAME "TASK_PROCESS"
 
 const struct device *display_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_display));

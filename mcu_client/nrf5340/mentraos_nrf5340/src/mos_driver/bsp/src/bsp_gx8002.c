@@ -1,7 +1,7 @@
 /*
  * @Author       : Cole
  * @Date         : 2025-07-31 10:40:40
- * @LastEditTime : 2025-08-19 19:45:02
+ * @LastEditTime : 2025-08-20 10:21:53
  * @FilePath     : bsp_gx8002.c
  * @Description  :
  *
@@ -21,7 +21,7 @@
 #include <zephyr/logging/log.h>
 #define LOG_MODULE_NAME BSP_GX8002
 LOG_MODULE_REGISTER(LOG_MODULE_NAME);
-#define TAG "BSP_GX8002"
+
 
 #define GX8002_I2C_SOFT_MODE 1  // 0:硬件I2C 1:软件I2C; 0:Hardware I2C 1:Software I2C
 

@@ -1,7 +1,7 @@
 /*
  * @Author       : Cole
  * @Date         : 2025-07-31 10:40:40
- * @LastEditTime : 2025-08-19 19:47:16
+ * @LastEditTime : 2025-08-20 10:23:08
  * @FilePath     : bspal_key.c
  * @Description  :
  *
@@ -9,14 +9,15 @@
  *  SPDX-License-Identifier: Apache-2.0
  */
 
-#include "bspal_key.h"
 
 #include "bal_os.h"
 #include "bsp_key.h"
 #include <zephyr/logging/log.h>
+#include "bspal_key.h"
+
 #define LOG_MODULE_NAME BSPAL_KEY
 LOG_MODULE_REGISTER(LOG_MODULE_NAME);
-#define TAG "BSPAL_KEY"
+
 
 #define DEBOUNCE_MS      50   /* 去抖延时 debounce delay */
 #define LONG_PRESS_MS    2000 /* 长按判定阈值; Long press threshold */

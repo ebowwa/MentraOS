@@ -37,7 +37,7 @@ const struct gpio_dt_spec jsa_1147_i2c_scl = GPIO_DT_SPEC_GET(DT_PATH(zephyr_use
 #define JSA_1147_SW_I2C_DELAY_US 6
 #define JSA_1147_SW_I2C_TIMEOUT  1000U
 
-/* --- GPIO 配置 & 操作 --- */
+/* --- GPIO 配置 & 操作 --- ; GPIO Configuration & Operations --- */
 static int jsa_1147_sda_out(void)
 {
     return gpio_pin_configure_dt(&jsa_1147_i2c_sda, GPIO_OUTPUT);
@@ -309,10 +309,10 @@ void jsa_1147_get_version(void)
     // {
     //     LOG_ERR("I2C write reg 0x%02X failed: %d", JSA_1147_I2C_ADDR, rc);
     // }
-    // /* 等待处理 */
+    // /* 等待处理 ; Wait for processing */
     // mos_delay_ms(200);
 
-    // /* 2) 依次读取 4 字节版本号 */
+    // /* 2) 依次读取 4 字节版本号 ; Read 4 bytes version number in sequence */
     // for (int i = 0; i < 4; i++)
     // {
     //     int rc = i2c_write(i2c_dev_jsa_1147, &reg, 1, jsa_1147_I2C_ADDR);
@@ -328,7 +328,7 @@ void jsa_1147_get_version(void)
     //     reg += 4;
     // }
 
-    // /* 3) 输出版本信息 */
+    // /* 3) 输出版本信息 ; Output version information */
     // LOG_INF("JSA_1147 Version: %02X.%02X.%02X.%02X", version[0], version[1], version[2], version[3]);
 }
 int bsp_jsa_1147_sensor_init(void)

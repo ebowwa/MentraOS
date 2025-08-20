@@ -1,7 +1,7 @@
 /*** 
  * @Author       : Cole
  * @Date         : 2025-07-31 10:45:58
- * @LastEditTime : 2025-08-19 19:58:36
+ * @LastEditTime : 2025-08-20 10:25:15
  * @FilePath     : protocol_ble_send.h
  * @Description  : 
  * @
@@ -15,7 +15,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
-// ==== 基本宏 ====
+
 #define MAX_STR_LEN 64
 #define MAX_TEXT_LEN 128
 #define MAX_FEATURES_COUNT 8
@@ -203,7 +203,7 @@ typedef struct
     char msg_id[MAX_STR_LEN];
 } msg_request_imu_single_t;
 
-// ==== 统一协议体 ====
+
 typedef struct
 {
     ble_msg_type_t type;

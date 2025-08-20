@@ -18,8 +18,7 @@
 
 #ifdef CONFIG_NRFX_PDM
 
-// PDM接口采样数据PCM缓存
-// PDM interface PCM buffer
+/* PDM接口采样数据PCM缓存;PDM interface PCM buffer */
 #ifdef CONFIG_USER_ENCODE_LC3
 #define PDM_PCM_REQ_BUFFER_SIZE 160  // 16K 16bit 10ms = 160sample(320byte) 20ms = 320sanple(640byte)
 #endif

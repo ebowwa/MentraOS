@@ -44,6 +44,7 @@
 #define ALS_GAIN_X16 0x04
 
 // ===== 结构K补偿，建议现场定标 =====
+// Structural K compensation, it is recommended to conduct on-site calibration
 #define STRUCTURE_K 0.80f
 
 extern struct gpio_dt_spec jsa_1147_int1;
