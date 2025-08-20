@@ -70,7 +70,7 @@ export function GalleryScreen() {
       isHotspotEnabled: glassesInfo?.glasses_hotspot_enabled,
       hotspotSsid: glassesInfo?.glasses_hotspot_ssid,
       hotspotPassword: glassesInfo?.glasses_hotspot_password,
-      hotspotIp: glassesInfo?.glasses_hotspot_ip,
+      hotspotGatewayIp: glassesInfo?.glasses_hotspot_gateway_ip,
     }
   }, [
     status.glasses_info?.glasses_wifi_local_ip,
@@ -78,11 +78,12 @@ export function GalleryScreen() {
     status.glasses_info?.glasses_hotspot_enabled,
     status.glasses_info?.glasses_hotspot_ssid,
     status.glasses_info?.glasses_hotspot_password,
-    status.glasses_info?.glasses_hotspot_ip,
+    status.glasses_info?.glasses_hotspot_gateway_ip,
   ])
 
   // Extract values from memoized object
-  const {glassesWifiIp, isWifiConnected, isHotspotEnabled, hotspotSsid, hotspotPassword, hotspotIp} = connectionInfo
+  const {glassesWifiIp, isWifiConnected, isHotspotEnabled, hotspotSsid, hotspotPassword, hotspotGatewayIp} =
+    connectionInfo
 
   // DEBUG: Log hotspot status changes
   useEffect(() => {
@@ -90,14 +91,14 @@ export function GalleryScreen() {
       isHotspotEnabled,
       hotspotSsid,
       hotspotPassword,
-      hotspotIp,
+      hotspotGatewayIp,
       glassesInfo: status.glasses_info,
     })
   }, [
     connectionInfo.isHotspotEnabled,
     connectionInfo.hotspotSsid,
     connectionInfo.hotspotPassword,
-    connectionInfo.hotspotIp,
+    connectionInfo.hotspotGatewayIp,
   ])
 
   // Network connectivity
@@ -130,9 +131,9 @@ export function GalleryScreen() {
 
   // Initial load - get total count and first batch
   const loadInitialPhotos = useCallback(async () => {
-    // Check if we have either WiFi connection or hotspot connection
-    const serverIp = hotspotIp || glassesWifiIp
-    const hasConnection = (isWifiConnected && glassesWifiIp) || (isHotspotEnabled && hotspotIp)
+    // Determine the correct server IP - prioritize hotspot if enabled
+    const serverIp = isHotspotEnabled && hotspotGatewayIp ? hotspotGatewayIp : glassesWifiIp
+    const hasConnection = (isWifiConnected && glassesWifiIp) || (isHotspotEnabled && hotspotGatewayIp)
 
     if (!hasConnection || !serverIp) {
       console.log("[GalleryScreen] Glasses not connected (WiFi or hotspot)")
@@ -197,7 +198,9 @@ export function GalleryScreen() {
       loadingRanges.current.add(rangeKey)
 
       try {
-        asgCameraApi.setServer(glassesWifiIp, 8089)
+        // Determine the correct server IP - prioritize hotspot if enabled
+        const serverIp = isHotspotEnabled && hotspotGatewayIp ? hotspotGatewayIp : glassesWifiIp
+        asgCameraApi.setServer(serverIp, 8089)
 
         // Load the range
         const limit = maxIndex - minIndex + 1
@@ -251,9 +254,10 @@ export function GalleryScreen() {
     try {
       console.log(`[GalleryScreen] Starting sync process...`)
 
-      // Set the server URL to the glasses WiFi IP
-      asgCameraApi.setServer(glassesWifiIp, 8089)
-      console.log(`[GalleryScreen] Set server URL to: ${glassesWifiIp}:8089`)
+      // Determine the correct server IP - prioritize hotspot if enabled
+      const serverIp = isHotspotEnabled && hotspotGatewayIp ? hotspotGatewayIp : glassesWifiIp
+      asgCameraApi.setServer(serverIp, 8089)
+      console.log(`[GalleryScreen] Set server URL to: ${serverIp}:8089`)
 
       // Get sync state
       const syncState = await localStorageService.getSyncState()
@@ -348,18 +352,20 @@ export function GalleryScreen() {
 
   // Take picture
   const handleTakePicture = async () => {
-    if (!isWifiConnected || !glassesWifiIp) {
-      showAlert(
-        "Cannot Take Picture",
-        "Your glasses are not connected to WiFi. Please connect them to the same network as your phone.",
-        [{text: translate("common:ok")}],
-      )
+    // Determine the correct server IP - prioritize hotspot if enabled
+    const serverIp = isHotspotEnabled && hotspotGatewayIp ? hotspotGatewayIp : glassesWifiIp
+    const hasConnection = (isWifiConnected && glassesWifiIp) || (isHotspotEnabled && hotspotGatewayIp)
+
+    if (!hasConnection || !serverIp) {
+      showAlert("Cannot Take Picture", "Your glasses are not connected. Please connect them via WiFi or hotspot.", [
+        {text: translate("common:ok")},
+      ])
       return
     }
 
     try {
-      // Set the server URL to the glasses WiFi IP
-      asgCameraApi.setServer(glassesWifiIp, 8089)
+      // Set the server URL to the correct IP
+      asgCameraApi.setServer(serverIp, 8089)
 
       await asgCameraApi.takePicture()
       showAlert("Success", "Picture taken successfully!", [{text: translate("common:ok")}])
@@ -581,7 +587,7 @@ export function GalleryScreen() {
     connectionInfo.isWifiConnected,
     connectionInfo.glassesWifiIp,
     connectionInfo.isHotspotEnabled,
-    connectionInfo.hotspotIp,
+    connectionInfo.hotspotGatewayIp,
     isInitialLoad,
   ])
 
@@ -728,13 +734,13 @@ The gallery will automatically reload once connected.`,
     if (isHotspotEnabled && hotspotSsid && hotspotPassword) {
       console.log("[GalleryScreen] Hotspot is ready via status object, attempting automatic WiFi connection...")
 
-      triggerHotspotConnection(hotspotSsid, hotspotPassword, hotspotIp)
+      triggerHotspotConnection(hotspotSsid, hotspotPassword, hotspotGatewayIp)
     }
   }, [
     connectionInfo.isHotspotEnabled,
     connectionInfo.hotspotSsid,
     connectionInfo.hotspotPassword,
-    connectionInfo.hotspotIp,
+    connectionInfo.hotspotGatewayIp,
   ])
 
   // Trigger sync when gallery server becomes reachable (any connection type)

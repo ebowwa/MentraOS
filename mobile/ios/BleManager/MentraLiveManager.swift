@@ -825,7 +825,7 @@ typealias JSONObject = [String: Any]
     @Published var isHotspotEnabled: Bool = false
     @Published var hotspotSsid: String = ""
     @Published var hotspotPassword: String = ""
-    @Published var hotspotLocalIp: String = ""
+    @Published var hotspotGatewayIp: String = "" // The gateway IP to connect to when on hotspot
 
     // Queue Management
     private let commandQueue = CommandQueue()
@@ -1315,7 +1315,7 @@ typealias JSONObject = [String: Any]
             let enabled = json["hotspot_enabled"] as? Bool ?? false
             let ssid = json["hotspot_ssid"] as? String ?? ""
             let password = json["hotspot_password"] as? String ?? ""
-            let ip = json["hotspot_ip"] as? String ?? ""
+            let ip = json["hotspot_gateway_ip"] as? String ?? ""
             updateHotspotStatus(enabled: enabled, ssid: ssid, password: password, ip: ip)
 
         case "wifi_scan_result":
@@ -2091,7 +2091,7 @@ typealias JSONObject = [String: Any]
         isHotspotEnabled = enabled
         hotspotSsid = ssid
         hotspotPassword = password
-        hotspotLocalIp = ip
+        hotspotGatewayIp = ip // This is the gateway IP from glasses
         emitHotspotStatusChange()
     }
 
@@ -2260,7 +2260,7 @@ typealias JSONObject = [String: Any]
             "enabled": isHotspotEnabled,
             "ssid": hotspotSsid,
             "password": hotspotPassword,
-            "local_ip": hotspotLocalIp,
+            "local_ip": hotspotGatewayIp, // Using gateway IP for consistency with Android
         ]]
         emitEvent("CoreMessageEvent", body: eventBody)
     }

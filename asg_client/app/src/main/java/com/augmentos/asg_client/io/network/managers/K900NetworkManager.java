@@ -167,18 +167,66 @@ public class K900NetworkManager extends BaseNetworkManager {
             intent.setPackage("com.android.systemui");
             intent.putExtra("cmd", "ap_start");
             intent.putExtra("enable", true);
-            // Don't bother with SSID/password - K900 ignores them
             
             context.sendBroadcast(intent);
             Log.d(TAG, "🔥 ✅ K900 hotspot enable intent sent");
             
-            // Start scanning for the actual SSID
-            notificationManager.showDebugNotification(
-                    "K900 Hotspot Starting", 
-                    "Detecting credentials...");
-            
-            // Start progressive detection to find the XySmart_ SSID
-            startProgressiveCredentialDetection(1);
+            // Give the system a moment to process the intent
+            new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                // Read the SSID directly from Settings.Global
+                try {
+                    String ssid = Settings.Global.getString(context.getContentResolver(), "xy_ssid");
+                    
+                    if (ssid != null && !ssid.isEmpty()) {
+                        Log.d(TAG, "🔥 ✅ Got K900 hotspot SSID from Settings.Global: " + ssid);
+                        
+                        // Update state with detected SSID and known password
+                        updateHotspotState(true, ssid, K900_HOTSPOT_PASSWORD);
+                        notifyHotspotStateChanged(true);
+                        
+                        notificationManager.showHotspotStateNotification(true);
+                        notificationManager.showDebugNotification(
+                                "K900 Hotspot Active", 
+                                ssid + " | " + K900_HOTSPOT_PASSWORD);
+                        
+                        Log.i(TAG, "🔥 ✅ K900 hotspot active: " + ssid);
+                    } else {
+                        Log.e(TAG, "🔥 ❌ Failed to read K900 SSID from Settings.Global");
+                        
+                        // Turn off the hotspot since we can't get credentials
+                        Intent disableIntent = new Intent();
+                        disableIntent.setAction("com.xy.xsetting.action");
+                        disableIntent.setPackage("com.android.systemui");
+                        disableIntent.putExtra("cmd", "ap_start");
+                        disableIntent.putExtra("enable", false);
+                        context.sendBroadcast(disableIntent);
+                        
+                        clearHotspotState();
+                        notifyHotspotStateChanged(false);
+                        
+                        notificationManager.showDebugNotification(
+                                "Hotspot Failed", 
+                                "Could not read hotspot SSID. Hotspot disabled.");
+                    }
+                } catch (Exception e) {
+                    Log.e(TAG, "🔥 💥 Error reading K900 SSID from Settings.Global", e);
+                    
+                    // Turn off the hotspot on error
+                    Intent disableIntent = new Intent();
+                    disableIntent.setAction("com.xy.xsetting.action");
+                    disableIntent.setPackage("com.android.systemui");
+                    disableIntent.putExtra("cmd", "ap_start");
+                    disableIntent.putExtra("enable", false);
+                    context.sendBroadcast(disableIntent);
+                    
+                    clearHotspotState();
+                    notifyHotspotStateChanged(false);
+                    
+                    notificationManager.showDebugNotification(
+                            "Hotspot Error", 
+                            "Failed to read SSID: " + e.getMessage());
+                }
+            }, 400); // Wait 1.5 seconds for hotspot to initialize
             
             Log.i(TAG, "🔥 ✅ K900 hotspot start initiated");
         } catch (Exception e) {
@@ -190,120 +238,8 @@ public class K900NetworkManager extends BaseNetworkManager {
         }
     }
     
-    /**
-     * Progressive credential detection with retry logic
-     */
-    private void startProgressiveCredentialDetection(int attempt) {
-        Log.d(TAG, "🔍 Progressive detection attempt " + attempt + "/8");
-        
-        if (attempt > 8) {
-            // Give up after 8 attempts (~12 seconds total)
-            Log.e(TAG, "🔍 ❌ Failed to detect hotspot SSID after 8 attempts");
-            
-            // Turn off the hotspot since we can't detect its credentials
-            Log.d(TAG, "🔍 🔥 Turning off hotspot due to detection failure");
-            Intent intent = new Intent();
-            intent.setAction("com.xy.xsetting.action");
-            intent.setPackage("com.android.systemui");
-            intent.putExtra("cmd", "ap_start");
-            intent.putExtra("enable", false);
-            context.sendBroadcast(intent);
-            
-            // Clear state and notify failure
-            clearHotspotState();
-            notifyHotspotStateChanged(false);
-            
-            notificationManager.showDebugNotification(
-                    "Hotspot Failed", 
-                    "Could not detect hotspot credentials. Hotspot disabled.");
-            return;
-        }
-        
-        // Calculate delay: Start with 1.5s, then 1s intervals
-        int delayMs = (attempt == 1) ? 1500 : 1000;
-        
-        new Handler(Looper.getMainLooper()).postDelayed(() -> {
-            detectCredentialsOnce(attempt);
-        }, delayMs);
-    }
     
-    /**
-     * Single attempt at credential detection
-     */
-    private void detectCredentialsOnce(int attempt) {
-        Log.d(TAG, "🔍 Detecting credentials (attempt " + attempt + ")...");
-        
-        try {
-            // Enable WiFi if needed for scanning
-            if (!wifiManager.isWifiEnabled()) {
-                Log.d(TAG, "🔍 📶 Enabling WiFi for scanning...");
-                wifiManager.setWifiEnabled(true);
-                
-                // Retry in 2 seconds to let WiFi enable
-                new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                    startProgressiveCredentialDetection(attempt + 1);
-                }, 2000);
-                return;
-            }
-            
-            // Start WiFi scan
-            Log.d(TAG, "🔍 📡 Starting WiFi scan...");
-            wifiManager.startScan();
-            
-            // Wait 800ms for scan results
-            new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                String detectedSsid = findK900Hotspot();
-                
-                if (detectedSsid != null) {
-                    // Success! Found the hotspot
-                    Log.d(TAG, "🔍 ✅ Found K900 hotspot: " + detectedSsid);
-                    
-                    // Update state with detected SSID and known password
-                    updateHotspotState(true, detectedSsid, K900_HOTSPOT_PASSWORD);
-                    notifyHotspotStateChanged(true);
-                    
-                    notificationManager.showHotspotStateNotification(true);
-                    notificationManager.showDebugNotification(
-                            "K900 Hotspot Active", 
-                            detectedSsid + " | " + K900_HOTSPOT_PASSWORD);
-                    
-                    Log.i(TAG, "🔍 ✅ Credentials detected in " + (attempt * 1.5) + "s: " + detectedSsid);
-                } else {
-                    // Not found yet, try again
-                    Log.d(TAG, "🔍 ⏳ Hotspot not detected yet (attempt " + attempt + "), retrying...");
-                    startProgressiveCredentialDetection(attempt + 1);
-                }
-            }, 800);
-            
-        } catch (Exception e) {
-            Log.e(TAG, "🔍 💥 Error during detection attempt " + attempt, e);
-            startProgressiveCredentialDetection(attempt + 1);
-        }
-    }
     
-    /**
-     * Scan WiFi results for K900 hotspot
-     * @return SSID if found, null otherwise
-     */
-    private String findK900Hotspot() {
-        try {
-            List<ScanResult> scanResults = wifiManager.getScanResults();
-            Log.d(TAG, "🔍 📋 Checking " + scanResults.size() + " networks...");
-            
-            for (ScanResult result : scanResults) {
-                if (result.SSID.startsWith(K900_HOTSPOT_PREFIX)) {
-                    Log.d(TAG, "🔍 ✅ Found K900 network: " + result.SSID);
-                    return result.SSID;
-                }
-            }
-            
-            Log.d(TAG, "🔍 ❌ No XySmart_ network found in scan results");
-            return null;
-        } catch (Exception e) {
-            Log.e(TAG, "🔍 💥 Error scanning WiFi", e);
-            return null;
-        }
-    }
     
     @Override
     public void stopHotspot() {

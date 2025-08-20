@@ -121,11 +121,11 @@ public class PhoneReadyCommandHandler implements ICommandHandler {
             if (networkManager.isHotspotEnabled()) {
                 hotspotStatus.put("hotspot_ssid", networkManager.getHotspotSsid());
                 hotspotStatus.put("hotspot_password", networkManager.getHotspotPassword());
-                hotspotStatus.put("hotspot_ip", networkManager.getLocalIpAddress());
+                hotspotStatus.put("hotspot_gateway_ip", networkManager.getHotspotGatewayIp());
             } else {
                 hotspotStatus.put("hotspot_ssid", "");
                 hotspotStatus.put("hotspot_password", "");
-                hotspotStatus.put("hotspot_ip", "");
+                hotspotStatus.put("hotspot_gateway_ip", "");
             }
             
             Log.d(TAG, "📱 🔥 Sending hotspot status JSON: " + hotspotStatus.toString());

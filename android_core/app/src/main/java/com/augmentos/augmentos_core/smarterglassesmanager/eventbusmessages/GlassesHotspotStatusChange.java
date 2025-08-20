@@ -12,7 +12,7 @@ public class GlassesHotspotStatusChange {
     public final boolean isHotspotEnabled;
     public final String hotspotSsid;
     public final String hotspotPassword;
-    public final String hotspotIp;
+    public final String hotspotGatewayIp;
     
     /**
      * Create a new GlassesHotspotStatusChange
@@ -21,17 +21,17 @@ public class GlassesHotspotStatusChange {
      * @param isHotspotEnabled Current hotspot state
      * @param hotspotSsid Current hotspot SSID if enabled
      * @param hotspotPassword Current hotspot password if enabled
-     * @param hotspotIp Local IP address of the glasses hotspot
+     * @param hotspotGatewayIp Local IP address of the glasses hotspot
      */
     public GlassesHotspotStatusChange(String deviceModel,
                                      boolean isHotspotEnabled, 
                                      String hotspotSsid, 
                                      String hotspotPassword,
-                                     String hotspotIp) {
+                                     String hotspotGatewayIp) {
         this.deviceModel = deviceModel;
         this.isHotspotEnabled = isHotspotEnabled;
         this.hotspotSsid = hotspotSsid != null ? hotspotSsid : "";
         this.hotspotPassword = hotspotPassword != null ? hotspotPassword : "";
-        this.hotspotIp = hotspotIp != null ? hotspotIp : "";
+        this.hotspotGatewayIp = hotspotGatewayIp != null ? hotspotGatewayIp : "";
     }
 }

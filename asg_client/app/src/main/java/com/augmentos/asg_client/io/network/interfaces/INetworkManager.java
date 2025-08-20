@@ -109,6 +109,12 @@ public interface INetworkManager {
     String getHotspotPassword();
     
     /**
+     * Get the gateway IP address when in hotspot mode
+     * @return The gateway IP for clients to connect to (typically 192.168.43.1)
+     */
+    String getHotspotGatewayIp();
+    
+    /**
      * Cleanup resources when the manager is no longer needed
      */
     void shutdown();

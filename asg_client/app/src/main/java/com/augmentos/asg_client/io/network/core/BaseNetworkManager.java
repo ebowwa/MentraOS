@@ -699,6 +699,16 @@ public abstract class BaseNetworkManager implements INetworkManager {
     }
     
     /**
+     * Get the gateway IP address when in hotspot mode
+     * @return The gateway IP for clients to connect to
+     */
+    @Override
+    public String getHotspotGatewayIp() {
+        // Standard Android hotspot gateway IP
+        return "192.168.43.1";
+    }
+    
+    /**
      * Update hotspot state - to be called by subclasses when hotspot state changes
      */
     protected void updateHotspotState(boolean enabled, String ssid, String password) {

@@ -1710,13 +1710,11 @@ struct ViewState {
                 connectedGlasses["glasses_wifi_local_ip"] = liveManager?.wifiLocalIp
             }
 
-            // Add hotspot information
+            // Add hotspot information - always include all fields for consistency
             connectedGlasses["glasses_hotspot_enabled"] = liveManager?.isHotspotEnabled ?? false
-            if let hotspotSsid = liveManager?.hotspotSsid, !hotspotSsid.isEmpty {
-                connectedGlasses["glasses_hotspot_ssid"] = hotspotSsid
-                connectedGlasses["glasses_hotspot_password"] = liveManager?.hotspotPassword ?? ""
-                connectedGlasses["glasses_hotspot_ip"] = liveManager?.hotspotLocalIp ?? ""
-            }
+            connectedGlasses["glasses_hotspot_ssid"] = liveManager?.hotspotSsid ?? ""
+            connectedGlasses["glasses_hotspot_password"] = liveManager?.hotspotPassword ?? ""
+            connectedGlasses["glasses_hotspot_gateway_ip"] = liveManager?.hotspotGatewayIp ?? ""
         }
 
         // Add Bluetooth device name if available

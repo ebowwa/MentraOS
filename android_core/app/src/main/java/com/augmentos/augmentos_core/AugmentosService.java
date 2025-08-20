@@ -260,7 +260,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     private boolean glassesHotspotEnabled = false;
     private String glassesHotspotSsid = "";
     private String glassesHotspotPassword = "";
-    private String glassesHotspotIp = "";
+    private String glassesHotspotGatewayIp = "";
 
     // WiFi scan results
     private List<String> wifiNetworks = new ArrayList<>();
@@ -362,7 +362,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                         glassesHotspotEnabled = false;
                         glassesHotspotSsid = "";
                         glassesHotspotPassword = "";
-                        glassesHotspotIp = "";
+                        glassesHotspotGatewayIp = "";
                     }
 
                     sendStatusToAugmentOsManager();
@@ -1005,13 +1005,13 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         glassesHotspotEnabled = event.isHotspotEnabled;
         glassesHotspotSsid = event.hotspotSsid;
         glassesHotspotPassword = event.hotspotPassword;
-        glassesHotspotIp = event.hotspotIp;
+        glassesHotspotGatewayIp = event.hotspotGatewayIp;
 
         Log.d(TAG, "Received GlassesHotspotStatusChange: device=" + event.deviceModel +
               ", enabled=" + event.isHotspotEnabled + ", ssid=" + event.hotspotSsid);
 
         // Send the dedicated hotspot status change event
-        sendHotspotStatusChangeEvent(glassesHotspotEnabled, glassesHotspotSsid, glassesHotspotPassword, glassesHotspotIp);
+        sendHotspotStatusChangeEvent(glassesHotspotEnabled, glassesHotspotSsid, glassesHotspotPassword, glassesHotspotGatewayIp);
 
         // Also update the general status
         sendStatusToAugmentOsManager();
@@ -1598,7 +1598,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                     if (glassesHotspotEnabled) {
                         connectedGlasses.put("glasses_hotspot_ssid", glassesHotspotSsid);
                         connectedGlasses.put("glasses_hotspot_password", glassesHotspotPassword);
-                        connectedGlasses.put("glasses_hotspot_ip", glassesHotspotIp);
+                        connectedGlasses.put("glasses_hotspot_gateway_ip", glassesHotspotGatewayIp);
                     }
                 }
 
@@ -2252,7 +2252,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         glassesHotspotEnabled = false;
         glassesHotspotSsid = "";
         glassesHotspotPassword = "";
-        glassesHotspotIp = "";
+        glassesHotspotGatewayIp = "";
 
         // Reset state AND completely stop the service to get a clean state
         if (smartGlassesManager != null) {
@@ -2292,7 +2292,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         glassesHotspotEnabled = false;
         glassesHotspotSsid = "";
         glassesHotspotPassword = "";
-        glassesHotspotIp = "";
+        glassesHotspotGatewayIp = "";
 
 
         // Reset instead of stopping
@@ -2887,7 +2887,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         glassesHotspotEnabled = false;
         glassesHotspotSsid = "";
         glassesHotspotPassword = "";
-        glassesHotspotIp = "";
+        glassesHotspotGatewayIp = "";
 
         // Disconnect websockets
         if (webSocketLifecycleManager != null) {

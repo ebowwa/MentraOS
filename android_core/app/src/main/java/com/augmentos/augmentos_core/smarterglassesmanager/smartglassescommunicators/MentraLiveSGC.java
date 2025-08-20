@@ -1565,10 +1565,10 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 boolean hotspotEnabled = json.optBoolean("hotspot_enabled", false);
                 String hotspotSsid = json.optString("hotspot_ssid", "");
                 String hotspotPassword = json.optString("hotspot_password", "");
-                String hotspotIp = json.optString("hotspot_ip", "");
+                String hotspotGatewayIp = json.optString("hotspot_gateway_ip", "");
 
                 Log.d(TAG, "## Received hotspot status: enabled=" + hotspotEnabled + 
-                      ", SSID=" + hotspotSsid + ", IP=" + hotspotIp);
+                      ", SSID=" + hotspotSsid + ", IP=" + hotspotGatewayIp);
                 
                 // Post EventBus event (exactly like WiFi status)
                 EventBus.getDefault().post(new GlassesHotspotStatusChange(
@@ -1576,7 +1576,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                         hotspotEnabled,
                         hotspotSsid,
                         hotspotPassword,
-                        hotspotIp));
+                        hotspotGatewayIp));
                 break;
 
             case "photo_response":
