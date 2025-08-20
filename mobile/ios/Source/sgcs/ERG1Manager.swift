@@ -1576,15 +1576,8 @@ extension ERG1Manager {
         return true
     }
 
-    @objc func RN_setMicEnabled(_ enabled: Bool) {
-        Core.log("G1: RN_setMicEnabled() \(enabled)")
-        Task {
-            await setMicEnabled(enabled: enabled)
-        }
-    }
-
     func setMicEnabled(enabled: Bool) async -> Bool {
-        Core.log("G1: setMicEnabled()")
+        Core.log("G1: setMicEnabled() \(enabled)")
         var micOnData = Data()
         micOnData.append(Commands.BLE_REQ_MIC_ON.rawValue)
         if enabled {

@@ -470,9 +470,7 @@ class ServerComms {
             MentraManager.getInstance().onAuthError()
 
         case "microphone_state_change":
-            // CoreCommsService.log("ServerComms: microphone_state_change: \(msg)")
-            let isMicrophoneEnabled = msg["isMicrophoneEnabled"] as? Bool ?? true
-            let bypassVad = msg["bypassVad"] as? Bool ?? false // NEW: Extract bypassVad field
+            let bypassVad = msg["bypassVad"] as? Bool ?? false
 
             var requiredDataStrings: [String] = []
             if let requiredDataArray = msg["requiredData"] as? [String] {
@@ -492,7 +490,7 @@ class ServerComms {
 
             Core.log("ServerComms: requiredData = \(requiredDataStrings), bypassVad = \(bypassVad)")
 
-            MentraManager.getInstance().onMicrophoneStateChange(isMicrophoneEnabled, requiredData, bypassVad) // NEW: Pass bypassVad
+            MentraManager.getInstance().onMicrophoneStateChange(requiredData, bypassVad)
 
         case "display_event":
             if let view = msg["view"] as? String {

@@ -532,8 +532,8 @@ struct ViewState {
 
     // MARK: - ServerCommsCallback Implementation
 
-    func onMicrophoneStateChange(_ isEnabled: Bool, _ requiredData: [SpeechRequiredDataType], _ bypassVad: Bool) {
-        Core.log("AOS: MIC: @@@@@@@@ changing microphone state to: \(isEnabled) with requiredData: \(requiredData) bypassVad=\(bypassVad) enforceLocalTranscription=\(enforceLocalTranscription) @@@@@@@@@@@@@@@@")
+    func onMicrophoneStateChange(_ requiredData: [SpeechRequiredDataType], _ bypassVad: Bool) {
+        Core.log("AOS: MIC: @@@@@@@@ changing mic with requiredData: \(requiredData) bypassVad=\(bypassVad) enforceLocalTranscription=\(enforceLocalTranscription) @@@@@@@@@@@@@@@@")
 
         bypassVadForPCM = bypassVad
 
@@ -563,12 +563,12 @@ struct ViewState {
 
         // in any case, clear the vadBuffer:
         vadBuffer.removeAll()
-        micEnabled = isEnabled || shouldSendPcmData
+        micEnabled = shouldSendPcmData
 
         // Handle microphone state change if needed
         Task {
             // Only enable microphone if sensing is also enabled
-            var actuallyEnabled = isEnabled && self.sensingEnabled
+            var actuallyEnabled = micEnabled && self.sensingEnabled
 
             let glassesHasMic = getGlassesHasMic()
 
@@ -971,14 +971,14 @@ struct ViewState {
         //            break
         //        }
 
-        onMicrophoneStateChange(micEnabled, currentRequiredData, bypassVadForPCM)
+        onMicrophoneStateChange(currentRequiredData, bypassVadForPCM)
     }
 
     func onInterruption(began: Bool) {
         Core.log("AOS: Interruption: \(began)")
 
         onboardMicUnavailable = began
-        onMicrophoneStateChange(micEnabled, currentRequiredData, bypassVadForPCM)
+        onMicrophoneStateChange(currentRequiredData, bypassVadForPCM)
     }
 
     private func clearDisplay() {
@@ -1097,7 +1097,7 @@ struct ViewState {
 
     func setPreferredMic(_ mic: String) {
         preferredMic = mic
-        onMicrophoneStateChange(micEnabled, currentRequiredData, bypassVadForPCM)
+        onMicrophoneStateChange(currentRequiredData, bypassVadForPCM)
         handleRequestStatus() // to update the UI
         saveSettings()
     }
@@ -1214,7 +1214,7 @@ struct ViewState {
     func enableSensing(_ enabled: Bool) {
         sensingEnabled = enabled
         // Update microphone state when sensing is toggled
-        onMicrophoneStateChange(micEnabled, currentRequiredData, bypassVadForPCM)
+        onMicrophoneStateChange(currentRequiredData, bypassVadForPCM)
         handleRequestStatus() // to update the UI
         saveSettings()
     }
@@ -1901,9 +1901,6 @@ struct ViewState {
                 sendText(" ") // clear screen
             }
 
-            // enable the mic if it was last on:
-            // CoreCommsService.log("ENABLING MIC STATE: \(self.micEnabled)")
-            // onMicrophoneStateChange(self.micEnabled)
             self.handleRequestStatus()
         }
     }
@@ -1933,7 +1930,7 @@ struct ViewState {
 
     private func handleDeviceDisconnected() {
         Core.log("AOS: Device disconnected")
-        onMicrophoneStateChange(false, [], false)
+        onMicrophoneStateChange([], false)
         serverComms.sendGlassesConnectionState(modelName: defaultWearable, status: "DISCONNECTED")
         handleRequestStatus()
     }
