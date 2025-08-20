@@ -483,11 +483,6 @@ class ServerComms {
             // Convert string array to enum array
             var requiredData = SpeechRequiredDataType.fromStringArray(requiredDataStrings)
 
-            // Treat empty array as PCM only
-            if requiredData.isEmpty {
-                requiredData.append(.PCM)
-            }
-
             Core.log("ServerComms: requiredData = \(requiredDataStrings), bypassVad = \(bypassVad)")
 
             MentraManager.getInstance().onMicrophoneStateChange(requiredData, bypassVad)

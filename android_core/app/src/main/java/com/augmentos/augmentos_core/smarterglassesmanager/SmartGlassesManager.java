@@ -900,8 +900,8 @@ public class SmartGlassesManager extends Service {
         }
     }
 
-    public void changeMicrophoneState(boolean isMicrophoneEnabled, List<SpeechRequiredDataType> requiredData, boolean bypassVad) {
-        Log.d(TAG, "Changing microphone state to " + isMicrophoneEnabled + " bypassVad=" + bypassVad);
+    public void changeMicrophoneState(List<SpeechRequiredDataType> requiredData, boolean bypassVad) {
+        Log.d(TAG, "Changing microphone state to bypassVad=" + bypassVad);
 
         if (smartGlassesRepresentative == null) {
             Log.d(TAG, "Cannot change microphone state: smartGlassesRepresentative is null");
@@ -914,6 +914,8 @@ public class SmartGlassesManager extends Service {
         } else {
             Log.w(TAG, "PhoneMicrophoneManager is null, skipping setRequiredData call");
         }
+
+        boolean isMicrophoneEnabled = requiredData.contains(SpeechRequiredDataType.PCM);
 
         // Simply delegate to the representative which will use PhoneMicrophoneManager
         // PhoneMicrophoneManager handles all the complexity of choosing the right mic
