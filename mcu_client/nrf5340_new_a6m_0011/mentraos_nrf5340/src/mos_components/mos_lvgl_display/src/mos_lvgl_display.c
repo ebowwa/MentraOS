@@ -1,7 +1,7 @@
 /*
  * @Author       : Cole
  * @Date         : 2025-07-31 10:40:40
- * @LastEditTime : 2025-08-19 20:58:17
+ * @LastEditTime : 2025-08-20 17:53:18
  * @FilePath     : mos_lvgl_display.c
  * @Description  :
  *
@@ -11,7 +11,7 @@
 
 
 
-#include <display/lcd/hls12vga.h>
+#include <display/lcd/a6m_0011.h>
 #include <math.h>
 #include <zephyr/device.h>
 #include <zephyr/devicetree.h>
@@ -309,15 +309,6 @@ static void show_default_ui(void)
 }
 void lvgl_dispaly_init(void *p1, void *p2, void *p3)
 {
-    // const lv_font_t *font = lv_obj_get_style_text_font(label, 0);
-    // uint32_t unicode = 'A';
-    // lv_font_glyph_dsc_t glyph_dsc;
-    // if (lv_font_get_glyph_dsc(font, &glyph_dsc, unicode, 0))
-    // {
-    //     LOG_INF("字符 'A' 宽度 = %d px", glyph_dsc.adv_w);
-    // }
-    // mos_delay_ms(1000);
-    // LOG_INF("Font pointer: %p", font);
     const struct device *display_dev;
     display_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_display));
     if (!device_is_ready(display_dev))
@@ -325,9 +316,9 @@ void lvgl_dispaly_init(void *p1, void *p2, void *p3)
         LOG_INF("display_dev Device not ready, aborting test");
         return;
     }
-    if (hls12vga_init_sem_take() != 0)
+    if (a6m_0011_init_sem_take() != 0)
     {
-        LOG_ERR("Failed to hls12vga_init_sem_take err");
+        LOG_ERR("Failed to a6m_0011_init_sem_take err");
         return;
     }
 
@@ -358,21 +349,41 @@ void lvgl_dispaly_init(void *p1, void *p2, void *p3)
                 break;
             case LCD_CMD_OPEN:
                 LOG_INF("LCD_CMD_OPEN");
-                hls12vga_power_on();
+                a6m_0011_power_on(); 
                 set_display_onoff(true);
-                hls12vga_set_brightness(9);  // set brightness
-                // hls12vga_set_brightness(0); // set brightness
-                // hls12vga_set_mirror(0x10); // 0x10 垂直镜像 0x00 正常显示 0x08 水平镜像 0x18 水平+垂直镜像 // 0x10
-                // Vertical Mirror 0x00 Normal Display 0x08 Horizontal Mirror 0x18 Horizontal + Vertical Mirror
-                hls12vga_set_mirror(
-                    0x08);  // 0x10 垂直镜像 0x00 正常显示 0x08 水平镜像 0x18 水平+垂直镜像// 0x10 Vertical Mirror 0x00
-                            // Normal Display 0x08 Horizontal Mirror 0x18 Horizontal + Vertical Mirror
-                // hls12vga_set_brightness(cmd.p.open.brightness);
-                // hls12vga_set_mirror(cmd.p.open.mirror);
+
+                a6m_0011_read_reg(0x00);
+                a6m_0011_read_reg(0xBE);
+                a6m_0011_read_reg(0xE2);
+
+                a6m_0011_set_brightness(0x3A);
+                a6m_0011_write_reg(0xBE, 0x82);
+                mos_delay_us(6);
+                a6m_0011_write_reg(0X60, 0X80);
+                mos_delay_us(6);
+                a6m_0011_write_reg(0X78, 0X0E);
+                mos_delay_us(6);
+                a6m_0011_write_reg(0X7C, 0X13);
+                mos_delay_us(6);
+                a6m_0011_write_reg(0XDD, 0X00); // clear border start
+                mos_delay_us(6);
+                a6m_0011_write_reg(0XDE, 0X00);
+                mos_delay_us(6);
+                a6m_0011_write_reg(0XC3, 0X80);
+                mos_delay_ms(20);
+                a6m_0011_write_reg(0XDD, 0X81);
+                mos_delay_us(6);
+                a6m_0011_write_reg(0XDE, 0X01);
+                mos_delay_us(6);
+                a6m_0011_write_reg(0XC3, 0X00); // clear border end
+                mos_delay_us(6);
+                a6m_0011_set_mirror(MIRROR_HORZ);
                 mos_delay_ms(2);
-                hls12vga_open_display();
-                // hls12vga_set_shift(MOVE_DEFAULT, 0);
-                hls12vga_clear_screen(false);
+                // a6m_0011_write_reg(0xE2, 0x19);
+                // mos_delay_ms(2);
+                a6m_0011_open_display();
+                // a6m_0011_set_shift(MOVE_DEFAULT, 0);
+                a6m_0011_clear_screen(false);
                 state_type = LCD_STATE_ON;
 
                 show_default_ui();  // 显示默认图像; test show default UI
@@ -382,11 +393,11 @@ void lvgl_dispaly_init(void *p1, void *p2, void *p3)
             case LCD_CMD_CLOSE:
                 if (get_display_onoff())
                 {
-                    // hls12vga_clear_screen(false);
+                    // a6m_0011_clear_screen(false); // 清屏
                     // lv_timer_handler();
                     scroll_text_stop();
                     set_display_onoff(false);
-                    hls12vga_power_off();
+                    a6m_0011_power_off();
                 }
                 state_type = LCD_STATE_OFF;
                 break;

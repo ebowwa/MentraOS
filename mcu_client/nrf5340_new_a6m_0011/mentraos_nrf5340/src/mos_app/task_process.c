@@ -1,7 +1,7 @@
 /*
  * @Author       : Cole
  * @Date         : 2025-07-31 10:40:40
- * @LastEditTime : 2025-08-20 10:20:16
+ * @LastEditTime : 2025-08-20 17:01:00
  * @FilePath     : task_process.c
  * @Description  :
  *
@@ -18,7 +18,7 @@
 
 #include "bal_os.h"
 #include "bspal_icm42688p.h"
-#include "hls12vga.h"
+#include "a6m_0011.h"
 #include "mos_fuel_gauge.h"
 #include "mos_lvgl_display.h"
 // #include "bspal_ict_15318.h"
