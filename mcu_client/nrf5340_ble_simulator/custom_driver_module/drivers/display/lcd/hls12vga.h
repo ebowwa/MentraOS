@@ -25,7 +25,7 @@
 
 #define HLS12VGA_LCD_DATA_REG 0X02         // 数据寄存器
 #define HLS12VGA_LCD_LOCALITY_REG 0X002A00 // 行地址模式寄存器
-#define HLS12VGA_LCD_CMD_REG 0X003C00      // 0X002C00      // 先行命令寄存器
+#define HLS12VGA_LCD_CMD_REG 0X002C00      // RAM Write command (align with 0x2C)
 
 #define HLS12VGA_LCD_GRAY_REG 0X00   // 灰度模式
 #define HLS12VGA_LCD_TEST_REG 0X1B   // 测试模式
@@ -90,6 +90,10 @@ void hls12vga_open_display(void);
 void hls12vga_init_sem_give(void);
 
 int hls12vga_init_sem_take(void);
+
+// Enable or disable 4bpp (Gray16) transfer mode at runtime.
+// When enabled, driver packs two pixels per byte and programs panel gray mode accordingly.
+int hls12vga_set_gray_mode(bool enable_gray16);
 
 // **NEW: Direct HLS12VGA Grayscale Test Patterns**
 int hls12vga_draw_horizontal_grayscale_pattern(void);

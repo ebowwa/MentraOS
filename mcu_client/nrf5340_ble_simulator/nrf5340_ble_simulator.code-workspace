@@ -8,6 +8,9 @@
 		},
 		{
 			"path": "../../../MentraOS_TESTS/mcu_client/nrf5340/mentraos_nrf5340"
+		},
+		{
+			"path": "../../../../Work/Mentra/Bright-HS"
 		}
 	],
 	"settings": {

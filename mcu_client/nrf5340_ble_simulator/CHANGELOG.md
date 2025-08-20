@@ -2,6 +2,31 @@
 
 All notable changes to the nRF5340 DK BLE Glasses Protobuf Simulator will be documented in this file.
 
+## [2.12.0] - 2025-08-20
+
+### 🎮 HLS12VGA Display Driver - A6M-G Module Support
+
+#### A6M-G Module Integration
+- **🔧 Module Detection**: Added support for A6M-G vs A6-G projector modules
+- **🎨 Gray Mode Support**: Implemented Gray16 (4bpp) and Gray256 (8bpp) modes
+- **📊 Banked SPI**: Added bank0/bank1 register access for advanced control
+- **⚡ Runtime API**: `hls12vga_set_gray_mode(bool)` for dynamic switching
+- **🎯 Hardware Lock**: Forced A6M-G module path for current hardware
+
+#### Display Features Added
+- **🔄 Gray Mode Registers**: A6M uses 0xBE+sequence, A6 uses 0x00
+- **💡 Brightness Control**: A6M uses 0xE2, A6 uses 0x23 register
+- **📝 Test Patterns**: Horizontal/vertical grayscale patterns for validation
+- **🗜️ 4bpp Packing**: Gray16 mode packs two 4-bit pixels per byte
+- **📡 RAM Write**: Aligned to 0x2C command for both modules
+
+#### Technical Implementation
+- **🎛️ Module Enum**: `MODULE_A6`, `MODULE_A6M`, `MODULE_UNKNOWN`
+- **📦 Banked I/O**: `write_reg_bank()`, `read_reg_bank()` helpers
+- **🔀 Pixel Pipeline**: 1bpp→8bpp expansion or 1bpp→4bpp packing
+- **🧪 Pattern Gen**: Direct hardware grayscale test functions
+- **⚙️ Default Mode**: Grayscale 256 (8bpp) for stable operation
+
 ## [2.11.0] - 2025-08-20
 
 ### 🔄 REVERT TO DISPLAY OPTIMIZATION FOCUS
