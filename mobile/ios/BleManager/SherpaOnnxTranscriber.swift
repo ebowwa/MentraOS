@@ -100,7 +100,7 @@ class SherpaOnnxTranscriber {
                     var modelConfig = sherpaOnnxOnlineModelConfig(
                         tokens: tokensPath,
                         numThreads: 1,
-                        nemoCtc: nemoCtc,
+                        nemoCtc: nemoCtc
                     )
 
                     // Configure recognizer

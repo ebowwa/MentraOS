@@ -2120,14 +2120,15 @@ typealias JSONObject = [String: Any]
     {
         CoreCommsService.log("📸 Received gallery status - photos: \(photoCount), videos: \(videoCount), total size: \(totalSize) bytes")
 
-        // Emit gallery status event through GlobalEventEmitter
-        GlobalEventEmitter.shared.sendEvent(withName: "GLASSES_GALLERY_STATUS", body: [
+        // Emit gallery status event as CoreMessageEvent like other status events
+        let eventBody = ["glasses_gallery_status": [
             "photos": photoCount,
             "videos": videoCount,
             "total": totalCount,
             "total_size": totalSize,
             "has_content": hasContent,
-        ])
+        ]]
+        emitEvent("CoreMessageEvent", body: eventBody)
     }
 
     // MARK: - Timers
