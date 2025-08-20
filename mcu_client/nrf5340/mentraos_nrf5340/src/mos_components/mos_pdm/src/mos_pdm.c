@@ -1,7 +1,7 @@
 /*
  * @Author       : Cole
  * @Date         : 2025-07-31 10:40:40
- * @LastEditTime : 2025-08-19 14:04:16
+ * @LastEditTime : 2025-08-20 09:41:07
  * @FilePath     : mos_pdm.c
  * @Description  :
  *
@@ -10,13 +10,17 @@
  */
 
 // #include <bluetooth/audio/lc3.h>
+
 #include "mos_pdm.h"
 
 #include <nrfx_pdm.h>
+#include <zephyr/logging/log.h>
 
 #include "bal_os.h"
 
-#define TAG             "MOS_LE_AUDIO"
+#define LOG_MODULE_NAME MOS_LE_AUDIO
+LOG_MODULE_REGISTER(LOG_MODULE_NAME);
+
 #define PCM_FIFO_FRAMES 5
 static K_SEM_DEFINE(pcmsem, 0, PCM_FIFO_FRAMES);
 static int16_t pcm_fifo[PCM_FIFO_FRAMES][PDM_PCM_REQ_BUFFER_SIZE];
@@ -81,8 +85,7 @@ static void             pcm_buffer_req_evt_handle(const nrfx_pdm_evt_t *evt)
     // 3) Error reporting (optional: statistics or reset)
     if (evt->error != NRFX_PDM_NO_ERROR)
     {
-        BSP_LOGE(TAG, "nrfx_pdm error=%d", (int)evt->error);
-
+        LOG_ERR("nrfx_pdm error=%d", (int)evt->error);
     }
 }
 
@@ -97,20 +100,20 @@ void pdm_init(void)
     pdm_config.clock_freq        = NRF_PDM_FREQ_1280K;
     pdm_config.ratio             = NRF_PDM_RATIO_80X;
 
-    pdm_config.gain_l = NRF_PDM_GAIN_DEFAULT;
-    pdm_config.gain_r = NRF_PDM_GAIN_DEFAULT;
+    pdm_config.gain_l             = NRF_PDM_GAIN_DEFAULT;
+    pdm_config.gain_r             = NRF_PDM_GAIN_DEFAULT;
     pdm_config.interrupt_priority = NRFX_PDM_DEFAULT_CONFIG_IRQ_PRIORITY;
 
     err_code = nrfx_pdm_init(&m_pdm, &pdm_config, pcm_buffer_req_evt_handle);
     if (err_code != NRFX_SUCCESS)
     {
-        BSP_LOGE(TAG, "nrfx pdm init err = %08X", err_code);
+        LOG_ERR("nrfx pdm init err = %08X", err_code);
     }
 }
 
 void pdm_start(void)
 {
-    BSP_LOGI(TAG, "pdm_start");
+    LOG_INF("pdm_start");
 
     pdm_fill_idx = 0;
     nrfx_pdm_buffer_set(&m_pdm, pdm_hw_buf[pdm_fill_idx], PDM_PCM_REQ_BUFFER_SIZE);
@@ -125,21 +128,21 @@ void pdm_start(void)
     uint32_t err = nrfx_pdm_start(&m_pdm);
     if (err != NRFX_SUCCESS)
     {
-        BSP_LOGE(TAG, "nrfx_pdm_start err=0x%08x", err);
+        LOG_ERR("nrfx_pdm_start err=0x%08x", err);
     }
 }
 
 void pdm_stop(void)
 {
-    BSP_LOGI(TAG, "pdm_stop");
+    LOG_INF("pdm_stop");
     uint32_t err_code = nrfx_pdm_stop(&m_pdm);
     if (err_code != NRFX_SUCCESS)
     {
-        BSP_LOGE(TAG, "nrfx pdm stop err = %08X", err_code);
+        LOG_ERR("nrfx pdm stop err = %08X", err_code);
     }
     else
     {
-        BSP_LOGI(TAG, "pdm stopped successfully");
+        LOG_INF("pdm stopped successfully");
     }
 }
 
@@ -147,12 +150,12 @@ uint32_t get_pdm_sample(int16_t *pdm_pcm_data, uint32_t pdm_pcm_szie)
 {
     if (pdm_pcm_data == NULL || pdm_pcm_szie < PDM_PCM_REQ_BUFFER_SIZE)
     {
-        BSP_LOGE(TAG, "get_pdm_sample: Invalid parameters, pdm_pcm_data=%p, pdm_pcm_szie=%u", pdm_pcm_data,
-                 (unsigned)pdm_pcm_szie);
+        LOG_ERR("get_pdm_sample: Invalid parameters, pdm_pcm_data=%p, pdm_pcm_szie=%u", pdm_pcm_data,
+                (unsigned)pdm_pcm_szie);
         return MOS_OS_ERROR;  // 目标缓冲太小或空指针；Target buffer too small or null pointer
     }
-    // BSP_LOGI(TAG, "get_pdm_sample: %u", (unsigned)pdm_pcm_szie);
-    // BSP_LOG_BUFFER_HEX(TAG, pdm_pcm_data, PDM_PCM_REQ_BUFFER_SIZE * 2);
+    // LOG_INF("get_pdm_sample: %u", (unsigned)pdm_pcm_szie);
+    // LOG_HEXDUMP_INF(pdm_pcm_data, PDM_PCM_REQ_BUFFER_SIZE * 2,"Hexdump");
     // for (uint32_t i = 0; i < pdm_pcm_szie; i++)
     // {
     //     printf("0x%04x, ", (uint16_t)pdm_pcm_data[i]);
@@ -175,7 +178,7 @@ uint32_t get_pdm_sample(int16_t *pdm_pcm_data, uint32_t pdm_pcm_szie)
         }
     }
 
-    BSP_LOGI(TAG, "get_pdm_sample: %u", (unsigned)pdm_pcm_szie);
+    LOG_INF("get_pdm_sample: %u", (unsigned)pdm_pcm_szie);
     return 0;
 }
 

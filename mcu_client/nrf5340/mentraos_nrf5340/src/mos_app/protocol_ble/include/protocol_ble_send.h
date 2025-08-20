@@ -1,7 +1,7 @@
 /*** 
  * @Author       : Cole
  * @Date         : 2025-07-31 10:45:58
- * @LastEditTime : 2025-07-31 17:26:48
+ * @LastEditTime : 2025-08-19 19:58:36
  * @FilePath     : protocol_ble_send.h
  * @Description  : 
  * @
@@ -14,7 +14,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-
+#include <stddef.h>
 // ==== 基本宏 ====
 #define MAX_STR_LEN 64
 #define MAX_TEXT_LEN 128

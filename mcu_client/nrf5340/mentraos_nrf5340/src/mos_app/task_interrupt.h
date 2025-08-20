@@ -11,8 +11,8 @@
 
 #ifndef _TASK_INTERRUPT_H_
 #define _TASK_INTERRUPT_H_
-
-#include "bsp_log.h"
+#include <zephyr/kernel.h>
+#include <zephyr/drivers/gpio.h>
 
 typedef struct mos_interrupt
 {

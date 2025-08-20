@@ -1,7 +1,7 @@
 /*** 
  * @Author       : Cole
- * @Date         : 2025-07-31 11:52:17
- * @LastEditTime : 2025-07-31 17:01:25
+ * @Date         : 2025-08-18 19:27:06
+ * @LastEditTime : 2025-08-19 20:43:48
  * @FilePath     : bsp_gx8002.h
  * @Description  : 
  * @
@@ -9,13 +9,14 @@
  * @ SPDX-License-Identifier: Apache-2.0
  */
 
+
 #ifndef __BSP_GX8002_H__
 #define __BSP_GX8002_H__
 
-#include "bsp_log.h"
+#include <stdint.h>
+#include <stdbool.h>
 
 #define GX8002_I2C_ADDR 0x2f
-
 
 extern struct gpio_dt_spec gx8002_int4;
 
@@ -34,4 +35,4 @@ void gx8002_i2c_start(void);
 void gx8002_i2c_stop(void);
 
 void gx8002_int_isr_enable(void);
-#endif // !__BSP_GX8002_H__
+#endif  // !__BSP_GX8002_H__

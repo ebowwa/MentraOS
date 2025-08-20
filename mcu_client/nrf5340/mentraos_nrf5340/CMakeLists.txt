@@ -34,7 +34,6 @@ zephyr_nanopb_sources(app ${CMAKE_CURRENT_SOURCE_DIR}/mentraos_ble.proto)
 
 # NORDIC SDK APP START
 target_sources(app PRIVATE src/main.c)
-add_subdirectory(src/BspLog)
 add_subdirectory(src/mos_driver/bsp)
 add_subdirectory(src/mos_driver/bspal)
 add_subdirectory(src/mos_app)

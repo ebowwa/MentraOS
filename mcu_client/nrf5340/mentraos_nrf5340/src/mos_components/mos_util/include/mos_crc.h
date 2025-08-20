@@ -1,7 +1,7 @@
 /*** 
  * @Author       : Cole
  * @Date         : 2025-07-31 11:52:11
- * @LastEditTime : 2025-07-31 16:55:28
+ * @LastEditTime : 2025-08-19 20:45:36
  * @FilePath     : mos_crc.h
  * @Description  : 
  * @
@@ -12,6 +12,7 @@
  #ifndef _MOS_CRC_H_
  #define _MOS_CRC_H_
 
+#include <stdint.h>
 
 
 uint16_t mos_crc16_ccitt(uint8_t *ucbuf, uint16_t iLen);

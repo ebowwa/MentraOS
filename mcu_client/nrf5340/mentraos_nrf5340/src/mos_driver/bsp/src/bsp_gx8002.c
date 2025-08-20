@@ -1,7 +1,7 @@
 /*
  * @Author       : Cole
  * @Date         : 2025-07-31 10:40:40
- * @LastEditTime : 2025-08-19 14:51:51
+ * @LastEditTime : 2025-08-19 19:45:02
  * @FilePath     : bsp_gx8002.c
  * @Description  :
  *
@@ -18,7 +18,9 @@
 
 #include "bal_os.h"
 #include "task_interrupt.h"
-
+#include <zephyr/logging/log.h>
+#define LOG_MODULE_NAME BSP_GX8002
+LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 #define TAG "BSP_GX8002"
 
 #define GX8002_I2C_SOFT_MODE 1  // 0:硬件I2C 1:软件I2C; 0:Hardware I2C 1:Software I2C
@@ -29,7 +31,7 @@ const struct gpio_dt_spec mic_pwr_en  = GPIO_DT_SPEC_GET(DT_PATH(zephyr_user), m
 struct gpio_dt_spec gx8002_int4 = GPIO_DT_SPEC_GET(DT_PATH(zephyr_user), gx8002_int4_gpios);
 
 static struct gpio_callback gx8002_int_cb_data;
-int bsp_gx8002_interrupt_init(void);  // 中断初始化; Interrupt initialization
+int                         bsp_gx8002_interrupt_init(void);  // 中断初始化; Interrupt initialization
 
 #if GX8002_I2C_SOFT_MODE
 const struct gpio_dt_spec gx8002_i2c_sda = GPIO_DT_SPEC_GET(DT_PATH(zephyr_user), gx8002_sda_gpios);
@@ -136,7 +138,7 @@ int gx8002_write_byte(uint8_t b)
 
     if (t >= GX8002_SW_I2C_TIMEOUT)
     {
-        BSP_LOGE(TAG, "I2C ACK timeout");
+        LOG_ERR("I2C ACK timeout");
         return MOS_OS_ERROR;
     }
     return 0;
@@ -253,89 +255,88 @@ int gx8002_get_version(void)
         // mos_delay_ms(1);
         reg += 4;
     }
-    if ((version[0] == 0x00) && (version[1] == 0x00) &&
-        (version[2] == 0x00)) //&& (version[3] == 0x02))
+    if ((version[0] == 0x00) && (version[1] == 0x00) && (version[2] == 0x00))  //&& (version[3] == 0x02))
     {
-        BSP_LOGI(TAG, "GX8002 Version: %02X.%02X.%02X.%02X", version[0], version[1], version[2], version[3]);
+        LOG_INF("GX8002 Version: %02X.%02X.%02X.%02X", version[0], version[1], version[2], version[3]);
         return 0;
     }
-    BSP_LOGE(TAG, "GX8002 Version read error!!!");
-    BSP_LOGI(TAG, "GX8002 Version: %02X.%02X.%02X.%02X", version[0], version[1], version[2], version[3]);
+    LOG_ERR("GX8002 Version read error!!!");
+    LOG_INF("GX8002 Version: %02X.%02X.%02X.%02X", version[0], version[1], version[2], version[3]);
     return MOS_OS_ERROR;
 }
 int bsp_gx8002_init(void)
 {
-    BSP_LOGI(TAG, "bsp_gx8002_init");
+    LOG_INF("bsp_gx8002_init");
     int err = 0;
     if (!gpio_is_ready_dt(&gx8002_i2c_sda))
     {
-        BSP_LOGE(TAG, "GPIO gx8002_i2c_sda not ready");
+        LOG_ERR("GPIO gx8002_i2c_sda not ready");
         return MOS_OS_ERROR;
     }
     if (!gpio_is_ready_dt(&gx8002_i2c_scl))
     {
-        BSP_LOGE(TAG, "GPIO gx8002_i2c_scl not ready");
+        LOG_ERR("GPIO gx8002_i2c_scl not ready");
         return MOS_OS_ERROR;
     }
     if (!gpio_is_ready_dt(&es_power_en))
     {
-        BSP_LOGE(TAG, "GPIO es_power_en not ready");
+        LOG_ERR("GPIO es_power_en not ready");
         return MOS_OS_ERROR;
     }
     if (!gpio_is_ready_dt(&mic_pwr_en))
     {
-        BSP_LOGE(TAG, "GPIO mic_pwr_en not ready");
+        LOG_ERR("GPIO mic_pwr_en not ready");
         return MOS_OS_ERROR;
     }
     err = gpio_pin_configure_dt(&es_power_en, GPIO_OUTPUT_HIGH | GPIO_PULL_UP);
     if (err != 0)
     {
-        BSP_LOGE(TAG, "es_power_en config error: %d", err);
+        LOG_ERR("es_power_en config error: %d", err);
         return err;
     }
     mos_delay_ms(10);
     err = gpio_pin_configure_dt(&mic_pwr_en, GPIO_OUTPUT_HIGH | GPIO_PULL_UP);
     if (err != 0)
     {
-        BSP_LOGE(TAG, "mic_pwr_en config error: %d", err);
+        LOG_ERR("mic_pwr_en config error: %d", err);
         return err;
     }
     mos_delay_ms(2000);
     err = gpio_pin_configure_dt(&gx8002_i2c_sda, GPIO_OUTPUT);
     if (err != 0)
     {
-        BSP_LOGE(TAG, "gx8002_i2c_sda config error: %d", err);
+        LOG_ERR("gx8002_i2c_sda config error: %d", err);
         return err;
     }
     err = gpio_pin_set_raw(gx8002_i2c_sda.port, gx8002_i2c_sda.pin, 1);
     if (err != 0)
     {
-        BSP_LOGE(TAG, "gx8002_i2c_sda set error: %d", err);
+        LOG_ERR("gx8002_i2c_sda set error: %d", err);
         return err;
     }
     err = gpio_pin_configure_dt(&gx8002_i2c_scl, GPIO_OUTPUT);
     if (err != 0)
     {
-        BSP_LOGE(TAG, "gx8002_i2c_scl config error: %d", err);
+        LOG_ERR("gx8002_i2c_scl config error: %d", err);
         return err;
     }
     err = gpio_pin_set_raw(gx8002_i2c_scl.port, gx8002_i2c_scl.pin, 1);
     if (err != 0)
     {
-        BSP_LOGE(TAG, "gx8002_i2c_scl set error: %d", err);
+        LOG_ERR("gx8002_i2c_scl set error: %d", err);
         return err;
     }
     mos_delay_ms(10);
     err = bsp_gx8002_interrupt_init();
     if (err != 0)
     {
-        BSP_LOGE(TAG, "bsp_gx8002_interrupt_init error: %d", err);
+        LOG_ERR("bsp_gx8002_interrupt_init error: %d", err);
         return err;
     }
     err = gx8002_get_version();
     if (err != 0)
     {
-        BSP_LOGE(TAG, "gx8002_get_version error: %d", err);
+        LOG_ERR("gx8002_get_version error: %d", err);
         return err;
     }
     return err;
@@ -352,7 +353,7 @@ void gx8002_get_version(void)
     int rc = i2c_write(i2c_dev_gx8002, write_version, sizeof(write_version), GX8002_I2C_ADDR);
     if (rc)
     {
-        BSP_LOGE(TAG, "I2C write reg 0x%02X failed: %d", GX8002_I2C_ADDR, rc);
+        LOG_ERR("I2C write reg 0x%02X failed: %d", GX8002_I2C_ADDR, rc);
     }
 
     mos_delay_ms(200);
@@ -362,68 +363,68 @@ void gx8002_get_version(void)
         int rc = i2c_write(i2c_dev_gx8002, &reg, 1, GX8002_I2C_ADDR);
         if (rc)
         {
-            BSP_LOGE(TAG, "I2C write reg 0x%02X failed: %d", reg, rc);
+            LOG_ERR("I2C write reg 0x%02X failed: %d", reg, rc);
         }
         rc = i2c_read(i2c_dev_gx8002, &version[i], 1, GX8002_I2C_ADDR);
         if (rc)
         {
-            BSP_LOGE(TAG, "I2C read reg 0x%02X failed: %d", GX8002_I2C_ADDR, rc);
+            LOG_ERR("I2C read reg 0x%02X failed: %d", GX8002_I2C_ADDR, rc);
         }
         reg += 4;
     }
 
-    BSP_LOGI(TAG, "GX8002 Version: %02X.%02X.%02X.%02X", version[0], version[1], version[2], version[3]);
+    LOG_INF("GX8002 Version: %02X.%02X.%02X.%02X", version[0], version[1], version[2], version[3]);
 }
 int bsp_gx8002_init(void)
 {
-    BSP_LOGI(TAG, "bsp_gx8002_init");
+    LOG_INF("bsp_gx8002_init");
     int rc;
     if (!gpio_is_ready_dt(&es_power_en))
     {
-        BSP_LOGE(TAG, "GPIO es_power_en not ready");
+        LOG_ERR("GPIO es_power_en not ready");
         return MOS_OS_ERROR;
     }
     if (!gpio_is_ready_dt(&mic_pwr_en))
     {
-        BSP_LOGE(TAG, "GPIO mic_pwr_en not ready");
+        LOG_ERR("GPIO mic_pwr_en not ready");
         return MOS_OS_ERROR;
     }
     rc = gpio_pin_configure_dt(&es_power_en, GPIO_OUTPUT);
     if (rc != 0)
     {
-        BSP_LOGE(TAG, "es_power_en config error: %d", rc);
+        LOG_ERR("es_power_en config error: %d", rc);
         return rc;
     }
     rc = gpio_pin_set_raw(es_power_en.port, es_power_en.pin, 1);
     if (rc != 0)
     {
-        BSP_LOGE(TAG, "es_power_en set error: %d", rc);
+        LOG_ERR("es_power_en set error: %d", rc);
         return rc;
     }
     mos_delay_ms(10);
     rc = gpio_pin_configure_dt(&mic_pwr_en, GPIO_OUTPUT);
     if (rc != 0)
     {
-        BSP_LOGE(TAG, "mic_pwr_en config error: %d", rc);
+        LOG_ERR("mic_pwr_en config error: %d", rc);
         return rc;
     }
     rc = gpio_pin_set_raw(mic_pwr_en.port, mic_pwr_en.pin, 1);
     if (rc != 0)
     {
-        BSP_LOGE(TAG, "mic_pwr_en set error: %d", rc);
+        LOG_ERR("mic_pwr_en set error: %d", rc);
         return rc;
     }
     mos_delay_ms(1000);
     i2c_dev_gx8002 = device_get_binding(DT_NODE_FULL_NAME(DT_ALIAS(myvda)));
     if (!i2c_dev_gx8002)
     {
-        BSP_LOGE(TAG, "I2C Device driver not found");
+        LOG_ERR("I2C Device driver not found");
         return MOS_OS_ERROR;
     }
     uint32_t i2c_cfg = I2C_SPEED_SET(I2C_SPEED_STANDARD) | I2C_MODE_CONTROLLER;
     if (i2c_configure(i2c_dev_gx8002, i2c_cfg))
     {
-        BSP_LOGE(TAG, "I2C config failed");
+        LOG_ERR("I2C config failed");
         return MOS_OS_ERROR;
     }
     mos_delay_ms(50);
@@ -440,7 +441,7 @@ void gx8002_int_isr_enable(void)
     ret = gpio_pin_interrupt_configure_dt(&gx8002_int4, GPIO_INT_EDGE_FALLING);  // 下边缘触发; Falling edge trigger
     if (ret != 0)
     {
-        BSP_LOGE(TAG, "Error %d: failed to configure interrupt on pin %d", ret, gx8002_int4.pin);
+        LOG_ERR("Error %d: failed to configure interrupt on pin %d", ret, gx8002_int4.pin);
         return MOS_OS_ERROR;
     }
 }
@@ -450,22 +451,22 @@ int bsp_gx8002_interrupt_init(void)
     ret = gpio_pin_configure_dt(&gx8002_int4, (GPIO_INPUT | GPIO_PULL_UP));
     if (ret != 0)
     {
-        BSP_LOGE(TAG, "Error %d: failed to configure pin %d", ret, gx8002_int4.pin);
+        LOG_ERR("Error %d: failed to configure pin %d", ret, gx8002_int4.pin);
         return MOS_OS_ERROR;
     }
     ret = gpio_pin_interrupt_configure_dt(&gx8002_int4, GPIO_INT_EDGE_FALLING);  // 下边缘触发; Falling edge trigger
     if (ret != 0)
     {
-        BSP_LOGE(TAG, "Error %d: failed to configure interrupt on pin %d", ret, gx8002_int4.pin);
+        LOG_ERR("Error %d: failed to configure interrupt on pin %d", ret, gx8002_int4.pin);
         return MOS_OS_ERROR;
     }
     gpio_init_callback(&gx8002_int_cb_data, gx8002_int_isr, BIT(gx8002_int4.pin));
     ret = gpio_add_callback(gx8002_int4.port, &gx8002_int_cb_data);
     if (ret != 0)
     {
-        BSP_LOGE(TAG, "Error %d: failed to add callback", ret);
+        LOG_ERR("Error %d: failed to add callback", ret);
         return MOS_OS_ERROR;
     }
-    BSP_LOGI(TAG, "GX8002 interrupt initialized on pin %d", gx8002_int4.pin);
+    LOG_INF("GX8002 interrupt initialized on pin %d", gx8002_int4.pin);
     return 0;
 }

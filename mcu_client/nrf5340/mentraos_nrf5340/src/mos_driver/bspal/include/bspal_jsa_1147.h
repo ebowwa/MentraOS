@@ -11,8 +11,7 @@
 
 #ifndef _BSPAL_JSA_1147_H_
 #define _BSPAL_JSA_1147_H_
-
-#include "bsp_log.h"
+#include <stdint.h>
 
 int bspal_jsa_1147_init(void);
 
@@ -22,4 +21,4 @@ int write_jsa_1147_int_flag(uint8_t flag);
 
 void jsa_1147_test(void);
 
-#endif // _BSPAL_JSA_1147_H_
+#endif  // _BSPAL_JSA_1147_H_

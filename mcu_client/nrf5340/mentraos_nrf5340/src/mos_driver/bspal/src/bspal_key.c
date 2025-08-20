@@ -1,7 +1,7 @@
 /*
  * @Author       : Cole
  * @Date         : 2025-07-31 10:40:40
- * @LastEditTime : 2025-08-01 16:42:24
+ * @LastEditTime : 2025-08-19 19:47:16
  * @FilePath     : bspal_key.c
  * @Description  :
  *
@@ -9,15 +9,18 @@
  *  SPDX-License-Identifier: Apache-2.0
  */
 
-#include "bal_os.h"
-#include "bsp_key.h"
 #include "bspal_key.h"
 
+#include "bal_os.h"
+#include "bsp_key.h"
+#include <zephyr/logging/log.h>
+#define LOG_MODULE_NAME BSPAL_KEY
+LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 #define TAG "BSPAL_KEY"
 
-#define DEBOUNCE_MS 50       /* 去抖延时 debounce delay */
-#define LONG_PRESS_MS 2000   /* 长按判定阈值; Long press threshold */
-#define CLICK_TIMEOUT_MS 400 /* 多击间隔超时; Multi-click interval timeout */
+#define DEBOUNCE_MS      50   /* 去抖延时 debounce delay */
+#define LONG_PRESS_MS    2000 /* 长按判定阈值; Long press threshold */
+#define CLICK_TIMEOUT_MS 400  /* 多击间隔超时; Multi-click interval timeout */
 
 static struct k_timer debounce_timer;
 static struct k_timer click_timer;
@@ -30,7 +33,7 @@ static int64_t press_ts;
 static uint8_t click_cnt;
 
 extern volatile bool debouncing;
-void bspal_debounce_timer_start(void)
+void                 bspal_debounce_timer_start(void)
 {
     mos_timer_start(&debounce_timer, false, DEBOUNCE_MS);
 }
@@ -47,23 +50,22 @@ static void click_timeout(struct k_timer *t)
 {
     switch (click_cnt)
     {
-    case 1:
-        BSP_LOGI(TAG, "Single click"); 
-        break;
-    case 2:
-        BSP_LOGI(TAG, "Double click"); 
-        break;
-    case 3:
-        BSP_LOGI(TAG, "Triple click"); 
-        break;
-    default:
-        BSP_LOGI(TAG, "%d-click", click_cnt);
-        break;
+        case 1:
+            LOG_INF("Single click");
+            break;
+        case 2:
+            LOG_INF("Double click");
+            break;
+        case 3:
+            LOG_INF("Triple click");
+            break;
+        default:
+            LOG_INF("%d-click", click_cnt);
+            break;
     }
 
-    click_cnt = 0; // 重置多击计数; Reset multi-click count
+    click_cnt = 0;  // 重置多击计数; Reset multi-click count
 }
-
 
 static void debounce_timeout(struct k_timer *t)
 {
@@ -93,7 +95,7 @@ static void debounce_timeout(struct k_timer *t)
         {
             /* 长按事件 */
             // Long press event
-            BSP_LOGI(TAG, " Long press (%.0lld ms)", dt);
+            LOG_INF(" Long press (%.0lld ms)", dt);
             /* 长按取消多击统计 */
             // Cancel multi-click statistics for long press
             click_cnt = 0;
@@ -103,7 +105,7 @@ static void debounce_timeout(struct k_timer *t)
         {
             /* 短按事件 */
             // Short press event
-            BSP_LOGI(TAG, " Short press (%.0lld ms)", dt);
+            LOG_INF(" Short press (%.0lld ms)", dt);
             /* 累加多击，并重启多击定时 */
             // Accumulate multi-click and restart multi-click timer
             click_cnt++;
@@ -114,7 +116,7 @@ static void debounce_timeout(struct k_timer *t)
 
 void bspal_key_init(void)
 {
-    BSP_LOGI(TAG, "BSPAL Key Init");
+    LOG_INF("BSPAL Key Init");
     last_level = gpio_key1_read();
     mos_timer_create(&debounce_timer, debounce_timeout);
     mos_timer_create(&click_timer, click_timeout);

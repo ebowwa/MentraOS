@@ -1,7 +1,7 @@
 /*
  * @Author       : Cole
  * @Date         : 2025-07-31 17:56:25
- * @LastEditTime : 2025-08-01 14:40:04
+ * @LastEditTime : 2025-08-19 20:57:59
  * @FilePath     : bal_os.c
  * @Description  :
  *
@@ -10,8 +10,11 @@
  */
 
 #include "bal_os.h"
+#include <zephyr/logging/log.h>
 
-#define TAG "BAL_OS"
+#define LOG_MODULE_NAME BAL_OS
+LOG_MODULE_REGISTER(LOG_MODULE_NAME);
+
 
 void mos_busy_wait(uint32_t us)
 {
@@ -41,10 +44,10 @@ void mos_reset(void)
 void *mos_malloc(size_t size)
 {
     void *p = NULL;
-    p = k_malloc(size);
+    p       = k_malloc(size);
     if (p == NULL)
     {
-        BSP_LOGE(TAG, "malloc err!!!");
+        LOG_ERR("malloc err!!!");
         return NULL;
     }
     return p;
@@ -58,7 +61,7 @@ int mos_timer_start(struct k_timer *timer_handle, bool auto_reload, int64_t peri
 {
     if (timer_handle == NULL)
     {
-        BSP_LOGE(TAG, "timer start err!!!");
+        LOG_ERR("timer start err!!!");
         return MOS_OS_ERROR;
     }
     if (auto_reload == true)
@@ -75,7 +78,7 @@ int mos_timer_stop(struct k_timer *timer_handle)
 {
     if (timer_handle == NULL)
     {
-        BSP_LOGE(TAG, "timer stop err!!!");
+        LOG_ERR("timer stop err!!!");
         return MOS_OS_ERROR;
     }
     k_timer_stop(timer_handle);
@@ -85,7 +88,7 @@ int mos_timer_create(struct k_timer *timer_handle, void (*callback)(struct k_tim
 {
     if (timer_handle == NULL)
     {
-        BSP_LOGE(TAG, "timer init err!!!");
+        LOG_ERR("timer init err!!!");
         return MOS_OS_ERROR;
     }
     k_timer_init(timer_handle, callback, NULL);
@@ -95,7 +98,7 @@ int mos_mutex_create_init(struct k_mutex *mutex)
 {
     if (mutex == NULL)
     {
-        BSP_LOGE(TAG, "mutex create init err!!!");
+        LOG_ERR("mutex create init err!!!");
         return MOS_OS_ERROR;
     }
     return k_mutex_init(mutex);
@@ -106,7 +109,7 @@ int mos_mutex_lock(struct k_mutex *mutex, int64_t time)
 
     if (mutex == NULL)
     {
-        BSP_LOGE(TAG, "mutex lock err!!!");
+        LOG_ERR("mutex lock err!!!");
         return MOS_OS_ERROR;
     }
     int32_t ret = MOS_OS_ERROR;
@@ -128,7 +131,7 @@ int mos_mutex_unlock(struct k_mutex *mutex)
 {
     if (mutex == NULL)
     {
-        BSP_LOGE(TAG, "mutex unlock err!!!");
+        LOG_ERR("mutex unlock err!!!");
         return MOS_OS_ERROR;
     }
     return k_mutex_unlock(mutex);
@@ -138,7 +141,7 @@ int mos_sem_give(struct k_sem *sem)
 {
     if (sem == NULL)
     {
-        BSP_LOGE(TAG, "sem give err!!!");
+        LOG_ERR("sem give err!!!");
         return MOS_OS_ERROR;
     }
     k_sem_give(sem);
@@ -149,7 +152,7 @@ int mos_sem_take(struct k_sem *sem, int64_t time)
 {
     if (sem == NULL)
     {
-        BSP_LOGE(TAG, "sem take err!!!");
+        LOG_ERR("sem take err!!!");
         return MOS_OS_ERROR;
     }
     int32_t ret = MOS_OS_ERROR;
@@ -171,7 +174,7 @@ int mos_msgq_receive(struct k_msgq *msgq, void *msg, int64_t timeout)
 {
     if (msgq == NULL)
     {
-        BSP_LOGE(TAG, "msgq receive err!!!");
+        LOG_ERR("msgq receive err!!!");
         return MOS_OS_ERROR;
     }
     k_timeout_t time_v;
@@ -193,7 +196,7 @@ int mos_msgq_send(struct k_msgq *msgq, void *msg, int64_t timeout)
 {
     if (msgq == NULL)
     {
-        BSP_LOGE(TAG, "msgq send err!!!");
+        LOG_ERR("msgq send err!!!");
         return MOS_OS_ERROR;
     }
     k_timeout_t time_v;

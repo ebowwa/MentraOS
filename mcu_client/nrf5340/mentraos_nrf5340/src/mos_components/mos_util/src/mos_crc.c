@@ -9,7 +9,6 @@
  *  SPDX-License-Identifier: Apache-2.0
  */
 
-#include "bsp_log.h"
 #include "mos_crc.h"
 
 /**
@@ -29,8 +28,8 @@
 uint16_t mos_crc16_ccitt(uint8_t *ucbuf, uint16_t iLen)
 {
     uint32_t i, j;
-    uint16_t temp_crc = 0xFFFF;        // 初始值为 0xFFFF;Initial value is 0xFFFF
-    uint16_t temp_polynomial = 0x1021; // 多项式为 0x1021（CRC-16/CCITT）; Polynomial is 0x1021 (CRC-16/CCITT)
+    uint16_t temp_crc        = 0xFFFF;  // 初始值为 0xFFFF;Initial value is 0xFFFF
+    uint16_t temp_polynomial = 0x1021;  // 多项式为 0x1021（CRC-16/CCITT）; Polynomial is 0x1021 (CRC-16/CCITT)
 
     for (j = 0; j < iLen; ++j)
     {
@@ -67,7 +66,7 @@ uint16_t mos_crc16_ccitt(uint8_t *ucbuf, uint16_t iLen)
  */
 uint8_t zyzn_crc8(const uint8_t *data, uint16_t len)
 {
-    uint8_t crc = 0x00;
+    uint8_t crc  = 0x00;
     uint8_t poly = 0x07;
 
     for (uint16_t i = 0; i < len; i++)

@@ -1,7 +1,7 @@
 /*
  * @Author       : Cole
  * @Date         : 2025-07-31 10:40:40
- * @LastEditTime : 2025-08-16 15:43:10
+ * @LastEditTime : 2025-08-19 17:49:37
  * @FilePath     : main.c
  * @Description  :
  *
@@ -30,7 +30,6 @@
 #include <zephyr/settings/settings.h>
 /******************************************* */
 #include "bsp_board_mcu.h"
-#include "bsp_log.h"
 #include "bspal_watchdog.h"
 #include "main.h"
 #include "mos_ble_service.h"
@@ -43,7 +42,6 @@
 #include "task_interrupt.h"
 #include "task_lc3_codec.h"
 #include "task_process.h"
-#define TAG "MAIN"
 
 static struct bt_conn *my_current_conn;
 
@@ -108,29 +106,29 @@ void adv_set_ble_name(const uint8_t *data, uint8_t data_len)
 
         ad[BLE_AD_IDX_NAME].data     = device_name;
         ad[BLE_AD_IDX_NAME].data_len = data_len;
-        BSP_LOGI(TAG, "Set BLE name to[%d]: %s", data_len, device_name);
+        LOG_INF("Set BLE name to[%d]: %s", data_len, device_name);
     }
     else
     {
-        BSP_LOGW(TAG, "Name too long to set in adv");
+        LOG_ERR("Name too long to set in adv");
     }
 }
 void ble_name_update_data(const char *name)
 {
     if (name == NULL || strlen(name) > BLE_NAME_MAX_LEN)
     {
-        BSP_LOGE(TAG, "Invalid name provided ERR");
+        LOG_ERR("Invalid name provided ERR");
         return;
     }
     char ble_name[BLE_NAME_MAX_LEN + 1];
     memset(ble_name, 0, sizeof(ble_name));
     strncpy(ble_name, name, strlen(name));
 
-    BSP_LOGI(TAG, "Updating BLE name to: %s", ble_name);
+    LOG_INF("Updating BLE name to: %s", ble_name);
     int err = bt_set_name(ble_name);
     if (err != 0)
     {
-        BSP_LOGE(TAG, "Failed to set name (err %d)", err);
+        LOG_ERR("Failed to set name (err %d)", err);
         return;
     }
     adv_set_ble_name((const uint8_t *)ble_name, strlen(ble_name));
@@ -145,7 +143,7 @@ void get_ble_mac_addr(uint8_t *mac_addr, uint8_t mac_addr_len)
 {
     if ((mac_addr == NULL) || (mac_addr_len < BT_ADDR_LE_STR_LEN))
     {
-        BSP_LOGE(TAG, "Invalid mac_addr provided err");
+        LOG_ERR("Invalid mac_addr provided err");
         return;
     }
     bt_addr_le_t addr;
@@ -156,7 +154,7 @@ void get_ble_mac_addr(uint8_t *mac_addr, uint8_t mac_addr_len)
     bt_addr_le_to_str(&addr, addr_str, sizeof(addr_str));
     // snprintf((char *)mac_addr, 17, "%s", addr_str); // CF:53:47:E4:94:88
     memcpy((uint8_t *)mac_addr, addr_str, 17);
-    BSP_LOGI(TAG, "Bluetooth address:%s", addr_str);
+    LOG_INF("Bluetooth address:%s", addr_str);
 }
 static void adv_work_handler(struct k_work *work)
 {
@@ -455,14 +453,14 @@ static struct custom_nus_cb my_nus_cb = {
 
 static void app_info(void)
 {
-    BSP_LOGI(TAG,
-             "\n\n-------------------------------------------\n|\n"
-             "|	[%s] \n|\n"
-             "|	Firm Version: %s\n"
-             "|	Build Time: %s %s\n"
-             "|	IDF Version: %s\n|\n"
-             "-------------------------------------------\n",
-             MOS_PROJECT_NAME, MOS_FIRMWARE_VERSION, MOS_COMPILE_DATE, MOS_COMPILE_TIME, MOS_SDK_VERSION);
+    LOG_INF(
+        "\n\n-------------------------------------------\n|\n"
+        "|	[%s] \n|\n"
+        "|	Firm Version: %s\n"
+        "|	Build Time: %s %s\n"
+        "|	IDF Version: %s\n|\n"
+        "-------------------------------------------\n",
+        MOS_PROJECT_NAME, MOS_FIRMWARE_VERSION, MOS_COMPILE_DATE, MOS_COMPILE_TIME, MOS_SDK_VERSION);
 }
 
 static int hfclock_config_and_start(void)
@@ -510,7 +508,7 @@ int main(void)
     err = bt_enable(NULL);
     if (err)
     {
-        LOG_INF("Bluetooth not enabled (err: %d)", err);
+        LOG_ERR("Bluetooth not enabled (err: %d)", err);
     }
     LOG_INF("Bluetooth initialized 001");
     ble_init_sem_give();
@@ -548,7 +546,7 @@ int main(void)
 
     for (;;)
     {
-        BSP_LOGI(TAG, "Starting main thread %d", count++);
+        LOG_INF("Starting main thread %d", count++);
         primary_feed_worker();
         mos_delay_ms(10000);
         if (clk_128_flag == 0)

@@ -1,7 +1,7 @@
 /*
  * @Author       : Cole
  * @Date         : 2025-08-05 18:00:04
- * @LastEditTime : 2025-08-19 15:28:45
+ * @LastEditTime : 2025-08-19 19:46:41
  * @FilePath     : bspal_audio_i2s.c
  * @Description  :
  *
@@ -9,21 +9,24 @@
  *  SPDX-License-Identifier: Apache-2.0
  */
 
-#include "bspal_audio_i2s.h"
+
 
 #include <nrfx_clock.h>
 #include <nrfx_i2s.h>
 #include <zephyr/device.h>
 #include <zephyr/drivers/pinctrl.h>
 #include <zephyr/kernel.h>
-
-#include "bsp_log.h"
-#include "mos_pdm.h"
 // #include "audio_sync_timer.h"
+#include <zephyr/logging/log.h>
+#include "bspal_audio_i2s.h"
+#include "mos_pdm.h"
+
+#define LOG_MODULE_NAME BSPAL_I2S
+LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 
 #define I2S_NL DT_NODELABEL(i2s0)
 
-#define TAG "BSPAL_I2S"
+
 enum audio_i2s_state
 {
     AUDIO_I2S_STATE_UNINIT,
@@ -52,8 +55,10 @@ static nrfx_i2s_config_t cfg = {
     .enable_bypass = false,
 
     .clksrc    = NRF_I2S_CLKSRC_ACLK,  // 用音频时钟；Use the audio clock
-    .mck_setup = NRF_I2S_MCK_32MDIV8,  // 对 ACLK 等价于 ACLK/8 = 12.288M/8 = 1.536 MHz；The ACLK is equivalent to ACLK/8 = 12.288M/8 = 1.536 MHz
-    .ratio = NRF_I2S_RATIO_96X,        // LRCK = 1.536M / 96 = 16 kHz 精准对齐；LRCK = 1.536M / 96 = 16 kHz - Precisely aligned
+    .mck_setup = NRF_I2S_MCK_32MDIV8,  // 对 ACLK 等价于 ACLK/8 = 12.288M/8 = 1.536 MHz；The ACLK is equivalent to
+                                       // ACLK/8 = 12.288M/8 = 1.536 MHz
+    .ratio = NRF_I2S_RATIO_96X,        // LRCK = 1.536M / 96 = 16 kHz 精准对齐；LRCK = 1.536M / 96 = 16 kHz - Precisely
+                                       // aligned
 
 };
 
@@ -74,13 +79,14 @@ static uint32_t *volatile mp_block_to_fill = NULL;
 static void i2s_buffer_req_evt_handle(nrfx_i2s_buffers_t const *p_released, uint32_t status)
 {
     uint32_t err_code;
-    if (!(status & NRFX_I2S_STATUS_NEXT_BUFFERS_NEEDED))  // If no next buffers 
+    if (!(status & NRFX_I2S_STATUS_NEXT_BUFFERS_NEEDED))  // If no next buffers
     {
-        BSP_LOGE(TAG, "i2s_buffer_req_evt_handle: No next buffers needed, status = %lu", status);
+        LOG_ERR("i2s_buffer_req_evt_handle: No next buffers needed, status = %lu", status);
         return;
     }
-    // p_released->p_rx_buffer为已经播放完成的缓冲区，可以释放掉或用来填充下一帧播放数据; 
-    // p_released->p_rx_buffer is the buffer that has finished playing, can be released or used to fill the next frame of playback data
+    // p_released->p_rx_buffer为已经播放完成的缓冲区，可以释放掉或用来填充下一帧播放数据;
+    // p_released->p_rx_buffer is the buffer that has finished playing, can be released or used to fill the next frame
+    // of playback data
     if (p_released->p_rx_buffer == NULL)
     {
         err_code         = nrfx_i2s_next_buffers_set(&i2s_inst, &i2s_req_buffer[1]);
@@ -142,7 +148,7 @@ void audio_i2s_init(void)
     __ASSERT_NO_MSG(ret == NRFX_SUCCESS);
 
     state = AUDIO_I2S_STATE_IDLE;
-    BSP_LOGI(TAG, "Audio I2S initialized OK!!!");
+    LOG_INF("Audio I2S initialized OK!!!");
 }
 
 void i2s_pcm_player(void *i2c_pcm_data, int16_t i2c_pcm_size, uint8_t i2s_pcm_ch)
@@ -163,13 +169,10 @@ void i2s_pcm_player(void *i2c_pcm_data, int16_t i2c_pcm_size, uint8_t i2s_pcm_ch
     uint8_t        pcm_ch_state = 0;
     // 获取通道状态，有通道切换，则合并播放为立体声，没有通道切换，则播放单个通道声音; Get channel status, if there is
     // channel switching, merge and play as stereo, if not, play single channel sound
-
     pcm_ch       = (i2s_pcm_ch == 1) ? (0) : (1);
     pcm_ch_state = spcm_ch ^ pcm_ch;  //=0单声道 = 1双声道；0： Single channel, 1: Stereo
     spcm_ch      = pcm_ch;
-
     // 单声道; Single channel
-
     if (!pcm_ch_state)
     {
         for (uint16_t i = 0; i < i2c_pcm_size; i++)
@@ -179,15 +182,14 @@ void i2s_pcm_player(void *i2c_pcm_data, int16_t i2c_pcm_size, uint8_t i2s_pcm_ch
             ((uint16_t *)p_word)[1] = (uint16_t)pcm_data[i] + 1;  // 填充右声道数据；Fill right channel data
         }
     }
-    // 双声道切换; Stereo channel switching
-
-    else
+    else  // 双声道切换; Stereo channel switching
     {
         for (uint16_t i = 0; i < i2c_pcm_size; i++)
         {
             spcm_data[pcm_ch][i] = pcm_data[i];  // 备份当前声道数据； Backup current channel data
             // 先获取到左声道数据，再获取到右声道数据，获取到右声道数据时播放一帧立体声数据; First get the left channel
-            // data, then get the right channel data, when the right channel data is obtained, play a frame of stereo data
+            // data, then get the right channel data, when the right channel data is obtained, play a frame of stereo
+            // data
             if (pcm_ch)
             {
                 uint32_t *p_word        = &mp_block_to_fill[i];
@@ -201,15 +203,18 @@ void i2s_pcm_player(void *i2c_pcm_data, int16_t i2c_pcm_size, uint8_t i2s_pcm_ch
 #endif
 
 // 测试2块板子，2个麦克风，每个麦克风都是左声道，按照板子1; Test 2 boards, 2 microphones, each microphone is left
-// channel, according to board 1 板子2顺序，左右声道都播放左声道; Board 2 order, both left and right channels play left channel
+// channel, according to board 1 板子2顺序，左右声道都播放左声道; Board 2 order, both left and right channels play left
+// channel
 #ifdef CONFIG_USER_STEREO_2RX_L
     // 填充单声道为立体声播放开始; Start filling mono as stereo playback
     int16_t *pcm_data = (int16_t *)i2c_pcm_data;
     for (uint16_t i = 0; i < i2c_pcm_size; i++)
     {
         uint32_t *p_word        = &mp_block_to_fill[i];
-        ((uint16_t *)p_word)[0] = (uint16_t)pcm_data[i] - 1;  // 左声道数据：= 原始数据 - 1；Left channel data: = original data - 1
-        ((uint16_t *)p_word)[1] = (uint16_t)pcm_data[i] + 1;  // 右声道数据: = 原始数据 + 1；Right channel data: = original data + 1
+        ((uint16_t *)p_word)[0] = (uint16_t)pcm_data[i]
+                                  - 1;  // 左声道数据：= 原始数据 - 1；Left channel data: = original data - 1
+        ((uint16_t *)p_word)[1] = (uint16_t)pcm_data[i]
+                                  + 1;  // 右声道数据: = 原始数据 + 1；Right channel data: = original data + 1
     }
     // 填充单声道为立体声播放结束; End filling mono as stereo playback
 

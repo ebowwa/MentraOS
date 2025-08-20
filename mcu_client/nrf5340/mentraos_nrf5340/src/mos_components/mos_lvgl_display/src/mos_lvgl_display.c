@@ -1,7 +1,7 @@
 /*
  * @Author       : Cole
  * @Date         : 2025-07-31 10:40:40
- * @LastEditTime : 2025-08-19 14:45:04
+ * @LastEditTime : 2025-08-19 20:58:17
  * @FilePath     : mos_lvgl_display.c
  * @Description  :
  *
@@ -9,7 +9,7 @@
  *  SPDX-License-Identifier: Apache-2.0
  */
 
-#include "mos_lvgl_display.h"
+
 
 #include <display/lcd/hls12vga.h>
 #include <math.h>
@@ -17,14 +17,16 @@
 #include <zephyr/devicetree.h>
 #include <zephyr/drivers/display.h>
 #include <zephyr/kernel.h>
-
-#include "bal_os.h"
-#include "bsp_log.h"
+#include <zephyr/logging/log.h>
 #include "bspal_icm42688p.h"
 #include "lvgl_display.h"
 #include "task_ble_receive.h"
+#include "bal_os.h"
+#include "mos_lvgl_display.h"
 
-#define TAG            "MOS_LVGL"
+#define LOG_MODULE_NAME MOS_LVGL
+LOG_MODULE_REGISTER(LOG_MODULE_NAME);
+
 #define TASK_LVGL_NAME "MOS_LVGL"
 
 #define LVGL_THREAD_STACK_SIZE (4096 * 2)
@@ -48,7 +50,7 @@ static void fps_timer_cb(struct k_timer *timer_id)
 {
     uint32_t fps = frame_count;
     frame_count  = 0;
-    BSP_LOGI(TAG, "LVGL FPS: %d", fps);
+    LOG_INF("LVGL FPS: %d", fps);
 }
 
 void lv_example_scroll_text(void)
@@ -185,12 +187,8 @@ static void scroll_cb(void *var, int32_t v)
  * @param font    Pointer to the font, e.g., &lv_font_montserrat_48
  * @param time_ms Time (in milliseconds) to scroll to the end and return
  */
-void scroll_text_create(lv_obj_t *parent,
-                        lv_coord_t x, lv_coord_t y,
-                        lv_coord_t w, lv_coord_t h,
-                        const char *txt,
-                        const lv_font_t *font,
-                        uint32_t time_ms)
+void scroll_text_create(lv_obj_t *parent, lv_coord_t x, lv_coord_t y, lv_coord_t w, lv_coord_t h, const char *txt,
+                        const lv_font_t *font, uint32_t time_ms)
 {
     scroll_text_stop();  // Stop any existing scrolling text
 
@@ -212,7 +210,7 @@ void scroll_text_create(lv_obj_t *parent,
     lv_obj_set_style_text_font(label, font, LV_PART_MAIN);
 
     // 强制标签布局更新，获取正确的内容高度; Force label layout update to get correct content height
-    lv_obj_update_layout(label);  
+    lv_obj_update_layout(label);
     int32_t label_h = lv_obj_get_height(label);
     // 计算滚动范围 = 标签高度 - 容器高度; calculate scroll range = label height - container height
     int32_t range = label_h - h;
@@ -244,9 +242,9 @@ void handle_display_text(const mentraos_ble_DisplayText *txt)
     display_cmd_t cmd;
 
     cmd.type = LCD_CMD_TEXT;
-    // BSP_LOGI(TAG, "show text: %s", (char *)txt->text.arg);
+    // LOG_INF("show text: %s", (char *)txt->text.arg);
     // LOG_INF("Text: \"%s\" (length: %zu)", txt->text, strlen(txt->text));
-    BSP_LOG_BUFFER_HEX(TAG, (char *)txt->text.arg, MAX_TEXT_LEN);
+    LOG_HEXDUMP_INF((char *)txt->text.arg, MAX_TEXT_LEN,"display_text");
     // strncpy(cmd.p.text.text, (char *)txt->text.arg, MAX_TEXT_LEN);
     memcpy(cmd.p.text.text, (char *)txt->text.arg, MAX_TEXT_LEN);
     cmd.p.text.text[MAX_TEXT_LEN] = '\0';
@@ -259,7 +257,7 @@ void handle_display_text(const mentraos_ble_DisplayText *txt)
 
     if (mos_msgq_send(&display_msgq, &cmd, MOS_OS_WAIT_ON) != 0)
     {
-        BSP_LOGE(TAG, "UI queue full, drop text");
+        LOG_ERR("UI queue full, drop text");
     }
 }
 
@@ -300,9 +298,9 @@ static void show_default_ui(void)
                        30000);  // 往返周期 30000ms; ping-pong cycle 30000ms；
 
     // LV_IMG_DECLARE(my_img);   // 由 LVGL 的 img converter 工具生成 C 数组; generated C array by LVGL's img converter
-    // tool lv_obj_t *img = lv_img_create(lv_scr_act()); 
-	// lv_img_set_src(img, &my_img); 
-	// lv_obj_align(img, LV_ALIGN_CENTER, 0, 0);
+    // tool lv_obj_t *img = lv_img_create(lv_scr_act());
+    // lv_img_set_src(img, &my_img);
+    // lv_obj_align(img, LV_ALIGN_CENTER, 0, 0);
 
     /********************************************** */
     // lv_demo_benchmark();
@@ -316,20 +314,20 @@ void lvgl_dispaly_init(void *p1, void *p2, void *p3)
     // lv_font_glyph_dsc_t glyph_dsc;
     // if (lv_font_get_glyph_dsc(font, &glyph_dsc, unicode, 0))
     // {
-    //     BSP_LOGI(TAG, "字符 'A' 宽度 = %d px", glyph_dsc.adv_w);
+    //     LOG_INF("字符 'A' 宽度 = %d px", glyph_dsc.adv_w);
     // }
     // mos_delay_ms(1000);
-    // BSP_LOGI(TAG, "Font pointer: %p", font);
+    // LOG_INF("Font pointer: %p", font);
     const struct device *display_dev;
     display_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_display));
     if (!device_is_ready(display_dev))
     {
-        BSP_LOGI(TAG, "display_dev Device not ready, aborting test");
+        LOG_INF("display_dev Device not ready, aborting test");
         return;
     }
     if (hls12vga_init_sem_take() != 0)
     {
-        BSP_LOGE(TAG, "Failed to hls12vga_init_sem_take err");
+        LOG_ERR("Failed to hls12vga_init_sem_take err");
         return;
     }
 
@@ -359,14 +357,16 @@ void lvgl_dispaly_init(void *p1, void *p2, void *p3)
                 // state_type = LCD_STATE_OFF;
                 break;
             case LCD_CMD_OPEN:
-                BSP_LOGI(TAG, "LCD_CMD_OPEN");
+                LOG_INF("LCD_CMD_OPEN");
                 hls12vga_power_on();
                 set_display_onoff(true);
                 hls12vga_set_brightness(9);  // set brightness
                 // hls12vga_set_brightness(0); // set brightness
                 // hls12vga_set_mirror(0x10); // 0x10 垂直镜像 0x00 正常显示 0x08 水平镜像 0x18 水平+垂直镜像 // 0x10
                 // Vertical Mirror 0x00 Normal Display 0x08 Horizontal Mirror 0x18 Horizontal + Vertical Mirror
-                hls12vga_set_mirror(0x08);  // 0x10 垂直镜像 0x00 正常显示 0x08 水平镜像 0x18 水平+垂直镜像// 0x10 Vertical Mirror 0x00 Normal Display 0x08 Horizontal Mirror 0x18 Horizontal + Vertical Mirror
+                hls12vga_set_mirror(
+                    0x08);  // 0x10 垂直镜像 0x00 正常显示 0x08 水平镜像 0x18 水平+垂直镜像// 0x10 Vertical Mirror 0x00
+                            // Normal Display 0x08 Horizontal Mirror 0x18 Horizontal + Vertical Mirror
                 // hls12vga_set_brightness(cmd.p.open.brightness);
                 // hls12vga_set_mirror(cmd.p.open.mirror);
                 mos_delay_ms(2);
@@ -416,15 +416,7 @@ void lvgl_dispaly_init(void *p1, void *p2, void *p3)
 
 void lvgl_dispaly_thread(void)
 {
-    lvgl_thread_handle = k_thread_create(&lvgl_thread_data,
-                                         lvgl_stack_area,
-                                         K_THREAD_STACK_SIZEOF(lvgl_stack_area),
-                                         lvgl_dispaly_init,
-                                         NULL,
-                                         NULL,
-                                         NULL,
-                                         LVGL_THREAD_PRIORITY,
-                                         0,
-                                         K_NO_WAIT);
+    lvgl_thread_handle = k_thread_create(&lvgl_thread_data, lvgl_stack_area, K_THREAD_STACK_SIZEOF(lvgl_stack_area),
+                                         lvgl_dispaly_init, NULL, NULL, NULL, LVGL_THREAD_PRIORITY, 0, K_NO_WAIT);
     k_thread_name_set(lvgl_thread_handle, TASK_LVGL_NAME);
 }

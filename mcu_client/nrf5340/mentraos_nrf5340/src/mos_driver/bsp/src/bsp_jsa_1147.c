@@ -1,7 +1,7 @@
 /*
  * @Author       : Cole
  * @Date         : 2025-07-31 10:40:40
- * @LastEditTime : 2025-08-01 16:12:29
+ * @LastEditTime : 2025-08-20 09:30:23
  * @FilePath     : bsp_jsa_1147.c
  * @Description  :
  *
@@ -9,22 +9,25 @@
  *  SPDX-License-Identifier: Apache-2.0
  */
 
+#include "bsp_jsa_1147.h"
+
+#include <zephyr/device.h>
 #include <zephyr/devicetree.h>
 #include <zephyr/drivers/gpio.h>
-#include <zephyr/device.h>
+#include <zephyr/logging/log.h>
+
 #include "bal_os.h"
-#include "bsp_log.h"
-#include "bsp_jsa_1147.h"
 #include "task_interrupt.h"
+#define LOG_MODULE_NAME BSP_JSA_1147
+LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 
-#define TAG "BSP_JSA_1147"
 
-#define JSA_1147_I2C_SOFT_MODE 1 // 0:Hardware I2C 1:Software I2C
+#define JSA_1147_I2C_SOFT_MODE 1  // 0:Hardware I2C 1:Software I2C
 
 struct gpio_dt_spec jsa_1147_int1 = GPIO_DT_SPEC_GET(DT_PATH(zephyr_user), jsa_1147_int1_gpios);
 
 static struct gpio_callback jsa_1147_int1_cb_data;
-int bsp_jsa_1147_interrupt_init(void);
+int                         bsp_jsa_1147_interrupt_init(void);
 
 #if JSA_1147_I2C_SOFT_MODE
 
@@ -32,7 +35,7 @@ const struct gpio_dt_spec jsa_1147_i2c_sda = GPIO_DT_SPEC_GET(DT_PATH(zephyr_use
 const struct gpio_dt_spec jsa_1147_i2c_scl = GPIO_DT_SPEC_GET(DT_PATH(zephyr_user), jsa_1147_scl_gpios);
 
 #define JSA_1147_SW_I2C_DELAY_US 6
-#define JSA_1147_SW_I2C_TIMEOUT 1000U
+#define JSA_1147_SW_I2C_TIMEOUT  1000U
 
 /* --- GPIO 配置 & 操作 --- */
 static int jsa_1147_sda_out(void)
@@ -131,7 +134,7 @@ int jsa_1147_write_byte(uint8_t b)
 
     if (t >= JSA_1147_SW_I2C_TIMEOUT)
     {
-        BSP_LOGE(TAG, "I2C ACK timeout");
+        LOG_ERR("I2C ACK timeout");
         return MOS_OS_ERROR;
     }
     return 0;
@@ -219,81 +222,81 @@ int jsa_1147_get_manufacturer_id(void)
     int err = jsa_1147_i2c_read_reg(REG_PRODUCT_LSB_ID, &manuf_id);
     if ((err < 0) || (manuf_id != 0x11))
     {
-        BSP_LOGE(TAG, "Failed to read manufacturer ID: %d", err);
+        LOG_ERR("Failed to read manufacturer ID: %d", err);
         return MOS_OS_ERROR;
     }
     else
     {
-        BSP_LOGI(TAG, "Manufacturer ID: 0x%02X", manuf_id);
+        LOG_INF("Manufacturer ID: 0x%02X", manuf_id);
     }
 
     err = jsa_1147_i2c_read_reg(REG_PRODUCT_MSB_ID, &manuf_id);
     if ((err < 0) || (manuf_id != 0x11))
     {
-        BSP_LOGE(TAG, "Failed to read manufacturer ID: %d", err);
+        LOG_ERR("Failed to read manufacturer ID: %d", err);
         return MOS_OS_ERROR;
     }
     else
     {
-        BSP_LOGI(TAG, "Manufacturer ID: 0x%02X", manuf_id);
+        LOG_INF("Manufacturer ID: 0x%02X", manuf_id);
     }
     return 0;
 }
 int bsp_jsa_1147_init(void)
 {
-    BSP_LOGI(TAG, "bsp_jsa_1147_init");
+    LOG_INF("bsp_jsa_1147_init");
     int err = 0;
     if (!gpio_is_ready_dt(&jsa_1147_i2c_sda))
     {
-        BSP_LOGE(TAG, "GPIO jsa_1147_i2c_sda not ready");
+        LOG_ERR("GPIO jsa_1147_i2c_sda not ready");
         return MOS_OS_ERROR;
     }
     if (!gpio_is_ready_dt(&jsa_1147_i2c_scl))
     {
-        BSP_LOGE(TAG, "GPIO jsa_1147_i2c_scl not ready");
+        LOG_ERR("GPIO jsa_1147_i2c_scl not ready");
         return MOS_OS_ERROR;
     }
     err = gpio_pin_configure_dt(&jsa_1147_i2c_sda, GPIO_OUTPUT);
     if (err != 0)
     {
-        BSP_LOGE(TAG, "jsa_1147_i2c_sda config error: %d", err);
+        LOG_ERR("jsa_1147_i2c_sda config error: %d", err);
         return err;
     }
     err = gpio_pin_set_raw(jsa_1147_i2c_sda.port, jsa_1147_i2c_sda.pin, 1);
     if (err != 0)
     {
-        BSP_LOGE(TAG, "jsa_1147_i2c_sda set error: %d", err);
+        LOG_ERR("jsa_1147_i2c_sda set error: %d", err);
         return err;
     }
     err = gpio_pin_configure_dt(&jsa_1147_i2c_scl, GPIO_OUTPUT);
     if (err != 0)
     {
-        BSP_LOGE(TAG, "jsa_1147_i2c_scl config error: %d", err);
+        LOG_ERR("jsa_1147_i2c_scl config error: %d", err);
         return err;
     }
     err = gpio_pin_set_raw(jsa_1147_i2c_scl.port, jsa_1147_i2c_scl.pin, 1);
     if (err != 0)
     {
-        BSP_LOGE(TAG, "jsa_1147_i2c_scl set error: %d", err);
+        LOG_ERR("jsa_1147_i2c_scl set error: %d", err);
         return err;
     }
     // mos_delay_ms(10);
     err = bsp_jsa_1147_interrupt_init();
     if (err != 0)
     {
-        BSP_LOGE(TAG, "bsp_jsa_1147_interrupt_init error: %d", err);
+        LOG_ERR("bsp_jsa_1147_interrupt_init error: %d", err);
         return err;
     }
     err = jsa_1147_get_manufacturer_id();
     if (err != 0)
     {
-        BSP_LOGE(TAG, "jsa_1147_get_version error: %d", err);
+        LOG_ERR("jsa_1147_get_version error: %d", err);
         return err;
     }
     return err;
 }
 #else
-struct device *i2c_dev_jsa_1147; // I2C device
+struct device *i2c_dev_jsa_1147;  // I2C device
 
 void jsa_1147_get_version(void)
 {
@@ -304,7 +307,7 @@ void jsa_1147_get_version(void)
     // int rc = i2c_write(i2c_dev_jsa_1147, write_version, sizeof(write_version), jsa_1147_I2C_ADDR);
     // if (rc)
     // {
-    //     BSP_LOGE(TAG, "I2C write reg 0x%02X failed: %d", JSA_1147_I2C_ADDR, rc);
+    //     LOG_ERR("I2C write reg 0x%02X failed: %d", JSA_1147_I2C_ADDR, rc);
     // }
     // /* 等待处理 */
     // mos_delay_ms(200);
@@ -315,34 +318,34 @@ void jsa_1147_get_version(void)
     //     int rc = i2c_write(i2c_dev_jsa_1147, &reg, 1, jsa_1147_I2C_ADDR);
     //     if (rc)
     //     {
-    //         BSP_LOGE(TAG, "I2C write reg 0x%02X failed: %d", reg, rc);
+    //         LOG_ERR("I2C write reg 0x%02X failed: %d", reg, rc);
     //     }
     //     rc = i2c_read(i2c_dev_jsa_1147, &version[i], 1, JSA_1147_I2C_ADDR);
     //     if (rc)
     //     {
-    //         BSP_LOGE(TAG, "I2C read reg 0x%02X failed: %d", jsa_1147_I2C_ADDR, rc);
+    //         LOG_ERR("I2C read reg 0x%02X failed: %d", jsa_1147_I2C_ADDR, rc);
     //     }
     //     reg += 4;
     // }
 
     // /* 3) 输出版本信息 */
-    // BSP_LOGI(TAG, "JSA_1147 Version: %02X.%02X.%02X.%02X", version[0], version[1], version[2], version[3]);
+    // LOG_INF("JSA_1147 Version: %02X.%02X.%02X.%02X", version[0], version[1], version[2], version[3]);
 }
 int bsp_jsa_1147_sensor_init(void)
 {
-    // BSP_LOGI(TAG, "bsp_jsa_1147_sensor_init");
+    // LOG_INF("bsp_jsa_1147_sensor_init");
     // int rc;
     // mos_delay_ms(1000);
     // i2c_dev_jsa_1147 = device_get_binding(DT_NODE_FULL_NAME(DT_ALIAS(myvda)));
     // if (!i2c_dev_jsa_1147)
     // {
-    //     BSP_LOGE(TAG, "I2C Device driver not found");
+    //     LOG_ERR("I2C Device driver not found");
     //     return MOS_OS_ERROR;
     // }
     // uint32_t i2c_cfg = I2C_SPEED_SET(I2C_SPEED_STANDARD) | I2C_MODE_CONTROLLER;
     // if (i2c_configure(i2c_dev_jsa_1147, i2c_cfg))
     // {
-    //     BSP_LOGE(TAG, "I2C config failed");
+    //     LOG_ERR("I2C config failed");
     //     return MOS_OS_ERROR;
     // }
     // mos_delay_ms(50);
@@ -356,11 +359,10 @@ int bsp_jsa_1147_sensor_init(void)
 void jsa_1147_int1_isr_enable(void)
 {
     int ret;
-    ret = gpio_pin_interrupt_configure_dt(&jsa_1147_int1, GPIO_INT_EDGE_FALLING); // Falling edge trigger
+    ret = gpio_pin_interrupt_configure_dt(&jsa_1147_int1, GPIO_INT_EDGE_FALLING);  // Falling edge trigger
     if (ret != 0)
     {
-        BSP_LOGE(TAG, "Error %d: failed to configure interrupt on pin %d",
-                 ret, jsa_1147_int1.pin);
+        LOG_ERR("Error %d: failed to configure interrupt on pin %d", ret, jsa_1147_int1.pin);
     }
 }
 int bsp_jsa_1147_interrupt_init(void)
@@ -369,19 +371,19 @@ int bsp_jsa_1147_interrupt_init(void)
     ret = gpio_pin_configure_dt(&jsa_1147_int1, (GPIO_INPUT | GPIO_PULL_UP));
     if (ret != 0)
     {
-        BSP_LOGE(TAG, "Error %d: failed to configure pin %d", ret, jsa_1147_int1.pin);
+        LOG_ERR("Error %d: failed to configure pin %d", ret, jsa_1147_int1.pin);
     }
-    ret = gpio_pin_interrupt_configure_dt(&jsa_1147_int1, GPIO_INT_EDGE_FALLING); // Falling edge trigger
+    ret = gpio_pin_interrupt_configure_dt(&jsa_1147_int1, GPIO_INT_EDGE_FALLING);  // Falling edge trigger
     if (ret != 0)
     {
-        BSP_LOGE(TAG, "Error %d: failed to configure interrupt on pin %d", ret, jsa_1147_int1.pin);
+        LOG_ERR("Error %d: failed to configure interrupt on pin %d", ret, jsa_1147_int1.pin);
     }
     gpio_init_callback(&jsa_1147_int1_cb_data, jsa_1147_int_isr, BIT(jsa_1147_int1.pin));
     ret = gpio_add_callback(jsa_1147_int1.port, &jsa_1147_int1_cb_data);
     if (ret != 0)
     {
-        BSP_LOGE(TAG, "Error %d: failed to add callback", ret);
+        LOG_ERR("Error %d: failed to add callback", ret);
     }
-    BSP_LOGI(TAG, "JSA_1147 interrupt initialized on pin %d", jsa_1147_int1.pin);
+    LOG_INF("JSA_1147 interrupt initialized on pin %d", jsa_1147_int1.pin);
     return 0;
 }

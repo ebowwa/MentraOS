@@ -1,18 +1,20 @@
-/***
+/*** 
  * @Author       : Cole
- * @Date         : 2025-07-31 10:50:32
- * @LastEditTime : 2025-07-31 16:38:32
+ * @Date         : 2025-08-18 19:27:06
+ * @LastEditTime : 2025-08-19 20:26:00
  * @FilePath     : mos_ble_service.h
- * @Description  :
+ * @Description  : 
  * @
- * @ Copyright (c) MentraOS Contributors 2025
+ * @ Copyright (c) MentraOS Contributors 2025 
  * @ SPDX-License-Identifier: Apache-2.0
  */
+
 
 #ifndef _MOS_BLE_SERVICE_H_
 #define _MOS_BLE_SERVICE_H_
 
 #include <zephyr/types.h>
+#include <zephyr/bluetooth/conn.h>
 
 #define BT_UUID_MY_SERVICE_VAL \
     BT_UUID_128_ENCODE(0x00004860, 0x0000, 0x1000, 0x8000, 0x00805f9b34fb)

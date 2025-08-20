@@ -1,7 +1,7 @@
 /*
  * @Author       : Cole
  * @Date         : 2025-07-31 10:40:40
- * @LastEditTime : 2025-07-31 17:07:42
+ * @LastEditTime : 2025-08-20 09:30:32
  * @FilePath     : bsp_littlefs.c
  * @Description  :
  *
@@ -17,11 +17,11 @@
 #include <zephyr/fs/fs.h>
 #include <zephyr/fs/littlefs.h>
 #include <zephyr/kernel.h>
+#include <zephyr/logging/log.h>
 #include <zephyr/storage/flash_map.h>
+#define LOG_MODULE_NAME BSP_LITTELFSLFS
+LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 
-#include "bsp_log.h"
-
-#define TAG "BSP_LITTELFSLFS"
 
 #define IMAGE_MOUNT_POINT  "/lfs_img"
 #define IMAGE_MAX_PATH_LEN 64
@@ -54,7 +54,7 @@ static void image_build_filename1(uint16_t stream_id, char *out, size_t out_size
 {
     if (!out || out_size < sizeof(IMAGE_MOUNT_POINT) + 12)
     {
-        BSP_LOGE(TAG, "Invalid buffer or size too small: out=%p, size=%zu err!", out, out_size);
+        LOG_ERR("Invalid buffer or size too small: out=%p, size=%zu err!", out, out_size);
         if (out && out_size > 0)
         {
             out[0] = 0;  // 保守输出空字符串; Conservatively output empty string
@@ -65,7 +65,7 @@ static void image_build_filename1(uint16_t stream_id, char *out, size_t out_size
     int written = snprintf(out, out_size, IMAGE_MOUNT_POINT "/img_%04X.webp", stream_id);
     if (written < 0 || (size_t)written >= out_size)
     {
-        BSP_LOGE(TAG, "Filename truncated or snprintf err!");
+        LOG_ERR("Filename truncated or snprintf err!");
         out[0] = 0;
     }
 }
@@ -85,17 +85,17 @@ int image_save_to_file(uint16_t stream_id, const uint8_t *data, size_t len)
     int ret = fs_open(&file, path, FS_O_CREATE | FS_O_WRITE);
     if (ret < 0)
     {
-        BSP_LOGI(TAG, "[image_save] open failed: %d", ret);
+        LOG_INF("[image_save] open failed: %d", ret);
         return ret;
     }
     ret = fs_write(&file, data, len);
     if (ret < 0)
     {
-        BSP_LOGI(TAG, "[image_save] write failed: %d", ret);
+        LOG_INF("[image_save] write failed: %d", ret);
     }
     else
     {
-        BSP_LOGI(TAG, "[image_save] saved stream_id=%04X, size=%zu", stream_id, len);
+        LOG_INF("[image_save] saved stream_id=%04X, size=%zu", stream_id, len);
     }
 
     fs_close(&file);
@@ -116,7 +116,7 @@ int image_read_from_file(uint16_t stream_id, uint8_t *buffer, size_t buffer_size
 
     if (ret < 0)
     {
-        BSP_LOGI(TAG, "[image_read] open failed: %d", ret);
+        LOG_INF("[image_read] open failed: %d", ret);
         return ret;
     }
 
@@ -127,11 +127,11 @@ int image_read_from_file(uint16_t stream_id, uint8_t *buffer, size_t buffer_size
 
     if (read < 0)
     {
-        BSP_LOGI(TAG, "[image_read] read failed: %zd", read);
+        LOG_INF("[image_read] read failed: %zd", read);
         return read;
     }
 
-    BSP_LOGI(TAG, "[image_read] read %zd bytes from stream_id=%04X", read, stream_id);
+    LOG_INF("[image_read] read %zd bytes from stream_id=%04X", read, stream_id);
     return read;
 }
 
@@ -150,11 +150,11 @@ int image_delete_file(uint16_t stream_id)
     int ret = fs_unlink(path);
     if (ret < 0)
     {
-        BSP_LOGI(TAG, "[image_delete] failed: %d", ret);
+        LOG_INF("[image_delete] failed: %d", ret);
     }
     else
     {
-        BSP_LOGI(TAG, "[image_delete] deleted stream_id=%04X", stream_id);
+        LOG_INF("[image_delete] deleted stream_id=%04X", stream_id);
     }
     return ret;
 }
@@ -172,7 +172,7 @@ void image_list_files(void)
 
     if (fs_opendir(&dir, IMAGE_MOUNT_POINT) != 0)
     {
-        BSP_LOGI(TAG, "[image_list] Failed to open dir");
+        LOG_INF("[image_list] Failed to open dir");
         return;
     }
 
@@ -186,7 +186,7 @@ void image_list_files(void)
         {
             // 打印文件名和文件大小; Print file name and file size
 
-            BSP_LOGI(TAG, "[image_list] Found image: %s (%u bytes)", entry.name, entry.size);
+            LOG_INF("[image_list] Found image: %s (%u bytes)", entry.name, entry.size);
         }
     }
     fs_closedir(&dir);
@@ -203,7 +203,7 @@ void image_delete_all(void)
 
     if (fs_opendir(&dir, IMAGE_MOUNT_POINT) != 0)
     {
-        BSP_LOGI(TAG, "[image_delete_all] Failed to open dir");
+        LOG_INF("[image_delete_all] Failed to open dir");
         return;
     }
 
@@ -220,7 +220,7 @@ void image_delete_all(void)
             snprintf(path, sizeof(path), IMAGE_MOUNT_POINT "/%s", entry.name);
             // 删除文件; Delete file
             fs_unlink(path);
-            BSP_LOGI(TAG, "[image_delete_all] Deleted: %s", entry.name);
+            LOG_INF("[image_delete_all] Deleted: %s", entry.name);
         }
     }
     fs_closedir(&dir);
@@ -237,19 +237,19 @@ static int littlefs_flash_erase(unsigned int id)
     rc = flash_area_open(id, &pfa);
     if (rc < 0)
     {
-        BSP_LOGE(TAG, "FAIL: unable to find flash area %u: %d", id, rc);
+        LOG_ERR("FAIL: unable to find flash area %u: %d", id, rc);
         return rc;
     }
 
     // 打印flash区域的详细信息; Print detailed information of flash area
-    BSP_LOGI(TAG, "Area %u at 0x%x on %s for %u bytes", id, (unsigned int)pfa->fa_off, pfa->fa_dev->name,
-             (unsigned int)pfa->fa_size);
+    LOG_INF("Area %u at 0x%x on %s for %u bytes", id, (unsigned int)pfa->fa_off, pfa->fa_dev->name,
+            (unsigned int)pfa->fa_size);
 
     /* Optional wipe flash contents */
     if (IS_ENABLED(CONFIG_APP_WIPE_STORAGE))
     {
         rc = flash_area_flatten(pfa, 0, pfa->fa_size);
-        BSP_LOGE(TAG, "Erasing flash area ... %d", rc);
+        LOG_ERR("Erasing flash area ... %d", rc);
     }
 
     flash_area_close(pfa);
@@ -270,12 +270,12 @@ static int littlefs_mount(struct fs_mount_t *mp)
     rc = fs_mount(mp);
     if (rc < 0)
     {
-        BSP_LOGE(TAG, "FAIL: mount id %" PRIuPTR " at %s: %d\n", (uintptr_t)mp->storage_dev, mp->mnt_point, rc);
+        LOG_ERR("FAIL: mount id %" PRIuPTR " at %s: %d\n", (uintptr_t)mp->storage_dev, mp->mnt_point, rc);
         return rc;
     }
-    BSP_LOGI(TAG, "%s mount: %d", mp->mnt_point, rc);
+    LOG_INF("%s mount: %d", mp->mnt_point, rc);
 #else
-    BSP_LOGI(TAG, "%s automounted", mp->mnt_point);
+    LOG_INF("%s automounted", mp->mnt_point);
 #endif
 
     return 0;
@@ -303,11 +303,11 @@ static int lsdir(const char *path)
     res = fs_opendir(&dirp, path);
     if (res)
     {
-        BSP_LOGE(TAG, "Error opening dir %s [%d]", path, res);
+        LOG_ERR("Error opening dir %s [%d]", path, res);
         return res;
     }
 
-    BSP_LOGI(TAG, "Listing dir [%s] ...", path);
+    LOG_INF("Listing dir [%s] ...", path);
 
     for (;;)
     {
@@ -323,7 +323,7 @@ static int lsdir(const char *path)
 
             if (res < 0)
             {
-                BSP_LOGE(TAG, "Error reading dir [%d]", res);
+                LOG_ERR("Error reading dir [%d]", res);
             }
             break;
         }
@@ -332,13 +332,13 @@ static int lsdir(const char *path)
 
         if (entry.type == FS_DIR_ENTRY_DIR)
         {
-            BSP_LOGI(TAG, "[DIR ] %s", entry.name);
+            LOG_INF("[DIR ] %s", entry.name);
         }
         // 如果目录项是文件，则打印文件信息; If entry is file, print file info
 
         else
         {
-            BSP_LOGI(TAG, "[FILE] %s (size = %zu)", entry.name, entry.size);
+            LOG_INF("[FILE] %s (size = %zu)", entry.name, entry.size);
         }
     }
     fs_closedir(&dirp);
@@ -355,22 +355,22 @@ static int littlefs_increase_infile_value(char *fname)
     rc = fs_open(&file, fname, FS_O_CREATE | FS_O_RDWR);
     if (rc < 0)
     {
-        BSP_LOGE(TAG, "FAIL: open %s: %d", fname, rc);
+        LOG_ERR("FAIL: open %s: %d", fname, rc);
         return rc;
     }
 
     rc = fs_read(&file, &boot_count, sizeof(boot_count));
     if (rc < 0)
     {
-        BSP_LOGE(TAG, "FAIL: read %s: [rd:%d]", fname, rc);
+        LOG_ERR("FAIL: read %s: [rd:%d]", fname, rc);
         goto out;
     }
-    BSP_LOGI(TAG, "%s read count:%u (bytes: %d)", fname, boot_count, rc);
+    LOG_INF("%s read count:%u (bytes: %d)", fname, boot_count, rc);
 
     rc = fs_seek(&file, 0, FS_SEEK_SET);
     if (rc < 0)
     {
-        BSP_LOGE(TAG, "FAIL: seek %s: %d", fname, rc);
+        LOG_ERR("FAIL: seek %s: %d", fname, rc);
         goto out;
     }
 
@@ -378,17 +378,17 @@ static int littlefs_increase_infile_value(char *fname)
     rc = fs_write(&file, &boot_count, sizeof(boot_count));
     if (rc < 0)
     {
-        BSP_LOGE(TAG, "FAIL: write %s: %d", fname, rc);
+        LOG_ERR("FAIL: write %s: %d", fname, rc);
         goto out;
     }
 
-    BSP_LOGI(TAG, "%s write new boot count %u: [wr:%d]", fname, boot_count, rc);
+    LOG_INF("%s write new boot count %u: [wr:%d]", fname, boot_count, rc);
 
 out:
     ret = fs_close(&file);
     if (ret < 0)
     {
-        BSP_LOGE(TAG, "FAIL: close %s: %d", fname, ret);
+        LOG_ERR("FAIL: close %s: %d", fname, ret);
         return ret;
     }
 
@@ -442,53 +442,53 @@ static int littlefs_binary_file_adj(char *fname)
     rc = fs_open(&file, fname, FS_O_CREATE | FS_O_RDWR);
     if (rc < 0)
     {
-        BSP_LOGE(TAG, "FAIL: open %s: %d", fname, rc);
+        LOG_ERR("FAIL: open %s: %d", fname, rc);
         return rc;
     }
 
     rc = fs_stat(fname, &dirent);
     if (rc < 0)
     {
-        BSP_LOGE(TAG, "FAIL: stat %s: %d", fname, rc);
+        LOG_ERR("FAIL: stat %s: %d", fname, rc);
         goto out;
     }
 
     if (rc == 0 && dirent.type == FS_DIR_ENTRY_FILE && dirent.size == 0)
     {
-        BSP_LOGI(TAG, "Test file: %s not found, create one!", fname);
+        LOG_INF("Test file: %s not found, create one!", fname);
 
-        init_pattern(file_test_pattern, sizeof(file_test_pattern)); 
+        init_pattern(file_test_pattern, sizeof(file_test_pattern));
     }
     else
     {
         rc = fs_read(&file, file_test_pattern, sizeof(file_test_pattern));
         if (rc < 0)
         {
-            BSP_LOGE(TAG, "FAIL: read %s: [rd:%d]", fname, rc);
+            LOG_ERR("FAIL: read %s: [rd:%d]", fname, rc);
             goto out;
         }
         incr_pattern(file_test_pattern, sizeof(file_test_pattern), 0x1);
     }
 
-    BSP_LOGI(TAG, "------ FILE: %s ------", fname);
-    BSP_LOG_BUFFER_HEXDUMP(TAG, file_test_pattern, sizeof(file_test_pattern), 0);
+    LOG_INF("------ FILE: %s ------", fname);
+    LOG_HEXDUMP_INF(file_test_pattern, sizeof(file_test_pattern), "Hexdump:");
     rc = fs_seek(&file, 0, FS_SEEK_SET);
     if (rc < 0)
     {
-        BSP_LOGE(TAG, "FAIL: seek %s: %d", fname, rc);
+        LOG_ERR("FAIL: seek %s: %d", fname, rc);
         goto out;
     }
     rc = fs_write(&file, file_test_pattern, sizeof(file_test_pattern));
     if (rc < 0)
     {
-        BSP_LOGE(TAG, "FAIL: write %s: %d", fname, rc);
+        LOG_ERR("FAIL: write %s: %d", fname, rc);
     }
 
 out:
     ret = fs_close(&file);
     if (ret < 0)
     {
-        BSP_LOGE(TAG, "FAIL: close %s: %d", fname, ret);
+        LOG_ERR("FAIL: close %s: %d", fname, ret);
         return ret;
     }
 
@@ -507,20 +507,20 @@ void littlefs_test(void)
     int rc = fs_statvfs(mountpoint->mnt_point, &sbuf);
     if (rc < 0)
     {
-        BSP_LOGE(TAG, "FAIL: statvfs: %d", rc);
+        LOG_ERR("FAIL: statvfs: %d", rc);
         goto out;
     }
 
-    BSP_LOGI(TAG, "%s: bsize = %lu ; frsize = %lu ; blocks = %lu ; bfree = %lu", mountpoint->mnt_point,
-             sbuf.f_bsize,   // 最佳传输块大小 Optimal transfer block size
-             sbuf.f_frsize,  // 每块的大小 // Allocation unit size
-             sbuf.f_blocks,  // 总块数// Size of FS in f_frsize units
-             sbuf.f_bfree);  // 空闲块的数量// Number of free blocks
+    LOG_INF("%s: bsize = %lu ; frsize = %lu ; blocks = %lu ; bfree = %lu", mountpoint->mnt_point,
+            sbuf.f_bsize,   // 最佳传输块大小 Optimal transfer block size
+            sbuf.f_frsize,  // 每块的大小 // Allocation unit size
+            sbuf.f_blocks,  // 总块数// Size of FS in f_frsize units
+            sbuf.f_bfree);  // 空闲块的数量// Number of free blocks
 
     rc = lsdir(mountpoint->mnt_point);
     if (rc < 0)
     {
-        BSP_LOGI(TAG, "FAIL: lsdir %s: %d", mountpoint->mnt_point, rc);
+        LOG_INF("FAIL: lsdir %s: %d", mountpoint->mnt_point, rc);
         goto out;
     }
 
@@ -537,7 +537,7 @@ void littlefs_test(void)
     }
 out:
     // rc = fs_unmount(mountpoint);
-    // BSP_LOGI(TAG, "%s unmount: %d", mountpoint->mnt_point, rc);
+    // LOG_INF("%s unmount: %d", mountpoint->mnt_point, rc);
     return rc;
 }
 

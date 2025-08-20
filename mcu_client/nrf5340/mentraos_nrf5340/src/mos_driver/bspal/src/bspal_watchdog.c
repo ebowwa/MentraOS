@@ -1,7 +1,7 @@
 /*
  * @Author       : Cole
  * @Date         : 2025-07-31 10:40:40
- * @LastEditTime : 2025-07-31 17:14:21
+ * @LastEditTime : 2025-08-20 09:31:01
  * @FilePath     : bspal_watchdog.c
  * @Description  :
  *
@@ -9,14 +9,17 @@
  *  SPDX-License-Identifier: Apache-2.0
  */
 
-#include <zephyr/device.h>
-#include <zephyr/drivers/watchdog.h>
-#include "bspal_watchdog.h"
-#include "bal_os.h"
-#include "bsp_log.h"
 #include "bspal_watchdog.h"
 
-#define TAG "BSPAL_WATCHDOG"
+#include <zephyr/device.h>
+#include <zephyr/drivers/watchdog.h>
+#include <zephyr/logging/log.h>
+
+#include "bal_os.h"
+#include "bspal_watchdog.h"
+#define LOG_MODULE_NAME BSPAL_WATCHDOG
+LOG_MODULE_REGISTER(LOG_MODULE_NAME);
+
 
 #ifndef WDT_ALLOW_CALLBACK
 #define WDT_ALLOW_CALLBACK 1
@@ -37,7 +40,7 @@
 struct wdt_data_storage
 {
     const struct device *wdt_drv;
-    int wdt_channel_id;
+    int                  wdt_channel_id;
     // struct k_work_delayable system_workqueue_work;
 };
 static struct wdt_data_storage wdt_data;
@@ -47,11 +50,11 @@ void primary_feed_worker(void)
     int err = wdt_feed(wdt_data.wdt_drv, wdt_data.wdt_channel_id);
     if (err)
     {
-        BSP_LOGE(TAG, "Cannot feed watchdog. Error code: %d", err);
+        LOG_ERR("Cannot feed watchdog. Error code: %d", err);
     }
     else
     {
-        BSP_LOGI(TAG, "Cannot feed watchdog. OK code: %d", err);
+        LOG_INF("Cannot feed watchdog. OK code: %d", err);
     }
 }
 #if WDT_ALLOW_CALLBACK
@@ -66,18 +69,18 @@ static void wdt_callback(const struct device *wdt_dev, int channel_id)
 
     wdt_feed(wdt_dev, channel_id);
 
-    BSP_LOGI(TAG, "Handled things..ready to reset");
+    LOG_INF("Handled things..ready to reset");
     handled_event = true;
 }
 #endif /* WDT_ALLOW_CALLBACK */
 int bspal_watchdog_init(void)
 {
-    BSP_LOGI(TAG, "Initializing watchdog...");
+    LOG_INF("Initializing watchdog...");
     int err;
     wdt_data.wdt_drv = DEVICE_DT_GET(DT_ALIAS(watchdog0));
     if (!device_is_ready(wdt_data.wdt_drv))
     {
-        BSP_LOGE(TAG, "%s: device not ready", wdt_data.wdt_drv->name);
+        LOG_ERR("%s: device not ready", wdt_data.wdt_drv->name);
         return MOS_OS_ERROR;
     }
 
@@ -93,22 +96,22 @@ int bspal_watchdog_init(void)
     /* Set up watchdog callback. */
     wdt_config.callback = wdt_callback;
 
-    BSP_LOGI(TAG, "Attempting to test pre-reset callback");
+    LOG_INF("Attempting to test pre-reset callback");
 #else  /* WDT_ALLOW_CALLBACK */
-    BSP_LOGI(TAG, "Callback in RESET_SOC disabled for this platform");
+    LOG_INF("Callback in RESET_SOC disabled for this platform");
 #endif /* WDT_ALLOW_CALLBACK */
 
     wdt_data.wdt_channel_id = wdt_install_timeout(wdt_data.wdt_drv, &wdt_config);
     if (wdt_data.wdt_channel_id < 0)
     {
-        BSP_LOGE(TAG, "Watchdog install error");
+        LOG_ERR("Watchdog install error");
         return MOS_OS_ERROR;
     }
 
     err = wdt_setup(wdt_data.wdt_drv, WDT_OPT);
     if (err < 0)
     {
-        BSP_LOGE(TAG, "Watchdog setup error");
+        LOG_ERR("Watchdog setup error");
         return MOS_OS_ERROR;
     }
 
