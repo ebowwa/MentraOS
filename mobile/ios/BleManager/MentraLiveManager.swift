@@ -2113,6 +2113,9 @@ typealias JSONObject = [String: Any]
         hotspotPassword = password
         hotspotGatewayIp = ip // This is the gateway IP from glasses
         emitHotspotStatusChange()
+
+        // Trigger a full status update so React Native gets the updated glasses_info
+        AOSManager.getInstance().handleRequestStatus()
     }
 
     private func handleGalleryStatus(photoCount: Int, videoCount: Int, totalCount: Int,

@@ -113,6 +113,7 @@ export function GalleryScreen() {
   const [isLoadingServerPhotos, setIsLoadingServerPhotos] = useState(true)
   const [isInitialLoad, setIsInitialLoad] = useState(true)
   const [isSyncing, setIsSyncing] = useState(false)
+  const [hasSyncStarted, setHasSyncStarted] = useState(false) // Track if sync has actually started
   const [error, setError] = useState<string | null>(null)
   const [syncProgress, setSyncProgress] = useState<{
     current: number
@@ -123,6 +124,7 @@ export function GalleryScreen() {
   const [lastConnectionStatus, setLastConnectionStatus] = useState(false)
   const [isRequestingHotspot, setIsRequestingHotspot] = useState(false)
   const [galleryOpenedHotspot, setGalleryOpenedHotspot] = useState(false)
+  const [userCancelledWifi, setUserCancelledWifi] = useState(false) // Track if user cancelled WiFi connection
   const [glassesGalleryStatus, setGlassesGalleryStatus] = useState<{
     photos: number
     videos: number
@@ -160,6 +162,14 @@ export function GalleryScreen() {
       const result = await asgCameraApi.getGalleryPhotos(PAGE_SIZE, 0)
 
       setTotalServerCount(result.totalCount)
+
+      // If no photos, we're done loading
+      if (result.totalCount === 0) {
+        console.log("[GalleryScreen] No photos on glasses")
+        setIsLoadingServerPhotos(false)
+        setIsInitialLoad(false)
+        return
+      }
 
       // Store loaded photos in map
       const newMap = new Map<number, PhotoInfo>()
@@ -244,24 +254,26 @@ export function GalleryScreen() {
 
   // Sync files from server to local storage
   const handleSync = async () => {
-    if (!isWifiConnected || !glassesWifiIp) {
-      showAlert(
-        "Cannot Sync",
-        "Your glasses are not connected to WiFi. Please connect them to the same network as your phone.",
-        [{text: translate("common:ok")}],
-      )
+    // Check for either WiFi or hotspot connection
+    const hasConnection = (isWifiConnected && glassesWifiIp) || (isHotspotEnabled && hotspotGatewayIp)
+    const serverIp = isHotspotEnabled && hotspotGatewayIp ? hotspotGatewayIp : glassesWifiIp
+
+    if (!hasConnection || !serverIp) {
+      showAlert("Cannot Sync", "Your glasses are not connected. Please connect them to WiFi or enable hotspot.", [
+        {text: translate("common:ok")},
+      ])
       return
     }
 
     setIsSyncing(true)
+    setHasSyncStarted(true) // Mark that we've started a sync session
     setError(null)
     setSyncProgress(null)
 
     try {
-      console.log(`[GalleryScreen] Starting sync process...`)
+      console.log(`[GalleryScreen] Starting sync process with server IP: ${serverIp}`)
 
-      // Determine the correct server IP - prioritize hotspot if enabled
-      const serverIp = isHotspotEnabled && hotspotGatewayIp ? hotspotGatewayIp : glassesWifiIp
+      // Set the server IP for the sync
       asgCameraApi.setServer(serverIp, 8089)
       console.log(`[GalleryScreen] Set server URL to: ${serverIp}:8089`)
 
@@ -527,8 +539,11 @@ export function GalleryScreen() {
 
   // Handle photo deletion
   const handleDeletePhoto = async (photo: PhotoInfo) => {
-    if (!isWifiConnected || !glassesWifiIp) {
-      showAlert("Error", "Glasses not connected to WiFi", [{text: translate("common:ok")}])
+    // Check for either WiFi or hotspot connection
+    const hasConnection = (isWifiConnected && glassesWifiIp) || (isHotspotEnabled && hotspotGatewayIp)
+
+    if (!hasConnection) {
+      showAlert("Error", "Glasses not connected", [{text: translate("common:ok")}])
       return
     }
 
@@ -692,6 +707,11 @@ The gallery will automatically reload once connected.`,
   const connectToHotspot = async (ssid: string, password: string, ip: string) => {
     try {
       console.log(`[GalleryScreen] Connecting to ${ssid}...`)
+      setUserCancelledWifi(false) // Reset cancelled state when attempting
+
+      // Show "Checking for media..." while waiting for user response
+      setIsLoadingServerPhotos(true)
+      setIsInitialLoad(true)
 
       // Attempt to connect to the hotspot automatically
       await WifiManager.connectToProtectedSSID(
@@ -702,6 +722,7 @@ The gallery will automatically reload once connected.`,
       )
 
       console.log("[GalleryScreen] Successfully connected to hotspot!")
+      setUserCancelledWifi(false)
 
       // Update camera API to use hotspot IP
       if (ip) {
@@ -711,8 +732,32 @@ The gallery will automatically reload once connected.`,
           loadInitialPhotos() // Only reload server photos, local photos don't depend on network
         }, 3000) // Give more time for network to stabilize
       }
-    } catch (error) {
-      console.log("[GalleryScreen] Failed to connect automatically:", error)
+    } catch (error: any) {
+      console.log("[GalleryScreen] Failed to connect:", error)
+
+      // Check if user cancelled vs other error
+      // Error codes 'userDenied' or 'unableToConnect' mean user cancelled
+      if (
+        error?.code === "userDenied" ||
+        error?.code === "unableToConnect" ||
+        error?.message?.includes("cancel") ||
+        error?.message?.includes("approval")
+      ) {
+        console.log("[GalleryScreen] User cancelled WiFi connection")
+        setUserCancelledWifi(true)
+      }
+
+      // Stop showing "Checking for media..."
+      setIsLoadingServerPhotos(false)
+      setIsInitialLoad(false)
+    }
+  }
+
+  // Retry connecting to hotspot
+  const retryHotspotConnection = () => {
+    if (hotspotSsid && hotspotPassword && hotspotGatewayIp) {
+      setUserCancelledWifi(false)
+      connectToHotspot(hotspotSsid, hotspotPassword, hotspotGatewayIp)
     }
   }
 
@@ -728,6 +773,17 @@ The gallery will automatically reload once connected.`,
   useEffect(() => {
     const handleGalleryStatus = (data: any) => {
       console.log("[GalleryScreen] Received GLASSES_GALLERY_STATUS event:", data)
+      console.log(
+        "[GalleryScreen] Current state - isGalleryReachable:",
+        isGalleryReachable,
+        "isHotspotEnabled:",
+        isHotspotEnabled,
+        "isRequestingHotspot:",
+        isRequestingHotspot,
+        "isWifiConnected:",
+        isWifiConnected,
+      )
+
       setGlassesGalleryStatus({
         photos: data.photos || 0,
         videos: data.videos || 0,
@@ -735,9 +791,33 @@ The gallery will automatically reload once connected.`,
         has_content: data.has_content || false,
       })
 
-      // If there's content and no connection, start hotspot
-      if (data.has_content && !isWifiConnected && !isHotspotEnabled && !isRequestingHotspot) {
-        console.log("[GalleryScreen] Has content but no connection, requesting hotspot...")
+      // Check if phone is connected to glasses hotspot
+      const phoneConnectedToHotspot = networkStatus.phoneSSID && hotspotSsid && networkStatus.phoneSSID === hotspotSsid
+
+      // If there's content but gallery is not reachable, start/ensure hotspot
+      // We need hotspot if: have content, gallery not reachable, and not already connected to hotspot
+      const shouldRequestHotspot =
+        data.has_content && !isGalleryReachable && !phoneConnectedToHotspot && !isRequestingHotspot
+
+      console.log(
+        "[GalleryScreen] Should request hotspot?",
+        shouldRequestHotspot,
+        "- has_content:",
+        data.has_content,
+        "- !isGalleryReachable:",
+        !isGalleryReachable,
+        "- phoneSSID:",
+        networkStatus.phoneSSID,
+        "- hotspotSsid:",
+        hotspotSsid,
+        "- phoneConnectedToHotspot:",
+        phoneConnectedToHotspot,
+        "- !isRequestingHotspot:",
+        !isRequestingHotspot,
+      )
+
+      if (shouldRequestHotspot) {
+        console.log("[GalleryScreen] Requesting hotspot (or ensuring it's enabled)...")
         handleRequestHotspot()
       }
     }
@@ -747,7 +827,7 @@ The gallery will automatically reload once connected.`,
     return () => {
       GlobalEventEmitter.removeListener("GLASSES_GALLERY_STATUS", handleGalleryStatus)
     }
-  }, [isWifiConnected, isHotspotEnabled, isRequestingHotspot])
+  }, [isWifiConnected, isHotspotEnabled, isRequestingHotspot, isGalleryReachable, networkStatus.phoneSSID, hotspotSsid])
 
   // STEP 3: Listen for hotspot ready and connect to it
   useEffect(() => {
@@ -780,6 +860,9 @@ The gallery will automatically reload once connected.`,
       console.log("[GalleryScreen] Phone connected to glasses hotspot! SSID match confirmed")
       console.log("[GalleryScreen] Phone SSID:", phoneSSID, "Hotspot SSID:", hotspotSsid)
 
+      // Clear cancelled state since we're now connected
+      setUserCancelledWifi(false)
+
       // Update API server to use hotspot gateway IP
       asgCameraApi.setServer(hotspotGatewayIp, 8089)
 
@@ -804,21 +887,32 @@ The gallery will automatically reload once connected.`,
 
   // Monitor sync completion to auto-close hotspot
   useEffect(() => {
-    // Watch for sync completion - when isSyncing goes from true to false
-    if (!isSyncing && galleryOpenedHotspot && isHotspotEnabled) {
+    console.log(
+      "[GalleryScreen] Sync completion monitor - isSyncing:",
+      isSyncing,
+      "hasSyncStarted:",
+      hasSyncStarted,
+      "galleryOpenedHotspot:",
+      galleryOpenedHotspot,
+      "isHotspotEnabled:",
+      isHotspotEnabled,
+    )
+
+    // Watch for sync completion - only close if sync actually started AND completed
+    if (!isSyncing && hasSyncStarted && galleryOpenedHotspot && isHotspotEnabled) {
       console.log("[GalleryScreen] Sync completed, auto-closing gallery-initiated hotspot...")
 
       // Auto-close hotspot after sync completion
       const timeoutId = setTimeout(async () => {
         console.log("[GalleryScreen] Closing hotspot after sync completion")
         await handleStopHotspot()
-
-        showAlert("Hotspot Closed", "Gallery sync complete. Hotspot has been closed.", [{text: "OK"}])
+        setHasSyncStarted(false) // Reset for next sync session
+        // No alert needed - user can see sync completed from UI
       }, 3000) // Wait 3 seconds after sync completion
 
       return () => clearTimeout(timeoutId)
     }
-  }, [isSyncing, galleryOpenedHotspot, isHotspotEnabled])
+  }, [isSyncing, hasSyncStarted, galleryOpenedHotspot, isHotspotEnabled])
 
   // Remove this effect - hotspot is now started from gallery status event handler
 
@@ -931,11 +1025,22 @@ The gallery will automatically reload once connected.`,
           <View style={themed($loadingBanner)}>
             <ActivityIndicator size="small" color={theme.colors.text} style={{marginRight: spacing.sm}} />
             <View style={themed($warningTextContainer)}>
-              <Text style={themed($loadingTitle)}>Checking glasses connection...</Text>
+              <Text style={themed($loadingTitle)}>Checking for media...</Text>
             </View>
           </View>
         </View>
-      ) : !isGalleryReachable ? (
+      ) : userCancelledWifi && hotspotSsid && glassesGalleryStatus?.has_content ? (
+        // Show helpful message when user cancelled WiFi connection
+        <View style={themed($warningBannerContainer)}>
+          <TouchableOpacity style={themed($warningBanner)} onPress={retryHotspotConnection} activeOpacity={0.8}>
+            <MaterialCommunityIcons name="wifi-alert" size={20} color={theme.colors.text} />
+            <View style={themed($warningTextContainer)}>
+              <Text style={themed($warningTitle)}>Connect to sync {glassesGalleryStatus?.total || 0} items</Text>
+              <Text style={themed($warningMessage)}>Tap to join "{hotspotSsid}" network</Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+      ) : !isGalleryReachable && serverPhotosToSync > 0 ? (
         // Show warning banner after connection check fails
         <View style={themed($warningBannerContainer)}>
           <View style={themed($warningBanner)}>
@@ -1038,15 +1143,11 @@ The gallery will automatically reload once connected.`,
         )}
       </View>
 
-      {/* Sync Button - Fixed at bottom, only show if there are server photos */}
-      {serverPhotosToSync > 0 && (
-        <TouchableOpacity
-          style={[themed($syncButtonFixed), isSyncing && themed($syncButtonFixedDisabled)]}
-          onPress={handleSync}
-          disabled={isSyncing}
-          activeOpacity={0.8}>
+      {/* Sync Progress Indicator - Fixed at bottom, only show when actively syncing */}
+      {isSyncing && serverPhotosToSync > 0 && (
+        <View style={[themed($syncButtonFixed), themed($syncButtonFixedDisabled)]}>
           <View style={themed($syncButtonContent)}>
-            {isSyncing && syncProgress ? (
+            {syncProgress ? (
               <>
                 <Text style={themed($syncButtonText)}>
                   Syncing {syncProgress.current}/{syncProgress.total} items...
@@ -1063,16 +1164,14 @@ The gallery will automatically reload once connected.`,
                   />
                 </View>
               </>
-            ) : isSyncing ? (
+            ) : (
               <View style={themed($syncButtonRow)}>
                 <ActivityIndicator size="small" color={theme.colors.textAlt} style={{marginRight: spacing.xs}} />
                 <Text style={themed($syncButtonText)}>Syncing {serverPhotosToSync} items...</Text>
               </View>
-            ) : (
-              <Text style={themed($syncButtonText)}>Sync {serverPhotosToSync} items from glasses</Text>
             )}
           </View>
-        </TouchableOpacity>
+        </View>
       )}
 
       {/* Media Viewer */}

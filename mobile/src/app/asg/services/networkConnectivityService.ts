@@ -4,6 +4,7 @@
  */
 
 import NetInfo, {NetInfoState, NetInfoSubscription} from "@react-native-community/netinfo"
+import WifiManager from "react-native-wifi-reborn"
 import {asgCameraApi} from "./asgCameraApi"
 
 export interface NetworkStatus {
@@ -61,7 +62,7 @@ class NetworkConnectivityService {
   /**
    * Handle network state changes from the phone
    */
-  private handleNetworkChange = (state: NetInfoState) => {
+  private handleNetworkChange = async (state: NetInfoState) => {
     console.log("[NetworkConnectivity] Phone network changed:", {
       type: state.type,
       isConnected: state.isConnected,
@@ -75,9 +76,18 @@ class NetworkConnectivityService {
     this.currentStatus.phoneConnected = state.isConnected || false
 
     // Extract SSID if on WiFi
-    if (state.type === "wifi" && state.isConnected && state.details) {
-      const wifiDetails = state.details as any
-      this.currentStatus.phoneSSID = wifiDetails.ssid || null
+    if (state.type === "wifi" && state.isConnected) {
+      // Try to get SSID using WifiManager for iOS
+      try {
+        const ssid = await WifiManager.getCurrentWifiSSID()
+        console.log("[NetworkConnectivity] Got WiFi SSID from WifiManager:", ssid)
+        this.currentStatus.phoneSSID = ssid || null
+      } catch (error) {
+        console.log("[NetworkConnectivity] Failed to get WiFi SSID:", error)
+        // Fallback to NetInfo details if available
+        const wifiDetails = state.details as any
+        this.currentStatus.phoneSSID = wifiDetails?.ssid || null
+      }
       this.currentStatus.isHotspot = false
     } else if (state.type === "cellular" && state.isConnected) {
       // Phone is on cellular - might be hotspot if glasses are connected

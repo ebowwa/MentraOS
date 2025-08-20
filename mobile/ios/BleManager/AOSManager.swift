@@ -1667,7 +1667,7 @@ struct ViewState {
         await g1Manager?.setMicEnabled(enabled: true)
     }
 
-    private func handleRequestStatus() {
+    func handleRequestStatus() {
         // construct the status object:
 
         let g1Connected = g1Manager?.g1Ready ?? false
