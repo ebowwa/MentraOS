@@ -318,7 +318,7 @@ enum GlassesError: Error {
         // leftGlassUUID = nil
         // rightGlassUUID = nil
 
-        CoreCommsService.log("G1: ERG1Manager deinitialized")
+        Core.log("G1: ERG1Manager deinitialized")
     }
 
     // MARK: - Serial Number and Color Detection
@@ -406,8 +406,8 @@ enum GlassesError: Error {
         do {
             let jsonData = try JSONSerialization.data(withJSONObject: eventBody, options: [])
             if let jsonString = String(data: jsonData, encoding: .utf8) {
-                CoreCommsService.emitter.sendEvent(withName: "CoreMessageEvent", body: jsonString)
-                CoreCommsService.log("G1: 📱 Emitted serial number info: \(serialNumber), Style: \(style), Color: \(color)")
+                Core.emitter.sendEvent(withName: "CoreMessageEvent", body: jsonString)
+                Core.log("G1: 📱 Emitted serial number info: \(serialNumber), Style: \(style), Color: \(color)")
 
                 // Trigger status update to include serial number in status JSON
                 DispatchQueue.main.async {
@@ -415,14 +415,14 @@ enum GlassesError: Error {
                 }
             }
         } catch {
-            CoreCommsService.log("G1: Error creating serial number JSON: \(error)")
+            Core.log("G1: Error creating serial number JSON: \(error)")
         }
     }
 
     // @@@ REACT NATIVE FUNCTIONS @@@
 
     @objc func RN_setSearchId(_ searchId: String) {
-        CoreCommsService.log("G1: SETTING SEARCH_ID: \(searchId)")
+        Core.log("G1: SETTING SEARCH_ID: \(searchId)")
         DEVICE_SEARCH_ID = searchId
     }
 
@@ -439,16 +439,16 @@ enum GlassesError: Error {
 
             self.isDisconnecting = false // reset intentional disconnect flag
             guard centralManager!.state == .poweredOn else {
-                CoreCommsService.log("G1: Attempting to scan but bluetooth is not powered on.")
+                Core.log("G1: Attempting to scan but bluetooth is not powered on.")
                 return false
             }
 
             // send our already connected devices to RN:
             let devices = getConnectedDevices()
-            CoreCommsService.log("G1: connnectedDevices.count: (\(devices.count))")
+            Core.log("G1: connnectedDevices.count: (\(devices.count))")
             for device in devices {
                 if let name = device.name {
-                    CoreCommsService.log("G1: Connected to device: \(name)")
+                    Core.log("G1: Connected to device: \(name)")
                     if name.contains("_L_") && name.contains(DEVICE_SEARCH_ID) {
                         leftPeripheral = device
                         device.delegate = self
@@ -464,7 +464,7 @@ enum GlassesError: Error {
 
             // First try: Connect by UUID (works in background)
             if connectByUUID() {
-                CoreCommsService.log("G1: 🔄 Found and attempting to connect to stored glasses UUIDs")
+                Core.log("G1: 🔄 Found and attempting to connect to stored glasses UUIDs")
                 // Wait for connection to complete - no need to scan
                 return true
             }
@@ -491,7 +491,7 @@ enum GlassesError: Error {
 
     // connect to glasses we've discovered:
     @objc func RN_connectGlasses() -> Bool {
-        CoreCommsService.log("RN_connectGlasses()")
+        Core.log("RN_connectGlasses()")
 
         if let side = leftPeripheral {
             centralManager!.connect(side, options: nil)
@@ -506,7 +506,7 @@ enum GlassesError: Error {
             return false
         }
 
-        CoreCommsService.log("G1: found both glasses \(leftPeripheral!.name ?? "(unknown)"), \(rightPeripheral!.name ?? "(unknown)") stopping scan")
+        Core.log("G1: found both glasses \(leftPeripheral!.name ?? "(unknown)"), \(rightPeripheral!.name ?? "(unknown)") stopping scan")
         //    startHeartbeatTimer();
         RN_stopScan()
         return true
@@ -687,13 +687,13 @@ enum GlassesError: Error {
         if left != nil {
             leftReady = left!
             if !prevLeftReady, leftReady {
-                CoreCommsService.log("Left ready!")
+                Core.log("Left ready!")
             }
         }
         if right != nil {
             rightReady = right!
             if !prevRightReady, rightReady {
-                CoreCommsService.log("Right ready!")
+                Core.log("Right ready!")
             }
         }
 
@@ -706,7 +706,7 @@ enum GlassesError: Error {
 
     @objc func RN_stopScan() {
         centralManager!.stopScan()
-        CoreCommsService.log("G1: Stopped scanning for devices")
+        Core.log("G1: Stopped scanning for devices")
     }
 
     @objc func RN_getSerialNumberInfo() -> [String: Any] {
@@ -742,7 +742,7 @@ enum GlassesError: Error {
         leftPeripheral = nil
         rightPeripheral = nil
         setReadiness(left: false, right: false)
-        CoreCommsService.log("G1: Disconnected from glasses")
+        Core.log("G1: Disconnected from glasses")
     }
 
     // @@@ END REACT NATIVE FUNCTIONS
@@ -813,7 +813,7 @@ enum GlassesError: Error {
 
         while attempts < maxAttempts, !success {
             if attempts > 0 {
-                CoreCommsService.log("G1: trying again to send to:\(side): \(attempts)")
+                Core.log("G1: trying again to send to:\(side): \(attempts)")
             }
             let data = Data(chunks[0])
             // CoreCommsService.log("SEND (\(side)) \(data.hexEncodedString())")
@@ -850,7 +850,7 @@ enum GlassesError: Error {
             }
 
             let firstFewBytes = String(Data(lastChunk).hexEncodedString().prefix(16))
-            CoreCommsService.log("SEND (\(side)) \(firstFewBytes)")
+            Core.log("SEND (\(side)) \(firstFewBytes)")
 
 //      if (lastChunk[0] == 0x4E) {
 //        sequenceNumber = Int(lastChunk[1])
@@ -868,7 +868,7 @@ enum GlassesError: Error {
 
             attempts += 1
             if !success, attempts >= maxAttempts {
-                CoreCommsService.log("G1: ❌ Command timed out!")
+                Core.log("G1: ❌ Command timed out!")
                 startReconnectionTimer()
                 break
             }
@@ -883,7 +883,7 @@ enum GlassesError: Error {
     // Process a single number with timeouts
     private func processCommand(_ command: BufferedCommand) async {
         if command.chunks.isEmpty {
-            CoreCommsService.log("G1: @@@ chunks was empty! @@@")
+            Core.log("G1: @@@ chunks was empty! @@@")
             return
         }
 
@@ -922,7 +922,7 @@ enum GlassesError: Error {
     func startHeartbeatTimer() {
         // Check if a timer is already running
         if heartbeatTimer != nil, heartbeatTimer!.isValid {
-            CoreCommsService.log("G1: Heartbeat timer already running")
+            Core.log("G1: Heartbeat timer already running")
             return
         }
 
@@ -1052,12 +1052,12 @@ enum GlassesError: Error {
             // if left, update left battery level, if right, update right battery level
             if peripheral == leftPeripheral {
                 if leftBatteryLevel != batteryPercent {
-                    CoreCommsService.log("G1: Left glass battery: \(batteryPercent)%")
+                    Core.log("G1: Left glass battery: \(batteryPercent)%")
                     leftBatteryLevel = batteryPercent
                 }
             } else if peripheral == rightPeripheral {
                 if rightBatteryLevel != batteryPercent {
-                    CoreCommsService.log("G1: Right glass battery: \(batteryPercent)%")
+                    Core.log("G1: Right glass battery: \(batteryPercent)%")
                     rightBatteryLevel = batteryPercent
                 }
             }
@@ -1074,66 +1074,66 @@ enum GlassesError: Error {
             let order = data[1]
             switch DeviceOrders(rawValue: order) {
             case .HEAD_UP:
-                CoreCommsService.log("G1: HEAD_UP")
+                Core.log("G1: HEAD_UP")
                 isHeadUp = true
             case .HEAD_UP2:
-                CoreCommsService.log("G1: HEAD_UP2")
+                Core.log("G1: HEAD_UP2")
                 isHeadUp = true
             // case .HEAD_DOWN:
             //   CoreCommsService.log("HEAD_DOWN")
             //   isHeadUp = false
             //   break
             case .HEAD_DOWN2:
-                CoreCommsService.log("G1: HEAD_DOWN2")
+                Core.log("G1: HEAD_DOWN2")
                 isHeadUp = false
             case .ACTIVATED:
-                CoreCommsService.log("G1: ACTIVATED")
+                Core.log("G1: ACTIVATED")
             case .SILENCED:
-                CoreCommsService.log("G1: SILENCED")
+                Core.log("G1: SILENCED")
             case .DISPLAY_READY:
-                CoreCommsService.log("G1: DISPLAY_READY")
+                Core.log("G1: DISPLAY_READY")
             //        sendInitCommand(to: peripheral)// experimental
             case .TRIGGER_FOR_AI:
-                CoreCommsService.log("G1: TRIGGER AI")
+                Core.log("G1: TRIGGER AI")
             case .TRIGGER_FOR_STOP_RECORDING:
-                CoreCommsService.log("G1: STOP RECORDING")
+                Core.log("G1: STOP RECORDING")
             case .TRIGGER_CHANGE_PAGE:
-                CoreCommsService.log("G1: TRIGGER_CHANGE_PAGE")
+                Core.log("G1: TRIGGER_CHANGE_PAGE")
             case .CASE_REMOVED:
-                CoreCommsService.log("G1: REMOVED FROM CASE")
+                Core.log("G1: REMOVED FROM CASE")
                 caseRemoved = true
             case .CASE_REMOVED2:
-                CoreCommsService.log("G1: REMOVED FROM CASE2")
+                Core.log("G1: REMOVED FROM CASE2")
                 caseRemoved = true
             case .CASE_OPEN:
                 caseOpen = true
                 caseRemoved = false
-                CoreCommsService.log("G1: CASE OPEN")
+                Core.log("G1: CASE OPEN")
             case .CASE_CLOSED:
                 caseOpen = false
                 caseRemoved = false
-                CoreCommsService.log("G1: CASE CLOSED")
+                Core.log("G1: CASE CLOSED")
             case .CASE_CHARGING_STATUS:
                 guard data.count >= 3 else { break }
                 let status = data[2]
                 if status == 0x01 {
                     caseCharging = true
-                    CoreCommsService.log("G1: CASE CHARGING")
+                    Core.log("G1: CASE CHARGING")
                 } else {
                     caseCharging = false
-                    CoreCommsService.log("G1: CASE NOT CHARGING")
+                    Core.log("G1: CASE NOT CHARGING")
                 }
             case .CASE_CHARGE_INFO:
-                CoreCommsService.log("G1: CASE CHARGE INFO")
+                Core.log("G1: CASE CHARGE INFO")
                 guard data.count >= 3 else { break }
                 if Int(data[2]) != -1 {
                     caseBatteryLevel = Int(data[2])
-                    CoreCommsService.log("G1: Case battery level: \(caseBatteryLevel)%")
+                    Core.log("G1: Case battery level: \(caseBatteryLevel)%")
                 } else {
-                    CoreCommsService.log("G1: Case battery level was -1")
+                    Core.log("G1: Case battery level was -1")
                 }
             case .DOUBLE_TAP:
-                CoreCommsService.log("G1: DOUBLE TAP / display turned off")
+                Core.log("G1: DOUBLE TAP / display turned off")
             //        Task {
             ////          RN_sendText("DOUBLE TAP DETECTED")
             ////          queueChunks([[UInt8(0x00), UInt8(0x01)]])
@@ -1164,7 +1164,7 @@ extension ERG1Manager {
         ]
         let whitelistJson = createWhitelistJson(apps: apps)
 
-        CoreCommsService.log("G1: Creating chunks for hardcoded whitelist: \(whitelistJson)")
+        Core.log("G1: Creating chunks for hardcoded whitelist: \(whitelistJson)")
 
         // Convert JSON to bytes and split into chunks
         return createWhitelistChunks(json: whitelistJson)
@@ -1202,7 +1202,7 @@ extension ERG1Manager {
                 return "{}"
             }
         } catch {
-            CoreCommsService.log("G1: Error creating whitelist JSON: \(error.localizedDescription)")
+            Core.log("G1: Error creating whitelist JSON: \(error.localizedDescription)")
             return "{}"
         }
     }
@@ -1215,7 +1215,7 @@ extension ERG1Manager {
         let totalChunks = Int(ceil(Double(jsonData.count) / Double(MAX_CHUNK_SIZE)))
         var chunks: [Data] = []
 
-        CoreCommsService.log("G1: jsonData.count = \(jsonData.count), totalChunks = \(totalChunks)")
+        Core.log("G1: jsonData.count = \(jsonData.count), totalChunks = \(totalChunks)")
 
         for i in 0 ..< totalChunks {
             let start = i * MAX_CHUNK_SIZE
@@ -1364,7 +1364,7 @@ extension ERG1Manager {
             }
 
             if peripheral == nil || characteristic == nil {
-                CoreCommsService.log("G1: ⚠️ peripheral/characteristic not found, resuming immediately")
+                Core.log("G1: ⚠️ peripheral/characteristic not found, resuming immediately")
                 //        continuation.resume()
                 continuation.resume(returning: false)
                 return
@@ -1391,7 +1391,7 @@ extension ERG1Manager {
 
                 if let pendingContinuation = pendingContinuation {
                     let elapsed = Date().timeIntervalSince(startTime) * 1000
-                    CoreCommsService.log("G1: ⚠️ ACK timeout for \(key) after \(String(format: "%.0f", elapsed))ms")
+                    Core.log("G1: ⚠️ ACK timeout for \(key) after \(String(format: "%.0f", elapsed))ms")
                     pendingContinuation.resume(returning: false)
                 }
             }
@@ -1438,7 +1438,7 @@ extension ERG1Manager {
     }
 
     @objc func RN_sendWhitelist() {
-        CoreCommsService.log("G1: RN_sendWhitelist()")
+        Core.log("G1: RN_sendWhitelist()")
         let whitelistChunks = getWhitelistChunks()
         queueChunks(whitelistChunks, sendLeft: true, sendRight: true, sleepAfterMs: 100)
     }
@@ -1460,7 +1460,7 @@ extension ERG1Manager {
     }
 
     func setBrightness(_ level: UInt8, autoMode: Bool = false) async -> Bool {
-        CoreCommsService.log("G1: setBrightness()")
+        Core.log("G1: setBrightness()")
         // Ensure level is between 0x00 and 0x29 (0-41)
         var lvl: UInt8 = level
         if level > 0x29 {
@@ -1507,7 +1507,7 @@ extension ERG1Manager {
     }
 
     func setHeadUpAngle(_ angle: UInt8) async -> Bool {
-        CoreCommsService.log("G1: setHeadUpAngle()")
+        Core.log("G1: setHeadUpAngle()")
         let command: [UInt8] = [Commands.HEAD_UP_ANGLE.rawValue, angle, 0x01]
         queueChunks([command])
         return true
@@ -1520,7 +1520,7 @@ extension ERG1Manager {
     }
 
     func getBatteryStatus() async {
-        CoreCommsService.log("G1: getBatteryStatus()")
+        Core.log("G1: getBatteryStatus()")
         let command: [UInt8] = [0x2C, 0x01]
         queueChunks([command])
     }
@@ -1577,14 +1577,14 @@ extension ERG1Manager {
     }
 
     @objc func RN_setMicEnabled(_ enabled: Bool) {
-        CoreCommsService.log("G1: RN_setMicEnabled() \(enabled)")
+        Core.log("G1: RN_setMicEnabled() \(enabled)")
         Task {
             await setMicEnabled(enabled: enabled)
         }
     }
 
     func setMicEnabled(enabled: Bool) async -> Bool {
-        CoreCommsService.log("G1: setMicEnabled()")
+        Core.log("G1: setMicEnabled()")
         var micOnData = Data()
         micOnData.append(Commands.BLE_REQ_MIC_ON.rawValue)
         if enabled {
@@ -1607,20 +1607,20 @@ extension ERG1Manager {
 
     func displayBitmap(base64ImageData: String) async -> Bool {
         guard let bmpData = Data(base64Encoded: base64ImageData) else {
-            CoreCommsService.log("G1: Failed to decode base64 image data")
+            Core.log("G1: Failed to decode base64 image data")
             return false
         }
 
-        CoreCommsService.log("G1: ✅ Successfully decoded base64 image data to \(bmpData.count) bytes")
+        Core.log("G1: ✅ Successfully decoded base64 image data to \(bmpData.count) bytes")
         let invertedBmpData = invertBmpPixels(bmpData)
         let result = await sendBmp(bmpData: invertedBmpData)
-        CoreCommsService.log("G1: 🖼️ Single frame: Transmission \(result ? "SUCCESS" : "FAILED")")
+        Core.log("G1: 🖼️ Single frame: Transmission \(result ? "SUCCESS" : "FAILED")")
         return result
     }
 
     /// Clear display using MentraOS's 0x18 command (exit to dashboard)
     func clearDisplay() {
-        CoreCommsService.log("G1: RN_clearDisplay() - Using 0x18 exit command")
+        Core.log("G1: RN_clearDisplay() - Using 0x18 exit command")
         Task {
             // Send 0x18 to both glasses (MentraOS's clear method)
 
@@ -1680,7 +1680,7 @@ extension ERG1Manager {
 
     private func invertBmpPixels(_ bmpData: Data) -> Data {
         guard bmpData.count > 62 else {
-            CoreCommsService.log("G1: BMP data too small to contain pixel data")
+            Core.log("G1: BMP data too small to contain pixel data")
             return bmpData
         }
 
@@ -1697,7 +1697,7 @@ extension ERG1Manager {
             invertedData.append(invertedByte)
         }
 
-        CoreCommsService.log("G1: Inverted BMP pixels: \(pixelData.count) bytes processed")
+        Core.log("G1: Inverted BMP pixels: \(pixelData.count) bytes processed")
         return invertedData
     }
 
@@ -1711,7 +1711,7 @@ extension ERG1Manager {
         frameSequence += 1
         lastFrameTime = currentTime
 
-        CoreCommsService.log("G1: 🎬 Frame \(frameSequence): \(String(format: "%.0f", timeSinceLastFrame * 1000))ms since last frame")
+        Core.log("G1: 🎬 Frame \(frameSequence): \(String(format: "%.0f", timeSinceLastFrame * 1000))ms since last frame")
 
         // MentraOS constants - exact match
         let packLen = 194 // Exact chunk size from MentraOS
@@ -1737,14 +1737,14 @@ extension ERG1Manager {
             if index < 600 { // First 3 chunks (194 * 3 = 582)
                 let chunkSample = Array(singlePack.prefix(20))
                 let chunkHex = chunkSample.map { String(format: "%02X", $0) }.joined(separator: " ")
-                CoreCommsService.log("G1: 🔍 Chunk creation - index \(index), sample: \(chunkHex)")
+                Core.log("G1: 🔍 Chunk creation - index \(index), sample: \(chunkHex)")
             }
 
             multiPacks.append(singlePack)
             index += packLen
         }
 
-        CoreCommsService.log("G1: Created \(multiPacks.count) packs from BMP data (MentraOS format)")
+        Core.log("G1: Created \(multiPacks.count) packs from BMP data (MentraOS format)")
 
         var chunks: [[UInt8]] = []
 
@@ -1899,7 +1899,7 @@ extension ERG1Manager {
         crcCommand.append(UInt8((crcValue >> 8) & 0xFF))
         crcCommand.append(UInt8(crcValue & 0xFF))
 
-        CoreCommsService.log("G1: Sending CRC command, CRC value: \(String(format: "%08x", crcValue))")
+        Core.log("G1: Sending CRC command, CRC value: \(String(format: "%08x", crcValue))")
 
         // Send CRC with retry
         for attempt in 0 ..< maxAttempts {
@@ -1909,13 +1909,13 @@ extension ERG1Manager {
             try? await Task.sleep(nanoseconds: UInt64(timeoutMs * 1_000_000))
 
             // For now, assume success (in a real implementation, you'd check for ACK)
-            CoreCommsService.log("G1: CRC command sent successfully")
+            Core.log("G1: CRC command sent successfully")
             return true
 
-            CoreCommsService.log("G1: CRC command failed, attempt \(attempt + 1)")
+            Core.log("G1: CRC command failed, attempt \(attempt + 1)")
         }
 
-        CoreCommsService.log("G1: Failed to send CRC command after \(maxAttempts) attempts")
+        Core.log("G1: Failed to send CRC command after \(maxAttempts) attempts")
         return false
     }
 }
@@ -1975,10 +1975,10 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
             do {
                 let jsonData = try JSONSerialization.data(withJSONObject: eventBody, options: [])
                 if let jsonString = String(data: jsonData, encoding: .utf8) {
-                    CoreCommsService.emitter.sendEvent(withName: "CoreMessageEvent", body: jsonString)
+                    Core.emitter.sendEvent(withName: "CoreMessageEvent", body: jsonString)
                 }
             } catch {
-                CoreCommsService.log("Error converting to JSON: \(error)")
+                Core.log("Error converting to JSON: \(error)")
             }
         }
     }
@@ -1988,21 +1988,21 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
         guard let name = peripheral.name else { return }
         guard name.contains("Even G1") else { return }
 
-        CoreCommsService.log("G1: found peripheral: \(name) - SEARCH_ID: \(DEVICE_SEARCH_ID)")
+        Core.log("G1: found peripheral: \(name) - SEARCH_ID: \(DEVICE_SEARCH_ID)")
 
         // Only process serial number for devices that match our search ID
         if name.contains(DEVICE_SEARCH_ID) {
             // Extract manufacturer data to decode serial number
             if let manufacturerData = advertisementData[CBAdvertisementDataManufacturerDataKey] as? Data {
-                CoreCommsService.log("G1: 📱 Found manufacturer data: \(manufacturerData.hexEncodedString())")
+                Core.log("G1: 📱 Found manufacturer data: \(manufacturerData.hexEncodedString())")
 
                 // Try to decode serial number from manufacturer data
                 if let decodedSerial = decodeSerialFromManufacturerData(manufacturerData) {
-                    CoreCommsService.log("G1: 📱 Decoded serial number: \(decodedSerial)")
+                    Core.log("G1: 📱 Decoded serial number: \(decodedSerial)")
 
                     // Decode style and color from serial number
                     let (style, color) = ERG1Manager.decodeEvenG1SerialNumber(decodedSerial)
-                    CoreCommsService.log("G1: 📱 Style: \(style), Color: \(color)")
+                    Core.log("G1: 📱 Style: \(style), Color: \(color)")
 
                     // Store the information
                     glassesSerialNumber = decodedSerial
@@ -2012,18 +2012,18 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
                     // Emit the serial number information
                     emitSerialNumberInfo(serialNumber: decodedSerial, style: style, color: color)
                 } else {
-                    CoreCommsService.log("G1: 📱 Could not decode serial number from manufacturer data")
+                    Core.log("G1: 📱 Could not decode serial number from manufacturer data")
                 }
             } else {
-                CoreCommsService.log("G1: 📱 No manufacturer data found in advertisement")
+                Core.log("G1: 📱 No manufacturer data found in advertisement")
             }
         }
 
         if name.contains("_L_"), name.contains(DEVICE_SEARCH_ID) {
-            CoreCommsService.log("G1: Found left arm: \(name)")
+            Core.log("G1: Found left arm: \(name)")
             leftPeripheral = peripheral
         } else if name.contains("_R_"), name.contains(DEVICE_SEARCH_ID) {
-            CoreCommsService.log("G1: Found right arm: \(name)")
+            Core.log("G1: Found right arm: \(name)")
             rightPeripheral = peripheral
         }
 
@@ -2036,26 +2036,26 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
     }
 
     func centralManager(_: CBCentralManager, didConnect peripheral: CBPeripheral) {
-        CoreCommsService.log("G1: centralManager(_:didConnect:) device connected!: \(peripheral.name ?? "Unknown")")
+        Core.log("G1: centralManager(_:didConnect:) device connected!: \(peripheral.name ?? "Unknown")")
         peripheral.delegate = self
         peripheral.discoverServices([UART_SERVICE_UUID])
 
         // Store the UUIDs for future reconnection
         if peripheral == leftPeripheral || (peripheral.name?.contains("_L_") ?? false) {
-            CoreCommsService.log("G1: 🔵 Storing left glass UUID: \(peripheral.identifier.uuidString)")
+            Core.log("G1: 🔵 Storing left glass UUID: \(peripheral.identifier.uuidString)")
             leftGlassUUID = peripheral.identifier
             leftPeripheral = peripheral
         }
 
         if peripheral == rightPeripheral || (peripheral.name?.contains("_R_") ?? false) {
-            CoreCommsService.log("G1: 🔵 Storing right glass UUID: \(peripheral.identifier.uuidString)")
+            Core.log("G1: 🔵 Storing right glass UUID: \(peripheral.identifier.uuidString)")
             rightGlassUUID = peripheral.identifier
             rightPeripheral = peripheral
         }
 
         // Update the last connection timestamp
         lastConnectionTimestamp = Date()
-        CoreCommsService.log("G1: Connected to peripheral: \(peripheral.name ?? "Unknown")")
+        Core.log("G1: Connected to peripheral: \(peripheral.name ?? "Unknown")")
 
         // Emit connection event
         let isLeft = peripheral == leftPeripheral
@@ -2078,7 +2078,7 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
 
     func centralManager(_: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error _: (any Error)?) {
         let side = peripheral == leftPeripheral ? "LEFT" : peripheral == rightPeripheral ? "RIGHT" : "unknown"
-        CoreCommsService.log("G1: @@@@@ \(side) PERIPHERAL DISCONNECTED @@@@@")
+        Core.log("G1: @@@@@ \(side) PERIPHERAL DISCONNECTED @@@@@")
 
         // only reconnect if we're not intentionally disconnecting:
         if isDisconnecting {
@@ -2095,7 +2095,7 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
     }
 
     private func startReconnectionTimer() {
-        CoreCommsService.log("G1: Starting reconnection timer")
+        Core.log("G1: Starting reconnection timer")
         // Cancel any existing timer
         stopReconnectionTimer()
 
@@ -2139,19 +2139,19 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
     @objc func connectByUUID() -> Bool {
         // don't do this if we don't have a search id set:
         if DEVICE_SEARCH_ID == "NOT_SET" || DEVICE_SEARCH_ID.isEmpty {
-            CoreCommsService.log("G1: 🔵 No DEVICE_SEARCH_ID set, skipping connect by UUID")
+            Core.log("G1: 🔵 No DEVICE_SEARCH_ID set, skipping connect by UUID")
             return false
         }
 
-        CoreCommsService.log("G1: 🔵 Attempting to connect by UUID")
+        Core.log("G1: 🔵 Attempting to connect by UUID")
         var foundAny = false
 
         if let leftUUID = leftGlassUUID {
-            CoreCommsService.log("G1: 🔵 Found stored left glass UUID: \(leftUUID.uuidString)")
+            Core.log("G1: 🔵 Found stored left glass UUID: \(leftUUID.uuidString)")
             let leftDevices = centralManager!.retrievePeripherals(withIdentifiers: [leftUUID])
 
             if let leftDevice = leftDevices.first {
-                CoreCommsService.log("G1: 🔵 Successfully retrieved left glass: \(leftDevice.name ?? "Unknown")")
+                Core.log("G1: 🔵 Successfully retrieved left glass: \(leftDevice.name ?? "Unknown")")
                 foundAny = true
                 leftPeripheral = leftDevice
                 leftDevice.delegate = self
@@ -2163,11 +2163,11 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
         }
 
         if let rightUUID = rightGlassUUID {
-            CoreCommsService.log("G1: 🔵 Found stored right glass UUID: \(rightUUID.uuidString)")
+            Core.log("G1: 🔵 Found stored right glass UUID: \(rightUUID.uuidString)")
             let rightDevices = centralManager!.retrievePeripherals(withIdentifiers: [rightUUID])
 
             if let rightDevice = rightDevices.first {
-                CoreCommsService.log("G1: 🔵 Successfully retrieved right glass: \(rightDevice.name ?? "Unknown")")
+                Core.log("G1: 🔵 Successfully retrieved right glass: \(rightDevice.name ?? "Unknown")")
                 foundAny = true
                 rightPeripheral = rightDevice
                 rightDevice.delegate = self
@@ -2182,23 +2182,23 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
     }
 
     @objc private func attemptReconnection() {
-        CoreCommsService.log("G1: Attempting reconnection (attempt \(reconnectionAttempts))...")
+        Core.log("G1: Attempting reconnection (attempt \(reconnectionAttempts))...")
         // Check if we're already connected
         if g1Ready {
-            CoreCommsService.log("G1: G1 is already ready, cancelling reconnection attempt (& timer)")
+            Core.log("G1: G1 is already ready, cancelling reconnection attempt (& timer)")
             stopReconnectionTimer()
             return
         }
 
         // Check if we've exceeded maximum attempts
         if maxReconnectionAttempts > 0, reconnectionAttempts >= maxReconnectionAttempts {
-            CoreCommsService.log("G1: Maximum reconnection attempts reached. Stopping reconnection timer.")
+            Core.log("G1: Maximum reconnection attempts reached. Stopping reconnection timer.")
             stopReconnectionTimer()
             return
         }
 
         reconnectionAttempts += 1
-        CoreCommsService.log("G1: Attempting reconnection (attempt \(reconnectionAttempts))...")
+        Core.log("G1: Attempting reconnection (attempt \(reconnectionAttempts))...")
 
         // Start a new scan
         startScan()
@@ -2230,16 +2230,16 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
                         let value = Data([0x01, 0x00]) // ENABLE_NOTIFICATION_VALUE in iOS
                         peripheral.writeValue(value, for: descriptor)
                     } else {
-                        CoreCommsService.log("PROC_QUEUE - descriptor not found")
+                        Core.log("PROC_QUEUE - descriptor not found")
                     }
                 }
             }
 
             // Mark the services as ready
             if peripheral == leftPeripheral {
-                CoreCommsService.log("G1: Left glass services discovered and ready")
+                Core.log("G1: Left glass services discovered and ready")
             } else if peripheral == rightPeripheral {
-                CoreCommsService.log("G1: Right glass services discovered and ready")
+                Core.log("G1: Right glass services discovered and ready")
             }
         }
     }
@@ -2247,26 +2247,26 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
     // called whenever bluetooth is initialized / turned on or off:
     func centralManagerDidUpdateState(_ central: CBCentralManager) {
         if central.state == .poweredOn {
-            CoreCommsService.log("G1: Bluetooth was powered on")
+            Core.log("G1: Bluetooth was powered on")
             setReadiness(left: false, right: false)
             // only automatically start scanning if we have a SEARCH_ID, otherwise wait for RN to call startScan() itself
             if DEVICE_SEARCH_ID != "NOT_SET", !DEVICE_SEARCH_ID.isEmpty {
                 startScan()
             }
         } else {
-            CoreCommsService.log("G1: Bluetooth was turned off.")
+            Core.log("G1: Bluetooth was turned off.")
         }
     }
 
     // called when we get data from the glasses:
     func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
         if let error = error {
-            CoreCommsService.log("G1: Error updating value for characteristic: \(error.localizedDescription)")
+            Core.log("G1: Error updating value for characteristic: \(error.localizedDescription)")
             return
         }
 
         guard let data = characteristic.value else {
-            CoreCommsService.log("G1: Characteristic value is nil.")
+            Core.log("G1: Characteristic value is nil.")
             return
         }
 
@@ -2277,7 +2277,7 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
     // L/R Synchronization - Handle BLE write completions
     func peripheral(_ peripheral: CBPeripheral, didWriteValueFor _: CBCharacteristic, error: Error?) {
         if let error = error {
-            CoreCommsService.log("G1: ❌ BLE write error for \(peripheral.name ?? "unknown"): \(error.localizedDescription)")
+            Core.log("G1: ❌ BLE write error for \(peripheral.name ?? "unknown"): \(error.localizedDescription)")
         } else {
             // Only log successful writes every 10th operation to avoid spam
             // if writeCompletionCount % 10 == 0 {

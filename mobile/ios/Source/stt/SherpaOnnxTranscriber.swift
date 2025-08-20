@@ -89,7 +89,7 @@ class SherpaOnnxTranscriber {
                 if fileManager.fileExists(atPath: ctcModelPath) {
                     // CTC model detected
                     modelType = "ctc"
-                    CoreCommsService.log("Detected CTC model at \(customPath)")
+                    Core.log("Detected CTC model at \(customPath)")
 
                     // Create CTC model config using Zipformer2Ctc
                     var zipformer2Ctc = sherpaOnnxOnlineZipformer2CtcModelConfig(
@@ -121,7 +121,7 @@ class SherpaOnnxTranscriber {
                 } else if fileManager.fileExists(atPath: transducerEncoderPath) {
                     // Transducer model detected
                     modelType = "transducer"
-                    CoreCommsService.log("Detected transducer model at \(customPath)")
+                    Core.log("Detected transducer model at \(customPath)")
 
                     let decoderPath = (customPath as NSString).appendingPathComponent("decoder.onnx")
                     let joinerPath = (customPath as NSString).appendingPathComponent("joiner.onnx")
@@ -227,10 +227,10 @@ class SherpaOnnxTranscriber {
             startProcessingTask()
             isRunning = true
 
-            CoreCommsService.log("Sherpa-ONNX ASR initialized successfully with \(modelType) model")
+            Core.log("Sherpa-ONNX ASR initialized successfully with \(modelType) model")
 
         } catch {
-            CoreCommsService.log("Failed to initialize Sherpa-ONNX: \(error.localizedDescription)")
+            Core.log("Failed to initialize Sherpa-ONNX: \(error.localizedDescription)")
         }
     }
 
@@ -257,7 +257,7 @@ class SherpaOnnxTranscriber {
      */
     func acceptAudio(pcm16le: Data) {
         guard isRunning else {
-            CoreCommsService.log("⚠️ Ignoring audio - transcriber not running")
+            Core.log("⚠️ Ignoring audio - transcriber not running")
             return
         }
 
@@ -276,7 +276,7 @@ class SherpaOnnxTranscriber {
             // Keep queue size manageable
             if self.pcmBuffers.count > Self.QUEUE_CAPACITY {
                 let removedBuffer = self.pcmBuffers.removeFirst()
-                CoreCommsService.log("⚠️ Audio queue overflow - dropped buffer of \(removedBuffer.count) bytes")
+                Core.log("⚠️ Audio queue overflow - dropped buffer of \(removedBuffer.count) bytes")
             }
         }
     }
@@ -285,7 +285,7 @@ class SherpaOnnxTranscriber {
      * Start a background task to continuously consume audio and decode using Sherpa.
      */
     private func startProcessingTask() {
-        CoreCommsService.log("🚀 Starting Sherpa-ONNX processing task...")
+        Core.log("🚀 Starting Sherpa-ONNX processing task...")
 
         processingQueue = DispatchQueue(label: "com.augmentos.sherpaonnx.processor", qos: .userInitiated)
 
@@ -302,7 +302,7 @@ class SherpaOnnxTranscriber {
      * Pulls audio from queue, feeds into Sherpa, emits partial/final results.
      */
     private func runLoop() {
-        CoreCommsService.log("🔄 Sherpa-ONNX processing loop started")
+        Core.log("🔄 Sherpa-ONNX processing loop started")
 
         while isRunning {
             // Pull data from queue
@@ -320,7 +320,7 @@ class SherpaOnnxTranscriber {
                 defer { objc_sync_exit(self) }
 
                 guard let recognizer = recognizer else {
-                    CoreCommsService.log("⚠️ Recognizer not available, skipping audio chunk")
+                    Core.log("⚠️ Recognizer not available, skipping audio chunk")
                     continue
                 }
 
@@ -360,7 +360,7 @@ class SherpaOnnxTranscriber {
                         }
                     }
                 } catch {
-                    CoreCommsService.log("❌ Error processing audio: \(error.localizedDescription)")
+                    Core.log("❌ Error processing audio: \(error.localizedDescription)")
                 }
             } else {
                 // Sleep briefly to avoid tight CPU loop if no audio is available
@@ -368,7 +368,7 @@ class SherpaOnnxTranscriber {
             }
         }
 
-        CoreCommsService.log("ASR processing thread stopped")
+        Core.log("ASR processing thread stopped")
     }
 
     /**
@@ -401,7 +401,7 @@ class SherpaOnnxTranscriber {
      * This shuts down the processing thread and releases Sherpa-ONNX resources.
      */
     func shutdown() {
-        CoreCommsService.log("🛑 Shutting down SherpaOnnxTranscriber...")
+        Core.log("🛑 Shutting down SherpaOnnxTranscriber...")
 
         isRunning = false
         processingTask?.cancel()
@@ -412,7 +412,7 @@ class SherpaOnnxTranscriber {
 
         // The recognizer will be automatically cleaned up by ARC when set to nil
         if recognizer != nil {
-            CoreCommsService.log("🧹 Cleaning up Sherpa-ONNX recognizer")
+            Core.log("🧹 Cleaning up Sherpa-ONNX recognizer")
             recognizer = nil
         }
 
@@ -420,12 +420,12 @@ class SherpaOnnxTranscriber {
         pcmQueue.sync {
             let remainingBuffers = self.pcmBuffers.count
             if remainingBuffers > 0 {
-                CoreCommsService.log("🗑️ Clearing \(remainingBuffers) remaining audio buffers")
+                Core.log("🗑️ Clearing \(remainingBuffers) remaining audio buffers")
             }
             self.pcmBuffers.removeAll()
         }
 
-        CoreCommsService.log("✅ SherpaOnnxTranscriber shutdown complete")
+        Core.log("✅ SherpaOnnxTranscriber shutdown complete")
     }
 
     /**
@@ -439,19 +439,19 @@ class SherpaOnnxTranscriber {
 
         // First check if we have a custom model path
         if let customPath = customModelPath {
-            CoreCommsService.log("Checking for Sherpa-ONNX model files at custom path: \(customPath)")
+            Core.log("Checking for Sherpa-ONNX model files at custom path: \(customPath)")
 
             // Check for tokens.txt (required for all models)
             let tokensPath = (customPath as NSString).appendingPathComponent("tokens.txt")
             guard fileManager.fileExists(atPath: tokensPath) else {
-                CoreCommsService.log("❌ Missing tokens.txt at custom path")
+                Core.log("❌ Missing tokens.txt at custom path")
                 return false
             }
 
             // Check for CTC model
             let ctcModelPath = (customPath as NSString).appendingPathComponent("model.int8.onnx")
             if fileManager.fileExists(atPath: ctcModelPath) {
-                CoreCommsService.log("✅ CTC model files found at custom path")
+                Core.log("✅ CTC model files found at custom path")
                 return true
             }
 
@@ -467,16 +467,16 @@ class SherpaOnnxTranscriber {
             }
 
             if allTransducerFilesPresent {
-                CoreCommsService.log("✅ Transducer model files found at custom path")
+                Core.log("✅ Transducer model files found at custom path")
                 return true
             }
 
-            CoreCommsService.log("❌ No complete model found at custom path")
+            Core.log("❌ No complete model found at custom path")
             return false
         }
 
         // Fall back to checking bundle (transducer only for backwards compatibility)
-        CoreCommsService.log("Checking for Sherpa-ONNX model files in bundle...")
+        Core.log("Checking for Sherpa-ONNX model files in bundle...")
 
         let requiredFiles = ["encoder.onnx", "decoder.onnx", "joiner.onnx", "tokens.txt"]
         for fileName in requiredFiles {
@@ -484,12 +484,12 @@ class SherpaOnnxTranscriber {
             guard components.count == 2,
                   Bundle.main.path(forResource: components[0], ofType: components[1]) != nil
             else {
-                CoreCommsService.log("❌ Missing model file in bundle: \(fileName)")
+                Core.log("❌ Missing model file in bundle: \(fileName)")
                 return false
             }
         }
 
-        CoreCommsService.log("✅ All Sherpa-ONNX model files found in bundle")
+        Core.log("✅ All Sherpa-ONNX model files found in bundle")
         return true
     }
 }

@@ -3,7 +3,7 @@ import {Platform} from "react-native"
 import {NativeModules} from "react-native"
 import {TarBz2Extractor} from "./TarBz2Extractor"
 
-const {AOSModule, FileProviderModule} = NativeModules
+const {BridgeModule, FileProviderModule} = NativeModules
 
 export interface ModelInfo {
   name: string
@@ -161,7 +161,7 @@ class STTModelManager {
       }
 
       // Validate model with native module
-      const nativeModule = Platform.OS === "ios" ? AOSModule : FileProviderModule
+      const nativeModule = Platform.OS === "ios" ? BridgeModule : FileProviderModule
       if (nativeModule.validateSTTModel) {
         const isValid = await nativeModule.validateSTTModel(modelPath)
         if (!isValid && id.includes("be-de-en-es-fr")) {
@@ -266,7 +266,7 @@ class STTModelManager {
       onExtractionProgress?.({percentage: 0})
 
       // Use native extraction on both platforms
-      const nativeModule = Platform.OS === "ios" ? AOSModule : FileProviderModule
+      const nativeModule = Platform.OS === "ios" ? BridgeModule : FileProviderModule
 
       if (nativeModule.extractTarBz2) {
         console.log(`Calling native extractTarBz2 for ${Platform.OS}...`)
@@ -336,7 +336,7 @@ class STTModelManager {
   }
 
   private async setNativeModelPath(path: string): Promise<void> {
-    const nativeModule = Platform.OS === "ios" ? AOSModule : FileProviderModule
+    const nativeModule = Platform.OS === "ios" ? BridgeModule : FileProviderModule
     if (nativeModule.setSTTModelPath) {
       await nativeModule.setSTTModelPath(path)
     }

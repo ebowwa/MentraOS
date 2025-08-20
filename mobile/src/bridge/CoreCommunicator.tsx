@@ -14,7 +14,7 @@ import AudioPlayService, {AudioPlayResponse} from "@/services/AudioPlayService"
 import {translate} from "@/i18n"
 import AugmentOSParser from "@/utils/AugmentOSStatusParser"
 
-const {CoreCommsService, AOSModule} = NativeModules
+const {CoreCommsService, BridgeModule} = NativeModules
 const eventEmitter = new NativeEventEmitter(CoreCommsService)
 
 export class CoreCommunicator extends EventEmitter {
@@ -167,7 +167,7 @@ export class CoreCommunicator extends EventEmitter {
     if (Platform.OS === "ios") {
       setTimeout(async () => {
         // will fail silently if we don't have bt permissions (which is the intended behavior)
-        AOSModule.sendCommand(JSON.stringify({command: "connect_wearable"}))
+        BridgeModule.sendCommand(JSON.stringify({command: "connect_wearable"}))
       }, 3000)
     }
 
@@ -413,7 +413,7 @@ export class CoreCommunicator extends EventEmitter {
         }
         CoreCommsService.sendCommandToCore(JSON.stringify(dataObj))
       } else {
-        AOSModule.sendCommand(JSON.stringify(dataObj))
+        BridgeModule.sendCommand(JSON.stringify(dataObj))
       }
     } catch (error) {
       console.error("Failed to send data to Core:", error)

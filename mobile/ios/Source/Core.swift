@@ -8,13 +8,13 @@
 import Foundation
 import React
 
-@objc(CoreCommsService)
-class CoreCommsService: RCTEventEmitter {
+@objc(Core)
+class Core: RCTEventEmitter {
     static var emitter: RCTEventEmitter!
 
     override init() {
         super.init()
-        CoreCommsService.emitter = self
+        Core.emitter = self
     }
 
     @objc
@@ -26,6 +26,10 @@ class CoreCommsService: RCTEventEmitter {
         print(message)
         let msg = "SWIFT:\(message)"
         emitter.sendEvent(withName: "CoreMessageEvent", body: msg)
+    }
+  
+    static func emit(withName: String, body: String) {
+      self.emitter.sendEvent(withName: withName, body: body)
     }
 
     static func showBanner(type: String, message: String) {

@@ -1,32 +1,31 @@
 //
-//  AOSModule.m
-//  MentraOS_Manager
+//  BridgeModule.m
 //
 //  Created by Matthew Fosse on 3/5/25.
 //
 
 #import <Foundation/Foundation.h>
 #import <React/RCTEventEmitter.h>
-#import "./AOSModule.h"
+#import "./BridgeModule.h"
 #import "MentraOS-Swift.h"
 
-@interface AOSModule ()
-@property (nonatomic, strong) AOSManager *aosManager;
+@interface BridgeModule ()
+@property (nonatomic, strong) CommandBridge *commandBridge;
 @end
 
-@implementation AOSModule
+@implementation BridgeModule
 
 // Static reference for event emission
-static AOSModule *sharedEmitter = nil;
+static BridgeModule *sharedEmitter = nil;
 
 // Export the module for React Native
-RCT_EXPORT_MODULE(AOSModule);
+RCT_EXPORT_MODULE(BridgeModule);
 
 - (instancetype)init {
     self = [super init];
     if (self) {
         // Use the singleton instance instead of creating a new one
-        _aosManager = [AOSManager getInstance];
+        _commandBridge = [CommandBridge getInstance];
         // Set the shared emitter reference
         sharedEmitter = self;
     }
@@ -34,7 +33,7 @@ RCT_EXPORT_MODULE(AOSModule);
 }
 
 // Class method to get the shared emitter instance
-+ (AOSModule *)sharedEmitter {
++ (BridgeModule *)sharedEmitter {
     return sharedEmitter;
 }
 
@@ -58,7 +57,7 @@ RCT_EXPORT_METHOD(
 )
 {
   @try {
-    [self.aosManager handleCommand:command];
+    [self.commandBridge handleCommand:command];
     resolve(@[@"Command sent!"]);
   }
   @catch(NSException *exception) {

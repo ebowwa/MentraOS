@@ -21,9 +21,10 @@
 		A1C4A5080DE65B36D4AECB21 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = B18D5B1AA3EE1022A1FC3B30 /* PrivacyInfo.xcprivacy */; };
 		B18059E884C0ABDD17F3DC3D /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAC715A2D49A985799AEE119 /* ExpoModulesProvider.swift */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
+		C5033C3C2E5668D6006A0718 /* CommandBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5033C3B2E5668D6006A0718 /* CommandBridge.swift */; };
 		C540BE3D2E31AAEE001A328F /* UltraliteSDK in Frameworks */ = {isa = PBXBuildFile; productRef = C540BE3C2E31AAEE001A328F /* UltraliteSDK */; };
-		C5DE979E2DDD0EA80032FC99 /* AOSModule.m in Sources */ = {isa = PBXBuildFile; fileRef = C5DE978A2DDD0EA80032FC99 /* AOSModule.m */; };
-		C5DE979F2DDD0EA80032FC99 /* AOSManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5DE97882DDD0EA80032FC99 /* AOSManager.swift */; };
+		C5DE979E2DDD0EA80032FC99 /* BridgeModule.m in Sources */ = {isa = PBXBuildFile; fileRef = C5DE978A2DDD0EA80032FC99 /* BridgeModule.m */; };
+		C5DE979F2DDD0EA80032FC99 /* MentraManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5DE97882DDD0EA80032FC99 /* MentraManager.swift */; };
 		C5DE98442DDD0F420032FC99 /* meson.build in Resources */ = {isa = PBXBuildFile; fileRef = C5DE98202DDD0F420032FC99 /* meson.build */; };
 		C5DE98452DDD0F420032FC99 /* silero_vad.onnx in Resources */ = {isa = PBXBuildFile; fileRef = C5DE983C2DDD0F420032FC99 /* silero_vad.onnx */; };
 		C5DE98462DDD0F420032FC99 /* makefile.mk in Resources */ = {isa = PBXBuildFile; fileRef = C5DE981C2DDD0F420032FC99 /* makefile.mk */; };
@@ -52,8 +53,8 @@
 		C5DE985D2DDD0F420032FC99 /* bwdet.c in Sources */ = {isa = PBXBuildFile; fileRef = C5DE980E2DDD0F420032FC99 /* bwdet.c */; };
 		C5DE985E2DDD0F420032FC99 /* VADState.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5DE98302DDD0F420032FC99 /* VADState.swift */; };
 		C5DE985F2DDD0F420032FC99 /* sns.c in Sources */ = {isa = PBXBuildFile; fileRef = C5DE98272DDD0F420032FC99 /* sns.c */; };
-		C5DE98972DE267CD0032FC99 /* CoreCommsService.m in Sources */ = {isa = PBXBuildFile; fileRef = C5DE98952DE267CD0032FC99 /* CoreCommsService.m */; };
-		C5DE98982DE267CD0032FC99 /* CoreCommsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5DE98962DE267CD0032FC99 /* CoreCommsService.swift */; };
+		C5DE98972DE267CD0032FC99 /* Core.m in Sources */ = {isa = PBXBuildFile; fileRef = C5DE98952DE267CD0032FC99 /* Core.m */; };
+		C5DE98982DE267CD0032FC99 /* Core.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5DE98962DE267CD0032FC99 /* Core.swift */; };
 		F314884EB5724196A394670E /* noop-file.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14C4353E097941A5AC9B6A09 /* noop-file.swift */; };
 /* End PBXBuildFile section */
 
@@ -77,9 +78,10 @@
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = AOS/SplashScreen.storyboard; sourceTree = "<group>"; };
 		B18D5B1AA3EE1022A1FC3B30 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = AOS/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
-		C5DE97882DDD0EA80032FC99 /* AOSManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AOSManager.swift; sourceTree = "<group>"; };
-		C5DE97892DDD0EA80032FC99 /* AOSModule.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AOSModule.h; sourceTree = "<group>"; };
-		C5DE978A2DDD0EA80032FC99 /* AOSModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AOSModule.m; sourceTree = "<group>"; };
+		C5033C3B2E5668D6006A0718 /* CommandBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandBridge.swift; sourceTree = "<group>"; };
+		C5DE97882DDD0EA80032FC99 /* MentraManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MentraManager.swift; sourceTree = "<group>"; };
+		C5DE97892DDD0EA80032FC99 /* BridgeModule.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BridgeModule.h; sourceTree = "<group>"; };
+		C5DE978A2DDD0EA80032FC99 /* BridgeModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = BridgeModule.m; sourceTree = "<group>"; };
 		C5DE98092DDD0F420032FC99 /* attdet.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = attdet.h; sourceTree = "<group>"; };
 		C5DE980A2DDD0F420032FC99 /* attdet.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = attdet.c; sourceTree = "<group>"; };
 		C5DE980B2DDD0F420032FC99 /* bits.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = bits.h; sourceTree = "<group>"; };
@@ -131,8 +133,8 @@
 		C5DE983E2DDD0F420032FC99 /* SileroVAD.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SileroVAD.swift; sourceTree = "<group>"; };
 		C5DE983F2DDD0F420032FC99 /* SileroVADStrategy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SileroVADStrategy.swift; sourceTree = "<group>"; };
 		C5DE98672DDD1FB00032FC99 /* Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Bridging-Header.h"; sourceTree = "<group>"; };
-		C5DE98952DE267CD0032FC99 /* CoreCommsService.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = CoreCommsService.m; sourceTree = "<group>"; };
-		C5DE98962DE267CD0032FC99 /* CoreCommsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreCommsService.swift; sourceTree = "<group>"; };
+		C5DE98952DE267CD0032FC99 /* Core.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = Core.m; sourceTree = "<group>"; };
+		C5DE98962DE267CD0032FC99 /* Core.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Core.swift; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		FAC715A2D49A985799AEE119 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-AOS/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -263,12 +265,13 @@
 				C5033C332E5665D4006A0718 /* utils */,
 				C5033C242E56657F006A0718 /* subs */,
 				C5033C232E56654E006A0718 /* sgcs */,
-				C5DE98952DE267CD0032FC99 /* CoreCommsService.m */,
-				C5DE98962DE267CD0032FC99 /* CoreCommsService.swift */,
-				C5DE97882DDD0EA80032FC99 /* AOSManager.swift */,
-				C5DE97892DDD0EA80032FC99 /* AOSModule.h */,
-				C5DE978A2DDD0EA80032FC99 /* AOSModule.m */,
+				C5DE98952DE267CD0032FC99 /* Core.m */,
+				C5DE98962DE267CD0032FC99 /* Core.swift */,
+				C5DE97882DDD0EA80032FC99 /* MentraManager.swift */,
+				C5DE97892DDD0EA80032FC99 /* BridgeModule.h */,
+				C5DE978A2DDD0EA80032FC99 /* BridgeModule.m */,
 				C5DE98672DDD1FB00032FC99 /* Bridging-Header.h */,
+				C5033C3B2E5668D6006A0718 /* CommandBridge.swift */,
 			);
 			path = Source;
 			sourceTree = "<group>";
@@ -646,8 +649,8 @@
 			files = (
 				13B07FBC1A68108700A75B9A /* AppDelegate.mm in Sources */,
 				13B07FC11A68108700A75B9A /* main.m in Sources */,
-				C5DE979E2DDD0EA80032FC99 /* AOSModule.m in Sources */,
-				C5DE979F2DDD0EA80032FC99 /* AOSManager.swift in Sources */,
+				C5DE979E2DDD0EA80032FC99 /* BridgeModule.m in Sources */,
+				C5DE979F2DDD0EA80032FC99 /* MentraManager.swift in Sources */,
 				C5DE98472DDD0F420032FC99 /* SileroVAD.swift in Sources */,
 				C5DE98482DDD0F420032FC99 /* lc3.c in Sources */,
 				C5DE98492DDD0F420032FC99 /* ContentData.swift in Sources */,
@@ -660,6 +663,7 @@
 				C5DE98502DDD0F420032FC99 /* VADType.swift in Sources */,
 				C5DE98512DDD0F420032FC99 /* spec.c in Sources */,
 				C5DE98522DDD0F420032FC99 /* tables.c in Sources */,
+				C5033C3C2E5668D6006A0718 /* CommandBridge.swift in Sources */,
 				C5DE98532DDD0F420032FC99 /* attdet.c in Sources */,
 				C5DE98542DDD0F420032FC99 /* mdct.c in Sources */,
 				C5DE98552DDD0F420032FC99 /* plc.c in Sources */,
@@ -669,8 +673,8 @@
 				C5DE98582DDD0F420032FC99 /* SampleRate.swift in Sources */,
 				C5DE98592DDD0F420032FC99 /* SileroVADStrategy.swift in Sources */,
 				C5DE985A2DDD0F420032FC99 /* Configuration.swift in Sources */,
-				C5DE98972DE267CD0032FC99 /* CoreCommsService.m in Sources */,
-				C5DE98982DE267CD0032FC99 /* CoreCommsService.swift in Sources */,
+				C5DE98972DE267CD0032FC99 /* Core.m in Sources */,
+				C5DE98982DE267CD0032FC99 /* Core.swift in Sources */,
 				C5DE985B2DDD0F420032FC99 /* PcmConverter.m in Sources */,
 				C5DE985C2DDD0F420032FC99 /* bits.c in Sources */,
 				C5DE985D2DDD0F420032FC99 /* bwdet.c in Sources */,

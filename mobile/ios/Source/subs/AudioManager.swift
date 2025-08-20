@@ -34,9 +34,9 @@ class AudioManager: NSObject {
             let audioSession = AVAudioSession.sharedInstance()
             try audioSession.setCategory(.playback, mode: .voiceChat, options: [.allowBluetooth, .allowBluetoothA2DP, .mixWithOthers])
             try audioSession.setActive(true)
-            CoreCommsService.log("AudioManager: Audio session configured successfully")
+            Core.log("AudioManager: Audio session configured successfully")
         } catch {
-            CoreCommsService.log("AudioManager: Failed to setup audio session: \(error)")
+            Core.log("AudioManager: Failed to setup audio session: \(error)")
         }
     }
 
@@ -46,7 +46,7 @@ class AudioManager: NSObject {
         volume: Float = 1.0,
         stopOtherAudio: Bool = true
     ) {
-        CoreCommsService.log("AudioManager: playAudio called with requestId: \(requestId)")
+        Core.log("AudioManager: playAudio called with requestId: \(requestId)")
 
         // Clean up any existing player with the same requestId first
         cleanupPlayer(requestId: requestId)
@@ -60,12 +60,12 @@ class AudioManager: NSObject {
 
     private func playAudioFromUrl(requestId: String, url: String, volume: Float) {
         guard let audioUrl = URL(string: url) else {
-            CoreCommsService.log("AudioManager: Invalid URL: \(url)")
+            Core.log("AudioManager: Invalid URL: \(url)")
             sendAudioPlayResponse(requestId: requestId, success: false, error: "Invalid URL")
             return
         }
 
-        CoreCommsService.log("AudioManager: Playing audio from URL: \(url)")
+        Core.log("AudioManager: Playing audio from URL: \(url)")
 
         let player = AVPlayer(url: audioUrl)
         player.volume = volume
@@ -85,7 +85,7 @@ class AudioManager: NSObject {
 
             self?.cleanupPlayer(requestId: requestId)
             self?.sendAudioPlayResponse(requestId: requestId, success: true, duration: durationMs)
-            CoreCommsService.log("AudioManager: Audio playback completed successfully for requestId: \(requestId), duration: \(durationSeconds ?? 0)s")
+            Core.log("AudioManager: Audio playback completed successfully for requestId: \(requestId), duration: \(durationSeconds ?? 0)s")
         }
         observers.append(endObserver)
 
@@ -102,7 +102,7 @@ class AudioManager: NSObject {
 
             self?.cleanupPlayer(requestId: requestId)
             self?.sendAudioPlayResponse(requestId: requestId, success: false, error: errorMessage)
-            CoreCommsService.log("AudioManager: Audio playback failed for requestId: \(requestId), error: \(errorMessage)")
+            Core.log("AudioManager: Audio playback failed for requestId: \(requestId), error: \(errorMessage)")
         }
         observers.append(failObserver)
 
@@ -121,11 +121,11 @@ class AudioManager: NSObject {
             let errorMessage = currentItem.error?.localizedDescription ?? "Failed to load audio"
             self?.cleanupPlayer(requestId: requestId)
             self?.sendAudioPlayResponse(requestId: requestId, success: false, error: errorMessage)
-            CoreCommsService.log("AudioManager: Audio loading failed for requestId: \(requestId), error: \(errorMessage)")
+            Core.log("AudioManager: Audio loading failed for requestId: \(requestId), error: \(errorMessage)")
         }
 
         player.play()
-        CoreCommsService.log("AudioManager: Started playing audio from URL for requestId: \(requestId)")
+        Core.log("AudioManager: Started playing audio from URL for requestId: \(requestId)")
     }
 
     func stopAudio(requestId: String) {
@@ -136,7 +136,7 @@ class AudioManager: NSObject {
             streamingPlayers.removeValue(forKey: requestId)
         }
 
-        CoreCommsService.log("AudioManager: Stopped audio for requestId: \(requestId)")
+        Core.log("AudioManager: Stopped audio for requestId: \(requestId)")
     }
 
     func stopAllAudio() {
@@ -152,11 +152,11 @@ class AudioManager: NSObject {
         }
         streamingPlayers.removeAll()
 
-        CoreCommsService.log("AudioManager: Stopped all audio")
+        Core.log("AudioManager: Stopped all audio")
     }
 
     private func sendAudioPlayResponse(requestId: String, success: Bool, error: String? = nil, duration: Double? = nil) {
-        CoreCommsService.log("AudioManager: Sending audio play response - requestId: \(requestId), success: \(success), error: \(error ?? "none")")
+        Core.log("AudioManager: Sending audio play response - requestId: \(requestId), success: \(success), error: \(error ?? "none")")
 
         // Send response back through ServerComms which will forward to React Native
         let serverComms = ServerComms.getInstance()
