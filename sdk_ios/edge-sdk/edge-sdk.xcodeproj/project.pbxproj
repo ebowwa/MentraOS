@@ -8,6 +8,8 @@
 
 /* Begin PBXBuildFile section */
 		C50339562E56468D006A0718 /* edge_sdk.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C503394A2E56468D006A0718 /* edge_sdk.framework */; };
+		C50339F32E56533C006A0718 /* UltraliteSDK in Frameworks */ = {isa = PBXBuildFile; productRef = C50339F22E56533C006A0718 /* UltraliteSDK */; };
+		E97E0693963FBB2F30CD6918 /* libPods-edge-sdk.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 9906BB01D0F0C92385762215 /* libPods-edge-sdk.a */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -21,6 +23,9 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		3019FAC24A5F929EA1F9ECA5 /* Pods-edge-sdk.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-edge-sdk.debug.xcconfig"; path = "Target Support Files/Pods-edge-sdk/Pods-edge-sdk.debug.xcconfig"; sourceTree = "<group>"; };
+		9906BB01D0F0C92385762215 /* libPods-edge-sdk.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-edge-sdk.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		BFF91F27A22912E16EB6340D /* Pods-edge-sdk.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-edge-sdk.release.xcconfig"; path = "Target Support Files/Pods-edge-sdk/Pods-edge-sdk.release.xcconfig"; sourceTree = "<group>"; };
 		C503394A2E56468D006A0718 /* edge_sdk.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = edge_sdk.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		C50339552E56468D006A0718 /* edge-sdkTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "edge-sdkTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -28,11 +33,15 @@
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		C503394C2E56468D006A0718 /* edge-sdk */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+			);
 			path = "edge-sdk";
 			sourceTree = "<group>";
 		};
 		C50339592E56468D006A0718 /* edge-sdkTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+			);
 			path = "edge-sdkTests";
 			sourceTree = "<group>";
 		};
@@ -43,6 +52,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C50339F32E56533C006A0718 /* UltraliteSDK in Frameworks */,
+				E97E0693963FBB2F30CD6918 /* libPods-edge-sdk.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -57,12 +68,24 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		1A4DFBEA4F6F961D7C7F67A9 /* Pods */ = {
+			isa = PBXGroup;
+			children = (
+				3019FAC24A5F929EA1F9ECA5 /* Pods-edge-sdk.debug.xcconfig */,
+				BFF91F27A22912E16EB6340D /* Pods-edge-sdk.release.xcconfig */,
+			);
+			name = Pods;
+			path = Pods;
+			sourceTree = "<group>";
+		};
 		C50339402E56468D006A0718 = {
 			isa = PBXGroup;
 			children = (
 				C503394C2E56468D006A0718 /* edge-sdk */,
 				C50339592E56468D006A0718 /* edge-sdkTests */,
+				C50339F12E56533C006A0718 /* Frameworks */,
 				C503394B2E56468D006A0718 /* Products */,
+				1A4DFBEA4F6F961D7C7F67A9 /* Pods */,
 			);
 			sourceTree = "<group>";
 		};
@@ -73,6 +96,14 @@
 				C50339552E56468D006A0718 /* edge-sdkTests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		C50339F12E56533C006A0718 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				9906BB01D0F0C92385762215 /* libPods-edge-sdk.a */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -92,10 +123,12 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = C503395E2E56468D006A0718 /* Build configuration list for PBXNativeTarget "edge-sdk" */;
 			buildPhases = (
+				A223F0C132EE93B46BAD42FB /* [CP] Check Pods Manifest.lock */,
 				C50339452E56468D006A0718 /* Headers */,
 				C50339462E56468D006A0718 /* Sources */,
 				C50339472E56468D006A0718 /* Frameworks */,
 				C50339482E56468D006A0718 /* Resources */,
+				171C63EE09A58DD1A8C8379E /* [CP] Copy Pods Resources */,
 			);
 			buildRules = (
 			);
@@ -106,6 +139,7 @@
 			);
 			name = "edge-sdk";
 			packageProductDependencies = (
+				C50339F22E56533C006A0718 /* UltraliteSDK */,
 			);
 			productName = "edge-sdk";
 			productReference = C503394A2E56468D006A0718 /* edge_sdk.framework */;
@@ -128,8 +162,6 @@
 				C50339592E56468D006A0718 /* edge-sdkTests */,
 			);
 			name = "edge-sdkTests";
-			packageProductDependencies = (
-			);
 			productName = "edge-sdkTests";
 			productReference = C50339552E56468D006A0718 /* edge-sdkTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
@@ -161,6 +193,9 @@
 			);
 			mainGroup = C50339402E56468D006A0718;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				C50339E62E564DBF006A0718 /* XCRemoteSwiftPackageReference "UltraliteSDK-releases-iOS" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = C503394B2E56468D006A0718 /* Products */;
 			projectDirPath = "";
@@ -188,6 +223,48 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		171C63EE09A58DD1A8C8379E /* [CP] Copy Pods Resources */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-edge-sdk/Pods-edge-sdk-resources-${CONFIGURATION}-input-files.xcfilelist",
+			);
+			name = "[CP] Copy Pods Resources";
+			outputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-edge-sdk/Pods-edge-sdk-resources-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-edge-sdk/Pods-edge-sdk-resources.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
+		A223F0C132EE93B46BAD42FB /* [CP] Check Pods Manifest.lock */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
+				"${PODS_ROOT}/Manifest.lock",
+			);
+			name = "[CP] Check Pods Manifest.lock";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/Pods-edge-sdk-checkManifestLockResult.txt",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
+			showEnvVarsInLog = 0;
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		C50339462E56468D006A0718 /* Sources */ = {
@@ -344,6 +421,7 @@
 		};
 		C503395F2E56468D006A0718 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 3019FAC24A5F929EA1F9ECA5 /* Pods-edge-sdk.debug.xcconfig */;
 			buildSettings = {
 				BUILD_LIBRARY_FOR_DISTRIBUTION = YES;
 				CODE_SIGN_STYLE = Automatic;
@@ -380,6 +458,7 @@
 		};
 		C50339602E56468D006A0718 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = BFF91F27A22912E16EB6340D /* Pods-edge-sdk.release.xcconfig */;
 			buildSettings = {
 				BUILD_LIBRARY_FOR_DISTRIBUTION = YES;
 				CODE_SIGN_STYLE = Automatic;
@@ -483,6 +562,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		C50339E62E564DBF006A0718 /* XCRemoteSwiftPackageReference "UltraliteSDK-releases-iOS" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/Vuzix/UltraliteSDK-releases-iOS";
+			requirement = {
+				branch = main;
+				kind = branch;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		C50339F22E56533C006A0718 /* UltraliteSDK */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = C50339E62E564DBF006A0718 /* XCRemoteSwiftPackageReference "UltraliteSDK-releases-iOS" */;
+			productName = UltraliteSDK;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = C50339412E56468D006A0718 /* Project object */;
 }

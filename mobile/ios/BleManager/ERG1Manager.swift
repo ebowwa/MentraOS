@@ -850,7 +850,7 @@ enum GlassesError: Error {
             }
 
             let firstFewBytes = String(Data(lastChunk).hexEncodedString().prefix(16))
-            // CoreCommsService.log("SEND (\(side)) \(firstFewBytes)")
+            CoreCommsService.log("SEND (\(side)) \(firstFewBytes)")
 
 //      if (lastChunk[0] == 0x4E) {
 //        sequenceNumber = Int(lastChunk[1])
@@ -1577,7 +1577,7 @@ extension ERG1Manager {
     }
 
     @objc func RN_setMicEnabled(_ enabled: Bool) {
-        CoreCommsService.log("G1: RN_setMicEnabled()")
+        CoreCommsService.log("G1: RN_setMicEnabled() \(enabled)")
         Task {
             await setMicEnabled(enabled: enabled)
         }
