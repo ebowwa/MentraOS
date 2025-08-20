@@ -2248,11 +2248,11 @@ typealias JSONObject = [String: Any]
             let jsonData = try JSONSerialization.data(withJSONObject: body, options: [])
             if let jsonString = String(data: jsonData, encoding: .utf8) {
                 if eventName == "CoreMessageEvent" {
-                    Core.emitter.sendEvent(withName: eventName, body: jsonString)
+                    Core.sendEvent(withName: eventName, body: jsonString)
                     return
                 }
                 if eventName == "GlassesWifiScanResults" {
-                    Core.emitter.sendEvent(withName: "CoreMessageEvent", body: jsonString)
+                    Core.sendEvent(withName: "CoreMessageEvent", body: jsonString)
                     return
                 }
                 Core.log("Would emit event: \(eventName) with body: \(jsonString)")

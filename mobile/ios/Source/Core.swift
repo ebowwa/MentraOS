@@ -28,7 +28,7 @@ class Core: RCTEventEmitter {
         emitter.sendEvent(withName: "CoreMessageEvent", body: msg)
     }
 
-    static func emit(withName: String, body: String) {
+    static func sendEvent(withName: String, body: String) {
         emitter.sendEvent(withName: withName, body: body)
     }
 

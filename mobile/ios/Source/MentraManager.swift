@@ -762,7 +762,7 @@ struct ViewState {
 
             let eventStr = currentViewState.eventStr
             if eventStr != "" {
-                Core.emitter.sendEvent(withName: "CoreMessageEvent", body: eventStr)
+                Core.sendEvent(withName: "CoreMessageEvent", body: eventStr)
             }
 
             if self.defaultWearable.contains("Simulated") || self.defaultWearable.isEmpty {
@@ -1776,7 +1776,7 @@ struct ViewState {
         do {
             let jsonData = try JSONSerialization.data(withJSONObject: wrapperObj, options: [])
             if let jsonString = String(data: jsonData, encoding: .utf8) {
-                Core.emitter.sendEvent(withName: "CoreMessageEvent", body: jsonString)
+                Core.sendEvent(withName: "CoreMessageEvent", body: jsonString)
             }
         } catch {
             Core.log("AOS: Error converting to JSON: \(error)")
@@ -2301,7 +2301,7 @@ struct ViewState {
     }
 
     func checkSTTModelAvailable() -> Bool {
-        do {
+        
             guard let modelPath = UserDefaults.standard.string(forKey: "STTModelPath") else {
                 return false
             }
@@ -2330,10 +2330,6 @@ struct ViewState {
             }
 
             return true
-        } catch {
-            Core.log("STT_ERROR: \(error.localizedDescription)")
-            return false
-        }
     }
 
     func validateSTTModel(path: String) -> Bool {
@@ -2394,7 +2390,7 @@ struct ViewState {
 
             // Use the Swift TarBz2Extractor with SWCompression
             var extractionError: NSError?
-            let success = TarBz2Extractor.extractTarBz2(from: sourcePath,
+            let success = TarBz2Extractor.extractTarBz2From(sourcePath,
                                                         to: destinationPath,
                                                         error: &extractionError)
 

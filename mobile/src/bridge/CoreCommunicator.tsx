@@ -13,7 +13,7 @@ import BackendServerComms from "@/backend_comms/BackendServerComms"
 import {translate} from "@/i18n"
 import AugmentOSParser from "@/utils/AugmentOSStatusParser"
 
-const {Core, BridgeModule} = NativeModules
+const {Core, BridgeModule, CoreCommsService} = NativeModules
 const eventEmitter = new NativeEventEmitter(Core)
 
 export class CoreCommunicator extends EventEmitter {
@@ -386,7 +386,7 @@ export class CoreCommunicator extends EventEmitter {
   /**
    * Sends data to Core
    */
-  private async sendData(dataObj: any) {
+  private async sendData(dataObj: any): Promise<any> {
     try {
       if (INTENSE_LOGGING) {
         console.log("Sending data to Core:", JSON.stringify(dataObj))
@@ -397,9 +397,11 @@ export class CoreCommunicator extends EventEmitter {
         if (!(await CoreCommsService.isServiceRunning())) {
           CoreCommsService.startService()
         }
-        CoreCommsService.sendCommandToCore(JSON.stringify(dataObj))
-      } else {
-        BridgeModule.sendCommand(JSON.stringify(dataObj))
+        return await CoreCommsService.sendCommandToCore(JSON.stringify(dataObj))
+      }
+
+      if (Platform.OS === "ios") {
+        return await BridgeModule.sendCommand(JSON.stringify(dataObj))
       }
     } catch (error) {
       console.error("Failed to send data to Core:", error)
@@ -900,6 +902,25 @@ export class CoreCommunicator extends EventEmitter {
       command: "set_stt_model_path",
       params: {
         path: path,
+      },
+    })
+  }
+
+  async validateSTTModel(path: string): Promise<boolean> {
+    return await this.sendData({
+      command: "validate_stt_model",
+      params: {
+        path: path,
+      },
+    })
+  }
+
+  async extractTarBz2(sourcePath: string, destinationPath: string) {
+    return await this.sendData({
+      command: "extract_tar_bz2",
+      params: {
+        source_path: sourcePath,
+        destination_path: destinationPath,
       },
     })
   }

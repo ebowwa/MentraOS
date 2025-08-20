@@ -406,7 +406,7 @@ enum GlassesError: Error {
         do {
             let jsonData = try JSONSerialization.data(withJSONObject: eventBody, options: [])
             if let jsonString = String(data: jsonData, encoding: .utf8) {
-                Core.emitter.sendEvent(withName: "CoreMessageEvent", body: jsonString)
+                Core.sendEvent(withName: "CoreMessageEvent", body: jsonString)
                 Core.log("G1: 📱 Emitted serial number info: \(serialNumber), Style: \(style), Color: \(color)")
 
                 // Trigger status update to include serial number in status JSON
@@ -1975,7 +1975,7 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
             do {
                 let jsonData = try JSONSerialization.data(withJSONObject: eventBody, options: [])
                 if let jsonString = String(data: jsonData, encoding: .utf8) {
-                    Core.emitter.sendEvent(withName: "CoreMessageEvent", body: jsonString)
+                    Core.sendEvent(withName: "CoreMessageEvent", body: jsonString)
                 }
             } catch {
                 Core.log("Error converting to JSON: \(error)")
