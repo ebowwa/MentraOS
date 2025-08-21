@@ -103,7 +103,7 @@ struct ViewState {
 
     private var transcriber: SherpaOnnxTranscriber?
 
-    private var shouldSendPcmData = true
+    private var shouldSendPcmData = false
     private var shouldSendTranscript = false
 
     override init() {
@@ -536,6 +536,9 @@ struct ViewState {
         Core.log("AOS: MIC: @@@@@@@@ changing mic with requiredData: \(requiredData) bypassVad=\(bypassVad) enforceLocalTranscription=\(enforceLocalTranscription) @@@@@@@@@@@@@@@@")
 
         bypassVadForPCM = bypassVad
+
+        shouldSendPcmData = false
+        shouldSendTranscript = false
 
         if requiredData.contains(.PCM), requiredData.contains(.TRANSCRIPTION) {
             shouldSendPcmData = true
@@ -1948,12 +1951,14 @@ struct ViewState {
             return
         }
 
-        if pendingWearable.isEmpty, defaultWearable.isEmpty {
+        if pendingWearable.isEmpty && defaultWearable.isEmpty {
+            Core.log("AOS: No pending or default wearable, returning")
             return
         }
 
-        if pendingWearable.isEmpty, !defaultWearable.isEmpty {
-            pendingWearable = defaultWearable
+        if pendingWearable.isEmpty && !defaultWearable.isEmpty {
+            Core.log("AOS: No pending wearable, using default wearable: \(defaultWearable)")
+            self.pendingWearable = defaultWearable
         }
 
         Task {

@@ -368,8 +368,7 @@ export default function AppSettings() {
           if (setting.type !== "group") {
             // Use cached value if it exists (user has interacted with this setting before)
             // Otherwise use 'selected' from backend (which includes defaultValue for new settings)
-            initialState[setting.key] =
-              cachedState[setting.key] !== undefined ? cachedState[setting.key] : setting.selected
+            initialState[setting.key] = setting.selected
           }
         })
         setSettingsState(initialState)
@@ -557,6 +556,11 @@ export default function AppSettings() {
           title=""
           leftIcon="caretLeft"
           onLeftPress={() => {
+            if (!isOldUI) {
+              goBack()
+              return
+            }
+
             if (serverAppInfo?.webviewURL) {
               replace("/applet/webview", {
                 webviewURL: serverAppInfo.webviewURL,
