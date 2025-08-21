@@ -114,6 +114,78 @@ export interface LiveInputInfo {
 }
 
 /**
+ * Cloudflare Stream/Video details response
+ */
+export interface CloudflareStreamDetails {
+  uid: string;
+  creator?: string;
+  thumbnail?: string;
+  thumbnailTimestampPct?: number;
+  readyToStream: boolean;
+  readyToStreamAt?: string;
+  status?: {
+    state: "inprogress" | "ready" | "error";
+    pctComplete?: string;
+    errorReasonCode?: string;
+    errorReasonText?: string;
+  };
+  meta?: {
+    name?: string;
+    [key: string]: any;
+  };
+  created?: string;
+  modified?: string;
+  scheduledDeletion?: string;
+  size?: number;
+  preview?: string;
+  playback?: {
+    hls: string;
+    dash: string;
+  };
+  input?: {
+    width?: number;
+    height?: number;
+  };
+  duration?: number;
+  maxDurationSeconds?: number;
+  maxTotalDurationSeconds?: number;
+  watermark?: any;
+  liveInput?: string;
+}
+
+/**
+ * Options for the built-in Cloudflare Stream Player embed URL.
+ * Only commonly used options are exposed here; any omitted options can be
+ * added as needed in the future.
+ */
+export interface EmbedPlayerOptions {
+  /** Autoplay playback (may require muted on some browsers) */
+  autoplay?: boolean;
+  /** Start muted */
+  muted?: boolean;
+  /** Show player controls */
+  controls?: boolean;
+  /** Loop playback */
+  loop?: boolean;
+  /** Preload behavior hint: 'auto' | 'metadata' | 'none' */
+  preload?: "auto" | "metadata" | "none";
+  /** Poster image URL */
+  poster?: string;
+  /** CSS color for some UI elements (e.g. #FF0000) */
+  primaryColor?: string;
+  /** CSS color for letter/pillarboxing; can be 'transparent' */
+  letterboxColor?: string;
+  /** Default captions language (BCP-47 code) */
+  defaultTextTrack?: string;
+  /** URL to a VAST/VMAP ad tag */
+  adUrl?: string; // maps to `ad-url`
+  /** Signed URL token (JWT) when using secured playback */
+  token?: string;
+  /** Hide built-in UI (if supported) */
+  hideUi?: boolean;
+}
+
+/**
  * Service for interacting with Cloudflare Stream Live API
  * Handles creation, deletion, and monitoring of live RTMP inputs
  */
@@ -128,6 +200,7 @@ export class CloudflareStreamService {
 
     const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
     const apiToken = process.env.CLOUDFLARE_API_TOKEN;
+    const customerSubdomain = process.env.CLOUDFLARE_CUSTOMER_SUBDOMAIN;
 
     if (!accountId || !apiToken) {
       this.logger.error(
@@ -702,6 +775,142 @@ export class CloudflareStreamService {
   private constructDashUrl(streamId: string): string {
     // Format: https://customer-{accountId}.cloudflarestream.com/{streamId}/manifest/video.mpd
     return `https://customer-${this.accountId}.cloudflarestream.com/${streamId}/manifest/video.mpd`;
+  }
+
+  /**
+   * Get the Cloudflare Stream Player embed URL for a given stream/video ID.
+   * For both VOD and Live Inputs, the player iframe URL follows the pattern:
+   *   https://iframe.videodelivery.net/{id}
+   * You can append player parameters as query string values.
+   *
+   * Reference: Cloudflare Stream Player & Player API docs
+   * - https://developers.cloudflare.com/stream/viewing-videos/using-the-stream-player/
+   * - https://developers.cloudflare.com/stream/viewing-videos/using-the-stream-player/using-the-player-api/
+   */
+  getEmbedUrl(streamId: string, options: EmbedPlayerOptions = {}): string {
+    const baseUrl = `https://iframe.videodelivery.net/${encodeURIComponent(streamId)}`;
+
+    const params = new URLSearchParams();
+
+    // Boolean options
+    if (typeof options.autoplay === "boolean")
+      params.set("autoplay", String(options.autoplay));
+    if (typeof options.muted === "boolean")
+      params.set("muted", String(options.muted));
+    if (typeof options.controls === "boolean")
+      params.set("controls", String(options.controls));
+    if (typeof options.loop === "boolean")
+      params.set("loop", String(options.loop));
+    if (typeof options.hideUi === "boolean")
+      params.set("hideUi", String(options.hideUi));
+
+    // String options
+    if (options.preload) params.set("preload", options.preload);
+    if (options.poster) params.set("poster", options.poster);
+    if (options.primaryColor) params.set("primaryColor", options.primaryColor);
+    if (options.letterboxColor)
+      params.set("letterboxColor", options.letterboxColor);
+    if (options.defaultTextTrack)
+      params.set("defaultTextTrack", options.defaultTextTrack);
+    if (options.adUrl) params.set("ad-url", options.adUrl);
+    if (options.token) params.set("token", options.token);
+
+    const query = params.toString();
+    return query ? `${baseUrl}?${query}` : baseUrl;
+  }
+
+  /**
+   * Get stream details (video/recording) by stream/video ID
+   * This retrieves information about a video that was recorded from a live input
+   * or any video uploaded to Cloudflare Stream
+   */
+  async getStreamDetails(
+    streamId: string,
+  ): Promise<CloudflareStreamDetails | null> {
+    if (!this.enabled) {
+      throw new Error("Cloudflare Stream is not configured");
+    }
+
+    try {
+      this.logger.debug(
+        { streamId },
+        "📹 Getting stream details from Cloudflare",
+      );
+
+      const response = await this.api.get(`/${streamId}`);
+
+      if (!response.data?.result) {
+        this.logger.warn(
+          { streamId, responseData: response.data },
+          "⚠️ No result in stream details response",
+        );
+        return null;
+      }
+
+      const streamDetails: CloudflareStreamDetails = response.data.result;
+
+      this.logger.info(
+        {
+          streamId,
+          readyToStream: streamDetails.readyToStream,
+          hasHls: !!streamDetails.playback?.hls,
+          hasDash: !!streamDetails.playback?.dash,
+          hasPreview: !!streamDetails.preview,
+          thumbnail: streamDetails.thumbnail,
+          state: streamDetails.status?.state,
+        },
+        "✅ Retrieved stream details successfully",
+      );
+
+      return streamDetails;
+    } catch (error: any) {
+      // Handle 404 as null return
+      if (error.response?.status === 404) {
+        this.logger.debug(
+          { streamId },
+          "Stream not found (404) - may not be recorded yet",
+        );
+        return null;
+      }
+
+      this.logger.error(
+        {
+          streamId,
+          error: error instanceof Error ? error.message : "Unknown error",
+          status: error.response?.status,
+          data: error.response?.data,
+        },
+        "❌ Failed to get stream details",
+      );
+      throw this.wrapError(error, "Failed to get stream details");
+    }
+  }
+
+  /**
+   * Get stream details for a live input's recordings
+   * Live inputs can have multiple recordings/videos associated with them
+   */
+  async getStreamDetailsForLiveInput(
+    liveInputId: string,
+  ): Promise<CloudflareStreamDetails | null> {
+    if (!this.enabled) {
+      throw new Error("Cloudflare Stream is not configured");
+    }
+
+    try {
+      // For live inputs, the stream/video ID is often the same as the live input ID
+      // when recording is enabled
+      return await this.getStreamDetails(liveInputId);
+    } catch (error) {
+      this.logger.warn(
+        {
+          liveInputId,
+          error: error instanceof Error ? error.message : "Unknown error",
+        },
+        "Could not get stream details for live input",
+      );
+      return null;
+    }
   }
 
   /**

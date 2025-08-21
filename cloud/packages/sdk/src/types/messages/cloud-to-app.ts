@@ -277,6 +277,10 @@ export interface ManagedStreamStatus extends BaseMessage {
   hlsUrl?: string;
   dashUrl?: string;
   webrtcUrl?: string;
+  /** Cloudflare Stream player/preview URL for embedding */
+  previewUrl?: string;
+  /** Thumbnail image URL */
+  thumbnailUrl?: string;
   message?: string;
   streamId?: string;
   /** Status of re-stream outputs if configured */
