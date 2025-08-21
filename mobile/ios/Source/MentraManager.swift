@@ -42,6 +42,7 @@ struct ViewState {
     @objc var mach1Manager: Mach1Manager?
     var serverComms: ServerComms!
     var micManager = OnboardMicrophoneManager()
+    var livekit = LiveKitManager.shared
 
     private var lastStatusObj: [String: Any] = [:]
 
