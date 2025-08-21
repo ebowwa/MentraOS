@@ -2188,10 +2188,13 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         SmartGlassesManager.savePreferredWearable(this, "");
         deleteEvenSharedPreferences(this);
 
-        // Clear MentraLive device name preference
+        // Clear MentraLive stored device identifiers (name + MAC address)
         SharedPreferences mentraPrefs = getSharedPreferences("MentraLivePrefs", Context.MODE_PRIVATE);
-        mentraPrefs.edit().remove("LastConnectedDeviceName").apply();
-        Log.d("AugmentOsService", "Cleared MentraLive stored device name");
+        mentraPrefs.edit()
+                .remove("LastConnectedDeviceName")
+                .remove("LastConnectedDeviceAddress")
+                .apply();
+        Log.d("AugmentOsService", "Cleared MentraLive stored device name and address");
 
         brightnessLevel = null;
         batteryLevel = null;
