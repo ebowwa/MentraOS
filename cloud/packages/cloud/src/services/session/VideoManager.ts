@@ -8,6 +8,7 @@ import crypto from "crypto";
 import {
   CloudToGlassesMessageType,
   CloudToAppMessageType,
+  AppToCloudMessageType,
   RtmpStreamStatus, // SDK type for status from glasses
   KeepAliveAck, // SDK type for ACK from glasses
   StartRtmpStream, // SDK type for command to glasses
@@ -122,26 +123,18 @@ export class VideoManager {
         "STOPPING_MANAGED_STREAM_FOR_UNMANAGED: Stopping existing managed stream to start new unmanaged stream",
       );
 
-      // Get all active streams stats to find managed streams for this user
-      const stats = this.userSession.managedStreamingExtension.getStats();
-
-      // Find managed stream for this user by checking each stream
-      for (const [streamId, streamInfo] of Object.entries(
-        stats.activeStreams || {},
-      )) {
-        if ((streamInfo as any).userId === this.userSession.userId) {
-          // Stop the managed stream for each active viewer
-          const activeViewers = (streamInfo as any).activeViewers || [];
-          for (const viewerPackageName of activeViewers) {
-            await this.userSession.managedStreamingExtension.stopManagedStream(
-              this.userSession,
-              {
-                packageName: viewerPackageName,
-              },
-            );
-          }
-          break; // Only one managed stream per user
-        }
+      // Get current managed stream viewers for this user and stop them
+      const activeViewers = this.userSession.managedStreamingExtension.getManagedStreamViewers(
+        this.userSession.userId,
+      );
+      for (const viewerPackageName of activeViewers) {
+        await this.userSession.managedStreamingExtension.stopManagedStream(
+          this.userSession,
+          {
+            type: AppToCloudMessageType.MANAGED_STREAM_STOP,
+            packageName: viewerPackageName,
+          },
+        );
       }
     }
 

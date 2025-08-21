@@ -539,6 +539,18 @@ export class ManagedStreamingExtension {
   }
 
   /**
+   * Return the list of viewer package names for the current managed stream of a user.
+   * If the user has no managed stream, returns an empty array.
+   */
+  getManagedStreamViewers(userId: string): string[] {
+    const stream = this.stateManager.getStreamState(userId);
+    if (!stream || stream.type !== "managed") {
+      return [];
+    }
+    return Array.from(stream.activeViewers);
+  }
+
+  /**
    * Get detailed stream information from Cloudflare
    * This includes HLS, DASH, preview/player URLs and other metadata
    */
