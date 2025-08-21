@@ -307,7 +307,7 @@ struct ViewState {
             frameManager!.onConnectionStateChanged = { [weak self] in
                 guard let self = self else { return }
                 let isConnected = self.frameManager?.connectionState == "CONNECTED"
-                CoreCommsService.log("Frame glasses connection changed to: \(isConnected ? "Connected" : "Disconnected")")
+                Core.log("Frame glasses connection changed to: \(isConnected ? "Connected" : "Disconnected")")
                 if isConnected {
                     handleDeviceReady()
                 } else {
@@ -588,7 +588,7 @@ struct ViewState {
 
         currentRequiredData = requiredData
 
-        // CoreCommsService.log("AOS: MIC: shouldSendPcmData=\(shouldSendPcmData), shouldSendTranscript=\(shouldSendTranscript)")
+        // Core.log("AOS: MIC: shouldSendPcmData=\(shouldSendPcmData), shouldSendTranscript=\(shouldSendTranscript)")
 
         // in any case, clear the vadBuffer:
         vadBuffer.removeAll()
@@ -632,7 +632,7 @@ struct ViewState {
             useGlassesMic = actuallyEnabled && useGlassesMic
             useOnboardMic = actuallyEnabled && useOnboardMic
 
-            // CoreCommsService.log(
+            // Core.log(
             //     "AOS: MIC: isEnabled: \(isEnabled) sensingEnabled: \(self.sensingEnabled) useOnboardMic: \(useOnboardMic) " +
             //         "useGlassesMic: \(useGlassesMic) glassesHasMic: \(glassesHasMic) preferredMic: \(self.preferredMic) " +
             //         "somethingConnected: \(isSomethingConnected()) onboardMicUnavailable: \(self.onboardMicUnavailable)" +
@@ -741,9 +741,9 @@ struct ViewState {
     }
 
     //  func onDashboardDisplayEvent(_ event: [String: Any]) {
-    //    CoreCommsService.log("got dashboard display event")
+    //    Core.log("got dashboard display event")
     ////    onDisplayEvent?(["event": event, "type": "dashboard"])
-    //    CoreCommsService.log(event)
+    //    Core.log(event)
     ////    Task {
     ////      await self.g1Manager.sendText(text: "\(event)")
     ////    }
@@ -941,7 +941,7 @@ struct ViewState {
         let newState = nS.layoutType + nS.text + nS.topText + nS.bottomText + nS.title + (nS.data ?? "")
 
         if currentState == newState {
-            // CoreCommsService.log("AOS: View state is the same, skipping update")
+            // Core.log("AOS: View state is the same, skipping update")
             return
         }
 
@@ -975,9 +975,9 @@ struct ViewState {
         Core.log("AOS: onRouteChange: reason: \(reason)")
         Core.log("AOS: onRouteChange: inputs: \(availableInputs)")
 
-        // CoreCommsService.log the available inputs and see if any are an onboard mic:
+        // Core.log the available inputs and see if any are an onboard mic:
         // for input in availableInputs {
-        //   CoreCommsService.log("input: \(input.portType)")
+        //   Core.log("input: \(input.portType)")
         // }
 
         // if availableInputs.isEmpty {
@@ -1036,7 +1036,7 @@ struct ViewState {
     }
 
     private func sendText(_ text: String) {
-        // CoreCommsService.log("AOS: Sending text: \(text)")
+        // Core.log("AOS: Sending text: \(text)")
         if defaultWearable.contains("Simulated") || defaultWearable.isEmpty {
             return
         }
@@ -1477,7 +1477,7 @@ struct ViewState {
                     }
                     setPreferredMic(mic)
                 case .restartTranscriber:
-                    CoreCommsService.log("AOS: Restarting SherpaOnnxTranscriber via command")
+                    Core.log("AOS: Restarting SherpaOnnxTranscriber via command")
                     transcriber?.restart()
                 case .setButtonMode:
                     guard let params = params, let mode = params["mode"] as? String else {
@@ -1597,12 +1597,12 @@ struct ViewState {
                     sendWifiCredentials(ssid, password)
                 case .setHotspotState:
                     guard let params = params, let enabled = params["enabled"] as? Bool else {
-                        CoreCommsService.log("AOS: set_hotspot_state invalid params")
+                        Core.log("AOS: set_hotspot_state invalid params")
                         break
                     }
                     setGlassesHotspotState(enabled)
                 case .queryGalleryStatus:
-                    CoreCommsService.log("AOS: Querying gallery status")
+                    Core.log("AOS: Querying gallery status")
                     queryGalleryStatus()
                 case .simulateHeadPosition:
                     guard let params = params, let position = params["position"] as? String else {
@@ -1833,7 +1833,7 @@ struct ViewState {
 
         let wrapperObj: [String: Any] = ["status": statusObj]
 
-        // CoreCommsService.log("wrapperStatusObj \(wrapperObj)")
+        // Core.log("wrapperStatusObj \(wrapperObj)")
         // must convert to string before sending:
         do {
             let jsonData = try JSONSerialization.data(withJSONObject: wrapperObj, options: [])
@@ -1847,7 +1847,7 @@ struct ViewState {
     }
 
     func triggerStatusUpdate() {
-        CoreCommsService.log("🔄 Triggering immediate status update")
+        Core.log("🔄 Triggering immediate status update")
         handleRequestStatus()
     }
 
@@ -2051,8 +2051,8 @@ struct ViewState {
         //    connectTask?.cancel()
         //    connectTask = Task {
         //      while !(connectTask?.isCancelled ?? true) {
-        //        CoreCommsService.log("checking if g1 is ready... \(self.g1Manager?.g1Ready ?? false)")
-        //        CoreCommsService.log("leftReady \(self.g1Manager?.leftReady ?? false) rightReady \(self.g1Manager?.rightReady ?? false)")
+        //        Core.log("checking if g1 is ready... \(self.g1Manager?.g1Ready ?? false)")
+        //        Core.log("leftReady \(self.g1Manager?.leftReady ?? false) rightReady \(self.g1Manager?.rightReady ?? false)")
         //        if self.g1Manager?.g1Ready ?? false {
         //          // we actualy don't need this line:
         //          //          handleDeviceReady()
@@ -2093,7 +2093,7 @@ struct ViewState {
 
     func onStatusUpdate(_ status: [String: Any]) {
         // handle the settings from the server:
-        // CoreCommsService.log("onStatusUpdate: \(status)")
+        // Core.log("onStatusUpdate: \(status)")
 
         // get the core_info and glasses_settings objects from the status:
         let coreInfo = status["core_info"] as? [String: Any]
@@ -2203,7 +2203,7 @@ struct ViewState {
     }
 
     private func saveSettings() {
-        // CoreCommsService.log("about to save settings, waiting for loaded settings first: \(settingsLoaded)")
+        // Core.log("about to save settings, waiting for loaded settings first: \(settingsLoaded)")
         if !settingsLoaded {
             // Wait for settings to load with a timeout
             let timeout = DispatchTime.now() + .seconds(5) // 5 second timeout
@@ -2237,10 +2237,10 @@ struct ViewState {
         // Force immediate save (optional, as UserDefaults typically saves when appropriate)
         defaults.synchronize()
 
-        // CoreCommsService.log("Settings saved: Default Wearable: \(defaultWearable ?? "None"), Preferred Mic: \(preferredMic), " +
+        // Core.log("Settings saved: Default Wearable: \(defaultWearable ?? "None"), Preferred Mic: \(preferredMic), " +
         //       "Contextual Dashboard: \(contextualDashboard), Head Up Angle: \(headUpAngle), Brightness: \(brightness)")
 
-        // CoreCommsService.log("Sending settings to server")
+        // Core.log("Sending settings to server")
         serverComms.sendCoreStatus(status: lastStatusObj)
     }
 
