@@ -29,6 +29,7 @@ export {
   StandardConnectionError,
   CustomMessage,
   ManagedStreamStatus,
+  StreamStatusCheckResponse,
   OutputStatus,
   MentraosSettingsUpdate,
   TranscriptionData,
@@ -49,6 +50,7 @@ export {
   isDashboardModeChanged,
   isDashboardAlwaysOnChanged,
   isManagedStreamStatus,
+  isStreamStatusCheckResponse,
   // Re-export the cloud-to-app versions of these type guards since they're the ones
   // that should be used when dealing with CloudToAppMessage types
   isPhotoResponse as isPhotoResponseFromCloud,

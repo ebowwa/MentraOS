@@ -212,7 +212,7 @@ export class CoreCommunicator extends EventEmitter {
     }
 
     if (jsonString.startsWith("SWIFT:")) {
-      console.log("SWIFT: ", jsonString.slice(6))
+      console.log("SWIFT:", jsonString.slice(6))
       return
     }
 

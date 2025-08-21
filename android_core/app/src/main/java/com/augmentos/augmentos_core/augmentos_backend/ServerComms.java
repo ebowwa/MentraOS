@@ -730,8 +730,9 @@ public class ServerComms {
                     }
                 }
 
-                Log.d(TAG, "Received microphone_state_change message. enabled=" +
-                      " requiredData=" + requiredData + " bypassVad=" + bypassVad);
+                // Log.d(TAG, "Received microphone_state_change message. enabled=" + isMicrophoneEnabled +
+                //       " requiredData=" + requiredData + " bypassVad=" + bypassVad);
+
                 if (serverCommsCallback != null)
                     serverCommsCallback.onMicrophoneStateChange(requiredData, bypassVad);
                 break;

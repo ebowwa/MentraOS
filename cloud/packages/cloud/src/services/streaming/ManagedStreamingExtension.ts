@@ -25,6 +25,7 @@ import {
   StreamStateManager,
   StreamType,
   ManagedStreamState,
+  StreamState,
 } from "./StreamStateManager";
 
 /**
@@ -152,6 +153,12 @@ export class ManagedStreamingExtension {
         packageName,
         managedStream.streamId,
         "active",
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
       );
 
       return managedStream.streamId;
@@ -259,6 +266,8 @@ export class ManagedStreamingExtension {
         undefined, // No HLS URL yet
         undefined, // No DASH URL yet
         undefined, // No WebRTC URL yet
+        undefined, // No preview URL yet
+        undefined, // No thumbnail URL yet
       );
 
       // Start polling for playback URLs
@@ -310,6 +319,12 @@ export class ManagedStreamingExtension {
       packageName,
       stream.streamId,
       "stopped",
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
     );
 
     // If no more viewers, stop the stream entirely
@@ -360,6 +375,8 @@ export class ManagedStreamingExtension {
       case "active":
       case "streaming":
         mappedStatus = "active";
+        // When stream becomes active, try to get updated URLs
+        this.updateStreamUrls(stream);
         break;
       case "stopping":
         mappedStatus = "stopping";
@@ -379,6 +396,12 @@ export class ManagedStreamingExtension {
         appId,
         stream.streamId,
         mappedStatus,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
       );
     }
 
@@ -388,6 +411,85 @@ export class ManagedStreamingExtension {
     }
 
     return true; // Handled by managed streaming
+  }
+
+  /**
+   * Update stream URLs from Cloudflare when stream becomes active
+   */
+  private async updateStreamUrls(stream: ManagedStreamState): Promise<void> {
+    try {
+      const streamDetails = await this.cloudflareService.getStreamDetails(
+        stream.cfLiveInputId,
+      );
+
+      if (streamDetails) {
+        let updated = false;
+
+        if (
+          streamDetails.playback?.hls &&
+          streamDetails.playback.hls !== stream.hlsUrl
+        ) {
+          stream.hlsUrl = streamDetails.playback.hls;
+          updated = true;
+        }
+
+        if (
+          streamDetails.playback?.dash &&
+          streamDetails.playback.dash !== stream.dashUrl
+        ) {
+          stream.dashUrl = streamDetails.playback.dash;
+          updated = true;
+        }
+
+        // Get preview URL and player URL
+        const previewUrl = streamDetails.preview;
+        const playerUrl = this.cloudflareService.getEmbedUrl(
+          stream.cfLiveInputId,
+          { autoplay: true, muted: true, controls: true },
+        );
+        const thumbnailUrl = streamDetails.thumbnail;
+
+        if (updated || previewUrl || thumbnailUrl) {
+          this.logger.info(
+            {
+              streamId: stream.streamId,
+              hlsUrl: stream.hlsUrl,
+              dashUrl: stream.dashUrl,
+              previewUrl,
+              thumbnailUrl,
+            },
+            "Updated stream details from Cloudflare",
+          );
+
+          // Send updated URLs to all viewers
+          const userSession = this.getUserSession(stream.userId);
+          if (userSession) {
+            for (const appId of stream.activeViewers) {
+              await this.sendManagedStreamStatus(
+                userSession,
+                appId,
+                stream.streamId,
+                "active",
+                "Stream details updated",
+                stream.hlsUrl,
+                stream.dashUrl,
+                stream.webrtcUrl,
+                previewUrl || playerUrl,
+                thumbnailUrl,
+              );
+            }
+          }
+        }
+      }
+    } catch (error) {
+      this.logger.debug(
+        {
+          streamId: stream.streamId,
+          error,
+        },
+        "Could not update stream URLs",
+      );
+    }
   }
 
   /**
@@ -435,6 +537,97 @@ export class ManagedStreamingExtension {
    */
   getStreamByStreamId(streamId: string) {
     return this.stateManager.getStreamByStreamId(streamId);
+  }
+
+  /**
+   * Return the list of viewer package names for the current managed stream of a user.
+   * If the user has no managed stream, returns an empty array.
+   */
+  getManagedStreamViewers(userId: string): string[] {
+    const stream = this.stateManager.getStreamState(userId);
+    if (!stream || stream.type !== "managed") {
+      return [];
+    }
+    return Array.from(stream.activeViewers);
+  }
+
+  /**
+   * Get detailed stream information from Cloudflare
+   * This includes HLS, DASH, preview/player URLs and other metadata
+   */
+  async getStreamDetails(streamId: string): Promise<{
+    hlsUrl?: string;
+    dashUrl?: string;
+    previewUrl?: string;
+    thumbnail?: string;
+    playerUrl?: string;
+    readyToStream?: boolean;
+    status?: string;
+    duration?: number;
+    created?: string;
+    modified?: string;
+  } | null> {
+    try {
+      const stream = this.stateManager.getStreamByStreamId(streamId);
+      if (!stream || stream.type !== "managed") {
+        this.logger.warn(
+          { streamId },
+          "Stream not found or not a managed stream",
+        );
+        return null;
+      }
+
+      // Get details from Cloudflare
+      const streamDetails = await this.cloudflareService.getStreamDetails(
+        stream.cfLiveInputId,
+      );
+
+      if (!streamDetails) {
+        // Return what we have locally
+        return {
+          hlsUrl: stream.hlsUrl,
+          dashUrl: stream.dashUrl,
+          playerUrl: this.cloudflareService.getEmbedUrl(stream.cfLiveInputId),
+        };
+      }
+
+      // Build the player/preview URL
+      const playerUrl = this.cloudflareService.getEmbedUrl(streamDetails.uid, {
+        autoplay: true,
+        muted: true,
+        controls: true,
+      });
+
+      return {
+        hlsUrl: streamDetails.playback?.hls || stream.hlsUrl,
+        dashUrl: streamDetails.playback?.dash || stream.dashUrl,
+        previewUrl: streamDetails.preview,
+        thumbnail: streamDetails.thumbnail,
+        playerUrl,
+        readyToStream: streamDetails.readyToStream,
+        status: streamDetails.status?.state,
+        duration: streamDetails.duration,
+        created: streamDetails.created,
+        modified: streamDetails.modified,
+      };
+    } catch (error) {
+      this.logger.error(
+        {
+          streamId,
+          error,
+        },
+        "Failed to get stream details",
+      );
+      return null;
+    }
+  }
+
+  /**
+   * Get the current stream state for a user
+   * Returns information about any active stream (managed or unmanaged)
+   */
+  getUserStreamState(userId: string): StreamState | undefined {
+    return this.stateManager.getStreamState(userId);
   }
 
   /**
@@ -699,6 +892,11 @@ export class ManagedStreamingExtension {
         stream.streamId,
         "active",
         "Outputs updated",
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
       );
     }
   }
@@ -724,22 +922,16 @@ export class ManagedStreamingExtension {
           return;
         }
 
-        // Check if URLs are already discovered
-        if (managedStream.hlsUrl && managedStream.dashUrl) {
-          clearInterval(pollInterval);
-          return;
-        }
-
         this.logger.debug(
           {
             userId,
             streamId: managedStream.streamId,
             cfLiveInputId: managedStream.cfLiveInputId,
           },
-          "🔍 Polling for stream live status",
+          "🔍 Polling for stream details and live status",
         );
 
-        // Check if stream is live
+        // First check if stream is live
         const isLive = await this.cloudflareService.waitForStreamLive(
           managedStream.cfLiveInputId,
           1, // Only one attempt per poll
@@ -747,13 +939,52 @@ export class ManagedStreamingExtension {
         );
 
         if (isLive) {
-          this.logger.info(
-            {
-              userId,
-              streamId: managedStream.streamId,
-            },
-            "🎉 Stream is live! Sending playback URLs to apps",
+          // Now get the actual stream details to retrieve the correct URLs
+          const streamDetails = await this.cloudflareService.getStreamDetails(
+            managedStream.cfLiveInputId,
           );
+
+          let hlsUrl = managedStream.hlsUrl;
+          let dashUrl = managedStream.dashUrl;
+          let previewUrl: string | undefined;
+
+          if (streamDetails) {
+            // Use the actual URLs from Cloudflare if available
+            if (streamDetails.playback?.hls) {
+              hlsUrl = streamDetails.playback.hls;
+              managedStream.hlsUrl = hlsUrl;
+            }
+            if (streamDetails.playback?.dash) {
+              dashUrl = streamDetails.playback.dash;
+              managedStream.dashUrl = dashUrl;
+            }
+            if (streamDetails.preview) {
+              previewUrl = streamDetails.preview;
+            }
+
+            this.logger.info(
+              {
+                userId,
+                streamId: managedStream.streamId,
+                hlsUrl,
+                dashUrl,
+                previewUrl,
+                thumbnail: streamDetails.thumbnail,
+                readyToStream: streamDetails.readyToStream,
+              },
+              "🎉 Stream is live with verified URLs!",
+            );
+          } else {
+            this.logger.info(
+              {
+                userId,
+                streamId: managedStream.streamId,
+                hlsUrl,
+                dashUrl,
+              },
+              "🎉 Stream is live! Using constructed URLs",
+            );
+          }
 
           // Get user session to send updates
           const userSession = this.getUserSession(userId);
@@ -761,6 +992,12 @@ export class ManagedStreamingExtension {
             clearInterval(pollInterval);
             return;
           }
+
+          // Get player URL for embedding
+          const playerUrl = this.cloudflareService.getEmbedUrl(
+            managedStream.cfLiveInputId,
+            { autoplay: true, muted: true, controls: true },
+          );
 
           // Send status update to all apps viewing this stream
           for (const appId of managedStream.activeViewers) {
@@ -770,9 +1007,11 @@ export class ManagedStreamingExtension {
               managedStream.streamId,
               "active",
               "Stream is now live",
-              managedStream.hlsUrl,
-              managedStream.dashUrl,
+              hlsUrl,
+              dashUrl,
               managedStream.webrtcUrl,
+              previewUrl || playerUrl,
+              streamDetails?.thumbnail,
             );
           }
 
@@ -826,6 +1065,8 @@ export class ManagedStreamingExtension {
     hlsUrl?: string,
     dashUrl?: string,
     webrtcUrl?: string,
+    previewUrl?: string,
+    thumbnailUrl?: string,
   ): Promise<void> {
     const stream = this.stateManager.getStreamByStreamId(streamId);
     if (!stream || stream.type !== "managed") return;
@@ -864,6 +1105,8 @@ export class ManagedStreamingExtension {
       hlsUrl: hlsUrl !== undefined ? hlsUrl : stream.hlsUrl,
       dashUrl: dashUrl !== undefined ? dashUrl : stream.dashUrl,
       webrtcUrl: webrtcUrl !== undefined ? webrtcUrl : stream.webrtcUrl,
+      previewUrl: previewUrl,
+      thumbnailUrl: thumbnailUrl,
       streamId,
       message,
       outputs,
