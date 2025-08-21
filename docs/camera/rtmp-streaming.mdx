@@ -344,6 +344,56 @@ const unsubscribe = session.camera.onManagedStreamStatus((status) => {
 // unsubscribe();
 ```
 
+### Checking for Existing Streams
+
+Before starting a new stream, you can check if there's already an active stream for the current user. This is useful to avoid conflicts and to reconnect to existing streams:
+
+```typescript
+// Check if there's an existing stream (managed or unmanaged)
+const streamInfo = await session.camera.checkExistingStream();
+
+if (streamInfo.hasActiveStream) {
+  console.log('Found existing stream:', streamInfo.streamInfo?.type);
+  
+  if (streamInfo.streamInfo?.type === 'managed') {
+    // Managed stream is active
+    console.log('HLS URL:', streamInfo.streamInfo.hlsUrl);
+    console.log('DASH URL:', streamInfo.streamInfo.dashUrl);
+    console.log('Active viewers:', streamInfo.streamInfo.activeViewers);
+    
+    // You can display the existing stream URLs
+    session.layouts.showTextWall(`📺 Stream already active!\n\nHLS: ${streamInfo.streamInfo.hlsUrl}`);
+  } else {
+    // Unmanaged stream is active
+    console.log('RTMP URL:', streamInfo.streamInfo.rtmpUrl);
+    console.log('Requested by app:', streamInfo.streamInfo.requestingAppId);
+    
+    // Inform user that another app is streaming
+    session.layouts.showTextWall(`⚠️ Another app is streaming to:\n${streamInfo.streamInfo.rtmpUrl}`);
+  }
+} else {
+  // No active stream, safe to start a new one
+  console.log('No existing stream found, starting new stream...');
+  const result = await session.camera.startManagedStream();
+}
+```
+
+The `checkExistingStream()` method returns:
+- `hasActiveStream`: Boolean indicating if any stream is active
+- `streamInfo`: Details about the active stream (if any)
+  - `type`: Either 'managed' or 'unmanaged'
+  - `streamId`: Unique identifier for the stream
+  - `status`: Current stream status
+  - `createdAt`: When the stream was started
+  - For managed streams: `hlsUrl`, `dashUrl`, `webrtcUrl`, `activeViewers`
+  - For unmanaged streams: `rtmpUrl`, `requestingAppId`
+
+This is particularly useful for:
+- **Reconnection scenarios**: Apps can check and display existing stream info after restart
+- **Multi-app coordination**: Apps can detect if another app is already streaming
+- **User experience**: Avoid confusing users by starting duplicate streams
+- **Resource management**: Prevent unnecessary stream creation
+
 ### Sharing with Viewers
 
 Wait for the stream status to be `'active'` before sharing URLs with viewers. The URLs are returned immediately but won't work until Cloudflare has processed the incoming stream.

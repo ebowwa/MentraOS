@@ -81,6 +81,7 @@ import {
   isPhotoResponse,
   isRtmpStreamStatus,
   isManagedStreamStatus,
+  isStreamStatusCheckResponse,
 } from "../../types/messages/cloud-to-app";
 
 /**
@@ -783,7 +784,8 @@ export class AppSession {
           const isNormalClosure =
             code === 1000 || code === 1001 || code === 1008;
           const isManualStop = reason && reason.includes("App stopped");
-          const isUserSessionEnded = reason && reason.includes("User session ended");
+          const isUserSessionEnded =
+            reason && reason.includes("User session ended");
 
           // Log closure details for diagnostics
           this.logger.debug(
@@ -1248,6 +1250,10 @@ export class AppSession {
 
           // Update camera module's managed stream state
           this.camera.handleManagedStreamStatus(message);
+        } else if (isStreamStatusCheckResponse(message)) {
+          // Handle stream status check response
+          // This is a direct response, not a subscription-based event
+          this.camera.handleStreamCheckResponse(message);
         } else if (isSettingsUpdate(message)) {
           // Store previous settings to check for changes
           const prevSettings = [...this.settingsData];
