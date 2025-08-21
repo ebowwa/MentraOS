@@ -65,9 +65,6 @@ enum GalleryState {
   // Final states
   SYNC_COMPLETE = "sync_complete", // All photos synced
   ERROR = "error", // Something went wrong
-
-  // Edge case states
-  ALREADY_ON_SAME_WIFI = "already_on_same_wifi", // Phone & glasses on same network
 }
 
 export function GalleryScreen() {
@@ -171,9 +168,9 @@ export function GalleryScreen() {
 
   // Initial load - get total count and first batch
   const loadInitialPhotos = useCallback(async () => {
-    // Determine the correct server IP - prioritize hotspot if enabled
-    const serverIp = isHotspotEnabled && hotspotGatewayIp ? hotspotGatewayIp : glassesWifiIp
-    const hasConnection = (isWifiConnected && glassesWifiIp) || (isHotspotEnabled && hotspotGatewayIp)
+    // Only use hotspot for connection
+    const serverIp = hotspotGatewayIp
+    const hasConnection = isHotspotEnabled && hotspotGatewayIp
 
     if (!hasConnection || !serverIp) {
       console.log("[GalleryScreen] Glasses not connected (WiFi or hotspot)")
@@ -186,7 +183,7 @@ export function GalleryScreen() {
     }
 
     // Transition to loading state if not already
-    if (galleryState !== GalleryState.CONNECTED_LOADING && galleryState !== GalleryState.ALREADY_ON_SAME_WIFI) {
+    if (galleryState !== GalleryState.CONNECTED_LOADING) {
       transitionToState(GalleryState.CONNECTED_LOADING)
     }
 
@@ -249,7 +246,7 @@ export function GalleryScreen() {
   // Load photos for specific indices (for lazy loading)
   const loadPhotosForIndices = useCallback(
     async (indices: number[]) => {
-      if (!isWifiConnected || !glassesWifiIp || indices.length === 0) return
+      if (!isHotspotEnabled || !hotspotGatewayIp || indices.length === 0) return
 
       // Filter out already loaded indices
       const unloadedIndices = indices.filter(i => !loadedServerPhotos.has(i))
@@ -271,8 +268,8 @@ export function GalleryScreen() {
       loadingRanges.current.add(rangeKey)
 
       try {
-        // Determine the correct server IP - prioritize hotspot if enabled
-        const serverIp = isHotspotEnabled && hotspotGatewayIp ? hotspotGatewayIp : glassesWifiIp
+        // Only use hotspot for connection
+        const serverIp = hotspotGatewayIp
         asgCameraApi.setServer(serverIp, 8089)
 
         // Load the range
@@ -295,7 +292,7 @@ export function GalleryScreen() {
         loadingRanges.current.delete(rangeKey)
       }
     },
-    [connectionInfo.isWifiConnected, connectionInfo.glassesWifiIp, loadedServerPhotos],
+    [connectionInfo.isHotspotEnabled, connectionInfo.hotspotGatewayIp, loadedServerPhotos],
   )
 
   // Load downloaded photos
@@ -442,9 +439,9 @@ export function GalleryScreen() {
 
   // Take picture
   const handleTakePicture = async () => {
-    // Determine the correct server IP - prioritize hotspot if enabled
-    const serverIp = isHotspotEnabled && hotspotGatewayIp ? hotspotGatewayIp : glassesWifiIp
-    const hasConnection = (isWifiConnected && glassesWifiIp) || (isHotspotEnabled && hotspotGatewayIp)
+    // Only use hotspot for connection
+    const serverIp = hotspotGatewayIp
+    const hasConnection = isHotspotEnabled && hotspotGatewayIp
 
     if (!hasConnection || !serverIp) {
       showAlert("Cannot Take Picture", "Your glasses are not connected. Please connect them via WiFi or hotspot.", [
@@ -685,38 +682,11 @@ export function GalleryScreen() {
     // Query gallery status via BLE - this starts the whole flow
     queryGlassesGalleryStatus()
 
-    // If already on same WiFi network, try loading photos
-    if (isWifiConnected && glassesWifiIp) {
-      console.log("[GalleryScreen] Already on same WiFi, will check connectivity")
-      transitionToState(GalleryState.ALREADY_ON_SAME_WIFI)
-      loadInitialPhotos()
-    }
+    // We only use hotspot for gallery sync, no direct WiFi connection
   }, []) // Only run on mount
 
   // Track if we're already loading to prevent duplicate requests
   const isLoadingRef = useRef(false)
-
-  // STEP 5: When gallery becomes reachable, start sync
-  useEffect(() => {
-    // Only reload photos when on same WiFi (not hotspot - that's handled by SSID matching)
-    // And only if we're not already loading or in an error state
-    if (
-      isWifiConnected &&
-      glassesWifiIp &&
-      galleryState !== GalleryState.INITIALIZING &&
-      galleryState !== GalleryState.QUERYING_GLASSES &&
-      galleryState !== GalleryState.CONNECTED_LOADING &&
-      galleryState !== GalleryState.SYNCING &&
-      galleryState !== GalleryState.ERROR &&
-      !isLoadingRef.current
-    ) {
-      console.log("[GalleryScreen] WiFi connection established, loading photos")
-      isLoadingRef.current = true
-      loadInitialPhotos().finally(() => {
-        isLoadingRef.current = false
-      })
-    }
-  }, [isWifiConnected, glassesWifiIp, galleryState])
 
   // Handle back button
   useFocusEffect(
@@ -839,14 +809,7 @@ The gallery will automatically reload once connected.`,
         return
       }
 
-      // We have content, check if we're already connected
-      if (isGalleryReachable) {
-        console.log("[GalleryScreen] Already connected to gallery")
-        transitionToState(GalleryState.ALREADY_ON_SAME_WIFI)
-        // Start loading photos
-        loadInitialPhotos()
-        return
-      }
+      // We have content, need hotspot to sync
 
       // Check if phone is connected to glasses hotspot
       const phoneConnectedToHotspot = networkStatus.phoneSSID && hotspotSsid && networkStatus.phoneSSID === hotspotSsid

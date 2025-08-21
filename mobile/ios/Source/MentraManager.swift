@@ -1336,12 +1336,12 @@ struct ViewState {
         liveManager?.sendWifiCredentials(ssid, password: password)
     }
 
-    private func setGlassesHotspotState(_ enabled: Bool) {
+    func setGlassesHotspotState(_ enabled: Bool) {
         Core.log("AOS: 🔥 Setting glasses hotspot state: \(enabled)")
         liveManager?.sendHotspotState(enabled)
     }
 
-    private func queryGalleryStatus() {
+    func queryGalleryStatus() {
         Core.log("AOS: 📸 Querying gallery status from glasses")
         liveManager?.queryGalleryStatus()
     }
@@ -2015,14 +2015,14 @@ struct ViewState {
             return
         }
 
-        if pendingWearable.isEmpty && defaultWearable.isEmpty {
+        if pendingWearable.isEmpty, defaultWearable.isEmpty {
             Core.log("AOS: No pending or default wearable, returning")
             return
         }
 
-        if pendingWearable.isEmpty && !defaultWearable.isEmpty {
+        if pendingWearable.isEmpty, !defaultWearable.isEmpty {
             Core.log("AOS: No pending wearable, using default wearable: \(defaultWearable)")
-            self.pendingWearable = defaultWearable
+            pendingWearable = defaultWearable
         }
 
         Task {
@@ -2367,35 +2367,34 @@ struct ViewState {
     }
 
     func checkSTTModelAvailable() -> Bool {
-        
-            guard let modelPath = UserDefaults.standard.string(forKey: "STTModelPath") else {
-                return false
-            }
+        guard let modelPath = UserDefaults.standard.string(forKey: "STTModelPath") else {
+            return false
+        }
 
-            let fileManager = FileManager.default
+        let fileManager = FileManager.default
 
-            // Check for tokens.txt (required for all models)
-            let tokensPath = (modelPath as NSString).appendingPathComponent("tokens.txt")
-            if !fileManager.fileExists(atPath: tokensPath) {
-                return false
-            }
+        // Check for tokens.txt (required for all models)
+        let tokensPath = (modelPath as NSString).appendingPathComponent("tokens.txt")
+        if !fileManager.fileExists(atPath: tokensPath) {
+            return false
+        }
 
-            // Check for CTC model
-            let ctcModelPath = (modelPath as NSString).appendingPathComponent("model.int8.onnx")
-            if fileManager.fileExists(atPath: ctcModelPath) {
-                return true
-            }
-
-            // Check for transducer model
-            let transducerFiles = ["encoder.onnx", "decoder.onnx", "joiner.onnx"]
-            for file in transducerFiles {
-                let filePath = (modelPath as NSString).appendingPathComponent(file)
-                if !fileManager.fileExists(atPath: filePath) {
-                    return false
-                }
-            }
-
+        // Check for CTC model
+        let ctcModelPath = (modelPath as NSString).appendingPathComponent("model.int8.onnx")
+        if fileManager.fileExists(atPath: ctcModelPath) {
             return true
+        }
+
+        // Check for transducer model
+        let transducerFiles = ["encoder.onnx", "decoder.onnx", "joiner.onnx"]
+        for file in transducerFiles {
+            let filePath = (modelPath as NSString).appendingPathComponent(file)
+            if !fileManager.fileExists(atPath: filePath) {
+                return false
+            }
+        }
+
+        return true
     }
 
     func validateSTTModel(_ path: String) -> Bool {
@@ -2457,8 +2456,8 @@ struct ViewState {
             // Use the Swift TarBz2Extractor with SWCompression
             var extractionError: NSError?
             let success = TarBz2Extractor.extractTarBz2From(sourcePath,
-                                                        to: destinationPath,
-                                                        error: &extractionError)
+                                                            to: destinationPath,
+                                                            error: &extractionError)
 
             if !success || extractionError != nil {
                 print("EXTRACTION_ERROR: \(extractionError?.localizedDescription ?? "Failed to extract tar.bz2")")
