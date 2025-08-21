@@ -1,4 +1,4 @@
-import React, {useEffect} from "react"
+import React, {useEffect, useState} from "react"
 import {
   View,
   Text,
@@ -12,7 +12,7 @@ import {
   ViewStyle,
   TextStyle,
 } from "react-native"
-import {useStatus} from "@/contexts/AugmentOSStatusProvider"
+import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import coreCommunicator from "@/bridge/CoreCommunicator"
 import {requestFeaturePermissions, PermissionFeatures, checkFeaturePermissions} from "@/utils/PermissionsUtils"
 import {
@@ -31,18 +31,18 @@ import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import PermissionButton from "@/components/settings/PermButton"
 
 export default function PrivacySettingsScreen() {
-  const {status} = useStatus()
-  const [isSensingEnabled, setIsSensingEnabled] = React.useState(status.core_info.sensing_enabled)
-  const [forceCoreOnboardMic, setForceCoreOnboardMic] = React.useState(status.core_info.force_core_onboard_mic)
-  const [isContextualDashboardEnabled, setIsContextualDashboardEnabled] = React.useState(
+  const {status} = useCoreStatus()
+  const [isSensingEnabled, setIsSensingEnabled] = useState(status.core_info.sensing_enabled)
+  const [forceCoreOnboardMic, setForceCoreOnboardMic] = useState(status.core_info.force_core_onboard_mic)
+  const [isContextualDashboardEnabled, setIsContextualDashboardEnabled] = useState(
     status.core_info.contextual_dashboard_enabled,
   )
-  const [notificationsEnabled, setNotificationsEnabled] = React.useState(true)
-  const [calendarEnabled, setCalendarEnabled] = React.useState(true)
-  const [calendarPermissionPending, setCalendarPermissionPending] = React.useState(false)
-  const [locationEnabled, setLocationEnabled] = React.useState(true)
-  const [locationPermissionPending, setLocationPermissionPending] = React.useState(false)
-  const [appState, setAppState] = React.useState(AppState.currentState)
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true)
+  const [calendarEnabled, setCalendarEnabled] = useState(true)
+  const [calendarPermissionPending, setCalendarPermissionPending] = useState(false)
+  const [locationEnabled, setLocationEnabled] = useState(true)
+  const [locationPermissionPending, setLocationPermissionPending] = useState(false)
+  const [appState, setAppState] = useState(AppState.currentState)
   const {theme} = useAppTheme()
   const {goBack, push} = useNavigationHistory()
   // Check permissions when screen loads

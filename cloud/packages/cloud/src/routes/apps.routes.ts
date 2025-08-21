@@ -13,6 +13,7 @@ import { logger as rootLogger } from "../services/logging/pino-logger";
 import UserSession from "../services/session/UserSession";
 import {
   authWithOptionalSession,
+  optionalAuthWithOptionalSession,
   OptionalUserSessionRequest,
 } from "../middleware/client/client-auth-middleware";
 import { HardwareCompatibilityService } from "../services/session/HardwareCompatibilityService";
@@ -1519,7 +1520,7 @@ router.get("/version", async (req, res) => {
   res.json({ version: CLOUD_VERSION });
 });
 
-router.get("/available", authWithOptionalSession, getAvailableApps);
+router.get("/available", optionalAuthWithOptionalSession, getAvailableApps);
 router.get("/:packageName", getAppByPackage);
 
 // Device-specific operations - use unified auth

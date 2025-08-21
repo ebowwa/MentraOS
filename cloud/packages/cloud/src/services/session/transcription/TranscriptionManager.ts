@@ -31,7 +31,7 @@ import {
 import { ProviderSelector } from "./ProviderSelector";
 import { AzureTranscriptionProvider } from "./providers/AzureTranscriptionProvider";
 import { SonioxTranscriptionProvider } from "./providers/SonioxTranscriptionProvider";
-import subscriptionService from "../subscription.service";
+// import subscriptionService from "../subscription.service";
 
 export class TranscriptionManager {
   public readonly logger: Logger;
@@ -808,6 +808,49 @@ export class TranscriptionManager {
     await this.cleanup();
 
     this.logger.info("TranscriptionManager disposed");
+  }
+
+  /**
+   * Memory stats used by MemoryTelemetryService
+   */
+  public getMemoryStats(): {
+    vadBufferChunks: number;
+    vadBufferBytes: number;
+    transcriptLanguages: number;
+    transcriptSegments: number;
+  } {
+    const vadBufferChunks = this.vadAudioBuffer.length;
+    let vadBufferBytes = 0;
+    for (const chunk of this.vadAudioBuffer) {
+      if (typeof Buffer !== "undefined" && Buffer.isBuffer(chunk)) {
+        vadBufferBytes += (chunk as unknown as Buffer).length;
+      } else if (chunk instanceof ArrayBuffer) {
+        vadBufferBytes += chunk.byteLength;
+      } else if (ArrayBuffer.isView(chunk)) {
+        vadBufferBytes += (chunk as ArrayBufferView).byteLength;
+      }
+    }
+
+    // Count transcript segments across languages
+    const transcriptLanguages =
+      this.transcriptHistory.languageSegments.size +
+      (this.transcriptHistory.segments.length > 0 &&
+      !this.transcriptHistory.languageSegments.has("en-US")
+        ? 1
+        : 0);
+    const transcriptSegments =
+      this.transcriptHistory.segments.length +
+      Array.from(this.transcriptHistory.languageSegments.values()).reduce(
+        (sum, arr) => sum + arr.length,
+        0,
+      );
+
+    return {
+      vadBufferChunks,
+      vadBufferBytes,
+      transcriptLanguages,
+      transcriptSegments,
+    };
   }
 
   // ===== PRIVATE METHODS =====
@@ -1736,10 +1779,8 @@ export class TranscriptionManager {
 
       // Get subscribed apps for all target subscriptions
       for (const targetSub of targetSubscriptions) {
-        const subscribedApps = subscriptionService.getSubscribedApps(
-          this.userSession,
-          targetSub,
-        );
+        const subscribedApps =
+          this.userSession.subscriptionManager.getSubscribedApps(targetSub);
         subscribedApps.forEach((app) => allSubscribedApps.add(app));
       }
 

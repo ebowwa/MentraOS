@@ -1,7 +1,7 @@
 import React from "react"
 import {View, Text, StyleSheet, Platform, Linking, ViewStyle, ScrollView} from "react-native"
 import {useRoute} from "@react-navigation/native"
-import {useStatus} from "@/contexts/AugmentOSStatusProvider"
+import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import {getPairingGuide} from "@/utils/getPairingGuide"
 import {PermissionsAndroid} from "react-native"
 import {requestFeaturePermissions, PermissionFeatures} from "@/utils/PermissionsUtils"
@@ -21,7 +21,7 @@ import {LinearGradient} from "expo-linear-gradient"
 // This simplifies our code and avoids making redundant permission requests
 
 export default function PairingPrepScreen() {
-  const {status} = useStatus()
+  const {status} = useCoreStatus()
   const route = useRoute()
   const {theme} = useAppTheme()
   const {glassesModelName} = route.params as {glassesModelName: string}

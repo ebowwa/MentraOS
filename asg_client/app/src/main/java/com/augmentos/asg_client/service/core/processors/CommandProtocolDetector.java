@@ -91,11 +91,23 @@ public class CommandProtocolDetector {
      */
     private void initializeDetectionStrategies() {
         // Order matters - more specific strategies should come first
+        // ChunkedMessageProtocolStrategy needs to be created with a ChunkReassembler
+        // This will be set via setter method from CommandProcessor
         detectionStrategies.add(new JsonCommandProtocolStrategy());
         detectionStrategies.add(new K900ProtocolStrategy());
         detectionStrategies.add(new UnknownProtocolStrategy());
 
         Log.d(TAG, "✅ Initialized " + detectionStrategies.size() + " protocol detection strategies");
+    }
+    
+    /**
+     * Add chunked message support with the provided ChunkReassembler
+     * This must be called from CommandProcessor after initialization
+     */
+    public void addChunkedMessageSupport(ChunkReassembler chunkReassembler) {
+        // Add at the beginning for priority
+        detectionStrategies.add(0, new ChunkedMessageProtocolStrategy(chunkReassembler));
+        Log.d(TAG, "✅ Added chunked message protocol support");
     }
 
     /**

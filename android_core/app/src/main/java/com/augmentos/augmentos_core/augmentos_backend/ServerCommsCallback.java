@@ -14,7 +14,7 @@ public interface ServerCommsCallback {
     void onAuthError();
     void onConnectionStatusChange(WebSocketManager.IncomingMessageHandler.WebSocketStatus status);
     void onRequestSingle(String dataType);
-    void onMicrophoneStateChange(boolean isEnabled, List<SpeechRequiredDataType> requiredData, boolean bypassVad);
+    void onMicrophoneStateChange(List<SpeechRequiredDataType> requiredData, boolean bypassVad);
 
     /**
      * Called when the server requests a photo to be taken
@@ -22,8 +22,9 @@ public interface ServerCommsCallback {
      * @param requestId Unique ID for this photo request
      * @param appId ID of the app requesting the photo
      * @param webhookUrl The webhook URL associated with the photo request
+     * @param size Requested photo size (small|medium|large)
      */
-    void onPhotoRequest(String requestId, String appId, String webhookUrl);
+    void onPhotoRequest(String requestId, String appId, String webhookUrl, String size);
 
     /**
      * Called when the server requests an RTMP stream

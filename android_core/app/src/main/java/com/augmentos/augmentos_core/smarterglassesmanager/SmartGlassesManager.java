@@ -543,10 +543,58 @@ public class SmartGlassesManager extends Service {
                 .apply();
     }
 
+    public static String getButtonPhotoSize(Context context) {
+        return PreferenceManager.getDefaultSharedPreferences(context)
+                .getString("button_photo_size", "medium");
+    }
+
+    public static void setButtonPhotoSize(Context context, String size) {
+        PreferenceManager.getDefaultSharedPreferences(context)
+                .edit()
+                .putString("button_photo_size", size)
+                .apply();
+    }
+
+    public static void setButtonVideoSettings(Context context, int width, int height, int fps) {
+        PreferenceManager.getDefaultSharedPreferences(context)
+                .edit()
+                .putInt("button_video_width", width)
+                .putInt("button_video_height", height)
+                .putInt("button_video_fps", fps)
+                .apply();
+    }
+
+    public static void setButtonCameraLed(Context context, boolean enabled) {
+        PreferenceManager.getDefaultSharedPreferences(context)
+                .edit()
+                .putBoolean("button_camera_led", enabled)
+                .apply();
+    }
+
+    public static boolean getButtonCameraLed(Context context) {
+        return PreferenceManager.getDefaultSharedPreferences(context)
+                .getBoolean("button_camera_led", true); // Default to true
+    }
+
+    public static int getButtonVideoWidth(Context context) {
+        return PreferenceManager.getDefaultSharedPreferences(context)
+                .getInt("button_video_width", 1280);
+    }
+
+    public static int getButtonVideoHeight(Context context) {
+        return PreferenceManager.getDefaultSharedPreferences(context)
+                .getInt("button_video_height", 720);
+    }
+
+    public static int getButtonVideoFps(Context context) {
+        return PreferenceManager.getDefaultSharedPreferences(context)
+                .getInt("button_video_fps", 30);
+    }
+
     public static boolean getBypassVadForDebugging(Context context) {
         SharedPreferences sharedPreferences = context.getSharedPreferences("AugmentOSPrefs", Context.MODE_PRIVATE);
         //Log.d("AugmentOSPrefs", "Getting bypass VAD for debugging: " + sharedPreferences.getBoolean(context.getResources().getString(R.string.BYPASS_VAD_FOR_DEBUGGING), false));
-        return sharedPreferences.getBoolean(context.getResources().getString(R.string.BYPASS_VAD_FOR_DEBUGGING), false);
+        return sharedPreferences.getBoolean(context.getResources().getString(R.string.BYPASS_VAD_FOR_DEBUGGING), true);
     }
 
     public static void saveBypassVadForDebugging(Context context, boolean enabled) {
@@ -755,6 +803,24 @@ public class SmartGlassesManager extends Service {
         }
     }
 
+    public void sendButtonPhotoSettings(String size) {
+        if (smartGlassesRepresentative != null && smartGlassesRepresentative.smartGlassesCommunicator != null) {
+            smartGlassesRepresentative.smartGlassesCommunicator.sendButtonPhotoSettings(size);
+        }
+    }
+
+    public void sendButtonVideoRecordingSettings(int width, int height, int fps) {
+        if (smartGlassesRepresentative != null && smartGlassesRepresentative.smartGlassesCommunicator != null) {
+            smartGlassesRepresentative.smartGlassesCommunicator.sendButtonVideoRecordingSettings(width, height, fps);
+        }
+    }
+
+    public void sendButtonCameraLedSetting(boolean enabled) {
+        if (smartGlassesRepresentative != null && smartGlassesRepresentative.smartGlassesCommunicator != null) {
+            smartGlassesRepresentative.smartGlassesCommunicator.sendButtonCameraLedSetting(enabled);
+        }
+    }
+
     public void requestWifiScan() {
         if (smartGlassesRepresentative != null && smartGlassesRepresentative.smartGlassesCommunicator != null) {
             smartGlassesRepresentative.smartGlassesCommunicator.requestWifiScan();
@@ -772,7 +838,7 @@ public class SmartGlassesManager extends Service {
             smartGlassesRepresentative.smartGlassesCommunicator.sendButtonModeSetting(mode);
         }
     }
-    
+
     /**
      * Start buffer recording on smart glasses
      * Continuously records last 30 seconds in a circular buffer
@@ -784,7 +850,7 @@ public class SmartGlassesManager extends Service {
             Log.w(TAG, "Cannot start buffer recording - glasses not connected");
         }
     }
-    
+
     /**
      * Stop buffer recording on smart glasses
      */
@@ -795,7 +861,7 @@ public class SmartGlassesManager extends Service {
             Log.w(TAG, "Cannot stop buffer recording - glasses not connected");
         }
     }
-    
+
     /**
      * Save buffer video from smart glasses
      * @param requestId Unique ID for this save request
@@ -834,8 +900,8 @@ public class SmartGlassesManager extends Service {
         }
     }
 
-    public void changeMicrophoneState(boolean isMicrophoneEnabled, List<SpeechRequiredDataType> requiredData, boolean bypassVad) {
-        Log.d(TAG, "Changing microphone state to " + isMicrophoneEnabled + " bypassVad=" + bypassVad);
+    public void changeMicrophoneState(List<SpeechRequiredDataType> requiredData, boolean bypassVad) {
+        Log.d(TAG, "Changing microphone state to bypassVad=" + bypassVad);
 
         if (smartGlassesRepresentative == null) {
             Log.d(TAG, "Cannot change microphone state: smartGlassesRepresentative is null");
@@ -848,6 +914,8 @@ public class SmartGlassesManager extends Service {
         } else {
             Log.w(TAG, "PhoneMicrophoneManager is null, skipping setRequiredData call");
         }
+
+        boolean isMicrophoneEnabled = requiredData.contains(SpeechRequiredDataType.PCM);
 
         // Simply delegate to the representative which will use PhoneMicrophoneManager
         // PhoneMicrophoneManager handles all the complexity of choosing the right mic
@@ -902,17 +970,18 @@ public class SmartGlassesManager extends Service {
      * @param requestId The unique ID for this photo request
      * @param appId The ID of the app requesting the photo
      * @param webhookUrl The webhook URL where the photo should be uploaded directly
+     * @param size Requested photo size (small|medium|large)
      * @return true if request was sent, false if glasses not connected
      */
-    public boolean requestPhoto(String requestId, String appId, String webhookUrl) {
+    public boolean requestPhoto(String requestId, String appId, String webhookUrl, String size) {
         if (smartGlassesRepresentative != null &&
             smartGlassesRepresentative.smartGlassesCommunicator != null &&
             smartGlassesRepresentative.getConnectionState() == SmartGlassesConnectionState.CONNECTED) {
 
-            Log.d(TAG, "Requesting photo from glasses, requestId: " + requestId + ", appId: " + appId + ", webhookUrl: " + webhookUrl);
+            Log.d(TAG, "Requesting photo from glasses, requestId: " + requestId + ", appId: " + appId + ", webhookUrl: " + webhookUrl + ", size=" + size);
 
             // Pass the request to the smart glasses communicator
-            smartGlassesRepresentative.smartGlassesCommunicator.requestPhoto(requestId, appId, webhookUrl);
+            smartGlassesRepresentative.smartGlassesCommunicator.requestPhoto(requestId, appId, webhookUrl, size);
             return true;
         } else {
             Log.e(TAG, "Cannot request photo - glasses not connected");
@@ -1023,7 +1092,7 @@ public class SmartGlassesManager extends Service {
     public String getConnectedSmartGlassesBluetoothName() {
         SmartGlassesDevice connectedDevice = getConnectedSmartGlasses();
         Log.d(TAG, "getConnectedSmartGlassesBluetoothName: connectedDevice = " + (connectedDevice != null ? connectedDevice.deviceModelName : "null"));
-        
+
         if (connectedDevice == null) {
             return null;
         }
@@ -1041,21 +1110,21 @@ public class SmartGlassesManager extends Service {
             Log.d(TAG, "getConnectedSmartGlassesBluetoothName: Mentra Live BT name = " + btName);
             return btName;
         }
-        
+
         // For Even Realities G1 glasses
         if (modelName.equals(new EvenRealitiesG1().deviceModelName)) {
             SharedPreferences prefs = getSharedPreferences("EvenRealitiesPrefs", Context.MODE_PRIVATE);
             String savedDeviceId = prefs.getString("SAVED_G1_ID_KEY", null);
             Log.d(TAG, "getConnectedSmartGlassesBluetoothName: Even Realities G1 device ID = " + savedDeviceId);
-            
+
             // The saved device ID is something like "G1_123", return it as is
             // Could also get left/right names separately if needed:
             // String leftName = prefs.getString("SAVED_G1_LEFT_NAME", null);
             // String rightName = prefs.getString("SAVED_G1_RIGHT_NAME", null);
-            
+
             return savedDeviceId;
         }
-        
+
         // For other glasses types that don't store BT names
         Log.d(TAG, "getConnectedSmartGlassesBluetoothName: No BT name for device type: " + modelName);
         return null;

@@ -68,6 +68,18 @@ public abstract class SmartGlassesCommunicator {
     public abstract void showHomeScreen();
 
     public abstract void setFontSize(SmartGlassesFontSize fontSize);
+    
+    public void sendButtonPhotoSettings(String size) {
+        Log.d("SmartGlassesCommunicator", "Default implementation - button photo settings: " + size);
+    }
+    
+    public void sendButtonVideoRecordingSettings(int width, int height, int fps) {
+        Log.d("SmartGlassesCommunicator", "Default implementation - button video settings: " + width + "x" + height + "@" + fps + "fps");
+    }
+
+    public void sendButtonCameraLedSetting(boolean enabled) {
+        Log.d("SmartGlassesCommunicator", "Default implementation - button camera LED: " + enabled);
+    }
 
     //fonts
     public int LARGE_FONT;
@@ -167,9 +179,9 @@ public abstract class SmartGlassesCommunicator {
      * @param appId The ID of the app requesting the photo
      * @param webhookUrl The webhook URL where the photo should be uploaded directly
      */
-    public void requestPhoto(String requestId, String appId, String webhookUrl) {
+    public void requestPhoto(String requestId, String appId, String webhookUrl, String size) {
         // Default implementation does nothing
-        Log.d("SmartGlassesCommunicator", "Photo request not implemented for this device");
+        Log.d("SmartGlassesCommunicator", "Photo request (with size) not implemented for this device");
     }
 
     /**

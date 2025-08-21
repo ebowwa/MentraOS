@@ -1,5 +1,5 @@
 // SelectSetting.tsx
-import React, {useState} from "react"
+import React, {useEffect, useState} from "react"
 import {
   View,
   StyleSheet,
@@ -41,14 +41,13 @@ const SelectSetting: React.FC<SelectSettingProps> = ({
   options,
   onValueChange,
   description,
-  layout = "horizontal",
   defaultValue,
 }) => {
   const {theme, themed} = useAppTheme()
   const [modalVisible, setModalVisible] = useState(false)
 
   // If the current value doesn't match any option, use the defaultValue
-  React.useEffect(() => {
+  useEffect(() => {
     if (options.length > 0 && !options.find(option => option.value === value)) {
       // Value doesn't match any option
       if (defaultValue !== undefined && options.find(option => option.value === defaultValue)) {
@@ -59,6 +58,12 @@ const SelectSetting: React.FC<SelectSettingProps> = ({
   }, [value, options, defaultValue, onValueChange])
 
   const selectedLabel = options.find(option => option.value === value)?.label || "Select..."
+
+  let layout = "horizontal"
+  // TODO: UI: this is arbitrary, we should have a better way to determine the layout
+  if (selectedLabel.length > 20) {
+    layout = "vertical"
+  }
 
   return (
     <View style={styles.container}>

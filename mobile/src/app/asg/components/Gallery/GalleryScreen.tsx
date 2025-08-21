@@ -2,7 +2,7 @@
  * Main gallery screen component
  */
 
-import React, {useCallback, useState, useEffect, useMemo} from "react"
+import React, {useCallback, useState, useEffect, useMemo, useRef} from "react"
 import {
   View,
   Text,
@@ -13,32 +13,32 @@ import {
   Dimensions,
   ScrollView,
   FlatList,
+  ViewToken,
 } from "react-native"
 import {useLocalSearchParams, useFocusEffect} from "expo-router"
 import {useSafeAreaInsets} from "react-native-safe-area-context"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {spacing, ThemedStyle} from "@/theme"
 import {ViewStyle, TextStyle, ImageStyle} from "react-native"
-import {useStatus} from "@/contexts/AugmentOSStatusProvider"
+import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {PhotoInfo} from "../../types"
 import {asgCameraApi} from "../../services/asgCameraApi"
 import {localStorageService} from "../../services/localStorageService"
 import {PhotoImage} from "./PhotoImage"
-import {GallerySkeleton} from "./GallerySkeleton"
 import {MediaViewer} from "./MediaViewer"
+import {createShimmerPlaceholder} from "react-native-shimmer-placeholder"
+import LinearGradient from "expo-linear-gradient"
+
+const ShimmerPlaceholder = createShimmerPlaceholder(LinearGradient)
 import showAlert from "@/utils/AlertUtils"
 import {translate} from "@/i18n"
 import {shareFile} from "@/utils/FileUtils"
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons"
 import {useNetworkConnectivity} from "@/contexts/NetworkConnectivityProvider"
 
-interface GalleryScreenProps {
-  deviceModel?: string
-}
-
-export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps) {
-  const {status} = useStatus()
+export function GalleryScreen() {
+  const {status} = useCoreStatus()
   const {goBack} = useNavigationHistory()
   const {theme, themed} = useAppTheme()
   const insets = useSafeAreaInsets()
@@ -65,11 +65,13 @@ export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps)
   const {networkStatus, isGalleryReachable, shouldShowWarning, getStatusMessage, checkConnectivity} =
     useNetworkConnectivity()
 
-  // State management
-  const [serverPhotos, setServerPhotos] = useState<PhotoInfo[]>([])
+  // State management - using Map for O(1) lookups
+  const [totalServerCount, setTotalServerCount] = useState(0)
+  const [loadedServerPhotos, setLoadedServerPhotos] = useState<Map<number, PhotoInfo>>(new Map())
   const [downloadedPhotos, setDownloadedPhotos] = useState<PhotoInfo[]>([])
   const [selectedPhoto, setSelectedPhoto] = useState<PhotoInfo | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
+  const [isLoadingServerPhotos, setIsLoadingServerPhotos] = useState(true)
+  const [isInitialLoad, setIsInitialLoad] = useState(true)
   const [isSyncing, setIsSyncing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [syncProgress, setSyncProgress] = useState<{
@@ -80,34 +82,99 @@ export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps)
   const [connectionCheckInterval, setConnectionCheckInterval] = useState<NodeJS.Timeout | null>(null)
   const [lastConnectionStatus, setLastConnectionStatus] = useState(false)
 
-  // Load photos from server
-  const loadPhotos = useCallback(async () => {
+  // Track loaded ranges to avoid duplicate requests
+  const loadedRanges = useRef<Set<string>>(new Set())
+  const loadingRanges = useRef<Set<string>>(new Set())
+  const PAGE_SIZE = 20
+
+  // Initial load - get total count and first batch
+  const loadInitialPhotos = useCallback(async () => {
     if (!isWifiConnected || !glassesWifiIp) {
-      // Don't set error - just don't load server photos
-      console.log("[GalleryScreen] Glasses not connected, skipping server photo load")
-      setServerPhotos([])
+      console.log("[GalleryScreen] Glasses not connected")
+      setTotalServerCount(0)
+      setIsLoadingServerPhotos(false)
+      setIsInitialLoad(false)
       return
     }
 
-    setIsLoading(true)
+    setIsLoadingServerPhotos(true)
     setError(null)
 
     try {
-      // Set the server URL to the glasses WiFi IP
       asgCameraApi.setServer(glassesWifiIp, 8089)
-      console.log(`[GalleryScreen] Set server URL to: ${glassesWifiIp}:8089`)
 
-      const photos = await asgCameraApi.getGalleryPhotos()
-      setServerPhotos(photos)
-      setError(null) // Clear any previous errors on success
+      // Get first page to know total count
+      const result = await asgCameraApi.getGalleryPhotos(PAGE_SIZE, 0)
+
+      setTotalServerCount(result.totalCount)
+
+      // Store loaded photos in map
+      const newMap = new Map<number, PhotoInfo>()
+      result.photos.forEach((photo, index) => {
+        newMap.set(index, photo)
+      })
+      setLoadedServerPhotos(newMap)
+
+      // Mark this range as loaded
+      loadedRanges.current.add("0-19")
     } catch (err) {
-      // Don't show error in main area - warning banner will handle it
-      console.error("[GalleryScreen] Failed to load server photos:", err)
-      setServerPhotos([])
+      console.error("[GalleryScreen] Failed to load initial photos:", err)
+      setTotalServerCount(0)
     } finally {
-      setIsLoading(false)
+      setIsLoadingServerPhotos(false)
+      setIsInitialLoad(false)
     }
   }, [isWifiConnected, glassesWifiIp])
+
+  // Load photos for specific indices (for lazy loading)
+  const loadPhotosForIndices = useCallback(
+    async (indices: number[]) => {
+      if (!isWifiConnected || !glassesWifiIp || indices.length === 0) return
+
+      // Filter out already loaded indices
+      const unloadedIndices = indices.filter(i => !loadedServerPhotos.has(i))
+      if (unloadedIndices.length === 0) return
+
+      // Find contiguous ranges to load
+      const sortedIndices = [...unloadedIndices].sort((a, b) => a - b)
+      const minIndex = sortedIndices[0]
+      const maxIndex = sortedIndices[sortedIndices.length - 1]
+
+      // Create range key
+      const rangeKey = `${minIndex}-${maxIndex}`
+
+      // Skip if already loading or loaded this range
+      if (loadingRanges.current.has(rangeKey) || loadedRanges.current.has(rangeKey)) {
+        return
+      }
+
+      loadingRanges.current.add(rangeKey)
+
+      try {
+        asgCameraApi.setServer(glassesWifiIp, 8089)
+
+        // Load the range
+        const limit = maxIndex - minIndex + 1
+        const result = await asgCameraApi.getGalleryPhotos(limit, minIndex)
+
+        // Update loaded photos map
+        setLoadedServerPhotos(prev => {
+          const newMap = new Map(prev)
+          result.photos.forEach((photo, i) => {
+            newMap.set(minIndex + i, photo)
+          })
+          return newMap
+        })
+
+        loadedRanges.current.add(rangeKey)
+      } catch (err) {
+        console.error(`[GalleryScreen] Failed to load range ${rangeKey}:`, err)
+      } finally {
+        loadingRanges.current.delete(rangeKey)
+      }
+    },
+    [isWifiConnected, glassesWifiIp, loadedServerPhotos],
+  )
 
   // Load downloaded photos
   const loadDownloadedPhotos = useCallback(async () => {
@@ -146,7 +213,7 @@ export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps)
       const syncState = await localStorageService.getSyncState()
       console.log(`[GalleryScreen] Sync state:`, syncState)
 
-      // Get changed files from server
+      // Get changed files from server - this endpoint returns ALL changed files, not paginated
       const syncResponse = await asgCameraApi.syncWithServer(
         syncState.client_id,
         syncState.last_sync_time,
@@ -169,13 +236,24 @@ export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps)
         message: "Downloading files...",
       })
 
-      // Download files in batches
-      const downloadResult = await asgCameraApi.batchSyncFiles(syncData.changed_files, true)
+      // Download files sequentially with progress tracking
+      const downloadResult = await asgCameraApi.batchSyncFiles(
+        syncData.changed_files,
+        true,
+        (current, total, fileName) => {
+          setSyncProgress({
+            current,
+            total,
+            message: `Downloading ${fileName}...`,
+          })
+        },
+      )
 
       console.log(`[GalleryScreen] Download result:`, downloadResult)
 
       // Get glasses model from status
-      const glassesModel = status.glasses_info?.deviceModelName || status.glasses_info?.glasses_model || undefined
+      console.log(`[GalleryScreen] Status glasses_info:`, status.glasses_info)
+      const glassesModel = status.glasses_info?.model_name || undefined
       console.log(`[GalleryScreen] Using glasses model: ${glassesModel}`)
 
       // Save downloaded files metadata to local storage (files are already saved to filesystem)
@@ -204,7 +282,7 @@ export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps)
       })
 
       // Reload photos
-      await Promise.all([loadPhotos(), loadDownloadedPhotos()])
+      await Promise.all([loadInitialPhotos(), loadDownloadedPhotos()])
 
       // showAlert(
       //   "Sync Complete",
@@ -238,7 +316,7 @@ export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps)
 
       await asgCameraApi.takePicture()
       showAlert("Success", "Picture taken successfully!", [{text: translate("common:ok")}])
-      loadPhotos() // Reload photos
+      loadInitialPhotos() // Reload photos
     } catch (err) {
       let errorMessage = "Cannot connect to your glasses. Please check your network connection."
       if (err instanceof Error) {
@@ -253,15 +331,17 @@ export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps)
   }
 
   // Handle photo selection
-  const handlePhotoPress = (photo: PhotoInfo & {isOnServer?: boolean}) => {
+  const handlePhotoPress = (item: GalleryItem) => {
+    if (!item.photo) return // Skip placeholders
+
     // Check if it's a video that's still on the glasses (not synced)
-    if (photo.is_video && photo.isOnServer) {
+    if (item.photo.is_video && item.isOnServer) {
       showAlert("Video Not Downloaded", "Please sync this video to your device to watch it", [
         {text: translate("common:ok")},
       ])
       return
     }
-    setSelectedPhoto(photo)
+    setSelectedPhoto(item.photo)
   }
 
   // Handle photo sharing
@@ -295,13 +375,23 @@ export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps)
       } else {
         // For server photos/videos, we need to download first
         const mediaType = photo.is_video ? "video" : "photo"
-        showAlert("Info", `Please sync this ${mediaType} first to share it`, [{text: translate("common:ok")}])
+        // Close the media viewer first so the alert appears on top
+        setSelectedPhoto(null)
+        // Small delay to ensure modal closes before showing alert
+        setTimeout(() => {
+          showAlert("Info", `Please sync this ${mediaType} first to share it`, [{text: translate("common:ok")}])
+        }, 100)
         return
       }
 
       if (!filePath) {
         console.error("No valid file path found")
-        showAlert("Error", "Unable to share this photo", [{text: translate("common:ok")}])
+        // Close the media viewer first so the alert appears on top
+        setSelectedPhoto(null)
+        // Small delay to ensure modal closes before showing alert
+        setTimeout(() => {
+          showAlert("Error", "Unable to share this photo", [{text: translate("common:ok")}])
+        }, 100)
         return
       }
 
@@ -324,14 +414,24 @@ export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps)
     } catch (error) {
       // Check if it's a file provider error
       if (error instanceof Error && error.message?.includes("FileProvider")) {
-        showAlert(
-          "Sharing Not Available",
-          "File sharing will work after the next app build. For now, you can find your photos in the AugmentOS folder.",
-          [{text: translate("common:ok")}],
-        )
+        // Close the media viewer first so the alert appears on top
+        setSelectedPhoto(null)
+        // Small delay to ensure modal closes before showing alert
+        setTimeout(() => {
+          showAlert(
+            "Sharing Not Available",
+            "File sharing will work after the next app build. For now, you can find your photos in the AugmentOS folder.",
+            [{text: translate("common:ok")}],
+          )
+        }, 100)
       } else {
         console.error("Error sharing photo:", error)
-        showAlert("Error", "Failed to share photo", [{text: translate("common:ok")}])
+        // Close the media viewer first so the alert appears on top
+        setSelectedPhoto(null)
+        // Small delay to ensure modal closes before showing alert
+        setTimeout(() => {
+          showAlert("Error", "Failed to share photo", [{text: translate("common:ok")}])
+        }, 100)
       }
     }
   }
@@ -352,7 +452,7 @@ export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps)
           try {
             await asgCameraApi.deleteFilesFromServer([photo.name])
             showAlert("Success", "Photo deleted successfully!", [{text: translate("common:ok")}])
-            loadPhotos() // Reload photos
+            loadInitialPhotos() // Reload photos
           } catch (err) {
             showAlert("Error", err instanceof Error ? err.message : "Failed to delete photo", [
               {text: translate("common:ok")},
@@ -383,11 +483,15 @@ export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps)
     ])
   }
 
-  // Load data on mount and when dependencies change
+  // Load data on mount and when connection changes
   useEffect(() => {
-    loadPhotos()
+    // Check connectivity immediately on mount
+    checkConnectivity().then(() => {
+      console.log("[GalleryScreen] Initial connectivity check complete")
+    })
+    loadInitialPhotos()
     loadDownloadedPhotos()
-  }, [loadPhotos, loadDownloadedPhotos])
+  }, [isWifiConnected, glassesWifiIp]) // Only reload when connection status changes
 
   // Handle back button
   useFocusEffect(
@@ -407,106 +511,152 @@ export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps)
 
   // Add to navigation history
   useEffect(() => {
-    // Navigation history is handled automatically by the context
-  }, [])
+    // Cleanup any interval on unmount
+    return () => {
+      if (connectionCheckInterval) {
+        console.log("[GalleryScreen] Component unmounting, clearing interval")
+        clearInterval(connectionCheckInterval)
+      }
+    }
+  }, [connectionCheckInterval])
 
   // Auto-refresh connection check every 5 seconds if not connected
   useEffect(() => {
-    // Set initial connection status
-    setLastConnectionStatus(isGalleryReachable)
+    let interval: NodeJS.Timeout | null = null
 
     // Only set up auto-refresh if gallery is not reachable
     if (!isGalleryReachable) {
       console.log("[GalleryScreen] Starting auto-refresh timer for connection check")
 
-      const interval = setInterval(async () => {
+      interval = setInterval(async () => {
         console.log("[GalleryScreen] Auto-checking connectivity...")
         const status = await checkConnectivity()
 
         // If connection is restored, reload photos
         if (status.galleryReachable && !lastConnectionStatus) {
           console.log("[GalleryScreen] Connection restored! Reloading photos...")
-          loadPhotos()
+          loadInitialPhotos()
           loadDownloadedPhotos()
           setLastConnectionStatus(true)
         } else if (!status.galleryReachable) {
           setLastConnectionStatus(false)
         }
       }, 5000) // Check every 5 seconds
-
-      setConnectionCheckInterval(interval)
     } else {
-      // Clear interval if connection is good
-      if (connectionCheckInterval) {
-        clearInterval(connectionCheckInterval)
-        setConnectionCheckInterval(null)
+      // Update connection status when gallery becomes reachable
+      if (!lastConnectionStatus) {
+        setLastConnectionStatus(true)
       }
     }
 
-    // Cleanup interval on unmount or when connection changes
+    // Cleanup interval on unmount
     return () => {
-      if (connectionCheckInterval) {
-        clearInterval(connectionCheckInterval)
+      if (interval) {
+        console.log("[GalleryScreen] Cleaning up connection check interval")
+        clearInterval(interval)
       }
     }
-  }, [isGalleryReachable, checkConnectivity, loadPhotos, loadDownloadedPhotos])
+  }, [isGalleryReachable, lastConnectionStatus]) // Only depend on connection states, not functions
 
-  // Combine photos: server photos first, then downloaded photos, both sorted newest first
+  // Gallery item type for mixed content
+  interface GalleryItem {
+    id: string
+    type: "server" | "local" | "placeholder"
+    index: number
+    photo?: PhotoInfo
+    isOnServer?: boolean
+  }
+
+  // Combine photos with placeholders - fixed size list!
   const allPhotos = useMemo(() => {
-    const serverPhotoMap = new Map(serverPhotos.map(p => [p.name, {...p, isOnServer: true}]))
-    const downloadedPhotoMap = new Map(downloadedPhotos.map(p => [p.name, {...p, isOnServer: false}]))
+    const items: GalleryItem[] = []
 
-    // Collect server photos and downloaded-only photos
-    const serverPhotosList: (PhotoInfo & {isOnServer: boolean})[] = []
-    const downloadedOnlyList: (PhotoInfo & {isOnServer: boolean})[] = []
-
-    // Add server photos
-    serverPhotoMap.forEach(photo => {
-      serverPhotosList.push(photo)
-    })
-
-    // Add downloaded photos that aren't on server
-    downloadedPhotoMap.forEach((photo, name) => {
-      if (!serverPhotoMap.has(name)) {
-        downloadedOnlyList.push(photo)
-      }
-    })
-
-    // Sort both lists by modified date (newest first)
-    // Convert modified string to timestamp for proper sorting
-    serverPhotosList.sort((a, b) => {
-      const aTime = typeof a.modified === "string" ? new Date(a.modified).getTime() : a.modified
-      const bTime = typeof b.modified === "string" ? new Date(b.modified).getTime() : b.modified
-      return bTime - aTime
-    })
-    downloadedOnlyList.sort((a, b) => {
-      const aTime = typeof a.modified === "string" ? new Date(a.modified).getTime() : a.modified
-      const bTime = typeof b.modified === "string" ? new Date(b.modified).getTime() : b.modified
-      return bTime - aTime
-    })
-
-    // Combine: server photos first (newest to oldest), then downloaded photos (newest to oldest)
-    return [...serverPhotosList, ...downloadedOnlyList]
-  }, [serverPhotos, downloadedPhotos])
-
-  // Determine content type for sync button text
-  const syncContentType = useMemo(() => {
-    const hasVideos = serverPhotos.some(p => p.is_video)
-    const hasPhotos = serverPhotos.some(p => !p.is_video)
-
-    if (hasVideos && hasPhotos) {
-      return "Photos & Videos"
-    } else if (hasVideos) {
-      return serverPhotos.length === 1 ? "Video" : "Videos"
-    } else {
-      return serverPhotos.length === 1 ? "Photo" : "Photos"
+    // Create items for ALL server photos (loaded or placeholder)
+    // Server photos maintain their order from the API (should be newest first)
+    for (let i = 0; i < totalServerCount; i++) {
+      const photo = loadedServerPhotos.get(i)
+      items.push({
+        id: `server-${i}`,
+        type: photo ? "server" : "placeholder",
+        index: i,
+        photo: photo,
+        isOnServer: true,
+      })
     }
-  }, [serverPhotos])
+
+    // Get names of all loaded server photos for deduplication
+    const serverPhotoNames = new Set<string>()
+    loadedServerPhotos.forEach(photo => {
+      serverPhotoNames.add(photo.name)
+    })
+
+    // Add downloaded-only photos at the end, sorted by newest first
+    const downloadedOnly = downloadedPhotos.filter(p => !serverPhotoNames.has(p.name))
+
+    // Sort downloaded photos by modified date (newest first)
+    downloadedOnly.sort((a, b) => {
+      const aTime = typeof a.modified === "string" ? new Date(a.modified).getTime() : a.modified
+      const bTime = typeof b.modified === "string" ? new Date(b.modified).getTime() : b.modified
+      return bTime - aTime
+    })
+
+    downloadedOnly.forEach((photo, i) => {
+      items.push({
+        id: `local-${photo.name}`,
+        type: "local",
+        index: totalServerCount + i,
+        photo: photo,
+        isOnServer: false,
+      })
+    })
+
+    return items
+  }, [totalServerCount, loadedServerPhotos, downloadedPhotos])
+
+  // Viewability tracking for lazy loading
+  const onViewableItemsChanged = useRef(({viewableItems}: {viewableItems: ViewToken[]}) => {
+    // Get indices of placeholder items that are visible
+    const placeholderIndices = viewableItems
+      .filter(item => item.item && item.item.type === "placeholder")
+      .map(item => item.item.index)
+
+    if (placeholderIndices.length > 0) {
+      // Add buffer of 5 items before and after
+      const minIndex = Math.max(0, Math.min(...placeholderIndices) - 5)
+      const maxIndex = Math.min(totalServerCount - 1, Math.max(...placeholderIndices) + 5)
+
+      const indicesToLoad = []
+      for (let i = minIndex; i <= maxIndex; i++) {
+        indicesToLoad.push(i)
+      }
+
+      loadPhotosForIndices(indicesToLoad)
+    }
+  }).current
+
+  const viewabilityConfig = useRef({
+    itemVisiblePercentThreshold: 10,
+    minimumViewTime: 100,
+  }).current
+
+  // Count server photos for sync button - use total count, not just loaded photos
+  const serverPhotosToSync = totalServerCount
 
   return (
     <View style={themed($screenContainer)}>
-      {/* Network Warning Banner */}
-      {!isGalleryReachable && downloadedPhotos.length > 0 && (
+      {/* Network Status Banner - Loading or Warning */}
+      {isLoadingServerPhotos && isInitialLoad ? (
+        // Show loading indicator during initial connection check
+        <View style={themed($warningBannerContainer)}>
+          <View style={themed($loadingBanner)}>
+            <ActivityIndicator size="small" color={theme.colors.text} style={{marginRight: spacing.sm}} />
+            <View style={themed($warningTextContainer)}>
+              <Text style={themed($loadingTitle)}>Checking glasses connection...</Text>
+            </View>
+          </View>
+        </View>
+      ) : !isGalleryReachable ? (
+        // Show warning banner after connection check fails
         <View style={themed($warningBannerContainer)}>
           <View style={themed($warningBanner)}>
             <MaterialCommunityIcons name="wifi-off" size={20} color={theme.colors.text} />
@@ -528,7 +678,7 @@ export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps)
             </TouchableOpacity>
           </View>
         </View>
-      )}
+      ) : null}
 
       {/* Photo Grid */}
       <View style={themed($galleryContainer)}>
@@ -536,11 +686,7 @@ export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps)
           <View style={themed($errorContainer)}>
             <Text style={themed($errorText)}>{error}</Text>
           </View>
-        ) : isLoading ? (
-          <View style={themed($photoGridContainer)}>
-            <GallerySkeleton itemCount={numColumns * 4} numColumns={numColumns} itemWidth={itemWidth} />
-          </View>
-        ) : allPhotos.length === 0 ? (
+        ) : allPhotos.length === 0 && !isLoadingServerPhotos ? (
           <View style={themed($emptyContainer)}>
             <Text style={themed($emptyText)}>No photos</Text>
           </View>
@@ -549,41 +695,71 @@ export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps)
             data={allPhotos}
             numColumns={numColumns}
             key={numColumns} // Force re-render when columns change
-            renderItem={({item: photo}) => (
-              <TouchableOpacity
-                style={[themed($photoItem), {width: itemWidth}]}
-                onPress={() => handlePhotoPress(photo)}
-                onLongPress={() =>
-                  "isOnServer" in photo && photo.isOnServer
-                    ? handleDeletePhoto(photo)
-                    : handleDeleteDownloadedPhoto(photo)
-                }>
-                <PhotoImage photo={photo} style={[themed($photoImage), {width: itemWidth, height: itemWidth * 0.8}]} />
-                {"isOnServer" in photo && photo.isOnServer && (
-                  <View style={themed($serverBadge)}>
-                    <MaterialCommunityIcons name="glasses" size={14} color="white" />
+            renderItem={({item}) => {
+              if (item.photo) {
+                // Render actual photo
+                return (
+                  <TouchableOpacity
+                    style={[themed($photoItem), {width: itemWidth}]}
+                    onPress={() => handlePhotoPress(item)}
+                    onLongPress={() =>
+                      item.isOnServer ? handleDeletePhoto(item.photo) : handleDeleteDownloadedPhoto(item.photo)
+                    }>
+                    <PhotoImage
+                      photo={item.photo}
+                      style={[themed($photoImage), {width: itemWidth, height: itemWidth * 0.8}]}
+                    />
+                    {item.isOnServer && (
+                      <View style={themed($serverBadge)}>
+                        <MaterialCommunityIcons name="glasses" size={14} color="white" />
+                      </View>
+                    )}
+                    {item.photo.is_video && (
+                      <View style={themed($videoIndicator)}>
+                        <MaterialCommunityIcons name="video" size={14} color="white" />
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                )
+              } else {
+                // Render skeleton placeholder
+                return (
+                  <View style={[themed($photoItem), {width: itemWidth}]}>
+                    <ShimmerPlaceholder
+                      shimmerColors={[theme.colors.border, theme.colors.background, theme.colors.border]}
+                      shimmerStyle={{
+                        width: itemWidth,
+                        height: itemWidth * 0.8,
+                        borderRadius: 8,
+                      }}
+                      duration={1500}
+                    />
                   </View>
-                )}
-                {photo.is_video && (
-                  <View style={themed($videoIndicator)}>
-                    <MaterialCommunityIcons name="video" size={14} color="white" />
-                  </View>
-                )}
-              </TouchableOpacity>
-            )}
-            keyExtractor={(item, index) => `${item.name}-${index}`}
+                )
+              }
+            }}
+            keyExtractor={item => item.id}
             contentContainerStyle={[
               themed($photoGridContent),
-              {paddingBottom: serverPhotos.length > 0 ? 100 : spacing.lg},
+              {paddingBottom: serverPhotosToSync > 0 ? 100 : spacing.lg},
             ]} // Extra padding when sync button is shown
             columnWrapperStyle={numColumns > 1 ? themed($columnWrapper) : undefined}
             ItemSeparatorComponent={() => <View style={{height: spacing.lg}} />}
+            // Performance optimizations
+            initialNumToRender={10}
+            maxToRenderPerBatch={10}
+            windowSize={10}
+            removeClippedSubviews={true}
+            updateCellsBatchingPeriod={50}
+            // Viewability for lazy loading
+            onViewableItemsChanged={onViewableItemsChanged}
+            viewabilityConfig={viewabilityConfig}
           />
         )}
       </View>
 
       {/* Sync Button - Fixed at bottom, only show if there are server photos */}
-      {serverPhotos.length > 0 && (
+      {serverPhotosToSync > 0 && (
         <TouchableOpacity
           style={[themed($syncButtonFixed), isSyncing && themed($syncButtonFixedDisabled)]}
           onPress={handleSync}
@@ -593,8 +769,11 @@ export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps)
             {isSyncing && syncProgress ? (
               <>
                 <Text style={themed($syncButtonText)}>
-                  Syncing {syncProgress.total - syncProgress.current} {syncContentType}...
+                  Syncing {syncProgress.current}/{syncProgress.total} items...
                 </Text>
+                {/* <Text style={themed($syncButtonSubtext)} numberOfLines={1}>
+                  {syncProgress.message}
+                </Text> */}
                 <View style={themed($syncButtonProgressBar)}>
                   <View
                     style={[
@@ -607,14 +786,10 @@ export function GalleryScreen({deviceModel = "ASG Glasses"}: GalleryScreenProps)
             ) : isSyncing ? (
               <View style={themed($syncButtonRow)}>
                 <ActivityIndicator size="small" color={theme.colors.textAlt} style={{marginRight: spacing.xs}} />
-                <Text style={themed($syncButtonText)}>
-                  Syncing {serverPhotos.length} {syncContentType}...
-                </Text>
+                <Text style={themed($syncButtonText)}>Syncing {serverPhotosToSync} items...</Text>
               </View>
             ) : (
-              <Text style={themed($syncButtonText)}>
-                Sync {serverPhotos.length} {syncContentType}
-              </Text>
+              <Text style={themed($syncButtonText)}>Sync {serverPhotosToSync} items from glasses</Text>
             )}
           </View>
         </TouchableOpacity>
@@ -877,6 +1052,19 @@ const $warningBanner: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   borderRadius: spacing.md,
   borderWidth: 2,
   borderColor: colors.border,
+  minHeight: 68,
+})
+
+const $loadingBanner: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
+  backgroundColor: colors.background,
+  paddingVertical: spacing.sm,
+  paddingHorizontal: spacing.md,
+  flexDirection: "row",
+  alignItems: "center",
+  borderRadius: spacing.md,
+  borderWidth: 2,
+  borderColor: colors.border,
+  minHeight: 68, // Match the warning banner height
 })
 
 const $warningTextContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
@@ -892,6 +1080,18 @@ const $warningTitle: ThemedStyle<TextStyle> = ({colors}) => ({
 })
 
 const $warningMessage: ThemedStyle<TextStyle> = ({colors}) => ({
+  fontSize: 13,
+  color: colors.textDim,
+})
+
+const $loadingTitle: ThemedStyle<TextStyle> = ({colors}) => ({
+  fontSize: 14,
+  fontWeight: "600",
+  color: colors.text,
+  marginBottom: 2,
+})
+
+const $loadingMessage: ThemedStyle<TextStyle> = ({colors}) => ({
   fontSize: 13,
   color: colors.textDim,
 })
@@ -984,4 +1184,18 @@ const $serverBadge: ThemedStyle<ViewStyle> = ({spacing}) => ({
   shadowOpacity: 0.3,
   shadowRadius: 2,
   elevation: 3,
+})
+
+const $loadingMoreContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  flexDirection: "row",
+  alignItems: "center",
+  justifyContent: "center",
+  paddingVertical: spacing.md,
+  paddingBottom: spacing.xl,
+})
+
+const $loadingMoreText: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
+  fontSize: 14,
+  color: colors.textDim,
+  marginLeft: spacing.sm,
 })

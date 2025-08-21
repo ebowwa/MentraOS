@@ -1,6 +1,6 @@
 import React, {useMemo, useState, useRef, useEffect} from "react"
 import {View, ViewStyle, Animated, Easing} from "react-native"
-import {useAppStatus} from "@/contexts/AppStatusProvider"
+import {useAppStatus} from "@/contexts/AppletStatusProvider"
 import BackendServerComms from "@/backend_comms/BackendServerComms"
 import EmptyAppsView from "../home/EmptyAppsView"
 import {colors, ThemedStyle} from "@/theme"

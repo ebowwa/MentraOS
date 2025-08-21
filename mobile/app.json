@@ -17,7 +17,7 @@
     "android": {
       "icon": "./assets/app-icons/ic_launcher.png",
       "package": "com.mentra.mentra",
-      "versionCode": 39,
+      "versionCode": 41,
       "adaptiveIcon": {
         "foregroundImage": "./assets/app-icons/ic_launcher_foreground.png",
         "backgroundImage": "./assets/app-icons/ic_launcher.png"
@@ -74,6 +74,9 @@
           "UIInterfaceOrientationPortrait",
           "UIInterfaceOrientationPortraitUpsideDown"
         ]
+      },
+      "config": {
+        "usesNonExemptEncryption": false
       }
     },
     "plugins": [
@@ -125,10 +128,24 @@
           },
           "ios": {
             "extraPods": [
-              {"name": "SDWebImage", "modular_headers": true},
-              {"name": "SDWebImageSVGCoder", "modular_headers": true}
+              {
+                "name": "SDWebImage",
+                "modular_headers": true
+              },
+              {
+                "name": "SDWebImageSVGCoder",
+                "modular_headers": true
+              }
             ]
           }
+        }
+      ],
+      [
+        "@sentry/react-native/expo",
+        {
+          "url": "https://sentry.io/",
+          "project": "mentra-os",
+          "organization": "mentra-labs"
         }
       ]
     ],

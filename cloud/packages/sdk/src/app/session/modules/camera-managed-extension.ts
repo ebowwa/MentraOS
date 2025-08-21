@@ -13,17 +13,21 @@ import {
   CloudToAppMessageType,
   StreamType,
   isManagedStreamStatus,
-  RestreamDestination
-} from '../../../types';
-import { VideoConfig, AudioConfig, StreamConfig } from '../../../types/rtmp-stream';
-import { Logger } from 'pino';
+  RestreamDestination,
+} from "../../../types";
+import {
+  VideoConfig,
+  AudioConfig,
+  StreamConfig,
+} from "../../../types/rtmp-stream";
+import { Logger } from "pino";
 
 /**
  * Configuration options for a managed stream
  */
 export interface ManagedStreamOptions {
   /** Stream quality preset */
-  quality?: '720p' | '1080p';
+  quality?: "720p" | "1080p";
   /** Enable WebRTC for ultra-low latency viewing */
   enableWebRTC?: boolean;
   /** Optional video configuration settings */
@@ -46,6 +50,10 @@ export interface ManagedStreamResult {
   dashUrl: string;
   /** WebRTC URL if enabled */
   webrtcUrl?: string;
+  /** Cloudflare Stream player/preview URL for embedding */
+  previewUrl?: string;
+  /** Thumbnail image URL */
+  thumbnailUrl?: string;
   /** Internal stream ID */
   streamId: string;
 }
@@ -65,6 +73,8 @@ export interface ManagedStreamResult {
  * });
  * console.log('HLS URL:', urls.hlsUrl);
  * console.log('DASH URL:', urls.dashUrl);
+ * console.log('Player URL:', urls.previewUrl);
+ * console.log('Thumbnail:', urls.thumbnailUrl);
  *
  * // Monitor managed stream status
  * session.camera.onManagedStreamStatus((status) => {
@@ -87,7 +97,7 @@ export class CameraManagedExtension {
   private currentManagedStreamId?: string;
   private currentManagedStreamUrls?: ManagedStreamResult;
   private managedStreamStatus?: ManagedStreamStatus;
-  
+
   // Promise tracking for managed stream initialization
   private pendingManagedStreamRequest?: {
     resolve: (value: ManagedStreamResult) => void;
@@ -99,12 +109,12 @@ export class CameraManagedExtension {
     sessionId: string,
     send: (message: any) => void,
     logger: Logger,
-    session?: any
+    session?: any,
   ) {
     this.packageName = packageName;
     this.sessionId = sessionId;
     this.send = send;
-    this.logger = logger.child({ module: 'CameraManagedExtension' });
+    this.logger = logger.child({ module: "CameraManagedExtension" });
     this.session = session;
   }
 
@@ -125,16 +135,29 @@ export class CameraManagedExtension {
    *   video: { fps: 30 },
    *   audio: { sampleRate: 48000 }
    * });
+   *
+   * // Access all available URLs
+   * console.log('HLS URL:', urls.hlsUrl);
+   * console.log('DASH URL:', urls.dashUrl);
+   * console.log('Player URL:', urls.previewUrl);  // Embeddable player
+   * console.log('Thumbnail:', urls.thumbnailUrl);
    * ```
    */
-  async startManagedStream(options: ManagedStreamOptions = {}): Promise<ManagedStreamResult> {
-    this.logger.info({ options }, '📹 Managed stream request starting');
+  async startManagedStream(
+    options: ManagedStreamOptions = {},
+  ): Promise<ManagedStreamResult> {
+    this.logger.info({ options }, "📹 Managed stream request starting");
 
     if (this.isManagedStreaming) {
-      this.logger.error({
-        currentStreamId: this.currentManagedStreamId
-      }, '📹 Already managed streaming error');
-      throw new Error('Already streaming. Stop the current managed stream before starting a new one.');
+      this.logger.error(
+        {
+          currentStreamId: this.currentManagedStreamId,
+        },
+        "📹 Already managed streaming error",
+      );
+      throw new Error(
+        "Already streaming. Stop the current managed stream before starting a new one.",
+      );
     }
 
     // Create the request message
@@ -146,7 +169,7 @@ export class CameraManagedExtension {
       video: options.video,
       audio: options.audio,
       stream: options.stream,
-      restreamDestinations: options.restreamDestinations
+      restreamDestinations: options.restreamDestinations,
     };
 
     // Send the request
@@ -156,13 +179,13 @@ export class CameraManagedExtension {
     // Create promise to wait for URLs
     return new Promise((resolve, reject) => {
       this.pendingManagedStreamRequest = { resolve, reject };
-      
+
       // Set a timeout
       setTimeout(() => {
         if (this.pendingManagedStreamRequest) {
           this.pendingManagedStreamRequest = undefined;
           this.isManagedStreaming = false;
-          reject(new Error('Managed stream request timeout'));
+          reject(new Error("Managed stream request timeout"));
         }
       }, 30000); // 30 second timeout
     });
@@ -178,19 +201,22 @@ export class CameraManagedExtension {
    */
   async stopManagedStream(): Promise<void> {
     if (!this.isManagedStreaming) {
-      this.logger.warn('📹 No managed stream to stop');
+      this.logger.warn("📹 No managed stream to stop");
       return;
     }
 
-    this.logger.info({ streamId: this.currentManagedStreamId }, '📹 Stopping managed stream');
+    this.logger.info(
+      { streamId: this.currentManagedStreamId },
+      "📹 Stopping managed stream",
+    );
 
     const request: ManagedStreamStopRequest = {
       type: AppToCloudMessageType.MANAGED_STREAM_STOP,
-      packageName: this.packageName
+      packageName: this.packageName,
     };
 
     this.send(request);
-    
+
     // Don't clean up state immediately - wait for the 'stopped' status from cloud
     // This ensures we can retry stop if needed and maintains accurate state
   }
@@ -241,14 +267,18 @@ export class CameraManagedExtension {
    * cleanup();
    * ```
    */
-  onManagedStreamStatus(handler: (status: ManagedStreamStatus) => void): () => void {
+  onManagedStreamStatus(
+    handler: (status: ManagedStreamStatus) => void,
+  ): () => void {
     if (!this.session) {
-      this.logger.error('Cannot listen for managed status updates: session reference not available');
+      this.logger.error(
+        "Cannot listen for managed status updates: session reference not available",
+      );
       return () => {};
     }
 
-   this.session.subscribe(StreamType.MANAGED_STREAM_STATUS);
-    
+    this.session.subscribe(StreamType.MANAGED_STREAM_STATUS);
+
     // Register the handler using the session's event system
     return this.session.on(StreamType.MANAGED_STREAM_STATUS, handler);
   }
@@ -258,35 +288,40 @@ export class CameraManagedExtension {
    * Called by the parent AppSession when messages are received
    */
   handleManagedStreamStatus(status: ManagedStreamStatus): void {
-    this.logger.info({ 
-      status: status.status,
-      streamId: status.streamId 
-    }, '📹 Received managed stream status');
+    this.logger.info(
+      {
+        status: status.status,
+        streamId: status.streamId,
+      },
+      "📹 Received managed stream status",
+    );
 
     this.managedStreamStatus = status;
 
     // Handle initializing status - stream is starting
-    if (status.status === 'initializing' && status.streamId) {
+    if (status.status === "initializing" && status.streamId) {
       this.isManagedStreaming = true;
       this.currentManagedStreamId = status.streamId;
     }
 
     // Handle initial stream ready status
-    if (status.status === 'active') {
+    if (status.status === "active") {
       // Always update state when stream is active
       this.isManagedStreaming = true;
       this.currentManagedStreamId = status.streamId;
-      
+
       if (status.hlsUrl && status.dashUrl) {
         const result: ManagedStreamResult = {
           hlsUrl: status.hlsUrl,
           dashUrl: status.dashUrl,
           webrtcUrl: status.webrtcUrl,
-          streamId: status.streamId || ''
+          previewUrl: status.previewUrl,
+          thumbnailUrl: status.thumbnailUrl,
+          streamId: status.streamId || "",
         };
-        
+
         this.currentManagedStreamUrls = result;
-        
+
         // Resolve pending promise if exists
         if (this.pendingManagedStreamRequest) {
           this.pendingManagedStreamRequest.resolve(result);
@@ -296,14 +331,19 @@ export class CameraManagedExtension {
     }
 
     // Handle error status
-    if ((status.status === 'error' || status.status === 'stopped') && this.pendingManagedStreamRequest) {
-      this.pendingManagedStreamRequest.reject(new Error(status.message || 'Managed stream failed'));
+    if (
+      (status.status === "error" || status.status === "stopped") &&
+      this.pendingManagedStreamRequest
+    ) {
+      this.pendingManagedStreamRequest.reject(
+        new Error(status.message || "Managed stream failed"),
+      );
       this.pendingManagedStreamRequest = undefined;
       this.isManagedStreaming = false;
     }
 
     // Clean up on stopped status
-    if (status.status === 'stopped') {
+    if (status.status === "stopped") {
       this.isManagedStreaming = false;
       this.currentManagedStreamId = undefined;
       this.currentManagedStreamUrls = undefined;
@@ -318,7 +358,9 @@ export class CameraManagedExtension {
    */
   cleanup(): void {
     if (this.pendingManagedStreamRequest) {
-      this.pendingManagedStreamRequest.reject(new Error('Camera module cleanup'));
+      this.pendingManagedStreamRequest.reject(
+        new Error("Camera module cleanup"),
+      );
       this.pendingManagedStreamRequest = undefined;
     }
 
@@ -327,6 +369,6 @@ export class CameraManagedExtension {
     this.currentManagedStreamUrls = undefined;
     this.managedStreamStatus = undefined;
 
-    this.logger.info('📹 Managed streaming extension cleaned up');
+    this.logger.info("📹 Managed streaming extension cleaned up");
   }
 }

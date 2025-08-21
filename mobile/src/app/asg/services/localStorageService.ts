@@ -251,14 +251,19 @@ export class LocalStorageService {
    */
   convertToPhotoInfo(downloadedFile: DownloadedFile): PhotoInfo {
     // Use file:// URLs for local files
+    // On iOS, ensure we have proper file:// URL format with correct number of slashes
     const fileUrl = downloadedFile.filePath.startsWith("file://")
       ? downloadedFile.filePath
-      : `file://${downloadedFile.filePath}`
+      : downloadedFile.filePath.startsWith("/")
+        ? `file://${downloadedFile.filePath}` // Path already has leading slash
+        : `file:///${downloadedFile.filePath}` // Path needs leading slash
 
     const thumbnailUrl = downloadedFile.thumbnailPath
       ? downloadedFile.thumbnailPath.startsWith("file://")
         ? downloadedFile.thumbnailPath
-        : `file://${downloadedFile.thumbnailPath}`
+        : downloadedFile.thumbnailPath.startsWith("/")
+          ? `file://${downloadedFile.thumbnailPath}` // Path already has leading slash
+          : `file:///${downloadedFile.thumbnailPath}` // Path needs leading slash
       : undefined
 
     return {

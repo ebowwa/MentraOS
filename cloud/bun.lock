@@ -57,7 +57,7 @@
       "version": "1.0.0",
       "dependencies": {
         "@logtail/pino": "^0.5.4",
-        "@mentra/sdk": "workspace:*",
+        "@mentra/sdk": "^2.1.20",
         "@sentry/bun": "^9.1.0",
         "@sentry/cli": "^2.42.1",
         "@supabase/supabase-js": "^2.49.1",
@@ -122,7 +122,7 @@
     },
     "packages/sdk": {
       "name": "@mentra/sdk",
-      "version": "2.1.17",
+      "version": "2.1.20",
       "dependencies": {
         "@logtail/pino": "^0.5.4",
         "axios": "^1.8.1",

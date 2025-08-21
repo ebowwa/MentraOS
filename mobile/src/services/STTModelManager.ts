@@ -2,8 +2,9 @@ import RNFS from "react-native-fs"
 import {Platform} from "react-native"
 import {NativeModules} from "react-native"
 import {TarBz2Extractor} from "./TarBz2Extractor"
+import coreCommunicator from "@/bridge/CoreCommunicator"
 
-const {AOSModule, FileProviderModule} = NativeModules
+const {BridgeModule, FileProviderModule} = NativeModules
 
 export interface ModelInfo {
   name: string
@@ -161,13 +162,18 @@ class STTModelManager {
       }
 
       // Validate model with native module
-      const nativeModule = Platform.OS === "ios" ? AOSModule : FileProviderModule
-      if (nativeModule.validateSTTModel) {
-        const isValid = await nativeModule.validateSTTModel(modelPath)
-        if (!isValid && id.includes("be-de-en-es-fr")) {
-          console.log(`Native validation failed for multilingual model`)
-        }
+      if (Platform.OS === "ios") {
+        const isValid = await coreCommunicator.validateSTTModel(modelPath)
         return isValid
+      } else {
+        const nativeModule = FileProviderModule
+        if (nativeModule.validateSTTModel) {
+          const isValid = await nativeModule.validateSTTModel(modelPath)
+          if (!isValid && id.includes("be-de-en-es-fr")) {
+            console.log(`Native validation failed for multilingual model`)
+          }
+          return isValid
+        }
       }
 
       return true
@@ -265,21 +271,35 @@ class STTModelManager {
       // Extract the tar.bz2 file
       onExtractionProgress?.({percentage: 0})
 
-      // Use native extraction on both platforms
-      const nativeModule = Platform.OS === "ios" ? AOSModule : FileProviderModule
-
-      if (nativeModule.extractTarBz2) {
+      if (Platform.OS === "ios") {
         console.log(`Calling native extractTarBz2 for ${Platform.OS}...`)
         try {
-          await nativeModule.extractTarBz2(tempPath, finalPath)
+          await coreCommunicator.extractTarBz2(tempPath, finalPath)
           console.log("Native extraction completed")
         } catch (extractError) {
           console.error("Native extraction failed:", extractError)
           throw extractError
         }
-      } else {
-        throw new Error("Model extraction not available on this platform.")
       }
+
+      if (Platform.OS === "android") {
+        const nativeModule = FileProviderModule
+
+        if (nativeModule.extractTarBz2) {
+          console.log(`Calling native extractTarBz2 for ${Platform.OS}...`)
+          try {
+            await nativeModule.extractTarBz2(tempPath, finalPath)
+            console.log("Native extraction completed")
+          } catch (extractError) {
+            console.error("Native extraction failed:", extractError)
+            throw extractError
+          }
+        } else {
+          throw new Error("Model extraction not available on this platform.")
+        }
+      }
+
+      // Use native extraction on both platforms
 
       onExtractionProgress?.({percentage: 100})
 
@@ -336,7 +356,12 @@ class STTModelManager {
   }
 
   private async setNativeModelPath(path: string): Promise<void> {
-    const nativeModule = Platform.OS === "ios" ? AOSModule : FileProviderModule
+    if (Platform.OS === "ios") {
+      coreCommunicator.setSttModelPath(path)
+      return
+    }
+
+    const nativeModule = FileProviderModule
     if (nativeModule.setSTTModelPath) {
       await nativeModule.setSTTModelPath(path)
     }

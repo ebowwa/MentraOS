@@ -287,9 +287,9 @@ Configure the head-up detection angle (in degrees).
 
 Verify that connection is still alive.
 
-| Phone → Glasses                                         | Glasses → Phone                       |
-| ------------------------------------------------------- | ------------------------------------- |
-| `[0x02][PhoneToGlasses { ping { msg_id: "ping_001" }}]` | `[0x02][GlassesToPhone { pong {} }}]` |
+| Glasses → Phone                                         | Phone → Glasses                      |
+| ------------------------------------------------------- | ------------------------------------ |
+| `[0x02][GlassesToPhone { ping { msg_id: "ping_001" }}]` | `[0x02][PhoneToGlasses { pong {} }]` |
 
 ---
 
@@ -307,13 +307,46 @@ Turn onboard microphone on or off.
 
 #### 👓 Glasses → Phone
 
-_(none)_
+```
+[0x02][GlassesToPhone { mic_state_set {
+  msg_id: "mic_001"
+  success: true
+}}]
+```
+
+* `success: true` → microphone state was updated
+* `success: false` → operation failed
+
+---
+
+### Get Microphone Status
+
+Request whether the glasses microphone is currently enabled.
+
+#### 📲 Phone → Glasses
+
+```
+[0x02][PhoneToGlasses { request_mic_status {
+  msg_id: "mic_status_001"
+}}]
+```
+
+#### 👓 Glasses → Phone
+
+```
+[0x02][GlassesToPhone { mic_status {
+  enabled: true
+}}]
+```
+
+* `enabled: true` → microphone is currently on
+* `enabled: false` → microphone is currently off
 
 ---
 
 ### Enable or Disable VAD
 
-Enable or disable Voice Activity Detection.
+Enable or disable the glasses Voice Activity Detection.
 
 #### 📲 Phone → Glasses
 
@@ -323,13 +356,21 @@ Enable or disable Voice Activity Detection.
 
 #### 👓 Glasses → Phone
 
-_(none)_
+```
+[0x02][PhoneToGlasses { set_vad_enabled {
+  msg_id: "vad_001"
+  enabled: true
+}}]
+```
+
+* `success: true` → VAD state was updated
+* `success: false` → operation failed
 
 ---
 
 ### Configure VAD Sensitivity
 
-Adjust VAD sensitivity threshold (0–100).
+Adjust glasses Voice Activity Detection sensitivity threshold (0–100).
 
 #### 📲 Phone → Glasses
 
@@ -339,7 +380,42 @@ Adjust VAD sensitivity threshold (0–100).
 
 #### 👓 Glasses → Phone
 
-_(none)_
+```
+[0x02][GlassesToPhone { vad_configured {
+  msg_id: "vad_002"
+  success: true
+}}]
+```
+
+* `success: true` → VAD updated successfully
+* `success: false` → operation failed
+
+---
+
+### 📡 Get VAD Status
+
+Request whether the glasses Voice Activity Detection is enabled and what the current sensitivity level is.
+
+#### 📲 Phone → Glasses
+
+```protobuf
+[0x02][PhoneToGlasses { request_vad_status {
+  msg_id: "vad_status_001"
+}}]
+```
+
+#### 👓 Glasses → Phone
+
+```protobuf
+[0x02][GlassesToPhone { vad_status {
+  msg_id: "vad_status_001"
+  enabled: true
+  sensitivity: 75
+}}]
+```
+
+* `enabled`: `true` if VAD is currently active, `false` otherwise
+* `sensitivity`: integer 0–100, current detection threshold
 
 ---
 
@@ -584,9 +660,11 @@ Clears all pixels from the display without turning the display off.
 
 #### 📲 Phone → Glasses
 
+```
 [0x02][PhoneToGlasses { clear_display {
   msg_id: "clear_disp_001"
 }}]
+```
 
 #### 👓 Glasses → Phone
 

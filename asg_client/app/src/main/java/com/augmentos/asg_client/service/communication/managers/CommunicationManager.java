@@ -129,22 +129,45 @@ public class CommunicationManager implements ICommunicationManager {
             Log.d(TAG, "📡 ✅ Service manager and Bluetooth manager available");
             
             try {
-                JSONObject response = new JSONObject();
-                response.put("type", "wifi_scan_result");
-                response.put("timestamp", System.currentTimeMillis());
+                // Send networks in chunks of 4 to avoid BLE message size issues
+                int CHUNK_SIZE = 4;
                 
-                org.json.JSONArray networksArray = new org.json.JSONArray();
-                for (String network : networks) {
-                    networksArray.put(network);
-                    Log.d(TAG, "📡 📶 Found network: " + network);
+                if (networks == null || networks.isEmpty()) {
+                    return;
                 }
-                response.put("networks", networksArray);
-
-                String jsonString = response.toString();
-                Log.d(TAG, "📡 📤 Sending WiFi scan results: " + jsonString);
                 
-                boolean sent = serviceManager.getBluetoothManager().sendData(jsonString.getBytes(StandardCharsets.UTF_8));
-                Log.d(TAG, "📡 " + (sent ? "✅ WiFi scan results sent successfully" : "❌ Failed to send WiFi scan results"));
+                // Split and send in chunks
+                for (int i = 0; i < networks.size(); i += CHUNK_SIZE) {
+                    int endIdx = Math.min(i + CHUNK_SIZE, networks.size());
+                    List<String> chunk = networks.subList(i, endIdx);
+                    
+                    JSONObject response = new JSONObject();
+                    response.put("type", "wifi_scan_result");
+                    response.put("timestamp", System.currentTimeMillis());
+                    
+                    org.json.JSONArray networksArray = new org.json.JSONArray();
+                    for (String network : chunk) {
+                        networksArray.put(network);
+                        Log.d(TAG, "📡 📶 Found network: " + network);
+                    }
+                    response.put("networks", networksArray);
+
+                    String jsonString = response.toString();
+                    Log.d(TAG, "📡 📤 Sending WiFi scan results chunk: " + jsonString);
+                    Log.d(TAG, "📡 📊 Message size: " + jsonString.getBytes(StandardCharsets.UTF_8).length + " bytes");
+                    
+                    boolean sent = serviceManager.getBluetoothManager().sendData(jsonString.getBytes(StandardCharsets.UTF_8));
+                    Log.d(TAG, "📡 " + (sent ? "✅ WiFi scan chunk sent successfully" : "❌ Failed to send WiFi scan chunk"));
+                    
+                    // Small delay between chunks
+                    if (i + CHUNK_SIZE < networks.size()) {
+                        try {
+                            Thread.sleep(100);
+                        } catch (InterruptedException e) {
+                            Log.e(TAG, "Interrupted while sending chunks", e);
+                        }
+                    }
+                }
 
             } catch (JSONException e) {
                 Log.e(TAG, "📡 💥 Error creating WiFi scan results response", e);

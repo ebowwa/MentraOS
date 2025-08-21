@@ -15,7 +15,7 @@ import {
 import {useNavigation, useRoute} from "@react-navigation/native" // <<--- import useRoute
 import {useFocusEffect} from "@react-navigation/native"
 import Icon from "react-native-vector-icons/FontAwesome"
-import {useStatus} from "@/contexts/AugmentOSStatusProvider"
+import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import coreCommunicator from "@/bridge/CoreCommunicator"
 import {MOCK_CONNECTION, SETTINGS_KEYS} from "@/consts"
 import {NavigationProps} from "@/components/misc/types"
@@ -35,7 +35,7 @@ import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import Animated, {useAnimatedStyle, useSharedValue, withDelay, withTiming} from "react-native-reanimated"
 
 export default function SelectGlassesBluetoothScreen() {
-  const {status} = useStatus()
+  const {status} = useCoreStatus()
   const navigation = useNavigation<NavigationProps>()
   const {searchResults, setSearchResults} = useSearchResults()
   const {glassesModelName}: {glassesModelName: string} = useLocalSearchParams()

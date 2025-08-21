@@ -1,14 +1,14 @@
 import React from "react"
 import {View, ViewStyle, TextStyle, TouchableOpacity, Dimensions, FlatList} from "react-native"
 import {Text} from "@/components/ignite"
-import {AppInterface, useAppStatus} from "@/contexts/AppStatusProvider"
+import {AppInterface, useAppStatus} from "@/contexts/AppletStatusProvider"
 import {translate} from "@/i18n"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {Spacer} from "./Spacer"
 import {spacing, ThemedStyle} from "@/theme"
 import showAlert from "@/utils/AlertUtils"
 import AppIcon from "./AppIcon"
-import {useStatus} from "@/contexts/AugmentOSStatusProvider"
+import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 
 const GRID_COLUMNS = 4
 const SCREEN_WIDTH = Dimensions.get("window").width
@@ -16,7 +16,7 @@ const SCREEN_WIDTH = Dimensions.get("window").width
 export default function IncompatibleAppsList() {
   const {appStatus} = useAppStatus()
   const {themed, theme} = useAppTheme()
-  const {status} = useStatus()
+  const {status} = useCoreStatus()
 
   // Filter out incompatible apps (not running and marked as incompatible)
   const incompatibleApps = appStatus.filter(app => {
@@ -26,17 +26,10 @@ export default function IncompatibleAppsList() {
 
     // Check if app has compatibility info and is marked as incompatible
     const isIncompatible = app.compatibility && !app.compatibility.isCompatible
-    if (isIncompatible) {
-      console.log("🚫 INCOMPATIBLE APP DETECTED:", app.name, {
-        packageName: app.packageName,
-        compatibility: app.compatibility,
-        missingRequired: app.compatibility?.missingRequired,
-      })
-    }
     return isIncompatible
   })
 
-  console.log(`📱 Total incompatible apps found: ${incompatibleApps.length}`)
+  // console.log(`📱 Total incompatible apps found: ${incompatibleApps.length}`)
 
   // Don't show section if no incompatible apps
   if (incompatibleApps.length === 0) {

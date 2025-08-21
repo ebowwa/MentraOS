@@ -1,6 +1,6 @@
 import React, {useState, useEffect} from "react"
-import {ScrollView, View, ActivityIndicator, Alert} from "react-native"
-import {useStatus} from "@/contexts/AugmentOSStatusProvider"
+import {ScrollView, View, ActivityIndicator, Alert, Platform} from "react-native"
+import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import coreCommunicator from "@/bridge/CoreCommunicator"
 import {Header, Screen, Text, Button} from "@/components/ignite"
 import {useAppTheme} from "@/utils/useAppTheme"
@@ -10,13 +10,13 @@ import {translate} from "@/i18n"
 import {Spacer} from "@/components/misc/Spacer"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import STTModelManager from "@/services/STTModelManager"
-import {NativeModules} from "react-native"
 import showAlert from "@/utils/AlertUtils"
 
-const {AOSModule, FileProviderModule} = NativeModules
-
 export default function TranscriptionSettingsScreen() {
-  const {status} = useStatus()
+  const {status} = useCoreStatus()
+  const {theme} = useAppTheme()
+  const {goBack} = useNavigationHistory()
+
   const [isEnforceLocalTranscriptionEnabled, setIsEnforceLocalTranscriptionEnabled] = useState(
     status.core_info.enforce_local_transcription,
   )
@@ -27,31 +27,9 @@ export default function TranscriptionSettingsScreen() {
   const [downloadProgress, setDownloadProgress] = useState(0)
   const [extractionProgress, setExtractionProgress] = useState(0)
   const [isCheckingModel, setIsCheckingModel] = useState(true)
-
-  const {theme} = useAppTheme()
-  const {goBack} = useNavigationHistory()
-
-  useEffect(() => {
-    setIsEnforceLocalTranscriptionEnabled(status.core_info.enforce_local_transcription)
-  }, [status.core_info.enforce_local_transcription])
-
-  useEffect(() => {
-    checkModelStatus()
-  }, [])
-
-  const checkModelStatus = async () => {
-    setIsCheckingModel(true)
-    try {
-      const info = await STTModelManager.getModelInfo(selectedModelId)
-      setModelInfo(info)
-      const models = await STTModelManager.getAllModelsInfo()
-      setAllModels(models)
-    } catch (error) {
-      console.error("Error checking model status:", error)
-    } finally {
-      setIsCheckingModel(false)
-    }
-  }
+  const [isBypassVADForDebuggingEnabled, setIsBypassVADForDebuggingEnabled] = useState(
+    status.core_info.bypass_vad_for_debugging,
+  )
 
   const toggleEnforceLocalTranscription = async () => {
     if (!modelInfo?.downloaded) {
@@ -170,6 +148,38 @@ export default function TranscriptionSettingsScreen() {
     return "Preparing..."
   }
 
+  const checkModelStatus = async () => {
+    setIsCheckingModel(true)
+    try {
+      const info = await STTModelManager.getModelInfo(selectedModelId)
+      setModelInfo(info)
+      const models = await STTModelManager.getAllModelsInfo()
+      setAllModels(models)
+    } catch (error) {
+      console.error("Error checking model status:", error)
+    } finally {
+      setIsCheckingModel(false)
+    }
+  }
+
+  const toggleBypassVadForDebugging = async () => {
+    const newSetting = !isBypassVADForDebuggingEnabled
+    await coreCommunicator.sendToggleBypassVadForDebugging(newSetting)
+    setIsBypassVADForDebuggingEnabled(newSetting)
+  }
+
+  useEffect(() => {
+    setIsEnforceLocalTranscriptionEnabled(status.core_info.enforce_local_transcription)
+  }, [status.core_info.enforce_local_transcription])
+
+  useEffect(() => {
+    checkModelStatus()
+  }, [])
+
+  useEffect(() => {
+    setIsBypassVADForDebuggingEnabled(status.core_info.bypass_vad_for_debugging)
+  }, [status.core_info.bypass_vad_for_debugging])
+
   return (
     <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}}>
       <Header title={translate("settings:transcriptionSettings")} leftIcon="caretLeft" onLeftPress={() => goBack()} />
@@ -177,48 +187,61 @@ export default function TranscriptionSettingsScreen() {
       <Spacer height={theme.spacing.md} />
 
       <ScrollView>
-        {isCheckingModel ? (
-          <View style={{alignItems: "center", padding: theme.spacing.lg}}>
-            <ActivityIndicator size="large" color={theme.colors.primary} />
-            <Spacer height={theme.spacing.sm} />
-            <Text>Checking model status...</Text>
-          </View>
-        ) : (
+        <ToggleSetting
+          label={translate("settings:bypassVAD")}
+          subtitle={translate("settings:bypassVADSubtitle")}
+          value={isBypassVADForDebuggingEnabled}
+          onValueChange={toggleBypassVadForDebugging}
+        />
+
+        {Platform.OS === "android" && (
           <>
-            {/* Integrated Model Selector */}
-            <ModelSelector
-              selectedModelId={selectedModelId}
-              models={allModels}
-              onModelChange={handleModelChange}
-              onDownload={() => handleDownloadModel()}
-              onDelete={() => handleDeleteModel()}
-              isDownloading={isDownloading}
-              downloadProgress={downloadProgress}
-              extractionProgress={extractionProgress}
-              currentModelInfo={modelInfo}
-            />
+            <Spacer height={theme.spacing.md} />
 
-            <Spacer height={theme.spacing.lg} />
+            {isCheckingModel ? (
+              <View style={{alignItems: "center", padding: theme.spacing.lg}}>
+                <ActivityIndicator size="large" color={theme.colors.text} />
+                <Spacer height={theme.spacing.sm} />
+                <Text>Checking model status...</Text>
+              </View>
+            ) : (
+              <>
+                {/* Integrated Model Selector */}
+                <ModelSelector
+                  selectedModelId={selectedModelId}
+                  models={allModels}
+                  onModelChange={handleModelChange}
+                  onDownload={() => handleDownloadModel()}
+                  onDelete={() => handleDeleteModel()}
+                  isDownloading={isDownloading}
+                  downloadProgress={downloadProgress}
+                  extractionProgress={extractionProgress}
+                  currentModelInfo={modelInfo}
+                />
 
-            {/* Local Transcription Toggle */}
-            <ToggleSetting
-              label={translate("settings:enforceLocalTranscription")}
-              subtitle={translate("settings:enforceLocalTranscriptionSubtitle")}
-              value={isEnforceLocalTranscriptionEnabled}
-              onValueChange={toggleEnforceLocalTranscription}
-              disabled={!modelInfo?.downloaded || isDownloading}
-            />
+                <Spacer height={theme.spacing.lg} />
 
-            {(!modelInfo?.downloaded || isDownloading) && (
-              <Text
-                size="xs"
-                style={{
-                  color: theme.colors.textDim,
-                  marginTop: theme.spacing.xs,
-                  paddingHorizontal: theme.spacing.sm,
-                }}>
-                Download a model to enable local transcription
-              </Text>
+                {/* Local Transcription Toggle */}
+                <ToggleSetting
+                  label={translate("settings:enforceLocalTranscription")}
+                  subtitle={translate("settings:enforceLocalTranscriptionSubtitle")}
+                  value={isEnforceLocalTranscriptionEnabled}
+                  onValueChange={toggleEnforceLocalTranscription}
+                  disabled={!modelInfo?.downloaded || isDownloading}
+                />
+
+                {(!modelInfo?.downloaded || isDownloading) && (
+                  <Text
+                    size="xs"
+                    style={{
+                      color: theme.colors.textDim,
+                      marginTop: theme.spacing.xs,
+                      paddingHorizontal: theme.spacing.sm,
+                    }}>
+                    Download a model to enable local transcription
+                  </Text>
+                )}
+              </>
             )}
           </>
         )}

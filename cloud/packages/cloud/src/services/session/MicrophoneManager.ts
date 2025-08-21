@@ -12,7 +12,7 @@ import {
   MicrophoneStateChange,
   StreamType,
 } from "@mentra/sdk";
-import subscriptionService from "./subscription.service";
+// import subscriptionService from "./subscription.service";
 import { Logger } from "pino";
 import UserSession from "./UserSession";
 
@@ -43,6 +43,10 @@ export class MicrophoneManager {
   // Keep-alive mechanism for microphone state
   private keepAliveTimer: NodeJS.Timeout | null = null;
   private readonly KEEP_ALIVE_INTERVAL_MS = 10000; // 10 seconds
+
+  // Mic-off holddown to avoid flapping during transient reconnects
+  private micOffHolddownTimer: NodeJS.Timeout | null = null;
+  private readonly MIC_OFF_HOLDDOWN_MS = 3000; // 3 seconds
 
   // Unauthorized audio detection
   private unauthorizedAudioTimer: NodeJS.Timeout | null = null;
@@ -189,7 +193,7 @@ export class MicrophoneManager {
           isTranscribing: this.session.isTranscribing || false,
         },
         isMicrophoneEnabled: isEnabled,
-        requiredData: requiredData,
+        requiredData: isEnabled ? requiredData : [],
         bypassVad: shouldBypassVad, // NEW: Include VAD bypass flag
         timestamp: new Date(),
       };
@@ -216,9 +220,8 @@ export class MicrophoneManager {
    * This is called when subscriptions change to avoid repeated expensive lookups
    */
   private updateCachedSubscriptionState(): void {
-    const state = subscriptionService.hasPCMTranscriptionSubscriptions(
-      this.session.sessionId,
-    );
+    const state =
+      this.session.subscriptionManager.hasPCMTranscriptionSubscriptions();
     this.cachedSubscriptionState = {
       hasPCM: state.hasPCM,
       hasTranscription: state.hasTranscription,
@@ -331,7 +334,32 @@ export class MicrophoneManager {
       this.logger.info(
         `Subscription changed, media subscriptions: ${hasMediaSubscriptions}`,
       );
-      this.updateState(hasMediaSubscriptions, requiredData);
+      // Apply holddown when turning mic off to avoid flapping
+      if (hasMediaSubscriptions) {
+        // Cancel any pending mic-off holddown
+        if (this.micOffHolddownTimer) {
+          clearTimeout(this.micOffHolddownTimer);
+          this.micOffHolddownTimer = null;
+        }
+        this.updateState(true, requiredData);
+      } else {
+        if (this.micOffHolddownTimer) {
+          clearTimeout(this.micOffHolddownTimer);
+        }
+        this.micOffHolddownTimer = setTimeout(() => {
+          // Re-evaluate before actually turning off
+          this.updateCachedSubscriptionState();
+          const stillNoMedia = !this.cachedSubscriptionState.hasMedia;
+          const finalRequiredData = this.calculateRequiredData(
+            this.cachedSubscriptionState.hasPCM,
+            this.cachedSubscriptionState.hasTranscription,
+          );
+          if (stillNoMedia) {
+            this.updateState(false, finalRequiredData);
+          }
+          this.micOffHolddownTimer = null;
+        }, this.MIC_OFF_HOLDDOWN_MS);
+      }
       this.subscriptionDebounceTimer = null;
     }, 100); // 100ms debounce - short enough to be responsive, long enough to batch rapid calls
   }
@@ -470,6 +498,10 @@ export class MicrophoneManager {
     this.stopKeepAliveTimer();
     // Stop unauthorized audio timer
     this.stopUnauthorizedAudioTimer();
+    if (this.micOffHolddownTimer) {
+      clearTimeout(this.micOffHolddownTimer);
+      this.micOffHolddownTimer = null;
+    }
   }
 }
 

@@ -5,6 +5,7 @@ This guide covers how to capture photos from smart glasses using the MentraOS Ca
 ## Overview
 
 Photo capture allows your app to request individual photos from connected smart glasses. This is perfect for:
+
 - Documentation and note-taking apps
 - Visual assistance applications
 - Inventory management
@@ -25,13 +26,27 @@ For complete permission setup instructions, see the [Permissions Guide](/permiss
 
 ```typescript
 // Request a photo from the smart glasses
-const photo = await session.camera.requestPhoto();
+const photo = await session.camera.requestPhoto()
 
-console.log(`Photo captured: ${photo.filename}`);
-console.log(`Size: ${photo.size} bytes`);
-console.log(`Type: ${photo.mimeType}`);
+console.log(`Photo captured: ${photo.filename}`)
+console.log(`Size: ${photo.size} bytes`)
+console.log(`Type: ${photo.mimeType}`)
 ```
 
+### Requesting Photo Size
+
+Apps can request the desired photo size. Supported values are `small`, `medium` (default), and `large`. Small photos are faster to capture and transfer, but have lower resolution. Large photos are slower to capture and transfer, but have higher resolution.
+
+```typescript
+// Small, faster capture/transfer
+const small = await session.camera.requestPhoto({size: "small"})
+
+// Default medium
+const medium = await session.camera.requestPhoto() // or { size: 'medium' }
+
+// Large, highest available resolution
+const large = await session.camera.requestPhoto({size: "large"})
+```
 
 ### Working with Photo Data
 
@@ -66,8 +81,6 @@ private async uploadPhotoToAPI(buffer: Buffer, mimeType: string): Promise<void> 
   // await fetch('/api/upload', { method: 'POST', body: formData });
 }
 ```
-
-
 
 ## See Also
 
