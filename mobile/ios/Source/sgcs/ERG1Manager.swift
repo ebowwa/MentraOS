@@ -206,11 +206,6 @@ enum GlassesError: Error {
 
     // synchronization:
     private let commandQueue = CommandQueue()
-    private let queueLock = DispatchSemaphore(value: 1)
-    private let leftSemaphore = DispatchSemaphore(value: 0) // Start at 0 to block
-    private let rightSemaphore = DispatchSemaphore(value: 0) // Start at 0 to block
-    private var leftAck = false
-    private var rightAck = false
 
     // Constants
     var DEVICE_SEARCH_ID = "NOT_SET"
@@ -973,18 +968,16 @@ enum GlassesError: Error {
             continuation = pendingAckCompletions.removeValue(forKey: key)
         }
 
-        if let continuation = continuation {
-            continuation.resume(returning: true)
-            // CoreCommsService.log("✅ ACK received for \(side) side, resuming continuation")
-        }
-
         if peripheral == leftPeripheral {
-            leftSemaphore.signal()
             setReadiness(left: true, right: nil)
         }
         if peripheral == rightPeripheral {
-            rightSemaphore.signal()
             setReadiness(left: nil, right: true)
+        }
+
+        if let continuation = continuation {
+            continuation.resume(returning: true)
+            // CoreCommsService.log("✅ ACK received for \(side) side, resuming continuation")
         }
     }
 
@@ -2231,8 +2224,10 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
             // Mark the services as ready
             if peripheral == leftPeripheral {
                 Core.log("G1: Left glass services discovered and ready")
+                setReadiness(left: true, right: nil)
             } else if peripheral == rightPeripheral {
                 Core.log("G1: Right glass services discovered and ready")
+                setReadiness(left: nil, right: true)
             }
         }
     }

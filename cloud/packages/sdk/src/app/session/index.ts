@@ -81,6 +81,7 @@ import {
   isPhotoResponse,
   isRtmpStreamStatus,
   isManagedStreamStatus,
+  isStreamStatusCheckResponse,
 } from "../../types/messages/cloud-to-app";
 
 /**
@@ -783,14 +784,15 @@ export class AppSession {
           const isNormalClosure =
             code === 1000 || code === 1001 || code === 1008;
           const isManualStop = reason && reason.includes("App stopped");
-          const isUserSessionEnded = reason && reason.includes("User session ended");
+          const isUserSessionEnded =
+            reason && reason.includes("User session ended");
 
           // Log closure details for diagnostics
           this.logger.debug(
             `🔌 [${this.config.packageName}] WebSocket closed with code ${code}${reasonStr}`,
           );
           this.logger.debug(
-            `🔌 [${this.config.packageName}] isNormalClosure: ${isNormalClosure}, isManualStop: ${isManualStop}`,
+            `🔌 [${this.config.packageName}] isNormalClosure: ${isNormalClosure}, isManualStop: ${isManualStop}, isUserSessionEnded: ${isUserSessionEnded}`,
           );
 
           if (!isNormalClosure && !isManualStop) {
@@ -806,7 +808,20 @@ export class AppSession {
 
           // if user session ended, then trigger onStop.
           if (isUserSessionEnded) {
-            // TODO: trigger onStop somehow.
+            this.logger.info(
+              `🛑 [${this.config.packageName}] User session ended - emitting disconnected event with sessionEnded flag`,
+            );
+            // Emit a disconnected event with a special flag to indicate session end
+            // This will be caught by AppServer which will call the onStop callback
+            const disconnectInfo = {
+              message: "User session ended",
+              code: 1000, // Normal closure
+              reason: "User session ended",
+              wasClean: true,
+              permanent: true, // This is permanent - no reconnection
+              sessionEnded: true, // Special flag to indicate session disposal
+            };
+            this.events.emit("disconnected", disconnectInfo);
           }
         };
 
@@ -1248,6 +1263,10 @@ export class AppSession {
 
           // Update camera module's managed stream state
           this.camera.handleManagedStreamStatus(message);
+        } else if (isStreamStatusCheckResponse(message)) {
+          // Handle stream status check response
+          // This is a direct response, not a subscription-based event
+          this.camera.handleStreamCheckResponse(message);
         } else if (isSettingsUpdate(message)) {
           // Store previous settings to check for changes
           const prevSettings = [...this.settingsData];
@@ -1299,13 +1318,11 @@ export class AppSession {
           const reason = message.reason || "unknown";
           const displayReason = `App stopped: ${reason}`;
 
-          // Emit disconnected event with clean closure info to prevent reconnection attempts
-          this.events.emit("disconnected", {
-            message: displayReason,
-            code: 1000, // Normal closure code
-            reason: displayReason,
-            wasClean: true,
-          });
+          // Don't emit disconnected event here - let the WebSocket close handler do it
+          // This prevents duplicate disconnected events when the session is disposed
+          this.logger.info(
+            `📤 [${this.config.packageName}] Received APP_STOPPED message: ${displayReason}`,
+          );
 
           // Clear reconnection state
           this.reconnectAttempts = 0;

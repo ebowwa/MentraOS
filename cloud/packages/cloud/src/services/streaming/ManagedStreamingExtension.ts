@@ -25,6 +25,7 @@ import {
   StreamStateManager,
   StreamType,
   ManagedStreamState,
+  StreamState,
 } from "./StreamStateManager";
 
 /**
@@ -619,6 +620,14 @@ export class ManagedStreamingExtension {
       );
       return null;
     }
+  }
+
+  /**
+   * Get the current stream state for a user
+   * Returns information about any active stream (managed or unmanaged)
+   */
+  getUserStreamState(userId: string): StreamState | undefined {
+    return this.stateManager.getStreamState(userId);
   }
 
   /**
