@@ -220,7 +220,28 @@ export function GalleryScreen() {
     } catch (err) {
       console.error("[GalleryScreen] Failed to load initial photos:", err)
       setTotalServerCount(0)
-      setErrorMessage(err instanceof Error ? err.message : "Failed to load photos")
+
+      // Handle specific error types
+      let errorMsg = "Failed to load photos"
+      if (err instanceof Error) {
+        if (err.message.includes("429")) {
+          errorMsg = "Server is busy, please try again in a moment"
+          // Retry after a delay for rate limiting
+          setTimeout(() => {
+            if (galleryState === GalleryState.ERROR) {
+              console.log("[GalleryScreen] Retrying after rate limit...")
+              transitionToState(GalleryState.CONNECTED_LOADING)
+              loadInitialPhotos()
+            }
+          }, 3000) // Wait 3 seconds before retry
+        } else if (err.message.includes("400")) {
+          errorMsg = "Invalid request to server"
+        } else {
+          errorMsg = err.message
+        }
+      }
+
+      setErrorMessage(errorMsg)
       transitionToState(GalleryState.ERROR)
     }
   }, [connectionInfo, galleryState])
@@ -396,9 +417,24 @@ export function GalleryScreen() {
         transitionToState(GalleryState.NO_MEDIA_ON_GLASSES)
       }, 2000)
     } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : "Sync failed"
+      let errorMsg = "Sync failed"
+      if (err instanceof Error) {
+        if (err.message.includes("429")) {
+          errorMsg = "Server is busy, please try again in a moment"
+        } else if (err.message.includes("400")) {
+          errorMsg = "Invalid sync request"
+        } else {
+          errorMsg = err.message
+        }
+      }
+
       setErrorMessage(errorMsg)
-      showAlert("Sync Error", errorMsg, [{text: translate("common:ok")}])
+
+      // Only show alert for non-rate-limit errors
+      if (!errorMsg.includes("busy")) {
+        showAlert("Sync Error", errorMsg, [{text: translate("common:ok")}])
+      }
+
       transitionToState(GalleryState.ERROR)
       setSyncProgress(null)
     }
@@ -566,11 +602,15 @@ export function GalleryScreen() {
 
   // Handle stop hotspot
   const handleStopHotspot = async () => {
+    console.log("[GalleryScreen] Stopping hotspot...")
     try {
-      await coreCommunicator.sendCommand("set_hotspot_state", {enabled: false})
+      const result = await coreCommunicator.sendCommand("set_hotspot_state", {enabled: false})
+      console.log("[GalleryScreen] Hotspot stop command sent, result:", result)
       setGalleryOpenedHotspot(false) // Reset tracking
+      return result
     } catch (error) {
       console.error("[GalleryScreen] Failed to stop hotspot:", error)
+      throw error
     }
   }
 
@@ -653,17 +693,28 @@ export function GalleryScreen() {
     }
   }, []) // Only run on mount
 
+  // Track if we're already loading to prevent duplicate requests
+  const isLoadingRef = useRef(false)
+
   // STEP 5: When gallery becomes reachable, start sync
   useEffect(() => {
     // Only reload photos when on same WiFi (not hotspot - that's handled by SSID matching)
+    // And only if we're not already loading or in an error state
     if (
       isWifiConnected &&
       glassesWifiIp &&
       galleryState !== GalleryState.INITIALIZING &&
-      galleryState !== GalleryState.QUERYING_GLASSES
+      galleryState !== GalleryState.QUERYING_GLASSES &&
+      galleryState !== GalleryState.CONNECTED_LOADING &&
+      galleryState !== GalleryState.SYNCING &&
+      galleryState !== GalleryState.ERROR &&
+      !isLoadingRef.current
     ) {
       console.log("[GalleryScreen] WiFi connection established, loading photos")
-      loadInitialPhotos()
+      isLoadingRef.current = true
+      loadInitialPhotos().finally(() => {
+        isLoadingRef.current = false
+      })
     }
   }, [isWifiConnected, glassesWifiIp, galleryState])
 
@@ -875,14 +926,30 @@ The gallery will automatically reload once connected.`,
     }
   }, [networkStatus.phoneSSID, hotspotSsid, hotspotGatewayIp])
 
+  // Track if sync has been triggered to prevent duplicates
+  const syncTriggeredRef = useRef(false)
+
   // Trigger sync when gallery server becomes reachable (any connection type)
   useEffect(() => {
     // Start sync automatically when server becomes reachable and we have photos to sync
-    if (isGalleryReachable && galleryState === GalleryState.READY_TO_SYNC && serverPhotosToSync > 0) {
+    if (
+      isGalleryReachable &&
+      galleryState === GalleryState.READY_TO_SYNC &&
+      serverPhotosToSync > 0 &&
+      !syncTriggeredRef.current
+    ) {
       console.log("[GalleryScreen] Gallery server now reachable, auto-starting sync...")
+      syncTriggeredRef.current = true
       setTimeout(() => {
-        handleSync()
+        handleSync().finally(() => {
+          syncTriggeredRef.current = false
+        })
       }, 1000) // Brief delay to ensure connection is stable
+    }
+
+    // Reset sync trigger when state changes away from READY_TO_SYNC
+    if (galleryState !== GalleryState.READY_TO_SYNC) {
+      syncTriggeredRef.current = false
     }
   }, [isGalleryReachable, galleryState, serverPhotosToSync])
 
@@ -901,14 +968,16 @@ The gallery will automatically reload once connected.`,
     if (galleryState === GalleryState.SYNC_COMPLETE && galleryOpenedHotspot && isHotspotEnabled) {
       console.log("[GalleryScreen] Sync completed, auto-closing gallery-initiated hotspot...")
 
-      // Auto-close hotspot after sync completion
-      const timeoutId = setTimeout(async () => {
-        console.log("[GalleryScreen] Closing hotspot after sync completion")
-        await handleStopHotspot()
-        // No alert needed - user can see sync completed from UI
-      }, 3000) // Wait 3 seconds after sync completion
+      // Close hotspot immediately after sync completion
+      handleStopHotspot()
+        .then(() => {
+          console.log("[GalleryScreen] Hotspot closed after sync completion")
+        })
+        .catch(error => {
+          console.error("[GalleryScreen] Failed to close hotspot after sync:", error)
+        })
 
-      return () => clearTimeout(timeoutId)
+      // No cleanup needed since we're not using setTimeout
     }
   }, [galleryState, galleryOpenedHotspot, isHotspotEnabled])
 
@@ -919,8 +988,8 @@ The gallery will automatically reload once connected.`,
   // Auto-close hotspot when leaving gallery (only if gallery opened it)
   useEffect(() => {
     return () => {
-      if (galleryOpenedHotspot && isHotspotEnabled) {
-        console.log("[GalleryScreen] Gallery unmounting - auto-closing gallery-initiated hotspot")
+      if (galleryOpenedHotspot) {
+        console.log("[GalleryScreen] Gallery unmounting - closing gallery-initiated hotspot")
         // Close hotspot immediately when leaving gallery
         coreCommunicator
           .sendCommand("set_hotspot_state", {enabled: false})
@@ -928,7 +997,7 @@ The gallery will automatically reload once connected.`,
           .catch(error => console.error("[GalleryScreen] Failed to close hotspot on exit:", error))
       }
     }
-  }, [])
+  }, [galleryOpenedHotspot]) // Track this dependency
 
   // Gallery item type for mixed content
   interface GalleryItem {
@@ -1100,6 +1169,7 @@ The gallery will automatically reload once connected.`,
                   galleryState === GalleryState.REQUESTING_HOTSPOT ||
                   galleryState === GalleryState.SYNCING ||
                   galleryState === GalleryState.SYNC_COMPLETE ||
+                  galleryState === GalleryState.ERROR ||
                   (galleryState === GalleryState.READY_TO_SYNC && !isGalleryReachable && serverPhotosToSync > 0)
                     ? 100
                     : spacing.lg,
@@ -1130,6 +1200,7 @@ The gallery will automatically reload once connected.`,
       galleryState === GalleryState.REQUESTING_HOTSPOT ||
       galleryState === GalleryState.SYNCING ||
       galleryState === GalleryState.SYNC_COMPLETE ||
+      galleryState === GalleryState.ERROR ||
       (galleryState === GalleryState.READY_TO_SYNC && !isGalleryReachable && serverPhotosToSync > 0) ? (
         <TouchableOpacity
           style={[
@@ -1228,6 +1299,17 @@ The gallery will automatically reload once connected.`,
                   style={{marginRight: spacing.xs}}
                 />
                 <Text style={themed($syncButtonText)}>Sync complete!</Text>
+              </View>
+            ) : /* Error state */
+            galleryState === GalleryState.ERROR ? (
+              <View style={themed($syncButtonRow)}>
+                <MaterialCommunityIcons
+                  name="alert-circle"
+                  size={20}
+                  color={theme.colors.error}
+                  style={{marginRight: spacing.xs}}
+                />
+                <Text style={themed($syncButtonText)}>{errorMessage || "An error occurred"}</Text>
               </View>
             ) : null}
           </View>
