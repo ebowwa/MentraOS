@@ -166,6 +166,97 @@ async stopManagedStream(): Promise<void>
 await session.camera.stopManagedStream();
 ```
 
+### checkExistingStream()
+
+Check if there's an existing active stream (managed or unmanaged) for the current user.
+
+```typescript
+async checkExistingStream(): Promise<StreamCheckResult>
+```
+
+#### Returns
+
+Returns a `Promise<StreamCheckResult>` with information about any active stream.
+
+#### StreamCheckResult Interface
+
+```typescript
+interface StreamCheckResult {
+  /** Whether any stream is currently active */
+  hasActiveStream: boolean;
+  /** Details about the active stream (if any) */
+  streamInfo?: {
+    /** Type of stream - either 'managed' or 'unmanaged' */
+    type: 'managed' | 'unmanaged';
+    /** Unique identifier for the stream */
+    streamId: string;
+    /** Current status of the stream */
+    status: string;
+    /** When the stream was created */
+    createdAt: Date;
+    // For managed streams only:
+    /** HLS playback URL */
+    hlsUrl?: string;
+    /** DASH playback URL */
+    dashUrl?: string;
+    /** WebRTC playback URL (if enabled) */
+    webrtcUrl?: string;
+    /** Preview/embed URL */
+    previewUrl?: string;
+    /** Thumbnail image URL */
+    thumbnailUrl?: string;
+    /** Number of active viewers */
+    activeViewers?: number;
+    // For unmanaged streams only:
+    /** RTMP destination URL */
+    rtmpUrl?: string;
+    /** ID of the app that requested the stream */
+    requestingAppId?: string;
+  };
+}
+```
+
+#### Example
+
+```typescript
+// Check for existing streams before starting a new one
+const streamCheck = await session.camera.checkExistingStream();
+
+if (streamCheck.hasActiveStream) {
+  console.log(`Found existing ${streamCheck.streamInfo?.type} stream`);
+  
+  if (streamCheck.streamInfo?.type === 'managed') {
+    // Managed stream is active - can display URLs or join it
+    console.log('HLS URL:', streamCheck.streamInfo.hlsUrl);
+    console.log('Active viewers:', streamCheck.streamInfo.activeViewers);
+    
+    // Option 1: Display the existing stream info
+    session.layouts.showTextWall(`📺 Stream active!\nHLS: ${streamCheck.streamInfo.hlsUrl}`);
+    
+    // Option 2: Join the existing managed stream
+    // (Managed streams support multiple apps)
+    const result = await session.camera.startManagedStream();
+  } else {
+    // Unmanaged stream is active - cannot start another
+    console.log('RTMP URL:', streamCheck.streamInfo.rtmpUrl);
+    console.log('Requested by:', streamCheck.streamInfo.requestingAppId);
+    
+    session.layouts.showTextWall('⚠️ Another app is currently streaming');
+  }
+} else {
+  // No active stream, safe to start a new one
+  console.log('No existing stream, starting new...');
+  const result = await session.camera.startManagedStream();
+}
+```
+
+#### Use Cases
+
+- **Reconnection**: Apps can check for and reconnect to existing streams after restart
+- **Multi-app coordination**: Detect if another app is already streaming
+- **Resource management**: Avoid creating duplicate streams
+- **User experience**: Inform users about existing streams before starting new ones
+
 ### Managed Stream Status Monitoring
 
 #### onManagedStreamStatus()
