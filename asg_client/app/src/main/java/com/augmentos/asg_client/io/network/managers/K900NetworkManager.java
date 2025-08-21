@@ -239,6 +239,33 @@ public class K900NetworkManager extends BaseNetworkManager {
     
     
     @Override
+    protected void refreshHotspotCredentials() {
+        // K900 specific: Read SSID from Settings.Global
+        try {
+            String ssid = Settings.Global.getString(context.getContentResolver(), "xy_ssid");
+            
+            if (ssid != null && !ssid.isEmpty()) {
+                Log.d(TAG, "🔥 ✅ Refreshed K900 hotspot SSID from Settings.Global: " + ssid);
+                updateHotspotState(true, ssid, K900_HOTSPOT_PASSWORD);
+                notifyHotspotStateChanged(true);
+                
+                notificationManager.showHotspotStateNotification(true);
+                notificationManager.showDebugNotification(
+                        "K900 Hotspot Active", 
+                        ssid + " | " + K900_HOTSPOT_PASSWORD);
+            } else {
+                Log.e(TAG, "🔥 ❌ Failed to refresh K900 SSID from Settings.Global");
+                clearHotspotState();
+                notifyHotspotStateChanged(false);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "🔥 💥 Error refreshing K900 SSID from Settings.Global", e);
+            clearHotspotState();
+            notifyHotspotStateChanged(false);
+        }
+    }
+    
+    @Override
     public void stopHotspot() {
         Log.d(TAG, "🔥 =========================================");
         Log.d(TAG, "🔥 STOP K900 HOTSPOT (INTENT MODE)");

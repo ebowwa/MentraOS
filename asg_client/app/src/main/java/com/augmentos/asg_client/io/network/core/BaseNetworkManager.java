@@ -11,6 +11,8 @@ import android.net.NetworkCapabilities;
 import android.net.LinkProperties;
 import android.net.wifi.WifiManager;
 import android.net.wifi.ScanResult;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 
 import com.augmentos.asg_client.NetworkUtils;
@@ -50,6 +52,15 @@ public abstract class BaseNetworkManager implements INetworkManager {
     // Device-persistent hotspot credentials
     private String deviceHotspotSsid = null;
     private final String deviceHotspotPassword = HOTSPOT_PASSWORD;
+    
+    // Tethering state broadcast receiver
+    private BroadcastReceiver tetheringStateReceiver;
+    
+    // HTTP activity tracking for auto-disconnect
+    private long lastHttpActivityTime = 0;
+    private static final long HOTSPOT_INACTIVITY_TIMEOUT_MS = 40000; // 40 seconds
+    private Handler inactivityCheckHandler;
+    private Runnable inactivityCheckRunnable;
 
     /**
      * Create a new BaseNetworkManager
@@ -59,6 +70,7 @@ public abstract class BaseNetworkManager implements INetworkManager {
     public BaseNetworkManager(Context context) {
         this.context = context.getApplicationContext();
         initializeDeviceCredentials();
+        this.inactivityCheckHandler = new Handler(Looper.getMainLooper());
     }
     
     /**
@@ -252,7 +264,9 @@ public abstract class BaseNetworkManager implements INetworkManager {
     public void initialize() {
         Log.d(TAG, "Initializing BaseNetworkManager");
         Log.d(TAG, "Device hotspot SSID: " + deviceHotspotSsid);
-        // Base implementation - subclasses should override if needed
+        
+        // Register tethering state broadcast receiver
+        registerTetheringStateReceiver();
     }
 
     @Override
@@ -725,10 +739,171 @@ public abstract class BaseNetworkManager implements INetworkManager {
     protected void clearHotspotState() {
         updateHotspotState(false, "", "");
     }
+    
+    /**
+     * Register broadcast receiver for tethering state changes
+     */
+    private void registerTetheringStateReceiver() {
+        if (tetheringStateReceiver != null) {
+            return; // Already registered
+        }
+        
+        final String ACTION_TETHER_STATE_CHANGED = "android.net.conn.TETHER_STATE_CHANGED";
+        
+        tetheringStateReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                if (ACTION_TETHER_STATE_CHANGED.equals(intent.getAction())) {
+                    handleTetheringStateChanged();
+                }
+            }
+        };
+        
+        IntentFilter filter = new IntentFilter(ACTION_TETHER_STATE_CHANGED);
+        context.registerReceiver(tetheringStateReceiver, filter);
+        Log.d(TAG, "Tethering state receiver registered");
+    }
+    
+    /**
+     * Handle tethering state change from broadcast
+     */
+    private void handleTetheringStateChanged() {
+        Log.d(TAG, "🔥 Tethering state changed broadcast received");
+        
+        // Check if WiFi tethering is active
+        boolean isTetheringActive = isWifiTetheringActive();
+        
+        if (isTetheringActive != isHotspotEnabled) {
+            Log.d(TAG, "🔥 Hotspot state changed: " + (isTetheringActive ? "ENABLED" : "DISABLED"));
+            
+            if (isTetheringActive) {
+                // Hotspot was enabled - refresh credentials and update state
+                refreshHotspotCredentials();
+                
+                // Start inactivity monitoring
+                startInactivityMonitoring();
+            } else {
+                // Hotspot was disabled
+                clearHotspotState();
+                notifyHotspotStateChanged(false);
+                
+                // Stop inactivity monitoring
+                stopInactivityMonitoring();
+            }
+        }
+    }
+    
+    /**
+     * Check if WiFi tethering is currently active
+     */
+    private boolean isWifiTetheringActive() {
+        try {
+            ConnectivityManager cm = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+            // Try to use reflection to check WiFi AP state
+            // This is more reliable than checking tethered interfaces
+            WifiManager wifiManager = (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
+            java.lang.reflect.Method method = wifiManager.getClass().getDeclaredMethod("isWifiApEnabled");
+            method.setAccessible(true);
+            return (Boolean) method.invoke(wifiManager);
+        } catch (Exception e) {
+            Log.w(TAG, "Could not check WiFi AP state via reflection, checking tethered interfaces", e);
+            // Fallback: check if any tethered interfaces exist
+            try {
+                ConnectivityManager cm = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+                java.lang.reflect.Method method = cm.getClass().getDeclaredMethod("getTetheredIfaces");
+                method.setAccessible(true);
+                String[] tetheredIfaces = (String[]) method.invoke(cm);
+                return tetheredIfaces != null && tetheredIfaces.length > 0;
+            } catch (Exception ex) {
+                Log.e(TAG, "Failed to check tethering state", ex);
+                return false;
+            }
+        }
+    }
+    
+    /**
+     * Refresh hotspot credentials - to be overridden by subclasses
+     * K900 will read from Settings.Global, others use device credentials
+     */
+    protected void refreshHotspotCredentials() {
+        // Default implementation for non-K900 devices
+        String ssid = getDeviceHotspotSsid();
+        String password = getDeviceHotspotPassword();
+        updateHotspotState(true, ssid, password);
+        notifyHotspotStateChanged(true);
+    }
+    
+    /**
+     * Update HTTP activity timestamp
+     */
+    public void updateHttpActivity() {
+        lastHttpActivityTime = System.currentTimeMillis();
+        Log.d(TAG, "📡 HTTP activity detected, updating timestamp");
+    }
+    
+    /**
+     * Start monitoring for hotspot inactivity
+     */
+    private void startInactivityMonitoring() {
+        stopInactivityMonitoring(); // Clear any existing monitoring
+        
+        inactivityCheckRunnable = new Runnable() {
+            @Override
+            public void run() {
+                if (!isHotspotEnabled) {
+                    return; // Hotspot already disabled
+                }
+                
+                long currentTime = System.currentTimeMillis();
+                long timeSinceLastActivity = currentTime - lastHttpActivityTime;
+                
+                if (lastHttpActivityTime > 0 && timeSinceLastActivity > HOTSPOT_INACTIVITY_TIMEOUT_MS) {
+                    Log.i(TAG, "🔥 Hotspot inactive for " + (timeSinceLastActivity / 1000) + "s, auto-disabling");
+                    stopHotspot();
+                } else {
+                    // Schedule next check in 10 seconds
+                    inactivityCheckHandler.postDelayed(this, 10000);
+                }
+            }
+        };
+        
+        // Reset activity time when starting
+        lastHttpActivityTime = System.currentTimeMillis();
+        
+        // Start checking after initial timeout period
+        inactivityCheckHandler.postDelayed(inactivityCheckRunnable, HOTSPOT_INACTIVITY_TIMEOUT_MS);
+        Log.d(TAG, "📡 Started hotspot inactivity monitoring");
+    }
+    
+    /**
+     * Stop monitoring for hotspot inactivity
+     */
+    private void stopInactivityMonitoring() {
+        if (inactivityCheckRunnable != null) {
+            inactivityCheckHandler.removeCallbacks(inactivityCheckRunnable);
+            inactivityCheckRunnable = null;
+            lastHttpActivityTime = 0;
+            Log.d(TAG, "📡 Stopped hotspot inactivity monitoring");
+        }
+    }
 
     @Override
     public void shutdown() {
         Log.d(TAG, "Shutting down BaseNetworkManager");
+        
+        // Unregister tethering receiver
+        if (tetheringStateReceiver != null) {
+            try {
+                context.unregisterReceiver(tetheringStateReceiver);
+                tetheringStateReceiver = null;
+            } catch (Exception e) {
+                Log.w(TAG, "Error unregistering tethering receiver", e);
+            }
+        }
+        
+        // Stop inactivity monitoring
+        stopInactivityMonitoring();
+        
         // Clear hotspot state on shutdown
         clearHotspotState();
         listeners.clear();

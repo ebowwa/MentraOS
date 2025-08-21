@@ -168,12 +168,14 @@ public class WifiCommandHandler implements ICommandHandler {
                 // Note: SSID and password are now device-persistent and generated internally
                 // The phone can no longer specify custom credentials
                 networkManager.startHotspot();
+                Log.d(TAG, "🔥 Hotspot start requested - status will be sent via broadcast receiver");
             } else {
                 networkManager.stopHotspot();
+                Log.d(TAG, "🔥 Hotspot stop requested - status will be sent via broadcast receiver");
             }
             
-            // Send hotspot status to phone via BLE
-            sendHotspotStatusToPhone(networkManager);
+            // Don't send immediate status - let the broadcast receiver handle it
+            // This ensures we send the actual state, not the requested state
             
             return true;
         } catch (Exception e) {

@@ -115,6 +115,11 @@ public interface INetworkManager {
     String getHotspotGatewayIp();
     
     /**
+     * Update HTTP activity timestamp for hotspot auto-disconnect monitoring
+     */
+    void updateHttpActivity();
+    
+    /**
      * Cleanup resources when the manager is no longer needed
      */
     void shutdown();
