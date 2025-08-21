@@ -167,10 +167,10 @@ export function GalleryScreen() {
   const PAGE_SIZE = 20
 
   // Initial load - get total count and first batch
-  const loadInitialPhotos = useCallback(async () => {
+  const loadInitialPhotos = useCallback(async (overrideServerIp?: string) => {
     // Only use hotspot for connection
-    const serverIp = hotspotGatewayIp
-    const hasConnection = isHotspotEnabled && hotspotGatewayIp
+    const serverIp = overrideServerIp || hotspotGatewayIp
+    const hasConnection = (overrideServerIp || (isHotspotEnabled && hotspotGatewayIp))
 
     if (!hasConnection || !serverIp) {
       console.log("[GalleryScreen] Glasses not connected (WiFi or hotspot)")
@@ -1591,7 +1591,9 @@ const $syncButtonFixed: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   left: spacing.lg,
   right: spacing.lg,
   backgroundColor: colors.buttonPrimary,
-  borderRadius: 16,
+  borderRadius: spacing.md,
+  borderWidth: spacing.xxxs,
+  borderColor: colors.border,
   paddingVertical: spacing.md,
   paddingHorizontal: spacing.lg,
   shadowColor: "#000",
@@ -1604,10 +1606,10 @@ const $syncButtonFixed: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   elevation: 5,
 })
 
-const $syncButtonFixedDisabled: ThemedStyle<ViewStyle> = ({colors}) => ({
-  backgroundColor: colors.surface,
-  borderWidth: 1,
-  borderColor: colors.separator,
+const $syncButtonFixedDisabled: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
+  backgroundColor: colors.palette.neutral100,
+  borderWidth: spacing.xxxs,
+  borderColor: colors.border,
   opacity: 1,
 })
 
