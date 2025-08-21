@@ -1,6 +1,7 @@
 package com.augmentos.asg_client.service.communication.interfaces;
 
 import org.json.JSONObject;
+import com.augmentos.asg_client.io.network.models.NetworkInfo;
 
 /**
  * Interface for communication management (Bluetooth, WiFi status, etc.).
@@ -21,9 +22,15 @@ public interface ICommunicationManager {
     
     /**
      * Send WiFi scan results over Bluetooth
-     * @param networks List of available networks
+     * @param networks List of available networks (legacy format)
      */
     void sendWifiScanResultsOverBle(java.util.List<String> networks);
+    
+    /**
+     * Send enhanced WiFi scan results over Bluetooth with security and signal info
+     * @param networks List of NetworkInfo objects with enhanced data
+     */
+    void sendWifiScanResultsOverBleEnhanced(java.util.List<NetworkInfo> networks);
     
     /**
      * Send acknowledgment response

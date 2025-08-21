@@ -25,6 +25,16 @@ export function NetworkConnectivityProvider({children}: NetworkConnectivityProvi
   const isWifiConnected = status.glasses_info?.glasses_wifi_connected
   const glassesWifiSSID = status.glasses_info?.glasses_wifi_ssid
 
+  // Get glasses hotspot info from status
+  const isHotspotEnabled = status.glasses_info?.glasses_hotspot_enabled
+  const hotspotGatewayIp = status.glasses_info?.glasses_hotspot_gateway_ip
+  const hotspotSSID = status.glasses_info?.glasses_hotspot_ssid
+
+  // Determine the active IP - prioritize hotspot if enabled
+  const activeGlassesIp = isHotspotEnabled && hotspotGatewayIp ? hotspotGatewayIp : glassesWifiIp
+  const activeConnection = isHotspotEnabled || isWifiConnected
+  const activeSSID = isHotspotEnabled ? hotspotSSID : glassesWifiSSID
+
   // Initialize network monitoring
   useEffect(() => {
     console.log("[NetworkConnectivityProvider] Initializing network monitoring")
@@ -32,6 +42,12 @@ export function NetworkConnectivityProvider({children}: NetworkConnectivityProvi
       isWifiConnected,
       glassesWifiSSID,
       glassesWifiIp,
+      isHotspotEnabled,
+      hotspotGatewayIp,
+      hotspotSSID,
+      activeConnection,
+      activeGlassesIp,
+      activeSSID,
     })
 
     // Initialize the service
@@ -44,13 +60,9 @@ export function NetworkConnectivityProvider({children}: NetworkConnectivityProvi
     })
 
     // Set initial glasses status if available
-    if (isWifiConnected !== undefined) {
+    if (activeConnection !== undefined) {
       console.log("[NetworkConnectivityProvider] Setting initial glasses status")
-      networkConnectivityService.updateGlassesStatus(
-        isWifiConnected,
-        glassesWifiSSID || null,
-        glassesWifiIp || undefined,
-      )
+      networkConnectivityService.updateGlassesStatus(activeConnection, activeSSID || null, activeGlassesIp || undefined)
     }
 
     // Cleanup
@@ -67,16 +79,18 @@ export function NetworkConnectivityProvider({children}: NetworkConnectivityProvi
       isWifiConnected,
       glassesWifiSSID,
       glassesWifiIp,
+      isHotspotEnabled,
+      hotspotGatewayIp,
+      hotspotSSID,
+      activeConnection,
+      activeGlassesIp,
+      activeSSID,
     })
 
-    if (isWifiConnected !== undefined) {
-      networkConnectivityService.updateGlassesStatus(
-        isWifiConnected,
-        glassesWifiSSID || null,
-        glassesWifiIp || undefined,
-      )
+    if (activeConnection !== undefined) {
+      networkConnectivityService.updateGlassesStatus(activeConnection, activeSSID || null, activeGlassesIp || undefined)
     }
-  }, [isWifiConnected, glassesWifiSSID, glassesWifiIp])
+  }, [activeConnection, activeSSID, activeGlassesIp])
 
   const value: NetworkConnectivityContextType = {
     networkStatus,

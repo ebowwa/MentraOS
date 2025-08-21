@@ -2,6 +2,7 @@ import React from "react"
 import {View} from "react-native"
 import {
   AudioWearablePairingGuide,
+  BrilliantLabsFramePairingGuide,
   EvenRealitiesG1PairingGuide,
   MentraLivePairingGuide,
   MentraMach1PairingGuide,
@@ -29,6 +30,8 @@ export const getPairingGuide = (glassesModelName: string) => {
       return <AudioWearablePairingGuide />
     case "Simulated Glasses":
       return <VirtualWearablePairingGuide />
+    case "Brilliant Labs Frame":
+      return <BrilliantLabsFramePairingGuide />
     default:
       return <View />
   }
