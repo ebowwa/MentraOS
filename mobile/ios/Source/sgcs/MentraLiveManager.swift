@@ -603,7 +603,7 @@ extension MentraLiveManager: CBPeripheralDelegate {
     }
 
     func peripheral(_: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
-        // CoreCommsService.log("GOT CHARACTERISTIC UPDATE @@@@@@@@@@@@@@@@@@@@@")
+        // Core.log("GOT CHARACTERISTIC UPDATE @@@@@@@@@@@@@@@@@@@@@")
         if let error = error {
             Core.log("Error updating value for characteristic: \(error.localizedDescription)")
             return
@@ -617,13 +617,13 @@ extension MentraLiveManager: CBPeripheralDelegate {
         let threadId = Thread.current.hash
         let uuid = characteristic.uuid
 
-        // CoreCommsService.log("Thread-\(threadId): 🎉 didUpdateValueFor CALLBACK TRIGGERED! Characteristic: \(uuid)")
+        // Core.log("Thread-\(threadId): 🎉 didUpdateValueFor CALLBACK TRIGGERED! Characteristic: \(uuid)")
         // if uuid == RX_CHAR_UUID {
-        //   CoreCommsService.log("Thread-\(threadId): 🎯 RECEIVED DATA ON RX CHARACTERISTIC (Peripheral's TX)")
+        //   Core.log("Thread-\(threadId): 🎯 RECEIVED DATA ON RX CHARACTERISTIC (Peripheral's TX)")
         // } else if uuid == TX_CHAR_UUID {
-        //   CoreCommsService.log("Thread-\(threadId): 🎯 RECEIVED DATA ON TX CHARACTERISTIC (Peripheral's RX)")
+        //   Core.log("Thread-\(threadId): 🎯 RECEIVED DATA ON TX CHARACTERISTIC (Peripheral's RX)")
         // }
-        // CoreCommsService.log("Thread-\(threadId): 🔍 Processing received data - \(data.count) bytes")
+        // Core.log("Thread-\(threadId): 🔍 Processing received data - \(data.count) bytes")
 
         processReceivedData(data)
     }
@@ -1138,7 +1138,7 @@ typealias JSONObject = [String: Any]
         //    // Set scan timeout
         //    DispatchQueue.main.asyncAfter(deadline: .now() + 60.0) { [weak self] in
         //      if self?.isScanning == true {
-        //        CoreCommsService.log("Scan timeout reached - stopping BLE scan")
+        //        Core.log("Scan timeout reached - stopping BLE scan")
         //        self?.stopScan()
         //      }
         //    }
@@ -1460,7 +1460,7 @@ typealias JSONObject = [String: Any]
     }
 
     func sendHotspotState(_ enabled: Bool) {
-        CoreCommsService.log("LiveManager: 🔥 Sending hotspot state: \(enabled)")
+        Core.log("LiveManager: 🔥 Sending hotspot state: \(enabled)")
 
         let json: [String: Any] = [
             "type": "set_hotspot_state",
@@ -1471,7 +1471,7 @@ typealias JSONObject = [String: Any]
     }
 
     func queryGalleryStatus() {
-        CoreCommsService.log("LiveManager: 📸 Querying gallery status from glasses")
+        Core.log("LiveManager: 📸 Querying gallery status from glasses")
 
         let json: [String: Any] = [
             "type": "query_gallery_status",
@@ -1515,15 +1515,15 @@ typealias JSONObject = [String: Any]
             networks = networksNeoArray.compactMap { networkInfo in
                 networkInfo["ssid"] as? String
             }
-            CoreCommsService.log("Received enhanced WiFi scan results: \(enhancedNetworks.count) networks with security info")
+            Core.log("Received enhanced WiFi scan results: \(enhancedNetworks.count) networks with security info")
         }
         // Fall back to legacy format
         else if let networksArray = json["networks"] as? [String] {
             networks = networksArray
-            CoreCommsService.log("Received legacy WiFi scan results: \(networks.count) networks found")
+            Core.log("Received legacy WiFi scan results: \(networks.count) networks found")
         } else if let networksString = json["networks"] as? String {
             networks = networksString.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
-            CoreCommsService.log("Received legacy WiFi scan results (string format): \(networks.count) networks found")
+            Core.log("Received legacy WiFi scan results (string format): \(networks.count) networks found")
         }
 
         // Emit with enhanced data if available, otherwise legacy format
@@ -1606,7 +1606,7 @@ typealias JSONObject = [String: Any]
     // MARK: - File Transfer Processing
 
     private func processFilePacket(_ packetInfo: K900ProtocolUtils.FilePacketInfo) {
-        //    CoreCommsService.log("📦 Processing file packet: \(packetInfo.fileName) [\(packetInfo.packIndex)/\(((packetInfo.fileSize + K900ProtocolUtils.FILE_PACK_SIZE - 1) / K900ProtocolUtils.FILE_PACK_SIZE - 1))] (\(packetInfo.packSize) bytes)")
+        //    Core.log("📦 Processing file packet: \(packetInfo.fileName) [\(packetInfo.packIndex)/\(((packetInfo.fileSize + K900ProtocolUtils.FILE_PACK_SIZE - 1) / K900ProtocolUtils.FILE_PACK_SIZE - 1))] (\(packetInfo.packSize) bytes)")
 
         // Check if this is a BLE photo transfer we're tracking
         var bleImgId = packetInfo.fileName
@@ -1784,9 +1784,9 @@ typealias JSONObject = [String: Any]
         //      let fileURL = saveDirectory.appendingPathComponent(fileName)
         //
         //      try imageData.write(to: fileURL)
-        //      CoreCommsService.log("💾 Saved BLE photo locally: \(fileURL.path)")
+        //      Core.log("💾 Saved BLE photo locally: \(fileURL.path)")
         //    } catch {
-        //      CoreCommsService.log("Error saving BLE photo locally: \(error)")
+        //      Core.log("Error saving BLE photo locally: \(error)")
         //    }
 
         // Get core token for authentication
@@ -2107,7 +2107,7 @@ typealias JSONObject = [String: Any]
     }
 
     private func updateHotspotStatus(enabled: Bool, ssid: String, password: String, ip: String) {
-        CoreCommsService.log("🔥 Updating hotspot status - enabled: \(enabled), ssid: \(ssid)")
+        Core.log("🔥 Updating hotspot status - enabled: \(enabled), ssid: \(ssid)")
         isHotspotEnabled = enabled
         hotspotSsid = ssid
         hotspotPassword = password
@@ -2115,13 +2115,13 @@ typealias JSONObject = [String: Any]
         emitHotspotStatusChange()
 
         // Trigger a full status update so React Native gets the updated glasses_info
-        AOSManager.getInstance().handleRequestStatus()
+        MentraManager.getInstance().handleRequestStatus()
     }
 
     private func handleGalleryStatus(photoCount: Int, videoCount: Int, totalCount: Int,
                                      totalSize: Int64, hasContent: Bool)
     {
-        CoreCommsService.log("📸 Received gallery status - photos: \(photoCount), videos: \(videoCount), total size: \(totalSize) bytes")
+        Core.log("📸 Received gallery status - photos: \(photoCount), videos: \(videoCount), total size: \(totalSize) bytes")
 
         // Emit gallery status event as CoreMessageEvent like other status events
         let eventBody = ["glasses_gallery_status": [
