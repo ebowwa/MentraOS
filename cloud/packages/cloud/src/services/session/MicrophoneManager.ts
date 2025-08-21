@@ -193,7 +193,7 @@ export class MicrophoneManager {
           isTranscribing: this.session.isTranscribing || false,
         },
         isMicrophoneEnabled: isEnabled,
-        requiredData: requiredData,
+        requiredData: isEnabled ? requiredData : [],
         bypassVad: shouldBypassVad, // NEW: Include VAD bypass flag
         timestamp: new Date(),
       };
