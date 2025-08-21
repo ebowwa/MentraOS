@@ -67,6 +67,7 @@ export class PhotoManager {
       requestId,
       saveToGallery = false,
       customWebhookUrl,
+      authToken,
       size = "medium",
     } = appRequest;
 
@@ -77,6 +78,7 @@ export class PhotoManager {
         saveToGallery,
         size,
         hasCustomWebhook: !!customWebhookUrl,
+        hasAuthToken: !!authToken,
       },
       "Processing App photo request.",
     );
@@ -86,7 +88,7 @@ export class PhotoManager {
     if (customWebhookUrl) {
       webhookUrl = customWebhookUrl;
       this.logger.info(
-        { requestId, customWebhookUrl },
+        { requestId, customWebhookUrl, hasAuthToken: !!authToken },
         "Using custom webhook URL for photo request.",
       );
     } else {
@@ -129,6 +131,7 @@ export class PhotoManager {
       requestId,
       appId: packageName, // Glasses expect `appId`
       webhookUrl, // Use custom webhookUrl if provided, otherwise default
+      authToken, // Include authToken for webhook authentication
       size, // Propagate desired size
       timestamp: new Date(),
     };
@@ -136,7 +139,13 @@ export class PhotoManager {
     try {
       this.userSession.websocket.send(JSON.stringify(messageToGlasses));
       this.logger.info(
-        { requestId, packageName, webhookUrl, isCustom: !!customWebhookUrl },
+        {
+          requestId,
+          packageName,
+          webhookUrl,
+          isCustom: !!customWebhookUrl,
+          hasAuthToken: !!authToken,
+        },
         "PHOTO_REQUEST command sent to glasses with webhook URL.",
       );
 
