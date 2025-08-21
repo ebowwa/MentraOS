@@ -143,20 +143,56 @@ public class LiveKitManager: NSObject {
     Core.log("[LiveKitManager] Custom audio track setup complete")
   }
   
+  func dataToPCMBuffer(data: Data) -> AVAudioPCMBuffer? {
+    
+    let format = AVAudioFormat(commonFormat: .pcmFormatInt16,
+                               sampleRate: 44100,
+                               channels: 1,
+                               interleaved: false)!
+    
+    let frameCapacity = UInt32(data.count) / format.streamDescription.pointee.mBytesPerFrame
+    
+    guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frameCapacity) else {
+      return nil
+    }
+    
+    buffer.frameLength = frameCapacity
+    
+    // For integer formats (Int16, etc.)
+    if format.commonFormat == .pcmFormatInt16 {
+      data.withUnsafeBytes { bytes in
+        memcpy(buffer.int16ChannelData?[0], bytes.baseAddress, data.count)
+      }
+    }
+    // For float formats
+    else if format.commonFormat == .pcmFormatFloat32 {
+      data.withUnsafeBytes { bytes in
+        memcpy(buffer.floatChannelData?[0], bytes.baseAddress, data.count)
+      }
+    }
+    
+    return buffer
+  }
+  
   /// Add PCM audio data to be published
   /// - Parameter pcmData: Raw PCM audio data (16kHz, mono, 16-bit little endian)
   @objc public func addPcm(_ pcmData: Data) {
-    //    guard let audioSource = audioSource else {
-    //      Core.log("[LiveKitManager] Audio source not initialized")
-    //      return
-    //    }
+    guard let recorder = self.trackRecorder else {
+      Core.log("[LiveKitManager] Audio recorder not initialized")
+      return
+    }
     
     guard isConnected else {
       Core.log("[LiveKitManager] Cannot add PCM - not connected")
       return
     }
     
-    self.trackRecorder?.render(pcmBuffer: pcmData)
+    guard let buffer = dataToPCMBuffer(data: pcmData) else {
+      Core.log("[LiveKitManager] Failed to convert data to PCM buffer")
+      return
+    }
+    
+    recorder.render(pcmBuffer: buffer)
   }
   
   /// Disconnect from LiveKit room
