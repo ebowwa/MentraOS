@@ -783,6 +783,7 @@ export class AppSession {
           const isNormalClosure =
             code === 1000 || code === 1001 || code === 1008;
           const isManualStop = reason && reason.includes("App stopped");
+          const isUserSessionEnded = reason && reason.includes("User session ended");
 
           // Log closure details for diagnostics
           this.logger.debug(
@@ -801,6 +802,11 @@ export class AppSession {
             this.logger.debug(
               `🔌 [${this.config.packageName}] Normal closure detected, not attempting reconnection`,
             );
+          }
+
+          // if user session ended, then trigger onStop.
+          if (isUserSessionEnded) {
+            // TODO: trigger onStop somehow.
           }
         };
 
