@@ -288,6 +288,31 @@ export interface ManagedStreamStatus extends BaseMessage {
 }
 
 /**
+ * Stream status check response
+ * Returns information about any existing streams for the user
+ */
+export interface StreamStatusCheckResponse extends BaseMessage {
+  type: CloudToAppMessageType.STREAM_STATUS_CHECK_RESPONSE;
+  hasActiveStream: boolean;
+  streamInfo?: {
+    type: "managed" | "unmanaged";
+    streamId: string;
+    status: string;
+    createdAt: Date;
+    // For managed streams
+    hlsUrl?: string;
+    dashUrl?: string;
+    webrtcUrl?: string;
+    previewUrl?: string;
+    thumbnailUrl?: string;
+    activeViewers?: number;
+    // For unmanaged streams
+    rtmpUrl?: string;
+    requestingAppId?: string;
+  };
+}
+
+/**
  * Audio play response to App
  */
 export interface AudioPlayResponse extends BaseMessage {
@@ -319,6 +344,7 @@ export type CloudToAppMessage =
   | DashboardAlwaysOnChanged
   | CustomMessage
   | ManagedStreamStatus
+  | StreamStatusCheckResponse
   | MentraosSettingsUpdate
   // New App-to-App communication response messages
   | AppMessageReceived
@@ -408,6 +434,12 @@ export function isPhotoResponse(
   message: CloudToAppMessage,
 ): message is PhotoResponse {
   return message.type === GlassesToCloudMessageType.PHOTO_RESPONSE;
+}
+
+export function isStreamStatusCheckResponse(
+  message: CloudToAppMessage,
+): message is StreamStatusCheckResponse {
+  return message.type === CloudToAppMessageType.STREAM_STATUS_CHECK_RESPONSE;
 }
 
 export function isAudioPlayResponse(
