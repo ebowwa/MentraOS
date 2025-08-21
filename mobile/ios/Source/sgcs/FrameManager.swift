@@ -1,4 +1,12 @@
 //
+//  FrameDevice.swift
+//  AOS
+//
+//  Created by Matthew Fosse on 8/20/25.
+//
+
+
+//
 //  FrameManager.swift
 //  AOS
 //
@@ -84,7 +92,7 @@ struct FrameCommand {
               centralManager.state == .poweredOn,
               !isScanning
         else {
-            CoreCommsService.log("\(FrameManager.TAG): Cannot start scan - BLE not ready or already scanning")
+            Core.log("\(FrameManager.TAG): Cannot start scan - BLE not ready or already scanning")
             return
         }
 
@@ -100,7 +108,7 @@ struct FrameCommand {
             options: scanOptions
         )
 
-        CoreCommsService.log("\(FrameManager.TAG): Started scanning for Frame devices")
+        Core.log("\(FrameManager.TAG): Started scanning for Frame devices")
 
         // Stop scan after 10 seconds
         DispatchQueue.main.asyncAfter(deadline: .now() + 10) { [weak self] in
@@ -115,20 +123,20 @@ struct FrameCommand {
 
         centralManager?.stopScan()
         isScanning = false
-        CoreCommsService.log("\(FrameManager.TAG): Stopped scanning")
+        Core.log("\(FrameManager.TAG): Stopped scanning")
     }
 
     func connect(deviceName: String? = nil) {
         let targetDevice = deviceName ?? savedDeviceName
 
         guard let name = targetDevice else {
-            CoreCommsService.log("\(FrameManager.TAG): No device name available for connection")
+            Core.log("\(FrameManager.TAG): No device name available for connection")
             startScanning()
             return
         }
 
         if isConnecting {
-            CoreCommsService.log("\(FrameManager.TAG): Already connecting")
+            Core.log("\(FrameManager.TAG): Already connecting")
             return
         }
 
@@ -150,7 +158,7 @@ struct FrameCommand {
 
     func displayTextWall(_ text: String) {
         guard isConnected else {
-            CoreCommsService.log("\(FrameManager.TAG): Cannot display text - not connected")
+            Core.log("\(FrameManager.TAG): Cannot display text - not connected")
             return
         }
 
@@ -234,7 +242,7 @@ struct FrameCommand {
         guard let centralManager = centralManager,
               centralManager.state == .poweredOn
         else {
-            CoreCommsService.log("\(FrameManager.TAG): BLE not ready for targeted scan")
+            Core.log("\(FrameManager.TAG): BLE not ready for targeted scan")
             isConnecting = false
             connectionState = "DISCONNECTED"
             return
@@ -255,7 +263,7 @@ struct FrameCommand {
                 self.centralManager?.stopScan()
                 self.isConnecting = false
                 self.connectionState = "DISCONNECTED"
-                CoreCommsService.log("\(FrameManager.TAG): Connection timeout - device not found")
+                Core.log("\(FrameManager.TAG): Connection timeout - device not found")
             }
         }
     }
@@ -263,7 +271,7 @@ struct FrameCommand {
     private func queueCommand(_ command: String, completion: ((Bool) -> Void)? = nil) {
         queueLock.lock()
         commandQueue.append(FrameCommand(command: command, completion: completion))
-        CoreCommsService.log("\(FrameManager.TAG): Queued command (queue size: \(commandQueue.count))")
+        Core.log("\(FrameManager.TAG): Queued command (queue size: \(commandQueue.count))")
         queueLock.unlock()
 
         processQueue()
@@ -312,7 +320,7 @@ struct FrameCommand {
         guard let txCharacteristic = txCharacteristic,
               let peripheral = framePeripheral
         else {
-            CoreCommsService.log("\(FrameManager.TAG): Cannot send command - not connected")
+            Core.log("\(FrameManager.TAG): Cannot send command - not connected")
             completion(false)
             return
         }
@@ -332,18 +340,18 @@ struct FrameCommand {
         }
 
         guard var data = finalCommand.data(using: .utf8) else {
-            CoreCommsService.log("\(FrameManager.TAG): Failed to encode command")
+            Core.log("\(FrameManager.TAG): Failed to encode command")
             completion(false)
             return
         }
 
         // Handle MTU limitation
         if data.count > 247 {
-            CoreCommsService.log("\(FrameManager.TAG): Command too long, truncating")
+            Core.log("\(FrameManager.TAG): Command too long, truncating")
             data = data.prefix(247)
         }
 
-        CoreCommsService.log("\(FrameManager.TAG): Sending Lua command: \(finalCommand.trimmingCharacters(in: .whitespacesAndNewlines))")
+        Core.log("\(FrameManager.TAG): Sending Lua command: \(finalCommand.trimmingCharacters(in: .whitespacesAndNewlines))")
 
         // Store completion for delegate callback
         currentWriteCompletion = completion
@@ -351,7 +359,7 @@ struct FrameCommand {
     }
 
     private func initializeFrame() {
-        CoreCommsService.log("\(FrameManager.TAG): Initializing Frame display")
+        Core.log("\(FrameManager.TAG): Initializing Frame display")
 
         // Send break signal to stop any running main.lua
         sendBreakSignal()
@@ -368,7 +376,7 @@ struct FrameCommand {
 
         let breakSignal = Data([0x03])
         peripheral.writeValue(breakSignal, for: txCharacteristic, type: .withResponse)
-        CoreCommsService.log("\(FrameManager.TAG): Sent break signal")
+        Core.log("\(FrameManager.TAG): Sent break signal")
     }
 
     private func escapeForLua(_ text: String) -> String {
@@ -411,12 +419,12 @@ extension FrameManager: CBCentralManagerDelegate {
     func centralManagerDidUpdateState(_ central: CBCentralManager) {
         switch central.state {
         case .poweredOn:
-            CoreCommsService.log("\(FrameManager.TAG): Bluetooth powered on")
+            Core.log("\(FrameManager.TAG): Bluetooth powered on")
         case .poweredOff:
-            CoreCommsService.log("\(FrameManager.TAG): Bluetooth powered off")
+            Core.log("\(FrameManager.TAG): Bluetooth powered off")
             cleanup()
         default:
-            CoreCommsService.log("\(FrameManager.TAG): Bluetooth state: \(central.state.rawValue)")
+            Core.log("\(FrameManager.TAG): Bluetooth state: \(central.state.rawValue)")
         }
     }
 
@@ -430,7 +438,7 @@ extension FrameManager: CBCentralManagerDelegate {
         if deviceName.contains("Frame") || deviceName.contains("frame") {
             if !discoveredDevices.contains(address) {
                 discoveredDevices.insert(address)
-                CoreCommsService.log("\(FrameManager.TAG): Found Frame device: \(deviceName) (\(address))")
+                Core.log("\(FrameManager.TAG): Found Frame device: \(deviceName) (\(address))")
                 onDeviceDiscovered?(deviceName)
 
                 // If we're doing targeted scan, connect to matching device
@@ -439,14 +447,14 @@ extension FrameManager: CBCentralManagerDelegate {
                     framePeripheral = peripheral
                     peripheral.delegate = self
                     central.connect(peripheral, options: nil)
-                    CoreCommsService.log("\(FrameManager.TAG): Connecting to \(deviceName)")
+                    Core.log("\(FrameManager.TAG): Connecting to \(deviceName)")
                 }
             }
         }
     }
 
     func centralManager(_: CBCentralManager, didConnect peripheral: CBPeripheral) {
-        CoreCommsService.log("\(FrameManager.TAG): Connected to Frame - negotiating MTU")
+        Core.log("\(FrameManager.TAG): Connected to Frame - negotiating MTU")
         isConnecting = false
 
         // Save device name
@@ -462,13 +470,13 @@ extension FrameManager: CBCentralManagerDelegate {
     }
 
     func centralManager(_: CBCentralManager, didDisconnectPeripheral _: CBPeripheral, error _: Error?) {
-        CoreCommsService.log("\(FrameManager.TAG): Disconnected from Frame")
+        Core.log("\(FrameManager.TAG): Disconnected from Frame")
         cleanup()
         onConnectionStateChanged?()
     }
 
     func centralManager(_: CBCentralManager, didFailToConnect _: CBPeripheral, error: Error?) {
-        CoreCommsService.log("\(FrameManager.TAG): Failed to connect: \(error?.localizedDescription ?? "Unknown error")")
+        Core.log("\(FrameManager.TAG): Failed to connect: \(error?.localizedDescription ?? "Unknown error")")
         isConnecting = false
         connectionState = "DISCONNECTED"
         cleanup()
@@ -480,7 +488,7 @@ extension FrameManager: CBCentralManagerDelegate {
 extension FrameManager: CBPeripheralDelegate {
     func peripheral(_ peripheral: CBPeripheral, didDiscoverServices error: Error?) {
         guard error == nil else {
-            CoreCommsService.log("\(FrameManager.TAG): Service discovery failed: \(error!)")
+            Core.log("\(FrameManager.TAG): Service discovery failed: \(error!)")
             return
         }
 
@@ -488,7 +496,7 @@ extension FrameManager: CBPeripheralDelegate {
 
         for service in services {
             if service.uuid == FRAME_SERVICE_UUID {
-                CoreCommsService.log("\(FrameManager.TAG): Found Frame service")
+                Core.log("\(FrameManager.TAG): Found Frame service")
                 peripheral.discoverCharacteristics([FRAME_TX_CHAR_UUID, FRAME_RX_CHAR_UUID], for: service)
             }
         }
@@ -496,7 +504,7 @@ extension FrameManager: CBPeripheralDelegate {
 
     func peripheral(_ peripheral: CBPeripheral, didDiscoverCharacteristicsFor service: CBService, error: Error?) {
         guard error == nil else {
-            CoreCommsService.log("\(FrameManager.TAG): Characteristic discovery failed: \(error!)")
+            Core.log("\(FrameManager.TAG): Characteristic discovery failed: \(error!)")
             return
         }
 
@@ -505,11 +513,11 @@ extension FrameManager: CBPeripheralDelegate {
         for characteristic in characteristics {
             if characteristic.uuid == FRAME_TX_CHAR_UUID {
                 txCharacteristic = characteristic
-                CoreCommsService.log("\(FrameManager.TAG): Found TX characteristic")
+                Core.log("\(FrameManager.TAG): Found TX characteristic")
             } else if characteristic.uuid == FRAME_RX_CHAR_UUID {
                 rxCharacteristic = characteristic
                 peripheral.setNotifyValue(true, for: characteristic)
-                CoreCommsService.log("\(FrameManager.TAG): Found RX characteristic, enabling notifications")
+                Core.log("\(FrameManager.TAG): Found RX characteristic, enabling notifications")
             }
         }
 
@@ -517,7 +525,7 @@ extension FrameManager: CBPeripheralDelegate {
         if txCharacteristic != nil, rxCharacteristic != nil {
             isConnected = true
             connectionState = "CONNECTED"
-            CoreCommsService.log("\(FrameManager.TAG): Frame fully connected")
+            Core.log("\(FrameManager.TAG): Frame fully connected")
             onConnectionStateChanged?()
             initializeFrame()
         }
@@ -528,16 +536,16 @@ extension FrameManager: CBPeripheralDelegate {
               let data = characteristic.value else { return }
 
         if let response = String(data: data, encoding: .utf8) {
-            CoreCommsService.log("\(FrameManager.TAG): Received from Frame: \(response)")
+            Core.log("\(FrameManager.TAG): Received from Frame: \(response)")
         }
     }
 
     func peripheral(_: CBPeripheral, didWriteValueFor _: CBCharacteristic, error: Error?) {
         if let error = error {
-            CoreCommsService.log("\(FrameManager.TAG): Write failed: \(error)")
+            Core.log("\(FrameManager.TAG): Write failed: \(error)")
             currentWriteCompletion?(false)
         } else {
-            CoreCommsService.log("\(FrameManager.TAG): Successfully wrote to Frame")
+            Core.log("\(FrameManager.TAG): Successfully wrote to Frame")
             currentWriteCompletion?(true)
         }
         currentWriteCompletion = nil

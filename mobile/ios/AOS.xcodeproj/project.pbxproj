@@ -54,11 +54,9 @@
 		C5DE985D2DDD0F420032FC99 /* bwdet.c in Sources */ = {isa = PBXBuildFile; fileRef = C5DE980E2DDD0F420032FC99 /* bwdet.c */; };
 		C5DE985E2DDD0F420032FC99 /* VADState.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5DE98302DDD0F420032FC99 /* VADState.swift */; };
 		C5DE985F2DDD0F420032FC99 /* sns.c in Sources */ = {isa = PBXBuildFile; fileRef = C5DE98272DDD0F420032FC99 /* sns.c */; };
-		C5EDFEEF2E319866000428A3 /* Mach1Manager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5EDFEEE2E319866000428A3 /* Mach1Manager.swift */; };
-		CD659EB42E554E1000F8124A /* FrameManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD659EB32E554E1000F8124A /* FrameManager.swift */; };
-		CDD4E42B2E3DBFFB00329C8C /* TarBz2Extractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDD4E42A2E3DBFFB00329C8C /* TarBz2Extractor.swift */; };
 		C5DE98972DE267CD0032FC99 /* Core.m in Sources */ = {isa = PBXBuildFile; fileRef = C5DE98952DE267CD0032FC99 /* Core.m */; };
 		C5DE98982DE267CD0032FC99 /* Core.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5DE98962DE267CD0032FC99 /* Core.swift */; };
+		CD659EB42E554E1000F8124A /* FrameManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD659EB32E554E1000F8124A /* FrameManager.swift */; };
 		F314884EB5724196A394670E /* noop-file.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14C4353E097941A5AC9B6A09 /* noop-file.swift */; };
 /* End PBXBuildFile section */
 
@@ -136,12 +134,10 @@
 		C5DE983C2DDD0F420032FC99 /* silero_vad.onnx */ = {isa = PBXFileReference; lastKnownFileType = file; path = silero_vad.onnx; sourceTree = "<group>"; };
 		C5DE983E2DDD0F420032FC99 /* SileroVAD.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SileroVAD.swift; sourceTree = "<group>"; };
 		C5DE983F2DDD0F420032FC99 /* SileroVADStrategy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SileroVADStrategy.swift; sourceTree = "<group>"; };
-		C5EDFEEE2E319866000428A3 /* Mach1Manager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Mach1Manager.swift; sourceTree = "<group>"; };
-		CD659EB32E554E1000F8124A /* FrameManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrameManager.swift; sourceTree = "<group>"; };
-		CDD4E42A2E3DBFFB00329C8C /* TarBz2Extractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TarBz2Extractor.swift; sourceTree = "<group>"; };
 		C5DE98672DDD1FB00032FC99 /* Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Bridging-Header.h"; sourceTree = "<group>"; };
 		C5DE98952DE267CD0032FC99 /* Core.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = Core.m; sourceTree = "<group>"; };
 		C5DE98962DE267CD0032FC99 /* Core.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Core.swift; sourceTree = "<group>"; };
+		CD659EB32E554E1000F8124A /* FrameManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrameManager.swift; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		FAC715A2D49A985799AEE119 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-AOS/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -251,6 +247,7 @@
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
 				D65327D7A22EEC0BE12398D9 /* Pods */,
 				D7E4C46ADA2E9064B798F356 /* ExpoModulesProviders */,
+				C50340102E56AF4C006A0718 /* Recovered References */,
 			);
 			indentWidth = 2;
 			sourceTree = "<group>";
@@ -280,6 +277,14 @@
 			);
 			name = Supporting;
 			path = AOS/Supporting;
+			sourceTree = "<group>";
+		};
+		C50340102E56AF4C006A0718 /* Recovered References */ = {
+			isa = PBXGroup;
+			children = (
+				CD659EB32E554E1000F8124A /* FrameManager.swift */,
+			);
+			name = "Recovered References";
 			sourceTree = "<group>";
 		};
 		C5DE979D2DDD0EA80032FC99 /* Source */ = {
@@ -836,7 +841,7 @@
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_DEBUG";
 				PRODUCT_BUNDLE_IDENTIFIER = com.mentra.mentra;
-				PRODUCT_NAME = "MentraOS";
+				PRODUCT_NAME = MentraOS;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
@@ -844,7 +849,7 @@
 				SWIFT_OBJC_BRIDGING_HEADER = "Source/Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1";
+				TARGETED_DEVICE_FAMILY = 1;
 				VERSIONING_SYSTEM = "apple-generic";
 			};
 			name = Debug;
@@ -994,14 +999,14 @@
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_RELEASE";
 				PRODUCT_BUNDLE_IDENTIFIER = com.mentra.mentra;
-				PRODUCT_NAME = "MentraOS";
+				PRODUCT_NAME = MentraOS;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_OBJC_BRIDGING_HEADER = "Source/Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1";
+				TARGETED_DEVICE_FAMILY = 1;
 				VERSIONING_SYSTEM = "apple-generic";
 			};
 			name = Release;
