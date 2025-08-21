@@ -947,8 +947,8 @@ struct ViewState {
     }
 
     func onRouteChange(reason: AVAudioSession.RouteChangeReason, availableInputs: [AVAudioSessionPortDescription]) {
-        Core.log("AOS: onRouteChange: reason: \(reason)")
-        Core.log("AOS: onRouteChange: inputs: \(availableInputs)")
+        // Core.log("AOS: onRouteChange: reason: \(reason)")
+        // Core.log("AOS: onRouteChange: inputs: \(availableInputs)")
 
         // CoreCommsService.log the available inputs and see if any are an onboard mic:
         // for input in availableInputs {
@@ -974,8 +974,8 @@ struct ViewState {
         //        default:
         //            break
         //        }
-
-        onMicrophoneStateChange(currentRequiredData, bypassVadForPCM)
+        // TODO: re-enable this:
+        // onMicrophoneStateChange(currentRequiredData, bypassVadForPCM)
     }
 
     func onInterruption(began: Bool) {

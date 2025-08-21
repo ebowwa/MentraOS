@@ -85,20 +85,24 @@ public class LiveKitManager: NSObject {
         
         // Create connect options
         let connectOptions = ConnectOptions(
-          enableMicrophone: false,
+          enableMicrophone: true,
         )
+        
+        let roomOptions = RoomOptions()
         
         // Connect to the room
         try await room.connect(
           url: url,
           token: token,
-          connectOptions: connectOptions
+          connectOptions: connectOptions,
+          roomOptions: roomOptions,
         )
         
         // Setup custom audio source for PCM input
-        try await setupCustomAudioTrack()
+        // try await setupCustomAudioTrack()
         
         Core.log("[LiveKitManager] Successfully connected to LiveKit room")
+        isConnected = true
         
       } catch {
         Core.log("[LiveKitManager] Failed to connect: \(error.localizedDescription)")
@@ -192,7 +196,8 @@ public class LiveKitManager: NSObject {
       return
     }
     
-    recorder.render(pcmBuffer: buffer)
+    Core.log("[LiveKitManager] Adding PCM \(buffer.frameLength)")
+    // recorder.render(pcmBuffer: buffer)
   }
   
   /// Disconnect from LiveKit room

@@ -11,7 +11,7 @@ import Foundation
 class ServerComms {
     private static var instance: ServerComms?
 
-    let wsManager = WebSocketManager()
+    let wsManager = WebSocketManager.shared
     private var speechRecCallback: (([String: Any]) -> Void)?
     private var coreToken: String = ""
     var userid: String = ""
@@ -454,12 +454,20 @@ class ServerComms {
 
         switch type {
         case "connection_ack":
-            startAudioSenderThread()
-            MentraManager.getInstance().onAppStateChange(parseAppList(msg) /* , parseWhatToStream(msg) */ )
+            
+            MentraManager.getInstance().onAppStateChange(parseAppList(msg))
             MentraManager.getInstance().onConnectionAck()
+            let livekitData = msg["livekit"] as? [String: Any] ?? [:]
+            let url = livekitData["url"] as? String ?? ""
+            let token = livekitData["token"] as? String ?? ""
+            if !url.isEmpty, !token.isEmpty {
+                Core.log("ServerComms: Connecting to LiveKit: \(url)")
+                Core.log("ServerComms: LiveKit token: \(token)")
+                LiveKitManager.shared.connect(url: url, token: token)
+            }
 
         case "app_state_change":
-            MentraManager.getInstance().onAppStateChange(parseAppList(msg) /* , parseWhatToStream(msg) */ )
+            MentraManager.getInstance().onAppStateChange(parseAppList(msg))
 
         case "connection_error":
             let errorMsg = msg["message"] as? String ?? "Unknown error"
@@ -691,8 +699,13 @@ class ServerComms {
         audioSenderThread = Thread {
             while self.audioSenderRunning {
                 if let chunk = self.audioBuffer.poll() {
-                    if self.wsManager.isConnected() {
-                        self.wsManager.sendBinary(chunk)
+
+                    // check if we'r connected to livekit:
+                    
+                    if LiveKitManager.shared.isConnected {
+                        LiveKitManager.shared.addPcm(chunk)
+                    } else if self.wsManager.isConnected() {
+                        // self.wsManager.sendBinary(chunk)
                     } else {
                         // Re-enqueue the chunk if not connected, then wait a bit
                         self.audioBuffer.offer(chunk)
