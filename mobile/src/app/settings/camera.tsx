@@ -17,7 +17,7 @@ import {useAuth} from "@/contexts/AuthContext"
 import {isMentraUser} from "@/utils/isMentraUser"
 
 type PhotoSize = "small" | "medium" | "large"
-type VideoResolution = "720p" | "1080p"
+type VideoResolution = "720p" | "1080p" | "1440p" | "4K"
 
 const PHOTO_SIZE_LABELS: Record<PhotoSize, string> = {
   small: "Small (800×600)",
@@ -28,6 +28,8 @@ const PHOTO_SIZE_LABELS: Record<PhotoSize, string> = {
 const VIDEO_RESOLUTION_LABELS: Record<VideoResolution, string> = {
   "720p": "720p (1280×720)",
   "1080p": "1080p (1920×1080)",
+  "1440p": "1440p (2560×1920)",
+  "4K": "4K (3840×2160)",
 }
 
 export default function CameraSettingsScreen() {
@@ -49,7 +51,10 @@ export default function CameraSettingsScreen() {
   const videoResolution = (() => {
     const videoSettings = status.glasses_settings?.button_video_settings
     if (videoSettings) {
-      return videoSettings.width >= 1920 ? "1080p" : "720p"
+      if (videoSettings.width >= 3840) return "4K"
+      if (videoSettings.width >= 2560) return "1440p"
+      if (videoSettings.width >= 1920) return "1080p"
+      return "720p"
     }
     return "720p"
   })()
@@ -88,9 +93,9 @@ export default function CameraSettingsScreen() {
       setLoadingVideoResolution(true)
 
       // Convert resolution to width/height/fps
-      const width = resolution === "1080p" ? 1920 : 1280
-      const height = resolution === "1080p" ? 1080 : 720
-      const fps = 30
+      const width = resolution === "4K" ? 3840 : resolution === "1440p" ? 2560 : resolution === "1080p" ? 1920 : 1280
+      const height = resolution === "4K" ? 2160 : resolution === "1440p" ? 1920 : resolution === "1080p" ? 1080 : 720
+      const fps = resolution === "4K" ? 15 : 30
 
       await coreCommunicator.sendSetButtonVideoSettings(width, height, fps)
     } catch (error) {

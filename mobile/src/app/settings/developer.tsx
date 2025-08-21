@@ -9,6 +9,7 @@ import axios from "axios"
 import showAlert from "@/utils/AlertUtils"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {Header, Screen, PillButton, Text} from "@/components/ignite"
+import RouteButton from "@/components/ui/RouteButton"
 import {router} from "expo-router"
 import {Spacer} from "@/components/misc/Spacer"
 import ToggleSetting from "@/components/settings/ToggleSetting"
@@ -211,6 +212,13 @@ export default function DeveloperSettingsScreen() {
       <Spacer height={theme.spacing.md} />
 
       <ScrollView>
+        <RouteButton
+          label="🎥 Buffer Recording Debug"
+          subtitle="Control 30-second video buffer on glasses"
+          onPress={() => push("/settings/buffer-debug")}
+        />
+
+        <Spacer height={theme.spacing.md} />
         <ToggleSetting
           label={translate("settings:reconnectOnAppForeground")}
           subtitle={translate("settings:reconnectOnAppForegroundSubtitle")}

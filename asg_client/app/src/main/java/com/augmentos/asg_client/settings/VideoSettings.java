@@ -41,11 +41,27 @@ public class VideoSettings {
     }
     
     /**
+     * Create 1440p settings
+     */
+    public static VideoSettings get1440p() {
+        return new VideoSettings(2560, 1920, 30);
+    }
+    
+    /**
+     * Create 4K settings
+     */
+    public static VideoSettings get4K() {
+        return new VideoSettings(3840, 2160, 15);
+    }
+    
+    /**
      * Validate if resolution is supported
      */
     public static boolean isSupported(int width, int height) {
         return (width == 1920 && height == 1080) || 
-               (width == 1280 && height == 720);
+               (width == 1280 && height == 720) ||
+               (width == 2560 && height == 1920) ||
+               (width == 3840 && height == 2160);
     }
     
     /**

@@ -68,7 +68,7 @@ jobs:
                      -configuration Debug \
                      -sdk iphonesimulator \
                      -derivedDataPath build \
-                     -destination 'platform=iOS Simulator,name=iPhone 16,OS=18.2'
+                     -destination 'platform=iOS Simulator,name=iPhone 16'
 
       - name: Build iOS app for Device
         working-directory: ./mobile/ios

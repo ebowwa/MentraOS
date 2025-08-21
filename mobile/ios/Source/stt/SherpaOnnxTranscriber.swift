@@ -78,15 +78,15 @@ class SherpaOnnxTranscriber {
                     Core.log("Detected CTC model at \(customPath)")
 
                     // Create CTC model config using Zipformer2Ctc
-                    var zipformer2Ctc = sherpaOnnxOnlineZipformer2CtcModelConfig(
+                    var nemoCtc = sherpaOnnxOnlineNemoCtcModelConfig(
                         model: ctcModelPath
                     )
 
                     // Create model config with CTC
                     var modelConfig = sherpaOnnxOnlineModelConfig(
                         tokens: tokensPath,
-                        zipformer2Ctc: zipformer2Ctc,
-                        numThreads: 1
+                        numThreads: 1,
+                        nemoCtc: nemoCtc
                     )
 
                     // Configure recognizer
@@ -412,6 +412,16 @@ class SherpaOnnxTranscriber {
         }
 
         Core.log("✅ SherpaOnnxTranscriber shutdown complete")
+    }
+
+    /**
+     * Restarts the transcriber after a model change.
+     * Shuts down existing resources, clears buffers, and reinitializes the recognizer.
+     */
+    func restart() {
+        Core.log("♻️ Restarting SherpaOnnxTranscriber...")
+        shutdown()
+        initialize()
     }
 
     /**
