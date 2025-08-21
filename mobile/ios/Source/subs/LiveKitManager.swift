@@ -85,7 +85,7 @@ public class LiveKitManager: NSObject {
         
         // Create connect options
         let connectOptions = ConnectOptions(
-          enableMicrophone: true,
+          enableMicrophone: false,
         )
         
         let roomOptions = RoomOptions()
@@ -99,7 +99,7 @@ public class LiveKitManager: NSObject {
         )
         
         // Setup custom audio source for PCM input
-        // try await setupCustomAudioTrack()
+        try await setupCustomAudioTrack()
         
         Core.log("[LiveKitManager] Successfully connected to LiveKit room")
         isConnected = true

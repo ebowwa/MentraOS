@@ -534,7 +534,7 @@ struct ViewState {
     // MARK: - ServerCommsCallback Implementation
 
     func onMicrophoneStateChange(_ requiredData: [SpeechRequiredDataType], _ bypassVad: Bool) {
-        Core.log("AOS: MIC: @@@@@@@@ changing mic with requiredData: \(requiredData) bypassVad=\(bypassVad) enforceLocalTranscription=\(enforceLocalTranscription) @@@@@@@@@@@@@@@@")
+        Core.log("AOS: MIC: require: \(requiredData) bypass=\(bypassVad) enforce=\(enforceLocalTranscription)")
 
         bypassVadForPCM = bypassVad
 
