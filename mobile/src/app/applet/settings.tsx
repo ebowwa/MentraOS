@@ -26,7 +26,7 @@ import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import BackendServerComms from "@/backend_comms/BackendServerComms"
 import FontAwesome from "react-native-vector-icons/FontAwesome"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
-import {useAppStatus} from "@/contexts/AppStatusProvider"
+import {useAppStatus} from "@/contexts/AppletStatusProvider"
 import AppIcon from "@/components/misc/AppIcon"
 import SelectWithSearchSetting from "@/components/settings/SelectWithSearchSetting"
 import NumberSetting from "@/components/settings/NumberSetting"
@@ -152,14 +152,7 @@ export default function AppSettings() {
 
     try {
       if (appInfo.is_running) {
-        // Optimistically update UI first
         optimisticallyStopApp(packageName)
-
-        // Then request the server to stop the app
-        await backendServerComms.stopApp(packageName)
-
-        // Clear the pending operation since it completed successfully
-        clearPendingOperation(packageName)
         return
       }
 
@@ -179,40 +172,8 @@ export default function AppSettings() {
         return
       }
 
-      // Optimistically update UI first
       optimisticallyStartApp(packageName)
-
-      // Check if it's a standard app
-      if (appInfo.appType === "standard") {
-        // Find any running standard apps
-        const runningStandardApps = appStatus.filter(
-          app => app.is_running && app.appType === "standard" && app.packageName !== packageName,
-        )
-
-        // If there's any running standard app, stop it first
-        for (const runningApp of runningStandardApps) {
-          // Optimistically update UI
-          optimisticallyStopApp(runningApp.packageName)
-
-          try {
-            await backendServerComms.stopApp(runningApp.packageName)
-            clearPendingOperation(runningApp.packageName)
-          } catch (error) {
-            console.error("Stop app error:", error)
-            refreshAppStatus()
-          }
-        }
-      }
-
-      // Then request the server to start the app
-      await backendServerComms.startApp(packageName)
-
-      // Clear the pending operation since it completed successfully
-      clearPendingOperation(packageName)
     } catch (error) {
-      // Clear the pending operation for this app
-      clearPendingOperation(packageName)
-
       // Refresh the app status to get the accurate state from the server
       refreshAppStatus()
 
@@ -407,8 +368,7 @@ export default function AppSettings() {
           if (setting.type !== "group") {
             // Use cached value if it exists (user has interacted with this setting before)
             // Otherwise use 'selected' from backend (which includes defaultValue for new settings)
-            initialState[setting.key] =
-              cachedState[setting.key] !== undefined ? cachedState[setting.key] : setting.selected
+            initialState[setting.key] = setting.selected
           }
         })
         setSettingsState(initialState)
@@ -596,6 +556,11 @@ export default function AppSettings() {
           title=""
           leftIcon="caretLeft"
           onLeftPress={() => {
+            if (!isOldUI) {
+              goBack()
+              return
+            }
+
             if (serverAppInfo?.webviewURL) {
               replace("/applet/webview", {
                 webviewURL: serverAppInfo.webviewURL,

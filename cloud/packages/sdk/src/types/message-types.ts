@@ -119,6 +119,9 @@ export enum AppToCloudMessageType {
   MANAGED_STREAM_REQUEST = "managed_stream_request",
   MANAGED_STREAM_STOP = "managed_stream_stop",
 
+  // Stream status check (both managed and unmanaged)
+  STREAM_STATUS_CHECK = "stream_status_check",
+
   // Dashboard requests
   DASHBOARD_CONTENT_UPDATE = "dashboard_content_update",
   DASHBOARD_MODE_CHANGE = "dashboard_mode_change",
@@ -157,6 +160,7 @@ export enum CloudToAppMessageType {
   AUDIO_PLAY_RESPONSE = "audio_play_response",
   RTMP_STREAM_STATUS = "rtmp_stream_status",
   MANAGED_STREAM_STATUS = "managed_stream_status",
+  STREAM_STATUS_CHECK_RESPONSE = "stream_status_check_response",
 
   WEBSOCKET_ERROR = "websocket_error",
 

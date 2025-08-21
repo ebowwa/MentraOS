@@ -2,7 +2,7 @@
 import React from "react"
 import {View, StyleSheet, TouchableOpacity, ViewStyle} from "react-native"
 import {Image} from "expo-image"
-import {AppInterface} from "@/contexts/AppStatusProvider"
+import {AppInterface} from "@/contexts/AppletStatusProvider"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {Text} from "@/components/ignite"
 

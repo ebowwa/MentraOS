@@ -23,7 +23,7 @@ const TextSettingNoSave: React.FC<TextSettingNoSaveProps> = ({label, value, onCh
       const pendingValue = textEditorStore.getPendingValue()
       if (pendingValue && pendingValue.key === settingKey) {
         onChangeText(pendingValue.value)
-        textEditorStore.clearPendingValue() // Only clear when we use it
+        textEditorStore.setPendingValue(pendingValue.key, "") // Only clear when we use it
       } else if (pendingValue) {
         // If there's a pending value but it doesn't match, put it back
         textEditorStore.setPendingValue(pendingValue.key, pendingValue.value)

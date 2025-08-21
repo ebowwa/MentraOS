@@ -15,7 +15,7 @@ import {
   checkAndRequestNotificationAccessSpecialPermission,
   checkNotificationAccessSpecialPermission,
 } from "../utils/NotificationServiceUtils"
-import {AppInterface, AppPermission} from "@/contexts/AppStatusProvider"
+import {AppInterface, AppPermission} from "@/contexts/AppletStatusProvider"
 import {translate} from "@/i18n"
 import showAlert from "./AlertUtils"
 import {Theme} from "@/theme"

@@ -10,12 +10,11 @@ import {
 import {check, PERMISSIONS, RESULTS} from "react-native-permissions"
 import BleManager from "react-native-ble-manager"
 import BackendServerComms from "@/backend_comms/BackendServerComms"
-import AudioPlayService, {AudioPlayResponse} from "@/services/AudioPlayService"
 import {translate} from "@/i18n"
 import AugmentOSParser from "@/utils/AugmentOSStatusParser"
 
-const {CoreCommsService, AOSModule} = NativeModules
-const eventEmitter = new NativeEventEmitter(CoreCommsService)
+const {Core, BridgeModule, CoreCommsService} = NativeModules
+const eventEmitter = new NativeEventEmitter(Core)
 
 export class CoreCommunicator extends EventEmitter {
   private static instance: CoreCommunicator | null = null
@@ -167,7 +166,7 @@ export class CoreCommunicator extends EventEmitter {
     if (Platform.OS === "ios") {
       setTimeout(async () => {
         // will fail silently if we don't have bt permissions (which is the intended behavior)
-        AOSModule.sendCommand(JSON.stringify({command: "connect_wearable"}))
+        BridgeModule.sendCommand(JSON.stringify({command: "connect_wearable"}))
       }, 3000)
     }
 
@@ -176,13 +175,6 @@ export class CoreCommunicator extends EventEmitter {
 
     // Initialize message event listener
     this.initializeMessageEventListener()
-
-    if (Platform.OS === "android") {
-      // Set up audio play response callback
-      AudioPlayService.setResponseCallback((response: AudioPlayResponse) => {
-        this.sendAudioPlayResponse(response)
-      })
-    }
 
     // set the backend server url
     const backendServerUrl = await BackendServerComms.getInstance().getServerUrl()
@@ -220,7 +212,7 @@ export class CoreCommunicator extends EventEmitter {
     }
 
     if (jsonString.startsWith("SWIFT:")) {
-      console.log("SWIFT: ", jsonString.slice(6))
+      console.log("SWIFT:", jsonString.slice(6))
       return
     }
 
@@ -324,12 +316,6 @@ export class CoreCommunicator extends EventEmitter {
           console.log("APP_STOPPED_EVENT", data.packageName)
           GlobalEventEmitter.emit("APP_STOPPED_EVENT", data.packageName)
           break
-        case "audio_play_request":
-          await AudioPlayService.handleAudioPlayRequest(data)
-          break
-        case "audio_stop_request":
-          await AudioPlayService.stopAllAudio()
-          break
         case "pair_failure":
           GlobalEventEmitter.emit("PAIR_FAILURE", data.error)
           break
@@ -400,7 +386,7 @@ export class CoreCommunicator extends EventEmitter {
   /**
    * Sends data to Core
    */
-  private async sendData(dataObj: any) {
+  private async sendData(dataObj: any): Promise<any> {
     try {
       if (INTENSE_LOGGING) {
         console.log("Sending data to Core:", JSON.stringify(dataObj))
@@ -411,9 +397,11 @@ export class CoreCommunicator extends EventEmitter {
         if (!(await CoreCommsService.isServiceRunning())) {
           CoreCommsService.startService()
         }
-        CoreCommsService.sendCommandToCore(JSON.stringify(dataObj))
-      } else {
-        AOSModule.sendCommand(JSON.stringify(dataObj))
+        return await CoreCommsService.sendCommandToCore(JSON.stringify(dataObj))
+      }
+
+      if (Platform.OS === "ios") {
+        return await BridgeModule.sendCommand(JSON.stringify(dataObj))
       }
     } catch (error) {
       console.error("Failed to send data to Core:", error)
@@ -866,24 +854,6 @@ export class CoreCommunicator extends EventEmitter {
     })
   }
 
-  /**
-   * Sends audio play response back to Core
-   */
-  private async sendAudioPlayResponse(response: AudioPlayResponse) {
-    console.log(
-      `CoreCommunicator: Sending audio play response for requestId: ${response.requestId}, success: ${response.success}`,
-    )
-    await this.sendData({
-      command: "audio_play_response",
-      params: {
-        requestId: response.requestId,
-        success: response.success,
-        error: response.error,
-        duration: response.duration,
-      },
-    })
-  }
-
   // Buffer recording commands
   async sendStartBufferRecording() {
     return await this.sendData({
@@ -923,6 +893,34 @@ export class CoreCommunicator extends EventEmitter {
       command: "stop_video_recording",
       params: {
         request_id: requestId,
+      },
+    })
+  }
+
+  async setSttModelPath(path: string) {
+    return await this.sendData({
+      command: "set_stt_model_path",
+      params: {
+        path: path,
+      },
+    })
+  }
+
+  async validateSTTModel(path: string): Promise<boolean> {
+    return await this.sendData({
+      command: "validate_stt_model",
+      params: {
+        path: path,
+      },
+    })
+  }
+
+  async extractTarBz2(sourcePath: string, destinationPath: string) {
+    return await this.sendData({
+      command: "extract_tar_bz2",
+      params: {
+        source_path: sourcePath,
+        destination_path: destinationPath,
       },
     })
   }

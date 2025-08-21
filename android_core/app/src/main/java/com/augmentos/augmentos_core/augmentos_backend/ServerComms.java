@@ -707,8 +707,7 @@ public class ServerComms {
                 break;
 
             case "microphone_state_change":
-                boolean isMicrophoneEnabled = msg.optBoolean("isMicrophoneEnabled", true);
-                boolean bypassVad = msg.optBoolean("bypassVad", false); // NEW: Extract bypassVad field
+                boolean bypassVad = msg.optBoolean("bypassVad", false);
 
                 JSONArray requiredDataJson = msg.optJSONArray("requiredData");
                 List<SpeechRequiredDataType> requiredData = new ArrayList<>();
@@ -724,15 +723,11 @@ public class ServerComms {
                         }
                     }
                 }
-                // Treat empty array as PCM only
-                if (requiredData.isEmpty()) {
-                    requiredData.add(SpeechRequiredDataType.PCM);
-                }
 
-                Log.d(TAG, "Received microphone_state_change message. enabled=" + isMicrophoneEnabled +
-                      " requiredData=" + requiredData + " bypassVad=" + bypassVad);
+                // Log.d(TAG, "Received microphone_state_change message. enabled=" + isMicrophoneEnabled +
+                //       " requiredData=" + requiredData + " bypassVad=" + bypassVad);
                 if (serverCommsCallback != null)
-                    serverCommsCallback.onMicrophoneStateChange(isMicrophoneEnabled, requiredData, bypassVad); // NEW: Pass bypassVad
+                    serverCommsCallback.onMicrophoneStateChange(requiredData, bypassVad);
                 break;
 
             case "photo_request":

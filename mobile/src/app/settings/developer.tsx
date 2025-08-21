@@ -365,6 +365,7 @@ export default function DeveloperSettingsScreen() {
             ios_backgroundColor={switchColors.ios_backgroundColor}
           />
         </View> */}
+        <Spacer height={theme.spacing.xxl} />
       </ScrollView>
     </Screen>
   )
