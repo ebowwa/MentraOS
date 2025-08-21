@@ -419,7 +419,7 @@ class SherpaOnnxTranscriber {
      * Shuts down existing resources, clears buffers, and reinitializes the recognizer.
      */
     func restart() {
-        CoreCommsService.log("♻️ Restarting SherpaOnnxTranscriber...")
+        Core.log("♻️ Restarting SherpaOnnxTranscriber...")
         shutdown()
         initialize()
     }
