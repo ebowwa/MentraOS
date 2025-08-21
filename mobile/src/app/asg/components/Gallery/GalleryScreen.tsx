@@ -1177,31 +1177,31 @@ The gallery will automatically reload once connected.`,
             {/* Initial loading states */}
             {galleryState === GalleryState.INITIALIZING || galleryState === GalleryState.QUERYING_GLASSES ? (
               <View style={themed($syncButtonRow)}>
-                <ActivityIndicator size="small" color={theme.colors.textAlt} style={{marginRight: spacing.xs}} />
+                <ActivityIndicator size="small" color={theme.colors.text} style={{marginRight: spacing.xs}} />
                 <Text style={themed($syncButtonText)}>Checking for media...</Text>
               </View>
             ) : /* Requesting hotspot */
             galleryState === GalleryState.REQUESTING_HOTSPOT ? (
               <View style={themed($syncButtonRow)}>
-                <ActivityIndicator size="small" color={theme.colors.textAlt} style={{marginRight: spacing.xs}} />
+                <ActivityIndicator size="small" color={theme.colors.text} style={{marginRight: spacing.xs}} />
                 <Text style={themed($syncButtonText)}>Starting hotspot...</Text>
               </View>
             ) : /* Waiting for WiFi prompt */
             galleryState === GalleryState.WAITING_FOR_WIFI_PROMPT ? (
               <View style={themed($syncButtonRow)}>
-                <ActivityIndicator size="small" color={theme.colors.textAlt} style={{marginRight: spacing.xs}} />
+                <ActivityIndicator size="small" color={theme.colors.text} style={{marginRight: spacing.xs}} />
                 <Text style={themed($syncButtonText)}>Waiting for connection...</Text>
               </View>
             ) : /* Connecting to hotspot */
             galleryState === GalleryState.CONNECTING_TO_HOTSPOT ? (
               <View style={themed($syncButtonRow)}>
-                <ActivityIndicator size="small" color={theme.colors.textAlt} style={{marginRight: spacing.xs}} />
+                <ActivityIndicator size="small" color={theme.colors.text} style={{marginRight: spacing.xs}} />
                 <Text style={themed($syncButtonText)}>Connecting to hotspot...</Text>
               </View>
             ) : /* Connected, loading photos */
             galleryState === GalleryState.CONNECTED_LOADING ? (
               <View style={themed($syncButtonRow)}>
-                <ActivityIndicator size="small" color={theme.colors.textAlt} style={{marginRight: spacing.xs}} />
+                <ActivityIndicator size="small" color={theme.colors.text} style={{marginRight: spacing.xs}} />
                 <Text style={themed($syncButtonText)}>Loading photos...</Text>
               </View>
             ) : /* User cancelled WiFi - show retry */
@@ -1211,7 +1211,7 @@ The gallery will automatically reload once connected.`,
                   <MaterialCommunityIcons
                     name="wifi-alert"
                     size={20}
-                    color={theme.colors.textAlt}
+                    color={theme.colors.text}
                     style={{marginRight: spacing.xs}}
                   />
                   <Text style={themed($syncButtonText)}>Connect to sync {glassesGalleryStatus?.total || 0} items</Text>
@@ -1226,7 +1226,7 @@ The gallery will automatically reload once connected.`,
                 <MaterialCommunityIcons
                   name="wifi-off"
                   size={20}
-                  color={theme.colors.textAlt}
+                  color={theme.colors.text}
                   style={{marginRight: spacing.xs}}
                 />
                 <Text style={themed($syncButtonText)}>{getStatusMessage()}</Text>
@@ -1249,7 +1249,7 @@ The gallery will automatically reload once connected.`,
             ) : /* Syncing without progress */
             galleryState === GalleryState.SYNCING ? (
               <View style={themed($syncButtonRow)}>
-                <ActivityIndicator size="small" color={theme.colors.textAlt} style={{marginRight: spacing.xs}} />
+                <ActivityIndicator size="small" color={theme.colors.text} style={{marginRight: spacing.xs}} />
                 <Text style={themed($syncButtonText)}>Syncing {serverPhotosToSync} items...</Text>
               </View>
             ) : /* Sync complete */
@@ -1605,8 +1605,10 @@ const $syncButtonFixed: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
 })
 
 const $syncButtonFixedDisabled: ThemedStyle<ViewStyle> = ({colors}) => ({
-  backgroundColor: colors.palette.neutral400,
-  opacity: 0.9,
+  backgroundColor: colors.surface,
+  borderWidth: 1,
+  borderColor: colors.separator,
+  opacity: 1,
 })
 
 const $syncButtonContent: ThemedStyle<ViewStyle> = ({spacing}) => ({
@@ -1623,7 +1625,7 @@ const $syncButtonRow: ThemedStyle<ViewStyle> = () => ({
 const $syncButtonText: ThemedStyle<TextStyle> = ({colors}) => ({
   fontSize: 16,
   fontWeight: "600",
-  color: colors.textAlt,
+  color: colors.text,
   marginBottom: 2,
 })
 
