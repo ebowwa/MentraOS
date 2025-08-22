@@ -9,7 +9,7 @@ import Combine
 import Foundation
 
 class ServerComms {
-    private static var instance: ServerComms?
+    public static let shared = ServerComms()
 
     let wsManager = WebSocketManager.shared
     private var speechRecCallback: (([String: Any]) -> Void)?
@@ -29,13 +29,6 @@ class ServerComms {
     let calendarManager = CalendarManager()
     let locationManager = LocationManager()
     let mediaManager = MediaManager()
-
-    static func getInstance() -> ServerComms {
-        if instance == nil {
-            instance = ServerComms()
-        }
-        return instance!
-    }
 
     private init() {
         // Subscribe to WebSocket messages
@@ -700,11 +693,12 @@ class ServerComms {
             while self.audioSenderRunning {
                 if let chunk = self.audioBuffer.poll() {
 
-                    // check if we'r connected to livekit:
+                    // check if we're connected to livekit:
                     
-                    if LiveKitManager.shared.isConnected {
+                    if LiveKitManager.shared.enabled {
                         LiveKitManager.shared.addPcm(chunk)
                     } else if self.wsManager.isConnected() {
+                      // TODO: reenable
                         // self.wsManager.sendBinary(chunk)
                     } else {
                         // Re-enqueue the chunk if not connected, then wait a bit

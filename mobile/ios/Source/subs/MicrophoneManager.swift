@@ -154,7 +154,7 @@ class OnboardMicrophoneManager {
             return
         }
 
-        Core.log("handleRouteChange: \(reason) @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
+        Core.log("MIC: handleRouteChange: \(reason)")
         MentraManager.getInstance().onRouteChange(reason: reason, availableInputs: audioSession?.availableInputs ?? [])
 
         // // If we're recording and the audio route changed (e.g., AirPods connected/disconnected)
@@ -315,7 +315,7 @@ class OnboardMicrophoneManager {
                 commonFormat: .pcmFormatInt16,
                 sampleRate: 16000,
                 channels: 1,
-                interleaved: true
+                interleaved: false
             )!
         )
 

@@ -41,7 +41,7 @@ struct ViewState {
     @objc var liveManager: MentraLiveManager?
     @objc var mach1Manager: Mach1Manager?
     @objc var frameManager: FrameManager?
-    var serverComms: ServerComms!
+    var serverComms = ServerComms.shared
     var micManager = OnboardMicrophoneManager()
     var livekit = LiveKitManager.shared
 
@@ -111,7 +111,6 @@ struct ViewState {
     override init() {
         Core.log("AOS: init()")
         vad = SileroVADStrategy()
-        serverComms = ServerComms.getInstance()
         super.init()
 
         // Initialize SherpaOnnx Transcriber
@@ -397,7 +396,7 @@ struct ViewState {
     func updateHeadUp(_ isHeadUp: Bool) {
         self.isHeadUp = isHeadUp
         sendCurrentState(isHeadUp)
-        ServerComms.getInstance().sendHeadPosition(isUp: isHeadUp)
+        serverComms.sendHeadPosition(isUp: isHeadUp)
     }
 
     @objc func connectServer() {
@@ -416,7 +415,7 @@ struct ViewState {
         volume: Float,
         stopOtherAudio: Bool
     ) {
-        Core.log("AOSManager: playAudio bridge called for requestId: \(requestId)")
+        Core.log("AOS: playAudio bridge called for requestId: \(requestId)")
 
         let audioManager = AudioManager.getInstance()
         audioManager.playAudio(
@@ -428,7 +427,7 @@ struct ViewState {
     }
 
     @objc func stopAudio(_ requestId: String) {
-        Core.log("AOSManager: stopAudio bridge called for requestId: \(requestId)")
+        Core.log("AOS: stopAudio bridge called for requestId: \(requestId)")
 
         let audioManager = AudioManager.getInstance()
         audioManager.stopAudio(requestId: requestId)
@@ -1611,7 +1610,7 @@ struct ViewState {
                         break
                     }
                     // Send to server
-                    ServerComms.getInstance().sendHeadPosition(isUp: position == "up")
+                    ServerComms.shared.sendHeadPosition(isUp: position == "up")
                     // Trigger dashboard display locally
                     sendCurrentState(position == "up")
                 case .simulateButtonPress:
@@ -1623,7 +1622,7 @@ struct ViewState {
                         break
                     }
                     // Use existing sendButtonPress method
-                    ServerComms.getInstance().sendButtonPress(buttonId: buttonId, pressType: pressType)
+                    ServerComms.shared.sendButtonPress(buttonId: buttonId, pressType: pressType)
                 case .enforceLocalTranscription:
                     guard let params = params, let enabled = params["enabled"] as? Bool else {
                         Core.log("AOS: enforce_local_transcription invalid params")

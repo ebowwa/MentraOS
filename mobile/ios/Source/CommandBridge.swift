@@ -272,7 +272,7 @@ import Foundation
                         break
                     }
                     // Send to server
-                    ServerComms.getInstance().sendHeadPosition(isUp: position == "up")
+                    ServerComms.shared.sendHeadPosition(isUp: position == "up")
                     // Trigger dashboard display locally
                     m.sendCurrentState(position == "up")
                 case .simulateButtonPress:
@@ -284,7 +284,7 @@ import Foundation
                         break
                     }
                     // Use existing sendButtonPress method
-                    ServerComms.getInstance().sendButtonPress(buttonId: buttonId, pressType: pressType)
+                    ServerComms.shared.sendButtonPress(buttonId: buttonId, pressType: pressType)
                 case .enforceLocalTranscription:
                     guard let params = params, let enabled = params["enabled"] as? Bool else {
                         Core.log("AOS: enforce_local_transcription invalid params")
