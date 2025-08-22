@@ -206,12 +206,18 @@ export class LiveKitManager {
             this.receivedFrameCount++;
 
             if (this.receivedFrameCount % 100 === 0) {
-              console.log('Received audio frame', {
-                // log the first few bytes of the buffer
-                buffer: frame.data.buffer.slice(0, 10),
-                tracks,
-                sid: track.sid,
-              });
+              // console.log('Received audio frame', {
+              //   // log the first few bytes of the buffer
+              //   buffer: frame.data.buffer.slice(0, 10),
+              //   tracks,
+              //   sid: track.sid,
+              // });
+              // convert this to a string: frame.data.buffer.slice(0, 10). then we can log it as main message.
+              // Convert first 10 bytes to readable format
+              const bufferString = Array.from(new Uint8Array(frame.data.buffer.slice(0, 10))).join(', ');
+
+              this.logger.debug({ feature: "audio", buffer: bufferString }, `Received audio frame [${bufferString}]`);
+
               this.logger.debug({
                 samplesIn: frame.samplesPerChannel * frame.channels,
                 sampleRateIn: frame.sampleRate,
