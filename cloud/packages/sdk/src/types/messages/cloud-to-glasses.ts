@@ -20,6 +20,11 @@ export interface ConnectionAck extends BaseMessage {
   type: CloudToGlassesMessageType.CONNECTION_ACK;
   userSession: Partial<UserSession>;
   sessionId: string;
+  livekit?: {
+    url: string;
+    roomName: string;
+    token: string;
+  };
 }
 
 /**

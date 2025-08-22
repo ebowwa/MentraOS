@@ -46,6 +46,7 @@ export interface BehaviorConfig {
   locationUpdateInterval?: number;
   reconnectOnDisconnect?: boolean;
   disableStatusUpdates?: boolean;
+  useLiveKitAudio?: boolean; // Enable LiveKit for audio transport instead of WebSocket
 }
 
 /**
@@ -88,6 +89,11 @@ export interface ConnectionAck {
   sessionId: string;
   userSession: any;
   timestamp: Date;
+  livekit?: {
+    url: string;
+    roomName: string;
+    token: string;
+  };
 }
 
 export interface SettingsUpdate {

@@ -96,6 +96,9 @@ export class UserSession {
 
   // Other state
   public userDatetime?: string;
+  
+  // LiveKit transport preference
+  public livekitRequested?: boolean;
 
   // Capability Discovery
   public capabilities: Capabilities | null = null;

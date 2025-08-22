@@ -97,6 +97,7 @@ export class GlassesWebSocketService {
     try {
       // Get user ID from request (attached during JWT verification)
       const userId = (request as any).userId;
+      const livekitRequested = (request as any).livekitRequested || false;
 
       if (!userId) {
         logger.error(
@@ -120,8 +121,11 @@ export class GlassesWebSocketService {
         userId,
       );
       userSession.logger.info(
-        `Glasses WebSocket connection from user: ${userId}`,
+        `Glasses WebSocket connection from user: ${userId} (LiveKit: ${livekitRequested})`,
       );
+      
+      // Store LiveKit preference in the session
+      userSession.livekitRequested = livekitRequested;
 
       // Handle incoming messages
       ws.on("message", (data: WebSocket.Data, isBinary) => {
@@ -143,7 +147,7 @@ export class GlassesWebSocketService {
               `Received connection init message from glasses: ${JSON.stringify(connectionInitMessage)}`,
             );
             // If this is a reconnection, we can skip the initialization logic
-            this.handleConnectionInit(userSession, reconnection)
+            this.handleConnectionInit(userSession, reconnection, userSession.livekitRequested || false)
               .then(() => {
                 userSession.logger.info(
                   `✅ Connection reinitialized for user: ${userSession.userId}`,
@@ -211,7 +215,7 @@ export class GlassesWebSocketService {
       });
 
       // Handle connection initialization
-      this.handleConnectionInit(userSession, reconnection);
+      this.handleConnectionInit(userSession, reconnection, livekitRequested);
 
       // NOTE: Do not auto-send LIVEKIT_INFO here to avoid unnecessary room usage.
 
@@ -548,10 +552,13 @@ export class GlassesWebSocketService {
    * Handle connection init
    *
    * @param userSession User session
+   * @param reconnection Whether this is a reconnection
+   * @param livekitRequested Whether the client requested LiveKit transport
    */
   private async handleConnectionInit(
     userSession: UserSession,
     reconnection: boolean,
+    livekitRequested: boolean = false,
   ): Promise<void> {
     if (!reconnection) {
       // Start all the apps that the user has running.
@@ -580,7 +587,7 @@ export class GlassesWebSocketService {
       });
     }
 
-    // const ackMessage: CloudConnectionAckMessage = {
+    // Prepare the base ACK message
     const ackMessage: ConnectionAck = {
       type: CloudToGlassesMessageType.CONNECTION_ACK,
       sessionId: userSession.sessionId,
@@ -588,6 +595,30 @@ export class GlassesWebSocketService {
         await sessionService.transformUserSessionForClient(userSession),
       timestamp: new Date(),
     };
+
+    // If LiveKit was requested, initialize and include the info
+    if (livekitRequested) {
+      try {
+        const livekitInfo = await userSession.liveKitManager.handleLiveKitInit('publish');
+        if (livekitInfo) {
+          (ackMessage as any).livekit = {
+            url: livekitInfo.url,
+            roomName: livekitInfo.roomName,
+            token: livekitInfo.token,
+          };
+          userSession.logger.info({ 
+            url: livekitInfo.url, 
+            roomName: livekitInfo.roomName, 
+            feature: 'livekit' 
+          }, 'Included LiveKit info in CONNECTION_ACK');
+        }
+      } catch (error) {
+        userSession.logger.warn({ 
+          error, 
+          feature: 'livekit' 
+        }, 'Failed to initialize LiveKit for CONNECTION_ACK');
+      }
+    }
 
     userSession.websocket.send(JSON.stringify(ackMessage));
   }

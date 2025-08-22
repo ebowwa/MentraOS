@@ -63,7 +63,7 @@ export class LiveKitManager {
       this.logger.info({ roomName: this.getRoomName(), token }, 'Minted client publish token');
       return token;
     } catch (error) {
-      this.logger.error(error , 'Failed to mint client publish token');
+      this.logger.error(error, 'Failed to mint client publish token');
       return null;
     }
   }
@@ -74,17 +74,17 @@ export class LiveKitManager {
   async handleLiveKitInit(mode: 'publish' | 'subscribe' = 'publish'): Promise<{ url: string; roomName: string; token: string } | null> {
     const url = this.getUrl();
     const roomName = this.getRoomName();
-    
+
     // Mint appropriate token based on mode
-    const token = mode === 'subscribe' 
+    const token = mode === 'subscribe'
       ? await this.mintClientSubscribeToken()
       : await this.mintClientPublishToken();
-      
+
     if (!url || !roomName || !token) {
       this.logger.warn({ hasUrl: Boolean(url), hasRoom: Boolean(roomName), hasToken: Boolean(token), mode, feature: 'livekit' }, 'LIVEKIT_INFO not ready (missing url/room/token)');
       return null;
     }
-    
+
     // Only start server-side subscriber if client is publishing
     if (mode === 'publish') {
       try {
@@ -93,7 +93,7 @@ export class LiveKitManager {
         this.logger.warn({ e, feature: 'livekit' }, 'Failed to start LiveKit subscriber in handleLiveKitInit');
       }
     }
-    
+
     this.logger.info({ mode, roomName }, 'Returning LiveKit info for mode');
     return { url, roomName, token };
   }
@@ -107,7 +107,7 @@ export class LiveKitManager {
       this.logger.info({ roomName: this.getRoomName(), token }, 'Minted client subscribe token');
       return token;
     } catch (error) {
-      this.logger.error(error , 'Failed to mint client subscribe token');
+      this.logger.error(error, 'Failed to mint client subscribe token');
       return null;
     }
   }
@@ -121,7 +121,7 @@ export class LiveKitManager {
       this.logger.info({ roomName: this.getRoomName(), token }, 'Minted agent subscribe token');
       return token;
     } catch (error) {
-      this.logger.error(error , 'Failed to mint agent subscribe token');
+      this.logger.error(error, 'Failed to mint agent subscribe token');
       return null;
     }
   }
@@ -156,7 +156,7 @@ export class LiveKitManager {
       this.room = new Room();
 
       this.logger.info({ url, roomName }, 'Attempting to connect LiveKit subscriber...');
-      
+
       await this.room.connect(url, subscribeToken, {
         autoSubscribe: true,
         dynacast: true,
@@ -167,8 +167,9 @@ export class LiveKitManager {
       });
       this.subscriberRunning = true;
       this.logger.info({ roomName, url }, 'LiveKit subscriber connected');
-
+      let tracks = 0;
       this.room.on(RoomEvent.TrackSubscribed, async (track: RemoteTrack, publication: RemoteTrackPublication, participant: RemoteParticipant) => {
+        tracks++;
         try {
           this.logger.info({ participant: participant.identity, kind: track.kind, trackSid: track.sid }, 'Subscribed to remote track');
           // if (track.kind !== 'audio') return;
@@ -180,9 +181,9 @@ export class LiveKitManager {
           this.trackToProcess = track.sid;
 
           for await (const frame of stream) {
-            if (!this.trackToProcess) {
-              return;
-            }
+            // if (!this.trackToProcess) {
+            //   return;
+            // }
 
             // if (writer == null) {
             //   // create file on first frame
@@ -192,19 +193,31 @@ export class LiveKitManager {
             // }
 
             // if (writer) {
-            const buf = Buffer.from(frame.data.buffer);
-            this.session.audioManager.processAudioData(buf, /* isLC3 */ false);
+            // const buf = Buffer.from(frame.data.buffer);
+            // console.log('Received audio frame', {
+            //   // log the first few bytes of the buffer
+            //   buffer: frame.data.buffer.slice(0, 10),
+            //   tracks,
+            //   sid: track.sid,
+            // });
+            this.session.audioManager.processAudioData(frame.data.buffer, /* isLC3 */ false);
 
             // Debug: log every 50 frames to confirm audio flow
             this.receivedFrameCount++;
 
-            if (this.receivedFrameCount % 50 === 0) {
+            if (this.receivedFrameCount % 100 === 0) {
+              console.log('Received audio frame', {
+                // log the first few bytes of the buffer
+                buffer: frame.data.buffer.slice(0, 10),
+                tracks,
+                sid: track.sid,
+              });
               this.logger.debug({
                 samplesIn: frame.samplesPerChannel * frame.channels,
                 sampleRateIn: frame.sampleRate,
                 channelCount: frame.channels,
                 framesIn: frame.samplesPerChannel,
-                bytesOut: buf.byteLength,
+                bytesOut: frame.data.buffer.byteLength,
                 framesReceived: this.receivedFrameCount,
               }, 'LiveKit audio sink received frames');
             }
@@ -253,7 +266,7 @@ export class LiveKitManager {
           //   }
           // };
         } catch (e) {
-          this.logger.error(e , 'Failed to attach audio sink');
+          this.logger.error(e, 'Failed to attach audio sink');
         }
       });
 
@@ -269,7 +282,7 @@ export class LiveKitManager {
         this.stopSubscriber();
       });
     } catch (error) {
-      this.logger.error(error , 'Error starting LiveKit subscriber');
+      this.logger.error(error, 'Error starting LiveKit subscriber');
     }
   }
 

@@ -163,6 +163,14 @@ export class WebSocketService {
 
               // Attach the userId to the request for use by the handler
               (request as any).userId = userId;
+              
+              // Check for LiveKit preference in headers
+              const livekitPreference = request.headers['livekit'] === 'true';
+              (request as any).livekitRequested = livekitPreference;
+              
+              if (livekitPreference) {
+                logger.info({ userId, feature: 'livekit' }, 'Client requested LiveKit transport');
+              }
 
               // If validation successful, proceed with connection
               this.glassesWss.handleUpgrade(request, socket, head, ws => {

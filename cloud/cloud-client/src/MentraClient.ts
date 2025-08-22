@@ -95,10 +95,14 @@ export class MentraClient extends EventEmitter {
     const url = serverUrl || this.config.serverUrl;
 
     try {
+      // Determine if we should use LiveKit based on config
+      this.useLiveKitAudio = this.config.behavior?.useLiveKitAudio || false;
+      
       await this.wsManager.connect(
         url,
         this.config.email,
         this.config.coreToken,
+        this.useLiveKitAudio,
       );
       this.connected = true;
       this.coreToken = this.config.coreToken;
@@ -407,6 +411,19 @@ export class MentraClient extends EventEmitter {
     // Forward events from WebSocketManager
     this.wsManager.on("connection_ack", (data: ConnectionAck) => {
       this.emit("connection_ack", data);
+      
+      // If LiveKit info is included and we're using LiveKit audio, auto-connect
+      if (data.livekit && this.useLiveKitAudio) {
+        console.log("[MentraClient] LiveKit info received in CONNECTION_ACK, connecting...");
+        this.liveKitManager.connect(data.livekit)
+          .then(() => {
+            console.log("[MentraClient] LiveKit connected successfully");
+          })
+          .catch((error) => {
+            console.error("[MentraClient] Failed to connect to LiveKit:", error);
+            this.emit("error", error);
+          });
+      }
     });
 
     this.wsManager.on("display_event", (data: DisplayEvent) => {
@@ -429,6 +446,22 @@ export class MentraClient extends EventEmitter {
         this.emit("microphone_state_change", data);
       },
     );
+    
+    // Handle separate LiveKit info events (for backward compatibility)
+    this.wsManager.on("livekit_info", (data: any) => {
+      if (this.useLiveKitAudio) {
+        console.log("[MentraClient] LiveKit info received separately, connecting...");
+        this.liveKitManager.connect(data)
+          .then(() => {
+            console.log("[MentraClient] LiveKit connected successfully");
+          })
+          .catch((error) => {
+            console.error("[MentraClient] Failed to connect to LiveKit:", error);
+            this.emit("error", error);
+          });
+      }
+      this.emit("livekit_info", data);
+    });
 
     this.wsManager.on("error", (error: Error) => {
       this.emit("error", error);

@@ -20,6 +20,7 @@ export class WebSocketManager extends EventEmitter {
     serverUrl: string,
     email: string,
     coreToken?: string,
+    useLiveKit: boolean = false,
   ): Promise<void> {
     return new Promise((resolve, reject) => {
       try {
@@ -30,6 +31,11 @@ export class WebSocketManager extends EventEmitter {
         const headers: Record<string, string> = {};
         if (coreToken) {
           headers["Authorization"] = `Bearer ${coreToken}`;
+        }
+        
+        // Add LiveKit header if requested
+        if (useLiveKit) {
+          headers["livekit"] = "true";
         }
 
         this.ws = new WebSocket(wsUrl, { headers });
@@ -270,10 +276,27 @@ export class WebSocketManager extends EventEmitter {
     switch (message.type) {
       case "connection_ack":
         this.sessionId = message.sessionId;
+        
+        // Check if LiveKit info is included
+        if (message.livekit) {
+          if (this.config.debug?.logWebSocketMessages) {
+            console.log("[WebSocketManager] LiveKit info included in CONNECTION_ACK:", message.livekit);
+          }
+          
+          // Emit LiveKit info event
+          this.emit('livekit_info', {
+            url: message.livekit.url,
+            roomName: message.livekit.roomName,
+            token: message.livekit.token,
+            timestamp: new Date(message.timestamp),
+          });
+        }
+        
         this.emit("connection_ack", {
           sessionId: message.sessionId,
           userSession: message.userSession,
           timestamp: new Date(message.timestamp),
+          livekit: message.livekit,
         });
 
         // Start sending periodic status updates
