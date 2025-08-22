@@ -1,7 +1,7 @@
 /*
  * @Author       : Cole
  * @Date         : 2025-07-31 10:40:40
- * @LastEditTime : 2025-08-20 09:41:07
+ * @LastEditTime : 2025-08-21 09:51:46
  * @FilePath     : mos_pdm.c
  * @Description  :
  *
@@ -178,7 +178,7 @@ uint32_t get_pdm_sample(int16_t *pdm_pcm_data, uint32_t pdm_pcm_szie)
         }
     }
 
-    LOG_INF("get_pdm_sample: %u", (unsigned)pdm_pcm_szie);
+    // LOG_INF("get_pdm_sample: %u", (unsigned)pdm_pcm_szie);
     return 0;
 }
 

@@ -87,4 +87,6 @@ void hls12vga_open_display(void);
 void hls12vga_init_sem_give(void);
 
 int hls12vga_init_sem_take(void);
+
+int hls12vga_set_gray16_mode(void);
 #endif /* _HLS12VGA_H_ */

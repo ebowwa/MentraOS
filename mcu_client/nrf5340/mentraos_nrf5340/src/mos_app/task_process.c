@@ -1,7 +1,7 @@
 /*
  * @Author       : Cole
  * @Date         : 2025-07-31 10:40:40
- * @LastEditTime : 2025-08-20 10:20:16
+ * @LastEditTime : 2025-08-22 11:02:33
  * @FilePath     : task_process.c
  * @Description  :
  *
@@ -123,26 +123,25 @@ void task_process(void *p1, void *p2, void *p3)
     uint32_t cnt = 0;
     uint32_t load;
     // littlefs_test();
-    // test_image_json();
     test_cpu_load();
-    // bspal_icm42688p_parameter_config();
-    // bspal_jsa_1147_init();
+    bspal_icm42688p_parameter_config();
+    bspal_jsa_1147_init();
     while (1)
     {
         mos_delay_ms(300);
 
-        // jsa_1147_test();
-        // batter_monitor();
-        // test_icm42688p();
+        jsa_1147_test();
+        batter_monitor();
+        test_icm42688p();
         // test_ict_15318();
         load = cpu_load_get();
         LOG_INF("cpu_load_get:%d.%03d", load / 1000, load % 1000);
         cnt++;
-        if (cnt == 20)
-        {
+        //if (cnt == 20)
+        //{
             // gx8002_reset();
             // gx8002_get_mic_state();
-        }
+        //}
         // if (cnt == 10)
         // {
         //     LOG_INF("display close");
@@ -153,16 +152,14 @@ void task_process(void *p1, void *p2, void *p3)
         //     LOG_INF("display open");
         //     display_open();
         // }
-        // else if (cnt == 30)
+        // if (cnt == 10)
         // {
-        //     LOG_INF("display close");
-        //     display_close();
+        //      hls12vga_set_brightness(0); // set brightness
         // }
-        // else if (cnt == 40)
+        // else if (cnt == 20)
         // {
-        //     LOG_INF("display open");
-        //     display_open();
-        //     // cnt = 0;
+        //     cnt = 0;
+        //     hls12vga_set_brightness(9); // set brightness
         // }
     }
 }

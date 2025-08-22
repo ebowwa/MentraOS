@@ -1,7 +1,7 @@
 /*
  * @Author       : Cole
  * @Date         : 2025-07-31 10:40:40
- * @LastEditTime : 2025-08-20 10:13:25
+ * @LastEditTime : 2025-08-21 18:41:51
  * @FilePath     : task_ble_receive.c
  * @Description  :
  *
@@ -27,7 +27,7 @@
 LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 
 #define TASK_BLE_THREAD_STACK_SIZE (4096)
-#define TASK_BLE_THREAD_PRIORITY   4
+#define TASK_BLE_THREAD_PRIORITY   5
 K_THREAD_STACK_DEFINE(task_ble_stack_area, TASK_BLE_THREAD_STACK_SIZE);
 static struct k_thread task_ble_thread_data;
 k_tid_t                task_ble_thread_handle;
@@ -55,7 +55,7 @@ int ble_send_data(const uint8_t *data, uint16_t len)
     if ((!data || len == 0) || !get_ble_connected_status())
     // if ((!data || len == 0))
     {
-        LOG_ERR("Invalid data or length || ble not connected");
+        // LOG_ERR("Invalid data or length || ble not connected");
         return -1;
     }
     LOG_INF("<--Sending data to BLE-->: len=%d", len);

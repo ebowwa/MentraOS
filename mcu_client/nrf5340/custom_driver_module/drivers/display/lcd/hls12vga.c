@@ -1,7 +1,7 @@
 /*
  * @Author       : Cole
  * @Date         : 2025-07-31 10:40:40
- * @LastEditTime : 2025-08-20 09:31:36
+ * @LastEditTime : 2025-08-22 14:37:18
  * @FilePath     : hls12vga.c
  * @Description  :
  *
@@ -9,6 +9,7 @@
  *  SPDX-License-Identifier: Apache-2.0
  */
 
+#include "hls12vga.h"
 
 #include <stdio.h>
 #include <zephyr/device.h>
@@ -18,8 +19,6 @@
 #include <zephyr/pm/device.h>
 #include <zephyr/sys/byteorder.h>
 #include <zephyr/types.h>
-#include "hls12vga.h"
-
 #define LOG_MODULE_NAME CUSTOM_HLS12VGA
 LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 
@@ -31,11 +30,12 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 #warning "Custom ls12vga driver enabled without any devices"
 #endif
 const struct device *dev_hls12vga = DEVICE_DT_GET(DT_INST(0, DT_DRV_COMPAT));
-static K_SEM_DEFINE(hls12vga_init_sem, 0, 1);
 
-#define LVGL_TICK_MS 5
+static K_SEM_DEFINE(hls12vga_init_sem, 0, 1);
+uint32_t g_frame_count = 0;
+
 // The maximum number of rows written each time can be adjusted according to config lv z vdb size;
-#define MAX_LINES_PER_WRITE 48  // 每次写入的最大行数; The maximum number of rows written each time
+#define MAX_LINES_PER_WRITE 120   // 每次写入的最大行数; The maximum number of rows written each time
 void hls12vga_init_sem_give(void)
 {
     k_sem_give(&hls12vga_init_sem);
@@ -45,6 +45,7 @@ int hls12vga_init_sem_take(void)
 {
     return k_sem_take(&hls12vga_init_sem, K_FOREVER);
 }
+
 static int write_reg_side(const struct device *dev, const struct gpio_dt_spec *cs, uint8_t reg, uint8_t val)
 {
     if ((!device_is_ready(dev)))
@@ -168,16 +169,10 @@ static int hls12vga_transmit_all(const struct device *dev, const uint8_t *data, 
     /* 执行SPI传输（带重试机制）; Execute SPI transmission (with retry mechanism) */
     for (int i = 0; i <= retries; i++)
     {
-        gpio_pin_set_dt(&cfg->right_cs, 1);
         gpio_pin_set_dt(&cfg->left_cs, 0);
-        err = spi_write_dt(&cfg->spi, &tx);
-        gpio_pin_set_dt(&cfg->left_cs, 1);
-        if (err == 0)
-        {
-            // return 0; /* 成功; Success */
-        }
         gpio_pin_set_dt(&cfg->right_cs, 0);
         err = spi_write_dt(&cfg->spi, &tx);
+        gpio_pin_set_dt(&cfg->left_cs, 1);
         gpio_pin_set_dt(&cfg->right_cs, 1);
         if (err == 0)
         {
@@ -217,71 +212,134 @@ static int hls12vga_blanking_off(struct device *dev)
 {
     return 0;
 }
-/**
- * @Description: Initializes the display device
- * @param dev   Display device handle
- * @param y     Starting line
- * @param lines Number of lines
- * @param desc  Image data descriptor structure
- * @param buf   Image data buffer
- * @return      0 on success, negative value on error
+#if 1  // 4 bit display mode
+/* —— 新增：切换到 GRAY16(4bit) 输入格式 —— ;——Added: Switch to GRAY16(4bit) input format ——*/
+int hls12vga_set_gray16_mode(void)
+{
+    /* 寄存器 0x00[2:0] 选择视频格式；1xx = GRAY16（此处用 0b100 = 0x04; 
+    Register 0x00[2:0] Select the video format; 1xx = GRAY16 (used here 0b100 = 0x04*/
+    uint8_t cmd[3] = {LCD_WRITE_ADDRESS, 0x00, 0x04};
+    return hls12vga_transmit_all(dev_hls12vga, cmd, sizeof(cmd), 1);
+}
+
+static uint16_t LUT_NIBBLE_TO_2BYTES[16];
+static bool     g_lut_inited = false;
+/* bit=1 => dark(0x0), bit=0 => bright(0xF)
+ * 若想反色，把 (~v) 改成 v 即可（即 bit=1=>0xF, bit=0=>0x0）；
+ *If you want to reverse the color, just change (~v) to v (that is, bit=1=>0xF, bit=0=>0x0)
  */
-#if 1
+static inline void hls12vga_init_nibble_lut(void)
+{
+    for (int v = 0; v < 16; ++v)
+    {
+        /* v 的位含义：b3 b2 b1 b0（b3 是最左像素）；Meaning of v bits: b3 b2 b1 b0 (b3 is the leftmost pixel)
+           映射规则：b?==1 → 0x0；b?==0 → 0xF；Mapping rule: bit=1 → 0x0; bit=0 → 0xF */
+        int     r     = ~v;                          /* 反转：1->0x0, 0->0xF 的判定使用 (~v)；Inversion: use (~v) to map 1→0x0, 0→0xF*/
+        uint8_t byte0 = ((r & 0x8) ? 0xF0 : 0x00)    /* b3 -> 高半字节；b3 -> high nibble*/
+                        | ((r & 0x4) ? 0x0F : 0x00); /* b2 -> 低半字节；b2 -> low nibble */
+        uint8_t byte1 = ((r & 0x2) ? 0xF0 : 0x00)    /* b1 -> 高半字节；b1 -> high nibble */
+                        | ((r & 0x1) ? 0x0F : 0x00); /* b0 -> 低半字节；b0 -> low nibble*/
+        LUT_NIBBLE_TO_2BYTES[v] = ((uint16_t)byte0 << 8) | byte1;
+    }
+    g_lut_inited = true;
+}
 static int hls12vga_write(const struct device *dev, const uint16_t x, const uint16_t y,
                           const struct display_buffer_descriptor *desc, const void *buf)
 {
     const hls12vga_config *cfg    = dev->config;
     hls12vga_data         *data   = dev->data;
-    const uint16_t         width  = desc->width;
-    const uint16_t         height = desc->height;
-    const uint16_t         pitch  = desc->pitch;
+    const uint16_t         width  = desc->width;  /* 640 */
+    const uint16_t         height = desc->height; /* 待刷新的行数; Number of rows to refresh */
     int                    ret    = 0;
-    // if (x != 0 || pitch != cfg->screen_width || width != cfg->screen_width || height > MAX_LINES_PER_WRITE)
+    uint32_t               t0     = k_uptime_get_32();
+    if (!g_lut_inited)
+    {
+        hls12vga_init_nibble_lut();  // 首次调用时初始化 LUT；Initialize LUT lazily
+    }
     if (y + height > cfg->screen_height)
     {
         return -ENOTSUP;
     }
 
+    /* 源：LVGL MONO1 (1bpp)；目标：GRAY16 4bpp -> 每行 320B；
+       Source: LVGL MONO1 (1bpp); Target: GRAY16 4bpp -> 320B per row */
     const uint8_t *src        = (const uint8_t *)buf;
-    uint8_t       *dst        = data->tx_buf_bulk + 4;
-    const uint16_t src_stride = (width + 7) / 8;
-    const uint16_t dst_stride = cfg->screen_width;
+    uint8_t       *dst_base   = data->tx_buf_bulk + 4; /* 预留 4 字节命令头；Reserve 4B command header */
+    const uint16_t src_stride = (width + 7) / 8;       /* 1bpp 源每行字节数；Bytes per source row (1bpp) */
+    const uint16_t dst_stride = width / 2; /* 4bpp 目标每行字节数（640/2=320）；Bytes per target row (4bpp) */
 
-    // 每像素1bit展开为 0x00 / 0xFF; Each pixel 1bit expanded to 0x00 / 0xFF
-    for (uint16_t row = 0; row < height; row++)
+    uint16_t remaining = height;
+    uint16_t line_off  = 0;  // 行偏移量；Line offset
+
+    while (remaining > 0)
     {
-        // LVGL缓冲区起始地址 + 偏移量 * 每行字节数（1b = 1像素）; LVGL buffer start address + offset * bytes per line
-        const uint8_t *src_row = src + row * src_stride;
-        // 缓冲区起始地址 + 偏移量 * 每行字节数（1B = 1 像素）; Buffer start address + offset * bytes per line (1B = 1
-        // pixel)
-        uint8_t *dst_row = dst + row * dst_stride;
-        for (uint16_t col = 0; col < width; col++)  // 处理一行数据像素点; Process pixel points in a row of data
+        // 一次写尽量多行（由 TX 缓冲与 MAX_LINES_PER_WRITE 限制）
+        // Write as many lines as possible at once (limited by TX buffer size and MAX_LINES_PER_WRITE)
+        uint16_t sub_lines = (remaining > MAX_LINES_PER_WRITE) ? MAX_LINES_PER_WRITE : remaining;
+
+        /* —— 用 LUT 将 sub_lines 行从 1bpp 打包为 4bpp（8px -> 4B，1B=2px）
+           Use LUT to pack sub_lines rows: 8px -> 4 bytes (1 byte = 2 pixels) —— */
+        // uint32_t conv_start = k_cycle_get_32();
+        for (uint16_t row = 0; row < sub_lines; row++)
         {
-            // 读取LVGL源数据字节(1b = 1像素)展开为0x00/0xFF（1B = 1像素）; Read LVGL source data byte (1b = 1 pixel)
-            uint8_t byte = src_row[col / 8];
-            // 读取1bit数据 按照MSB位序读取; Read 1bit data in MSB order
-            // Read 1bit data, read according to MSB bit order
-            uint8_t bit = (byte >> (7 - (col % 8))) & 0x01;
-            // 亮：0xFF，暗：0x00 ; Bright: 0xFF, Dark: 0x00
-            dst_row[col] = bit ? BACKGROUND_COLOR : COLOR_BRIGHT;
-            // dst_row[col] = bit ? COLOR_BRIGHT : BACKGROUND_COLOR;
+            const uint8_t *src_row = src + (line_off + row) * src_stride;
+            uint8_t       *dst_row = dst_base + row * dst_stride;
+
+            /* 每次处理一个源字节（8 个像素）→ 写出 4 个目标字节；
+               Process one source byte (8 pixels) → 4 target bytes */
+            uint16_t di = 0;
+            for (uint16_t sb = 0; sb < src_stride; ++sb)
+            {
+                uint8_t b  = src_row[sb];
+                uint8_t hi = b >> 4;   /* bit7..bit4（左到右前四像素）；High nibble: pixels 7..4 */
+                uint8_t lo = b & 0x0F; /* bit3..bit0（左到右后四像素）；Low  nibble: pixels 3..0 */
+
+                uint16_t w0 = LUT_NIBBLE_TO_2BYTES[hi]; /* 两个字节；Two bytes */
+                uint16_t w1 = LUT_NIBBLE_TO_2BYTES[lo];
+
+                /* 写入顺序保持“左到右、上到下”；Keep left-to-right order */
+                dst_row[di + 0] = (uint8_t)(w0 >> 8);
+                dst_row[di + 1] = (uint8_t)(w0 & 0xFF);
+                dst_row[di + 2] = (uint8_t)(w1 >> 8);
+                dst_row[di + 3] = (uint8_t)(w1 & 0xFF);
+                di += 4;
+            }
         }
-    }
-    hls12vga_write_multiple_rows_cmd(dev, y, y + height - 1);
+        // uint32_t conv_end = k_cycle_get_32();
+        // LOG_INF("Convert %u:lines; took %u:cycles", sub_lines, conv_end - conv_start);
+        /* —— 行地址命令（独立 CS 周期）；Row-address command (separate CS window) —— */
+        hls12vga_write_multiple_rows_cmd(dev, y + line_off, y + line_off + sub_lines - 1);
+        k_busy_wait(1); /* ≥1µs：地址→数据间隔；Address→data gap */
 
-    uint8_t *tx_buf = data->tx_buf_bulk;
-    tx_buf[0]       = HLS12VGA_LCD_DATA_REG;
-    tx_buf[1]       = (HLS12VGA_LCD_CMD_REG >> 16) & 0xFF;
-    tx_buf[2]       = (HLS12VGA_LCD_CMD_REG >> 8) & 0xFF;
-    tx_buf[3]       = HLS12VGA_LCD_CMD_REG & 0xFF;
+        /* —— 视频数据命令头 + 数据：单次 spi_write；保证单 CS ≥ 320B（行的整数倍）
+        Data command header + payload: single spi_write; guarantee single-CS ≥ 320B (multiples of a row) —— */
+        uint8_t *tx_buf = data->tx_buf_bulk;
+        tx_buf[0]       = HLS12VGA_LCD_DATA_REG;
+        tx_buf[1]       = (HLS12VGA_LCD_CMD_REG >> 16) & 0xFF;
+        tx_buf[2]       = (HLS12VGA_LCD_CMD_REG >> 8) & 0xFF;
+        tx_buf[3]       = HLS12VGA_LCD_CMD_REG & 0xFF;
 
-    ret = hls12vga_transmit_all(dev, tx_buf, 4 + height * dst_stride, 1);
-    if (ret != 0)
-    {
-        LOG_ERR("SPI transmit failed: %d", ret);
+        const size_t data_bytes = sub_lines * dst_stride; /* 320B 或 640B；320B or 640B */
+        const size_t total_sent = 4 + data_bytes;         /* +4B 头；plus 4B header */
+        ret = hls12vga_transmit_all(dev, tx_buf, total_sent, 1);
+        if (ret)
+        {
+            LOG_ERR("SPI transmit failed: %d", ret);
+            return ret;
+        }
+
+        line_off += sub_lines;
+        remaining -= sub_lines;
     }
-    return ret;
+    uint32_t t1 = k_uptime_get_32();
+    if ((g_frame_count & 0x7) == 0)
+    {  
+        LOG_INF("hls12vga_transmit_all = [%u]ms, line[%u], bytes[%u]B ", t1 - t0, line_off, line_off * dst_stride + 4);
+    }
+    g_frame_count++;
+    return 0;
 }
+
 #endif
 
 static int hls12vga_read(struct device *dev, int x, int y, const struct display_buffer_descriptor *desc, void *buf)
@@ -385,20 +443,14 @@ void hls12vga_power_off(void)
     k_msleep(10);
     gpio_pin_set_dt(&cfg->v0_9, 0);
 }
-static void lvgl_tick_cb(struct k_timer *timer)
-{
-    // LOG_INF("lvgl_tick_cb");
-    lv_tick_inc(K_MSEC(LVGL_TICK_MS));  // 每5毫秒调用一次; Call every 5ms
-}
+
 int hls12vga_clear_screen(bool color_on)
 {
-    const hls12vga_config *cfg  = dev_hls12vga->config;
-    hls12vga_data         *data = dev_hls12vga->data;
+    const hls12vga_config *cfg    = dev_hls12vga->config;
+    hls12vga_data         *data   = dev_hls12vga->data;
+    const uint16_t         width  = cfg->screen_width; /* 640 */
+    const uint16_t         height = SCREEN_HEIGHT;
 
-    const uint16_t width = cfg->screen_width;
-    // const uint16_t height = cfg->screen_height;
-    const uint16_t height = SCREEN_HEIGHT;
-    // Clear MAX_LINES_PER_WRITE lines each time
     uint8_t *tx_buf          = data->tx_buf_bulk;
     uint16_t lines_per_batch = MAX_LINES_PER_WRITE;
     uint16_t total_lines     = height;
@@ -416,8 +468,8 @@ int hls12vga_clear_screen(bool color_on)
         tx_buf[2] = (HLS12VGA_LCD_CMD_REG >> 8) & 0xFF;
         tx_buf[3] = HLS12VGA_LCD_CMD_REG & 0xFF;
 
-        memset(&tx_buf[4], fill_byte, batch_lines * width);
-        int ret = hls12vga_transmit_all(dev_hls12vga, tx_buf, 4 + batch_lines * width, 1);
+        memset(&tx_buf[4], fill_byte, batch_lines * (width / 2));
+        int ret = hls12vga_transmit_all(dev_hls12vga, tx_buf, 4 + batch_lines * (width / 2), 1);
         if (ret != 0)
         {
             LOG_INF("hls12vga_transmit_all failed! (%d)", ret);
@@ -569,28 +621,28 @@ static DEVICE_API(display, hls12vga_api) = {
     .get_framebuffer  = hls12vga_get_framebuffer,   // get framebuffer
     .get_capabilities = hls12vga_get_capabilities,  // get capabilities
 };
-#define CUSTOM_HLS12VGA_DEFINE(inst)                                                                               \
-    static uint8_t         hls12vga_bulk_tx_buffer_##inst[4 + MAX_LINES_PER_WRITE * DT_INST_PROP(inst, width)];    \
-    static hls12vga_config hls12vga_config_##inst = {                                                              \
-        .spi           = SPI_DT_SPEC_INST_GET(inst, SPI_OP_MODE_MASTER | SPI_TRANSFER_MSB | SPI_WORD_SET(8U), 0U), \
-        .left_cs       = GPIO_DT_SPEC_INST_GET(inst, left_cs_gpios),                                               \
-        .right_cs      = GPIO_DT_SPEC_INST_GET(inst, right_cs_gpios),                                              \
-        .reset         = GPIO_DT_SPEC_INST_GET(inst, reset_gpios),                                                 \
-        .vcom          = GPIO_DT_SPEC_INST_GET(inst, vcom_gpios),                                                  \
-        .v1_8          = GPIO_DT_SPEC_INST_GET(inst, v1_8_gpios),                                                  \
-        .v0_9          = GPIO_DT_SPEC_INST_GET(inst, v0_9_gpios),                                                  \
-        .screen_width  = DT_INST_PROP(inst, width),                                                                \
-        .screen_height = DT_INST_PROP(inst, height),                                                               \
-    };                                                                                                             \
-                                                                                                                   \
-    static hls12vga_data hls12vga_data_##inst = {                                                                  \
-        .tx_buf_bulk   = hls12vga_bulk_tx_buffer_##inst,                                                           \
-        .screen_width  = DT_INST_PROP(inst, width),                                                                \
-        .screen_height = DT_INST_PROP(inst, height),                                                               \
-        .initialized   = false,                                                                                    \
-    };                                                                                                             \
-                                                                                                                   \
-    DEVICE_DT_INST_DEFINE(inst, hls12vga_init, NULL, &hls12vga_data_##inst, &hls12vga_config_##inst, POST_KERNEL,  \
+#define CUSTOM_HLS12VGA_DEFINE(inst)                                                                                    \
+    static uint8_t         hls12vga_bulk_tx_buffer_##inst[4 + (MAX_LINES_PER_WRITE * (DT_INST_PROP(inst, width) / 2))]; \
+    static hls12vga_config hls12vga_config_##inst = {                                                                   \
+        .spi           = SPI_DT_SPEC_INST_GET(inst, SPI_OP_MODE_MASTER | SPI_TRANSFER_MSB | SPI_WORD_SET(8U), 0U),      \
+        .left_cs       = GPIO_DT_SPEC_INST_GET(inst, left_cs_gpios),                                                    \
+        .right_cs      = GPIO_DT_SPEC_INST_GET(inst, right_cs_gpios),                                                   \
+        .reset         = GPIO_DT_SPEC_INST_GET(inst, reset_gpios),                                                      \
+        .vcom          = GPIO_DT_SPEC_INST_GET(inst, vcom_gpios),                                                       \
+        .v1_8          = GPIO_DT_SPEC_INST_GET(inst, v1_8_gpios),                                                       \
+        .v0_9          = GPIO_DT_SPEC_INST_GET(inst, v0_9_gpios),                                                       \
+        .screen_width  = DT_INST_PROP(inst, width),                                                                     \
+        .screen_height = DT_INST_PROP(inst, height),                                                                    \
+    };                                                                                                                  \
+                                                                                                                        \
+    static hls12vga_data hls12vga_data_##inst = {                                                                       \
+        .tx_buf_bulk   = hls12vga_bulk_tx_buffer_##inst,                                                                \
+        .screen_width  = DT_INST_PROP(inst, width),                                                                     \
+        .screen_height = DT_INST_PROP(inst, height),                                                                    \
+        .initialized   = false,                                                                                         \
+    };                                                                                                                  \
+                                                                                                                        \
+    DEVICE_DT_INST_DEFINE(inst, hls12vga_init, NULL, &hls12vga_data_##inst, &hls12vga_config_##inst, POST_KERNEL,       \
                           CONFIG_DISPLAY_INIT_PRIORITY, &hls12vga_api);
 
 /* 为每个状态为"okay"的设备树节点创建实例; Create instance for each device tree node with status "okay" */

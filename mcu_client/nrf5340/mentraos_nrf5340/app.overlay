@@ -139,8 +139,8 @@
 		v0_9-gpios = <&gpio0 5 GPIO_ACTIVE_HIGH>;
 
 		width = <640>;
-		// height = <240>;
-		height = <480>;
+		height = <240>;
+		// height = <480>;
 	};
 };
 &i2c0 {
