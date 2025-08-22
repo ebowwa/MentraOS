@@ -763,15 +763,15 @@ The gallery will automatically reload once connected.`,
           // If we're connected to the hotspot, directly update the network service
           // Don't rely on NetInfo which has stale data on Android
           if (currentSSID === ssid) {
-            // Import and use networkConnectivityService directly
-            const {networkConnectivityService} = await import("../../services/networkConnectivityService")
-            // Tell the service we're connected to the hotspot
-            networkConnectivityService.updateGlassesStatus(true, ssid, ip)
-            // Also manually update the phone's network status since NetInfo is stale
-            // This is a workaround for Android's NetInfo timing issues
-            ;(networkConnectivityService as any).currentStatus.phoneConnected = true
-            ;(networkConnectivityService as any).currentStatus.phoneSSID = currentSSID
-            ;(networkConnectivityService as any).notifyListeners()
+            // // Import and use networkConnectivityService directly
+            // const {networkConnectivityService} = await import("../../services/networkConnectivityService")
+            // // Tell the service we're connected to the hotspot
+            // networkConnectivityService.updateGlassesStatus(true, ssid, ip)
+            // // Also manually update the phone's network status since NetInfo is stale
+            // // This is a workaround for Android's NetInfo timing issues
+            // ;(networkConnectivityService as any).currentStatus.phoneConnected = true
+            // ;(networkConnectivityService as any).currentStatus.phoneSSID = currentSSID
+            // ;(networkConnectivityService as any).notifyListeners()
           }
         } catch (error) {
           console.log("[GalleryScreen] Failed to get current SSID:", error)
@@ -781,7 +781,7 @@ The gallery will automatically reload once connected.`,
         // Pass the IP directly to avoid closure issues
         setTimeout(() => {
           loadInitialPhotos(ip) // Pass IP directly to avoid stale closure values
-        }, 3000) // Give more time for network to stabilization
+        }, 500) // Give more time for network to stabilization
       }
     } catch (error: any) {
       console.log("[GalleryScreen] Failed to connect:", error)
@@ -918,7 +918,7 @@ The gallery will automatically reload once connected.`,
       setTimeout(() => {
         console.log("[GalleryScreen] Loading photos via hotspot connection...")
         loadInitialPhotos(hotspotGatewayIp) // Pass IP directly
-      }, 1000) // Brief delay for network stabilization
+      }, 500) // Brief delay for network stabilization
     }
   }, [networkStatus.phoneSSID, hotspotSsid, hotspotGatewayIp])
 
@@ -936,7 +936,7 @@ The gallery will automatically reload once connected.`,
         handleSync().finally(() => {
           syncTriggeredRef.current = false
         })
-      }, 1000) // Brief delay to ensure connection is stable
+      }, 500) // Brief delay to ensure connection is stable
     }
 
     // Reset sync trigger when state changes away from READY_TO_SYNC
