@@ -1245,6 +1245,11 @@ The gallery will automatically reload once connected.`,
                   Tap to join "{hotspotSsid}" network
                 </Text>
               </View>
+            ) : /* Ready to sync - show what will be synced */
+            galleryState === GalleryState.READY_TO_SYNC && serverPhotosToSync > 0 ? (
+              <View style={themed($syncButtonRow)}>
+                <Text style={themed($syncButtonText)}>Ready to sync</Text>
+              </View>
             ) : /* Actively syncing with progress */
             galleryState === GalleryState.SYNCING && syncProgress ? (
               <>
@@ -1269,23 +1274,11 @@ The gallery will automatically reload once connected.`,
             ) : /* Sync complete */
             galleryState === GalleryState.SYNC_COMPLETE ? (
               <View style={themed($syncButtonRow)}>
-                <MaterialCommunityIcons
-                  name="check-circle"
-                  size={20}
-                  color={theme.colors.success}
-                  style={{marginRight: spacing.xs}}
-                />
                 <Text style={themed($syncButtonText)}>Sync complete!</Text>
               </View>
             ) : /* Error state */
             galleryState === GalleryState.ERROR ? (
               <View style={themed($syncButtonRow)}>
-                <MaterialCommunityIcons
-                  name="alert-circle"
-                  size={20}
-                  color={theme.colors.error}
-                  style={{marginRight: spacing.xs}}
-                />
                 <Text style={themed($syncButtonText)}>{errorMessage || "An error occurred"}</Text>
               </View>
             ) : null}
