@@ -18,7 +18,7 @@ message PhoneToGlasses {
     PairingModeRequest pairing_mode = 13;
     HeadPositionRequest head_position = 14;
     HeadUpAngleConfig head_up_angle = 15;
-    PingRequest ping = 16;
+    PongRequest pong = 16;
     
     // Audio System
     MicStateConfig mic_state = 20;
@@ -74,7 +74,7 @@ message GlassesToPhone {
     DeviceInfo device_info = 12;
     HeadPosition head_position = 13;
     HeadUpAngleResponse head_up_angle_set = 14;
-    PongResponse pong = 15;
+    PingResponse ping = 15;
     
     // Audio System
     VadEvent vad_event = 20;
