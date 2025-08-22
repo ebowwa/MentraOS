@@ -160,6 +160,7 @@ export function GalleryScreen() {
 
   // Track if we opened the hotspot (for cleanup)
   const [galleryOpenedHotspot, setGalleryOpenedHotspot] = useState(false)
+  const galleryOpenedHotspotRef = useRef(false)
 
   // Track loaded ranges to avoid duplicate requests
   const loadedRanges = useRef<Set<string>>(new Set())
@@ -588,6 +589,7 @@ export function GalleryScreen() {
 
       // Track that gallery opened this hotspot for lifecycle management
       setGalleryOpenedHotspot(true)
+      galleryOpenedHotspotRef.current = true
       console.log("[GalleryScreen] Gallery initiated hotspot - will auto-close when appropriate")
 
       // Transition to waiting for hotspot to be ready
@@ -607,6 +609,7 @@ export function GalleryScreen() {
       const result = await coreCommunicator.sendCommand("set_hotspot_state", {enabled: false})
       console.log("[GalleryScreen] Hotspot stop command sent, result:", result)
       setGalleryOpenedHotspot(false) // Reset tracking
+      galleryOpenedHotspotRef.current = false
       return result
     } catch (error) {
       console.error("[GalleryScreen] Failed to stop hotspot:", error)
@@ -877,8 +880,9 @@ The gallery will automatically reload once connected.`,
   useEffect(() => {
     const handleHotspotStatusChange = (eventData: any) => {
       console.log("[GalleryScreen] Received GLASSES_HOTSPOT_STATUS_CHANGE event:", eventData)
+      console.log("[GalleryScreen] galleryOpenedHotspotRef.current:", galleryOpenedHotspotRef.current)
 
-      if (eventData.enabled && eventData.ssid && eventData.password && galleryOpenedHotspot) {
+      if (eventData.enabled && eventData.ssid && eventData.password && galleryOpenedHotspotRef.current) {
         console.log("[GalleryScreen] Hotspot enabled, attempting to connect phone to WiFi...")
 
         // Store hotspot info for SSID matching
@@ -892,7 +896,7 @@ The gallery will automatically reload once connected.`,
     return () => {
       GlobalEventEmitter.removeListener("GLASSES_HOTSPOT_STATUS_CHANGE", handleHotspotStatusChange)
     }
-  }, [galleryOpenedHotspot])
+  }, []) // No dependencies - uses ref instead
 
   // STEP 4: Monitor phone SSID - when it matches hotspot SSID, we're connected
   useEffect(() => {
@@ -1256,14 +1260,14 @@ The gallery will automatically reload once connected.`,
                 <Text style={themed($syncButtonText)}>
                   Syncing {syncProgress.current}/{syncProgress.total} items...
                 </Text>
-                <View style={themed($syncButtonProgressBar)}>
+                {/* <View style={themed($syncButtonProgressBar)}>
                   <View
                     style={[
                       themed($syncButtonProgressFill),
                       {width: `${(syncProgress.current / syncProgress.total) * 100}%`},
                     ]}
                   />
-                </View>
+                </View> */}
               </>
             ) : /* Syncing without progress */
             galleryState === GalleryState.SYNCING ? (
@@ -1645,18 +1649,18 @@ const $syncButtonSubtext: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
   marginBottom: spacing.xs,
 })
 
-const $syncButtonProgressBar: ThemedStyle<ViewStyle> = ({spacing}) => ({
+const $syncButtonProgressBar: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   height: 4,
-  backgroundColor: "rgba(255,255,255,0.2)",
+  backgroundColor: colors.border,
   borderRadius: 2,
   overflow: "hidden",
   marginTop: spacing.xs,
   width: "100%",
 })
 
-const $syncButtonProgressFill: ThemedStyle<ViewStyle> = () => ({
+const $syncButtonProgressFill: ThemedStyle<ViewStyle> = ({colors}) => ({
   height: "100%",
-  backgroundColor: "rgba(255,255,255,0.8)",
+  backgroundColor: colors.palette.primary500,
   borderRadius: 2,
 })
 
