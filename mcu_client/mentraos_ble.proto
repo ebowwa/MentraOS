@@ -74,7 +74,7 @@ message GlassesToPhone {
     DeviceInfo device_info = 12;
     HeadPosition head_position = 13;
     HeadUpAngleResponse head_up_angle_set = 14;
-    PongResponse pong = 15;
+    PingRequest ping = 15;
     
     // Audio System
     VadEvent vad_event = 20;
