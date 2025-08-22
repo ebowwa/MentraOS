@@ -197,7 +197,7 @@ public class LiveKitManager: NSObject {
     }
     
     Core.log("[LiveKitManager] Adding PCM \(buffer.frameLength)")
-    // recorder.render(pcmBuffer: buffer)
+    recorder.render(pcmBuffer: buffer)
   }
   
   /// Disconnect from LiveKit room
