@@ -10,6 +10,7 @@ import {
 import {check, PERMISSIONS, RESULTS} from "react-native-permissions"
 import BleManager from "react-native-ble-manager"
 import BackendServerComms from "@/backend_comms/BackendServerComms"
+import AudioPlayService, {AudioPlayResponse} from "@/services/AudioPlayService"
 import {translate} from "@/i18n"
 import AugmentOSParser from "@/utils/AugmentOSStatusParser"
 
@@ -175,6 +176,13 @@ export class CoreCommunicator extends EventEmitter {
 
     // Initialize message event listener
     this.initializeMessageEventListener()
+
+    if (Platform.OS === "android") {
+      // Set up audio play response callback
+      AudioPlayService.setResponseCallback((response: AudioPlayResponse) => {
+        this.sendAudioPlayResponse(response)
+      })
+    }
 
     // set the backend server url
     const backendServerUrl = await BackendServerComms.getInstance().getServerUrl()
@@ -351,6 +359,12 @@ export class CoreCommunicator extends EventEmitter {
         case "app_stopped":
           console.log("APP_STOPPED_EVENT", data.packageName)
           GlobalEventEmitter.emit("APP_STOPPED_EVENT", data.packageName)
+          break
+        case "audio_play_request":
+          await AudioPlayService.handleAudioPlayRequest(data)
+          break
+        case "audio_stop_request":
+          await AudioPlayService.stopAllAudio()
           break
         case "pair_failure":
           GlobalEventEmitter.emit("PAIR_FAILURE", data.error)
@@ -918,6 +932,24 @@ export class CoreCommunicator extends EventEmitter {
     return await this.sendData({
       command: command,
       params: params || {},
+    })
+  }
+
+  /**
+   * Sends audio play response back to Core
+   */
+  private async sendAudioPlayResponse(response: AudioPlayResponse) {
+    console.log(
+      `CoreCommunicator: Sending audio play response for requestId: ${response.requestId}, success: ${response.success}`,
+    )
+    await this.sendData({
+      command: "audio_play_response",
+      params: {
+        requestId: response.requestId,
+        success: response.success,
+        error: response.error,
+        duration: response.duration,
+      },
     })
   }
 
