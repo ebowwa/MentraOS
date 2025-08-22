@@ -298,6 +298,7 @@ export class CoreCommunicator extends EventEmitter {
           videos: data.glasses_gallery_status.videos,
           total: data.glasses_gallery_status.total,
           has_content: data.glasses_gallery_status.has_content,
+          camera_busy: data.glasses_gallery_status.camera_busy, // Add camera busy state
         })
       } else if ("glasses_display_event" in data) {
         GlobalEventEmitter.emit("GLASSES_DISPLAY_EVENT", data.glasses_display_event)

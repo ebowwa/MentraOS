@@ -62,6 +62,7 @@ interface GlassesSettings {
   button_mode?: string
   button_photo_size?: string // 'small' | 'medium' | 'large'
   button_video_settings?: ButtonVideoSettings
+  button_camera_led: boolean
 }
 
 interface WifiConnection {
@@ -151,6 +152,7 @@ export class AugmentOSParser {
         height: 720,
         fps: 30,
       },
+      button_camera_led: true,
     },
     wifi: {is_connected: false, ssid: "", signal_strength: 0},
     gsm: {is_connected: false, carrier: "", signal_strength: 0},
@@ -215,6 +217,7 @@ export class AugmentOSParser {
         height: 720,
         fps: 30,
       },
+      button_camera_led: true,
     },
     wifi: {is_connected: true, ssid: "TP-LINK69", signal_strength: 100},
     gsm: {is_connected: false, carrier: "", signal_strength: 0},
@@ -304,6 +307,7 @@ export class AugmentOSParser {
             height: 720,
             fps: 30,
           },
+          button_camera_led: status.glasses_settings.button_camera_led,
         },
         wifi: status.wifi ?? AugmentOSParser.defaultStatus.wifi,
         gsm: status.gsm ?? AugmentOSParser.defaultStatus.gsm,

@@ -1765,12 +1765,12 @@ struct ViewState {
             "head_up_angle": headUpAngle,
             "button_mode": buttonPressMode,
             "button_photo_size": UserDefaults.standard.string(forKey: "button_photo_size") ?? "medium",
-            "button_camera_led": UserDefaults.standard.bool(forKey: "button_camera_led"),
             "button_video_settings": [
                 "width": UserDefaults.standard.integer(forKey: "button_video_width") != 0 ? UserDefaults.standard.integer(forKey: "button_video_width") : 1280,
                 "height": UserDefaults.standard.integer(forKey: "button_video_height") != 0 ? UserDefaults.standard.integer(forKey: "button_video_height") : 720,
                 "fps": UserDefaults.standard.integer(forKey: "button_video_fps") != 0 ? UserDefaults.standard.integer(forKey: "button_video_fps") : 30,
             ],
+            "button_camera_led": UserDefaults.standard.bool(forKey: "button_camera_led"),
         ]
 
         let cloudConnectionStatus = serverComms.isWebSocketConnected() ? "CONNECTED" : "DISCONNECTED"

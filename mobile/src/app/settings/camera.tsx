@@ -1,5 +1,5 @@
 import React, {useEffect, useState} from "react"
-import {View, Text, ScrollView, ActivityIndicator, StyleSheet, TouchableOpacity} from "react-native"
+import {View, Text, ScrollView, StyleSheet, TouchableOpacity} from "react-native"
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import coreCommunicator from "@/bridge/CoreCommunicator"
 import {useAppTheme} from "@/utils/useAppTheme"
@@ -38,17 +38,16 @@ export default function CameraSettingsScreen() {
   const {goBack} = useNavigationHistory()
   const {user} = useAuth()
 
-  const [loadingPhotoSize, setLoadingPhotoSize] = useState(false)
-  const [loadingVideoResolution, setLoadingVideoResolution] = useState(false)
-  const [loadingLed, setLoadingLed] = useState(false)
   const [devMode, setDevMode] = useState(false)
 
-  // Derive state directly from status
-  const photoSize = (status.glasses_settings?.button_photo_size as PhotoSize) || "medium"
-  const ledEnabled = status.glasses_settings?.button_camera_led !== false // Default true if not set
-
-  // Convert video settings to resolution string
-  const videoResolution = (() => {
+  // Local state for optimistic updates - initialize from status
+  const [photoSize, setPhotoSize] = useState<PhotoSize>(
+    (status.glasses_settings?.button_photo_size as PhotoSize) || "medium",
+  )
+  const [ledEnabled, setLedEnabled] = useState(
+    status.glasses_settings?.button_camera_led !== false, // Default true if not set
+  )
+  const [videoResolution, setVideoResolution] = useState<VideoResolution>(() => {
     const videoSettings = status.glasses_settings?.button_video_settings
     if (videoSettings) {
       if (videoSettings.width >= 3840) return "4K"
@@ -57,7 +56,30 @@ export default function CameraSettingsScreen() {
       return "720p"
     }
     return "720p"
-  })()
+  })
+
+  // Update local state when status changes
+  useEffect(() => {
+    if (status.glasses_settings?.button_photo_size) {
+      setPhotoSize(status.glasses_settings.button_photo_size as PhotoSize)
+    }
+  }, [status.glasses_settings?.button_photo_size])
+
+  useEffect(() => {
+    if (status.glasses_settings?.button_camera_led !== undefined) {
+      setLedEnabled(status.glasses_settings.button_camera_led)
+    }
+  }, [status.glasses_settings?.button_camera_led])
+
+  useEffect(() => {
+    const videoSettings = status.glasses_settings?.button_video_settings
+    if (videoSettings) {
+      if (videoSettings.width >= 3840) setVideoResolution("4K")
+      else if (videoSettings.width >= 2560) setVideoResolution("1440p")
+      else if (videoSettings.width >= 1920) setVideoResolution("1080p")
+      else setVideoResolution("720p")
+    }
+  }, [status.glasses_settings?.button_video_settings])
 
   useEffect(() => {
     const checkDevMode = async () => {
@@ -74,12 +96,14 @@ export default function CameraSettingsScreen() {
     }
 
     try {
-      setLoadingPhotoSize(true)
+      setPhotoSize(size) // Optimistic update
       await coreCommunicator.sendSetButtonPhotoSize(size)
     } catch (error) {
       console.error("Failed to update photo size:", error)
-    } finally {
-      setLoadingPhotoSize(false)
+      // Revert on error if we have the original value
+      if (status.glasses_settings?.button_photo_size) {
+        setPhotoSize(status.glasses_settings.button_photo_size as PhotoSize)
+      }
     }
   }
 
@@ -90,7 +114,7 @@ export default function CameraSettingsScreen() {
     }
 
     try {
-      setLoadingVideoResolution(true)
+      setVideoResolution(resolution) // Optimistic update
 
       // Convert resolution to width/height/fps
       const width = resolution === "4K" ? 3840 : resolution === "1440p" ? 2560 : resolution === "1080p" ? 1920 : 1280
@@ -100,8 +124,14 @@ export default function CameraSettingsScreen() {
       await coreCommunicator.sendSetButtonVideoSettings(width, height, fps)
     } catch (error) {
       console.error("Failed to update video resolution:", error)
-    } finally {
-      setLoadingVideoResolution(false)
+      // Revert on error
+      const videoSettings = status.glasses_settings?.button_video_settings
+      if (videoSettings) {
+        if (videoSettings.width >= 3840) setVideoResolution("4K")
+        else if (videoSettings.width >= 2560) setVideoResolution("1440p")
+        else if (videoSettings.width >= 1920) setVideoResolution("1080p")
+        else setVideoResolution("720p")
+      }
     }
   }
 
@@ -112,12 +142,14 @@ export default function CameraSettingsScreen() {
     }
 
     try {
-      setLoadingLed(true)
+      setLedEnabled(enabled) // Optimistic update
       await coreCommunicator.sendSetButtonCameraLed(enabled)
     } catch (error) {
       console.error("Failed to update LED setting:", error)
-    } finally {
-      setLoadingLed(false)
+      // Revert on error
+      if (status.glasses_settings?.button_camera_led !== undefined) {
+        setLedEnabled(status.glasses_settings.button_camera_led)
+      }
     }
   }
 
@@ -148,20 +180,13 @@ export default function CameraSettingsScreen() {
           {Object.entries(PHOTO_SIZE_LABELS).map(([value, label], index) => (
             <View key={value}>
               {index > 0 && <View style={themed($divider)} />}
-              <TouchableOpacity
-                style={themed($optionItem)}
-                onPress={() => handlePhotoSizeChange(value as PhotoSize)}
-                disabled={loadingPhotoSize}>
+              <TouchableOpacity style={themed($optionItem)} onPress={() => handlePhotoSizeChange(value as PhotoSize)}>
                 <Text style={themed($optionText)}>{label}</Text>
-                {loadingPhotoSize && photoSize === value ? (
-                  <ActivityIndicator size="small" color={theme.colors.tint} />
-                ) : (
-                  <MaterialCommunityIcons
-                    name="check"
-                    size={24}
-                    color={photoSize === value ? theme.colors.checkmark : "transparent"}
-                  />
-                )}
+                <MaterialCommunityIcons
+                  name="check"
+                  size={24}
+                  color={photoSize === value ? theme.colors.checkmark : "transparent"}
+                />
               </TouchableOpacity>
             </View>
           ))}
@@ -176,18 +201,13 @@ export default function CameraSettingsScreen() {
               {index > 0 && <View style={themed($divider)} />}
               <TouchableOpacity
                 style={themed($optionItem)}
-                onPress={() => handleVideoResolutionChange(value as VideoResolution)}
-                disabled={loadingVideoResolution}>
+                onPress={() => handleVideoResolutionChange(value as VideoResolution)}>
                 <Text style={themed($optionText)}>{label}</Text>
-                {loadingVideoResolution && videoResolution === value ? (
-                  <ActivityIndicator size="small" color={theme.colors.tint} />
-                ) : (
-                  <MaterialCommunityIcons
-                    name="check"
-                    size={24}
-                    color={videoResolution === value ? theme.colors.checkmark : "transparent"}
-                  />
-                )}
+                <MaterialCommunityIcons
+                  name="check"
+                  size={24}
+                  color={videoResolution === value ? theme.colors.checkmark : "transparent"}
+                />
               </TouchableOpacity>
             </View>
           ))}
@@ -200,7 +220,6 @@ export default function CameraSettingsScreen() {
               subtitle="Shows when camera is active"
               value={ledEnabled}
               onValueChange={handleLedToggle}
-              disabled={loadingLed}
             />
           </View>
         )}
