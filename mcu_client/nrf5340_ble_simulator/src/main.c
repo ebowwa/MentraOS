@@ -79,7 +79,7 @@ SYS_INIT(hfclock_config_and_start, POST_KERNEL, 0);
 
 // **NEW: Updated button mappings to avoid SPI pin conflicts (P0.08/P0.09)**
 #define KEY_BATTERY_CYCLE DK_BTN1_MSK           // Button 1: Cycle battery 0-100% + toggle charging
-#define KEY_SCREEN_TOGGLE DK_BTN2_MSK           // Button 2: Toggle welcome/scrolling screen
+#define KEY_SCREEN_TOGGLE DK_BTN2_MSK           // Button 2: Cycle LVGL test patterns
 #define KEY_PATTERN_CYCLE (DK_BTN1_MSK | DK_BTN2_MSK)  // Button 1+2: Cycle LVGL patterns
 
 // **DISABLED: Buttons 3 & 4 conflict with SPI4 pins (P0.08 SCK, P0.09 MOSI)**
@@ -715,23 +715,10 @@ void button_changed(uint32_t button_state, uint32_t has_changed)
 		return;
 	}
 
-	// **NEW: Button 2 alone - Toggle between welcome and scrolling text screens**
+	// **NEW: Button 2 alone - Cycle through LVGL test patterns**
 	if (buttons & KEY_SCREEN_TOGGLE && !(button_state & DK_BTN1_MSK)) {
-		static bool show_welcome = true;
-		
-		if (show_welcome) {
-			LOG_INF("📺 Button 2: Switching to scrolling text container");
-			// TODO: Implement proper screen switching
-			// For now, just cycle patterns to show different screens
-			display_cycle_pattern();
-		} else {
-			LOG_INF("📺 Button 2: Switching to welcome screen");
-			// TODO: Implement proper screen switching  
-			// For now, just cycle patterns to show different screens
-			display_cycle_pattern();
-		}
-		
-		show_welcome = !show_welcome;
+		LOG_INF("🎨 Button 2: Cycling LVGL test patterns");
+		display_cycle_pattern();
 		return;
 	}
 
@@ -770,8 +757,8 @@ int main(void)
 	// **NEW: Log updated button functionality (avoiding SPI4 conflicts)**
 	LOG_INF("� Button controls updated (avoiding SPI4 pin conflicts):");
 	LOG_INF("   � Button 1: Cycle battery 0→100%% + toggle charging");
-	LOG_INF("   � Button 2: Toggle welcome/scrolling text screens");
-	LOG_INF("   🎨 Button 1+2: Cycle LVGL test patterns");
+	LOG_INF("   🎨 Button 2: Cycle LVGL test patterns");
+	LOG_INF("   🎨 Button 1+2: Cycle LVGL test patterns (same as Button 2)");
 	LOG_INF("   ⚠️  Buttons 3&4 disabled (SPI4 conflict P0.08/P0.09)");
 	LOG_INF("   � Current battery level: %u%%", protobuf_get_battery_level());
 

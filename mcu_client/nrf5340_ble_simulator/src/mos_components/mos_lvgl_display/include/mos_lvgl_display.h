@@ -31,6 +31,7 @@ typedef enum
     LCD_CMD_DATA,
     LCD_CMD_CYCLE_PATTERN,  // **NEW: Pattern cycling command**
     LCD_CMD_UPDATE_PROTOBUF_TEXT,  // **NEW: Update container with protobuf text**
+    LCD_CMD_UPDATE_XY_TEXT,        // **NEW: Pattern 5 XY positioned text**
     LCD_CMD_GRAYSCALE_HORIZONTAL,  // **NEW: Direct HLS12VGA horizontal grayscale**
     LCD_CMD_GRAYSCALE_VERTICAL,    // **NEW: Direct HLS12VGA vertical grayscale**
     LCD_CMD_CHESS_PATTERN,         // **NEW: Direct HLS12VGA chess pattern**
@@ -62,12 +63,22 @@ typedef struct
     char text[MAX_TEXT_LEN + 1];  // **NEW: Protobuf text content**
 } lcd_protobuf_text_param_t;
 
+typedef struct
+{
+    uint16_t x;                   // **NEW: X coordinate (0-580)**
+    uint16_t y;                   // **NEW: Y coordinate (0-420)**
+    uint16_t font_size;           // **NEW: Font size (12,14,16,18,24,30,48)**
+    uint32_t color;               // **NEW: Text color (RGB hex)**
+    char text[MAX_TEXT_LEN + 1];  // **NEW: XY positioned text content**
+} lcd_xy_text_param_t;
+
 typedef union
 {
     lcd_text_param_t text;
     lcd_open_param_t open;
     lcd_pattern_param_t pattern;  // **NEW: Pattern parameter**
     lcd_protobuf_text_param_t protobuf_text;  // **NEW: Protobuf text parameter**
+    lcd_xy_text_param_t xy_text;              // **NEW: XY positioned text parameter**
     // 其它命令参数结构体可继续扩展
 } display_param_u;
 
@@ -111,6 +122,12 @@ void display_update_protobuf_text(const char *text_content);
 void display_draw_horizontal_grayscale(void);
 void display_draw_vertical_grayscale(void);
 void display_draw_chess_pattern(void);
+
+// **NEW: Pattern 5 XY Text Positioning function**
+void display_update_xy_text(uint16_t x, uint16_t y, const char *text_content, uint16_t font_size, uint32_t color);
+
+// **NEW: Get current pattern ID for conditional logic**
+int display_get_current_pattern(void);
 
 void display_close(void);
 

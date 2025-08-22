@@ -941,10 +941,22 @@ void protobuf_process_display_text(const mentraos_ble_DisplayText *display_text)
 	       display_text->text, text_length, display_text->x, display_text->y, 
 	       color_rgb565, display_text->font_code, display_text->size);
 	
-	// *** LVGL INTEGRATION: Display text on protobuf container ***
-	// **NEW: Update auto-scroll container with protobuf text content**
-	display_update_protobuf_text(display_text->text);
-	printk("✅ LVGL: Protobuf text updated in auto-scroll container\n");
+	// *** LVGL INTEGRATION: Display text based on current pattern ***
+	// **NEW: Check current pattern to determine display mode**
+	int current_pattern = display_get_current_pattern();
+	
+	if (current_pattern == 5) {
+		// Pattern 5: XY Text Positioning - use coordinates and font size from protobuf
+		uint16_t font_size = (display_text->size > 0) ? display_text->size : 12;  // Default to 12pt
+		display_update_xy_text(display_text->x, display_text->y, display_text->text, 
+		                      font_size, color_rgb565);
+		printk("✅ LVGL: XY positioned text at (%u,%u) with font %upt in Pattern 5\n", 
+		       display_text->x, display_text->y, font_size);
+	} else {
+		// Pattern 4 or others: Auto-scroll container (backward compatibility)
+		display_update_protobuf_text(display_text->text);
+		printk("✅ LVGL: Protobuf text updated in auto-scroll container (Pattern %d)\n", current_pattern);
+	}
 	
 	LOG_INF("=== END DISPLAY TEXT MESSAGE ===");
 }

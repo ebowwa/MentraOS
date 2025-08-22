@@ -21,6 +21,7 @@
 #include "bal_os.h"
 #include "bsp_log.h"
 #include "mos_lvgl_display.h"
+#include "display_manager.h"  // **NEW: For font mapping function**
 // #include "bspal_icm42688p.h"
 // #include "task_ble_receive.h"
 
@@ -36,7 +37,7 @@ k_tid_t lvgl_thread_handle;
 static K_SEM_DEFINE(lvgl_display_sem, 0, 1);
 
 #define DISPLAY_CMD_QSZ 16
-K_MSGQ_DEFINE(display_msgq, sizeof(display_cmd_t), DISPLAY_CMD_QSZ, 4);
+K_MSGQ_DEFINE(lvgl_display_msgq, sizeof(display_cmd_t), DISPLAY_CMD_QSZ, 4);
 
 #define LVGL_TICK_MS 2  // Reduced from 5ms to 2ms for better FPS (K901 optimization)
 static struct k_timer fps_timer;
@@ -47,6 +48,10 @@ static volatile bool display_onoff = false;
 // **NEW: Global references for protobuf text container**
 static lv_obj_t *protobuf_container = NULL;
 static lv_obj_t *protobuf_label = NULL;
+
+// **NEW: Pattern 5 - XY Text Positioning Area (Global references)**
+static lv_obj_t *xy_text_container = NULL;  // 600x440 bordered viewing area
+static lv_obj_t *current_xy_text_label = NULL;  // Current positioned text label
 
 static void fps_timer_cb(struct k_timer *timer_id)
 {
@@ -111,7 +116,7 @@ void display_open(void)
         .p.open = {
             .brightness = 9,
             .mirror = 0x08}};
-    mos_msgq_send(&display_msgq, &cmd, MOS_OS_WAIT_FOREVER);
+    mos_msgq_send(&lvgl_display_msgq, &cmd, MOS_OS_WAIT_FOREVER);
 }
 
 void display_close(void)
@@ -127,7 +132,7 @@ void display_cycle_pattern(void)
         .type = LCD_CMD_CYCLE_PATTERN,
         .p.pattern = {.pattern_id = 0}  // Will be determined by LVGL thread
     };
-    mos_msgq_send(&display_msgq, &cmd, MOS_OS_WAIT_FOREVER);
+    mos_msgq_send(&lvgl_display_msgq, &cmd, MOS_OS_WAIT_FOREVER);
 }
 
 // **NEW: Thread-safe protobuf text update - sends message to LVGL thread**
@@ -153,32 +158,64 @@ void display_update_protobuf_text(const char *text_content)
     strncpy(cmd.p.protobuf_text.text, text_content, text_len);
     cmd.p.protobuf_text.text[text_len] = '\0';  // Ensure null termination
     
-    mos_msgq_send(&display_msgq, &cmd, MOS_OS_WAIT_FOREVER);
+    mos_msgq_send(&lvgl_display_msgq, &cmd, MOS_OS_WAIT_FOREVER);
 }
 
 // **NEW: Direct HLS12VGA pattern functions - Thread-safe**
 void display_draw_horizontal_grayscale(void)
 {
     display_cmd_t cmd = {.type = LCD_CMD_GRAYSCALE_HORIZONTAL};
-    mos_msgq_send(&display_msgq, &cmd, MOS_OS_WAIT_FOREVER);
+    mos_msgq_send(&lvgl_display_msgq, &cmd, MOS_OS_WAIT_FOREVER);
 }
 
 void display_draw_vertical_grayscale(void)
 {
     display_cmd_t cmd = {.type = LCD_CMD_GRAYSCALE_VERTICAL};
-    mos_msgq_send(&display_msgq, &cmd, MOS_OS_WAIT_FOREVER);
+    mos_msgq_send(&lvgl_display_msgq, &cmd, MOS_OS_WAIT_FOREVER);
 }
 
 void display_draw_chess_pattern(void)
 {
     display_cmd_t cmd = {.type = LCD_CMD_CHESS_PATTERN};
-    mos_msgq_send(&display_msgq, &cmd, MOS_OS_WAIT_FOREVER);
+    mos_msgq_send(&lvgl_display_msgq, &cmd, MOS_OS_WAIT_FOREVER);
+}
+
+// **NEW: Pattern 5 XY Text Positioning - Thread-safe function**
+void display_update_xy_text(uint16_t x, uint16_t y, const char *text_content, uint16_t font_size, uint32_t color)
+{
+    if (!text_content) {
+        BSP_LOGE(TAG, "Invalid XY text content pointer");
+        return;
+    }
+    
+    display_cmd_t cmd = {
+        .type = LCD_CMD_UPDATE_XY_TEXT,
+        .p.xy_text = {
+            .x = x,
+            .y = y,
+            .font_size = font_size,
+            .color = color,
+            .text = {0}  // Initialize text array
+        }
+    };
+    
+    // Safely copy text content with bounds checking
+    size_t text_len = strlen(text_content);
+    if (text_len > MAX_TEXT_LEN) {
+        text_len = MAX_TEXT_LEN;
+        BSP_LOGW(TAG, "XY text truncated to %d chars", MAX_TEXT_LEN);
+    }
+    
+    strncpy(cmd.p.xy_text.text, text_content, text_len);
+    cmd.p.xy_text.text[text_len] = '\0';  // Ensure null termination
+    
+    mos_msgq_send(&lvgl_display_msgq, &cmd, MOS_OS_WAIT_FOREVER);
 }
 
 void display_send_frame(void *data_ptr)
 {
     // display_cmd_t cmd = {.type = LCD_CMD_DATA, .param = data_ptr};
-    // mos_msgq_send(&display_msgq, &cmd, MOS_OS_WAIT_FOREVER);
+    // mos_msgq_send(&lvgl_display_msgq, &cmd, MOS_OS_WAIT_FOREVER);
 }
 void lvgl_dispaly_text(void)
 {
@@ -332,7 +369,7 @@ void scroll_text_stop(void)
 //     cmd.p.text.font_color = txt->color;
 //     cmd.p.text.size = txt->size;
 //     // 非阻塞入队，队满则丢弃并打印警告
-//     if (mos_msgq_send(&display_msgq, &cmd, MOS_OS_WAIT_ON) != 0)
+//     if (mos_msgq_send(&lvgl_display_msgq, &cmd, MOS_OS_WAIT_ON) != 0)
 //     {
 //         BSP_LOGE(TAG, "UI queue full, drop text");
 //     }
@@ -533,8 +570,44 @@ static void create_scrolling_text_container(lv_obj_t *screen)
     lv_obj_scroll_to_y(container, lv_obj_get_scroll_bottom(container), LV_ANIM_OFF);
 }
 
+// **NEW: Pattern 5 - XY Text Positioning Area with 600x440 bordered view**
+static void create_xy_text_positioning_area(lv_obj_t *screen)
+{
+    // Create 600x440 bordered viewing area centered on screen
+    // Screen size: 640x480, so container: 600x440 positioned at (20, 20)
+    lv_obj_t *container = lv_obj_create(screen);
+    lv_obj_set_size(container, 600, 440);  // 640-40 = 600, 480-40 = 440
+    lv_obj_set_pos(container, 20, 20);     // 20px margins from all edges
+    
+    // **NEW: Store global reference for XY text positioning**
+    xy_text_container = container;
+    
+    // Configure container as static positioning area - NO SCROLLING
+    lv_obj_set_scroll_dir(container, LV_DIR_NONE);  // No scrolling
+    lv_obj_set_scrollbar_mode(container, LV_SCROLLBAR_MODE_OFF);  // No scrollbars
+    
+    // Style the container with visible border for positioning reference
+    lv_obj_set_style_bg_color(container, lv_color_black(), 0);      // Black background
+    lv_obj_set_style_bg_opa(container, LV_OPA_COVER, 0);
+    lv_obj_set_style_border_color(container, lv_color_white(), 0);  // White border
+    lv_obj_set_style_border_width(container, 2, 0);                // 2px border width
+    lv_obj_set_style_border_opa(container, LV_OPA_COVER, 0);       // Visible border
+    lv_obj_set_style_pad_all(container, 10, 0);                    // 10px internal padding
+    lv_obj_set_style_radius(container, 5, 0);                      // Rounded corners
+    
+    // **EMPTY CONTAINER**: No default text - ready for XY positioned messages
+    
+    BSP_LOGI(TAG, "📍 Pattern 5: XY Text Positioning Area created (600x440 with border)");
+}
+
 static int current_pattern = 4;  // **NEW: Default to auto-scroll container (pattern 4)**
-static const int num_patterns = 5;  // Increased from 4 to 5
+static const int num_patterns = 6;  // Increased from 5 to 6 (added Pattern 5: XY Text Positioning)
+
+// **NEW: Get current pattern ID for conditional logic**
+int display_get_current_pattern(void)
+{
+    return current_pattern;
+}
 
 static void show_test_pattern(int pattern_id)
 {
@@ -563,6 +636,9 @@ static void show_test_pattern(int pattern_id)
             break;
         case 4:
             create_scrolling_text_container(screen);
+            break;
+        case 5:
+            create_xy_text_positioning_area(screen);
             break;
         default:
             BSP_LOGE(TAG, "❌ Unknown pattern ID: %d", pattern_id);
@@ -621,6 +697,68 @@ static void update_protobuf_text_content(const char *text_content)
              text_content, strlen(text_content) > 50 ? "..." : "");
 }
 
+// **NEW: Pattern 5 - Handle XY positioned text with font size control**
+static void update_xy_positioned_text(uint16_t x, uint16_t y, const char *text_content, uint16_t font_size, uint32_t color)
+{
+    // **SAFETY: This function must only be called from LVGL thread context**
+    
+    if (!text_content) {
+        BSP_LOGE(TAG, "Invalid XY text content pointer");
+        return;
+    }
+    
+    // Verify we have valid XY container reference
+    if (!xy_text_container) {
+        BSP_LOGE(TAG, "XY text container not initialized - must be in Pattern 5");
+        return;
+    }
+    
+    // **CLEAR ALL PREVIOUS TEXT CONTENT** before adding new text
+    lv_obj_clean(xy_text_container);  // Remove all children from container
+    current_xy_text_label = NULL;     // Reset reference since container is now empty
+    
+    // Validate coordinates within container bounds (580x420 usable area with 10px padding)
+    const uint16_t max_x = 580;  // 600 - (2 * 10px padding)
+    const uint16_t max_y = 420;  // 440 - (2 * 10px padding)
+    
+    BSP_LOGI(TAG, "📍 Original XY: (%u,%u), max bounds: (%u,%u)", x, y, max_x, max_y);
+    
+    if (x >= max_x || y >= max_y) {
+        BSP_LOGW(TAG, "XY coordinates out of bounds: (%u,%u) - max is (%u,%u)", 
+                 x, y, max_x, max_y);
+        // Clamp to valid range
+        x = (x >= max_x) ? max_x - 50 : x;  // Leave some space for text
+        y = (y >= max_y) ? max_y - 30 : y;
+        BSP_LOGW(TAG, "📍 Clamped to: (%u,%u)", x, y);
+    }
+    
+    // Map font size to available fonts, default to 12pt if invalid
+    const lv_font_t *font = display_manager_map_font(font_size);
+    if (!font) {
+        BSP_LOGW(TAG, "Invalid font size %u, using default 12pt", font_size);
+        font = display_manager_map_font(12);  // Fallback to 12pt
+    }
+    
+    // Create new positioned text label
+    current_xy_text_label = lv_label_create(xy_text_container);
+    lv_label_set_text(current_xy_text_label, text_content);
+    
+    // Apply font and styling - **SAME AS PATTERN 4: Use white text**
+    lv_obj_set_style_text_font(current_xy_text_label, font, 0);
+    lv_obj_set_style_text_color(current_xy_text_label, lv_color_white(), 0);  // White text like Pattern 4
+    lv_obj_set_style_bg_opa(current_xy_text_label, LV_OPA_TRANSP, 0);  // Transparent background
+    
+    // Set text wrapping and width constraints
+    lv_label_set_long_mode(current_xy_text_label, LV_LABEL_LONG_WRAP);
+    lv_obj_set_width(current_xy_text_label, max_x - x);  // Wrap within remaining width
+    
+    // Position the text at specified coordinates (relative to container padding)
+    lv_obj_set_pos(current_xy_text_label, x, y);
+    
+    BSP_LOGI(TAG, "� Cleared all previous text, positioned new at (%u,%u), font:%upt, color:0x%06X: %.30s%s", 
+             x, y, font_size, color, text_content, strlen(text_content) > 30 ? "..." : "");
+}
+
 void lvgl_dispaly_init(void *p1, void *p2, void *p3)
 {
     // 获取当前应用的字体对象
@@ -663,7 +801,7 @@ void lvgl_dispaly_init(void *p1, void *p2, void *p3)
             lv_timer_handler();
         }
         /* 2) 尝试读命令——减少等待时间以提高FPS (K901 optimization) */
-        int err = mos_msgq_receive(&display_msgq, &cmd, 1);  // Reduced from LVGL_TICK_MS to 1ms for better responsiveness
+        int err = mos_msgq_receive(&lvgl_display_msgq, &cmd, 1);  // Reduced from LVGL_TICK_MS to 1ms for better responsiveness
         if (err != 0)
         {
             /* 超时或队列空，没有新命令，直接下一次循环 */
@@ -704,6 +842,14 @@ void lvgl_dispaly_init(void *p1, void *p2, void *p3)
         case LCD_CMD_UPDATE_PROTOBUF_TEXT:
             /* **NEW: Handle protobuf text updates safely in LVGL thread** */
             update_protobuf_text_content(cmd.p.protobuf_text.text);
+            break;
+        case LCD_CMD_UPDATE_XY_TEXT:
+            /* **NEW: Handle XY positioned text updates for Pattern 5** */
+            BSP_LOGI(TAG, "LCD_CMD_UPDATE_XY_TEXT - XY positioned text at (%u,%u)", 
+                     cmd.p.xy_text.x, cmd.p.xy_text.y);
+            update_xy_positioned_text(cmd.p.xy_text.x, cmd.p.xy_text.y, 
+                                    cmd.p.xy_text.text, cmd.p.xy_text.font_size, 
+                                    cmd.p.xy_text.color);
             break;
         case LCD_CMD_CLOSE:
             if (get_display_onoff())

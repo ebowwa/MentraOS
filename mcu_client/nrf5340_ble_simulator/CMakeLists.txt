@@ -23,6 +23,7 @@ target_sources(app PRIVATE
     src/mentra_ble_service.c
     src/pdm_audio_stream.c
     src/lvgl_demo.c
+    src/display_manager.c
     src/BspLog/bsp_log.c
     src/mos_components/mos_sysport/src/bal_os.c
     src/mos_components/mos_lvgl_display/src/mos_lvgl_display.c

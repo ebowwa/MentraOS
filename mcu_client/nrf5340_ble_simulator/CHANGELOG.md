@@ -2,6 +2,47 @@
 
 All notable changes to the nRF5340 DK BLE Glasses Protobuf Simulator will be documented in this file.
 
+## [2.13.0] - 2025-08-22
+
+### 🎯 Pattern 5 - XY Text Positioning Implementation
+
+#### New Pattern 5 Features
+- **🖼️ Bordered Viewing Area**: 600x440 pixel container with white border for precise positioning
+- **📍 XY Text Positioning**: Direct coordinate-based text placement within viewing area
+- **🎨 Font System Integration**: Support for all available Montserrat font sizes
+- **🧹 Clear Behavior**: Automatic clearing of previous text on new message display
+- **🔧 Button Controls**: Button 2 now cycles through all patterns (0-5) including Pattern 5
+
+#### Font Values Available
+- **12pt** - `lv_font_montserrat_12` - Small text, footnotes
+- **14pt** - `lv_font_montserrat_14` - Secondary content  
+- **16pt** - `lv_font_montserrat_16` - **Default size**, normal body text
+- **18pt** - `lv_font_montserrat_18` - Medium text, emphasized content
+- **24pt** - `lv_font_montserrat_24` - Large text, headings
+- **30pt** - `lv_font_montserrat_30` - Title size, main headers
+- **48pt** - `lv_font_montserrat_48` - Display size, large banners
+
+#### Technical Implementation
+- **🏗️ Container System**: `create_xy_text_positioning_area()` creates 600x440 bordered container
+- **📝 Text Rendering**: `update_xy_positioned_text()` handles XY positioning with font mapping
+- **⚪ Color System**: Uses `lv_color_white()` for consistent text color matching Pattern 4
+- **🗑️ Clear Function**: `lv_obj_clean()` removes all previous text before new display
+- **🔍 Enhanced Debugging**: Comprehensive logging for coordinate validation and LVGL object creation
+- **↩️ Font Fallback**: Invalid font sizes automatically default to 12pt
+
+#### Protobuf Integration
+- **🔀 Conditional Routing**: Pattern 5 uses `display_update_xy_text()`, others use `display_update_protobuf_text()`
+- **📐 Coordinate Validation**: XY coordinates validated within 600x440 viewing area bounds
+- **💬 Message Format**: xy_text protobuf with x, y, text, font_size, and color parameters
+
+#### Testing & Validation
+- **✅ Empty Start**: Container starts empty with no default text
+- **✅ XY Positioning**: Text appears at exact specified coordinates
+- **✅ Font Rendering**: All 7 font sizes (12,14,16,18,24,30,48pt) working correctly
+- **✅ Color Display**: White text rendering properly on 1-bit display
+- **✅ Clear Functionality**: Previous text cleared on each new message
+- **✅ Pattern Cycling**: Button 2 successfully cycles through patterns including Pattern 5
+
 ## [2.12.0] - 2025-08-20
 
 ### 🎮 HLS12VGA Display Driver - A6M-G Module Support
