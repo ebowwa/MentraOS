@@ -14,6 +14,9 @@ build/
 *.swo
 *~
 
+# VS Code workspace files (keep these local to avoid branch switching issues)
+*.code-workspace
+
 # macOS
 .DS_Store
 
