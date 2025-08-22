@@ -222,14 +222,17 @@ export class CoreCommunicator extends EventEmitter {
     }
 
     // console.log("RECEIVED MESSAGE FROM CORE")
-    if (this.lastMessage === jsonString) {
-      console.log("DUPLICATE MESSAGE FROM CORE")
-      return
-    }
-    this.lastMessage = jsonString
-
     try {
       const data = JSON.parse(jsonString)
+
+      // Only check for duplicates on status messages, not other event types
+      if ("status" in data) {
+        if (this.lastMessage === jsonString) {
+          console.log("DUPLICATE STATUS MESSAGE FROM CORE")
+          return
+        }
+        this.lastMessage = jsonString
+      }
 
       // Log if this is a WiFi scan result
       if ("wifi_scan_results" in data) {
@@ -237,6 +240,11 @@ export class CoreCommunicator extends EventEmitter {
         console.log("📡 Raw JSON string:", jsonString)
         console.log("📡 Parsed data:", data)
         console.log("📡 ========= END RAW MESSAGE =========")
+      }
+
+      // Log if this is a gallery status result
+      if ("glasses_gallery_status" in data) {
+        console.log("📸 Gallery status received from Core:", data.glasses_gallery_status)
       }
 
       this.isConnected = true
