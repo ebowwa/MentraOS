@@ -24,11 +24,11 @@ public interface INetworkManager {
     void disableWifi();
     
     /**
-     * Start a hotspot with the specified SSID and password
-     * @param ssid The SSID for the hotspot
-     * @param password The password for the hotspot (null for open network)
+     * Start a hotspot with device-generated persistent credentials
+     * SSID format: MentraOS_XXXXX where XXXXX is a persistent device ID
+     * Password: 12345678 (fixed)
      */
-    void startHotspot(String ssid, String password);
+    void startHotspot();
     
     /**
      * Stop the currently running hotspot
@@ -79,10 +79,45 @@ public interface INetworkManager {
     List<String> scanWifiNetworks();
     
     /**
+     * Scan for available WiFi networks with streaming results
+     * @param callback Callback to receive networks as they're discovered
+     */
+    void scanWifiNetworks(IWifiScanCallback callback);
+    
+    /**
      * Get the local IP address of the device on the current network
      * @return the local IP address as a string, or empty string if not available
      */
     String getLocalIpAddress();
+    
+    /**
+     * Check if the hotspot is currently enabled
+     * @return true if hotspot is active, false otherwise
+     */
+    boolean isHotspotEnabled();
+    
+    /**
+     * Get the SSID of the currently running hotspot
+     * @return the hotspot SSID, or empty string if not active
+     */
+    String getHotspotSsid();
+    
+    /**
+     * Get the password of the currently running hotspot
+     * @return the hotspot password, or empty string if not active
+     */
+    String getHotspotPassword();
+    
+    /**
+     * Get the gateway IP address when in hotspot mode
+     * @return The gateway IP for clients to connect to (typically 192.168.43.1)
+     */
+    String getHotspotGatewayIp();
+    
+    /**
+     * Update HTTP activity timestamp for hotspot auto-disconnect monitoring
+     */
+    void updateHttpActivity();
     
     /**
      * Cleanup resources when the manager is no longer needed

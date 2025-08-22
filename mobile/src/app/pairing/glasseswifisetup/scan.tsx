@@ -1,7 +1,7 @@
 import React, {useState, useEffect, useRef} from "react"
 import {View, Text, FlatList, TouchableOpacity, ActivityIndicator, BackHandler} from "react-native"
 import {useLocalSearchParams, router, useFocusEffect} from "expo-router"
-import {Screen, Header, Button} from "@/components/ignite"
+import {Screen, Header, Button, Icon} from "@/components/ignite"
 import coreCommunicator from "@/bridge/CoreCommunicator"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
 import {useAppTheme} from "@/utils/useAppTheme"
@@ -12,15 +12,24 @@ import {useCallback} from "react"
 import WifiCredentialsService from "@/utils/WifiCredentialsService"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 
+// Enhanced network info type
+interface NetworkInfo {
+  ssid: string
+  requiresPassword: boolean
+  signalStrength?: number
+}
+
 export default function WifiScanScreen() {
   const {deviceModel = "Glasses"} = useLocalSearchParams()
   const {theme, themed} = useAppTheme()
   const {status} = useCoreStatus()
 
-  const [networks, setNetworks] = useState<string[]>([])
+  const [networks, setNetworks] = useState<NetworkInfo[]>([])
   const [savedNetworks, setSavedNetworks] = useState<string[]>([])
   const [isScanning, setIsScanning] = useState(true)
   const scanTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const currentScanSessionRef = useRef<number>(Date.now())
+  const receivedResultsForSessionRef = useRef<boolean>(false)
 
   const {push, goBack} = useNavigationHistory()
 
@@ -52,11 +61,29 @@ export default function WifiScanScreen() {
     // Start scanning immediately when screen loads
     startScan()
 
-    const handleWifiScanResults = (data: {networks: string[]}) => {
+    const handleWifiScanResults = (data: {networks: string[]; networksEnhanced?: any[]}) => {
       console.log("🎯 ========= SCAN.TSX RECEIVED WIFI RESULTS =========")
       console.log("🎯 Data received:", data)
-      console.log("🎯 Networks array:", data.networks)
-      console.log("🎯 Networks count:", data.networks?.length || 0)
+
+      // Process enhanced format if available, otherwise use legacy format
+      let processedNetworks: NetworkInfo[]
+      if (data.networksEnhanced && data.networksEnhanced.length > 0) {
+        console.log("🎯 Processing enhanced networks:", data.networksEnhanced)
+        processedNetworks = data.networksEnhanced.map((network: any) => ({
+          ssid: network.ssid || "",
+          requiresPassword: network.requiresPassword !== false, // Default to secure
+          signalStrength: network.signalStrength || -100,
+        }))
+        console.log("🎯 Enhanced networks count:", processedNetworks.length)
+      } else {
+        console.log("🎯 Processing legacy networks:", data.networks)
+        processedNetworks = (data.networks || []).map((ssid: string) => ({
+          ssid,
+          requiresPassword: true, // Default to secure for legacy format
+          signalStrength: -100, // Default weak signal
+        }))
+        console.log("🎯 Legacy networks count:", processedNetworks.length)
+      }
 
       // Clear the timeout since we got results
       if (scanTimeoutRef.current) {
@@ -65,16 +92,43 @@ export default function WifiScanScreen() {
         scanTimeoutRef.current = null
       }
 
-      // Append new networks to existing list instead of replacing
+      // Handle network results - replace on first result of new session, append on subsequent
       setNetworks(prevNetworks => {
-        console.log("🎯 Previous networks:", prevNetworks)
-        // Create a Set to avoid duplicates
-        const existingSet = new Set(prevNetworks)
-        data.networks.forEach(network => existingSet.add(network))
-        const newNetworks = Array.from(existingSet)
-        console.log("🎯 Updated networks list:", newNetworks)
+        console.log(
+          "🎯 Previous networks:",
+          prevNetworks.map(n => n.ssid),
+        )
+        console.log("🎯 Received results for current session:", receivedResultsForSessionRef.current)
+
+        let baseNetworks: NetworkInfo[]
+        if (receivedResultsForSessionRef.current) {
+          // This is additional results from the same scan session - append
+          console.log("🎯 Appending to existing networks from current session")
+          baseNetworks = prevNetworks
+        } else {
+          // This is the first result of a new scan session - replace
+          console.log("🎯 Starting fresh with new scan session results")
+          baseNetworks = []
+        }
+
+        // Create a Map to avoid duplicates by SSID when adding new networks
+        const existingMap = new Map<string, NetworkInfo>()
+        baseNetworks.forEach(network => existingMap.set(network.ssid, network))
+        processedNetworks.forEach(network => {
+          if (network.ssid) {
+            existingMap.set(network.ssid, network)
+          }
+        })
+        const newNetworks = Array.from(existingMap.values())
+        console.log(
+          "🎯 Updated networks list:",
+          newNetworks.map(n => `${n.ssid} (${n.requiresPassword ? "secured" : "open"})`),
+        )
         return newNetworks
       })
+
+      // Mark that we've received results for the current session
+      receivedResultsForSessionRef.current = true
       setIsScanning(false)
       console.log("🎯 ========= END SCAN.TSX WIFI RESULTS =========")
     }
@@ -93,7 +147,12 @@ export default function WifiScanScreen() {
 
   const startScan = async () => {
     setIsScanning(true)
-    setNetworks([])
+    // Start a new scan session - results from this session will replace previous networks
+    currentScanSessionRef.current = Date.now()
+    receivedResultsForSessionRef.current = false
+
+    // Don't clear networks immediately - let the user see existing results while scanning
+    // Networks will be refreshed when new results arrive
 
     // Clear any existing timeout
     if (scanTimeoutRef.current) {
@@ -131,17 +190,32 @@ export default function WifiScanScreen() {
     }
   }
 
-  const handleNetworkSelect = (selectedNetwork: string) => {
+  const handleNetworkSelect = (selectedNetwork: NetworkInfo) => {
     // Check if this is the currently connected network
-    if (isWifiConnected && currentWifi === selectedNetwork) {
+    if (isWifiConnected && currentWifi === selectedNetwork.ssid) {
       GlobalEventEmitter.emit("SHOW_BANNER", {
-        message: `Already connected to ${selectedNetwork}`,
+        message: `Already connected to ${selectedNetwork.ssid}`,
         type: "info",
       })
       return
     }
 
-    push("/pairing/glasseswifisetup/password", {deviceModel, ssid: selectedNetwork})
+    // Skip password screen for open networks and connect directly
+    if (!selectedNetwork.requiresPassword) {
+      console.log(`🔓 Open network selected: ${selectedNetwork.ssid} - connecting directly`)
+      push("/pairing/glasseswifisetup/connecting", {
+        deviceModel,
+        ssid: selectedNetwork.ssid,
+        password: "", // Empty password for open networks
+      })
+    } else {
+      console.log(`🔒 Secured network selected: ${selectedNetwork.ssid} - going to password screen`)
+      push("/pairing/glasseswifisetup/password", {
+        deviceModel,
+        ssid: selectedNetwork.ssid,
+        requiresPassword: selectedNetwork.requiresPassword.toString(),
+      })
+    }
   }
 
   return (
@@ -152,9 +226,6 @@ export default function WifiScanScreen() {
           <View style={themed($loadingContainer)}>
             <ActivityIndicator size="large" color={theme.colors.text} />
             <Text style={themed($loadingText)}>Scanning for networks...</Text>
-            <Text style={themed($loadingText)}>
-              (this may take a while, try restarting the app if it doesn't work after 2 minutes)
-            </Text>
           </View>
         ) : networks.length > 0 ? (
           <>
@@ -162,19 +233,29 @@ export default function WifiScanScreen() {
               data={networks}
               keyExtractor={(item, index) => `network-${index}`}
               renderItem={({item}) => {
-                const isConnected = isWifiConnected && currentWifi === item
-                const isSaved = savedNetworks.includes(item)
+                const isConnected = isWifiConnected && currentWifi === item.ssid
+                const isSaved = savedNetworks.includes(item.ssid)
                 return (
                   <TouchableOpacity
                     style={themed(isConnected ? $connectedNetworkItem : isSaved ? $savedNetworkItem : $networkItem)}
                     onPress={() => handleNetworkSelect(item)}>
                     <View style={themed($networkContent)}>
-                      <Text
-                        style={themed(
-                          isConnected ? $connectedNetworkText : isSaved ? $savedNetworkText : $networkText,
-                        )}>
-                        {item}
-                      </Text>
+                      <View style={themed($networkNameRow)}>
+                        <Text
+                          style={themed(
+                            isConnected ? $connectedNetworkText : isSaved ? $savedNetworkText : $networkText,
+                          )}>
+                          {item.ssid}
+                        </Text>
+                        {item.requiresPassword && !isConnected && (
+                          <Icon
+                            icon="lock"
+                            size={16}
+                            color={isSaved ? theme.colors.text : theme.colors.text}
+                            containerStyle={themed($securityIconContainer)}
+                          />
+                        )}
+                      </View>
                       <View style={themed($badgeContainer)}>
                         {isConnected && (
                           <View style={themed($connectedBadge)}>
@@ -186,11 +267,16 @@ export default function WifiScanScreen() {
                             <Text style={themed($savedBadgeText)}>Saved</Text>
                           </View>
                         )}
+                        {!item.requiresPassword && !isConnected && !isSaved && (
+                          <View style={themed($openBadge)}>
+                            <Text style={themed($openBadgeText)}>Open</Text>
+                          </View>
+                        )}
                       </View>
                     </View>
-                    <Text style={themed(isConnected ? $connectedChevron : isSaved ? $savedChevron : $chevron)}>
-                      {isConnected ? "✓" : isSaved ? "🔑" : "›"}
-                    </Text>
+                    {!isConnected && (
+                      <Text style={themed(isSaved ? $savedChevron : $chevron)}>{isSaved ? "🔑" : "›"}</Text>
+                    )}
                   </TouchableOpacity>
                 )
               }}
@@ -343,6 +429,7 @@ const $chevron: ThemedStyle<TextStyle> = ({colors}) => ({
   fontSize: 24,
   color: colors.textDim,
   marginLeft: 8,
+  textAlignVertical: "center",
 })
 
 const $connectedChevron: ThemedStyle<TextStyle> = ({colors}) => ({
@@ -350,12 +437,14 @@ const $connectedChevron: ThemedStyle<TextStyle> = ({colors}) => ({
   color: colors.tint,
   marginLeft: 8,
   fontWeight: "bold",
+  textAlignVertical: "center",
 })
 
 const $savedChevron: ThemedStyle<TextStyle> = ({colors}) => ({
   fontSize: 18,
   color: colors.tint,
   marginLeft: 8,
+  textAlignVertical: "center",
 })
 
 const $emptyContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
@@ -377,3 +466,29 @@ const $scanButton: ThemedStyle<ViewStyle> = ({spacing}) => ({
 })
 
 const $tryAgainButton: ThemedStyle<ViewStyle> = () => ({})
+
+const $networkNameRow: ThemedStyle<ViewStyle> = () => ({
+  flexDirection: "row",
+  alignItems: "center",
+  flex: 1,
+})
+
+const $securityIconContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  marginLeft: spacing.xs,
+  justifyContent: "center",
+  alignItems: "center",
+})
+
+const $openBadge: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
+  backgroundColor: colors.palette.success100,
+  paddingHorizontal: spacing.xs,
+  paddingVertical: 2,
+  borderRadius: spacing.xs,
+  marginLeft: spacing.sm,
+})
+
+const $openBadgeText: ThemedStyle<TextStyle> = ({colors}) => ({
+  fontSize: 10,
+  fontWeight: "500",
+  color: colors.palette.success600,
+})

@@ -167,7 +167,7 @@ const en = {
     bypassVAD: "Bypass VAD for Debugging",
     bypassVADSubtitle: "Bypass the VAD (Voice Activity Detection).",
     enforceLocalTranscription: "Enforce Local Transcription",
-    enforceLocalTranscriptionSubtitle: "Enforce the use of edge transcription.",
+    enforceLocalTranscriptionSubtitle: "Transcribe audio locally instead of in the cloud.",
     sensingLabel: "Enable Sensors",
     sensingSubtitle: "Enable the usage of sensors including camera, microphone, etc.",
     calendarLabel: "Calendar Access",
