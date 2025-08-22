@@ -405,18 +405,23 @@ export function GalleryScreen() {
         total_size: syncState.total_size + downloadResult.total_size,
       })
 
-      // Reload photos - only need to reload server photos after sync, local photos are already updated
-      await loadDownloadedPhotos() // Update local photos list after sync
-      await loadInitialPhotos() // Reload server photos in case new ones are available
+      // Clear server photos since they've been deleted
+      setLoadedServerPhotos(new Map())
+      setTotalServerCount(0)
+      loadedRanges.current.clear()
+      loadingRanges.current.clear()
+
+      // Reload downloaded photos to show the newly synced items
+      await loadDownloadedPhotos()
 
       // Mark sync as complete
       transitionToState(GalleryState.SYNC_COMPLETE)
       setSyncProgress(null)
 
       // After a delay, transition to no media state (since everything is synced)
-      setTimeout(() => {
-        transitionToState(GalleryState.NO_MEDIA_ON_GLASSES)
-      }, 2000)
+      //setTimeout(() => {
+      transitionToState(GalleryState.NO_MEDIA_ON_GLASSES)
+      //}, 2000)
     } catch (err) {
       let errorMsg = "Sync failed"
       if (err instanceof Error) {
