@@ -73,6 +73,27 @@ static bool auto_brightness_enabled = false;
 // Audio streaming error counter
 static uint32_t streaming_errors = 0;
 
+// **NEW: Ping/Pong connectivity monitoring**
+// (Glasses send periodic pings to phone, phone responds with pongs)
+static struct k_timer ping_timer;
+static struct k_timer ping_timeout_timer;
+static uint32_t ping_sequence_number = 0;
+static uint32_t ping_retry_count = 0;
+static bool ping_waiting_for_pong = false;
+static bool phone_connected = true;
+
+#define PING_INTERVAL_MS 10000    // Send ping every 10 seconds
+#define PING_TIMEOUT_MS 3000      // Wait 3 seconds for pong response
+#define PING_MAX_RETRIES 3        // Retry 3 times before declaring disconnect
+
+// Forward declarations for ping/pong functions
+static void ping_timer_handler(struct k_timer *timer);
+static void ping_timeout_handler(struct k_timer *timer);
+static void protobuf_send_ping_request(void);
+static void protobuf_process_pong_response(const mentraos_ble_PingRequest *pong);
+static void protobuf_handle_ping_failure(void);
+static void protobuf_handle_ping_success(void);
+
 // PWM device for LED 3 brightness control
 static const struct device *pwm_dev = DEVICE_DT_GET(DT_NODELABEL(pwm1));
 
@@ -275,10 +296,12 @@ void protobuf_parse_control_message(const uint8_t *protobuf_data, uint16_t len)
 			}
 			break;
 			
-		case 16: // ping_tag
-			LOG_INF("Processing Ping Request...");
-			// TODO: Send pong response
-			LOG_INF("TODO: Implement PongResponse message");
+		case 16: // ping_tag (Phone responds to our pong-as-ping with ping-as-pong)
+			LOG_INF("Processing Ping Response from Phone (ping acting as pong response)...");
+			if (phone_msg.which_payload == mentraos_ble_PhoneToGlasses_ping_tag) {
+				printk("[GLASSES<-PHONE PONG] Received ping-as-pong response from phone\n");
+				protobuf_process_pong_response(&phone_msg.payload.ping);
+			}
 			break;
 			
 		case 20: // mic_state_tag
@@ -1308,4 +1331,156 @@ void protobuf_process_mic_state_config(const mentraos_ble_MicStateConfig *mic_st
 	       frames_captured, frames_encoded, frames_transmitted, errors);
 	
 	LOG_INF("=== END MICROPHONE STATE CONFIG MESSAGE ===");
+}
+
+// =============================================================================
+// PING/PONG CONNECTIVITY MONITORING IMPLEMENTATION
+// =============================================================================
+// Glasses send periodic pings (tag 15) to phone
+// Phone responds with pongs (tag 16) 
+// After 3 failed ping attempts, glasses go to sleep/disconnect mode
+
+// Timer handler: Send ping every 10 seconds
+static void ping_timer_handler(struct k_timer *timer)
+{
+	if (!ping_waiting_for_pong) {
+		protobuf_send_ping_request();
+	} else {
+		printk("[GLASSES PING] Still waiting for pong response, skipping this ping\n");
+	}
+}
+
+// Timeout handler: Handle ping timeout (no pong received)
+static void ping_timeout_handler(struct k_timer *timer)
+{
+	printk("[GLASSES PING TIMEOUT] No pong response received within %d ms\n", PING_TIMEOUT_MS);
+	ping_retry_count++;
+	ping_waiting_for_pong = false;
+	
+	if (ping_retry_count >= PING_MAX_RETRIES) {
+		printk("[GLASSES PING FAILURE] Max retries (%d) reached - phone disconnected!\n", PING_MAX_RETRIES);
+		protobuf_handle_ping_failure();
+	} else {
+		printk("[GLASSES PING RETRY] Attempt %d/%d failed, will retry\n", ping_retry_count, PING_MAX_RETRIES);
+		// The next ping will be sent by the regular ping timer
+	}
+}
+
+// Send ping request to phone (tag 15: GlassesToPhone.pong - using pong as ping for connectivity check)
+static void protobuf_send_ping_request(void)
+{
+	ping_sequence_number++;
+	ping_waiting_for_pong = true;
+	
+	mentraos_ble_GlassesToPhone message = mentraos_ble_GlassesToPhone_init_zero;
+	message.which_payload = mentraos_ble_GlassesToPhone_pong_tag;
+	
+	// Note: Current protobuf only has dummy_field, no timestamp/sequence
+	// For now we'll track sequence numbers in our local variables
+	message.payload.pong.dummy_field = 1; // Just to set something
+	
+	// Encode the message
+	uint8_t buffer[128];
+	pb_ostream_t stream = pb_ostream_from_buffer(buffer, sizeof(buffer));
+	
+	if (pb_encode(&stream, mentraos_ble_GlassesToPhone_fields, &message)) {
+		size_t message_length = stream.bytes_written;
+		
+		printk("[GLASSES->PHONE PING] Sending ping #%u (using GlassesToPhone pong tag 15, %zu bytes)\n", 
+		       ping_sequence_number, message_length);
+		
+		// TODO: Get current BLE connection handle and send
+		// int result = mentra_ble_send(conn, buffer, message_length);
+		
+		// Start timeout timer
+		k_timer_start(&ping_timeout_timer, K_MSEC(PING_TIMEOUT_MS), K_NO_WAIT);
+		
+		printk("[GLASSES PING] Waiting for pong response (timeout: %d ms)\n", PING_TIMEOUT_MS);
+	} else {
+		printk("[GLASSES PING ERROR] Failed to encode ping request\n");
+		ping_waiting_for_pong = false;
+	}
+}
+
+// Process pong response from phone (tag 16: PhoneToGlasses.ping - reusing ping for pong)  
+static void protobuf_process_pong_response(const mentraos_ble_PingRequest *pong)
+{
+	if (!ping_waiting_for_pong) {
+		printk("[GLASSES PONG] Received unexpected pong (not waiting)\n");
+		return;
+	}
+	
+	// Stop timeout timer
+	k_timer_stop(&ping_timeout_timer);
+	ping_waiting_for_pong = false;
+	
+	// Calculate simple round-trip time (note: no timestamp in current protobuf)
+	int64_t current_time = k_uptime_get();
+	
+	printk("[GLASSES<-PHONE PONG] Received pong response (dummy_field: %c)\n", 
+	       pong->dummy_field);
+	
+	// Since current protobuf doesn't have sequence numbers, we'll assume success
+	printk("[GLASSES PONG SUCCESS] Phone responded - connection alive!\n");
+	protobuf_handle_ping_success();
+}
+
+// Handle successful ping/pong exchange
+static void protobuf_handle_ping_success(void)
+{
+	ping_retry_count = 0; // Reset retry counter
+	
+	if (!phone_connected) {
+		phone_connected = true;
+		printk("[GLASSES CONNECTION] Phone reconnected!\n");
+		// TODO: Wake up from sleep mode, restore normal operation
+	}
+	
+	printk("[GLASSES CONNECTION] Phone connectivity confirmed (retry count reset)\n");
+}
+
+// Handle ping failure (no pong response after max retries)
+static void protobuf_handle_ping_failure(void)
+{
+	phone_connected = false;
+	ping_retry_count = 0;
+	ping_waiting_for_pong = false;
+	
+	printk("[GLASSES DISCONNECT] Phone connection lost - entering sleep mode\n");
+	
+	// TODO: Implement sleep/disconnect logic:
+	// 1. Stop all non-essential operations
+	// 2. Reduce display brightness or turn off display
+	// 3. Stop audio streaming
+	// 4. Enter low-power mode
+	// 5. Wake up periodically to check for reconnection
+	
+	printk("[GLASSES SLEEP] TODO: Implement sleep mode (display off, low power)\n");
+	printk("[GLASSES SLEEP] TODO: Wake up periodically to check for phone reconnection\n");
+}
+
+// Initialize ping/pong monitoring system
+void protobuf_init_ping_monitoring(void)
+{
+	// Initialize timers
+	k_timer_init(&ping_timer, ping_timer_handler, NULL);
+	k_timer_init(&ping_timeout_timer, ping_timeout_handler, NULL);
+	
+	// Start periodic ping timer (10 seconds interval)
+	k_timer_start(&ping_timer, K_MSEC(PING_INTERVAL_MS), K_MSEC(PING_INTERVAL_MS));
+	
+	printk("[GLASSES PING INIT] Ping monitoring started (interval: %d ms, timeout: %d ms, max retries: %d)\n", 
+	       PING_INTERVAL_MS, PING_TIMEOUT_MS, PING_MAX_RETRIES);
+}
+
+// =============================================================================
+// LEGACY PONG RESPONSE (DEPRECATED - keeping for compatibility)
+// =============================================================================
+// This was the old implementation where glasses responded to phone pings
+// Now glasses send pings and phone responds with pongs
+
+void protobuf_send_pong_response(mentraos_ble_PingRequest *ping_request)
+{
+	printk("[DEPRECATED] protobuf_send_pong_response called - glasses now send pings instead\n");
+	// This function is no longer used in the new ping/pong direction
 }

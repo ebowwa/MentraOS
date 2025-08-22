@@ -200,6 +200,24 @@ void protobuf_parse_text_brightness(const char *text);
 // Clear display functionality (temporary implementation until protobuf definition is updated)
 void protobuf_process_clear_display(void);
 
+/**
+ * @brief Initialize ping/pong connectivity monitoring system
+ * 
+ * Sets up periodic ping timer to send ping requests to phone every 10 seconds.
+ * Phone should respond with pong messages. After 3 failed attempts, glasses
+ * will enter sleep/disconnect mode.
+ */
+void protobuf_init_ping_monitoring(void);
+
+/**
+ * @brief Send pong response to phone after receiving ping (DEPRECATED)
+ *
+ * @deprecated This function is from the old ping/pong direction where phone
+ * sent pings and glasses responded. Now glasses send pings and phone responds.
+ * @param ping_request Pointer to PingRequest message from phone
+ */
+void protobuf_send_pong_response(mentraos_ble_PingRequest *ping_request);
+
 #ifdef __cplusplus
 }
 #endif

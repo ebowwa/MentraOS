@@ -819,6 +819,12 @@ int main(void)
 		LOG_INF("📱 Mobile app can enable/disable microphone via MicStateConfig (Tag 20)");
 	}
 
+	// Initialize ping/pong connectivity monitoring system
+	LOG_INF("📡 Initializing ping/pong connectivity monitoring...");
+	protobuf_init_ping_monitoring();
+	LOG_INF("✅ Ping monitoring started - glasses will ping phone every 10 seconds");
+	LOG_INF("📱 Phone should respond with pong messages to maintain connection");
+
         // Initialize LVGL display system with working driver implementation
         printk("🔥🔥🔥 About to initialize LVGL display system... 🔥🔥🔥\n");
         

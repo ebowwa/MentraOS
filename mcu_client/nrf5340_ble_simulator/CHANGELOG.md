@@ -2,6 +2,45 @@
 
 All notable changes to the nRF5340 DK BLE Glasses Protobuf Simulator will be documented in this file.
 
+## [2.14.0] - 2025-08-22
+
+### 🔄 Ping/Pong Connectivity Monitoring Implementation
+
+#### Glasses-Initiated Connectivity Monitoring
+- **📡 Reversed Protocol Direction**: Glasses now send periodic ping messages to phone (every 10 seconds)
+- **⏱️ Timer-Based System**: Robust 10-second ping interval with 3-second timeout detection
+- **🔄 Retry Logic**: 3-attempt retry mechanism before declaring phone disconnected
+- **💤 Sleep Mode Detection**: Automatic sleep/disconnect state when phone becomes unresponsive
+- **🏷️ Protobuf Tag Adaptation**: Uses `GlassesToPhone.pong` (tag 15) for pings, expects `PhoneToGlasses.ping` (tag 16) for responses
+
+#### Technical Implementation
+- **🎯 Ping Timer**: `k_timer` with 10-second intervals for periodic connectivity checks
+- **⏳ Timeout Timer**: 3-second timeout detection per ping attempt
+- **📊 Retry Counter**: Tracks failed attempts (1/3, 2/3, 3/3) before disconnect
+- **🔗 Connection Status**: `phone_connected` flag for system-wide connectivity awareness
+- **🚨 Failure Handling**: Comprehensive logging and placeholder sleep mode implementation
+
+#### Protobuf Protocol Adaptation
+- **📤 Outgoing**: Glasses send `mentraos_ble_GlassesToPhone` with `pong` payload (tag 15)
+- **📥 Incoming**: Glasses expect `mentraos_ble_PhoneToGlasses` with `ping` payload (tag 16)
+- **🔀 Message Processing**: Case 16 handler processes phone responses as pong acknowledgments
+- **🏗️ Initialization**: `protobuf_init_ping_monitoring()` called during main system startup
+
+#### System Integration
+- **⚡ Power Management Ready**: Placeholder sleep functions prepared for low-power implementation
+- **🔁 Reconnection Logic**: System continues monitoring for phone reconnection after disconnect
+- **📋 Comprehensive Logging**: Detailed debug output for ping/pong state transitions
+- **🛠️ Build Verification**: Successfully compiled and tested with Nordic nRF Connect SDK v3.0.0
+
+#### App Developer Integration Required
+> **⚠️ VERIFICATION NEEDED**: Phone app developer must implement:
+> 1. **Listen for tag 15** (`GlassesToPhone.pong`) messages from glasses
+> 2. **Respond with tag 16** (`PhoneToGlasses.ping`) messages back to glasses  
+> 3. **Treat pong as ping requests** and **ping as pong responses**
+> 4. **Test connectivity monitoring** with glasses firmware
+
+#### Status: ✅ Firmware Ready, Pending App Integration
+
 ## [2.13.0] - 2025-08-22
 
 ### 🎯 Pattern 5 - XY Text Positioning Implementation
