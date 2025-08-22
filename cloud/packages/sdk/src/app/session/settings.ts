@@ -4,9 +4,9 @@
  * Manages App settings with automatic synchronization and change notifications.
  * Provides type-safe access to settings with default values.
  */
-import EventEmitter from 'events';
-import { AppSetting, AppSettings } from '../../types';
-import { ApiClient } from './api-client';
+import EventEmitter from "events";
+import { AppSetting, AppSettings } from "../../types";
+import { ApiClient } from "./api-client";
 import { logger } from "../../logging/logger"; // Adjust import path as needed
 // Note(Isaiah): Let's not import @mentra/utils in the SDK to avoid circular dependencies. Also i'm deprecating it in favor of the new logging system.
 
@@ -31,14 +31,17 @@ export type SettingsChangeHandler = (changes: SettingsChangeMap) => void;
 /**
  * Callback for when a specific setting changes
  */
-export type SettingValueChangeHandler<T = any> = (newValue: T, oldValue: T) => void;
+export type SettingValueChangeHandler<T = any> = (
+  newValue: T,
+  oldValue: T,
+) => void;
 
 /**
  * Internal event names
  */
 enum SettingsEvents {
-  CHANGE = 'settings:change',
-  VALUE_CHANGE = 'settings:value:'
+  CHANGE = "settings:change",
+  VALUE_CHANGE = "settings:value:",
 }
 
 /**
@@ -76,7 +79,7 @@ export class SettingsManager {
     packageName?: string,
     wsUrl?: string,
     userId?: string,
-    subscribeFn?: (streams: string[]) => Promise<void> // Added parameter
+    subscribeFn?: (streams: string[]) => Promise<void>, // Added parameter
   ) {
     this.settings = [...initialSettings];
     this.subscribeFn = subscribeFn; // Store the subscribe function
@@ -118,7 +121,7 @@ export class SettingsManager {
 
     // Detect changes comparing old and new settings
     for (const newSetting of updatedSettings) {
-      const oldSetting = this.settings.find(s => s.key === newSetting.key);
+      const oldSetting = this.settings.find((s) => s.key === newSetting.key);
 
       // Skip if value hasn't changed
       if (oldSetting && this.areEqual(oldSetting.value, newSetting.value)) {
@@ -128,18 +131,18 @@ export class SettingsManager {
       // Record change
       changes[newSetting.key] = {
         oldValue: oldSetting?.value,
-        newValue: newSetting.value
+        newValue: newSetting.value,
       };
     }
 
     // Check for removed settings
     for (const oldSetting of this.settings) {
-      const stillExists = updatedSettings.some(s => s.key === oldSetting.key);
+      const stillExists = updatedSettings.some((s) => s.key === oldSetting.key);
 
       if (!stillExists) {
         changes[oldSetting.key] = {
           oldValue: oldSetting.value,
-          newValue: undefined
+          newValue: undefined,
         };
       }
     }
@@ -177,7 +180,11 @@ export class SettingsManager {
 
     // Emit individual value change events
     for (const [key, change] of Object.entries(changes)) {
-      this.emitter.emit(`${SettingsEvents.VALUE_CHANGE}${key}`, change.newValue, change.oldValue);
+      this.emitter.emit(
+        `${SettingsEvents.VALUE_CHANGE}${key}`,
+        change.newValue,
+        change.oldValue,
+      );
     }
   }
 
@@ -213,7 +220,10 @@ export class SettingsManager {
    * });
    * ```
    */
-  onValueChange<T = any>(key: string, handler: SettingValueChangeHandler<T>): () => void {
+  onValueChange<T = any>(
+    key: string,
+    handler: SettingValueChangeHandler<T>,
+  ): () => void {
     const eventName = `${SettingsEvents.VALUE_CHANGE}${key}`;
     this.emitter.on(eventName, handler);
     return () => this.emitter.off(eventName, handler);
@@ -226,7 +236,7 @@ export class SettingsManager {
    * @returns True if the setting exists
    */
   has(key: string): boolean {
-    return this.settings.some(s => s.key === key);
+    return this.settings.some((s) => s.key === key);
   }
 
   /**
@@ -252,7 +262,7 @@ export class SettingsManager {
    * ```
    */
   get<T = any>(key: string, defaultValue?: T): T {
-    const setting = this.settings.find(s => s.key === key);
+    const setting = this.settings.find((s) => s.key === key);
 
     if (setting && setting.value !== undefined) {
       return setting.value as T;
@@ -291,7 +301,7 @@ export class SettingsManager {
    * @returns Setting object or undefined
    */
   getSetting(key: string): AppSetting | undefined {
-    return this.settings.find(s => s.key === key);
+    return this.settings.find((s) => s.key === key);
   }
 
   /**
@@ -304,7 +314,7 @@ export class SettingsManager {
    */
   async fetch(): Promise<AppSettings> {
     if (!this.apiClient) {
-      throw new Error('Settings API client is not configured');
+      throw new Error("Settings API client is not configured");
     }
 
     try {
@@ -312,7 +322,7 @@ export class SettingsManager {
       this.updateSettings(newSettings);
       return this.settings;
     } catch (error) {
-      console.error('Error fetching settings:', error);
+      console.error("Error fetching settings:", error);
       throw error;
     }
   }
@@ -331,7 +341,10 @@ export class SettingsManager {
    * });
    * ```
    */
-  onMentraosChange<T = any>(key: string, handler: SettingValueChangeHandler<T>): () => void {
+  onMentraosChange<T = any>(
+    key: string,
+    handler: SettingValueChangeHandler<T>,
+  ): () => void {
     return this.onMentraosSettingChange(key, handler);
   }
 
@@ -343,7 +356,10 @@ export class SettingsManager {
    * @returns Function to remove the listener
    * @deprecated Use onMentraosChange instead
    */
-  onMentraosSettingsChange<T = any>(key: string, handler: SettingValueChangeHandler<T>): () => void {
+  onMentraosSettingsChange<T = any>(
+    key: string,
+    handler: SettingValueChangeHandler<T>,
+  ): () => void {
     return this.onMentraosSettingChange(key, handler);
   }
 
@@ -354,24 +370,38 @@ export class SettingsManager {
    */
   updateMentraosSettings(newSettings: Record<string, any>): void {
     const oldSettings = this.mentraosSettings;
-    logger.debug(`[SettingsManager] Updating MentraOS settings. New settings:`, newSettings);
+    logger.debug(
+      { newSettings },
+      `[SettingsManager] Updating MentraOS settings. New settings`,
+    );
     for (const key of Object.keys(newSettings)) {
       const oldValue = oldSettings[key];
       const newValue = newSettings[key];
       if (oldValue !== newValue) {
-        logger.info(`[SettingsManager] MentraOS setting '${key}' changed: ${oldValue} -> ${newValue}. Emitting event.`);
+        logger.info(
+          `[SettingsManager] MentraOS setting '${key}' changed: ${oldValue} -> ${newValue}. Emitting event.`,
+        );
         this.mentraosEmitter.emit(`augmentos:value:${key}`, newValue, oldValue);
       }
     }
     // Also handle keys that might have been removed from newSettings but existed in oldSettings
     for (const key of Object.keys(oldSettings)) {
       if (!(key in newSettings)) {
-        logger.info(`[SettingsManager] MentraOS setting '${key}' removed. Old value: ${oldSettings[key]}. Emitting event with undefined newValue.`);
-        this.mentraosEmitter.emit(`augmentos:value:${key}`, undefined, oldSettings[key]);
+        logger.info(
+          `[SettingsManager] MentraOS setting '${key}' removed. Old value: ${oldSettings[key]}. Emitting event with undefined newValue.`,
+        );
+        this.mentraosEmitter.emit(
+          `augmentos:value:${key}`,
+          undefined,
+          oldSettings[key],
+        );
       }
     }
     this.mentraosSettings = { ...newSettings };
-    logger.debug(`[SettingsManager] Finished updating MentraOS settings. Current state:`, this.mentraosSettings);
+    logger.debug(
+      { mentraosSettings: this.mentraosSettings },
+      `[SettingsManager] Finished updating MentraOS settings. Current state:`,
+    );
   }
 
   /**
@@ -380,31 +410,53 @@ export class SettingsManager {
    * @param handler Function to call when the value changes (newValue, oldValue)
    * @returns Function to remove the listener
    */
-  onMentraosSettingChange<T = any>(key: string, handler: (newValue: T, oldValue: T) => void): () => void {
+  onMentraosSettingChange<T = any>(
+    key: string,
+    handler: (newValue: T, oldValue: T) => void,
+  ): () => void {
     const eventName = `augmentos:value:${key}`;
-    logger.info(`[SettingsManager] Registering handler for MentraOS setting '${key}' on event '${eventName}'.`);
+    logger.info(
+      `[SettingsManager] Registering handler for MentraOS setting '${key}' on event '${eventName}'.`,
+    );
     this.mentraosEmitter.on(eventName, (...args) => {
-      logger.info(`[SettingsManager] MentraOS setting '${key}' event fired. Args:`, args);
+      logger.info(
+        { args },
+        `[SettingsManager] MentraOS setting '${key}' event fired. Args:`,
+      );
       handler(...(args as [T, T]));
     });
 
     if (this.subscribeFn) {
       const subscriptionKey = `augmentos:${key}`;
-      logger.info(`[SettingsManager] Calling subscribeFn for stream '${subscriptionKey}'.`);
+      logger.info(
+        `[SettingsManager] Calling subscribeFn for stream '${subscriptionKey}'.`,
+      );
       this.subscribeFn([subscriptionKey])
         .then(() => {
-          logger.info(`[SettingsManager] subscribeFn resolved for stream '${subscriptionKey}'.`);
+          logger.info(
+            `[SettingsManager] subscribeFn resolved for stream '${subscriptionKey}'.`,
+          );
         })
-        .catch(err => {
-          logger.error(`[SettingsManager] subscribeFn failed for stream '${subscriptionKey}':`, err);
+        .catch((err) => {
+          logger.error(
+            `[SettingsManager] subscribeFn failed for stream '${subscriptionKey}':`,
+            err,
+          );
         });
     } else {
-      logger.warn(`[SettingsManager] 'subscribeFn' not provided. Cannot auto-subscribe for MentraOS setting '${key}'. Manual App subscription might be required.`);
+      logger.warn(
+        `[SettingsManager] 'subscribeFn' not provided. Cannot auto-subscribe for MentraOS setting '${key}'. Manual App subscription might be required.`,
+      );
     }
 
     return () => {
-      logger.info(`[SettingsManager] Unregistering handler for MentraOS setting '${key}' from event '${eventName}'.`);
-      this.mentraosEmitter.off(eventName, handler as (newValue: unknown, oldValue: unknown) => void);
+      logger.info(
+        `[SettingsManager] Unregistering handler for MentraOS setting '${key}' from event '${eventName}'.`,
+      );
+      this.mentraosEmitter.off(
+        eventName,
+        handler as (newValue: unknown, oldValue: unknown) => void,
+      );
     };
   }
 
@@ -412,7 +464,10 @@ export class SettingsManager {
    * Get the current value of an MentraOS setting
    */
   getMentraosSetting<T = any>(key: string, defaultValue?: T): T {
-    console.log(`[SettingsManager] Getting MentraOS setting '${key}' with settings:`, this.mentraosSettings);
+    console.log(
+      `[SettingsManager] Getting MentraOS setting '${key}' with settings:`,
+      this.mentraosSettings,
+    );
     if (key in this.mentraosSettings) {
       return this.mentraosSettings[key] as T;
     }

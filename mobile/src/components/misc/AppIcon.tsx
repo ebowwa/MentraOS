@@ -2,10 +2,7 @@
 import React from "react"
 import {View, StyleSheet, TouchableOpacity, ViewStyle} from "react-native"
 import {Image} from "expo-image"
-import {useNavigation} from "@react-navigation/native"
-import {NavigationProps} from "./types"
-import {AppInterface} from "@/contexts/AppStatusProvider"
-import {router} from "expo-router"
+import {AppInterface} from "@/contexts/AppletStatusProvider"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {Text} from "@/components/ignite"
 
@@ -18,7 +15,6 @@ interface AppIconProps {
 }
 
 const AppIcon: React.FC<AppIconProps> = ({app, isForegroundApp = false, onClick, style, showLabel = false}) => {
-  const navigation = useNavigation<NavigationProps>()
   const {theme} = useAppTheme()
 
   const WrapperComponent = onClick ? TouchableOpacity : View
@@ -64,13 +60,13 @@ const styles = StyleSheet.create({
     color: "#000000",
   },
   container: {
-    width: 50,
-    height: 50,
-    borderRadius: 25, // Half of width/height for perfect circle
+    width: 60,
+    height: 60,
+    borderRadius: 30, // Half of width/height for perfect circle
     overflow: "hidden",
   },
   icon: {
-    borderRadius: 25,
+    borderRadius: 30,
     height: "100%",
     resizeMode: "cover",
     width: "100%", // Also make the image circular

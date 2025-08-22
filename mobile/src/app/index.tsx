@@ -1,13 +1,13 @@
 // app/index.js
 
 import {useEffect} from "react"
-import {useStatus} from "@/contexts/AugmentOSStatusProvider"
+import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import {useAuth} from "@/contexts/AuthContext"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 
 export default function IndexPage() {
   const {user, loading} = useAuth()
-  const {status, initializeCoreConnection} = useStatus()
+  const {status, initializeCoreConnection} = useCoreStatus()
   const {goBack, push, replace} = useNavigationHistory()
 
   useEffect(() => {

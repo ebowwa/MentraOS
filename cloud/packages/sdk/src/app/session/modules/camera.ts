@@ -15,6 +15,7 @@ import {
   isRtmpStreamStatus,
   ManagedStreamStatus,
   isManagedStreamStatus,
+  StreamStatusCheckResponse,
 } from "../../../types";
 import {
   VideoConfig,
@@ -36,6 +37,15 @@ import {
 export interface PhotoRequestOptions {
   /** Whether to save the photo to the device gallery */
   saveToGallery?: boolean;
+  /** Custom webhook URL to override the TPA's default webhookUrl */
+  customWebhookUrl?: string;
+  /**
+   * Desired photo size.
+   * - small: lowest resolution, faster capture/transfer
+   * - medium: balanced default
+   * - large: highest available resolution on device
+   */
+  size?: "small" | "medium" | "large";
 }
 
 /**
@@ -150,6 +160,11 @@ export class CameraModule {
    * ```typescript
    * // Request a photo
    * const photo = await session.camera.requestPhoto();
+   *
+   * // Request a photo with custom webhook URL
+   * const photo = await session.camera.requestPhoto({
+   *   customWebhookUrl: 'https://my-custom-endpoint.com/photo-upload'
+   * });
    * ```
    */
   async requestPhoto(options?: PhotoRequestOptions): Promise<PhotoData> {
@@ -169,17 +184,46 @@ export class CameraModule {
           requestId,
           timestamp: new Date(),
           saveToGallery: options?.saveToGallery || false,
+          customWebhookUrl: options?.customWebhookUrl,
+          size: options?.size || "medium",
         };
 
         // Send request to cloud
         this.send(message);
 
         this.logger.info(
-          { requestId, saveToGallery: options?.saveToGallery },
+          {
+            requestId,
+            saveToGallery: options?.saveToGallery,
+            hasCustomWebhook: !!options?.customWebhookUrl,
+          },
           `📸 Photo request sent`,
         );
 
-        // Set timeout to avoid hanging promises
+        // If using custom webhook URL, resolve immediately since photo will be uploaded directly to custom endpoint
+        if (options?.customWebhookUrl) {
+          this.logger.info(
+            { requestId, customWebhookUrl: options.customWebhookUrl },
+            `📸 Using custom webhook URL - resolving promise immediately since photo will be uploaded directly to custom endpoint`,
+          );
+
+          // Create a mock PhotoData object for custom webhook URLs
+          const mockPhotoData: PhotoData = {
+            buffer: Buffer.from([]), // Empty buffer since we don't have the actual photo
+            mimeType: "image/jpeg",
+            filename: "photo.jpg",
+            requestId,
+            size: 0,
+            timestamp: new Date(),
+          };
+
+          // Resolve immediately and clean up
+          this.pendingPhotoRequests.delete(requestId);
+          resolve(mockPhotoData);
+          return;
+        }
+
+        // Set timeout to avoid hanging promises (only for non-custom webhook requests)
         const timeoutMs = 30000; // 30 seconds
         if (this.session && this.session.resources) {
           // Use session's resource tracker for automatic cleanup
@@ -647,6 +691,57 @@ export class CameraModule {
    */
   getManagedStreamUrls(): ManagedStreamResult | undefined {
     return this.managedExtension.getManagedStreamUrls();
+  }
+
+  /**
+   * 🔍 Check for any existing streams (managed or unmanaged) for the current user
+   *
+   * This method checks if there's already an active stream for the current user,
+   * which is useful to avoid conflicts and to reconnect to existing streams.
+   *
+   * @returns Promise that resolves with stream information if a stream exists
+   *
+   * @example
+   * ```typescript
+   * const streamInfo = await session.camera.checkExistingStream();
+   * if (streamInfo.hasActiveStream) {
+   *   console.log('Stream type:', streamInfo.streamInfo?.type);
+   *   if (streamInfo.streamInfo?.type === 'managed') {
+   *     console.log('HLS URL:', streamInfo.streamInfo.hlsUrl);
+   *   } else {
+   *     console.log('RTMP URL:', streamInfo.streamInfo.rtmpUrl);
+   *   }
+   * }
+   * ```
+   */
+  async checkExistingStream(): Promise<{
+    hasActiveStream: boolean;
+    streamInfo?: {
+      type: "managed" | "unmanaged";
+      streamId: string;
+      status: string;
+      createdAt: Date;
+      // For managed streams
+      hlsUrl?: string;
+      dashUrl?: string;
+      webrtcUrl?: string;
+      previewUrl?: string;
+      thumbnailUrl?: string;
+      activeViewers?: number;
+      // For unmanaged streams
+      rtmpUrl?: string;
+      requestingAppId?: string;
+    };
+  }> {
+    return this.managedExtension.checkExistingStream();
+  }
+
+  /**
+   * Handle incoming stream status check response
+   * @internal
+   */
+  handleStreamCheckResponse(response: StreamStatusCheckResponse): void {
+    this.managedExtension.handleStreamCheckResponse(response);
   }
 
   /**

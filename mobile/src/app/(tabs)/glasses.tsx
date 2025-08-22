@@ -10,8 +10,8 @@ import {
   SplitDeviceInfo,
 } from "@/components/misc/ConnectedDeviceInfo"
 import ConnectedSimulatedGlassesInfo from "@/components/misc/ConnectedSimulatedGlassesInfo"
-import {useStatus} from "@/contexts/AugmentOSStatusProvider"
-import {useAppStatus} from "@/contexts/AppStatusProvider"
+import {useCoreStatus} from "@/contexts/CoreStatusProvider"
+import {useAppStatus} from "@/contexts/AppletStatusProvider"
 // import {ScrollView} from 'react-native-gesture-handler';
 import BackendServerComms from "@/backend_comms/BackendServerComms"
 import semver from "semver"
@@ -26,6 +26,8 @@ import DeviceSettings from "@/components/glasses/DeviceSettings"
 import {translate} from "@/i18n/translate"
 import {Spacer} from "@/components/misc/Spacer"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
+import RouteButton from "@/components/ui/RouteButton"
+import {glassesFeatures} from "@/config/glassesFeatures"
 
 interface AnimatedSectionProps extends PropsWithChildren {
   delay?: number
@@ -33,7 +35,8 @@ interface AnimatedSectionProps extends PropsWithChildren {
 
 export default function Homepage() {
   const {appStatus} = useAppStatus()
-  const {status} = useStatus()
+  const {status} = useCoreStatus()
+  const {push} = useNavigationHistory()
   const [isSimulatedPuck, setIsSimulatedPuck] = React.useState(false)
   const [isCheckingVersion, setIsCheckingVersion] = useState(false)
   const [isInitialLoading, setIsInitialLoading] = useState(true)
@@ -69,6 +72,10 @@ export default function Homepage() {
     pageTitle = translate("glasses:title")
   }
 
+  const ROUTES = {
+    GLASSES_GALLERY: "/asg/gallery" as const,
+  } as const
+
   return (
     <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.lg}}>
       <Header leftText={pageTitle} />
@@ -76,7 +83,12 @@ export default function Homepage() {
         style={{marginRight: -theme.spacing.md, paddingRight: theme.spacing.md}}
         contentInsetAdjustmentBehavior="automatic">
         <CloudConnection />
-        {status.glasses_info?.model_name && <ConnectedSimulatedGlassesInfo />}
+        {status.glasses_info?.model_name && glassesFeatures[status.glasses_info.model_name].display && (
+          <ConnectedSimulatedGlassesInfo />
+        )}
+        {status.glasses_info?.model_name && !glassesFeatures[status.glasses_info.model_name].display && (
+          <ConnectedGlasses showTitle={false} />
+        )}
         <Spacer height={theme.spacing.lg} />
         <ConnectDeviceButton />
         <DeviceSettings />

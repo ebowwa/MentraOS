@@ -68,6 +68,18 @@ public abstract class SmartGlassesCommunicator {
     public abstract void showHomeScreen();
 
     public abstract void setFontSize(SmartGlassesFontSize fontSize);
+    
+    public void sendButtonPhotoSettings(String size) {
+        Log.d("SmartGlassesCommunicator", "Default implementation - button photo settings: " + size);
+    }
+    
+    public void sendButtonVideoRecordingSettings(int width, int height, int fps) {
+        Log.d("SmartGlassesCommunicator", "Default implementation - button video settings: " + width + "x" + height + "@" + fps + "fps");
+    }
+
+    public void sendButtonCameraLedSetting(boolean enabled) {
+        Log.d("SmartGlassesCommunicator", "Default implementation - button camera LED: " + enabled);
+    }
 
     //fonts
     public int LARGE_FONT;
@@ -167,9 +179,9 @@ public abstract class SmartGlassesCommunicator {
      * @param appId The ID of the app requesting the photo
      * @param webhookUrl The webhook URL where the photo should be uploaded directly
      */
-    public void requestPhoto(String requestId, String appId, String webhookUrl) {
+    public void requestPhoto(String requestId, String appId, String webhookUrl, String size) {
         // Default implementation does nothing
-        Log.d("SmartGlassesCommunicator", "Photo request not implemented for this device");
+        Log.d("SmartGlassesCommunicator", "Photo request (with size) not implemented for this device");
     }
 
     /**
@@ -234,5 +246,91 @@ public abstract class SmartGlassesCommunicator {
     public void sendWifiCredentials(String ssid, String password) {
         // Default implementation does nothing
         Log.d("SmartGlassesCommunicator", "WiFi credential setting not implemented for this device");
+    }
+    
+    /**
+     * Query gallery status from the smart glasses
+     * Default implementation does nothing - specific communicators should override
+     */
+    public void queryGalleryStatus() {
+        // Default implementation does nothing
+        Log.d("SmartGlassesCommunicator", "Gallery status query not implemented for this device");
+    }
+
+    /**
+     * Sends hotspot state command to the smart glasses
+     * Default implementation does nothing - specific communicators should override
+     *
+     * @param enabled Whether to enable or disable the hotspot
+     */
+    public void sendHotspotState(boolean enabled) {
+        // Default implementation does nothing
+        Log.d("SmartGlassesCommunicator", "Hotspot state setting not implemented for this device");
+    }
+
+    /**
+     * Sends button mode setting to the smart glasses
+     * Default implementation does nothing - specific communicators should override
+     *
+     * @param mode The button mode (photo, apps, both)
+     */
+    public void sendButtonModeSetting(String mode) {
+        // Default implementation does nothing
+        Log.d("SmartGlassesCommunicator", "Button mode setting not implemented for this device");
+    }
+
+    /**
+     * Start buffer recording on smart glasses
+     * Continuously records last 30 seconds in a circular buffer
+     * Default implementation does nothing - specific communicators should override
+     */
+    public void startBufferRecording() {
+        // Default implementation does nothing
+        Log.d("SmartGlassesCommunicator", "Start buffer recording not implemented for this device");
+    }
+
+    /**
+     * Stop buffer recording on smart glasses
+     * Default implementation does nothing - specific communicators should override
+     */
+    public void stopBufferRecording() {
+        // Default implementation does nothing
+        Log.d("SmartGlassesCommunicator", "Stop buffer recording not implemented for this device");
+    }
+
+    /**
+     * Save buffer video from smart glasses
+     * Saves the last N seconds from the circular buffer
+     * Default implementation does nothing - specific communicators should override
+     *
+     * @param requestId Unique ID for this save request
+     * @param durationSeconds Number of seconds to save (1-30)
+     */
+    public void saveBufferVideo(String requestId, int durationSeconds) {
+        // Default implementation does nothing
+        Log.d("SmartGlassesCommunicator", "Save buffer video not implemented for this device");
+    }
+
+    /**
+     * Start video recording on smart glasses
+     * Default implementation does nothing - specific communicators should override
+     *
+     * @param requestId Unique ID for this recording request
+     * @param save Whether to save the video to storage
+     */
+    public void startVideoRecording(String requestId, boolean save) {
+        // Default implementation does nothing
+        Log.d("SmartGlassesCommunicator", "Start video recording not implemented for this device");
+    }
+
+    /**
+     * Stop video recording on smart glasses
+     * Default implementation does nothing - specific communicators should override
+     *
+     * @param requestId The request ID of the recording to stop
+     */
+    public void stopVideoRecording(String requestId) {
+        // Default implementation does nothing
+        Log.d("SmartGlassesCommunicator", "Stop video recording not implemented for this device");
     }
 }

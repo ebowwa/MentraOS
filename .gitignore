@@ -102,7 +102,7 @@ nosetests.xml
 parts
 pip-wheel-metadata
 pyvenv
-sources
+./sources
 var/*
 venv
 virtualenv.py
@@ -328,3 +328,11 @@ server/auth/serviceAccountKey.json
 .env.production
 .env.staging
 asg_client/StreamPackLite/
+
+
+### iOS Large Files - XCFrameworks and Models
+# Sherpa-ONNX XCFramework (large binary)
+mobile/ios/Packages/SherpaOnnx/sherpa-onnx.xcframework/
+
+# ONNX Model files (large ML models)
+mobile/ios/Packages/SherpaOnnx/Model/*

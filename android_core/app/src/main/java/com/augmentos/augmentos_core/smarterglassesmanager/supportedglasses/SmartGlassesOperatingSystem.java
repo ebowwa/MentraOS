@@ -9,5 +9,6 @@ public enum SmartGlassesOperatingSystem {
     INMO_GO_MCU_OS_GLASSES,
     AUDIO_WEARABLE_GLASSES,
     VIRTUAL_WEARABLE,
-    MENTRA_LIVE_OS
+    MENTRA_LIVE_OS,
+    FRAME_OS_GLASSES
 }

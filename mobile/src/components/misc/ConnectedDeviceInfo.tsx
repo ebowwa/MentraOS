@@ -3,7 +3,7 @@ import {View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Animated, V
 import {useFocusEffect} from "@react-navigation/native"
 import {Button, Icon} from "@/components/ignite"
 import coreCommunicator from "@/bridge/CoreCommunicator"
-import {useStatus} from "@/contexts/AugmentOSStatusProvider"
+import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import {
   getGlassesClosedImage,
   getGlassesImage,
@@ -24,15 +24,17 @@ import {glassesFeatures} from "@/config/glassesFeatures"
 // import {} from "assets/icons/"
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons"
 import {showAlert, showBluetoothAlert, showLocationAlert, showLocationServicesAlert} from "@/utils/AlertUtils"
+import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 
 export const ConnectDeviceButton = () => {
-  const {status} = useStatus()
+  const {status} = useCoreStatus()
   const {themed, theme} = useAppTheme()
   const [isCheckingConnectivity, setIsCheckingConnectivity] = useState(false)
+  const {push} = useNavigationHistory()
 
   const connectGlasses = async () => {
     if (!status.core_info.default_wearable) {
-      router.push("/pairing/select-glasses-model")
+      push("/pairing/select-glasses-model")
       return
     }
 
@@ -120,7 +122,7 @@ export const ConnectDeviceButton = () => {
         LeftAccessory={() => <SolarLineIconsSet4 color={theme.colors.textAlt} />}
         RightAccessory={() => <ChevronRight color={theme.colors.textAlt} />}
         onPress={() => {
-          router.push("/pairing/select-glasses-model")
+          push("/pairing/select-glasses-model")
         }}
         tx="home:pairGlasses"
       />
@@ -161,7 +163,7 @@ interface ConnectedGlassesProps {
 }
 
 export const ConnectedGlasses: React.FC<ConnectedGlassesProps> = ({showTitle}) => {
-  const {status} = useStatus()
+  const {status} = useCoreStatus()
   const fadeAnim = useRef(new Animated.Value(0)).current
   const scaleAnim = useRef(new Animated.Value(0.8)).current
   const {themed, theme} = useAppTheme()
@@ -242,7 +244,7 @@ export const ConnectedGlasses: React.FC<ConnectedGlassesProps> = ({showTitle}) =
 }
 
 export function SplitDeviceInfo() {
-  const {status} = useStatus()
+  const {status} = useCoreStatus()
   const {themed, theme} = useAppTheme()
 
   // Show image if we have either connected glasses or a default wearable
@@ -300,8 +302,9 @@ export function SplitDeviceInfo() {
 }
 
 export function DeviceToolbar() {
-  const {status} = useStatus()
+  const {status} = useCoreStatus()
   const {themed, theme} = useAppTheme()
+  const {push} = useNavigationHistory()
 
   if (!status.glasses_info?.model_name) {
     return null
@@ -360,10 +363,7 @@ export function DeviceToolbar() {
           <TouchableOpacity
             style={{flexDirection: "row", alignItems: "center", gap: 6}}
             onPress={() => {
-              router.push({
-                pathname: "/pairing/glasseswifisetup",
-                params: {deviceModel: status.glasses_info?.model_name || "Glasses"},
-              })
+              push("/pairing/glasseswifisetup", {deviceModel: status.glasses_info?.model_name || "Glasses"})
             }}>
             <MaterialCommunityIcons name="wifi" size={18} color={theme.colors.statusIcon} />
             <Text style={{color: theme.colors.statusText, fontSize: 16, fontFamily: "Inter-Regular"}}>
@@ -391,42 +391,6 @@ const $deviceToolbar: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   paddingHorizontal: spacing.md,
   marginTop: spacing.md,
 })
-
-export function ConnectedDeviceInfo() {
-  const {status, refreshStatus} = useStatus()
-  const {theme, themed} = useAppTheme()
-  const [microphoneActive, setMicrophoneActive] = useState(status.core_info.is_mic_enabled_for_frontend)
-
-  useEffect(() => {
-    setMicrophoneActive(status.core_info.is_mic_enabled_for_frontend)
-  }, [status.core_info.is_mic_enabled_for_frontend])
-
-  if (!status.glasses_info?.model_name) {
-    return null
-  }
-
-  // don't show if simulated glasses
-  if (status.glasses_info?.model_name.toLowerCase().includes("simulated")) {
-    return null
-  }
-
-  return (
-    <View style={themed($statusBar)}>
-      {/* Battery information moved to DeviceSettings */}
-
-      {/* disconnect button */}
-      {/* <TouchableOpacity
-        style={[styles.disconnectButton, status.core_info.is_searching && styles.disabledDisconnectButton]}
-        onPress={() => {
-          coreCommunicator.sendDisconnectWearable()
-        }}
-        disabled={status.core_info.is_searching}>
-        <Icon name="power-off" size={18} color="white" style={styles.icon} />
-        <Text style={styles.disconnectText}>Disconnect</Text>
-      </TouchableOpacity> */}
-    </View>
-  )
-}
 
 const $deviceInfoContainer: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   // padding: 16,
@@ -478,9 +442,7 @@ const styles = StyleSheet.create({
   },
   connectedContent: {
     alignItems: "center",
-    flex: 1,
-    flexShrink: 1,
-    justifyContent: "space-between",
+    justifyContent: "center",
   },
   connectedDot: {
     fontFamily: "Montserrat-Bold",

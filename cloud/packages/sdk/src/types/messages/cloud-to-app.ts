@@ -5,17 +5,17 @@ import {
   CloudToAppMessageType,
   GlassesToCloudMessageType,
 } from "../message-types";
-import { StreamType } from "../streams";
+import { ExtendedStreamType, StreamType } from "../streams";
 import { AppSettings, AppConfig, PermissionType } from "../models";
+import { DashboardMode } from "../dashboard";
+import { Capabilities } from "../capabilities";
 import {
   LocationUpdate,
   CalendarEvent,
   RtmpStreamStatus,
   PhotoResponse,
 } from "./glasses-to-cloud";
-import { DashboardMode } from "../dashboard";
-import { Capabilities } from "../capabilities";
-import { AppSession } from "src/app/session";
+import { AppSession } from "../../app/session";
 
 //===========================================================
 // Responses
@@ -92,6 +92,16 @@ export interface SettingsUpdate extends BaseMessage {
 }
 
 /**
+ * Device capabilities update to App
+ * Sent when the connected glasses model changes or capabilities are updated
+ */
+export interface CapabilitiesUpdate extends BaseMessage {
+  type: CloudToAppMessageType.CAPABILITIES_UPDATE;
+  capabilities: Capabilities | null;
+  modelName: string | null;
+}
+
+/**
  * MentraOS settings update to App
  */
 export interface MentraosSettingsUpdate extends BaseMessage {
@@ -118,6 +128,33 @@ export interface TranscriptionData extends BaseMessage {
   duration?: number; // Audio duration in milliseconds
   provider?: string; // The transcription provider (e.g., "azure", "soniox")
   confidence?: number; // Confidence score (0-1)
+  metadata?: TranscriptionMetadata; // Token-level metadata (always included)
+}
+
+/**
+ * Metadata for transcription containing token-level details
+ */
+export interface TranscriptionMetadata {
+  provider: "soniox" | "azure" | string;
+  soniox?: {
+    tokens: SonioxToken[];
+  };
+  azure?: {
+    // Azure-specific metadata can be added later
+    tokens?: any[];
+  };
+}
+
+/**
+ * Soniox token with word-level details
+ */
+export interface SonioxToken {
+  text: string;
+  startMs?: number;
+  endMs?: number;
+  confidence: number;
+  isFinal: boolean;
+  speaker?: string;
 }
 
 /**
@@ -169,7 +206,7 @@ export interface ToolCall {
  */
 export interface DataStream extends BaseMessage {
   type: CloudToAppMessageType.DATA_STREAM;
-  streamType: StreamType;
+  streamType: ExtendedStreamType;
   data: unknown; // Type depends on the streamType
 }
 
@@ -240,10 +277,39 @@ export interface ManagedStreamStatus extends BaseMessage {
   hlsUrl?: string;
   dashUrl?: string;
   webrtcUrl?: string;
+  /** Cloudflare Stream player/preview URL for embedding */
+  previewUrl?: string;
+  /** Thumbnail image URL */
+  thumbnailUrl?: string;
   message?: string;
   streamId?: string;
   /** Status of re-stream outputs if configured */
   outputs?: OutputStatus[];
+}
+
+/**
+ * Stream status check response
+ * Returns information about any existing streams for the user
+ */
+export interface StreamStatusCheckResponse extends BaseMessage {
+  type: CloudToAppMessageType.STREAM_STATUS_CHECK_RESPONSE;
+  hasActiveStream: boolean;
+  streamInfo?: {
+    type: "managed" | "unmanaged";
+    streamId: string;
+    status: string;
+    createdAt: Date;
+    // For managed streams
+    hlsUrl?: string;
+    dashUrl?: string;
+    webrtcUrl?: string;
+    previewUrl?: string;
+    thumbnailUrl?: string;
+    activeViewers?: number;
+    // For unmanaged streams
+    rtmpUrl?: string;
+    requestingAppId?: string;
+  };
 }
 
 /**
@@ -267,6 +333,7 @@ export type CloudToAppMessage =
   | DataStream
   | AppStopped
   | SettingsUpdate
+  | CapabilitiesUpdate
   | TranscriptionData
   | TranslationData
   | AudioChunk
@@ -277,6 +344,7 @@ export type CloudToAppMessage =
   | DashboardAlwaysOnChanged
   | CustomMessage
   | ManagedStreamStatus
+  | StreamStatusCheckResponse
   | MentraosSettingsUpdate
   // New App-to-App communication response messages
   | AppMessageReceived
@@ -320,6 +388,12 @@ export function isSettingsUpdate(
   return message.type === CloudToAppMessageType.SETTINGS_UPDATE;
 }
 
+export function isCapabilitiesUpdate(
+  message: CloudToAppMessage,
+): message is CapabilitiesUpdate {
+  return message.type === CloudToAppMessageType.CAPABILITIES_UPDATE;
+}
+
 export function isDataStream(
   message: CloudToAppMessage,
 ): message is DataStream {
@@ -360,6 +434,12 @@ export function isPhotoResponse(
   message: CloudToAppMessage,
 ): message is PhotoResponse {
   return message.type === GlassesToCloudMessageType.PHOTO_RESPONSE;
+}
+
+export function isStreamStatusCheckResponse(
+  message: CloudToAppMessage,
+): message is StreamStatusCheckResponse {
+  return message.type === CloudToAppMessageType.STREAM_STATUS_CHECK_RESPONSE;
 }
 
 export function isAudioPlayResponse(

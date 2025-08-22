@@ -1,6 +1,6 @@
 import Icon from "react-native-vector-icons/MaterialIcons"
 
-import {useStatus} from "@/contexts/AugmentOSStatusProvider"
+import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import {useGlassesMirror} from "@/contexts/GlassesMirrorContext"
 import showAlert from "@/utils/AlertUtils"
 import {useAppTheme} from "@/utils/useAppTheme"
@@ -23,7 +23,7 @@ const requestMicrophonePermission = async () => {
 }
 
 export default function GlassesMirrorFullscreen() {
-  const {status} = useStatus()
+  const {status} = useCoreStatus()
   const {lastEvent} = useGlassesMirror() // From context
   const {theme} = useAppTheme()
   const insets = useSafeAreaInsets()
@@ -274,7 +274,7 @@ export default function GlassesMirrorFullscreen() {
               [
                 {
                   text: "View in Gallery",
-                  onPress: () => router.back(),
+                  onPress: () => goBack(),
                 },
                 {text: "Continue Recording"},
               ],
@@ -404,7 +404,7 @@ export default function GlassesMirrorFullscreen() {
                 styles.videosButton,
                 {backgroundColor: theme.colors.palette.secondary200, bottom: insets.bottom + 40},
               ]}
-              onPress={() => router.back()}>
+              onPress={() => goBack()}>
               <Icon name="photo-library" size={24} color={theme.colors.icon} />
               {recordingCount > 0 && (
                 <View

@@ -1,10 +1,10 @@
 import React, {useState, useEffect, useRef} from "react"
-import {View, Modal, ActivityIndicator} from "react-native"
+import {View, Modal, ActivityIndicator, Platform, ViewStyle} from "react-native"
 import {Screen, Header, Text} from "@/components/ignite"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {translate} from "@/i18n"
 
-import {useStatus} from "@/contexts/AugmentOSStatusProvider"
+import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import showAlert from "@/utils/AlertUtils"
 import {useAuth} from "@/contexts/AuthContext"
 import RouteButton from "@/components/ui/RouteButton"
@@ -12,15 +12,17 @@ import ActionButton from "@/components/ui/ActionButton"
 import {Spacer} from "@/components/misc/Spacer"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {isMentraUser} from "@/utils/isMentraUser"
-import {isDeveloperBuildOrTestflight} from "@/utils/buildDetection"
+import {isAppStoreProductionBuild, isDeveloperBuildOrTestflight} from "@/utils/buildDetection"
 import {loadSetting, saveSetting} from "@/utils/SettingsHelper"
 import {SETTINGS_KEYS} from "@/consts"
 import Toast from "react-native-toast-message"
+import Constants from "expo-constants"
+import {ThemedStyle} from "@/theme"
+import {ScrollView} from "react-native-gesture-handler"
 
 export default function SettingsPage() {
-  const {status} = useStatus()
   const {logout, user} = useAuth()
-  const {theme} = useAppTheme()
+  const {theme, themed} = useAppTheme()
   const {push, replace} = useNavigationHistory()
   const [devMode, setDevMode] = useState(true)
   const [isSigningOut, setIsSigningOut] = useState(false)
@@ -39,6 +41,11 @@ export default function SettingsPage() {
 
   const handleQuickPress = () => {
     push("/settings")
+
+    // Don't allow secret menu on iOS App Store builds
+    if (Platform.OS === "ios" && isAppStoreProductionBuild()) {
+      return
+    }
 
     const currentTime = Date.now()
     const timeDiff = currentTime - lastPressTime.current
@@ -64,6 +71,7 @@ export default function SettingsPage() {
     if (pressCount.current === maxPressCount) {
       showAlert("Developer Mode", "Developer mode enabled!", [{text: translate("common:ok")}])
       saveSetting(SETTINGS_KEYS.DEV_MODE, true)
+      setDevMode(true)
       pressCount.current = 0
     } else if (pressCount.current >= showAlertAtPressCount) {
       const remaining = maxPressCount - pressCount.current
@@ -125,27 +133,45 @@ export default function SettingsPage() {
   }
 
   return (
-    <Screen preset="scroll" style={{paddingHorizontal: theme.spacing.lg}}>
+    <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.lg}}>
       <Header leftTx="settings:title" onLeftPress={handleQuickPress} />
 
-      <Spacer height={theme.spacing.xl} />
+      <ScrollView
+        style={{marginRight: -theme.spacing.md, paddingRight: theme.spacing.md}}
+        contentInsetAdjustmentBehavior="automatic">
+        <Spacer height={theme.spacing.xl} />
 
-      <View style={{flex: 1, gap: theme.spacing.md}}>
-        <RouteButton label={translate("settings:profileSettings")} onPress={() => push("/settings/profile")} />
+        <View style={{flex: 1, gap: theme.spacing.md}}>
+          <RouteButton label={translate("settings:profileSettings")} onPress={() => push("/settings/profile")} />
 
-        <RouteButton label={translate("settings:privacySettings")} onPress={() => push("/settings/privacy")} />
+          <RouteButton label={translate("settings:privacySettings")} onPress={() => push("/settings/privacy")} />
 
-        <RouteButton label="Theme Settings" onPress={() => push("/settings/theme")} />
-
-        {devMode && (
           <RouteButton
-            label={translate("settings:developerSettings")}
-            // subtitle={translate("settings:developerSettingsSubtitle")}
-            onPress={() => push("/settings/developer")}
+            label={translate("settings:transcriptionSettings")}
+            onPress={() => push("/settings/transcription")}
           />
-        )}
 
-        <ActionButton label={translate("settings:signOut")} variant="destructive" onPress={confirmSignOut} />
+          <RouteButton label="Theme Settings" onPress={() => push("/settings/theme")} />
+
+          {devMode && (
+            <>
+              <RouteButton
+                label={translate("settings:developerSettings")}
+                // subtitle={translate("settings:developerSettingsSubtitle")}
+                onPress={() => push("/settings/developer")}
+              />
+            </>
+          )}
+
+          <ActionButton label={translate("settings:signOut")} variant="destructive" onPress={confirmSignOut} />
+        </View>
+      </ScrollView>
+
+      <View style={themed($versionContainer)}>
+        <Text
+          text={translate("common:version", {number: Constants.expoConfig?.extra?.MENTRAOS_VERSION})}
+          style={{color: theme.colors.textDim}}
+        />
       </View>
 
       {/* Loading overlay for sign out */}
@@ -167,7 +193,7 @@ export default function SettingsPage() {
             }}>
             <ActivityIndicator size="large" color={theme.colors.tint} style={{marginBottom: theme.spacing.md}} />
             <Text preset="bold" style={{color: theme.colors.text}}>
-              We're logging you out...
+              {translate("settings:loggingOutMessage")}
             </Text>
           </View>
         </View>
@@ -175,3 +201,16 @@ export default function SettingsPage() {
     </Screen>
   )
 }
+
+const $versionContainer: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
+  alignItems: "center",
+  bottom: spacing.xs,
+  width: "100%",
+  paddingVertical: spacing.xs,
+  borderRadius: spacing.md,
+  // position: "absolute",
+  // flex: 1,
+  // borderWidth: 1,
+  // borderColor: colors.border,
+  // backgroundColor: colors.background,
+})

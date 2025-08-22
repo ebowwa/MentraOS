@@ -1,38 +1,53 @@
 // pages/CreateApp.tsx
-import React, { useState } from 'react';
-import { AxiosError } from 'axios';
+import React, { useState } from "react";
+import { AxiosError } from "axios";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Link, useNavigate } from 'react-router-dom';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeftIcon, AlertCircle, CheckCircle } from "lucide-react";
 // import { Switch } from "@/components/ui/switch";
 import DashboardLayout from "../components/DashboardLayout";
 import ApiKeyDialog from "../components/dialogs/ApiKeyDialog";
 import AppSuccessDialog from "../components/dialogs/AppSuccessDialog";
-import api, { AppResponse } from '@/services/api.service';
-import { AppI } from '@mentra/sdk';
-import { normalizeUrl } from '@/libs/utils';
-import PermissionsForm from '../components/forms/PermissionsForm';
-import { Permission } from '@/types/app';
-import { useAuth } from '../hooks/useAuth';
-import { useOrganization } from '@/context/OrganizationContext';
-import { App } from '@/types/app';
-import ImageUpload from '../components/forms/ImageUpload';
+import api, { AppResponse } from "@/services/api.service";
+import { AppI } from "@mentra/sdk";
+import { normalizeUrl } from "@/libs/utils";
+import PermissionsForm from "../components/forms/PermissionsForm";
+import HardwareRequirementsForm from "../components/forms/HardwareRequirementsForm";
+import { Permission } from "@/types/app";
+import { HardwareRequirement } from "@mentra/sdk";
+import { useAuth } from "../hooks/useAuth";
+import { useOrganization } from "@/context/OrganizationContext";
+import { App } from "@/types/app";
+import ImageUpload from "../components/forms/ImageUpload";
 
-import AppTypeTooltip from '../components/forms/AppTypeTooltip';
+import AppTypeTooltip from "../components/forms/AppTypeTooltip";
 // import type { AppType } from '@mentra/sdk';
 // import { App } from '@/types/app';
 // Import the public email provider list
 // import publicEmailDomains from 'email-providers/all.json';
 
 enum AppType {
-  STANDARD = 'standard',
-  BACKGROUND = 'background'
+  STANDARD = "standard",
+  BACKGROUND = "background",
 }
 /**
  * Page for creating a new App (Third Party Application)
@@ -44,15 +59,16 @@ const CreateApp: React.FC = () => {
 
   // Form state
   const [formData, setFormData] = useState<Partial<App>>({
-    packageName: '',
-    name: '',
-    description: '',
-    onboardingInstructions: '',
-    publicUrl: '',
-    logoURL: '',
-    webviewURL: '',
+    packageName: "",
+    name: "",
+    description: "",
+    onboardingInstructions: "",
+    publicUrl: "",
+    logoURL: "",
+    webviewURL: "",
     appType: AppType.BACKGROUND, // Default to BACKGROUND
     permissions: [], // Initialize permissions as empty array
+    hardwareRequirements: [], // Initialize hardware requirements as empty array
     // isPublic: false,
   });
 
@@ -64,7 +80,7 @@ const CreateApp: React.FC = () => {
 
   // Dialog states
   const [createdApp, setCreatedApp] = useState<AppResponse | null>(null);
-  const [apiKey, setApiKey] = useState<string>('');
+  const [apiKey, setApiKey] = useState<string>("");
   const [isApiKeyDialogOpen, setIsApiKeyDialogOpen] = useState(false);
   const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);
 
@@ -74,16 +90,18 @@ const CreateApp: React.FC = () => {
   // const isPublicEmailDomain = publicEmailDomains.includes(orgDomain);
 
   // Handle form changes
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+  ) => {
     const { name, value } = e.target as any;
     setFormData((prev: Partial<App>) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
 
     // Clear error for field when changed
     if (errors[name]) {
-      setErrors(prev => {
+      setErrors((prev) => {
         const newErrors = { ...prev };
         delete newErrors[name];
         return newErrors;
@@ -96,19 +114,19 @@ const CreateApp: React.FC = () => {
     const { name, value } = e.target as any;
 
     // Only normalize URL fields
-    if (name === 'publicUrl' || name === 'logoURL' || name === 'webviewURL') {
+    if (name === "publicUrl" || name === "logoURL" || name === "webviewURL") {
       if (value) {
         try {
           // Normalize the URL and update the form field
           const normalizedUrl = normalizeUrl(value);
-          setFormData(prev => ({
+          setFormData((prev) => ({
             ...prev,
-            [name]: normalizedUrl
+            [name]: normalizedUrl,
           }));
 
           // Clear any URL validation errors
           if (errors[name]) {
-            setErrors(prev => {
+            setErrors((prev) => {
               const newErrors = { ...prev };
               delete newErrors[name];
               return newErrors;
@@ -123,21 +141,29 @@ const CreateApp: React.FC = () => {
 
   // Handle permissions changes
   const handlePermissionsChange = (permissions: Permission[]) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      permissions
+      permissions,
+    }));
+  };
+
+  // Handle hardware requirements changes
+  const handleHardwareRequirementsChange = (
+    hardwareRequirements: HardwareRequirement[],
+  ) => {
+    setFormData((prev) => ({
+      ...prev,
+      hardwareRequirements,
     }));
   };
 
   // Handle AppType changes
   const handleAppTypeChange = (value: string) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      appType: value as AppType
+      appType: value as AppType,
     }));
   };
-
-
 
   // Validate form
   const validateForm = (): boolean => {
@@ -145,24 +171,25 @@ const CreateApp: React.FC = () => {
 
     // Package name validation
     if (!formData.packageName) {
-      newErrors.packageName = 'Package name is required';
+      newErrors.packageName = "Package name is required";
     } else if (!/^[a-z0-9.-]+$/.test(formData.packageName)) {
-      newErrors.packageName = 'Package name must use lowercase letters, numbers, dots, and hyphens only';
+      newErrors.packageName =
+        "Package name must use lowercase letters, numbers, dots, and hyphens only";
     }
 
     // Display name validation
     if (!formData.name) {
-      newErrors.name = 'Display name is required';
+      newErrors.name = "Display name is required";
     }
 
     // Description validation
     if (!formData.description) {
-      newErrors.description = 'Description is required';
+      newErrors.description = "Description is required";
     }
 
     // Public URL validation
     if (!formData.publicUrl) {
-      newErrors.publicUrl = 'Server URL is required';
+      newErrors.publicUrl = "Server URL is required";
     } else {
       try {
         // Apply normalizeUrl to handle missing protocols before validation
@@ -170,19 +197,19 @@ const CreateApp: React.FC = () => {
         new URL(normalizedUrl);
 
         // Update the form data with the normalized URL
-        setFormData(prev => ({
+        setFormData((prev) => ({
           ...prev,
-          publicUrl: normalizedUrl
+          publicUrl: normalizedUrl,
         }));
       } catch (e) {
         console.error(e);
-        newErrors.publicUrl = 'Please enter a valid URL';
+        newErrors.publicUrl = "Please enter a valid URL";
       }
     }
 
     // Logo URL validation
     if (!formData.logoURL) {
-      newErrors.logoURL = 'Logo is required';
+      newErrors.logoURL = "Logo is required";
     }
 
     // Webview URL validation (optional)
@@ -193,13 +220,13 @@ const CreateApp: React.FC = () => {
         new URL(normalizedUrl);
 
         // Update the form data with the normalized URL
-        setFormData(prev => ({
+        setFormData((prev) => ({
           ...prev,
-          webviewURL: normalizedUrl
+          webviewURL: normalizedUrl,
         }));
       } catch (e) {
         console.error(e);
-        newErrors.webviewURL = 'Please enter a valid URL';
+        newErrors.webviewURL = "Please enter a valid URL";
       }
     }
 
@@ -224,7 +251,7 @@ const CreateApp: React.FC = () => {
 
     // Check if organization is selected
     if (!currentOrg) {
-      setFormError('Please select an organization to create this app');
+      setFormError("Please select an organization to create this app");
       window.scrollTo(0, 0);
       return;
     }
@@ -243,7 +270,8 @@ const CreateApp: React.FC = () => {
         logoURL: formData.logoURL,
         webviewURL: formData.webviewURL,
         appType: formData.appType,
-        permissions: formData.permissions
+        permissions: formData.permissions,
+        hardwareRequirements: formData.hardwareRequirements,
       };
 
       // Create App via API
@@ -259,7 +287,7 @@ const CreateApp: React.FC = () => {
       // Show API key dialog
       setIsApiKeyDialogOpen(true);
     } catch (error) {
-      console.error('Error creating App:', error);
+      console.error("Error creating App:", error);
 
       // Handle specific error types
       if (error instanceof AxiosError && error.response) {
@@ -268,19 +296,22 @@ const CreateApp: React.FC = () => {
           // Package name conflict
           setErrors({
             ...errors,
-            packageName: 'This package name is already in use. Please choose another.'
+            packageName:
+              "This package name is already in use. Please choose another.",
           });
-          setFormError('Package name is already in use');
+          setFormError("Package name is already in use");
         } else if (error.response.data?.error) {
           // Other API error with message
           setFormError(error.response.data.error);
         } else {
           // General API error
-          setFormError('Failed to create app. Please try again.');
+          setFormError("Failed to create app. Please try again.");
         }
       } else {
         // Network or other error
-        setFormError('Network error. Please check your connection and try again.');
+        setFormError(
+          "Network error. Please check your connection and try again.",
+        );
       }
 
       // Scroll to top to show error
@@ -291,14 +322,14 @@ const CreateApp: React.FC = () => {
     }
   };
 
-  // Handle API key dialog close - simplified to be more direct
+  // Handle API key dialog close - redirect to edit page for the newly created app
   const handleApiKeyDialogClose = (open: boolean) => {
     console.log("API Key dialog state changing to:", open);
     setIsApiKeyDialogOpen(open);
 
-    // If dialog is closing, navigate to App list
-    if (!open) {
-      navigate('/apps');
+    // If dialog is closing, navigate to the edit page for the newly created app
+    if (!open && createdApp) {
+      navigate(`/apps/${createdApp.packageName}/edit`);
     }
   };
 
@@ -319,7 +350,10 @@ const CreateApp: React.FC = () => {
     <DashboardLayout>
       <div className="max-w-3xl mx-auto">
         <div className="flex items-center mb-6">
-          <Link to="/apps" className="flex items-center text-sm text-gray-500 hover:text-gray-700">
+          <Link
+            to="/apps"
+            className="flex items-center text-sm text-gray-500 hover:text-gray-700"
+          >
             <ArrowLeftIcon className="mr-1 h-4 w-4" />
             Back to Apps
           </Link>
@@ -334,7 +368,9 @@ const CreateApp: React.FC = () => {
               </CardDescription>
               {currentOrg && (
                 <div className="mt-2 text-sm mb-3">
-                  <span className="text-gray-500">Creating in organization: </span>
+                  <span className="text-gray-500">
+                    Creating in organization:{" "}
+                  </span>
                   <span className="font-medium">{currentOrg.name}</span>
                 </div>
               )}
@@ -360,10 +396,13 @@ const CreateApp: React.FC = () => {
                   className={errors.packageName ? "border-red-500" : ""}
                 />
                 {errors.packageName && (
-                  <p className="text-xs text-red-500 mt-1">{errors.packageName}</p>
+                  <p className="text-xs text-red-500 mt-1">
+                    {errors.packageName}
+                  </p>
                 )}
                 <p className="text-xs text-gray-500">
-                  Must use lowercase letters, numbers, dots, and hyphens only. This is a unique identifier and cannot be changed later.
+                  Must use lowercase letters, numbers, dots, and hyphens only.
+                  This is a unique identifier and cannot be changed later.
                 </p>
               </div>
 
@@ -383,7 +422,8 @@ const CreateApp: React.FC = () => {
                   <p className="text-xs text-red-500 mt-1">{errors.name}</p>
                 )}
                 <p className="text-xs text-gray-500">
-                  The name that will be displayed to users in the MentraOS app store.
+                  The name that will be displayed to users in the MentraOS app
+                  store.
                 </p>
               </div>
 
@@ -401,10 +441,13 @@ const CreateApp: React.FC = () => {
                   className={errors.description ? "border-red-500" : ""}
                 />
                 {errors.description && (
-                  <p className="text-xs text-red-500 mt-1">{errors.description}</p>
+                  <p className="text-xs text-red-500 mt-1">
+                    {errors.description}
+                  </p>
                 )}
                 <p className="text-xs text-gray-500">
-                  Provide a clear, concise description of your application's functionality.
+                  Provide a clear, concise description of your application's
+                  functionality.
                 </p>
               </div>
 
@@ -416,15 +459,16 @@ const CreateApp: React.FC = () => {
                 <Textarea
                   id="onboardingInstructions"
                   name="onboardingInstructions"
-                  value={formData.onboardingInstructions || ''}
+                  value={formData.onboardingInstructions || ""}
                   onChange={handleChange}
                   placeholder="Describe the onboarding steps for your app"
                   rows={3}
                   maxLength={2000}
-                  style={{ maxHeight: '8em', overflowY: 'auto' }}
+                  style={{ maxHeight: "8em", overflowY: "auto" }}
                 />
                 <p className="text-xs text-gray-500">
-                  Provide onboarding instructions that will be shown to users the first time they launch your app. Maximum 5 lines.
+                  Provide onboarding instructions that will be shown to users
+                  the first time they launch your app. Maximum 5 lines.
                 </p>
               </div>
 
@@ -442,13 +486,16 @@ const CreateApp: React.FC = () => {
                   className={errors.publicUrl ? "border-red-500" : ""}
                 />
                 {errors.publicUrl && (
-                  <p className="text-xs text-red-500 mt-1">{errors.publicUrl}</p>
+                  <p className="text-xs text-red-500 mt-1">
+                    {errors.publicUrl}
+                  </p>
                 )}
                 <p className="text-xs text-gray-500">
-                  The base URL of your server where MentraOS will communicate with your app.
-                  We'll automatically append "/webhook" to handle events when your app is activated.
-                  HTTPS is required and will be added automatically if not specified.
-                  Do not include a trailing slash - it will be automatically removed.
+                  The base URL of your server where MentraOS will communicate
+                  with your app. We'll automatically append "/webhook" to handle
+                  events when your app is activated. HTTPS is required and will
+                  be added automatically if not specified. Do not include a
+                  trailing slash - it will be automatically removed.
                 </p>
               </div>
 
@@ -459,13 +506,13 @@ const CreateApp: React.FC = () => {
                 <ImageUpload
                   currentImageUrl={formData.logoURL}
                   onImageUploaded={(url) => {
-                    setFormData(prev => ({
+                    setFormData((prev) => ({
                       ...prev,
-                      logoURL: url
+                      logoURL: url,
                     }));
                     // Clear error when image is uploaded
                     if (errors.logoURL) {
-                      setErrors(prev => {
+                      setErrors((prev) => {
                         const newErrors = { ...prev };
                         delete newErrors.logoURL;
                         return newErrors;
@@ -479,7 +526,8 @@ const CreateApp: React.FC = () => {
                 />
                 {/* Note: The actual Cloudflare URL is stored in logoURL but not displayed to the user */}
                 <p className="text-xs text-gray-500">
-                  Upload an image that will be used as your app's icon (recommended: 512x512 PNG).
+                  Upload an image that will be used as your app's icon
+                  (recommended: 512x512 PNG).
                 </p>
               </div>
 
@@ -488,18 +536,21 @@ const CreateApp: React.FC = () => {
                 <Input
                   id="webviewURL"
                   name="webviewURL"
-                  value={formData.webviewURL || ''}
+                  value={formData.webviewURL || ""}
                   onChange={handleChange}
                   onBlur={handleUrlBlur}
                   placeholder="yourserver.com/webview"
                   className={errors.webviewURL ? "border-red-500" : ""}
                 />
                 {errors.webviewURL && (
-                  <p className="text-xs text-red-500 mt-1">{errors.webviewURL}</p>
+                  <p className="text-xs text-red-500 mt-1">
+                    {errors.webviewURL}
+                  </p>
                 )}
                 <p className="text-xs text-gray-500">
-                  If your app has a companion mobile interface, provide the URL here.
-                  HTTPS is required and will be added automatically if not specified.
+                  If your app has a companion mobile interface, provide the URL
+                  here. HTTPS is required and will be added automatically if not
+                  specified.
                 </p>
               </div>
 
@@ -511,10 +562,16 @@ const CreateApp: React.FC = () => {
                 </div>
                 <p className="text-xs text-gray-500">
                   Background apps can run alongside other apps,
-                  <br/>Only 1 foreground app can run at a time.
-                  <br/>foreground apps yield the display to background apps when displaying content.
+                  <br />
+                  Only 1 foreground app can run at a time.
+                  <br />
+                  foreground apps yield the display to background apps when
+                  displaying content.
                 </p>
-                <Select value={formData.appType} onValueChange={handleAppTypeChange}>
+                <Select
+                  value={formData.appType}
+                  onValueChange={handleAppTypeChange}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Select app type" />
                   </SelectTrigger>
@@ -533,12 +590,7 @@ const CreateApp: React.FC = () => {
                     </SelectItem>
                   </SelectContent>
                 </Select>
-
               </div>
-
-
-
-
 
               {/* Permissions Section */}
               <div className="mt-6">
@@ -548,9 +600,20 @@ const CreateApp: React.FC = () => {
                 />
               </div>
 
+              {/* Hardware Requirements Section */}
+              <div className="mt-6 border rounded-md p-4">
+                <HardwareRequirementsForm
+                  requirements={formData.hardwareRequirements || []}
+                  onChange={handleHardwareRequirementsChange}
+                />
+              </div>
             </CardContent>
             <CardFooter className="flex justify-between border-t p-6">
-              <Button variant="outline" type="button" onClick={() => navigate('/apps')}>
+              <Button
+                variant="outline"
+                type="button"
+                onClick={() => navigate("/apps")}
+              >
                 Back
               </Button>
               <Button type="submit" disabled={isLoading}>
@@ -560,36 +623,36 @@ const CreateApp: React.FC = () => {
           </form>
 
           {successMessage && (
-              <div className="m-4 mb-0">
-                <Alert className="bg-green-100 border-1 border-green-500 text-green-800 shadow-md">
-                  <CheckCircle className="h-5 w-5 text-green-800" />
-                  <div>
-                    <AlertDescription className="text-green-800 font-medium">{successMessage}</AlertDescription>
-                    <div className="mt-2 flex gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setIsApiKeyDialogOpen(true)}
-                        className="border-green-500 text-green-700 hover:bg-green-50"
-                      >
-                        View API Key
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => navigate('/apps')}
-                        className="border-green-500 text-green-700 hover:bg-green-50"
-                      >
-                        Go to My Apps
-                      </Button>
-                    </div>
+            <div className="m-4 mb-0">
+              <Alert className="bg-green-100 border-1 border-green-500 text-green-800 shadow-md">
+                <CheckCircle className="h-5 w-5 text-green-800" />
+                <div>
+                  <AlertDescription className="text-green-800 font-medium">
+                    {successMessage}
+                  </AlertDescription>
+                  <div className="mt-2 flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setIsApiKeyDialogOpen(true)}
+                      className="border-green-500 text-green-700 hover:bg-green-50"
+                    >
+                      View API Key
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => navigate("/apps")}
+                      className="border-green-500 text-green-700 hover:bg-green-50"
+                    >
+                      Go to My Apps
+                    </Button>
                   </div>
-                </Alert>
-              </div>
-            )}
+                </div>
+              </Alert>
+            </div>
+          )}
         </Card>
-
-
       </div>
 
       {/* API Key Dialog after successful creation */}

@@ -3,8 +3,8 @@ import "react-native-reanimated"
 import {withWrappers} from "@/utils/with-wrappers"
 import {Suspense} from "react"
 import {KeyboardProvider} from "react-native-keyboard-controller"
-import {StatusProvider} from "@/contexts/AugmentOSStatusProvider"
-import {AppStatusProvider} from "@/contexts/AppStatusProvider"
+import {CoreStatusProvider} from "@/contexts/CoreStatusProvider"
+import {AppStatusProvider} from "@/contexts/AppletStatusProvider"
 import {GestureHandlerRootView} from "react-native-gesture-handler"
 import {AuthProvider} from "@/contexts/AuthContext"
 import {SearchResultsProvider} from "@/contexts/SearchResultsContext"
@@ -13,6 +13,8 @@ import {ModalProvider} from "./AlertUtils"
 import {GlassesMirrorProvider} from "@/contexts/GlassesMirrorContext"
 import {NavigationHistoryProvider} from "@/contexts/NavigationHistoryContext"
 import {DeeplinkProvider} from "@/contexts/DeeplinkContext"
+import {OtaUpdateProvider} from "@/contexts/OtaUpdateProvider"
+import {NetworkConnectivityProvider} from "@/contexts/NetworkConnectivityProvider"
 import {PostHogProvider} from "posthog-react-native"
 import Constants from "expo-constants"
 
@@ -22,17 +24,31 @@ SplashScreen.preventAutoHideAsync()
 export const AllProviders = withWrappers(
   Suspense,
   KeyboardProvider,
-  StatusProvider,
+  CoreStatusProvider,
+  NetworkConnectivityProvider,
   AuthProvider,
   SearchResultsProvider,
   AppStoreWebviewPrefetchProvider,
   AppStatusProvider,
+  OtaUpdateProvider,
   GlassesMirrorProvider,
   NavigationHistoryProvider,
   DeeplinkProvider,
   GestureHandlerRootView,
   ModalProvider,
-  props => (
-    <PostHogProvider apiKey={Constants.expoConfig?.extra?.POSTHOG_API_KEY ?? ""}>{props.children}</PostHogProvider>
-  ),
+  props => {
+    const posthogApiKey = Constants.expoConfig?.extra?.POSTHOG_API_KEY
+
+    // If no API key is provided, disable PostHog to prevent errors
+    if (!posthogApiKey || posthogApiKey.trim() === "") {
+      console.log("PostHog API key not found, disabling PostHog analytics")
+      return <>{props.children}</>
+    }
+
+    return (
+      <PostHogProvider apiKey={posthogApiKey} options={{disabled: false}}>
+        {props.children}
+      </PostHogProvider>
+    )
+  },
 )

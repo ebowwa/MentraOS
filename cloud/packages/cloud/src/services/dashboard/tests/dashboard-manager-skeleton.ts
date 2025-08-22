@@ -23,7 +23,7 @@ import { logger  } from '../../../services/logging/pino-logger';
 // Configuration
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 80;
 const CLOUD_HOST_NAME = process.env.CLOUD_LOCAL_HOST_NAME || "cloud";
-const PACKAGE_NAME = "system.augmentos.dashboard";
+const PACKAGE_NAME = process.env.SYSTEM_DASHBOARD_PACKAGE_NAME || 'system.augmentos.dashboard';
 const API_KEY = process.env.AUGMENTOS_AUTH_JWT_SECRET;
 
 if (!API_KEY) {

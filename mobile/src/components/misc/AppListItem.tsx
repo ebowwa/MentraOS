@@ -15,6 +15,10 @@ interface AppModel {
   name: string
   packageName: string
   is_foreground?: boolean
+  compatibility?: {
+    isCompatible: boolean
+    message?: string
+  }
 }
 
 interface AppListItemProps {
@@ -27,6 +31,7 @@ interface AppListItemProps {
   opacity?: Animated.AnimatedValue
   height?: Animated.AnimatedValue
   isDisabled?: boolean
+  isIncompatible?: boolean
 }
 
 export const AppListItem = ({
@@ -39,6 +44,7 @@ export const AppListItem = ({
   isDisabled,
   is_foreground,
   height,
+  isIncompatible,
 }: AppListItemProps) => {
   const {themed, theme} = useAppTheme()
 
@@ -68,21 +74,26 @@ export const AppListItem = ({
         <View style={themed($appNameWrapper)}>
           <Text
             text={app.name}
-            style={[themed($appName), isActive ? themed($activeApp) : themed($inactiveApp)]}
+            style={[
+              themed($appName),
+              isActive ? themed($activeApp) : themed($inactiveApp),
+              isIncompatible && themed($incompatibleApp),
+            ]}
             numberOfLines={1}
             ellipsizeMode="tail"
           />
-          <Tag isActive={isActive} isForeground={is_foreground} />
+          <Tag isActive={isActive} isForeground={is_foreground} isIncompatible={isIncompatible} />
         </View>
       </TouchableOpacity>
 
       <View style={[themed($toggleParent), themed($everythingFlexBox)]}>
-        <View pointerEvents={isDisabled ? "none" : "auto"}>
-          <Switch value={isActive} hitSlop={12} onValueChange={onTogglePress} />
-        </View>
-        <TouchableOpacity onPress={onSettingsPress} hitSlop={12} style={themed($chevronHitbox)}>
-          <ChevronRight color={theme.colors.chevron} />
-        </TouchableOpacity>
+        {isIncompatible ? (
+          <TouchableOpacity onPress={onTogglePress} activeOpacity={0.7}>
+            <TooltipIcon size={20} color={theme.colors.error} />
+          </TouchableOpacity>
+        ) : (
+          <Switch value={isActive} onValueChange={onTogglePress} hitSlop={{left: 48, right: 16, top: 24, bottom: 24}} />
+        )}
       </View>
     </Animated.View>
   )
@@ -95,6 +106,11 @@ const $activeApp: ThemedStyle<TextStyle> = ({colors}) => ({
 
 const $inactiveApp: ThemedStyle<TextStyle> = ({colors}) => ({
   color: colors.text,
+})
+
+const $incompatibleApp: ThemedStyle<TextStyle> = ({colors}) => ({
+  color: colors.textDim,
+  opacity: 0.7,
 })
 
 const $everything: ThemedStyle<ViewStyle> = () => ({
@@ -143,9 +159,21 @@ const $chevronHitbox: ThemedStyle<ViewStyle> = () => ({
   margin: -8,
 })
 
-const Tag = ({isActive, isForeground = false}: {isActive: boolean; isForeground?: boolean}) => {
+const Tag = ({
+  isActive,
+  isForeground = false,
+  isIncompatible = false,
+}: {
+  isActive: boolean
+  isForeground?: boolean
+  isIncompatible?: boolean
+}) => {
   const {themed, theme} = useAppTheme()
   const mColor = isActive ? theme.colors.foregroundTagText : theme.colors.textDim
+
+  if (isIncompatible) {
+    return null
+  }
 
   if (!isForeground) {
     return null

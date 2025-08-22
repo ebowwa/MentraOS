@@ -101,6 +101,46 @@ async function clientAuth(req: Request, res: Response, next: NextFunction) {
   }
 }
 
+// Optional client auth. Like clientAuth, but never blocks; unauthenticated requests continue.
+async function optionalClientAuth(req: Request, res: Response, next: NextFunction) {
+  const authHeader = req.headers.authorization;
+
+  // If no Authorization header, proceed as anonymous and ensure a logger exists
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    (req as AuthRequest).logger = logger.child({ userId: 'anonymous' });
+    return next();
+  }
+
+  const token = authHeader.substring(7); // Remove 'Bearer ' prefix
+
+  // If token is missing or clearly invalid, proceed anonymously
+  if (!token || token === 'null' || token === 'undefined') {
+    (req as AuthRequest).logger = logger.child({ userId: 'anonymous' });
+    return next();
+  }
+
+  try {
+    const decoded = jwt.verify(token, AUGMENTOS_AUTH_JWT_SECRET) as jwt.JwtPayload;
+
+    if (!decoded || !decoded.email) {
+      (req as AuthRequest).logger = logger.child({ userId: 'anonymous' });
+      return next();
+    }
+
+    // Attach userId (email) to the request object
+    const email = decoded.email.toLowerCase();
+    (req as AuthRequest).email = email;
+    (req as AuthRequest).logger = logger.child({ userId: email });
+    return next();
+
+  } catch (_error) {
+    // For optional auth, do not block on JWT errors; proceed as anonymous
+    (req as AuthRequest).logger = logger.child({ userId: 'anonymous' });
+    return next();
+  }
+}
+
+
 // Fetches user object (internal function)
 async function requireUser(req: Request, res: Response, next: NextFunction) {
   const authReq = req as AuthRequest;
@@ -154,25 +194,32 @@ async function requireUserSession(req: Request, res: Response, next: NextFunctio
 
 // Fetches optional user session (internal function)
 async function optionalUserSession(req: Request, res: Response, next: NextFunction) {
-  const userReq = req as UserRequest;
-  const logger = userReq.logger;
+  const maybeAuthReq = req as Partial<UserRequest>;
+  const localLogger = maybeAuthReq.logger || logger.child({ userId: 'anonymous' });
 
   try {
+    // If no email set (anonymous request), skip session lookup
+    const email = maybeAuthReq.email;
+    if (!email) {
+      localLogger.info(`optionalUserSession: Anonymous request, continuing without session`);
+      return next();
+    }
+
     // Try to fetch user session, but don't fail if not found
-    const userSession = sessionService.getSessionByUserId(userReq.email);
+    const userSession = sessionService.getSessionByUserId(email);
 
     if (userSession) {
       (req as OptionalUserSessionRequest).userSession = userSession;
-      logger.info(`optionalUserSession: User session populated for ${userReq.email}`);
+      localLogger.info(`optionalUserSession: User session populated for ${email}`);
     } else {
-      logger.info(`optionalUserSession: No session found for ${userReq.email}, continuing without session`);
+      localLogger.info(`optionalUserSession: No session found for ${email}, continuing without session`);
     }
 
-    next();
+    return next();
   } catch (error) {
-    logger.error(error, `optionalUserSession: Failed to fetch session for user: ${userReq.email}`);
+    localLogger.error(error as any, `optionalUserSession: Failed to fetch session`);
     // Don't fail the request, just continue without session
-    next();
+    return next();
   }
 }
 
@@ -218,6 +265,20 @@ export async function authWithOptionalSession(req: Request, res: Response, next:
     await runMiddleware(clientAuth, req, res);
     // Then run requireUser
     await runMiddleware(requireUser, req, res);
+    // Finally run optionalUserSession
+    await runMiddleware(optionalUserSession, req, res);
+    next();
+  } catch (error) {
+    // Error already handled by the middleware that failed
+  }
+}
+
+export async function optionalAuthWithOptionalSession(req: Request, res: Response, next: NextFunction) {
+  try {
+    // Run clientAuth first
+    await runMiddleware(optionalClientAuth, req, res);
+    // Then run requireUser
+    // await runMiddleware(requireUser, req, res);
     // Finally run optionalUserSession
     await runMiddleware(optionalUserSession, req, res);
     next();

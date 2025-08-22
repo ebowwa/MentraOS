@@ -311,12 +311,11 @@ router.post('/:appName', async (req, res) => {
       try {
         // When the user is not runnning the app, the appConnection is undefined, so we wrap it in a try/catch.
         const appWebsocket = userSession.appWebsockets.get(appName);
-        if (!appWebsocket) {
+        if (appWebsocket) {
           userSession.logger.warn({ packageName: appName, }, `No WebSocket connection found for App ${appName} for user ${userId}`);
-          return res.status(404).json({ error: `No WebSocket connection found for App ${appName}` });
+          appWebsocket.send(JSON.stringify(settingsUpdate));
+          userSession.logger.info({ packageName: appName }, `Sent settings update via WebSocket to ${appName} for user ${userId}`);
         }
-        appWebsocket.send(JSON.stringify(settingsUpdate));
-        userSession.logger.info({ packageName: appName }, `Sent settings update via WebSocket to ${appName} for user ${userId}`);
       }
       catch (error) {
         rootLogger.error('Error sending settings update via WebSocket:', error);

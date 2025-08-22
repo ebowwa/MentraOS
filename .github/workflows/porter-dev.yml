@@ -4,7 +4,8 @@ on:
   push:
     branches:
       - dev
-
+    paths:
+      - "cloud/**"
 jobs:
   porter-deploy:
     runs-on: ubuntu-latest
@@ -26,7 +27,7 @@ jobs:
           PORTER_APP_NAME: cloud-dev
           PORTER_NAMESPACE: dev
           NODE_ENV: development
-          PORTER_CLUSTER: "4689"         # Adjust if needed
+          PORTER_CLUSTER: "4689" # Adjust if needed
           PORTER_PROJECT: "15081"
           PORTER_HOST: https://dashboard.porter.run
           PORTER_PR_NUMBER: ${{ github.event.number }}

@@ -20,6 +20,7 @@ export {
   AppConnectionError,
   AppStopped,
   SettingsUpdate as AppSettingsUpdate, // Alias to avoid conflict with cloud-to-glasses SettingsUpdate
+  CapabilitiesUpdate,
   DataStream,
   CloudToAppMessage,
   AudioPlayResponse,
@@ -28,9 +29,12 @@ export {
   StandardConnectionError,
   CustomMessage,
   ManagedStreamStatus,
+  StreamStatusCheckResponse,
   OutputStatus,
   MentraosSettingsUpdate,
   TranscriptionData,
+  TranscriptionMetadata,
+  SonioxToken,
   AudioChunk,
   PermissionError,
   PermissionErrorDetail,
@@ -39,12 +43,14 @@ export {
   isAppConnectionError,
   isAppStopped,
   isSettingsUpdate,
+  isCapabilitiesUpdate,
   isDataStream,
   isAudioChunk,
   isAudioPlayResponse,
   isDashboardModeChanged,
   isDashboardAlwaysOnChanged,
   isManagedStreamStatus,
+  isStreamStatusCheckResponse,
   // Re-export the cloud-to-app versions of these type guards since they're the ones
   // that should be used when dealing with CloudToAppMessage types
   isPhotoResponse as isPhotoResponseFromCloud,
@@ -193,7 +199,11 @@ export {
   validateAppConfig,
   ToolSchema,
   ToolParameterSchema,
+  HardwareRequirement,
 } from "./models";
+
+// Export hardware-related enums
+export { HardwareType, HardwareRequirementLevel } from "./enums";
 // Export RTMP streaming types
 export {
   VideoConfig,
@@ -216,5 +226,5 @@ import { AppSession } from "src/app/session";
 
 export interface AuthenticatedRequest extends Request {
   authUserId?: string;
-  activeSession: AppSession;
+  activeSession: AppSession | null;
 }

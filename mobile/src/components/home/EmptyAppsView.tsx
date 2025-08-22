@@ -28,7 +28,7 @@ const $emptyApps: ThemedStyle<ViewStyle> = () => ({
   alignItems: "center",
   justifyContent: "center",
   paddingHorizontal: 12,
-  height: 68,
+  minHeight: 150,
   gap: 4,
 })
 

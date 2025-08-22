@@ -1,0 +1,6 @@
+module BitByteData {
+  umbrella header "BitByteData-umbrella.h"
+
+  export *
+  module * { export * }
+}

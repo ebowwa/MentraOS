@@ -1,16 +1,33 @@
-export type GlassesFeature = "camera" | "speakers" | "microphone" | "display" | "binocular" | "wifi" | "imu" | "powerSavingMode"
+/* 
+  Use this file to describe which features a given pair of glasses supports.
+*/
+
+export type GlassesFeature =
+  | "camera"
+  | "speakers"
+  | "microphone"
+  | "display"
+  | "binocular"
+  | "wifi"
+  | "imu"
+  | "powerSavingMode"
+  | "gallery"
+  | "configurableButton"
 
 export type MicType = "none" | "sco" | "custom"
 
 export interface GlassesFeatureSet {
-  camera: boolean
-  speakers: boolean
-  display: boolean
-  binocular: boolean
-  wifi: boolean
-  imu: boolean
-  micTypes: MicType[]
-  powerSavingMode: boolean
+  camera: boolean // Do the glasses contain a camera?
+  speakers: boolean // Do the glasses have onboard speakers?
+  display: boolean // Do the glasses have a display?
+  binocular: boolean // Do the glasses have 2x displays- one for each eye?
+  wifi: boolean // Do the glasses connect to wifi?
+  wifiSelfOtaUpdate: boolean // Do the glasses update their software automatically when connected to wifi?
+  imu: boolean // Do the glasses contain an IMU?
+  micTypes: MicType[] // Which types of microphone do the glasses support?
+  powerSavingMode: boolean // Do the glasses have a power saving mode?
+  gallery: boolean // Do the glasses store a photo gallery on device
+  configurableButton: boolean // Does the device support button configuration?
 }
 
 export const glassesFeatures: Record<string, GlassesFeatureSet> = {
@@ -20,9 +37,12 @@ export const glassesFeatures: Record<string, GlassesFeatureSet> = {
     display: true,
     binocular: true,
     wifi: false,
+    wifiSelfOtaUpdate: false,
     imu: true,
     micTypes: ["custom"],
     powerSavingMode: true,
+    gallery: false,
+    configurableButton: false,
   },
   "Vuzix Z100": {
     camera: false,
@@ -30,9 +50,12 @@ export const glassesFeatures: Record<string, GlassesFeatureSet> = {
     display: true,
     binocular: false,
     wifi: false,
+    wifiSelfOtaUpdate: false,
     imu: false,
     micTypes: ["none"],
     powerSavingMode: false,
+    gallery: false,
+    configurableButton: false,
   },
   "Mentra Live": {
     camera: true,
@@ -40,9 +63,12 @@ export const glassesFeatures: Record<string, GlassesFeatureSet> = {
     display: false,
     binocular: false,
     wifi: true,
+    wifiSelfOtaUpdate: true,
     imu: false,
     micTypes: ["sco"],
     powerSavingMode: false,
+    gallery: true,
+    configurableButton: true,
   },
   "Mentra Mach1": {
     camera: false,
@@ -50,9 +76,12 @@ export const glassesFeatures: Record<string, GlassesFeatureSet> = {
     display: true,
     binocular: false,
     wifi: false,
+    wifiSelfOtaUpdate: false,
     imu: false,
     micTypes: ["none"],
     powerSavingMode: false,
+    gallery: false,
+    configurableButton: false,
   },
   "Audio Wearable": {
     camera: false,
@@ -60,9 +89,12 @@ export const glassesFeatures: Record<string, GlassesFeatureSet> = {
     display: false,
     binocular: false,
     wifi: false,
+    wifiSelfOtaUpdate: false,
     imu: false,
     micTypes: ["sco"],
     powerSavingMode: false,
+    gallery: false,
+    configurableButton: false,
   },
   "Simulated Glasses": {
     camera: true,
@@ -70,9 +102,25 @@ export const glassesFeatures: Record<string, GlassesFeatureSet> = {
     display: true,
     binocular: false,
     wifi: false,
+    wifiSelfOtaUpdate: false,
     imu: false,
     micTypes: ["sco"],
     powerSavingMode: false,
+    gallery: false,
+    configurableButton: false,
+  },
+  "Brilliant Labs Frame": {
+    camera: true,
+    speakers: false, // Uses phone for audio output
+    display: true,
+    binocular: false,
+    wifi: false,
+    wifiSelfOtaUpdate: false,
+    imu: true,
+    micTypes: ["custom"], // Uses BLE audio streaming
+    powerSavingMode: false,
+    gallery: false, // v1: No on-device gallery
+    configurableButton: false,
   },
 }
 
@@ -85,6 +133,8 @@ export const featureLabels: Record<GlassesFeature, string> = {
   wifi: "WiFi",
   imu: "IMU",
   powerSavingMode: "Power Saving Mode",
+  gallery: "Gallery",
+  configurableButton: "Configurable Button",
 }
 
 // Helper functions for mic type checking

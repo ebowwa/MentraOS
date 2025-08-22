@@ -132,6 +132,17 @@ export interface VpsCoordinates extends BaseMessage {
   confidence: number;
 }
 
+export interface LocalTranscription extends BaseMessage {
+  type: GlassesToCloudMessageType.LOCAL_TRANSCRIPTION;
+  text: string;
+  isFinal: boolean;
+  startTime: number;
+  endTime: number;
+  speakerId: number;
+  transcribeLanguage: string;
+  provider: string;
+}
+
 export interface CalendarEvent extends BaseMessage {
   type: GlassesToCloudMessageType.CALENDAR_EVENT | StreamType.CALENDAR_EVENT;
   eventId: string;
@@ -278,7 +289,8 @@ export type GlassesToCloudMessage =
   | KeepAliveAck
   | PhotoResponse
   | PhotoTaken
-  | AudioPlayResponse;
+  | AudioPlayResponse
+  | LocalTranscription;
 
 //===========================================================
 // Type guards
@@ -367,4 +379,8 @@ export function isPhotoTaken(message: GlassesToCloudMessage): message is PhotoTa
 
 export function isAudioPlayResponse(message: GlassesToCloudMessage): message is AudioPlayResponse {
   return message.type === GlassesToCloudMessageType.AUDIO_PLAY_RESPONSE;
+}
+
+export function isLocalTranscription(message: GlassesToCloudMessage): message is LocalTranscription {
+  return message.type === GlassesToCloudMessageType.LOCAL_TRANSCRIPTION;
 }

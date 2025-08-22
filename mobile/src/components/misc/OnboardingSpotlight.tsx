@@ -16,24 +16,30 @@ import {useAppTheme} from "@/utils/useAppTheme"
 import {ThemedStyle, spacing} from "@/theme"
 import {translate} from "@/i18n"
 import {Spacer} from "./Spacer"
+import {SETTINGS_KEYS} from "@/consts"
+import {loadSetting, saveSetting} from "@/utils/SettingsHelper"
+import BackendServerComms from "@/backend_comms/BackendServerComms"
+import {useCoreStatus} from "@/contexts/CoreStatusProvider"
+import {useAppStatus} from "@/contexts/AppletStatusProvider"
+import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
+import showAlert from "@/utils/AlertUtils"
 
 interface OnboardingSpotlightProps {
-  visible: boolean
   targetRef: React.RefObject<any>
-  onDismiss?: () => void
-  onTargetPress?: () => void
+  onboardingTarget: "glasses" | "livecaptions"
+  setOnboardingTarget: (target: "glasses" | "livecaptions") => void
   message?: string
   showArrow?: boolean
 }
 
 export const OnboardingSpotlight: React.FC<OnboardingSpotlightProps> = ({
-  visible,
   targetRef,
-  onDismiss,
-  onTargetPress,
+  onboardingTarget,
+  setOnboardingTarget,
   message = translate("home:tapToStartLiveCaptions"),
   showArrow = true,
 }) => {
+  const [visible, setVisible] = useState(false)
   const {theme, themed} = useAppTheme()
   const fadeAnim = useRef(new Animated.Value(0)).current
   const [targetMeasurements, setTargetMeasurements] = useState<{
@@ -42,6 +48,88 @@ export const OnboardingSpotlight: React.FC<OnboardingSpotlightProps> = ({
     width: number
     height: number
   } | null>(null)
+
+  const [liveCaptionsPackageName, setLiveCaptionsPackageName] = useState<string | null>(null)
+  const {status} = useCoreStatus()
+  const {appStatus} = useAppStatus()
+  const {push} = useNavigationHistory()
+
+  // Check onboarding status
+  useEffect(() => {
+    const checkOnboarding = async () => {
+      const onboardingCompleted = await loadSetting(SETTINGS_KEYS.ONBOARDING_COMPLETED, true)
+      if (!onboardingCompleted) {
+        // Check if glasses are connected
+        const glassesConnected = status.glasses_info?.model_name != null
+
+        if (!glassesConnected) {
+          setOnboardingTarget("glasses")
+          setVisible(true)
+        } else {
+          // // Check if Live Captions app exists and is not running
+          // const liveCaptionsApp = appStatus.find(
+          //   app =>
+          //     app.packageName === "com.augmentos.livecaptions" ||
+          //     app.packageName === "cloud.augmentos.live-captions" ||
+          //     app.packageName === "com.mentra.livecaptions",
+          // )
+
+          // if (liveCaptionsApp && !liveCaptionsApp.is_running) {
+          //   setOnboardingTarget("livecaptions")
+          //   setLiveCaptionsPackageName(liveCaptionsApp.packageName)
+          //   setShowOnboardingSpotlight(true)
+          // }
+          // Skip Live Captions spotlight - mark onboarding as complete once glasses are connected                                  │ │
+          setVisible(false)
+          await saveSetting(SETTINGS_KEYS.ONBOARDING_COMPLETED, true)
+        }
+      }
+    }
+
+    checkOnboarding().catch(error => {
+      console.error("Error checking onboarding:", error)
+    })
+  }, [status.glasses_info?.model_name, appStatus])
+
+  // Handle spotlight dismiss
+  const handleDismiss = () => {
+    setVisible(false)
+    // Mark onboarding as completed if user skips
+    saveSetting(SETTINGS_KEYS.ONBOARDING_COMPLETED, true)
+  }
+
+  // Handle spotlight target press
+  const handleTargetPress = async () => {
+    if (onboardingTarget === "glasses") {
+      push("/pairing/select-glasses-model")
+    } else if (onboardingTarget === "livecaptions" && liveCaptionsPackageName) {
+      // Dismiss spotlight first
+      setVisible(false)
+
+      // Start the Live Captions app directly
+      try {
+        const backendComms = BackendServerComms.getInstance()
+        await backendComms.startApp(liveCaptionsPackageName)
+
+        // Mark onboarding as completed
+        await saveSetting(SETTINGS_KEYS.ONBOARDING_COMPLETED, true)
+
+        // Show the success message after a short delay
+        setTimeout(() => {
+          showAlert(
+            translate("home:tryLiveCaptionsTitle"),
+            translate("home:tryLiveCaptionsMessage"),
+            [{text: translate("common:ok")}],
+            {
+              iconName: "microphone",
+            },
+          )
+        }, 500)
+      } catch (error) {
+        console.error("Error starting Live Captions:", error)
+      }
+    }
+  }
 
   useEffect(() => {
     if (visible && targetRef.current) {
@@ -100,7 +188,7 @@ export const OnboardingSpotlight: React.FC<OnboardingSpotlightProps> = ({
               height: spotlightY,
             },
           ]}
-          onPress={onDismiss}
+          onPress={handleDismiss}
           activeOpacity={1}
         />
 
@@ -116,7 +204,7 @@ export const OnboardingSpotlight: React.FC<OnboardingSpotlightProps> = ({
               height: spotlightHeight,
             },
           ]}
-          onPress={onDismiss}
+          onPress={handleDismiss}
           activeOpacity={1}
         />
 
@@ -132,7 +220,7 @@ export const OnboardingSpotlight: React.FC<OnboardingSpotlightProps> = ({
               height: spotlightHeight,
             },
           ]}
-          onPress={onDismiss}
+          onPress={handleDismiss}
           activeOpacity={1}
         />
 
@@ -148,7 +236,7 @@ export const OnboardingSpotlight: React.FC<OnboardingSpotlightProps> = ({
               bottom: 0,
             },
           ]}
-          onPress={onDismiss}
+          onPress={handleDismiss}
           activeOpacity={1}
         />
 
@@ -164,7 +252,7 @@ export const OnboardingSpotlight: React.FC<OnboardingSpotlightProps> = ({
             borderColor: "rgba(255, 255, 255, 0.5)",
             backgroundColor: "rgba(255, 255, 255, 0.05)",
           }}
-          onPress={onTargetPress}
+          onPress={handleTargetPress}
           activeOpacity={0.8}
         />
 

@@ -1,12 +1,11 @@
 import React, {useState, useEffect} from "react"
 import {View, Text, TextInput, KeyboardAvoidingView, Platform, TouchableOpacity} from "react-native"
 import {useLocalSearchParams, router} from "expo-router"
-import {Screen, Icon, Header, Checkbox} from "@/components/ignite"
+import {Screen, Icon, Header, Checkbox, Button} from "@/components/ignite"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {ThemedStyle} from "@/theme"
 import {ViewStyle, TextStyle} from "react-native"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
-import ActionButton from "@/components/ui/ActionButton"
 import WifiCredentialsService from "@/utils/WifiCredentialsService"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {ScrollView} from "react-native"
@@ -57,24 +56,18 @@ export default function WifiPasswordScreen() {
       return
     }
 
-    // Handle password saving based on checkbox state
-    if (rememberPassword && password) {
-      // Save credentials if checkbox is checked
-      await WifiCredentialsService.saveCredentials(ssid, password, true)
-    } else if (!rememberPassword) {
-      // Remove saved credentials if checkbox is unchecked
+    // Don't save credentials here - only save after successful connection
+    // If user unchecked "Remember Password", remove any existing saved credentials
+    if (!rememberPassword) {
       await WifiCredentialsService.removeCredentials(ssid)
     }
 
     // Navigate to connecting screen with credentials
-    router.push({
-      pathname: "/pairing/glasseswifisetup/connecting",
-      params: {
-        deviceModel,
-        ssid,
-        password,
-        rememberPassword: rememberPassword.toString(),
-      },
+    push("/pairing/glasseswifisetup/connecting", {
+      deviceModel,
+      ssid,
+      password,
+      rememberPassword: rememberPassword.toString(),
     })
   }
 
@@ -129,9 +122,21 @@ export default function WifiPasswordScreen() {
           </View>
 
           <View style={themed($buttonContainer)}>
-            <ActionButton label="Connect" onPress={handleConnect} />
+            <Button
+              text="Connect"
+              style={themed($primaryButton)}
+              pressedStyle={themed($pressedButton)}
+              textStyle={themed($buttonText)}
+              onPress={handleConnect}
+            />
 
-            <ActionButton label="Cancel" variant="secondary" onPress={() => router.back()} />
+            <Button
+              text="Cancel"
+              style={themed($secondaryButton)}
+              pressedStyle={themed($pressedSecondaryButton)}
+              onPress={() => goBack()}
+              preset="reversed"
+            />
           </View>
         </View>
       </ScrollView>
@@ -231,5 +236,25 @@ const $checkboxDescription: ThemedStyle<TextStyle> = ({colors}) => ({
 
 const $buttonContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
   marginTop: spacing.xl,
-  gap: spacing.md,
+  gap: spacing.sm,
+})
+
+const $primaryButton: ThemedStyle<ViewStyle> = () => ({})
+
+const $secondaryButton: ThemedStyle<ViewStyle> = () => ({})
+
+const $pressedButton: ThemedStyle<ViewStyle> = ({colors}) => ({
+  backgroundColor: colors.buttonPressed,
+  opacity: 0.9,
+})
+
+const $pressedSecondaryButton: ThemedStyle<ViewStyle> = ({colors}) => ({
+  backgroundColor: colors.palette.neutral200,
+  opacity: 0.9,
+})
+
+const $buttonText: ThemedStyle<TextStyle> = ({colors}) => ({
+  color: colors.textAlt,
+  fontSize: 16,
+  fontWeight: "bold",
 })

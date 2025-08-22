@@ -124,7 +124,6 @@ const NumberSetting: React.FC<NumberSettingProps> = ({
           placeholderTextColor={theme.colors.textDim}
           selectTextOnFocus={true}
           returnKeyType="done"
-          blurOnSubmit={true}
           contextMenuHidden={true}
           autoCorrect={false}
           autoCapitalize="none"

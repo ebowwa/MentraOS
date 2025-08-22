@@ -5,6 +5,7 @@ import android.util.Log;
 
 import com.augmentos.augmentos_core.BuildConfig;
 import com.augmentos.augmentos_core.CalendarItem;
+import com.augmentos.augmentos_core.enums.SpeechRequiredDataType;
 import com.augmentos.augmentos_core.smarterglassesmanager.speechrecognition.AsrStreamKey;
 import com.augmentos.augmentos_core.smarterglassesmanager.speechrecognition.augmentos.SpeechRecAugmentos;
 import com.augmentos.augmentoslib.enums.AsrStreamType;
@@ -256,6 +257,12 @@ public class ServerComms {
 
         // Reset flag so we can start buffering again
         isProcessingBuffer = false;
+    }
+
+    public void restartTranscriber() {
+        if (speechRecAugmentos != null) {
+            speechRecAugmentos.restartTranscriber();
+        }
     }
 
     // ------------------------------------------------------------------------
@@ -706,19 +713,38 @@ public class ServerComms {
                 break;
 
             case "microphone_state_change":
-                boolean isMicrophoneEnabled = msg.optBoolean("isMicrophoneEnabled", true);
-                Log.d(TAG, "Received microphone_state_change message." + isMicrophoneEnabled);
+                boolean bypassVad = msg.optBoolean("bypassVad", false);
+
+                JSONArray requiredDataJson = msg.optJSONArray("requiredData");
+                List<SpeechRequiredDataType> requiredData = new ArrayList<>();
+                if (requiredDataJson != null) {
+                    for (int i = 0; i < requiredDataJson.length(); i++) {
+                        String datum = requiredDataJson.optString(i, "");
+                        if (!datum.isEmpty()) {
+                            try {
+                                requiredData.add(SpeechRequiredDataType.fromString(datum));
+                            } catch (IllegalArgumentException e) {
+                                Log.w(TAG, "Unknown required data type: " + datum, e);
+                            }
+                        }
+                    }
+                }
+
+                // Log.d(TAG, "Received microphone_state_change message. enabled=" + isMicrophoneEnabled +
+                //       " requiredData=" + requiredData + " bypassVad=" + bypassVad);
+
                 if (serverCommsCallback != null)
-                    serverCommsCallback.onMicrophoneStateChange(isMicrophoneEnabled);
+                    serverCommsCallback.onMicrophoneStateChange(requiredData, bypassVad);
                 break;
 
             case "photo_request":
                 String requestId = msg.optString("requestId");
                 String appId = msg.optString("appId");
                 String webhookUrl = msg.optString("webhookUrl", "");
-                Log.d(TAG, "Received photo_request, requestId: " + requestId + ", appId: " + appId + ", webhookUrl: " + webhookUrl);
+                String size = msg.optString("size", "medium");
+                Log.d(TAG, "Received photo_request, requestId: " + requestId + ", appId: " + appId + ", webhookUrl: " + webhookUrl + ", size: " + size);
                 if (serverCommsCallback != null && !requestId.isEmpty() && !appId.isEmpty()) {
-                    serverCommsCallback.onPhotoRequest(requestId, appId, webhookUrl);
+                    serverCommsCallback.onPhotoRequest(requestId, appId, webhookUrl, size);
                 } else {
                     Log.e(TAG, "Invalid photo request: missing requestId or appId");
                 }
@@ -746,6 +772,46 @@ public class ServerComms {
 
                 if (serverCommsCallback != null) {
                     serverCommsCallback.onRtmpStreamKeepAlive(msg);
+                }
+                break;
+
+            case "start_buffer_recording":
+                Log.d(TAG, "Received START_BUFFER_RECORDING");
+                if (serverCommsCallback != null) {
+                    serverCommsCallback.onStartBufferRecording();
+                }
+                break;
+
+            case "stop_buffer_recording":
+                Log.d(TAG, "Received STOP_BUFFER_RECORDING");
+                if (serverCommsCallback != null) {
+                    serverCommsCallback.onStopBufferRecording();
+                }
+                break;
+
+            case "save_buffer_video":
+                Log.d(TAG, "Received SAVE_BUFFER_VIDEO: " + msg.toString());
+                String bufferRequestId = msg.optString("requestId", "buffer_" + System.currentTimeMillis());
+                int durationSeconds = msg.optInt("durationSeconds", 30);
+                if (serverCommsCallback != null) {
+                    serverCommsCallback.onSaveBufferVideo(bufferRequestId, durationSeconds);
+                }
+                break;
+
+            case "start_video_recording":
+                Log.d(TAG, "Received START_VIDEO_RECORDING: " + msg.toString());
+                String videoRequestId = msg.optString("requestId", "video_" + System.currentTimeMillis());
+                boolean save = msg.optBoolean("save", true);
+                if (serverCommsCallback != null) {
+                    serverCommsCallback.onStartVideoRecording(videoRequestId, save);
+                }
+                break;
+
+            case "stop_video_recording":
+                Log.d(TAG, "Received STOP_VIDEO_RECORDING: " + msg.toString());
+                String stopRequestId = msg.optString("requestId", "");
+                if (serverCommsCallback != null) {
+                    serverCommsCallback.onStopVideoRecording(stopRequestId);
                 }
                 break;
 
@@ -947,7 +1013,7 @@ public class ServerComms {
                         if (chunk != null) {
                             wsManager.sendBinary(chunk);
                             // Write to PCM file whenever we send binary data over websocket
-//                            writeToPcmFile(chunk);
+                            // writeToPcmFile(chunk);
                         }
                         // If poll times out (1 second with no data), we'll loop back and check conditions again
                     } else {
@@ -1057,6 +1123,15 @@ public class ServerComms {
             Log.d(TAG, "Sent audio play response: " + message.toString());
         } catch (Exception e) {
             Log.e(TAG, "Error sending audio play response", e);
+        }
+    }
+
+    public void sendTranscriptionResult(JSONObject transcriptionResult) {
+        try {
+            wsManager.sendText(transcriptionResult.toString());
+            Log.d(TAG, "Sent transcription result: " + transcriptionResult.toString());
+        } catch (Exception e) {
+            Log.e(TAG, "Error sending transcription result", e);
         }
     }
 }

@@ -1,11 +1,15 @@
 // src/messages/app-to-cloud.ts
 
-import { BaseMessage } from './base';
-import { AppToCloudMessageType } from '../message-types';
-import { ExtendedStreamType, LocationStreamRequest } from '../streams';
-import { DisplayRequest } from '../layouts';
-import { DashboardContentUpdate, DashboardModeChange, DashboardSystemUpdate } from '../dashboard';
-import { VideoConfig, AudioConfig, StreamConfig } from '../rtmp-stream';
+import { BaseMessage } from "./base";
+import { AppToCloudMessageType } from "../message-types";
+import { ExtendedStreamType, LocationStreamRequest } from "../streams";
+import { DisplayRequest } from "../layouts";
+import {
+  DashboardContentUpdate,
+  DashboardModeChange,
+  DashboardSystemUpdate,
+} from "../dashboard";
+import { VideoConfig, AudioConfig, StreamConfig } from "../rtmp-stream";
 
 // a subscription can now be either a simple string or our new rich object
 export type SubscriptionRequest = ExtendedStreamType | LocationStreamRequest;
@@ -37,6 +41,9 @@ export interface PhotoRequest extends BaseMessage {
   packageName: string;
   requestId: string; // SDK-generated request ID to track the request
   saveToGallery?: boolean;
+  customWebhookUrl?: string; // Custom webhook URL to override TPA's default
+  /** Desired photo size sent by App. Defaults to 'medium' if omitted. */
+  size?: "small" | "medium" | "large";
 }
 
 // Video, Audio and Stream configuration interfaces are imported from '../rtmp-stream'
@@ -59,7 +66,7 @@ export interface RtmpStreamRequest extends BaseMessage {
 export interface RtmpStreamStopRequest extends BaseMessage {
   type: AppToCloudMessageType.RTMP_STREAM_STOP;
   packageName: string;
-  streamId?: string;  // Optional stream ID to specify which stream to stop
+  streamId?: string; // Optional stream ID to specify which stream to stop
 }
 
 // defines the structure for our new on-demand location poll command
@@ -88,7 +95,7 @@ export interface RestreamDestination {
 export interface ManagedStreamRequest extends BaseMessage {
   type: AppToCloudMessageType.MANAGED_STREAM_REQUEST;
   packageName: string;
-  quality?: '720p' | '1080p';
+  quality?: "720p" | "1080p";
   enableWebRTC?: boolean;
   video?: VideoConfig;
   audio?: AudioConfig;
@@ -103,6 +110,16 @@ export interface ManagedStreamRequest extends BaseMessage {
 export interface ManagedStreamStopRequest extends BaseMessage {
   type: AppToCloudMessageType.MANAGED_STREAM_STOP;
   packageName: string;
+}
+
+/**
+ * Stream status check request from App
+ * Checks if there are any existing streams (managed or unmanaged) for the current user
+ */
+export interface StreamStatusCheckRequest extends BaseMessage {
+  type: AppToCloudMessageType.STREAM_STATUS_CHECK;
+  packageName: string;
+  sessionId: string;
 }
 
 /**
@@ -140,6 +157,7 @@ export type AppToCloudMessage =
   | RtmpStreamStopRequest
   | ManagedStreamRequest
   | ManagedStreamStopRequest
+  | StreamStatusCheckRequest
   | DashboardContentUpdate
   | DashboardModeChange
   | DashboardSystemUpdate
@@ -153,77 +171,99 @@ export type AppToCloudMessage =
 /**
  * Type guard to check if a message is a App connection init
  */
-export function isAppConnectionInit(message: AppToCloudMessage): message is AppConnectionInit {
+export function isAppConnectionInit(
+  message: AppToCloudMessage,
+): message is AppConnectionInit {
   return message.type === AppToCloudMessageType.CONNECTION_INIT;
 }
 
 /**
  * Type guard to check if a message is a App subscription update
  */
-export function isAppSubscriptionUpdate(message: AppToCloudMessage): message is AppSubscriptionUpdate {
+export function isAppSubscriptionUpdate(
+  message: AppToCloudMessage,
+): message is AppSubscriptionUpdate {
   return message.type === AppToCloudMessageType.SUBSCRIPTION_UPDATE;
 }
 
 /**
  * Type guard to check if a message is a App display request
  */
-export function isDisplayRequest(message: AppToCloudMessage): message is DisplayRequest {
+export function isDisplayRequest(
+  message: AppToCloudMessage,
+): message is DisplayRequest {
   return message.type === AppToCloudMessageType.DISPLAY_REQUEST;
 }
 
 /**
  * Type guard to check if a message is a App photo request
  */
-export function isPhotoRequest(message: AppToCloudMessage): message is PhotoRequest {
+export function isPhotoRequest(
+  message: AppToCloudMessage,
+): message is PhotoRequest {
   return message.type === AppToCloudMessageType.PHOTO_REQUEST;
 }
 
 /**
  * Type guard to check if a message is a App audio play request
  */
-export function isAudioPlayRequest(message: AppToCloudMessage): message is AudioPlayRequest {
+export function isAudioPlayRequest(
+  message: AppToCloudMessage,
+): message is AudioPlayRequest {
   return message.type === AppToCloudMessageType.AUDIO_PLAY_REQUEST;
 }
 
 /**
  * Type guard to check if a message is a App audio stop request
  */
-export function isAudioStopRequest(message: AppToCloudMessage): message is AudioStopRequest {
+export function isAudioStopRequest(
+  message: AppToCloudMessage,
+): message is AudioStopRequest {
   return message.type === AppToCloudMessageType.AUDIO_STOP_REQUEST;
 }
 
 /**
  * Type guard to check if a message is a dashboard content update
  */
-export function isDashboardContentUpdate(message: AppToCloudMessage): message is DashboardContentUpdate {
+export function isDashboardContentUpdate(
+  message: AppToCloudMessage,
+): message is DashboardContentUpdate {
   return message.type === AppToCloudMessageType.DASHBOARD_CONTENT_UPDATE;
 }
 
 /**
  * Type guard to check if a message is a dashboard mode change
  */
-export function isDashboardModeChange(message: AppToCloudMessage): message is DashboardModeChange {
+export function isDashboardModeChange(
+  message: AppToCloudMessage,
+): message is DashboardModeChange {
   return message.type === AppToCloudMessageType.DASHBOARD_MODE_CHANGE;
 }
 
 /**
  * Type guard to check if a message is a dashboard system update
  */
-export function isDashboardSystemUpdate(message: AppToCloudMessage): message is DashboardSystemUpdate {
+export function isDashboardSystemUpdate(
+  message: AppToCloudMessage,
+): message is DashboardSystemUpdate {
   return message.type === AppToCloudMessageType.DASHBOARD_SYSTEM_UPDATE;
 }
 
 /**
  * Type guard to check if a message is a managed stream request
  */
-export function isManagedStreamRequest(message: AppToCloudMessage): message is ManagedStreamRequest {
+export function isManagedStreamRequest(
+  message: AppToCloudMessage,
+): message is ManagedStreamRequest {
   return message.type === AppToCloudMessageType.MANAGED_STREAM_REQUEST;
 }
 
 /**
  * Type guard to check if a message is a managed stream stop request
  */
-export function isManagedStreamStopRequest(message: AppToCloudMessage): message is ManagedStreamStopRequest {
+export function isManagedStreamStopRequest(
+  message: AppToCloudMessage,
+): message is ManagedStreamStopRequest {
   return message.type === AppToCloudMessageType.MANAGED_STREAM_STOP;
 }
 
@@ -294,13 +334,17 @@ export interface AppRoomLeave extends BaseMessage {
 /**
  * Type guard to check if a message is an RTMP stream request
  */
-export function isRtmpStreamRequest(message: AppToCloudMessage): message is RtmpStreamRequest {
+export function isRtmpStreamRequest(
+  message: AppToCloudMessage,
+): message is RtmpStreamRequest {
   return message.type === AppToCloudMessageType.RTMP_STREAM_REQUEST;
 }
 
 /**
  * Type guard to check if a message is an RTMP stream stop request
  */
-export function isRtmpStreamStopRequest(message: AppToCloudMessage): message is RtmpStreamStopRequest {
+export function isRtmpStreamStopRequest(
+  message: AppToCloudMessage,
+): message is RtmpStreamStopRequest {
   return message.type === AppToCloudMessageType.RTMP_STREAM_STOP;
 }

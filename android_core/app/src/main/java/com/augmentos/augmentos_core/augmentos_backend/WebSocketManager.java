@@ -30,6 +30,7 @@ public class WebSocketManager extends WebSocketListener implements NetworkMonito
     private static final int MAX_RETRY_ATTEMPTS = 9999999;
     private static final long INITIAL_RETRY_DELAY_MS = 1000; // Start with 1 second
     private static final long MAX_RETRY_DELAY_MS = 30000;    // Max 30 seconds
+    private static final long DISCONNECTION_GRACE_PERIOD_MS = 3000; // 3 seconds grace period
 
     // Callback interface to push messages/events back to ServerComms
     public interface IncomingMessageHandler {
@@ -64,6 +65,10 @@ public class WebSocketManager extends WebSocketListener implements NetworkMonito
 
     private NetworkMonitor networkMonitor;
     private boolean shouldAutoReconnect = true;
+
+    // Disconnection event grace period handling
+    private final Handler disconnectionHandler = new Handler(Looper.getMainLooper());
+    private Runnable disconnectionRunnable;
 
     // Exponential backoff runnable
     private final Runnable reconnectRunnable = new Runnable() {
@@ -178,6 +183,13 @@ public class WebSocketManager extends WebSocketListener implements NetworkMonito
             shouldAutoReconnect = false;
             intentionalDisconnect = true;
             reconnectHandler.removeCallbacks(reconnectRunnable);
+            
+            // Cancel any pending disconnection event
+            if (disconnectionRunnable != null) {
+                disconnectionHandler.removeCallbacks(disconnectionRunnable);
+                disconnectionRunnable = null;
+            }
+            
             if (webSocket != null && connected) {
                 webSocket.close(1000, "Normal closure");
             }
@@ -264,6 +276,31 @@ public class WebSocketManager extends WebSocketListener implements NetworkMonito
         }
     }
 
+    private void scheduleDisconnectionEvent() {
+        synchronized (connectionLock) {
+            // Cancel any pending disconnection event
+            if (disconnectionRunnable != null) {
+                disconnectionHandler.removeCallbacks(disconnectionRunnable);
+            }
+
+            disconnectionRunnable = new Runnable() {
+                @Override
+                public void run() {
+                    synchronized (connectionLock) {
+                        // Only post if still disconnected after grace period
+                        if (!connected) {
+                            Log.d(TAG, "Posting DisconnectedFromCloudEvent after grace period");
+                            EventBus.getDefault().post(new DisconnectedFromCloudEvent());
+                        }
+                    }
+                }
+            };
+
+            Log.d(TAG, "Scheduling disconnection event with " + DISCONNECTION_GRACE_PERIOD_MS + "ms grace period");
+            disconnectionHandler.postDelayed(disconnectionRunnable, DISCONNECTION_GRACE_PERIOD_MS);
+        }
+    }
+
     // -------------------------------------------
     // WebSocketListener callbacks
     // -------------------------------------------
@@ -274,6 +311,14 @@ public class WebSocketManager extends WebSocketListener implements NetworkMonito
             connected = true;
             reconnecting = false;
             retryAttempts = 0; // Reset retry counter on successful connection
+            
+            // Cancel any pending disconnection event
+            if (disconnectionRunnable != null) {
+                disconnectionHandler.removeCallbacks(disconnectionRunnable);
+                disconnectionRunnable = null;
+                Log.d(TAG, "Cancelled pending disconnection event due to reconnection");
+            }
+            
             Log.d(TAG, "WebSocket opened: " + response);
             if (handler != null) {
                 handler.onConnectionOpen();
@@ -311,7 +356,8 @@ public class WebSocketManager extends WebSocketListener implements NetworkMonito
                 handler.onConnectionClosed();
                 handler.onConnectionStatusChange(IncomingMessageHandler.WebSocketStatus.DISCONNECTED);
                 Log.d(TAG, "Connection closed and handled, proceeding with cleanup and reconnect");
-                EventBus.getDefault().post(new DisconnectedFromCloudEvent());
+                // Schedule disconnection event with grace period instead of immediate posting
+                scheduleDisconnectionEvent();
             }
             cleanupSafe();
             scheduleReconnect();
@@ -329,8 +375,9 @@ public class WebSocketManager extends WebSocketListener implements NetworkMonito
             if (handler != null) {
                 handler.onError("WebSocket failure: " + t.getMessage());
                 handler.onConnectionStatusChange(IncomingMessageHandler.WebSocketStatus.DISCONNECTED);
-                Log.d(TAG, "WebSocket failure handled, notifying handler and posting DisconnectedFromCloudEvent");
-                EventBus.getDefault().post(new DisconnectedFromCloudEvent());
+                Log.d(TAG, "WebSocket failure handled, notifying handler");
+                // Schedule disconnection event with grace period instead of immediate posting
+                scheduleDisconnectionEvent();
             }
 
             cleanupSafe();

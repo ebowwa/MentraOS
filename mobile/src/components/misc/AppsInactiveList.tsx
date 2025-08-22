@@ -1,50 +1,35 @@
 // YourAppsList.tsx
-import React, {useCallback, useEffect, useRef, useState} from "react"
+import React, {useEffect, useRef, useState} from "react"
 import {
   View,
   StyleSheet,
   TouchableOpacity,
-  ScrollView,
   Animated,
   Platform,
   ViewStyle,
   TextStyle,
-  ActivityIndicator,
   Easing,
   Keyboard,
 } from "react-native"
 import {Text} from "@/components/ignite"
-import MessageModal from "./MessageModal"
-import {useStatus} from "@/contexts/AugmentOSStatusProvider"
+import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import BackendServerComms from "@/backend_comms/BackendServerComms"
 import {loadSetting, saveSetting} from "@/utils/SettingsHelper"
 import {SETTINGS_KEYS} from "@/consts"
-import Icon from "react-native-vector-icons/MaterialCommunityIcons"
-import {useFocusEffect, useNavigation} from "@react-navigation/native"
-import AppIcon from "./AppIcon"
-import {NavigationProps} from "./types"
-import {AppInterface, AppPermission, useAppStatus} from "@/contexts/AppStatusProvider"
-import {requestFeaturePermissions} from "@/utils/PermissionsUtils"
-import {checkFeaturePermissions} from "@/utils/PermissionsUtils"
-import {PermissionFeatures} from "@/utils/PermissionsUtils"
+import {useFocusEffect} from "@react-navigation/native"
+import {useAppStatus} from "@/contexts/AppletStatusProvider"
+import {askPermissionsUI} from "@/utils/PermissionsUtils"
 import showAlert from "@/utils/AlertUtils"
-import {PERMISSION_CONFIG} from "@/utils/PermissionsUtils"
-import ChevronRight from "assets/icons/component/ChevronRight"
 import {translate} from "@/i18n"
 import {useAppTheme} from "@/utils/useAppTheme"
-import {router} from "expo-router"
-import EmptyAppsView from "../home/EmptyAppsView"
 import {AppListItem} from "./AppListItem"
-import {Spacer} from "./Spacer"
-import Divider from "./Divider"
-import {spacing, ThemedStyle} from "@/theme"
+import {Spacer} from "@/components/misc/Spacer"
+import Divider from "@/components/misc/Divider"
+import {ThemedStyle} from "@/theme"
 import {TreeIcon} from "assets/icons/component/TreeIcon"
-import AppsHeader from "./AppsHeader"
-import {
-  checkAndRequestNotificationAccessSpecialPermission,
-  checkNotificationAccessSpecialPermission,
-} from "@/utils/NotificationServiceUtils"
-import {AppListStoreLink} from "./AppListStoreLink"
+import AppsHeader from "@/components/misc/AppsHeader"
+import {AppListStoreLink} from "@/components/misc/AppListStoreLink"
+import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 
 export default function InactiveAppList({
   isSearchPage = false,
@@ -57,15 +42,8 @@ export default function InactiveAppList({
   liveCaptionsRef?: React.RefObject<any>
   onClearSearch?: () => void
 }) {
-  const {
-    appStatus,
-    refreshAppStatus,
-    optimisticallyStartApp,
-    optimisticallyStopApp,
-    clearPendingOperation,
-    isSensingEnabled,
-  } = useAppStatus()
-  const {status} = useStatus()
+  const {appStatus, optimisticallyStartApp, checkAppHealthStatus} = useAppStatus()
+  const {status} = useCoreStatus()
   const [onboardingModalVisible, setOnboardingModalVisible] = useState(false)
   const [onboardingCompleted, setOnboardingCompleted] = useState(true)
   const [inLiveCaptionsPhase, setInLiveCaptionsPhase] = useState(false)
@@ -73,6 +51,7 @@ export default function InactiveAppList({
   const [showOnboardingTip, setShowOnboardingTip] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const {themed, theme} = useAppTheme()
+  const {push} = useNavigationHistory()
 
   // Static values instead of animations
   const bounceAnim = React.useRef(new Animated.Value(0)).current
@@ -89,11 +68,6 @@ export default function InactiveAppList({
   const numColumns = 4 // Desired number of columns
 
   // Calculate the item width based on container width and margins
-  const itemWidth = containerWidth > 0 ? (containerWidth - GRID_MARGIN * numColumns) / numColumns : 0
-
-  const textColor = theme.isDark ? "#FFFFFF" : "#000000"
-
-  const backendComms = BackendServerComms.getInstance()
 
   // console.log('%%% appStatus', appStatus);
 
@@ -160,91 +134,6 @@ export default function InactiveAppList({
     }, 100)
   }
 
-  const checkPermissions = async (app: AppInterface) => {
-    let permissions = app.permissions || []
-    const neededPermissions: string[] = []
-
-    if (permissions.length == 1 && permissions[0].type == "ALL") {
-      permissions = [
-        {type: "MICROPHONE", required: true},
-        {type: "CALENDAR", required: true},
-        {type: "POST_NOTIFICATIONS", required: true},
-        {type: "READ_NOTIFICATIONS", required: true},
-        {type: "LOCATION", required: true},
-        {type: "BACKGROUND_LOCATION", required: true},
-      ] as AppPermission[]
-    }
-
-    if (app.packageName == "cloud.augmentos.notify") {
-      permissions.push({type: "READ_NOTIFICATIONS", required: true, description: "Read notifications"})
-    }
-
-    for (const permission of permissions) {
-      if (!(permission["required"] ?? true)) {
-        continue
-      }
-      switch (permission.type) {
-        case "MICROPHONE":
-          const hasMicrophone = await checkFeaturePermissions(PermissionFeatures.MICROPHONE)
-          if (!hasMicrophone) {
-            neededPermissions.push(PermissionFeatures.MICROPHONE)
-          }
-          break
-        case "CAMERA":
-          const hasCamera = await checkFeaturePermissions(PermissionFeatures.CAMERA)
-          if (!hasCamera) {
-            neededPermissions.push(PermissionFeatures.CAMERA)
-          }
-          break
-        case "CALENDAR":
-          const hasCalendar = await checkFeaturePermissions(PermissionFeatures.CALENDAR)
-          if (!hasCalendar) {
-            neededPermissions.push(PermissionFeatures.CALENDAR)
-          }
-          break
-        case "LOCATION":
-          const hasLocation = await checkFeaturePermissions(PermissionFeatures.LOCATION)
-          if (!hasLocation) {
-            neededPermissions.push(PermissionFeatures.LOCATION)
-          }
-          break
-        case "BACKGROUND_LOCATION":
-          const hasBackgroundLocation = await checkFeaturePermissions(PermissionFeatures.BACKGROUND_LOCATION)
-          if (!hasBackgroundLocation) {
-            neededPermissions.push(PermissionFeatures.BACKGROUND_LOCATION)
-          }
-          break
-        case "POST_NOTIFICATIONS":
-          const hasNotificationPermission = await checkFeaturePermissions(PermissionFeatures.POST_NOTIFICATIONS)
-          if (!hasNotificationPermission) {
-            neededPermissions.push(PermissionFeatures.POST_NOTIFICATIONS)
-          }
-          break
-        case "READ_NOTIFICATIONS":
-          if (Platform.OS == "ios") {
-            break
-          }
-          const hasNotificationAccess = await checkNotificationAccessSpecialPermission()
-          if (!hasNotificationAccess) {
-            neededPermissions.push(PermissionFeatures.READ_NOTIFICATIONS)
-          }
-          break
-      }
-    }
-
-    return neededPermissions
-  }
-
-  const requestPermissions = async (permissions: string[]) => {
-    for (const permission of permissions) {
-      await requestFeaturePermissions(permission)
-    }
-
-    if (permissions.includes(PermissionFeatures.READ_NOTIFICATIONS) && Platform.OS === "android") {
-      await checkAndRequestNotificationAccessSpecialPermission()
-    }
-  }
-
   function checkIsForegroundAppStart(packageName: string, isForeground: boolean): Promise<boolean> {
     if (!isForeground) {
       return Promise.resolve(true)
@@ -274,6 +163,7 @@ export default function InactiveAppList({
       )
     })
   }
+
   const startApp = async (packageName: string) => {
     if (!onboardingCompleted) {
       if (packageName !== "com.augmentos.livecaptions" && packageName !== "com.mentra.livecaptions") {
@@ -293,56 +183,26 @@ export default function InactiveAppList({
     }
 
     // Find the app we're trying to start
-    const appToStart = appStatus.find(app => app.packageName === packageName)
-    if (!appToStart) {
+    const appInfo = appStatus.find(app => app.packageName === packageName)
+    if (!appInfo) {
       console.error("App not found:", packageName)
       return
     }
 
-    // check perms:
-    const neededPermissions = await checkPermissions(appToStart)
-    if (neededPermissions.length > 0) {
-      await showAlert(
-        neededPermissions.length > 1
-          ? translate("home:permissionsRequiredTitle")
-          : translate("home:permissionRequiredTitle"),
-        translate("home:permissionMessage", {
-          permissions: neededPermissions.map(perm => PERMISSION_CONFIG[perm]?.name || perm).join(", "),
-        }),
-        [
-          {
-            text: translate("common:cancel"),
-            onPress: () => {},
-            style: "cancel",
-          },
-          {
-            text: translate("common:next"),
-            onPress: async () => {
-              await requestPermissions(neededPermissions)
+    if (!(await checkAppHealthStatus(appInfo.packageName))) {
+      showAlert(translate("errors:appNotOnlineTitle"), translate("errors:appNotOnlineMessage"), [
+        {text: translate("common:ok")},
+      ])
+      return
+    }
 
-              // Check if permissions were actually granted (for non-special permissions)
-              // Special permissions like READ_NOTIFICATIONS on Android require manual action
-              const stillNeededPermissions = await checkPermissions(appToStart)
-
-              // If we still need READ_NOTIFICATIONS, don't auto-retry
-              // The user needs to manually grant it in settings and try again
-              if (stillNeededPermissions.includes(PermissionFeatures.READ_NOTIFICATIONS) && Platform.OS === "android") {
-                // Permission flow is in progress, user needs to complete it manually
-                return
-              }
-
-              // For other permissions that were granted, proceed with starting the app
-              if (stillNeededPermissions.length === 0) {
-                startApp(packageName)
-              }
-            },
-          },
-        ],
-        {
-          iconName: "information-outline",
-          iconColor: theme.colors.textDim,
-        },
-      )
+    // ask for needed perms:
+    const result = await askPermissionsUI(appInfo, theme)
+    if (result === -1) {
+      return
+    } else if (result === 0) {
+      startApp(appInfo.packageName) // restart this function
+      return
     }
 
     // Check if glasses are connected and this is the first app being activated
@@ -388,92 +248,23 @@ export default function InactiveAppList({
 
     // Only update UI optimistically after user confirms and animation completes
     optimisticallyStartApp(packageName)
-
-    // Check if it's a standard app
-    if (appToStart?.appType === "standard") {
-      console.log("% appToStart", appToStart)
-      // Find any running standard apps
-      const runningStandardApps = getRunningStandardApps(packageName)
-
-      console.log("%%% runningStandardApps", runningStandardApps)
-
-      // If there's any running standard app, stop it first
-      for (const runningApp of runningStandardApps) {
-        // Optimistically update UI
-        optimisticallyStopApp(runningApp.packageName)
-
-        try {
-          console.log("%%% stopping app", runningApp.packageName)
-          await backendComms.stopApp(runningApp.packageName)
-          clearPendingOperation(runningApp.packageName)
-        } catch (error) {
-          console.error("stop app error:", error)
-          refreshAppStatus()
-        }
-      }
-    }
-
-    // Start the operation in the background
-    setIsLoading(true)
-    try {
-      console.log("%%% starting app", packageName)
-      await backendComms.startApp(packageName)
-      // Clear the pending operation since it completed successfully
-      clearPendingOperation(packageName)
-
-      // Mark that the user has ever activated an app
-      await saveSetting(SETTINGS_KEYS.HAS_EVER_ACTIVATED_APP, true)
-
-      if (!onboardingCompleted && packageName === "com.augmentos.livecaptions") {
-        // If this is the Live Captions app, make sure we've hidden the tip
-        setShowOnboardingTip(false)
-
-        setTimeout(() => {
-          showAlert(
-            translate("home:tryLiveCaptionsTitle"),
-            translate("home:tryLiveCaptionsMessage"),
-            [{text: translate("common:ok")}],
-            {
-              iconName: "microphone",
-            },
-          )
-        }, 500)
-      }
-    } catch (error) {
-      // Revert the app state when there's an error starting the app
-      console.error("start app error:", error)
-
-      // Clear the pending operation for this app
-      clearPendingOperation(packageName)
-      // Refresh the app status to move the app back to inactive
-      refreshAppStatus()
-    } finally {
-      setIsLoading(false)
-    }
   }
 
   const getRunningStandardApps = (packageName: string) => {
-    return appStatus.filter(
-      app =>
-        app.is_running &&
-        (app.appType == "standard" || app["tpaType"] == "standard") &&
-        app.packageName !== packageName,
-    )
+    return appStatus.filter(app => app.is_running && app.appType == "standard" && app.packageName !== packageName)
   }
   const openAppSettings = (app: any) => {
     console.log("%%% opening app settings", app)
-    router.push({
-      pathname: "/app/settings",
-      params: {
-        packageName: app.packageName,
-        appName: app.name,
-      },
-    })
+    push("/applet/settings", {packageName: app.packageName, appName: app.name})
   }
 
-  // Filter out duplicate apps and running apps
+  // Filter out duplicate apps, running apps, and incompatible apps
   let availableApps = appStatus.filter(app => {
     if (app.is_running) {
+      return false
+    }
+    // Filter out incompatible apps (they will be shown in a separate section)
+    if (app.compatibility && !app.compatibility.isCompatible) {
       return false
     }
     // Check if this is the first occurrence of this package name
@@ -516,9 +307,14 @@ export default function InactiveAppList({
     Object.fromEntries(appStatus.map(app => [app.packageName, new Animated.Value(0)])),
   ).current
 
-  // Animate all availableApps' opacities to 1 on mount or change
+  // Ensure every available app has an Animated.Value and animate to 1 on mount/change
   useEffect(() => {
     availableApps.forEach(app => {
+      // Lazily create Animated.Value if it doesn't exist yet (e.g. newly fetched app)
+      if (!(app.packageName in opacities)) {
+        opacities[app.packageName] = new Animated.Value(0)
+      }
+
       Animated.timing(opacities[app.packageName], {
         toValue: 1,
         duration: 300,
@@ -552,10 +348,10 @@ export default function InactiveAppList({
             <AppListItem
               app={app}
               // @ts-ignore
-              is_foreground={app.appType == "standard" || app["tpaType"] == "standard"}
+              is_foreground={app.appType == "standard"}
               isActive={false}
               onTogglePress={async () => {
-                const isForegroundApp = app.appType == "standard" || app["tpaType"] == "standard"
+                const isForegroundApp = app.appType == "standard"
                 const res = await checkIsForegroundAppStart(app.packageName, isForegroundApp)
                 if (res) {
                   // Don't animate here - let startApp handle all UI updates
@@ -615,13 +411,6 @@ export default function InactiveAppList({
   )
 }
 
-const $loadingContainer: ThemedStyle<ViewStyle> = () => ({
-  flex: 1,
-  justifyContent: "center",
-  alignItems: "center",
-  marginTop: 50,
-})
-
 const $noAppsContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
   flex: 1,
   justifyContent: "center",
@@ -629,7 +418,7 @@ const $noAppsContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
   paddingVertical: spacing.xxl,
 })
 
-const $noAppsText: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
+const $noAppsText: ThemedStyle<TextStyle> = ({colors}) => ({
   fontSize: 16,
   color: colors.textDim,
   textAlign: "center",
@@ -648,182 +437,4 @@ const $clearSearchButtonText: ThemedStyle<TextStyle> = ({colors}) => ({
   fontWeight: "600",
   color: colors.textAlt,
   textAlign: "center",
-})
-
-const styles = StyleSheet.create({
-  // appsContainer: {
-  //   marginTop: -8,
-  //   marginBottom: 0,
-  //   width: "100%",
-  //   paddingHorizontal: 0,
-  //   paddingVertical: 10,
-  // },
-  // titleContainer: {
-  //   width: "100%",
-  //   flexDirection: "row",
-  //   alignItems: "center",
-  //   justifyContent: "space-between",
-  //   marginLeft: 0,
-  //   paddingLeft: 0,
-  // },
-  // gridContainer: {
-  //   flexDirection: "row",
-  //   flexWrap: "wrap",
-  //   justifyContent: "flex-start",
-  // },
-  // listContainer: {
-  //   gap: 16,
-  // },
-  // appContent: {
-  //   flexDirection: "row",
-  //   alignItems: "center",
-  //   minHeight: 40, // Match RunningAppsList minHeight
-  // },
-  // itemContainer: {
-  //   alignItems: "center",
-  //   justifyContent: "center",
-  // },
-  // emptyContainer: {
-  //   alignItems: "center",
-  //   justifyContent: "center",
-  // },
-  // tipButton: {
-  //   flexDirection: "row",
-  //   alignItems: "center",
-  //   paddingHorizontal: 10,
-  //   paddingVertical: 5,
-  //   borderRadius: 15,
-  // },
-  // tipText: {
-  //   marginLeft: 5,
-  //   fontSize: 14,
-  // },
-  // appTextContainer: {
-  //   flex: 1,
-  //   marginLeft: 8,
-  //   justifyContent: "center",
-  // },
-  // settingsButton: {
-  //   padding: 50,
-  //   margin: -46,
-  // },
-  // appIconStyle: {
-  //   width: 50, // Match RunningAppsList icon size
-  //   height: 50, // Match RunningAppsList icon size
-  // },
-  // settingsHintContainer: {
-  //   padding: 12,
-  //   borderRadius: 8,
-  //   borderWidth: 1,
-  //   marginBottom: 12,
-  // },
-  // hintContent: {
-  //   flexDirection: "row",
-  //   alignItems: "center",
-  // },
-  // hintText: {
-  //   marginLeft: 10,
-  //   fontSize: 14,
-  //   fontWeight: "500",
-  // },
-  // sensingWarningContainer: {
-  //   flexDirection: "row",
-  //   alignItems: "center",
-  //   justifyContent: "space-between",
-  //   padding: 12,
-  //   borderRadius: 8,
-  //   borderWidth: 1,
-  //   marginBottom: 12,
-  // },
-  // warningContent: {
-  //   flexDirection: "row",
-  //   alignItems: "center",
-  //   flex: 1,
-  // },
-  // warningText: {
-  //   marginLeft: 10,
-  //   fontSize: 14,
-  //   fontWeight: "500",
-  //   color: "#E65100",
-  //   flex: 1,
-  // },
-  // settingsButtonText: {
-  //   color: "#FFFFFF",
-  //   fontSize: 13,
-  //   fontWeight: "bold",
-  // },
-  // settingsButtonBlue: {
-  //   backgroundColor: "#007AFF",
-  //   borderRadius: 5,
-  //   paddingVertical: 5,
-  //   paddingHorizontal: 10,
-  //   margin: 0,
-  // },
-  // settingsButtonTextBlue: {
-  //   color: "#007AFF",
-  //   fontSize: 14,
-  //   fontWeight: "bold",
-  // },
-  // scrollViewContent: {
-  //   paddingBottom: Platform.OS === "ios" ? 24 : 38, // Account for nav bar height + iOS home indicator
-  // },
-  // appIcon: {
-  //   width: 32,
-  //   height: 32,
-  // },
-  // toggle: {
-  //   width: 36,
-  //   height: 20,
-  // },
-  // toggleBarIcon: {
-  //   height: "80%",
-  //   width: "94.44%",
-  //   top: "15%",
-  //   right: "5.56%",
-  //   bottom: "15%",
-  //   left: "0%",
-  //   borderRadius: 8,
-  //   maxHeight: "100%",
-  // },
-  // toggleCircleIcon: {
-  //   width: "55.56%",
-  //   top: 0,
-  //   right: "47.22%",
-  //   left: "-2.78%",
-  //   borderRadius: 12,
-  //   height: 20,
-  // },
-  // toggleIconLayout: {
-  //   maxWidth: "100%",
-  //   position: "absolute",
-  //   overflow: "hidden",
-  // },
-  // everythingFlexBox: {
-  //   flexDirection: "row",
-  //   alignItems: "center",
-  // },
-  // everything: {
-  //   justifyContent: "space-between",
-  //   gap: 0,
-  //   alignSelf: "stretch",
-  // },
-  // toggleParent: {
-  //   gap: 12,
-  // },
-  // appDescription: {
-  //   gap: 17,
-  //   justifyContent: "center",
-  // },
-  // appNameWrapper: {
-  //   justifyContent: "center",
-  // },
-  // appName: {
-  //   fontSize: 15,
-  //   letterSpacing: 0.6,
-  //   lineHeight: 20,
-  //   fontFamily: "SF Pro Rounded",
-  //   color: "#ced2ed",
-  //   textAlign: "left",
-  //   overflow: "hidden",
-  // },
 })

@@ -7,9 +7,11 @@ import * as React from "react"
 import {View, TextStyle, ViewStyle, Pressable} from "react-native"
 import {SafeAreaView} from "react-native-safe-area-context"
 import {Text} from "@/components/ignite"
+import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 
 const AppsHeader = ({showSearchIcon = true, title}: {showSearchIcon?: boolean; title: TxKeyPath}) => {
   const {themed, theme} = useAppTheme()
+  const {push} = useNavigationHistory()
 
   return (
     <View style={themed($listHeaderIcon)}>
@@ -20,7 +22,7 @@ const AppsHeader = ({showSearchIcon = true, title}: {showSearchIcon?: boolean; t
         <Pressable
           style={themed($wrapper)}
           onPress={() => {
-            router.push("/search/search")
+            push("/search/search")
           }}>
           <SearchIcon color={theme.colors.searchIcon} />
         </Pressable>

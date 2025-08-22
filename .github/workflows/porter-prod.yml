@@ -4,7 +4,8 @@ on:
   push:
     branches:
       - main
-
+    paths:
+      - "cloud/**"
 jobs:
   porter-deploy:
     runs-on: ubuntu-latest
@@ -26,8 +27,8 @@ jobs:
           PORTER_APP_NAME: cloud-prod
           PORTER_NAMESPACE: prod
           NODE_ENV: production
-          PORTER_CLUSTER: "4689"         # Use your production cluster ID
-          PORTER_PROJECT: "15081"          # Use your Porter project ID
+          PORTER_CLUSTER: "4689" # Use your production cluster ID
+          PORTER_PROJECT: "15081" # Use your Porter project ID
           PORTER_HOST: https://dashboard.porter.run
           PORTER_PR_NUMBER: ${{ github.event.number }}
           PORTER_REPO_NAME: ${{ github.event.repository.name }}

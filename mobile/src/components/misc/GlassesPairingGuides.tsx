@@ -2,7 +2,17 @@
 
 import {useAppTheme} from "@/utils/useAppTheme"
 import React, {useEffect} from "react"
-import {View, StyleSheet, Image, TouchableOpacity, Linking, ImageStyle, ViewStyle, TextStyle} from "react-native"
+import {
+  View,
+  StyleSheet,
+  Image,
+  TouchableOpacity,
+  Linking,
+  ImageStyle,
+  ViewStyle,
+  TextStyle,
+  Platform,
+} from "react-native"
 import {Text} from "@/components/ignite"
 import {translate} from "@/i18n"
 import {showAlert} from "@/utils/AlertUtils"
@@ -264,7 +274,11 @@ export function MentraMach1PairingGuide() {
         style={[styles.guideStep, {color: textColor}]}
       />
       <Text
-        text="2. Pair your Mach1 with your device using the Vuzix Connect app."
+        text="2. Make sure your device is running the latest firmware by using the Vuzix Connect app."
+        style={[styles.guideStep, {color: textColor}]}
+      />
+      <Text
+        text="3. Put your Mentra Mach1 in pairing mode: hold the power button until you see the Bluetooth icon, then release."
         style={[styles.guideStep, {color: textColor}]}
       />
     </View>
@@ -376,7 +390,11 @@ export function VuzixZ100PairingGuide() {
         style={[styles.guideStep, {color: textColor}]}
       />
       <Text
-        text="2. Pair your Vuzix Z100 with your device using the Vuzix Connect app."
+        text="2. Make sure your device is running the latest firmware by using the Vuzix Connect app."
+        style={[styles.guideStep, {color: textColor}]}
+      />
+      <Text
+        text="3. Put your Vuzix Z100 in pairing mode: hold the power button until you see the Bluetooth icon, then release."
         style={[styles.guideStep, {color: textColor}]}
       />
     </View>
@@ -389,6 +407,45 @@ export function VirtualWearablePairingGuide() {
     <View style={styles.guideContainer}>
       <Text text="Simulated Glasses" style={[styles.guideTitle, {color: theme.colors.text}]} />
       <Text tx="pairing:simulatedGlassesDescription" style={[styles.guideStep, {color: theme.colors.text}]} />
+    </View>
+  )
+}
+
+export function BrilliantLabsFramePairingGuide() {
+  const {theme} = useAppTheme()
+
+  return (
+    <View style={styles.guideContainer}>
+      <Text text="Brilliant Labs Frame" style={[styles.guideTitle, {color: theme.colors.text}]} />
+
+      {/* Placeholder image - will be replaced with actual image */}
+      <View
+        style={[
+          styles.guideImage,
+          {backgroundColor: theme.colors.border, justifyContent: "center", alignItems: "center"},
+        ]}>
+        <Text text="Frame" style={{color: theme.colors.text, fontSize: 24}} />
+      </View>
+
+      {/* Feature list */}
+      <GlassesFeatureList glassesModel="Brilliant Labs Frame" />
+
+      {/* Pairing instructions */}
+      <Text
+        text="1. Make sure your Frame is charged and powered on"
+        style={[styles.guideStep, {color: theme.colors.text}]}
+      />
+      <Text
+        text="2. Frame will appear in the device list when scanning"
+        style={[styles.guideStep, {color: theme.colors.text}]}
+      />
+      <Text text="3. Select your Frame device to connect" style={[styles.guideStep, {color: theme.colors.text}]} />
+
+      {/* Marketing description */}
+      <Text
+        text="Brilliant Labs Frame brings AI-powered AR to everyday eyewear. With an integrated display, camera, and microphone, Frame enables real-time visual augmentation and AI assistance directly in your field of view."
+        style={[styles.guideDescription, {color: theme.colors.text}]}
+      />
     </View>
   )
 }

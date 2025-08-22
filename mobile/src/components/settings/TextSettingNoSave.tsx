@@ -3,6 +3,7 @@ import {View, Text, StyleSheet, Platform, Pressable} from "react-native"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {router, useFocusEffect} from "expo-router"
 import {textEditorStore} from "@/utils/TextEditorStore"
+import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 
 type TextSettingNoSaveProps = {
   label: string
@@ -13,26 +14,25 @@ type TextSettingNoSaveProps = {
 
 const TextSettingNoSave: React.FC<TextSettingNoSaveProps> = ({label, value, onChangeText, settingKey}) => {
   const {theme} = useAppTheme()
+  const {push} = useNavigationHistory()
 
   // Check for pending value when component gets focus
   useFocusEffect(
     React.useCallback(() => {
+      // Only process if there's actually a pending value (meaning we just returned from text editor)
       const pendingValue = textEditorStore.getPendingValue()
       if (pendingValue && pendingValue.key === settingKey) {
         onChangeText(pendingValue.value)
+        textEditorStore.setPendingValue(pendingValue.key, "") // Only clear when we use it
+      } else if (pendingValue) {
+        // If there's a pending value but it doesn't match, put it back
+        textEditorStore.setPendingValue(pendingValue.key, pendingValue.value)
       }
-    }, [settingKey, onChangeText]),
+    }, [settingKey]),
   )
 
   const handleOpenEditor = () => {
-    router.push({
-      pathname: "/app/text-editor",
-      params: {
-        label,
-        value,
-        settingKey,
-      },
-    })
+    push("/applet/text-editor", {label, value, settingKey})
   }
 
   return (
