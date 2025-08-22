@@ -156,7 +156,7 @@ public class WifiCommandHandler implements ICommandHandler {
      */
     public boolean handleSetHotspotState(JSONObject data) {
         try {
-            boolean hotspotEnabled = data.optBoolean("enabled", false);
+            boolean requestedState = data.optBoolean("enabled", false);
             INetworkManager networkManager = serviceManager.getNetworkManager();
             
             if (networkManager == null) {
@@ -164,18 +164,27 @@ public class WifiCommandHandler implements ICommandHandler {
                 return false;
             }
             
-            if (hotspotEnabled) {
-                // Note: SSID and password are now device-persistent and generated internally
-                // The phone can no longer specify custom credentials
-                networkManager.startHotspot();
-                Log.d(TAG, "🔥 Hotspot start requested - status will be sent via broadcast receiver");
-            } else {
-                networkManager.stopHotspot();
-                Log.d(TAG, "🔥 Hotspot stop requested - status will be sent via broadcast receiver");
-            }
+            boolean currentState = networkManager.isHotspotEnabled();
             
-            // Don't send immediate status - let the broadcast receiver handle it
-            // This ensures we send the actual state, not the requested state
+            // Check if already in requested state
+            if (currentState == requestedState) {
+                Log.d(TAG, "🔥 Hotspot already in requested state (" + 
+                        (requestedState ? "ENABLED" : "DISABLED") + 
+                        "), sending current status");
+                
+                // Send current status immediately since there won't be a state change broadcast
+                sendHotspotStatusToPhone(networkManager);
+            } else {
+                // State needs to change
+                if (requestedState) {
+                    networkManager.startHotspot();
+                    Log.d(TAG, "🔥 Hotspot start requested - status will be sent via broadcast receiver");
+                } else {
+                    networkManager.stopHotspot();
+                    Log.d(TAG, "🔥 Hotspot stop requested - status will be sent via broadcast receiver");
+                }
+                // Broadcast receiver will handle sending the status when state actually changes
+            }
             
             return true;
         } catch (Exception e) {

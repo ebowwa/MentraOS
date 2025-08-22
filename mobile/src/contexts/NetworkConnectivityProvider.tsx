@@ -30,10 +30,14 @@ export function NetworkConnectivityProvider({children}: NetworkConnectivityProvi
   const hotspotGatewayIp = status.glasses_info?.glasses_hotspot_gateway_ip
   const hotspotSSID = status.glasses_info?.glasses_hotspot_ssid
 
-  // Determine the active IP - prioritize hotspot if enabled
-  const activeGlassesIp = isHotspotEnabled && hotspotGatewayIp ? hotspotGatewayIp : glassesWifiIp
-  const activeConnection = isHotspotEnabled || isWifiConnected
-  const activeSSID = isHotspotEnabled ? hotspotSSID : glassesWifiSSID
+  // Determine the active IP - ONLY use hotspot gateway IP when phone is connected to hotspot
+  // Never use local WiFi IP - we only support hotspot mode for gallery
+  const phoneConnectedToHotspot = networkStatus.phoneSSID && hotspotSSID && networkStatus.phoneSSID === hotspotSSID
+
+  // Only use hotspot IP when phone is actually connected to the hotspot
+  const activeGlassesIp = phoneConnectedToHotspot && hotspotGatewayIp ? hotspotGatewayIp : undefined
+  const activeConnection = phoneConnectedToHotspot
+  const activeSSID = phoneConnectedToHotspot ? hotspotSSID : undefined
 
   // Initialize network monitoring
   useEffect(() => {
