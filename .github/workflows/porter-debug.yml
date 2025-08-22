@@ -1,7 +1,7 @@
 "on":
   push:
     branches:
-      - subscription-manager
+      - cloud/livekit
     paths:
       - "cloud/**"
 name: 🚀 [debug] Porter.run Deploy

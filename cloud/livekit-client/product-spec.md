@@ -11,16 +11,59 @@ Smart Glasses → TypeScript Cloud → Go Bridge → LiveKit
 
 ## Problems
 
-1. **Node.js LiveKit SDK is broken** - Random crashes, memory leaks, unreliable connections
-2. **WebSocket audio limitations** - No adaptive bitrate, packet loss recovery, or jitter buffering  
-3. **Can't properly test** - Node.js can't create real WebRTC clients
+### Current Audio Architecture Limitations
+
+Our system needs to stream real-time audio between smart glasses and cloud services. Currently we use WebSocket with binary frames to send 16kHz PCM audio chunks. This works but has issues:
+
+- **No adaptive quality** - WebSocket can't adjust bitrate for network conditions
+- **Packet loss = audio gaps** - No recovery mechanism for dropped packets
+- **No jitter buffering** - Audio stutters on variable latency networks
+- **High bandwidth usage** - Raw PCM uses ~256kbps per stream
+
+### Why We Need WebRTC
+
+WebRTC (via LiveKit) solves these issues with:
+- Adaptive bitrate based on network conditions
+- Forward error correction for packet loss
+- Built-in jitter buffering
+- Opus codec compression (~32-64kbps)
+- Proven scalability via SFU architecture
+
+### The LiveKit SDK Problem
+
+LiveKit provides several SDKs, but none work for our Node.js/TypeScript backend:
+
+1. **LiveKit Server SDK** (`livekit-server-sdk-js`)
+   - ✅ Can create rooms and mint tokens
+   - ❌ Cannot create WebRTC clients that join rooms
+   - Purpose: Admin operations only
+
+2. **LiveKit Browser SDK** (`livekit-client`)  
+   - ✅ Full WebRTC client capabilities
+   - ❌ Requires browser DOM/WebRTC APIs
+   - Cannot run in Node.js environment
+
+3. **LiveKit Node SDK** (`@livekit/rtc-node`)
+   - ✅ Can subscribe to audio (receive)
+   - ❌ Cannot publish audio (send) - critical blocker
+   - ❌ Still in beta, "not production ready" per LiveKit team
+   - ❌ Frequent crashes and memory leaks
+
+### Why This Matters
+
+Without a working WebRTC client in our TypeScript backend, we can't:
+- Receive audio from glasses via LiveKit
+- Send audio back to glasses (future TTS features)
+- Leverage LiveKit's infrastructure we're already paying for
+- Provide reliable audio quality on poor networks
 
 ## Why Go
 
-- LiveKit itself is written in Go
-- Go has mature WebRTC libraries (Pion)
-- Can handle thousands of concurrent connections in single process
-- TypeScript keeps business logic, Go only handles WebRTC
+- **LiveKit is written in Go** - First-class SDK support
+- **Mature WebRTC libraries** - Pion WebRTC is production-tested
+- **Go SDK is stable** - Can both publish and subscribe reliably
+- **Single process efficiency** - One Go service handles all users
+- **Clear separation** - TypeScript handles business logic, Go handles WebRTC transport
 
 ## Architecture
 
