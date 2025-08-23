@@ -248,7 +248,7 @@ struct ViewState {
                 }
 
                 if self.bypassVad || self.bypassVadForPCM {
-                    Core.log("AOS: Glasses mic VAD bypassed - bypassVad=\(self.bypassVad), bypassVadForPCM=\(self.bypassVadForPCM)")
+                    // Core.log("AOS: Glasses mic VAD bypassed - bypassVad=\(self.bypassVad), bypassVadForPCM=\(self.bypassVadForPCM)")
                     checkSetVadStatus(speaking: true)
                     // first send out whatever's in the vadBuffer (if there is anything):
                     emptyVadBuffer()
