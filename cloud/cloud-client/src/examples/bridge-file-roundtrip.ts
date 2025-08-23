@@ -144,7 +144,7 @@ async function run() {
     }
   });
 
-  // Publisher WS: join and stream 10ms frames at 16 kHz
+  // Publisher WS: join and stream PCM at 16 kHz (let Go pace at 10 ms)
   const pubWS = new WebSocket(`${bridgeUrl}?userId=${encodeURIComponent(pubIdentity)}`);
   await new Promise<void>((resolve, reject) => {
     const to = setTimeout(() => reject(new Error('pub ws timeout')), 5000);
@@ -152,20 +152,20 @@ async function run() {
     pubWS.once('error', (e) => { clearTimeout(to); reject(e as any); });
   });
   pubWS.send(JSON.stringify({ action: 'join_room', roomName: email, token: pubToken, url }));
-
-  const samplesPer10ms = 160; // 10ms @ 16 kHz
-  let offset = 0;
-  while (offset < pcm16.length) {
-    const end = Math.min(offset + samplesPer10ms * 2, pcm16.length);
-    const frame = pcm16.subarray(offset, end);
-    offset = end;
-    pubWS.send(frame);
-    await delay(10);
+  // Send in large chunks; Go bridge slices into 10 ms frames and paces
+  const chunkBytes = 160 * 2 * 50; // 500 ms per chunk
+  for (let offset = 0; offset < pcm16.length; offset += chunkBytes) {
+    const end = Math.min(offset + chunkBytes, pcm16.length);
+    pubWS.send(pcm16.subarray(offset, end));
   }
   console.log('✅ Publisher finished streaming');
 
-  // Allow some tail to arrive
-  await delay(1500);
+  // Wait until we received approximately the same amount of audio as sent (allowing a bit extra)
+  const expectedBytes = pcm16.length;
+  const deadline = Date.now() + Math.max(5000, Math.ceil((expectedBytes / (160 * 2)) * 10) + 1500);
+  while (recvBytes < expectedBytes && Date.now() < deadline) {
+    await delay(50);
+  }
   try { pubWS.close(); } catch {}
   // Disable and close subscriber
   try { subWS.send(JSON.stringify({ action: 'subscribe_disable' })); } catch {}
