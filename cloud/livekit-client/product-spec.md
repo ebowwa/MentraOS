@@ -2,7 +2,7 @@
 
 ## Overview
 
-Go-based WebRTC client that bridges TypeScript AugmentOS cloud to LiveKit. Replaces unreliable Node.js LiveKit SDK with stable Go implementation.
+Go-based WebRTC client that bridges TypeScript MentraOS cloud to LiveKit. Replaces unreliable Node.js LiveKit SDK with stable Go implementation.
 
 ```
 Smart Glasses → TypeScript Cloud → Go Bridge → LiveKit

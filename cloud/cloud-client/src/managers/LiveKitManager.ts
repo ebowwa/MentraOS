@@ -1,4 +1,5 @@
 import { EventEmitter } from 'events';
+import { LiveKitGoBridgeManager } from './LiveKitGoBridgeManager';
 
 export interface LiveKitInfo {
   url: string;
@@ -14,6 +15,9 @@ export interface LiveKitManagerOptions {
   useBrowserMic?: boolean; // if true, capture mic in browser
   // New: use LiveKit as the audio transport for arbitrary PCM chunks
   useForAudio?: boolean;
+  // Use Go bridge instead of Node SDK for publishing
+  useGoBridge?: boolean;
+  goBridgeUrl?: string;
 }
 
 /**
@@ -32,6 +36,7 @@ export class LiveKitManager extends EventEmitter {
   private frameQueue: Buffer[] = [];
   private pushTimer: NodeJS.Timeout | null = null;
   private customReady = false;
+  private goBridge: LiveKitGoBridgeManager | null = null;
 
   constructor(options?: LiveKitManagerOptions) {
     super();
@@ -57,7 +62,10 @@ export class LiveKitManager extends EventEmitter {
 
       if (this.options.autoInitOnInfo) {
         try {
-          if (this.options.useForAudio && !this.options.publishAudioFilePath && !this.options.useBrowserMic) {
+          if (this.options.useGoBridge) {
+            // Use Go bridge for publishing
+            await this.connectViaGoBridge();
+          } else if (this.options.useForAudio && !this.options.publishAudioFilePath && !this.options.useBrowserMic) {
             await this.connectForCustomPublisher();
           } else {
             await this.connectAndPublish();
@@ -75,6 +83,44 @@ export class LiveKitManager extends EventEmitter {
 
   getInfo(): LiveKitInfo | null {
     return this.info;
+  }
+
+  /**
+   * Connect to LiveKit via Go bridge for audio publishing
+   * The Go bridge handles WebRTC and can reliably publish PCM audio
+   */
+  async connectViaGoBridge(): Promise<void> {
+    if (!this.info) throw new Error('LiveKit info not set');
+    
+    const bridgeUrl = this.options.goBridgeUrl || 'ws://localhost:8080';
+    console.log(`[LiveKitManager] Connecting via Go bridge at ${bridgeUrl}`);
+    
+    // Create Go bridge manager
+    this.goBridge = new LiveKitGoBridgeManager({
+      userId: this.info.roomName, // Use room name as user ID
+      serverUrl: bridgeUrl,
+      debug: true,
+    });
+    
+    // Set up event handlers
+    this.goBridge.on('room_joined', (info) => {
+      console.log('[LiveKitManager] Go bridge joined room:', info);
+      this.customReady = true;
+      this.emit('connected', { roomName: this.info!.roomName, via: 'go-bridge' });
+    });
+    
+    this.goBridge.on('error', (err) => {
+      console.error('[LiveKitManager] Go bridge error:', err);
+      this.emit('error', err);
+    });
+    
+    // Connect to Go bridge
+    await this.goBridge.connect();
+    
+    // Join LiveKit room via Go bridge
+    await this.goBridge.joinRoom(this.info.roomName, this.info.token);
+    
+    console.log('[LiveKitManager] Connected to LiveKit via Go bridge');
   }
 
   async connectAndPublish(): Promise<void> {
@@ -154,9 +200,18 @@ export class LiveKitManager extends EventEmitter {
   /**
    * Sends a PCM16 mono chunk to LiveKit, buffering and pacing at ~10ms frames.
    * sampleRate is the PCM chunk's rate (defaults to 16000 if omitted).
+   * With Go Bridge: sends raw PCM directly to Go service for publishing.
    */
   sendPcmChunk(chunk: Buffer, sampleRate: number = 16000): void {
     if (!this.options.useForAudio) return; // not configured for custom sending
+    
+    // If using Go bridge, send directly
+    if (this.goBridge && this.goBridge.isReady()) {
+      // Go bridge expects 16kHz PCM and handles resampling internally
+      this.goBridge.publishAudio(chunk);
+      return;
+    }
+    
     if (!this.customReady || !this.customSource) {
       this.emit('warning', { message: 'LiveKit custom publisher not ready; dropping chunk' });
       return;

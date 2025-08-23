@@ -7,20 +7,22 @@ const router = Router();
 // Handlers (defined first per code style)
 async function getLiveKitInfo(req: Request, res: Response) {
   try {
-    const { sessionId, mode } = req.query as { sessionId?: string; mode?: string };
-    if (!sessionId) {
-      return res.status(400).json({ error: 'sessionId is required' });
+    // const { sessionId, mode } = req.query as { sessionId?: string; mode?: string };
+    const { userId } = req.query as { userId?: string };
+    if (!userId) {
+      return res.status(400).json({ error: 'userId is required' });
     }
-    const userSession = sessionService.getSession(sessionId);
+    const userSession = sessionService.getSession(userId);
     if (!userSession) {
       return res.status(404).json({ error: 'session_not_found' });
     }
 
     const url = userSession.liveKitManager.getUrl();
     const roomName = userSession.liveKitManager.getRoomName();
-    const token = mode === 'subscribe'
-      ? userSession.liveKitManager.mintAgentSubscribeToken()
-      : userSession.liveKitManager.mintClientPublishToken();
+    // const token = mode === 'subscribe'
+    //   ? userSession.liveKitManager.mintAgentSubscribeToken()
+    //   : userSession.liveKitManager.mintClientPublishToken();
+    const token = userSession.liveKitManager.mintClientPublishToken();
 
     if (!url || !roomName || !token) {
       return res.status(500).json({ error: 'livekit_not_configured' });

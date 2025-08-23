@@ -21,6 +21,7 @@ services:
       - SERVICE_NAME=cloud
       - CONTAINER_ENVIRONMENT=true
       - CLOUD_HOST_NAME=cloud
+      - LIVEKIT_GO_BRIDGE_URL=ws://livekit-bridge:8080
     env_file:
       - .env
     volumes:
@@ -30,6 +31,26 @@ services:
     command: bash -c "bun install && cd packages/sdk && bun run build && cd ../cloud && bun install && bun run dev"
     tty: true
     stdin_open: true
+    depends_on:
+      - livekit-bridge
+
+  # LiveKit Go Bridge service
+  livekit-bridge:
+    build:
+      context: ./livekit-client
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - LOG_LEVEL=debug
+      - LIVEKIT_URL=${LIVEKIT_URL}
+    restart: "no"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
 
 volumes:
   node_modules:

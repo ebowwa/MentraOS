@@ -1,8 +1,8 @@
 /**
- * MentraClient - Main client class for connecting to AugmentOS cloud
+ * MentraClient - Main client class for connecting to MentraOS cloud
  *
  * This is a pure TypeScript SDK that provides a clean, production-ready interface
- * for interacting with the AugmentOS cloud platform. It mirrors the cloud architecture
+ * for interacting with the MentraOS cloud platform. It mirrors the cloud architecture
  * with internal managers handling specific domains.
  */
 
@@ -25,7 +25,7 @@ import { DisplayManager } from "./managers/DisplayManager";
 import { LiveKitManager, LiveKitManagerOptions } from "./managers/LiveKitManager";
 
 /**
- * Main client class providing clean public API for AugmentOS cloud interaction
+ * Main client class providing clean public API for MentraOS cloud interaction
  */
 export class MentraClient extends EventEmitter {
   private config: ClientConfig;
@@ -89,7 +89,7 @@ export class MentraClient extends EventEmitter {
   //===========================================================
 
   /**
-   * Connect to the AugmentOS cloud server
+   * Connect to the MentraOS cloud server
    */
   async connect(serverUrl?: string): Promise<void> {
     const url = serverUrl || this.config.serverUrl;
