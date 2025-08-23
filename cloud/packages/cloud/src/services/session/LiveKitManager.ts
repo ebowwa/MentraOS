@@ -200,7 +200,93 @@ export class LiveKitManager {
             //   tracks,
             //   sid: track.sid,
             // });
-            this.session.audioManager.processAudioData(frame.data.buffer, /* isLC3 */ false);
+            // LiveKit frames are typically 48kHz mono PCM. Our STT expects 16kHz PCM.
+            // Convert to Int16Array, resample to 16kHz if needed, and pass ArrayBuffer onward.
+            try {
+              const inputRate = (frame as any).sampleRate ?? 48000;
+              const inputChannels = (frame as any).channels ?? (frame as any).channelCount ?? 1;
+
+              // Determine incoming sample type and convert to mono Int16
+              const samplesAny: any = (frame as any).data ?? frame.data;
+              let monoInt16: Int16Array;
+              let sampleType: 'int16' | 'float32' | 'unknown' = 'unknown';
+
+              if (samplesAny instanceof Int16Array) {
+                sampleType = 'int16';
+                if (inputChannels === 1) {
+                  monoInt16 = samplesAny;
+                } else {
+                  // Average to mono
+                  const totalFrames = Math.floor(samplesAny.length / inputChannels);
+                  monoInt16 = new Int16Array(totalFrames);
+                  for (let i = 0; i < totalFrames; i++) {
+                    let acc = 0;
+                    for (let ch = 0; ch < inputChannels; ch++) acc += samplesAny[i * inputChannels + ch];
+                    monoInt16[i] = Math.max(-32768, Math.min(32767, Math.round(acc / inputChannels)));
+                  }
+                }
+              } else if (samplesAny instanceof Float32Array) {
+                sampleType = 'float32';
+                const totalFrames = Math.floor(samplesAny.length / inputChannels);
+                monoInt16 = new Int16Array(totalFrames);
+                for (let i = 0; i < totalFrames; i++) {
+                  let acc = 0;
+                  for (let ch = 0; ch < inputChannels; ch++) acc += samplesAny[i * inputChannels + ch];
+                  const avg = acc / inputChannels; // -1..1
+                  monoInt16[i] = Math.max(-32768, Math.min(32767, Math.round(avg * 32767)));
+                }
+              } else if (samplesAny && samplesAny.buffer instanceof ArrayBuffer) {
+                // Fallback: assume Int16 layout in buffer
+                sampleType = 'unknown';
+                const bufView = new Int16Array(samplesAny.buffer, samplesAny.byteOffset || 0, Math.floor((samplesAny.byteLength || samplesAny.buffer.byteLength) / 2));
+                if (inputChannels === 1) {
+                  monoInt16 = bufView;
+                } else {
+                  const totalFrames = Math.floor(bufView.length / inputChannels);
+                  monoInt16 = new Int16Array(totalFrames);
+                  for (let i = 0; i < totalFrames; i++) {
+                    let acc = 0;
+                    for (let ch = 0; ch < inputChannels; ch++) acc += bufView[i * inputChannels + ch];
+                    monoInt16[i] = Math.max(-32768, Math.min(32767, Math.round(acc / inputChannels)));
+                  }
+                }
+              } else {
+                // Ultimate fallback to avoid crash
+                monoInt16 = new Int16Array(0);
+              }
+
+              const targetRate = 16000;
+
+              // Pre-resample energy debug (first ~100ms window)
+              const preWindow = Math.min(monoInt16.length, Math.max(1, Math.floor(inputRate / 10)));
+              let sumAbsPre = 0, sumSqPre = 0;
+              for (let i = 0; i < preWindow; i++) { const v = monoInt16[i]; sumAbsPre += Math.abs(v); sumSqPre += v * v; }
+              const meanAbsPre = preWindow ? sumAbsPre / preWindow : 0;
+              const rmsPre = preWindow ? Math.sqrt(sumSqPre / preWindow) : 0;
+
+              const pcm16 = inputRate === targetRate
+                ? monoInt16
+                : this.resampleLinear(monoInt16, inputRate, targetRate);
+
+              const ab = pcm16.buffer.slice(
+                pcm16.byteOffset,
+                pcm16.byteOffset + pcm16.byteLength,
+              ) as ArrayBuffer;
+
+              // Post-resample energy debug (first ~100ms at 16kHz ~ 1600 samples)
+              const postWindow = Math.min(pcm16.length, 1600);
+              let sumAbs = 0, sumSq = 0;
+              for (let i = 0; i < postWindow; i++) { const v = pcm16[i]; sumAbs += Math.abs(v); sumSq += v * v; }
+              const meanAbs = postWindow ? sumAbs / postWindow : 0;
+              const rms = postWindow ? Math.sqrt(sumSq / postWindow) : 0;
+
+              this.logger.debug({ inputRate, inputChannels, sampleType, meanAbsPre: Number(meanAbsPre.toFixed(1)), rmsPre: Number(rmsPre.toFixed(1)), meanAbs: Number(meanAbs.toFixed(1)), rms: Number(rms.toFixed(1)) }, 'LiveKit frame energy (pre/post resample)');
+
+              this.session.audioManager.processAudioData(ab, /* isLC3 */ false);
+            } catch (convErr) {
+              this.logger.warn({ err: convErr }, 'Failed to convert/resample LiveKit frame; forwarding raw');
+              this.session.audioManager.processAudioData(frame.data.buffer, /* isLC3 */ false);
+            }
 
             // Debug: log every 50 frames to confirm audio flow
             this.receivedFrameCount++;
@@ -220,7 +306,7 @@ export class LiveKitManager {
 
               this.logger.debug({
                 samplesIn: frame.samplesPerChannel * frame.channels,
-                sampleRateIn: frame.sampleRate,
+                sampleRateIn: (frame as any).sampleRate,
                 channelCount: frame.channels,
                 framesIn: frame.samplesPerChannel,
                 bytesOut: frame.data.buffer.byteLength,

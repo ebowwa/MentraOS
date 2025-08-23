@@ -10,7 +10,8 @@ const REGION = process.env.REGION || process.env.AZURE_SPEECH_REGION || '';
 const PORTER_APP_NAME = process.env.PORTER_APP_NAME || 'cloud-local';
 
 // Determine log level based on environment
-const LOG_LEVEL = NODE_ENV === 'production' ? 'info' : 'debug';
+// Use 'info' in development to reduce noise from debug logs
+const LOG_LEVEL = NODE_ENV === 'production' ? 'info' : 'info';
 
 // Setup streams array for Pino multistream
 const streams: pino.StreamEntry[] = [];
@@ -24,12 +25,10 @@ const prettyTransport = pino.transport({
     colorize: true,
     translateTime: 'SYS:standard',
     // translateTime: 'mm/dd/yyyy, hh:MM:ss TT',
-    ignore: 'pid,hostname,env,module,server',
+    ignore: 'pid,hostname,env,module,server,req,res,responseTime',
     messageFormat: '{msg}',
-    errorProps: '*',
-    customPrettifiers: {
-      // Add custom prettifiers here if needed
-    }
+    errorProps: '*'
+    // Remove customPrettifiers as they can't be serialized to workers
   }
 });
 

@@ -16,12 +16,22 @@ async function main() {
     email,
     serverUrl: `${wsServer}`,
     coreToken: token,
-    behavior: { disableStatusUpdates: true },
+    behavior: { 
+      disableStatusUpdates: true,
+      useLiveKitAudio: true  // Enable LiveKit audio transport
+    },
     debug: { logLevel: 'info', logWebSocketMessages: true },
   });
 
-  client.on('livekit_info', (info) => {
-    console.log('[Example] Received LiveKit info:', JSON.stringify(info, null, 2));
+  client.on('livekit_connected', () => {
+    console.log('[Example] ✅ LiveKit connected successfully!');
+  });
+
+  // Listen for transcription events
+  client.on('display_event', (event) => {
+    if (event.packageName === APP_PACKAGE_NAME) {
+      console.log('[Example] 📝 Transcription:', event.layout.topText || event.layout.bottomText);
+    }
   });
 
   // Add error handling for LiveKit
@@ -36,14 +46,12 @@ async function main() {
   try { await client.stopApp(APP_PACKAGE_NAME); } catch {}
   await client.startApp(APP_PACKAGE_NAME);
 
-  // Enable LiveKit as audio transport and use existing speak API
-  const wavPath = resolve(__dirname, '../audio/good-morning-2033.wav');
-  client.enableLiveKit({ autoInitOnInfo: true, preferredSampleRate: 48000, useForAudio: true });
+  // Use a shorter audio file for testing
+  const wavPath = resolve(__dirname, '../audio/what-time-is-it.wav');
   
-  console.log('[Example] Requesting LiveKit init...');
-  client.requestLiveKitInit('publish');
+  console.log('[Example] Waiting for LiveKit to connect via CONNECTION_ACK...');
   
-  // Wait for LiveKit to initialize
+  // Wait for LiveKit to initialize via CONNECTION_ACK
   await new Promise(resolve => setTimeout(resolve, 3000));
 
   // Use existing speak flow (VAD + streaming) which now routes audio via LiveKit

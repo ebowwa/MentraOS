@@ -50,8 +50,21 @@ export class LiveKitManager extends EventEmitter {
   }
 
   attachToWebSocket(ws: { on: Function }): void {
-    ws.on('livekit_info', async (data: { url: string; roomName: string; token: string }) => {
-      console.log('[LiveKitManager] Received LiveKit info from server:', {
+    // Listen for CONNECTION_ACK which includes LiveKit info
+    ws.on('connection_ack', async (ack: any) => {
+      if (!ack.livekit) {
+        console.log('[LiveKitManager] No LiveKit info in CONNECTION_ACK');
+        return;
+      }
+
+      // Prevent multiple connections
+      if (this.info) {
+        console.log('[LiveKitManager] Already have LiveKit info, ignoring duplicate CONNECTION_ACK');
+        return;
+      }
+
+      const data = ack.livekit;
+      console.log('[LiveKitManager] Received LiveKit info from CONNECTION_ACK:', {
         url: data.url,
         roomName: data.roomName,
         tokenLength: data.token?.length,
@@ -203,13 +216,18 @@ export class LiveKitManager extends EventEmitter {
    * With Go Bridge: sends raw PCM directly to Go service for publishing.
    */
   sendPcmChunk(chunk: Buffer, sampleRate: number = 16000): void {
-    if (!this.options.useForAudio) return; // not configured for custom sending
+    if (!this.options.useForAudio) {
+      console.log('[LiveKitManager] Not configured for audio, skipping chunk');
+      return; // not configured for custom sending
+    }
     
     // If using Go bridge, send directly
     if (this.goBridge && this.goBridge.isReady()) {
       // Go bridge expects 16kHz PCM and handles resampling internally
       this.goBridge.publishAudio(chunk);
       return;
+    } else if (this.goBridge) {
+      console.log('[LiveKitManager] Go bridge not ready yet');
     }
     
     if (!this.customReady || !this.customSource) {

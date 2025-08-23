@@ -8,13 +8,25 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
 	lksdk "github.com/livekit/server-sdk-go/v2"
 	lkmedia "github.com/livekit/server-sdk-go/v2/pkg/media"
+    "math"
 )
+
+var publishGain float64 = 1.0
+
+func init() {
+    if v := os.Getenv("PUBLISH_GAIN"); v != "" {
+        if g, err := strconv.ParseFloat(v, 64); err == nil && g > 0 {
+            publishGain = g
+        }
+    }
+}
 
 var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool {
@@ -36,6 +48,7 @@ type LiveKitClient struct {
 	cancel       context.CancelFunc
 	mu           sync.Mutex
 	connected    bool
+	receivedFrameCount int
 }
 
 // Message types
@@ -44,6 +57,10 @@ type Command struct {
 	RoomName string          `json:"roomName,omitempty"`
 	Token    string          `json:"token,omitempty"`
 	Config   json.RawMessage `json:"config,omitempty"`
+    // Optional fields for tone publishing
+    FreqHz   int             `json:"freq,omitempty"`
+    DurationMs int           `json:"ms,omitempty"`
+    Url      string          `json:"url,omitempty"`
 }
 
 type Event struct {
@@ -122,9 +139,11 @@ func (c *LiveKitClient) Start() {
 		}
 
 		if messageType == websocket.BinaryMessage {
+			log.Printf("WS binary message received for user %s, bytes=%d", c.userId, len(message))
 			// Handle binary audio data
 			c.handleAudioData(message)
 		} else if messageType == websocket.TextMessage {
+			log.Printf("WS text message received for user %s, bytes=%d", c.userId, len(message))
 			// Handle JSON control messages
 			var cmd Command
 			if err := json.Unmarshal(message, &cmd); err != nil {
@@ -133,18 +152,27 @@ func (c *LiveKitClient) Start() {
 				continue
 			}
 			c.handleCommand(cmd)
+		} else {
+			log.Printf("WS other opcode=%d for user %s, bytes=%d", messageType, c.userId, len(message))
 		}
 	}
 }
 
 func (c *LiveKitClient) handleCommand(cmd Command) {
 	switch cmd.Action {
-	case "join_room":
-		c.joinRoom(cmd.RoomName, cmd.Token)
+    case "join_room":
+        c.joinRoomWithURL(cmd.RoomName, cmd.Token, cmd.Url)
 	case "leave_room":
 		c.leaveRoom()
 	case "publish_audio":
 		// Handle publish control if needed
+    case "publish_tone":
+        // Generate and publish a 440Hz (default) tone for duration
+        freq := cmd.FreqHz
+        if freq == 0 { freq = 440 }
+        durMs := cmd.DurationMs
+        if durMs == 0 { durMs = 3000 }
+        go c.publishTone(freq, durMs)
 	default:
 		c.sendError(fmt.Sprintf("Unknown action: %s", cmd.Action))
 	}
@@ -173,7 +201,9 @@ func (c *LiveKitClient) joinRoom(roomName, token string) {
 	}
 
 	// Connect to room with v2 API
-	room, err := lksdk.ConnectToRoomWithToken(getLiveKitURL(), token, roomCallback)
+    // Allow client to override URL via command token if needed
+    url := getLiveKitURL()
+    room, err := lksdk.ConnectToRoomWithToken(url, token, roomCallback)
 	if err != nil {
 		log.Printf("Failed to connect to room: %v", err)
 		c.sendError(fmt.Sprintf("Failed to connect: %v", err))
@@ -187,12 +217,95 @@ func (c *LiveKitClient) joinRoom(roomName, token string) {
 	c.createAudioTrack()
 
 	// Send success event
+	log.Printf("Sending room_joined event for user %s in room %s", c.userId, roomName)
 	c.sendEvent(Event{
 		Type:             "room_joined",
 		RoomName:         roomName,
 		ParticipantID:    string(room.LocalParticipant.Identity()),
 		ParticipantCount: len(room.GetRemoteParticipants()),
 	})
+}
+
+// joinRoomWithURL allows specifying LiveKit URL instead of env LIVEKIT_URL
+func (c *LiveKitClient) joinRoomWithURL(roomName, token, customURL string) {
+    // Quick check under lock to avoid races, but do not hold for long operations
+    c.mu.Lock()
+    if c.room != nil {
+        c.mu.Unlock()
+        c.sendError("Already in a room")
+        return
+    }
+    c.mu.Unlock()
+
+    log.Printf("User %s joining room %s (customURL=%v)", c.userId, roomName, customURL != "")
+
+    roomCallback := &lksdk.RoomCallback{
+        OnDisconnected: func() {
+            log.Printf("Disconnected from room")
+            c.sendEvent(Event{ Type: "disconnected", State: "disconnected" })
+        },
+    }
+
+    url := customURL
+    if url == "" { url = getLiveKitURL() }
+    log.Printf("Connecting to LiveKit: url=%s tokenLen=%d room=%s", url, len(token), roomName)
+    // Attempt connection with timeout guard so we can surface failures
+    resCh := make(chan *lksdk.Room, 1)
+    errCh := make(chan error, 1)
+    go func() {
+        r, err := lksdk.ConnectToRoomWithToken(url, token, roomCallback)
+        if err != nil {
+            errCh <- err
+            return
+        }
+        resCh <- r
+    }()
+
+    select {
+    case r := <-resCh:
+        c.mu.Lock()
+        c.room = r
+        c.connected = true
+        c.mu.Unlock()
+    case err := <-errCh:
+        log.Printf("Failed to connect to room: %v", err)
+        c.sendError(fmt.Sprintf("Failed to connect: %v", err))
+        return
+    case <-time.After(10 * time.Second):
+        log.Printf("Failed to connect to room within timeout")
+        c.sendError("connect_timeout")
+        return
+    }
+
+    // Signal room joined immediately
+    c.sendEvent(Event{
+        Type:             "room_joined",
+        RoomName:         roomName,
+        ParticipantID:    string(c.room.LocalParticipant.Identity()),
+        ParticipantCount: len(c.room.GetRemoteParticipants()),
+    })
+
+    // Create audio track for publishing at 48kHz to avoid resample
+    track, err := lkmedia.NewPCMLocalTrack(48000, 1, nil)
+    if err != nil {
+        log.Printf("Failed to create PCM track: %v", err)
+        return
+    }
+    c.publishTrack = track
+
+    if pub, err := c.room.LocalParticipant.PublishTrack(track, &lksdk.TrackPublicationOptions{ Name: "microphone" }); err != nil {
+        log.Printf("Failed to publish track: %v", err)
+        return
+    } else {
+        log.Printf("Published track SID=%s", pub.SID())
+    }
+
+    // Wait briefly to ensure publication propagates
+    time.Sleep(300 * time.Millisecond)
+
+    log.Printf("PCM audio track published for user %s (48kHz mono)", c.userId)
+    // Signal track published
+    c.sendEvent(Event{ Type: "track_published" })
 }
 
 func (c *LiveKitClient) createAudioTrack() {
@@ -220,22 +333,121 @@ func (c *LiveKitClient) createAudioTrack() {
 	log.Printf("PCM audio track published for user %s (16kHz mono, auto-resampled to 48kHz)", c.userId)
 }
 
+// publishTone generates a sine wave at the given frequency and publishes via WriteSample at ~10ms cadence
+func (c *LiveKitClient) publishTone(freqHz int, durationMs int) {
+    c.mu.Lock()
+    track := c.publishTrack
+    connected := c.connected
+    c.mu.Unlock()
+    if track == nil || !connected {
+        log.Printf("Cannot publish tone - track ready: %v connected: %v", track != nil, connected)
+        return
+    }
+
+    // Match track's configured source sample rate (48kHz)
+    sampleRate := 48000
+    samplesPer10ms := sampleRate / 100
+    totalFrames := durationMs / 10
+    log.Printf("Publishing tone: freq=%dHz duration=%dms frames=%d", freqHz, durationMs, totalFrames)
+    var t int
+    for i := 0; i < totalFrames; i++ {
+        samples := make([]int16, samplesPer10ms)
+        var sumAbs int64
+        var sumSq int64
+        var minV int16 = 32767
+        var maxV int16 = -32768
+        for s := 0; s < samplesPer10ms; s++ {
+            val := int16(math.Round(math.Sin(2 * math.Pi * float64(freqHz) * float64(t) / float64(sampleRate)) * 0.5 * 32767.0))
+            samples[s] = val
+            t++
+            if val < minV { minV = val }
+            if val > maxV { maxV = val }
+            if val < 0 { sumAbs += int64(-val) } else { sumAbs += int64(val) }
+            sumSq += int64(val) * int64(val)
+        }
+        meanAbs := float64(sumAbs) / float64(samplesPer10ms)
+        rms := math.Sqrt(float64(sumSq) / float64(samplesPer10ms))
+        if i%10 == 0 {
+            log.Printf("Tone frame %d energy: meanAbs=%.1f rms=%.1f min=%d max=%d", i, meanAbs, rms, minV, maxV)
+        }
+        // Apply optional gain with clipping
+        if publishGain != 1.0 {
+            for i := range samples {
+                scaled := float64(samples[i]) * publishGain
+                if scaled > 32767 {
+                    scaled = 32767
+                } else if scaled < -32768 {
+                    scaled = -32768
+                }
+                samples[i] = int16(scaled)
+            }
+        }
+        if err := track.WriteSample(samples); err != nil {
+            log.Printf("Failed to write tone PCM sample: %v", err)
+            return
+        }
+        time.Sleep(10 * time.Millisecond)
+    }
+    log.Printf("Completed tone publishing")
+}
+
 func (c *LiveKitClient) handleAudioData(data []byte) {
 	if c.publishTrack == nil || !c.connected {
+		log.Printf("Cannot send audio - track: %v, connected: %v", c.publishTrack != nil, c.connected)
 		return
 	}
 
-	// Convert byte slice to int16 samples
-	// Data is expected to be 16-bit PCM at 16kHz mono
-	samples := make([]int16, len(data)/2)
-	for i := 0; i < len(samples); i++ {
-		samples[i] = int16(binary.LittleEndian.Uint16(data[i*2 : i*2+2]))
-	}
+	// Log audio data reception (every 10th chunk to avoid spam)
+	c.mu.Lock()
+	audioChunkCount := c.receivedFrameCount
+	c.receivedFrameCount++
+	c.mu.Unlock()
 	
-	// Write PCM samples - SDK handles resampling and Opus encoding
-	if err := c.publishTrack.WriteSample(samples); err != nil {
-		log.Printf("Failed to write PCM sample: %v", err)
-	}
+    log.Printf("Received audio chunk %d for user %s, size: %d bytes", audioChunkCount, c.userId, len(data))
+
+    // Convert byte slice to int16 samples (16kHz mono expected)
+    samples := make([]int16, len(data)/2)
+    var sumAbs int64 = 0
+    var sumSq int64 = 0
+    var minVal int16 = 32767
+    var maxVal int16 = -32768
+    for i := 0; i < len(samples); i++ {
+        v := int16(binary.LittleEndian.Uint16(data[i*2 : i*2+2]))
+        samples[i] = v
+        if v < minVal { minVal = v }
+        if v > maxVal { maxVal = v }
+        if v < 0 { sumAbs += int64(-v) } else { sumAbs += int64(v) }
+        sumSq += int64(v) * int64(v)
+    }
+    if len(samples) > 0 {
+        meanAbs := float64(sumAbs) / float64(len(samples))
+        rms := math.Sqrt(float64(sumSq) / float64(len(samples)))
+        log.Printf("Audio chunk %d stats: meanAbs=%.1f rms=%.1f min=%d max=%d", audioChunkCount, meanAbs, rms, minVal, maxVal)
+    }
+	
+    // Pace large chunks into ~10ms frames to match expected cadence
+    frameSamples := 160 // 10ms @ 16kHz
+    for offset := 0; offset < len(samples); offset += frameSamples {
+        end := offset + frameSamples
+        if end > len(samples) { end = len(samples) }
+        frame := samples[offset:end]
+        if publishGain != 1.0 {
+            for i := range frame {
+                scaled := float64(frame[i]) * publishGain
+                if scaled > 32767 {
+                    scaled = 32767
+                } else if scaled < -32768 {
+                    scaled = -32768
+                }
+                frame[i] = int16(scaled)
+            }
+        }
+        if err := c.publishTrack.WriteSample(frame); err != nil {
+            log.Printf("Failed to write PCM sample: %v", err)
+            break
+        }
+        time.Sleep(10 * time.Millisecond)
+    }
 }
 
 func (c *LiveKitClient) handleIncomingAudio(pcmData []byte) {

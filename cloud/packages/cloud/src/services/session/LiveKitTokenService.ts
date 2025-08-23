@@ -37,7 +37,7 @@ export class LiveKitTokenService {
     return this.livekitUrl;
   }
 
-  mintAccessToken(req: LiveKitTokenRequest): string | null {
+  async mintAccessTokenAsync(req: LiveKitTokenRequest): Promise<string | null> {
     if (!this.apiKey || !this.apiSecret) {
       this.logger.error('LIVEKIT_API_KEY/SECRET missing');
       return null;
@@ -53,12 +53,7 @@ export class LiveKitTokenService {
         canSubscribe: req.grants.canSubscribe ?? false,
         room: req.grants.room || req.roomName,
       } as any);
-      const token = at.toJwt();
-      // livekit-server-sdk v2 returns Promise<string> for toJwt in some versions; normalize to string
-      if (typeof (token as any).then === 'function') {
-        this.logger.error('Async toJwt detected but sync method expected. Ensure livekit-server-sdk is up to date.');
-        return null;
-      }
+      const token = await at.toJwt();
       return token as unknown as string;
     } catch (error) {
       this.logger.error({ error }, 'Failed to mint LiveKit access token');

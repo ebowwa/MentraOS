@@ -6,25 +6,21 @@
  */
 
 import { MentraClient } from "../MentraClient";
-import { AccountService } from "../AccountService";
+import { AccountService } from "../services/AccountService";
 
 async function testLiveKitConnectionAck() {
   console.log("🚀 Testing new LiveKit connection architecture...\n");
 
-  // Step 1: Login
-  console.log("1️⃣ Logging in...");
-  const accountService = new AccountService();
-  const credentials = await accountService.login(
-    "test@example.com",
-    "password123",
-  );
-  console.log("✅ Login successful\n");
+  // Step 1: Generate test credentials
+  console.log("1️⃣ Generating test credentials...");
+  const credentials = AccountService.generateTestAccount("test@example.com");
+  console.log("✅ Test account ready\n");
 
   // Step 2: Create client with LiveKit enabled
   console.log("2️⃣ Creating client with LiveKit audio enabled...");
   const client = new MentraClient({
     email: credentials.email,
-    serverUrl: "http://localhost:3000",
+    serverUrl: "http://localhost:8002",
     coreToken: credentials.coreToken,
     behavior: {
       useLiveKitAudio: true, // This will make the client send "livekit: true" header

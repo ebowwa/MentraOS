@@ -121,13 +121,8 @@ export class WebSocketManager extends EventEmitter {
   // Message Sending Methods
   //===========================================================
 
-  sendLiveKitInit(mode: 'publish' | 'subscribe' = 'publish'): void {
-    this.sendMessage({
-      type: 'livekit_init',
-      mode,
-      timestamp: new Date(),
-    });
-  }
+  // Deprecated: LiveKit is initialized via WebSocket header and CONNECTION_ACK
+  // sendLiveKitInit is no longer needed
 
   sendVad(status: boolean): void {
     this.sendMessage({

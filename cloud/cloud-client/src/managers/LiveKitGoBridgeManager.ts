@@ -11,6 +11,7 @@ interface GoBridgeCommand {
   action: 'join_room' | 'leave_room';
   roomName?: string;
   token?: string;
+  url?: string;
 }
 
 interface GoBridgeEvent {
@@ -33,6 +34,7 @@ export class LiveKitGoBridgeManager extends EventEmitter {
   private isConnected = false;
   private audioQueue: Buffer[] = [];
   private debug: boolean;
+  private publishCount = 0;
 
   constructor(config: GoBridgeConfig) {
     super();
@@ -133,7 +135,7 @@ export class LiveKitGoBridgeManager extends EventEmitter {
     }
   }
 
-  async joinRoom(roomName: string, token: string): Promise<void> {
+  async joinRoom(roomName: string, token: string, url?: string): Promise<void> {
     if (!this.isConnected || !this.ws) {
       throw new Error('Not connected to Go bridge');
     }
@@ -143,6 +145,7 @@ export class LiveKitGoBridgeManager extends EventEmitter {
         action: 'join_room',
         roomName,
         token,
+        url,
       };
 
       // Listen for response
@@ -203,6 +206,25 @@ export class LiveKitGoBridgeManager extends EventEmitter {
 
     // Send as binary frame - Go bridge expects raw PCM
     this.ws.send(audioData);
+    this.publishCount++;
+    if (this.debug && this.publishCount % 10 === 0) {
+      // Compute simple energy metrics
+      const sampleCount = Math.floor(audioData.length / 2);
+      let sumAbs = 0;
+      let sumSq = 0;
+      let min = 32767;
+      let max = -32768;
+      for (let i = 0; i < sampleCount; i++) {
+        const v = audioData.readInt16LE(i * 2);
+        if (v < min) min = v;
+        if (v > max) max = v;
+        sumAbs += Math.abs(v);
+        sumSq += v * v;
+      }
+      const meanAbs = sampleCount ? (sumAbs / sampleCount) : 0;
+      const rms = sampleCount ? Math.sqrt(sumSq / sampleCount) : 0;
+      console.log(`[LiveKitGoBridge] Sent audio chunk #${this.publishCount} (${audioData.length} bytes) energy meanAbs=${meanAbs.toFixed(1)} rms=${rms.toFixed(1)} min=${min} max=${max}`);
+    }
   }
 
   private flushAudioQueue(): void {

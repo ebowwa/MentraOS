@@ -29,7 +29,7 @@ import transcriptRoutes from "./routes/transcripts.routes";
 import appSettingsRoutes from "./routes/app-settings.routes";
 import errorReportRoutes from "./routes/error-report.routes";
 import devRoutes from "./routes/developer.routes";
-import serverRoutes from "./routes/server.routes";
+// import serverRoutes from "./routes/server.routes";
 import adminRoutes from "./routes/admin.routes";
 import photoRoutes from "./routes/photos.routes";
 import galleryRoutes from "./routes/gallery.routes";
@@ -210,9 +210,26 @@ app.use(
     customErrorMessage: (req, res, err) => {
       return `${req.method} ${req.url} - ${res.statusCode} - ${err.message}`;
     },
-    // Don't log health check requests to reduce noise
+    // Reduce verbosity in development by excluding request/response details
+    serializers: {
+      req: (req) => ({
+        method: req.method,
+        url: req.url,
+        // Only include basic info, skip headers/body/params for cleaner logs
+      }),
+      res: (res) => ({
+        statusCode: res.statusCode,
+        // Skip verbose response headers
+      }),
+    },
+    // Don't log noisy or frequent requests
     autoLogging: {
-      ignore: (req) => req.url === "/health",
+      ignore: (req) => {
+        // Skip health checks, livekit token requests, and other noisy endpoints
+        return req.url === "/health" ||
+               req.url === "/api/livekit/token" ||
+               req.url?.startsWith("/api/livekit/token");
+      },
     },
   }),
 );
@@ -228,7 +245,7 @@ app.use("/api/dev", devRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/orgs", organizationRoutes);
 // app.use('/api/app-server', appServerRoutes); // Removed as part of HeartbeatManager implementation
-app.use("/api/server", serverRoutes);
+// app.use("/api/server", serverRoutes);
 app.use("/api/photos", photoRoutes);
 app.use("/api/gallery", galleryRoutes);
 app.use("/api/tools", toolsRoutes);

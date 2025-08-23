@@ -78,7 +78,15 @@ export class MentraClient extends EventEmitter {
     this.appManager = new AppManager();
     this.locationManager = new LocationManager(this.config.behavior!);
     this.displayManager = new DisplayManager();
-    this.liveKitManager = new LiveKitManager();
+    // Initialize LiveKitManager with Go bridge since Node SDK can't publish
+    // Use environment variable or default to localhost for development
+    const goBridgeUrl = process.env.LIVEKIT_GO_BRIDGE_URL || 'ws://localhost:8080';
+    this.liveKitManager = new LiveKitManager({
+      useGoBridge: true,
+      goBridgeUrl: goBridgeUrl,
+      autoInitOnInfo: true,
+      useForAudio: true
+    });
 
     // Setup event forwarding from managers
     this.setupEventForwarding();
@@ -106,6 +114,16 @@ export class MentraClient extends EventEmitter {
       );
       this.connected = true;
       this.coreToken = this.config.coreToken;
+
+      // If LiveKit audio is enabled, attach the manager to WebSocket
+      if (this.useLiveKitAudio && this.liveKitManager) {
+        this.liveKitManager.attachToWebSocket(this.wsManager as any);
+        
+        // Forward LiveKit connected event
+        this.liveKitManager.on('connected', () => {
+          this.emit('livekit_connected');
+        });
+      }
 
       // Start background services
       this.locationManager.start();
@@ -411,19 +429,7 @@ export class MentraClient extends EventEmitter {
     // Forward events from WebSocketManager
     this.wsManager.on("connection_ack", (data: ConnectionAck) => {
       this.emit("connection_ack", data);
-      
-      // If LiveKit info is included and we're using LiveKit audio, auto-connect
-      if (data.livekit && this.useLiveKitAudio) {
-        console.log("[MentraClient] LiveKit info received in CONNECTION_ACK, connecting...");
-        this.liveKitManager.connect(data.livekit)
-          .then(() => {
-            console.log("[MentraClient] LiveKit connected successfully");
-          })
-          .catch((error) => {
-            console.error("[MentraClient] Failed to connect to LiveKit:", error);
-            this.emit("error", error);
-          });
-      }
+      // LiveKitManager will handle LiveKit info if it's attached
     });
 
     this.wsManager.on("display_event", (data: DisplayEvent) => {
@@ -447,21 +453,8 @@ export class MentraClient extends EventEmitter {
       },
     );
     
-    // Handle separate LiveKit info events (for backward compatibility)
-    this.wsManager.on("livekit_info", (data: any) => {
-      if (this.useLiveKitAudio) {
-        console.log("[MentraClient] LiveKit info received separately, connecting...");
-        this.liveKitManager.connect(data)
-          .then(() => {
-            console.log("[MentraClient] LiveKit connected successfully");
-          })
-          .catch((error) => {
-            console.error("[MentraClient] Failed to connect to LiveKit:", error);
-            this.emit("error", error);
-          });
-      }
-      this.emit("livekit_info", data);
-    });
+    // LiveKit info now comes through CONNECTION_ACK only
+    // No longer handling separate livekit_info messages
 
     this.wsManager.on("error", (error: Error) => {
       this.emit("error", error);
@@ -501,10 +494,8 @@ export class MentraClient extends EventEmitter {
     this.useLiveKitAudio = Boolean(options?.useForAudio);
   }
 
-  requestLiveKitInit(mode: 'publish' | 'subscribe' = 'publish'): void {
-    this.ensureConnected();
-    this.wsManager.sendLiveKitInit(mode);
-  }
+  // Deprecated: LiveKit is now initialized via WebSocket header and CONNECTION_ACK
+  // requestLiveKitInit is no longer needed
 
   async liveKitConnectAndPublish(): Promise<void> {
     this.ensureConnected();
