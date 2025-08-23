@@ -359,7 +359,7 @@ const $popoverAppIcon: ThemedStyle<ViewStyle> = ({spacing}) => ({
   width: POPOVER_ICON_SIZE,
   height: POPOVER_ICON_SIZE,
   marginRight: spacing.sm,
-  borderRadius: 12,
+  borderRadius: spacing.sm,
 })
 
 const $popoverAppName: ThemedStyle<TextStyle> = ({colors}) => ({
