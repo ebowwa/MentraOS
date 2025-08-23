@@ -23,7 +23,7 @@ class Core: RCTEventEmitter {
     }
 
     static func log(_ message: String) {
-        print(message)
+        // print(message)
         let msg = "SWIFT:\(message)"
         emitter.sendEvent(withName: "CoreMessageEvent", body: msg)
     }

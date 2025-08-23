@@ -17,51 +17,22 @@ import NotificationOn from "assets/icons/component/NotificationOn"
 import {ConnectDeviceButton, ConnectedGlasses, DeviceToolbar} from "@/components/misc/ConnectedDeviceInfo"
 import {Spacer} from "@/components/misc/Spacer"
 import Divider from "@/components/misc/Divider"
-import {checkFeaturePermissions, PermissionFeatures} from "@/utils/PermissionsUtils"
 import {OnboardingSpotlight} from "@/components/misc/OnboardingSpotlight"
 import {translate} from "@/i18n"
-import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {loadSetting} from "@/utils/SettingsHelper"
 import {SETTINGS_KEYS} from "@/consts"
 import {AppsCombinedGridView} from "@/components/misc/AppsCombinedGridView"
+import PermissionsWarning from "@/components/home/PermissionsWarning"
 
 export default function Homepage() {
   const {refreshAppStatus} = useAppStatus()
-  const [hasMissingPermissions, setHasMissingPermissions] = useState(false)
   const [onboardingTarget, setOnboardingTarget] = useState<"glasses" | "livecaptions">("glasses")
   const liveCaptionsRef = useRef<any>(null)
   const connectButtonRef = useRef<any>(null)
 
-  const fadeAnim = useRef(new Animated.Value(0)).current
-  const bellFadeAnim = useRef(new Animated.Value(0)).current
   const {themed, theme} = useAppTheme()
-  const {push} = useNavigationHistory()
 
   const [showNewUi, setShowNewUi] = useState(false)
-
-  const checkPermissions = async () => {
-    const hasCalendar = await checkFeaturePermissions(PermissionFeatures.CALENDAR)
-    const hasNotifications =
-      Platform.OS === "android" ? await checkFeaturePermissions(PermissionFeatures.READ_NOTIFICATIONS) : true
-
-    const hasLocation = await checkFeaturePermissions(PermissionFeatures.BACKGROUND_LOCATION)
-
-    const shouldShowBell = !hasCalendar || !hasNotifications || !hasLocation
-    setHasMissingPermissions(shouldShowBell)
-
-    // Animate bell in if needed
-    if (shouldShowBell) {
-      Animated.timing(bellFadeAnim, {
-        toValue: 1,
-        duration: 300,
-        useNativeDriver: true,
-      }).start()
-    }
-  }
-
-  const handleBellPress = () => {
-    push("/settings/privacy")
-  }
 
   useEffect(() => {
     const check = async () => {
@@ -71,51 +42,10 @@ export default function Homepage() {
     check()
   }, [])
 
-  // Check for missing permissions
-  useEffect(() => {
-    checkPermissions().catch(error => {
-      console.error("Error checking permissions:", error)
-    })
-  }, [])
-
-  // check for permissions when the screen is focused:
   useFocusEffect(
     useCallback(() => {
-      checkPermissions()
       refreshAppStatus()
     }, []),
-  )
-
-  // propagate any changes in app lists when this screen is mounted:
-  // useFocusEffect(
-  //   useCallback(() => {
-  //     checkPermissions()
-  //     refreshAppStatus()
-  //   }, []),
-  // )
-
-  // Simple animated wrapper so we do not duplicate logic
-  useFocusEffect(
-    useCallback(() => {
-      // Reset animations when screen is about to focus
-      fadeAnim.setValue(0)
-
-      // Start animations after a short delay
-      const animationTimeout = setTimeout(() => {
-        Animated.parallel([
-          Animated.timing(fadeAnim, {
-            toValue: 1,
-            duration: 500,
-            useNativeDriver: true,
-          }),
-        ]).start()
-      }, 50)
-
-      return () => {
-        clearTimeout(animationTimeout)
-        fadeAnim.setValue(0)
-      }
-    }, [fadeAnim]),
   )
 
   if (showNewUi) {
@@ -125,13 +55,7 @@ export default function Homepage() {
           leftTx="home:title"
           RightActionComponent={
             <View style={themed($headerRight)}>
-              {hasMissingPermissions && (
-                <Animated.View style={{opacity: bellFadeAnim}}>
-                  <TouchableOpacity onPress={handleBellPress}>
-                    <NotificationOn />
-                  </TouchableOpacity>
-                </Animated.View>
-              )}
+              <PermissionsWarning />
               <MicIcon width={24} height={24} />
               <NonProdWarning />
             </View>
@@ -171,13 +95,7 @@ export default function Homepage() {
         leftTx="home:title"
         RightActionComponent={
           <View style={themed($headerRight)}>
-            {hasMissingPermissions && (
-              <Animated.View style={{opacity: bellFadeAnim}}>
-                <TouchableOpacity onPress={handleBellPress}>
-                  <NotificationOn />
-                </TouchableOpacity>
-              </Animated.View>
-            )}
+            <PermissionsWarning />
             <MicIcon width={24} height={24} />
             <NonProdWarning />
           </View>

@@ -14,19 +14,6 @@ import {askPermissionsUI} from "@/utils/PermissionsUtils"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import AppsIncompatibleList from "@/components/misc/AppsIncompatibleList"
 
-interface AppModel {
-  name: string
-  packageName: string
-  is_running?: boolean
-  is_foreground?: boolean
-  appType?: string
-  webviewURL?: string
-  compatibility?: {
-    isCompatible: boolean
-    message?: string
-  }
-}
-
 interface AppsCombinedGridViewProps {}
 
 const initialLayout = {width: Dimensions.get("window").width}
@@ -38,12 +25,9 @@ const AppsCombinedGridViewRoot: React.FC<AppsCombinedGridViewProps> = () => {
     checkAppHealthStatus,
     optimisticallyStartApp,
     optimisticallyStopApp,
-    clearPendingOperation,
-    refreshAppStatus,
   } = useAppStatus()
   const {push, replace} = useNavigationHistory()
 
-  const backendComms = BackendServerComms.getInstance()
   const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false)
   const [index, setIndex] = useState(0)
   const [routes] = useState([

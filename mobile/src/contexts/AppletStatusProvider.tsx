@@ -74,6 +74,7 @@ export interface AppletInterface {
 
 interface AppStatusContextType {
   appStatus: AppletInterface[]
+  renderableApps: AppletInterface[]
   refreshAppStatus: () => Promise<void>
   optimisticallyStartApp: (packageName: string, appType?: string) => void
   optimisticallyStopApp: (packageName: string) => void
@@ -85,19 +86,14 @@ const AppStatusContext = createContext<AppStatusContextType | undefined>(undefin
 
 export const AppStatusProvider = ({children}: {children: ReactNode}) => {
   const [appStatus, setAppStatus] = useState<AppletInterface[]>([])
-  const {user, logout} = useAuth()
-  const {status} = useCoreStatus()
+  const {user} = useAuth()
   const {theme} = useAppTheme()
   const backendComms = BackendServerComms.getInstance()
 
   // Keep track of active operations to prevent race conditions
   const pendingOperations = useRef<{[packageName: string]: "start" | "stop"}>({})
 
-  // Track when the last refresh was performed
-  const lastRefreshTime = useRef<number>(0)
-
-  // Track previous glasses connection to detect changes
-  const previousGlassesModel = useRef<string | null>(null)
+  const [hasUpdatedAppStatus, setHasUpdatedAppStatus] = useState(false)
 
   const refreshAppStatus = useCallback(async () => {
     console.log("AppStatusProvider: refreshAppStatus called - user exists:", !!user, "user email:", user?.email)
@@ -122,10 +118,6 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
 
     console.log("AppStatusProvider: Token check passed, starting app fetch...")
 
-    // Record the time of this refresh attempt
-    const refreshStartTime = Date.now()
-    lastRefreshTime.current = refreshStartTime
-
     try {
       // Store current running states before fetching
       const currentRunningStates: {[packageName: string]: boolean} = {}
@@ -139,57 +131,69 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
       const appsData = await BackendServerComms.getInstance().getApps()
       console.log("AppStatusProvider: getApps() returned", appsData?.length || 0, "apps")
 
-      // Only process this update if it's the most recent one
-      if (refreshStartTime === lastRefreshTime.current) {
-        // Merge existing running states with new data
-        const updatedAppsData = appsData.map(app => {
-          // Make a shallow copy of the app object
-          const appCopy: AppletInterface = {...app}
-
-          // Check pending operations first
-          const pendingOp = pendingOperations.current[app.packageName]
-          if (pendingOp === "start") {
-            appCopy.is_running = true
-          } else if (pendingOp === "stop") {
-            appCopy.is_running = false
-          } else if (app.is_running !== undefined) {
-            // If the server provided is_running status, use it
-            appCopy.is_running = Boolean(app.is_running)
-          } else if (currentRunningStates[app.packageName]) {
-            // Fallback to our local state if server didn't provide is_running
-            appCopy.is_running = true
-          } else {
-            // Default to not running if no information is available
-            appCopy.is_running = false
-          }
-
-          return appCopy
-        })
-
-        // // check if the list of running apps is the same:
-        // const runningApps = updatedAppsData.filter(app => app.is_running)
-        // const oldRunningApps = appStatus.filter(app => app.is_running)
-        // const oldIncompatibleApps = appStatus.filter(app => !app.compatibility?.isCompatible)
-        // const newIncompatibleApps = updatedAppsData.filter(app => !app.compatibility?.isCompatible)
-
-        // if (runningApps !== oldRunningApps || oldIncompatibleApps !== newIncompatibleApps) {
-        //   console.log("AppStatusProvider: Running apps changed, refreshing app list")
-        //   setAppStatus(updatedAppsData)
-        // }
-
-        const diff = deepCompare(appStatus, updatedAppsData)
-        if (diff.length === 0) {
-          console.log("AppStatusProvider: Applet status did not change ###############################################")
-          return
+      // Merge existing running states with new data
+      const updatedAppsData = appsData.map(app => {
+        // Make a shallow copy of the app object
+        const appCopy: AppletInterface = {
+          appType: app.appType,
+          packageName: app.packageName,
+          name: app.name,
+          publicUrl: app.publicUrl,
+          logoURL: app.logoURL,
+          permissions: app.permissions,
+          is_running: app.is_running,
+          is_loading: false,
         }
-        // console.log("AppletStatusProvider: Applet status changed:", diff)
+
+        // Check pending operations first
+        const pendingOp = pendingOperations.current[app.packageName]
+        if (pendingOp === "start") {
+          appCopy.is_running = true
+          appCopy.is_loading = true
+        } else if (pendingOp === "stop") {
+          appCopy.is_running = false
+        } else if (app.is_running !== undefined) {
+          // If the server provided is_running status, use it
+          appCopy.is_running = Boolean(app.is_running)
+        } else if (currentRunningStates[app.packageName]) {
+          // Fallback to our local state if server didn't provide is_running
+          appCopy.is_running = true
+        } else {
+          // Default to not running if no information is available
+          appCopy.is_running = false
+        }
+
+        return appCopy
+      })
+
+      // // check if the list of running apps is the same:
+      // const runningApps = updatedAppsData.filter(app => app.is_running)
+      // const oldRunningApps = appStatus.filter(app => app.is_running)
+      // const oldIncompatibleApps = appStatus.filter(app => !app.compatibility?.isCompatible)
+      // const newIncompatibleApps = updatedAppsData.filter(app => !app.compatibility?.isCompatible)
+
+      // if (runningApps !== oldRunningApps || oldIncompatibleApps !== newIncompatibleApps) {
+      //   console.log("AppStatusProvider: Running apps changed, refreshing app list")
+      //   setAppStatus(updatedAppsData)
+      // }
+
+      const diff = deepCompare(appStatus, updatedAppsData)
+      if (diff.length === 0) {
+        console.log("AppStatusProvider: Applet status did not change ###############################################")
+        return
+      }
+      console.log("AppletStatusProvider: setting app status")
+
+      if (!hasUpdatedAppStatus) {
+        setHasUpdatedAppStatus(true)
+      
 
         setAppStatus(updatedAppsData)
       }
     } catch (err) {
       console.error("AppStatusProvider: Error fetching apps:", err)
     }
-  }, [user, status])
+  }, [user])
 
   // Optimistically update app status when starting an app
   const optimisticallyStartApp = useCallback(async (packageName: string, appType?: string) => {
@@ -224,14 +228,8 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
       }, 20000)
 
       setAppStatus(currentStatus => {
-        // First update all apps' foreground status
-        const updatedApps = currentStatus.map(app => ({
-          ...app,
-          is_foreground: app.packageName === packageName,
-        }))
-
         // Then update the target app to be running
-        return updatedApps.map(app =>
+        return currentStatus.map(app =>
           app.packageName === packageName ? {...app, is_running: true, is_foreground: true} : app,
         )
       })
@@ -330,19 +328,6 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
     }
   }
 
-  const handleAppStateChange = async (nextAppState: any) => {
-    console.log("App state changed to:", nextAppState)
-    // If app comes back to foreground, hide the loading overlay
-    if (nextAppState === "active") {
-      if (await loadSetting(SETTINGS_KEYS.RECONNECT_ON_APP_FOREGROUND, true)) {
-        console.log("Attempt reconnect to glasses", status.core_info.default_wearable, status.glasses_info?.model_name)
-        if (status.core_info.default_wearable && !status.glasses_info?.model_name) {
-          await coreCommunicator.sendConnectWearable(status.core_info.default_wearable)
-        }
-      }
-    }
-  }
-
   // const onAppStarted = (packageName: string) => {
   //   optimisticallyStartApp(packageName)
   // }
@@ -366,60 +351,13 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
     }, 1500)
   }
 
-  // Initial fetch and refresh on user change or status change
-  useEffect(() => {
-    console.log("USE EFFECT 0")
-    refreshAppStatus()
-  }, [user, status.core_info.cloud_connection_status])
-
-  // Monitor glasses connection changes and refresh apps when glasses change
-  useEffect(() => {
-    console.log("USE EFFECT 1")
-    const currentGlassesModel = status.glasses_info?.model_name || null
-
-    // Only check for changes after initial load (previousGlassesModel has been set at least once)
-    if (previousGlassesModel.current !== undefined) {
-      // Check if glasses connection changed
-      if (previousGlassesModel.current !== currentGlassesModel) {
-        console.log(
-          "AppStatusProvider: Glasses connection changed from",
-          previousGlassesModel.current || "none",
-          "to",
-          currentGlassesModel || "none",
-          "- refreshing app list",
-        )
-
-        // Only refresh if we have a user and the change is meaningful
-        if (user && (previousGlassesModel.current !== null || currentGlassesModel !== null)) {
-          // Add error handling for refresh
-          refreshAppStatus().catch(error => {
-            console.error("AppStatusProvider: Error refreshing apps after glasses change:", error)
-          })
-        }
-      }
-    }
-
-    // Update the previous glasses model for next comparison
-    previousGlassesModel.current = currentGlassesModel
-  }, [status.glasses_info?.model_name, user, refreshAppStatus])
-
   // Listen for app started/stopped events from CoreCommunicator
   useEffect(() => {
-    // // @ts-ignore
-    // GlobalEventEmitter.on("APP_STARTED_EVENT", onAppStarted)
-    // // @ts-ignore
-    // GlobalEventEmitter.on("APP_STOPPED_EVENT", onAppStopped)
-
     // @ts-ignore
     GlobalEventEmitter.on("RESET_APP_STATUS", onResetAppStatus)
     // @ts-ignore
     GlobalEventEmitter.on("CORE_TOKEN_SET", onCoreTokenSet)
     return () => {
-      // @ts-ignore
-      // GlobalEventEmitter.off("APP_STARTED_EVENT", onAppStarted)
-      // @ts-ignore
-      // GlobalEventEmitter.off("APP_STOPPED_EVENT", onAppStopped)
-
       // @ts-ignore
       GlobalEventEmitter.off("RESET_APP_STATUS", onResetAppStatus)
       // @ts-ignore
@@ -429,6 +367,23 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
 
   // Add a listener for app state changes to detect when the app comes back from background
   useEffect(() => {
+    const handleAppStateChange = async (nextAppState: any) => {
+      console.log("App state changed to:", nextAppState)
+      // If app comes back to foreground, hide the loading overlay
+      if (nextAppState === "active") {
+        if (await loadSetting(SETTINGS_KEYS.RECONNECT_ON_APP_FOREGROUND, true)) {
+          console.log(
+            "Attempt reconnect to glasses",
+            status.core_info.default_wearable,
+            status.glasses_info?.model_name,
+          )
+          if (status.core_info.default_wearable && !status.glasses_info?.model_name) {
+            await coreCommunicator.sendConnectWearable(status.core_info.default_wearable)
+          }
+        }
+      }
+    }
+
     // Subscribe to app state changes
     const appStateSubscription = AppState.addEventListener("change", handleAppStateChange)
 
