@@ -3003,51 +3003,6 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
         return isMicrophoneEnabled;
     }
 
-    /**
-     * Decodes Even NexGlasses serial number to extract style and color information
-     *
-     * @param serialNumber The full serial number (e.g., "S110LABD020021")
-     * @return Array containing [style, color] or ["Unknown", "Unknown"] if invalid
-     */
-    public String[] decodeEvenNexGlassesSerialNumber(String serialNumber) {
-        if (serialNumber == null || serialNumber.length() < 6) {
-            return new String[]{"Unknown", "Unknown"};
-        }
-
-        // Style mapping: 3rd character (index 2)
-        String style;
-        switch (serialNumber.charAt(1)) {
-            case '0':
-                style = "Round";
-                break;
-            case '1':
-                style = "Rectangular";
-                break;
-            default:
-                style = "Round";
-                break;
-        }
-
-        // Color mapping: 5th character (index 4)
-        String color;
-        switch (serialNumber.charAt(4)) {
-            case 'A':
-                color = "Grey";
-                break;
-            case 'B':
-                color = "Brown";
-                break;
-            case 'C':
-                color = "Green";
-                break;
-            default:
-                color = "Grey";
-                break;
-        }
-
-        return new String[]{style, color};
-    }
-
     private void onCharacteristicChangedHandler(BluetoothGattCharacteristic characteristic) {
         if (characteristic.getUuid().equals(NOTIFY_CHAR_UUID)) {
             byte[] data = characteristic.getValue();
