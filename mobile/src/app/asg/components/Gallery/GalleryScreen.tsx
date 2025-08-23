@@ -350,7 +350,8 @@ export function GalleryScreen() {
       const syncData = syncResponse.data || syncResponse
 
       if (!syncData.changed_files || syncData.changed_files.length === 0) {
-        showAlert("Sync Complete", "No new files to download", [{text: translate("common:ok")}])
+        console.log("Sync Complete- no new files to download!!!")
+        //showAlert("Sync Complete", "No new files to download", [{text: translate("common:ok")}])
         return
       }
 
@@ -846,6 +847,34 @@ The gallery will automatically reload once connected.`,
         return
       }
 
+      // Check if camera is busy (only matters if there's content to fetch)
+      if (data.camera_busy) {
+        const busyMessage =
+          data.camera_busy === "stream"
+            ? "streaming"
+            : data.camera_busy === "video"
+              ? "recording video"
+              : "using the camera"
+
+        const itemText = data.total === 1 ? "item" : "items"
+
+        showAlert(
+          "Camera Busy",
+          `Cannot fetch ${data.total || 0} ${itemText} from glasses while ${busyMessage}. Please stop ${busyMessage} first to sync.`,
+          [{text: "OK"}],
+          {
+            iconName: "camera",
+            iconColor: "#FF9800",
+          },
+        )
+
+        // Don't proceed with hotspot/fetching
+        // TODO: Reconsider whether this is a good way to handle this case
+        setTotalServerCount(0)
+        transitionToState(GalleryState.NO_MEDIA_ON_GLASSES)
+        return
+      }
+
       // We have content, need hotspot to sync
 
       // Check if phone is connected to glasses hotspot
@@ -1188,9 +1217,7 @@ The gallery will automatically reload once connected.`,
       </View>
 
       {/* Unified Status Bar - Fixed at bottom */}
-      {galleryState === GalleryState.INITIALIZING ||
-      galleryState === GalleryState.QUERYING_GLASSES ||
-      galleryState === GalleryState.CONNECTED_LOADING ||
+      {galleryState === GalleryState.CONNECTED_LOADING ||
       galleryState === GalleryState.USER_CANCELLED_WIFI ||
       galleryState === GalleryState.WAITING_FOR_WIFI_PROMPT ||
       galleryState === GalleryState.CONNECTING_TO_HOTSPOT ||
@@ -1209,7 +1236,7 @@ The gallery will automatically reload once connected.`,
           disabled={galleryState !== GalleryState.USER_CANCELLED_WIFI}>
           <View style={themed($syncButtonContent)}>
             {/* Initial loading states */}
-            {galleryState === GalleryState.INITIALIZING || galleryState === GalleryState.QUERYING_GLASSES ? (
+            {false && (galleryState === GalleryState.INITIALIZING || galleryState === GalleryState.QUERYING_GLASSES) ? (
               <View style={themed($syncButtonRow)}>
                 <ActivityIndicator size="small" color={theme.colors.text} style={{marginRight: spacing.xs}} />
                 <Text style={themed($syncButtonText)}>Checking for media...</Text>

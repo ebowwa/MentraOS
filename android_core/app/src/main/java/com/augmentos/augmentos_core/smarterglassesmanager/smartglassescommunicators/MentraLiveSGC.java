@@ -2643,9 +2643,9 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         // Send photo size settings to glasses
         JSONObject command = new JSONObject();
         try {
-            command.put("type", "set_button_photo_size");
+            command.put("type", "button_photo_setting");
             command.put("size", size);
-            sendJson(command);
+            sendJson(command, true);
         } catch (Exception e) {
             Log.e(TAG, "Error sending button photo settings", e);
         }
@@ -2656,11 +2656,11 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         // Send video settings to glasses
         JSONObject command = new JSONObject();
         try {
-            command.put("type", "set_button_video_settings");
+            command.put("type", "button_video_recording_setting");
             command.put("width", width);
             command.put("height", height);
             command.put("fps", fps);
-            sendJson(command);
+            sendJson(command, true);
         } catch (Exception e) {
             Log.e(TAG, "Error sending button video settings", e);
         }
@@ -2673,7 +2673,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         try {
             command.put("type", "button_camera_led");
             command.put("enabled", enabled);
-            sendJson(command);
+            sendJson(command, true);
         } catch (Exception e) {
             Log.e(TAG, "Error sending button camera LED setting", e);
         }
