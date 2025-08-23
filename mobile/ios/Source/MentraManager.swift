@@ -672,9 +672,9 @@ struct ViewState {
         liveManager?.sendJson(message)
     }
 
-    func onPhotoRequest(_ requestId: String, _ appId: String, _ webhookUrl: String, _ size: String) {
-        Core.log("AOS: onPhotoRequest: \(requestId), \(appId), \(webhookUrl), size=\(size)")
-        liveManager?.requestPhoto(requestId, appId: appId, webhookUrl: webhookUrl.isEmpty ? nil : webhookUrl, size: size)
+    func onPhotoRequest(_ requestId: String, _ appId: String, _ webhookUrl: String, _ authToken: String, _ size: String) {
+        Core.log("AOS: onPhotoRequest: \(requestId), \(appId), \(webhookUrl), authToken=\(authToken.isEmpty ? "none" : "***"), size=\(size)")
+        liveManager?.requestPhoto(requestId, appId: appId, webhookUrl: webhookUrl.isEmpty ? nil : webhookUrl, authToken: authToken.isEmpty ? nil : authToken, size: size)
     }
 
     func onRtmpStreamStartRequest(_ message: [String: Any]) {

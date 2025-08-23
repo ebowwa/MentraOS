@@ -562,10 +562,11 @@ class ServerComms {
             let requestId = msg["requestId"] as? String ?? ""
             let appId = msg["appId"] as? String ?? ""
             let webhookUrl = msg["webhookUrl"] as? String ?? ""
+            let authToken = msg["authToken"] as? String ?? ""
             let size = (msg["size"] as? String) ?? "medium"
-            Core.log("Received photo_request, requestId: \(requestId), appId: \(appId), webhookUrl: \(webhookUrl), size: \(size)")
+            Core.log("Received photo_request, requestId: \(requestId), appId: \(appId), webhookUrl: \(webhookUrl), authToken: \(authToken.isEmpty ? "none" : "***"), size: \(size)")
             if !requestId.isEmpty, !appId.isEmpty {
-                MentraManager.getInstance().onPhotoRequest(requestId, appId, webhookUrl, size)
+                MentraManager.getInstance().onPhotoRequest(requestId, appId, webhookUrl, authToken, size)
             } else {
                 Core.log("Invalid photo request: missing requestId or appId")
             }

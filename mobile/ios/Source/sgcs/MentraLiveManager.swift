@@ -397,6 +397,7 @@ private struct BlePhotoTransfer {
     let bleImgId: String
     let requestId: String
     let webhookUrl: String
+    var authToken: String = ""
     var session: FileTransferSession?
     let phoneStartTime: Date
     var bleTransferStartTime: Date?
@@ -930,8 +931,8 @@ typealias JSONObject = [String: Any]
         sendJson(json, wakeUp: true)
     }
 
-    @objc func requestPhoto(_ requestId: String, appId: String, webhookUrl: String?, size: String?) {
-        Core.log("Requesting photo: \(requestId) for app: \(appId)")
+    @objc func requestPhoto(_ requestId: String, appId: String, webhookUrl: String?, authToken: String?, size: String?) {
+        Core.log("Requesting photo: \(requestId) for app: \(appId), authToken: \(authToken?.isEmpty == false ? "***" : "none")")
 
         var json: [String: Any] = [
             "type": "take_photo",
@@ -946,7 +947,15 @@ typealias JSONObject = [String: Any]
 
         if let webhookUrl = webhookUrl, !webhookUrl.isEmpty {
             json["webhookUrl"] = webhookUrl
-            blePhotoTransfers[bleImgId] = BlePhotoTransfer(bleImgId: bleImgId, requestId: requestId, webhookUrl: webhookUrl)
+            var transfer = BlePhotoTransfer(bleImgId: bleImgId, requestId: requestId, webhookUrl: webhookUrl)
+            if let authToken = authToken, !authToken.isEmpty {
+                transfer.authToken = authToken
+            }
+            blePhotoTransfers[bleImgId] = transfer
+        }
+
+        if let authToken = authToken, !authToken.isEmpty {
+            json["authToken"] = authToken
         }
 
         // propagate size (default to medium if invalid)
@@ -1789,13 +1798,18 @@ typealias JSONObject = [String: Any]
         //      Core.log("Error saving BLE photo locally: \(error)")
         //    }
 
-        // Get core token for authentication
-        guard let coreToken = UserDefaults.standard.string(forKey: "core_token") else {
-            Core.log("LIVE: core_token not set!")
+        // Use the authToken from the transfer if available, otherwise fall back to core token
+        var authToken = transfer.authToken
+        if authToken.isEmpty {
+            authToken = UserDefaults.standard.string(forKey: "core_token") ?? ""
+        }
+
+        if authToken.isEmpty {
+            Core.log("LIVE: No auth token available for BLE photo upload!")
             return
         }
 
-        BlePhotoUploadService.processAndUploadPhoto(imageData: imageData, requestId: transfer.requestId, webhookUrl: transfer.webhookUrl, authToken: coreToken)
+        BlePhotoUploadService.processAndUploadPhoto(imageData: imageData, requestId: transfer.requestId, webhookUrl: transfer.webhookUrl, authToken: authToken)
     }
 
     private func sendBleTransferComplete(requestId: String, bleImgId: String, success: Bool) {
