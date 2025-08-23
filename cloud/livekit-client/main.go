@@ -16,6 +16,8 @@ import (
 	lksdk "github.com/livekit/server-sdk-go/v2"
 	lkmedia "github.com/livekit/server-sdk-go/v2/pkg/media"
     "math"
+    webrtc "github.com/pion/webrtc/v4"
+    opus "gopkg.in/hraban/opus.v2"
 )
 
 var publishGain float64 = 1.0
@@ -49,6 +51,19 @@ type LiveKitClient struct {
 	mu           sync.Mutex
 	connected    bool
 	receivedFrameCount int
+    sampleRate   int
+    // subscribe state
+    subscribeEnabled bool
+    targetIdentity   string
+    subQuit          chan struct{}
+    // track registry
+    tracksMu         sync.Mutex
+    subTracks        map[string]*webrtc.TrackRemote // by publication SID
+    subTrackOwner    map[string]string               // SID -> participant identity
+    subActive        map[string]bool                 // SID -> forwarding active
+    // subscriber outgoing 16kHz frame buffer (bytes)
+    subBuf16k        []byte
+    subFrameCount    int
 }
 
 // Message types
@@ -61,6 +76,8 @@ type Command struct {
     FreqHz   int             `json:"freq,omitempty"`
     DurationMs int           `json:"ms,omitempty"`
     Url      string          `json:"url,omitempty"`
+    // Subscribe controls
+    TargetIdentity string     `json:"targetIdentity,omitempty"`
 }
 
 type Event struct {
@@ -97,6 +114,9 @@ func (s *LiveKitService) HandleWebSocket(w http.ResponseWriter, r *http.Request)
 		ws:     ws,
 		ctx:    ctx,
 		cancel: cancel,
+        subTracks:     make(map[string]*webrtc.TrackRemote),
+        subTrackOwner: make(map[string]string),
+        subActive:     make(map[string]bool),
 	}
 
 	s.mu.Lock()
@@ -173,6 +193,10 @@ func (c *LiveKitClient) handleCommand(cmd Command) {
         durMs := cmd.DurationMs
         if durMs == 0 { durMs = 3000 }
         go c.publishTone(freq, durMs)
+    case "subscribe_enable":
+        c.enableSubscribe(cmd.TargetIdentity)
+    case "subscribe_disable":
+        c.disableSubscribe()
 	default:
 		c.sendError(fmt.Sprintf("Unknown action: %s", cmd.Action))
 	}
@@ -244,6 +268,24 @@ func (c *LiveKitClient) joinRoomWithURL(roomName, token, customURL string) {
             log.Printf("Disconnected from room")
             c.sendEvent(Event{ Type: "disconnected", State: "disconnected" })
         },
+        ParticipantCallback: lksdk.ParticipantCallback{
+            OnTrackSubscribed: func(track *webrtc.TrackRemote, publication *lksdk.RemoteTrackPublication, rp *lksdk.RemoteParticipant) {
+                // remember track and owner
+                c.tracksMu.Lock()
+                c.subTracks[string(publication.SID())] = track
+                c.subTrackOwner[string(publication.SID())] = string(rp.Identity())
+                c.tracksMu.Unlock()
+                c.onTrackSubscribed(track, publication, rp)
+            },
+            OnTrackUnsubscribed: func(track *webrtc.TrackRemote, publication *lksdk.RemoteTrackPublication, rp *lksdk.RemoteParticipant) {
+                log.Printf("Remote track unsubscribed: %s from %s", publication.Name(), rp.Identity())
+                c.tracksMu.Lock()
+                delete(c.subTracks, string(publication.SID()))
+                delete(c.subTrackOwner, string(publication.SID()))
+                delete(c.subActive, string(publication.SID()))
+                c.tracksMu.Unlock()
+            },
+        },
     }
 
     url := customURL
@@ -285,13 +327,14 @@ func (c *LiveKitClient) joinRoomWithURL(roomName, token, customURL string) {
         ParticipantCount: len(c.room.GetRemoteParticipants()),
     })
 
-    // Create audio track for publishing at 48kHz to avoid resample
-    track, err := lkmedia.NewPCMLocalTrack(48000, 1, nil)
+    // Create audio track for publishing at 16kHz so LiveKit upsamples internally
+    track, err := lkmedia.NewPCMLocalTrack(16000, 1, nil)
     if err != nil {
         log.Printf("Failed to create PCM track: %v", err)
         return
     }
     c.publishTrack = track
+    c.sampleRate = 16000
 
     if pub, err := c.room.LocalParticipant.PublishTrack(track, &lksdk.TrackPublicationOptions{ Name: "microphone" }); err != nil {
         log.Printf("Failed to publish track: %v", err)
@@ -303,7 +346,7 @@ func (c *LiveKitClient) joinRoomWithURL(roomName, token, customURL string) {
     // Wait briefly to ensure publication propagates
     time.Sleep(300 * time.Millisecond)
 
-    log.Printf("PCM audio track published for user %s (48kHz mono)", c.userId)
+    log.Printf("PCM audio track published for user %s (16kHz mono)", c.userId)
     // Signal track published
     c.sendEvent(Event{ Type: "track_published" })
 }
@@ -321,6 +364,7 @@ func (c *LiveKitClient) createAudioTrack() {
 	}
 
 	c.publishTrack = track
+    c.sampleRate = 16000
 
 	// Publish the track
 	if _, err := c.room.LocalParticipant.PublishTrack(track, &lksdk.TrackPublicationOptions{
@@ -425,8 +469,10 @@ func (c *LiveKitClient) handleAudioData(data []byte) {
         log.Printf("Audio chunk %d stats: meanAbs=%.1f rms=%.1f min=%d max=%d", audioChunkCount, meanAbs, rms, minVal, maxVal)
     }
 	
-    // Pace large chunks into ~10ms frames to match expected cadence
-    frameSamples := 160 // 10ms @ 16kHz
+    // Pace large chunks into ~10ms frames to match expected cadence for the active track sample rate
+    sr := c.sampleRate
+    if sr == 0 { sr = 16000 }
+    frameSamples := sr / 100 // 10ms frame size
     for offset := 0; offset < len(samples); offset += frameSamples {
         end := offset + frameSamples
         if end > len(samples) { end = len(samples) }
@@ -450,17 +496,134 @@ func (c *LiveKitClient) handleAudioData(data []byte) {
     }
 }
 
-func (c *LiveKitClient) handleIncomingAudio(pcmData []byte) {
-	// Audio from LiveKit is already PCM at 48kHz
-	// Resample from 48kHz to 16kHz for our system
-	pcm16khz := Resample48to16(pcmData)
-	
-	// Send as binary WebSocket message
-	c.mu.Lock()
-	if c.ws != nil {
-		c.ws.WriteMessage(websocket.BinaryMessage, pcm16khz)
-	}
-	c.mu.Unlock()
+func (c *LiveKitClient) handleIncomingAudio(pcm48 []byte) {
+    // Downsample to 16kHz
+    pcm16 := Resample48to16(pcm48)
+    c.mu.Lock()
+    defer c.mu.Unlock()
+    if c.ws == nil {
+        return
+    }
+    // Append to buffer
+    c.subBuf16k = append(c.subBuf16k, pcm16...)
+    // Emit fixed 10ms frames at 16kHz: 160 samples = 320 bytes
+    const frameBytes = 160 * 2
+    for len(c.subBuf16k) >= frameBytes {
+        chunk := make([]byte, frameBytes)
+        copy(chunk, c.subBuf16k[:frameBytes])
+        // pop
+        c.subBuf16k = c.subBuf16k[frameBytes:]
+        // send
+        _ = c.ws.WriteMessage(websocket.BinaryMessage, chunk)
+        c.subFrameCount++
+        if c.subFrameCount%100 == 0 {
+            log.Printf("Forwarded %d subscribed frames (16kHz)", c.subFrameCount)
+        }
+    }
+}
+
+// enableSubscribe marks subscription forwarding enabled and optionally sets a target identity filter.
+func (c *LiveKitClient) enableSubscribe(target string) {
+    c.mu.Lock()
+    c.subscribeEnabled = true
+    c.targetIdentity = target
+    if c.subQuit == nil { c.subQuit = make(chan struct{}, 1) }
+    c.mu.Unlock()
+    log.Printf("Subscribe enabled (target=%s)", target)
+
+    // Attach to any already-present tracks immediately
+    c.tracksMu.Lock()
+    for sid, tr := range c.subTracks {
+        owner := c.subTrackOwner[sid]
+        if target != "" && owner != target { continue }
+        if c.subActive[sid] { continue }
+        c.subActive[sid] = true
+        go c.forwardTrack(tr, owner, sid)
+    }
+    c.tracksMu.Unlock()
+}
+
+// disableSubscribe stops forwarding subscribed audio.
+func (c *LiveKitClient) disableSubscribe() {
+    c.mu.Lock()
+    c.subscribeEnabled = false
+    if c.subQuit != nil {
+        close(c.subQuit)
+        c.subQuit = nil
+    }
+    c.mu.Unlock()
+    log.Printf("Subscribe disabled")
+}
+
+// onTrackSubscribed is invoked by RoomCallback when a remote audio track is available.
+func (c *LiveKitClient) onTrackSubscribed(track *webrtc.TrackRemote, publication *lksdk.RemoteTrackPublication, rp *lksdk.RemoteParticipant) {
+    if track.Kind() != webrtc.RTPCodecTypeAudio {
+        return
+    }
+    c.mu.Lock()
+    enabled := c.subscribeEnabled
+    target := c.targetIdentity
+    ws := c.ws
+    c.mu.Unlock()
+    if !enabled || ws == nil {
+        log.Printf("Track subscribed but forwarding disabled or ws nil (id=%s)", rp.Identity())
+        return
+    }
+    if target != "" && string(rp.Identity()) != target {
+        log.Printf("Skipping track from %s (target=%s)", rp.Identity(), target)
+        return
+    }
+
+    owner := string(rp.Identity())
+    sid := string(publication.SID())
+    log.Printf("Subscribed to remote audio: participant=%s trackSid=%s", owner, sid)
+    c.sendEvent(Event{ Type: "sub_track_added", RoomName: "", ParticipantID: owner, ParticipantCount: 0 })
+    c.tracksMu.Lock()
+    c.subActive[sid] = true
+    c.tracksMu.Unlock()
+    go c.forwardTrack(track, owner, sid)
+}
+
+// forwardTrack reads RTP Opus from track, decodes to 48k PCM, downsamples to 16k, and emits fixed 10ms frames.
+func (c *LiveKitClient) forwardTrack(track *webrtc.TrackRemote, owner string, sid string) {
+    // Set up Opus decoder (48kHz mono)
+    dec, err := opus.NewDecoder(48000, 1)
+    if err != nil {
+        log.Printf("Failed to create Opus decoder: %v", err)
+        return
+    }
+    pcmBuf := make([]int16, 5760)
+    for {
+        c.mu.Lock()
+        ws := c.ws
+        q := c.subQuit
+        c.mu.Unlock()
+        if ws == nil {
+            return
+        }
+        if q != nil {
+            select {
+            case <-q:
+                return
+            default:
+            }
+        }
+        pkt, _, err := track.ReadRTP()
+        if err != nil {
+            log.Printf("ReadRTP error: %v", err)
+            return
+        }
+        n, err := dec.Decode(pkt.Payload, pcmBuf)
+        if err != nil || n <= 0 {
+            continue
+        }
+        // Convert to little-endian bytes and hand to outgoing buffer/downsizer
+        outBytes := make([]byte, n*2)
+        for i := 0; i < n; i++ {
+            binary.LittleEndian.PutUint16(outBytes[i*2:i*2+2], uint16(pcmBuf[i]))
+        }
+        c.handleIncomingAudio(outBytes)
+    }
 }
 
 func (c *LiveKitClient) leaveRoom() {
