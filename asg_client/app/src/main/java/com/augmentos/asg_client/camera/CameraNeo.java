@@ -2,6 +2,7 @@ package com.augmentos.asg_client.camera;
 
 import com.augmentos.asg_client.io.media.core.CircularVideoBufferInternal;
 import com.augmentos.asg_client.io.hardware.interfaces.IHardwareManager;
+import com.augmentos.asg_client.service.utils.ServiceUtils;
 import com.augmentos.asg_client.io.hardware.core.HardwareManagerFactory;
 
 import android.annotation.SuppressLint;
@@ -162,26 +163,47 @@ public class CameraNeo extends LifecycleService {
     
     /**
      * Get the current display rotation in degrees
+     * Uses device-specific rotation mapping for K900 variants
      * @return Display rotation (0, 90, 180, or 270 degrees)
      */
     private int getDisplayRotation() {
+        // Use device-specific default rotation for K900 variants
+        int deviceDefaultRotation = ServiceUtils.determineDefaultRotationForDevice(this);
+        String deviceType = ServiceUtils.getDeviceTypeString(this);
+        
+        Log.d(TAG, "📱 Device type: " + deviceType + ", Default rotation: " + deviceDefaultRotation + "°");
+        
+        // For K900 devices, use the device-specific rotation
+        if (ServiceUtils.isK900Device(this)) {
+            Log.d(TAG, "🔄 Using K900-specific rotation: " + deviceDefaultRotation + "°");
+            return deviceDefaultRotation;
+        }
+        
+        // For standard Android devices, use system display rotation
         WindowManager windowManager = (WindowManager) getSystemService(Context.WINDOW_SERVICE);
         if (windowManager != null) {
             Display display = windowManager.getDefaultDisplay();
             switch (display.getRotation()) {
                 case Surface.ROTATION_0:
+                    Log.d(TAG, "🔄 System display rotation: 0°");
                     return 0;
                 case Surface.ROTATION_90:
+                    Log.d(TAG, "🔄 System display rotation: 90°");
                     return 90;
                 case Surface.ROTATION_180:
+                    Log.d(TAG, "🔄 System display rotation: 180°");
                     return 180;
                 case Surface.ROTATION_270:
+                    Log.d(TAG, "🔄 System display rotation: 270°");
                     return 270;
                 default:
+                    Log.d(TAG, "🔄 System display rotation: default 0°");
                     return 0;
             }
         }
-        return 0; // Default fallback
+        
+        Log.w(TAG, "⚠️ WindowManager unavailable - using device default: " + deviceDefaultRotation + "°");
+        return deviceDefaultRotation; // Fallback to device-specific rotation
     }
 
     /**
