@@ -1,9 +1,7 @@
 import React, {createContext, useContext, useState, ReactNode, useCallback, useEffect, useRef} from "react"
 import BackendServerComms from "../backend_comms/BackendServerComms"
 import {useAuth} from "@/contexts/AuthContext"
-import {useCoreStatus} from "./CoreStatusProvider"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
-import {router} from "expo-router"
 import {AppState} from "react-native"
 import {loadSetting, saveSetting} from "@/utils/SettingsHelper"
 import {SETTINGS_KEYS} from "@/consts"
@@ -93,8 +91,6 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
   // Keep track of active operations to prevent race conditions
   const pendingOperations = useRef<{[packageName: string]: "start" | "stop"}>({})
 
-  const [hasUpdatedAppStatus, setHasUpdatedAppStatus] = useState(false)
-
   const refreshAppStatus = useCallback(async () => {
     console.log("AppStatusProvider: refreshAppStatus called - user exists:", !!user, "user email:", user?.email)
     if (!user) {
@@ -116,7 +112,6 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
     }
 
     try {
-
       const appsData = await BackendServerComms.getInstance().getApps()
       // console.log("AppStatusProvider: getApps() returned", appsData?.length || 0, "apps")
 
