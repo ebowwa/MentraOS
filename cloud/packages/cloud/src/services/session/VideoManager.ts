@@ -124,9 +124,10 @@ export class VideoManager {
       );
 
       // Get current managed stream viewers for this user and stop them
-      const activeViewers = this.userSession.managedStreamingExtension.getManagedStreamViewers(
-        this.userSession.userId,
-      );
+      const activeViewers =
+        this.userSession.managedStreamingExtension.getManagedStreamViewers(
+          this.userSession.userId,
+        );
       for (const viewerPackageName of activeViewers) {
         await this.userSession.managedStreamingExtension.stopManagedStream(
           this.userSession,
@@ -339,6 +340,19 @@ export class VideoManager {
   isStreamActive(streamId: string): boolean {
     const stream = this.activeSessionStreams.get(streamId);
     return stream ? ["initializing", "active"].includes(stream.status) : false;
+  }
+
+  /**
+   * Get information about any active unmanaged streams for this session
+   * Returns the first active stream found (there should only be one)
+   */
+  getActiveStreamInfo(): SessionStreamInfo | undefined {
+    for (const [streamId, stream] of this.activeSessionStreams) {
+      if (["initializing", "active"].includes(stream.status)) {
+        return stream;
+      }
+    }
+    return undefined;
   }
 
   /**

@@ -28,6 +28,10 @@ export interface Glasses {
   glasses_wifi_connected: boolean
   glasses_wifi_ssid: string
   glasses_wifi_local_ip: string
+  glasses_hotspot_enabled?: boolean
+  glasses_hotspot_ssid?: string
+  glasses_hotspot_password?: string
+  glasses_hotspot_gateway_ip?: string
   case_removed: boolean
   case_open: boolean
   case_charging: boolean
@@ -58,6 +62,7 @@ interface GlassesSettings {
   button_mode?: string
   button_photo_size?: string // 'small' | 'medium' | 'large'
   button_video_settings?: ButtonVideoSettings
+  button_camera_led: boolean
 }
 
 interface WifiConnection {
@@ -147,6 +152,7 @@ export class AugmentOSParser {
         height: 720,
         fps: 30,
       },
+      button_camera_led: true,
     },
     wifi: {is_connected: false, ssid: "", signal_strength: 0},
     gsm: {is_connected: false, carrier: "", signal_strength: 0},
@@ -186,6 +192,10 @@ export class AugmentOSParser {
       glasses_wifi_connected: false,
       glasses_wifi_ssid: "",
       glasses_wifi_local_ip: "",
+      glasses_hotspot_enabled: false,
+      glasses_hotspot_ssid: "",
+      glasses_hotspot_password: "",
+      glasses_hotspot_gateway_ip: "",
       case_removed: true,
       case_open: true,
       case_charging: false,
@@ -207,6 +217,7 @@ export class AugmentOSParser {
         height: 720,
         fps: 30,
       },
+      button_camera_led: true,
     },
     wifi: {is_connected: true, ssid: "TP-LINK69", signal_strength: 100},
     gsm: {is_connected: false, carrier: "", signal_strength: 0},
@@ -264,6 +275,10 @@ export class AugmentOSParser {
               glasses_wifi_connected: glassesInfo.glasses_wifi_connected || false,
               glasses_wifi_ssid: glassesInfo.glasses_wifi_ssid || "",
               glasses_wifi_local_ip: glassesInfo.glasses_wifi_local_ip || "",
+              glasses_hotspot_enabled: glassesInfo.glasses_hotspot_enabled || false,
+              glasses_hotspot_ssid: glassesInfo.glasses_hotspot_ssid || "",
+              glasses_hotspot_password: glassesInfo.glasses_hotspot_password || "",
+              glasses_hotspot_gateway_ip: glassesInfo.glasses_hotspot_gateway_ip || "",
               case_removed: glassesInfo.case_removed ?? true,
               case_open: glassesInfo.case_open ?? true,
               case_charging: glassesInfo.case_charging ?? false,
@@ -292,6 +307,7 @@ export class AugmentOSParser {
             height: 720,
             fps: 30,
           },
+          button_camera_led: status.glasses_settings.button_camera_led,
         },
         wifi: status.wifi ?? AugmentOSParser.defaultStatus.wifi,
         gsm: status.gsm ?? AugmentOSParser.defaultStatus.gsm,

@@ -199,14 +199,30 @@ public class AugmentOsManagerMessageParser {
                     callback.setGlassesWifiCredentials(ssid, password);
                     break;
 
+                case "set_hotspot_state":
+                    boolean hotspotEnabled = commandObject.getJSONObject("params").getBoolean("enabled");
+                    Log.d(TAG, "🔥 GOT A COMMAND TO SET HOTSPOT STATE, enabled: " + hotspotEnabled);
+                    callback.setGlassesHotspotState(hotspotEnabled);
+                    break;
+
                 case "request_wifi_scan":
                     callback.requestWifiScan();
+                    break;
+                    
+                case "query_gallery_status":
+                    Log.d(TAG, "📸 GOT A COMMAND TO QUERY GALLERY STATUS");
+                    callback.queryGalleryStatus();
                     break;
 
                 case "set_preferred_mic":
                     String mic = commandObject.getJSONObject("params").getString("mic");
                     callback.setPreferredMic(mic);
                     break;
+
+                case "restart_transcriber":
+                    callback.restartTranscriber();
+                    break;
+
                 case "set_button_mode":
                     String mode = commandObject.getJSONObject("params").getString("mode");
                     callback.setButtonMode(mode);

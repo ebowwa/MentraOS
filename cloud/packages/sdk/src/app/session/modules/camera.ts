@@ -15,6 +15,7 @@ import {
   isRtmpStreamStatus,
   ManagedStreamStatus,
   isManagedStreamStatus,
+  StreamStatusCheckResponse,
 } from "../../../types";
 import {
   VideoConfig,
@@ -690,6 +691,57 @@ export class CameraModule {
    */
   getManagedStreamUrls(): ManagedStreamResult | undefined {
     return this.managedExtension.getManagedStreamUrls();
+  }
+
+  /**
+   * 🔍 Check for any existing streams (managed or unmanaged) for the current user
+   *
+   * This method checks if there's already an active stream for the current user,
+   * which is useful to avoid conflicts and to reconnect to existing streams.
+   *
+   * @returns Promise that resolves with stream information if a stream exists
+   *
+   * @example
+   * ```typescript
+   * const streamInfo = await session.camera.checkExistingStream();
+   * if (streamInfo.hasActiveStream) {
+   *   console.log('Stream type:', streamInfo.streamInfo?.type);
+   *   if (streamInfo.streamInfo?.type === 'managed') {
+   *     console.log('HLS URL:', streamInfo.streamInfo.hlsUrl);
+   *   } else {
+   *     console.log('RTMP URL:', streamInfo.streamInfo.rtmpUrl);
+   *   }
+   * }
+   * ```
+   */
+  async checkExistingStream(): Promise<{
+    hasActiveStream: boolean;
+    streamInfo?: {
+      type: "managed" | "unmanaged";
+      streamId: string;
+      status: string;
+      createdAt: Date;
+      // For managed streams
+      hlsUrl?: string;
+      dashUrl?: string;
+      webrtcUrl?: string;
+      previewUrl?: string;
+      thumbnailUrl?: string;
+      activeViewers?: number;
+      // For unmanaged streams
+      rtmpUrl?: string;
+      requestingAppId?: string;
+    };
+  }> {
+    return this.managedExtension.checkExistingStream();
+  }
+
+  /**
+   * Handle incoming stream status check response
+   * @internal
+   */
+  handleStreamCheckResponse(response: StreamStatusCheckResponse): void {
+    this.managedExtension.handleStreamCheckResponse(response);
   }
 
   /**

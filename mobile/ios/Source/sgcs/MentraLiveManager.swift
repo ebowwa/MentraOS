@@ -603,7 +603,7 @@ extension MentraLiveManager: CBPeripheralDelegate {
     }
 
     func peripheral(_: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
-        // CoreCommsService.log("GOT CHARACTERISTIC UPDATE @@@@@@@@@@@@@@@@@@@@@")
+        // Core.log("GOT CHARACTERISTIC UPDATE @@@@@@@@@@@@@@@@@@@@@")
         if let error = error {
             Core.log("Error updating value for characteristic: \(error.localizedDescription)")
             return
@@ -617,13 +617,13 @@ extension MentraLiveManager: CBPeripheralDelegate {
         let threadId = Thread.current.hash
         let uuid = characteristic.uuid
 
-        // CoreCommsService.log("Thread-\(threadId): 🎉 didUpdateValueFor CALLBACK TRIGGERED! Characteristic: \(uuid)")
+        // Core.log("Thread-\(threadId): 🎉 didUpdateValueFor CALLBACK TRIGGERED! Characteristic: \(uuid)")
         // if uuid == RX_CHAR_UUID {
-        //   CoreCommsService.log("Thread-\(threadId): 🎯 RECEIVED DATA ON RX CHARACTERISTIC (Peripheral's TX)")
+        //   Core.log("Thread-\(threadId): 🎯 RECEIVED DATA ON RX CHARACTERISTIC (Peripheral's TX)")
         // } else if uuid == TX_CHAR_UUID {
-        //   CoreCommsService.log("Thread-\(threadId): 🎯 RECEIVED DATA ON TX CHARACTERISTIC (Peripheral's RX)")
+        //   Core.log("Thread-\(threadId): 🎯 RECEIVED DATA ON TX CHARACTERISTIC (Peripheral's RX)")
         // }
-        // CoreCommsService.log("Thread-\(threadId): 🔍 Processing received data - \(data.count) bytes")
+        // Core.log("Thread-\(threadId): 🔍 Processing received data - \(data.count) bytes")
 
         processReceivedData(data)
     }
@@ -822,6 +822,10 @@ typealias JSONObject = [String: Any]
     @Published var isWifiConnected: Bool = false
     @Published var wifiSsid: String = ""
     @Published var wifiLocalIp: String = ""
+    @Published var isHotspotEnabled: Bool = false
+    @Published var hotspotSsid: String = ""
+    @Published var hotspotPassword: String = ""
+    @Published var hotspotGatewayIp: String = "" // The gateway IP to connect to when on hotspot
 
     // Queue Management
     private let commandQueue = CommandQueue()
@@ -1134,7 +1138,7 @@ typealias JSONObject = [String: Any]
         //    // Set scan timeout
         //    DispatchQueue.main.asyncAfter(deadline: .now() + 60.0) { [weak self] in
         //      if self?.isScanning == true {
-        //        CoreCommsService.log("Scan timeout reached - stopping BLE scan")
+        //        Core.log("Scan timeout reached - stopping BLE scan")
         //        self?.stopScan()
         //      }
         //    }
@@ -1307,11 +1311,28 @@ typealias JSONObject = [String: Any]
             let ip = json["local_ip"] as? String ?? ""
             updateWifiStatus(connected: connected, ssid: ssid, ip: ip)
 
+        case "hotspot_status_update":
+            let enabled = json["hotspot_enabled"] as? Bool ?? false
+            let ssid = json["hotspot_ssid"] as? String ?? ""
+            let password = json["hotspot_password"] as? String ?? ""
+            let ip = json["hotspot_gateway_ip"] as? String ?? ""
+            updateHotspotStatus(enabled: enabled, ssid: ssid, password: password, ip: ip)
+
         case "wifi_scan_result":
             handleWifiScanResult(json)
 
         case "rtmp_stream_status":
             emitRtmpStreamStatus(json)
+
+        case "gallery_status":
+            let photoCount = json["photos"] as? Int ?? 0
+            let videoCount = json["videos"] as? Int ?? 0
+            let totalCount = json["total"] as? Int ?? 0
+            let totalSize = json["total_size"] as? Int64 ?? 0
+            let hasContent = json["has_content"] as? Bool ?? false
+            handleGalleryStatus(photoCount: photoCount, videoCount: videoCount,
+                                totalCount: totalCount, totalSize: totalSize,
+                                hasContent: hasContent)
 
         case "button_press":
             handleButtonPress(json)
@@ -1438,6 +1459,27 @@ typealias JSONObject = [String: Any]
         sendJson(json, wakeUp: true)
     }
 
+    func sendHotspotState(_ enabled: Bool) {
+        Core.log("LiveManager: 🔥 Sending hotspot state: \(enabled)")
+
+        let json: [String: Any] = [
+            "type": "set_hotspot_state",
+            "enabled": enabled,
+        ]
+
+        sendJson(json, wakeUp: true)
+    }
+
+    func queryGalleryStatus() {
+        Core.log("LiveManager: 📸 Querying gallery status from glasses")
+
+        let json: [String: Any] = [
+            "type": "query_gallery_status",
+        ]
+
+        sendJson(json, wakeUp: true)
+    }
+
     // MARK: - Message Handlers
 
     private func handleGlassesReady() {
@@ -1464,15 +1506,32 @@ typealias JSONObject = [String: Any]
 
     private func handleWifiScanResult(_ json: [String: Any]) {
         var networks: [String] = []
+        var enhancedNetworks: [[String: Any]] = []
 
-        if let networksArray = json["networks"] as? [String] {
+        // First, check for enhanced format (networks_neo)
+        if let networksNeoArray = json["networks_neo"] as? [[String: Any]] {
+            enhancedNetworks = networksNeoArray
+            // Extract SSIDs for backwards compatibility
+            networks = networksNeoArray.compactMap { networkInfo in
+                networkInfo["ssid"] as? String
+            }
+            Core.log("Received enhanced WiFi scan results: \(enhancedNetworks.count) networks with security info")
+        }
+        // Fall back to legacy format
+        else if let networksArray = json["networks"] as? [String] {
             networks = networksArray
+            Core.log("Received legacy WiFi scan results: \(networks.count) networks found")
         } else if let networksString = json["networks"] as? String {
             networks = networksString.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+            Core.log("Received legacy WiFi scan results (string format): \(networks.count) networks found")
         }
 
-        Core.log("Received WiFi scan results: \(networks.count) networks found")
-        emitWifiScanResult(networks)
+        // Emit with enhanced data if available, otherwise legacy format
+        if !enhancedNetworks.isEmpty {
+            emitWifiScanResultEnhanced(enhancedNetworks, legacyNetworks: networks)
+        } else {
+            emitWifiScanResult(networks)
+        }
     }
 
     private func handleButtonPress(_ json: [String: Any]) {
@@ -1547,7 +1606,7 @@ typealias JSONObject = [String: Any]
     // MARK: - File Transfer Processing
 
     private func processFilePacket(_ packetInfo: K900ProtocolUtils.FilePacketInfo) {
-        //    CoreCommsService.log("📦 Processing file packet: \(packetInfo.fileName) [\(packetInfo.packIndex)/\(((packetInfo.fileSize + K900ProtocolUtils.FILE_PACK_SIZE - 1) / K900ProtocolUtils.FILE_PACK_SIZE - 1))] (\(packetInfo.packSize) bytes)")
+        //    Core.log("📦 Processing file packet: \(packetInfo.fileName) [\(packetInfo.packIndex)/\(((packetInfo.fileSize + K900ProtocolUtils.FILE_PACK_SIZE - 1) / K900ProtocolUtils.FILE_PACK_SIZE - 1))] (\(packetInfo.packSize) bytes)")
 
         // Check if this is a BLE photo transfer we're tracking
         var bleImgId = packetInfo.fileName
@@ -1725,9 +1784,9 @@ typealias JSONObject = [String: Any]
         //      let fileURL = saveDirectory.appendingPathComponent(fileName)
         //
         //      try imageData.write(to: fileURL)
-        //      CoreCommsService.log("💾 Saved BLE photo locally: \(fileURL.path)")
+        //      Core.log("💾 Saved BLE photo locally: \(fileURL.path)")
         //    } catch {
-        //      CoreCommsService.log("Error saving BLE photo locally: \(error)")
+        //      Core.log("Error saving BLE photo locally: \(error)")
         //    }
 
         // Get core token for authentication
@@ -2047,6 +2106,34 @@ typealias JSONObject = [String: Any]
         emitWifiStatusChange()
     }
 
+    private func updateHotspotStatus(enabled: Bool, ssid: String, password: String, ip: String) {
+        Core.log("🔥 Updating hotspot status - enabled: \(enabled), ssid: \(ssid)")
+        isHotspotEnabled = enabled
+        hotspotSsid = ssid
+        hotspotPassword = password
+        hotspotGatewayIp = ip // This is the gateway IP from glasses
+        emitHotspotStatusChange()
+
+        // Trigger a full status update so React Native gets the updated glasses_info
+        MentraManager.getInstance().handleRequestStatus()
+    }
+
+    private func handleGalleryStatus(photoCount: Int, videoCount: Int, totalCount: Int,
+                                     totalSize: Int64, hasContent: Bool)
+    {
+        Core.log("📸 Received gallery status - photos: \(photoCount), videos: \(videoCount), total size: \(totalSize) bytes")
+
+        // Emit gallery status event as CoreMessageEvent like other status events
+        let eventBody = ["glasses_gallery_status": [
+            "photos": photoCount,
+            "videos": videoCount,
+            "total": totalCount,
+            "total_size": totalSize,
+            "has_content": hasContent,
+        ]]
+        emitEvent("CoreMessageEvent", body: eventBody)
+    }
+
     // MARK: - Timers
 
     private func startHeartbeat() {
@@ -2207,8 +2294,26 @@ typealias JSONObject = [String: Any]
         emitEvent("CoreMessageEvent", body: eventBody)
     }
 
+    private func emitHotspotStatusChange() {
+        let eventBody = ["glasses_hotspot_status_change": [
+            "enabled": isHotspotEnabled,
+            "ssid": hotspotSsid,
+            "password": hotspotPassword,
+            "local_ip": hotspotGatewayIp, // Using gateway IP for consistency with Android
+        ]]
+        emitEvent("CoreMessageEvent", body: eventBody)
+    }
+
     private func emitWifiScanResult(_ networks: [String]) {
         let eventBody = ["wifi_scan_results": networks]
+        emitEvent("CoreMessageEvent", body: eventBody)
+    }
+
+    private func emitWifiScanResultEnhanced(_ enhancedNetworks: [[String: Any]], legacyNetworks: [String]) {
+        let eventBody: [String: Any] = [
+            "wifi_scan_results": legacyNetworks, // Backwards compatibility
+            "wifi_scan_results_enhanced": enhancedNetworks, // Enhanced format with security info
+        ]
         emitEvent("CoreMessageEvent", body: eventBody)
     }
 

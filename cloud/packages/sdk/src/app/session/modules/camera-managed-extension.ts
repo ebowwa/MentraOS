@@ -9,6 +9,8 @@ import {
   ManagedStreamRequest,
   ManagedStreamStopRequest,
   ManagedStreamStatus,
+  StreamStatusCheckRequest,
+  StreamStatusCheckResponse,
   AppToCloudMessageType,
   CloudToAppMessageType,
   StreamType,
@@ -97,6 +99,15 @@ export class CameraManagedExtension {
   private currentManagedStreamId?: string;
   private currentManagedStreamUrls?: ManagedStreamResult;
   private managedStreamStatus?: ManagedStreamStatus;
+
+  // For tracking pending stream check requests
+  private pendingStreamChecks?: Map<
+    string,
+    {
+      resolve: (value: any) => void;
+      timeoutId: NodeJS.Timeout;
+    }
+  >;
 
   // Promise tracking for managed stream initialization
   private pendingManagedStreamRequest?: {
@@ -200,14 +211,14 @@ export class CameraManagedExtension {
    * @returns Promise that resolves when the stop request is sent
    */
   async stopManagedStream(): Promise<void> {
-    if (!this.isManagedStreaming) {
-      this.logger.warn("📹 No managed stream to stop");
-      return;
-    }
-
+    // Always send the stop request - the cloud will handle whether there's actually
+    // a stream to stop. This ensures the stop works even after reload/reconnection
     this.logger.info(
-      { streamId: this.currentManagedStreamId },
-      "📹 Stopping managed stream",
+      {
+        streamId: this.currentManagedStreamId,
+        hasInternalState: this.isManagedStreaming,
+      },
+      "📹 Sending managed stream stop request",
     );
 
     const request: ManagedStreamStopRequest = {
@@ -219,6 +230,71 @@ export class CameraManagedExtension {
 
     // Don't clean up state immediately - wait for the 'stopped' status from cloud
     // This ensures we can retry stop if needed and maintains accurate state
+  }
+
+  /**
+   * 🔍 Check for any existing streams (managed or unmanaged) for the current user
+   *
+   * @returns Promise that resolves with stream information if a stream exists
+   *
+   * @example
+   * ```typescript
+   * const streamInfo = await session.camera.checkExistingStream();
+   * if (streamInfo.hasActiveStream) {
+   *   console.log('Stream type:', streamInfo.streamInfo?.type);
+   *   if (streamInfo.streamInfo?.type === 'managed') {
+   *     console.log('HLS URL:', streamInfo.streamInfo.hlsUrl);
+   *   }
+   * }
+   * ```
+   */
+  async checkExistingStream(): Promise<{
+    hasActiveStream: boolean;
+    streamInfo?: {
+      type: "managed" | "unmanaged";
+      streamId: string;
+      status: string;
+      createdAt: Date;
+      // For managed streams
+      hlsUrl?: string;
+      dashUrl?: string;
+      webrtcUrl?: string;
+      previewUrl?: string;
+      thumbnailUrl?: string;
+      activeViewers?: number;
+      // For unmanaged streams
+      rtmpUrl?: string;
+      requestingAppId?: string;
+    };
+  }> {
+    return new Promise((resolve) => {
+      // Store the resolver for the response
+      const requestId = `stream_check_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+
+      // Store a pending request that will be resolved when we get the response
+      if (!this.pendingStreamChecks) {
+        this.pendingStreamChecks = new Map();
+      }
+
+      const timeoutId = setTimeout(() => {
+        this.pendingStreamChecks?.delete(requestId);
+        resolve({ hasActiveStream: false });
+      }, 5000); // 5 second timeout
+
+      this.pendingStreamChecks.set(requestId, {
+        resolve,
+        timeoutId,
+      });
+
+      // Send the check request with the requestId
+      const request: StreamStatusCheckRequest = {
+        type: AppToCloudMessageType.STREAM_STATUS_CHECK,
+        packageName: this.packageName,
+        sessionId: this.sessionId,
+      };
+
+      this.send(request);
+    });
   }
 
   /**
@@ -281,6 +357,25 @@ export class CameraManagedExtension {
 
     // Register the handler using the session's event system
     return this.session.on(StreamType.MANAGED_STREAM_STATUS, handler);
+  }
+
+  /**
+   * Handle incoming stream status check response
+   * Called by the parent AppSession when a response is received
+   */
+  handleStreamCheckResponse(response: StreamStatusCheckResponse): void {
+    // Find and resolve any pending stream check
+    if (this.pendingStreamChecks && this.pendingStreamChecks.size > 0) {
+      const firstEntry = this.pendingStreamChecks.entries().next();
+      if (!firstEntry.done && firstEntry.value) {
+        const [requestId, pending] = firstEntry.value;
+        if (pending) {
+          clearTimeout(pending.timeoutId);
+          this.pendingStreamChecks.delete(requestId);
+          pending.resolve(response);
+        }
+      }
+    }
   }
 
   /**

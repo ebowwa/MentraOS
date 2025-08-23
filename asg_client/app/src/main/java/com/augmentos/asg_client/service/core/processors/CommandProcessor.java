@@ -25,6 +25,7 @@ import com.augmentos.asg_client.service.core.handlers.RtmpCommandHandler;
 import com.augmentos.asg_client.service.core.handlers.WifiCommandHandler;
 import com.augmentos.asg_client.service.core.handlers.BatteryCommandHandler;
 import com.augmentos.asg_client.service.core.handlers.ImuCommandHandler;
+import com.augmentos.asg_client.service.core.handlers.GalleryCommandHandler;
 
 import org.json.JSONObject;
 
@@ -254,7 +255,7 @@ public class CommandProcessor {
         try {
             Log.d(TAG, "📝 Registering command handlers...");
 
-            commandHandlerRegistry.registerHandler(new PhoneReadyCommandHandler(communicationManager, stateManager, responseBuilder));
+            commandHandlerRegistry.registerHandler(new PhoneReadyCommandHandler(communicationManager, stateManager, responseBuilder, serviceManager));
             Log.d(TAG, "✅ Registered PhoneReadyCommandHandler");
 
             commandHandlerRegistry.registerHandler(new AuthTokenCommandHandler(communicationManager, configurationManager));
@@ -289,6 +290,9 @@ public class CommandProcessor {
 
             commandHandlerRegistry.registerHandler(new ImuCommandHandler(context, responseSender));
             Log.d(TAG, "✅ Registered ImuCommandHandler");
+            
+            commandHandlerRegistry.registerHandler(new GalleryCommandHandler(serviceManager, communicationManager));
+            Log.d(TAG, "✅ Registered GalleryCommandHandler");
 
             Log.i(TAG, "✅ Successfully registered " + commandHandlerRegistry.getHandlerCount() + " command handlers");
 
