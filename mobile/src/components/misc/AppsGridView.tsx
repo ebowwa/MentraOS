@@ -13,11 +13,8 @@ import {TreeIcon} from "assets/icons/component/TreeIcon"
 // Constants at the top for easy configuration
 const GRID_COLUMNS = 4
 const SCREEN_WIDTH = Dimensions.get("window").width
-const ICON_SIZE = 56
 const POPOVER_ICON_SIZE = 32
-const DEFAULT_ICON_SIZE = 24
 const EMPTY_APP_PLACEHOLDER = {packageName: "", name: ""} as const
-
 interface AppModel {
   name: string
   packageName: string
@@ -318,11 +315,7 @@ const $appContainer: ThemedStyle<ViewStyle> = () => ({
 })
 
 const $appIcon: ThemedStyle<ViewStyle> = ({spacing}) => ({
-  width: ICON_SIZE,
-  height: ICON_SIZE,
-  borderRadius: ICON_SIZE / 2,
   marginBottom: spacing.xs,
-  overflow: "hidden",
 })
 
 const $foregroundIndicator: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
@@ -366,6 +359,7 @@ const $popoverAppIcon: ThemedStyle<ViewStyle> = ({spacing}) => ({
   width: POPOVER_ICON_SIZE,
   height: POPOVER_ICON_SIZE,
   marginRight: spacing.sm,
+  borderRadius: 12,
 })
 
 const $popoverAppName: ThemedStyle<TextStyle> = ({colors}) => ({
