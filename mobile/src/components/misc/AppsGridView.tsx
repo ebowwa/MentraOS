@@ -1,4 +1,4 @@
-import React, {useState, useRef} from "react"
+import React, {useState, useRef, useCallback, useMemo} from "react"
 import {View, ScrollView, TouchableOpacity, ViewStyle, TextStyle, Dimensions, FlatList} from "react-native"
 import Popover from "react-native-popover-view"
 import {Text} from "@/components/ignite"
@@ -9,6 +9,14 @@ import {translate} from "@/i18n"
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons"
 import EmptyAppsView from "@/components/home/EmptyAppsView"
 import {TreeIcon} from "assets/icons/component/TreeIcon"
+
+// Constants at the top for easy configuration
+const GRID_COLUMNS = 4
+const SCREEN_WIDTH = Dimensions.get("window").width
+const ICON_SIZE = 56
+const POPOVER_ICON_SIZE = 32
+const DEFAULT_ICON_SIZE = 24
+const EMPTY_APP_PLACEHOLDER = {packageName: "", name: ""} as const
 
 interface AppModel {
   name: string
@@ -36,8 +44,100 @@ interface AppsGridViewProps {
   isIncompatible?: boolean
 }
 
-const GRID_COLUMNS = 4
-const SCREEN_WIDTH = Dimensions.get("window").width
+// Separate component for the popover to improve performance and maintainability
+const AppPopover: React.FC<{
+  app: AppModel | null
+  visible: boolean
+  anchorRef: React.Component | null
+  onClose: () => void
+  onStartStop: () => void
+  onOpenSettings: () => void
+  onOpenWebView: () => void
+  themed: (style: any) => any
+  theme: any
+}> = ({app, visible, anchorRef, onClose, onStartStop, onOpenSettings, onOpenWebView, themed, theme}) => {
+  if (!app || !anchorRef || !visible) return null
+
+  return (
+    <Popover
+      from={anchorRef}
+      isVisible={visible}
+      onRequestClose={onClose}
+      popoverStyle={themed($popoverStyle)}
+      backgroundStyle={{backgroundColor: "rgba(0, 0, 0, 0.5)"}}
+      animationConfig={{duration: 200}}
+      arrowSize={{width: 16, height: 8}}>
+      <View style={themed($popoverContent)}>
+        <View style={themed($popoverHeader)}>
+          <AppIcon app={app} isForegroundApp={app.appType === "standard"} style={themed($popoverAppIcon)} />
+          <Text text={app.name} style={themed($popoverAppName)} numberOfLines={1} />
+        </View>
+
+        <View style={themed($popoverDivider)} />
+
+        <TouchableOpacity style={themed($popoverOption)} onPress={onStartStop}>
+          <MaterialCommunityIcons
+            name={app.is_running ? "stop-circle-outline" : "play-circle-outline"}
+            size={24}
+            color={theme.colors.text}
+          />
+          <Text
+            text={app.is_running ? translate("common:stop") : translate("common:start")}
+            style={themed($popoverOptionText)}
+          />
+        </TouchableOpacity>
+
+        <TouchableOpacity style={themed($popoverOption)} onPress={onOpenSettings}>
+          <MaterialCommunityIcons name="cog-outline" size={24} color={theme.colors.text} />
+          <Text text={translate("common:settings")} style={themed($popoverOptionText)} />
+        </TouchableOpacity>
+
+        {app.webviewURL && (
+          <TouchableOpacity style={themed($popoverOption)} onPress={onOpenWebView}>
+            <MaterialCommunityIcons name="web" size={24} color={theme.colors.text} />
+            <Text text={translate("common:openWebView")} style={themed($popoverOptionText)} />
+          </TouchableOpacity>
+        )}
+      </View>
+    </Popover>
+  )
+}
+
+// Separate component for grid items to improve performance
+const GridItem: React.FC<{
+  item: AppModel
+  onPress: (app: AppModel) => void
+  setRef: (ref: React.Component | null) => void
+  themed: (style: any) => any
+  theme: any
+}> = ({item, onPress, setRef, themed, theme}) => {
+  const handlePress = useCallback(() => {
+    if (item.packageName) {
+      onPress(item)
+    }
+  }, [item, onPress])
+
+  // Don't render empty placeholder items
+  if (!item.packageName) {
+    return <View style={themed($gridItem)} />
+  }
+
+  const isForeground = item.appType === "standard" || item.is_foreground
+
+  return (
+    <TouchableOpacity ref={setRef} style={themed($gridItem)} onPress={handlePress} activeOpacity={0.7}>
+      <View style={themed($appContainer)}>
+        <AppIcon app={item} isForegroundApp={isForeground} style={themed($appIcon)} />
+        {isForeground && (
+          <View style={themed($foregroundIndicator)}>
+            <TreeIcon size={theme.spacing.md} color={theme.colors.text} />
+          </View>
+        )}
+      </View>
+      <Text text={item.name} style={themed($appName)} numberOfLines={item.name.split(" ").length > 1 ? 2 : 1} />
+    </TouchableOpacity>
+  )
+}
 
 export const AppsGridViewRoot: React.FC<AppsGridViewProps> = ({
   apps,
@@ -49,188 +149,165 @@ export const AppsGridViewRoot: React.FC<AppsGridViewProps> = ({
   const {themed, theme} = useAppTheme()
   const [selectedApp, setSelectedApp] = useState<AppModel | null>(null)
   const [popoverVisible, setPopoverVisible] = useState(false)
-  const touchableRefs = useRef<{[key: string]: React.Component | null}>({})
+  const touchableRefs = useRef<Map<string, React.Component | null>>(new Map())
 
-  const handleAppPress = (app: AppModel) => {
-    // Ensure we have a valid ref before showing popover
-    if (touchableRefs.current[app.packageName]) {
+  // Memoize padded apps to avoid recalculation on every render
+  const paddedApps = useMemo(() => {
+    if (!apps || apps.length === 0) return []
+
+    const appsCopy = [...apps]
+    const remainder = appsCopy.length % GRID_COLUMNS
+
+    if (remainder !== 0) {
+      const missingApps = GRID_COLUMNS - remainder
+      for (let i = 0; i < missingApps; i++) {
+        appsCopy.push({...EMPTY_APP_PLACEHOLDER})
+      }
+    }
+
+    return appsCopy
+  }, [apps])
+
+  const handleAppPress = useCallback((app: AppModel) => {
+    const ref = touchableRefs.current.get(app.packageName)
+    if (ref) {
       setSelectedApp(app)
       setPopoverVisible(true)
     }
-  }
+  }, [])
 
-  const handlePopoverClose = () => {
+  const handlePopoverClose = useCallback(() => {
     setPopoverVisible(false)
-    setSelectedApp(null)
-  }
+    // Delay clearing selectedApp to prevent flicker
+    setTimeout(() => setSelectedApp(null), 200)
+  }, [])
 
-  const handleStartStop = () => {
-    if (selectedApp) {
+  const handleStartStop = useCallback(() => {
+    if (!selectedApp) return
+
+    try {
       if (selectedApp.is_running) {
-        if (onStopApp) {
-          onStopApp(selectedApp.packageName)
-        }
+        onStopApp?.(selectedApp.packageName)
       } else {
-        if (onStartApp) {
-          onStartApp(selectedApp.packageName)
-        }
+        onStartApp?.(selectedApp.packageName)
       }
       handlePopoverClose()
-    }
-  }
-
-  const handleOpenSettings = () => {
-    if (selectedApp) {
-      if (onOpenSettings) {
-        onOpenSettings(selectedApp)
-      }
+    } catch (error) {
+      console.error("Error starting/stopping app:", error)
       handlePopoverClose()
     }
-  }
+  }, [selectedApp, onStartApp, onStopApp, handlePopoverClose])
 
-  const handleOpenWebView = () => {
-    if (selectedApp && onOpenWebView) {
+  const handleOpenSettings = useCallback(() => {
+    if (!selectedApp) return
+
+    try {
+      onOpenSettings?.(selectedApp)
+      handlePopoverClose()
+    } catch (error) {
+      console.error("Error opening settings:", error)
+      handlePopoverClose()
+    }
+  }, [selectedApp, onOpenSettings, handlePopoverClose])
+
+  const handleOpenWebView = useCallback(() => {
+    if (!selectedApp || !onOpenWebView) return
+
+    try {
       onOpenWebView(selectedApp)
       handlePopoverClose()
+    } catch (error) {
+      console.error("Error opening webview:", error)
+      handlePopoverClose()
     }
-  }
+  }, [selectedApp, onOpenWebView, handlePopoverClose])
 
-  const renderAppItem = ({item, index}: {item: AppModel; index: number}) => {
-    const isActive = item.is_running || false
-    const isForeground = item.appType === "standard" || item.is_foreground
+  const setItemRef = useCallback(
+    (packageName: string) => (ref: React.Component | null) => {
+      if (packageName) {
+        if (ref) {
+          touchableRefs.current.set(packageName, ref)
+        } else {
+          touchableRefs.current.delete(packageName)
+        }
+      }
+    },
+    [],
+  )
 
+  const renderAppItem = useCallback(
+    ({item}: {item: AppModel}) => (
+      <GridItem
+        item={item}
+        onPress={handleAppPress}
+        setRef={setItemRef(item.packageName)}
+        themed={themed}
+        theme={theme}
+      />
+    ),
+    [handleAppPress, setItemRef, themed, theme],
+  )
+
+  const keyExtractor = useCallback((item: AppModel, index: number) => {
+    return item.packageName || `empty-${index}`
+  }, [])
+
+  // Handle empty state
+  if (!apps || apps.length === 0) {
     return (
-      <TouchableOpacity
-        ref={ref => {
-          if (item.packageName && item.packageName !== "") {
-            touchableRefs.current[item.packageName] = ref
-          }
-        }}
-        key={item.packageName}
-        style={themed($gridItem)}
-        onPress={() => {
-          if (item.packageName !== "") {
-            handleAppPress(item)
-          }
-        }}
-        activeOpacity={0.7}>
-        <View style={themed($appContainer)}>
-          <AppIcon app={item} isForegroundApp={isForeground} style={themed($appIcon)} />
-          {/* {isActive && <View style={themed($activeIndicator)} />} */}
-          {isForeground && (
-            <View style={themed($foregroundIndicator)}>
-              {/* <MaterialCommunityIcons name="circle" size={12} color={theme.colors.text} /> */}
-              <TreeIcon size={theme.spacing.md} color={theme.colors.text} />
-            </View>
-          )}
-        </View>
-        <Text
-          text={item.name}
-          style={themed($appName)}
-          numberOfLines={item.name.split(" ").length > 1 ? 2 : 1}
-          // ellipsizeMode=""
-        />
-      </TouchableOpacity>
-    )
-  }
-
-  // if the list is empty, show a message
-  if (apps.length === 0) {
-    return (
-      <View style={[themed($container)]}>
-        <EmptyAppsView statusMessageKey={"home:noActiveApps"} activeAppsMessageKey={"home:emptyActiveAppListInfo"} />
+      <View style={themed($container)}>
+        <EmptyAppsView statusMessageKey="home:noActiveApps" activeAppsMessageKey="home:emptyActiveAppListInfo" />
       </View>
     )
   }
 
-  if (apps.length % GRID_COLUMNS !== 0) {
-    const missingApps = GRID_COLUMNS - (apps.length % GRID_COLUMNS)
-    for (let i = 0; i < missingApps; i++) {
-      apps.push({packageName: "", name: ""})
-    }
-  }
+  const currentAnchorRef = selectedApp ? touchableRefs.current.get(selectedApp.packageName) : null
 
   return (
     <View style={themed($container)}>
       <FlatList
-        data={apps}
+        data={paddedApps}
         renderItem={renderAppItem}
-        keyExtractor={item => item.packageName}
+        keyExtractor={keyExtractor}
         numColumns={GRID_COLUMNS}
         columnWrapperStyle={themed($row)}
         scrollEnabled={false}
         contentContainerStyle={themed($gridContainer)}
+        removeClippedSubviews={true}
+        maxToRenderPerBatch={GRID_COLUMNS * 2}
+        windowSize={5}
+        initialNumToRender={GRID_COLUMNS * 3}
       />
 
-      {selectedApp && touchableRefs.current[selectedApp.packageName] && popoverVisible && (
-        <Popover
-          from={touchableRefs.current[selectedApp.packageName]}
-          isVisible={popoverVisible}
-          onRequestClose={handlePopoverClose}
-          popoverStyle={themed($popoverStyle)}
-          backgroundStyle={{backgroundColor: "rgba(0, 0, 0, 0.5)"}}
-          animationConfig={{duration: 200}}
-          arrowSize={{width: 16, height: 8}}>
-          <View style={themed($popoverContent)}>
-            <View style={themed($popoverHeader)}>
-              <AppIcon
-                app={selectedApp}
-                isForegroundApp={selectedApp.appType === "standard"}
-                style={themed($popoverAppIcon)}
-              />
-              <Text text={selectedApp.name} style={themed($popoverAppName)} numberOfLines={1} />
-            </View>
-
-            <View style={themed($popoverDivider)} />
-
-            <TouchableOpacity style={themed($popoverOption)} onPress={handleStartStop}>
-              <MaterialCommunityIcons
-                name={selectedApp.is_running ? "stop-circle-outline" : "play-circle-outline"}
-                size={24}
-                color={theme.colors.text}
-              />
-              <Text
-                text={selectedApp.is_running ? translate("common:stop") : translate("common:start")}
-                style={themed($popoverOptionText)}
-              />
-            </TouchableOpacity>
-
-            <TouchableOpacity style={themed($popoverOption)} onPress={handleOpenSettings}>
-              <MaterialCommunityIcons name="cog-outline" size={24} color={theme.colors.text} />
-              <Text text={translate("common:settings")} style={themed($popoverOptionText)} />
-            </TouchableOpacity>
-
-            {selectedApp.webviewURL && onOpenWebView && (
-              <TouchableOpacity style={themed($popoverOption)} onPress={handleOpenWebView}>
-                <MaterialCommunityIcons name="web" size={24} color={theme.colors.text} />
-                <Text text={translate("common:openWebView")} style={themed($popoverOptionText)} />
-              </TouchableOpacity>
-            )}
-          </View>
-        </Popover>
-      )}
+      <AppPopover
+        app={selectedApp}
+        visible={popoverVisible}
+        anchorRef={currentAnchorRef || null}
+        onClose={handlePopoverClose}
+        onStartStop={handleStartStop}
+        onOpenSettings={handleOpenSettings}
+        onOpenWebView={handleOpenWebView}
+        themed={themed}
+        theme={theme}
+      />
     </View>
   )
 }
 
 export const AppsGridView = React.memo(AppsGridViewRoot)
 
-const $container: ThemedStyle<ViewStyle> = ({spacing, colors}) => ({
-  // All styling handled by parent container
-  paddingHorizontal: spacing.sm, // Reduced padding
+// Styles remain the same but with consistent sizing using constants
+const $container: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  paddingHorizontal: spacing.sm,
 })
 
-const $gridContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
-  // paddingHorizontal: -spacing.sm,
-})
+const $gridContainer: ThemedStyle<ViewStyle> = () => ({})
 
-const $row: ThemedStyle<ViewStyle> = ({spacing}) => ({
+const $row: ThemedStyle<ViewStyle> = () => ({
   justifyContent: "space-evenly",
 })
 
 const $gridItem: ThemedStyle<ViewStyle> = ({spacing}) => ({
-  // width: (SCREEN_WIDTH - spacing.lg * 2 - spacing.sm * 2 - spacing.xs * 4) / GRID_COLUMNS,
-  // width: (SCREEN_WIDTH - spacing.lg * 4) / GRID_COLUMNS,
   width: (SCREEN_WIDTH - (spacing.lg * 2 + spacing.md * 2)) / GRID_COLUMNS,
   alignItems: "center",
   marginBottom: spacing.lg,
@@ -241,23 +318,11 @@ const $appContainer: ThemedStyle<ViewStyle> = () => ({
 })
 
 const $appIcon: ThemedStyle<ViewStyle> = ({spacing}) => ({
-  width: 56, // Slightly smaller
-  height: 56,
-  borderRadius: 30, // Half of width/height for perfect circle
+  width: ICON_SIZE,
+  height: ICON_SIZE,
+  borderRadius: ICON_SIZE / 2,
   marginBottom: spacing.xs,
   overflow: "hidden",
-})
-
-const $activeIndicator: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
-  position: "absolute",
-  left: 0,
-  top: 0,
-  width: spacing.md,
-  height: spacing.md,
-  borderRadius: spacing.md,
-  backgroundColor: colors.success,
-  borderWidth: 2,
-  borderColor: colors.background,
 })
 
 const $foregroundIndicator: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
@@ -298,8 +363,8 @@ const $popoverHeader: ThemedStyle<ViewStyle> = ({spacing}) => ({
 })
 
 const $popoverAppIcon: ThemedStyle<ViewStyle> = ({spacing}) => ({
-  width: 32,
-  height: 32,
+  width: POPOVER_ICON_SIZE,
+  height: POPOVER_ICON_SIZE,
   marginRight: spacing.sm,
 })
 

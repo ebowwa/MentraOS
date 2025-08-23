@@ -99,7 +99,6 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
     console.log("AppStatusProvider: refreshAppStatus called - user exists:", !!user, "user email:", user?.email)
     if (!user) {
       console.log("AppStatusProvider: No user, clearing app status")
-      setAppStatus([])
       return Promise.resolve()
     }
 
@@ -116,87 +115,48 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
       return Promise.resolve()
     }
 
-    console.log("AppStatusProvider: Token check passed, starting app fetch...")
-
     try {
-      // Store current running states before fetching
-      const currentRunningStates: {[packageName: string]: boolean} = {}
-      appStatus.forEach(app => {
-        if (app.is_running) {
-          currentRunningStates[app.packageName] = true
-        }
-      })
 
-      console.log("AppStatusProvider: Calling BackendServerComms.getApps()...")
       const appsData = await BackendServerComms.getInstance().getApps()
-      console.log("AppStatusProvider: getApps() returned", appsData?.length || 0, "apps")
+      // console.log("AppStatusProvider: getApps() returned", appsData?.length || 0, "apps")
 
       // Merge existing running states with new data
-      const updatedAppsData = appsData.map(app => {
-        // Make a shallow copy of the app object
-        const appCopy: AppletInterface = {
+      const mapped = appsData.map(app => {
+        // shallow incomplete copy, just enough to render the list:
+        const applet: AppletInterface = {
           appType: app.appType,
           packageName: app.packageName,
           name: app.name,
           publicUrl: app.publicUrl,
           logoURL: app.logoURL,
           permissions: app.permissions,
-          is_running: app.is_running,
+          is_running: false,
           is_loading: false,
+          webviewURL: app.webviewURL,
         }
 
-        // Check pending operations first
-        const pendingOp = pendingOperations.current[app.packageName]
-        if (pendingOp === "start") {
-          appCopy.is_running = true
-          appCopy.is_loading = true
-        } else if (pendingOp === "stop") {
-          appCopy.is_running = false
-        } else if (app.is_running !== undefined) {
-          // If the server provided is_running status, use it
-          appCopy.is_running = Boolean(app.is_running)
-        } else if (currentRunningStates[app.packageName]) {
-          // Fallback to our local state if server didn't provide is_running
-          appCopy.is_running = true
-        } else {
-          // Default to not running if no information is available
-          appCopy.is_running = false
-        }
-
-        return appCopy
+        return applet
       })
 
-      // // check if the list of running apps is the same:
-      // const runningApps = updatedAppsData.filter(app => app.is_running)
-      // const oldRunningApps = appStatus.filter(app => app.is_running)
-      // const oldIncompatibleApps = appStatus.filter(app => !app.compatibility?.isCompatible)
-      // const newIncompatibleApps = updatedAppsData.filter(app => !app.compatibility?.isCompatible)
+      if (mapped.length === 0) {
+        console.log("AppStatusProvider: No apps found?")
+        return
+      }
 
-      // if (runningApps !== oldRunningApps || oldIncompatibleApps !== newIncompatibleApps) {
-      //   console.log("AppStatusProvider: Running apps changed, refreshing app list")
-      //   setAppStatus(updatedAppsData)
-      // }
-
-      const diff = deepCompare(appStatus, updatedAppsData)
+      const diff = deepCompare(appStatus, mapped)
       if (diff.length === 0) {
         console.log("AppStatusProvider: Applet status did not change ###############################################")
         return
       }
       console.log("AppletStatusProvider: setting app status")
-
-      if (!hasUpdatedAppStatus) {
-        setHasUpdatedAppStatus(true)
-      
-
-        setAppStatus(updatedAppsData)
-      }
+      setAppStatus(mapped)
     } catch (err) {
       console.error("AppStatusProvider: Error fetching apps:", err)
     }
   }, [user])
 
   // Optimistically update app status when starting an app
-  const optimisticallyStartApp = useCallback(async (packageName: string, appType?: string) => {
+  const optimisticallyStartApp = async (packageName: string, appType?: string) => {
     // Handle foreground apps
     if (appType === "standard") {
       const runningStandardApps = appStatus.filter(
@@ -264,10 +224,10 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
         refreshAppStatus()
       }
     }
-  }, [])
+  }
 
   // Optimistically update app status when stopping an app
-  const optimisticallyStopApp = useCallback(async (packageName: string) => {
+  const optimisticallyStopApp = async (packageName: string) => {
     // optimistically stop the app:
     {
       // Record that we have a pending stop operation
@@ -295,12 +255,12 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
         console.error("Stop app error:", error)
       }
     }
-  }, [])
+  }
 
   // When an app start/stop operation succeeds, clear the pending operation
-  const clearPendingOperation = useCallback((packageName: string) => {
+  const clearPendingOperation = (packageName: string) => {
     delete pendingOperations.current[packageName]
-  }, [])
+  }
 
   const checkAppHealthStatus = async (packageName: string): Promise<boolean> => {
     // GET the app's /health endpoint
@@ -328,42 +288,24 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
     }
   }
 
-  // const onAppStarted = (packageName: string) => {
-  //   optimisticallyStartApp(packageName)
-  // }
-  // const onAppStopped = (packageName: string) => {
-  //   optimisticallyStopApp(packageName)
-  // }
-
-  const onResetAppStatus = () => {
-    console.log("RESET_APP_STATUS event received, clearing app status")
-    setAppStatus([])
-  }
-
   const onCoreTokenSet = () => {
     console.log("CORE_TOKEN_SET event received, forcing app refresh with 1.5 second delay")
     // Add a delay to let the token become valid on the server side
     setTimeout(() => {
       console.log("CORE_TOKEN_SET: Delayed refresh executing now")
-      refreshAppStatus().catch(error => {
-        console.error("CORE_TOKEN_SET: Error during delayed refresh:", error)
-      })
+      refreshAppStatus()
     }, 1500)
   }
 
   // Listen for app started/stopped events from CoreCommunicator
   useEffect(() => {
     // @ts-ignore
-    GlobalEventEmitter.on("RESET_APP_STATUS", onResetAppStatus)
-    // @ts-ignore
     GlobalEventEmitter.on("CORE_TOKEN_SET", onCoreTokenSet)
     return () => {
       // @ts-ignore
-      GlobalEventEmitter.off("RESET_APP_STATUS", onResetAppStatus)
-      // @ts-ignore
       GlobalEventEmitter.off("CORE_TOKEN_SET", onCoreTokenSet)
     }
-  }, [optimisticallyStartApp, optimisticallyStopApp, refreshAppStatus])
+  }, [])
 
   // Add a listener for app state changes to detect when the app comes back from background
   useEffect(() => {

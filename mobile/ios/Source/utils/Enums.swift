@@ -15,13 +15,13 @@ enum CommandResponse: UInt8 {
 enum Commands: UInt8 {
     case BLE_EXIT_ALL_FUNCTIONS = 0x18
     case BLE_REQ_INIT = 0x4D
-    case BLE_REQ_HEARTBEAT = 0x2C
+    case BLE_REQ_BATTERY = 0x2C
+    case BLE_REQ_HEARTBEAT = 0x25
     case BLE_REQ_EVENAI = 0x4E
     case BLE_REQ_TRANSFER_MIC_DATA = 0xF1
     case BLE_REQ_DEVICE_ORDER = 0xF5
     case BLE_REQ_MIC_ON = 0x0E
     case QUICK_NOTE_ADD = 0x1E
-    //  case BATTERY_STATUS = 0x2C
     case CRC_CHECK = 0x16
     case BMP_END = 0x20
     case BRIGHTNESS = 0x01
