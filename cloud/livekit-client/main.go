@@ -17,7 +17,7 @@ import (
 	lkmedia "github.com/livekit/server-sdk-go/v2/pkg/media"
     "math"
     webrtc "github.com/pion/webrtc/v4"
-    opus "gopkg.in/hraban/opus.v2"
+    media "github.com/livekit/media-sdk"
 )
 
 var publishGain float64 = 1.0
@@ -496,24 +496,19 @@ func (c *LiveKitClient) handleAudioData(data []byte) {
     }
 }
 
-func (c *LiveKitClient) handleIncomingAudio(pcm48 []byte) {
-    // Downsample to 16kHz
-    pcm16 := Resample48to16(pcm48)
+// handleIncomingPCM16_16k appends 16 kHz PCM16 bytes and emits fixed 10 ms frames over WS.
+func (c *LiveKitClient) handleIncomingPCM16_16k(pcm16 []byte) {
     c.mu.Lock()
     defer c.mu.Unlock()
     if c.ws == nil {
         return
     }
-    // Append to buffer
     c.subBuf16k = append(c.subBuf16k, pcm16...)
-    // Emit fixed 10ms frames at 16kHz: 160 samples = 320 bytes
     const frameBytes = 160 * 2
     for len(c.subBuf16k) >= frameBytes {
         chunk := make([]byte, frameBytes)
         copy(chunk, c.subBuf16k[:frameBytes])
-        // pop
         c.subBuf16k = c.subBuf16k[frameBytes:]
-        // send
         _ = c.ws.WriteMessage(websocket.BinaryMessage, chunk)
         c.subFrameCount++
         if c.subFrameCount%100 == 0 {
@@ -584,47 +579,46 @@ func (c *LiveKitClient) onTrackSubscribed(track *webrtc.TrackRemote, publication
     go c.forwardTrack(track, owner, sid)
 }
 
-// forwardTrack reads RTP Opus from track, decodes to 48k PCM, downsamples to 16k, and emits fixed 10ms frames.
+// forwardTrack uses SDK's PCM remote track at 16 kHz mono and streams fixed 10 ms frames over WS.
 func (c *LiveKitClient) forwardTrack(track *webrtc.TrackRemote, owner string, sid string) {
-    // Set up Opus decoder (48kHz mono)
-    dec, err := opus.NewDecoder(48000, 1)
+    writer := &pcm16WSWriter{client: c}
+    pcmTrack, err := lkmedia.NewPCMRemoteTrack(track, writer,
+        lkmedia.WithTargetSampleRate(16000),
+        lkmedia.WithTargetChannels(1),
+        lkmedia.WithHandleJitter(true),
+    )
     if err != nil {
-        log.Printf("Failed to create Opus decoder: %v", err)
+        log.Printf("Failed to create PCMRemoteTrack: %v", err)
         return
     }
-    pcmBuf := make([]int16, 5760)
-    for {
-        c.mu.Lock()
-        ws := c.ws
-        q := c.subQuit
-        c.mu.Unlock()
-        if ws == nil {
-            return
-        }
-        if q != nil {
-            select {
-            case <-q:
-                return
-            default:
-            }
-        }
-        pkt, _, err := track.ReadRTP()
-        if err != nil {
-            log.Printf("ReadRTP error: %v", err)
-            return
-        }
-        n, err := dec.Decode(pkt.Payload, pcmBuf)
-        if err != nil || n <= 0 {
-            continue
-        }
-        // Convert to little-endian bytes and hand to outgoing buffer/downsizer
-        outBytes := make([]byte, n*2)
-        for i := 0; i < n; i++ {
-            binary.LittleEndian.PutUint16(outBytes[i*2:i*2+2], uint16(pcmBuf[i]))
-        }
-        c.handleIncomingAudio(outBytes)
-    }
+    // Run until context or disable
+    go func() {
+        <-c.ctx.Done()
+        pcmTrack.Close()
+    }()
 }
+
+// pcm16WSWriter implements media.PCM16Writer to receive 16 kHz mono samples from SDK.
+type pcm16WSWriter struct {
+    client *LiveKitClient
+}
+
+func (w *pcm16WSWriter) WriteSample(sample media.PCM16Sample) error {
+    // Treat PCM16Sample as a slice of int16 (API may alias []int16)
+    data := []int16(sample)
+    n := len(data)
+    if n == 0 {
+        return nil
+    }
+    bytes := make([]byte, n*2)
+    for i := 0; i < n; i++ {
+        binary.LittleEndian.PutUint16(bytes[i*2:i*2+2], uint16(data[i]))
+    }
+    w.client.handleIncomingPCM16_16k(bytes)
+    return nil
+}
+
+func (w *pcm16WSWriter) Close() error { return nil }
 
 func (c *LiveKitClient) leaveRoom() {
 	c.mu.Lock()
