@@ -1385,6 +1385,7 @@ public class MediaCaptureService {
 
                 // Clean up the flag
                 photoSaveFlags.remove(requestId);
+                photoRequestedSizes.remove(requestId);
 
             } catch (Exception e) {
                 Log.e(TAG, "Error compressing photo for BLE", e);
@@ -1392,6 +1393,7 @@ public class MediaCaptureService {
 
                 // Clean up flag on error too
                 photoSaveFlags.remove(requestId);
+                photoRequestedSizes.remove(requestId);
             }
         }).start();
     }
@@ -1402,19 +1404,49 @@ public class MediaCaptureService {
     private void sendCompressedPhotoViaBle(String compressedPath, String bleImgId, String requestId, long transferStartTime) {
         Log.d(TAG, "Ready to send compressed photo via BLE: " + compressedPath + " with ID: " + bleImgId);
 
-        // First, notify the phone that the photo is ready (include timing info)
-        sendBlePhotoReadyMsg(compressedPath, bleImgId, requestId, transferStartTime);
-
-        // Then, trigger the actual file transfer
-        if (mServiceCallback != null) {
-            boolean started = mServiceCallback.sendFileViaBluetooth(compressedPath);
-            if (!started) {
-                Log.e(TAG, "Failed to start BLE file transfer");
-                sendBleTransferError(requestId, "Failed to start file transfer");
+        boolean transferStarted = false;
+        try {
+            if (mServiceCallback != null) {
+                // CRITICAL: Check if BLE is busy BEFORE sending ANY data to BES2700
+                if (mServiceCallback.isBleTransferInProgress()) {
+                    Log.e(TAG, "❌ BLE transfer already in progress - NOT sending any data to avoid BES2700 overload");
+                    sendBleTransferError(requestId, "BLE transfer busy - another transfer in progress");
+                    return;
+                }
+                
+                // BLE is available - send the ready message first (phone expects this for timing tracking)
+                sendBlePhotoReadyMsg(compressedPath, bleImgId, requestId, transferStartTime);
+                
+                // Then try to start the file transfer
+                transferStarted = mServiceCallback.sendFileViaBluetooth(compressedPath);
+                
+                if (transferStarted) {
+                    Log.i(TAG, "✅ BLE file transfer started for: " + bleImgId);
+                } else {
+                    // This shouldn't happen since we checked above, but handle it anyway
+                    Log.e(TAG, "Failed to start BLE file transfer despite availability check");
+                    sendBleTransferError(requestId, "BLE transfer failed to start");
+                }
+            } else {
+                Log.e(TAG, "Service callback not available for BLE file transfer");
+                sendBleTransferError(requestId, "Service callback not available");
             }
-        } else {
-            Log.e(TAG, "Service callback not available for BLE file transfer");
-            sendBleTransferError(requestId, "Service callback not available");
+        } finally {
+            // Critical: Clean up compressed file if transfer didn't start
+            if (!transferStarted) {
+                try {
+                    File compressedFile = new File(compressedPath);
+                    if (compressedFile.exists()) {
+                        if (compressedFile.delete()) {
+                            Log.d(TAG, "🗑️ Deleted compressed file after BLE transfer failure: " + compressedPath);
+                        } else {
+                            Log.w(TAG, "⚠️ Failed to delete compressed file: " + compressedPath);
+                        }
+                    }
+                } catch (Exception e) {
+                    Log.e(TAG, "Error deleting compressed file: " + compressedPath, e);
+                }
+            }
         }
     }
 
