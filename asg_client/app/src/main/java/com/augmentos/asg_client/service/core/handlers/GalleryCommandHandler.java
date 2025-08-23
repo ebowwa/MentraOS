@@ -6,6 +6,8 @@ import com.augmentos.asg_client.service.legacy.interfaces.ICommandHandler;
 import com.augmentos.asg_client.service.legacy.managers.AsgClientServiceManager;
 import com.augmentos.asg_client.io.file.core.FileManager;
 import com.augmentos.asg_client.io.file.core.FileManager.FileMetadata;
+import com.augmentos.asg_client.io.media.core.MediaCaptureService;
+import com.augmentos.asg_client.io.streaming.services.RtmpStreamingService;
 
 import org.json.JSONObject;
 import java.util.List;
@@ -52,6 +54,7 @@ public class GalleryCommandHandler implements ICommandHandler {
      * Handle query gallery status command.
      * Returns the count of photos and videos in the gallery using the same
      * FileManager approach as the HTTP server.
+     * Also includes camera busy state if camera is being used.
      */
     private boolean handleQueryGalleryStatus() {
         try {
@@ -95,6 +98,12 @@ public class GalleryCommandHandler implements ICommandHandler {
             response.put("total", photoCount + videoCount);
             response.put("total_size", totalSize);
             response.put("has_content", (photoCount + videoCount) > 0);
+            
+            // Check camera busy state - only include if camera is actually busy
+            String cameraState = getCameraBusyState();
+            if (cameraState != null) {
+                response.put("camera_busy", cameraState);
+            }
             
             Log.d(TAG, "📸 Gallery status: " + photoCount + " photos, " + videoCount + " videos, " + 
                        formatBytes(totalSize) + " total size");
@@ -152,5 +161,41 @@ public class GalleryCommandHandler implements ICommandHandler {
         int exp = (int) (Math.log(bytes) / Math.log(1024));
         String pre = "KMGTPE".charAt(exp-1) + "";
         return String.format("%.1f %sB", bytes / Math.pow(1024, exp), pre);
+    }
+    
+    /**
+     * Check if camera is busy with recording or streaming.
+     * @return "video" if recording, "stream" if streaming, null if camera is available
+     */
+    private String getCameraBusyState() {
+        try {
+            // Check if RTMP streaming is active
+            if (RtmpStreamingService.isStreaming()) {
+                Log.d(TAG, "Camera is busy: RTMP streaming active");
+                return "stream";
+            }
+            
+            // Check if video recording is active
+            MediaCaptureService mediaCaptureService = null;
+            if (serviceManager != null) {
+                mediaCaptureService = serviceManager.getMediaCaptureService();
+            }
+            
+            if (mediaCaptureService != null && mediaCaptureService.isRecordingVideo()) {
+                Log.d(TAG, "Camera is busy: Video recording active");
+                return "video";
+            }
+            
+            // TODO: Add check for buffer recording when implemented
+            // if (bufferRecordingActive) {
+            //     return "buffer";
+            // }
+            
+            // Camera is not busy
+            return null;
+        } catch (Exception e) {
+            Log.e(TAG, "Error checking camera busy state", e);
+            return null;
+        }
     }
 }
