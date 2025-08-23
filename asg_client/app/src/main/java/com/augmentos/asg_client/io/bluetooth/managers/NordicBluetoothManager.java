@@ -192,4 +192,10 @@ public class NordicBluetoothManager extends BaseBluetoothManager {
                 "Failed to start advertising: " + e.getMessage());
         }
     }
+    
+    @Override
+    public boolean isFileTransferInProgress() {
+        // NordicBluetoothManager doesn't support file transfer
+        return false;
+    }
 } 

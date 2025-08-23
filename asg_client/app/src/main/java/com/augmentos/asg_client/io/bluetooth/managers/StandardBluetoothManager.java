@@ -225,4 +225,10 @@ public class StandardBluetoothManager extends BaseBluetoothManager {
         Log.d(TAG, "Started BLE advertising");
         notificationManager.showNotification("Bluetooth", "BLE advertising started");
     }
+    
+    @Override
+    public boolean isFileTransferInProgress() {
+        // StandardBluetoothManager doesn't support file transfer
+        return false;
+    }
 } 
