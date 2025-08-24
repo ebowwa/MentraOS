@@ -18,6 +18,7 @@ import (
     "math"
     webrtc "github.com/pion/webrtc/v4"
     media "github.com/livekit/media-sdk"
+    lkpacer "github.com/livekit/mediatransportutil/pkg/pacer"
 )
 
 var publishGain float64 = 1.0
@@ -294,8 +295,14 @@ func (c *LiveKitClient) joinRoomWithURL(roomName, token, customURL string) {
     // Attempt connection with timeout guard so we can surface failures
     resCh := make(chan *lksdk.Room, 1)
     errCh := make(chan error, 1)
+    // Configure LiveKit pacer for smoother output pacing with low latency
+    pf := lkpacer.NewPacerFactory(
+        lkpacer.LeakyBucketPacer,
+        lkpacer.WithBitrate(512_000),               // 512 kbps ceiling (ample for Opus mono)
+        lkpacer.WithMaxLatency(100 * time.Millisecond),
+    )
     go func() {
-        r, err := lksdk.ConnectToRoomWithToken(url, token, roomCallback)
+        r, err := lksdk.ConnectToRoomWithToken(url, token, roomCallback, lksdk.WithPacer(pf))
         if err != nil {
             errCh <- err
             return
@@ -473,6 +480,7 @@ func (c *LiveKitClient) handleAudioData(data []byte) {
     sr := c.sampleRate
     if sr == 0 { sr = 16000 }
     frameSamples := sr / 100 // 10ms frame size
+    // Write all frames without app-level sleeps; rely on SDK pacer/queue
     for offset := 0; offset < len(samples); offset += frameSamples {
         end := offset + frameSamples
         if end > len(samples) { end = len(samples) }
@@ -492,7 +500,6 @@ func (c *LiveKitClient) handleAudioData(data []byte) {
             log.Printf("Failed to write PCM sample: %v", err)
             break
         }
-        time.Sleep(10 * time.Millisecond)
     }
 }
 
