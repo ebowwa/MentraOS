@@ -599,7 +599,7 @@ export class GlassesWebSocketService {
     // If LiveKit was requested, initialize and include the info
     if (livekitRequested) {
       try {
-        const livekitInfo = await userSession.liveKitManager.handleLiveKitInit('publish');
+        const livekitInfo = await userSession.liveKitManager.handleLiveKitInit();
         if (livekitInfo) {
           (ackMessage as any).livekit = {
             url: livekitInfo.url,

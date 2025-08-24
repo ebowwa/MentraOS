@@ -2,6 +2,7 @@ import { Logger } from 'pino';
 import { logger as rootLogger } from '../logging/pino-logger';
 import UserSession from './UserSession';
 import { AccessToken } from 'livekit-server-sdk';
+// NOTE: We will use the Go livekit-bridge for media. rtc-node is retained here only for types in WIP areas.
 import {
   AudioStream,
   Participant,
@@ -15,6 +16,7 @@ import {
   TrackPublication,
   dispose,
 } from '@livekit/rtc-node';
+import LiveKitClientTS from './LiveKitClient';
 
 
 import dotenv from 'dotenv';
@@ -31,6 +33,8 @@ export class LiveKitManager {
   private subscriberRunning = false;
   private receivedFrameCount = 0;
   private trackToProcess: string | undefined = undefined;
+  private bridgeClient: LiveKitClientTS | null = null;
+  private micEnabled = false;
 
   constructor(session: UserSession) {
     this.session = session;
@@ -71,30 +75,26 @@ export class LiveKitManager {
   /**
    * Handle LIVEKIT_INIT by preparing subscriber and returning connection info.
    */
-  async handleLiveKitInit(mode: 'publish' | 'subscribe' = 'publish'): Promise<{ url: string; roomName: string; token: string } | null> {
+  async handleLiveKitInit(): Promise<{ url: string; roomName: string; token: string } | null> {
     const url = this.getUrl();
     const roomName = this.getRoomName();
 
-    // Mint appropriate token based on mode
-    const token = mode === 'subscribe'
-      ? await this.mintClientSubscribeToken()
-      : await this.mintClientPublishToken();
+    // Mint publish token for clients
+    const token = await this.mintClientPublishToken();
 
     if (!url || !roomName || !token) {
-      this.logger.warn({ hasUrl: Boolean(url), hasRoom: Boolean(roomName), hasToken: Boolean(token), mode, feature: 'livekit' }, 'LIVEKIT_INFO not ready (missing url/room/token)');
+      this.logger.warn({ hasUrl: Boolean(url), hasRoom: Boolean(roomName), hasToken: Boolean(token), feature: 'livekit' }, 'LIVEKIT_INFO not ready (missing url/room/token)');
       return null;
     }
 
-    // Only start server-side subscriber if client is publishing
-    if (mode === 'publish') {
-      try {
-        await this.startSubscriber();
-      } catch (e) {
-        this.logger.warn({ e, feature: 'livekit' }, 'Failed to start LiveKit subscriber in handleLiveKitInit');
-      }
+    try {
+      await this.startBridgeSubscriber({ url, roomName });
+    } catch (e) {
+      const logger = this.logger.child({feature: "livekit"});
+      logger.error(e, 'Failed to start bridge subscriber');
     }
 
-    this.logger.info({ mode, roomName }, 'Returning LiveKit info for mode');
+    this.logger.info({ roomName }, 'Returning LiveKit info');
     return { url, roomName, token };
   }
 
@@ -131,6 +131,7 @@ export class LiveKitManager {
    * Subscribes to remote audio and forwards PCM to transcription manager.
    */
   async startSubscriber(): Promise<void> {
+    // Legacy rtc-node subscriber (kept for reference/testing). Prefer startBridgeSubscriber.
     this.logger.info('startSubscriber invoked');
     if (this.subscriberRunning) {
       this.logger.debug('LiveKit subscriber already running');
@@ -375,6 +376,37 @@ export class LiveKitManager {
       });
     } catch (error) {
       this.logger.error(error, 'Error starting LiveKit subscriber');
+    }
+  }
+
+  /**
+   * Start subscriber via Go livekit-bridge and stream 16 kHz PCM to AudioManager.
+   */
+  private async startBridgeSubscriber(info: { url: string; roomName: string }): Promise<void> {
+    if (this.bridgeClient && this.bridgeClient.isConnected()) { this.logger.debug('Bridge subscriber already connected'); return; }
+    const targetIdentity = this.session.userId; // client publishes as plain userId
+    this.bridgeClient = new LiveKitClientTS(this.session);
+    const subscribeToken = await this.mintAgentSubscribeToken();
+    if (!subscribeToken) { this.logger.warn('Failed to mint subscribe token for bridge subscriber'); return; }
+    await this.bridgeClient.connect({ url: info.url, roomName: info.roomName, token: subscribeToken, targetIdentity });
+    this.logger.info({ feature: 'livekit', room: info.roomName }, 'Bridge subscriber connected');
+  }
+
+  // Signal from MicrophoneManager
+  public onMicStateChange(isOn: boolean): void {
+    this.micEnabled = isOn;
+    this.applySubscribeState();
+  }
+
+  private applySubscribeState(): void {
+    const shouldSubscribe = this.micEnabled;
+    if (!this.bridgeClient || !this.bridgeClient.isConnected()) return;
+    if (shouldSubscribe) {
+      this.logger.info('Enabling bridge subscribe');
+      this.bridgeClient.enableSubscribe(this.session.userId);
+    } else {
+      this.logger.info('Disabling bridge subscribe');
+      this.bridgeClient.disableSubscribe();
     }
   }
 

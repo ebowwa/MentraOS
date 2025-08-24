@@ -44,8 +44,9 @@ async function main() {
 
   // Listen for transcription events
   client.on('display_event', (event) => {
+    console.log('📝 DISPLAY_EVENT received', event);
     if (event.packageName === APP_PACKAGE_NAME) {
-      const text = event.layout.topText || event.layout.bottomText || '';
+      const text = event.layout.topText || event.layout.bottomText || event.layout.text ||'';
       if (text && text.trim()) {
         console.log('📝 TRANSCRIPTION:', text);
         transcriptionReceived = true;
@@ -63,7 +64,8 @@ async function main() {
 
   // Wait for LiveKit
   console.log('2️⃣  Waiting for LiveKit connection...');
-  await new Promise(resolve => setTimeout(resolve, 2000));
+  // Give bridge + room some time to fully establish
+  await new Promise(resolve => setTimeout(resolve, 3000));
 
   // Install and start transcription app
   console.log('3️⃣  Setting up Live Captions app...');
@@ -82,8 +84,8 @@ async function main() {
   console.log('   ✅ App started');
 
   // Send audio file with VAD signaling (lets cloud authorize and process speech)
-  console.log('4️⃣  Sending audio file...');
-  const wavPath = resolve(__dirname, '../audio/what-time-is-it-16khz.wav');
+  console.log('4️⃣  Sending audio file via LiveKit bridge...');
+  const wavPath = resolve(__dirname, '../audio/short-test-16khz.wav');
 
   if (!fs.existsSync(wavPath)) {
     console.error('❌ Audio file not found:', wavPath);
@@ -91,12 +93,18 @@ async function main() {
   }
 
   // Stream via client helper which sets VAD on/off and streams at proper cadence
+  // Stream file (client should route to Go bridge when useLiveKitAudio=true)
   await client.startSpeakingFromFile(wavPath, true);
-  console.log('   ✅ Audio sent');
+  console.log('   ✅ Audio streaming triggered');
 
   // Wait for transcriptions
-  console.log('5️⃣  Waiting for transcriptions...');
-  await new Promise(resolve => setTimeout(resolve, 3000));
+  console.log('5️⃣  Waiting up to 60s for transcriptions...');
+  // Keep the session active for a minute to allow server to process and apps to emit events
+  const deadline = Date.now() + 60_000;
+  while (Date.now() < deadline) {
+    if (transcriptionReceived) break;
+    await new Promise(resolve => setTimeout(resolve, 1000));
+  }
 
   // Results
   console.log();
@@ -113,6 +121,8 @@ async function main() {
     console.log('   - The app is not subscribed to audio events');
   }
 
+  // Keep connection briefly to flush any final events, then disconnect
+  await new Promise(resolve => setTimeout(resolve, 1000));
   await client.disconnect();
   process.exit(transcriptionReceived ? 0 : 1);
 }
