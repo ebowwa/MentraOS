@@ -41,59 +41,61 @@ Works with Even Realities G1, Mentra Mach 1, Mentra Live. See [smart glasses com
 The Mentra Store already has a ton of useful apps that real users are running everyday. Here are some apps already published by developers on the Mentra Store:
 
 <div align="center">
-  <table border="0" style="border: none;">
-    <tr>
-      <td align="center" style="padding: 15px;">
+  <table border="0" cellspacing="0" cellpadding="0" style="border: 0 !important; border-collapse: collapse;">
+    <tbody>
+    <tr style="border: 0 !important; background: transparent;">
+      <td align="center" style="border: 0 !important; padding: 15px; background: transparent;">
         <a href="https://apps.mentra.glass/package/com.augmentos.livecaptions" style="text-decoration: none; color: inherit;">
           <img src="https://appstore.augmentos.org/app-icons/captions.png" alt="Live Captions" width="80" style="border-radius: 18px;" />
           <br /><b>Live Captions</b>
         </a>
       </td>
-      <td align="center" style="padding: 15px;">
+      <td align="center" style="border: 0 !important; padding: 15px; background: transparent;">
         <a href="https://apps.mentra.glass/package/com.mentra.link" style="text-decoration: none; color: inherit;">
           <img src="https://appstore.augmentos.org/app-icons/mentra-link.png" alt="Link" width="80" style="border-radius: 18px;" />
           <br /><b>Link</b>
         </a>
       </td>
-      <td align="center" style="padding: 15px;">
+      <td align="center" style="border: 0 !important; padding: 15px; background: transparent;">
         <a href="https://apps.mentra.glass/package/com.mentra.merge" style="text-decoration: none; color: inherit;">
           <img src="https://appstore.augmentos.org/app-icons/mentra-merge.png" alt="Merge" width="80" style="border-radius: 18px;" />
           <br /><b>Merge</b>
         </a>
       </td>
-      <td align="center" style="padding: 15px;">
+      <td align="center" style="border: 0 !important; padding: 15px; background: transparent;">
         <a href="https://apps.mentra.glass/package/com.mentra.notes" style="text-decoration: none; color: inherit;">
           <img src="./images/MentraNotes.png" alt="Notes" width="80" style="border-radius: 18px;" />
           <br /><b>Notes</b>
         </a>
       </td>
     </tr>
-    <tr>
-      <td align="center" style="padding: 15px;">
+    <tr style="border: 0 !important; background: transparent;">
+      <td align="center" style="border: 0 !important; padding: 15px; background: transparent;">
         <a href="https://apps.mentra.glass/package/com.mentra.calendarreminder" style="text-decoration: none; color: inherit;">
           <img src="https://imagedelivery.net/nrc8B2Lk8UIoyW7fY8uHVg/472942d8-7581-404a-0f2d-e9c9f13d3e00/public" alt="Calendar Reminder" width="80" style="border-radius: 18px;" />
           <br /><b>Calendar</b>
         </a>
       </td>
-      <td align="center" style="padding: 15px;">
+      <td align="center" style="border: 0 !important; padding: 15px; background: transparent;">
         <a href="https://apps.mentra.glass/package/com.mentra.dash" style="text-decoration: none; color: inherit;">
           <img src="./images/MentraDash.png" alt="Dash" width="80" style="border-radius: 18px;" />
           <br /><b>Dash</b>
         </a>
       </td>
-      <td align="center" style="padding: 15px;">
+      <td align="center" style="border: 0 !important; padding: 15px; background: transparent;">
         <a href="https://apps.mentra.glass/package/com.mentra.translation" style="text-decoration: none; color: inherit;">
           <img src="https://imagedelivery.net/nrc8B2Lk8UIoyW7fY8uHVg/5b164770-ec85-47ad-3825-7ff2520c5600/square" alt="Live Translation" width="80" style="border-radius: 18px;" />
           <br /><b>Translation</b>
         </a>
       </td>
-      <td align="center" style="padding: 15px;">
+      <td align="center" style="border: 0 !important; padding: 15px; background: transparent;">
         <a href="https://apps.mentra.glass" style="text-decoration: none; color: inherit;">
           <img src="./images/MentraLogoSquareRound.png" alt="Mentra Store" width="80" style="border-radius: 18px;" />
           <br /><b>→ Browse All Apps</b>
         </a>
       </td>
     </tr>
+    </tbody>
   </table>
 </div>
 
