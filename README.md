@@ -1,6 +1,17 @@
 <div align="center">
-  <img width="200" alt="MentraOS" src="./mobile/ios/AOS/Images.xcassets/AppIcon.appiconset/App-Icon-1024x1024@1x.png" style="border-radius: 20%;" />
-  
+  <p>
+    <img src="https://img.shields.io/github/contributors/TeamOpenSmartGlasses/Convoscope" alt="Contributors" />
+    <img src="https://img.shields.io/github/license/TeamOpenSmartGlasses/Convoscope" alt="License" />
+    <img src="https://img.shields.io/github/stars/TeamOpenSmartGlasses/Convoscope?style=social" alt="GitHub Stars" />
+    <img src="https://img.shields.io/github/v/release/TeamOpenSmartGlasses/Convoscope" alt="GitHub Release Version" />
+    <img src="https://img.shields.io/github/last-commit/TeamOpenSmartGlasses/Convoscope" alt="Last Updated" />
+  </p>
+
+  <p>
+    <img src="./mobile/assets/glasses/mentra-mach1-glasses.png" alt="Mentra Mach 1" height="80" style="margin: 0 15px;" />
+    <img src="./mobile/assets/glasses/g1.png" alt="Even Realities G1" height="80" style="margin: 0 15px;" />
+    <img src="./images/MentraLiveFinal.png" alt="Mentra Live" height="80" style="margin: 0 15px;" />
+  </p>
   <h1>MentraOS</h1>
   <h3>The open source operating system for smart glasses</h3>
   
@@ -10,19 +21,9 @@
     <a href="https://console.mentra.glass">Developer Console</a> •
     <a href="https://apps.mentra.glass">Mentra Store</a>
   </p>
-
-  <p>
-    <img src="https://img.shields.io/github/contributors/TeamOpenSmartGlasses/Convoscope" alt="Contributors" />
-    <img src="https://img.shields.io/github/license/TeamOpenSmartGlasses/Convoscope" alt="License" />
-    <img src="https://img.shields.io/github/stars/TeamOpenSmartGlasses/Convoscope?style=social" alt="GitHub Stars" />
-    <img src="https://img.shields.io/github/v/release/TeamOpenSmartGlasses/Convoscope" alt="GitHub Release Version" />
-    <img src="https://img.shields.io/github/last-commit/TeamOpenSmartGlasses/Convoscope" alt="Last Updated" />
-  </p>
 </div>
 
 <div align="center">
-  <h2>Get MentraOS</h2>
-  
   <a href="https://apps.apple.com/us/app/mentra-the-smart-glasses-app/id6747363193">
     <img src="https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg" alt="Download on the App Store" width="180">
   </a>
@@ -31,18 +32,13 @@
   </a>
 </div>
 
-## 🥽 Supported Smart Glasses
+## Supported Smart Glasses
 
-<div align="center">
-  <p>
-    <img src="./mobile/assets/glasses/g1.png" alt="Even Realities G1" height="80" style="margin: 0 15px;" />
-    <img src="./mobile/assets/glasses/mentra-mach1-glasses.png" alt="Mentra Mach 1" height="80" style="margin: 0 15px;" />
-    <img src="./mobile/assets/glasses/mentra_live.png" alt="Mentra Live" height="80" style="margin: 0 15px;" />
-  </p>
-  <p>Works with Even Realities G1, Mentra Mach 1, Mentra Live, and <a href="./glasses-compatibility.md">more compatible devices</a></p>
-</div>
+Works with Even Realities G1, Mentra Mach 1, Mentra Live. See [smart glasses compatibility list here](./glasses-compatibility.md).
 
-## 🛍️ Apps on Mentra Store
+## Apps on Mentra Store
+
+The Mentra Store already has a ton of useful apps that real users are running everyday. Here are some apps already published by developers on the Mentra Store:
 
 <div align="center">
   <table border="0" style="border: none;">
@@ -101,7 +97,7 @@
   </table>
 </div>
 
-## 💡 Write Once, Run on Any Smart Glasses
+## Write Once, Run on Any Smart Glasses
 
 **MentraOS is how developers build smart glasses apps.** We handle the pairing, connection, data streaming, and cross-compatibility, so you can focus on creating amazing apps. Every component is 100% open source (MIT license).
 
@@ -114,9 +110,11 @@
 
 ## MentraOS Community
 
-The MentraOS Community is a team building open-source smart glasses tech towards an open, self-empowered, intercognitive, augmented future. Our industry partners include companies like Vuzix, Activelook, TCL, and others. To get involved, check out [our website](https://mentra.glass) and join our [Discord server](https://mentra.glass/discord).
+The MentraOS Community is a group of developers, companies, and users dedicated to ensuring the next personal computer is open, cross-compatible, and user-controlled. That's why we're building MentraOS.
 
-## 📞 Contact
+To get involved, join the [MentraOS Community Discord server](https://mentra.glass/discord).
+
+## Contact
 
 Have questions or ideas? We'd love to hear from you!
 
@@ -124,14 +122,9 @@ Have questions or ideas? We'd love to hear from you!
 - **Discord**: [Join our community](http://mentra.glass/discord)
 - **Twitter**: [Follow @mentralabs](https://x.com/mentralabs)
 
-## 🤝 Contributing
+## Contributing
 
-We welcome contributions from the community! Check out our repositories to get started:
-
-- Read our [Contributing Guide](https://docs.mentra.glass/contributing/)
-- Report bugs and request features through GitHub Issues
-- Submit pull requests with improvements
-- Join our developer community
+MentraOS is made by a community and we welcome PRs. Here's the Contributors Guide: [docs.mentra.glass/contributing](https://docs.mentra.glass/contributing)
 
 ## License
 
@@ -140,5 +133,7 @@ MIT License Copyright 2025 MentraOS Community
 ---
 
 <div align="center">
+  <br />
+  <img width="100" alt="MentraOS" src="./mobile/ios/AOS/Images.xcassets/AppIcon.appiconset/App-Icon-1024x1024@1x.png" style="border-radius: 20%;" />
   <h3>© 2025 Mentra Labs</h3>
 </div>
