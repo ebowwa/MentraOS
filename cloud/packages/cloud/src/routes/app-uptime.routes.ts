@@ -99,6 +99,25 @@ async function appsStatus(req: Request, res: Response) {
   }
 }
 
+// Endpoint to get latest statuses for a set of packages (no live ping)
+async function latestStatus(req: Request, res: Response) {
+  try {
+    const packagesParam = (req.query.packages as string) || "";
+    const packageNames = packagesParam
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const result =
+      await AppUptimeService.getLatestStatusesForPackages(packageNames);
+    res.json({ success: true, data: result });
+  } catch (error) {
+    logger.error("Error fetching latest statuses:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to fetch latest statuses" });
+  }
+}
+
 // Endpoint to get app uptime days for a specific month and year
 async function getAppUptimeDays(req: Request, res: Response) {
   const month = req.query.month as string;
@@ -150,6 +169,7 @@ router.post("/app-pkg-health-check", appPkgHealthCheck);
 
 // Endpoint to get the status of all apps
 router.get("/status", appsStatus);
+router.get("/latest-status", latestStatus);
 
 // Endpoint to get app uptime days for a specific month and year
 router.get("/get-app-uptime-days", getAppUptimeDays);

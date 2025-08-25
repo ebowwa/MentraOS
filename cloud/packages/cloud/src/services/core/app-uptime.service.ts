@@ -42,7 +42,10 @@ export async function pkgHealthCheck(packageName: string): Promise<boolean> {
 //return their current health status.
 export async function fetchSubmittedAppHealthStatus() {
   console.log("🔍 Fetching submitted apps with health status...");
-  const appsData = await App.find({ appStoreStatus: "SUBMITTED" }).lean();
+  // Include both SUBMITTED and PUBLISHED apps so the store can consume status too
+  const appsData = await App.find({
+    appStoreStatus: { $in: ["SUBMITTED", "PUBLISHED"] },
+  }).lean();
 
   // Check health status for each app by calling their /health endpoint
   const appsWithHealthStatus = [];
@@ -175,6 +178,18 @@ export async function sendBatchUptimeData(): Promise<void> {
       };
 
       batchData.push(uptimeRecord);
+
+      // Notify developers if a published app is offline (at most once per 24h)
+      try {
+        if (app.appStoreStatus === "PUBLISHED" && !onlineStatus) {
+          await maybeNotifyDevelopers(app.packageName);
+        }
+      } catch (e) {
+        logger.warn(
+          { e, packageName: app.packageName },
+          "notifyDevelopers failed",
+        );
+      }
     }
 
     // Batch insert all uptime records
@@ -189,6 +204,110 @@ export async function sendBatchUptimeData(): Promise<void> {
   } catch (error) {
     logger.error("Error in batch uptime data collection:", error);
     throw error;
+  }
+}
+
+/**
+ * Returns the latest known onlineStatus and health for a list of packages.
+ * Uses AppUptime collection to avoid live pings.
+ */
+export async function getLatestStatusesForPackages(
+  packageNames: string[],
+): Promise<
+  Array<{
+    packageName: string;
+    onlineStatus: boolean;
+    health: string;
+    timestamp: Date;
+  }>
+> {
+  if (!packageNames || packageNames.length === 0) return [];
+
+  const agg = await AppUptime.aggregate([
+    { $match: { packageName: { $in: packageNames } } },
+    { $sort: { timestamp: -1 } },
+    {
+      $group: {
+        _id: "$packageName",
+        packageName: { $first: "$packageName" },
+        onlineStatus: { $first: "$onlineStatus" },
+        health: { $first: "$health" },
+        timestamp: { $first: "$timestamp" },
+      },
+    },
+  ]);
+
+  return agg as Array<{
+    packageName: string;
+    onlineStatus: boolean;
+    health: string;
+    timestamp: Date;
+  }>;
+}
+
+/**
+ * Notify app developer/organization if a published app is offline.
+ * Sends at most one email every 24 hours per app.
+ */
+async function maybeNotifyDevelopers(packageName: string): Promise<void> {
+  try {
+    const appDoc: any = await App.findOne({ packageName });
+    if (!appDoc) return;
+
+    const now = new Date();
+    const lastEmailAt: Date | undefined = (appDoc as any).lastOutageEmailAt;
+    if (lastEmailAt) {
+      const elapsedMs = now.getTime() - new Date(lastEmailAt).getTime();
+      if (elapsedMs < 24 * 60 * 60 * 1000) {
+        // Skip if emailed within last 24 hours
+        return;
+      }
+    }
+
+    // Determine recipient: prefer organization profile contactEmail; fallback to developerId (email)
+    let recipientEmail: string | null = null;
+    try {
+      if (appDoc.organizationId) {
+        const Organization =
+          require("../../models/organization.model").Organization;
+        const org = await Organization.findById(appDoc.organizationId);
+        recipientEmail = org?.profile?.contactEmail || null;
+      }
+    } catch (e) {
+      logger.warn(
+        { e, packageName },
+        "Error loading organization for outage email",
+      );
+    }
+    if (!recipientEmail && appDoc.developerId) {
+      recipientEmail = appDoc.developerId;
+    }
+
+    if (!recipientEmail) return;
+
+    // Send email via Resend service
+    try {
+      const { emailService } = require("../email/resend.service");
+      await emailService.resend.emails.send({
+        from: emailService.defaultSender,
+        to: recipientEmail,
+        subject: `Your app ${appDoc.name} appears to be down`,
+        html: `<p>Hi,</p>
+<p>We detected that your app <strong>${appDoc.name}</strong> (${packageName}) appears to be offline as of ${now.toISOString()}.</p>
+<p>Please check your server's /health endpoint${appDoc.publicUrl ? ` at <a href="${appDoc.publicUrl}/health">${appDoc.publicUrl}/health</a>` : ""}.</p>
+<p>You will receive at most one notification per 24 hours while the app remains offline.</p>
+<p>- AugmentOS Cloud</p>`,
+      });
+      (appDoc as any).lastOutageEmailAt = now;
+      await appDoc.save();
+    } catch (e) {
+      logger.warn({ e, packageName }, "Failed to send outage email");
+    }
+  } catch (error) {
+    logger.warn(
+      { error, packageName },
+      "maybeNotifyDevelopers encountered error",
+    );
   }
 }
 

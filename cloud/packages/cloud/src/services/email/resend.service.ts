@@ -1,4 +1,4 @@
-import { Resend } from 'resend';
+import { Resend } from "resend";
 
 /**
  * Email service using Resend API for sending transactional emails
@@ -14,10 +14,57 @@ export class ResendEmailService {
   constructor() {
     const apiKey = process.env.RESEND_API_KEY;
     if (!apiKey) {
-      throw new Error('RESEND_API_KEY is not defined in environment variables');
+      throw new Error("RESEND_API_KEY is not defined in environment variables");
     }
     this.resend = new Resend(apiKey);
-    this.defaultSender = process.env.EMAIL_SENDER || 'Mentra <noreply@mentra.glass>';
+    this.defaultSender =
+      process.env.EMAIL_SENDER || "Mentra <noreply@mentra.glass>";
+  }
+
+  /**
+   * Sends an app outage notification email to a developer/organization contact.
+   */
+  async sendAppOutageNotification(
+    recipientEmail: string,
+    appName: string,
+    packageName: string,
+    publicUrl?: string,
+  ): Promise<{ id?: string; error?: any }> {
+    try {
+      const healthUrl = publicUrl
+        ? `${publicUrl.replace(/\/$/, "")}/health`
+        : undefined;
+      const html = `
+        <!DOCTYPE html>
+        <html>
+          <head><meta charset="utf-8" /><title>${appName} appears offline</title></head>
+          <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;">
+            <h2>Your app ${appName} appears to be offline</h2>
+            <p>We detected that your app <strong>${appName}</strong> (${packageName}) is currently not responding as of ${new Date().toISOString()}.</p>
+            ${healthUrl ? `<p>Please check your server's health endpoint: <a href="${healthUrl}">${healthUrl}</a></p>` : ""}
+            <p>We will send at most one notification every 24 hours while the app remains offline.</p>
+            <p>— MentraOS</p>
+          </body>
+        </html>
+      `;
+
+      const { data, error } = await this.resend.emails.send({
+        from: this.defaultSender,
+        to: [recipientEmail],
+        subject: `[Alert] ${appName} appears to be down`,
+        html,
+      });
+
+      if (error) {
+        console.error("[resend.service] Failed to send outage email:", error);
+        return { error };
+      }
+
+      return { id: data?.id };
+    } catch (error) {
+      console.error("[resend.service] Error sending outage email:", error);
+      return { error };
+    }
   }
 
   /**
@@ -34,26 +81,34 @@ export class ResendEmailService {
     inviterName: string,
     organizationName: string,
     inviteToken: string,
-    role: string
+    role: string,
   ): Promise<{ id?: string; error?: any }> {
-    const inviteUrl = `${process.env.DEV_CONSOLE_FRONTEND_URL || 'https://console.mentra.glass'}/invite/accept?token=${inviteToken}`;
+    const inviteUrl = `${process.env.DEV_CONSOLE_FRONTEND_URL || "https://console.mentra.glass"}/invite/accept?token=${inviteToken}`;
 
     try {
       const { data, error } = await this.resend.emails.send({
         from: this.defaultSender,
         to: [recipientEmail],
         subject: `You've been invited to join ${organizationName} on Mentra`,
-        html: this.generateInviteEmailHtml(inviterName, organizationName, inviteUrl, role),
+        html: this.generateInviteEmailHtml(
+          inviterName,
+          organizationName,
+          inviteUrl,
+          role,
+        ),
       });
 
       if (error) {
-        console.error('[resend.service] Failed to send invitation email:', error);
+        console.error(
+          "[resend.service] Failed to send invitation email:",
+          error,
+        );
         return { error };
       }
 
       return { id: data?.id };
     } catch (error) {
-      console.error('[resend.service] Error sending invitation email:', error);
+      console.error("[resend.service] Error sending invitation email:", error);
       return { error };
     }
   }
@@ -71,7 +126,7 @@ export class ResendEmailService {
     inviterName: string,
     organizationName: string,
     inviteUrl: string,
-    role: string
+    role: string,
   ): string {
     return `
       <!DOCTYPE html>
@@ -223,25 +278,34 @@ export class ResendEmailService {
    */
   async sendAccountDeletionVerification(
     recipientEmail: string,
-    verificationCode: string
+    verificationCode: string,
   ): Promise<{ id?: string; error?: any }> {
     try {
       const { data, error } = await this.resend.emails.send({
         from: this.defaultSender,
         to: [recipientEmail],
-        subject: 'Confirm Account Deletion - Mentra',
+        subject: "Confirm Account Deletion - Mentra",
         html: this.generateDeletionEmailHtml(verificationCode),
       });
 
       if (error) {
-        console.error('[resend.service] Failed to send deletion verification email:', error);
+        console.error(
+          "[resend.service] Failed to send deletion verification email:",
+          error,
+        );
         return { error };
       }
 
-      console.log('[resend.service] Deletion verification email sent successfully:', data?.id);
+      console.log(
+        "[resend.service] Deletion verification email sent successfully:",
+        data?.id,
+      );
       return { id: data?.id };
     } catch (error) {
-      console.error('[resend.service] Error sending deletion verification email:', error);
+      console.error(
+        "[resend.service] Error sending deletion verification email:",
+        error,
+      );
       return { error };
     }
   }

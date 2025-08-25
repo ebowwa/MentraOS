@@ -10,6 +10,7 @@ import App, { AppI } from "../models/app.model";
 import jwt, { JwtPayload } from "jsonwebtoken";
 import { DeveloperProfile, AppType } from "@mentra/sdk";
 import { logger as rootLogger } from "../services/logging/pino-logger";
+import * as AppUptimeService from "../services/core/app-uptime.service";
 import UserSession from "../services/session/UserSession";
 import {
   authWithOptionalSession,
@@ -393,6 +394,25 @@ async function getAllApps(req: Request, res: Response) {
         userSession,
         user,
       );
+
+      // Attach latest online status for each app
+      try {
+        const packageNames = enhancedApps.map((a: any) => a.packageName);
+        const latestStatuses =
+          await AppUptimeService.getLatestStatusesForPackages(packageNames);
+        const statusMap = new Map<string, boolean>(
+          latestStatuses.map((s) => [s.packageName, Boolean(s.onlineStatus)]),
+        );
+        for (const app of enhancedApps as any[]) {
+          (app as any).isOnline = statusMap.get(app.packageName);
+        }
+      } catch (e) {
+        logger.warn(
+          { e },
+          "Failed to attach latest online statuses (apiKey branch)",
+        );
+      }
+
       return res.json({
         success: true,
         data: enhancedApps,
@@ -465,6 +485,22 @@ async function getAllApps(req: Request, res: Response) {
       userSession,
       user,
     );
+
+    // Attach latest online status for each app
+    try {
+      const packageNames = enhancedApps.map((a: any) => a.packageName);
+      const latestStatuses =
+        await AppUptimeService.getLatestStatusesForPackages(packageNames);
+      const statusMap = new Map<string, boolean>(
+        latestStatuses.map((s) => [s.packageName, Boolean(s.onlineStatus)]),
+      );
+      for (const app of enhancedApps as any[]) {
+        (app as any).isOnline = statusMap.get(app.packageName);
+      }
+    } catch (e) {
+      logger.warn({ e }, "Failed to attach latest online statuses");
+    }
+
     res.json({
       success: true,
       data: enhancedApps,
@@ -1443,6 +1479,44 @@ async function getAvailableApps(req: Request, res: Response) {
         request.userSession.capabilities,
         true, // Include apps with missing optional hardware
       );
+    }
+
+    // Attach latest online status and hide offline published apps for users who haven't installed them
+    try {
+      const packageNames = apps.map((a) => a.packageName);
+      const latestStatuses =
+        await AppUptimeService.getLatestStatusesForPackages(packageNames);
+      const statusMap = new Map<string, boolean>(
+        latestStatuses.map((s) => [s.packageName, Boolean(s.onlineStatus)]),
+      );
+
+      // Determine installed apps for authenticated users
+      const installedSet = new Set<string>();
+      try {
+        const user =
+          request.user ||
+          (request.email ? await User.findByEmail(request.email) : null);
+        if (user?.installedApps) {
+          for (const inst of user.installedApps) {
+            installedSet.add(inst.packageName);
+          }
+        }
+      } catch (_e) {
+        // ignore
+      }
+
+      // Filter and annotate
+      apps = apps.filter((app) => {
+        const isOnline = statusMap.get(app.packageName);
+        (app as any).isOnline = isOnline !== false; // default true if unknown
+        if (app.appStoreStatus === "PUBLISHED" && isOnline === false) {
+          // Keep if user already installed, else hide from store
+          return installedSet.has(app.packageName);
+        }
+        return true;
+      });
+    } catch (e) {
+      logger.warn({ e }, "Failed to determine latest app online statuses");
     }
 
     // Enhance apps with organization profiles
