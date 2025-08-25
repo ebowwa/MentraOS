@@ -102,15 +102,15 @@ public class SettingsCommandHandler implements ICommandHandler {
      */
     public boolean handleButtonVideoRecordingSetting(JSONObject data) {
         try {
-            JSONObject settings = data.optJSONObject("settings");
-            if (settings == null) {
+            JSONObject params = data.optJSONObject("params");
+            if (params == null) {
                 Log.e(TAG, "Missing settings object in button_video_recording_setting");
                 return false;
             }
             
-            int width = settings.optInt("width", 1280);
-            int height = settings.optInt("height", 720);
-            int fps = settings.optInt("fps", 30);
+            int width = params.optInt("width", 1280);
+            int height = params.optInt("height", 720);
+            int fps = params.optInt("fps", 30);
             
             Log.d(TAG, "📱 Received button video recording settings: " + width + "x" + height + "@" + fps + "fps");
             

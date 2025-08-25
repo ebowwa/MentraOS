@@ -411,6 +411,45 @@ export function VirtualWearablePairingGuide() {
   )
 }
 
+export function BrilliantLabsFramePairingGuide() {
+  const {theme} = useAppTheme()
+
+  return (
+    <View style={styles.guideContainer}>
+      <Text text="Brilliant Labs Frame" style={[styles.guideTitle, {color: theme.colors.text}]} />
+
+      {/* Placeholder image - will be replaced with actual image */}
+      <View
+        style={[
+          styles.guideImage,
+          {backgroundColor: theme.colors.border, justifyContent: "center", alignItems: "center"},
+        ]}>
+        <Text text="Frame" style={{color: theme.colors.text, fontSize: 24}} />
+      </View>
+
+      {/* Feature list */}
+      <GlassesFeatureList glassesModel="Brilliant Labs Frame" />
+
+      {/* Pairing instructions */}
+      <Text
+        text="1. Make sure your Frame is charged and powered on"
+        style={[styles.guideStep, {color: theme.colors.text}]}
+      />
+      <Text
+        text="2. Frame will appear in the device list when scanning"
+        style={[styles.guideStep, {color: theme.colors.text}]}
+      />
+      <Text text="3. Select your Frame device to connect" style={[styles.guideStep, {color: theme.colors.text}]} />
+
+      {/* Marketing description */}
+      <Text
+        text="Brilliant Labs Frame brings AI-powered AR to everyday eyewear. With an integrated display, camera, and microphone, Frame enables real-time visual augmentation and AI assistance directly in your field of view."
+        style={[styles.guideDescription, {color: theme.colors.text}]}
+      />
+    </View>
+  )
+}
+
 const styles = StyleSheet.create({
   // guideContainer: {
   //   marginTop: 20,

@@ -420,7 +420,7 @@ export default function GlassesMirrorFullscreen() {
 
           {/* Simulated glasses controls - only show for simulated glasses */}
           {status.glasses_info?.model_name?.includes("Simulated") && (
-            <SimulatedGlassesControls theme={theme} insets={insets} />
+            <SimulatedGlassesControls />
           )}
         </View>
       ) : (

@@ -160,12 +160,6 @@ export default function SettingsPage() {
                 // subtitle={translate("settings:developerSettingsSubtitle")}
                 onPress={() => push("/settings/developer")}
               />
-
-              <RouteButton
-                label="🎥 Buffer Recording Debug"
-                subtitle="Control 30-second video buffer on glasses"
-                onPress={() => push("/settings/buffer-debug")}
-              />
             </>
           )}
 

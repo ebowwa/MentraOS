@@ -274,7 +274,9 @@ class STTModelManager {
       if (Platform.OS === "ios") {
         console.log(`Calling native extractTarBz2 for ${Platform.OS}...`)
         try {
+          onExtractionProgress?.({percentage: 25})
           await coreCommunicator.extractTarBz2(tempPath, finalPath)
+          onExtractionProgress?.({percentage: 90})
           console.log("Native extraction completed")
         } catch (extractError) {
           console.error("Native extraction failed:", extractError)
@@ -288,7 +290,9 @@ class STTModelManager {
         if (nativeModule.extractTarBz2) {
           console.log(`Calling native extractTarBz2 for ${Platform.OS}...`)
           try {
+            onExtractionProgress?.({percentage: 25})
             await nativeModule.extractTarBz2(tempPath, finalPath)
+            onExtractionProgress?.({percentage: 90})
             console.log("Native extraction completed")
           } catch (extractError) {
             console.error("Native extraction failed:", extractError)

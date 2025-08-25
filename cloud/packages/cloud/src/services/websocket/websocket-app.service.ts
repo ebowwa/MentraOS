@@ -28,6 +28,8 @@ import {
   RtmpStreamStopRequest,
   ManagedStreamRequest,
   ManagedStreamStopRequest,
+  StreamStatusCheckRequest,
+  StreamStatusCheckResponse,
   PermissionType,
 } from "@mentra/sdk";
 import UserSession from "../session/UserSession";
@@ -589,6 +591,100 @@ export class AppWebSocketService {
               appWebsocket,
               AppErrorCode.INTERNAL_ERROR,
               (e as Error).message || "Failed to stop managed stream",
+            );
+          }
+          break;
+
+        case AppToCloudMessageType.STREAM_STATUS_CHECK:
+          try {
+            const checkReq = message as StreamStatusCheckRequest;
+
+            // First check for managed streams via ManagedStreamingExtension
+            const managedStreamState =
+              userSession.managedStreamingExtension.getUserStreamState(
+                userSession.userId,
+              );
+
+            // Then check for unmanaged streams via VideoManager
+            const unmanagedStreamInfo =
+              userSession.videoManager.getActiveStreamInfo();
+
+            // Build response based on what we found
+            const response: StreamStatusCheckResponse = {
+              type: CloudToAppMessageType.STREAM_STATUS_CHECK_RESPONSE,
+              hasActiveStream: !!(managedStreamState || unmanagedStreamInfo),
+            };
+
+            if (managedStreamState) {
+              // Managed stream found (handled by ManagedStreamingExtension)
+              if (managedStreamState.type === "managed") {
+                // Generate preview and thumbnail URLs for the stream
+                const previewUrl = `https://iframe.videodelivery.net/${managedStreamState.cfLiveInputId}?autoplay=true&muted=true&controls=true`;
+                const thumbnailUrl = `https://videodelivery.net/${managedStreamState.cfLiveInputId}/thumbnails/thumbnail.jpg`;
+
+                response.streamInfo = {
+                  type: "managed",
+                  streamId: managedStreamState.streamId,
+                  status: "active",
+                  createdAt: managedStreamState.createdAt,
+                  hlsUrl: managedStreamState.hlsUrl,
+                  dashUrl: managedStreamState.dashUrl,
+                  webrtcUrl: managedStreamState.webrtcUrl,
+                  previewUrl: previewUrl,
+                  thumbnailUrl: thumbnailUrl,
+                  activeViewers: managedStreamState.activeViewers.size,
+                };
+              } else {
+                // This is an unmanaged stream tracked by ManagedStreamingExtension
+                response.streamInfo = {
+                  type: "unmanaged",
+                  streamId: managedStreamState.streamId,
+                  status: "active",
+                  createdAt: managedStreamState.createdAt,
+                  rtmpUrl: managedStreamState.rtmpUrl,
+                  requestingAppId: managedStreamState.requestingAppId,
+                };
+              }
+            } else if (unmanagedStreamInfo) {
+              // Unmanaged stream found (handled by VideoManager)
+              response.streamInfo = {
+                type: "unmanaged",
+                streamId: unmanagedStreamInfo.streamId,
+                status: unmanagedStreamInfo.status,
+                createdAt: unmanagedStreamInfo.startTime,
+                rtmpUrl: unmanagedStreamInfo.rtmpUrl,
+                requestingAppId: unmanagedStreamInfo.packageName,
+              };
+            }
+
+            // Send response to app
+            appWebsocket.send(JSON.stringify(response));
+
+            this.logger.info(
+              {
+                packageName: checkReq.packageName,
+                hasActiveStream: response.hasActiveStream,
+                streamType: response.streamInfo?.type,
+                streamSource: managedStreamState
+                  ? "ManagedStreamingExtension"
+                  : unmanagedStreamInfo
+                    ? "VideoManager"
+                    : "none",
+              },
+              "Stream status check processed",
+            );
+          } catch (e) {
+            this.logger.error(
+              {
+                e,
+                packageName: message.packageName,
+              },
+              "Error checking stream status",
+            );
+            this.sendError(
+              appWebsocket,
+              AppErrorCode.INTERNAL_ERROR,
+              (e as Error).message || "Failed to check stream status",
             );
           }
           break;

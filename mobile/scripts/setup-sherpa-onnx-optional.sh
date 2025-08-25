@@ -46,7 +46,7 @@ mkdir -p "$IOS_MODEL_DIR" "$ANDROID_ASSETS_DIR" "$TMP_DIR"
 #################################
 # 1. Download XCFramework (iOS) #
 #################################
-XCF_URL="https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.12.6/sherpa-onnx-v1.12.6-ios.tar.bz2"
+XCF_URL="https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.12.8/sherpa-onnx-v1.12.8-ios.tar.bz2"
 if [[ ! -d "$IOS_PKG_DIR/sherpa-onnx.xcframework" ]]; then
   msg "📥 Downloading Sherpa-ONNX XCFramework …"
   curl -L "$XCF_URL" -o "$TMP_DIR/xcf.tar.bz2"

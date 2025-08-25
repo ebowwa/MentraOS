@@ -31,6 +31,9 @@ export const getGlassesImage = (glasses: string | null) => {
       } else {
         return require("../../assets/guide/android.png")
       }
+    case "Brilliant Labs Frame":
+    case "frame":
+      return require("../../assets/glasses/frame.png")
     default:
       return require("../../assets/glasses/unknown_wearable.png")
   }

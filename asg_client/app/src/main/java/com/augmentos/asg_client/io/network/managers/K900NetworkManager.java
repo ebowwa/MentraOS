@@ -4,7 +4,11 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.net.ConnectivityManager;
 import android.net.wifi.WifiManager;
+import android.net.wifi.WifiConfiguration;
+import android.net.wifi.ScanResult;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.provider.Settings;
@@ -12,6 +16,7 @@ import android.util.Log;
 
 import com.augmentos.asg_client.io.network.core.BaseNetworkManager;
 import com.augmentos.asg_client.io.network.interfaces.INetworkManager;
+import com.augmentos.asg_client.io.network.interfaces.IWifiScanCallback;
 import com.augmentos.asg_client.io.network.utils.DebugNotificationManager;
 import com.augmentos.asg_client.SysControl;
 
@@ -20,7 +25,8 @@ import java.util.List;
 
 /**
  * Implementation of INetworkManager for K900 devices.
- * Uses K900-specific broadcasts to control WiFi and hotspot functionality.
+ * Assumes K900 is running as a system app on Android 11+.
+ * Uses standard Android APIs with reflection for hotspot control.
  */
 public class K900NetworkManager extends BaseNetworkManager {
     private static final String TAG = "K900NetworkManager";
@@ -29,9 +35,9 @@ public class K900NetworkManager extends BaseNetworkManager {
     private static final String K900_BROADCAST_ACTION = "com.xy.xsetting.action";
     private static final String K900_SYSTEM_UI_PACKAGE = "com.android.systemui";
     
-    // Default hotspot configuration
-    private static final String DEFAULT_HOTSPOT_SSID = "AugmentOS_";
-    private static final String DEFAULT_HOTSPOT_PASSWORD = "augmentos1234";
+    // K900 hotspot constants
+    private static final String K900_HOTSPOT_PREFIX = "XySmart_";
+    private static final String K900_HOTSPOT_PASSWORD = "00001111";
     
     private final WifiManager wifiManager;
     private final DebugNotificationManager notificationManager;
@@ -146,63 +152,150 @@ public class K900NetworkManager extends BaseNetworkManager {
         context.sendBroadcast(nn);
     }
     
+
     @Override
-    public void startHotspot(String ssid, String password) {
+    public void startHotspot() {
         Log.d(TAG, "🔥 =========================================");
-        Log.d(TAG, "🔥 START K900 HOTSPOT");
+        Log.d(TAG, "🔥 START K900 HOTSPOT (INTENT MODE)");
         Log.d(TAG, "🔥 =========================================");
-        Log.d(TAG, "🔥 SSID: " + (ssid != null ? ssid : DEFAULT_HOTSPOT_SSID));
-        Log.d(TAG, "🔥 Password: " + (password != null ? "***" : "***"));
         
         try {
-            // Use K900-specific broadcast to start hotspot
-            Log.d(TAG, "🔥 📡 Creating K900 hotspot start broadcast...");
-            Intent intent = new Intent(K900_BROADCAST_ACTION);
-            intent.putExtra("command", "start_hotspot");
-            intent.putExtra("ssid", ssid != null ? ssid : DEFAULT_HOTSPOT_SSID);
-            intent.putExtra("password", password != null ? password : DEFAULT_HOTSPOT_PASSWORD);
+            // Send K900 hotspot enable intent
+            Log.d(TAG, "🔥 📡 Sending K900 hotspot enable intent...");
+            Intent intent = new Intent();
+            intent.setAction("com.xy.xsetting.action");
+            intent.setPackage("com.android.systemui");
+            intent.putExtra("cmd", "ap_start");
+            intent.putExtra("enable", true);
             
-            Log.d(TAG, "🔥 📤 Sending K900 hotspot start broadcast...");
             context.sendBroadcast(intent);
+            Log.d(TAG, "🔥 ✅ K900 hotspot enable intent sent");
             
-            Log.d(TAG, "🔥 ✅ K900 hotspot start broadcast sent successfully");
-            notificationManager.showHotspotStateNotification(true);
-            notifyHotspotStateChanged(true);
+            // Read the SSID directly from Settings.Global (no delay needed - it's already there)
+            try {
+                String ssid = Settings.Global.getString(context.getContentResolver(), "xy_ssid");
+                
+                if (ssid != null && !ssid.isEmpty()) {
+                    Log.d(TAG, "🔥 ✅ Got K900 hotspot SSID from Settings.Global: " + ssid);
+                    
+                    // Update state with detected SSID and known password
+                    updateHotspotState(true, ssid, K900_HOTSPOT_PASSWORD);
+                    notifyHotspotStateChanged(true);
+                    
+                    notificationManager.showHotspotStateNotification(true);
+                    notificationManager.showDebugNotification(
+                            "K900 Hotspot Active", 
+                            ssid + " | " + K900_HOTSPOT_PASSWORD);
+                    
+                    Log.i(TAG, "🔥 ✅ K900 hotspot active: " + ssid);
+                } else {
+                    Log.e(TAG, "🔥 ❌ Failed to read K900 SSID from Settings.Global");
+                    
+                    // Turn off the hotspot since we can't get credentials
+                    Intent disableIntent = new Intent();
+                    disableIntent.setAction("com.xy.xsetting.action");
+                    disableIntent.setPackage("com.android.systemui");
+                    disableIntent.putExtra("cmd", "ap_start");
+                    disableIntent.putExtra("enable", false);
+                    context.sendBroadcast(disableIntent);
+                    
+                    clearHotspotState();
+                    notifyHotspotStateChanged(false);
+                    
+                    notificationManager.showDebugNotification(
+                            "Hotspot Failed", 
+                            "Could not read hotspot SSID. Hotspot disabled.");
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "🔥 💥 Error reading K900 SSID from Settings.Global", e);
+                
+                // Turn off the hotspot on error
+                Intent disableIntent = new Intent();
+                disableIntent.setAction("com.xy.xsetting.action");
+                disableIntent.setPackage("com.android.systemui");
+                disableIntent.putExtra("cmd", "ap_start");
+                disableIntent.putExtra("enable", false);
+                context.sendBroadcast(disableIntent);
+                
+                clearHotspotState();
+                notifyHotspotStateChanged(false);
+                
+                notificationManager.showDebugNotification(
+                        "Hotspot Error", 
+                        "Failed to read SSID: " + e.getMessage());
+            }
             
-            Log.i(TAG, "🔥 ✅ K900 hotspot start command sent");
+            Log.i(TAG, "🔥 ✅ K900 hotspot start initiated");
         } catch (Exception e) {
             Log.e(TAG, "🔥 💥 Error starting K900 hotspot", e);
+            clearHotspotState();
             notificationManager.showDebugNotification(
                     "Hotspot Error", 
-                    "Failed to start K900 hotspot: " + e.getMessage());
+                    "Failed to start: " + e.getMessage());
+        }
+    }
+    
+    
+    
+    
+    @Override
+    protected void refreshHotspotCredentials() {
+        // K900 specific: Read SSID from Settings.Global
+        try {
+            String ssid = Settings.Global.getString(context.getContentResolver(), "xy_ssid");
+            
+            if (ssid != null && !ssid.isEmpty()) {
+                Log.d(TAG, "🔥 ✅ Refreshed K900 hotspot SSID from Settings.Global: " + ssid);
+                updateHotspotState(true, ssid, K900_HOTSPOT_PASSWORD);
+                notifyHotspotStateChanged(true);
+                
+                notificationManager.showHotspotStateNotification(true);
+                notificationManager.showDebugNotification(
+                        "K900 Hotspot Active", 
+                        ssid + " | " + K900_HOTSPOT_PASSWORD);
+            } else {
+                Log.e(TAG, "🔥 ❌ Failed to refresh K900 SSID from Settings.Global");
+                clearHotspotState();
+                notifyHotspotStateChanged(false);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "🔥 💥 Error refreshing K900 SSID from Settings.Global", e);
+            clearHotspotState();
+            notifyHotspotStateChanged(false);
         }
     }
     
     @Override
     public void stopHotspot() {
         Log.d(TAG, "🔥 =========================================");
-        Log.d(TAG, "🔥 STOP K900 HOTSPOT");
+        Log.d(TAG, "🔥 STOP K900 HOTSPOT (INTENT MODE)");
         Log.d(TAG, "🔥 =========================================");
         
         try {
-            // Use K900-specific broadcast to stop hotspot
-            Log.d(TAG, "🔥 📡 Creating K900 hotspot stop broadcast...");
-            Intent intent = new Intent(K900_BROADCAST_ACTION);
-            intent.putExtra("command", "stop_hotspot");
+            // Send K900 hotspot disable intent
+            Log.d(TAG, "🔥 📡 Sending K900 hotspot disable intent...");
+            Intent intent = new Intent();
+            intent.setAction("com.xy.xsetting.action");
+            intent.setPackage("com.android.systemui");
+            intent.putExtra("cmd", "ap_start");
+            intent.putExtra("enable", false);
             
-            Log.d(TAG, "🔥 📤 Sending K900 hotspot stop broadcast...");
             context.sendBroadcast(intent);
             
-            Log.d(TAG, "🔥 ✅ K900 hotspot stop broadcast sent successfully");
+            // Clear hotspot state immediately
+            clearHotspotState();
+            
+            Log.d(TAG, "🔥 ✅ K900 hotspot disable intent sent");
             notificationManager.showHotspotStateNotification(false);
             notifyHotspotStateChanged(false);
             
-            Log.i(TAG, "🔥 ✅ K900 hotspot stop command sent");
+            Log.i(TAG, "🔥 ✅ K900 hotspot disabled");
         } catch (Exception e) {
             Log.e(TAG, "🔥 💥 Error stopping K900 hotspot", e);
+            clearHotspotState();
             notificationManager.showDebugNotification(
                     "Hotspot Error", 
-                    "Failed to stop K900 hotspot: " + e.getMessage());
+                    "Failed to stop: " + e.getMessage());
         }
     }
     
@@ -330,198 +423,20 @@ public class K900NetworkManager extends BaseNetworkManager {
     
     @Override
     public List<String> scanWifiNetworks() {
-        final List<String> networks = new ArrayList<>();
+        // Send K900-specific WiFi enable broadcast first
+        sendEnableWifiBroadcast();
         
-        try {
-            // Use the base class method to ensure WiFi is enabled
-            sendEnableWifiBroadcast();
-            if (!ensureWifiEnabled()) {
-                Log.e(TAG, "Cannot scan for WiFi networks - WiFi could not be enabled");
-                return networks;
-            }
-            
-            // Check if we have WiFi Manager available
-            if (wifiManager == null) {
-                Log.e(TAG, "WiFi manager is null");
-                return networks;
-            }
-            
-            // First, try the K900-specific approach
-            Log.d(TAG, "K900 device, trying K900-specific scan");
-            
-            try {
-                final java.util.concurrent.CountDownLatch latch = new java.util.concurrent.CountDownLatch(1);
-                final List<String> k900Networks = new ArrayList<>();
-                
-                // Register a receiver to get the scan results
-                BroadcastReceiver receiver = new BroadcastReceiver() {
-                    @Override
-                    public void onReceive(Context context, Intent intent) {
-                        if (intent != null && intent.hasExtra("scan_list")) {
-                            String[] wifiList = intent.getStringArrayExtra("scan_list");
-                            if (wifiList != null) {
-                                for (String ssid : wifiList) {
-                                    if (ssid != null && !ssid.isEmpty() && !k900Networks.contains(ssid)) {
-                                        k900Networks.add(ssid);
-                                        Log.d(TAG, "Found K900 scan network: " + ssid);
-                                    }
-                                }
-                            }
-                        }
-                        latch.countDown();
-                    }
-                };
-                
-                // Register the receiver
-                IntentFilter filter = new IntentFilter("com.xy.xsetting.scan_list");
-                context.registerReceiver(receiver, filter);
-                
-                // Send the request to start scan
-                Intent intent = new Intent(K900_BROADCAST_ACTION);
-                intent.setPackage(K900_SYSTEM_UI_PACKAGE);
-                intent.putExtra("cmd", "scan_wifi");
-                context.sendBroadcast(intent);
-                
-                // Wait for the scan results with a timeout
-                try {
-                    if (latch.await(10, java.util.concurrent.TimeUnit.SECONDS)) {
-                        // Successfully got the networks
-                        networks.addAll(k900Networks);
-                    } else {
-                        Log.w(TAG, "Timeout waiting for K900 scan results");
-                    }
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    Log.e(TAG, "Interrupted waiting for K900 scan results", e);
-                }
-                
-                // Unregister the receiver
-                try {
-                    context.unregisterReceiver(receiver);
-                } catch (Exception e) {
-                    Log.e(TAG, "Error unregistering receiver", e);
-                }
-                
-                // If K900 scan worked, return the results
-                if (!networks.isEmpty()) {
-                    Log.d(TAG, "K900-specific scan successful, found " + networks.size() + " networks");
-                    return networks;
-                }
-                
-                // If K900 scan didn't work, fall through to standard scanning
-                Log.d(TAG, "K900-specific scan returned no results, falling back to standard scan");
-            } catch (Exception e) {
-                Log.e(TAG, "Error in K900-specific scan, falling back to standard scan", e);
-            }
-            
-            // Standard approach for WiFi scanning (fallback)
-            try {
-                // Try to start a scan with regular Android APIs
-                final java.util.concurrent.atomic.AtomicBoolean scanComplete = new java.util.concurrent.atomic.AtomicBoolean(false);
-                final java.util.concurrent.CountDownLatch scanLatch = new java.util.concurrent.CountDownLatch(1);
-                
-                // Create a receiver for scan results
-                BroadcastReceiver wifiScanReceiver = new BroadcastReceiver() {
-                    @Override
-                    public void onReceive(Context context, Intent intent) {
-                        if (WifiManager.SCAN_RESULTS_AVAILABLE_ACTION.equals(intent.getAction())) {
-                            boolean success = intent.getBooleanExtra(WifiManager.EXTRA_RESULTS_UPDATED, false);
-                            Log.d(TAG, "Scan completed, success=" + success);
-                            scanComplete.set(true);
-                            scanLatch.countDown();
-                        }
-                    }
-                };
-                
-                // Register the receiver
-                IntentFilter intentFilter = new IntentFilter(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION);
-                context.registerReceiver(wifiScanReceiver, intentFilter);
-                
-                // Start the scan
-                boolean scanStarted = wifiManager.startScan();
-                Log.d(TAG, "WiFi scan started, success=" + scanStarted);
-                
-                if (!scanStarted) {
-                    Log.e(TAG, "Failed to start WiFi scan");
-                    
-                    // Try to get the results anyway, maybe there's a recent scan
-                    try {
-                        List<android.net.wifi.ScanResult> scanResults = wifiManager.getScanResults();
-                        if (scanResults != null && !scanResults.isEmpty()) {
-                            for (android.net.wifi.ScanResult result : scanResults) {
-                                String ssid = result.SSID;
-                                if (ssid != null && !ssid.isEmpty() && !networks.contains(ssid)) {
-                                    networks.add(ssid);
-                                    Log.d(TAG, "Found network from previous scan: " + ssid);
-                                }
-                            }
-                        }
-                    } catch (SecurityException se) {
-                        Log.e(TAG, "No permission to access previous scan results", se);
-                    } catch (Exception e) {
-                        Log.e(TAG, "Error getting previous scan results", e);
-                    }
-                    
-                    // Unregister the receiver
-                    try {
-                        context.unregisterReceiver(wifiScanReceiver);
-                    } catch (Exception e) {
-                        Log.e(TAG, "Error unregistering scan receiver", e);
-                    }
-                    
-                    return networks;
-                }
-                
-                // Wait for the scan to complete, but with a timeout
-                try {
-                    boolean completed = scanLatch.await(15, java.util.concurrent.TimeUnit.SECONDS);
-                    Log.d(TAG, "Scan await completed=" + completed + ", scanComplete=" + scanComplete.get());
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    Log.e(TAG, "Interrupted waiting for scan results", e);
-                }
-                
-                // Get the scan results
-                try {
-                    List<android.net.wifi.ScanResult> scanResults = wifiManager.getScanResults();
-                    if (scanResults != null) {
-                        for (android.net.wifi.ScanResult result : scanResults) {
-                            String ssid = result.SSID;
-                            if (ssid != null && !ssid.isEmpty() && !networks.contains(ssid)) {
-                                networks.add(ssid);
-                                Log.d(TAG, "Found network: " + ssid);
-                            }
-                        }
-                    }
-                } catch (SecurityException se) {
-                    Log.e(TAG, "No permission to access scan results", se);
-                } catch (Exception e) {
-                    Log.e(TAG, "Error getting scan results", e);
-                }
-                
-                // Unregister the receiver
-                try {
-                    context.unregisterReceiver(wifiScanReceiver);
-                } catch (Exception e) {
-                    Log.e(TAG, "Error unregistering scan receiver", e);
-                }
-            } catch (Exception e) {
-                Log.e(TAG, "Error scanning for WiFi networks", e);
-            }
-            
-            // Add the current network if not already in the list
-            String currentSsid = getCurrentWifiSsid();
-            if (!currentSsid.isEmpty() && !networks.contains(currentSsid)) {
-                networks.add(currentSsid);
-                Log.d(TAG, "Added current network to scan results: " + currentSsid);
-            }
-            
-            Log.d(TAG, "Found " + networks.size() + " networks with scan");
-            return networks;
-        } catch (Exception e) {
-            Log.e(TAG, "Error scanning for WiFi networks", e);
-            return networks;
-        }
+        // Then use standard Android scanning from BaseNetworkManager
+        return super.scanWifiNetworks();
+    }
+    
+    @Override
+    public void scanWifiNetworks(IWifiScanCallback callback) {
+        // Send K900-specific WiFi enable broadcast first
+        sendEnableWifiBroadcast();
+        
+        // Then use standard Android streaming scanning from BaseNetworkManager
+        super.scanWifiNetworks(callback);
     }
 
     private void sendEnableWifiBroadcast() {
@@ -537,6 +452,7 @@ public class K900NetworkManager extends BaseNetworkManager {
         }
     }
     
+
     @Override
     public void shutdown() {
         Log.d(TAG, "Shutting down K900NetworkManager");

@@ -42,6 +42,7 @@ export default function SelectGlassesModelScreen() {
           {modelName: "Mentra Live", key: "mentra_live"},
           {modelName: "Mentra Mach1", key: "mentra_mach1"},
           {modelName: "Vuzix Z100", key: "vuzix-z100"},
+          //{modelName: "Brilliant Labs Frame", key: "frame"},
         ]
       : [
           // Android:
@@ -50,6 +51,7 @@ export default function SelectGlassesModelScreen() {
           {modelName: "Mentra Live", key: "mentra_live"},
           {modelName: "Mentra Mach1", key: "mentra_mach1"},
           {modelName: "Vuzix Z100", key: "vuzix-z100"},
+          //{modelName: "Brilliant Labs Frame", key: "frame"},
         ]
 
   // Check onboarding status when screen comes into focus

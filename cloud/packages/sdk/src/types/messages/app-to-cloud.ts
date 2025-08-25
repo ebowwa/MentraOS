@@ -113,6 +113,16 @@ export interface ManagedStreamStopRequest extends BaseMessage {
 }
 
 /**
+ * Stream status check request from App
+ * Checks if there are any existing streams (managed or unmanaged) for the current user
+ */
+export interface StreamStatusCheckRequest extends BaseMessage {
+  type: AppToCloudMessageType.STREAM_STATUS_CHECK;
+  packageName: string;
+  sessionId: string;
+}
+
+/**
  * Audio play request from App
  */
 export interface AudioPlayRequest extends BaseMessage {
@@ -147,6 +157,7 @@ export type AppToCloudMessage =
   | RtmpStreamStopRequest
   | ManagedStreamRequest
   | ManagedStreamStopRequest
+  | StreamStatusCheckRequest
   | DashboardContentUpdate
   | DashboardModeChange
   | DashboardSystemUpdate
