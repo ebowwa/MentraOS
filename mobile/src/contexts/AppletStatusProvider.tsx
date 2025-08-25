@@ -35,7 +35,7 @@ export interface AppletInterface {
   uninstallable?: boolean
   webviewURL?: string
   logoURL: string
-  appType: string
+  type: string // "standard", "background"
   appStoreId?: string
   developerId?: string
   hashedEndpointSecret?: string
@@ -55,7 +55,6 @@ export interface AppletInterface {
   permissions: AppletPermission[]
   is_running?: boolean
   is_loading?: boolean
-  is_foreground?: boolean
   compatibility?: {
     isCompatible: boolean
     missingRequired: Array<{
@@ -119,7 +118,8 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
       const mapped = appsData.map(app => {
         // shallow incomplete copy, just enough to render the list:
         const applet: AppletInterface = {
-          appType: app.appType,
+          // @ts-ignore
+          type: app.type || app["appType"],
           packageName: app.packageName,
           name: app.name,
           publicUrl: app.publicUrl,
@@ -184,9 +184,7 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
 
       setAppStatus(currentStatus => {
         // Then update the target app to be running
-        return currentStatus.map(app =>
-          app.packageName === packageName ? {...app, is_running: true, is_foreground: true} : app,
-        )
+        return currentStatus.map(app => (app.packageName === packageName ? {...app, is_running: true} : app))
       })
     }
 

@@ -19,7 +19,6 @@ interface AppModel {
   name: string
   packageName: string
   is_running?: boolean
-  is_foreground?: boolean
   appType?: string
   webviewURL?: string
   publicUrl?: string
@@ -119,12 +118,12 @@ const GridItem: React.FC<{
     return <View style={themed($gridItem)} />
   }
 
-  const isForeground = item.appType === "standard" || item.is_foreground
+  const isForeground = item.appType === "standard"
 
   return (
     <TouchableOpacity ref={setRef} style={themed($gridItem)} onPress={handlePress} activeOpacity={0.7}>
       <View style={themed($appContainer)}>
-        <AppIcon app={item} isForegroundApp={isForeground} style={themed($appIcon)} />
+        <AppIcon app={item} style={themed($appIcon)} />
         {isForeground && (
           <View style={themed($foregroundIndicator)}>
             <TreeIcon size={theme.spacing.md} color={theme.colors.text} />

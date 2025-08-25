@@ -1802,20 +1802,6 @@ struct ViewState {
         // hardcoded list of apps:
         var apps: [[String: Any]] = []
 
-        // for app in self.cachedThirdPartyAppList {
-        //   if app.name == "Notify" { continue }// TODO: ios notifications don't work so don't display the App
-        //   let appDict = [
-        //     "packageName": app.packageName,
-        //     "name": app.name,
-        //     "description": app.description,
-        //     "webhookURL": app.webhookURL,
-        //     "logoURL": app.logoURL,
-        //     "is_running": app.isRunning,
-        //     "is_foreground": false
-        //   ] as [String: Any]
-        //   // apps.append(appDict)
-        // }
-
         let authObj: [String: Any] = [
             "core_token_owner": coreTokenOwner,
             //      "core_token_status":

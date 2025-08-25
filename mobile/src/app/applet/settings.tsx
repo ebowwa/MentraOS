@@ -628,7 +628,7 @@ export default function AppSettings() {
         <View style={{gap: theme.spacing.lg}}>
           {/* Combined App Info and Action Section */}
           <View style={themed($topSection)}>
-            <AppIcon app={appInfo} isForegroundApp={appInfo.is_foreground} style={themed($appIconLarge)} />
+            <AppIcon app={appInfo} style={themed($appIconLarge)} />
 
             <View style={themed($rightColumn)}>
               <View style={themed($textContainer)}>
@@ -702,11 +702,7 @@ export default function AppSettings() {
               <InfoRow
                 label="App Type"
                 value={
-                  appInfo?.appType === "standard"
-                    ? "Foreground"
-                    : appInfo?.appType === "background"
-                      ? "Background"
-                      : "-"
+                  appInfo?.type === "standard" ? "Foreground" : appInfo?.type === "background" ? "Background" : "-"
                 }
                 showDivider={false}
               />

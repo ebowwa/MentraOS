@@ -10,13 +10,12 @@ import {ThemedStyle} from "@/theme"
 
 interface AppIconProps {
   app: AppletInterface
-  isForegroundApp?: boolean
   onClick?: () => void
   style?: ViewStyle
   showLabel?: boolean
 }
 
-const AppIcon: React.FC<AppIconProps> = ({app, isForegroundApp = false, onClick, style, showLabel = false}) => {
+const AppIcon: React.FC<AppIconProps> = ({app, onClick, style, showLabel = false}) => {
   const {themed, theme} = useAppTheme()
 
   const WrapperComponent = onClick ? TouchableOpacity : View

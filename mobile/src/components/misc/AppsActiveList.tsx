@@ -3,16 +3,12 @@ import {View, ViewStyle, Animated, Easing} from "react-native"
 import {useAppStatus} from "@/contexts/AppletStatusProvider"
 import BackendServerComms from "@/backend_comms/BackendServerComms"
 import EmptyAppsView from "../home/EmptyAppsView"
-import {colors, ThemedStyle} from "@/theme"
+import {ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
-import {router} from "expo-router"
 import TempActivateAppWindow from "./TempActivateAppWindow"
 import {AppListItem} from "./AppListItem"
 import Divider from "./Divider"
 import {Spacer} from "./Spacer"
-import Toast from "react-native-toast-message"
-import {TruckIcon} from "assets/icons/component/TruckIcon"
-import {translate} from "@/i18n"
 import AppsHeader from "./AppsHeader"
 import {loadSetting} from "@/utils/SettingsHelper"
 import {SETTINGS_KEYS} from "@/consts"
@@ -167,8 +163,6 @@ export default function AppsActiveList({
             <React.Fragment key={app.packageName}>
               <AppListItem
                 app={app}
-                // @ts-ignore
-                is_foreground={app.appType == "standard" || app["tpaType"] == "standard"}
                 isActive={true}
                 onTogglePress={() => {
                   Animated.timing(itemOpacity, {

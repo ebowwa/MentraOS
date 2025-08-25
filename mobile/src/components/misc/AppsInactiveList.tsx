@@ -347,11 +347,9 @@ export default function InactiveAppList({
           <React.Fragment key={app.packageName}>
             <AppListItem
               app={app}
-              // @ts-ignore
-              is_foreground={app.appType == "standard"}
               isActive={false}
               onTogglePress={async () => {
-                const isForegroundApp = app.appType == "standard"
+                const isForegroundApp = app.type == "standard"
                 const res = await checkIsForegroundAppStart(app.packageName, isForegroundApp)
                 if (res) {
                   // Don't animate here - let startApp handle all UI updates
