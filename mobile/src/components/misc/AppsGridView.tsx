@@ -1,5 +1,5 @@
 import React, {useState, useRef, useCallback, useMemo} from "react"
-import {View, ScrollView, TouchableOpacity, ViewStyle, TextStyle, Dimensions, FlatList} from "react-native"
+import {View, ScrollView, TouchableOpacity, ViewStyle, TextStyle, Dimensions, FlatList, Alert} from "react-native"
 import Popover from "react-native-popover-view"
 import {Text} from "@/components/ignite"
 import AppIcon from "./AppIcon"
@@ -28,6 +28,8 @@ interface AppModel {
     isCompatible: boolean
     message?: string
   }
+  // New optional online flag provided by backend
+  isOnline?: boolean | null
 }
 
 interface AppsGridViewProps {
@@ -119,11 +121,12 @@ const GridItem: React.FC<{
   }
 
   const isForeground = item.type === "standard"
+  const isOffline = item.isOnline === false
 
   return (
     <TouchableOpacity ref={setRef} style={themed($gridItem)} onPress={handlePress} activeOpacity={0.7}>
-      <View style={themed($appContainer)}>
-        <AppIcon app={item} style={themed($appIcon)} />
+      <View style={[themed($appContainer), isOffline ? {opacity: 0.4} : null]}>
+        <AppIcon app={item as any} style={themed($appIcon)} />
         {isForeground && (
           <View style={themed($foregroundIndicator)}>
             <TreeIcon size={theme.spacing.md} color={theme.colors.text} />
@@ -147,6 +150,31 @@ export const AppsGridViewRoot: React.FC<AppsGridViewProps> = ({
   const [popoverVisible, setPopoverVisible] = useState(false)
   const touchableRefs = useRef<Map<string, React.Component | null>>(new Map())
 
+  // Maintenance dialog for offline apps
+  const showMaintenanceDialog = useCallback(
+    (app: AppModel) => {
+      Alert.alert(
+        translate("common:appDownTitle", {defaultValue: "App is down for maintenance"}),
+        translate("common:appDownMessage", {defaultValue: `${app.name} appears to be offline. You can try anyway.`}),
+        [
+          {text: translate("common:cancel"), style: "cancel"},
+          {
+            text: translate("common:tryAnyway", {defaultValue: "Try Anyway"}),
+            onPress: () => {
+              if (app.type === "standard") {
+                onStartApp?.(app.packageName)
+              } else {
+                onStartApp?.(app.packageName)
+              }
+            },
+          },
+        ],
+        {cancelable: true},
+      )
+    },
+    [onStartApp],
+  )
+
   // Memoize padded apps to avoid recalculation on every render
   const paddedApps = useMemo(() => {
     if (!apps || apps.length === 0) return []
@@ -164,13 +192,21 @@ export const AppsGridViewRoot: React.FC<AppsGridViewProps> = ({
     return appsCopy
   }, [apps])
 
-  const handleAppPress = useCallback((app: AppModel) => {
-    const ref = touchableRefs.current.get(app.packageName)
-    if (ref) {
-      setSelectedApp(app)
-      setPopoverVisible(true)
-    }
-  }, [])
+  const handleAppPress = useCallback(
+    (app: AppModel) => {
+      const ref = touchableRefs.current.get(app.packageName)
+      if (ref) {
+        // If app is offline, show maintenance dialog instead of popover
+        if (app.isOnline === false) {
+          showMaintenanceDialog(app)
+          return
+        }
+        setSelectedApp(app)
+        setPopoverVisible(true)
+      }
+    },
+    [showMaintenanceDialog],
+  )
 
   const handlePopoverClose = useCallback(() => {
     setPopoverVisible(false)

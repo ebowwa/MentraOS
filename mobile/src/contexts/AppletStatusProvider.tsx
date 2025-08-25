@@ -30,7 +30,7 @@ export interface AppletPermission {
 export interface AppletInterface {
   packageName: string
   name: string
-  publicUrl: string
+  publicUrl?: string
   isSystemApp?: boolean
   uninstallable?: boolean
   webviewURL?: string
@@ -67,6 +67,8 @@ export interface AppletInterface {
     }>
     message: string
   }
+  // New optional isOnline from backend
+  isOnline?: boolean | null
 }
 
 interface AppStatusContextType {
@@ -127,6 +129,8 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
           webviewURL: app.webviewURL,
           is_running: app.is_running,
           is_loading: false,
+          // @ts-ignore include server-provided latest status if present
+          isOnline: (app as any).isOnline,
         }
 
         return applet
@@ -309,6 +313,8 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
     <AppStatusContext.Provider
       value={{
         appStatus,
+        // Expose renderableApps (currently same as appStatus; reserved for filters)
+        renderableApps: appStatus,
         refreshAppStatus,
         optimisticallyStartApp,
         optimisticallyStopApp,
