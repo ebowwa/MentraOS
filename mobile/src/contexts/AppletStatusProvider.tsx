@@ -125,9 +125,9 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
           publicUrl: app.publicUrl,
           logoURL: app.logoURL,
           permissions: app.permissions,
-          is_running: false,
-          is_loading: false,
           webviewURL: app.webviewURL,
+          is_running: app.is_running,
+          is_loading: false,
         }
 
         return applet
