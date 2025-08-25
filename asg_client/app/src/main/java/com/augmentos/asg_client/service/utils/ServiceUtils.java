@@ -299,19 +299,19 @@ public class ServiceUtils {
                     // K900PlusV2 devices use 0 degrees (no rotation)
                     if (propLower.contains("k900plusv2")) {
                         Log.i(TAG, "K900PlusV2 detected - using 0° rotation");
-                        return 0;
+                        return 90;
                     }
                     
                     // K900Plus (without V2) devices use 270 degrees
                     if (propLower.contains("k900plus")) {
                         Log.i(TAG, "K900Plus detected - using 270° rotation");
-                        return 270;
+                        return 180;
                     }
                     
                     // Standard K900 devices use 270 degrees
                     if (propLower.contains("k900")) {
                         Log.i(TAG, "K900 detected - using 270° rotation");
-                        return 270;
+                        return 180;
                     }
                 }
             }
