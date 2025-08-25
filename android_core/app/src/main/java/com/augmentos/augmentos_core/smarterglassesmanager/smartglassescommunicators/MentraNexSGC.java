@@ -175,7 +175,7 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
     private BluetoothGatt mainGlassGatt;
     private BluetoothGattCharacteristic mainWriteChar;
     private BluetoothGattCharacteristic mainNotifyChar;
-    private final int MTU_247 = 247; // Maximum MTU we'll use
+    private final int MTU_517 = 517; // Maximum MTU we'll use
     private final int MTU_DEFAULT = 23; // Default BLE MTU
     private int currentMTU = 0;
     private int deviceMaxMTU = 0; // Discovered maximum MTU capability
@@ -550,10 +550,10 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
                     // Store device capability and calculate actual negotiated MTU
                     deviceMaxMTU = mtu; // Record what device actually supports
                     // The actual negotiated MTU is the minimum of our request and device capability
-                    currentMTU = Math.min(MTU_247, mtu);
+                    currentMTU = Math.min(MTU_517, mtu);
                     
                     Log.d(TAG, "🎯 MTU Negotiation Complete:");
-                    Log.d(TAG, "   📱 App Requested: " + MTU_247 + " bytes");
+                    Log.d(TAG, "   📱 App Requested: " + MTU_517 + " bytes");
                     Log.d(TAG, "   📡 Device Supports: " + deviceMaxMTU + " bytes");
                     Log.d(TAG, "   🤝 Negotiated MTU: " + currentMTU + " bytes");
                     
@@ -571,7 +571,7 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
                     Log.w(TAG, "❌ MTU Request Failed - Status: " + status + ", Requested: " + mtu);
                     
                     // Simple fallback strategy: 247 → 23
-                    if (mtu == MTU_247) {
+                    if (mtu == MTU_517) {
                         Log.d(TAG, "🔄 247 bytes failed, trying default: " + MTU_DEFAULT + " bytes...");
                         Log.d(TAG, "📤 Requesting MTU: " + MTU_DEFAULT + " bytes (fallback)");
                         gatt.requestMtu(MTU_DEFAULT);
@@ -603,10 +603,10 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
 
     private void initNexGlasses(BluetoothGatt gatt) {
         // Start MTU discovery with our maximum target
-        Log.d(TAG, "🔍 MTU Discovery: Requesting maximum MTU size: " + MTU_247);
-        Log.d(TAG, "🎯 Target: Use " + MTU_247 + " bytes max, or " + MTU_DEFAULT + " bytes default");
-        Log.d(TAG, "📤 Requesting MTU: " + MTU_247 + " bytes");
-        gatt.requestMtu(MTU_247); // Request our maximum MTU
+        Log.d(TAG, "🔍 MTU Discovery: Requesting maximum MTU size: " + MTU_517);
+        Log.d(TAG, "🎯 Target: Use " + MTU_517 + " bytes max, or " + MTU_DEFAULT + " bytes default");
+        Log.d(TAG, "📤 Requesting MTU: " + MTU_517 + " bytes");
+        gatt.requestMtu(MTU_517); // Request our maximum MTU
 
         BluetoothGattService uartService = gatt.getService(MAIN_SERVICE_UUID);
 
