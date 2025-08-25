@@ -143,10 +143,9 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
         return
       }
 
-      console.log("AppStatusProvider: Applet status changed ###############################################")
-      console.log("AppStatusProvider: diff", diff)
-      console.log("AppStatusProvider: mapped", mapped)
-      console.log("AppStatusProvider: appStatus", appStatus)
+      if (mapped.length == 0) {
+        return
+      }
 
       console.log("AppletStatusProvider: setting app status")
       setAppStatus(mapped)
