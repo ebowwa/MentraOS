@@ -127,7 +127,6 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     // Device settings
     private static final String PREFS_NAME = "MentraLivePrefs";
     private static final String PREF_DEVICE_NAME = "LastConnectedDeviceName";
-    private static final String PREF_DEVICE_ADDRESS = "LastConnectedDeviceAddress";
 
     // Auth settings
     private static final String AUTH_PREFS_NAME = "augmentos_auth_prefs";
@@ -459,20 +458,13 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 EventBus.getDefault().post(new GlassesBluetoothSearchDiscoverEvent(
                         smartGlassesDevice.deviceModelName, deviceName));
 
-                // Read saved address as well
-                String savedDeviceAddress = prefs.getString(PREF_DEVICE_ADDRESS, null);
-
                 // If already connecting or connected, don't start another connection
                 if (isConnected || isConnecting) {
                     return;
                 }
 
-                // Prefer connecting by exact MAC address match for reliability
-                if (savedDeviceAddress != null && savedDeviceAddress.equalsIgnoreCase(deviceAddress)) {
-                    Log.d(TAG, "Found our remembered device by address, connecting: " + deviceAddress);
-                    stopScan();
-                    connectToDevice(result.getDevice());
-                } else if (savedDeviceName != null && savedDeviceName.equals(deviceName)) {
+                // Connect if this matches our saved device name
+                if (savedDeviceName != null && savedDeviceName.equals(deviceName)) {
                     Log.d(TAG, "Found our remembered device by name, connecting: " + deviceName);
                     stopScan();
                     connectToDevice(result.getDevice());
@@ -546,19 +538,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
      */
     private void reconnectToLastKnownDevice() {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-        String lastDeviceAddress = prefs.getString(PREF_DEVICE_ADDRESS, null);
         String lastDeviceName = prefs.getString(PREF_DEVICE_NAME, null);
-
-        if (bluetoothAdapter != null && lastDeviceAddress != null) {
-            try {
-                Log.d(TAG, "Attempting direct reconnect to last device address: " + lastDeviceAddress);
-                BluetoothDevice device = bluetoothAdapter.getRemoteDevice(lastDeviceAddress);
-                connectToDevice(device);
-                return;
-            } catch (Exception e) {
-                Log.e(TAG, "Failed direct reconnect by address, will scan by name. Error: " + e.getMessage());
-            }
-        }
 
         if (lastDeviceName != null && bluetoothAdapter != null) {
             Log.d(TAG, "Attempting to reconnect to last known device by name: " + lastDeviceName);
@@ -594,19 +574,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             public void run() {
                 if (!isConnected && !isConnecting && !isKilled) {
                     SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-                    String lastDeviceAddress = prefs.getString(PREF_DEVICE_ADDRESS, null);
                     String lastDeviceName = prefs.getString(PREF_DEVICE_NAME, null);
-
-                    if (bluetoothAdapter != null && lastDeviceAddress != null) {
-                        try {
-                            Log.d(TAG, "Reconnection attempt " + reconnectAttempts + " - trying direct address: " + lastDeviceAddress);
-                            BluetoothDevice device = bluetoothAdapter.getRemoteDevice(lastDeviceAddress);
-                            connectToDevice(device);
-                            return;
-                        } catch (Exception e) {
-                            Log.e(TAG, "Direct reconnect by address failed: " + e.getMessage());
-                        }
-                    }
 
                     if (lastDeviceName != null && bluetoothAdapter != null) {
                         Log.d(TAG, "Reconnection attempt " + reconnectAttempts + " - scanning for device with name: " + lastDeviceName);
@@ -644,9 +612,8 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
                         prefs.edit()
                                 .putString(PREF_DEVICE_NAME, connectedDevice.getName())
-                                .putString(PREF_DEVICE_ADDRESS, connectedDevice.getAddress())
                                 .apply();
-                        Log.d(TAG, "Saved device for future reconnection: name=" + connectedDevice.getName() + ", address=" + connectedDevice.getAddress());
+                        Log.d(TAG, "Saved device for future reconnection: name=" + connectedDevice.getName());
                     }
 
                     // Discover services
@@ -2377,30 +2344,13 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
 
         // Get last known device info
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-        String lastDeviceAddress = prefs.getString(PREF_DEVICE_ADDRESS, null);
         String lastDeviceName = prefs.getString(PREF_DEVICE_NAME, null);
 
-        if (lastDeviceAddress != null) {
-            // Connect to last known device if available
-            Log.d(TAG, "Attempting to connect to last known device address: " + lastDeviceAddress);
-            try {
-                BluetoothDevice device = bluetoothAdapter.getRemoteDevice(lastDeviceAddress);
-                if (device != null) {
-                    Log.d(TAG, "Found saved device by address, connecting directly: " + lastDeviceAddress);
-                    connectToDevice(device);
-                } else {
-                    Log.e(TAG, "Could not create device from address: " + lastDeviceAddress);
-                    connectionEvent(SmartGlassesConnectionState.DISCONNECTED);
-                    startScan(); // Fallback to scanning
-                }
-            } catch (Exception e) {
-                Log.e(TAG, "Error connecting to saved device address: " + e.getMessage());
-                connectionEvent(SmartGlassesConnectionState.DISCONNECTED);
-                startScan(); // Fallback to scanning
-            }
+        if (lastDeviceName != null) {
+            Log.d(TAG, "Attempting to connect to last known device by name: " + lastDeviceName);
+            startScan(); // Start scan to find device by name
         } else {
-            // If no last known address, start scanning and (optionally) match by name
-            Log.d(TAG, "No last known device address, starting scan" + (lastDeviceName != null ? ", will match name: " + lastDeviceName : ""));
+            Log.d(TAG, "No previously connected device info found, starting scan");
             startScan();
         }
     }
