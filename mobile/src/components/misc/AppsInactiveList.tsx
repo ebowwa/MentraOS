@@ -251,7 +251,7 @@ export default function InactiveAppList({
   }
 
   const getRunningStandardApps = (packageName: string) => {
-    return appStatus.filter(app => app.is_running && app.appType == "standard" && app.packageName !== packageName)
+    return appStatus.filter(app => app.is_running && app.type == "standard" && app.packageName !== packageName)
   }
   const openAppSettings = (app: any) => {
     console.log("%%% opening app settings", app)

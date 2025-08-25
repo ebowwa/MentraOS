@@ -112,7 +112,6 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
 
     try {
       const appsData = await BackendServerComms.getInstance().getApps()
-      // console.log("AppStatusProvider: getApps() returned", appsData?.length || 0, "apps")
 
       // Merge existing running states with new data
       const mapped = appsData.map(app => {
@@ -125,9 +124,9 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
           publicUrl: app.publicUrl,
           logoURL: app.logoURL,
           permissions: app.permissions,
-          is_running: false,
-          is_loading: false,
           webviewURL: app.webviewURL,
+          is_running: app.is_running,
+          is_loading: false,
         }
 
         return applet
@@ -143,6 +142,12 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
         console.log("AppStatusProvider: Applet status did not change ###############################################")
         return
       }
+
+      console.log("AppStatusProvider: Applet status changed ###############################################")
+      console.log("AppStatusProvider: diff", diff)
+      console.log("AppStatusProvider: mapped", mapped)
+      console.log("AppStatusProvider: appStatus", appStatus)
+
       console.log("AppletStatusProvider: setting app status")
       setAppStatus(mapped)
     } catch (err) {
@@ -155,7 +160,7 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
     // Handle foreground apps
     if (appType === "standard") {
       const runningStandardApps = appStatus.filter(
-        app => app.is_running && app.appType === "standard" && app.packageName !== packageName,
+        app => app.is_running && app.type === "standard" && app.packageName !== packageName,
       )
 
       for (const runningApp of runningStandardApps) {
@@ -299,33 +304,6 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
       GlobalEventEmitter.off("CORE_TOKEN_SET", onCoreTokenSet)
     }
   }, [])
-
-  // Add a listener for app state changes to detect when the app comes back from background
-  useEffect(() => {
-    const handleAppStateChange = async (nextAppState: any) => {
-      console.log("App state changed to:", nextAppState)
-      // If app comes back to foreground, hide the loading overlay
-      if (nextAppState === "active") {
-        if (await loadSetting(SETTINGS_KEYS.RECONNECT_ON_APP_FOREGROUND, true)) {
-          console.log(
-            "Attempt reconnect to glasses",
-            status.core_info.default_wearable,
-            status.glasses_info?.model_name,
-          )
-          if (status.core_info.default_wearable && !status.glasses_info?.model_name) {
-            await coreCommunicator.sendConnectWearable(status.core_info.default_wearable)
-          }
-        }
-      }
-    }
-
-    // Subscribe to app state changes
-    const appStateSubscription = AppState.addEventListener("change", handleAppStateChange)
-
-    return () => {
-      appStateSubscription.remove()
-    }
-  }, []) // subscribe only once
 
   return (
     <AppStatusContext.Provider

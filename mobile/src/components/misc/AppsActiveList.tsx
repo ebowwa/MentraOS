@@ -35,8 +35,8 @@ export default function AppsActiveList({
     }
     // Sort to put foreground apps (appType === "standard") at the top
     return apps.sort((a, b) => {
-      const aIsForeground = a.appType === "standard"
-      const bIsForeground = b.appType === "standard"
+      const aIsForeground = a.type === "standard"
+      const bIsForeground = b.type === "standard"
 
       if (aIsForeground && !bIsForeground) return -1
       if (!aIsForeground && bIsForeground) return 1

@@ -62,7 +62,7 @@ const AppsCombinedGridViewRoot: React.FC<AppsCombinedGridViewProps> = () => {
       }
 
       // Optimistically update UI
-      optimisticallyStartApp(packageName, appInfo.appType)
+      optimisticallyStartApp(packageName, appInfo.type)
     },
     [appStatus],
   )

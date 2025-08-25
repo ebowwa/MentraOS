@@ -23,13 +23,13 @@ import {loadSetting} from "@/utils/SettingsHelper"
 import {SETTINGS_KEYS} from "@/consts"
 import {AppsCombinedGridView} from "@/components/misc/AppsCombinedGridView"
 import PermissionsWarning from "@/components/home/PermissionsWarning"
+import {Reconnect, OtaUpdateChecker} from "@/components/utils/utils"
 
 export default function Homepage() {
   const {refreshAppStatus} = useAppStatus()
   const [onboardingTarget, setOnboardingTarget] = useState<"glasses" | "livecaptions">("glasses")
   const liveCaptionsRef = useRef<any>(null)
   const connectButtonRef = useRef<any>(null)
-
   const {themed, theme} = useAppTheme()
 
   const [showNewUi, setShowNewUi] = useState(false)
@@ -124,6 +124,9 @@ export default function Homepage() {
         <Spacer height={spacing.md} />
         <AppsIncompatibleListOld />
       </ScrollView>
+
+      <Reconnect />
+      <OtaUpdateChecker />
 
       <OnboardingSpotlight
         targetRef={onboardingTarget === "glasses" ? connectButtonRef : liveCaptionsRef}
