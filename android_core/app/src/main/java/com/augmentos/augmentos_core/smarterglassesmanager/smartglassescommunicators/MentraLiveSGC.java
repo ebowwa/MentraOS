@@ -458,6 +458,11 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 EventBus.getDefault().post(new GlassesBluetoothSearchDiscoverEvent(
                         smartGlassesDevice.deviceModelName, deviceName));
 
+                // If already connecting or connected, don't start another connection
+                if (isConnected || isConnecting) {
+                    return;
+                }
+
                 // If this is the specific device we want to connect to by name, connect to it
                 if (savedDeviceName != null && savedDeviceName.equals(deviceName)) {
                     Log.d(TAG, "Found our remembered device by name, connecting: " + deviceName);
