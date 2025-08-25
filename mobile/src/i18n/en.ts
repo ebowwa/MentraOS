@@ -20,6 +20,7 @@ const en = {
     update: "Update",
     retryConnection: "Retry Connection",
     skipUpdate: "Skip Update",
+    continueAnyways: "Continue Anyways",
   },
   simulatedGlasses: {
     showDashboard: "Show Dashboard",

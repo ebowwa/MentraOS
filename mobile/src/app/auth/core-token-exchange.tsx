@@ -181,12 +181,7 @@ export default function CoreTokenExchange() {
 
         <View style={styles.setupContainer}>
           {isUsingCustomUrl && (
-            <Button
-              onPress={handleResetUrl}
-              isDarkTheme={theme.isDark}
-              disabled={isLoading}
-              iconName="refresh"
-              style={styles.resetButton}>
+            <Button onPress={handleResetUrl} disabled={isLoading} iconName="refresh" style={styles.resetButton}>
               Reset to Default URL
             </Button>
           )}
