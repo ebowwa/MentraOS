@@ -14,7 +14,7 @@ import Toast from "react-native-toast-message"
 interface AppModel {
   name: string
   packageName: string
-  is_foreground?: boolean
+  type: string
   compatibility?: {
     isCompatible: boolean
     message?: string
@@ -27,7 +27,6 @@ interface AppListItemProps {
   onTogglePress: () => void
   onSettingsPress: () => void
   refProp?: React.Ref<any>
-  is_foreground?: boolean
   opacity?: Animated.AnimatedValue
   height?: Animated.AnimatedValue
   isDisabled?: boolean
@@ -42,7 +41,6 @@ export const AppListItem = ({
   refProp,
   opacity,
   isDisabled,
-  is_foreground,
   height,
   isIncompatible,
 }: AppListItemProps) => {
@@ -70,7 +68,7 @@ export const AppListItem = ({
         onPress={onSettingsPress}
         disabled={isDisabled}
         activeOpacity={0.7}>
-        <AppIcon app={app} isForegroundApp={is_foreground} style={themed($appIcon)} />
+        <AppIcon app={app} style={themed($appIcon)} />
         <View style={themed($appNameWrapper)}>
           <Text
             text={app.name}
@@ -82,7 +80,7 @@ export const AppListItem = ({
             numberOfLines={1}
             ellipsizeMode="tail"
           />
-          <Tag isActive={isActive} isForeground={is_foreground} isIncompatible={isIncompatible} />
+          <Tag isActive={isActive} isForeground={app.type == "standard"} isIncompatible={isIncompatible} />
         </View>
       </TouchableOpacity>
 
