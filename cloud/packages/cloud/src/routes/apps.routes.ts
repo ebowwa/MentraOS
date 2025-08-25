@@ -395,15 +395,56 @@ async function getAllApps(req: Request, res: Response) {
         user,
       );
 
+      // Enrich with organization/developer profile and display name
+      let finalApps = enhancedApps as any[];
+      try {
+        finalApps = await Promise.all(
+          (enhancedApps as any[]).map(async (appObj: any) => {
+            try {
+              if (appObj.organizationId) {
+                const Organization =
+                  require("../models/organization.model").Organization;
+                const org = await Organization.findById(appObj.organizationId);
+                if (org) {
+                  appObj.developerProfile = org.profile || {};
+                  appObj.orgName = org.name;
+                  appObj.developerName = org.name;
+                }
+              } else if (appObj.developerId) {
+                const developer = await User.findByEmail(appObj.developerId);
+                if (developer && developer.profile) {
+                  const displayName =
+                    developer.profile.company || developer.email.split("@")[0];
+                  appObj.developerProfile = developer.profile;
+                  appObj.orgName = displayName;
+                  appObj.developerName = displayName;
+                }
+              }
+            } catch (err) {
+              logger.error(
+                `Error enriching profile for app ${appObj.packageName}:`,
+                err,
+              );
+            }
+            return appObj;
+          }),
+        );
+      } catch (e) {
+        logger.warn(
+          { e },
+          "Failed to enrich apps with organization/developer profile (apiKey branch)",
+        );
+      }
+
       // Attach latest online status for each app
       try {
-        const packageNames = enhancedApps.map((a: any) => a.packageName);
+        const packageNames = finalApps.map((a: any) => a.packageName);
         const latestStatuses =
           await AppUptimeService.getLatestStatusesForPackages(packageNames);
         const statusMap = new Map<string, boolean>(
           latestStatuses.map((s) => [s.packageName, Boolean(s.onlineStatus)]),
         );
-        for (const app of enhancedApps as any[]) {
+        for (const app of finalApps as any[]) {
           (app as any).isOnline = statusMap.get(app.packageName);
         }
       } catch (e) {
@@ -415,7 +456,7 @@ async function getAllApps(req: Request, res: Response) {
 
       return res.json({
         success: true,
-        data: enhancedApps,
+        data: finalApps,
       });
     }
 
@@ -486,15 +527,56 @@ async function getAllApps(req: Request, res: Response) {
       user,
     );
 
+    // Enrich with organization/developer profile and display name
+    let finalApps = enhancedApps as any[];
+    try {
+      finalApps = await Promise.all(
+        (enhancedApps as any[]).map(async (appObj: any) => {
+          try {
+            if (appObj.organizationId) {
+              const Organization =
+                require("../models/organization.model").Organization;
+              const org = await Organization.findById(appObj.organizationId);
+              if (org) {
+                appObj.developerProfile = org.profile || {};
+                appObj.orgName = org.name;
+                appObj.developerName = org.name;
+              }
+            } else if (appObj.developerId) {
+              const developer = await User.findByEmail(appObj.developerId);
+              if (developer && developer.profile) {
+                const displayName =
+                  developer.profile.company || developer.email.split("@")[0];
+                appObj.developerProfile = developer.profile;
+                appObj.orgName = displayName;
+                appObj.developerName = displayName;
+              }
+            }
+          } catch (err) {
+            logger.error(
+              `Error enriching profile for app ${appObj.packageName}:`,
+              err,
+            );
+          }
+          return appObj;
+        }),
+      );
+    } catch (e) {
+      logger.warn(
+        { e },
+        "Failed to enrich apps with organization/developer profile",
+      );
+    }
+
     // Attach latest online status for each app
     try {
-      const packageNames = enhancedApps.map((a: any) => a.packageName);
+      const packageNames = finalApps.map((a: any) => a.packageName);
       const latestStatuses =
         await AppUptimeService.getLatestStatusesForPackages(packageNames);
       const statusMap = new Map<string, boolean>(
         latestStatuses.map((s) => [s.packageName, Boolean(s.onlineStatus)]),
       );
-      for (const app of enhancedApps as any[]) {
+      for (const app of finalApps as any[]) {
         (app as any).isOnline = statusMap.get(app.packageName);
       }
     } catch (e) {
@@ -503,7 +585,7 @@ async function getAllApps(req: Request, res: Response) {
 
     res.json({
       success: true,
-      data: enhancedApps,
+      data: finalApps,
     });
   } catch (error) {
     logger.error({ error }, "Error fetching apps");

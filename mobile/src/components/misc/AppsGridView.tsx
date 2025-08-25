@@ -30,6 +30,7 @@ interface AppModel {
   }
   // New optional online flag provided by backend
   isOnline?: boolean | null
+  developerName?: string
 }
 
 interface AppsGridViewProps {
@@ -125,15 +126,24 @@ const GridItem: React.FC<{
 
   return (
     <TouchableOpacity ref={setRef} style={themed($gridItem)} onPress={handlePress} activeOpacity={0.7}>
-      <View style={[themed($appContainer), isOffline ? {opacity: 0.4} : null]}>
+      <View style={themed($appContainer)}>
         <AppIcon app={item as any} style={themed($appIcon)} />
+        {isOffline && (
+          <View style={themed($offlineBadge)}>
+            <MaterialCommunityIcons name="alert-circle" size={14} color={theme.colors.error} />
+          </View>
+        )}
         {isForeground && (
           <View style={themed($foregroundIndicator)}>
             <TreeIcon size={theme.spacing.md} color={theme.colors.text} />
           </View>
         )}
       </View>
-      <Text text={item.name} style={themed($appName)} numberOfLines={item.name.split(" ").length > 1 ? 2 : 1} />
+      <Text
+        text={item.name}
+        style={themed(isOffline ? $appNameOffline : $appName)}
+        numberOfLines={item.name.split(" ").length > 1 ? 2 : 1}
+      />
     </TouchableOpacity>
   )
 }
@@ -153,19 +163,16 @@ export const AppsGridViewRoot: React.FC<AppsGridViewProps> = ({
   // Maintenance dialog for offline apps
   const showMaintenanceDialog = useCallback(
     (app: AppModel) => {
+      const developerName = (" " + (app.developerName || "") + " ").replace("  ", " ")
       Alert.alert(
-        translate("common:appDownTitle", {defaultValue: "App is down for maintenance"}),
-        translate("common:appDownMessage", {defaultValue: `${app.name} appears to be offline. You can try anyway.`}),
+        "App is down for maintenance",
+        `${app.name} appears to be offline. You can try anyway.\n\nThe developer${developerName}needs to get their server back up and running. Please contact them for more details.`,
         [
-          {text: translate("common:cancel"), style: "cancel"},
+          {text: "Cancel", style: "cancel"},
           {
-            text: translate("common:tryAnyway", {defaultValue: "Try Anyway"}),
+            text: "Try Anyway",
             onPress: () => {
-              if (app.type === "standard") {
-                onStartApp?.(app.packageName)
-              } else {
-                onStartApp?.(app.packageName)
-              }
+              onStartApp?.(app.packageName)
             },
           },
         ],
@@ -375,6 +382,15 @@ const $appName: ThemedStyle<TextStyle> = ({colors}) => ({
   lineHeight: 14,
 })
 
+const $appNameOffline: ThemedStyle<TextStyle> = ({colors}) => ({
+  fontSize: 11,
+  fontWeight: "600",
+  color: colors.text,
+  textAlign: "center",
+  lineHeight: 14,
+  textDecorationLine: "line-through",
+})
+
 const $popoverStyle: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   backgroundColor: colors.background,
   borderRadius: spacing.sm,
@@ -419,4 +435,13 @@ const $popoverOptionText: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
   fontSize: 15,
   color: colors.text,
   marginLeft: spacing.md,
+})
+
+const $offlineBadge: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
+  position: "absolute",
+  right: -spacing.xxs,
+  top: -spacing.xxs,
+  backgroundColor: colors.background,
+  borderRadius: spacing.sm,
+  padding: 2,
 })

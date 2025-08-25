@@ -17,9 +17,23 @@ const logger = rootLogger.child({ service: "app-uptime.service" }); // Create a 
 const ONE_MINUTE_MS = 60000;
 let uptimeScheduler: NodeJS.Timeout | null = null; // Store interval reference for cleanup
 
+/**
+ * Package names that are exempt from uptime checks.
+ * These apps are always considered online/healthy for the purposes of uptime.
+ */
+const UPTIME_EXEMPT_PACKAGES: ReadonlySet<string> = new Set([
+  "com.augmentos.livecaptions",
+]);
+
 // Pkg Health check by packageName.
 export async function pkgHealthCheck(packageName: string): Promise<boolean> {
   try {
+    // Exempted apps are always considered healthy
+    if (UPTIME_EXEMPT_PACKAGES.has(packageName)) {
+      logger.debug({ packageName }, "Skipping health check for exempt package");
+      return true;
+    }
+
     const app = await App.findOne({ packageName }).lean();
     if (!app || !app.publicUrl) {
       logger.warn(
@@ -54,7 +68,14 @@ export async function fetchSubmittedAppHealthStatus() {
     let healthStatus = "offline";
     let healthData = null;
 
-    if (app.publicUrl) {
+    // If app is exempt from uptime checks, force it online without ping
+    if (UPTIME_EXEMPT_PACKAGES.has(app.packageName)) {
+      healthStatus = "online";
+      healthData = { status: "healthy", exemptedFromUptimeChecks: true };
+      console.log(
+        `🟢 ${app.packageName} is exempt from uptime checks - marking as online`,
+      );
+    } else if (app.publicUrl) {
       try {
         console.log(
           `🏥 Checking health for ${app.packageName} at ${app.publicUrl}/health`,
@@ -285,23 +306,40 @@ async function maybeNotifyDevelopers(packageName: string): Promise<void> {
 
     if (!recipientEmail) return;
 
-    // Send email via Resend service
+    // Send email via Resend service helper (behind env flag)
     try {
-      const { emailService } = require("../email/resend.service");
-      await emailService.resend.emails.send({
-        from: emailService.defaultSender,
-        to: recipientEmail,
-        subject: `Your app ${appDoc.name} appears to be down`,
-        html: `<p>Hi,</p>
-<p>We detected that your app <strong>${appDoc.name}</strong> (${packageName}) appears to be offline as of ${now.toISOString()}.</p>
-<p>Please check your server's /health endpoint${appDoc.publicUrl ? ` at <a href="${appDoc.publicUrl}/health">${appDoc.publicUrl}/health</a>` : ""}.</p>
-<p>You will receive at most one notification per 24 hours while the app remains offline.</p>
-<p>- AugmentOS Cloud</p>`,
-      });
-      (appDoc as any).lastOutageEmailAt = now;
-      await appDoc.save();
+      const shouldSend = process.env.AUTO_SEND_DOWNTIME_EMAILS === "true";
+      if (!shouldSend) {
+        logger.info(
+          {
+            packageName,
+            recipientEmail,
+          },
+          "AUTO_SEND_DOWNTIME_EMAILS disabled; would send outage email but logging only",
+        );
+      } else {
+        const { emailService } = require("../email/resend.service");
+        const result = await emailService.sendAppOutageNotification(
+          recipientEmail,
+          appDoc.name,
+          packageName,
+          appDoc.publicUrl,
+        );
+        if (!(result && !result.error)) {
+          logger.warn(
+            { packageName, recipientEmail, result },
+            "Outage email send returned error",
+          );
+        } else {
+          (appDoc as any).lastOutageEmailAt = now;
+          await appDoc.save();
+        }
+      }
     } catch (e) {
-      logger.warn({ e, packageName }, "Failed to send outage email");
+      logger.warn(
+        { e, packageName },
+        "Failed to process outage email notification",
+      );
     }
   } catch (error) {
     logger.warn(

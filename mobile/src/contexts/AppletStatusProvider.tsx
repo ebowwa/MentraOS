@@ -30,6 +30,7 @@ export interface AppletPermission {
 export interface AppletInterface {
   packageName: string
   name: string
+  developerName?: string
   publicUrl?: string
   isSystemApp?: boolean
   uninstallable?: boolean
@@ -121,6 +122,7 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
         const applet: AppletInterface = {
           // @ts-ignore
           type: app.type || app["appType"],
+          developerName: app.developerName,
           packageName: app.packageName,
           name: app.name,
           publicUrl: app.publicUrl,
@@ -161,6 +163,11 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
 
   // Optimistically update app status when starting an app
   const optimisticallyStartApp = async (packageName: string, appType?: string) => {
+    await doStartApp(packageName, appType)
+  }
+
+  // Extracted actual start logic
+  const doStartApp = async (packageName: string, appType?: string) => {
     // Handle foreground apps
     if (appType === "standard") {
       const runningStandardApps = appStatus.filter(
