@@ -16,8 +16,6 @@ import AppsIncompatibleList from "@/components/misc/AppsIncompatibleList"
 
 interface AppsCombinedGridViewProps {}
 
-const initialLayout = {width: Dimensions.get("window").width}
-
 const AppsCombinedGridViewRoot: React.FC<AppsCombinedGridViewProps> = () => {
   const {themed, theme} = useAppTheme()
   const {appStatus, checkAppHealthStatus, optimisticallyStartApp, optimisticallyStopApp} = useAppStatus()
@@ -236,7 +234,6 @@ const AppsCombinedGridViewRoot: React.FC<AppsCombinedGridViewProps> = () => {
         renderScene={renderScene}
         renderTabBar={renderTabBar}
         onIndexChange={handleIndexChange}
-        initialLayout={initialLayout}
         style={{flex: 1}}
         lazy={false}
       />
