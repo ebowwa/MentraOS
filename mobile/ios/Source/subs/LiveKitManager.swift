@@ -3,7 +3,7 @@ import Combine
 import Foundation
 import LiveKit
 @preconcurrency
-import LiveKitWebRTC
+internal import LiveKitWebRTC
 
 class BufferInjector: AudioCustomProcessingDelegate {
     private var pendingBuffers: [AVAudioPCMBuffer] = []
@@ -174,8 +174,8 @@ public class LiveKitManager: NSObject {
         super.init()
 
         do {
-//          LiveKit.AudioManager.shared.audioSession.isAutomaticConfigurationEnabled = false
-//            try LiveKit.AudioManager.shared.setManualRenderingMode(true)
+            //          LiveKit.AudioManager.shared.audioSession.isAutomaticConfigurationEnabled = false
+            //            try LiveKit.AudioManager.shared.setManualRenderingMode(true)
             LiveKit.AudioManager.shared.audioSession.isAutomaticConfigurationEnabled = true
             try LiveKit.AudioManager.shared.setManualRenderingMode(false)
         } catch {
@@ -223,7 +223,10 @@ public class LiveKitManager: NSObject {
                 enabled = true
 
                 // Setup custom audio source for PCM input
-//                try await setupCustomAudioTrack()
+                //                try await setupCustomAudioTrack()
+                Core.log("LiveKit: trackCount: \(room.localParticipant.localAudioTracks.count)")
+                //              Core.log("LiveKit: a: \(room.)")
+                //              room.localParticipant.publish(audioTrack: room.localParticipant.publish(data: ))
 
                 Core.log("LiveKit: Successfully connected to LiveKit room")
 
@@ -315,6 +318,9 @@ public class LiveKitManager: NSObject {
 
         Core.log("LiveKit: Adding PCM buffer with \(buffer.frameLength) frames")
         injector.addBuffer(buffer)
+        Task {
+            try await room.localParticipant.publish(data: pcmData)
+        }
     }
 
     /// Disconnect from LiveKit room
