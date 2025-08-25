@@ -39,14 +39,16 @@
 
 /* Audio configuration constants */
 #define PDM_SAMPLE_RATE         16000    // 16 kHz voice optimized
+#define PDM_BIT_DEPTH           16       // PCM bit depth, measured in bits
 #define PDM_CHANNELS            1        // Mono microphone input
 #define PDM_FRAME_SIZE_SAMPLES  160      // 10ms frame @ 16kHz
 #define PDM_FRAME_SIZE_BYTES    (PDM_FRAME_SIZE_SAMPLES * 2)  // 16-bit samples
 
 /* LC3 encoding configuration */
-#define LC3_FRAME_DURATION_MS   10       // 10ms frame duration
+#define LC3_FRAME_DURATION_US   10000    // 10ms frame duration
 #define LC3_MAX_ENCODED_SIZE    100      // Maximum LC3 encoded frame size
 #define LC3_BITRATE_DEFAULT     32000    // 32 kbps default bitrate
+#define LC3_FRAME_LEN           (LC3_BITRATE_DEFAULT * LC3_FRAME_DURATION_US / 8 / 1000000)
 
 /* Audio streaming state */
 typedef enum {

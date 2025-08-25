@@ -1281,14 +1281,14 @@ void protobuf_process_mic_state_config(const mentraos_ble_MicStateConfig *mic_st
 	LOG_INF("  - Sample Rate: %d Hz", PDM_SAMPLE_RATE);
 	LOG_INF("  - Bit Depth: 16-bit PCM");
 	LOG_INF("  - Channels: %d (Mono)", PDM_CHANNELS);
-	LOG_INF("  - Frame Size: %d samples (%d ms)", 
-	        PDM_FRAME_SIZE_SAMPLES, LC3_FRAME_DURATION_MS);
+	// LOG_INF("  - Frame Size: %d samples (%d ms)", 
+	//         PDM_FRAME_SIZE_SAMPLES, LC3_FRAME_DURATION_MS);
 	
 	// LC3 encoding configuration
 	LOG_INF("Audio Streaming Configuration:");
 	LOG_INF("  - Codec: LC3 (Low Complexity Communication Codec)");
-	LOG_INF("  - Frame Duration: %d ms", LC3_FRAME_DURATION_MS);
-	LOG_INF("  - Bitrate: %d bps", LC3_BITRATE_DEFAULT);
+	// LOG_INF("  - Frame Duration: %d ms", LC3_FRAME_DURATION_MS);
+	// LOG_INF("  - Bitrate: %d bps", LC3_BITRATE_DEFAULT);
 	LOG_INF("  - Transport: BLE via 0xA0 audio chunk messages");
 	LOG_INF("  - Stream ID: 0x01 (microphone audio)");
 	

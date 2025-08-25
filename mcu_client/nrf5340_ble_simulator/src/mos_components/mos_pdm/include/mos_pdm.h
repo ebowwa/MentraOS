@@ -1,7 +1,7 @@
 /*** 
  * @Author       : Cole
  * @Date         : 2025-07-31 11:52:00
- * @LastEditTime : 2025-07-31 16:44:22
+ * @LastEditTime : 2025-08-25 15:29:59
  * @FilePath     : mos_pdm.h
  * @Description  : 
  * @
@@ -13,25 +13,20 @@
 #ifndef _MOS_PDM_H_
 #define _MOS_PDM_H_
 
-#define CONFIG_USER_ENCODE_OPUS 1
-#define CONFIG_NRFX_PDM 		1
+#include <stdint.h>
 
-//=========================================================================================================
-// 16KHz 16bit
-// 每ms采样次数 = 16000/1000=16次
-// 每ms采样数据 = (16000/1000)*2byte = 32byte
+#define CONFIG_USER_ENCODE_LC3 1
+#define CONFIG_NRFX_PDM        1
 
 #ifdef CONFIG_NRFX_PDM
 
-// PDM接口采样数据PCM缓存
-#ifdef CONFIG_USER_ENCODE_OPUS
-#define PDM_PCM_REQ_BUFFER_SIZE 160 // 16K 16bit 10ms = 160sample(320byte) 20ms = 320sanple(640byte)
-#elif CONFIG_USER_ENCODE_SBC
-#define PDM_PCM_REQ_BUFFER_SIZE 128 // 16K 16bit 8ms = 128sample(256byte) 16ms = 256sanple(512byte)
-#elif CONFIG_USER_ENCODE_LC3
-#define PDM_PCM_REQ_BUFFER_SIZE 128
+/* PDM接口采样数据PCM缓存;PDM interface PCM buffer */
+#ifdef CONFIG_USER_ENCODE_LC3
+#define PDM_PCM_REQ_BUFFER_SIZE 160  // 16K 16bit 10ms = 160sample(320byte) 20ms = 320sanple(640byte)
 #endif
+
 #endif
+
 
 void pdm_init(void);
 
