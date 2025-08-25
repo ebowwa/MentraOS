@@ -165,42 +165,42 @@ export function Button(props: ButtonProps) {
   }
 
   return (
-    <LinearGradient
-      colors={gradientColors}
-      start={{x: 1, y: 0}}
-      end={{x: 0, y: 0}}
-      style={theme.isDark ? gradientBorderStyle : {}}>
-      <Pressable
-        style={$viewStyle}
-        accessibilityRole="button"
-        accessibilityState={{disabled: !!disabled}}
-        {...rest}
-        disabled={disabled}>
-        {state => (
-          <View style={{flex: 1, position: "relative", justifyContent: "center"}}>
-            {!!LeftAccessory && (
-              <View style={{marginLeft: spacing.xxs, position: "absolute", left: 0}}>
-                <LeftAccessory style={$leftAccessoryStyle} pressableState={state} disabled={disabled} />
-              </View>
-            )}
+    // <LinearGradient
+    //   colors={gradientColors}
+    //   start={{x: 1, y: 0}}
+    //   end={{x: 0, y: 0}}
+    //   style={theme.isDark ? gradientBorderStyle : {}}>
+    <Pressable
+      style={$viewStyle}
+      accessibilityRole="button"
+      accessibilityState={{disabled: !!disabled}}
+      {...rest}
+      disabled={disabled}>
+      {state => (
+        <View style={{flex: 1, position: "relative", justifyContent: "center"}}>
+          {!!LeftAccessory && (
+            <View style={{marginLeft: spacing.xxs, position: "absolute", left: 0}}>
+              <LeftAccessory style={$leftAccessoryStyle} pressableState={state} disabled={disabled} />
+            </View>
+          )}
 
-            <Text
-              tx={tx}
-              text={text}
-              txOptions={txOptions}
-              style={[$textStyle(state), {textAlign: props.textAlignment === "left" ? "left" : "center"}]}>
-              {children}
-            </Text>
+          <Text
+            tx={tx}
+            text={text}
+            txOptions={txOptions}
+            style={[$textStyle(state), {textAlign: props.textAlignment === "left" ? "left" : "center"}]}>
+            {children}
+          </Text>
 
-            {!!RightAccessory && (
-              <View style={{position: "absolute", right: 0}}>
-                <RightAccessory style={$rightAccessoryStyle} pressableState={state} disabled={disabled} />
-              </View>
-            )}
-          </View>
-        )}
-      </Pressable>
-    </LinearGradient>
+          {!!RightAccessory && (
+            <View style={{position: "absolute", right: 0}}>
+              <RightAccessory style={$rightAccessoryStyle} pressableState={state} disabled={disabled} />
+            </View>
+          )}
+        </View>
+      )}
+    </Pressable>
+    // </LinearGradient>
   )
 }
 
