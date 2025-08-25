@@ -172,9 +172,12 @@ public class LiveKitManager: NSObject {
     override private init() {
         room = Room()
         super.init()
-        LiveKit.AudioManager.shared.audioSession.isAutomaticConfigurationEnabled = false
+
         do {
-            try LiveKit.AudioManager.shared.setManualRenderingMode(true)
+//          LiveKit.AudioManager.shared.audioSession.isAutomaticConfigurationEnabled = false
+//            try LiveKit.AudioManager.shared.setManualRenderingMode(true)
+            LiveKit.AudioManager.shared.audioSession.isAutomaticConfigurationEnabled = true
+            try LiveKit.AudioManager.shared.setManualRenderingMode(false)
         } catch {
             Core.log("Error setting manual rendering mode")
         }
@@ -220,7 +223,7 @@ public class LiveKitManager: NSObject {
                 enabled = true
 
                 // Setup custom audio source for PCM input
-                try await setupCustomAudioTrack()
+//                try await setupCustomAudioTrack()
 
                 Core.log("LiveKit: Successfully connected to LiveKit room")
 
