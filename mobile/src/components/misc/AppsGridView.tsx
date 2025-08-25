@@ -19,7 +19,7 @@ interface AppModel {
   name: string
   packageName: string
   is_running?: boolean
-  appType?: string
+  type?: string
   webviewURL?: string
   publicUrl?: string
   logoURL?: string
@@ -65,7 +65,7 @@ const AppPopover: React.FC<{
       arrowSize={{width: 16, height: 8}}>
       <View style={themed($popoverContent)}>
         <View style={themed($popoverHeader)}>
-          <AppIcon app={app} isForegroundApp={app.appType === "standard"} style={themed($popoverAppIcon)} />
+          <AppIcon app={app} isForegroundApp={app.type === "standard"} style={themed($popoverAppIcon)} />
           <Text text={app.name} style={themed($popoverAppName)} numberOfLines={1} />
         </View>
 
@@ -118,7 +118,7 @@ const GridItem: React.FC<{
     return <View style={themed($gridItem)} />
   }
 
-  const isForeground = item.appType === "standard"
+  const isForeground = item.type === "standard"
 
   return (
     <TouchableOpacity ref={setRef} style={themed($gridItem)} onPress={handlePress} activeOpacity={0.7}>

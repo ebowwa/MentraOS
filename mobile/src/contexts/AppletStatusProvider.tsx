@@ -160,7 +160,7 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
     // Handle foreground apps
     if (appType === "standard") {
       const runningStandardApps = appStatus.filter(
-        app => app.is_running && app.appType === "standard" && app.packageName !== packageName,
+        app => app.is_running && app.type === "standard" && app.packageName !== packageName,
       )
 
       for (const runningApp of runningStandardApps) {
