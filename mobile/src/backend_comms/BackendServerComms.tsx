@@ -4,7 +4,7 @@ import Constants from "expo-constants"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
 import {loadSetting} from "@/utils/SettingsHelper"
 import {SETTINGS_KEYS} from "@/consts"
-import {AppInterface} from "@/contexts/AppletStatusProvider"
+import {AppletInterface} from "@/contexts/AppletStatusProvider"
 
 interface Callback {
   onSuccess: (data: any) => void
@@ -13,7 +13,7 @@ interface Callback {
 
 export default class BackendServerComms {
   private static instance: BackendServerComms
-  private TAG = "MXT2_BackendServerComms"
+  private TAG = "BServerComms"
   private coreToken: string | null = null
 
   public async getServerUrl(): Promise<string> {
@@ -423,7 +423,7 @@ export default class BackendServerComms {
    * Fetch all available apps
    * @returns Promise with the apps data
    */
-  public async getApps(): Promise<AppInterface[]> {
+  public async getApps(): Promise<AppletInterface[]> {
     console.log(`${this.TAG}: getApps() called`)
     if (!this.coreToken) {
       throw new Error("No core token available for authentication")

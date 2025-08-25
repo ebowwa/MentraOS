@@ -105,7 +105,7 @@ export interface CoreInfo {
   is_searching: boolean
 }
 
-export interface AugmentOSMainStatus {
+export interface CoreStatus {
   core_info: CoreInfo
   glasses_info: Glasses | null
   glasses_settings: GlassesSettings
@@ -115,8 +115,8 @@ export interface AugmentOSMainStatus {
   ota_progress?: OtaProgress
 }
 
-export class AugmentOSParser {
-  static defaultStatus: AugmentOSMainStatus = {
+export class CoreStatusParser {
+  static defaultStatus: CoreStatus = {
     core_info: {
       augmentos_core_version: null,
       cloud_connection_status: "DISCONNECTED",
@@ -163,7 +163,7 @@ export class AugmentOSParser {
     },
   }
 
-  static mockStatus: AugmentOSMainStatus = {
+  static mockStatus: CoreStatus = {
     core_info: {
       augmentos_core_version: "1.0.0",
       cloud_connection_status: "CONNECTED",
@@ -228,9 +228,9 @@ export class AugmentOSParser {
     },
   }
 
-  static parseStatus(data: any): AugmentOSMainStatus {
+  static parseStatus(data: any): CoreStatus {
     if (MOCK_CONNECTION) {
-      return AugmentOSParser.mockStatus
+      return CoreStatusParser.mockStatus
     }
     if (data && "status" in data) {
       const status = data.status
@@ -309,8 +309,8 @@ export class AugmentOSParser {
           },
           button_camera_led: status.glasses_settings.button_camera_led,
         },
-        wifi: status.wifi ?? AugmentOSParser.defaultStatus.wifi,
-        gsm: status.gsm ?? AugmentOSParser.defaultStatus.gsm,
+        wifi: status.wifi ?? CoreStatusParser.defaultStatus.wifi,
+        gsm: status.gsm ?? CoreStatusParser.defaultStatus.gsm,
         auth: {
           core_token_owner: authInfo.core_token_owner,
           core_token_status: authInfo.core_token_status,
@@ -329,9 +329,8 @@ export class AugmentOSParser {
             : undefined,
       }
     }
-    return AugmentOSParser.defaultStatus
+    return CoreStatusParser.defaultStatus
   }
 }
 
-export default AugmentOSParser
-//(350/576)*23
+export default CoreStatusParser

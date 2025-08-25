@@ -160,11 +160,11 @@ struct ViewState {
 
     func initManager(_ wearable: String) {
         Core.log("Initializing manager for wearable: \(wearable)")
-        if wearable.contains("G1"), g1Manager == nil {
+        if wearable.contains("G1") && g1Manager == nil {
             g1Manager = ERG1Manager.getInstance()
-        } else if wearable.contains("Live"), liveManager == nil {
+        } else if wearable.contains("Live") && liveManager == nil {
             liveManager = MentraLiveManager()
-        } else if wearable.contains("Mach1"), mach1Manager == nil {
+        } else if wearable.contains("Mach1") && mach1Manager == nil {
             mach1Manager = Mach1Manager()
         } else if wearable.contains("Frame") || wearable.contains("Brilliant Labs"), frameManager == nil {
             frameManager = FrameManager.shared
@@ -971,7 +971,7 @@ struct ViewState {
         handleRequestStatus()
     }
 
-    func onRouteChange(reason: AVAudioSession.RouteChangeReason, availableInputs: [AVAudioSessionPortDescription]) {
+    func onRouteChange(reason _: AVAudioSession.RouteChangeReason, availableInputs _: [AVAudioSessionPortDescription]) {
         // Core.log("AOS: onRouteChange: reason: \(reason)")
         // Core.log("AOS: onRouteChange: inputs: \(availableInputs)")
 
@@ -2010,6 +2010,7 @@ struct ViewState {
         }
 
         if pendingWearable.contains("Simulated") {
+            Core.log("AOS: Pending wearable is simulated, setting default wearable to Simulated Glasses")
             defaultWearable = "Simulated Glasses"
             handleRequestStatus()
             return
