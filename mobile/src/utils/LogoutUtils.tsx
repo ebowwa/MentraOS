@@ -220,9 +220,6 @@ export class LogoutUtils {
       // Emit a logout event for any components that need to reset
       GlobalEventEmitter.emit("USER_LOGGED_OUT")
 
-      // Emit an event to reset app status
-      GlobalEventEmitter.emit("RESET_APP_STATUS")
-
       // Emit event to clear WebView data and cache
       GlobalEventEmitter.emit("CLEAR_WEBVIEW_DATA")
 

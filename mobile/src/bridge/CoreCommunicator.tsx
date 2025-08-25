@@ -12,7 +12,7 @@ import BleManager from "react-native-ble-manager"
 import BackendServerComms from "@/backend_comms/BackendServerComms"
 import AudioPlayService, {AudioPlayResponse} from "@/services/AudioPlayService"
 import {translate} from "@/i18n"
-import AugmentOSParser from "@/utils/AugmentOSStatusParser"
+import AugmentOSParser from "@/utils/CoreStatusParser"
 
 const {Core, BridgeModule, CoreCommsService} = NativeModules
 const eventEmitter = new NativeEventEmitter(Core)
@@ -376,7 +376,7 @@ export class CoreCommunicator extends EventEmitter {
       }
     } catch (e) {
       console.error("Error parsing data from Core:", e)
-      this.emit("statusUpdateReceived", AugmentOSParser.defaultStatus)
+      this.emit("statusUpdateReceived", CoreStatusParser.defaultStatus)
     }
   }
 
