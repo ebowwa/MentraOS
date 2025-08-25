@@ -96,7 +96,7 @@ public class K900CommandHandler {
     private void handleHotspotStart() {
         Log.d(TAG, "📦 Starting hotspot from K900 command");
         if (serviceManager != null && serviceManager.getNetworkManager() != null) {
-            serviceManager.getNetworkManager().startHotspot("Mentra Live", "MentraLive");
+            serviceManager.getNetworkManager().startHotspot();
         }
     }
 

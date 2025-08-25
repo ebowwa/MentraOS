@@ -193,6 +193,7 @@ enum GlassesError: Error {
     private let maxReconnectionAttempts: Int = -1 // unlimited reconnection attempts
     private let reconnectionInterval: TimeInterval = 30.0 // Seconds between reconnection attempts
     private var globalCounter: UInt8 = 0
+    private var heartbeatCounter: UInt8 = 0
 
     enum AiMode: String {
         case AI_REQUESTED
@@ -206,11 +207,6 @@ enum GlassesError: Error {
 
     // synchronization:
     private let commandQueue = CommandQueue()
-    private let queueLock = DispatchSemaphore(value: 1)
-    private let leftSemaphore = DispatchSemaphore(value: 0) // Start at 0 to block
-    private let rightSemaphore = DispatchSemaphore(value: 0) // Start at 0 to block
-    private var leftAck = false
-    private var rightAck = false
 
     // Constants
     var DEVICE_SEARCH_ID = "NOT_SET"
@@ -837,11 +833,11 @@ enum GlassesError: Error {
             var sequenceNumber = -1
 
             // if this is a text chunk, set the sequence to the 2nd byte of the chunk:
-            if lastChunk[0] == 0x4E {
+            if lastChunk[0] == Commands.BLE_REQ_EVENAI.rawValue {
                 sequenceNumber = Int(lastChunk[1])
             }
 
-            if lastChunk[0] == 0x16 {
+            if lastChunk[0] == Commands.CRC_CHECK.rawValue {
                 sequenceNumber = Int(lastChunk[1])
             }
 
@@ -849,8 +845,11 @@ enum GlassesError: Error {
                 try? await Task.sleep(nanoseconds: UInt64(cmd.lastFrameMs) * 1_000_000) // 100ms
             }
 
-            let firstFewBytes = String(Data(lastChunk).hexEncodedString().prefix(16))
-            Core.log("SEND (\(side)) \(firstFewBytes)")
+            let firstFewBytes = String(Data(lastChunk).hexEncodedString().prefix(16)).uppercased()
+            // don't log if it starts with 25 (heartbeat):
+            if lastChunk[0] != Commands.BLE_REQ_HEARTBEAT.rawValue {
+                Core.log("SEND (\(side)) \(firstFewBytes)")
+            }
 
 //      if (lastChunk[0] == 0x4E) {
 //        sequenceNumber = Int(lastChunk[1])
@@ -858,7 +857,14 @@ enum GlassesError: Error {
 
 //      CoreCommsService.log("G1: SENDING with sequenceNumber: \(sequenceNumber)")
 
-            success = await sendCommandToSide2(lastChunk, side: side, attemptNumber: attempts, sequenceNumber: sequenceNumber)
+            // for heartbeats, don't retry and assume success since the glasses don't respond:
+            if lastChunk[0] == Commands.BLE_REQ_HEARTBEAT.rawValue {
+                success = true
+                await sendCommandToSideWithoutResponse(lastChunk, side: side)
+            } else {
+                success = await sendCommandToSide2(lastChunk, side: side, attemptNumber: attempts, sequenceNumber: sequenceNumber)
+            }
+
             // CoreCommsService.log("command success: \(success)")
             //      if (!success) {
             //        CoreCommsService.log("G1: timed out waiting for \(s)")
@@ -932,7 +938,7 @@ enum GlassesError: Error {
         }
 
         heartbeatQueue!.async { [weak self] in
-            self?.heartbeatTimer = Timer(timeInterval: 15.0, repeats: true) { [weak self] _ in
+            self?.heartbeatTimer = Timer(timeInterval: 20, repeats: true) { [weak self] _ in
                 guard let self = self else { return }
                 self.sendHeartbeat()
             }
@@ -973,18 +979,16 @@ enum GlassesError: Error {
             continuation = pendingAckCompletions.removeValue(forKey: key)
         }
 
-        if let continuation = continuation {
-            continuation.resume(returning: true)
-            // CoreCommsService.log("✅ ACK received for \(side) side, resuming continuation")
-        }
-
         if peripheral == leftPeripheral {
-            leftSemaphore.signal()
             setReadiness(left: true, right: nil)
         }
         if peripheral == rightPeripheral {
-            rightSemaphore.signal()
             setReadiness(left: nil, right: true)
+        }
+
+        if let continuation = continuation {
+            continuation.resume(returning: true)
+            // Core.log("✅ ACK received for \(side) side, resuming continuation")
         }
     }
 
@@ -993,7 +997,7 @@ enum GlassesError: Error {
 
         let side = peripheral == leftPeripheral ? "L" : "R"
         let s = peripheral == leftPeripheral ? "L" : "R"
-        // CoreCommsService.log("G1: RECV (\(s)) \(data.hexEncodedString())")
+        Core.log("G1: RECV (\(s)) \(data.hexEncodedString())")
 
         switch Commands(rawValue: command) {
         case .BLE_REQ_INIT:
@@ -1031,6 +1035,9 @@ enum GlassesError: Error {
         case .UNK_2:
             handleAck(from: peripheral, success: true)
         case .BLE_REQ_HEARTBEAT:
+            Core.log("heartbeatCounter: \(heartbeatCounter) data[1]: \(data[1])")
+            handleAck(from: peripheral, success: data[1] == heartbeatCounter - 1)
+        case .BLE_REQ_BATTERY:
             // TODO: ios handle semaphores correctly here
             // battery info
             guard data.count >= 6 && data[1] == 0x66 else {
@@ -1142,12 +1149,11 @@ enum GlassesError: Error {
             //          clearState()
             //        }
             default:
-                // CoreCommsService.log("G1: Received device order: \(data.subdata(in: 1..<data.count).hexEncodedString())")
+//                 Core.log("G1: Received device order: \(data.subdata(in: 1..<data.count).hexEncodedString())")
                 break
             }
         default:
-            //          CoreCommsService.log("G1: received from G1(not handled): \(data.hexEncodedString())")
-            break
+            Core.log("G1: received from G1(not handled): \(data.hexEncodedString())")
         }
     }
 }
@@ -1293,9 +1299,13 @@ extension ERG1Manager {
     }
 
     private func sendHeartbeat() {
+        incrementHeartbeatCounter()
+
         var heartbeatData = Data()
+        // heartbeatData.append(Commands.BLE_REQ_HEARTBEAT.rawValue)
+        // heartbeatData.append(UInt8(0x02 & 0xFF))
         heartbeatData.append(Commands.BLE_REQ_HEARTBEAT.rawValue)
-        heartbeatData.append(UInt8(0x02 & 0xFF))
+        heartbeatData.append(UInt8(heartbeatCounter & 0xFF))
 
         var heartbeatArray = heartbeatData.map { UInt8($0) }
 
@@ -1521,7 +1531,7 @@ extension ERG1Manager {
 
     func getBatteryStatus() async {
         Core.log("G1: getBatteryStatus()")
-        let command: [UInt8] = [0x2C, 0x01]
+        let command: [UInt8] = [Commands.BLE_REQ_BATTERY.rawValue, 0x01]
         queueChunks([command])
     }
 
@@ -1542,6 +1552,14 @@ extension ERG1Manager {
             globalCounter += 1
         } else {
             globalCounter = 0
+        }
+    }
+
+    func incrementHeartbeatCounter() {
+        if heartbeatCounter < 255 {
+            heartbeatCounter += 1
+        } else {
+            heartbeatCounter = 0
         }
     }
 
@@ -2231,8 +2249,10 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
             // Mark the services as ready
             if peripheral == leftPeripheral {
                 Core.log("G1: Left glass services discovered and ready")
+                setReadiness(left: true, right: nil)
             } else if peripheral == rightPeripheral {
                 Core.log("G1: Right glass services discovered and ready")
+                setReadiness(left: nil, right: true)
             }
         }
     }

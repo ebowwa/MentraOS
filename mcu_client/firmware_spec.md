@@ -4,9 +4,9 @@
 
 This specification defines the binary packet format and transport protocol for communication between the MentraOS App (on a phone) and smart glasses via Bluetooth Low Energy (BLE). It supports both JSON control messages and high-speed binary data transfers like audio and image streams.
 
-* All messages are sent over **standard BLE characteristics (GATT)**.
-* Every BLE packet starts with a **1-byte control header**.
-* The control header byte indicates the type of payload.
+- All messages are sent over **standard BLE characteristics (GATT)**.
+- Every BLE packet starts with a **1-byte control header**.
+- The control header byte indicates the type of payload.
 
 ---
 
@@ -19,19 +19,19 @@ This specification defines the binary packet format and transport protocol for c
 | RX Char | `000070FF-0000-1000-8000-00805f9b34fb` | Glasses → Phone (notify or indicate) |
 | CCCD    | `00002902-0000-1000-8000-00805f9b34fb` | Enable notify on RX Char             |
 
-* The phone acts as **GATT central**, the glasses are **GATT peripheral**.
-* Glasses send **notifications** on the RX characteristic.
+- The phone acts as **GATT central**, the glasses are **GATT peripheral**.
+- Glasses send **notifications** on the RX characteristic.
 
 ---
 
 ## 🔠 Packet Types
 
-| Control Header Byte   | Type           | Payload Format                                                |
-| ------------- | -------------- | ------------------------------------------------------------- |
-| `0x01`        | JSON message   | UTF-8 encoded JSON                                            |
-| `0xA0`        | Audio chunk    | `[A0][stream_id (1 byte)][frame data]`                        |
-| `0xB0`        | Image chunk    | `[B0][stream_id (2 bytes)][chunk_index (1 byte)][chunk_data]` |
-| `0xD0`–`0xFF` | Reserved       | —                                                             |
+| Control Header Byte | Type         | Payload Format                                                |
+| ------------------- | ------------ | ------------------------------------------------------------- |
+| `0x01`              | JSON message | UTF-8 encoded JSON                                            |
+| `0xA0`              | Audio chunk  | `[A0][stream_id (1 byte)][frame data]`                        |
+| `0xB0`              | Image chunk  | `[B0][stream_id (2 bytes)][chunk_index (1 byte)][chunk_data]` |
+| `0xD0`–`0xFF`       | Reserved     | —                                                             |
 
 ---
 
@@ -55,8 +55,8 @@ No length header is needed; BLE characteristic defines packet length.
 [0xA0][stream_id (1 byte)][LC3 frame data]
 ```
 
-* `stream_id`: allows multiple audio streams (e.g., mic vs TTS)
-* Frame size determined by LC3 codec settings and MTU
+- `stream_id`: allows multiple audio streams (e.g., mic vs TTS)
+- Frame size determined by LC3 codec settings and MTU
 
 ---
 
@@ -73,7 +73,7 @@ No length header is needed; BLE characteristic defines packet length.
   "y": 0,
   "width": 128,
   "height": 64,
-  "encoding": "webp",  
+  "encoding": "webp",
   "total_chunks": 9
 }
 ```
@@ -84,9 +84,9 @@ No length header is needed; BLE characteristic defines packet length.
 [0xB0][stream_id_hi][stream_id_lo][chunk_index][chunk_data]
 ```
 
-* `stream_id`: same as in JSON, 2 bytes
-* `chunk_index`: 0–255
-* `chunk_data`: raw image bytes (size ≤ MTU-4)
+- `stream_id`: same as in JSON, 2 bytes
+- `chunk_index`: 0–255
+- `chunk_data`: raw image bytes (size ≤ MTU-4)
 
 ### 3. Transfer Completion Response
 
@@ -133,7 +133,7 @@ Terminate connection and clean up resources.
 
 | Phone → Glasses                                  | Glasses → Phone |
 | ------------------------------------------------ | --------------- |
-| `{ "type": "disconnect", "msg_id": "disc_001" }` | *(none)*        |
+| `{ "type": "disconnect", "msg_id": "disc_001" }` | _(none)_        |
 
 ---
 
@@ -153,7 +153,7 @@ Emitted when glasses detect they are charging.
 
 | Phone → Glasses | Glasses → Phone                                     |
 | --------------- | --------------------------------------------------- |
-| *(none)*        | `{ "type": "charging_state", "state": "charging" }` |
+| _(none)_        | `{ "type": "charging_state", "state": "charging" }` |
 
 ---
 
@@ -198,7 +198,7 @@ Force glasses into pairing mode. This may also happen automatically on boot if n
 
 | Phone → Glasses                                          | Glasses → Phone |
 | -------------------------------------------------------- | --------------- |
-| `{ "type": "enter_pairing_mode", "msg_id": "pair_001" }` | *(none)*        |
+| `{ "type": "enter_pairing_mode", "msg_id": "pair_001" }` | _(none)_        |
 
 ---
 
@@ -250,7 +250,7 @@ Turn onboard microphone on or off.
 
 #### 👓 Glasses → Phone
 
-*(none)*
+_(none)_
 
 ---
 
@@ -270,7 +270,7 @@ Enable or disable Voice Activity Detection.
 
 #### 👓 Glasses → Phone
 
-*(none)*
+_(none)_
 
 ---
 
@@ -290,9 +290,34 @@ Adjust VAD sensitivity threshold (0–100).
 
 #### 👓 Glasses → Phone
 
-*(none)*
+_(none)_
 
 ---
+
+### 📡 Get VAD Status
+
+Request whether VAD is enabled and what the current sensitivity level is.
+
+#### 📲 Phone → Glasses
+
+```protobuf
+[0x02][PhoneToGlasses { request_vad_status {
+  msg_id: "vad_status_001"
+}}]
+```
+
+#### 👓 Glasses → Phone
+
+```protobuf
+[0x02][GlassesToPhone { vad_status {
+  msg_id: "vad_status_001"
+  enabled: true
+  sensitivity: 75
+}}]
+```
+
+- `enabled`: `true` if VAD is currently active, `false` otherwise
+- `sensitivity`: integer 0–100, current detection threshold
 
 ---
 
@@ -334,7 +359,7 @@ Show text at coordinates with size.
 
 #### 👓 Glasses → Phone
 
-*(none)*
+_(none)_
 
 ---
 
@@ -456,7 +481,7 @@ Display a previously cached bitmap image using its ID.
 
 #### 👓 Glasses → Phone
 
-*(none)*
+_(none)_
 
 ---
 
@@ -476,7 +501,7 @@ Delete a cached bitmap image from memory.
 
 #### 👓 Glasses → Phone
 
-*(none)*
+_(none)_
 
 ---
 
@@ -497,18 +522,18 @@ Displays a scrolling text box
   "y": 0,
   "width": 128,
   "height": 64,
-  "align": "left",      // Or "center", "right"
-  "line_spacing": 2,    // optional: pixels between lines
-  "speed": 20,          // optional: pixels/sec (scrolling up)
-  "size": 1,            // optional: font size multiplier
-  "loop": false,        // optional: if true, wraps to top when finished
-  "pause_ms": 1000,     // optional: delay (in ms) before restarting loop
+  "align": "left", // Or "center", "right"
+  "line_spacing": 2, // optional: pixels between lines
+  "speed": 20, // optional: pixels/sec (scrolling up)
+  "size": 1, // optional: font size multiplier
+  "loop": false, // optional: if true, wraps to top when finished
+  "pause_ms": 1000 // optional: delay (in ms) before restarting loop
 }
 ```
 
 #### 👓 Glasses → Phone
 
-*(none)*
+_(none)_
 
 ---
 
@@ -527,7 +552,7 @@ Turns off the screen entirely.
 
 #### 👓 Glasses → Phone
 
-*(none)*
+_(none)_
 
 ---
 
@@ -546,7 +571,7 @@ Turns the display back on.
 
 #### 👓 Glasses → Phone
 
-*(none)*
+_(none)_
 
 ---
 
@@ -566,7 +591,7 @@ Sets display brightness to a value between 0–100.
 
 #### 👓 Glasses → Phone
 
-*(none)*
+_(none)_
 
 ---
 
@@ -586,7 +611,7 @@ Enable or disable ambient-based brightness control.
 
 #### 👓 Glasses → Phone
 
-*(none)*
+_(none)_
 
 ---
 
@@ -606,7 +631,7 @@ Apply a multiplier to scale auto-brightness (e.g. 0.8 = 80%).
 
 #### 👓 Glasses → Phone
 
-*(none)*
+_(none)_
 
 ---
 
@@ -631,7 +656,7 @@ Draw a line on the screen.
 
 #### 👓 Glasses → Phone
 
-*(none)*
+_(none)_
 
 ---
 
@@ -656,7 +681,7 @@ Draw a rectangle on the display.
 
 #### 👓 Glasses → Phone
 
-*(none)*
+_(none)_
 
 ---
 
@@ -680,7 +705,7 @@ Draw a circle on the display.
 
 #### 👓 Glasses → Phone
 
-*(none)*
+_(none)_
 
 ---
 
@@ -699,7 +724,7 @@ Apply all previous draw commands to the display in one atomic update.
 
 #### 👓 Glasses → Phone
 
-*(none)*
+_(none)_
 
 ---
 
@@ -719,7 +744,7 @@ Update virtual projection distance used for display effects.
 
 #### 👓 Glasses → Phone
 
-*(none)*
+_(none)_
 
 ---
 
@@ -739,7 +764,7 @@ Set vertical alignment or offset for display rendering.
 
 #### 👓 Glasses → Phone
 
-*(none)*
+_(none)_
 
 ---
 
@@ -759,8 +784,8 @@ Phone requests the glasses to enable the onboard IMU.
 }
 ```
 
-* `gesture`: Type of gesture to listen for.
-* `enabled`: `true` to enable IMU, `false` to disable.
+- `gesture`: Type of gesture to listen for.
+- `enabled`: `true` to enable IMU, `false` to disable.
 
 ---
 
@@ -773,7 +798,7 @@ Phone requests the IMU data once.
 ```json
 {
   "type": "request_imu_single",
-  "msg_id": "imu_001",
+  "msg_id": "imu_001"
 }
 ```
 
@@ -783,9 +808,9 @@ Phone requests the IMU data once.
 {
   "type": "imu_data",
   "msg_id": "imu_001",
-  "accel": { "x": 0.02, "y": -9.81, "z": 0.15 },
-  "gyro": { "x": 0.01, "y": 0.02, "z": 0.00 },
-  "mag":  { "x": -10.2, "y": 2.1, "z": 41.9 }
+  "accel": {"x": 0.02, "y": -9.81, "z": 0.15},
+  "gyro": {"x": 0.01, "y": 0.02, "z": 0.0},
+  "mag": {"x": -10.2, "y": 2.1, "z": 41.9}
 }
 ```
 
@@ -812,9 +837,9 @@ Then, the glasses can emit:
 ```json
 {
   "type": "imu_data",
-  "accel": { "x": 0.02, "y": -9.81, "z": 0.15 },
-  "gyro": { "x": 0.01, "y": 0.02, "z": 0.00 },
-  "mag":  { "x": -10.2, "y": 2.1, "z": 41.9 }
+  "accel": {"x": 0.02, "y": -9.81, "z": 0.15},
+  "gyro": {"x": 0.01, "y": 0.02, "z": 0.0},
+  "mag": {"x": -10.2, "y": 2.1, "z": 41.9}
 }
 ```
 
@@ -834,8 +859,8 @@ Triggered by hardware button press or release.
 }
 ```
 
-* `button`: `"center"`, `"left"`, `"right"`, etc. — based on physical layout.
-* `state`: `"down"` or `"up"` — pressed or released.
+- `button`: `"center"`, `"left"`, `"right"`, etc. — based on physical layout.
+- `state`: `"down"` or `"up"` — pressed or released.
 
 ---
 
@@ -852,7 +877,7 @@ Triggered by head movement gesture recognition (e.g., nod or shake).
 }
 ```
 
-* `gesture`: One of `"nod"`, `"shake"`, `"head_up"`, etc.
+- `gesture`: One of `"nod"`, `"shake"`, `"head_up"`, etc.
 
 ---
 
@@ -871,8 +896,8 @@ Phone requests the glasses to begin or stop listening for a particular gesture.
 }
 ```
 
-* `gesture`: Type of gesture to listen for.
-* `enabled`: `true` to start listening, `false` to stop.
+- `gesture`: Type of gesture to listen for.
+- `enabled`: `true` to start listening, `false` to stop.
 
 ---
 
@@ -893,7 +918,7 @@ Reboot the glasses device.
 
 #### 👓 Glasses → Phone
 
-*(none)*
+_(none)_
 
 ---
 
@@ -912,7 +937,7 @@ Reset device to factory defaults. This clears all settings and cached data.
 
 #### 👓 Glasses → Phone
 
-*(none)*
+_(none)_
 
 ---
 

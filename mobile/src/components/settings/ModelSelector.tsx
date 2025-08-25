@@ -56,8 +56,13 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
     if (!selectedModel) return ""
 
     if (isDownloading) {
-      const progress = downloadProgress || extractionProgress
-      return `Downloading... ${progress}%`
+      if (extractionProgress > 0) {
+        return `Extracting... ${extractionProgress}%`
+      } else if (downloadProgress > 0) {
+        return `Downloading... ${downloadProgress}%`
+      } else {
+        return "Preparing download..."
+      }
     }
 
     const sizeText = STTModelManager.formatBytes(selectedModel.size)
@@ -159,29 +164,6 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
           textStyle={{color: theme.colors.error}}
         />
       )} */}
-
-      {isDownloading && (
-        <View style={[styles.progressContainer, {marginTop: theme.spacing.sm}]}>
-          <View
-            style={[
-              styles.progressBar,
-              {
-                backgroundColor: theme.colors.separator,
-                borderRadius: 2,
-              },
-            ]}>
-            <View
-              style={[
-                styles.progressFill,
-                {
-                  backgroundColor: theme.colors.primary,
-                  width: `${downloadProgress || extractionProgress}%`,
-                },
-              ]}
-            />
-          </View>
-        </View>
-      )}
 
       <Modal
         visible={modalVisible}
@@ -308,16 +290,6 @@ const styles = StyleSheet.create({
   optionIcons: {
     flexDirection: "row",
     alignItems: "center",
-  },
-  progressContainer: {
-    width: "100%",
-  },
-  progressBar: {
-    height: 4,
-    overflow: "hidden",
-  },
-  progressFill: {
-    height: "100%",
   },
 })
 

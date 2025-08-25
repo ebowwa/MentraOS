@@ -1,5 +1,5 @@
-import React, {useState, useEffect} from "react"
-import {ScrollView, View, ActivityIndicator, Alert, Platform} from "react-native"
+import React, {useState, useEffect, useCallback} from "react"
+import {ScrollView, View, ActivityIndicator, Alert, Platform, BackHandler} from "react-native"
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import coreCommunicator from "@/bridge/CoreCommunicator"
 import {Header, Screen, Text, Button} from "@/components/ignite"
@@ -11,6 +11,7 @@ import {Spacer} from "@/components/misc/Spacer"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import STTModelManager from "@/services/STTModelManager"
 import showAlert from "@/utils/AlertUtils"
+import {useFocusEffect} from "@react-navigation/native"
 
 export default function TranscriptionSettingsScreen() {
   const {status} = useCoreStatus()
@@ -30,6 +31,64 @@ export default function TranscriptionSettingsScreen() {
   const [isBypassVADForDebuggingEnabled, setIsBypassVADForDebuggingEnabled] = useState(
     status.core_info.bypass_vad_for_debugging,
   )
+
+  // Cancel download function
+  const handleCancelDownload = async () => {
+    try {
+      await STTModelManager.cancelDownload()
+      setIsDownloading(false)
+      setDownloadProgress(0)
+      setExtractionProgress(0)
+    } catch (error) {
+      console.error("Error canceling download:", error)
+    }
+  }
+
+  // Handle back navigation blocking during downloads
+  const handleBackPress = useCallback(() => {
+    if (isDownloading) {
+      showAlert(
+        "Download in Progress",
+        "A model is currently downloading. Are you sure you want to cancel and go back?",
+        [
+          {text: "Stay", style: "cancel"},
+          {
+            text: "Cancel Download",
+            style: "destructive",
+            onPress: async () => {
+              try {
+                await handleCancelDownload()
+                goBack()
+              } catch (error) {
+                console.error("Error canceling download:", error)
+                goBack() // Go back anyway if cancel fails
+              }
+            },
+          },
+        ],
+      )
+      return true // Prevent default back action
+    }
+    return false // Allow default back action
+  }, [isDownloading, goBack, handleCancelDownload])
+
+  // Block hardware back button on Android during downloads
+  useFocusEffect(
+    useCallback(() => {
+      if (Platform.OS === "android") {
+        const backHandler = BackHandler.addEventListener("hardwareBackPress", handleBackPress)
+        return () => backHandler.remove()
+      }
+    }, [handleBackPress]),
+  )
+
+  // Custom goBack function that respects download state
+  const handleGoBack = () => {
+    const shouldBlock = handleBackPress()
+    if (!shouldBlock) {
+      goBack()
+    }
+  }
 
   const toggleEnforceLocalTranscription = async () => {
     if (!modelInfo?.downloaded) {
@@ -53,15 +112,8 @@ export default function TranscriptionSettingsScreen() {
     if (info.downloaded) {
       try {
         await STTModelManager.activateModel(modelId)
-
-        // Auto-restart transcription if mic is active
-        if (status.core_info.is_mic_enabled_for_frontend) {
-          showAlert("Restarting Transcription", "Switching to new model...", [{text: "OK"}])
-          // TODO: Make this work correctly
-          //await coreCommunicator.restartTranscription(true)
-        } else {
-          showAlert("Model Activated", `Switched to ${info.name}`, [{text: "OK"}])
-        }
+        showAlert("Restarting Transcription", "Switching to new model...", [{text: "OK"}])
+        await coreCommunicator.restartTranscription()
       } catch (error: any) {
         showAlert("Error", error.message || "Failed to activate model", [{text: "OK"}])
       }
@@ -95,17 +147,6 @@ export default function TranscriptionSettingsScreen() {
       setIsDownloading(false)
       setDownloadProgress(0)
       setExtractionProgress(0)
-    }
-  }
-
-  const handleCancelDownload = async () => {
-    try {
-      await STTModelManager.cancelDownload()
-      setIsDownloading(false)
-      setDownloadProgress(0)
-      setExtractionProgress(0)
-    } catch (error) {
-      console.error("Error canceling download:", error)
     }
   }
 
@@ -182,7 +223,7 @@ export default function TranscriptionSettingsScreen() {
 
   return (
     <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}}>
-      <Header title={translate("settings:transcriptionSettings")} leftIcon="caretLeft" onLeftPress={() => goBack()} />
+      <Header title={translate("settings:transcriptionSettings")} leftIcon="caretLeft" onLeftPress={handleGoBack} />
 
       <Spacer height={theme.spacing.md} />
 
@@ -194,7 +235,7 @@ export default function TranscriptionSettingsScreen() {
           onValueChange={toggleBypassVadForDebugging}
         />
 
-        {Platform.OS === "android" && (
+        {
           <>
             <Spacer height={theme.spacing.md} />
 
@@ -244,7 +285,7 @@ export default function TranscriptionSettingsScreen() {
               </>
             )}
           </>
-        )}
+        }
       </ScrollView>
     </Screen>
   )

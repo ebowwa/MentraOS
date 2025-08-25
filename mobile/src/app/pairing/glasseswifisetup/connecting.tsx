@@ -46,7 +46,8 @@ export default function WifiConnectingScreen() {
           failureGracePeriodRef.current = null
         }
 
-        // Save credentials on successful connection only if checkbox was checked
+        // Save credentials ONLY on successful connection if checkbox was checked
+        // This ensures we never save wrong passwords
         if (password && rememberPassword) {
           WifiCredentialsService.saveCredentials(ssid, password, true)
           WifiCredentialsService.updateLastConnected(ssid)

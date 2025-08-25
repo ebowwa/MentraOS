@@ -82,6 +82,16 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
         initSherpaTranscriber();
     }
 
+    public void restartTranscriber() {
+        new Thread(() -> {
+            try {
+                sherpaTranscriber.restart();
+                Log.d(TAG, "Sherpa-ONNX transcriber restarted successfully");
+            } catch (Exception e) {
+                Log.e(TAG, "Error restarting Sherpa-ONNX transcriber", e);
+            }}, "SpeechRecAugmentos_restartAsync").start();
+    }
+
     /**
      * Initialize Sherpa ONNX Transcriber and set up the listener
      */

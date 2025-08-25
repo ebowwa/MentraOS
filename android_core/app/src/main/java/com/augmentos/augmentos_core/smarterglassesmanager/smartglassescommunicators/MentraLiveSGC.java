@@ -29,11 +29,13 @@ import androidx.preference.PreferenceManager;
 
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.BatteryLevelEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.ButtonPressEvent;
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesGalleryStatusEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesBluetoothSearchDiscoverEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesBluetoothSearchStopEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesWifiScanResultEvent;
 //import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.SmartGlassesBatteryEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesWifiStatusChange;
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesHotspotStatusChange;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.KeepAliveAckEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.RtmpStreamStatusEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses.SmartGlassesDevice;
@@ -486,6 +488,11 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 Log.d(TAG, "Found compatible " + glassType + " glasses device: " + deviceName);
                 EventBus.getDefault().post(new GlassesBluetoothSearchDiscoverEvent(
                         smartGlassesDevice.deviceModelName, deviceName));
+
+                // If already connecting or connected, don't start another connection
+                if (isConnected || isConnecting) {
+                    return;
+                }
 
                 // If this is the specific device we want to connect to by name, connect to it
                 if (savedDeviceName != null && savedDeviceName.equals(deviceName)) {
@@ -1619,6 +1626,25 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
 
                 break;
 
+            case "hotspot_status_update":
+                // Process hotspot status information (same pattern as "wifi_status")
+                boolean hotspotEnabled = json.optBoolean("hotspot_enabled", false);
+                String hotspotSsid = json.optString("hotspot_ssid", "");
+                String hotspotPassword = json.optString("hotspot_password", "");
+                String hotspotGatewayIp = json.optString("hotspot_gateway_ip", "");
+
+                Log.d(TAG, "## Received hotspot status: enabled=" + hotspotEnabled + 
+                      ", SSID=" + hotspotSsid + ", IP=" + hotspotGatewayIp);
+                
+                // Post EventBus event (exactly like WiFi status)
+                EventBus.getDefault().post(new GlassesHotspotStatusChange(
+                        smartGlassesDevice.deviceModelName,
+                        hotspotEnabled,
+                        hotspotSsid,
+                        hotspotPassword,
+                        hotspotGatewayIp));
+                break;
+
             case "photo_response":
                 // Process photo response (success or failure)
                 String requestId = json.optString("requestId", "");
@@ -1717,6 +1743,27 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                         buttonId,
                         pressType,
                         timestamp));
+                break;
+                
+            case "gallery_status":
+                // Process gallery status response
+                int photoCount = json.optInt("photos", 0);
+                int videoCount = json.optInt("videos", 0);
+                int totalCount = json.optInt("total", 0);
+                long totalSize = json.optLong("total_size", 0);
+                boolean hasContent = json.optBoolean("has_content", false);
+                
+                Log.d(TAG, "📸 Received gallery status: " + photoCount + " photos, " + 
+                      videoCount + " videos, total size: " + totalSize + " bytes");
+                
+                // Post gallery status event to EventBus
+                EventBus.getDefault().post(new GlassesGalleryStatusEvent(
+                        smartGlassesDevice.deviceModelName,
+                        photoCount,
+                        videoCount,
+                        totalCount,
+                        totalSize,
+                        hasContent));
                 break;
 
             case "sensor_data":
@@ -2156,6 +2203,21 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             Log.d(TAG, "Sending WiFi scan request to glasses");
         } catch (JSONException e) {
             Log.e(TAG, "Error creating WiFi scan request", e);
+        }
+    }
+    
+    /**
+     * Query gallery status from the glasses
+     */
+    @Override
+    public void queryGalleryStatus() {
+        try {
+            JSONObject json = new JSONObject();
+            json.put("type", "query_gallery_status");
+            sendJson(json, true);
+            Log.d(TAG, "📸 Sending gallery status query to glasses");
+        } catch (JSONException e) {
+            Log.e(TAG, "📸 Error creating gallery status query", e);
         }
     }
 
@@ -2654,9 +2716,9 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         // Send photo size settings to glasses
         JSONObject command = new JSONObject();
         try {
-            command.put("command", "set_button_photo_size");
+            command.put("type", "button_photo_setting");
             command.put("size", size);
-            sendJson(command);
+            sendJson(command, true);
         } catch (Exception e) {
             Log.e(TAG, "Error sending button photo settings", e);
         }
@@ -2667,11 +2729,11 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         // Send video settings to glasses
         JSONObject command = new JSONObject();
         try {
-            command.put("command", "set_button_video_settings");
+            command.put("type", "button_video_recording_setting");
             command.put("width", width);
             command.put("height", height);
             command.put("fps", fps);
-            sendJson(command);
+            sendJson(command, true);
         } catch (Exception e) {
             Log.e(TAG, "Error sending button video settings", e);
         }
@@ -2684,7 +2746,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         try {
             command.put("type", "button_camera_led");
             command.put("enabled", enabled);
-            sendJson(command);
+            sendJson(command, true);
         } catch (Exception e) {
             Log.e(TAG, "Error sending button camera LED setting", e);
         }
@@ -3266,6 +3328,21 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             sendJson(wifiCommand, true);
         } catch (JSONException e) {
             Log.e(TAG, "Error creating WiFi credentials JSON", e);
+        }
+    }
+
+    @Override
+    public void sendHotspotState(boolean enabled) {
+        Log.d(TAG, "🔥 Sending hotspot state to glasses - enabled: " + enabled);
+        try {
+            // Send hotspot state command to the ASG client
+            JSONObject hotspotCommand = new JSONObject();
+            hotspotCommand.put("type", "set_hotspot_state");
+            hotspotCommand.put("enabled", enabled);
+            sendJson(hotspotCommand, true);
+            Log.d(TAG, "🔥 ✅ Hotspot state command sent successfully");
+        } catch (JSONException e) {
+            Log.e(TAG, "🔥 💥 Error creating hotspot state JSON", e);
         }
     }
 

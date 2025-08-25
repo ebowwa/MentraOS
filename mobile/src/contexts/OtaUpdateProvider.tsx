@@ -18,8 +18,6 @@ const OtaUpdateContext = createContext<OtaUpdateContextType>({
   latestVersion: null,
 })
 
-export const useOtaUpdate = () => useContext(OtaUpdateContext)
-
 export function OtaUpdateProvider({children}: {children: ReactNode}) {
   const {status} = useCoreStatus()
   const router = useRouter()
@@ -41,7 +39,7 @@ export function OtaUpdateProvider({children}: {children: ReactNode}) {
 
     const features = glassesFeatures[glassesModel]
     if (!features || !features.wifiSelfOtaUpdate) {
-      // console.log(`Skipping OTA check for ${glassesModel} - does not support WiFi self OTA updates`)
+      console.log(`Skipping OTA check for ${glassesModel} - does not support WiFi self OTA updates`)
       return
     }
 
