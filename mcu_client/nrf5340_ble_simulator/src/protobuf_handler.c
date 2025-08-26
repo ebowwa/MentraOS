@@ -305,10 +305,10 @@ void protobuf_parse_control_message(const uint8_t *protobuf_data, uint16_t len)
 			break;
 			
 		case 20: // mic_state_tag
-			LOG_INF("Processing Microphone State Configuration...");
-			if (phone_msg.which_payload == mentraos_ble_PhoneToGlasses_mic_state_tag) {
-				protobuf_process_mic_state_config(&phone_msg.payload.mic_state);
-			}
+			// LOG_INF("Processing Microphone State Configuration...");
+			// if (phone_msg.which_payload == mentraos_ble_PhoneToGlasses_mic_state_tag) {
+			// 	protobuf_process_mic_state_config(&phone_msg.payload.mic_state);
+			// }
 			break;
 			
 		case 37: // brightness_tag
