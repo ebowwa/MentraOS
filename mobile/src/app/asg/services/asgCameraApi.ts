@@ -575,7 +575,7 @@ export class AsgCameraApiClient {
   async batchSyncFiles(
     files: PhotoInfo[],
     includeThumbnails: boolean = false,
-    onProgress?: (current: number, total: number, fileName: string) => void,
+    onProgress?: (current: number, total: number, fileName: string, fileProgress?: number) => void,
   ): Promise<{
     downloaded: PhotoInfo[]
     failed: string[]
@@ -592,15 +592,20 @@ export class AsgCameraApiClient {
     for (let i = 0; i < files.length; i++) {
       const file = files[i]
 
-      // Report progress if callback provided
+      // Report progress if callback provided - start of this file (0%)
       if (onProgress) {
-        onProgress(i + 1, files.length, file.name)
+        onProgress(i + 1, files.length, file.name, 0)
       }
 
       try {
         console.log(`[ASG Camera API] Downloading file ${i + 1}/${files.length}: ${file.name}`)
 
-        const fileData = await this.downloadFile(file.name, includeThumbnails)
+        // Pass a progress callback to downloadFile
+        const fileData = await this.downloadFile(file.name, includeThumbnails, fileProgress => {
+          if (onProgress) {
+            onProgress(i + 1, files.length, file.name, fileProgress)
+          }
+        })
         results.total_size += file.size
 
         // Combine file info with downloaded file paths
@@ -690,6 +695,7 @@ export class AsgCameraApiClient {
   async downloadFile(
     filename: string,
     includeThumbnail: boolean = false,
+    onProgress?: (progress: number) => void,
   ): Promise<{
     filePath: string
     thumbnailPath?: string
@@ -726,6 +732,12 @@ export class AsgCameraApiClient {
         },
         progress: res => {
           const percentage = Math.round((res.bytesWritten / res.contentLength) * 100)
+
+          // Call the progress callback if provided
+          if (onProgress) {
+            onProgress(percentage)
+          }
+
           if (percentage % 20 === 0) {
             // Log every 20%
             console.log(`[ASG Camera API] Download progress ${filename}: ${percentage}%`)

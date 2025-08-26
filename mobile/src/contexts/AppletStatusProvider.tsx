@@ -93,7 +93,7 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
   // Keep track of active operations to prevent race conditions
   const pendingOperations = useRef<{[packageName: string]: "start" | "stop"}>({})
 
-  const refreshAppStatus = useCallback(async () => {
+  const refreshAppStatus = async () => {
     console.log("AppStatusProvider: refreshAppStatus called - user exists:", !!user, "user email:", user?.email)
     if (!user) {
       console.log("AppStatusProvider: No user, clearing app status")
@@ -138,28 +138,18 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
         return applet
       })
 
-      if (mapped.length === 0) {
-        console.log("AppStatusProvider: No apps found?")
-        return
-      }
-
-      const diff = deepCompare(appStatus, mapped)
-      if (diff.length === 0) {
-        console.log("AppStatusProvider: Applet status did not change ###############################################")
-        return
-      }
-
-      console.log("AppStatusProvider: Applet status changed ###############################################")
-      console.log("AppStatusProvider: diff", diff)
-      console.log("AppStatusProvider: mapped", mapped)
-      console.log("AppStatusProvider: appStatus", appStatus)
-
-      console.log("AppletStatusProvider: setting app status")
-      setAppStatus(mapped)
+      setAppStatus(currentAppStatus => {
+        const diff = deepCompare(currentAppStatus, mapped)
+        if (diff.length === 0) {
+          console.log("AppStatusProvider: Applet status did not change")
+          return currentAppStatus
+        }
+        return mapped
+      })
     } catch (err) {
       console.error("AppStatusProvider: Error fetching apps:", err)
     }
-  }, [user])
+  }
 
   // Optimistically update app status when starting an app
   const optimisticallyStartApp = async (packageName: string, appType?: string) => {

@@ -2669,13 +2669,13 @@ extension MentraLiveManager {
 
         let json: [String: Any] = [
             "type": "button_video_recording_setting",
-            "settings": [
+            "params": [
                 "width": finalWidth,
                 "height": finalHeight,
                 "fps": finalFps,
             ],
         ]
-        sendJson(json)
+        sendJson(json, wakeUp: true)
     }
 
     func sendButtonPhotoSettings() {
@@ -2692,7 +2692,7 @@ extension MentraLiveManager {
             "type": "button_photo_setting",
             "size": size,
         ]
-        sendJson(json)
+        sendJson(json, wakeUp: true)
     }
 
     func sendButtonCameraLedSetting() {
@@ -2709,7 +2709,7 @@ extension MentraLiveManager {
             "type": "button_camera_led",
             "enabled": enabled,
         ]
-        sendJson(json)
+        sendJson(json, wakeUp: true)
     }
 
     func startVideoRecording(requestId: String, save: Bool) {
