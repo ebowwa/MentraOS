@@ -167,7 +167,7 @@ export class GlassesWebSocketService {
             const mode = livekitInitMessage.mode || 'publish'; // Default to publish for backward compatibility
             
             userSession.liveKitManager
-              .handleLiveKitInit(mode)
+              .handleLiveKitInit()
               .then((info) => {
                 if (!info) return;
                 const livekitInfo: CloudToGlassesMessage = {
