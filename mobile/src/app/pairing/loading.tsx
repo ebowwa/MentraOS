@@ -62,7 +62,7 @@ export default function GlassesPairingGuideScreen() {
 
   const handlePairFailure = (error: string) => {
     CoreCommunicator.getInstance().sendForgetSmartGlasses()
-    replace("/pairing/failure", {error: error})
+    replace("/pairing/failure", {error: error, glassesModelName: glassesModelName})
   }
 
   useEffect(() => {
