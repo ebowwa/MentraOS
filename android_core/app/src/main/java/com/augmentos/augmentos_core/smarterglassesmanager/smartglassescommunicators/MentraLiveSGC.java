@@ -2656,18 +2656,25 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         }
     }
 
-    @Override
-    public void sendButtonVideoRecordingSettings(int width, int height, int fps) {
-        // Send video settings to glasses
-        JSONObject command = new JSONObject();
+    public void sendButtonVideoRecordingSettings() {
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
+        int videoWidth = prefs.getInt("button_video_width", 1280);
+        int videoHeight = prefs.getInt("button_video_height", 720);
+        int videoFps = prefs.getInt("button_video_fps", 30);
+        
+        Log.d(TAG, "Sending button video recording settings: " + videoWidth + "x" + videoHeight + "@" + videoFps + "fps");
+        
         try {
-            command.put("type", "button_video_recording_setting");
-            command.put("width", width);
-            command.put("height", height);
-            command.put("fps", fps);
-            sendJson(command, true);
-        } catch (Exception e) {
-            Log.e(TAG, "Error sending button video settings", e);
+            JSONObject json = new JSONObject();
+            json.put("type", "button_video_recording_setting");
+            JSONObject settings = new JSONObject();
+            settings.put("width", videoWidth);
+            settings.put("height", videoHeight);
+            settings.put("fps", videoFps);
+            json.put("params", settings);
+            sendJson(json);
+        } catch (JSONException e) {
+            Log.e(TAG, "Error creating button video recording settings message", e);
         }
     }
 
@@ -3615,36 +3622,6 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         
         // Send button camera LED setting
         sendButtonCameraLedSetting();
-    }
-
-    /**
-     * Send button video recording settings to glasses
-     */
-    public void sendButtonVideoRecordingSettings() {
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
-        int width = prefs.getInt("button_video_width", 1280);
-        int height = prefs.getInt("button_video_height", 720);
-        int fps = prefs.getInt("button_video_fps", 30);
-        
-        Log.d(TAG, "Sending button video recording settings: " + width + "x" + height + "@" + fps + "fps");
-        
-        if (!isConnected) {
-            Log.w(TAG, "Cannot send button video recording settings - not connected");
-            return;
-        }
-        
-        try {
-            JSONObject json = new JSONObject();
-            json.put("type", "button_video_recording_setting");
-            JSONObject settings = new JSONObject();
-            settings.put("width", width);
-            settings.put("height", height);
-            settings.put("fps", fps);
-            json.put("settings", settings);
-            sendJson(json);
-        } catch (JSONException e) {
-            Log.e(TAG, "Error creating button video recording settings message", e);
-        }
     }
     
     /**

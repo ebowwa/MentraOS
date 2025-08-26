@@ -309,7 +309,8 @@ const en = {
   errors: {
     appNotOnlineTitle: "App Not Online",
     appNotOnlineMessage: "This app is not online. Please try again later.",
-    pairingBatteryTooLow: "The battery on your glasses is too low to pair. Please charge your glasses and try again.",
+    pairingBatteryTooLow:
+      "The battery on your {{glassesModel}} is too low to pair. Please charge your {{glassesModel}} and try again.",
   },
   common: {
     ok: "OK",

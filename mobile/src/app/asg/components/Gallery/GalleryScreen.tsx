@@ -150,6 +150,7 @@ export function GalleryScreen() {
     current: number
     total: number
     message: string
+    fileProgress?: number
   } | null>(null)
   const [glassesGalleryStatus, setGlassesGalleryStatus] = useState<{
     photos: number
@@ -365,11 +366,12 @@ export function GalleryScreen() {
       const downloadResult = await asgCameraApi.batchSyncFiles(
         syncData.changed_files,
         true,
-        (current, total, fileName) => {
+        (current, total, fileName, fileProgress) => {
           setSyncProgress({
             current,
             total,
             message: `Downloading ${fileName}...`,
+            fileProgress, // Add individual file progress
           })
         },
       )
@@ -1229,7 +1231,9 @@ The gallery will automatically reload once connected.`,
         <TouchableOpacity
           style={[
             themed($syncButtonFixed),
-            galleryState === GalleryState.USER_CANCELLED_WIFI ? {} : themed($syncButtonFixedDisabled),
+            galleryState === GalleryState.USER_CANCELLED_WIFI
+              ? themed($syncButtonActive)
+              : themed($syncButtonFixedDisabled),
           ]}
           onPress={galleryState === GalleryState.USER_CANCELLED_WIFI ? retryHotspotConnection : undefined}
           activeOpacity={galleryState === GalleryState.USER_CANCELLED_WIFI ? 0.8 : 1}
@@ -1289,17 +1293,36 @@ The gallery will automatically reload once connected.`,
             ) : /* Actively syncing with progress */
             galleryState === GalleryState.SYNCING && syncProgress ? (
               <>
+                {/* Overall sync status */}
                 <Text style={themed($syncButtonText)}>
-                  Syncing {syncProgress.current}/{syncProgress.total} items...
+                  Syncing {syncProgress.current} of {syncProgress.total} items
                 </Text>
-                {/* <View style={themed($syncButtonProgressBar)}>
+
+                {/* Individual file progress bar (changes quickly) */}
+                <View style={themed($syncButtonProgressBar)}>
                   <View
                     style={[
                       themed($syncButtonProgressFill),
-                      {width: `${(syncProgress.current / syncProgress.total) * 100}%`},
+                      {
+                        width: `${syncProgress.fileProgress || 0}%`,
+                      },
                     ]}
                   />
-                </View> */}
+                </View>
+
+                {/* Overall sync progress bar (steady progress) */}
+                <View style={[themed($syncButtonProgressBar), {marginTop: 4, height: 4, opacity: 0.6}]}>
+                  <View
+                    style={[
+                      themed($syncButtonProgressFill),
+                      {
+                        // Simple calculation: just show percentage of files completed
+                        width: `${Math.round((syncProgress.current / syncProgress.total) * 100)}%`,
+                        opacity: 0.8,
+                      },
+                    ]}
+                  />
+                </View>
               </>
             ) : /* Syncing without progress */
             galleryState === GalleryState.SYNCING ? (
@@ -1656,6 +1679,13 @@ const $syncButtonFixedDisabled: ThemedStyle<ViewStyle> = ({colors, spacing}) => 
   opacity: 1,
 })
 
+const $syncButtonActive: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
+  backgroundColor: colors.palette.neutral100,
+  borderWidth: spacing.xxxs,
+  borderColor: colors.palette.primary500,
+  opacity: 1,
+})
+
 const $syncButtonContent: ThemedStyle<ViewStyle> = ({spacing}) => ({
   alignItems: "center",
   justifyContent: "center",
@@ -1676,15 +1706,15 @@ const $syncButtonText: ThemedStyle<TextStyle> = ({colors}) => ({
 
 const $syncButtonSubtext: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
   fontSize: 13,
-  color: colors.textAlt,
+  color: colors.textDim,
   opacity: 0.9,
   marginBottom: spacing.xs,
 })
 
 const $syncButtonProgressBar: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
-  height: 4,
+  height: 6, // Make it slightly taller for better visibility
   backgroundColor: colors.border,
-  borderRadius: 2,
+  borderRadius: 3,
   overflow: "hidden",
   marginTop: spacing.xs,
   width: "100%",

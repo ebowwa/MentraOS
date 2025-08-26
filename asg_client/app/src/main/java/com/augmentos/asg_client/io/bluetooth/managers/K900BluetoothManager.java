@@ -357,6 +357,14 @@ public class K900BluetoothManager extends BaseBluetoothManager implements Serial
     }
     
     /**
+     * Check if a file transfer is currently in progress
+     * @return true if a transfer is active, false otherwise
+     */
+    public boolean isFileTransferInProgress() {
+        return currentFileTransfer != null && currentFileTransfer.isActive;
+    }
+    
+    /**
      * Send an image file over the K900 Bluetooth connection
      * @param filePath Path to the image file to send
      * @return true if transfer started successfully
