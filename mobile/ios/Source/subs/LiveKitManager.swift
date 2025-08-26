@@ -242,7 +242,8 @@ public class LiveKitManager: NSObject {
         bufferInjector = BufferInjector()
 
         // Set it as the audio processing delegate
-        LiveKit.AudioManager.shared.capturePostProcessingDelegate = SineWaveGenerator()
+//      LiveKit.AudioManager.shared.capturePostProcessingDelegate = SineWaveGenerator()
+        LiveKit.AudioManager.shared.capturePostProcessingDelegate = bufferInjector
 
         // Create track options
         let captureOptions = AudioCaptureOptions(
@@ -306,6 +307,9 @@ public class LiveKitManager: NSObject {
     /// Add PCM audio data to be published
     /// - Parameter pcmData: Raw PCM audio data (16kHz, mono, 16-bit little endian)
     @objc public func addPcm(_ pcmData: Data) {
+//      Task {
+//          try await room.localParticipant.publish(data: pcmData)
+//      }
         guard let injector = bufferInjector else {
             Core.log("LiveKit: Buffer injector not initialized")
             return
@@ -318,9 +322,6 @@ public class LiveKitManager: NSObject {
 
         Core.log("LiveKit: Adding PCM buffer with \(buffer.frameLength) frames")
         injector.addBuffer(buffer)
-        Task {
-            try await room.localParticipant.publish(data: pcmData)
-        }
     }
 
     /// Disconnect from LiveKit room

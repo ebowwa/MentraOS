@@ -9,7 +9,7 @@ import Combine
 import Foundation
 
 class ServerComms {
-    public static let shared = ServerComms()
+    static let shared = ServerComms()
 
     let wsManager = WebSocketManager.shared
     private var speechRecCallback: (([String: Any]) -> Void)?
@@ -447,7 +447,6 @@ class ServerComms {
 
         switch type {
         case "connection_ack":
-            
             MentraManager.getInstance().onAppStateChange(parseAppList(msg))
             MentraManager.getInstance().onConnectionAck()
             let livekitData = msg["livekit"] as? [String: Any] ?? [:]
@@ -486,7 +485,8 @@ class ServerComms {
 
             Core.log("ServerComms: requiredData = \(requiredDataStrings), bypassVad = \(bypassVad)")
 
-            MentraManager.getInstance().onMicrophoneStateChange(requiredData, bypassVad)
+          // TODO: livekit reenable this
+//            MentraManager.getInstance().onMicrophoneStateChange(requiredData, bypassVad)
 
         case "display_event":
             if let view = msg["view"] as? String {
@@ -692,13 +692,12 @@ class ServerComms {
         audioSenderThread = Thread {
             while self.audioSenderRunning {
                 if let chunk = self.audioBuffer.poll() {
-
                     // check if we're connected to livekit:
-                    
+
                     if LiveKitManager.shared.enabled {
                         LiveKitManager.shared.addPcm(chunk)
                     } else if self.wsManager.isConnected() {
-                      // TODO: reenable
+                        // TODO: reenable
                         // self.wsManager.sendBinary(chunk)
                     } else {
                         // Re-enqueue the chunk if not connected, then wait a bit
