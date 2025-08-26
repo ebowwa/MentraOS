@@ -2656,22 +2656,21 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         }
     }
 
-    @Override
-    public void sendButtonVideoRecordingSettings(int width, int height, int fps) {
+    public void sendButtonVideoRecordingSettings() {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
-        int width = prefs.getInt("button_video_width", 1280);
-        int height = prefs.getInt("button_video_height", 720);
-        int fps = prefs.getInt("button_video_fps", 30);
+        int videoWidth = prefs.getInt("button_video_width", 1280);
+        int videoHeight = prefs.getInt("button_video_height", 720);
+        int videoFps = prefs.getInt("button_video_fps", 30);
         
-        Log.d(TAG, "Sending button video recording settings: " + width + "x" + height + "@" + fps + "fps");
+        Log.d(TAG, "Sending button video recording settings: " + videoWidth + "x" + videoHeight + "@" + videoFps + "fps");
         
         try {
             JSONObject json = new JSONObject();
             json.put("type", "button_video_recording_setting");
             JSONObject settings = new JSONObject();
-            settings.put("width", width);
-            settings.put("height", height);
-            settings.put("fps", fps);
+            settings.put("width", videoWidth);
+            settings.put("height", videoHeight);
+            settings.put("fps", videoFps);
             json.put("params", settings);
             sendJson(json);
         } catch (JSONException e) {
