@@ -41,6 +41,7 @@ import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.RtmpS
 import com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses.SmartGlassesDevice;
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.SmartGlassesConnectionState;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesVersionInfoEvent;
+import com.augmentos.augmentos_core.smarterglassesmanager.SmartGlassesManager;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.DownloadProgressEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.InstallationProgressEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.PairFailureEvent;
@@ -128,6 +129,9 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     // Heartbeat parameters
     private static final int HEARTBEAT_INTERVAL_MS = 30000; // 30 seconds
     private static final int BATTERY_REQUEST_EVERY_N_HEARTBEATS = 10; // Every 10 heartbeats (5 minutes)
+    
+    // Micbeat parameters - periodically enable custom audio TX
+    private static final long MICBEAT_INTERVAL_MS = (1000 * 60) * 30; // micbeat every 30 minutes
 
     // Device settings
     private static final String PREFS_NAME = "MentraLivePrefs";
@@ -160,6 +164,9 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     private Runnable processSendQueueRunnable;
     // Current MTU size
     private int currentMtu = 23; // Default BLE MTU
+
+    // Audio microphone state tracking
+    private boolean shouldUseGlassesMic = false; // Whether to use glasses microphone for audio input
 
     // Rate limiting - minimum delay between BLE characteristic writes
     private static final long MIN_SEND_DELAY_MS = 160; // 160ms minimum delay (increased from 100ms)
@@ -261,6 +268,11 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     private Runnable heartbeatRunnable;
     private int heartbeatCounter = 0;
     private boolean glassesReady = false;
+    
+    // Micbeat tracking - periodically enable custom audio TX
+    private Handler micBeatHandler = new Handler(Looper.getMainLooper());
+    private Runnable micBeatRunnable;
+    private int micBeatCount = 0;
 
     // Message tracking for reliable delivery
     private final ConcurrentHashMap<Long, PendingMessage> pendingMessages = new ConcurrentHashMap<>();
@@ -676,6 +688,9 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                     // Stop heartbeat mechanism
                     stopHeartbeat();
 
+                    // Stop micbeat mechanism
+                    stopMicBeat();
+
                     // Clean up GATT resources
                     if (bluetoothGatt != null) {
                         bluetoothGatt.close();
@@ -702,6 +717,9 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
 
                 // Stop heartbeat mechanism
                 stopHeartbeat();
+
+                // Stop micbeat mechanism
+                stopMicBeat();
 
                 // Clean up resources
                 if (bluetoothGatt != null) {
@@ -1804,6 +1822,9 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 // Start the heartbeat mechanism now that glasses are ready
                 startHeartbeat();
 
+                // Start the micbeat mechanism now that glasses are ready
+                startMicBeat();
+
                 // Send user settings to glasses
                 sendUserSettings();
 
@@ -2236,6 +2257,9 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             pingMsg.put("type", "ping");
             sendJsonWithoutAck(pingMsg);
 
+            // Send custom audio TX command
+            // sendEnableCustomAudioTxMessage(shouldUseGlassesMic);
+
             // Increment heartbeat counter
             heartbeatCounter++;
             Log.d(TAG, "💓 Heartbeat #" + heartbeatCounter + " sent");
@@ -2274,6 +2298,41 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
 
         // Also stop test messages
         // stopTestMessages();
+    }
+
+    /**
+     * Start the micbeat mechanism - periodically enable custom audio TX
+     */
+    private void startMicBeat() {
+        Log.d(TAG, "🎤 Starting micbeat mechanism");
+        micBeatCount = 0;
+        
+        // Initialize custom audio TX immediately
+        sendEnableCustomAudioTxMessage(shouldUseGlassesMic);
+
+        micBeatRunnable = new Runnable() {
+            @Override
+            public void run() {
+                Log.d(TAG, "🎤 Sending micbeat - enabling custom audio TX");
+                sendEnableCustomAudioTxMessage(shouldUseGlassesMic);
+                micBeatCount++;
+                
+                // Schedule next micbeat
+                micBeatHandler.postDelayed(this, MICBEAT_INTERVAL_MS);
+            }
+        };
+
+        micBeatHandler.removeCallbacks(micBeatRunnable); // Remove any existing callbacks
+        micBeatHandler.postDelayed(micBeatRunnable, MICBEAT_INTERVAL_MS);
+    }
+
+    /**
+     * Stop the micbeat mechanism
+     */
+    private void stopMicBeat() {
+        Log.d(TAG, "🎤 Stopping micbeat mechanism");
+        micBeatHandler.removeCallbacks(micBeatRunnable);
+        micBeatCount = 0;
     }
 
     /**
@@ -2444,15 +2503,18 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
 
     @Override
     public void changeSmartGlassesMicrophoneState(boolean enable) {
-        Log.d(TAG, "Changing microphone state to: " + enable);
+        Log.d(TAG, "Microphone state changed: " + enable);
 
-        try {
-            JSONObject json = new JSONObject();
-            json.put("type", "set_mic_state");
-            json.put("enabled", enable);
-            sendJson(json, false);
-        } catch (JSONException e) {
-            Log.e(TAG, "Error creating microphone command", e);
+        // Update the shouldUseGlassesMic flag to reflect the current state
+        this.shouldUseGlassesMic = enable && SmartGlassesManager.getSensingEnabled(context);
+        Log.d(TAG, "Updated shouldUseGlassesMic to: " + shouldUseGlassesMic);
+
+        if (this.shouldUseGlassesMic) {
+            Log.d(TAG, "Microphone enabled, starting audio input handling");
+            startMicBeat();
+        } else {
+            Log.d(TAG, "Microphone disabled, stopping audio input handling");
+            stopMicBeat();
         }
     }
 
@@ -2658,6 +2720,9 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         // Stop heartbeat mechanism
         stopHeartbeat();
 
+        // Stop micbeat mechanism
+        stopMicBeat();
+
         // Cancel connection timeout
         if (connectionTimeoutRunnable != null) {
             connectionTimeoutHandler.removeCallbacks(connectionTimeoutRunnable);
@@ -2666,6 +2731,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         // Cancel any pending handlers
         handler.removeCallbacksAndMessages(null);
         heartbeatHandler.removeCallbacksAndMessages(null);
+        micBeatHandler.removeCallbacksAndMessages(null);
         connectionTimeoutHandler.removeCallbacksAndMessages(null);
         testMessageHandler.removeCallbacksAndMessages(null);
 
@@ -2851,13 +2917,18 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
      * Enable or disable receiving custom GATT audio from the glasses microphone.
      * @param enable True to enable, false to disable.
      */
-    public void enableCustomAudioTx(boolean enable) {
+    public void sendEnableCustomAudioTxMessage(boolean enable) {
         try {
             JSONObject cmd = new JSONObject();
             cmd.put("C", "enable_custom_audio_tx");
-            cmd.put("B", enable);
-            sendJson(cmd);
-            Log.d(TAG, "Setting custom audio TX (mic) to: " + enable);
+            JSONObject enableObj = new JSONObject();
+            enableObj.put("enable", enable);
+            cmd.put("B", enableObj.toString());
+
+            String jsonStr = cmd.toString();
+            Log.d(TAG, "Sending hrt command: " + jsonStr);
+            byte[] packedData = K900ProtocolUtils.packDataToK900(jsonStr.getBytes(StandardCharsets.UTF_8), K900ProtocolUtils.CMD_TYPE_STRING);
+            queueData(packedData);
         } catch (JSONException e) {
             Log.e(TAG, "Error creating enable_custom_audio_tx command", e);
         }
