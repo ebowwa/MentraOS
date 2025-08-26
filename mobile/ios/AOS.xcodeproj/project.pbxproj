@@ -20,7 +20,6 @@
 		B18059E884C0ABDD17F3DC3D /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAC715A2D49A985799AEE119 /* ExpoModulesProvider.swift */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
 		C5033C3C2E5668D6006A0718 /* CommandBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5033C3B2E5668D6006A0718 /* CommandBridge.swift */; };
-		C5033F1F2E568874006A0718 /* LiveKit in Frameworks */ = {isa = PBXBuildFile; productRef = C5033F1E2E568874006A0718 /* LiveKit */; };
 		C540BE3D2E31AAEE001A328F /* UltraliteSDK in Frameworks */ = {isa = PBXBuildFile; productRef = C540BE3C2E31AAEE001A328F /* UltraliteSDK */; };
 		C5DE979E2DDD0EA80032FC99 /* BridgeModule.m in Sources */ = {isa = PBXBuildFile; fileRef = C5DE978A2DDD0EA80032FC99 /* BridgeModule.m */; };
 		C5DE979F2DDD0EA80032FC99 /* MentraManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5DE97882DDD0EA80032FC99 /* MentraManager.swift */; };
@@ -169,7 +168,6 @@
 				C540BE3D2E31AAEE001A328F /* UltraliteSDK in Frameworks */,
 				96905EF65AED1B983A6B3ABC /* libPods-AOS.a in Frameworks */,
 				6D5628382E2C062700C872F3 /* sherpa-onnx.xcframework in Frameworks */,
-				C5033F1F2E568874006A0718 /* LiveKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -477,7 +475,6 @@
 			mainGroup = 83CBB9F61A601CBA00E9B192;
 			packageReferences = (
 				C540BE3B2E31AAEE001A328F /* XCRemoteSwiftPackageReference "UltraliteSDK-releases-iOS" */,
-				C5033F1D2E568874006A0718 /* XCRemoteSwiftPackageReference "client-sdk-swift" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 83CBBA001A601CBA00E9B192 /* Products */;
@@ -1139,14 +1136,6 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		C5033F1D2E568874006A0718 /* XCRemoteSwiftPackageReference "client-sdk-swift" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/livekit/client-sdk-swift";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 2.6.1;
-			};
-		};
 		C540BE3B2E31AAEE001A328F /* XCRemoteSwiftPackageReference "UltraliteSDK-releases-iOS" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/Vuzix/UltraliteSDK-releases-iOS";
@@ -1158,11 +1147,6 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		C5033F1E2E568874006A0718 /* LiveKit */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = C5033F1D2E568874006A0718 /* XCRemoteSwiftPackageReference "client-sdk-swift" */;
-			productName = LiveKit;
-		};
 		C540BE3C2E31AAEE001A328F /* UltraliteSDK */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = C540BE3B2E31AAEE001A328F /* XCRemoteSwiftPackageReference "UltraliteSDK-releases-iOS" */;
