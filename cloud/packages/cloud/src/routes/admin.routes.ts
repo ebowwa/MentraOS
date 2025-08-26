@@ -284,22 +284,38 @@ const approveApp = async (req: Request, res: Response) => {
 
     await app.save();
 
-    // Send notification to organization owner
+    // Send approval email to developer/organization contact (non-blocking)
     try {
+      let recipientEmail: string | null = null;
       if (app.organizationId) {
         const org = await Organization.findById(app.organizationId);
-        if (org) {
-          // In a real implementation, you would trigger an email here
-          // notificationService.sendAppApprovedNotification(org.profile.contactEmail, app.name);
-          logger.info(
-            `App ${packageName} approved. Notification should be sent to organization: ${org.name} (${org.profile.contactEmail})`,
+        recipientEmail = org?.profile?.contactEmail || null;
+      }
+      if (!recipientEmail && app.developerId) {
+        recipientEmail = app.developerId;
+      }
+
+      if (recipientEmail) {
+        const { emailService } = require("../services/email/resend.service");
+        const result = await emailService.sendAppApprovalNotification(
+          recipientEmail,
+          app.name,
+          packageName,
+          notes,
+        );
+        if (result && result.error) {
+          logger.warn(
+            { packageName, recipientEmail, error: result.error },
+            "Approval email send returned error",
           );
         }
+      } else {
+        logger.warn({ packageName }, "No recipient email for approval email");
       }
     } catch (error) {
       logger.error(
-        `Failed to send organization notification for app ${packageName}:`,
-        error,
+        { error, packageName },
+        "Failed to send approval notification email",
       );
       // Non-critical error, approval succeeded
     }
@@ -345,22 +361,39 @@ const rejectApp = async (req: Request, res: Response) => {
 
     await app.save();
 
-    // Send notification to organization owner
+    // Send rejection email to developer/organization contact (non-blocking)
     try {
+      let recipientEmail: string | null = null;
       if (app.organizationId) {
         const org = await Organization.findById(app.organizationId);
-        if (org) {
-          // In a real implementation, you would send an email here
-          // emailService.sendRejectionNotification(org.profile.contactEmail, app.name, notes);
-          logger.info(
-            `App ${packageName} rejected. Notification should be sent to organization: ${org.name} (${org.profile.contactEmail})`,
+        recipientEmail = org?.profile?.contactEmail || null;
+      }
+      if (!recipientEmail && app.developerId) {
+        recipientEmail = app.developerId;
+      }
+
+      if (recipientEmail) {
+        const { emailService } = require("../services/email/resend.service");
+        const result = await emailService.sendAppRejectionNotification(
+          recipientEmail,
+          app.name,
+          packageName,
+          notes,
+          adminEmail,
+        );
+        if (result && result.error) {
+          logger.warn(
+            { packageName, recipientEmail, error: result.error },
+            "Rejection email send returned error",
           );
         }
+      } else {
+        logger.warn({ packageName }, "No recipient email for rejection email");
       }
     } catch (error) {
       logger.error(
-        `Failed to send organization notification for app ${packageName}:`,
-        error,
+        { error, packageName },
+        "Failed to send rejection notification email",
       );
       // Non-critical error, rejection succeeded
     }
