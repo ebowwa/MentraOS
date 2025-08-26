@@ -1231,7 +1231,9 @@ The gallery will automatically reload once connected.`,
         <TouchableOpacity
           style={[
             themed($syncButtonFixed),
-            galleryState === GalleryState.USER_CANCELLED_WIFI ? {} : themed($syncButtonFixedDisabled),
+            galleryState === GalleryState.USER_CANCELLED_WIFI
+              ? themed($syncButtonActive)
+              : themed($syncButtonFixedDisabled),
           ]}
           onPress={galleryState === GalleryState.USER_CANCELLED_WIFI ? retryHotspotConnection : undefined}
           activeOpacity={galleryState === GalleryState.USER_CANCELLED_WIFI ? 0.8 : 1}
@@ -1677,6 +1679,13 @@ const $syncButtonFixedDisabled: ThemedStyle<ViewStyle> = ({colors, spacing}) => 
   opacity: 1,
 })
 
+const $syncButtonActive: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
+  backgroundColor: colors.palette.neutral100,
+  borderWidth: spacing.xxxs,
+  borderColor: colors.palette.primary500,
+  opacity: 1,
+})
+
 const $syncButtonContent: ThemedStyle<ViewStyle> = ({spacing}) => ({
   alignItems: "center",
   justifyContent: "center",
@@ -1697,7 +1706,7 @@ const $syncButtonText: ThemedStyle<TextStyle> = ({colors}) => ({
 
 const $syncButtonSubtext: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
   fontSize: 13,
-  color: colors.textAlt,
+  color: colors.textDim,
   opacity: 0.9,
   marginBottom: spacing.xs,
 })
