@@ -371,6 +371,19 @@ struct ViewState {
                 updateHeadUp(value)
             }.store(in: &cancellables)
         }
+
+        if nexManager != nil {
+            nexManager!.onConnectionStateChanged = { [weak self] in
+                guard let self = self else { return }
+                CoreCommsService.log("Nex glasses connection changed to: \(self.nexManager!.isConnected() ? "Connected" : "Disconnected")")
+                if self.nexManager!.isConnected() {
+                    self.handleDeviceReady()
+                } else {
+                    self.handleDeviceDisconnected()
+                    self.handleRequestStatus()
+                }
+            }
+        }
     }
 
     func updateHeadUp(_ isHeadUp: Bool) {
@@ -1557,6 +1570,9 @@ struct ViewState {
         if defaultWearable.contains("Mach1") {
             return false
         }
+        if defaultWearable.contains("Nex") {
+            return true
+        }
         return false
     }
 
@@ -1779,6 +1795,8 @@ struct ViewState {
             handleG1Ready()
         } else if defaultWearable.contains("Mach1") {
             handleMach1Ready()
+        } else if defaultWearable.contains("Nex") {
+            handleNexReady()
         }
     }
 
@@ -1848,6 +1866,13 @@ struct ViewState {
         }
     }
 
+    private func handleNexReady() {
+        CoreCommsService.log("AOS: Mentra Nex device ready")
+        isSearching = false
+        defaultWearable = "Mentra Nex"
+        handleRequestStatus()
+    }
+
     private func handleDeviceDisconnected() {
         CoreCommsService.log("AOS: Device disconnected")
         onMicrophoneStateChange(false, [], false)
@@ -1905,6 +1930,16 @@ struct ViewState {
                 if self.deviceName != "" {
                     CoreCommsService.log("AOS: pairing Mach1 by id: \(self.deviceName)")
                     self.mach1Manager?.connectById(self.deviceName)
+                } else {
+                    CoreCommsService.log("AOS: this shouldn't happen (we don't have a deviceName saved, connecting will fail if we aren't already paired)")
+                    self.defaultWearable = ""
+                    handleRequestStatus()
+                }
+            } else if self.defaultWearable.contains("Nex") {
+                initManager(self.defaultWearable)
+                if self.deviceName != "" {
+                    CoreCommsService.log("AOS: connecting to Nex by name: \(self.deviceName)")
+                    self.nexManager?.connect(name: self.deviceName)
                 } else {
                     CoreCommsService.log("AOS: this shouldn't happen (we don't have a deviceName saved, connecting will fail if we aren't already paired)")
                     self.defaultWearable = ""
