@@ -324,7 +324,8 @@ public class MicrophoneLocalAndBluetooth {
             recorder = new AudioRecord(audioSource,
                     SAMPLING_RATE_IN_HZ, CHANNEL_CONFIG, AUDIO_FORMAT, bufferSize * 2);
             
-            Log.d(TAG, "AudioRecord created with CAMCORDER source");
+            Log.d(TAG, "AudioRecord created with source: " + 
+                    (audioSource == MediaRecorder.AudioSource.VOICE_RECOGNITION ? "VOICE_RECOGNITION" : "CAMCORDER"));
 
             if (recorder.getState() != AudioRecord.STATE_INITIALIZED) {
                 Log.e(TAG, "Failed to initialize AudioRecord");

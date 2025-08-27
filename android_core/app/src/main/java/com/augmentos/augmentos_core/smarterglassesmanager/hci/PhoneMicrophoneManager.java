@@ -385,7 +385,7 @@ public class PhoneMicrophoneManager {
                     pauseRecording();
                 }
             }
-        }, 300); // 300ms gives Gboard enough time to initialize and grab the mic
+        }, 500); // 500ms gives Gboard enough time to initialize and grab the mic
     }
     
     /**
