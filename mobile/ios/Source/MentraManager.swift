@@ -53,7 +53,6 @@ struct ViewState {
     private var defaultWearable: String = ""
     private var pendingWearable: String = ""
     private var deviceName: String = ""
-    private var shouldEnableMic: Bool = false
     private var contextualDashboard = true
     private var headUpAngle = 30
     private var brightness = 50

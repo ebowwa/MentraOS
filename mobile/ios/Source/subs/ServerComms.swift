@@ -483,10 +483,9 @@ class ServerComms {
             // Convert string array to enum array
             var requiredData = SpeechRequiredDataType.fromStringArray(requiredDataStrings)
 
-            Core.log("ServerComms: requiredData = \(requiredDataStrings), bypassVad = \(bypassVad)")
+            // Core.log("ServerComms: requiredData = \(requiredDataStrings), bypassVad = \(bypassVad)")
 
-          // TODO: livekit reenable this
-//            MentraManager.getInstance().onMicrophoneStateChange(requiredData, bypassVad)
+            MentraManager.getInstance().onMicrophoneStateChange(requiredData, bypassVad)
 
         case "display_event":
             if let view = msg["view"] as? String {
