@@ -23,50 +23,51 @@ import Foundation
 
         // Define command types enum
         enum CommandType: String {
-            case setAuthSecretKey = "set_auth_secret_key"
-            case requestStatus = "request_status"
-            case connectWearable = "connect_wearable"
-            case disconnectWearable = "disconnect_wearable"
-            case searchForCompatibleDeviceNames = "search_for_compatible_device_names"
-            case enableContextualDashboard = "enable_contextual_dashboard"
-            case setPreferredMic = "set_preferred_mic"
-            case setButtonMode = "set_button_mode"
-            case setButtonPhotoSize = "set_button_photo_size"
-            case setButtonVideoSettings = "set_button_video_settings"
-            case setButtonCameraLed = "set_button_camera_led"
+            case set_auth_secret_key
+            case request_status
+            case connect_wearable
+            case disconnect_wearable
+            case search_for_compatible_device_names
+            case enable_contextual_dashboard
+            case set_preferred_mic
+            case set_button_mode
+            case set_button_photo_size
+            case set_button_video_settings
+            case set_button_camera_led
             case ping
-            case forgetSmartGlasses = "forget_smart_glasses"
-            case startApp = "start_app"
-            case stopApp = "stop_app"
-            case updateGlassesHeadUpAngle = "update_glasses_head_up_angle"
-            case updateGlassesBrightness = "update_glasses_brightness"
-            case updateGlassesDepth = "update_glasses_depth"
-            case updateGlassesHeight = "update_glasses_height"
-            case enableSensing = "enable_sensing"
-            case enablePowerSavingMode = "enable_power_saving_mode"
-            case enableAlwaysOnStatusBar = "enable_always_on_status_bar"
-            case bypassVad = "bypass_vad_for_debugging"
-            case bypassAudioEncoding = "bypass_audio_encoding_for_debugging"
-            case enforceLocalTranscription = "enforce_local_transcription"
-            case setServerUrl = "set_server_url"
-            case setMetricSystemEnabled = "set_metric_system_enabled"
-            case toggleUpdatingScreen = "toggle_updating_screen"
-            case showDashboard = "show_dashboard"
-            case requestWifiScan = "request_wifi_scan"
-            case sendWifiCredentials = "send_wifi_credentials"
-            case setHotspotState = "set_hotspot_state"
-            case queryGalleryStatus = "query_gallery_status"
-            case simulateHeadPosition = "simulate_head_position"
-            case simulateButtonPress = "simulate_button_press"
-            case startBufferRecording = "start_buffer_recording"
-            case stopBufferRecording = "stop_buffer_recording"
-            case saveBufferVideo = "save_buffer_video"
-            case startVideoRecording = "start_video_recording"
-            case stopVideoRecording = "stop_video_recording"
+            case forget_smart_glasses
+            case start_app
+            case stop_app
+            case update_glasses_head_up_angle
+            case update_glasses_brightness
+            case update_glasses_depth
+            case update_glasses_height
+            case enable_sensing
+            case enable_power_saving_mode
+            case enable_always_on_status_bar
+            case bypass_vad_for_debugging
+            case bypass_audio_encoding_for_debugging
+            case enforce_local_transcription
+            case set_server_url
+            case set_metric_system_enabled
+            case toggle_updating_screen
+            case show_dashboard
+            case request_wifi_scan
+            case send_wifi_credentials
+            case set_hotspot_state
+            case query_gallery_status
+            case simulate_head_position
+            case simulate_button_press
+            case start_buffer_recording
+            case stop_buffer_recording
+            case save_buffer_video
+            case start_video_recording
+            case stop_video_recording
             case set_stt_model_path
             case check_stt_model_available
             case validate_stt_model
             case extract_tar_bz2
+            case set_settings
             case unknown
         }
 
@@ -89,13 +90,13 @@ import Foundation
 
                 // Process based on command type
                 switch commandType {
-                case .setServerUrl:
+                case .set_server_url:
                     guard let params = params, let url = params["url"] as? String else {
                         Core.log("AOS: set_server_url invalid params")
                         break
                     }
                     m.setServerUrl(url: url)
-                case .setAuthSecretKey:
+                case .set_auth_secret_key:
                     guard let params = params,
                           let userId = params["userId"] as? String,
                           let authSecretKey = params["authSecretKey"] as? String
@@ -104,9 +105,9 @@ import Foundation
                         break
                     }
                     m.setAuthSecretKey(secretKey: authSecretKey, userId: userId)
-                case .requestStatus:
+                case .request_status:
                     m.handleRequestStatus()
-                case .connectWearable:
+                case .connect_wearable:
                     guard let params = params, let modelName = params["model_name"] as? String,
                           let deviceName = params["device_name"] as? String
                     else {
@@ -115,41 +116,41 @@ import Foundation
                         break
                     }
                     m.handleConnectWearable(deviceName, modelName: modelName)
-                case .disconnectWearable:
+                case .disconnect_wearable:
                     m.disconnectWearable()
-                case .forgetSmartGlasses:
+                case .forget_smart_glasses:
                     m.forgetSmartGlasses()
-                case .searchForCompatibleDeviceNames:
+                case .search_for_compatible_device_names:
                     guard let params = params, let modelName = params["model_name"] as? String else {
                         Core.log("AOS: search_for_compatible_device_names invalid params")
                         break
                     }
                     m.handleSearchForCompatibleDeviceNames(modelName)
-                case .enableContextualDashboard:
+                case .enable_contextual_dashboard:
                     guard let params = params, let enabled = params["enabled"] as? Bool else {
                         Core.log("AOS: enable_contextual_dashboard invalid params")
                         break
                     }
                     m.enableContextualDashboard(enabled)
-                case .setPreferredMic:
+                case .set_preferred_mic:
                     guard let params = params, let mic = params["mic"] as? String else {
                         Core.log("AOS: set_preferred_mic invalid params")
                         break
                     }
                     m.setPreferredMic(mic)
-                case .setButtonMode:
+                case .set_button_mode:
                     guard let params = params, let mode = params["mode"] as? String else {
                         Core.log("AOS: set_button_mode invalid params")
                         break
                     }
                     m.setButtonMode(mode)
-                case .setButtonPhotoSize:
+                case .set_button_photo_size:
                     guard let params = params, let size = params["size"] as? String else {
                         Core.log("AOS: set_button_photo_size invalid params")
                         break
                     }
                     m.setButtonPhotoSize(size)
-                case .setButtonVideoSettings:
+                case .set_button_video_settings:
                     guard let params = params,
                           let width = params["width"] as? Int,
                           let height = params["height"] as? Int,
@@ -159,31 +160,31 @@ import Foundation
                         break
                     }
                     m.setButtonVideoSettings(width: width, height: height, fps: fps)
-                case .setButtonCameraLed:
+                case .set_button_camera_led:
                     guard let params = params, let enabled = params["enabled"] as? Bool else {
                         Core.log("AOS: set_button_camera_led invalid params")
                         break
                     }
                     m.setButtonCameraLed(enabled)
-                case .startApp:
+                case .start_app:
                     guard let params = params, let target = params["target"] as? String else {
                         Core.log("AOS: start_app invalid params")
                         break
                     }
                     m.startApp(target)
-                case .stopApp:
+                case .stop_app:
                     guard let params = params, let target = params["target"] as? String else {
                         Core.log("AOS: stop_app invalid params")
                         break
                     }
                     m.stopApp(target)
-                case .updateGlassesHeadUpAngle:
+                case .update_glasses_head_up_angle:
                     guard let params = params, let value = params["headUpAngle"] as? Int else {
                         Core.log("AOS: update_glasses_head_up_angle invalid params")
                         break
                     }
                     m.updateGlassesHeadUpAngle(value)
-                case .updateGlassesBrightness:
+                case .update_glasses_brightness:
                     guard let params = params, let value = params["brightness"] as? Int,
                           let autoBrightness = params["autoBrightness"] as? Bool
                     else {
@@ -191,65 +192,65 @@ import Foundation
                         break
                     }
                     m.updateGlassesBrightness(value, autoBrightness: autoBrightness)
-                case .updateGlassesHeight:
+                case .update_glasses_height:
                     guard let params = params, let value = params["height"] as? Int else {
                         Core.log("AOS: update_glasses_height invalid params")
                         break
                     }
                     m.updateGlassesHeight(value)
-                case .showDashboard:
+                case .show_dashboard:
                     m.showDashboard()
-                case .updateGlassesDepth:
+                case .update_glasses_depth:
                     guard let params = params, let value = params["depth"] as? Int else {
                         Core.log("AOS: update_glasses_depth invalid params")
                         break
                     }
                     m.updateGlassesDepth(value)
-                case .enableSensing:
+                case .enable_sensing:
                     guard let params = params, let enabled = params["enabled"] as? Bool else {
                         Core.log("AOS: enable_sensing invalid params")
                         break
                     }
                     m.enableSensing(enabled)
-                case .enablePowerSavingMode:
+                case .enable_power_saving_mode:
                     guard let params = params, let enabled = params["enabled"] as? Bool else {
                         Core.log("AOS: enable_power_saving_mode invalid params")
                         break
                     }
                     m.enablePowerSavingMode(enabled)
-                case .enableAlwaysOnStatusBar:
+                case .enable_always_on_status_bar:
                     guard let params = params, let enabled = params["enabled"] as? Bool else {
                         Core.log("AOS: enable_always_on_status_bar invalid params")
                         break
                     }
                     m.enableAlwaysOnStatusBar(enabled)
-                case .bypassVad:
+                case .bypass_vad_for_debugging:
                     guard let params = params, let enabled = params["enabled"] as? Bool else {
                         Core.log("AOS: bypass_vad invalid params")
                         break
                     }
                     m.bypassVad(enabled)
-                case .bypassAudioEncoding:
+                case .bypass_audio_encoding_for_debugging:
                     guard let params = params, let enabled = params["enabled"] as? Bool else {
                         Core.log("AOS: bypass_audio_encoding invalid params")
                         break
                     }
                     m.setBypassAudioEncoding(enabled)
-                case .setMetricSystemEnabled:
+                case .set_metric_system_enabled:
                     guard let params = params, let enabled = params["enabled"] as? Bool else {
                         Core.log("AOS: set_metric_system_enabled invalid params")
                         break
                     }
                     m.setMetricSystemEnabled(enabled)
-                case .toggleUpdatingScreen:
+                case .toggle_updating_screen:
                     guard let params = params, let enabled = params["enabled"] as? Bool else {
                         Core.log("AOS: toggle_updating_screen invalid params")
                         break
                     }
                     m.toggleUpdatingScreen(enabled)
-                case .requestWifiScan:
+                case .request_wifi_scan:
                     m.requestWifiScan()
-                case .sendWifiCredentials:
+                case .send_wifi_credentials:
                     guard let params = params, let ssid = params["ssid"] as? String,
                           let password = params["password"] as? String
                     else {
@@ -257,16 +258,16 @@ import Foundation
                         break
                     }
                     m.sendWifiCredentials(ssid, password)
-                case .setHotspotState:
+                case .set_hotspot_state:
                     guard let params = params, let enabled = params["enabled"] as? Bool else {
                         Core.log("AOS: set_hotspot_state invalid params")
                         break
                     }
                     m.setGlassesHotspotState(enabled)
-                case .queryGalleryStatus:
+                case .query_gallery_status:
                     Core.log("AOS: Querying gallery status")
                     m.queryGalleryStatus()
-                case .simulateHeadPosition:
+                case .simulate_head_position:
                     guard let params = params, let position = params["position"] as? String else {
                         Core.log("AOS: simulate_head_position invalid params")
                         break
@@ -275,7 +276,7 @@ import Foundation
                     ServerComms.getInstance().sendHeadPosition(isUp: position == "up")
                     // Trigger dashboard display locally
                     m.sendCurrentState(position == "up")
-                case .simulateButtonPress:
+                case .simulate_button_press:
                     guard let params = params,
                           let buttonId = params["buttonId"] as? String,
                           let pressType = params["pressType"] as? String
@@ -285,19 +286,19 @@ import Foundation
                     }
                     // Use existing sendButtonPress method
                     ServerComms.getInstance().sendButtonPress(buttonId: buttonId, pressType: pressType)
-                case .enforceLocalTranscription:
+                case .enforce_local_transcription:
                     guard let params = params, let enabled = params["enabled"] as? Bool else {
                         Core.log("AOS: enforce_local_transcription invalid params")
                         break
                     }
                     m.enforceLocalTranscription(enabled)
-                case .startBufferRecording:
+                case .start_buffer_recording:
                     Core.log("AOS: Starting buffer recording")
                     m.startBufferRecording()
-                case .stopBufferRecording:
+                case .stop_buffer_recording:
                     Core.log("AOS: Stopping buffer recording")
                     m.stopBufferRecording()
-                case .saveBufferVideo:
+                case .save_buffer_video:
                     guard let params = params,
                           let requestId = params["request_id"] as? String,
                           let durationSeconds = params["duration_seconds"] as? Int
@@ -307,7 +308,7 @@ import Foundation
                     }
                     Core.log("AOS: Saving buffer video: requestId=\(requestId), duration=\(durationSeconds)s")
                     m.saveBufferVideo(requestId: requestId, durationSeconds: durationSeconds)
-                case .startVideoRecording:
+                case .start_video_recording:
                     guard let params = params,
                           let requestId = params["request_id"] as? String,
                           let save = params["save"] as? Bool
@@ -317,7 +318,7 @@ import Foundation
                     }
                     Core.log("AOS: Starting video recording: requestId=\(requestId), save=\(save)")
                     m.startVideoRecording(requestId: requestId, save: save)
-                case .stopVideoRecording:
+                case .stop_video_recording:
                     guard let params = params,
                           let requestId = params["request_id"] as? String
                     else {
@@ -358,6 +359,9 @@ import Foundation
                         break
                     }
                     return m.extractTarBz2(sourcePath: sourcePath, destinationPath: destinationPath)
+                case .set_settings:
+                    // m.setSettings(params)
+                    break
                 }
             }
         } catch {
