@@ -311,8 +311,15 @@ public class MicrophoneLocalAndBluetooth {
         }
 
         try {
-            // Use CAMCORDER source for all devices (Samsung-specific source removed)
-            int audioSource = MediaRecorder.AudioSource.CAMCORDER;
+            // Use VOICE_RECOGNITION for Samsung to allow better mic sharing with Gboard
+            // CAMCORDER has higher priority and blocks other apps more aggressively
+            int audioSource;
+            if ("samsung".equalsIgnoreCase(Build.MANUFACTURER)) {
+                audioSource = MediaRecorder.AudioSource.VOICE_RECOGNITION;
+                Log.d(TAG, "Using VOICE_RECOGNITION source for Samsung device");
+            } else {
+                audioSource = MediaRecorder.AudioSource.CAMCORDER;
+            }
             
             recorder = new AudioRecord(audioSource,
                     SAMPLING_RATE_IN_HZ, CHANNEL_CONFIG, AUDIO_FORMAT, bufferSize * 2);
