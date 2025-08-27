@@ -180,7 +180,7 @@ export default function DeveloperSettingsScreen() {
       setSavedCustomUrl(url)
       setCustomUrlInput(url || "")
 
-      const reconnectOnAppForeground = await loadSetting(SETTINGS_KEYS.RECONNECT_ON_APP_FOREGROUND, true)
+      const reconnectOnAppForeground = await loadSetting(SETTINGS_KEYS.RECONNECT_ON_APP_FOREGROUND, false)
       setReconnectOnAppForeground(reconnectOnAppForeground)
 
       const newUiSetting = await loadSetting(SETTINGS_KEYS.NEW_UI, false)
