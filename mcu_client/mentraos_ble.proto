@@ -8,8 +8,9 @@ package mentraos.ble;
 
 // All messages from phone to glasses
 message PhoneToGlasses {
-  string msg_id = 1;  // Optional message ID for request/response correlation
-  
+  // Optional: global request/response correlation
+  string msg_id = 1;
+
   oneof payload {
     // Connection Management
     DisconnectRequest disconnect = 10;
@@ -19,12 +20,13 @@ message PhoneToGlasses {
     HeadPositionRequest head_position = 14;
     HeadUpAngleConfig head_up_angle = 15;
     PongResponse pong = 16;
-    
+
     // Audio System
     MicStateConfig mic_state = 20;
-    VadEnabledConfig vad_enabled = 21;
-    VadConfig vad_config = 22;
-    
+    VadEnabledRequest set_vad_enabled = 23;
+    VadConfigRequest set_vad_config = 24;
+    VadStatusRequest request_vad_status = 25;
+
     // Display System - These queue until commit
     DisplayText display_text = 30;
     DisplayImage display_image = 31;
@@ -36,8 +38,8 @@ message PhoneToGlasses {
     DrawRect draw_rect = 41;
     DrawCircle draw_circle = 42;
     DisplayBatch display_batch = 52;  // Send multiple commands at once
-    CommitDisplay commit = 43;  // Renders all queued commands
-    
+    CommitDisplay commit = 43;        // Renders all queued commands
+
     // Display Control - These execute immediately
     DisplayPowerConfig display_power = 36;
     BrightnessConfig brightness = 37;
@@ -47,18 +49,18 @@ message PhoneToGlasses {
     DisplayHeightConfig display_height = 45;
     ClearDisplay clear_display = 46;
     DisplayQueueStatus queue_status_request = 51;  // Get queue info
-    
+
     // Dashboard/Cacheboard System
     CacheDashboard cache_dashboard = 47;
     ClearDashboard clear_dashboard = 48;
     ConfigureDashboardTrigger dashboard_trigger = 49;
-    
+
     // User Input
     ImuEnabledConfig imu_enabled = 55;
     ImuSingleRequest imu_single = 56;
     ImuStreamConfig imu_stream = 57;
     HeadGestureConfig head_gesture = 58;
-    
+
     // System Control
     RestartRequest restart = 60;
     FactoryResetRequest factory_reset = 61;
@@ -75,19 +77,22 @@ message GlassesToPhone {
     HeadPosition head_position = 13;
     HeadUpAngleResponse head_up_angle_set = 14;
     PingRequest ping = 15;
-    
+
     // Audio System
-    VadEvent vad_event = 20;
-    
-    // Display System  
+    VadEvent vad_event = 20;                 // event when voice starts/stops
+    VadEnabledResponse vad_enabled_set = 21; // response to set_vad_enabled
+    VadConfigResponse  vad_configured  = 22; // response to set_vad_config
+    VadStatus          vad_status      = 23; // response to request_vad_status
+
+    // Display System
     ImageTransferComplete image_transfer_complete = 30;
     DisplayQueueInfo display_queue_info = 31;
-    
+
     // User Input
     ImuData imu_data = 40;
     ButtonEvent button_event = 41;
     HeadGesture head_gesture = 42;
-    
+
     // Dashboard System
     DashboardShown dashboard_shown = 43;
   }
@@ -163,20 +168,51 @@ message MicStateConfig {
   bool enabled = 1;
 }
 
-message VadEnabledConfig {
-  bool enabled = 1;
-}
-
-message VadConfig {
-  uint32 sensitivity = 1;  // 0-100
-}
-
+// Events: emitted when voice activity starts/stops
 message VadEvent {
   enum State {
     INACTIVE = 0;
     ACTIVE = 1;
   }
   State state = 1;
+}
+
+// Enable/disable VAD (request)
+message VadEnabledRequest {
+  string msg_id = 1;
+  bool enabled = 2;
+}
+
+// Response to enable/disable VAD
+message VadEnabledResponse {
+  string msg_id = 1; // echoes request
+  bool success = 2;
+  string error = 3;  // optional diagnostics
+}
+
+// Configure VAD sensitivity (request)
+message VadConfigRequest {
+  string msg_id = 1;
+  uint32 sensitivity = 2; // 0-100
+}
+
+// Response to VAD config
+message VadConfigResponse {
+  string msg_id = 1; // echoes request
+  bool success = 2;
+  string error = 3;  // optional diagnostics
+}
+
+// Query current VAD state (request)
+message VadStatusRequest {
+  string msg_id = 1;
+}
+
+// Current VAD state (response)
+message VadStatus {
+  string msg_id = 1;      // echoes request
+  bool enabled = 2;
+  uint32 sensitivity = 3; // 0-100
 }
 
 // ============================================
@@ -186,28 +222,29 @@ message VadEvent {
 // DISPLAY QUEUE SYSTEM:
 // All display commands (DisplayText, DrawLine, DrawRect, etc.) are queued
 // in MCU memory and NOT immediately shown on screen.
-// 
+//
 // To render queued commands:
 // 1. Send multiple display commands (they accumulate in queue)
 // 2. Send CommitDisplay to atomically render all queued commands
-// 
-// Example sequence:
-//   → DisplayText{x:10, y:10, text:"Hello"}     // Queued, not shown
-//   → DrawLine{x1:0, y1:20, x2:100, y2:20}      // Queued, not shown  
-//   → DrawRect{x:50, y:30, width:40, height:20} // Queued, not shown
-//   → CommitDisplay{}                            // All 3 render together!
 //
 // Benefits:
 // - No flicker during complex renders
 // - Atomic screen updates
 // - Reduced display refresh cycles
 
+// 
+// Example sequence:
+//   → DisplayText{x:10, y:10, text:"Hello"}     // Queued, not shown
+//   → DrawLine{x1:0, y1:20, x2:100, y2:20}      // Queued, not shown  
+//   → DrawRect{x:50, y:30, width:40, height:20} // Queued, not shown
+//   → CommitDisplay{}                            // All 3 render together!
+
 message DisplayText {
   string text = 1;
   uint32 color = 2;      // RGB565 format (e.g., 0xF800 for red)
   uint32 x = 3;
   uint32 y = 4;
-  
+
   enum FontSize {
     SMALL = 0;
     MEDIUM = 1;
@@ -252,27 +289,27 @@ message DisplayScrollingText {
   string text = 1;
   uint32 color = 2;
   uint32 x = 3;          // Text box X position
-  uint32 y = 4;          // Text box Y position  
+  uint32 y = 4;          // Text box Y position
   uint32 width = 5;      // Text box width (for LVGL wrapping)
   uint32 height = 6;     // Text box height (truncate with ellipses if exceeded)
-  
+
   enum Alignment {
     LEFT = 0;
     CENTER = 1;
     RIGHT = 2;
   }
   Alignment align = 7;
-  
+
   uint32 line_spacing = 8;   // pixels between lines
   uint32 speed = 9;          // pixels/sec scrolling up
-  
+
   enum FontSize {
     SMALL = 0;
     MEDIUM = 1;
     LARGE = 2;
   }
   FontSize size = 10;        // Use enum for font size
-  
+
   bool loop = 11;            // wrap to top when finished
   uint32 pause_ms = 12;      // delay before restart (if looping)
 }
@@ -322,7 +359,7 @@ message DrawCircle {
 // Send multiple display commands in a single message (more efficient)
 message DisplayBatch {
   repeated DisplayCommand commands = 1;
-  
+
   message DisplayCommand {
     oneof command {
       DisplayText text = 1;
@@ -365,13 +402,13 @@ message DisplayHeightConfig {
 
 message ImageTransferComplete {
   string stream_id = 1;
-  
+
   enum Status {
     OK = 0;
     INCOMPLETE = 1;
   }
   Status status = 2;
-  
+
   repeated uint32 missing_chunks = 3;  // List of missing chunk indices
 }
 
@@ -408,7 +445,7 @@ message ButtonEvent {
     RIGHT = 2;
   }
   Button button = 1;
-  
+
   enum State {
     UP = 0;
     DOWN = 1;
@@ -448,7 +485,7 @@ message FactoryResetRequest {}
 // Cache a complete dashboard/screen that can be triggered instantly
 message CacheDashboard {
   uint32 dashboard_id = 1;  // ID for this dashboard
-  
+
   // Series of display commands that make up the dashboard
   // When dashboard triggers, these commands are queued and committed atomically
   DisplayBatch batch = 2;  // Reuse the same DisplayBatch structure
@@ -462,15 +499,15 @@ message ClearDashboard {
 // Configure what triggers the dashboard display
 message ConfigureDashboardTrigger {
   uint32 dashboard_id = 1;
-  
+
   enum TriggerType {
     HEAD_UP = 0;      // Even Realities style - look up
-    HEAD_DOWN = 1;    
+    HEAD_DOWN = 1;
     BUTTON_TAP = 2;   // Vuzix Z100 style - tap button
     MANUAL_ONLY = 3;  // Only show when explicitly commanded
   }
   TriggerType trigger = 2;
-  
+
   // Optional: minimum duration for gesture (milliseconds)
   uint32 duration_ms = 3;
 }
@@ -478,7 +515,7 @@ message ConfigureDashboardTrigger {
 // Event sent when dashboard is shown by glasses autonomously
 message DashboardShown {
   uint32 dashboard_id = 1;
-  
+
   enum TriggerSource {
     GESTURE = 0;
     BUTTON = 1;
