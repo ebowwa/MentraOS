@@ -299,13 +299,8 @@ public class MicrophoneLocalAndBluetooth {
             audioManager.setMode(AudioManager.MODE_IN_CALL);
             EventBus.getDefault().post(new ScoStartEvent(true));
         } else {
-            // Samsung devices work better with MODE_IN_COMMUNICATION for non-SCO recording
-            if ("samsung".equalsIgnoreCase(android.os.Build.MANUFACTURER)) {
-                audioManager.setMode(AudioManager.MODE_IN_COMMUNICATION);
-                Log.d(TAG, "Samsung device - using MODE_IN_COMMUNICATION for better audio routing");
-            } else {
-                audioManager.setMode(AudioManager.MODE_NORMAL);
-            }
+            // Use MODE_NORMAL for all devices (Samsung-specific mode removed)
+            audioManager.setMode(AudioManager.MODE_NORMAL);
             EventBus.getDefault().post(new ScoStartEvent(false));
         }
 
@@ -316,38 +311,19 @@ public class MicrophoneLocalAndBluetooth {
         }
 
         try {
-            // Choose audio source based on device manufacturer
-            // Samsung devices work better with VOICE_RECOGNITION source
+            // Use CAMCORDER source for all devices (Samsung-specific source removed)
             int audioSource = MediaRecorder.AudioSource.CAMCORDER;
-            if ("samsung".equalsIgnoreCase(android.os.Build.MANUFACTURER)) {
-                // VOICE_RECOGNITION is more cooperative on Samsung devices
-                audioSource = MediaRecorder.AudioSource.VOICE_RECOGNITION;
-                Log.d(TAG, "Samsung device detected - using VOICE_RECOGNITION audio source for better app cooperation");
-            }
             
             recorder = new AudioRecord(audioSource,
                     SAMPLING_RATE_IN_HZ, CHANNEL_CONFIG, AUDIO_FORMAT, bufferSize * 2);
             
-            Log.d(TAG, "AudioRecord created with source: " + audioSource + 
-                  " (CAMCORDER=" + MediaRecorder.AudioSource.CAMCORDER + 
-                  ", VOICE_RECOGNITION=" + MediaRecorder.AudioSource.VOICE_RECOGNITION + ")");
+            Log.d(TAG, "AudioRecord created with CAMCORDER source");
 
             if (recorder.getState() != AudioRecord.STATE_INITIALIZED) {
                 Log.e(TAG, "Failed to initialize AudioRecord");
                 Toast.makeText(this.mContext, "Error starting onboard microphone", Toast.LENGTH_LONG).show();
                 stopRecording();
                 return;
-            }
-            
-            // On Samsung devices, set the audio session ID to help with detection
-            if ("samsung".equalsIgnoreCase(android.os.Build.MANUFACTURER)) {
-                try {
-                    // This might help with Samsung's audio routing
-                    recorder.setPreferredDevice(null); // Clear any preferred device
-                    Log.d(TAG, "Samsung: Cleared preferred audio device for better sharing");
-                } catch (Exception e) {
-                    Log.e(TAG, "Error setting Samsung audio preferences", e);
-                }
             }
             
             // Register our AudioRecord with the PhoneMicrophoneManager for conflict detection
