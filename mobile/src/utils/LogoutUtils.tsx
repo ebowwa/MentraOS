@@ -4,7 +4,7 @@ import coreCommunicator from "@/bridge/CoreCommunicator"
 import {stopExternalService} from "@/bridge/CoreServiceStarter"
 import BackendServerComms from "@/backend_comms/BackendServerComms"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
-import {SETTINGS_KEYS} from "@/consts"
+import {SETTINGS_KEYS} from "@/utils/SettingsHelper"
 
 export class LogoutUtils {
   private static readonly TAG = "LogoutUtils"

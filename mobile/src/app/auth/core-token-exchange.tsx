@@ -8,7 +8,7 @@ import BackendServerComms from "@/backend_comms/BackendServerComms"
 import Icon from "react-native-vector-icons/MaterialCommunityIcons"
 import Button from "@/components/misc/Button"
 import {loadSetting, saveSetting} from "@/utils/SettingsHelper"
-import {SETTINGS_KEYS} from "@/consts"
+import {SETTINGS_KEYS} from "@/utils/SettingsHelper"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {ThemedStyle} from "@/theme"
 import {Screen} from "@/components/ignite"
@@ -64,12 +64,7 @@ export default function CoreTokenExchange() {
 
       // Exchange token with backend
       const backend = BackendServerComms.getInstance()
-      const coreToken = await backend.exchangeToken(supabaseToken).catch(err => {
-        // Hide console.error output
-        // Log only if needed for debugging
-        // console.error('Token exchange failed:', err);
-        throw err
-      })
+      const coreToken = await backend.exchangeToken(supabaseToken)
 
       const uid = user.email || user.id
       coreCommunicator.setAuthenticationSecretKey(uid, coreToken)
@@ -122,7 +117,7 @@ export default function CoreTokenExchange() {
     if (connectionError || hasAttemptedConnection.current) return
 
     // We only proceed once the core is connected, the user is loaded, etc.
-    if (/*TODO2.0: status.core_info.puck_connected && */ !authLoading && user) {
+    if (!authLoading && user) {
       // Track that we've attempted a connection
       hasAttemptedConnection.current = true
 

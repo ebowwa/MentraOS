@@ -3,7 +3,7 @@ import axios, {AxiosRequestConfig} from "axios"
 import Constants from "expo-constants"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
 import {loadSetting} from "@/utils/SettingsHelper"
-import {SETTINGS_KEYS} from "@/consts"
+import {SETTINGS_KEYS} from "@/utils/SettingsHelper"
 import {AppletInterface} from "@/contexts/AppletStatusProvider"
 
 interface Callback {

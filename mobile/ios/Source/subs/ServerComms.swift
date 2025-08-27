@@ -26,9 +26,6 @@ class ServerComms {
 
     private var reconnecting: Bool = false
     private var reconnectionAttempts: Int = 0
-    let calendarManager = CalendarManager()
-    let locationManager = LocationManager()
-    let mediaManager = MediaManager()
 
     private init() {
         // Subscribe to WebSocket messages
@@ -70,16 +67,6 @@ class ServerComms {
         //      CoreCommsService.log("Periodic location update")
         //      self?.sendLocationUpdates()
         //    }
-
-        // Setup calendar change notifications
-        calendarManager.setCalendarChangedCallback { [weak self] in
-            self?.sendCalendarEvents()
-        }
-
-        // setup location change notification:
-        locationManager.setLocationChangedCallback { [weak self] in
-            self?.sendLocationUpdates()
-        }
     }
 
     func setAuthCredentials(_ userid: String, _ coreToken: String) {
@@ -196,9 +183,8 @@ class ServerComms {
 
     func sendCalendarEvents() {
         guard wsManager.isConnected() else { return }
-        let calendarManager = CalendarManager()
         Task {
-            if let events = await calendarManager.fetchUpcomingEvents(days: 2) {
+            if let events = await CalendarManager.shared.fetchUpcomingEvents(days: 2) {
                 guard events.count > 0 else { return }
                 // Send up to 5 events
                 let eventsToSend = events.prefix(5)
@@ -243,7 +229,7 @@ class ServerComms {
             return
         }
 
-        if let locationData = locationManager.getCurrentLocation() {
+        if let locationData = LocationManager.shared.getCurrentLocation() {
             Core.log("Sending location update: lat=\(locationData.latitude), lng=\(locationData.longitude)")
             sendLocationUpdate(lat: locationData.latitude, lng: locationData.longitude, accuracy: nil, correlationId: nil)
         } else {
@@ -533,17 +519,15 @@ class ServerComms {
       // }
 
         case "set_location_tier":
-            print("DEBUG set_location_tier: \(msg)")
             if let tier = msg["tier"] as? String {
-                locationManager.setTier(tier: tier)
+                LocationManager.shared.setTier(tier: tier)
             }
 
         case "request_single_location":
-            print("DEBUG request_single_location: \(msg)")
             if let accuracy = msg["accuracy"] as? String,
                let correlationId = msg["correlationId"] as? String
             {
-                locationManager.requestSingleUpdate(accuracy: accuracy, correlationId: correlationId)
+                LocationManager.shared.requestSingleUpdate(accuracy: accuracy, correlationId: correlationId)
             }
 
         case "app_started":
